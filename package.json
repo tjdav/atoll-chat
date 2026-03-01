@@ -1,0 +1,14 @@
+{
+  "name": "coralite-chat",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
+    "build": "coralite-scripts build"
+  },
+  "devDependencies": {
+    "bootstrap": "^5.3.8",
+    "coralite-scripts": "^0.25.0",
+    "cross-env": "^10.1.0"
+  }
+}

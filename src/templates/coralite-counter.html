@@ -1,0 +1,55 @@
+<template id="coralite-counter">
+  <button ref="count-button" type="button" class="btn">
+    Count is 0
+  </button>
+</template>
+
+<style>
+  .btn {
+    background-color: var(--primary);
+    color: var(--body-bg);
+    border: none;
+    border-radius: var(--border-radius);
+    padding: var(--padding-y) var(--padding-x);
+    font-family: var(--font-body);
+    font-size: var(--spacer-base);
+    cursor: pointer;
+    box-shadow: var(--box-shadow);
+    transition: background-color 0.2s ease-in-out;
+  }
+
+  .btn:hover {
+    background-color: var(--code-colour);
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      imports: [
+        {
+          specifier: 'https://esm.sh/canvas-confetti@latest',
+          defaultExport: 'confetti'
+        }
+      ],
+      script ({ values, helpers, imports }) {
+        const button = helpers.refs('count-button')
+        const step = values.step ? parseInt(values.step) : 1
+        let count = 0
+        
+        button.addEventListener('click', () => {
+          // increment the counter by the specified step value
+          count += step
+
+          // update the button's text content to reflect the new count value
+          button.textContent = `Count is ${count}`
+
+          // Explode confetti :)
+          imports.confetti()
+        })
+      }
+    }
+  })
+</script>

@@ -1,0 +1,19 @@
+@use "./font";
+@use "./variables" as *;
+@use "./base";
+@use "./layout";
+@use "./card";
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  text-align: center;
+  background-image: url('/images/static_rays.avif');
+  background-size: cover;
+}
+
+img {
+  max-width: 100%;
+  height: auto;
+}
