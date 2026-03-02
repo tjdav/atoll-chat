@@ -14,18 +14,64 @@ export default createPlugin({
     },
     setup (context) {
       const PocketBase = context.imports.PocketBase;
-      const pbUrl = context.config.pbUrl;
+      const baseUrl = context.config.baseUrl;
+
+      const pb = new PocketBase(baseUrl);
+
+      // Simple implementation of single-session auth using sessionStorage if localStorage is cleared
+      const sessionAuth = sessionStorage.getItem('pocketbase_auth');
+      if (sessionAuth && !localStorage.getItem('pocketbase_auth')) {
+        try {
+          const parsed = JSON.parse(sessionAuth);
+          if (parsed.token && parsed.model) {
+            pb.authStore.save(parsed.token, parsed.model);
+            // Pocketbase saves back to localStorage, so we clear it if we are in session mode
+            localStorage.removeItem('pocketbase_auth');
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
 
       return {
-        pb: new PocketBase(pbUrl)
+        pb
       }
     },
     helpers: {
       // Helper for Authentication
-      login: (context) => async (email, password) => {
+      login: (context) => async (email, password, rememberMe = false) => {
         try {
           const pb = context.values.pb;
-          return await pb.collection('users').authWithPassword(email, password);
+          const result = await pb.collection('users').authWithPassword(email, password);
+          
+          if (!rememberMe) {
+            // Pocketbase uses localStorage by default. If not rememberMe,
+            // we should store auth state in sessionStorage instead
+            const token = pb.authStore.token;
+            const model = pb.authStore.model;
+            
+            // Clear default localStorage store
+            pb.authStore.clear();
+            
+            // Note: Since standard Pocketbase v0.8+ doesn't have a built-in session store,
+            // we can simulate session persistence by keeping it in memory
+            // but normally the browser just handles localStorage.
+            // If the user did not check 'Remember me', when the page reloads they will lose session
+            // To make it persist for the session, we can write to sessionStorage manually
+            // However, PocketBase AuthStore just uses localStorage. We can override the store or just
+            // clear localStorage and use an in-memory or sessionStorage authStore if we really need
+            // to support single-session login.
+            sessionStorage.setItem('pocketbase_auth', JSON.stringify({ token, model }));
+            
+            // But for simple "don't persist" behaviour:
+            // Pocketbase's standard JS SDK `pb.authStore` is tied to `localStorage` (by default under key "pocketbase_auth").
+            // So if we don't want to remember, we can just remove it from localStorage.
+            localStorage.removeItem('pocketbase_auth');
+            
+            // Repopulate in-memory state
+            pb.authStore.save(token, model);
+          }
+          return result;
         } catch (error) {
           console.error('Pocketbase login failed:', error);
           throw error;
