@@ -2,13 +2,24 @@
   "name": "coralite-chat",
   "private": true,
   "type": "module",
+  "keywords": [
+    "chat",
+    "real-time",
+    "messaging",
+    "coralite",
+    "pocketbase",
+    "static-site",
+    "javascript"
+  ],
   "scripts": {
     "start": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
-    "build": "coralite-scripts build"
+    "build": "coralite-scripts build",
+    "database": "./database/pocketbase serve"
   },
   "devDependencies": {
     "bootstrap": "^5.3.8",
-    "coralite-scripts": "^0.25.0",
+    "coralite": "^0.26.0",
+    "coralite-scripts": "^0.26.0",
     "cross-env": "^10.1.0"
   }
 }

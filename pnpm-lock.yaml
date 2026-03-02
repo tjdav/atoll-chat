@@ -11,9 +11,12 @@ importers:
       bootstrap:
         specifier: ^5.3.8
         version: 5.3.8(@popperjs/core@2.11.8)
+      coralite:
+        specifier: ^0.26.0
+        version: 0.26.0
       coralite-scripts:
-        specifier: ^0.25.0
-        version: 0.25.0
+        specifier: ^0.26.0
+        version: 0.26.0
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -351,12 +354,12 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.25.0:
-    resolution: {integrity: sha512-tq/t+6/+y9hkNasN0HJVEdL3LX6htduXkV3fwYmzrgnq0UOs9qiPMSS4wTcbX6Da9pL0EDuZcG1yAGoDtN0AYQ==}
+  coralite-scripts@0.26.0:
+    resolution: {integrity: sha512-tpWe2i3QOn7kkzl1Ad+xJX6y3iU4aewZxHT7Z8wcvrEaTnEn3kVfUIxnzYcg0hXEkiuYO9EvUa8WJNybV4hQNQ==}
     hasBin: true
 
-  coralite@0.25.0:
-    resolution: {integrity: sha512-UsmRnqOcGm7M/RJQACO+wJYxuB0VxcLVaur3j0A9C3phmaJqJcnm+NPP/te4t4a+SS/jOGVglgIUlBX3hRd5cg==}
+  coralite@0.26.0:
+    resolution: {integrity: sha512-mILSjbIVb5339ppzQxGKNEnhv+5E53HvasrH45ybAPRtQx0XboVeYAN6994/Xfo60sAZB56QvDrXDPGBM2yETQ==}
     engines: {node: '>20.19.0'}
     hasBin: true
 
@@ -985,11 +988,11 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.25.0:
+  coralite-scripts@0.26.0:
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.25.0
+      coralite: 0.26.0
       cross-env: 10.1.0
       express: 5.2.1
       kleur: 4.1.5
@@ -1001,7 +1004,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  coralite@0.25.0:
+  coralite@0.26.0:
     dependencies:
       acorn: 8.16.0
       acorn-walk: 8.3.5
