@@ -27,9 +27,17 @@ A real-time chat application built with [Coralite](https://coralite.dev/) and [P
 
 Before running the frontend, you need to configure your PocketBase backend.
 
-1. Download and run PocketBase locally: `./pocketbase serve` (It will run on `http://127.0.0.1:8090` by default, which matches the project configuration).
-2. Go to the Admin UI (`http://127.0.0.1:8090/_/`).
-3. **Configure Collections:**
+1. **Auto-Download PocketBase (Optional):** Run the following script to automatically download the latest PocketBase binary matching your OS & Architecture:
+```bash
+npm run db:download
+```
+2. Start PocketBase locally: `./database/pocketbase serve` (It will run on `http://127.0.0.1:8090` by default, which matches the project configuration).
+3. **Initial DB Setup:** In a new terminal, while PocketBase is running, execute the following script to create an admin user and set up the default database collections automatically:
+```bash
+npm run db:setup
+```
+4. Go to the Admin UI (`http://127.0.0.1:8090/_/`).
+5. **Configure Collections:**
 * **`users`** (Default collection): Make sure email/password authentication is enabled.
 * **`messages`** (New collection): Create a new collection named `messages` with the following schema:
 * `text` (Type: Plain text)

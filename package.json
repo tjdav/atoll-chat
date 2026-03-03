@@ -14,15 +14,18 @@
   "scripts": {
     "start": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
     "build": "coralite-scripts build",
+    "db:download": "node scripts/download-db.js",
     "db:start": "./database/pocketbase serve",
     "db:setup": "node scripts/setup-db.js"
   },
   "devDependencies": {
+    "adm-zip": "^0.5.16",
     "bootstrap": "^5.3.8",
     "coralite": "^0.26.0",
     "coralite-scripts": "^0.26.0",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
+    "eslint": "^10.0.2",
     "pocketbase": "^0.26.8"
   },
   "dependencies": {
