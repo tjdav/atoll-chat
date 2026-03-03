@@ -19,6 +19,7 @@
     "db:setup": "node scripts/setup-db.js"
   },
   "devDependencies": {
+    "@stylistic/eslint-plugin": "^5.9.0",
     "adm-zip": "^0.5.16",
     "bootstrap": "^5.3.8",
     "coralite": "^0.26.0",
