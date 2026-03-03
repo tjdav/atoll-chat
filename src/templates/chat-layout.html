@@ -1,0 +1,41 @@
+<template id="chat-layout">
+  <div class="card mt-4 mb-4 shadow-sm mw-600 mx-auto">
+    <div class="card-header bg-primary text-white">
+      <h5 class="mb-0">Chat</h5>
+    </div>
+
+    <chat-message-list></chat-message-list>
+
+    <div class="card-footer">
+      <chat-input-area></chat-input-area>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite';
+
+  export default defineComponent({
+    client: {
+      script({ helpers }) {
+        const on = helpers.on;
+        const emit = helpers.emit;
+        const sendMessage = helpers.sendMessage;
+
+        // Orchestrate the message flow
+        const unsubscribe = on('chat:message-submitted', async (payload) => {
+          try {
+            await sendMessage(payload.text, payload.file);
+            // Let input area know it succeeded
+            emit('chat:message-sent');
+          } catch (error) {
+            console.error('Failed to send message:', error);
+            alert('Failed to send message: ' + error.message);
+            // Let input area know it failed
+            emit('chat:message-error', { error });
+          }
+        });
+      }
+    }
+  });
+</script>
