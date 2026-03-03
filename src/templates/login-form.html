@@ -13,15 +13,9 @@
           placeholder="Password" required autocomplete="current-password">
         <label for="{{ passwordRef }}">Password</label>
       </div>
-
-      <div class="form-check text-start my-3">
-        <input class="form-check-input" type="checkbox" ref="rememberMeInput" id="{{ rememberMeRef }}">
-        <label class="form-check-label" for="{{ rememberMeRef }}">
-          Remember me
-        </label>
-      </div>
       <button class="btn btn-primary w-100 py-2 mb-2" type="submit" ref="submitBtn">Sign in</button>
-      <button class="btn btn-outline-secondary w-100 py-2" type="button" ref="toggleBtn">Need an account? Sign up</button>
+      <button class="btn btn-outline-secondary w-100 py-2" type="button" ref="toggleBtn">Need an account? Sign
+        up</button>
     </form>
   </div>
 </template>
@@ -50,9 +44,6 @@
       },
       passwordRef () {
         return 'input_' + crypto.randomUUID()
-      },
-      rememberMeRef () {
-        return 'input_' + crypto.randomUUID()
       }
     },
     client: {
@@ -60,7 +51,6 @@
         const loginForm = helpers.refs('loginForm');
         const emailInput = helpers.refs('emailInput');
         const passwordInput = helpers.refs('passwordInput');
-        const rememberMeInput = helpers.refs('rememberMeInput');
         const formTitle = helpers.refs('formTitle');
         const submitBtn = helpers.refs('submitBtn');
         const toggleBtn = helpers.refs('toggleBtn');
@@ -94,13 +84,12 @@
           
           const email = emailInput.value;
           const password = passwordInput.value;
-          const rememberMe = rememberMeInput.checked;
 
           submitBtn.disabled = true;
 
           try {
             if (isLoginMode) {
-              await login(email, password, rememberMe);
+              await login(email, password);
               const userId = getCurrentUserId();
               
               // Phase 1 Session Restoration:

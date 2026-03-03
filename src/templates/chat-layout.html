@@ -1,13 +1,29 @@
 <template id="chat-layout">
-  <div class="card mt-4 mb-4 shadow-sm mw-600 mx-auto">
-    <div class="card-header bg-primary text-white">
-      <h5 class="mb-0">Chat</h5>
-    </div>
+  <div class="card mt-4 mb-4 shadow-sm mx-auto d-line" style="max-width: 900px; height: 80vh;">
+    <div class="row g-0 h-100">
+      <div class="col-md-4 h-100 bg-light border-end">
+        <chat-sidebar></chat-sidebar>
+      </div>
+      <div class="col-md-8 h-100 d-flex flex-column">
+        <div class="card-header bg-primary text-white d-flex align-items-center justify-content-between rounded-0">
+          <h5 class="mb-0" ref="chatHeaderTitle">Select a Chat</h5>
+        </div>
 
-    <chat-message-list></chat-message-list>
+        <div class="flex-grow-1 position-relative overflow-hidden">
+          <chat-message-list></chat-message-list>
+          <div ref="loadingOverlay"
+            class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center d-none"
+            style="z-index: 10;">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
 
-    <div class="card-footer">
-      <chat-input-area></chat-input-area>
+        <div class="card-footer border-top-0 rounded-0 bg-white" ref="inputFooter" style="display: none;">
+          <chat-input-area></chat-input-area>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -18,44 +34,136 @@
   export default defineComponent({
     client: {
       async script({ helpers }) {
-        const on = helpers.on;
-        const emit = helpers.emit;
-        const sendMessage = helpers.sendMessage;
-        const getUserConversations = helpers.getUserConversations;
-        const getCurrentUserId = helpers.getCurrentUserId;
-        const getPrivateKey = helpers.getPrivateKey;
-        const decryptConversationKey = helpers.decryptConversationKey;
-        const encryptMessage = helpers.encryptMessage;
+        const {
+          on,
+          emit,
+          refs,
+          sendMessage,
+          getCurrentUserId,
+          getPrivateKey,
+          decryptConversationKey,
+          encryptMessage,
+          pb
+        } = helpers;
+        
+        const pbClient = pb();
+
+        const loadingOverlay = refs('loadingOverlay');
+        const inputFooter = refs('inputFooter');
+        const chatHeaderTitle = refs('chatHeaderTitle');
 
         let activeConversationId = null;
         let activeAesKey = null;
+        const userId = getCurrentUserId();
 
-        // Fetch conversations and setup E2EE
-        try {
-           const userId = getCurrentUserId();
-           if (!userId) throw new Error("Not logged in");
+        if (!userId) {
+          window.location.href = '/'
+        }
+        
+        // Global message subscriber for unread counts
+        let globalMessageUnsub = null;
 
-           const memberships = await getUserConversations(userId);
-           if (memberships.length > 0) {
-             const activeMembership = memberships[0]; // Just use the first one (Personal Notes)
-             activeConversationId = activeMembership.conversation;
+        const setupGlobalMessageListener = () => {
+          if (!userId || !pbClient) return;
+          // Subscribe to all messages. The list rule in DB actually restricts this to only 
+          // conversations the user is part of.
+          globalMessageUnsub = pbClient.collection('messages').subscribe('*', function (e) {
+            if (e.action === 'create') {
+              // If it's not the active conversation, or it's from another user, emit inactive event
+              if (e.record.conversation !== activeConversationId) {
+                emit('chat:message-received-inactive', { conversationId: e.record.conversation });
+              }
+            }
+          });
+        };
+        
+        setupGlobalMessageListener();
+
+        // Initial load behavior: Fetch most recently created/updated conversation member
+        const loadInitialConversation = async () => {
+          try {
+            if (!userId) throw new Error("Not logged in");
+            if (!pbClient) throw new Error("PocketBase client missing");
+            
+            // Show loading
+            loadingOverlay.classList.remove('d-none');
+
+            const records = await pbClient.collection('conversation_members').getFullList({
+              filter: `user = "${userId}"`,
+              sort: '-created', // roughly most recent
+              expand: 'conversation.conversation_members.user',
+              $autoCancel: false
+            });
+
+            if (records.length > 0) {
+               const activeMembership = records[0];
+               await handleConversationSelected(activeMembership.conversation, activeMembership.encrypted_chat_key, activeMembership.expand?.conversation);
+            } else {
+               // No conversations yet
+               loadingOverlay.classList.add('d-none');
+               chatHeaderTitle.textContent = 'Welcome! Start a new chat.';
+            }
+          } catch(e) {
+            console.error("Failed to load initial conversation:", e);
+            loadingOverlay.classList.add('d-none');
+          }
+        };
+
+        const handleConversationSelected = async (convoId, encryptedKeyBase64, convoObj) => {
+          try {
+            loadingOverlay.classList.remove('d-none');
+             activeConversationId = convoId;
              
              // Get user's private key
              const privateKey = await getPrivateKey(userId);
+             if (!privateKey) throw new Error("Private key missing");
              
-             if (privateKey) {
-               // Decrypt the AES conversation key
-               activeAesKey = await decryptConversationKey(activeMembership.encrypted_chat_key, privateKey);
-               
-               // Notify child components that conversation is ready
-               emit('chat:conversation-ready', { conversationId: activeConversationId, aesKey: activeAesKey });
+             // Decrypt AES key
+             activeAesKey = await decryptConversationKey(encryptedKeyBase64, privateKey);
+             
+             // Update Header Title
+             if (convoObj) {
+               if (convoObj.type === 'direct') {
+                 const members = convoObj.expand?.conversation_members || [];
+                 const otherMember = members.find(m => m.user !== userId);
+                 const otherUser = otherMember?.expand?.user;
+                 chatHeaderTitle.textContent = otherUser ? (otherUser.username || otherUser.email) : 'Personal Notes';
+               } else {
+                 chatHeaderTitle.textContent = convoObj.name || 'Group Chat';
+               }
              } else {
-               alert("Cannot decrypt messages: Private key missing.");
+                chatHeaderTitle.textContent = 'Chat';
              }
+
+             // Show input area
+             inputFooter.style.display = 'block';
+
+             // Tell the list component
+             emit('chat:conversation-ready', { conversationId: activeConversationId, aesKey: activeAesKey });
+             
+          } catch(e) {
+             console.error("Error setting up active conversation", e);
+             alert("Error loading conversation: " + e.message);
+          } finally {
+            loadingOverlay.classList.add('d-none')
+          }
+        };
+
+        // Listen for selection from sidebar
+        on('chat:conversation-selected', async (payload) => {
+           // To get convoObj, we could fetch it, but let's just fetch the specific convo to get the name
+           try {
+             const convoObj = await pbClient.collection('conversations').getOne(payload.conversationId, {
+               expand: 'conversation_members.user'
+             });
+             await handleConversationSelected(payload.conversationId, payload.encrypted_chat_key, convoObj);
+           } catch(e) {
+             console.error("Error fetching selected conversation details", e);
            }
-        } catch(e) {
-           console.error("Failed to setup chat", e);
-        }
+        });
+
+        // Load initially
+        loadInitialConversation();
 
         // Orchestrate the message flow
         const unsubscribe = on('chat:message-submitted', async (payload) => {
@@ -77,6 +185,13 @@
             emit('chat:message-error', { error });
           }
         });
+
+        // Cleanup
+        return () => {
+          if (globalMessageUnsub) {
+             pbClient.collection('messages').unsubscribe('*');
+          }
+        };
       }
     }
   });
