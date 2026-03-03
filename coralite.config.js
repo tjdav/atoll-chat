@@ -1,10 +1,12 @@
 import { defineConfig } from 'coralite-scripts'
 import pocketbasePlugin from './src/plugins/pockbase.js'
+import eventBus from './src/plugins/event-bus.js'
 
 export default defineConfig({
   public: 'public',
   plugins: [
-    pocketbasePlugin
+    pocketbasePlugin,
+    eventBus
   ],
   output: 'dist',
   pages: 'src/pages',
