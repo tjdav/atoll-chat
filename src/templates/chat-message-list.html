@@ -11,23 +11,66 @@
       script({ helpers }) {
         const messageList = helpers.refs('messageList');
         const subscribeToMessages = helpers.subscribeToMessages;
+        const getMessages = helpers.getMessages;
+        const decryptMessage = helpers.decryptMessage;
+        const on = helpers.on;
 
-        const unsubscribe = subscribeToMessages((action, record) => {
-          if (action === 'create') {
-            const msgEl = document.createElement('div');
-            msgEl.className = 'p-2 mb-2 bg-white rounded shadow-sm border';
-            msgEl.textContent = record.text;
-            
-            if (record.attachment) {
-              const fileText = document.createElement('div');
-              fileText.className = 'text-muted small mt-1';
-              fileText.textContent = `[Attachment: ${record.attachment}]`;
-              msgEl.appendChild(fileText);
-            }
+        let activeConversationId = null;
+        let activeAesKey = null;
+        let unsubscribePb = null;
 
-            messageList.appendChild(msgEl);
-            messageList.scrollTop = messageList.scrollHeight;
-          }
+        const renderMessage = async (record) => {
+           try {
+             const decryptedText = await decryptMessage(record.ciphertext, record.iv, activeAesKey);
+             
+             const msgEl = document.createElement('div');
+             msgEl.className = 'p-2 mb-2 bg-white rounded shadow-sm border';
+             msgEl.textContent = decryptedText;
+             
+             if (record.attachment) {
+               const fileText = document.createElement('div');
+               fileText.className = 'text-muted small mt-1';
+               fileText.textContent = `[Attachment: ${record.attachment}]`;
+               msgEl.appendChild(fileText);
+             }
+
+             messageList.appendChild(msgEl);
+             messageList.scrollTop = messageList.scrollHeight;
+           } catch(e) {
+              console.error("Failed to decrypt message:", e);
+           }
+        };
+
+        const loadHistoricalMessages = async () => {
+           try {
+              const messages = await getMessages(activeConversationId);
+              for (const record of messages.items) {
+                 await renderMessage(record);
+              }
+           } catch(e) {
+              console.error("Failed to load historical messages", e);
+           }
+        };
+
+        const onConversationReady = on('chat:conversation-ready', async (payload) => {
+           activeConversationId = payload.conversationId;
+           activeAesKey = payload.aesKey;
+           
+           // Clean up previous subscription if switching
+           if (unsubscribePb) {
+             unsubscribePb();
+           }
+
+           // Load history
+           messageList.innerHTML = '';
+           await loadHistoricalMessages();
+
+           // Subscribe
+           unsubscribePb = subscribeToMessages(activeConversationId, (action, record) => {
+             if (action === 'create') {
+               renderMessage(record);
+             }
+           });
         });
       }
     }

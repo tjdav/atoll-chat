@@ -17,15 +17,57 @@
 
   export default defineComponent({
     client: {
-      script({ helpers }) {
+      async script({ helpers }) {
         const on = helpers.on;
         const emit = helpers.emit;
         const sendMessage = helpers.sendMessage;
+        const getUserConversations = helpers.getUserConversations;
+        const getCurrentUserId = helpers.getCurrentUserId;
+        const getPrivateKey = helpers.getPrivateKey;
+        const decryptConversationKey = helpers.decryptConversationKey;
+        const encryptMessage = helpers.encryptMessage;
+
+        let activeConversationId = null;
+        let activeAesKey = null;
+
+        // Fetch conversations and setup E2EE
+        try {
+           const userId = getCurrentUserId();
+           if (!userId) throw new Error("Not logged in");
+
+           const memberships = await getUserConversations(userId);
+           if (memberships.length > 0) {
+             const activeMembership = memberships[0]; // Just use the first one (Personal Notes)
+             activeConversationId = activeMembership.conversation;
+             
+             // Get user's private key
+             const privateKey = await getPrivateKey(userId);
+             
+             if (privateKey) {
+               // Decrypt the AES conversation key
+               activeAesKey = await decryptConversationKey(activeMembership.encrypted_chat_key, privateKey);
+               
+               // Notify child components that conversation is ready
+               emit('chat:conversation-ready', { conversationId: activeConversationId, aesKey: activeAesKey });
+             } else {
+               alert("Cannot decrypt messages: Private key missing.");
+             }
+           }
+        } catch(e) {
+           console.error("Failed to setup chat", e);
+        }
 
         // Orchestrate the message flow
         const unsubscribe = on('chat:message-submitted', async (payload) => {
           try {
-            await sendMessage(payload.text, payload.file);
+            if (!activeConversationId || !activeAesKey) {
+               throw new Error("Chat not initialized or keys missing");
+            }
+            
+            // Encrypt message text
+            const encryptedData = await encryptMessage(payload.text, activeAesKey);
+            
+            await sendMessage(encryptedData.ciphertext, encryptedData.iv, activeConversationId, payload.file);
             // Let input area know it succeeded
             emit('chat:message-sent');
           } catch (error) {

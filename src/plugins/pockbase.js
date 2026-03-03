@@ -38,6 +38,69 @@ export default createPlugin({
       }
     },
     helpers: {
+      // Helper for Registration
+      register: (context) => async (email, password) => {
+        try {
+          const pb = context.values.pb;
+          const result = await pb.collection('users').create({
+            email,
+            password,
+            passwordConfirm: password
+          });
+          return result;
+        } catch (error) {
+          console.error('Pocketbase registration failed:', error);
+          throw error;
+        }
+      },
+
+      // Helper for Updating User
+      updateUser: (context) => async (userId, data) => {
+         try {
+           const pb = context.values.pb;
+           return await pb.collection('users').update(userId, data);
+         } catch (error) {
+           console.error('Pocketbase updateUser failed:', error);
+           throw error;
+         }
+      },
+
+      // Helper to Create Conversation
+      createConversation: (context) => async (data) => {
+        try {
+          const pb = context.values.pb;
+          return await pb.collection('conversations').create(data);
+        } catch (error) {
+          console.error('Pocketbase createConversation failed:', error);
+          throw error;
+        }
+      },
+
+      // Helper to Create Conversation Member
+      createConversationMember: (context) => async (data) => {
+        try {
+          const pb = context.values.pb;
+          return await pb.collection('conversation_members').create(data);
+        } catch (error) {
+          console.error('Pocketbase createConversationMember failed:', error);
+          throw error;
+        }
+      },
+
+      // Helper to Get User Conversations
+      getUserConversations: (context) => async (userId) => {
+        try {
+          const pb = context.values.pb;
+          return await pb.collection('conversation_members').getFullList({
+            filter: `user = "${userId}"`,
+            expand: 'conversation'
+          });
+        } catch (error) {
+          console.error('Pocketbase getUserConversations failed:', error);
+          throw error;
+        }
+      },
+
       // Helper for Authentication
       login: (context) => async (email, password, rememberMe = false) => {
         try {
@@ -78,25 +141,49 @@ export default createPlugin({
         }
       },
 
+      // Helper to get current user ID
+      getCurrentUserId: (context) => () => {
+         return context.values.pb.authStore.model?.id;
+      },
+
       // Helper to subscribe to real-time messages
-      subscribeToMessages: (context) => (callback) => {
+      subscribeToMessages: (context) => (conversationId, callback) => {
         const pb = context.values.pb;
 
+        // Subscribing to specific conversation's messages
         pb.collection('messages').subscribe('*', function (e) {
-            callback(e.action, e.record);
+            if (e.record.conversation === conversationId) {
+                callback(e.action, e.record);
+            }
         });
 
         // Return an unsubscribe function
         return () => pb.collection('messages').unsubscribe('*');
       },
+      
+      // Get historical messages
+      getMessages: (context) => async (conversationId) => {
+        try {
+          const pb = context.values.pb;
+          return await pb.collection('messages').getList(1, 50, {
+             filter: `conversation = "${conversationId}"`,
+             sort: 'created'
+          });
+        } catch(error) {
+          console.error('Pocketbase getMessages failed:', error);
+          throw error;
+        }
+      },
 
       // Helper to send a message (with optional file attachment)
-      sendMessage: (context) => async (text, file) => {
+      sendMessage: (context) => async (ciphertext, iv, conversationId, file) => {
         try {
           const pb = context.values.pb;
           const formData = new FormData();
 
-          formData.append('text', text);
+          formData.append('ciphertext', ciphertext);
+          formData.append('iv', iv);
+          formData.append('conversation', conversationId);
           formData.append('user', pb.authStore.model?.id || '');
 
           if (file) {

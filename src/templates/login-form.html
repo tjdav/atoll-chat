@@ -1,6 +1,6 @@
 <template id="login-form">
   <div style="max-width: 330px; margin: 0 auto; padding-top: 50px;">
-    <h1 class="h3 mb-3 fw-normal">Please sign in</h1>
+    <h1 class="h3 mb-3 fw-normal" ref="formTitle">Please sign in</h1>
 
     <form ref="loginForm">
       <div class="form-floating">
@@ -20,7 +20,8 @@
           Remember me
         </label>
       </div>
-      <button class="btn btn-primary w-100 py-2" type="submit">Sign in</button>
+      <button class="btn btn-primary w-100 py-2 mb-2" type="submit" ref="submitBtn">Sign in</button>
+      <button class="btn btn-outline-secondary w-100 py-2" type="button" ref="toggleBtn">Need an account? Sign up</button>
     </form>
   </div>
 </template>
@@ -60,7 +61,33 @@
         const emailInput = helpers.refs('emailInput');
         const passwordInput = helpers.refs('passwordInput');
         const rememberMeInput = helpers.refs('rememberMeInput');
+        const formTitle = helpers.refs('formTitle');
+        const submitBtn = helpers.refs('submitBtn');
+        const toggleBtn = helpers.refs('toggleBtn');
+        
         const login = helpers.login;
+        const register = helpers.register;
+        const updateUser = helpers.updateUser;
+        const createConversation = helpers.createConversation;
+        const createConversationMember = helpers.createConversationMember;
+        const getCurrentUserId = helpers.getCurrentUserId;
+
+        const generateUserKeyPair = helpers.generateUserKeyPair;
+        const exportPublicKey = helpers.exportPublicKey;
+        const generateConversationKey = helpers.generateConversationKey;
+        const encryptConversationKey = helpers.encryptConversationKey;
+        
+        const getPrivateKey = helpers.getPrivateKey;
+        const setPrivateKey = helpers.setPrivateKey;
+
+        let isLoginMode = true;
+
+        toggleBtn.addEventListener('click', () => {
+          isLoginMode = !isLoginMode;
+          formTitle.textContent = isLoginMode ? 'Please sign in' : 'Create an account';
+          submitBtn.textContent = isLoginMode ? 'Sign in' : 'Sign up';
+          toggleBtn.textContent = isLoginMode ? 'Need an account? Sign up' : 'Already have an account? Sign in';
+        });
 
         loginForm.addEventListener('submit', async (e) => {
           e.preventDefault();
@@ -69,14 +96,61 @@
           const password = passwordInput.value;
           const rememberMe = rememberMeInput.checked;
 
-          const submitBtn = loginForm.querySelector('button[type="submit"]');
           submitBtn.disabled = true;
 
           try {
-            await login(email, password, rememberMe);
+            if (isLoginMode) {
+              await login(email, password, rememberMe);
+              const userId = getCurrentUserId();
+              
+              // Phase 1 Session Restoration:
+              // Check if private key exists in IndexedDB.
+              let privateKey = await getPrivateKey(userId);
+              if (!privateKey) {
+                alert('New device/session detected. A new encryption key has been generated. Previous messages cannot be decrypted.');
+                const keyPair = await generateUserKeyPair();
+                const publicKeyStr = await exportPublicKey(keyPair.publicKey);
+                await setPrivateKey(userId, keyPair.privateKey);
+                await updateUser(userId, { public_key: publicKeyStr });
+              }
+            } else {
+              // Registration Flow
+              await register(email, password);
+              await login(email, password, true); // login immediately after register
+              const userId = getCurrentUserId();
+              
+              const keyPair = await generateUserKeyPair();
+              const publicKeyStr = await exportPublicKey(keyPair.publicKey);
+              
+              // Save local private key
+              await setPrivateKey(userId, keyPair.privateKey);
+              
+              // Save public key to PocketBase
+              await updateUser(userId, { public_key: publicKeyStr });
+
+              // Create default "Personal Notes" conversation
+              const conv = await createConversation({
+                name: 'Personal Notes',
+                type: 'direct'
+              });
+
+              // Generate AES key for chat
+              const aesKey = await generateConversationKey();
+              
+              // Encrypt AES key with user's new public key
+              const encryptedChatKey = await encryptConversationKey(aesKey, keyPair.publicKey);
+
+              // Add user to chat
+              await createConversationMember({
+                conversation: conv.id,
+                user: userId,
+                encrypted_chat_key: encryptedChatKey
+              });
+            }
+            
             window.location.href = '/chat.html';
           } catch (error) {
-            alert('Failed to sign in: ' + error.message);
+            alert('Operation failed: ' + error.message);
           } finally {
             submitBtn.disabled = false;
           }
