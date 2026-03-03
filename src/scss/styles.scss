@@ -1,2 +1,70 @@
 @use "./variables" as *;
-@import "bootstrap/scss/bootstrap";
+
+// 1. Import Bootstrap's core functions, variables, and utility maps first
+@import "bootstrap/scss/functions";
+@import "bootstrap/scss/variables";
+@import "bootstrap/scss/variables-dark";
+@import "bootstrap/scss/maps";
+@import "bootstrap/scss/mixins";
+@import "bootstrap/scss/utilities";
+
+// 2. Extend the $utilities map with our new values
+$utilities: map-merge(
+  $utilities,
+  (
+    "max-width": map-merge(
+      map-get($utilities, "max-width"),
+      (
+        values: map-merge(
+          map-get(map-get($utilities, "max-width"), "values"),
+          (600: 600px) // Generates .mw-600
+        )
+      )
+    ),
+    "height": map-merge(
+      map-get($utilities, "height"),
+      (
+        values: map-merge(
+          map-get(map-get($utilities, "height"), "values"),
+          (400: 400px) // Generates .h-400
+        )
+      )
+    )
+  )
+);
+
+// 3. Import the rest of Bootstrap (this will now generate our new utilities alongside the defaults)
+@import "bootstrap/scss/root";
+@import "bootstrap/scss/reboot";
+@import "bootstrap/scss/type";
+@import "bootstrap/scss/images";
+@import "bootstrap/scss/containers";
+@import "bootstrap/scss/grid";
+@import "bootstrap/scss/tables";
+@import "bootstrap/scss/forms";
+@import "bootstrap/scss/buttons";
+@import "bootstrap/scss/transitions";
+@import "bootstrap/scss/dropdown";
+@import "bootstrap/scss/button-group";
+@import "bootstrap/scss/nav";
+@import "bootstrap/scss/navbar";
+@import "bootstrap/scss/card";
+@import "bootstrap/scss/breadcrumb";
+@import "bootstrap/scss/pagination";
+@import "bootstrap/scss/badge";
+@import "bootstrap/scss/alert";
+@import "bootstrap/scss/progress";
+@import "bootstrap/scss/list-group";
+@import "bootstrap/scss/close";
+@import "bootstrap/scss/toasts";
+@import "bootstrap/scss/modal";
+@import "bootstrap/scss/tooltip";
+@import "bootstrap/scss/popover";
+@import "bootstrap/scss/carousel";
+@import "bootstrap/scss/spinners";
+@import "bootstrap/scss/offcanvas";
+@import "bootstrap/scss/placeholders";
+@import "bootstrap/scss/helpers";
+
+// This specifically triggers the API to generate the CSS classes
+@import "bootstrap/scss/utilities/api";
