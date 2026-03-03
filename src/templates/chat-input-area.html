@@ -1,0 +1,61 @@
+<template id="chat-input-area">
+  <form ref="chatForm" class="d-flex flex-column gap-2">
+    <div class="input-group">
+      <label for="{{ messageInputId }}" class="visually-hidden">Type a message</label>
+      <input type="text" id="{{ messageInputId }}" ref="messageInput" class="form-control" placeholder="Type a message..." aria-describedby="{{ fileHelpId }}" />
+      <button type="submit" ref="submitBtn" class="btn btn-primary">Send</button>
+    </div>
+    
+    <label for="{{ fileInputId }}" class="visually-hidden">Attach a file</label>
+    <input type="file" id="{{ fileInputId }}" ref="fileInput" class="form-control form-control-sm" />
+    <div id="{{ fileHelpId }}" class="visually-hidden">Optional file attachment</div>
+  </form>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite';
+
+  export default defineComponent({
+    tokens: {
+      messageInputId: () => 'msg-input-' + crypto.randomUUID(),
+      fileInputId: () => 'file-input-' + crypto.randomUUID(),
+      fileHelpId: () => 'file-help-' + crypto.randomUUID()
+    },
+    client: {
+      script({ helpers }) {
+        const chatForm = helpers.refs('chatForm');
+        const messageInput = helpers.refs('messageInput');
+        const fileInput = helpers.refs('fileInput');
+        const submitBtn = helpers.refs('submitBtn');
+        const emit = helpers.emit;
+
+        chatForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          const text = messageInput.value.trim();
+          const file = fileInput.files[0];
+          
+          if (text || file) {
+            submitBtn.disabled = true;
+            chatForm.setAttribute('aria-busy', 'true');
+            
+            emit('chat:message-submitted', { text, file });
+          }
+        });
+
+        // Listen for success/error to re-enable the form
+        const unsubscribeSuccess = helpers.on('chat:message-sent', () => {
+          messageInput.value = '';
+          fileInput.value = '';
+          submitBtn.disabled = false;
+          chatForm.removeAttribute('aria-busy');
+          messageInput.focus();
+        });
+
+        const unsubscribeError = helpers.on('chat:message-error', () => {
+          submitBtn.disabled = false;
+          chatForm.removeAttribute('aria-busy');
+        });
+      }
+    }
+  });
+</script>
