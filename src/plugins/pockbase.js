@@ -156,7 +156,7 @@ export default createPlugin({
       },
 
       // Helper to send a message (with optional file attachment)
-      sendMessage: (context) => async (ciphertext, iv, conversationId, file) => {
+      sendMessage: (context) => async (ciphertext, iv, conversationId, file, attachmentMeta, attachmentIv) => {
         try {
           const pb = context.values.pb
           const formData = new FormData()
@@ -168,6 +168,12 @@ export default createPlugin({
 
           if (file) {
             formData.append('attachment', file)
+          }
+          if (attachmentMeta) {
+            formData.append('attachment_meta', attachmentMeta)
+          }
+          if (attachmentIv) {
+            formData.append('attachment_iv', attachmentIv)
           }
 
           return await pb.collection('messages').create(formData)

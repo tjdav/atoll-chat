@@ -124,12 +124,12 @@
              // Update Header Title
              if (convoObj) {
                if (convoObj.type === 'direct') {
-                  const members = convoObj.expand?.conversation_members_via_conversation || [];
-                 const otherMember = members.find(m => m.user !== userId);
-                 const otherUser = otherMember?.expand?.user;
-                 chatHeaderTitle.textContent = otherUser ? (otherUser.username || otherUser.email) : 'Personal Notes';
+                const members = convoObj.expand?.conversation_members_via_conversation || [];
+                const otherMember = members.find(m => m.user !== userId);
+                const otherUser = otherMember?.expand?.user;
+                chatHeaderTitle.textContent = otherUser ? (otherUser.username || otherUser.email) : 'Personal Notes';
                } else {
-                 chatHeaderTitle.textContent = convoObj.name || 'Group Chat';
+                chatHeaderTitle.textContent = convoObj.name || 'Group Chat';
                }
              } else {
                 chatHeaderTitle.textContent = 'Chat';
@@ -175,7 +175,25 @@
             // Encrypt message text
             const encryptedData = await encryptMessage(payload.text, activeAesKey);
             
-            await sendMessage(encryptedData.ciphertext, encryptedData.iv, activeConversationId, payload.file);
+            let attachmentMeta = null;
+            let attachmentIv = null;
+            let fileToUpload = null;
+
+            if (payload.file) {
+              const { encryptBlob } = helpers;
+              const { ciphertextBuffer, iv } = await encryptBlob(payload.file, activeAesKey);
+              
+              const blob = new Blob([ciphertextBuffer], { type: 'application/octet-stream' });
+              // We need a File object to send to pocketbase
+              fileToUpload = new File([blob], payload.fileName || 'attachment.enc', { type: 'application/octet-stream' });
+              
+              const metaObj = { name: payload.fileName, type: payload.fileType, fileIv: iv };
+              const encryptedMeta = await encryptMessage(JSON.stringify(metaObj), activeAesKey);
+              attachmentMeta = encryptedMeta.ciphertext;
+              attachmentIv = encryptedMeta.iv;
+            }
+
+            await sendMessage(encryptedData.ciphertext, encryptedData.iv, activeConversationId, fileToUpload, attachmentMeta, attachmentIv);
             // Let input area know it succeeded
             emit('chat:message-sent');
           } catch (error) {
@@ -186,10 +204,165 @@
           }
         });
 
+        // P2P Flow
+        let webrtcSignalUnsub = null;
+        let p2pTargetId = null;
+
+        const setupWebrtcListener = async () => {
+          if (webrtcSignalUnsub) {
+            await pbClient.collection('webrtc_signals').unsubscribe('*');
+          }
+          webrtcSignalUnsub = await pbClient.collection('webrtc_signals').subscribe('*', async function (e) {
+            if (e.action === 'create' && e.record.target_id === userId) {
+               // We have an incoming signal
+               const signal = e.record;
+               
+               if (signal.conversation_id !== activeConversationId) return;
+
+               try {
+                  const { decryptMessage } = helpers;
+                  const decryptedPayload = await decryptMessage(signal.encrypted_payload, signal.iv, activeAesKey);
+                  const payload = JSON.parse(decryptedPayload);
+
+                  if (signal.type === 'file_request') {
+                     // Show incoming request UI
+                     emit('chat:p2p-incoming-request', { signalId: signal.id, senderId: signal.sender_id, ...payload });
+                  } else if (signal.type === 'file_accept') {
+                     // The other user accepted our file request. Start WebRTC.
+                     emit('chat:p2p-request-accepted', { signalId: signal.id, answerPayload: payload, senderId: signal.sender_id });
+                     // Clean up
+                     await pbClient.collection('webrtc_signals').delete(signal.id);
+                  } else if (signal.type === 'file_decline') {
+                     emit('chat:p2p-request-declined', { signalId: signal.id });
+                     // Clean up
+                     await pbClient.collection('webrtc_signals').delete(signal.id);
+                  } else if (signal.type === 'webrtc_offer') {
+                     emit('chat:p2p-webrtc-offer', { signalId: signal.id, offer: payload });
+                     // Clean up
+                     await pbClient.collection('webrtc_signals').delete(signal.id);
+                  } else if (signal.type === 'webrtc_answer') {
+                     emit('chat:p2p-webrtc-answer', { signalId: signal.id, answer: payload });
+                     // Clean up
+                     await pbClient.collection('webrtc_signals').delete(signal.id);
+                  } else if (signal.type === 'webrtc_candidate') {
+                     emit('chat:p2p-webrtc-candidate', { signalId: signal.id, candidate: payload });
+                     // Clean up
+                     await pbClient.collection('webrtc_signals').delete(signal.id);
+                  }
+
+               } catch(err) {
+                 console.error("Error processing P2P signal", err);
+               }
+            }
+          });
+        };
+
+        setupWebrtcListener();
+
+        // Relay generic signals from bubble component to PocketBase
+        on('chat:p2p-send-signal', async (payload) => {
+          try {
+            // If targetId is missing, fallback to the p2pTargetId stored globally for the active sender
+            const targetId = payload.targetId || p2pTargetId;
+            if (!targetId) {
+                console.error("P2P missing targetId for signal", payload);
+                return;
+            }
+
+            const { type, payload: signalPayload } = payload;
+            
+            const { encryptMessage } = helpers;
+            const encryptedPayload = await encryptMessage(JSON.stringify(signalPayload), activeAesKey);
+            
+            await pbClient.collection('webrtc_signals').create({
+               conversation_id: activeConversationId,
+               sender_id: userId,
+               target_id: targetId,
+               type: type,
+               encrypted_payload: encryptedPayload.ciphertext,
+               iv: encryptedPayload.iv
+            });
+          } catch(e) {
+             console.error("Error relaying signal", e);
+          }
+        });
+
+        // Bubble Component actions
+        on('chat:p2p-accept-clicked', async (payload) => {
+           emit('chat:p2p-send-signal', { targetId: payload.senderId, type: 'file_accept', payload: { accepted: true } });
+           try {
+              // Delete the request signal
+              await pbClient.collection('webrtc_signals').delete(payload.signalId);
+           } catch(e) {
+              console.error("Error deleting request signal", e);
+           }
+        });
+
+        on('chat:p2p-decline-clicked', async (payload) => {
+           emit('chat:p2p-send-signal', { targetId: payload.senderId, type: 'file_decline', payload: { declined: true } });
+           try {
+              // Delete the request signal
+              await pbClient.collection('webrtc_signals').delete(payload.signalId);
+           } catch(e) {
+              console.error("Error deleting request signal", e);
+           }
+        });
+
+        on('chat:p2p-file-selected', async (payload) => {
+          try {
+             const convoObj = await pbClient.collection('conversations').getOne(activeConversationId, {
+               expand: 'conversation_members'
+             });
+             
+             if (convoObj.type === 'group') {
+                alert("P2P file sharing is currently only supported in direct 1-on-1 chats to ensure maximum privacy.");
+                return;
+             }
+
+             const members = convoObj.expand?.conversation_members || [];
+             const otherMember = members.find(m => m.user !== userId);
+             
+             if (!otherMember) {
+                alert("Could not determine the other user in this conversation.");
+                return;
+             }
+             p2pTargetId = otherMember.user;
+
+             const metaObj = {
+               fileName: payload.file.name,
+               fileSize: payload.file.size,
+               fileType: payload.file.type
+             };
+
+             const { encryptMessage } = helpers;
+             const encryptedPayload = await encryptMessage(JSON.stringify(metaObj), activeAesKey);
+
+             // Create a fake bubble indicating waiting
+             emit('chat:p2p-sending-request', { file: payload.file, meta: metaObj, targetId: p2pTargetId });
+
+             // Send signal
+             await pbClient.collection('webrtc_signals').create({
+                conversation_id: activeConversationId,
+                sender_id: userId,
+                target_id: p2pTargetId,
+                type: 'file_request',
+                encrypted_payload: encryptedPayload.ciphertext,
+                iv: encryptedPayload.iv
+             });
+
+          } catch(e) {
+             console.error("Error initiating P2P transfer", e);
+             alert("Error initiating P2P transfer.");
+          }
+        });
+
         // Cleanup
         return () => {
           if (globalMessageUnsub) {
              pbClient.collection('messages').unsubscribe('*');
+          }
+          if (webrtcSignalUnsub) {
+             pbClient.collection('webrtc_signals').unsubscribe('*');
           }
         };
       }

@@ -182,6 +182,16 @@ async function setupDatabase () {
         maxSelect: 1
       },
       {
+        name: 'attachment_meta',
+        type: 'text',
+        required: false
+      },
+      {
+        name: 'attachment_iv',
+        type: 'text',
+        required: false
+      },
+      {
         name: 'created',
         onCreate: true,
         onUpdate: false,
@@ -200,9 +210,9 @@ async function setupDatabase () {
       console.log('messages collection found, updating schema...')
 
       messagesCollection.fields = messagesSchema
-      messagesCollection.listRule = '@request.auth.id ?= conversation.conversation_members.user.id'
-      messagesCollection.viewRule = '@request.auth.id ?= conversation.conversation_members.user.id'
-      messagesCollection.createRule = '@request.auth.id = user.id && @request.auth.id ?= conversation.conversation_members.user.id'
+      messagesCollection.listRule = '@request.auth.id ?= conversation.conversation_members_via_conversation.user.id'
+      messagesCollection.viewRule = '@request.auth.id ?= conversation.conversation_members_via_conversation.user.id'
+      messagesCollection.createRule = '@request.auth.id = user.id && @request.auth.id ?= conversation.conversation_members_via_conversation.user.id'
       messagesCollection.updateRule = null
       messagesCollection.deleteRule = null
 
@@ -221,6 +231,79 @@ async function setupDatabase () {
         createRule: '@request.auth.id = user.id'
       })
       console.log('messages collection created successfully.')
+    }
+
+    // 5. Create `webrtc_signals` Collection
+    let webrtcSignalsCollection
+    try {
+      webrtcSignalsCollection = await pb.collections.getOne('webrtc_signals')
+      console.log('webrtc_signals collection already exists.')
+    } catch (e) {
+      console.log('Creating webrtc_signals collection...')
+      webrtcSignalsCollection = await pb.collections.create({
+        name: 'webrtc_signals',
+        type: 'base',
+        system: false,
+        fields: [
+          {
+            name: 'conversation_id',
+            type: 'relation',
+            required: true,
+            collectionId: conversationsCollection.id,
+            cascadeDelete: true,
+            maxSelect: 1
+          },
+          {
+            name: 'sender_id',
+            type: 'relation',
+            required: true,
+            collectionId: usersCollection.id,
+            cascadeDelete: true,
+            maxSelect: 1
+          },
+          {
+            name: 'target_id',
+            type: 'relation',
+            required: true,
+            collectionId: usersCollection.id,
+            cascadeDelete: true,
+            maxSelect: 1
+          },
+          {
+            name: 'type',
+            type: 'text',
+            required: true
+          },
+          {
+            name: 'encrypted_payload',
+            type: 'text',
+            required: true
+          },
+          {
+            name: 'iv',
+            type: 'text',
+            required: false
+          },
+          {
+            name: 'created',
+            onCreate: true,
+            onUpdate: false,
+            type: 'autodate'
+          },
+          {
+            name: 'updated',
+            onCreate: true,
+            onUpdate: true,
+            type: 'autodate'
+          }
+        ],
+        listRule: '@request.auth.id != ""',
+        viewRule: '@request.auth.id != ""',
+        createRule: '@request.auth.id = sender_id',
+        updateRule: null,
+        deleteRule: '@request.auth.id = target_id || @request.auth.id = sender_id'
+      })
+      console.log('webrtc_signals collection created.')
     }
 
     // Now update conversation rules correctly

@@ -129,6 +129,43 @@ export default createPlugin({
         )
 
         return new TextDecoder().decode(decryptedBytes)
+      },
+      encryptBlob: () => async (blob, aesKey) => {
+        const buffer = await blob.arrayBuffer()
+        const iv = window.crypto.getRandomValues(new Uint8Array(12))
+        const ciphertext = await window.crypto.subtle.encrypt(
+          {
+            name: 'AES-GCM',
+            iv: iv
+          },
+          aesKey,
+          buffer
+        )
+
+        const ivString = String.fromCharCode.apply(null, iv)
+
+        return {
+          ciphertextBuffer: ciphertext,
+          iv: btoa(ivString)
+        }
+      },
+      decryptBlob: () => async (ciphertextBuffer, ivBase64, aesKey) => {
+        const ivString = atob(ivBase64)
+        const iv = new Uint8Array(ivString.length)
+        for (let i = 0; i < ivString.length; i++) {
+          iv[i] = ivString.charCodeAt(i)
+        }
+
+        const decryptedBytes = await window.crypto.subtle.decrypt(
+          {
+            name: 'AES-GCM',
+            iv: iv
+          },
+          aesKey,
+          ciphertextBuffer
+        )
+
+        return decryptedBytes
       }
     }
   }

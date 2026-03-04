@@ -13,6 +13,8 @@
         const subscribeToMessages = helpers.subscribeToMessages;
         const getMessages = helpers.getMessages;
         const decryptMessage = helpers.decryptMessage;
+        const decryptBlob = helpers.decryptBlob;
+        const pbClient = helpers.pb();
         const on = helpers.on;
 
         let activeConversationId = null;
@@ -24,14 +26,63 @@
              const decryptedText = await decryptMessage(record.ciphertext, record.iv, activeAesKey);
              
              const msgEl = document.createElement('div');
-             msgEl.className = 'p-2 mb-2 bg-white rounded shadow-sm border';
-             msgEl.textContent = decryptedText;
+             msgEl.className = 'p-2 mb-2 bg-white rounded shadow-sm border d-flex flex-column gap-1';
+             if (decryptedText) {
+                const textEl = document.createElement('span');
+                textEl.textContent = decryptedText;
+                msgEl.appendChild(textEl);
+             }
              
              if (record.attachment) {
-               const fileText = document.createElement('div');
-               fileText.className = 'text-muted small mt-1';
-               fileText.textContent = `[Attachment: ${record.attachment}]`;
-               msgEl.appendChild(fileText);
+               let meta = null;
+               if (record.attachment_meta && record.attachment_iv) {
+                 try {
+                   const decryptedMetaStr = await decryptMessage(record.attachment_meta, record.attachment_iv, activeAesKey);
+                   meta = JSON.parse(decryptedMetaStr);
+                 } catch (err) {
+                   console.error("Failed to decrypt attachment meta", err);
+                 }
+               }
+
+               if (meta) {
+                 // Fetch and decrypt
+                 try {
+                   const url = pbClient.files.getUrl(record, record.attachment);
+                   const res = await fetch(url);
+                   const encryptedBuffer = await res.arrayBuffer();
+                   
+                   const fileIv = meta.fileIv || record.attachment_iv; // fallback just in case
+                   const decryptedBuffer = await decryptBlob(encryptedBuffer, fileIv, activeAesKey);
+                   
+                   const blob = new Blob([decryptedBuffer], { type: meta.type });
+                   const objUrl = URL.createObjectURL(blob);
+
+                   if (meta.type.startsWith('image/')) {
+                     const img = document.createElement('img');
+                     img.src = objUrl;
+                     img.className = 'img-fluid rounded mt-2';
+                     img.style.maxHeight = '200px';
+                     msgEl.appendChild(img);
+                   } else if (meta.type.startsWith('audio/')) {
+                     const audio = document.createElement('audio');
+                     audio.controls = true;
+                     audio.src = objUrl;
+                     audio.className = 'mt-2 w-100';
+                     msgEl.appendChild(audio);
+                   }
+                 } catch (err) {
+                   console.error("Failed to fetch/decrypt attachment", err);
+                   const errText = document.createElement('div');
+                   errText.className = 'text-danger small mt-1';
+                   errText.textContent = `[Failed to load attachment]`;
+                   msgEl.appendChild(errText);
+                 }
+               } else {
+                 const fileText = document.createElement('div');
+                 fileText.className = 'text-muted small mt-1';
+                 fileText.textContent = `[Encrypted Attachment]`;
+                 msgEl.appendChild(fileText);
+               }
              }
 
              messageList.appendChild(msgEl);
@@ -51,6 +102,24 @@
               console.error("Failed to load historical messages", e);
            }
         };
+
+        // P2P UI Events
+        on('chat:p2p-sending-request', (payload) => {
+           const wrap = document.createElement('div');
+           wrap.className = 'p-2 mb-2 bg-warning bg-opacity-10 rounded border border-warning';
+           wrap.innerHTML = `<chat-p2p-bubble mode="sender" file-name="${payload.meta.fileName}" file-size="${payload.meta.fileSize}"></chat-p2p-bubble>`;
+           messageList.appendChild(wrap);
+           messageList.scrollTop = messageList.scrollHeight;
+        });
+
+        on('chat:p2p-incoming-request', (payload) => {
+           const wrap = document.createElement('div');
+           wrap.className = 'p-2 mb-2 bg-info bg-opacity-10 rounded border border-info';
+           wrap.id = `p2p-req-${payload.signalId}`;
+           wrap.innerHTML = `<chat-p2p-bubble mode="receiver" signal-id="${payload.signalId}" sender-id="${payload.senderId}" file-name="${payload.fileName}" file-size="${payload.fileSize}"></chat-p2p-bubble>`;
+           messageList.appendChild(wrap);
+           messageList.scrollTop = messageList.scrollHeight;
+        });
 
         const onConversationReady = on('chat:conversation-ready', async (payload) => {
            activeConversationId = payload.conversationId;

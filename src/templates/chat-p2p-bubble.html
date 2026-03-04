@@ -1,0 +1,342 @@
+<template id="chat-p2p-bubble">
+  <div class="d-flex flex-column gap-2" ref="container">
+    <div ref="statusText" class="fw-bold"></div>
+    <div class="text-muted small">
+      File: <span ref="fileNameEl"></span> (<span ref="fileSizeEl"></span>)
+    </div>
+
+    <!-- Actions for Receiver -->
+    <div ref="receiverActions" class="d-flex gap-2 mt-2 d-none">
+      <button ref="acceptBtn" class="btn btn-sm btn-success">Accept</button>
+      <button ref="declineBtn" class="btn btn-sm btn-danger">Decline</button>
+    </div>
+
+    <!-- Progress Bar -->
+    <div ref="progressContainer" class="d-none mt-2">
+      <div class="progress" style="height: 10px;">
+        <div ref="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+      </div>
+      <div ref="progressText" class="text-muted small mt-1 text-end">0%</div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite';
+
+  export default defineComponent({
+    client: {
+      script({ helpers, element }) {
+        const { pb, on, emit, encryptMessage, getCurrentUserId } = helpers;
+        const pbClient = pb();
+        const userId = getCurrentUserId();
+
+        const container = helpers.refs('container');
+        const statusText = helpers.refs('statusText');
+        const fileNameEl = helpers.refs('fileNameEl');
+        const fileSizeEl = helpers.refs('fileSizeEl');
+        
+        const receiverActions = helpers.refs('receiverActions');
+        const acceptBtn = helpers.refs('acceptBtn');
+        const declineBtn = helpers.refs('declineBtn');
+
+        const progressContainer = helpers.refs('progressContainer');
+        const progressBar = helpers.refs('progressBar');
+        const progressText = helpers.refs('progressText');
+
+        const mode = element.getAttribute('mode'); // "sender" or "receiver"
+        const fileName = element.getAttribute('file-name');
+        const fileSize = parseInt(element.getAttribute('file-size'), 10) || 0;
+        
+        // Receiver attributes
+        const signalId = element.getAttribute('signal-id');
+        const senderId = element.getAttribute('sender-id');
+
+        fileNameEl.textContent = fileName;
+        fileSizeEl.textContent = (fileSize / 1024 / 1024).toFixed(2) + ' MB';
+
+        let peerConnection = null;
+        let dataChannel = null;
+
+        // RTC Configuration using public STUN servers
+        const rtcConfig = {
+          iceServers: [
+            { urls: 'stun:stun.l.google.com:19302' },
+            { urls: 'stun:stun1.l.google.com:19302' }
+          ]
+        };
+
+        const cleanupRtc = () => {
+          if (dataChannel) {
+             dataChannel.close();
+             dataChannel = null;
+          }
+          if (peerConnection) {
+             peerConnection.close();
+             peerConnection = null;
+          }
+        };
+
+        const sendSignal = async (targetId, type, payloadObj) => {
+          try {
+             const activeConvoId = window.__ACTIVE_CONVO_ID__; // Hacky, we could pass it or rely on the event. But let's fetch from DB for the current signal
+             // Wait, we need the active conversation ID. We can get it from the original signal.
+             let convoId = '';
+             if (signalId) {
+               const sig = await pbClient.collection('webrtc_signals').getOne(signalId);
+               convoId = sig.conversation_id;
+             } else {
+               // Sender knows the active convo, but receiver needs it.
+               // Sender doesn't have signalId at creation.
+               // Let's rely on an emitted event to get the active session keys.
+             }
+
+             // We will trigger an event to `chat-layout` to actually send the signal, since `chat-layout` holds the `activeAesKey` and `activeConversationId`.
+             emit('chat:p2p-send-signal', { targetId, type, payload: payloadObj });
+          } catch(e) {
+             console.error("Failed to send signal", e);
+          }
+        };
+
+        if (mode === 'sender') {
+           statusText.textContent = "Waiting for recipient to accept...";
+        } else if (mode === 'receiver') {
+           statusText.textContent = "wants to send you a file.";
+           receiverActions.classList.remove('d-none');
+        }
+
+        // Handle Receiver Actions
+        acceptBtn.addEventListener('click', () => {
+           receiverActions.classList.add('d-none');
+           statusText.textContent = "Connecting...";
+           // We emit to chat-layout to do the DB write because it has the keys
+           emit('chat:p2p-accept-clicked', { signalId, senderId });
+        });
+
+        declineBtn.addEventListener('click', () => {
+           receiverActions.classList.add('d-none');
+           statusText.textContent = "Declined.";
+           container.classList.add('text-muted');
+           emit('chat:p2p-decline-clicked', { signalId, senderId });
+        });
+
+        // -----------------------------------------------------
+        // Orchestration from `chat-layout` events
+        // -----------------------------------------------------
+        
+        let pendingFile = null;
+
+        on('chat:p2p-sending-request', (payload) => {
+           if (mode === 'sender' && payload.meta.fileName === fileName) {
+              pendingFile = payload.file;
+           }
+        });
+
+        // SENDER logic: Recipient accepted, start WebRTC offer
+        on('chat:p2p-request-accepted', async (payload) => {
+           // Ensure this bubble is the one that sent the request by matching the signalId
+           // Wait, the sender bubble doesn't know its signalId yet when it was created initially.
+           // How does it know? In chat-message-list:
+           // `wrap.innerHTML = \`<chat-p2p-bubble mode="sender" file-name="${payload.meta.fileName}" file-size="${payload.meta.fileSize}"></chat-p2p-bubble>\`;`
+           // But chat-layout also didn't pass targetId to the sender bubble. Let's fix this.
+           // We can verify by the answerPayload or we can just pass the targetId to chat:p2p-send-signal from the sender bubble.
+           // To keep it simple, if there are multiple sender bubbles, we need a way to correlate. But for MVP, let's fix the missing targetId.
+           // The sender bubble was created with `fileName`. Let's assume one active transfer for now or match fileName.
+           // Actually, the sender receives `payload.answerPayload.accepted`.
+           if (mode !== 'sender') return;
+           // If we don't have pendingFile, this bubble isn't active
+           if (!pendingFile) return;
+           
+           statusText.textContent = "Connecting to peer...";
+           
+           peerConnection = new RTCPeerConnection(rtcConfig);
+
+           peerConnection.onicecandidate = (event) => {
+             if (event.candidate) {
+               // The targetId is the sender of the accept signal, which we can get from the payload (if it was passed)
+               // But wait, chat-layout emitted: emit('chat:p2p-request-accepted', { signalId: signal.id, answerPayload: payload, senderId: signal.sender_id });
+               // Ah, chat-layout emitted: emit('chat:p2p-request-accepted', { signalId: signal.id, answerPayload: payload });
+               // I need to update chat-layout to pass senderId or I can just rely on a global targetId in chat-layout.
+               // Let's rely on chat-layout to fill in the targetId if it's missing for the active sender.
+               emit('chat:p2p-send-signal', { type: 'webrtc_candidate', payload: event.candidate, targetId: payload.senderId });
+             }
+           };
+
+           // Create data channel
+           dataChannel = peerConnection.createDataChannel('fileTransfer');
+           dataChannel.binaryType = 'arraybuffer';
+
+           dataChannel.onopen = () => {
+              statusText.textContent = "Transferring...";
+              progressContainer.classList.remove('d-none');
+              sendFile();
+           };
+
+           dataChannel.onclose = () => {
+              // done or aborted
+              cleanupRtc();
+           };
+
+           try {
+             const offer = await peerConnection.createOffer();
+             await peerConnection.setLocalDescription(offer);
+             emit('chat:p2p-send-signal', { type: 'webrtc_offer', payload: offer, targetId: payload.senderId });
+           } catch(e) {
+             console.error("Error creating offer", e);
+             statusText.textContent = "Connection failed.";
+           }
+        });
+
+        // RECEIVER logic: Received Offer
+        on('chat:p2p-webrtc-offer', async (payload) => {
+           if (mode !== 'receiver') return;
+           
+           peerConnection = new RTCPeerConnection(rtcConfig);
+
+           peerConnection.onicecandidate = (event) => {
+             if (event.candidate) {
+               emit('chat:p2p-send-signal', { targetId: senderId, type: 'webrtc_candidate', payload: event.candidate });
+             }
+           };
+
+           peerConnection.ondatachannel = (event) => {
+              dataChannel = event.channel;
+              dataChannel.binaryType = 'arraybuffer';
+              
+              let receiveBuffer = [];
+              let receivedSize = 0;
+
+              dataChannel.onopen = () => {
+                 statusText.textContent = "Receiving...";
+                 progressContainer.classList.remove('d-none');
+              };
+
+              dataChannel.onmessage = (e) => {
+                 if (typeof e.data === 'string') {
+                    if (e.data === 'EOF') {
+                       // Done!
+                       const blob = new Blob(receiveBuffer);
+                       const url = URL.createObjectURL(blob);
+                       
+                       // Trigger native download
+                       const a = document.createElement('a');
+                       a.href = url;
+                       a.download = fileName;
+                       a.click();
+                       
+                       statusText.textContent = "Transfer complete!";
+                       progressContainer.classList.add('d-none');
+                       container.classList.add('text-success');
+                       cleanupRtc();
+                    }
+                 } else {
+                    // Chunk
+                    receiveBuffer.push(e.data);
+                    receivedSize += e.data.byteLength;
+
+                    // Update progress
+                    const percent = Math.round((receivedSize / fileSize) * 100);
+                    progressBar.style.width = percent + '%';
+                    progressBar.setAttribute('aria-valuenow', percent);
+                    progressText.textContent = percent + '%';
+                 }
+              };
+
+              dataChannel.onclose = () => cleanupRtc();
+           };
+
+           try {
+             await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
+             const answer = await peerConnection.createAnswer();
+             await peerConnection.setLocalDescription(answer);
+             
+             emit('chat:p2p-send-signal', { targetId: senderId, type: 'webrtc_answer', payload: answer });
+           } catch(e) {
+             console.error("Error processing offer", e);
+             statusText.textContent = "Connection failed.";
+           }
+        });
+
+        // SENDER logic: Received Answer
+        on('chat:p2p-webrtc-answer', async (payload) => {
+           if (mode !== 'sender' || !peerConnection) return;
+           try {
+             await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+           } catch(e) {
+             console.error("Error setting answer", e);
+           }
+        });
+
+        // BOTH logic: Received Candidate
+        on('chat:p2p-webrtc-candidate', async (payload) => {
+           if (!peerConnection) return;
+           try {
+             await peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate));
+           } catch(e) {
+             console.error("Error adding candidate", e);
+           }
+        });
+
+        // SENDER logic: Declined
+        on('chat:p2p-request-declined', () => {
+           if (mode === 'sender') {
+              statusText.textContent = "Request declined by recipient.";
+              container.classList.add('text-muted');
+              cleanupRtc();
+           }
+        });
+
+        // Sender file chunking
+        const sendFile = () => {
+           if (!pendingFile || !dataChannel) return;
+
+           const chunkSize = 64 * 1024; // 64KB
+           let offset = 0;
+           
+           // Use FileReader
+           const readSlice = (o) => {
+              const slice = pendingFile.slice(offset, o + chunkSize);
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                 if (dataChannel.readyState !== 'open') return;
+                 
+                 dataChannel.send(e.target.result);
+                 offset += e.target.result.byteLength;
+                 
+                 const percent = Math.round((offset / fileSize) * 100);
+                 progressBar.style.width = percent + '%';
+                 progressBar.setAttribute('aria-valuenow', percent);
+                 progressText.textContent = percent + '%';
+
+                 if (offset < fileSize) {
+                    // Send next chunk if buffer is not full
+                    if (dataChannel.bufferedAmount < chunkSize * 2) {
+                       readSlice(offset);
+                    } else {
+                       // wait for buffer to drain
+                       const listener = () => {
+                         dataChannel.removeEventListener('bufferedamountlow', listener);
+                         readSlice(offset);
+                       };
+                       dataChannel.addEventListener('bufferedamountlow', listener);
+                    }
+                 } else {
+                    // Send EOF
+                    dataChannel.send('EOF');
+                    statusText.textContent = "Transfer complete!";
+                    progressContainer.classList.add('d-none');
+                    container.classList.add('text-success');
+                    cleanupRtc();
+                 }
+              };
+              reader.readAsArrayBuffer(slice);
+           };
+
+           // Initialize buffered amount threshold
+           dataChannel.bufferedAmountLowThreshold = chunkSize;
+           readSlice(0);
+        };
+      }
+    }
+  });
+</script>
