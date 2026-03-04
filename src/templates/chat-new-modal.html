@@ -41,10 +41,9 @@
 
           <!-- Search Area -->
           <div class="mb-3">
-            <label for="userSearchInput" class="form-label">Search Users (Exact email or username)</label>
+            <label for="userSearchInput" class="form-label">Search person by username</label>
             <div class="input-group">
-              <input type="text" class="form-control" ref="searchInput" id="userSearchInput"
-                placeholder="e.g. alice@example.com">
+              <input type="text" class="form-control" ref="searchInput" id="userSearchInput" placeholder="@username">
               <button class="btn btn-outline-secondary" type="button" ref="searchBtn">Search</button>
             </div>
           </div>
@@ -80,282 +79,290 @@
           generateConversationKey,
           encryptConversationKey,
           pb
-        } = helpers;
-        
-        const pbClient = pb();
+        } = helpers
 
-        const backdrop = refs('backdrop');
-        const modal = refs('modal');
-        const closeBtn = refs('closeBtn');
-        const tabDirect = refs('tabDirect');
-        const tabGroup = refs('tabGroup');
-        const groupDetailsArea = refs('groupDetailsArea');
-        const groupNameInput = refs('groupNameInput');
-        const selectedUsersArea = refs('selectedUsersArea');
-        const searchInput = refs('searchInput');
-        const searchBtn = refs('searchBtn');
-        const searchResultsArea = refs('searchResultsArea');
-        const createBtn = refs('createBtn');
+        // Pocketbase
+        const pbClient = pb()
 
-        let mode = 'direct'; // 'direct' or 'group'
-        let selectedUsers = []; // array of user objects
-        let singleSelectedUser = null; // for 1-on-1
+        // Elements
+        const backdrop = refs('backdrop')
+        const modal = refs('modal')
+        const closeBtn = refs('closeBtn')
+        const tabDirect = refs('tabDirect')
+        const tabGroup = refs('tabGroup')
+        const groupDetailsArea = refs('groupDetailsArea')
+        const groupNameInput = refs('groupNameInput')
+        const selectedUsersArea = refs('selectedUsersArea')
+        const searchInput = refs('searchInput')
+        const searchBtn = refs('searchBtn')
+        const searchResultsArea = refs('searchResultsArea')
+        const createBtn = refs('createBtn')
 
-        const userId = getCurrentUserId();
+        let mode = 'direct' // 'direct' or 'group'
+        let selectedUsers = [] // array of user objects
+        let singleSelectedUser = null // for 1-on-1
+
+        const userId = getCurrentUserId()
 
         const openModal = () => {
-          backdrop.style.display = 'block';
-          modal.style.display = 'block';
+          backdrop.style.display = 'block'
+          modal.style.display = 'block'
           // small delay for transition
           setTimeout(() => {
-            backdrop.classList.add('show');
-            modal.classList.add('show');
+            backdrop.classList.add('show')
+            modal.classList.add('show')
             // Accessibility - set focus
-            setTimeout(() => { searchInput.focus(); }, 100);
-          }, 10);
-          resetState();
-        };
+            setTimeout(() => { searchInput.focus() }, 100)
+          }, 10)
+          resetState()
+        }
 
         const closeModal = () => {
-          backdrop.classList.remove('show');
-          modal.classList.remove('show');
+          backdrop.classList.remove('show')
+          modal.classList.remove('show')
           setTimeout(() => {
-            backdrop.style.display = 'none';
-            modal.style.display = 'none';
-          }, 150);
-        };
+            backdrop.style.display = 'none'
+            modal.style.display = 'none'
+          }, 150)
+        }
 
         const resetState = () => {
-          mode = 'direct';
-          selectedUsers = [];
-          singleSelectedUser = null;
-          searchInput.value = '';
-          groupNameInput.value = '';
-          searchResultsArea.innerHTML = '';
-          selectedUsersArea.innerHTML = '';
-          updateUI();
-        };
+          mode = 'direct'
+          selectedUsers = []
+          singleSelectedUser = null
+          searchInput.value = ''
+          groupNameInput.value = ''
+          searchResultsArea.innerHTML = ''
+          selectedUsersArea.innerHTML = ''
+          updateUI()
+        }
 
         const updateUI = () => {
           if (mode === 'direct') {
-            tabDirect.classList.add('active');
-            tabGroup.classList.remove('active');
-            groupDetailsArea.style.display = 'none';
-            createBtn.textContent = 'Start Chat';
-            createBtn.disabled = !singleSelectedUser;
+            tabDirect.classList.add('active')
+            tabGroup.classList.remove('active')
+            groupDetailsArea.style.display = 'none'
+            createBtn.textContent = 'Start Chat'
+            createBtn.disabled = !singleSelectedUser
           } else {
-            tabGroup.classList.add('active');
-            tabDirect.classList.remove('active');
-            groupDetailsArea.style.display = 'block';
-            createBtn.textContent = 'Create Group';
-            createBtn.disabled = selectedUsers.length === 0 || groupNameInput.value.trim() === '';
-            renderSelectedBadges();
+            tabGroup.classList.add('active')
+            tabDirect.classList.remove('active')
+            groupDetailsArea.style.display = 'block'
+            createBtn.textContent = 'Create Group'
+            createBtn.disabled = selectedUsers.length === 0 || groupNameInput.value.trim() === ''
+            renderSelectedBadges()
           }
-        };
+        }
 
         tabDirect.addEventListener('click', () => {
-          mode = 'direct';
-          selectedUsers = [];
-          singleSelectedUser = null;
-          searchResultsArea.innerHTML = '';
-          updateUI();
-        });
+          mode = 'direct'
+          selectedUsers = []
+          singleSelectedUser = null
+          searchResultsArea.innerHTML = ''
+          updateUI()
+        })
 
         tabGroup.addEventListener('click', () => {
-          mode = 'group';
-          selectedUsers = [];
-          singleSelectedUser = null;
-          searchResultsArea.innerHTML = '';
-          updateUI();
-        });
+          mode = 'group'
+          selectedUsers = []
+          singleSelectedUser = null
+          searchResultsArea.innerHTML = ''
+          updateUI()
+        })
 
         groupNameInput.addEventListener('input', () => {
-           updateUI();
-        });
+          updateUI()
+        })
 
         // Search logic
         const performSearch = async () => {
-          const query = searchInput.value.trim();
-          if (!query) return;
+          let query = searchInput.value.trim()
+          if (!query) return
 
-          searchResultsArea.innerHTML = '<div class="text-center p-2"><div class="spinner-border spinner-border-sm text-primary"></div></div>';
+          // remove @ sign
+          if (query.startsWith('@')) {
+            query = query.slice(1)
+          }
+
+          searchResultsArea.innerHTML = '<div class="text-center p-2"><div class="spinner-border spinner-border-sm text-primary"></div></div>'
 
           try {
-            // Find exact match by username or email
+            // Find exact match by username
             const records = await pbClient.collection('users').getList(1, 10, {
-              filter: `(username='${query}' || email='${query}')`
-            });
+              filter: `username="${query}"`,
+              $autoCancel: false
+            })
 
-            searchResultsArea.innerHTML = '';
+            searchResultsArea.innerHTML = ''
 
             if (records.items.length === 0) {
-              searchResultsArea.innerHTML = '<div class="list-group-item text-muted">No user found.</div>';
-              return;
+              searchResultsArea.innerHTML = '<div class="list-group-item text-muted">No user found.</div>'
+              return
             }
 
             // Exclude current user from results just in case
-            const filtered = records.items.filter(u => u.id !== userId);
+            const filtered = records.items.filter(u => u.id !== userId)
 
             if (filtered.length === 0) {
-              searchResultsArea.innerHTML = '<div class="list-group-item text-muted">You cannot start a chat with yourself this way.</div>';
-              return;
+              searchResultsArea.innerHTML = '<div class="list-group-item text-muted">You cannot start a chat with yourself this way.</div>'
+              return
             }
 
             filtered.forEach(u => {
-              const displayName = u.username || u.email || 'Unknown User';
-              const btn = document.createElement('button');
-              btn.type = 'button';
-              btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center';
-              
+              const displayName = u.name || u.username || 'Unknown User'
+              const btn = document.createElement('button')
+              btn.type = 'button'
+              btn.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center'
+
               // Simple avatar
-              const initials = displayName.charAt(0).toUpperCase();
+              const initials = displayName.charAt(0).toUpperCase()
               btn.innerHTML = `
                 <div class="d-flex align-items-center">
                   <div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center me-3" style="width:32px; height:32px; font-size:14px; font-weight:bold;">${initials}</div>
                   <span>${displayName}</span>
                 </div>
                 <span class="badge bg-primary rounded-pill">+</span>
-              `;
+              `
 
               btn.addEventListener('click', () => {
                 if (mode === 'direct') {
-                  singleSelectedUser = u;
-                  searchResultsArea.innerHTML = '';
+                  singleSelectedUser = u
+                  searchResultsArea.innerHTML = ''
                   // Show the selected user explicitly in the list area
-                  const selectedEl = document.createElement('div');
-                  selectedEl.className = 'alert alert-success d-flex align-items-center justify-content-between mb-0';
-                  selectedEl.innerHTML = `<span>Selected: <strong>${displayName}</strong></span> <button type="button" class="btn-close btn-sm"></button>`;
+                  const selectedEl = document.createElement('div')
+                  selectedEl.className = 'alert alert-success d-flex align-items-center justify-content-between mb-0'
+                  selectedEl.innerHTML = `<span>Selected: <strong>${displayName}</strong></span> <button type="button" class="btn-close btn-sm"></button>`
                   selectedEl.querySelector('.btn-close').addEventListener('click', () => {
-                     singleSelectedUser = null;
-                     selectedEl.remove();
-                     updateUI();
-                  });
-                  searchResultsArea.appendChild(selectedEl);
+                    singleSelectedUser = null
+                    selectedEl.remove()
+                    updateUI()
+                  })
+                  searchResultsArea.appendChild(selectedEl)
                 } else {
                   // Group mode
                   if (!selectedUsers.find(su => su.id === u.id)) {
-                    selectedUsers.push(u);
+                    selectedUsers.push(u)
                   }
-                  searchResultsArea.innerHTML = '';
-                  searchInput.value = '';
+                  searchResultsArea.innerHTML = ''
+                  searchInput.value = ''
                 }
-                updateUI();
-              });
+                updateUI()
+              })
 
-              searchResultsArea.appendChild(btn);
-            });
+              searchResultsArea.appendChild(btn)
+            })
 
           } catch (e) {
-            console.error('Search error', e);
-            searchResultsArea.innerHTML = `<div class="list-group-item text-danger">Error searching.</div>`;
+            console.error('Search error', e)
+            searchResultsArea.innerHTML = `<div class="list-group-item text-danger">Error searching.</div>`
           }
-        };
+        }
 
-        searchBtn.addEventListener('click', performSearch);
+        searchBtn.addEventListener('click', performSearch)
         searchInput.addEventListener('keypress', (e) => {
           if (e.key === 'Enter') {
-            e.preventDefault();
-            performSearch();
+            e.preventDefault()
+            performSearch()
           }
-        });
+        })
 
         const renderSelectedBadges = () => {
-          selectedUsersArea.innerHTML = '';
+          selectedUsersArea.innerHTML = ''
           selectedUsers.forEach(u => {
-            const badge = document.createElement('span');
-            badge.className = 'badge bg-primary d-flex align-items-center';
-            badge.style.fontSize = '0.9rem';
-            const name = u.username || u.email;
-            badge.innerHTML = `${name} <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 0.5rem;" aria-label="Remove"></button>`;
+            const badge = document.createElement('span')
+            badge.className = 'badge bg-primary d-flex align-items-center'
+            badge.style.fontSize = '0.9rem'
+            const name = u.name || u.username
+            badge.innerHTML = `${name} <button type="button" class="btn-close btn-close-white ms-2" style="font-size: 0.5rem;" aria-label="Remove"></button>`
             badge.querySelector('.btn-close').addEventListener('click', () => {
-               selectedUsers = selectedUsers.filter(su => su.id !== u.id);
-               updateUI();
-            });
-            selectedUsersArea.appendChild(badge);
-          });
-        };
+              selectedUsers = selectedUsers.filter(su => su.id !== u.id)
+              updateUI()
+            })
+            selectedUsersArea.appendChild(badge)
+          })
+        }
 
         // Create Handshake Logic (Moving Step 5 here)
         createBtn.addEventListener('click', async () => {
           try {
-            createBtn.disabled = true;
-            createBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating...';
+            createBtn.disabled = true
+            createBtn.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Creating...'
 
             // Get current user details and public key
-            const currentUser = pbClient.authStore.model;
-            if (!currentUser.public_key) throw new Error("Your public key is missing. Re-login to generate one.");
+            const currentUser = pbClient.authStore.model
+            if (!currentUser.public_key) throw new Error("Your public key is missing. Re-login to generate one.")
 
             // 1. Generate new AES key
-            const aesKey = await generateConversationKey();
-            
+            const aesKey = await generateConversationKey()
+
             // Collect all participants
-            let participants = [];
-            let convoData = {};
+            let participants = []
+            let convoData = {}
 
             if (mode === 'direct') {
-               if (!singleSelectedUser) throw new Error("No user selected.");
-               if (!singleSelectedUser.public_key) throw new Error("Selected user has no public key available.");
-               participants = [currentUser, singleSelectedUser];
-               convoData = { type: 'direct' };
+              if (!singleSelectedUser) throw new Error("No user selected.")
+              if (!singleSelectedUser.public_key) throw new Error("Selected user has no public key available.")
+              participants = [currentUser, singleSelectedUser]
+              convoData = { type: 'direct' }
             } else {
-               if (selectedUsers.length === 0) throw new Error("No users selected.");
-               const missingKeys = selectedUsers.filter(u => !u.public_key);
-               if (missingKeys.length > 0) throw new Error("Some selected users don't have public keys yet.");
-               
-               participants = [currentUser, ...selectedUsers];
-               convoData = { type: 'group', name: groupNameInput.value.trim() };
+              if (selectedUsers.length === 0) throw new Error("No users selected.")
+              const missingKeys = selectedUsers.filter(u => !u.public_key)
+              if (missingKeys.length > 0) throw new Error("Some selected users don't have public keys yet.")
+
+              participants = [currentUser, ...selectedUsers]
+              convoData = { type: 'group', name: groupNameInput.value.trim() }
             }
 
             // 2. Create the conversation record
-            const convoRecord = await pbClient.collection('conversations').create(convoData);
+            const convoRecord = await pbClient.collection('conversations').create(convoData)
 
             // 3. Encrypt AES key for all participants and create members
             // Using a loop. It's not a true DB transaction, but standard PocketBase MVP approach.
             for (const p of participants) {
-               // Import the participant's public key
-               const pubKeyObj = await helpers.importPublicKey(p.public_key);
-               // Encrypt AES key for this participant
-               const encryptedAesBase64 = await encryptConversationKey(aesKey, pubKeyObj);
-               
-               // Create member record
-               await pbClient.collection('conversation_members').create({
-                 conversation: convoRecord.id,
-                 user: p.id,
-                 encrypted_chat_key: encryptedAesBase64
-               });
+              // Import the participant's public key
+              const pubKeyObj = await helpers.importPublicKey(p.public_key)
+              // Encrypt AES key for this participant
+              const encryptedAesBase64 = await encryptConversationKey(aesKey, pubKeyObj)
+
+              // Create member record
+              await pbClient.collection('conversation_members').create({
+                conversation: convoRecord.id,
+                user: p.id,
+                encrypted_chat_key: encryptedAesBase64
+              })
             }
 
             // Success! 
             // We need to notify the sidebar/layout to select this new chat.
             // We'll simulate finding the newly created member record for the current user to get the encrypted key back,
             // or just use the one we just made.
-            
-            // Get the current user's encrypted key for this chat
-            const myEncryptedKey = await encryptConversationKey(aesKey, await helpers.importPublicKey(currentUser.public_key));
 
-            closeModal();
+            // Get the current user's encrypted key for this chat
+            const myEncryptedKey = await encryptConversationKey(aesKey, await helpers.importPublicKey(currentUser.public_key))
+
+            closeModal()
 
             // Tell app to select this conversation
             emit('chat:conversation-selected', {
-               conversationId: convoRecord.id,
-               encrypted_chat_key: myEncryptedKey
-            });
+              conversationId: convoRecord.id,
+              encrypted_chat_key: myEncryptedKey
+            })
 
           } catch (e) {
-            console.error("Failed to create chat", e);
-            alert("Error: " + e.message);
-            createBtn.disabled = false;
-            createBtn.textContent = mode === 'direct' ? 'Start Chat' : 'Create Group';
+            console.error("Failed to create chat", e)
+            alert("Error: " + e.message)
+            createBtn.disabled = false
+            createBtn.textContent = mode === 'direct' ? 'Start Chat' : 'Create Group'
           }
-        });
+        })
 
         // Setup Events
         on('chat:open-new-chat-modal', () => {
-          openModal();
-        });
+          openModal()
+        })
 
-        closeBtn.addEventListener('click', closeModal);
-        backdrop.addEventListener('click', closeModal);
+        closeBtn.addEventListener('click', closeModal)
+        backdrop.addEventListener('click', closeModal)
       }
     }
   });
