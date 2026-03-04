@@ -1,24 +1,25 @@
 <template id="chat-p2p-bubble">
-  <div class="d-flex flex-column gap-2" ref="container">
-    <div ref="statusText" class="fw-bold"></div>
-    <div class="text-muted small">
-      File: <span ref="fileNameEl"></span> (<span ref="fileSizeEl"></span>)
-    </div>
-
-    <!-- Actions for Receiver -->
-    <div ref="receiverActions" class="d-flex gap-2 mt-2 d-none">
-      <button ref="acceptBtn" class="btn btn-sm btn-success">Accept</button>
-      <button ref="declineBtn" class="btn btn-sm btn-danger">Decline</button>
-    </div>
-
-    <!-- Progress Bar -->
-    <div ref="progressContainer" class="d-none mt-2">
-      <div class="progress" style="height: 10px;">
-        <div ref="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+   <div class="d-flex flex-column gap-2" ref="container">
+      <div ref="statusText" class="fw-bold"></div>
+      <div class="text-muted small">
+         File: <span ref="fileNameEl"></span> (<span ref="fileSizeEl"></span>)
       </div>
-      <div ref="progressText" class="text-muted small mt-1 text-end">0%</div>
-    </div>
-  </div>
+
+      <!-- Actions for Receiver -->
+      <div ref="receiverActions" class="d-flex gap-2 mt-2 d-none">
+         <button ref="acceptBtn" class="btn btn-sm btn-success">Accept</button>
+         <button ref="declineBtn" class="btn btn-sm btn-danger">Decline</button>
+      </div>
+
+      <!-- Progress Bar -->
+      <div ref="progressContainer" class="d-none mt-2">
+         <div class="progress" style="height: 10px;">
+            <div ref="progressBar" class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar"
+               style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+         </div>
+         <div ref="progressText" class="text-muted small mt-1 text-end">0%</div>
+      </div>
+   </div>
 </template>
 
 <script type="module">
@@ -154,7 +155,7 @@
            peerConnection.onicecandidate = (event) => {
              if (event.candidate) {
                // The targetId is the sender of the accept signal, which we can get from the payload (if it was passed)
-               // But wait, chat-layout emitted: emit('chat:p2p-request-accepted', { signalId: signal.id, answerPayload: payload, senderId: signal.sender_id });
+               // But wait, chat-layout emitted: emit('chat:p2p-request-accepted', { signalId: signal.id, answerPayload: payload, senderId: signal.sender });
                // Ah, chat-layout emitted: emit('chat:p2p-request-accepted', { signalId: signal.id, answerPayload: payload });
                // I need to update chat-layout to pass senderId or I can just rely on a global targetId in chat-layout.
                // Let's rely on chat-layout to fill in the targetId if it's missing for the active sender.

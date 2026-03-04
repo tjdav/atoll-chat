@@ -213,7 +213,7 @@
             await pbClient.collection('webrtc_signals').unsubscribe('*');
           }
           webrtcSignalUnsub = await pbClient.collection('webrtc_signals').subscribe('*', async function (e) {
-            if (e.action === 'create' && e.record.target_id === userId) {
+            if (e.action === 'create' && e.record.target === userId) {
                // We have an incoming signal
                const signal = e.record;
                
@@ -226,10 +226,10 @@
 
                   if (signal.type === 'file_request') {
                      // Show incoming request UI
-                     emit('chat:p2p-incoming-request', { signalId: signal.id, senderId: signal.sender_id, ...payload });
+                     emit('chat:p2p-incoming-request', { signalId: signal.id, senderId: signal.sender, ...payload });
                   } else if (signal.type === 'file_accept') {
                      // The other user accepted our file request. Start WebRTC.
-                     emit('chat:p2p-request-accepted', { signalId: signal.id, answerPayload: payload, senderId: signal.sender_id });
+                     emit('chat:p2p-request-accepted', { signalId: signal.id, answerPayload: payload, senderId: signal.sender });
                      // Clean up
                      await pbClient.collection('webrtc_signals').delete(signal.id);
                   } else if (signal.type === 'file_decline') {
@@ -276,8 +276,8 @@
             
             await pbClient.collection('webrtc_signals').create({
                conversation_id: activeConversationId,
-               sender_id: userId,
-               target_id: targetId,
+               sender: userId,
+               target: targetId,
                type: type,
                encrypted_payload: encryptedPayload.ciphertext,
                iv: encryptedPayload.iv
@@ -343,8 +343,8 @@
              // Send signal
              await pbClient.collection('webrtc_signals').create({
                 conversation_id: activeConversationId,
-                sender_id: userId,
-                target_id: p2pTargetId,
+                sender: userId,
+                target: p2pTargetId,
                 type: 'file_request',
                 encrypted_payload: encryptedPayload.ciphertext,
                 iv: encryptedPayload.iv

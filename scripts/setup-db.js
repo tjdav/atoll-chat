@@ -140,8 +140,8 @@ async function setupDatabase () {
         listRule: '@request.auth.id != ""',
         viewRule: '@request.auth.id != ""',
         createRule: '@request.auth.id != ""',
-        updateRule: '@request.auth.id = user.id', // User can update their own member record
-        deleteRule: '@request.auth.id = user.id' // User can remove themselves
+        updateRule: '@request.auth.id = user.id',
+        deleteRule: '@request.auth.id = user.id'
       })
       console.log('conversation_members collection created.')
     }
@@ -246,7 +246,7 @@ async function setupDatabase () {
         system: false,
         fields: [
           {
-            name: 'conversation_id',
+            name: 'conversation',
             type: 'relation',
             required: true,
             collectionId: conversationsCollection.id,
@@ -254,7 +254,7 @@ async function setupDatabase () {
             maxSelect: 1
           },
           {
-            name: 'sender_id',
+            name: 'sender',
             type: 'relation',
             required: true,
             collectionId: usersCollection.id,
@@ -262,7 +262,7 @@ async function setupDatabase () {
             maxSelect: 1
           },
           {
-            name: 'target_id',
+            name: 'target',
             type: 'relation',
             required: true,
             collectionId: usersCollection.id,
@@ -299,9 +299,9 @@ async function setupDatabase () {
         ],
         listRule: '@request.auth.id != ""',
         viewRule: '@request.auth.id != ""',
-        createRule: '@request.auth.id = sender_id',
-        updateRule: null,
-        deleteRule: '@request.auth.id = target_id || @request.auth.id = sender_id'
+        createRule: '@request.auth.id = sender',
+        updateRule: '@request.auth.id = target || @request.auth.id = sender',
+        deleteRule: '@request.auth.id = target || @request.auth.id = sender'
       })
       console.log('webrtc_signals collection created.')
     }
