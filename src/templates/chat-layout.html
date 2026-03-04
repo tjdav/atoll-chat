@@ -90,8 +90,8 @@
 
             const records = await pbClient.collection('conversation_members').getFullList({
               filter: `user = "${userId}"`,
-              sort: '-created', // roughly most recent
-              expand: 'conversation.conversation_members.user',
+              sort: '-created',
+              expand: 'conversation.conversation_members_via_conversation.user',
               $autoCancel: false
             });
 
@@ -124,7 +124,7 @@
              // Update Header Title
              if (convoObj) {
                if (convoObj.type === 'direct') {
-                 const members = convoObj.expand?.conversation_members || [];
+                  const members = convoObj.expand?.conversation_members_via_conversation || [];
                  const otherMember = members.find(m => m.user !== userId);
                  const otherUser = otherMember?.expand?.user;
                  chatHeaderTitle.textContent = otherUser ? (otherUser.username || otherUser.email) : 'Personal Notes';
@@ -154,7 +154,7 @@
            // To get convoObj, we could fetch it, but let's just fetch the specific convo to get the name
            try {
              const convoObj = await pbClient.collection('conversations').getOne(payload.conversationId, {
-               expand: 'conversation_members.user'
+               expand: 'conversation_members_via_conversation.user'
              });
              await handleConversationSelected(payload.conversationId, payload.encrypted_chat_key, convoObj);
            } catch(e) {

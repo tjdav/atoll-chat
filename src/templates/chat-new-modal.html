@@ -304,6 +304,38 @@
               if (!singleSelectedUser.public_key) throw new Error("Selected user has no public key available.")
               participants = [currentUser, singleSelectedUser]
               convoData = { type: 'direct' }
+              
+              // Check for existing direct conversation
+              const existingMemberships = await pbClient.collection('conversation_members').getFullList({
+                filter: `user = "${currentUser.id}"`,
+                expand: 'conversation.conversation_members_via_conversation.user'
+              })
+
+              for (const membership of existingMemberships) {
+                const convo = membership.expand?.conversation;
+                if (convo && convo.type === 'direct') {
+                  const members = convo.expand?.conversation_members_via_conversation || [];
+                  // Find if the other member is singleSelectedUser
+                  // In a direct chat between A and B, check if members contain B.
+                  // For "saved messages" (direct chat with oneself), check if the only member is oneself.
+                  let isExisting = false;
+                  if (currentUser.id === singleSelectedUser.id) {
+                     isExisting = members.every(m => m.user === currentUser.id);
+                  } else {
+                     isExisting = members.some(m => m.user === singleSelectedUser.id);
+                  }
+                  
+                  if (isExisting) {
+                    // Chat already exists, just open it
+                    closeModal()
+                    emit('chat:conversation-selected', {
+                      conversationId: convo.id,
+                      encrypted_chat_key: membership.encrypted_chat_key
+                    })
+                    return;
+                  }
+                }
+              }
             } else {
               if (selectedUsers.length === 0) throw new Error("No users selected.")
               const missingKeys = selectedUsers.filter(u => !u.public_key)
