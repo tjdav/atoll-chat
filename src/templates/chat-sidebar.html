@@ -37,7 +37,7 @@
 
         const userId = getCurrentUserId();
 
-        const generateAvatar = (name) => {
+        const generateNameAvatar = (name) => {
           const initials = name ? name.charAt(0).toUpperCase() : '?';
           // Use a simple hash to generate a consistent color
           let hash = 0;
@@ -48,6 +48,14 @@
           const color = '#' + '00000'.substring(0, 6 - c.length) + c;
           
           return `<div class="rounded-circle text-white d-flex align-items-center justify-content-center" style="width: 32px; height: 32px; background-color: ${color}; font-size: 14px; font-weight: bold;">${initials}</div>`;
+        };
+
+        const generateAvatar = (name, record) => {
+          const url = pbClient.files.getURL(record, record.avatar, {'thumb': '0x32'})
+
+          return `<div class="rounded-circle" style="width: 32px; height: 32px;">
+            <img src="${url}" alt="${name} - avatar" class="rounded-circle img-fluid">
+          </div>`;
         };
 
         const renderList = () => {
@@ -62,26 +70,29 @@
             if (!convo) return;
 
             let displayName = 'Unknown Chat';
-            let avatarHtml = generateAvatar('?');
+            let avatarHtml = generateNameAvatar('?');
 
             if (convo.type === 'direct') {
               // Find the other user
-              const members = convo.expand?.conversation_members || [];
+              const members = convo.expand?.conversation_members_via_conversation || [];
               const otherMember = members.find(m => m.user !== userId);
               const otherUser = otherMember?.expand?.user;
               
               if (otherUser) {
                 displayName = otherUser.username || otherUser.email || 'User';
-                // If there was an avatar field:
-                // if (otherUser.avatar) ... else
-                avatarHtml = generateAvatar(displayName);
+                
+                if (otherUser.avatar) {
+                  avatarHtml = generateAvatar(displayName, otherUser);
+                } else {
+                  avatarHtml = generateNameAvatar(displayName);
+                }
               } else if (members.length === 1 && members[0].user === userId) {
                  displayName = "Personal Notes";
-                 avatarHtml = generateAvatar("P");
+                 avatarHtml = generateNameAvatar("P");
               }
             } else if (convo.type === 'group') {
               displayName = convo.name || 'Unnamed Group';
-              avatarHtml = generateAvatar(displayName);
+              avatarHtml = generateNameAvatar(displayName);
             }
 
             const isUnread = unreadCounts[convo.id] > 0;
@@ -124,7 +135,7 @@
             // Get user's conversation memberships, expanding conversation and its members and users
             const records = await pbClient.collection('conversation_members').getFullList({
               filter: `user = "${userId}"`,
-              expand: 'conversation.conversation_members.user',
+              expand: 'conversation.conversation_members_via_conversation.user',
               sort: '-created'
             });
             conversations = records;
