@@ -33,8 +33,13 @@ async function setupDatabase () {
           system: false,
           unique: false
         })
+
+        // Update rules to allow users to search for each other to start chats
+        usersCollection.listRule = '@request.auth.id != ""'
+        usersCollection.viewRule = '@request.auth.id != ""'
+
         await pb.collections.update('users', usersCollection)
-        console.log('Added public_key field to users collection.')
+        console.log('Updated users collection with public_key and rules.')
       }
     } catch (e) {
       console.error('Error fetching users collection:', e)
