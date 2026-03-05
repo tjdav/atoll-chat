@@ -311,7 +311,7 @@
         on('chat:p2p-file-selected', async (payload) => {
           try {
              const convoObj = await pbClient.collection('conversations').getOne(activeConversationId, {
-               expand: 'conversation_members'
+               expand: 'conversation_members_via_conversation'
              });
              
              if (convoObj.type === 'group') {
@@ -319,7 +319,7 @@
                 return;
              }
 
-             const members = convoObj.expand?.conversation_members || [];
+             const members = convoObj.expand?.conversation_members_via_conversation || [];
              const otherMember = members.find(m => m.user !== userId);
              
              if (!otherMember) {
@@ -342,7 +342,7 @@
 
              // Send signal
              await pbClient.collection('webrtc_signals').create({
-                conversation_id: activeConversationId,
+                conversation: activeConversationId,
                 sender: userId,
                 target: p2pTargetId,
                 type: 'file_request',
