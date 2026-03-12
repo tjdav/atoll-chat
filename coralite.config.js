@@ -1,16 +1,16 @@
 import { defineConfig } from 'coralite-scripts'
-import pocketbasePlugin from './src/plugins/pockbase.js'
 import eventBus from './src/plugins/event-bus.js'
-import cryptoPlugin from './src/plugins/crypto.js'
-import storagePlugin from './src/plugins/storage.js'
+import matrixPlugin from './src/plugins/matrix.js'
+import webtorrentPlugin from './src/plugins/webtorrent.js'
+import mediaStorePlugin from './src/plugins/media-store.js'
 
 export default defineConfig({
   public: 'public',
   plugins: [
-    pocketbasePlugin,
     eventBus,
-    cryptoPlugin,
-    storagePlugin
+    matrixPlugin,
+    webtorrentPlugin,
+    mediaStorePlugin
   ],
   output: 'dist',
   pages: 'src/pages',
