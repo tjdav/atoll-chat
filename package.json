@@ -20,16 +20,17 @@
   },
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.9.0",
-    "adm-zip": "^0.5.16",
     "bootstrap": "^5.3.8",
     "coralite": "^0.26.0",
     "coralite-scripts": "^0.26.0",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
-    "eslint": "^10.0.2",
-    "pocketbase": "^0.26.8"
+    "eslint": "^10.0.2"
   },
   "dependencies": {
-    "localforage": "^1.10.0"
+    "emoji-picker-element": "^1.29.1",
+    "isomorphic-dompurify": "^3.0.0",
+    "marked": "^17.0.4",
+    "matrix-js-sdk": "^41.1.0"
   }
 }

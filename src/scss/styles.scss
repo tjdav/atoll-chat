@@ -1,6 +1,5 @@
 @use "./variables" as *;
 
-// 1. Import Bootstrap's core functions, variables, and utility maps first
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
 @import "bootstrap/scss/variables-dark";
@@ -8,7 +7,6 @@
 @import "bootstrap/scss/mixins";
 @import "bootstrap/scss/utilities";
 
-// 2. Extend the $utilities map with our new values
 $utilities: map-merge(
   $utilities,
   (
@@ -33,7 +31,6 @@ $utilities: map-merge(
   )
 );
 
-// 3. Import the rest of Bootstrap (this will now generate our new utilities alongside the defaults)
 @import "bootstrap/scss/root";
 @import "bootstrap/scss/reboot";
 @import "bootstrap/scss/type";
