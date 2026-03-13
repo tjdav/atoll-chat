@@ -9,6 +9,9 @@
 
   export default defineComponent({
     client: {
+      imports: [
+        { specifier: 'coralite-component/coralite-message-bubble' }
+      ],
       script: ({ root, helpers }) => {
         const messagesContainer = helpers.refs('messagesContainer')
         let currentCleanup = null
@@ -26,20 +29,9 @@
 
         const renderMessage = (message, isCurrentUser) => {
           const time = new Date(message.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-          const messageClass = isCurrentUser ? 'justify-content-end' : 'justify-content-start'
-          const bubbleClass = isCurrentUser ? 'bg-primary text-white' : 'bg-body-secondary text-body'
-          const timeClass = isCurrentUser ? 'text-white-50 text-end' : 'text-muted'
 
           const div = document.createElement('div')
-          div.className = 'd-flex mb-3 ' + messageClass
-          div.innerHTML = `
-            <div class="message-bubble p-3 rounded-4 shadow-sm ${bubbleClass}" style="max-width: 75%;">
-              <p class="mb-1">${message.body}</p>
-              <div class="${timeClass} small" style="font-size: 0.75rem;">
-                ${time}
-              </div>
-            </div>
-          `
+          div.innerHTML = `<coralite-message-bubble time="${time}" current-user="${isCurrentUser}">${message.body}</coralite-message-bubble>`
           return div
         }
 
@@ -48,7 +40,7 @@
             currentCleanup()
           }
 
-          messagesContainer.innerHTML = '' // Clear existing messages
+          messagesContainer.innerHTML = ''
 
           const currentUserId = await helpers.getCurrentUserId()
 
