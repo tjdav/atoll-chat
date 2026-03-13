@@ -27,6 +27,15 @@ $utilities: map-merge(
           (400: 400px)
         )
       )
+    ),
+    "width": map-merge(
+      map-get($utilities, "width"),
+      (
+        values: map-merge(
+          map-get(map-get($utilities, "width"), "values"),
+          ("250px": 250px)
+        )
+      )
     )
   )
 );

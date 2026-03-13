@@ -1,0 +1,64 @@
+<template id="coralite-login">
+  <div class="d-flex align-items-center justify-content-center vh-100">
+    <div class="card p-4" style="width: 400px; max-width: 100%;">
+      <h2 class="text-center mb-4">Login to Matrix</h2>
+      <form>
+        <div class="form-floating mb-3">
+          <input type="text" class="form-control" ref="username" placeholder="Username" required>
+          <label for="{{ ref_username }}">Username</label>
+        </div>
+        <div class="form-floating mb-3">
+          <input type="password" class="form-control" ref="password" placeholder="Password" required>
+          <label for="{{ ref_password }}">Password</label>
+        </div>
+        <button type="submit" class="btn btn-primary w-100" ref="submitButton">Login</button>
+      </form>
+      <div class="alert alert-danger mt-3 d-none" role="alert" ref="errorAlert"></div>
+    </div>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ root, helpers }) => {
+        const form = root.querySelector('form')
+        const usernameInput = helpers.refs('username')
+        const passwordInput = helpers.refs('password')
+        const errorAlert = helpers.refs('errorAlert')
+        const submitButton = helpers.refs('submitButton')
+
+        form.addEventListener('submit', async (e) => {
+          e.preventDefault()
+
+          const username = usernameInput.value
+          const password = passwordInput.value
+
+          errorAlert.classList.add('d-none')
+          submitButton.disabled = true
+          submitButton.textContent = 'Logging in...'
+
+          try {
+            await helpers.login({
+              type: 'm.login.password',
+              user: username,
+              password: password
+            })
+
+            submitButton.textContent = 'Syncing...'
+            await helpers.sync()
+
+            helpers.emit('app:logged-in')
+          } catch (error) {
+            errorAlert.textContent = 'Login failed. Please check your credentials.'
+            errorAlert.classList.remove('d-none')
+            submitButton.disabled = false
+            submitButton.textContent = 'Login'
+          }
+        })
+      }
+    }
+  })
+</script>

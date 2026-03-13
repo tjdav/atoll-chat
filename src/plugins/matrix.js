@@ -134,6 +134,75 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               }
             ]
           })
+        },
+
+        getRooms: (context) => async () => {
+          const client = context.values.getClient()
+          if (!client) return []
+          const rooms = client.getRooms()
+          return rooms.map(room => ({
+            id: room.roomId,
+            name: room.name,
+            avatarUrl: room.getAvatarUrl(client.baseUrl, 48, 48, 'crop'),
+            unreadCount: room.getUnreadNotificationCount('total'),
+            lastMessage: room.timeline.length > 0 ? room.timeline[room.timeline.length - 1].getContent().body : null
+          }))
+        },
+
+        getRoom: (context) => async (roomId) => {
+          const client = context.values.getClient()
+          if (!client) return null
+          const room = client.getRoom(roomId)
+          if (!room) return null
+          return {
+            id: room.roomId,
+            name: room.name,
+            avatarUrl: room.getAvatarUrl(client.baseUrl, 40, 40, 'crop')
+          }
+        },
+
+        getCurrentUserId: (context) => async () => {
+          const client = context.values.getClient()
+          if (!client) return null
+          return client.getUserId()
+        },
+
+        getRoomMessages: (context) => async (roomId) => {
+          const client = context.values.getClient()
+          if (!client) return []
+          const room = client.getRoom(roomId)
+          if (!room) return []
+          
+          return room.timeline
+            .filter(event => event.getType() === 'm.room.message')
+            .map(event => ({
+              id: event.getId(),
+              sender: event.getSender(),
+              body: event.getContent().body,
+              date: event.getDate()
+            }))
+        },
+
+        onRoomMessage: (context) => async (roomId, callback) => {
+          const client = context.values.getClient()
+          if (!client) return () => {}
+
+          const handler = (event) => {
+            if (event.getRoomId() === roomId && event.getType() === 'm.room.message') {
+              callback({
+                id: event.getId(),
+                sender: event.getSender(),
+                body: event.getContent().body,
+                date: event.getDate()
+              })
+            }
+          }
+
+          client.on('Room.timeline', handler)
+          
+          return () => {
+            client.removeListener('Room.timeline', handler)
+          }
         }
       }
     }

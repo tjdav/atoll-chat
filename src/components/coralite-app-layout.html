@@ -1,0 +1,30 @@
+<template id="coralite-app-layout">
+  <div class="d-flex vh-100 overflow-hidden" ref="layoutContainer">
+    <div class="w-250px bg-dark text-white d-flex flex-column border-end border-secondary">
+      <coralite-sidebar></coralite-sidebar>
+    </div>
+    <div class="max-width-600 border-end border-secondary d-flex flex-column h-100">
+      <coralite-chat-list></coralite-chat-list>
+    </div>
+    <div class="flex-grow-1 d-flex flex-column h-100 bg-body">
+      <coralite-chat-window></coralite-chat-window>
+    </div>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      imports: [
+        { specifier: 'coralite-component/coralite-sidebar' },
+        { specifier: 'coralite-component/coralite-chat-list' },
+        { specifier: 'coralite-component/coralite-chat-window' }
+      ],
+      script: ({ root, helpers }) => {
+        // App Layout logic here
+      }
+    }
+  })
+</script>
