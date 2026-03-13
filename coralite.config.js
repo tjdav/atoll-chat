@@ -14,7 +14,6 @@ export default defineConfig({
   ],
   output: 'dist',
   pages: 'src/pages',
-  templates: 'src/templates',
   components: 'src/components',
   styles: {
     type: 'scss',
