@@ -172,7 +172,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           if (!client) return []
           const room = client.getRoom(roomId)
           if (!room) return []
-          
+
           return room.timeline
             .filter(event => event.getType() === 'm.room.message')
             .map(event => ({
@@ -185,7 +185,8 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
 
         onRoomMessage: (context) => async (roomId, callback) => {
           const client = context.values.getClient()
-          if (!client) return () => {}
+          if (!client) return () => {
+          }
 
           const handler = (event) => {
             if (event.getRoomId() === roomId && event.getType() === 'm.room.message') {
@@ -199,7 +200,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           }
 
           client.on('Room.timeline', handler)
-          
+
           return () => {
             client.removeListener('Room.timeline', handler)
           }

@@ -31,6 +31,7 @@
     "emoji-picker-element": "^1.29.1",
     "isomorphic-dompurify": "^3.0.0",
     "marked": "^17.0.4",
-    "matrix-js-sdk": "^41.1.0"
+    "matrix-js-sdk": "^41.1.0",
+    "zod": "^4.3.6"
   }
 }

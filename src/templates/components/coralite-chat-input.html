@@ -1,0 +1,44 @@
+<template id="coralite-chat-input">
+  <div class="input-group">
+    <button class="btn btn-outline-secondary border-end-0 rounded-start-pill" type="button" aria-label="Attach File">
+      <i class="bi bi-paperclip"></i>
+    </button>
+    <input type="text" class="form-control border-start-0 border-end-0" placeholder="Aa" aria-label="Type a message" ref="messageInput">
+    <button class="btn btn-primary rounded-end-pill" type="button" aria-label="Send Message" ref="sendBtn">
+      <i class="bi bi-send-fill"></i>
+    </button>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ root, helpers }) => {
+        const messageInput = helpers.refs('messageInput')
+        const sendBtn = helpers.refs('sendBtn')
+
+        const submitMessage = () => {
+          const text = messageInput.value.trim()
+          if (text) {
+            helpers.emit(helpers.events().CHAT_MESSAGE_SUBMITTED, { text })
+          }
+        }
+
+        sendBtn.addEventListener('click', submitMessage)
+
+        messageInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            submitMessage()
+          }
+        })
+
+        helpers.on(helpers.events().CHAT_MESSAGE_SENT, () => {
+          messageInput.value = ''
+          messageInput.focus()
+        })
+      }
+    }
+  })
+</script>
