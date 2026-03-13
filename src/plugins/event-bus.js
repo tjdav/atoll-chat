@@ -47,6 +47,16 @@ export default createPlugin({
             text: z.string(),
             encrypted: z.boolean().default(true)
           })
+        },
+        'chat:file-selected': {
+          id: Symbol('chat:file-selected'),
+          schema: z.object({
+            file: z.instanceof(File)
+          })
+        },
+        'chat:file-processing-done': {
+          id: Symbol('chat:file-processing-done'),
+          schema: z.object({}).strict().optional()
         }
       }
 

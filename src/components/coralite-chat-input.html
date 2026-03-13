@@ -1,6 +1,7 @@
 <template id="coralite-chat-input">
   <div class="input-group">
-    <button class="btn btn-outline-secondary border-end-0 rounded-start-pill" type="button" aria-label="Attach File">
+    <input type="file" ref="fileInput" class="d-none">
+    <button class="btn btn-outline-secondary border-end-0 rounded-start-pill" type="button" aria-label="Attach File" ref="attachBtn">
       <i class="bi bi-paperclip"></i>
     </button>
     <input type="text" class="form-control border-start-0 border-end-0" placeholder="Aa" aria-label="Type a message" ref="messageInput">
@@ -16,9 +17,11 @@
   export default defineComponent({
     client: {
       script: ({ helpers }) => {
-        const { refs, emit, on, events} = helpers
+        const { refs, emit, on, events } = helpers
         const messageInput = refs('messageInput')
         const sendBtn = refs('sendBtn')
+        const attachBtn = refs('attachBtn')
+        const fileInput = refs('fileInput')
 
         const submitMessage = () => {
           const text = messageInput.value.trim()
@@ -29,6 +32,25 @@
 
         sendBtn.addEventListener('click', submitMessage)
 
+        attachBtn.addEventListener('click', () => {
+          fileInput.click()
+        })
+
+        fileInput.addEventListener('change', (e) => {
+          const file = e.target.files[0]
+          if (file) {
+            emit(events('chat:file-selected'), { file })
+            
+            // Disable input while processing
+            messageInput.disabled = true
+            sendBtn.disabled = true
+            attachBtn.disabled = true
+            
+            // Reset the file input so the same file can be selected again
+            fileInput.value = ''
+          }
+        })
+
         messageInput.addEventListener('keypress', (e) => {
           if (e.key === 'Enter') {
             submitMessage()
@@ -37,6 +59,13 @@
 
         on(events('chat:message-sent'), () => {
           messageInput.value = ''
+          messageInput.focus()
+        })
+
+        on(events('chat:file-processing-done'), () => {
+          messageInput.disabled = false
+          sendBtn.disabled = false
+          attachBtn.disabled = false
           messageInput.focus()
         })
       }

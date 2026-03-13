@@ -37,11 +37,17 @@ export default createPlugin({
       download: (context) => {
         const client = context.values.client
 
-        return (magnetURI) => {
+        return (magnetURI, onProgress) => {
           return new Promise((resolve, reject) => {
             try {
               client.add(magnetURI, (torrent) => {
                 const file = torrent.files[0]
+
+                if (onProgress) {
+                  torrent.on('download', () => {
+                    onProgress(torrent.progress)
+                  })
+                }
 
                 file.getBlob((err, blob) => {
                   if (err) {
