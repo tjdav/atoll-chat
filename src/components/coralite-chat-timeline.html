@@ -10,7 +10,8 @@
   export default defineComponent({
     client: {
       imports: [
-        { specifier: 'coralite-component/coralite-message-bubble' }
+        { specifier: 'coralite-component/coralite-message-bubble' },
+        { specifier: 'coralite-component/coralite-torrent-bubble' }
       ],
       script: ({ helpers }) => {
         const { refs, on, events, getCurrentUserId, getRoomMessages, onRoomMessage } = helpers
@@ -32,7 +33,27 @@
           const time = new Date(message.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
           const div = document.createElement('div')
-          div.innerHTML = `<coralite-message-bubble time="${time}" current-user="${isCurrentUser}">${message.body}</coralite-message-bubble>`
+          
+          if (message.msgtype === 'm.coralite.webtorrent' && message.info) {
+             const torrentBubble = document.createElement('coralite-torrent-bubble')
+             // We pass data via the context.value API mechanism
+             torrentBubble.values = {
+               info: message.info,
+               'event-id': message.id,
+               'sender-id': message.sender
+             }
+
+             // Wrap it in a message bubble to get the correct alignment and time
+             const bubble = document.createElement('coralite-message-bubble')
+             bubble.setAttribute('time', time)
+             bubble.setAttribute('current-user', isCurrentUser)
+             bubble.appendChild(torrentBubble)
+
+             div.appendChild(bubble)
+          } else {
+             div.innerHTML = `<coralite-message-bubble time="${time}" current-user="${isCurrentUser}">${message.body}</coralite-message-bubble>`
+          }
+
           return div
         }
 

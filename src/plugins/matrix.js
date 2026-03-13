@@ -179,7 +179,9 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               id: event.getId(),
               sender: event.getSender(),
               body: event.getContent().body,
-              date: event.getDate()
+              date: event.getDate(),
+              msgtype: event.getContent().msgtype,
+              info: event.getContent().info
             }))
         },
 
@@ -194,7 +196,9 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
                 id: event.getId(),
                 sender: event.getSender(),
                 body: event.getContent().body,
-                date: event.getDate()
+                date: event.getDate(),
+                msgtype: event.getContent().msgtype,
+                info: event.getContent().info
               })
             }
           }
@@ -204,6 +208,23 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           return () => {
             client.removeListener('Room.timeline', handler)
           }
+        },
+
+        sendTorrentMessage: (context) => async (roomId, torrentPayload) => {
+          const { getClient } = context.values
+          const client = getClient()
+
+          if (!client) {
+            throw new Error('Matrix client not initialized')
+          }
+
+          const content = {
+            msgtype: 'm.coralite.webtorrent',
+            body: `Sent a file: ${torrentPayload.filename}`,
+            info: torrentPayload
+          }
+
+          return await client.sendEvent(roomId, 'm.room.message', content, '')
         }
       }
     }
