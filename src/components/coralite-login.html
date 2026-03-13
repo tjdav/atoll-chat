@@ -2,7 +2,7 @@
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4" style="width: 400px; max-width: 100%;">
       <h2 class="text-center mb-4">Login to Matrix</h2>
-      <form>
+      <form ref="form">
         <div class="form-floating mb-3">
           <input type="text" class="form-control" ref="username" placeholder="Username" required>
           <label for="{{ ref_username }}">Username</label>
@@ -23,12 +23,13 @@
 
   export default defineComponent({
     client: {
-      script: ({ root, helpers }) => {
-        const form = root.querySelector('form')
-        const usernameInput = helpers.refs('username')
-        const passwordInput = helpers.refs('password')
-        const errorAlert = helpers.refs('errorAlert')
-        const submitButton = helpers.refs('submitButton')
+      script: ({ helpers }) => {
+        const { refs, login, sync, emit } = helpers
+        const form = refs('form')
+        const usernameInput = refs('username')
+        const passwordInput = refs('password')
+        const errorAlert = refs('errorAlert')
+        const submitButton = refs('submitButton')
 
         form.addEventListener('submit', async (e) => {
           e.preventDefault()
@@ -41,16 +42,16 @@
           submitButton.textContent = 'Logging in...'
 
           try {
-            await helpers.login({
+            await login({
               type: 'm.login.password',
               user: username,
               password: password
             })
 
             submitButton.textContent = 'Syncing...'
-            await helpers.sync()
+            await sync()
 
-            helpers.emit('app:logged-in')
+            emit(events('APP_LOGGED_IN'))
           } catch (error) {
             errorAlert.textContent = 'Login failed. Please check your credentials.'
             errorAlert.classList.remove('d-none')

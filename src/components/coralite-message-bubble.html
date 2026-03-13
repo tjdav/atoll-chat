@@ -13,14 +13,15 @@
 
   export default defineComponent({
     client: {
-      script: ({ root, helpers, context }) => {
-        const wrapper = helpers.refs('wrapper')
-        const bubble = helpers.refs('bubble')
-        const timeDisplay = helpers.refs('timeDisplay')
-        const body = helpers.refs('body')
+      script: ({ helpers, values }) => {
+        const { refs } = helpers
+        const wrapper = refs('wrapper')
+        const bubble = refs('bubble')
+        const timeDisplay = refs('timeDisplay')
+        const body = refs('body')
         
-        const isCurrentUser = context.value['current-user'] === 'true'
-        const time = context.value.time || ''
+        const isCurrentUser = value['current-user'] === 'true'
+        const time = value.time || ''
 
         if (isCurrentUser) {
           wrapper.classList.add('justify-content-end')
