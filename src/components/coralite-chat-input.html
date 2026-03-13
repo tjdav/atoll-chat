@@ -23,7 +23,7 @@
         const submitMessage = () => {
           const text = messageInput.value.trim()
           if (text) {
-            emit(events('CHAT_MESSAGE_SUBMITTED'), { text })
+            emit(events('chat:message-submitted'), { text })
           }
         }
 
@@ -35,7 +35,7 @@
           }
         })
 
-        on(events('CHAT_MESSAGE_SENT'), () => {
+        on(events('chat:message-sent'), () => {
           messageInput.value = ''
           messageInput.focus()
         })

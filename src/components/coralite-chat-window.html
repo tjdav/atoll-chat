@@ -59,7 +59,7 @@
           return '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-6" style="width: 40px; height: 40px;">' + initials + '</div>'
         }
 
-        on(events('CHAT_ROOM_SELECTED'), async ({ roomId }) => {
+        on(events('chat:room-selected'), async ({ roomId }) => {
           activeRoomId = roomId
           const roomDetails = await getRoom(roomId)
 
@@ -74,16 +74,16 @@
             inputContainer.classList.remove('d-none')
 
             // Notify timeline to load messages
-            emit(events('CHAT_ROOM_READY'), { roomId })
+            emit(events('chat:room-ready'), { roomId })
           }
         })
 
-        on(events('CHAT_MESSAGE_SUBMITTED'), async ({ text }) => {
+        on(events('chat:message-submitted'), async ({ text }) => {
           if (!activeRoomId) return
 
           try {
             await sendMessage(activeRoomId, text)
-            emit(events('CHAT_MESSAGE_SENT'))
+            emit(events('chat:message-sent'))
           } catch (error) {
             console.error('Failed to send message:', error)
           }
