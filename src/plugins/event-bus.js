@@ -15,33 +15,33 @@ export default createPlugin({
       const z = context.imports.z
       // Define the secure events and their schemas privately inside the module
       const ChatEvents = {
-        APP_LOGGED_IN: {
+        'app:logged-in': {
           id: Symbol('app:logged-in'),
           schema: z.object({}).strict().optional()
         },
-        CHAT_ROOM_SELECTED: {
+        'chat:room-selected': {
           id: Symbol('chat:room-selected'),
           schema: z.object({
             roomId: z.string().min(1)
           })
         },
-        CHAT_ROOM_READY: {
+        'chat:room-ready': {
           id: Symbol('chat:room-ready'),
           schema: z.object({
             roomId: z.string().min(1)
           })
         },
-        CHAT_MESSAGE_SUBMITTED: {
+        'chat:message-submitted': {
           id: Symbol('chat:message-submitted'),
           schema: z.object({
             text: z.string()
           })
         },
-        CHAT_MESSAGE_SENT: {
+        'chat:message-sent': {
           id: Symbol('chat:message-sent'),
           schema: z.object({}).strict().optional()
         },
-        CHAT_MESSAGE_RECEIVED: {
+        'chat:message-received': {
           id: Symbol('chat:message-received'),
           schema: z.object({
             text: z.string(),

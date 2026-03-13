@@ -62,12 +62,12 @@
               // Add active class to clicked
               item.classList.add('active', 'bg-body-secondary')
 
-              emit(events('CHAT_ROOM_SELECTED'), { roomId: item.dataset.roomId })
+              emit(events('chat:room-selected'), { roomId: item.dataset.roomId })
             })
           })
         }
 
-        on(events('APP_LOGGED_IN'), () => {
+        on(events('app:logged-in'), () => {
           renderRooms()
         })
       }

@@ -36,7 +36,7 @@
           return div
         }
 
-        on(events('CHAT_ROOM_READY'), async ({ roomId }) => {
+        on(events('chat:room-ready'), async ({ roomId }) => {
           if (currentCleanup) {
             currentCleanup()
           }

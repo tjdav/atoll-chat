@@ -18,7 +18,7 @@
         const loginView = refs('loginView')
         const appView = refs('appView')
 
-        on(events('APP_LOGGED_IN'), () => {
+        on(events('app:logged-in'), () => {
           if (appView) {
             appView.classList.remove('d-none')
           }
