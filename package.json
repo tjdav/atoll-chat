@@ -21,8 +21,8 @@
   "devDependencies": {
     "@stylistic/eslint-plugin": "^5.9.0",
     "bootstrap": "^5.3.8",
-    "coralite": "^0.26.0",
-    "coralite-scripts": "^0.26.0",
+    "coralite": "^0.28.1",
+    "coralite-scripts": "^0.28.2",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^10.0.2"
