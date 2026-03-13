@@ -25,8 +25,9 @@
 
   export default defineComponent({
     client: {
-      script: ({ root, helpers }) => {
-        const roomList = helpers.refs('roomList')
+      script: ({ helpers }) => {
+        const { refs, getRooms, emit, on, events } = helpers
+        const roomList = refs('roomList')
 
         const createAvatarHTML = (roomName, avatarUrl) => {
           if (avatarUrl) {
@@ -38,10 +39,10 @@
         }
 
         const renderRooms = async () => {
-          const rooms = await helpers.getRooms()
+          const rooms = await getRooms()
 
           roomList.innerHTML = rooms.map(room => `
-            <button class="list-group-item list-group-item-action d-flex align-items-center py-3 bg-transparent border-bottom border-secondary-subtle room-item" data-room-id="${room.id}">
+            <button class="list-gr  oup-item list-group-item-action d-flex align-items-center py-3 bg-transparent border-bottom border-secondary-subtle room-item" data-room-id="${room.id}">
               ${createAvatarHTML(room.name, room.avatarUrl)}
               <div class="flex-grow-1 overflow-hidden">
                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -61,12 +62,12 @@
               // Add active class to clicked
               item.classList.add('active', 'bg-body-secondary')
 
-              helpers.emit('chat:room-selected', { roomId: item.dataset.roomId })
+              emit(events('CHAT_ROOM_SELECTED'), { roomId: item.dataset.roomId })
             })
           })
         }
 
-        helpers.on('app:logged-in', () => {
+        on(events('APP_LOGGED_IN'), () => {
           renderRooms()
         })
       }

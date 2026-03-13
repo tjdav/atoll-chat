@@ -12,8 +12,9 @@
       imports: [
         { specifier: 'coralite-component/coralite-message-bubble' }
       ],
-      script: ({ root, helpers }) => {
-        const messagesContainer = helpers.refs('messagesContainer')
+      script: ({ helpers }) => {
+        const { refs, on, events, getCurrentUserId, getRoomMessages, onRoomMessage } = helpers
+        const messagesContainer = refs('messagesContainer')
         let currentCleanup = null
 
         const scrollToBottom = (smooth = true) => {
@@ -35,17 +36,17 @@
           return div
         }
 
-        helpers.on('chat:room-ready', async ({ roomId }) => {
+        on(events('CHAT_ROOM_READY'), async ({ roomId }) => {
           if (currentCleanup) {
             currentCleanup()
           }
 
           messagesContainer.innerHTML = ''
 
-          const currentUserId = await helpers.getCurrentUserId()
+          const currentUserId = await getCurrentUserId()
 
           // Fetch initial history
-          const history = await helpers.getRoomMessages(roomId)
+          const history = await getRoomMessages(roomId)
 
           history.forEach(msg => {
             const isCurrentUser = msg.sender === currentUserId
@@ -56,7 +57,7 @@
           setTimeout(() => scrollToBottom(false), 0)
 
           // Listen for new messages
-          currentCleanup = await helpers.onRoomMessage(roomId, (newMsg) => {
+          currentCleanup = await onRoomMessage(roomId, (newMsg) => {
             const isCurrentUser = newMsg.sender === currentUserId
             const nearBottom = isNearBottom()
 

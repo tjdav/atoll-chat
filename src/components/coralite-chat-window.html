@@ -39,13 +39,14 @@
         { specifier: 'coralite-component/coralite-chat-timeline' },
         { specifier: 'coralite-component/coralite-chat-input' }
       ],
-      script: ({ root, helpers }) => {
-        const chatHeader = helpers.refs('chatHeader')
-        const roomAvatar = helpers.refs('roomAvatar')
-        const roomName = helpers.refs('roomName')
-        const emptyState = helpers.refs('emptyState')
-        const timeline = helpers.refs('timeline')
-        const inputContainer = helpers.refs('inputContainer')
+      script: ({ helpers }) => {
+        const { refs, on, events } = helpers
+        const chatHeader = refs('chatHeader')
+        const roomAvatar = refs('roomAvatar')
+        const roomName = refs('roomName')
+        const emptyState = refs('emptyState')
+        const timeline = refs('timeline')
+        const inputContainer = refs('inputContainer')
 
         let activeRoomId = null
 
@@ -58,9 +59,9 @@
           return '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-6" style="width: 40px; height: 40px;">' + initials + '</div>'
         }
 
-        helpers.on('chat:room-selected', async ({ roomId }) => {
+        on(events('CHAT_ROOM_SELECTED'), async ({ roomId }) => {
           activeRoomId = roomId
-          const roomDetails = await helpers.getRoom(roomId)
+          const roomDetails = await getRoom(roomId)
 
           if (roomDetails) {
             roomName.textContent = roomDetails.name
@@ -73,16 +74,16 @@
             inputContainer.classList.remove('d-none')
 
             // Notify timeline to load messages
-            helpers.emit('chat:room-ready', { roomId })
+            emit(events('CHAT_ROOM_READY'), { roomId })
           }
         })
 
-        helpers.on('chat:message-submitted', async ({ text }) => {
+        on(events('CHAT_MESSAGE_SUBMITTED'), async ({ text }) => {
           if (!activeRoomId) return
 
           try {
-            await helpers.sendMessage(activeRoomId, text)
-            helpers.emit('chat:message-sent')
+            await sendMessage(activeRoomId, text)
+            emit(events('CHAT_MESSAGE_SENT'))
           } catch (error) {
             console.error('Failed to send message:', error)
           }

@@ -13,12 +13,12 @@
 
   export default defineComponent({
     client: {
-      script: ({ root, helpers }) => {
-        const loginView = helpers.refs('loginView')
-        const appView = helpers.refs('appView')
+      script: ({ helpers }) => {
+        const { refs, on, events } = helpers
+        const loginView = refs('loginView')
+        const appView = refs('appView')
 
-        helpers.on('app:logged-in', () => {
-          // Toggle visibility natively using Coralite ref references
+        on(events('APP_LOGGED_IN'), () => {
           if (appView) {
             appView.classList.remove('d-none')
           }

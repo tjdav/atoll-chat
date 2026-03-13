@@ -15,14 +15,15 @@
 
   export default defineComponent({
     client: {
-      script: ({ root, helpers }) => {
-        const messageInput = helpers.refs('messageInput')
-        const sendBtn = helpers.refs('sendBtn')
+      script: ({ helpers }) => {
+        const { refs, emit, on, events} = helpers
+        const messageInput = refs('messageInput')
+        const sendBtn = refs('sendBtn')
 
         const submitMessage = () => {
           const text = messageInput.value.trim()
           if (text) {
-            helpers.emit('chat:message-submitted', { text })
+            emit(events('CHAT_MESSAGE_SUBMITTED'), { text })
           }
         }
 
@@ -34,7 +35,7 @@
           }
         })
 
-        helpers.on('chat:message-sent', () => {
+        on(events('CHAT_MESSAGE_SENT'), () => {
           messageInput.value = ''
           messageInput.focus()
         })
