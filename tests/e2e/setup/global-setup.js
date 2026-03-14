@@ -9,7 +9,7 @@ async function globalSetup () {
     await execAsync('docker compose up -d')
     console.log('Conduit server started.')
 
-    const homeserverUrl = 'http://localhost:8008'
+    const homeserverUrl = 'http://localhost:6167'
 
     console.log('Waiting for Conduit to be ready...')
     let isReady = false
@@ -37,8 +37,37 @@ async function globalSetup () {
 
     console.log('Provisioning test users...')
 
+    const getInitialRegistrationToken = async () => {
+      let attempts = 0
+      while (attempts < 30) {
+        const { stdout } = await execAsync('docker compose logs homeserver')
+        const tokenMatch = stdout.match(/using the registration token \u001b\[1;32m([a-zA-Z0-9]+)\u001b\[0m/)
+        if (tokenMatch) {
+          return tokenMatch[1]
+        }
+        attempts++
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+      return 'ci_test_token_123'
+    }
+
+    const firstUserToken = await getInitialRegistrationToken()
+
     const registerUser = async (username, password) => {
       try {
+        const registrationToken = username === 'alice' ? firstUserToken : 'ci_test_token_123'
+
+        // First get the session ID and flows by making an empty request
+        const initResponse = await fetch(`${homeserverUrl}/_matrix/client/v3/register`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({})
+        })
+        const initData = await initResponse.json()
+        const session = initData.session
+
         const response = await fetch(`${homeserverUrl}/_matrix/client/v3/register`, {
           method: 'POST',
           headers: {
@@ -46,7 +75,9 @@ async function globalSetup () {
           },
           body: JSON.stringify({
             auth: {
-              type: 'm.login.dummy'
+              type: 'm.login.registration_token',
+              token: registrationToken,
+              session: session
             },
             username: username,
             password: password
