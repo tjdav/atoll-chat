@@ -65,6 +65,25 @@ export default createPlugin({
         'auth:show-login': {
           id: Symbol('auth:show-login'),
           schema: z.object({}).strict().optional()
+        },
+        'nav:changed': {
+          id: Symbol('nav:changed'),
+          schema: z.object({
+            tab: z.string()
+          }).strict()
+        },
+        'nav:jump-to-message': {
+          id: Symbol('nav:jump-to-message'),
+          schema: z.object({
+            roomId: z.string(),
+            eventId: z.string()
+          }).strict()
+        },
+        'chat:scroll-to-message': {
+          id: Symbol('chat:scroll-to-message'),
+          schema: z.object({
+            eventId: z.string()
+          }).strict()
         }
       }
 

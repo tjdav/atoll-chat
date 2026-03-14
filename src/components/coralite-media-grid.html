@@ -1,0 +1,121 @@
+<template id="coralite-media-grid">
+  <div class="container-fluid p-0">
+    <div class="row g-3" ref="gridContainer">
+      <!-- Cards rendered here -->
+    </div>
+    
+    <div class="d-none text-center p-5 text-muted" ref="emptyState">
+      <i class="bi bi-images" style="font-size: 3rem;" ref="emptyIcon"></i>
+      <h5 class="mt-3">No Media Found</h5>
+      <p>Any files you receive will appear here.</p>
+    </div>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers, values }) => {
+        const { refs, emit, events, getImageFiles, getVideoFiles } = helpers
+        
+        const gridContainer = refs('gridContainer')
+        const emptyState = refs('emptyState')
+        const emptyIcon = refs('emptyIcon')
+
+        const mediaType = values['type'] || 'pictures' // 'pictures' or 'videos'
+        let generatedUrls = []
+
+        const init = async () => {
+          let files = []
+          if (mediaType === 'pictures') {
+             files = await getImageFiles()
+             emptyIcon.className = 'bi bi-images'
+          } else if (mediaType === 'videos') {
+             files = await getVideoFiles()
+             emptyIcon.className = 'bi bi-camera-video'
+          }
+
+          if (files.length === 0) {
+            emptyState.classList.remove('d-none')
+            return
+          }
+
+          emptyState.classList.add('d-none')
+
+          files.forEach(file => {
+             const col = document.createElement('div')
+             col.className = 'col-6 col-md-4 col-lg-3'
+
+             const card = document.createElement('div')
+             card.className = 'card h-100 bg-body shadow-sm'
+
+             const objectUrl = URL.createObjectURL(file.blob)
+             generatedUrls.push(objectUrl)
+
+             // Create media element securely
+             let mediaElement
+             if (mediaType === 'pictures') {
+                 mediaElement = document.createElement('img')
+                 mediaElement.className = 'card-img-top object-fit-cover'
+                 mediaElement.style.height = '150px'
+                 // Set src later, after checking it's an objectUrl
+                 mediaElement.src = objectUrl
+                 // Use setAttribute for safety, although setting properties is generally safe
+                 mediaElement.setAttribute('alt', file.filename || '')
+             } else {
+                 mediaElement = document.createElement('video')
+                 mediaElement.className = 'card-img-top object-fit-cover'
+                 mediaElement.style.height = '150px'
+                 mediaElement.controls = true
+                 mediaElement.preload = 'metadata'
+                 mediaElement.src = objectUrl
+             }
+             
+             card.appendChild(mediaElement)
+
+             // Create card body
+             const cardBody = document.createElement('div')
+             cardBody.className = 'card-body p-2 d-flex justify-content-between align-items-center'
+             
+             // Create filename text element securely to prevent XSS
+             const titleDiv = document.createElement('div')
+             titleDiv.className = 'text-truncate flex-grow-1 small me-2'
+             titleDiv.title = file.filename || 'Unknown File'
+             titleDiv.textContent = file.filename || 'Unknown File' // Safe against XSS
+             
+             cardBody.appendChild(titleDiv)
+
+             // Only show the "Go to Message" button if we have the roomId
+             if (file.roomId && file.id) {
+               const jumpBtn = document.createElement('button')
+               jumpBtn.className = 'btn btn-sm btn-outline-primary jump-btn'
+               jumpBtn.title = 'Go to Message'
+               jumpBtn.innerHTML = '<i class="bi bi-chat-left-text"></i>' // This is safe, fixed HTML
+               
+               jumpBtn.addEventListener('click', () => {
+                 emit(events('nav:jump-to-message'), { roomId: file.roomId, eventId: file.id })
+               })
+               
+               cardBody.appendChild(jumpBtn)
+             }
+
+             card.appendChild(cardBody)
+
+             col.appendChild(card)
+             gridContainer.appendChild(col)
+          })
+        }
+
+        init()
+
+        // Cleanup object URLs when component is destroyed/removed
+        return () => {
+           generatedUrls.forEach(url => URL.revokeObjectURL(url))
+           generatedUrls = []
+        }
+      }
+    }
+  })
+</script>

@@ -1,32 +1,32 @@
 <template id="coralite-sidebar">
   <div class="d-flex flex-column justify-content-between h-100 p-3">
-    <ul class="nav nav-pills flex-column mb-auto">
+    <ul class="nav nav-pills flex-column mb-auto" ref="navList">
       <li class="nav-item mb-2">
-        <a href="#" class="nav-link active rounded-3 d-flex align-items-center" aria-current="page">
+        <a href="#" data-tab="chats" class="nav-link active rounded-3 d-flex align-items-center" aria-current="page">
           <i class="bi bi-chat-dots me-3 fs-5"></i>
           Chats
         </a>
       </li>
-      <li class="nav-item mb-2">
-        <a href="#" class="nav-link text-white rounded-3 d-flex align-items-center">
+      <li class="nav-item mb-2 d-none">
+        <a href="#" data-tab="requests" class="nav-link text-white rounded-3 d-flex align-items-center">
           <i class="bi bi-person-lines-fill me-3 fs-5"></i>
           Requests
         </a>
       </li>
       <li class="nav-item mb-2">
-        <a href="#" class="nav-link text-white rounded-3 d-flex align-items-center">
+        <a href="#" data-tab="music" class="nav-link text-white rounded-3 d-flex align-items-center">
           <i class="bi bi-music-note-beamed me-3 fs-5"></i>
           Music
         </a>
       </li>
       <li class="nav-item mb-2">
-        <a href="#" class="nav-link text-white rounded-3 d-flex align-items-center">
+        <a href="#" data-tab="pictures" class="nav-link text-white rounded-3 d-flex align-items-center">
           <i class="bi bi-images me-3 fs-5"></i>
           Pictures
         </a>
       </li>
       <li class="nav-item mb-2">
-        <a href="#" class="nav-link text-white rounded-3 d-flex align-items-center">
+        <a href="#" data-tab="videos" class="nav-link text-white rounded-3 d-flex align-items-center">
           <i class="bi bi-camera-video me-3 fs-5"></i>
           Videos
         </a>
@@ -49,3 +49,45 @@
     </div>
   </div>
 </template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers }) => {
+        const { refs, emit, events, on } = helpers
+        const navList = refs('navList')
+        const links = navList.querySelectorAll('.nav-link')
+
+        const updateActiveTab = (tabName) => {
+          links.forEach(link => {
+            if (link.dataset.tab === tabName) {
+              link.classList.add('active')
+              link.classList.remove('text-white')
+              link.setAttribute('aria-current', 'page')
+            } else {
+              link.classList.remove('active')
+              link.classList.add('text-white')
+              link.removeAttribute('aria-current')
+            }
+          })
+        }
+
+        links.forEach(link => {
+          link.addEventListener('click', (e) => {
+            e.preventDefault()
+            const tabName = link.dataset.tab
+            updateActiveTab(tabName)
+            emit(events('nav:changed'), { tab: tabName })
+          })
+        })
+
+        // Also update if navigation is changed programmatically
+        on(events('nav:changed'), ({ tab }) => {
+          updateActiveTab(tab)
+        })
+      }
+    }
+  })
+</script>

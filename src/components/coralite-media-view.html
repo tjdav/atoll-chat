@@ -1,0 +1,69 @@
+<template id="coralite-media-view">
+  <div class="d-flex flex-column h-100 bg-body">
+    <!-- Header -->
+    <div class="p-3 border-bottom border-secondary bg-body-tertiary d-flex justify-content-between align-items-center">
+      <h5 class="m-0 fw-bold" ref="headerTitle">Media</h5>
+    </div>
+    
+    <!-- Content Area -->
+    <div class="flex-grow-1 overflow-auto p-3" ref="mediaContentContainer">
+      <!-- Media grid or audio player will be injected here -->
+    </div>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      imports: [
+        { specifier: 'coralite-component/coralite-media-grid' },
+        { specifier: 'coralite-component/coralite-audio-player' }
+      ],
+      script: ({ helpers }) => {
+        const { refs, on, events } = helpers
+        
+        const headerTitle = refs('headerTitle')
+        const mediaContentContainer = refs('mediaContentContainer')
+
+        let currentActiveTab = null
+
+        const renderMediaComponent = (tabName) => {
+          if (currentActiveTab === tabName) return
+          currentActiveTab = tabName
+
+          // Clear previous content
+          mediaContentContainer.innerHTML = ''
+
+          let title = 'Media'
+          let componentElement = null
+
+          if (tabName === 'pictures') {
+            title = 'All Pictures'
+            componentElement = document.createElement('coralite-media-grid')
+            componentElement.values = { type: 'pictures' }
+          } else if (tabName === 'videos') {
+            title = 'All Videos'
+            componentElement = document.createElement('coralite-media-grid')
+            componentElement.values = { type: 'videos' }
+          } else if (tabName === 'music') {
+            title = 'All Music'
+            componentElement = document.createElement('coralite-audio-player')
+          }
+
+          if (componentElement) {
+             headerTitle.textContent = title
+             mediaContentContainer.appendChild(componentElement)
+          }
+        }
+
+        on(events('nav:changed'), ({ tab }) => {
+           if (tab !== 'chats' && tab !== 'requests') {
+              renderMediaComponent(tab)
+           }
+        })
+      }
+    }
+  })
+</script>

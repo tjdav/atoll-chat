@@ -29,10 +29,33 @@
           return messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 100
         }
 
+        let currentRoomId = null
+        let pendingScrollEventId = null
+
+        const executePendingScroll = () => {
+          if (!pendingScrollEventId) return
+
+          const msgElement = messagesContainer.querySelector(`#msg-${pendingScrollEventId.replace(/[^a-zA-Z0-9_-]/g, '\\$&')}`)
+          if (msgElement) {
+            msgElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
+            const bubble = msgElement.querySelector('coralite-message-bubble')
+            if (bubble) {
+               bubble.style.transition = 'background-color 0.5s'
+               const originalBg = bubble.style.backgroundColor
+               bubble.style.backgroundColor = 'rgba(13, 110, 253, 0.2)'
+               setTimeout(() => {
+                 bubble.style.backgroundColor = originalBg
+               }, 2000)
+            }
+            pendingScrollEventId = null
+          }
+        }
+
         const renderMessage = (message, isCurrentUser) => {
           const time = new Date(message.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
           const div = document.createElement('div')
+          div.id = `msg-${message.id}` // Add ID for scrolling
           
           if (message.msgtype === 'm.coralite.webtorrent' && message.info) {
              const torrentBubble = document.createElement('coralite-torrent-bubble')
@@ -40,7 +63,8 @@
              torrentBubble.values = {
                info: message.info,
                'event-id': message.id,
-               'sender-id': message.sender
+               'sender-id': message.sender,
+               'room-id': currentRoomId
              }
 
              // Wrap it in a message bubble to get the correct alignment and time
@@ -62,6 +86,8 @@
             currentCleanup()
           }
 
+          currentRoomId = roomId
+
           messagesContainer.innerHTML = ''
 
           const currentUserId = await getCurrentUserId()
@@ -74,8 +100,13 @@
             messagesContainer.appendChild(renderMessage(msg, isCurrentUser))
           })
 
-          // Scroll to bottom immediately
-          setTimeout(() => scrollToBottom(false), 0)
+          if (pendingScrollEventId) {
+             // If we have a pending scroll, execute it after a brief tick for render
+             setTimeout(executePendingScroll, 50)
+          } else {
+             // Scroll to bottom immediately
+             setTimeout(() => scrollToBottom(false), 0)
+          }
 
           // Listen for new messages
           currentCleanup = await onRoomMessage(roomId, (newMsg) => {
@@ -89,6 +120,13 @@
               setTimeout(() => scrollToBottom(true), 0)
             }
           })
+        })
+
+        // Listen for requests to scroll to a specific message
+        on(events('chat:scroll-to-message'), ({ eventId }) => {
+          pendingScrollEventId = eventId
+          // Try executing immediately in case the room is already loaded and we're just jumping
+          executePendingScroll()
         })
       }
     }

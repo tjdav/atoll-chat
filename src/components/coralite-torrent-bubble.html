@@ -126,7 +126,8 @@
               mimeType: payload.mimeType,
               size: payload.size,
               timestamp: Date.now(), // Fallback if matrix event date isn't easily passed
-              sender: values['sender-id']
+              sender: values['sender-id'],
+              roomId: values['room-id']
             })
 
             // 6. Update UI
