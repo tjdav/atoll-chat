@@ -14,9 +14,8 @@
   "scripts": {
     "start": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
     "build": "coralite-scripts build",
-    "db:download": "node scripts/download-db.js",
-    "db:start": "./database/pocketbase serve",
-    "db:setup": "node scripts/setup-db.js"
+    "test": "pnpm exec playwright test",
+    "test:ui": "pnpm exec playwright test --ui"
   },
   "devDependencies": {
     "@playwright/test": "^1.58.2",
