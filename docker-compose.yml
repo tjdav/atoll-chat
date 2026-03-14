@@ -1,4 +1,3 @@
-version: '3'
 services:
   dendrite:
     image: matrixdotorg/dendrite-monolith:latest
