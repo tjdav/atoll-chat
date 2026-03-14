@@ -1,0 +1,11 @@
+version: '3'
+services:
+  dendrite:
+    image: matrixdotorg/dendrite-monolith:latest
+    ports:
+      - "8008:8008"
+    volumes:
+      - ./tests/e2e/setup/dendrite.yaml:/etc/dendrite/dendrite.yaml
+      - ./tests/e2e/setup/matrix_key.pem:/etc/dendrite/matrix_key.pem
+    environment:
+      - DENDRITE_CONFIG=/etc/dendrite/dendrite.yaml

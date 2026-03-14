@@ -1,0 +1,1 @@
+This is a valid test text file used for E2E testing.

@@ -19,6 +19,7 @@
     "db:setup": "node scripts/setup-db.js"
   },
   "devDependencies": {
+    "@playwright/test": "^1.58.2",
     "@stylistic/eslint-plugin": "^5.9.0",
     "bootstrap": "^5.3.8",
     "coralite": "^0.28.1",
