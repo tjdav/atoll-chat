@@ -4,15 +4,36 @@ import { promisify } from 'util'
 const execAsync = promisify(exec)
 
 async function globalSetup () {
-  console.log('Starting Dendrite local server via Docker Compose...')
+  console.log('Starting Conduit local server via Docker Compose...')
   try {
-    await execAsync('docker-compose up -d')
-    console.log('Dendrite server started.')
-
-    // Wait a few seconds to ensure Dendrite is fully up before provisioning users
-    await new Promise(resolve => setTimeout(resolve, 5000))
+    await execAsync('docker compose up -d')
+    console.log('Conduit server started.')
 
     const homeserverUrl = 'http://localhost:8008'
+
+    console.log('Waiting for Conduit to be ready...')
+    let isReady = false
+    let attempts = 0
+    const maxAttempts = 30
+
+    while (!isReady && attempts < maxAttempts) {
+      try {
+        const res = await fetch(`${homeserverUrl}/_matrix/client/versions`)
+        if (res.ok) {
+          isReady = true
+        } else {
+          throw new Error('Not ready')
+        }
+      } catch (e) {
+        attempts++
+        await new Promise(resolve => setTimeout(resolve, 1000))
+      }
+    }
+
+    if (!isReady) {
+      throw new Error('Conduit server failed to start within the expected time.')
+    }
+    console.log('Conduit server is ready.')
 
     console.log('Provisioning test users...')
 

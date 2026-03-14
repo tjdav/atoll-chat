@@ -1,10 +1,14 @@
 services:
-  dendrite:
-    image: matrixdotorg/dendrite-monolith:latest
+  homeserver:
+    # Bypasses Docker Hub entirely!
+    image: forgejo.ellis.link/continuwuation/continuwuity:latest
     ports:
-      - "8008:8008"
-    volumes:
-      - ./tests/e2e/setup/dendrite.yaml:/etc/dendrite/dendrite.yaml
-      - ./tests/e2e/setup/matrix_key.pem:/etc/dendrite/matrix_key.pem
+      - "8008:6167"
     environment:
-      - DENDRITE_CONFIG=/etc/dendrite/dendrite.yaml
+      CONTINUWUITY_SERVER_NAME: "localhost"
+      CONTINUWUITY_ALLOW_REGISTRATION: "true"
+      CONTINUWUITY_DATABASE_BACKEND: "rocksdb"
+      CONTINUWUITY_DATABASE_PATH: "/var/lib/matrix-conduit/"
+      CONTINUWUITY_LOG: "warn"
+      CONTINUWUITY_ADDRESS: "0.0.0.0"
+      CONTINUWUITY_PORT: "6167"
