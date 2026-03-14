@@ -26,3 +26,7 @@ dist-ssr
 database
 .env
 .coralite
+
+# Test
+playwright-report
+.last-run.json
