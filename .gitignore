@@ -30,3 +30,4 @@ database
 # Test
 playwright-report
 .last-run.json
+test-results
