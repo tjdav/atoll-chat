@@ -14,6 +14,10 @@
         <button type="submit" class="btn btn-primary w-100" ref="submitButton">Login</button>
       </form>
       <div class="alert alert-danger mt-3 d-none" role="alert" ref="errorAlert"></div>
+      
+      <div class="text-center mt-3">
+        <a href="#" class="text-muted text-decoration-none" ref="signupLink">Don't have an account? Sign up.</a>
+      </div>
     </div>
   </div>
 </template>
@@ -24,12 +28,18 @@
   export default defineComponent({
     client: {
       script: ({ helpers }) => {
-        const { refs, login, sync, emit } = helpers
+        const { refs, login, sync, emit, events } = helpers
         const form = refs('form')
         const usernameInput = refs('username')
         const passwordInput = refs('password')
         const errorAlert = refs('errorAlert')
         const submitButton = refs('submitButton')
+        const signupLink = refs('signupLink')
+
+        signupLink.addEventListener('click', (e) => {
+          e.preventDefault()
+          emit(events('auth:show-signup'))
+        })
 
         form.addEventListener('submit', async (e) => {
           e.preventDefault()

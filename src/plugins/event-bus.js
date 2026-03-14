@@ -57,6 +57,14 @@ export default createPlugin({
         'chat:file-processing-done': {
           id: Symbol('chat:file-processing-done'),
           schema: z.object({}).strict().optional()
+        },
+        'auth:show-signup': {
+          id: Symbol('auth:show-signup'),
+          schema: z.object({}).strict().optional()
+        },
+        'auth:show-login': {
+          id: Symbol('auth:show-login'),
+          schema: z.object({}).strict().optional()
         }
       }
 
