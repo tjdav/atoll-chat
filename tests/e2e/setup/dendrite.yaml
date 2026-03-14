@@ -1,0 +1,18 @@
+version: 2
+global:
+  server_name: localhost
+  private_key: /etc/dendrite/matrix_key.pem
+  trusted_third_party_id_servers:
+    - matrix.org
+    - vector.im
+  presence:
+    enable_inbound: true
+    enable_outbound: true
+
+client_api:
+  registration_disabled: false
+  registration_shared_secret: "test_secret_for_e2e"
+
+logging:
+  - type: std
+    level: warn
