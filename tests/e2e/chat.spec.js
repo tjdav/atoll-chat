@@ -13,19 +13,22 @@ test.describe('Text Chat', () => {
     alicePage = await aliceContext.newPage()
     bobPage = await bobContext.newPage()
 
+    alicePage.on('console', msg => console.log('ALICE CONSOLE:', msg.text()))
+    alicePage.on('pageerror', err => console.log('ALICE ERROR:', err.message))
+
     // Login Alice
     await alicePage.goto('/')
-    await alicePage.locator('coralite-login').getByLabel('Username').fill('alice')
-    await alicePage.locator('coralite-login').getByLabel('Password').fill('password123')
-    await alicePage.locator('coralite-login').getByRole('button', { name: 'Log In' }).click()
-    await expect(alicePage.locator('coralite-app-layout')).toBeVisible({ timeout: 10000 })
+    await alicePage.locator('#coralite-login__username-0').fill('alice')
+    await alicePage.locator('#coralite-login__password-0').fill('password123')
+    await alicePage.locator('#coralite-login__submitButton-0').click()
+    await expect(alicePage.getByRole('button', { name: 'New Room' })).toBeVisible({ timeout: 10000 })
 
     // Login Bob
     await bobPage.goto('/')
-    await bobPage.locator('coralite-login').getByLabel('Username').fill('bob')
-    await bobPage.locator('coralite-login').getByLabel('Password').fill('password123')
-    await bobPage.locator('coralite-login').getByRole('button', { name: 'Log In' }).click()
-    await expect(bobPage.locator('coralite-app-layout')).toBeVisible({ timeout: 10000 })
+    await bobPage.locator('#coralite-login__username-0').fill('bob')
+    await bobPage.locator('#coralite-login__password-0').fill('password123')
+    await bobPage.locator('#coralite-login__submitButton-0').click()
+    await expect(bobPage.getByRole('button', { name: 'New Room' })).toBeVisible({ timeout: 10000 })
   })
 
   test.afterAll(async () => {
@@ -40,20 +43,18 @@ test.describe('Text Chat', () => {
     await alicePage.getByRole('button', { name: 'Create' }).click()
 
     // Wait for room to be created and appear in the list
-    await expect(alicePage.locator('coralite-chat-list')).toContainText('Alice and Bob Chat')
+    await expect(alicePage.getByText('Alice and Bob Chat')).toBeVisible()
 
     // Select the room
     await alicePage.getByText('Alice and Bob Chat').click()
 
-    // Invite Bob (assuming there is an invite flow, simplify if there's a specific UI for this)
-    // Often you type Bob's Matrix ID or username. Let's assume there's an invite input.
-    // If we assume Bob auto-joins public rooms or we invite him:
+    // Invite Bob
     await alicePage.getByRole('button', { name: 'Invite' }).click()
     await alicePage.getByLabel('User ID').fill('@bob:localhost')
     await alicePage.getByRole('button', { name: 'Send Invite' }).click()
 
     // Bob accepts the invite
-    await expect(bobPage.locator('coralite-chat-list')).toContainText('Alice and Bob Chat')
+    await expect(bobPage.getByText('Alice and Bob Chat')).toBeVisible()
     await bobPage.getByText('Alice and Bob Chat').click()
 
     // There might be a "Join" button Bob has to click
@@ -67,7 +68,7 @@ test.describe('Text Chat', () => {
     await alicePage.getByRole('button', { name: 'Send' }).click()
 
     // Bob receives it in real-time
-    await expect(bobPage.locator('coralite-chat-timeline')).toContainText('Hello Bob!', { timeout: 10000 })
+    await expect(bobPage.getByText('Hello Bob!')).toBeVisible({ timeout: 10000 })
   })
 
   test('Auto-Scroll on Rapid Messages', async () => {
@@ -78,16 +79,12 @@ test.describe('Text Chat', () => {
     }
 
     // Wait for the last message to appear for Alice
-    await expect(alicePage.locator('coralite-chat-timeline')).toContainText('Rapid message 19', { timeout: 10000 })
+    await expect(alicePage.getByText('Rapid message 19')).toBeVisible({ timeout: 10000 })
 
     // Verify that the timeline is scrolled to the bottom
     const isAtBottom = await alicePage.evaluate(() => {
-      // Find the scrollable container within the shadow DOM or standard DOM
-      const timeline = document.querySelector('coralite-chat-timeline')
-      // Often the internal scrollable element is a specific div
-      const container = timeline.shadowRoot ? timeline.shadowRoot.querySelector('.timeline-container') || timeline : timeline
-
-      // Allow a small margin of error (e.g., 5px) for browser rendering differences
+      const container = document.querySelector('.timeline-container')
+      if (!container) return false
       return Math.abs(container.scrollHeight - container.clientHeight - container.scrollTop) < 5
     })
 
@@ -103,7 +100,7 @@ test.describe('Text Chat', () => {
     await alicePage.getByRole('button', { name: 'Send' }).click()
 
     // Verify Bob's sidebar shows a red unread badge
-    const badge = bobPage.locator('coralite-chat-list .badge.bg-danger')
+    const badge = bobPage.locator('.badge.bg-danger').first()
     await expect(badge).toBeVisible({ timeout: 10000 })
     // It should have some count
     await expect(badge).not.toBeEmpty()
