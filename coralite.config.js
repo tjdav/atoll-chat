@@ -8,7 +8,7 @@ export default defineConfig({
   public: 'public',
   plugins: [
     eventBus,
-    matrixPlugin,
+    matrixPlugin({ baseUrl: process.env.HOMESERVER_URL || 'http://localhost:6167' }),
     webtorrentPlugin,
     mediaStorePlugin
   ],

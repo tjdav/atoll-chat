@@ -1,14 +1,18 @@
 services:
   homeserver:
-    # Bypasses Docker Hub entirely!
     image: forgejo.ellis.link/continuwuation/continuwuity:latest
     ports:
-      - "8008:6167"
+      - "6167:6167"
     environment:
-      CONTINUWUITY_SERVER_NAME: "localhost"
-      CONTINUWUITY_ALLOW_REGISTRATION: "true"
-      CONTINUWUITY_DATABASE_BACKEND: "rocksdb"
-      CONTINUWUITY_DATABASE_PATH: "/var/lib/matrix-conduit/"
-      CONTINUWUITY_LOG: "warn"
-      CONTINUWUITY_ADDRESS: "0.0.0.0"
-      CONTINUWUITY_PORT: "6167"
+      CONTINUWUITY_SERVER_NAME: localhost
+      CONTINUWUITY_DATABASE_PATH: /var/lib/continuwuity
+      CONTINUWUITY_PORT: 6167
+      CONTINUWUITY_ALLOW_REGISTRATION: 'true'
+      CONTINUWUITY_REGISTRATION_TOKEN: 'ci_test_token_123' 
+      CONTINUWUITY_ALLOW_FEDERATION: 'false'
+      CONTINUWUITY_ADDRESS: 0.0.0.0
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:6167/_matrix/client/versions"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
