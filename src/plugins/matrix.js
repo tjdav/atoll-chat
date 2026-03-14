@@ -19,7 +19,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
       imports: [
         {
           specifier: 'matrix-js-sdk',
-          defaultExport: '* as sdk'
+          namespaceExport: 'sdk'
         }
       ],
       setup (context) {
@@ -79,7 +79,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               /** @type {import('matrix-js-sdk')}  */
               const sdk = context.imports.sdk
               const tempClient = sdk.createClient({ baseUrl })
-              
+
               const registerData = await tempClient.registerRequest({
                 username,
                 password
@@ -265,7 +265,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           if (!client) throw new Error('Matrix client not initialized')
 
           const call = client.createCall(roomId)
-          
+
           if (type === 'video') {
             await call.placeVideoCall()
           } else {
