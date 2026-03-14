@@ -10,7 +10,7 @@ export default defineConfig({
   globalSetup: './tests/e2e/setup/global-setup.js',
   globalTeardown: './tests/e2e/setup/global-teardown.js',
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     launchOptions: {
       args: [
@@ -33,7 +33,7 @@ export default defineConfig({
 
   webServer: {
     command: 'pnpm start',
-    url: 'http://localhost:5173',
+    url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI
   }
 })
