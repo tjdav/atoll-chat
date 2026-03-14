@@ -7,8 +7,8 @@
         <h5 class="m-0 fw-bold" ref="roomName">Select a chat</h5>
       </div>
       <div>
-        <button class="btn btn-sm btn-outline-secondary rounded-circle me-2"><i class="bi bi-telephone"></i></button>
-        <button class="btn btn-sm btn-outline-secondary rounded-circle me-2"><i class="bi bi-camera-video"></i></button>
+        <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="startVoiceCallBtn"><i class="bi bi-telephone"></i></button>
+        <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="startVideoCallBtn"><i class="bi bi-camera-video"></i></button>
         <button class="btn btn-sm btn-outline-secondary rounded-circle"><i class="bi bi-three-dots"></i></button>
       </div>
     </div>
@@ -47,8 +47,22 @@
         const emptyState = refs('emptyState')
         const timeline = refs('timeline')
         const inputContainer = refs('inputContainer')
+        const startVoiceCallBtn = refs('startVoiceCallBtn')
+        const startVideoCallBtn = refs('startVideoCallBtn')
 
         let activeRoomId = null
+
+        startVoiceCallBtn.addEventListener('click', () => {
+          if (activeRoomId) {
+            emit(events('call:start'), { roomId: activeRoomId, type: 'voice' })
+          }
+        })
+
+        startVideoCallBtn.addEventListener('click', () => {
+          if (activeRoomId) {
+            emit(events('call:start'), { roomId: activeRoomId, type: 'video' })
+          }
+        })
 
         const createAvatarHTML = (name, url) => {
           if (url) {

@@ -55,6 +55,13 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           })
 
           await client.initRustCrypto()
+
+          // Listen for incoming calls
+          client.on('Call.incoming', (call) => {
+            const { emit, events } = context.helpers
+            emit(events('call:incoming'), { call })
+          })
+
           return client
         }
 
@@ -251,6 +258,31 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           }
 
           return await client.sendEvent(roomId, 'm.room.message', content, '')
+        },
+
+        placeCall: (context) => async (roomId, type) => {
+          const client = context.values.getClient()
+          if (!client) throw new Error('Matrix client not initialized')
+
+          const call = client.createCall(roomId)
+          
+          if (type === 'video') {
+            await call.placeVideoCall()
+          } else {
+            await call.placeVoiceCall()
+          }
+
+          return call
+        },
+
+        answerCall: (context) => async (call) => {
+          if (!call) throw new Error('No call provided')
+          await call.answer()
+        },
+
+        rejectCall: (context) => async (call) => {
+          if (!call) throw new Error('No call provided')
+          await call.hangup()
         }
       }
     }

@@ -1,0 +1,160 @@
+<template id="coralite-video-call">
+  <div class="modal fade" tabindex="-1" role="dialog" aria-modal="true" ref="callModal" style="display: none;">
+    <div class="modal-dialog modal-fullscreen m-0">
+      <div class="modal-content bg-dark border-0">
+        <!-- Main video container -->
+        <div class="modal-body p-0 position-relative d-flex align-items-center justify-content-center overflow-hidden">
+          <!-- Remote Video (Full Screen) -->
+          <video class="w-100 h-100 object-fit-cover" ref="remoteVideo" autoplay playsinline></video>
+          
+          <!-- Local Video (Picture-in-Picture) -->
+          <div class="position-absolute bottom-0 end-0 p-3 z-3">
+            <video class="rounded shadow-lg border border-secondary object-fit-cover" style="width: 150px; height: 200px;" ref="localVideo" autoplay muted playsinline></video>
+          </div>
+          
+          <!-- Control Bar Overlay -->
+          <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4 z-3 d-flex gap-3 px-4 py-2 rounded-pill bg-dark bg-opacity-75">
+            <button class="btn btn-secondary rounded-circle" style="width: 50px; height: 50px;" ref="toggleMuteBtn" title="Toggle Audio">
+              <i class="bi bi-mic-fill fs-5" ref="micIcon"></i>
+            </button>
+            <button class="btn btn-secondary rounded-circle" style="width: 50px; height: 50px;" ref="toggleVideoBtn" title="Toggle Video">
+              <i class="bi bi-camera-video-fill fs-5" ref="videoIcon"></i>
+            </button>
+            <button class="btn btn-danger rounded-circle" style="width: 50px; height: 50px;" ref="endCallBtn" title="End Call">
+              <i class="bi bi-telephone-x-fill fs-5"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers }) => {
+        const { refs, on, events, emit, rejectCall } = helpers
+        
+        const callModal = refs('callModal')
+        const remoteVideo = refs('remoteVideo')
+        const localVideo = refs('localVideo')
+        const toggleMuteBtn = refs('toggleMuteBtn')
+        const toggleVideoBtn = refs('toggleVideoBtn')
+        const endCallBtn = refs('endCallBtn')
+        const micIcon = refs('micIcon')
+        const videoIcon = refs('videoIcon')
+
+        let currentCall = null
+        let localStream = null
+        let isMuted = false
+        let isVideoOff = false
+
+        // --- Hardware & UI Cleanup ---
+        const cleanupCall = () => {
+          // Hardware cleanup
+          if (localStream) {
+            localStream.getTracks().forEach(track => track.stop())
+            localStream = null
+          }
+          
+          // UI cleanup
+          remoteVideo.srcObject = null
+          localVideo.srcObject = null
+          currentCall = null
+          
+          // Hide modal
+          callModal.classList.remove('show')
+          setTimeout(() => {
+            callModal.style.display = 'none'
+            // Inform app that the call has ended to transition UI if needed
+            emit(events('call:ended'), { call: null })
+          }, 150) // Allow fade transition
+        }
+
+        // --- Call Control Actions ---
+        toggleMuteBtn.addEventListener('click', () => {
+          if (!localStream) return
+          isMuted = !isMuted
+          localStream.getAudioTracks().forEach(track => {
+            track.enabled = !isMuted
+          })
+          
+          if (isMuted) {
+            micIcon.classList.remove('bi-mic-fill')
+            micIcon.classList.add('bi-mic-mute-fill')
+            toggleMuteBtn.classList.replace('btn-secondary', 'btn-outline-secondary')
+          } else {
+            micIcon.classList.remove('bi-mic-mute-fill')
+            micIcon.classList.add('bi-mic-fill')
+            toggleMuteBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
+          }
+        })
+
+        toggleVideoBtn.addEventListener('click', () => {
+          if (!localStream) return
+          isVideoOff = !isVideoOff
+          localStream.getVideoTracks().forEach(track => {
+            track.enabled = !isVideoOff
+          })
+          
+          if (isVideoOff) {
+            videoIcon.classList.remove('bi-camera-video-fill')
+            videoIcon.classList.add('bi-camera-video-off-fill')
+            toggleVideoBtn.classList.replace('btn-secondary', 'btn-outline-secondary')
+          } else {
+            videoIcon.classList.remove('bi-camera-video-off-fill')
+            videoIcon.classList.add('bi-camera-video-fill')
+            toggleVideoBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
+          }
+        })
+
+        endCallBtn.addEventListener('click', () => {
+          if (currentCall) {
+            // Using rejectCall here because the method in matrix.js handles calling hangup()
+            // on the MatrixCall object.
+            rejectCall(currentCall).catch(err => console.error('Failed to hangup call:', err))
+          }
+          cleanupCall()
+        })
+
+        // --- Wiring up to global events ---
+        const bindCallEvents = (call) => {
+          currentCall = call
+          
+          // Reset UI state
+          isMuted = false
+          isVideoOff = false
+          micIcon.classList.replace('bi-mic-mute-fill', 'bi-mic-fill')
+          toggleMuteBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
+          videoIcon.classList.replace('bi-camera-video-off-fill', 'bi-camera-video-fill')
+          toggleVideoBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
+          
+          call.on('localStream', (stream) => {
+            localStream = stream
+            localVideo.srcObject = stream
+          })
+
+          call.on('remoteStream', (stream) => {
+            remoteVideo.srcObject = stream
+            remoteVideo.play().catch(e => console.error('Error playing remote video:', e))
+          })
+
+          call.on('hangup', () => {
+            cleanupCall()
+          })
+        }
+
+        // When a call is started or answered successfully, display the UI.
+        on(events('call:answered'), ({ call }) => {
+          bindCallEvents(call)
+          callModal.style.display = 'block'
+          // Small delay to allow display: block to apply before adding opacity class
+          setTimeout(() => callModal.classList.add('show'), 10)
+        })
+      }
+    }
+  })
+</script>

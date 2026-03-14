@@ -84,6 +84,37 @@ export default createPlugin({
           schema: z.object({
             eventId: z.string()
           }).strict()
+        },
+        'call:incoming': {
+          id: Symbol('call:incoming'),
+          schema: z.object({
+            call: z.any()
+          }).strict()
+        },
+        'call:start': {
+          id: Symbol('call:start'),
+          schema: z.object({
+            roomId: z.string().min(1),
+            type: z.enum(['video', 'voice'])
+          }).strict()
+        },
+        'call:answered': {
+          id: Symbol('call:answered'),
+          schema: z.object({
+            call: z.any()
+          }).strict()
+        },
+        'call:rejected': {
+          id: Symbol('call:rejected'),
+          schema: z.object({
+            call: z.any()
+          }).strict()
+        },
+        'call:ended': {
+          id: Symbol('call:ended'),
+          schema: z.object({
+            call: z.any()
+          }).strict()
         }
       }
 

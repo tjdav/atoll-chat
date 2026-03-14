@@ -19,6 +19,34 @@
     <div class="flex-grow-1 d-none flex-column h-100 bg-body overflow-hidden" ref="mediaViewContainer">
       <coralite-media-view></coralite-media-view>
     </div>
+    
+    <!-- Video Call Overlay -->
+    <coralite-video-call></coralite-video-call>
+    
+    <!-- Incoming Call Toast/Modal (Ringing) -->
+    <div class="modal fade" tabindex="-1" role="dialog" aria-modal="true" ref="incomingCallModal" style="display: none; background: rgba(0,0,0,0.5);">
+      <div class="modal-dialog modal-sm modal-dialog-centered m-auto">
+        <div class="modal-content shadow">
+          <div class="modal-body text-center p-4">
+            <div class="mb-3">
+              <div class="rounded-circle bg-primary text-white d-flex align-items-center justify-content-center mx-auto mb-2" style="width: 60px; height: 60px;" ref="callerAvatar">
+                <i class="bi bi-person fs-3"></i>
+              </div>
+              <h5 class="mb-1" ref="callerName">Incoming Call...</h5>
+              <p class="text-muted small mb-0">Video Call</p>
+            </div>
+            <div class="d-flex justify-content-center gap-3 mt-4">
+              <button class="btn btn-danger rounded-circle" style="width: 50px; height: 50px;" ref="declineCallBtn" title="Decline">
+                <i class="bi bi-telephone-x-fill"></i>
+              </button>
+              <button class="btn btn-success rounded-circle" style="width: 50px; height: 50px;" ref="acceptCallBtn" title="Accept">
+                <i class="bi bi-telephone-fill"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -27,8 +55,11 @@
 
   export default defineComponent({
     client: {
+      imports: [
+        { specifier: 'coralite-component/coralite-video-call' }
+      ],
       script: ({ helpers }) => {
-        const { refs, on, emit, events } = helpers
+        const { refs, on, emit, events, placeCall, getRoom, answerCall, rejectCall } = helpers
         
         const chatListContainer = refs('chatListContainer')
         const chatWindowContainer = refs('chatWindowContainer')
@@ -64,6 +95,93 @@
           // would cache this request, but sending it slightly delayed or setting a global pending scroll works too.
           // For a robust fix, we will just emit the scroll event which the timeline will now handle intelligently.
           emit(events('chat:scroll-to-message'), { eventId })
+        })
+
+        // --- Video Call Logic ---
+        
+        const incomingCallModal = refs('incomingCallModal')
+        const callerName = refs('callerName')
+        const callerAvatar = refs('callerAvatar')
+        const acceptCallBtn = refs('acceptCallBtn')
+        const declineCallBtn = refs('declineCallBtn')
+
+        let activeIncomingCall = null
+        let isIncomingCallModalOpen = false
+
+        const hideIncomingModal = () => {
+          isIncomingCallModalOpen = false
+          incomingCallModal.classList.remove('show')
+          setTimeout(() => {
+            incomingCallModal.style.display = 'none'
+          }, 150)
+          activeIncomingCall = null
+        }
+
+        const showIncomingModal = async (call) => {
+          activeIncomingCall = call
+          isIncomingCallModalOpen = true
+          
+          const room = await getRoom(call.roomId)
+          callerName.textContent = room ? room.name : 'Unknown Caller'
+          
+          if (room && room.avatarUrl) {
+            callerAvatar.innerHTML = `<img src="${room.avatarUrl}" alt="${room.name}" class="rounded-circle w-100 h-100 object-fit-cover">`
+            callerAvatar.classList.remove('bg-primary')
+          } else {
+            callerAvatar.innerHTML = '<i class="bi bi-person fs-3"></i>'
+            callerAvatar.classList.add('bg-primary')
+          }
+          
+          incomingCallModal.style.display = 'block'
+          setTimeout(() => incomingCallModal.classList.add('show'), 10)
+        }
+
+        // Outbound: User initiates a call
+        on(events('call:start'), async ({ roomId, type }) => {
+          try {
+            const call = await placeCall(roomId, type)
+            emit(events('call:answered'), { call })
+          } catch (error) {
+            console.error('Failed to start call:', error)
+          }
+        })
+
+        // Inbound: Matrix SDK detects a call
+        on(events('call:incoming'), ({ call }) => {
+          // Check if already in a call or already showing a modal
+          if (isIncomingCallModalOpen) {
+            // Already ringing, auto reject or ignore
+            rejectCall(call).catch(() => {})
+            return
+          }
+          
+          showIncomingModal(call)
+        })
+
+        // UI Interactions for incoming call
+        acceptCallBtn.addEventListener('click', async () => {
+          if (!activeIncomingCall) return
+          
+          try {
+            await answerCall(activeIncomingCall)
+            emit(events('call:answered'), { call: activeIncomingCall })
+            hideIncomingModal()
+          } catch (error) {
+            console.error('Failed to answer call:', error)
+            hideIncomingModal()
+          }
+        })
+
+        declineCallBtn.addEventListener('click', async () => {
+          if (!activeIncomingCall) return
+          
+          try {
+            await rejectCall(activeIncomingCall)
+          } catch (error) {
+            console.error('Failed to decline call:', error)
+          } finally {
+            hideIncomingModal()
+          }
         })
       }
     }
