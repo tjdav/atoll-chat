@@ -64,6 +64,32 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
         }
       },
       helpers: {
+        getDefaultHomeserverUrl: (context) => () => context.config.baseUrl,
+
+        registerUser: (context) => {
+          return async ({ baseUrl, username, password }) => {
+            try {
+              /** @type {import('matrix-js-sdk')}  */
+              const sdk = context.imports.sdk
+              const tempClient = sdk.createClient({ baseUrl })
+              
+              const registerData = await tempClient.registerRequest({
+                username,
+                password
+              })
+
+              return await context.values.initClient({
+                userId: registerData.user_id,
+                accessToken: registerData.access_token,
+                deviceId: registerData.device_id
+              })
+            } catch (error) {
+              console.error('Matrix registration failed:', error)
+              throw error
+            }
+          }
+        },
+
         login: (context) => {
           /**
            * @param {LoginRequest} loginRequest - Request body for POST /login request

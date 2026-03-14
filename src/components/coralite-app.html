@@ -2,6 +2,10 @@
   <div ref="loginView">
     <coralite-login></coralite-login>
   </div>
+
+  <div ref="signupView" class="d-none">
+    <coralite-signup></coralite-signup>
+  </div>
   
   <div ref="appView" class="d-none">
     <coralite-app-layout></coralite-app-layout>
@@ -16,15 +20,25 @@
       script: ({ helpers }) => {
         const { refs, on, events } = helpers
         const loginView = refs('loginView')
+        const signupView = refs('signupView')
         const appView = refs('appView')
 
+        on(events('auth:show-signup'), () => {
+          if (loginView) loginView.classList.add('d-none')
+          if (appView) appView.classList.add('d-none')
+          if (signupView) signupView.classList.remove('d-none')
+        })
+
+        on(events('auth:show-login'), () => {
+          if (signupView) signupView.classList.add('d-none')
+          if (appView) appView.classList.add('d-none')
+          if (loginView) loginView.classList.remove('d-none')
+        })
+
         on(events('app:logged-in'), () => {
-          if (appView) {
-            appView.classList.remove('d-none')
-          }
-          if (loginView) {
-            loginView.classList.add('d-none')
-          }
+          if (loginView) loginView.classList.add('d-none')
+          if (signupView) signupView.classList.add('d-none')
+          if (appView) appView.classList.remove('d-none')
         })
       }
     }
