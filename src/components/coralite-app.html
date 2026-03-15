@@ -40,6 +40,12 @@
           if (signupView) signupView.classList.add('d-none')
           if (appView) appView.classList.remove('d-none')
         })
+
+        on(events('app:logged-out'), () => {
+          if (appView) appView.classList.add('d-none')
+          if (signupView) signupView.classList.add('d-none')
+          if (loginView) loginView.classList.remove('d-none')
+        })
       }
     }
   })

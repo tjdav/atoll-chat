@@ -45,9 +45,6 @@
         const errorAlert = refs('errorAlert')
         const submitButton = refs('submitButton')
         const loginLink = refs('loginLink')
-
-        // Prefill homeserver URL from matrix plugin config.
-        // If getDefaultHomeserverUrl is not available, default to 'https://matrix.org'.
         homeserverInput.value = (helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl()) || 'https://matrix.org'
 
         loginLink.addEventListener('click', (e) => {
@@ -86,7 +83,8 @@
 
             emit(events('app:logged-in'))
           } catch (error) {
-            errorAlert.textContent = 'Registration failed. Please try again.'
+            console.error('Sign up error', error)
+            errorAlert.textContent = 'Registration failed. Please try again. ' + (error.message || '')
             errorAlert.classList.remove('d-none')
             submitButton.disabled = false
             submitButton.textContent = 'Sign Up'

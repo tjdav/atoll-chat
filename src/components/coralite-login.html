@@ -4,6 +4,10 @@
       <h2 class="text-center mb-4">Login to Matrix</h2>
       <form ref="form">
         <div class="form-floating mb-3">
+          <input type="url" class="form-control" ref="homeserver" placeholder="Homeserver URL" required>
+          <label for="{{ ref_homeserver }}">Homeserver URL</label>
+        </div>
+        <div class="form-floating mb-3">
           <input type="text" class="form-control" ref="username" placeholder="Username" required>
           <label for="{{ ref_username }}">Username</label>
         </div>
@@ -30,11 +34,14 @@
       script: ({ helpers }) => {
         const { refs, login, sync, emit, events } = helpers
         const form = refs('form')
+        const homeserverInput = refs('homeserver')
         const usernameInput = refs('username')
         const passwordInput = refs('password')
         const errorAlert = refs('errorAlert')
         const submitButton = refs('submitButton')
         const signupLink = refs('signupLink')
+
+        homeserverInput.value = (helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl()) || 'https://matrix.org'
 
         signupLink.addEventListener('click', (e) => {
           e.preventDefault()
@@ -44,6 +51,7 @@
         form.addEventListener('submit', async (e) => {
           e.preventDefault()
 
+          const baseUrl = homeserverInput.value
           const username = usernameInput.value
           const password = passwordInput.value
 
@@ -53,6 +61,7 @@
 
           try {
             await login({
+              baseUrl: baseUrl,
               type: 'm.login.password',
               identifier: {
                 type: 'm.id.user',

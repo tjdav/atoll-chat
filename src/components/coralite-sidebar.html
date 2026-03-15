@@ -44,7 +44,7 @@
         <li><a class="dropdown-item" href="#">Settings</a></li>
         <li><a class="dropdown-item" href="#">Profile</a></li>
         <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="#">Sign out</a></li>
+        <li><a class="dropdown-item" href="#" ref="signOutLink">Sign out</a></li>
       </ul>
     </div>
   </div>
@@ -56,7 +56,16 @@
   export default defineComponent({
     client: {
       script: ({ helpers }) => {
-        const { refs, emit, events, on } = helpers
+        const { refs, emit, events, on, logout } = helpers
+        const signOutLink = refs('signOutLink')
+        
+        signOutLink.addEventListener('click', async (e) => {
+          e.preventDefault()
+          if (logout) {
+            await logout()
+          }
+          emit(events('app:logged-out'))
+        })
         const navList = refs('navList')
         const links = navList.querySelectorAll('.nav-link')
 
@@ -83,7 +92,7 @@
           })
         })
 
-        // Also update if navigation is changed programmatically
+        // update if navigation is changed programmatically
         on(events('nav:changed'), ({ tab }) => {
           updateActiveTab(tab)
         })

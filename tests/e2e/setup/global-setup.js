@@ -4,14 +4,14 @@ import { promisify } from 'util'
 const execAsync = promisify(exec)
 
 async function globalSetup () {
-  console.log('Starting Conduit local server via Docker Compose...')
+  console.log('Starting Continuwuity local server via Docker Compose...')
   try {
     await execAsync('docker compose up -d')
-    console.log('Conduit server started.')
+    console.log('Continuwuity server started.')
 
     const homeserverUrl = 'http://localhost:6167'
 
-    console.log('Waiting for Conduit to be ready...')
+    console.log('Waiting for Continuwuity to be ready...')
     let isReady = false
     let attempts = 0
     const maxAttempts = 30
@@ -31,9 +31,9 @@ async function globalSetup () {
     }
 
     if (!isReady) {
-      throw new Error('Conduit server failed to start within the expected time.')
+      throw new Error('Continuwuity server failed to start within the expected time.')
     }
-    console.log('Conduit server is ready.')
+    console.log('Continuwuity server is ready.')
 
     console.log('Provisioning test users...')
 

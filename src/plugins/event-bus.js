@@ -8,7 +8,7 @@ export default createPlugin({
     imports: [
       {
         specifier: 'zod',
-        namedExports: ['z']
+        namespaceExport: 'z'
       }
     ],
     setup (context) {
@@ -17,6 +17,10 @@ export default createPlugin({
       const ChatEvents = {
         'app:logged-in': {
           id: Symbol('app:logged-in'),
+          schema: z.object({}).strict().optional()
+        },
+        'app:logged-out': {
+          id: Symbol('app:logged-out'),
           schema: z.object({}).strict().optional()
         },
         'chat:room-selected': {

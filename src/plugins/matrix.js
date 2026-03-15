@@ -46,7 +46,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           )
 
           client = sdk.createClient({
-            baseUrl: context.config.baseUrl,
+            baseUrl: credentials.baseUrl || context.config.baseUrl,
             userId: credentials.userId,
             accessToken: credentials.accessToken,
             deviceId: credentials.deviceId,
@@ -86,6 +86,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               })
 
               return await context.values.initClient({
+                baseUrl: baseUrl,
                 userId: registerData.user_id,
                 accessToken: registerData.access_token,
                 deviceId: registerData.device_id
@@ -107,10 +108,17 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               /** @type {import('matrix-js-sdk')}  */
               const sdk = context.imports.sdk
               // Temporarily create a basic client to perform login
-              const tempClient = sdk.createClient({ baseUrl: context.config.baseUrl })
-              const loginData = await tempClient.loginRequest(loginRequest)
+              const tempClient = sdk.createClient({ baseUrl: loginRequest.baseUrl || context.config.baseUrl })
+
+              // Remove baseUrl from the loginRequest since it's not a standard Matrix API field
+              // and might cause issues with some homeservers if sent in the payload
+              const requestPayload = { ...loginRequest }
+              delete requestPayload.baseUrl
+
+              const loginData = await tempClient.loginRequest(requestPayload)
 
               return await context.values.initClient({
+                baseUrl: loginRequest.baseUrl || context.config.baseUrl,
                 userId: loginData.user_id,
                 accessToken: loginData.access_token,
                 deviceId: loginData.device_id
