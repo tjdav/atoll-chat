@@ -83,7 +83,7 @@ test.describe('Text Chat', () => {
 
     // Verify that the timeline is scrolled to the bottom
     const isAtBottom = await alicePage.evaluate(() => {
-      const container = document.querySelector('.timeline-container')
+      const container = document.querySelector('#coralite-chat-timeline__messagesContainer-0')
       if (!container) return false
       return Math.abs(container.scrollHeight - container.clientHeight - container.scrollTop) < 5
     })

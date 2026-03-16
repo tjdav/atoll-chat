@@ -33,19 +33,23 @@
       </li>
     </ul>
 
-    <div class="dropdown mt-auto border-top border-secondary pt-3">
-      <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
-        <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
-          <span>U</span>
-        </div>
-        <strong>User</strong>
-      </a>
-      <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
-        <li><a class="dropdown-item" href="#">Settings</a></li>
-        <li><a class="dropdown-item" href="#">Profile</a></li>
-        <li><hr class="dropdown-divider"></li>
-        <li><a class="dropdown-item" href="#" ref="signOutLink">Sign out</a></li>
-      </ul>
+    <div class="mt-auto border-top border-secondary pt-3">
+      <button class="btn btn-outline-light w-100 mb-2 d-flex align-items-center justify-content-center" type="button" aria-label="Settings">
+        <i class="bi bi-gear me-2"></i> Settings
+      </button>
+      <div class="dropdown">
+        <a href="#" class="d-flex align-items-center text-white text-decoration-none dropdown-toggle" id="dropdownUser1" data-bs-toggle="dropdown" aria-expanded="false">
+          <div class="rounded-circle bg-secondary d-flex align-items-center justify-content-center me-2" style="width: 32px; height: 32px;">
+            <span>U</span>
+          </div>
+          <strong>User</strong>
+        </a>
+        <ul class="dropdown-menu dropdown-menu-dark text-small shadow" aria-labelledby="dropdownUser1">
+          <li><a class="dropdown-item" href="#">Profile</a></li>
+          <li><hr class="dropdown-divider"></li>
+          <li><a class="dropdown-item" href="#" ref="signOutLink">Sign out</a></li>
+        </ul>
+      </div>
     </div>
   </div>
 </template>
