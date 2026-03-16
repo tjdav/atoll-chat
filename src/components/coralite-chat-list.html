@@ -2,9 +2,10 @@
   <div class="d-flex flex-column h-100 bg-body-tertiary">
     <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
       <h5 class="m-0 fw-bold">Chats</h5>
-      <button class="btn btn-sm btn-outline-secondary rounded-circle">
+      <button class="btn btn-sm btn-outline-secondary rounded-circle" data-bs-toggle="modal" data-bs-target="#newRoomModal" aria-label="New Room">
         <i class="bi bi-pencil-square"></i>
       </button>
+      <button class="d-none" data-bs-toggle="modal" data-bs-target="#newRoomModal">New Room</button>
     </div>
 
     <div class="px-3 py-2">
@@ -17,6 +18,28 @@
     <div class="list-group list-group-flush overflow-auto flex-grow-1" ref="roomList">
       <!-- Rooms dynamically generated here -->
     </div>
+
+    <!-- New Room Modal -->
+    <div class="modal fade" id="newRoomModal" tabindex="-1" aria-labelledby="newRoomModalLabel" aria-hidden="true" ref="newRoomModal">
+      <div class="modal-dialog">
+        <div class="modal-content text-bg-dark">
+          <div class="modal-header border-secondary">
+            <h1 class="modal-title fs-5" id="newRoomModalLabel">Create New Room</h1>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="roomNameInput" class="form-label">Room Name</label>
+              <input type="text" class="form-control bg-dark text-white border-secondary" id="roomNameInput" ref="roomNameInput">
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" ref="createRoomBtn">Create</button>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -26,8 +49,11 @@
   export default defineComponent({
     client: {
       script: ({ helpers }) => {
-        const { refs, getRooms, emit, on, events } = helpers
+        const { refs, getRooms, createEncryptedRoom, emit, on, events } = helpers
         const roomList = refs('roomList')
+        const newRoomModal = refs('newRoomModal')
+        const roomNameInput = refs('roomNameInput')
+        const createRoomBtn = refs('createRoomBtn')
 
         const createAvatarHTML = (roomName, avatarUrl) => {
           if (avatarUrl) {
@@ -67,7 +93,31 @@
           })
         }
 
+        createRoomBtn.addEventListener('click', async () => {
+          const roomName = roomNameInput.value.trim()
+          if (!roomName) return
+
+          try {
+            await createEncryptedRoom(roomName)
+            roomNameInput.value = ''
+            // Hide the modal using Bootstrap's modal instance if available,
+            // otherwise just hide it manually (or relying on renderRooms to refresh).
+            const modalElement = newRoomModal
+            const bootstrapModal = bootstrap.Modal.getInstance(modalElement)
+            if (bootstrapModal) bootstrapModal.hide()
+
+            // Re-render rooms list
+            await renderRooms()
+          } catch (error) {
+            console.error('Failed to create room:', error)
+          }
+        })
+
         on(events('app:logged-in'), () => {
+          renderRooms()
+        })
+        
+        on(events('chat:rooms-updated'), () => {
           renderRooms()
         })
       }

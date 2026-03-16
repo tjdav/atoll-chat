@@ -62,6 +62,14 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             emit(events('call:incoming'), { call })
           })
 
+          // Listen for incoming messages to trigger room list updates
+          client.on('Room.timeline', (event, room, toStartOfTimeline) => {
+            if (event.getType() === 'm.room.message' && !toStartOfTimeline) {
+              const { emit, events } = context.helpers
+              emit(events('chat:rooms-updated'))
+            }
+          })
+
           return client
         }
 
@@ -157,13 +165,14 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           return await client.sendEvent(roomId, 'm.room.message', content, '')
         },
 
-        createEncryptedRoom: (context) => async (inviteUserId) => {
+        createEncryptedRoom: (context) => async (name, inviteUserId) => {
           /** @type {MatrixClient} */
           const client = context.values.getClient()
           if (!client) throw new Error('Matrix client not initialized')
 
           return await client.createRoom({
             visibility: 'private',
+            name: name,
             invite: inviteUserId ? [inviteUserId] : [],
             initial_state: [
               {
@@ -177,6 +186,22 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           })
         },
 
+        inviteUser: (context) => async (roomId, userId) => {
+          /** @type {MatrixClient} */
+          const client = context.values.getClient()
+          if (!client) throw new Error('Matrix client not initialized')
+
+          return await client.invite(roomId, userId)
+        },
+
+        joinRoom: (context) => async (roomId) => {
+          /** @type {MatrixClient} */
+          const client = context.values.getClient()
+          if (!client) throw new Error('Matrix client not initialized')
+
+          return await client.joinRoom(roomId)
+        },
+
         getRooms: (context) => async () => {
           const client = context.values.getClient()
           if (!client) return []
@@ -186,7 +211,8 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             name: room.name,
             avatarUrl: room.getAvatarUrl(client.baseUrl, 48, 48, 'crop'),
             unreadCount: room.getUnreadNotificationCount('total'),
-            lastMessage: room.timeline.length > 0 ? room.timeline[room.timeline.length - 1].getContent().body : null
+            lastMessage: room.timeline.length > 0 ? room.timeline[room.timeline.length - 1].getContent().body : null,
+            membership: room.getMyMembership()
           }))
         },
 
@@ -198,7 +224,8 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           return {
             id: room.roomId,
             name: room.name,
-            avatarUrl: room.getAvatarUrl(client.baseUrl, 40, 40, 'crop')
+            avatarUrl: room.getAvatarUrl(client.baseUrl, 40, 40, 'crop'),
+            membership: room.getMyMembership()
           }
         },
 

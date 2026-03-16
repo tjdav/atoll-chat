@@ -9,6 +9,8 @@
       <div>
         <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="startVoiceCallBtn"><i class="bi bi-telephone"></i></button>
         <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="startVideoCallBtn"><i class="bi bi-camera-video"></i></button>
+        <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" data-bs-toggle="modal" data-bs-target="#inviteModal" aria-label="Invite"><i class="bi bi-person-plus"></i></button>
+        <button class="d-none" data-bs-toggle="modal" data-bs-target="#inviteModal">Invite</button>
         <button class="btn btn-sm btn-outline-secondary rounded-circle"><i class="bi bi-three-dots"></i></button>
       </div>
     </div>
@@ -20,12 +22,42 @@
       <p>Select a chat or start a new conversation.</p>
     </div>
 
+    <!-- Invite State -->
+    <div class="flex-grow-1 d-flex justify-content-center align-items-center flex-column text-muted d-none" ref="inviteState">
+      <i class="bi bi-envelope-open" style="font-size: 4rem;"></i>
+      <h4 class="mt-3">Room Invitation</h4>
+      <p>You have been invited to this room.</p>
+      <button class="btn btn-primary mt-3" ref="joinRoomBtn">Join</button>
+    </div>
+
     <!-- Timeline (Hidden Initially) -->
     <coralite-chat-timeline class="flex-grow-1 overflow-auto d-none" ref="timeline"></coralite-chat-timeline>
 
     <!-- Input (Hidden Initially) -->
     <div class="p-3 border-top border-secondary bg-body-tertiary d-none" ref="inputContainer">
       <coralite-chat-input></coralite-chat-input>
+    </div>
+
+    <!-- Invite Modal -->
+    <div class="modal fade" id="inviteModal" tabindex="-1" aria-labelledby="inviteModalLabel" aria-hidden="true" ref="inviteModal">
+      <div class="modal-dialog">
+        <div class="modal-content text-bg-dark">
+          <div class="modal-header border-secondary">
+            <h1 class="modal-title fs-5" id="inviteModalLabel">Invite to Room</h1>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="inviteUserIdInput" class="form-label">User ID</label>
+              <input type="text" class="form-control bg-dark text-white border-secondary" id="inviteUserIdInput" ref="inviteUserIdInput">
+            </div>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" ref="sendInviteBtn">Send Invite</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -35,20 +67,21 @@
 
   export default defineComponent({
     client: {
-      imports: [
-        { specifier: 'coralite-component/coralite-chat-timeline' },
-        { specifier: 'coralite-component/coralite-chat-input' }
-      ],
       script: ({ helpers }) => {
-        const { refs, on, emit, events, getRoom, sendMessage, seed, sendTorrentMessage } = helpers
+        const { refs, on, emit, events, getRoom, sendMessage, seed, sendTorrentMessage, inviteUser, joinRoom } = helpers
         const chatHeader = refs('chatHeader')
         const roomAvatar = refs('roomAvatar')
         const roomName = refs('roomName')
         const emptyState = refs('emptyState')
+        const inviteState = refs('inviteState')
         const timeline = refs('timeline')
         const inputContainer = refs('inputContainer')
         const startVoiceCallBtn = refs('startVoiceCallBtn')
         const startVideoCallBtn = refs('startVideoCallBtn')
+        const inviteModal = refs('inviteModal')
+        const inviteUserIdInput = refs('inviteUserIdInput')
+        const sendInviteBtn = refs('sendInviteBtn')
+        const joinRoomBtn = refs('joinRoomBtn')
 
         let activeRoomId = null
 
@@ -81,14 +114,58 @@
             roomName.textContent = roomDetails.name
             roomAvatar.innerHTML = createAvatarHTML(roomDetails.name, roomDetails.avatarUrl)
 
-            // Show UI elements
+            // Show header, hide empty state
             chatHeader.style.display = 'flex'
             emptyState.classList.add('d-none')
+            
+            if (roomDetails.membership === 'invite') {
+              inviteState.classList.remove('d-none')
+              timeline.classList.add('d-none')
+              inputContainer.classList.add('d-none')
+            } else {
+              inviteState.classList.add('d-none')
+              timeline.classList.remove('d-none')
+              inputContainer.classList.remove('d-none')
+              // Notify timeline to load messages
+              emit(events('chat:room-ready'), { roomId })
+            }
+          }
+        })
+
+        sendInviteBtn.addEventListener('click', async () => {
+          if (!activeRoomId) return
+          const userId = inviteUserIdInput.value.trim()
+          if (!userId) return
+
+          try {
+            await inviteUser(activeRoomId, userId)
+            inviteUserIdInput.value = ''
+            
+            const modalElement = inviteModal
+            const bootstrapModal = bootstrap.Modal.getInstance(modalElement)
+            if (bootstrapModal) bootstrapModal.hide()
+
+          } catch (error) {
+            console.error('Failed to send invite:', error)
+          }
+        })
+
+        joinRoomBtn.addEventListener('click', async () => {
+          if (!activeRoomId) return
+
+          try {
+            await joinRoom(activeRoomId)
+            
+            inviteState.classList.add('d-none')
             timeline.classList.remove('d-none')
             inputContainer.classList.remove('d-none')
-
-            // Notify timeline to load messages
-            emit(events('chat:room-ready'), { roomId })
+            
+            emit(events('chat:room-ready'), { roomId: activeRoomId })
+            
+            // Optionally, emit an event so chat-list can re-render if needed
+            emit(events('chat:rooms-updated'))
+          } catch (error) {
+            console.error('Failed to join room:', error)
           }
         })
 
