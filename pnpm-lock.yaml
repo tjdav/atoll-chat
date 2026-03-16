@@ -8,6 +8,9 @@ importers:
 
   .:
     dependencies:
+      '@matrix-org/matrix-sdk-crypto-wasm':
+        specifier: ^18.0.0
+        version: 18.0.0
       emoji-picker-element:
         specifier: ^1.29.1
         version: 1.29.1
@@ -34,11 +37,11 @@ importers:
         specifier: ^5.3.8
         version: 5.3.8(@popperjs/core@2.11.8)
       coralite:
-        specifier: ^0.28.2
-        version: 0.28.2
+        specifier: ^0.28.4
+        version: 0.28.4
       coralite-scripts:
-        specifier: ^0.28.2
-        version: 0.28.2
+        specifier: ^0.28.6
+        version: 0.28.6
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -321,6 +324,10 @@ packages:
     resolution: {integrity: sha512-yKPqBvKlHSqkt/UJh+Z+zLKQP8bd19OxokXYXh3VkKbW0+C44nPHsidSwd3SH+RxT+Ck2PDRwVcVXEnUft+/2g==}
     engines: {node: '>= 18'}
 
+  '@matrix-org/matrix-sdk-crypto-wasm@18.0.0':
+    resolution: {integrity: sha512-88+n+dvxLI1cjS10UIlKXVYK7TGWbpAnnaDC9fow7ch/hCvdu3dFhJ3tS3/13N9s9+1QFXB4FFuommj+tHJPhQ==}
+    engines: {node: '>= 18'}
+
   '@parcel/watcher-android-arm64@2.5.6':
     resolution: {integrity: sha512-YQxSS34tPF/6ZG7r/Ih9xy+kP/WwediEUsqmtf0cuCV5TPPKw/PQHRhueUo6JdeFJaqV3pyjm0GdYjZotbRt/A==}
     engines: {node: '>= 10.0.0'}
@@ -555,17 +562,12 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.28.2:
-    resolution: {integrity: sha512-GQiOJUoXd8ML39ZwDczBtOfKm62LzQz8ax11R7YbmYAYTuX1nVNdQriw9WiMVdDWjwqNYTxLMBcri6yERsH50g==}
+  coralite-scripts@0.28.6:
+    resolution: {integrity: sha512-d8ABK+BCUkXH368uzeOnbd4telRug/mArTj7berDor4ESyooV7AYk49Uj4qhEv2/a8Empu8LbIQ/F314cY4XHQ==}
     hasBin: true
 
-  coralite@0.28.1:
-    resolution: {integrity: sha512-qlc7pfqSzxcsi8Y5LbvUlufvXlSQRM02acUlF/8+TAR3YbZDGMvy+BAwBX2QT5YtIyGXYACHgKjYJFsNLno/NA==}
-    engines: {node: '>20.19.0'}
-    hasBin: true
-
-  coralite@0.28.2:
-    resolution: {integrity: sha512-C/oVjrR5pPDOQu5lSvUBJw6jfAif/pXa2b+uLnkTprmbSBqjmk7aefpPEveFHdcj9OXcJ+PwWcMMCqpHB9TYAw==}
+  coralite@0.28.4:
+    resolution: {integrity: sha512-Nmew29HZczDdeIqWH0zIKr70r0njSUYUOUh00fNHYuuopQ/KkZSOD5zpPgEVMR2YvhQCuOF4ZAljifX/b5OMlg==}
     engines: {node: '>20.19.0'}
     hasBin: true
 
@@ -1503,6 +1505,8 @@ snapshots:
 
   '@matrix-org/matrix-sdk-crypto-wasm@17.1.0': {}
 
+  '@matrix-org/matrix-sdk-crypto-wasm@18.0.0': {}
+
   '@parcel/watcher-android-arm64@2.5.6':
     optional: true
 
@@ -1693,11 +1697,11 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.28.2:
+  coralite-scripts@0.28.6:
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.28.1
+      coralite: 0.28.4
       cross-env: 10.1.0
       express: 5.2.1
       kleur: 4.1.5
@@ -1709,21 +1713,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  coralite@0.28.1:
-    dependencies:
-      acorn: 8.16.0
-      acorn-walk: 8.3.5
-      commander: 13.1.0
-      dom-serializer: 2.0.0
-      esbuild: 0.25.12
-      htmlparser2: 10.1.0
-      kleur: 4.1.5
-      p-limit: 7.3.0
-      postcss: 8.5.6
-      postcss-selector-parser: 7.1.1
-      serialize-javascript: 7.0.3
-
-  coralite@0.28.2:
+  coralite@0.28.4:
     dependencies:
       acorn: 8.16.0
       acorn-walk: 8.3.5

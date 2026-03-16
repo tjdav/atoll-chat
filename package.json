@@ -21,13 +21,14 @@
     "@playwright/test": "^1.58.2",
     "@stylistic/eslint-plugin": "^5.9.0",
     "bootstrap": "^5.3.8",
-    "coralite": "^0.28.2",
-    "coralite-scripts": "^0.28.2",
+    "coralite": "^0.28.4",
+    "coralite-scripts": "^0.28.6",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^10.0.2"
   },
   "dependencies": {
+    "@matrix-org/matrix-sdk-crypto-wasm": "^18.0.0",
     "emoji-picker-element": "^1.29.1",
     "isomorphic-dompurify": "^3.0.0",
     "marked": "^17.0.4",
