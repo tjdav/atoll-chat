@@ -64,7 +64,7 @@ test.describe('Authentication', () => {
     await loginForm.getByRole('button', { name: 'Login' }).click()
 
     // Verify transition to app layout
-    // Instead of coralite-app-layout which is removed, check for a visible heading/sidebar
+    // Instead of atoll-app-layout which is removed, check for a visible heading/sidebar
     await expect(page.getByRole('link', { name: 'Chats' })).toBeVisible({ timeout: 10000 })
   })
 })

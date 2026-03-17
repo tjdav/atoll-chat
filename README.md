@@ -1,1 +1,1 @@
-# Coralite Chat
+# Atoll Chat

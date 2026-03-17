@@ -1,27 +1,27 @@
-<template id="coralite-app-layout">
+<template id="atoll-app-layout">
   <div class="d-flex vh-100 overflow-hidden" ref="layoutContainer">
     <!-- Left Sidebar Column (Always Visible) -->
     <div class="w-250px bg-dark text-white d-flex flex-column border-end border-secondary">
-      <coralite-sidebar></coralite-sidebar>
+      <atoll-sidebar></atoll-sidebar>
     </div>
     
     <!-- Middle Column: Chat List (Hidden when not on 'chats' tab) -->
     <div class="max-width-600 border-end border-secondary d-flex flex-column h-100" ref="chatListContainer">
-      <coralite-chat-list></coralite-chat-list>
+      <atoll-chat-list></atoll-chat-list>
     </div>
     
     <!-- Right Column: Chat Window (Hidden when not on 'chats' tab) -->
     <div class="flex-grow-1 d-flex flex-column h-100 bg-body" ref="chatWindowContainer">
-      <coralite-chat-window></coralite-chat-window>
+      <atoll-chat-window></atoll-chat-window>
     </div>
     
     <!-- Media View Column (Hidden when on 'chats' tab) -->
     <div class="flex-grow-1 d-none flex-column h-100 bg-body overflow-hidden" ref="mediaViewContainer">
-      <coralite-media-view></coralite-media-view>
+      <atoll-media-view></atoll-media-view>
     </div>
     
     <!-- Video Call Overlay -->
-    <coralite-video-call></coralite-video-call>
+    <atoll-video-call></atoll-video-call>
     
     <!-- Incoming Call Toast/Modal (Ringing) -->
     <div class="modal fade" tabindex="-1" role="dialog" aria-modal="true" ref="incomingCallModal" style="display: none; background: rgba(0,0,0,0.5);">
@@ -56,7 +56,7 @@
   export default defineComponent({
     client: {
       imports: [
-        { specifier: 'coralite-component/coralite-video-call' }
+        { specifier: 'coralite-component/atoll-video-call' }
       ],
       script: ({ helpers }) => {
         const { refs, on, emit, events, placeCall, getRoom, answerCall, rejectCall } = helpers

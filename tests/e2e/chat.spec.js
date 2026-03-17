@@ -23,16 +23,16 @@ test.describe('Text Chat', () => {
 
     // Login Alice
     await alicePage.goto('/')
-    await alicePage.locator('#coralite-login__username-0').fill('alice')
-    await alicePage.locator('#coralite-login__password-0').fill('password123')
-    await alicePage.locator('#coralite-login__submitButton-0').click()
+    await alicePage.locator('#atoll-login__username-0').fill('alice')
+    await alicePage.locator('#atoll-login__password-0').fill('password123')
+    await alicePage.locator('#atoll-login__submitButton-0').click()
     await expect(alicePage.getByRole('button', { name: 'New Room' })).toBeVisible({ timeout: 10000 })
 
     // Login Bob
     await bobPage.goto('/', { waitUntil: 'domcontentloaded' })
-    await bobPage.locator('#coralite-login__username-0').fill('bob')
-    await bobPage.locator('#coralite-login__password-0').fill('password123')
-    await bobPage.locator('#coralite-login__submitButton-0').click()
+    await bobPage.locator('#atoll-login__username-0').fill('bob')
+    await bobPage.locator('#atoll-login__password-0').fill('password123')
+    await bobPage.locator('#atoll-login__submitButton-0').click()
     await expect(bobPage.getByRole('button', { name: 'New Room' })).toBeVisible({ timeout: 10000 })
   })
 
@@ -43,18 +43,18 @@ test.describe('Text Chat', () => {
 
   test('Room Creation and Real-time Messaging', async () => {
     // User A creates a room
-    await alicePage.locator('#coralite-chat-list__openNewRoomModalBtn-0').click()
-    const roomNameInput = alicePage.locator('#coralite-chat-list__roomNameInput-0')
+    await alicePage.locator('#atoll-chat-list__openNewRoomModalBtn-0').click()
+    const roomNameInput = alicePage.locator('#atoll-chat-list__roomNameInput-0')
     if (!await roomNameInput.isVisible()) {
       await alicePage.evaluate(() => {
-        const modal = document.querySelector('[id^="coralite-chat-list__newRoomModal"]')
+        const modal = document.querySelector('[id^="atoll-chat-list__newRoomModal"]')
         if (modal && window.imports && window.imports.bootstrap) window.imports.bootstrap.Modal.getOrCreateInstance(modal).show()
         else if (modal && window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modal).show()
       })
       await expect(roomNameInput).toBeVisible({ timeout: 5000 })
     }
     await roomNameInput.fill('Alice and Bob Chat')
-    await alicePage.locator('#coralite-chat-list__createRoomBtn-0').click()
+    await alicePage.locator('#atoll-chat-list__createRoomBtn-0').click()
 
     // Wait for room to be created and appear in the list
     await expect(alicePage.locator('.room-item', { hasText: 'Alice and Bob Chat' })).toBeVisible({ timeout: 15000 })
@@ -64,18 +64,18 @@ test.describe('Text Chat', () => {
     await alicePage.locator('.room-item', { hasText: 'Alice and Bob Chat' }).click()
 
     // Invite Bob
-    await alicePage.locator('#coralite-chat-window__openInviteModalBtn-0').click()
-    const inviteInput = alicePage.locator('#coralite-chat-window__inviteUserIdInput-0')
+    await alicePage.locator('#atoll-chat-window__openInviteModalBtn-0').click()
+    const inviteInput = alicePage.locator('#atoll-chat-window__inviteUserIdInput-0')
     if (!await inviteInput.isVisible()) {
       await alicePage.evaluate(() => {
-        const modal = document.querySelector('[id^="coralite-chat-window__inviteModal"]')
+        const modal = document.querySelector('[id^="atoll-chat-window__inviteModal"]')
         if (modal && window.imports && window.imports.bootstrap) window.imports.bootstrap.Modal.getOrCreateInstance(modal).show()
         else if (modal && window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modal).show()
       })
       await expect(inviteInput).toBeVisible({ timeout: 5000 })
     }
     await inviteInput.fill('@bob:localhost')
-    await alicePage.locator('#coralite-chat-window__sendInviteBtn-0').click()
+    await alicePage.locator('#atoll-chat-window__sendInviteBtn-0').click()
 
     // Bob accepts the invite
     await expect(bobPage.locator('.room-item', { hasText: 'Alice and Bob Chat' })).toBeVisible({ timeout: 15000 })
@@ -84,16 +84,16 @@ test.describe('Text Chat', () => {
     await bobPage.waitForTimeout(1000)
 
     // There might be a "Join" button Bob has to click
-    const joinButton = bobPage.locator('#coralite-chat-window__joinRoomBtn-0')
+    const joinButton = bobPage.locator('#atoll-chat-window__joinRoomBtn-0')
     if (await joinButton.isVisible()) {
       await joinButton.click()
     }
 
     // Alice sends a message
-    const msgInput = alicePage.locator('#coralite-chat-input__messageInput-0')
+    const msgInput = alicePage.locator('#atoll-chat-input__messageInput-0')
     await expect(msgInput).toBeVisible({ timeout: 15000 })
     await msgInput.fill('Hello Bob!')
-    await alicePage.locator('#coralite-chat-input__sendBtn-0').click()
+    await alicePage.locator('#atoll-chat-input__sendBtn-0').click()
 
     // Bob receives it in real-time
     await expect(bobPage.getByText('Hello Bob!').first()).toBeVisible({ timeout: 15000 })
@@ -102,9 +102,9 @@ test.describe('Text Chat', () => {
   test('Auto-Scroll on Rapid Messages', async () => {
     // Send 20 messages rapidly from Alice
     for (let i = 0; i < 20; i++) {
-      await alicePage.locator('#coralite-chat-input__messageInput-0').fill(`Rapid message ${i}`)
-      await alicePage.locator('#coralite-chat-input__sendBtn-0').click()
-      await expect(alicePage.locator('#coralite-chat-input__messageInput-0')).toHaveValue('', { timeout: 5000 })
+      await alicePage.locator('#atoll-chat-input__messageInput-0').fill(`Rapid message ${i}`)
+      await alicePage.locator('#atoll-chat-input__sendBtn-0').click()
+      await expect(alicePage.locator('#atoll-chat-input__messageInput-0')).toHaveValue('', { timeout: 5000 })
     }
 
     // Wait for the last message to appear for Alice
@@ -114,7 +114,7 @@ test.describe('Text Chat', () => {
 
     // Verify that the timeline is scrolled to the bottom
     const isAtBottom = await alicePage.evaluate(() => {
-      const container = document.querySelector('#coralite-chat-timeline__messagesContainer-0')
+      const container = document.querySelector('#atoll-chat-timeline__messagesContainer-0')
       if (!container) return false
       return Math.abs(container.scrollHeight - container.clientHeight - container.scrollTop) < 5
     })
@@ -127,8 +127,8 @@ test.describe('Text Chat', () => {
     await bobPage.getByRole('button', { name: 'Settings' }).click()
 
     // Alice sends a message
-    await alicePage.locator('#coralite-chat-input__messageInput-0').fill('Are you there Bob?')
-    await alicePage.locator('#coralite-chat-input__sendBtn-0').click()
+    await alicePage.locator('#atoll-chat-input__messageInput-0').fill('Are you there Bob?')
+    await alicePage.locator('#atoll-chat-input__sendBtn-0').click()
 
     // Verify Bob's sidebar shows a red unread badge
     const badge = bobPage.locator('.badge.text-bg-danger').first()

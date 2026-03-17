@@ -1,7 +1,7 @@
-<template id="coralite-login">
+<template id="atoll-signup">
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4" style="width: 400px; max-width: 100%;">
-      <h2 class="text-center mb-4">Login to Matrix</h2>
+      <h2 class="text-center mb-4">Sign Up to Matrix</h2>
       <form ref="form">
         <div class="form-floating mb-3">
           <input type="url" class="form-control" ref="homeserver" placeholder="Homeserver URL" required>
@@ -15,12 +15,16 @@
           <input type="password" class="form-control" ref="password" placeholder="Password" required>
           <label for="{{ ref_password }}">Password</label>
         </div>
-        <button type="submit" class="btn btn-primary w-100" ref="submitButton">Login</button>
+        <div class="form-floating mb-3">
+          <input type="password" class="form-control" ref="confirmPassword" placeholder="Confirm Password" required>
+          <label for="{{ ref_confirmPassword }}">Confirm Password</label>
+        </div>
+        <button type="submit" class="btn btn-primary w-100" ref="submitButton">Sign Up</button>
       </form>
       <div class="alert alert-danger mt-3 d-none" role="alert" ref="errorAlert"></div>
       
       <div class="text-center mt-3">
-        <a href="#" class="text-muted text-decoration-none" ref="signupLink">Don't have an account? Sign up.</a>
+        <a href="#" class="text-muted text-decoration-none" ref="loginLink">Already have an account? Log in.</a>
       </div>
     </div>
   </div>
@@ -31,21 +35,21 @@
 
   export default defineComponent({
     client: {
-      script: ({ helpers }) => {
-        const { refs, login, sync, emit, events } = helpers
+      script: ({ helpers, context }) => {
+        const { refs, registerUser, sync, emit, events } = helpers
         const form = refs('form')
         const homeserverInput = refs('homeserver')
         const usernameInput = refs('username')
         const passwordInput = refs('password')
+        const confirmPasswordInput = refs('confirmPassword')
         const errorAlert = refs('errorAlert')
         const submitButton = refs('submitButton')
-        const signupLink = refs('signupLink')
-
+        const loginLink = refs('loginLink')
         homeserverInput.value = (helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl()) || 'https://matrix.org'
 
-        signupLink.addEventListener('click', (e) => {
+        loginLink.addEventListener('click', (e) => {
           e.preventDefault()
-          emit(events('auth:show-signup'))
+          emit(events('auth:show-login'))
         })
 
         form.addEventListener('submit', async (e) => {
@@ -54,20 +58,27 @@
           const baseUrl = homeserverInput.value
           const username = usernameInput.value
           const password = passwordInput.value
+          const confirmPassword = confirmPasswordInput.value
+          const urlParams = new URLSearchParams(window.location.search)
+          const token = urlParams.get('token')
 
           errorAlert.classList.add('d-none')
+          
+          if (password !== confirmPassword) {
+            errorAlert.textContent = 'Passwords do not match.'
+            errorAlert.classList.remove('d-none')
+            return
+          }
+
           submitButton.disabled = true
-          submitButton.textContent = 'Logging in...'
+          submitButton.textContent = 'Signing up...'
 
           try {
-            await login({
-              baseUrl: baseUrl,
-              type: 'm.login.password',
-              identifier: {
-                type: 'm.id.user',
-                user: username
-              },
-              password: password
+            await registerUser({
+              baseUrl,
+              username,
+              password,
+              token
             })
 
             submitButton.textContent = 'Syncing...'
@@ -75,10 +86,11 @@
 
             emit(events('app:logged-in'))
           } catch (error) {
-            errorAlert.textContent = 'Login failed. Please check your credentials.'
+            console.error('Sign up error', error)
+            errorAlert.textContent = 'Registration failed. Please try again. ' + (error.message || '')
             errorAlert.classList.remove('d-none')
             submitButton.disabled = false
-            submitButton.textContent = 'Login'
+            submitButton.textContent = 'Sign Up'
           }
         })
       }
