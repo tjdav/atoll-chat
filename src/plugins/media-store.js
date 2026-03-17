@@ -4,7 +4,7 @@ export default createPlugin({
   name: 'media-store-plugin',
   client: {
     setup () {
-      const DB_NAME = 'coralite-media-vault'
+      const DB_NAME = 'atoll-media-vault'
       const STORE_NAME = 'media'
       const DB_VERSION = 2
 

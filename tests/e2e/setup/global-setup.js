@@ -53,6 +53,9 @@ async function globalSetup () {
 
     const firstUserToken = await getInitialRegistrationToken()
 
+    // EXPORT the token to Playwright's environment variables
+    // process.env.E2E_REGISTRATION_TOKEN = firstUserToken
+
     const registerUser = async (username, password) => {
       try {
         const registrationToken = username === 'alice' ? firstUserToken : 'ci_test_token_123'

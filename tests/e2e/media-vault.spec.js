@@ -21,7 +21,7 @@ test.describe.serial('Local Media Vault', () => {
     // The instructions say "Verify the downloaded test-image.jpg is rendered".
     await bobPage.evaluate(async () => {
       return new Promise((resolve, reject) => {
-        const request = indexedDB.open('coralite-media-vault')
+        const request = indexedDB.open('atoll-media-vault')
 
         request.onupgradeneeded = (event) => {
           const db = event.target.result
@@ -70,9 +70,9 @@ test.describe.serial('Local Media Vault', () => {
     await bobPage.reload({ waitUntil: 'domcontentloaded' })
 
     // Login Bob
-    await bobPage.locator('#coralite-login__username-0').fill('bob')
-    await bobPage.locator('#coralite-login__password-0').fill('password123')
-    await bobPage.locator('#coralite-login__submitButton-0').click()
+    await bobPage.locator('#atoll-login__username-0').fill('bob')
+    await bobPage.locator('#atoll-login__password-0').fill('password123')
+    await bobPage.locator('#atoll-login__submitButton-0').click()
     await expect(bobPage.getByRole('button', { name: 'New Room' })).toBeVisible({ timeout: 10000 })
   })
 
@@ -87,7 +87,7 @@ test.describe.serial('Local Media Vault', () => {
     await expect(bobPage.getByRole('heading', { name: 'All Pictures' })).toBeVisible({ timeout: 5000 })
 
     // Verify grid rendering
-    // Target a nested element instead of <coralite-media-grid> since tags are replaced
+    // Target a nested element instead of <atoll-media-grid> since tags are replaced
     const mediaItem = bobPage.locator('.card-img-top').first()
     await expect(mediaItem).toBeVisible({ timeout: 10000 })
   })
@@ -127,7 +127,7 @@ test.describe.serial('Local Media Vault', () => {
       // Select the correct room (should be automatic based on the button click logic)
       // Check the timeline displays the original message (if present)
       // Since it's a mock record, the chat timeline container should at least appear
-      await expect(bobPage.locator('#coralite-chat-timeline__messagesContainer-0')).toBeVisible()
+      await expect(bobPage.locator('#atoll-chat-timeline__messagesContainer-0')).toBeVisible()
     }
   })
 })

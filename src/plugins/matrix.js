@@ -37,7 +37,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           const createAndInit = async (isRetry = false) => {
             const store = new sdk.IndexedDBStore({
               indexedDB: window.indexedDB,
-              dbName: 'matrix-js-sdk:coralite',
+              dbName: 'matrix-js-sdk:atoll',
               localStorage: window.localStorage
             })
 
@@ -87,7 +87,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
                   })
                 }
 
-                await deleteDB('matrix-js-sdk:coralite')
+                await deleteDB('matrix-js-sdk:atoll')
                 await deleteDB('matrix-js-sdk:crypto')
                 await deleteDB('matrix-js-sdk::matrix-sdk-crypto')
                 await deleteDB('matrix-js-sdk::matrix-sdk-crypto-meta')
@@ -439,7 +439,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           }
 
           const content = {
-            msgtype: 'm.coralite.webtorrent',
+            msgtype: 'm.atoll.webtorrent',
             body: `Sent a file: ${torrentPayload.filename}`,
             info: torrentPayload
           }
