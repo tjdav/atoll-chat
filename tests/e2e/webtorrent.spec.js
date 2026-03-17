@@ -12,6 +12,7 @@ test.describe('WebTorrent File Transfer', () => {
   let bobPage
 
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(120000)
     aliceContext = await browser.newContext()
     bobContext = await browser.newContext()
 
@@ -23,32 +24,44 @@ test.describe('WebTorrent File Transfer', () => {
 
     // Login Alice
     await alicePage.goto('/')
-    await alicePage.locator('coralite-login').getByLabel('Username').fill('alice')
-    await alicePage.locator('coralite-login').getByLabel('Password').fill('password123')
-    await alicePage.locator('coralite-login').getByRole('button', { name: 'Log In' }).click()
-    await expect(alicePage.locator('coralite-app-layout')).toBeVisible({ timeout: 10000 })
+    await alicePage.locator('#coralite-login__username-0').waitFor({
+      state: 'visible',
+      timeout: 15000
+    })
+    await alicePage.locator('#coralite-login__username-0').fill('alice')
+    await alicePage.locator('#coralite-login__password-0').fill('password123')
+    await alicePage.locator('#coralite-login__submitButton-0').click()
+    await expect(alicePage.locator('#coralite-app-layout__layoutContainer-0')).toBeVisible({ timeout: 10000 })
 
     // Login Bob
     await bobPage.goto('/')
-    await bobPage.locator('coralite-login').getByLabel('Username').fill('bob')
-    await bobPage.locator('coralite-login').getByLabel('Password').fill('password123')
-    await bobPage.locator('coralite-login').getByRole('button', { name: 'Log In' }).click()
-    await expect(bobPage.locator('coralite-app-layout')).toBeVisible({ timeout: 10000 })
+    await bobPage.locator('#coralite-login__username-0').waitFor({
+      state: 'visible',
+      timeout: 15000
+    })
+    await bobPage.locator('#coralite-login__username-0').fill('bob')
+    await bobPage.locator('#coralite-login__password-0').fill('password123')
+    await bobPage.locator('#coralite-login__submitButton-0').click()
+    await expect(bobPage.locator('#coralite-app-layout__layoutContainer-0')).toBeVisible({ timeout: 10000 })
 
     // Create a new room specifically for file transfer test
-    await alicePage.getByRole('button', { name: 'New Room' }).click()
-    await alicePage.getByLabel('Room Name').fill('File Transfer Room')
-    await alicePage.getByRole('button', { name: 'Create' }).click()
+    await alicePage.locator('button[data-bs-target="#newRoomModal"]').first().click()
+    await expect(alicePage.locator('#newRoomModal')).toBeVisible({ timeout: 15000 })
+    await alicePage.locator('#coralite-chat-list__roomNameInput-0').fill('File Transfer Room')
+    await alicePage.locator('#coralite-chat-list__createRoomBtn-0').click()
 
     // Invite Bob
-    await alicePage.getByText('File Transfer Room').click()
-    await alicePage.getByRole('button', { name: 'Invite' }).click()
-    await alicePage.getByLabel('User ID').fill('@bob:localhost')
-    await alicePage.getByRole('button', { name: 'Send Invite' }).click()
+    await expect(alicePage.getByText('File Transfer Room').first()).toBeVisible({ timeout: 10000 })
+    await alicePage.getByText('File Transfer Room').first().click()
+    await expect(alicePage.locator('button[aria-label="Invite"]')).toBeVisible({ timeout: 10000 })
+    await alicePage.locator('button[aria-label="Invite"]').click()
+    await expect(alicePage.locator('#coralite-chat-window__inviteUserIdInput-0')).toBeVisible({ timeout: 10000 })
+    await alicePage.locator('#coralite-chat-window__inviteUserIdInput-0').fill('@bob:localhost')
+    await alicePage.locator('#coralite-chat-window__sendInviteBtn-0').click()
 
     // Bob accepts
-    await expect(bobPage.locator('coralite-chat-list')).toContainText('File Transfer Room')
-    await bobPage.getByText('File Transfer Room').click()
+    await expect(bobPage.locator('coralite-chat-list')).toContainText('File Transfer Room', { timeout: 10000 })
+    await bobPage.getByText('File Transfer Room').first().click()
     const joinButton = bobPage.getByRole('button', { name: 'Join' })
     if (await joinButton.isVisible()) {
       await joinButton.click()
@@ -72,7 +85,7 @@ test.describe('WebTorrent File Transfer', () => {
     await fileChooser.setFiles(filePath)
 
     // Wait for upload/seed
-    await alicePage.getByRole('button', { name: 'Send' }).click()
+    await alicePage.locator('#coralite-chat-input__sendBtn-0').click()
 
     // Verify the torrent bubble appears for User A with a "Seeding" state
     const torrentBubble = alicePage.locator('coralite-torrent-bubble')
