@@ -5,7 +5,6 @@
       <button class="btn btn-sm btn-outline-secondary rounded-circle" ref="openNewRoomModalBtn" aria-label="New Room">
         <i class="bi bi-pencil-square"></i>
       </button>
-      <button class="d-none" ref="openNewRoomModalHiddenBtn">New Room</button>
     </div>
 
     <div class="px-3 py-2">
@@ -59,7 +58,6 @@
         const roomNameInput = refs('roomNameInput')
         const createRoomBtn = refs('createRoomBtn')
         const openNewRoomModalBtn = refs('openNewRoomModalBtn')
-        const openNewRoomModalHiddenBtn = refs('openNewRoomModalHiddenBtn')
 
         const showModal = () => {
           try {
@@ -70,7 +68,6 @@
           }
         }
         if (openNewRoomModalBtn) openNewRoomModalBtn.addEventListener('click', showModal)
-        if (openNewRoomModalHiddenBtn) openNewRoomModalHiddenBtn.addEventListener('click', showModal)
 
         const createAvatarHTML = (roomName, avatarUrl) => {
           if (avatarUrl) {
