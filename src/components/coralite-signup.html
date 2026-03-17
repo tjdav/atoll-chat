@@ -60,6 +60,9 @@
           const password = passwordInput.value
           const confirmPassword = confirmPasswordInput.value
 
+          const urlParams = new URLSearchParams(window.location.search)
+          const token = urlParams.get('token')
+
           errorAlert.classList.add('d-none')
           
           if (password !== confirmPassword) {
@@ -75,7 +78,8 @@
             await registerUser({
               baseUrl,
               username,
-              password
+              password,
+              token
             })
 
             submitButton.textContent = 'Syncing...'

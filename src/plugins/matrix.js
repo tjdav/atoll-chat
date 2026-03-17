@@ -39,8 +39,6 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             localStorage: window.localStorage
           })
 
-          await store.startup()
-
           const cryptoStore = new sdk.IndexedDBCryptoStore(
             window.indexedDB,
             'matrix-js-sdk:crypto'
@@ -54,6 +52,23 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             store: store,
             cryptoStore: cryptoStore
           })
+
+          // Start the store with Auto-Recovery
+          try {
+            await store.startup()
+          } catch (error) {
+            if (error.message && error.message.includes("doesn't match the account")) {
+              console.warn('Stale Matrix session detected. Wiping IndexedDB...')
+
+              // Forcibly delete the mismatched databases from the browser
+              window.indexedDB.deleteDatabase('matrix-js-sdk:coralite')
+              window.indexedDB.deleteDatabase('matrix-js-sdk:crypto')
+
+              // Throw a friendly error so the UI can handle it (or the user can click login again)
+              throw new Error('Stale local database cleared. Please click login again to continue.')
+            }
+            throw error
+          }
 
           await client.initRustCrypto()
 
@@ -97,24 +112,81 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
       helpers: {
         getDefaultHomeserverUrl: (context) => () => context.config.baseUrl,
 
+        // src/plugins/matrix.js
+
         registerUser: (context) => {
-          return async ({ baseUrl, username, password }) => {
+          return async ({ baseUrl, username, password, token }) => {
             try {
               /** @type {import('matrix-js-sdk')}  */
               const sdk = context.imports.sdk
               const tempClient = sdk.createClient({ baseUrl })
 
-              const registerData = await tempClient.registerRequest({
+              // Helper function to gracefully fetch a session without throwing an exception
+              const fetchNewSession = async () => {
+                const res = await fetch(`${baseUrl}/_matrix/client/v3/register`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({})
+                })
+                if (res.status === 401) {
+                  const data = await res.json()
+                  return data.session
+                }
+                throw new Error('Failed to initialize Matrix registration session')
+              }
+
+              //  Get session
+              let session = sessionStorage.getItem('matrix_reg_session')
+              if (!session) {
+                session = await fetchNewSession()
+                sessionStorage.setItem('matrix_reg_session', session)
+              }
+
+              let registerData
+              const getRequestBody = (currentSession) => ({
                 username,
-                password
+                password,
+                auth: token
+                  ? {
+                    type: 'm.login.registration_token',
+                    token: token,
+                    session: currentSession
+                  }
+                  : {
+                    type: 'm.login.dummy',
+                    session: currentSession
+                  }
               })
 
+              try {
+                // Attempt registration
+                registerData = await tempClient.registerRequest(getRequestBody(session))
+              } catch (error) {
+                // If our cached session was rejected (401 or 403), fetch a fresh one and retry exactly once
+                if (error.httpStatus === 401 || error.httpStatus === 403) {
+                  console.warn('Matrix session expired or invalid. Refreshing session...')
+                  session = await fetchNewSession()
+                  sessionStorage.setItem('matrix_reg_session', session)
+
+                  // Retry with the fresh session
+                  registerData = await tempClient.registerRequest(getRequestBody(session))
+                } else {
+                  // Rethrow actual errors (e.g., username taken, password too weak)
+                  throw error
+                }
+              }
+
+              // Clean up cache on success
+              sessionStorage.removeItem('matrix_reg_session')
+
+              // Initialize the actual client
               return await context.values.initClient({
                 baseUrl: baseUrl,
                 userId: registerData.user_id,
                 accessToken: registerData.access_token,
                 deviceId: registerData.device_id
               }, context.helpers)
+
             } catch (error) {
               console.error('Matrix registration failed:', error)
               throw error
