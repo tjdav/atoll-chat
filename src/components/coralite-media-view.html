@@ -7,7 +7,15 @@
     
     <!-- Content Area -->
     <div class="flex-grow-1 overflow-auto p-3" ref="mediaContentContainer">
-      <!-- Media grid or audio player will be injected here -->
+      <div ref="picturesGrid" class="d-none h-100">
+        <coralite-media-grid type="pictures"></coralite-media-grid>
+      </div>
+      <div ref="videosGrid" class="d-none h-100">
+        <coralite-media-grid type="videos"></coralite-media-grid>
+      </div>
+      <div ref="musicPlayer" class="d-none h-100">
+        <coralite-audio-player></coralite-audio-player>
+      </div>
     </div>
   </div>
 </template>
@@ -17,15 +25,13 @@
 
   export default defineComponent({
     client: {
-      imports: [
-        { specifier: 'coralite-component/coralite-media-grid' },
-        { specifier: 'coralite-component/coralite-audio-player' }
-      ],
       script: ({ helpers }) => {
         const { refs, on, events } = helpers
         
         const headerTitle = refs('headerTitle')
-        const mediaContentContainer = refs('mediaContentContainer')
+        const picturesGrid = refs('picturesGrid')
+        const videosGrid = refs('videosGrid')
+        const musicPlayer = refs('musicPlayer')
 
         let currentActiveTab = null
 
@@ -33,28 +39,19 @@
           if (currentActiveTab === tabName) return
           currentActiveTab = tabName
 
-          // Clear previous content
-          mediaContentContainer.innerHTML = ''
-
-          let title = 'Media'
-          let componentElement = null
+          picturesGrid.classList.add('d-none')
+          videosGrid.classList.add('d-none')
+          musicPlayer.classList.add('d-none')
 
           if (tabName === 'pictures') {
-            title = 'All Pictures'
-            componentElement = document.createElement('coralite-media-grid')
-            componentElement.values = { type: 'pictures' }
+            headerTitle.textContent = 'All Pictures'
+            picturesGrid.classList.remove('d-none')
           } else if (tabName === 'videos') {
-            title = 'All Videos'
-            componentElement = document.createElement('coralite-media-grid')
-            componentElement.values = { type: 'videos' }
+            headerTitle.textContent = 'All Videos'
+            videosGrid.classList.remove('d-none')
           } else if (tabName === 'music') {
-            title = 'All Music'
-            componentElement = document.createElement('coralite-audio-player')
-          }
-
-          if (componentElement) {
-             headerTitle.textContent = title
-             mediaContentContainer.appendChild(componentElement)
+            headerTitle.textContent = 'All Music'
+            musicPlayer.classList.remove('d-none')
           }
         }
 

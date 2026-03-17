@@ -5,20 +5,17 @@ import { fileURLToPath } from 'url'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
-test.describe('Local Media Vault', () => {
+test.describe.serial('Local Media Vault', () => {
   let bobContext
   let bobPage
 
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(90000)
     bobContext = await browser.newContext()
     bobPage = await bobContext.newPage()
 
-    // Login Bob
-    await bobPage.goto('/')
-    await bobPage.locator('coralite-login').getByLabel('Username').fill('bob')
-    await bobPage.locator('coralite-login').getByLabel('Password').fill('password123')
-    await bobPage.locator('coralite-login').getByRole('button', { name: 'Log In' }).click()
-    await expect(bobPage.locator('coralite-app-layout')).toBeVisible({ timeout: 10000 })
+    // Go to a blank page on the same origin to seed IndexedDB first
+    await bobPage.goto('/#seed', { waitUntil: 'domcontentloaded' })
 
     // To ensure the test can run independently, we insert a mock record into Bob's IndexedDB.
     // The instructions say "Verify the downloaded test-image.jpg is rendered".
@@ -54,7 +51,7 @@ test.describe('Local Media Vault', () => {
             event_id: '$mock_event_123',
             blob: blob,
             mimeType: 'image/gif',
-            fileName: 'test-image.jpg',
+            filename: 'test-image.jpg',
             timestamp: Date.now(),
             roomId: '!mock_room_id'
           })
@@ -68,6 +65,15 @@ test.describe('Local Media Vault', () => {
         request.onerror = (e) => reject(e)
       })
     })
+
+    // Refresh page so app picks up the seeded data
+    await bobPage.reload({ waitUntil: 'domcontentloaded' })
+
+    // Login Bob
+    await bobPage.locator('#coralite-login__username-0').fill('bob')
+    await bobPage.locator('#coralite-login__password-0').fill('password123')
+    await bobPage.locator('#coralite-login__submitButton-0').click()
+    await expect(bobPage.getByRole('button', { name: 'New Room' })).toBeVisible({ timeout: 10000 })
   })
 
   test.afterAll(async () => {
@@ -76,31 +82,29 @@ test.describe('Local Media Vault', () => {
 
   test('IndexedDB Persistence & Grid Rendering', async () => {
     // User B navigates to the "Pictures" tab/view
-    await bobPage.getByRole('button', { name: 'Pictures' }).click()
-    // Verify <coralite-media-view> takes over layout
-    await expect(bobPage.locator('coralite-media-view')).toBeVisible({ timeout: 5000 })
+    await bobPage.getByRole('link', { name: 'Pictures' }).click()
+    // Verify Media View header takes over layout
+    await expect(bobPage.getByRole('heading', { name: 'All Pictures' })).toBeVisible({ timeout: 5000 })
 
     // Verify grid rendering
-    const mediaGrid = bobPage.locator('coralite-media-grid')
-    await expect(mediaGrid).toBeVisible()
-
-    // Check for an item in the grid
-    const mediaItem = mediaGrid.locator('.media-item').first()
-    await expect(mediaItem).toBeVisible()
+    // Target a nested element instead of <coralite-media-grid> since tags are replaced
+    const mediaItem = bobPage.locator('.card-img-top').first()
+    await expect(mediaItem).toBeVisible({ timeout: 10000 })
   })
 
   test('Memory Management: No leaked blob URLs on unmount', async () => {
     // Navigate away from Pictures
-    await bobPage.getByRole('button', { name: 'Chats' }).click()
-    await expect(bobPage.locator('coralite-chat-list')).toBeVisible()
+    await bobPage.getByRole('link', { name: 'Chats' }).click()
+    // Verify Chats view is visible by looking for the New Room button
+    await expect(bobPage.getByRole('button', { name: 'New Room' })).toBeVisible()
 
     // Check for console errors or warnings related to leaked blob URLs
     const logs = []
     bobPage.on('console', msg => logs.push(msg.text()))
 
     // Navigate back to Pictures
-    await bobPage.getByRole('button', { name: 'Pictures' }).click()
-    await expect(bobPage.locator('coralite-media-view')).toBeVisible()
+    await bobPage.getByRole('link', { name: 'Pictures' }).click()
+    await expect(bobPage.getByRole('heading', { name: 'All Pictures' })).toBeVisible()
 
     // Verify no specific memory leak errors (e.g., matching 'blob url not revoked' or similar)
     const leakLogs = logs.filter(l => l.toLowerCase().includes('leak') || l.toLowerCase().includes('unrevoked blob'))
@@ -108,18 +112,22 @@ test.describe('Local Media Vault', () => {
   })
 
   test('Jump to Message', async () => {
+    // Wait for the media items to re-render in the Pictures view
+    await bobPage.waitForSelector('.card-img-top', { timeout: 10000 })
+
     // Click "Go to Message" button on the media card
-    const gotoButton = bobPage.locator('coralite-media-grid').locator('.media-item').first().getByRole('button', { name: 'Go to Message' })
+    const gotoButton = bobPage.locator('.card').first().getByRole('button', { name: 'Go to Message' })
 
     if (await gotoButton.isVisible()) {
       await gotoButton.click()
 
       // Verify UI switches back to "Chats"
-      await expect(bobPage.locator('coralite-chat-list')).toBeVisible()
+      await expect(bobPage.getByRole('button', { name: 'New Room' })).toBeVisible()
 
       // Select the correct room (should be automatic based on the button click logic)
-      // Check the timeline displays the original message
-      await expect(bobPage.locator('coralite-chat-timeline')).toBeVisible()
+      // Check the timeline displays the original message (if present)
+      // Since it's a mock record, the chat timeline container should at least appear
+      await expect(bobPage.locator('#coralite-chat-timeline__messagesContainer-0')).toBeVisible()
     }
   })
 })

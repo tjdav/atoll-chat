@@ -18,7 +18,7 @@ export default createPlugin({
             request.onupgradeneeded = (event) => {
               const db = event.target.result
               if (!db.objectStoreNames.contains(STORE_NAME)) {
-                const store = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
+                const store = db.createObjectStore(STORE_NAME, { keyPath: 'event_id' })
                 store.createIndex('mimeType', 'mimeType', { unique: false })
                 store.createIndex('timestamp', 'timestamp', { unique: false })
               }
@@ -45,7 +45,7 @@ export default createPlugin({
       saveMedia: (context) => {
         const { getDB, STORE_NAME } = context.values
 
-        return async (id, blob, metadata) => {
+        return async (event_id, blob, metadata) => {
           const db = await getDB()
 
           return new Promise((resolve, reject) => {
@@ -53,7 +53,7 @@ export default createPlugin({
             const store = transaction.objectStore(STORE_NAME)
 
             const record = {
-              id,
+              event_id,
               blob,
               ...metadata,
               timestamp: metadata.timestamp || Date.now()
@@ -78,12 +78,11 @@ export default createPlugin({
             const store = transaction.objectStore(STORE_NAME)
             const index = store.index('mimeType')
 
-            const request = index.getAll()
+            const boundRange = IDBKeyRange.bound(mimeTypePrefix, mimeTypePrefix + '\uffff')
+            const request = index.getAll(boundRange)
 
             request.onsuccess = (event) => {
-              const allRecords = event.target.result
-              // Filter records that match the mimeTypePrefix (e.g., 'audio/', 'image/', 'video/')
-              const matchedRecords = allRecords.filter(record => record.mimeType && record.mimeType.startsWith(mimeTypePrefix))
+              const matchedRecords = event.target.result || []
               // Sort by timestamp descending (newest first)
               matchedRecords.sort((a, b) => b.timestamp - a.timestamp)
               resolve(matchedRecords)

@@ -17,14 +17,14 @@
 
   export default defineComponent({
     client: {
-      script: ({ helpers, values }) => {
+      script: ({ helpers, value }) => {
         const { refs, emit, events, getImageFiles, getVideoFiles } = helpers
         
         const gridContainer = refs('gridContainer')
         const emptyState = refs('emptyState')
         const emptyIcon = refs('emptyIcon')
 
-        const mediaType = values['type'] || 'pictures' // 'pictures' or 'videos'
+        const mediaType = (value && value['type']) || 'pictures'
         let generatedUrls = []
 
         const init = async () => {
@@ -88,14 +88,14 @@
              cardBody.appendChild(titleDiv)
 
              // Only show the "Go to Message" button if we have the roomId
-             if (file.roomId && file.id) {
+             if (file.roomId && file.event_id) {
                const jumpBtn = document.createElement('button')
                jumpBtn.className = 'btn btn-sm btn-outline-primary jump-btn'
                jumpBtn.title = 'Go to Message'
                jumpBtn.innerHTML = '<i class="bi bi-chat-left-text"></i>' // This is safe, fixed HTML
                
                jumpBtn.addEventListener('click', () => {
-                 emit(events('nav:jump-to-message'), { roomId: file.roomId, eventId: file.id })
+                 emit(events('nav:jump-to-message'), { roomId: file.roomId, eventId: file.event_id })
                })
                
                cardBody.appendChild(jumpBtn)
