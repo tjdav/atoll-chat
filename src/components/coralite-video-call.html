@@ -132,12 +132,25 @@
           videoIcon.classList.replace('bi-camera-video-off-fill', 'bi-camera-video-fill')
           toggleVideoBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
           
-          call.on('localStream', (stream) => {
+          // 1. Race Condition Fix: Check if streams were already acquired
+          const existingLocal = call.local_stream || call.localStream
+          if (existingLocal) {
+            localStream = existingLocal
+            localVideo.srcObject = existingLocal
+          }
+
+          const existingRemote = call.remote_stream || call.remoteStream
+          if (existingRemote) {
+            remoteVideo.srcObject = existingRemote
+            remoteVideo.play().catch(e => console.error('Error playing remote video:', e))
+          }
+
+          call.on('local_stream', (stream) => {
             localStream = stream
             localVideo.srcObject = stream
           })
 
-          call.on('remoteStream', (stream) => {
+          call.on('remote_stream', (stream) => {
             remoteVideo.srcObject = stream
             remoteVideo.play().catch(e => console.error('Error playing remote video:', e))
           })
