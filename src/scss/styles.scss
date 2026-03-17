@@ -1,5 +1,6 @@
 @use "./variables" as *;
 
+@import url("https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css");
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
 @import "bootstrap/scss/variables-dark";
@@ -7,38 +8,16 @@
 @import "bootstrap/scss/mixins";
 @import "bootstrap/scss/utilities";
 
-$utilities: map-merge(
-  $utilities,
-  (
-    "max-width": map-merge(
-      map-get($utilities, "max-width"),
-      (
-        values: map-merge(
-          map-get(map-get($utilities, "max-width"), "values"),
-          (600: 600px)
-        )
-      )
-    ),
-    "height": map-merge(
-      map-get($utilities, "height"),
-      (
-        values: map-merge(
-          map-get(map-get($utilities, "height"), "values"),
-          (400: 400px)
-        )
-      )
-    ),
-    "width": map-merge(
-      map-get($utilities, "width"),
-      (
-        values: map-merge(
-          map-get(map-get($utilities, "width"), "values"),
-          ("250px": 250px)
-        )
-      )
-    )
-  )
-);
+$utilities: map-merge($utilities,
+    ("max-width": map-merge(map-get($utilities, "max-width"),
+        (values: map-merge(map-get(map-get($utilities, "max-width"), "values"),
+            (600: 600px)))),
+      "height": map-merge(map-get($utilities, "height"),
+        (values: map-merge(map-get(map-get($utilities, "height"), "values"),
+            (400: 400px)))),
+      "width": map-merge(map-get($utilities, "width"),
+        (values: map-merge(map-get(map-get($utilities, "width"), "values"),
+            ("250px": 250px))))));
 
 @import "bootstrap/scss/root";
 @import "bootstrap/scss/reboot";
