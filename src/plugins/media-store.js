@@ -6,7 +6,7 @@ export default createPlugin({
     setup () {
       const DB_NAME = 'coralite-media-vault'
       const STORE_NAME = 'media'
-      const DB_VERSION = 1
+      const DB_VERSION = 2
 
       let dbPromise = null
 
@@ -17,10 +17,19 @@ export default createPlugin({
 
             request.onupgradeneeded = (event) => {
               const db = event.target.result
+              let store
+
               if (!db.objectStoreNames.contains(STORE_NAME)) {
-                const store = db.createObjectStore(STORE_NAME, { keyPath: 'event_id' })
+                store = db.createObjectStore(STORE_NAME, { keyPath: 'id' })
                 store.createIndex('mimeType', 'mimeType', { unique: false })
                 store.createIndex('timestamp', 'timestamp', { unique: false })
+              } else {
+                store = request.transaction.objectStore(STORE_NAME)
+              }
+
+              // Add the userId index if it doesn't exist
+              if (!store.indexNames.contains('userId')) {
+                store.createIndex('userId', 'userId', { unique: false })
               }
             }
 
@@ -45,17 +54,21 @@ export default createPlugin({
       saveMedia: (context) => {
         const { getDB, STORE_NAME } = context.values
 
-        return async (event_id, blob, metadata) => {
+        return async (id, blob, metadata) => {
           const db = await getDB()
+
+          // Grab the currently logged-in user from the Matrix plugin
+          const userId = await context.helpers.getCurrentUserId()
 
           return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readwrite')
             const store = transaction.objectStore(STORE_NAME)
 
             const record = {
-              event_id,
+              id,
               blob,
               ...metadata,
+              userId,
               timestamp: metadata.timestamp || Date.now()
             }
 
@@ -73,16 +86,22 @@ export default createPlugin({
         return async (mimeTypePrefix) => {
           const db = await getDB()
 
+          // Get the currently logged-in user
+          const userId = await context.helpers.getCurrentUserId()
+
           return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readonly')
             const store = transaction.objectStore(STORE_NAME)
-            const index = store.index('mimeType')
 
-            const boundRange = IDBKeyRange.bound(mimeTypePrefix, mimeTypePrefix + '\uffff')
-            const request = index.getAll(boundRange)
+            const request = store.index('userId').getAll(userId)
 
             request.onsuccess = (event) => {
-              const matchedRecords = event.target.result || []
+              const userRecords = event.target.result
+
+              // Filter records down to the requested mimeType (e.g., 'audio/', 'image/')
+              const matchedRecords = userRecords.filter(record => record.mimeType && record.mimeType.startsWith(mimeTypePrefix)
+              )
+
               // Sort by timestamp descending (newest first)
               matchedRecords.sort((a, b) => b.timestamp - a.timestamp)
               resolve(matchedRecords)
