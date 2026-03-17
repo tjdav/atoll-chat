@@ -7,7 +7,7 @@ import { createRequire } from 'module'
 import path from 'path'
 
 const require = createRequire(import.meta.url)
-const pkgPath = path.dirname(require.resolve('@matrix-org/matrix-sdk-crypto-wasm'))
+const pkgPath = path.dirname(require.resolve('@matrix-org/matrix-sdk-crypto-wasm', { paths: [require.resolve('matrix-js-sdk')] }))
 const wasmSrc = path.join(pkgPath, 'pkg/matrix_sdk_crypto_wasm_bg.wasm')
 
 export default defineConfig({
@@ -15,7 +15,7 @@ export default defineConfig({
   assets: [
     {
       src: wasmSrc,
-      dest: 'matrix_sdk_crypto_wasm_bg.wasm'
+      dest: 'pkg/matrix_sdk_crypto_wasm_bg.wasm'
     }
   ],
   plugins: [

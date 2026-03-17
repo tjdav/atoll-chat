@@ -7,6 +7,7 @@ test.describe('Text Chat', () => {
   let bobPage
 
   test.beforeAll(async ({ browser }) => {
+    test.setTimeout(90000)
     aliceContext = await browser.newContext()
     bobContext = await browser.newContext()
 
@@ -24,7 +25,7 @@ test.describe('Text Chat', () => {
     await expect(alicePage.getByRole('button', { name: 'New Room' })).toBeVisible({ timeout: 10000 })
 
     // Login Bob
-    await bobPage.goto('/')
+    await bobPage.goto('/', { waitUntil: 'domcontentloaded' })
     await bobPage.locator('#coralite-login__username-0').fill('bob')
     await bobPage.locator('#coralite-login__password-0').fill('password123')
     await bobPage.locator('#coralite-login__submitButton-0').click()

@@ -23,9 +23,10 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
         }
       ],
       setup (context) {
+
         let client = null
 
-        const initClient = async (credentials) => {
+        const initClient = async (credentials, helpers) => {
           if (client) {
             return client
           }
@@ -56,19 +57,22 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
 
           await client.initRustCrypto()
 
-          // Listen for incoming calls
-          client.on('Call.incoming', (call) => {
-            const { emit, events } = context.helpers
-            emit(events('call:incoming'), { call })
-          })
+          if (helpers) {
+            const emit = helpers.emit
+            const events = helpers.events
 
-          // Listen for incoming messages to trigger room list updates
-          client.on('Room.timeline', (event, room, toStartOfTimeline) => {
-            if (event.getType() === 'm.room.message' && !toStartOfTimeline) {
-              const { emit, events } = context.helpers
-              emit(events('chat:rooms-updated'))
-            }
-          })
+            // Listen for incoming calls
+            client.on('Call.incoming', (call) => {
+              emit(events('call:incoming'), { call })
+            })
+
+            // Listen for incoming messages to trigger room list updates
+            client.on('Room.timeline', (event, room, toStartOfTimeline) => {
+              if (event.getType() === 'm.room.message' && !toStartOfTimeline) {
+                emit(events('chat:rooms-updated'))
+              }
+            })
+          }
 
           return client
         }
@@ -98,7 +102,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
                 userId: registerData.user_id,
                 accessToken: registerData.access_token,
                 deviceId: registerData.device_id
-              })
+              }, context.helpers)
             } catch (error) {
               console.error('Matrix registration failed:', error)
               throw error
@@ -130,7 +134,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
                 userId: loginData.user_id,
                 accessToken: loginData.access_token,
                 deviceId: loginData.device_id
-              })
+              }, context.helpers)
             } catch (error) {
               console.error('Matrix login failed:', error)
               throw error

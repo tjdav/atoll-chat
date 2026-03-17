@@ -23,6 +23,10 @@ export default createPlugin({
           id: Symbol('app:logged-out'),
           schema: z.object({}).strict().optional()
         },
+        'chat:rooms-updated': {
+          id: Symbol('chat:rooms-updated'),
+          schema: z.object({}).strict().optional()
+        },
         'chat:room-selected': {
           id: Symbol('chat:room-selected'),
           schema: z.object({
