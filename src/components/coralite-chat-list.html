@@ -2,10 +2,10 @@
   <div class="d-flex flex-column h-100 bg-body-tertiary">
     <div class="p-3 border-bottom border-secondary d-flex justify-content-between align-items-center">
       <h5 class="m-0 fw-bold">Chats</h5>
-      <button class="btn btn-sm btn-outline-secondary rounded-circle" data-bs-toggle="modal" data-bs-target="#newRoomModal" aria-label="New Room">
+      <button class="btn btn-sm btn-outline-secondary rounded-circle" ref="openNewRoomModalBtn" aria-label="New Room">
         <i class="bi bi-pencil-square"></i>
       </button>
-      <button class="d-none" data-bs-toggle="modal" data-bs-target="#newRoomModal">New Room</button>
+      <button class="d-none" ref="openNewRoomModalHiddenBtn">New Room</button>
     </div>
 
     <div class="px-3 py-2">
@@ -20,17 +20,17 @@
     </div>
 
     <!-- New Room Modal -->
-    <div class="modal fade" id="newRoomModal" tabindex="-1" aria-labelledby="newRoomModalLabel" aria-hidden="true" ref="newRoomModal">
+    <div class="modal fade" id="{{ ref_newRoomModal }}" tabindex="-1" aria-labelledby="{{ ref_newRoomModalLabel }}" aria-hidden="true" ref="newRoomModal">
       <div class="modal-dialog">
         <div class="modal-content text-bg-dark">
           <div class="modal-header border-secondary">
-            <h1 class="modal-title fs-5" id="newRoomModalLabel">Create New Room</h1>
+            <h1 class="modal-title fs-5" id="{{ ref_newRoomModalLabel }}">Create New Room</h1>
             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
           </div>
           <div class="modal-body">
             <div class="mb-3">
-              <label for="roomNameInput" class="form-label">Room Name</label>
-              <input type="text" class="form-control bg-dark text-white border-secondary" id="roomNameInput" ref="roomNameInput">
+              <label for="{{ ref_roomNameInput }}" class="form-label">Room Name</label>
+              <input type="text" class="form-control bg-dark text-white border-secondary" id="{{ ref_roomNameInput }}" ref="roomNameInput">
             </div>
           </div>
           <div class="modal-footer border-secondary">
@@ -48,12 +48,29 @@
 
   export default defineComponent({
     client: {
-      script: ({ helpers }) => {
+      imports: [
+        { specifier: 'bootstrap', namespaceExport: 'bootstrap' }
+      ],
+      script: ({ helpers, imports }) => {
         const { refs, getRooms, createEncryptedRoom, emit, on, events } = helpers
+        const { bootstrap } = imports
         const roomList = refs('roomList')
         const newRoomModal = refs('newRoomModal')
         const roomNameInput = refs('roomNameInput')
         const createRoomBtn = refs('createRoomBtn')
+        const openNewRoomModalBtn = refs('openNewRoomModalBtn')
+        const openNewRoomModalHiddenBtn = refs('openNewRoomModalHiddenBtn')
+
+        const showModal = () => {
+          try {
+            const modal = bootstrap.Modal.getOrCreateInstance(newRoomModal)
+            modal.show()
+          } catch (e) {
+            console.error('Failed to show new room modal', e)
+          }
+        }
+        if (openNewRoomModalBtn) openNewRoomModalBtn.addEventListener('click', showModal)
+        if (openNewRoomModalHiddenBtn) openNewRoomModalHiddenBtn.addEventListener('click', showModal)
 
         const createAvatarHTML = (roomName, avatarUrl) => {
           if (avatarUrl) {

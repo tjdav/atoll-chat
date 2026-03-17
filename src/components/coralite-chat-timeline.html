@@ -97,7 +97,8 @@
 
           history.forEach(msg => {
             const isCurrentUser = msg.sender === currentUserId
-            messagesContainer.appendChild(renderMessage(msg, isCurrentUser))
+            const msgEl = renderMessage(msg, isCurrentUser)
+            messagesContainer.appendChild(msgEl)
           })
 
           if (pendingScrollEventId) {
@@ -113,7 +114,8 @@
             const isCurrentUser = newMsg.sender === currentUserId
             const nearBottom = isNearBottom()
 
-            messagesContainer.appendChild(renderMessage(newMsg, isCurrentUser))
+            const msgEl = renderMessage(newMsg, isCurrentUser)
+            messagesContainer.appendChild(msgEl)
 
             // Auto-scroll logic: only if near bottom or if it's our own message
             if (nearBottom || isCurrentUser) {

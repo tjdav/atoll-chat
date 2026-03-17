@@ -9,8 +9,8 @@
       <div>
         <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="startVoiceCallBtn"><i class="bi bi-telephone"></i></button>
         <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="startVideoCallBtn"><i class="bi bi-camera-video"></i></button>
-        <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" data-bs-toggle="modal" data-bs-target="#inviteModal" aria-label="Invite"><i class="bi bi-person-plus"></i></button>
-        <button class="d-none" data-bs-toggle="modal" data-bs-target="#inviteModal">Invite</button>
+        <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="openInviteModalBtn" aria-label="Invite"><i class="bi bi-person-plus"></i></button>
+        <button class="d-none" ref="openInviteModalHiddenBtn">Invite</button>
         <button class="btn btn-sm btn-outline-secondary rounded-circle"><i class="bi bi-three-dots"></i></button>
       </div>
     </div>
@@ -31,7 +31,9 @@
     </div>
 
     <!-- Timeline (Hidden Initially) -->
-    <coralite-chat-timeline class="flex-grow-1 overflow-auto d-none" ref="timeline"></coralite-chat-timeline>
+    <div class="flex-grow-1 overflow-auto d-none" ref="timeline">
+      <coralite-chat-timeline></coralite-chat-timeline>
+    </div>
 
     <!-- Input (Hidden Initially) -->
     <div class="p-3 border-top border-secondary bg-body-tertiary d-none" ref="inputContainer">
@@ -67,7 +69,10 @@
 
   export default defineComponent({
     client: {
-      script: ({ helpers }) => {
+      imports: [
+        { specifier: 'bootstrap', namespaceExport: 'bootstrap' }
+      ],
+      script: ({ helpers, imports }) => {
         const { refs, on, emit, events, getRoom, sendMessage, seed, sendTorrentMessage, inviteUser, joinRoom } = helpers
         const chatHeader = refs('chatHeader')
         const roomAvatar = refs('roomAvatar')
@@ -132,6 +137,15 @@
           }
         })
 
+      helpers.refs('openInviteModalBtn').addEventListener('click', () => {
+         const modal = imports.bootstrap.Modal.getOrCreateInstance(helpers.refs('inviteModal'));
+         modal.show();
+      });
+      helpers.refs('openInviteModalHiddenBtn').addEventListener('click', () => {
+         const modal = imports.bootstrap.Modal.getOrCreateInstance(helpers.refs('inviteModal'));
+         modal.show();
+      });
+
         sendInviteBtn.addEventListener('click', async () => {
           if (!activeRoomId) return
           const userId = inviteUserIdInput.value.trim()
@@ -142,7 +156,7 @@
             inviteUserIdInput.value = ''
             
             const modalElement = inviteModal
-            const bootstrapModal = bootstrap.Modal.getInstance(modalElement)
+            const bootstrapModal = imports.bootstrap.Modal.getInstance(modalElement)
             if (bootstrapModal) bootstrapModal.hide()
 
           } catch (error) {
