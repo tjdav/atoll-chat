@@ -33,44 +33,73 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
 
           /** @type {import('matrix-js-sdk')}  */
           const sdk = context.imports.sdk
-          const store = new sdk.IndexedDBStore({
-            indexedDB: window.indexedDB,
-            dbName: 'matrix-js-sdk:coralite',
-            localStorage: window.localStorage
-          })
 
-          const cryptoStore = new sdk.IndexedDBCryptoStore(
-            window.indexedDB,
-            'matrix-js-sdk:crypto'
-          )
+          const createAndInit = async (isRetry = false) => {
+            const store = new sdk.IndexedDBStore({
+              indexedDB: window.indexedDB,
+              dbName: 'matrix-js-sdk:coralite',
+              localStorage: window.localStorage
+            })
 
-          client = sdk.createClient({
-            baseUrl: credentials.baseUrl || context.config.baseUrl,
-            userId: credentials.userId,
-            accessToken: credentials.accessToken,
-            deviceId: credentials.deviceId,
-            store: store,
-            cryptoStore: cryptoStore
-          })
 
-          // Start the store with Auto-Recovery
-          try {
+            const cryptoStore = new sdk.IndexedDBCryptoStore(
+              window.indexedDB,
+              'matrix-js-sdk:crypto'
+            )
+
+            const tempClient = sdk.createClient({
+              baseUrl: credentials.baseUrl || context.config.baseUrl,
+              userId: credentials.userId,
+              accessToken: credentials.accessToken,
+              deviceId: credentials.deviceId,
+              store: store,
+              cryptoStore: cryptoStore
+            })
+
             await store.startup()
-          } catch (error) {
-            if (error.message && error.message.includes("doesn't match the account")) {
-              console.warn('Stale Matrix session detected. Wiping IndexedDB...')
 
-              // Forcibly delete the mismatched databases from the browser
-              window.indexedDB.deleteDatabase('matrix-js-sdk:coralite')
-              window.indexedDB.deleteDatabase('matrix-js-sdk:crypto')
+            try {
+              await tempClient.initRustCrypto()
+              return tempClient
+            } catch (err) {
+              if (!isRetry && err.message && err.message.includes("doesn't match the account in the constructor")) {
+                console.warn('Account mismatch detected in store, clearing indexedDB stores and retrying...')
 
-              // Throw a friendly error so the UI can handle it (or the user can click login again)
-              throw new Error('Stale local database cleared. Please click login again to continue.')
+                // Stop the client to close any open database connections
+                tempClient.stopClient()
+
+                if (store && store.destroy) {
+                  await store.destroy()
+                }
+
+                const deleteDB = (dbName) => {
+                  return new Promise((resolve) => {
+                    const req = window.indexedDB.deleteDatabase(dbName)
+                    req.onsuccess = () => resolve()
+                    req.onerror = () => resolve() // Ignore errors, keep trying
+                    req.onblocked = () => {
+                      console.warn(`Deletion of IndexedDB ${dbName} is blocked.`)
+                      // Resolving here can cause race conditions, but we need to proceed
+                      // if the browser doesn't cleanly free the lock.
+                      // Usually destroying the store releases the lock.
+                      setTimeout(resolve, 500)
+                    }
+                  })
+                }
+
+                await deleteDB('matrix-js-sdk:coralite')
+                await deleteDB('matrix-js-sdk:crypto')
+                await deleteDB('matrix-js-sdk::matrix-sdk-crypto')
+                await deleteDB('matrix-js-sdk::matrix-sdk-crypto-meta')
+
+                return await createAndInit(true)
+              } else {
+                throw err
+              }
             }
-            throw error
           }
 
-          await client.initRustCrypto()
+          client = await createAndInit()
 
           if (helpers) {
             const emit = helpers.emit
@@ -111,8 +140,6 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
       },
       helpers: {
         getDefaultHomeserverUrl: (context) => () => context.config.baseUrl,
-
-        // src/plugins/matrix.js
 
         registerUser: (context) => {
           return async ({ baseUrl, username, password, token }) => {
@@ -191,6 +218,28 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               console.error('Matrix registration failed:', error)
               throw error
             }
+          }
+        },
+
+        restoreSession: (context) => async () => {
+          const sessionData = localStorage.getItem('atoll_session')
+          if (!sessionData) return false
+
+          try {
+            const credentials = JSON.parse(sessionData)
+
+            // Re-initialize the client with the saved credentials
+            await context.values.initClient(credentials, context.helpers)
+
+            // Start syncing in the background automatically
+            const client = context.values.getClient()
+            await client.startClient({ initialSyncLimit: 10 })
+
+            return true
+          } catch (e) {
+            console.error('Failed to restore Matrix session:', e)
+            localStorage.removeItem('atoll_session')
+            return false
           }
         },
 
