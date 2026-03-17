@@ -72,6 +72,18 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
                 emit(events('chat:rooms-updated'))
               }
             })
+
+            client.on('Room', () => {
+              emit(events('chat:rooms-updated'))
+            })
+
+            client.on('RoomState.events', () => {
+              emit(events('chat:rooms-updated'))
+            })
+
+            client.on('Event.decrypted', (event) => {
+              emit(events('chat:rooms-updated'))
+            })
           }
 
           return client
@@ -275,10 +287,25 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             }
           }
 
+          const decryptHandler = (event) => {
+            if (event.getRoomId() === roomId && event.getType() === 'm.room.message') {
+              callback({
+                id: event.getId(),
+                sender: event.getSender(),
+                body: event.getContent().body,
+                date: event.getDate(),
+                msgtype: event.getContent().msgtype,
+                info: event.getContent().info
+              })
+            }
+          }
+
           client.on('Room.timeline', handler)
+          client.on('Event.decrypted', decryptHandler)
 
           return () => {
             client.removeListener('Room.timeline', handler)
+            client.removeListener('Event.decrypted', decryptHandler)
           }
         },
 
