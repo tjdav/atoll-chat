@@ -14,9 +14,10 @@
   "scripts": {
     "start": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
     "build": "coralite-scripts build",
+    "test:server": "sirv dist --dev --port 3000",
     "test:unit": "pnpm --test",
     "test:unit:coverage": "pnpm --experimental-test-coverage --test",
-    "test:e2e": "pnpm exec playwright test",
+    "test:e2e": "npm run build && pnpm exec playwright test",
     "test:e2e:ui": "pnpm exec playwright test --ui"
   },
   "devDependencies": {
@@ -27,7 +28,8 @@
     "coralite-scripts": "^0.28.7",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
-    "eslint": "^10.0.2"
+    "eslint": "^10.0.2",
+    "sirv-cli": "^3.0.1"
   },
   "dependencies": {
     "@matrix-org/matrix-sdk-crypto-wasm": "^18.0.0",
