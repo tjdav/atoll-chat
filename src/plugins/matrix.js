@@ -10,28 +10,6 @@ import { createPlugin } from 'coralite'
  * @param {string} [config.baseUrl='https://matrix.org']
  */
 export default function ({ baseUrl = 'https://matrix.org' } = {}) {
-  const withRetry = async (action, maxAttempts = 5) => {
-    let attempt = 0
-    while (attempt < maxAttempts) {
-      try {
-        return await action()
-      } catch (error) {
-        const isRetryable =
-          (error.message && (error.message.includes('unconfigured room') || error.message.includes('Cannot encrypt'))) ||
-          error.name === 'UnknownDeviceError'
-
-        if (isRetryable && attempt < maxAttempts - 1) {
-          attempt++
-          const delay = attempt * 1000 // 1s, 2s, 3s, 4s, 5s
-          console.warn(`Encryption error detected. Retrying in ${delay}ms (Attempt ${attempt}/${maxAttempts})...`, error)
-          await new Promise(resolve => setTimeout(resolve, delay))
-        } else {
-          throw error
-        }
-      }
-    }
-  }
-
   return createPlugin({
     name: 'matrix-plugin',
     client: {
@@ -379,7 +357,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             body: messageText
           }
 
-          return await withRetry(() => client.sendEvent(roomId, 'm.room.message', content, ''))
+          return await client.sendEvent(roomId, 'm.room.message', content, '')
         },
 
         createEncryptedRoom: (context) => async (name, inviteUserId) => {
@@ -524,7 +502,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             info: torrentPayload
           }
 
-          return await withRetry(() => client.sendEvent(roomId, 'm.room.message', content, ''))
+          return await client.sendEvent(roomId, 'm.room.message', content, '')
         },
 
         placeCall: (context) => async (roomId, type) => {
@@ -533,13 +511,11 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
 
           const call = client.createCall(roomId)
 
-          await withRetry(async () => {
-            if (type === 'video') {
-              await call.placeVideoCall()
-            } else {
-              await call.placeVoiceCall()
-            }
-          })
+          if (type === 'video') {
+            await call.placeVideoCall()
+          } else {
+            await call.placeVoiceCall()
+          }
 
           return call
         },
@@ -552,6 +528,67 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
         rejectCall: (context) => async (call) => {
           if (!call) throw new Error('No call provided')
           await call.hangup()
+        },
+
+        waitForRoomCrypto: (context) => async (roomId) => {
+          const client = context.values.getClient()
+          if (!client) throw new Error('Matrix client not initialized')
+
+          const checkEncryption = (room) => {
+            if (!room) return 'not_found'
+            // If the room is not encrypted, we are "ready" immediately
+            if (!client.isRoomEncrypted(roomId)) return 'ready'
+            // If it IS encrypted, we are ready only if the SDK has processed the state
+            return 'encrypted'
+          }
+
+          // 1. Wait for the room state to fully sync and confirm encryption status
+          const room = await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              client.removeListener('RoomState.events', handler)
+              reject(new Error('Timeout waiting for room crypto readiness'))
+            }, 30000)
+
+            const checkReady = () => {
+              const r = client.getRoom(roomId)
+              const status = checkEncryption(r)
+              if (status === 'ready' || status === 'encrypted') {
+                return r
+              }
+              return null
+            }
+
+            const readyRoom = checkReady()
+            if (readyRoom) {
+              clearTimeout(timeout)
+              return resolve(readyRoom)
+            }
+
+            // If not ready, listen to state events until the /sync catches up
+            const handler = (event, emittedRoom) => {
+              if (emittedRoom.roomId === roomId) {
+                const r = checkReady()
+                if (r) {
+                  clearTimeout(timeout)
+                  client.removeListener('RoomState.events', handler)
+                  resolve(r)
+                }
+              }
+            }
+            client.on('RoomState.events', handler)
+          })
+
+          // 2. If encrypted, proactively force the crypto engine to pre-fetch all device keys
+          if (client.isRoomEncrypted(roomId)) {
+            try {
+              const userIds = room.getJoinedMembers().map(m => m.userId)
+              await client.downloadKeys(userIds)
+            } catch (error) {
+              console.warn('[Matrix] Non-fatal error pre-fetching device keys:', error)
+            }
+          }
+
+          return true
         }
       }
     }
