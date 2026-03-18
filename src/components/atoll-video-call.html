@@ -133,17 +133,50 @@
           toggleVideoBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
           
           // 1. Race Condition Fix: Check if streams were already acquired
-          const existingLocal = call.local_stream || call.localStream
-          if (existingLocal) {
-            localStream = existingLocal
-            localVideo.srcObject = existingLocal
+          const updateStreams = () => {
+             const getStream = (isLocal) => {
+                if (call.feeds && call.feeds.length) {
+                   const f = call.feeds.find(f => f.stream && f.purpose === 'm.usermedia' && f.isLocal() === isLocal)
+                   if (f) return f.stream
+                }
+                return null;
+             }
+
+             let existingLocal = call.localUsermediaStream || call.local_stream || call.localStream || getStream(true)
+             if (!existingLocal && call.peerConn && call.peerConn.getSenders && call.peerConn.getSenders().length > 0) {
+                const tracks = call.peerConn.getSenders().map(s => s.track).filter(t => t);
+                if (tracks.length > 0) existingLocal = new MediaStream(tracks);
+             }
+             if (existingLocal) {
+               localStream = existingLocal
+               localVideo.srcObject = existingLocal
+             }
+
+             let existingRemote = call.remoteUsermediaStream || call.remote_stream || call.remoteStream || getStream(false)
+             if (!existingRemote && call.peerConn && call.peerConn.getReceivers && call.peerConn.getReceivers().length > 0) {
+                const tracks = call.peerConn.getReceivers().map(s => s.track).filter(t => t && t.readyState === 'live');
+                if (tracks.length > 0) existingRemote = new MediaStream(tracks);
+             }
+             if (existingRemote && remoteVideo.srcObject !== existingRemote) {
+               remoteVideo.srcObject = existingRemote
+               remoteVideo.play().catch(e => console.error('Error playing remote video:', e))
+             }
           }
 
-          const existingRemote = call.remote_stream || call.remoteStream
-          if (existingRemote) {
-            remoteVideo.srcObject = existingRemote
-            remoteVideo.play().catch(e => console.error('Error playing remote video:', e))
-          }
+          updateStreams()
+
+          call.on('feeds_changed', () => {
+             updateStreams()
+          })
+
+          call.on('state', () => {
+             updateStreams()
+          })
+
+          call.on('replaced', (newCall) => {
+             currentCall = newCall;
+             bindCallEvents(newCall);
+          })
 
           call.on('local_stream', (stream) => {
             localStream = stream

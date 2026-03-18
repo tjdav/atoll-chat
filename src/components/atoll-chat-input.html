@@ -68,6 +68,19 @@
           attachBtn.disabled = false
           messageInput.focus()
         })
+
+        on(events('chat:securing-room'), () => {
+          messageInput.disabled = true
+          sendBtn.disabled = true
+          attachBtn.disabled = true
+        })
+
+        on(events('chat:room-secured'), () => {
+          messageInput.disabled = false
+          sendBtn.disabled = false
+          attachBtn.disabled = false
+          messageInput.focus()
+        })
       }
     }
   })

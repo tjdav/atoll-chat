@@ -74,6 +74,13 @@ test.describe('Secure Calls', () => {
     if (await joinButton.isVisible()) {
       await joinButton.click()
     }
+
+    // Wait for the encryption sync to complete before calling.
+    // Wait for the inputs to be completely active
+    await alicePage.waitForTimeout(4000)
+
+    // Verify Bob is synced
+    await bobPage.waitForTimeout(4000)
   })
 
   test.afterAll(async () => {

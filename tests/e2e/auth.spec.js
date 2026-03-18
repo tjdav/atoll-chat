@@ -66,5 +66,16 @@ test.describe('Authentication', () => {
     // Verify transition to app layout
     // Instead of atoll-app-layout which is removed, check for a visible heading/sidebar
     await expect(page.getByRole('link', { name: 'Chats' })).toBeVisible({ timeout: 10000 })
+
+    // Open user dropdown. In bootstrap, the user link has class dropdown-toggle. We'll find it by text 'User'
+    await page.locator('.dropdown-toggle', { hasText: 'User' }).click()
+
+    // Wait for the dropdown to become visible and click Sign out
+    const signOutLink = page.locator('a', { hasText: 'Sign out' })
+    await signOutLink.waitFor({ state: 'visible' })
+    await signOutLink.click()
+
+    // Verify we are back at the login screen
+    await expect(page.getByRole('heading', { name: 'Login to Matrix' })).toBeVisible({ timeout: 10000 })
   })
 })

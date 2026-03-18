@@ -135,7 +135,8 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
 
         return {
           getClient: () => client,
-          initClient
+          initClient,
+          clearClient: () => { client = null }
         }
       },
       helpers: {
@@ -207,12 +208,17 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               sessionStorage.removeItem('matrix_reg_session')
 
               // Initialize the actual client
-              return await context.values.initClient({
+              const initData = {
                 baseUrl: baseUrl,
                 userId: registerData.user_id,
                 accessToken: registerData.access_token,
                 deviceId: registerData.device_id
-              }, context.helpers)
+              }
+              const initializedClient = await context.values.initClient(initData, context.helpers)
+
+              localStorage.setItem('atoll_session', JSON.stringify(initData))
+
+              return initializedClient
 
             } catch (error) {
               console.error('Matrix registration failed:', error)
@@ -262,16 +268,68 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
 
               const loginData = await tempClient.loginRequest(requestPayload)
 
-              return await context.values.initClient({
+              const initData = {
                 baseUrl: loginRequest.baseUrl || context.config.baseUrl,
                 userId: loginData.user_id,
                 accessToken: loginData.access_token,
                 deviceId: loginData.device_id
-              }, context.helpers)
+              }
+
+              const initializedClient = await context.values.initClient(initData, context.helpers)
+
+              localStorage.setItem('atoll_session', JSON.stringify(initData))
+
+              return initializedClient
             } catch (error) {
               console.error('Matrix login failed:', error)
               throw error
             }
+          }
+        },
+
+        logout: (context) => async () => {
+          /** @type {MatrixClient}  */
+          const client = context.values.getClient()
+
+          if (client) {
+            try {
+              await client.logout(true) // logs out and stops the client
+            } catch (err) {
+              console.warn('Matrix logout request failed, proceeding to clear local state:', err)
+              client.stopClient()
+            }
+          }
+
+          localStorage.removeItem('atoll_session')
+
+          const store = client ? client.store : null
+          if (store && store.destroy) {
+            try {
+              await store.destroy()
+            } catch (e) {
+              console.warn('Failed to destroy store:', e)
+            }
+          }
+
+          const deleteDB = (dbName) => {
+            return new Promise((resolve) => {
+              const req = window.indexedDB.deleteDatabase(dbName)
+              req.onsuccess = () => resolve()
+              req.onerror = () => resolve() // Ignore errors, keep trying
+              req.onblocked = () => {
+                console.warn(`Deletion of IndexedDB ${dbName} is blocked.`)
+                setTimeout(resolve, 500)
+              }
+            })
+          }
+
+          await deleteDB('matrix-js-sdk:atoll')
+          await deleteDB('matrix-js-sdk:crypto')
+          await deleteDB('matrix-js-sdk::matrix-sdk-crypto')
+          await deleteDB('matrix-js-sdk::matrix-sdk-crypto-meta')
+
+          if (context.values.clearClient) {
+            context.values.clearClient()
           }
         },
 
@@ -470,6 +528,67 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
         rejectCall: (context) => async (call) => {
           if (!call) throw new Error('No call provided')
           await call.hangup()
+        },
+
+        waitForRoomCrypto: (context) => async (roomId) => {
+          const client = context.values.getClient()
+          if (!client) throw new Error('Matrix client not initialized')
+
+          const checkEncryption = (room) => {
+            if (!room) return 'not_found'
+            // If the room is not encrypted, we are "ready" immediately
+            if (!client.isRoomEncrypted(roomId)) return 'ready'
+            // If it IS encrypted, we are ready only if the SDK has processed the state
+            return 'encrypted'
+          }
+
+          // 1. Wait for the room state to fully sync and confirm encryption status
+          const room = await new Promise((resolve, reject) => {
+            const timeout = setTimeout(() => {
+              client.removeListener('RoomState.events', handler)
+              reject(new Error('Timeout waiting for room crypto readiness'))
+            }, 30000)
+
+            const checkReady = () => {
+              const r = client.getRoom(roomId)
+              const status = checkEncryption(r)
+              if (status === 'ready' || status === 'encrypted') {
+                return r
+              }
+              return null
+            }
+
+            const readyRoom = checkReady()
+            if (readyRoom) {
+              clearTimeout(timeout)
+              return resolve(readyRoom)
+            }
+
+            // If not ready, listen to state events until the /sync catches up
+            const handler = (event, emittedRoom) => {
+              if (emittedRoom.roomId === roomId) {
+                const r = checkReady()
+                if (r) {
+                  clearTimeout(timeout)
+                  client.removeListener('RoomState.events', handler)
+                  resolve(r)
+                }
+              }
+            }
+            client.on('RoomState.events', handler)
+          })
+
+          // 2. If encrypted, proactively force the crypto engine to pre-fetch all device keys
+          if (client.isRoomEncrypted(roomId)) {
+            try {
+              const userIds = room.getJoinedMembers().map(m => m.userId)
+              await client.downloadKeys(userIds)
+            } catch (error) {
+              console.warn('[Matrix] Non-fatal error pre-fetching device keys:', error)
+            }
+          }
+
+          return true
         }
       }
     }
