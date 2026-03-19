@@ -33,6 +33,18 @@ export default createPlugin({
             roomId: z.string().min(1)
           })
         },
+        'chat:securing-room': {
+          id: Symbol('chat:securing-room'),
+          schema: z.object({
+            roomId: z.string().min(1)
+          }).strict()
+        },
+        'chat:room-secured': {
+          id: Symbol('chat:room-secured'),
+          schema: z.object({
+            roomId: z.string().min(1)
+          }).strict()
+        },
         'chat:room-ready': {
           id: Symbol('chat:room-ready'),
           schema: z.object({

@@ -37,6 +37,7 @@
 
     <!-- Input (Hidden Initially) -->
     <div class="p-3 border-top border-secondary bg-body-tertiary d-none" ref="inputContainer">
+      <div class="text-muted small mb-2 d-none" ref="cryptoStatus"></div>
       <atoll-chat-input></atoll-chat-input>
     </div>
 
@@ -73,7 +74,7 @@
         { specifier: 'bootstrap', namespaceExport: 'bootstrap' }
       ],
       script: ({ helpers, imports }) => {
-        const { refs, on, emit, events, getRoom, sendMessage, seed, sendTorrentMessage, inviteUser, joinRoom } = helpers
+        const { refs, on, emit, events, getRoom, sendMessage, seed, sendTorrentMessage, inviteUser, joinRoom, waitForRoomCrypto } = helpers
         const chatHeader = refs('chatHeader')
         const roomAvatar = refs('roomAvatar')
         const roomName = refs('roomName')
@@ -81,6 +82,7 @@
         const inviteState = refs('inviteState')
         const timeline = refs('timeline')
         const inputContainer = refs('inputContainer')
+        const cryptoStatus = refs('cryptoStatus')
         const startVoiceCallBtn = refs('startVoiceCallBtn')
         const startVideoCallBtn = refs('startVideoCallBtn')
         const inviteModal = refs('inviteModal')
@@ -131,8 +133,27 @@
               inviteState.classList.add('d-none')
               timeline.classList.remove('d-none')
               inputContainer.classList.remove('d-none')
-              // Notify timeline to load messages
-              emit(events('chat:room-ready'), { roomId })
+
+              // Lockdown UI until room is secure
+              emit(events('chat:securing-room'), { roomId })
+              cryptoStatus.innerHTML = '<i class="bi bi-lock-fill"></i> Establishing secure connection...'
+              cryptoStatus.classList.remove('d-none')
+
+              try {
+                await waitForRoomCrypto(roomId)
+                // If room changed while waiting, don't unlock
+                if (activeRoomId === roomId) {
+                  cryptoStatus.classList.add('d-none')
+                  emit(events('chat:room-secured'), { roomId })
+                  // Notify timeline to load messages
+                  emit(events('chat:room-ready'), { roomId })
+                }
+              } catch (error) {
+                console.error('Failed to secure room:', error)
+                if (activeRoomId === roomId) {
+                  cryptoStatus.innerHTML = '<i class="bi bi-x-circle-fill"></i> Failed to secure connection.'
+                }
+              }
             }
           }
         })
@@ -166,15 +187,33 @@
 
         joinRoomBtn.addEventListener('click', async () => {
           if (!activeRoomId) return
+          const roomId = activeRoomId
 
           try {
-            await joinRoom(activeRoomId)
+            await joinRoom(roomId)
             
             inviteState.classList.add('d-none')
             timeline.classList.remove('d-none')
             inputContainer.classList.remove('d-none')
             
-            emit(events('chat:room-ready'), { roomId: activeRoomId })
+            // Lockdown UI until room is secure
+            emit(events('chat:securing-room'), { roomId })
+            cryptoStatus.innerHTML = '<i class="bi bi-lock-fill"></i> Establishing secure connection...'
+            cryptoStatus.classList.remove('d-none')
+
+            try {
+              await waitForRoomCrypto(roomId)
+              if (activeRoomId === roomId) {
+                cryptoStatus.classList.add('d-none')
+                emit(events('chat:room-secured'), { roomId })
+                emit(events('chat:room-ready'), { roomId: activeRoomId })
+              }
+            } catch (error) {
+              console.error('Failed to secure room after join:', error)
+              if (activeRoomId === roomId) {
+                cryptoStatus.textContent = '<i class="bi bi-x-circle-fill"></i> Failed to secure connection.'
+              }
+            }
             
             // Optionally, emit an event so chat-list can re-render if needed
             emit(events('chat:rooms-updated'))
