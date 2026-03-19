@@ -23,6 +23,8 @@
     <!-- Video Call Overlay -->
     <atoll-video-call></atoll-video-call>
     
+    <atoll-audio-player></atoll-audio-player>
+    
     <!-- Incoming Call Toast/Modal (Ringing) -->
     <div class="modal fade" tabindex="-1" role="dialog" aria-modal="true" ref="incomingCallModal" style="display: none; background: rgba(0,0,0,0.5);">
       <div class="modal-dialog modal-sm modal-dialog-centered m-auto">
@@ -56,7 +58,8 @@
   export default defineComponent({
     client: {
       imports: [
-        { specifier: 'coralite-component/atoll-video-call' }
+        { specifier: 'coralite-component/atoll-video-call' },
+        { specifier: 'coralite-component/atoll-audio-player' }
       ],
       script: ({ helpers }) => {
         const { refs, on, emit, events, placeCall, getRoom, answerCall, rejectCall } = helpers

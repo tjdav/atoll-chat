@@ -1,0 +1,113 @@
+<template id="atoll-audio">
+  <div class="d-flex flex-column h-100 position-relative">
+    <div class="list-group list-group-flush flex-grow-1 overflow-auto mb-5" ref="trackList">
+      <!-- Tracks rendered here -->
+    </div>
+    
+    <div class="d-none text-center p-5 text-muted" ref="emptyState">
+      <i class="bi bi-music-note-list" style="font-size: 3rem;"></i>
+      <h5 class="mt-3">No Audio Found</h5>
+      <p>Any music or voice notes you receive will appear here.</p>
+    </div>
+
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers }) => {
+        const { refs, emit, events, getAudioFiles } = helpers
+        
+        const trackList = refs('trackList')
+        const emptyState = refs('emptyState')
+
+        let currentActiveItem = null
+        
+        // Format file size
+        const formatBytes = (bytes, decimals = 2) => {
+          if (!+bytes) return '0 Bytes'
+          const k = 1024
+          const dm = decimals < 0 ? 0 : decimals
+          const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+          const i = Math.floor(Math.log(bytes) / Math.log(k))
+          return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+        }
+
+        const init = async () => {
+          const files = await getAudioFiles()
+
+          if (files.length === 0) {
+            emptyState.classList.remove('d-none')
+            return
+          }
+
+          emptyState.classList.add('d-none')
+
+          files.forEach(file => {
+             const listItem = document.createElement('button')
+             listItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3'
+             
+             // Create main container
+             const mainDiv = document.createElement('div')
+             mainDiv.className = 'd-flex align-items-center overflow-hidden'
+             
+             // Icon
+             const iconDiv = document.createElement('div')
+             iconDiv.className = 'me-3 text-secondary'
+             iconDiv.innerHTML = '<i class="bi bi-music-note-beamed fs-4"></i>' // Static safe HTML
+             
+             // Text details
+             const textDiv = document.createElement('div')
+             textDiv.className = 'text-truncate text-start'
+             
+             const titleDiv = document.createElement('div')
+             titleDiv.className = 'fw-bold text-truncate'
+             titleDiv.style.maxWidth = '250px'
+             titleDiv.textContent = file.filename || 'Unknown File' // Safe against XSS
+             
+             const sizeSmall = document.createElement('small')
+             sizeSmall.className = 'text-muted'
+             sizeSmall.textContent = formatBytes(file.size) // Safe against XSS
+             
+             textDiv.appendChild(titleDiv)
+             textDiv.appendChild(sizeSmall)
+             mainDiv.appendChild(iconDiv)
+             mainDiv.appendChild(textDiv)
+             
+             // Date badge
+             const dateDiv = document.createElement('div')
+             dateDiv.className = 'ms-3 flex-shrink-0'
+             
+             const badgeSpan = document.createElement('span')
+             badgeSpan.className = 'badge bg-secondary rounded-pill'
+             badgeSpan.textContent = new Date(file.timestamp).toLocaleDateString() // Safe against XSS
+             
+             dateDiv.appendChild(badgeSpan)
+             
+             // Assemble
+             listItem.appendChild(mainDiv)
+             listItem.appendChild(dateDiv)
+
+             listItem.addEventListener('click', () => {
+                // Update active state
+                if (currentActiveItem) {
+                  currentActiveItem.classList.remove('active')
+                }
+                listItem.classList.add('active')
+                currentActiveItem = listItem
+
+                emit(events('audio:play'), { file })
+             })
+
+             trackList.appendChild(listItem)
+          })
+        }
+
+        init()
+      }
+    }
+  })
+</script>

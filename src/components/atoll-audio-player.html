@@ -1,28 +1,62 @@
 <template id="atoll-audio-player">
-  <div class="d-flex flex-column h-100 position-relative">
-    <div class="list-group list-group-flush flex-grow-1 overflow-auto mb-5" ref="trackList">
-      <!-- Tracks rendered here -->
-    </div>
+  <div class="position-absolute bottom-0 w-100 bg-dark text-white border-top border-secondary p-2 d-none align-items-center justify-content-between" ref="playerContainer" style="z-index: 1050; height: 72px;">
     
-    <div class="d-none text-center p-5 text-muted" ref="emptyState">
-      <i class="bi bi-music-note-list" style="font-size: 3rem;"></i>
-      <h5 class="mt-3">No Audio Found</h5>
-      <p>Any music or voice notes you receive will appear here.</p>
-    </div>
-
-    <!-- Persistent Player UI at bottom -->
-    <div class="position-absolute bottom-0 w-100 bg-body-tertiary border-top border-secondary p-3 d-none align-items-center" ref="playerContainer" style="z-index: 10;">
-      <div class="me-3 text-primary">
-        <i class="bi bi-disc fs-2" ref="playerIcon"></i>
+    <!-- Left Section: Track Info -->
+    <div class="d-flex align-items-center w-25 overflow-hidden ms-2">
+      <div class="bg-secondary rounded d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; min-width: 48px;">
+        <i class="bi bi-music-note-beamed fs-4"></i>
       </div>
-      <div class="flex-grow-1 overflow-hidden me-3">
-        <div class="fw-bold text-truncate" ref="playerTitle">Select a track</div>
-        <audio class="w-100 mt-2" ref="audioElement" controls></audio>
+      <div class="d-flex flex-column text-truncate">
+        <span class="fw-bold text-truncate" ref="playerTitle">Select a track</span>
+        <small class="text-secondary text-truncate">Unknown Artist</small>
       </div>
-      <button class="btn btn-outline-primary jump-btn d-none" ref="playerJumpBtn" title="Go to Message">
+      <button class="btn btn-link text-white ms-3 p-0 border-0" title="Like">
+        <i class="bi bi-heart"></i>
+      </button>
+      <button class="btn btn-link text-white ms-2 p-0 border-0 jump-btn d-none" ref="playerJumpBtn" title="Go to Message">
         <i class="bi bi-chat-left-text"></i>
       </button>
     </div>
+
+    <!-- Center Section: Controls & Seekbar -->
+    <div class="d-flex flex-column align-items-center w-50 px-3">
+      <div class="d-flex align-items-center gap-3 mb-1">
+        <button class="btn btn-link text-white p-0 border-0 fs-5" title="Shuffle">
+          <i class="bi bi-shuffle"></i>
+        </button>
+        <button class="btn btn-link text-white p-0 border-0 fs-4" title="Previous">
+          <i class="bi bi-skip-start-fill"></i>
+        </button>
+        <button class="btn btn-link text-white p-0 border-0 fs-1 lh-1" ref="playPauseBtn" title="Play">
+          <i class="bi bi-play-circle-fill" ref="playPauseIcon"></i>
+        </button>
+        <button class="btn btn-link text-white p-0 border-0 fs-4" title="Next">
+          <i class="bi bi-skip-end-fill"></i>
+        </button>
+        <button class="btn btn-link text-white p-0 border-0 fs-5" title="Repeat">
+          <i class="bi bi-repeat"></i>
+        </button>
+      </div>
+      <div class="d-flex align-items-center w-100 gap-2">
+        <small class="text-secondary font-monospace" style="font-size: 0.75rem;" ref="currentTime">0:00</small>
+        <input type="range" class="form-range flex-grow-1" ref="seekBar" min="0" value="0" step="1">
+        <small class="text-secondary font-monospace" style="font-size: 0.75rem;" ref="duration">0:00</small>
+      </div>
+    </div>
+
+    <!-- Right Section: Volume & Queue -->
+    <div class="d-flex align-items-center justify-content-end w-25 pe-3 gap-3">
+      <div class="d-flex align-items-center gap-2">
+        <i class="bi bi-volume-up text-white fs-5" ref="volumeIcon"></i>
+        <input type="range" class="form-range" ref="volumeBar" min="0" max="1" step="0.01" value="1" style="width: 100px;">
+      </div>
+      <button class="btn btn-link text-white p-0 border-0 fs-5" title="Queue">
+        <i class="bi bi-view-list"></i>
+      </button>
+    </div>
+
+    <!-- Hidden Audio Element -->
+    <audio ref="audioElement" class="d-none"></audio>
   </div>
 </template>
 
@@ -32,127 +66,127 @@
   export default defineComponent({
     client: {
       script: ({ helpers }) => {
-        const { refs, emit, events, getAudioFiles } = helpers
+        const { refs, on, emit, events } = helpers
         
-        const trackList = refs('trackList')
-        const emptyState = refs('emptyState')
         const playerContainer = refs('playerContainer')
         const playerTitle = refs('playerTitle')
-        const audioElement = refs('audioElement')
-        const playerIcon = refs('playerIcon')
         const playerJumpBtn = refs('playerJumpBtn')
+        const audioElement = refs('audioElement')
+        const playPauseBtn = refs('playPauseBtn')
+        const playPauseIcon = refs('playPauseIcon')
+        const seekBar = refs('seekBar')
+        const currentTimeDisplay = refs('currentTime')
+        const durationDisplay = refs('duration')
+        const volumeBar = refs('volumeBar')
+        const volumeIcon = refs('volumeIcon')
 
-        let currentActiveItem = null
         let currentObjectUrl = null
-        
-        // Format file size
-        const formatBytes = (bytes, decimals = 2) => {
-          if (!+bytes) return '0 Bytes'
-          const k = 1024
-          const dm = decimals < 0 ? 0 : decimals
-          const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-          const i = Math.floor(Math.log(bytes) / Math.log(k))
-          return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+        let isPlaying = false
+        let isSeeking = false
+
+        const formatTime = (seconds) => {
+          if (isNaN(seconds)) return '0:00'
+          const m = Math.floor(seconds / 60)
+          const s = Math.floor(seconds % 60)
+          return `${m}:${s.toString().padStart(2, '0')}`
         }
 
-        const init = async () => {
-          const files = await getAudioFiles()
+        const togglePlayPause = () => {
+          if (audioElement.paused) {
+            audioElement.play()
+          } else {
+            audioElement.pause()
+          }
+        }
 
-          if (files.length === 0) {
-            emptyState.classList.remove('d-none')
-            return
+        playPauseBtn.addEventListener('click', togglePlayPause)
+
+        audioElement.addEventListener('play', () => {
+          isPlaying = true
+          playPauseIcon.classList.remove('bi-play-circle-fill')
+          playPauseIcon.classList.add('bi-pause-circle-fill')
+        })
+
+        audioElement.addEventListener('pause', () => {
+          isPlaying = false
+          playPauseIcon.classList.remove('bi-pause-circle-fill')
+          playPauseIcon.classList.add('bi-play-circle-fill')
+        })
+
+        audioElement.addEventListener('timeupdate', () => {
+          if (!isSeeking) {
+            currentTimeDisplay.textContent = formatTime(audioElement.currentTime)
+            if (audioElement.duration) {
+              seekBar.value = (audioElement.currentTime / audioElement.duration) * 100
+            }
+          }
+        })
+
+        audioElement.addEventListener('loadedmetadata', () => {
+          durationDisplay.textContent = formatTime(audioElement.duration)
+        })
+
+        seekBar.addEventListener('mousedown', () => {
+          isSeeking = true
+        })
+
+        seekBar.addEventListener('mouseup', (e) => {
+          isSeeking = false
+          if (audioElement.duration) {
+            const seekTo = (e.target.value / 100) * audioElement.duration
+            audioElement.currentTime = seekTo
+          }
+        })
+
+        seekBar.addEventListener('input', (e) => {
+          if (audioElement.duration) {
+            const seekTo = (e.target.value / 100) * audioElement.duration
+            currentTimeDisplay.textContent = formatTime(seekTo)
+          }
+        })
+
+        volumeBar.addEventListener('input', (e) => {
+          const vol = parseFloat(e.target.value)
+          audioElement.volume = vol
+          
+          if (vol === 0) {
+            volumeIcon.className = 'bi bi-volume-mute text-white fs-5'
+          } else if (vol < 0.5) {
+            volumeIcon.className = 'bi bi-volume-down text-white fs-5'
+          } else {
+            volumeIcon.className = 'bi bi-volume-up text-white fs-5'
+          }
+        })
+
+        on(events('audio:play'), ({ file }) => {
+          // Cleanup previous blob URL
+          if (currentObjectUrl) {
+            URL.revokeObjectURL(currentObjectUrl)
           }
 
-          emptyState.classList.add('d-none')
+          // Create new blob URL and load into player
+          currentObjectUrl = URL.createObjectURL(file.blob)
+          audioElement.src = currentObjectUrl
+          
+          // Show player and update details
+          playerContainer.classList.remove('d-none')
+          playerContainer.classList.add('d-flex')
+          playerTitle.textContent = file.filename
+          
+          // Set up "Go to Message" button if we have room info
+          if (file.roomId && file.id) {
+             playerJumpBtn.classList.remove('d-none')
+             playerJumpBtn.onclick = () => {
+                emit(events('nav:jump-to-message'), { roomId: file.roomId, eventId: file.id })
+             }
+          } else {
+             playerJumpBtn.classList.add('d-none')
+             playerJumpBtn.onclick = null
+          }
 
-          files.forEach(file => {
-             const listItem = document.createElement('button')
-             listItem.className = 'list-group-item list-group-item-action d-flex justify-content-between align-items-center p-3'
-             
-             // Create main container
-             const mainDiv = document.createElement('div')
-             mainDiv.className = 'd-flex align-items-center overflow-hidden'
-             
-             // Icon
-             const iconDiv = document.createElement('div')
-             iconDiv.className = 'me-3 text-secondary'
-             iconDiv.innerHTML = '<i class="bi bi-music-note-beamed fs-4"></i>' // Static safe HTML
-             
-             // Text details
-             const textDiv = document.createElement('div')
-             textDiv.className = 'text-truncate text-start'
-             
-             const titleDiv = document.createElement('div')
-             titleDiv.className = 'fw-bold text-truncate'
-             titleDiv.style.maxWidth = '250px'
-             titleDiv.textContent = file.filename || 'Unknown File' // Safe against XSS
-             
-             const sizeSmall = document.createElement('small')
-             sizeSmall.className = 'text-muted'
-             sizeSmall.textContent = formatBytes(file.size) // Safe against XSS
-             
-             textDiv.appendChild(titleDiv)
-             textDiv.appendChild(sizeSmall)
-             mainDiv.appendChild(iconDiv)
-             mainDiv.appendChild(textDiv)
-             
-             // Date badge
-             const dateDiv = document.createElement('div')
-             dateDiv.className = 'ms-3 flex-shrink-0'
-             
-             const badgeSpan = document.createElement('span')
-             badgeSpan.className = 'badge bg-secondary rounded-pill'
-             badgeSpan.textContent = new Date(file.timestamp).toLocaleDateString() // Safe against XSS
-             
-             dateDiv.appendChild(badgeSpan)
-             
-             // Assemble
-             listItem.appendChild(mainDiv)
-             listItem.appendChild(dateDiv)
+          audioElement.play().catch(e => console.error('Error playing audio:', e))
+        })
 
-             listItem.addEventListener('click', () => {
-                // Update active state
-                if (currentActiveItem) {
-                  currentActiveItem.classList.remove('active')
-                }
-                listItem.classList.add('active')
-                currentActiveItem = listItem
-
-                // Cleanup previous blob URL
-                if (currentObjectUrl) {
-                  URL.revokeObjectURL(currentObjectUrl)
-                }
-
-                // Create new blob URL and load into player
-                currentObjectUrl = URL.createObjectURL(file.blob)
-                audioElement.src = currentObjectUrl
-                
-                // Show player and update details
-                playerContainer.classList.remove('d-none')
-                playerContainer.classList.add('d-flex')
-                playerTitle.textContent = file.filename
-                
-                // Set up "Go to Message" button if we have room info
-                if (file.roomId && file.id) {
-                   playerJumpBtn.classList.remove('d-none')
-                   playerJumpBtn.onclick = () => {
-                      emit(events('nav:jump-to-message'), { roomId: file.roomId, eventId: file.id })
-                   }
-                } else {
-                   playerJumpBtn.classList.add('d-none')
-                   playerJumpBtn.onclick = null
-                }
-
-                audioElement.play().catch(e => console.error('Error playing audio:', e))
-             })
-
-             trackList.appendChild(listItem)
-          })
-        }
-
-        init()
-
-        // Cleanup object URL when component is destroyed
         return () => {
            if (currentObjectUrl) {
              URL.revokeObjectURL(currentObjectUrl)
