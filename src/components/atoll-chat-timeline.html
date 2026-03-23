@@ -9,10 +9,7 @@
 
   export default defineComponent({
     client: {
-      imports: [
-        { specifier: 'coralite-component/atoll-message-bubble' },
-        { specifier: 'coralite-component/atoll-torrent-bubble' }
-      ],
+      components: ['atoll-message-bubble', 'atoll-torrent-bubble'],
       script: ({ helpers }) => {
         const { refs, on, events, getCurrentUserId, getRoomMessages, onRoomMessage } = helpers
         const messagesContainer = refs('messagesContainer')

@@ -55,9 +55,6 @@
 
   export default defineComponent({
     client: {
-      imports: [
-        { specifier: 'coralite-component/atoll-video-call' }
-      ],
       script: ({ helpers }) => {
         const { refs, on, emit, events, placeCall, getRoom, answerCall, rejectCall } = helpers
         
