@@ -18,8 +18,8 @@ export default createPlugin({
       }
     },
     helpers: {
-      seed: (context) => {
-        const client = context.values.client
+      seed: (globalContext) => (localContext) => {
+        const client = localContext.values.client
 
         return (file) => {
           return new Promise((resolve, reject) => {
@@ -34,8 +34,8 @@ export default createPlugin({
           })
         }
       },
-      download: (context) => {
-        const client = context.values.client
+      download: (globalContext) => (localContext) => {
+        const client = localContext.values.client
 
         return (magnetURI, onProgress) => {
           return new Promise((resolve, reject) => {

@@ -51,14 +51,14 @@ export default createPlugin({
       }
     },
     helpers: {
-      saveMedia: (context) => {
-        const { getDB, STORE_NAME } = context.values
+      saveMedia: (globalContext) => (localContext) => {
+        const { getDB, STORE_NAME } = localContext.values
 
         return async (id, blob, metadata) => {
           const db = await getDB()
 
           // Grab the currently logged-in user from the Matrix plugin
-          const userId = await context.helpers.getCurrentUserId()
+          const userId = await localContext.helpers.getCurrentUserId()
 
           return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readwrite')
@@ -80,14 +80,14 @@ export default createPlugin({
         }
       },
 
-      queryMedia: (context) => {
-        const { getDB, STORE_NAME } = context.values
+      queryMedia: (globalContext) => (localContext) => {
+        const { getDB, STORE_NAME } = localContext.values
 
         return async (mimeTypePrefix) => {
           const db = await getDB()
 
           // Get the currently logged-in user
-          const userId = await context.helpers.getCurrentUserId()
+          const userId = await localContext.helpers.getCurrentUserId()
 
           return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readonly')
@@ -112,16 +112,16 @@ export default createPlugin({
         }
       },
 
-      getAudioFiles: (context) => async () => {
-        return await context.helpers.queryMedia('audio/')
+      getAudioFiles: (globalContext) => (localContext) => async () => {
+        return await localContext.helpers.queryMedia('audio/')
       },
 
-      getImageFiles: (context) => async () => {
-        return await context.helpers.queryMedia('image/')
+      getImageFiles: (globalContext) => (localContext) => async () => {
+        return await localContext.helpers.queryMedia('image/')
       },
 
-      getVideoFiles: (context) => async () => {
-        return await context.helpers.queryMedia('video/')
+      getVideoFiles: (globalContext) => (localContext) => async () => {
+        return await localContext.helpers.queryMedia('video/')
       }
     }
   }

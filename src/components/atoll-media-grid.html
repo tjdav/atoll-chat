@@ -1,11 +1,11 @@
 <template id="atoll-media-grid">
   <div class="container-fluid p-0">
-    <div class="row g-3" ref="gridContainer">
+    <div class="row g-3" ref="gridContainer" id="{{ ref_gridContainer }}">
       <!-- Cards rendered here -->
     </div>
     
-    <div class="d-none text-center p-5 text-muted" ref="emptyState">
-      <i class="bi bi-images" style="font-size: 3rem;" ref="emptyIcon"></i>
+    <div class="d-none text-center p-5 text-muted" ref="emptyState" id="{{ ref_emptyState }}">
+      <i class="bi bi-images" style="font-size: 3rem;" ref="emptyIcon" id="{{ ref_emptyIcon }}"></i>
       <h5 class="mt-3">No Media Found</h5>
       <p>Any files you receive will appear here.</p>
     </div>

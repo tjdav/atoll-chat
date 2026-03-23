@@ -1,11 +1,14 @@
 import { defineConfig, devices } from '@playwright/test'
+import { existsSync } from 'fs'
+
+const getExecutablePath = (path) => (existsSync(path) ? path : undefined)
 
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: process.env.CI ? 1 : undefined,
+  workers: 1,
   reporter: 'html',
   globalSetup: './tests/e2e/setup/global-setup.js',
   globalTeardown: './tests/e2e/setup/global-teardown.js',
@@ -25,7 +28,9 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
-        headless: true
+        launchOptions: {
+          executablePath: getExecutablePath('/usr/bin/chromium')
+        }
       }
     }
   ],

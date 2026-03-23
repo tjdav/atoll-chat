@@ -33,18 +33,6 @@ export default createPlugin({
             roomId: z.string().min(1)
           })
         },
-        'chat:securing-room': {
-          id: Symbol('chat:securing-room'),
-          schema: z.object({
-            roomId: z.string().min(1)
-          }).strict()
-        },
-        'chat:room-secured': {
-          id: Symbol('chat:room-secured'),
-          schema: z.object({
-            roomId: z.string().min(1)
-          }).strict()
-        },
         'chat:room-ready': {
           id: Symbol('chat:room-ready'),
           schema: z.object({
@@ -182,13 +170,13 @@ export default createPlugin({
       }
     },
     helpers: {
-      events: (context) => (id) => context.values.ChatEvents[id],
+      events: (globalContext) => (localContext) => (id) => localContext.values.ChatEvents[id],
 
-      emit: (context) => (eventDef, detail) => {
-        context.values.globalBroker.emit(eventDef, detail)
+      emit: (globalContext) => (localContext) => (eventDef, detail) => {
+        localContext.values.globalBroker.emit(eventDef, detail)
       },
-      on: (context) => (eventDef, callback) => {
-        return context.values.globalBroker.on(eventDef, callback)
+      on: (globalContext) => (localContext) => (eventDef, callback) => {
+        return localContext.values.globalBroker.on(eventDef, callback)
       }
     }
   }

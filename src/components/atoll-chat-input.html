@@ -1,11 +1,11 @@
 <template id="atoll-chat-input">
   <div class="input-group">
-    <input type="file" ref="fileInput" class="d-none">
-    <button class="btn btn-outline-secondary border-end-0 rounded-start-pill" type="button" aria-label="Attach File" ref="attachBtn">
+    <input type="file" ref="fileInput" id="{{ ref_fileInput }}" class="d-none">
+    <button class="btn btn-outline-secondary border-end-0 rounded-start-pill" type="button" aria-label="Attach File" ref="attachBtn" id="{{ ref_attachBtn }}">
       <i class="bi bi-paperclip"></i>
     </button>
-    <input type="text" class="form-control border-start-0 border-end-0" placeholder="Aa" aria-label="Type a message" ref="messageInput">
-    <button class="btn btn-primary rounded-end-pill" type="button" aria-label="Send Message" ref="sendBtn">
+    <input type="text" class="form-control border-start-0 border-end-0" placeholder="Aa" aria-label="Type a message" ref="messageInput" id="{{ ref_messageInput }}">
+    <button class="btn btn-primary rounded-end-pill" type="button" aria-label="Send Message" ref="sendBtn" id="{{ ref_sendBtn }}">
       <i class="bi bi-send-fill"></i>
     </button>
   </div>
@@ -63,19 +63,6 @@
         })
 
         on(events('chat:file-processing-done'), () => {
-          messageInput.disabled = false
-          sendBtn.disabled = false
-          attachBtn.disabled = false
-          messageInput.focus()
-        })
-
-        on(events('chat:securing-room'), () => {
-          messageInput.disabled = true
-          sendBtn.disabled = true
-          attachBtn.disabled = true
-        })
-
-        on(events('chat:room-secured'), () => {
           messageInput.disabled = false
           sendBtn.disabled = false
           attachBtn.disabled = false
