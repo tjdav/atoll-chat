@@ -2,25 +2,25 @@
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4" style="width: 400px; max-width: 100%;">
       <h2 class="text-center mb-4">Login to Matrix</h2>
-      <form ref="form">
+      <form ref="form" id="{{ ref_form }}">
         <div class="form-floating mb-3">
-          <input type="url" class="form-control" ref="homeserver" placeholder="Homeserver URL" required>
+          <input type="url" class="form-control" ref="homeserver" id="{{ ref_homeserver }}" placeholder="Homeserver URL" required>
           <label for="{{ ref_homeserver }}">Homeserver URL</label>
         </div>
         <div class="form-floating mb-3">
-          <input type="text" class="form-control" ref="username" placeholder="Username" required>
+          <input type="text" class="form-control" ref="username" id="{{ ref_username }}" placeholder="Username" required>
           <label for="{{ ref_username }}">Username</label>
         </div>
         <div class="form-floating mb-3">
-          <input type="password" class="form-control" ref="password" placeholder="Password" required>
+          <input type="password" class="form-control" ref="password" id="{{ ref_password }}" placeholder="Password" required>
           <label for="{{ ref_password }}">Password</label>
         </div>
-        <button type="submit" class="btn btn-primary w-100" ref="submitButton">Login</button>
+        <button type="submit" class="btn btn-primary w-100" ref="submitButton" id="{{ ref_submitButton }}">Login</button>
       </form>
-      <div class="alert alert-danger mt-3 d-none" role="alert" ref="errorAlert"></div>
+      <div class="alert alert-danger mt-3 d-none" role="alert" ref="errorAlert" id="{{ ref_errorAlert }}"></div>
       
       <div class="text-center mt-3">
-        <a href="#" class="text-muted text-decoration-none" ref="signupLink">Don't have an account? Sign up.</a>
+        <a href="#"  class="text-muted text-decoration-none" ref="signupLink" id="{{ ref_signupLink }}" id="{{ ref_signupLink }}">Don't have an account? Sign up.</a>
       </div>
     </div>
   </div>

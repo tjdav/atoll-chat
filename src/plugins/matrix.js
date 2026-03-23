@@ -135,20 +135,18 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
 
         return {
           getClient: () => client,
-          initClient,
-          clearClient: () => {
-            client = null
-          }
+          initClient
         }
       },
       helpers: {
-        getDefaultHomeserverUrl: (context) => () => context.config.baseUrl,
+        getDefaultHomeserverUrl: (globalContext) => (localContext) => () => globalContext.config.baseUrl,
 
-        registerUser: (context) => {
-          return async ({ baseUrl, username, password, token }) => {
+        registerUser: (globalContext) => {
+          /** @type {import('matrix-js-sdk')}  */
+          const sdk = globalContext.imports.sdk
+
+          return (localContext) => async ({ baseUrl, username, password, token }) => {
             try {
-              /** @type {import('matrix-js-sdk')}  */
-              const sdk = context.imports.sdk
               const tempClient = sdk.createClient({ baseUrl })
 
               // Helper function to gracefully fetch a session without throwing an exception
@@ -210,17 +208,12 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               sessionStorage.removeItem('matrix_reg_session')
 
               // Initialize the actual client
-              const initData = {
+              return await localContext.values.initClient({
                 baseUrl: baseUrl,
                 userId: registerData.user_id,
                 accessToken: registerData.access_token,
                 deviceId: registerData.device_id
-              }
-              const initializedClient = await context.values.initClient(initData, context.helpers)
-
-              localStorage.setItem('atoll_session', JSON.stringify(initData))
-
-              return initializedClient
+              }, localContext.helpers)
 
             } catch (error) {
               console.error('Matrix registration failed:', error)
@@ -229,7 +222,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           }
         },
 
-        restoreSession: (context) => async () => {
+        restoreSession: (globalContext) => (localContext) => async () => {
           const sessionData = localStorage.getItem('atoll_session')
           if (!sessionData) return false
 
@@ -237,10 +230,10 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             const credentials = JSON.parse(sessionData)
 
             // Re-initialize the client with the saved credentials
-            await context.values.initClient(credentials, context.helpers)
+            await localContext.values.initClient(credentials, localContext.helpers)
 
             // Start syncing in the background automatically
-            const client = context.values.getClient()
+            const client = localContext.values.getClient()
             await client.startClient({ initialSyncLimit: 10 })
 
             return true
@@ -251,93 +244,44 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           }
         },
 
-        login: (context) => {
-          /**
-           * @param {LoginRequest} loginRequest - Request body for POST /login request
-           * @returns {Promise<LoginResponse>}
-           */
-          return async (loginRequest) => {
-            try {
-              /** @type {import('matrix-js-sdk')}  */
-              const sdk = context.imports.sdk
-              // Temporarily create a basic client to perform login
-              const tempClient = sdk.createClient({ baseUrl: loginRequest.baseUrl || context.config.baseUrl })
+        login: (globalContext) => {
+          /** @type {import('matrix-js-sdk')}  */
+          const sdk = globalContext.imports.sdk
 
-              // Remove baseUrl from the loginRequest since it's not a standard Matrix API field
-              // and might cause issues with some homeservers if sent in the payload
-              const requestPayload = { ...loginRequest }
-              delete requestPayload.baseUrl
+          return (localContext) => {
+            /**
+             * @param {LoginRequest} loginRequest - Request body for POST /login request
+             * @returns {Promise<LoginResponse>}
+             */
+            return async (loginRequest) => {
+              try {
+                // Temporarily create a basic client to perform login
+                const tempClient = sdk.createClient({ baseUrl: loginRequest.baseUrl || globalContext.config.baseUrl })
 
-              const loginData = await tempClient.loginRequest(requestPayload)
+                // Remove baseUrl from the loginRequest since it's not a standard Matrix API field
+                // and might cause issues with some homeservers if sent in the payload
+                const requestPayload = { ...loginRequest }
+                delete requestPayload.baseUrl
 
-              const initData = {
-                baseUrl: loginRequest.baseUrl || context.config.baseUrl,
-                userId: loginData.user_id,
-                accessToken: loginData.access_token,
-                deviceId: loginData.device_id
+                const loginData = await tempClient.loginRequest(requestPayload)
+
+                return await localContext.values.initClient({
+                  baseUrl: loginRequest.baseUrl || globalContext.config.baseUrl,
+                  userId: loginData.user_id,
+                  accessToken: loginData.access_token,
+                  deviceId: loginData.device_id
+                }, localContext.helpers)
+              } catch (error) {
+                console.error('Matrix login failed:', error)
+                throw error
               }
-
-              const initializedClient = await context.values.initClient(initData, context.helpers)
-
-              localStorage.setItem('atoll_session', JSON.stringify(initData))
-
-              return initializedClient
-            } catch (error) {
-              console.error('Matrix login failed:', error)
-              throw error
             }
           }
         },
 
-        logout: (context) => async () => {
+        sync: (globalContext) => (localContext) => async () => {
           /** @type {MatrixClient}  */
-          const client = context.values.getClient()
-
-          if (client) {
-            try {
-              await client.logout(true) // logs out and stops the client
-            } catch (err) {
-              console.warn('Matrix logout request failed, proceeding to clear local state:', err)
-              client.stopClient()
-            }
-          }
-
-          localStorage.removeItem('atoll_session')
-
-          const store = client ? client.store : null
-          if (store && store.destroy) {
-            try {
-              await store.destroy()
-            } catch (e) {
-              console.warn('Failed to destroy store:', e)
-            }
-          }
-
-          const deleteDB = (dbName) => {
-            return new Promise((resolve) => {
-              const req = window.indexedDB.deleteDatabase(dbName)
-              req.onsuccess = () => resolve()
-              req.onerror = () => resolve() // Ignore errors, keep trying
-              req.onblocked = () => {
-                console.warn(`Deletion of IndexedDB ${dbName} is blocked.`)
-                setTimeout(resolve, 500)
-              }
-            })
-          }
-
-          await deleteDB('matrix-js-sdk:atoll')
-          await deleteDB('matrix-js-sdk:crypto')
-          await deleteDB('matrix-js-sdk::matrix-sdk-crypto')
-          await deleteDB('matrix-js-sdk::matrix-sdk-crypto-meta')
-
-          if (context.values.clearClient) {
-            context.values.clearClient()
-          }
-        },
-
-        sync: (context) => async () => {
-          /** @type {MatrixClient}  */
-          const client = context.values.getClient()
+          const client = localContext.values.getClient()
 
           if (!client) {
             throw new Error('Matrix client not initialized')
@@ -346,9 +290,9 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           await client.startClient({ initialSyncLimit: 10 })
         },
 
-        sendMessage: (context) => async (roomId, messageText) => {
+        sendMessage: (globalContext) => (localContext) => async (roomId, messageText) => {
           /** @type {MatrixClient}  */
-          const client = context.values.getClient()
+          const client = localContext.values.getClient()
 
           if (!client) {
             throw new Error('Matrix client not initialized')
@@ -362,9 +306,9 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           return await client.sendEvent(roomId, 'm.room.message', content, '')
         },
 
-        createEncryptedRoom: (context) => async (name, inviteUserId) => {
+        createEncryptedRoom: (globalContext) => (localContext) => async (name, inviteUserId) => {
           /** @type {MatrixClient} */
-          const client = context.values.getClient()
+          const client = localContext.values.getClient()
           if (!client) throw new Error('Matrix client not initialized')
 
           return await client.createRoom({
@@ -383,24 +327,24 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           })
         },
 
-        inviteUser: (context) => async (roomId, userId) => {
+        inviteUser: (globalContext) => (localContext) => async (roomId, userId) => {
           /** @type {MatrixClient} */
-          const client = context.values.getClient()
+          const client = localContext.values.getClient()
           if (!client) throw new Error('Matrix client not initialized')
 
           return await client.invite(roomId, userId)
         },
 
-        joinRoom: (context) => async (roomId) => {
+        joinRoom: (globalContext) => (localContext) => async (roomId) => {
           /** @type {MatrixClient} */
-          const client = context.values.getClient()
+          const client = localContext.values.getClient()
           if (!client) throw new Error('Matrix client not initialized')
 
           return await client.joinRoom(roomId)
         },
 
-        getRooms: (context) => async () => {
-          const client = context.values.getClient()
+        getRooms: (globalContext) => (localContext) => async () => {
+          const client = localContext.values.getClient()
           if (!client) return []
           const rooms = client.getRooms()
           return rooms.map(room => ({
@@ -413,8 +357,8 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           }))
         },
 
-        getRoom: (context) => async (roomId) => {
-          const client = context.values.getClient()
+        getRoom: (globalContext) => (localContext) => async (roomId) => {
+          const client = localContext.values.getClient()
           if (!client) return null
           const room = client.getRoom(roomId)
           if (!room) return null
@@ -426,14 +370,14 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           }
         },
 
-        getCurrentUserId: (context) => async () => {
-          const client = context.values.getClient()
+        getCurrentUserId: (globalContext) => (localContext) => async () => {
+          const client = localContext.values.getClient()
           if (!client) return null
           return client.getUserId()
         },
 
-        getRoomMessages: (context) => async (roomId) => {
-          const client = context.values.getClient()
+        getRoomMessages: (globalContext) => (localContext) => async (roomId) => {
+          const client = localContext.values.getClient()
           if (!client) return []
           const room = client.getRoom(roomId)
           if (!room) return []
@@ -450,8 +394,8 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             }))
         },
 
-        onRoomMessage: (context) => async (roomId, callback) => {
-          const client = context.values.getClient()
+        onRoomMessage: (globalContext) => (localContext) => async (roomId, callback) => {
+          const client = localContext.values.getClient()
           if (!client) return () => {
           }
 
@@ -490,8 +434,8 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           }
         },
 
-        sendTorrentMessage: (context) => async (roomId, torrentPayload) => {
-          const { getClient } = context.values
+        sendTorrentMessage: (globalContext) => (localContext) => async (roomId, torrentPayload) => {
+          const { getClient } = localContext.values
           const client = getClient()
 
           if (!client) {
@@ -507,8 +451,8 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           return await client.sendEvent(roomId, 'm.room.message', content, '')
         },
 
-        placeCall: (context) => async (roomId, type) => {
-          const client = context.values.getClient()
+        placeCall: (globalContext) => (localContext) => async (roomId, type) => {
+          const client = localContext.values.getClient()
           if (!client) throw new Error('Matrix client not initialized')
 
           const call = client.createCall(roomId)
@@ -522,75 +466,14 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           return call
         },
 
-        answerCall: (context) => async (call) => {
+        answerCall: (globalContext) => (localContext) => async (call) => {
           if (!call) throw new Error('No call provided')
           await call.answer()
         },
 
-        rejectCall: (context) => async (call) => {
+        rejectCall: (globalContext) => (localContext) => async (call) => {
           if (!call) throw new Error('No call provided')
           await call.hangup()
-        },
-
-        waitForRoomCrypto: (context) => async (roomId) => {
-          const client = context.values.getClient()
-          if (!client) throw new Error('Matrix client not initialized')
-
-          const checkEncryption = (room) => {
-            if (!room) return 'not_found'
-            // If the room is not encrypted, we are "ready" immediately
-            if (!client.isRoomEncrypted(roomId)) return 'ready'
-            // If it IS encrypted, we are ready only if the SDK has processed the state
-            return 'encrypted'
-          }
-
-          // 1. Wait for the room state to fully sync and confirm encryption status
-          const room = await new Promise((resolve, reject) => {
-            const timeout = setTimeout(() => {
-              client.removeListener('RoomState.events', handler)
-              reject(new Error('Timeout waiting for room crypto readiness'))
-            }, 30000)
-
-            const checkReady = () => {
-              const r = client.getRoom(roomId)
-              const status = checkEncryption(r)
-              if (status === 'ready' || status === 'encrypted') {
-                return r
-              }
-              return null
-            }
-
-            const readyRoom = checkReady()
-            if (readyRoom) {
-              clearTimeout(timeout)
-              return resolve(readyRoom)
-            }
-
-            // If not ready, listen to state events until the /sync catches up
-            const handler = (event, emittedRoom) => {
-              if (emittedRoom.roomId === roomId) {
-                const r = checkReady()
-                if (r) {
-                  clearTimeout(timeout)
-                  client.removeListener('RoomState.events', handler)
-                  resolve(r)
-                }
-              }
-            }
-            client.on('RoomState.events', handler)
-          })
-
-          // 2. If encrypted, proactively force the crypto engine to pre-fetch all device keys
-          if (client.isRoomEncrypted(roomId)) {
-            try {
-              const userIds = room.getJoinedMembers().map(m => m.userId)
-              await client.downloadKeys(userIds)
-            } catch (error) {
-              console.warn('[Matrix] Non-fatal error pre-fetching device keys:', error)
-            }
-          }
-
-          return true
         }
       }
     }

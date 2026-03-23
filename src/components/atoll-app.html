@@ -1,13 +1,13 @@
 <template id="atoll-app">
-  <div ref="loginView" class="d-none">
+  <div ref="loginView" id="{{ ref_loginView }}" class="d-none">
     <atoll-login></atoll-login>
   </div>
 
-  <div ref="signupView" class="d-none">
+  <div ref="signupView" id="{{ ref_signupView }}" class="d-none">
     <atoll-signup></atoll-signup>
   </div>
   
-  <div ref="appView" class="d-none">
+  <div ref="appView" id="{{ ref_appView }}" class="d-none">
     <atoll-app-layout></atoll-app-layout>
   </div>
 </template>

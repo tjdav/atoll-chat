@@ -1,22 +1,22 @@
 <template id="atoll-torrent-bubble">
   <div class="card mb-2 bg-body" style="max-width: 300px;">
-    <div class="card-body p-2 d-flex flex-column" ref="contentContainer">
+    <div class="card-body p-2 d-flex flex-column" ref="contentContainer" id="{{ ref_contentContainer }}">
       
-      <div class="d-flex align-items-center mb-2" ref="metaContainer">
+      <div class="d-flex align-items-center mb-2" ref="metaContainer" id="{{ ref_metaContainer }}">
         <div class="me-2 text-primary">
-          <i class="bi bi-file-earmark-fill fs-3" ref="fileIcon"></i>
+          <i class="bi bi-file-earmark-fill fs-3" ref="fileIcon" id="{{ ref_fileIcon }}"></i>
         </div>
         <div class="flex-grow-1 text-truncate overflow-hidden" style="max-width: 180px;">
-          <div class="fw-bold text-truncate" style="font-size: 0.9rem;" ref="fileName">Filename.ext</div>
-          <div class="text-muted" style="font-size: 0.8rem;" ref="fileSize">0 KB</div>
+          <div class="fw-bold text-truncate" style="font-size: 0.9rem;" ref="fileName" id="{{ ref_fileName }}">Filename.ext</div>
+          <div class="text-muted" style="font-size: 0.8rem;" ref="fileSize" id="{{ ref_fileSize }}">0 KB</div>
         </div>
       </div>
       
-      <div class="progress mb-2 d-none" style="height: 5px;" ref="progressBarContainer">
-        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" ref="progressBar"></div>
+      <div class="progress mb-2 d-none" style="height: 5px;" ref="progressBarContainer" id="{{ ref_progressBarContainer }}">
+        <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" ref="progressBar" id="{{ ref_progressBar }}"></div>
       </div>
 
-      <button class="btn btn-sm btn-outline-primary w-100" ref="downloadBtn">
+      <button class="btn btn-sm btn-outline-primary w-100" ref="downloadBtn" id="{{ ref_downloadBtn }}">
         <i class="bi bi-download me-1"></i> Download
       </button>
 
