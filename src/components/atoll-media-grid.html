@@ -17,14 +17,14 @@
 
   export default defineComponent({
     client: {
-      script: ({ helpers, value }) => {
+      script: ({ helpers, values }) => {
         const { refs, emit, events, getImageFiles, getVideoFiles } = helpers
         
         const gridContainer = refs('gridContainer')
         const emptyState = refs('emptyState')
         const emptyIcon = refs('emptyIcon')
 
-        const mediaType = (value && value['type']) || 'pictures'
+        const mediaType = values['type'] || 'pictures'
         let generatedUrls = []
 
         const init = async () => {
