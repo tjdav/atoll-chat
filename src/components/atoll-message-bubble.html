@@ -1,7 +1,7 @@
 <template id="atoll-message-bubble">
   <div class="d-flex mb-3" ref="wrapper" id="{{ ref_wrapper }}">
     <div class="message-bubble p-3 rounded-4 shadow-sm" ref="bubble" id="{{ ref_bubble }}" style="max-width: 75%;">
-      <p class="mb-1" ref="body" id="{{ ref_body }}"><slot></slot></p>
+      <div class="mb-1" ref="body" id="{{ ref_body }}"><slot></slot></div>
       <div class="small" ref="timeDisplay" id="{{ ref_timeDisplay }}" style="font-size: 0.75rem;">
       </div>
     </div>
@@ -13,15 +13,14 @@
 
   export default defineComponent({
     client: {
-      script: ({ helpers, values }) => {
-        const { refs } = helpers
+      script: async ({ helpers, values }) => {
+        const { refs, parseMessage } = helpers
         const wrapper = refs('wrapper')
         const bubble = refs('bubble')
         const timeDisplay = refs('timeDisplay')
         const body = refs('body')
-        
-        const isCurrentUser = value['current-user'] === 'true'
-        const time = value.time || ''
+        const isCurrentUser = values['current-user'] === 'true'
+        const time = values.time || ''
 
         if (isCurrentUser) {
           wrapper.classList.add('justify-content-end')
@@ -34,6 +33,11 @@
         }
 
         timeDisplay.textContent = time
+
+        if (parseMessage && body) {
+          const originalText = body.innerHTML
+          parseMessage(body, originalText)
+        }
       }
     }
   })
