@@ -72,7 +72,15 @@
 
              div.appendChild(bubble)
           } else {
-             div.innerHTML = `<atoll-message-bubble time="${time}" current-user="${isCurrentUser}">${message.body}</atoll-message-bubble>`
+             const bubble = document.createElement('atoll-message-bubble')
+             bubble.setAttribute('time', time)
+             bubble.setAttribute('current-user', isCurrentUser)
+             // Use property so declarative shadow DOM isn't bypassed, or we can use attribute if we escape it. 
+             // Safe way to pass message text without innerHTML execution. 
+             bubble.values = { body: message.body }
+             // Don't set textContent immediately, let it render
+             
+             div.appendChild(bubble)
           }
 
           return div
