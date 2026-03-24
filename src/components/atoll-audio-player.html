@@ -48,6 +48,20 @@
     </div>
 
     <audio class="d-none" ref="audioElement" id="{{ ref_audioElement }}"></audio>
+
+    <!-- Queue Panel -->
+    <div ref="queuePanel" id="{{ ref_queuePanel }}" class="position-absolute end-0 bottom-100 bg-dark border border-secondary rounded-top d-none flex-column overflow-hidden" style="width: 350px; max-height: 400px; z-index: 1060; margin-bottom: 2px;">
+      <div class="d-flex justify-content-between align-items-center p-2 border-bottom border-secondary bg-black bg-opacity-25">
+        <h6 class="m-0 ms-2 text-white">Play Queue</h6>
+        <button class="btn btn-link text-white p-1 text-decoration-none" title="Close Queue" ref="closeQueueBtn" id="{{ ref_closeQueueBtn }}">
+          <i class="bi bi-x-lg"></i>
+        </button>
+      </div>
+      <div class="list-group list-group-flush flex-grow-1 overflow-auto" ref="queueList" id="{{ ref_queueList }}">
+        <!-- Queue items go here -->
+      </div>
+    </div>
+
   </div>
 </template>
 
@@ -71,11 +85,53 @@
         const volumeBtn = refs('volumeBtn')
         const volumeIcon = refs('volumeIcon')
         const volumeSlider = refs('volumeSlider')
+        const queuePanel = refs('queuePanel')
+        const closeQueueBtn = refs('closeQueueBtn')
+        const queueList = refs('queueList')
+
+        // --- State ---
+        let currentPlaylist = []
+        let originalPlaylist = []
+        let currentIndex = -1
+        let isShuffle = false
+        let repeatMode = 'none' // 'none', 'all', 'one'
+        let likedTracks = new Set() // Store string IDs of liked tracks
 
         let currentObjectUrl = null
         let isSeeking = false
         let isMuted = false
         let previousVolume = 1
+
+        // --- Like DB Init ---
+        const initLikeDB = () => {
+          return new Promise((resolve, reject) => {
+            const request = indexedDB.open('atoll-user-preferences', 1)
+            request.onupgradeneeded = (e) => {
+              const db = e.target.result
+              if (!db.objectStoreNames.contains('likes')) {
+                db.createObjectStore('likes', { keyPath: 'id' })
+              }
+            }
+            request.onsuccess = (e) => resolve(e.target.result)
+            request.onerror = (e) => reject(e.target.error)
+          })
+        }
+
+        const loadLikes = async () => {
+          try {
+            const db = await initLikeDB()
+            const transaction = db.transaction('likes', 'readonly')
+            const store = transaction.objectStore('likes')
+            const request = store.getAll()
+            request.onsuccess = () => {
+              likedTracks = new Set(request.result.map(item => item.id))
+            }
+          } catch (e) {
+            console.error('Error loading likes from IndexedDB:', e)
+          }
+        }
+        
+        loadLikes()
 
         const formatTime = (seconds) => {
           if (isNaN(seconds) || seconds < 0) return '0:00'
@@ -180,8 +236,166 @@
         audioElement.volume = volumeSlider.value / 100
         previousVolume = audioElement.volume
 
-        // --- Event Listener ---
-        on(events('audio:play'), ({ file }) => {
+        // Like
+        const likeBtn = playerContainer.querySelector('[title="Like"]')
+        
+        likeBtn.addEventListener('click', async () => {
+          if (currentIndex === -1 || !currentPlaylist[currentIndex]) return
+          
+          const fileId = currentPlaylist[currentIndex].id
+          const isLiked = likedTracks.has(fileId)
+          
+          try {
+            const db = await initLikeDB()
+            const transaction = db.transaction('likes', 'readwrite')
+            const store = transaction.objectStore('likes')
+            
+            if (isLiked) {
+              store.delete(fileId)
+              likedTracks.delete(fileId)
+            } else {
+              store.put({ id: fileId })
+              likedTracks.add(fileId)
+            }
+            
+            updateLikeIcon(fileId)
+          } catch (e) {
+            console.error('Error updating like in IndexedDB:', e)
+          }
+        })
+
+        // Update UI
+        const updateLikeIcon = (fileId) => {
+          const likeIcon = playerContainer.querySelector('[title="Like"] i')
+          if (likedTracks.has(fileId)) {
+            likeIcon.className = 'bi bi-heart-fill text-danger'
+          } else {
+            likeIcon.className = 'bi bi-heart text-white'
+          }
+        }
+
+        const renderQueue = () => {
+          queueList.innerHTML = ''
+          currentPlaylist.forEach((file, index) => {
+            const btn = document.createElement('button')
+            btn.className = `list-group-item list-group-item-action bg-transparent text-white border-secondary p-2 d-flex align-items-center ${index === currentIndex ? 'active bg-primary border-primary' : ''}`
+            
+            const icon = document.createElement('i')
+            icon.className = index === currentIndex ? 'bi bi-volume-up-fill me-3 text-white' : 'bi bi-music-note me-3 text-secondary'
+            
+            const infoDiv = document.createElement('div')
+            infoDiv.className = 'flex-grow-1 overflow-hidden d-flex flex-column'
+            
+            const titleDiv = document.createElement('div')
+            titleDiv.className = 'text-truncate fw-bold'
+            titleDiv.style.fontSize = '0.9rem'
+            titleDiv.textContent = file.filename || 'Unknown File'
+
+            const metaDiv = document.createElement('div')
+            metaDiv.className = 'd-flex justify-content-between text-muted text-truncate'
+            metaDiv.style.fontSize = '0.75rem'
+
+            const artistSpan = document.createElement('span')
+            artistSpan.textContent = file.artist || 'Unknown Artist'
+
+            const durationSpan = document.createElement('span')
+            // Mock duration or format file size if no duration is known. 
+            // Often audio blobs in matrix lack duration before load.
+            durationSpan.textContent = file.duration ? formatTime(file.duration) : ''
+
+            metaDiv.appendChild(artistSpan)
+            metaDiv.appendChild(durationSpan)
+            
+            infoDiv.appendChild(titleDiv)
+            infoDiv.appendChild(metaDiv)
+            
+            btn.appendChild(icon)
+            btn.appendChild(infoDiv)
+            
+            btn.addEventListener('click', () => {
+              emit(events('audio:play'), { file, playlist: originalPlaylist, index })
+            })
+            
+            queueList.appendChild(btn)
+          })
+
+          // Scroll current item into view if possible
+          const activeItem = queueList.querySelector('.active')
+          if (activeItem) {
+            activeItem.scrollIntoView({ block: 'nearest' })
+          }
+        }
+
+        // Queue UI
+        const queueBtn = playerContainer.querySelector('[title="Queue"]')
+        queueBtn.addEventListener('click', () => {
+          if (queuePanel.classList.contains('d-none')) {
+            queuePanel.classList.remove('d-none')
+            queuePanel.classList.add('d-flex')
+            renderQueue()
+          } else {
+            queuePanel.classList.add('d-none')
+            queuePanel.classList.remove('d-flex')
+          }
+        })
+
+        closeQueueBtn.addEventListener('click', () => {
+          queuePanel.classList.add('d-none')
+          queuePanel.classList.remove('d-flex')
+        })
+
+        // Toggles
+        const shuffleBtn = playerContainer.querySelector('[title="Shuffle"]')
+        const shuffleIcon = shuffleBtn.querySelector('i')
+        const repeatBtn = playerContainer.querySelector('[title="Repeat"]')
+        const repeatIcon = repeatBtn.querySelector('i')
+
+        shuffleBtn.addEventListener('click', () => {
+          isShuffle = !isShuffle
+          
+          if (isShuffle) {
+            shuffleIcon.classList.add('text-primary')
+            if (currentPlaylist.length > 0) {
+              const currentFile = currentPlaylist[currentIndex]
+              const rest = [...originalPlaylist]
+              const origIndex = rest.findIndex(f => f.id === currentFile.id)
+              if (origIndex !== -1) rest.splice(origIndex, 1)
+              
+              for (let i = rest.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1))
+                ;[rest[i], rest[j]] = [rest[j], rest[i]]
+              }
+              currentPlaylist = [currentFile, ...rest]
+              currentIndex = 0
+            }
+          } else {
+            shuffleIcon.classList.remove('text-primary')
+            if (currentPlaylist.length > 0) {
+              const currentFile = currentPlaylist[currentIndex]
+              currentPlaylist = [...originalPlaylist]
+              currentIndex = currentPlaylist.findIndex(f => f.id === currentFile.id)
+            }
+          }
+        })
+
+        repeatBtn.addEventListener('click', () => {
+          if (repeatMode === 'none') {
+            repeatMode = 'all'
+            repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
+            repeatIcon.classList.add('bi-repeat', 'text-primary')
+          } else if (repeatMode === 'all') {
+            repeatMode = 'one'
+            repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
+            repeatIcon.classList.add('bi-repeat-1', 'text-primary')
+          } else {
+            repeatMode = 'none'
+            repeatIcon.classList.remove('bi-repeat-1', 'text-primary')
+            repeatIcon.classList.add('bi-repeat')
+          }
+        })
+
+        // Playback Internal
+        const playTrack = (file) => {
           if (currentObjectUrl) {
             URL.revokeObjectURL(currentObjectUrl)
           }
@@ -191,7 +405,17 @@
           
           playerContainer.classList.remove('d-none')
           playerContainer.classList.add('d-flex')
-          playerTitle.textContent = file.filename
+          playerTitle.textContent = file.filename || 'Unknown File'
+
+          // Use file metadata for subtext if available
+          const subText = playerContainer.querySelector('.text-muted.text-truncate')
+          subText.textContent = file.artist || 'Unknown Artist'
+
+          updateLikeIcon(file.id)
+          
+          if (!queuePanel.classList.contains('d-none')) {
+            renderQueue()
+          }
 
           if (file.roomId && file.id) {
             playerJumpBtn.classList.remove('d-none')
@@ -204,6 +428,102 @@
           }
 
           audioElement.play().catch(e => console.error('Error playing audio:', e))
+        }
+
+        // Playback Controls
+        const playNext = (manual = true) => {
+          if (currentPlaylist.length === 0) return
+
+          // If not manual, and repeatMode is 'none', and at the end of playlist, stop
+          if (!manual && repeatMode === 'none' && currentIndex === currentPlaylist.length - 1) {
+            audioElement.pause()
+            audioElement.currentTime = 0
+            playPauseIcon.classList.remove('bi-pause-circle-fill')
+            playPauseIcon.classList.add('bi-play-circle-fill')
+            return
+          }
+
+          currentIndex = (currentIndex + 1) % currentPlaylist.length
+          const nextFile = currentPlaylist[currentIndex]
+          
+          if (nextFile) {
+            playTrack(nextFile)
+          }
+        }
+
+        const playPrevious = () => {
+          if (currentPlaylist.length === 0) return
+          currentIndex = (currentIndex - 1 + currentPlaylist.length) % currentPlaylist.length
+          const prevFile = currentPlaylist[currentIndex]
+          
+          if (prevFile) {
+            playTrack(prevFile)
+          }
+        }
+
+        playerContainer.querySelector('[title="Next"]').addEventListener('click', () => playNext(true))
+        playerContainer.querySelector('[title="Previous"]').addEventListener('click', playPrevious)
+
+        audioElement.addEventListener('ended', () => {
+          if (repeatMode === 'one') {
+            audioElement.currentTime = 0
+            audioElement.play().catch(e => console.error('Error replaying audio:', e))
+          } else {
+            playNext(false)
+          }
+        })
+
+        // --- Event Listener ---
+        on(events('audio:play'), ({ file, playlist, index }) => {
+          // If the file being played is already part of the current queue (i.e. click from queue),
+          // we don't want to re-shuffle everything if we are already in shuffle mode.
+          // However, we still need to update the currentIndex.
+          // Let's use a heuristic: if the playlist passed in matches originalPlaylist (or currentPlaylist)
+          // and we just clicked a track, we just jump to it.
+          // If this is a completely new context, we reinitialize.
+          
+          // A safer internal heuristic is to check if we passed `internal: true`, but since we changed queue clicks:
+          let isQueueClick = false
+          if (playlist && originalPlaylist.length === playlist.length && originalPlaylist.every((f, i) => f.id === playlist[i].id)) {
+            isQueueClick = true
+          }
+
+          if (!isQueueClick) {
+            // New track selected from outside the player, reinitialize state
+            if (playlist) {
+              originalPlaylist = [...playlist]
+              if (isShuffle) {
+                const rest = [...originalPlaylist]
+                const origIndex = rest.findIndex(f => f.id === file.id)
+                if (origIndex !== -1) {
+                  rest.splice(origIndex, 1)
+                } else if (index !== undefined) {
+                  rest.splice(index, 1)
+                }
+                
+                // Fisher-Yates shuffle the rest
+                for (let i = rest.length - 1; i > 0; i--) {
+                  const j = Math.floor(Math.random() * (i + 1))
+                  ;[rest[i], rest[j]] = [rest[j], rest[i]]
+                }
+                currentPlaylist = [file, ...rest]
+                currentIndex = 0
+              } else {
+                currentPlaylist = originalPlaylist
+                currentIndex = index !== undefined ? index : currentPlaylist.findIndex(f => f.id === file.id)
+              }
+            } else {
+              // Single file fallback
+              originalPlaylist = [file]
+              currentPlaylist = [file]
+              currentIndex = 0
+            }
+          } else {
+             // It is a queue click. Just jump the index to where this file lives in currentPlaylist
+             currentIndex = currentPlaylist.findIndex(f => f.id === file.id)
+          }
+          
+          playTrack(file)
         })
 
         // Cleanup

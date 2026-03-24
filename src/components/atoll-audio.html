@@ -98,7 +98,8 @@
                 listItem.classList.add('active')
                 currentActiveItem = listItem
 
-                emit(events('audio:play'), { file })
+                const index = files.findIndex(f => f.id === file.id)
+                emit(events('audio:play'), { file, playlist: files, index })
              })
 
              trackList.appendChild(listItem)
