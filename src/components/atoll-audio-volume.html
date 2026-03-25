@@ -1,0 +1,59 @@
+<template id="atoll-audio-volume">
+  <!-- Right: Volume & Extra -->
+  <div class="d-flex align-items-center justify-content-end gap-2" style="width: 250px;">
+    <button class="btn btn-link text-white p-1" ref="queueBtn" id="{{ ref_queueBtn }}" title="Queue">
+      <i class="bi bi-music-note-list"></i>
+    </button>
+    <button class="btn btn-link text-white p-1" ref="volumeBtn" id="{{ ref_volumeBtn }}" title="Mute/Unmute">
+      <i class="bi bi-volume-up" ref="volumeIcon" id="{{ ref_volumeIcon }}"></i>
+    </button>
+    <input type="range" class="form-range" ref="volumeSlider" id="{{ ref_volumeSlider }}" value="100" min="0" max="100" style="width: 100px; height: 4px;">
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers }) => {
+        const { refs, on, emit } = helpers
+        
+        const queueBtn = refs('queueBtn')
+        const volumeBtn = refs('volumeBtn')
+        const volumeIcon = refs('volumeIcon')
+        const volumeSlider = refs('volumeSlider')
+
+        // Parent informs us of volume change
+        on('player:volume-update', ({ volume, isMuted }) => {
+          if (!isMuted) {
+            volumeSlider.value = volume * 100
+          } else {
+            volumeSlider.value = 0
+          }
+
+          volumeIcon.classList.remove('bi-volume-up', 'bi-volume-down', 'bi-volume-mute', 'bi-volume-off')
+          if (volume === 0 || isMuted) {
+            volumeIcon.classList.add('bi-volume-mute')
+          } else if (volume < 0.5) {
+            volumeIcon.classList.add('bi-volume-down')
+          } else {
+            volumeIcon.classList.add('bi-volume-up')
+          }
+        })
+
+        queueBtn.addEventListener('click', () => {
+          emit('player:toggle-queue')
+        })
+
+        volumeBtn.addEventListener('click', () => {
+          emit('player:toggle-mute')
+        })
+
+        volumeSlider.addEventListener('input', () => {
+          emit('player:set-volume', { volume: volumeSlider.value / 100 })
+        })
+      }
+    }
+  })
+</script>

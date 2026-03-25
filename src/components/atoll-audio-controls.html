@@ -1,0 +1,86 @@
+<template id="atoll-audio-controls">
+  <!-- Center: Controls -->
+  <div class="d-flex justify-content-center align-items-center gap-3">
+    <button class="btn btn-link text-white p-0 fs-5" ref="shuffleBtn" id="{{ ref_shuffleBtn }}" title="Shuffle"><i class="bi bi-shuffle" ref="shuffleIcon" id="{{ ref_shuffleIcon }}"></i></button>
+    <button class="btn btn-link text-white p-0 fs-4" ref="prevBtn" id="{{ ref_prevBtn }}" title="Previous"><i class="bi bi-skip-start-fill"></i></button>
+    <button class="btn btn-link text-white p-0 fs-2" ref="playPauseBtn" id="{{ ref_playPauseBtn }}" title="Play/Pause">
+      <i class="bi bi-play-circle-fill" ref="playPauseIcon" id="{{ ref_playPauseIcon }}"></i>
+    </button>
+    <button class="btn btn-link text-white p-0 fs-4" ref="nextBtn" id="{{ ref_nextBtn }}" title="Next"><i class="bi bi-skip-end-fill"></i></button>
+    <button class="btn btn-link text-white p-0 fs-5" ref="repeatBtn" id="{{ ref_repeatBtn }}" title="Repeat"><i class="bi bi-repeat" ref="repeatIcon" id="{{ ref_repeatIcon }}"></i></button>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers }) => {
+        const { refs, on, emit } = helpers
+        
+        const shuffleBtn = refs('shuffleBtn')
+        const shuffleIcon = refs('shuffleIcon')
+        const prevBtn = refs('prevBtn')
+        const playPauseBtn = refs('playPauseBtn')
+        const playPauseIcon = refs('playPauseIcon')
+        const nextBtn = refs('nextBtn')
+        const repeatBtn = refs('repeatBtn')
+        const repeatIcon = refs('repeatIcon')
+
+        // Listen for state changes from the parent
+        on('player:play-state-change', ({ isPlaying }) => {
+          if (isPlaying) {
+            playPauseIcon.classList.remove('bi-play-circle-fill')
+            playPauseIcon.classList.add('bi-pause-circle-fill')
+          } else {
+            playPauseIcon.classList.remove('bi-pause-circle-fill')
+            playPauseIcon.classList.add('bi-play-circle-fill')
+          }
+        })
+
+        on('player:shuffle-change', ({ isShuffle }) => {
+          if (isShuffle) {
+            shuffleIcon.classList.add('text-primary')
+          } else {
+            shuffleIcon.classList.remove('text-primary')
+          }
+        })
+
+        on('player:repeat-change', ({ repeatMode }) => {
+          if (repeatMode === 'all') {
+            repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
+            repeatIcon.classList.add('bi-repeat', 'text-primary')
+          } else if (repeatMode === 'one') {
+            repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
+            repeatIcon.classList.add('bi-repeat-1', 'text-primary')
+          } else {
+            repeatIcon.classList.remove('bi-repeat-1', 'text-primary')
+            repeatIcon.classList.add('bi-repeat')
+          }
+        })
+
+        // Emit events when buttons are clicked
+        playPauseBtn.addEventListener('click', () => {
+          emit('player:toggle-play')
+        })
+
+        prevBtn.addEventListener('click', () => {
+          emit('player:previous')
+        })
+
+        nextBtn.addEventListener('click', () => {
+          emit('player:next')
+        })
+
+        shuffleBtn.addEventListener('click', () => {
+          emit('player:toggle-shuffle')
+        })
+
+        repeatBtn.addEventListener('click', () => {
+          emit('player:toggle-repeat')
+        })
+      }
+    }
+  })
+</script>

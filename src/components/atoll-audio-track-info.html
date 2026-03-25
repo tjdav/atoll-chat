@@ -1,0 +1,87 @@
+<template id="atoll-audio-track-info">
+  <!-- Left: Track Info -->
+  <div class="d-flex align-items-center me-3" style="width: 300px;" ref="trackInfoContainer" id="{{ ref_trackInfoContainer }}">
+    <div class="me-3 text-primary d-flex align-items-center justify-content-center bg-secondary rounded" style="width: 50px; height: 50px;">
+      <i class="bi bi-music-note-beamed fs-3 text-white"></i>
+    </div>
+    <div class="flex-grow-1 overflow-hidden me-2">
+      <div class="fw-bold text-truncate" ref="playerTitle" id="{{ ref_playerTitle }}" style="font-size: 0.9rem;">Select a track</div>
+      <div class="text-muted text-truncate" ref="playerArtist" id="{{ ref_playerArtist }}" style="font-size: 0.8rem;">Unknown Artist</div>
+    </div>
+    <button class="btn btn-link text-white p-1 me-1" ref="likeBtn" id="{{ ref_likeBtn }}" title="Like">
+      <i class="bi bi-heart" ref="likeIcon" id="{{ ref_likeIcon }}"></i>
+    </button>
+    <button class="btn btn-link text-white p-1 d-none" ref="playerJumpBtn" id="{{ ref_playerJumpBtn }}" title="Go to Message">
+      <i class="bi bi-chat-left-text"></i>
+    </button>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers }) => {
+        const { refs, on, emit, events } = helpers
+        
+        const playerTitle = refs('playerTitle')
+        const playerArtist = refs('playerArtist')
+        const likeBtn = refs('likeBtn')
+        const likeIcon = refs('likeIcon')
+        const playerJumpBtn = refs('playerJumpBtn')
+
+        let currentFile = null
+
+        // Listen for track updates
+        on('player:track-update', ({ file, isLiked }) => {
+          currentFile = file
+          if (file) {
+            playerTitle.textContent = file.filename || 'Unknown File'
+            playerArtist.textContent = file.artist || 'Unknown Artist'
+
+            if (file.roomId && file.id) {
+              playerJumpBtn.classList.remove('d-none')
+            } else {
+              playerJumpBtn.classList.add('d-none')
+            }
+
+            if (isLiked) {
+              likeIcon.className = 'bi bi-heart-fill text-danger'
+            } else {
+              likeIcon.className = 'bi bi-heart text-white'
+            }
+          } else {
+            playerTitle.textContent = 'Select a track'
+            playerArtist.textContent = 'Unknown Artist'
+            playerJumpBtn.classList.add('d-none')
+            likeIcon.className = 'bi bi-heart text-white'
+          }
+        })
+
+        // Listen for like status updates separately (e.g. user clicks like)
+        on('player:like-update', ({ fileId, isLiked }) => {
+          if (currentFile && currentFile.id === fileId) {
+            if (isLiked) {
+              likeIcon.className = 'bi bi-heart-fill text-danger'
+            } else {
+              likeIcon.className = 'bi bi-heart text-white'
+            }
+          }
+        })
+
+        likeBtn.addEventListener('click', () => {
+          if (currentFile) {
+            emit('player:toggle-like', { file: currentFile })
+          }
+        })
+
+        playerJumpBtn.addEventListener('click', () => {
+          if (currentFile && currentFile.roomId && currentFile.id) {
+            emit(events('nav:jump-to-message'), { roomId: currentFile.roomId, eventId: currentFile.id })
+          }
+        })
+      }
+    }
+  })
+</script>

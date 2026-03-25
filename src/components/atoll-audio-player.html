@@ -1,66 +1,18 @@
 <template id="atoll-audio-player">
   <div class="position-absolute bottom-0 w-100 bg-dark text-white border-top border-secondary p-2 d-none align-items-center" ref="playerContainer" id="{{ ref_playerContainer }}" style="z-index: 1050; height: 80px;">
     
-    <!-- Left: Track Info -->
-    <div class="d-flex align-items-center me-3" style="width: 300px;">
-      <div class="me-3 text-primary d-flex align-items-center justify-content-center bg-secondary rounded" style="width: 50px; height: 50px;">
-        <i class="bi bi-music-note-beamed fs-3 text-white"></i>
-      </div>
-      <div class="flex-grow-1 overflow-hidden me-2">
-        <div class="fw-bold text-truncate" ref="playerTitle" id="{{ ref_playerTitle }}" style="font-size: 0.9rem;">Select a track</div>
-        <div class="text-muted text-truncate" style="font-size: 0.8rem;">Unknown Artist</div>
-      </div>
-      <button class="btn btn-link text-white p-1 me-1" title="Like">
-        <i class="bi bi-heart"></i>
-      </button>
-      <button class="btn btn-link text-white p-1 d-none" ref="playerJumpBtn" id="{{ ref_playerJumpBtn }}" title="Go to Message">
-        <i class="bi bi-chat-left-text"></i>
-      </button>
-    </div>
+    <atoll-audio-track-info></atoll-audio-track-info>
 
-    <!-- Center: Controls & Timeline -->
     <div class="flex-grow-1 d-flex flex-column justify-content-center px-4">
-      <div class="d-flex justify-content-center align-items-center gap-3">
-        <button class="btn btn-link text-white p-0 fs-5" title="Shuffle"><i class="bi bi-shuffle"></i></button>
-        <button class="btn btn-link text-white p-0 fs-4" title="Previous"><i class="bi bi-skip-start-fill"></i></button>
-        <button class="btn btn-link text-white p-0 fs-2" ref="playPauseBtn" id="{{ ref_playPauseBtn }}" title="Play/Pause">
-          <i class="bi bi-play-circle-fill" ref="playPauseIcon" id="{{ ref_playPauseIcon }}"></i>
-        </button>
-        <button class="btn btn-link text-white p-0 fs-4" title="Next"><i class="bi bi-skip-end-fill"></i></button>
-        <button class="btn btn-link text-white p-0 fs-5" title="Repeat"><i class="bi bi-repeat"></i></button>
-      </div>
-      <div class="d-flex align-items-center w-100 gap-2">
-        <span class="text-muted" style="font-size: 0.75rem; min-width: 35px; text-align: right;" ref="currentTimeDisplay" id="{{ ref_currentTimeDisplay }}">0:00</span>
-        <input type="range" class="form-range flex-grow-1" ref="seekSlider" id="{{ ref_seekSlider }}" value="0" min="0" max="100" step="0.1" style="height: 4px;">
-        <span class="text-muted" style="font-size: 0.75rem; min-width: 35px;" ref="durationDisplay" id="{{ ref_durationDisplay }}">0:00</span>
-      </div>
+      <atoll-audio-controls></atoll-audio-controls>
+      <atoll-audio-timeline></atoll-audio-timeline>
     </div>
 
-    <!-- Right: Volume & Extra -->
-    <div class="d-flex align-items-center justify-content-end gap-2" style="width: 250px;">
-      <button class="btn btn-link text-white p-1" title="Queue">
-        <i class="bi bi-music-note-list"></i>
-      </button>
-      <button class="btn btn-link text-white p-1" ref="volumeBtn" id="{{ ref_volumeBtn }}" title="Mute/Unmute">
-        <i class="bi bi-volume-up" ref="volumeIcon" id="{{ ref_volumeIcon }}"></i>
-      </button>
-      <input type="range" class="form-range" ref="volumeSlider" id="{{ ref_volumeSlider }}" value="100" min="0" max="100" style="width: 100px; height: 4px;">
-    </div>
+    <atoll-audio-volume></atoll-audio-volume>
 
     <audio class="d-none" ref="audioElement" id="{{ ref_audioElement }}"></audio>
 
-    <!-- Queue Panel -->
-    <div ref="queuePanel" id="{{ ref_queuePanel }}" class="position-absolute end-0 bottom-100 bg-dark border border-secondary rounded-top d-none flex-column overflow-hidden" style="width: 350px; max-height: 400px; z-index: 1060; margin-bottom: 2px;">
-      <div class="d-flex justify-content-between align-items-center p-2 border-bottom border-secondary bg-black bg-opacity-25">
-        <h6 class="m-0 ms-2 text-white">Play Queue</h6>
-        <button class="btn btn-link text-white p-1 text-decoration-none" title="Close Queue" ref="closeQueueBtn" id="{{ ref_closeQueueBtn }}">
-          <i class="bi bi-x-lg"></i>
-        </button>
-      </div>
-      <div class="list-group list-group-flush flex-grow-1 overflow-auto" ref="queueList" id="{{ ref_queueList }}">
-        <!-- Queue items go here -->
-      </div>
-    </div>
+    <atoll-audio-queue-panel></atoll-audio-queue-panel>
 
   </div>
 </template>
@@ -74,20 +26,7 @@
         const { refs, on, emit, events } = helpers
         
         const playerContainer = refs('playerContainer')
-        const playerTitle = refs('playerTitle')
-        const playerJumpBtn = refs('playerJumpBtn')
         const audioElement = refs('audioElement')
-        const playPauseBtn = refs('playPauseBtn')
-        const playPauseIcon = refs('playPauseIcon')
-        const seekSlider = refs('seekSlider')
-        const currentTimeDisplay = refs('currentTimeDisplay')
-        const durationDisplay = refs('durationDisplay')
-        const volumeBtn = refs('volumeBtn')
-        const volumeIcon = refs('volumeIcon')
-        const volumeSlider = refs('volumeSlider')
-        const queuePanel = refs('queuePanel')
-        const closeQueueBtn = refs('closeQueueBtn')
-        const queueList = refs('queueList')
 
         // --- State ---
         let currentPlaylist = []
@@ -98,9 +37,9 @@
         let likedTracks = new Set() // Store string IDs of liked tracks
 
         let currentObjectUrl = null
-        let isSeeking = false
         let isMuted = false
         let previousVolume = 1
+        let isQueueVisible = false
 
         // --- Like DB Init ---
         const initLikeDB = () => {
@@ -133,268 +72,39 @@
         
         loadLikes()
 
-        const formatTime = (seconds) => {
-          if (isNaN(seconds) || seconds < 0) return '0:00'
-          const m = Math.floor(seconds / 60)
-          const s = Math.floor(seconds % 60)
-          return `${m}:${s.toString().padStart(2, '0')}`
-        }
-
-        // --- Play/Pause Logic ---
-        playPauseBtn.addEventListener('click', () => {
-          if (audioElement.paused) {
-            audioElement.play().catch(e => console.error('Error playing audio:', e))
-          } else {
-            audioElement.pause()
-          }
-        })
-
+        // --- Audio Element Listeners ---
         audioElement.addEventListener('play', () => {
-          playPauseIcon.classList.remove('bi-play-circle-fill')
-          playPauseIcon.classList.add('bi-pause-circle-fill')
+          emit('player:play-state-change', { isPlaying: true })
         })
 
         audioElement.addEventListener('pause', () => {
-          playPauseIcon.classList.remove('bi-pause-circle-fill')
-          playPauseIcon.classList.add('bi-play-circle-fill')
+          emit('player:play-state-change', { isPlaying: false })
         })
 
-        // --- Seekbar Logic ---
         audioElement.addEventListener('loadedmetadata', () => {
-          seekSlider.max = audioElement.duration
-          durationDisplay.textContent = formatTime(audioElement.duration)
+          emit('player:duration-change', { duration: audioElement.duration })
         })
 
         audioElement.addEventListener('timeupdate', () => {
-          if (!isSeeking) {
-            seekSlider.value = audioElement.currentTime
-            currentTimeDisplay.textContent = formatTime(audioElement.currentTime)
-          }
+          emit('player:time-update', { currentTime: audioElement.currentTime })
         })
 
-        seekSlider.addEventListener('mousedown', () => {
-          isSeeking = true
-        })
-
-        seekSlider.addEventListener('input', () => {
-          currentTimeDisplay.textContent = formatTime(seekSlider.value)
-        })
-
-        seekSlider.addEventListener('mouseup', () => {
-          isSeeking = false
-          audioElement.currentTime = seekSlider.value
-        })
-        
-        // Touch support for seekbar
-        seekSlider.addEventListener('touchstart', () => {
-          isSeeking = true
-        })
-        seekSlider.addEventListener('touchend', () => {
-          isSeeking = false
-          audioElement.currentTime = seekSlider.value
-        })
-
-        // --- Volume Logic ---
-        const updateVolumeIcon = (vol) => {
-          volumeIcon.classList.remove('bi-volume-up', 'bi-volume-down', 'bi-volume-mute', 'bi-volume-off')
-          if (vol === 0 || isMuted) {
-            volumeIcon.classList.add('bi-volume-mute')
-          } else if (vol < 0.5) {
-            volumeIcon.classList.add('bi-volume-down')
+        audioElement.addEventListener('ended', () => {
+          if (repeatMode === 'one') {
+            audioElement.currentTime = 0
+            audioElement.play().catch(e => console.error('Error replaying audio:', e))
           } else {
-            volumeIcon.classList.add('bi-volume-up')
-          }
-        }
-
-        volumeSlider.addEventListener('input', () => {
-          const val = volumeSlider.value / 100
-          if (isMuted && val > 0) {
-            isMuted = false
-            audioElement.muted = false
-          }
-          audioElement.volume = val
-          previousVolume = val
-          updateVolumeIcon(val)
-        })
-
-        volumeBtn.addEventListener('click', () => {
-          if (isMuted) {
-            isMuted = false
-            audioElement.muted = false
-            audioElement.volume = previousVolume
-            volumeSlider.value = previousVolume * 100
-            updateVolumeIcon(previousVolume)
-          } else {
-            isMuted = true
-            audioElement.muted = true
-            volumeSlider.value = 0
-            updateVolumeIcon(0)
+            playNext(false)
           }
         })
 
-        // Initial setup for volume
-        audioElement.volume = volumeSlider.value / 100
+        // Initial volume setup
+        audioElement.volume = 1
         previousVolume = audioElement.volume
+        emit('player:volume-update', { volume: audioElement.volume, isMuted: audioElement.muted })
 
-        // Like
-        const likeBtn = playerContainer.querySelector('[title="Like"]')
-        
-        likeBtn.addEventListener('click', async () => {
-          if (currentIndex === -1 || !currentPlaylist[currentIndex]) return
-          
-          const fileId = currentPlaylist[currentIndex].id
-          const isLiked = likedTracks.has(fileId)
-          
-          try {
-            const db = await initLikeDB()
-            const transaction = db.transaction('likes', 'readwrite')
-            const store = transaction.objectStore('likes')
-            
-            if (isLiked) {
-              store.delete(fileId)
-              likedTracks.delete(fileId)
-            } else {
-              store.put({ id: fileId })
-              likedTracks.add(fileId)
-            }
-            
-            updateLikeIcon(fileId)
-          } catch (e) {
-            console.error('Error updating like in IndexedDB:', e)
-          }
-        })
 
-        // Update UI
-        const updateLikeIcon = (fileId) => {
-          const likeIcon = playerContainer.querySelector('[title="Like"] i')
-          if (likedTracks.has(fileId)) {
-            likeIcon.className = 'bi bi-heart-fill text-danger'
-          } else {
-            likeIcon.className = 'bi bi-heart text-white'
-          }
-        }
-
-        const renderQueue = () => {
-          queueList.innerHTML = ''
-          currentPlaylist.forEach((file, index) => {
-            const btn = document.createElement('button')
-            btn.className = `list-group-item list-group-item-action bg-transparent text-white border-secondary p-2 d-flex align-items-center ${index === currentIndex ? 'active bg-primary border-primary' : ''}`
-            
-            const icon = document.createElement('i')
-            icon.className = index === currentIndex ? 'bi bi-volume-up-fill me-3 text-white' : 'bi bi-music-note me-3 text-secondary'
-            
-            const infoDiv = document.createElement('div')
-            infoDiv.className = 'flex-grow-1 overflow-hidden d-flex flex-column'
-            
-            const titleDiv = document.createElement('div')
-            titleDiv.className = 'text-truncate fw-bold'
-            titleDiv.style.fontSize = '0.9rem'
-            titleDiv.textContent = file.filename || 'Unknown File'
-
-            const metaDiv = document.createElement('div')
-            metaDiv.className = 'd-flex justify-content-between text-muted text-truncate'
-            metaDiv.style.fontSize = '0.75rem'
-
-            const artistSpan = document.createElement('span')
-            artistSpan.textContent = file.artist || 'Unknown Artist'
-
-            const durationSpan = document.createElement('span')
-            // Mock duration or format file size if no duration is known. 
-            // Often audio blobs in matrix lack duration before load.
-            durationSpan.textContent = file.duration ? formatTime(file.duration) : ''
-
-            metaDiv.appendChild(artistSpan)
-            metaDiv.appendChild(durationSpan)
-            
-            infoDiv.appendChild(titleDiv)
-            infoDiv.appendChild(metaDiv)
-            
-            btn.appendChild(icon)
-            btn.appendChild(infoDiv)
-            
-            btn.addEventListener('click', () => {
-              emit(events('audio:play'), { file, playlist: originalPlaylist, index })
-            })
-            
-            queueList.appendChild(btn)
-          })
-
-          // Scroll current item into view if possible
-          const activeItem = queueList.querySelector('.active')
-          if (activeItem) {
-            activeItem.scrollIntoView({ block: 'nearest' })
-          }
-        }
-
-        // Queue UI
-        const queueBtn = playerContainer.querySelector('[title="Queue"]')
-        queueBtn.addEventListener('click', () => {
-          if (queuePanel.classList.contains('d-none')) {
-            queuePanel.classList.remove('d-none')
-            queuePanel.classList.add('d-flex')
-            renderQueue()
-          } else {
-            queuePanel.classList.add('d-none')
-            queuePanel.classList.remove('d-flex')
-          }
-        })
-
-        closeQueueBtn.addEventListener('click', () => {
-          queuePanel.classList.add('d-none')
-          queuePanel.classList.remove('d-flex')
-        })
-
-        // Toggles
-        const shuffleBtn = playerContainer.querySelector('[title="Shuffle"]')
-        const shuffleIcon = shuffleBtn.querySelector('i')
-        const repeatBtn = playerContainer.querySelector('[title="Repeat"]')
-        const repeatIcon = repeatBtn.querySelector('i')
-
-        shuffleBtn.addEventListener('click', () => {
-          isShuffle = !isShuffle
-          
-          if (isShuffle) {
-            shuffleIcon.classList.add('text-primary')
-            if (currentPlaylist.length > 0) {
-              const currentFile = currentPlaylist[currentIndex]
-              const rest = [...originalPlaylist]
-              const origIndex = rest.findIndex(f => f.id === currentFile.id)
-              if (origIndex !== -1) rest.splice(origIndex, 1)
-              
-              for (let i = rest.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1))
-                ;[rest[i], rest[j]] = [rest[j], rest[i]]
-              }
-              currentPlaylist = [currentFile, ...rest]
-              currentIndex = 0
-            }
-          } else {
-            shuffleIcon.classList.remove('text-primary')
-            if (currentPlaylist.length > 0) {
-              const currentFile = currentPlaylist[currentIndex]
-              currentPlaylist = [...originalPlaylist]
-              currentIndex = currentPlaylist.findIndex(f => f.id === currentFile.id)
-            }
-          }
-        })
-
-        repeatBtn.addEventListener('click', () => {
-          if (repeatMode === 'none') {
-            repeatMode = 'all'
-            repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
-            repeatIcon.classList.add('bi-repeat', 'text-primary')
-          } else if (repeatMode === 'all') {
-            repeatMode = 'one'
-            repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
-            repeatIcon.classList.add('bi-repeat-1', 'text-primary')
-          } else {
-            repeatMode = 'none'
-            repeatIcon.classList.remove('bi-repeat-1', 'text-primary')
-            repeatIcon.classList.add('bi-repeat')
-          }
-        })
-
-        // Playback Internal
+        // --- Playback Internal ---
         const playTrack = (file) => {
           if (currentObjectUrl) {
             URL.revokeObjectURL(currentObjectUrl)
@@ -405,32 +115,14 @@
           
           playerContainer.classList.remove('d-none')
           playerContainer.classList.add('d-flex')
-          playerTitle.textContent = file.filename || 'Unknown File'
-
-          // Use file metadata for subtext if available
-          const subText = playerContainer.querySelector('.text-muted.text-truncate')
-          subText.textContent = file.artist || 'Unknown Artist'
-
-          updateLikeIcon(file.id)
           
-          if (!queuePanel.classList.contains('d-none')) {
-            renderQueue()
-          }
-
-          if (file.roomId && file.id) {
-            playerJumpBtn.classList.remove('d-none')
-            playerJumpBtn.onclick = () => {
-              emit(events('nav:jump-to-message'), { roomId: file.roomId, eventId: file.id })
-            }
-          } else {
-            playerJumpBtn.classList.add('d-none')
-            playerJumpBtn.onclick = null
-          }
+          // Emit track updates to track info and queue panel
+          emit('player:track-update', { file, isLiked: likedTracks.has(file.id) })
+          emit('player:queue-update', { playlist: currentPlaylist, index: currentIndex })
 
           audioElement.play().catch(e => console.error('Error playing audio:', e))
         }
 
-        // Playback Controls
         const playNext = (manual = true) => {
           if (currentPlaylist.length === 0) return
 
@@ -438,8 +130,7 @@
           if (!manual && repeatMode === 'none' && currentIndex === currentPlaylist.length - 1) {
             audioElement.pause()
             audioElement.currentTime = 0
-            playPauseIcon.classList.remove('bi-pause-circle-fill')
-            playPauseIcon.classList.add('bi-play-circle-fill')
+            emit('player:play-state-change', { isPlaying: false })
             return
           }
 
@@ -461,35 +152,143 @@
           }
         }
 
-        playerContainer.querySelector('[title="Next"]').addEventListener('click', () => playNext(true))
-        playerContainer.querySelector('[title="Previous"]').addEventListener('click', playPrevious)
 
-        audioElement.addEventListener('ended', () => {
-          if (repeatMode === 'one') {
-            audioElement.currentTime = 0
-            audioElement.play().catch(e => console.error('Error replaying audio:', e))
+        // --- Event Bus Listeners from Child Components ---
+
+        // Controls
+        on('player:toggle-play', () => {
+          if (audioElement.paused) {
+            audioElement.play().catch(e => console.error('Error playing audio:', e))
           } else {
-            playNext(false)
+            audioElement.pause()
           }
         })
 
-        // --- Event Listener ---
-        on(events('audio:play'), ({ file, playlist, index }) => {
-          // If the file being played is already part of the current queue (i.e. click from queue),
-          // we don't want to re-shuffle everything if we are already in shuffle mode.
-          // However, we still need to update the currentIndex.
-          // Let's use a heuristic: if the playlist passed in matches originalPlaylist (or currentPlaylist)
-          // and we just clicked a track, we just jump to it.
-          // If this is a completely new context, we reinitialize.
+        on('player:next', () => playNext(true))
+        on('player:previous', () => playPrevious())
+
+        on('player:toggle-shuffle', () => {
+          isShuffle = !isShuffle
           
-          // A safer internal heuristic is to check if we passed `internal: true`, but since we changed queue clicks:
+          if (isShuffle) {
+            emit('player:shuffle-change', { isShuffle: true })
+            if (currentPlaylist.length > 0) {
+              const currentFile = currentPlaylist[currentIndex]
+              const rest = [...originalPlaylist]
+              const origIndex = rest.findIndex(f => f.id === currentFile.id)
+              if (origIndex !== -1) rest.splice(origIndex, 1)
+              
+              for (let i = rest.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1))
+                ;[rest[i], rest[j]] = [rest[j], rest[i]]
+              }
+              currentPlaylist = [currentFile, ...rest]
+              currentIndex = 0
+            }
+          } else {
+            emit('player:shuffle-change', { isShuffle: false })
+            if (currentPlaylist.length > 0) {
+              const currentFile = currentPlaylist[currentIndex]
+              currentPlaylist = [...originalPlaylist]
+              currentIndex = currentPlaylist.findIndex(f => f.id === currentFile.id)
+            }
+          }
+          // Update queue when shuffled
+          emit('player:queue-update', { playlist: currentPlaylist, index: currentIndex })
+        })
+
+        on('player:toggle-repeat', () => {
+          if (repeatMode === 'none') {
+            repeatMode = 'all'
+          } else if (repeatMode === 'all') {
+            repeatMode = 'one'
+          } else {
+            repeatMode = 'none'
+          }
+          emit('player:repeat-change', { repeatMode })
+        })
+
+        // Timeline
+        on('player:seek', ({ time }) => {
+          audioElement.currentTime = time
+        })
+
+        // Volume & Queue Toggles
+        on('player:set-volume', ({ volume }) => {
+          if (isMuted && volume > 0) {
+            isMuted = false
+            audioElement.muted = false
+          }
+          audioElement.volume = volume
+          previousVolume = volume
+          emit('player:volume-update', { volume: audioElement.volume, isMuted: audioElement.muted })
+        })
+
+        on('player:toggle-mute', () => {
+          if (isMuted) {
+            isMuted = false
+            audioElement.muted = false
+            audioElement.volume = previousVolume
+            emit('player:volume-update', { volume: previousVolume, isMuted: false })
+          } else {
+            isMuted = true
+            audioElement.muted = true
+            emit('player:volume-update', { volume: 0, isMuted: true })
+          }
+        })
+
+        on('player:toggle-queue', () => {
+          isQueueVisible = !isQueueVisible
+          emit('player:queue-visibility', { isVisible: isQueueVisible })
+        })
+
+        on('player:close-queue', () => {
+          isQueueVisible = false
+          emit('player:queue-visibility', { isVisible: isQueueVisible })
+        })
+
+        // Queue panel specific play
+        on('player:play-queue-track', ({ index, file }) => {
+          currentIndex = index
+          playTrack(file)
+        })
+
+        // Track Info Like Toggle
+        on('player:toggle-like', async ({ file }) => {
+          if (!file) return
+          
+          const fileId = file.id
+          const isLiked = likedTracks.has(fileId)
+          
+          try {
+            const db = await initLikeDB()
+            const transaction = db.transaction('likes', 'readwrite')
+            const store = transaction.objectStore('likes')
+            
+            if (isLiked) {
+              store.delete(fileId)
+              likedTracks.delete(fileId)
+            } else {
+              store.put({ id: fileId })
+              likedTracks.add(fileId)
+            }
+            
+            // Re-eval instead of waiting on DB update state directly for UI speed
+            emit('player:like-update', { fileId, isLiked: !isLiked })
+          } catch (e) {
+            console.error('Error updating like in IndexedDB:', e)
+          }
+        })
+
+
+        // --- Global Application Event Listeners ---
+        on(events('audio:play'), ({ file, playlist, index }) => {
           let isQueueClick = false
           if (playlist && originalPlaylist.length === playlist.length && originalPlaylist.every((f, i) => f.id === playlist[i].id)) {
             isQueueClick = true
           }
 
           if (!isQueueClick) {
-            // New track selected from outside the player, reinitialize state
             if (playlist) {
               originalPlaylist = [...playlist]
               if (isShuffle) {
@@ -501,7 +300,6 @@
                   rest.splice(index, 1)
                 }
                 
-                // Fisher-Yates shuffle the rest
                 for (let i = rest.length - 1; i > 0; i--) {
                   const j = Math.floor(Math.random() * (i + 1))
                   ;[rest[i], rest[j]] = [rest[j], rest[i]]
@@ -513,13 +311,11 @@
                 currentIndex = index !== undefined ? index : currentPlaylist.findIndex(f => f.id === file.id)
               }
             } else {
-              // Single file fallback
               originalPlaylist = [file]
               currentPlaylist = [file]
               currentIndex = 0
             }
           } else {
-             // It is a queue click. Just jump the index to where this file lives in currentPlaylist
              currentIndex = currentPlaylist.findIndex(f => f.id === file.id)
           }
           

@@ -1,0 +1,115 @@
+<template id="atoll-audio-queue-panel">
+  <!-- Queue Panel -->
+  <div ref="queuePanel" id="{{ ref_queuePanel }}" class="position-absolute end-0 bottom-100 bg-dark border border-secondary rounded-top d-none flex-column overflow-hidden" style="width: 350px; max-height: 400px; z-index: 1060; margin-bottom: 2px;">
+    <div class="d-flex justify-content-between align-items-center p-2 border-bottom border-secondary bg-black bg-opacity-25">
+      <h6 class="m-0 ms-2 text-white">Play Queue</h6>
+      <button class="btn btn-link text-white p-1 text-decoration-none" title="Close Queue" ref="closeQueueBtn" id="{{ ref_closeQueueBtn }}">
+        <i class="bi bi-x-lg"></i>
+      </button>
+    </div>
+    <div class="list-group list-group-flush flex-grow-1 overflow-auto" ref="queueList" id="{{ ref_queueList }}">
+      <!-- Queue items go here -->
+    </div>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers }) => {
+        const { refs, on, emit } = helpers
+        
+        const queuePanel = refs('queuePanel')
+        const closeQueueBtn = refs('closeQueueBtn')
+        const queueList = refs('queueList')
+
+        let currentPlaylist = []
+        let currentIndex = -1
+
+        const formatTime = (seconds) => {
+          if (isNaN(seconds) || seconds < 0) return '0:00'
+          const m = Math.floor(seconds / 60)
+          const s = Math.floor(seconds % 60)
+          return `${m}:${s.toString().padStart(2, '0')}`
+        }
+
+        const renderQueue = () => {
+          queueList.innerHTML = ''
+          currentPlaylist.forEach((file, index) => {
+            const btn = document.createElement('button')
+            btn.className = `list-group-item list-group-item-action bg-transparent text-white border-secondary p-2 d-flex align-items-center ${index === currentIndex ? 'active bg-primary border-primary' : ''}`
+            
+            const icon = document.createElement('i')
+            icon.className = index === currentIndex ? 'bi bi-volume-up-fill me-3 text-white' : 'bi bi-music-note me-3 text-secondary'
+            
+            const infoDiv = document.createElement('div')
+            infoDiv.className = 'flex-grow-1 overflow-hidden d-flex flex-column'
+            
+            const titleDiv = document.createElement('div')
+            titleDiv.className = 'text-truncate fw-bold'
+            titleDiv.style.fontSize = '0.9rem'
+            titleDiv.textContent = file.filename || 'Unknown File'
+
+            const metaDiv = document.createElement('div')
+            metaDiv.className = 'd-flex justify-content-between text-muted text-truncate'
+            metaDiv.style.fontSize = '0.75rem'
+
+            const artistSpan = document.createElement('span')
+            artistSpan.textContent = file.artist || 'Unknown Artist'
+
+            const durationSpan = document.createElement('span')
+            // Mock duration or format file size if no duration is known. 
+            // Often audio blobs in matrix lack duration before load.
+            durationSpan.textContent = file.duration ? formatTime(file.duration) : ''
+
+            metaDiv.appendChild(artistSpan)
+            metaDiv.appendChild(durationSpan)
+            
+            infoDiv.appendChild(titleDiv)
+            infoDiv.appendChild(metaDiv)
+            
+            btn.appendChild(icon)
+            btn.appendChild(infoDiv)
+            
+            btn.addEventListener('click', () => {
+              emit('player:play-queue-track', { index, file })
+            })
+            
+            queueList.appendChild(btn)
+          })
+
+          // Scroll current item into view if possible
+          const activeItem = queueList.querySelector('.active')
+          if (activeItem) {
+            activeItem.scrollIntoView({ block: 'nearest' })
+          }
+        }
+
+        on('player:queue-update', ({ playlist, index }) => {
+          currentPlaylist = playlist
+          currentIndex = index
+          if (!queuePanel.classList.contains('d-none')) {
+            renderQueue()
+          }
+        })
+
+        on('player:queue-visibility', ({ isVisible }) => {
+          if (isVisible) {
+            queuePanel.classList.remove('d-none')
+            queuePanel.classList.add('d-flex')
+            renderQueue()
+          } else {
+            queuePanel.classList.add('d-none')
+            queuePanel.classList.remove('d-flex')
+          }
+        })
+
+        closeQueueBtn.addEventListener('click', () => {
+          emit('player:close-queue')
+        })
+      }
+    }
+  })
+</script>
