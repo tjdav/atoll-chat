@@ -17,7 +17,7 @@
   export default defineComponent({
     client: {
       script: ({ helpers }) => {
-        const { refs, on, emit } = helpers
+        const { refs, on, emit, events } = helpers
         
         const shuffleBtn = refs('shuffleBtn')
         const shuffleIcon = refs('shuffleIcon')
@@ -29,7 +29,7 @@
         const repeatIcon = refs('repeatIcon')
 
         // Listen for state changes from the parent
-        on('player:play-state-change', ({ isPlaying }) => {
+        on(events('player:play-state-change'), ({ isPlaying }) => {
           if (isPlaying) {
             playPauseIcon.classList.remove('bi-play-circle-fill')
             playPauseIcon.classList.add('bi-pause-circle-fill')
@@ -39,7 +39,7 @@
           }
         })
 
-        on('player:shuffle-change', ({ isShuffle }) => {
+        on(events('player:shuffle-change'), ({ isShuffle }) => {
           if (isShuffle) {
             shuffleIcon.classList.add('text-primary')
           } else {
@@ -47,7 +47,7 @@
           }
         })
 
-        on('player:repeat-change', ({ repeatMode }) => {
+        on(events('player:repeat-change'), ({ repeatMode }) => {
           if (repeatMode === 'all') {
             repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
             repeatIcon.classList.add('bi-repeat', 'text-primary')
@@ -62,23 +62,23 @@
 
         // Emit events when buttons are clicked
         playPauseBtn.addEventListener('click', () => {
-          emit('player:toggle-play')
+          emit(events('player:toggle-play'))
         })
 
         prevBtn.addEventListener('click', () => {
-          emit('player:previous')
+          emit(events('player:previous'))
         })
 
         nextBtn.addEventListener('click', () => {
-          emit('player:next')
+          emit(events('player:next'))
         })
 
         shuffleBtn.addEventListener('click', () => {
-          emit('player:toggle-shuffle')
+          emit(events('player:toggle-shuffle'))
         })
 
         repeatBtn.addEventListener('click', () => {
-          emit('player:toggle-repeat')
+          emit(events('player:toggle-repeat'))
         })
       }
     }

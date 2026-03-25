@@ -74,19 +74,19 @@
 
         // --- Audio Element Listeners ---
         audioElement.addEventListener('play', () => {
-          emit('player:play-state-change', { isPlaying: true })
+          emit(events('player:play-state-change'), { isPlaying: true })
         })
 
         audioElement.addEventListener('pause', () => {
-          emit('player:play-state-change', { isPlaying: false })
+          emit(events('player:play-state-change'), { isPlaying: false })
         })
 
         audioElement.addEventListener('loadedmetadata', () => {
-          emit('player:duration-change', { duration: audioElement.duration })
+          emit(events('player:duration-change'), { duration: audioElement.duration })
         })
 
         audioElement.addEventListener('timeupdate', () => {
-          emit('player:time-update', { currentTime: audioElement.currentTime })
+          emit(events('player:time-update'), { currentTime: audioElement.currentTime })
         })
 
         audioElement.addEventListener('ended', () => {
@@ -101,7 +101,7 @@
         // Initial volume setup
         audioElement.volume = 1
         previousVolume = audioElement.volume
-        emit('player:volume-update', { volume: audioElement.volume, isMuted: audioElement.muted })
+        emit(events('player:volume-update'), { volume: audioElement.volume, isMuted: audioElement.muted })
 
 
         // --- Playback Internal ---
@@ -117,8 +117,8 @@
           playerContainer.classList.add('d-flex')
           
           // Emit track updates to track info and queue panel
-          emit('player:track-update', { file, isLiked: likedTracks.has(file.id) })
-          emit('player:queue-update', { playlist: currentPlaylist, index: currentIndex })
+          emit(events('player:track-update'), { file, isLiked: likedTracks.has(file.id) })
+          emit(events('player:queue-update'), { playlist: currentPlaylist, index: currentIndex })
 
           audioElement.play().catch(e => console.error('Error playing audio:', e))
         }
@@ -130,7 +130,7 @@
           if (!manual && repeatMode === 'none' && currentIndex === currentPlaylist.length - 1) {
             audioElement.pause()
             audioElement.currentTime = 0
-            emit('player:play-state-change', { isPlaying: false })
+            emit(events('player:play-state-change'), { isPlaying: false })
             return
           }
 
@@ -156,7 +156,7 @@
         // --- Event Bus Listeners from Child Components ---
 
         // Controls
-        on('player:toggle-play', () => {
+        on(events('player:toggle-play'), () => {
           if (audioElement.paused) {
             audioElement.play().catch(e => console.error('Error playing audio:', e))
           } else {
@@ -164,14 +164,14 @@
           }
         })
 
-        on('player:next', () => playNext(true))
-        on('player:previous', () => playPrevious())
+        on(events('player:next'), () => playNext(true))
+        on(events('player:previous'), () => playPrevious())
 
-        on('player:toggle-shuffle', () => {
+        on(events('player:toggle-shuffle'), () => {
           isShuffle = !isShuffle
           
           if (isShuffle) {
-            emit('player:shuffle-change', { isShuffle: true })
+            emit(events('player:shuffle-change'), { isShuffle: true })
             if (currentPlaylist.length > 0) {
               const currentFile = currentPlaylist[currentIndex]
               const rest = [...originalPlaylist]
@@ -186,7 +186,7 @@
               currentIndex = 0
             }
           } else {
-            emit('player:shuffle-change', { isShuffle: false })
+            emit(events('player:shuffle-change'), { isShuffle: false })
             if (currentPlaylist.length > 0) {
               const currentFile = currentPlaylist[currentIndex]
               currentPlaylist = [...originalPlaylist]
@@ -194,10 +194,10 @@
             }
           }
           // Update queue when shuffled
-          emit('player:queue-update', { playlist: currentPlaylist, index: currentIndex })
+          emit(events('player:queue-update'), { playlist: currentPlaylist, index: currentIndex })
         })
 
-        on('player:toggle-repeat', () => {
+        on(events('player:toggle-repeat'), () => {
           if (repeatMode === 'none') {
             repeatMode = 'all'
           } else if (repeatMode === 'all') {
@@ -205,56 +205,56 @@
           } else {
             repeatMode = 'none'
           }
-          emit('player:repeat-change', { repeatMode })
+          emit(events('player:repeat-change'), { repeatMode })
         })
 
         // Timeline
-        on('player:seek', ({ time }) => {
+        on(events('player:seek'), ({ time }) => {
           audioElement.currentTime = time
         })
 
         // Volume & Queue Toggles
-        on('player:set-volume', ({ volume }) => {
+        on(events('player:set-volume'), ({ volume }) => {
           if (isMuted && volume > 0) {
             isMuted = false
             audioElement.muted = false
           }
           audioElement.volume = volume
           previousVolume = volume
-          emit('player:volume-update', { volume: audioElement.volume, isMuted: audioElement.muted })
+          emit(events('player:volume-update'), { volume: audioElement.volume, isMuted: audioElement.muted })
         })
 
-        on('player:toggle-mute', () => {
+        on(events('player:toggle-mute'), () => {
           if (isMuted) {
             isMuted = false
             audioElement.muted = false
             audioElement.volume = previousVolume
-            emit('player:volume-update', { volume: previousVolume, isMuted: false })
+            emit(events('player:volume-update'), { volume: previousVolume, isMuted: false })
           } else {
             isMuted = true
             audioElement.muted = true
-            emit('player:volume-update', { volume: 0, isMuted: true })
+            emit(events('player:volume-update'), { volume: 0, isMuted: true })
           }
         })
 
-        on('player:toggle-queue', () => {
+        on(events('player:toggle-queue'), () => {
           isQueueVisible = !isQueueVisible
-          emit('player:queue-visibility', { isVisible: isQueueVisible })
+          emit(events('player:queue-visibility'), { isVisible: isQueueVisible })
         })
 
-        on('player:close-queue', () => {
+        on(events('player:close-queue'), () => {
           isQueueVisible = false
-          emit('player:queue-visibility', { isVisible: isQueueVisible })
+          emit(events('player:queue-visibility'), { isVisible: isQueueVisible })
         })
 
         // Queue panel specific play
-        on('player:play-queue-track', ({ index, file }) => {
+        on(events('player:play-queue-track'), ({ index, file }) => {
           currentIndex = index
           playTrack(file)
         })
 
         // Track Info Like Toggle
-        on('player:toggle-like', async ({ file }) => {
+        on(events('player:toggle-like'), async ({ file }) => {
           if (!file) return
           
           const fileId = file.id
@@ -274,7 +274,7 @@
             }
             
             // Re-eval instead of waiting on DB update state directly for UI speed
-            emit('player:like-update', { fileId, isLiked: !isLiked })
+            emit(events('player:like-update'), { fileId, isLiked: !isLiked })
           } catch (e) {
             console.error('Error updating like in IndexedDB:', e)
           }

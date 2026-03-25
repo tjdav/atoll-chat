@@ -13,7 +13,7 @@
   export default defineComponent({
     client: {
       script: ({ helpers }) => {
-        const { refs, on, emit } = helpers
+        const { refs, on, emit, events } = helpers
         
         const currentTimeDisplay = refs('currentTimeDisplay')
         const seekSlider = refs('seekSlider')
@@ -29,14 +29,14 @@
         }
 
         // Listen for time updates from the parent audio player
-        on('player:time-update', ({ currentTime }) => {
+        on(events('player:time-update'), ({ currentTime }) => {
           if (!isSeeking) {
             seekSlider.value = currentTime
             currentTimeDisplay.textContent = formatTime(currentTime)
           }
         })
 
-        on('player:duration-change', ({ duration }) => {
+        on(events('player:duration-change'), ({ duration }) => {
           seekSlider.max = duration
           durationDisplay.textContent = formatTime(duration)
         })
@@ -56,7 +56,7 @@
 
         const finishSeek = () => {
           isSeeking = false
-          emit('player:seek', { time: parseFloat(seekSlider.value) })
+          emit(events('player:seek'), { time: parseFloat(seekSlider.value) })
         }
 
         seekSlider.addEventListener('mouseup', finishSeek)

@@ -118,6 +118,117 @@ export default createPlugin({
             call: z.any()
           }).strict()
         },
+        'player:play-state-change': {
+          id: Symbol('player:play-state-change'),
+          schema: z.object({ isPlaying: z.boolean() }).strict()
+        },
+        'player:shuffle-change': {
+          id: Symbol('player:shuffle-change'),
+          schema: z.object({ isShuffle: z.boolean() }).strict()
+        },
+        'player:repeat-change': {
+          id: Symbol('player:repeat-change'),
+          schema: z.object({ repeatMode: z.string() }).strict()
+        },
+        'player:toggle-play': {
+          id: Symbol('player:toggle-play'),
+          schema: z.object({}).strict().optional()
+        },
+        'player:next': {
+          id: Symbol('player:next'),
+          schema: z.object({}).strict().optional()
+        },
+        'player:previous': {
+          id: Symbol('player:previous'),
+          schema: z.object({}).strict().optional()
+        },
+        'player:toggle-shuffle': {
+          id: Symbol('player:toggle-shuffle'),
+          schema: z.object({}).strict().optional()
+        },
+        'player:toggle-repeat': {
+          id: Symbol('player:toggle-repeat'),
+          schema: z.object({}).strict().optional()
+        },
+        'player:seek': {
+          id: Symbol('player:seek'),
+          schema: z.object({ time: z.number() }).strict()
+        },
+        'player:set-volume': {
+          id: Symbol('player:set-volume'),
+          schema: z.object({ volume: z.number() }).strict()
+        },
+        'player:toggle-mute': {
+          id: Symbol('player:toggle-mute'),
+          schema: z.object({}).strict().optional()
+        },
+        'player:toggle-queue': {
+          id: Symbol('player:toggle-queue'),
+          schema: z.object({}).strict().optional()
+        },
+        'player:close-queue': {
+          id: Symbol('player:close-queue'),
+          schema: z.object({}).strict().optional()
+        },
+        'player:play-queue-track': {
+          id: Symbol('player:play-queue-track'),
+          schema: z.object({
+            index: z.number(),
+            file: z.any()
+          }).strict()
+        },
+        'player:toggle-like': {
+          id: Symbol('player:toggle-like'),
+          schema: z.object({ file: z.any() }).strict()
+        },
+        'player:track-update': {
+          id: Symbol('player:track-update'),
+          schema: z.object({
+            file: z.any(),
+            isLiked: z.boolean()
+          }).strict()
+        },
+        'player:like-update': {
+          id: Symbol('player:like-update'),
+          schema: z.object({
+            fileId: z.string(),
+            isLiked: z.boolean()
+          }).strict()
+        },
+        'player:queue-update': {
+          id: Symbol('player:queue-update'),
+          schema: z.object({
+            playlist: z.array(z.any()),
+            index: z.number()
+          }).strict()
+        },
+        'player:queue-visibility': {
+          id: Symbol('player:queue-visibility'),
+          schema: z.object({ isVisible: z.boolean() }).strict()
+        },
+        'player:time-update': {
+          id: Symbol('player:time-update'),
+          schema: z.object({ currentTime: z.number() }).strict()
+        },
+        'player:duration-change': {
+          id: Symbol('player:duration-change'),
+          schema: z.object({ duration: z.number() }).strict()
+        },
+        'player:volume-update': {
+          id: Symbol('player:volume-update'),
+          schema: z.object({
+            volume: z.number(),
+            isMuted: z.boolean()
+          }).strict()
+        },
+        'audio:play': {
+          id: Symbol('audio:play'),
+          schema: z.object({
+            file: z.any(),
+            playlist: z.array(z.any()).optional(),
+            index: z.number().optional()
+          }).strict()
+        },
         'call:ended': {
           id: Symbol('call:ended'),
           schema: z.object({

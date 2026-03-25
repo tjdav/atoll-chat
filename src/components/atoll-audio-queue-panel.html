@@ -19,7 +19,7 @@
   export default defineComponent({
     client: {
       script: ({ helpers }) => {
-        const { refs, on, emit } = helpers
+        const { refs, on, emit, events } = helpers
         
         const queuePanel = refs('queuePanel')
         const closeQueueBtn = refs('closeQueueBtn')
@@ -74,7 +74,7 @@
             btn.appendChild(infoDiv)
             
             btn.addEventListener('click', () => {
-              emit('player:play-queue-track', { index, file })
+              emit(events('player:play-queue-track'), { index, file })
             })
             
             queueList.appendChild(btn)
@@ -87,7 +87,7 @@
           }
         }
 
-        on('player:queue-update', ({ playlist, index }) => {
+        on(events('player:queue-update'), ({ playlist, index }) => {
           currentPlaylist = playlist
           currentIndex = index
           if (!queuePanel.classList.contains('d-none')) {
@@ -95,7 +95,7 @@
           }
         })
 
-        on('player:queue-visibility', ({ isVisible }) => {
+        on(events('player:queue-visibility'), ({ isVisible }) => {
           if (isVisible) {
             queuePanel.classList.remove('d-none')
             queuePanel.classList.add('d-flex')
@@ -107,7 +107,7 @@
         })
 
         closeQueueBtn.addEventListener('click', () => {
-          emit('player:close-queue')
+          emit(events('player:close-queue'))
         })
       }
     }
