@@ -1,13 +1,34 @@
 <template id="atoll-chat-input">
-  <div class="input-group">
-    <input type="file" ref="fileInput" id="{{ ref_fileInput }}" class="d-none">
-    <button class="btn btn-outline-secondary border-end-0 rounded-start-pill" type="button" aria-label="Attach File" ref="attachBtn" id="{{ ref_attachBtn }}">
-      <i class="bi bi-paperclip"></i>
-    </button>
-    <input type="text" class="form-control border-start-0 border-end-0" placeholder="Aa" aria-label="Type a message" ref="messageInput" id="{{ ref_messageInput }}">
-    <button class="btn btn-primary rounded-end-pill" type="button" aria-label="Send Message" ref="sendBtn" id="{{ ref_sendBtn }}">
-      <i class="bi bi-send-fill"></i>
-    </button>
+  <div class="position-relative w-100">
+    <div class="input-group" ref="textInputGroup" id="{{ ref_textInputGroup }}">
+      <input type="file" ref="fileInput" id="{{ ref_fileInput }}" class="d-none">
+      <button class="btn btn-outline-secondary border-end-0 rounded-start-pill" type="button" aria-label="Attach File" ref="attachBtn" id="{{ ref_attachBtn }}">
+        <i class="bi bi-paperclip"></i>
+      </button>
+      <input type="text" class="form-control border-start-0 border-end-0" placeholder="Aa" aria-label="Type a message" ref="messageInput" id="{{ ref_messageInput }}">
+      <button class="btn btn-outline-secondary border-start-0 border-end-0" type="button" aria-label="Record Voice" ref="micBtn" id="{{ ref_micBtn }}">
+        <i class="bi bi-mic"></i>
+      </button>
+      <button class="btn btn-primary rounded-end-pill d-none" type="button" aria-label="Send Message" ref="sendBtn" id="{{ ref_sendBtn }}">
+        <i class="bi bi-send-fill"></i>
+      </button>
+    </div>
+
+    <div class="d-none align-items-center w-100" ref="voiceInputGroup" id="{{ ref_voiceInputGroup }}">
+      <button class="btn btn-link text-decoration-none rounded-circle text-primary me-2 flex-shrink-0 p-0" style="width: 32px; height: 32px;" type="button" aria-label="Cancel Voice Message" ref="cancelVoiceBtn" id="{{ ref_cancelVoiceBtn }}">
+        <i class="bi bi-x-circle-fill fs-4"></i>
+      </button>
+      <div class="flex-grow-1 bg-primary rounded-pill d-flex align-items-center px-2 py-1 position-relative">
+        <button class="btn btn-link text-decoration-none text-white rounded-circle bg-white p-0 d-flex align-items-center justify-content-center me-2 flex-shrink-0" style="width: 28px; height: 28px; color: var(--bs-primary) !important;" type="button" aria-label="Stop Recording" ref="actionVoiceBtn" id="{{ ref_actionVoiceBtn }}">
+          <i class="bi bi-stop-fill" ref="actionVoiceIcon" id="{{ ref_actionVoiceIcon }}"></i>
+        </button>
+        <div class="flex-grow-1"></div>
+        <span class="text-primary bg-white rounded-pill px-2 py-0 fw-bold small me-1 flex-shrink-0" ref="voiceDurationDisplay" id="{{ ref_voiceDurationDisplay }}" style="min-width: 40px; text-align: center;">0:00</span>
+      </div>
+      <button class="btn btn-link text-decoration-none text-primary ms-2 flex-shrink-0 p-0 d-none" style="width: 32px; height: 32px;" type="button" aria-label="Send Voice Message" ref="sendVoiceBtn" id="{{ ref_sendVoiceBtn }}">
+        <i class="bi bi-send-fill fs-4"></i>
+      </button>
+    </div>
   </div>
 </template>
 
@@ -22,6 +43,176 @@
         const sendBtn = refs('sendBtn')
         const attachBtn = refs('attachBtn')
         const fileInput = refs('fileInput')
+        const micBtn = refs('micBtn')
+        const textInputGroup = refs('textInputGroup')
+        const voiceInputGroup = refs('voiceInputGroup')
+        const cancelVoiceBtn = refs('cancelVoiceBtn')
+        const actionVoiceBtn = refs('actionVoiceBtn')
+        const actionVoiceIcon = refs('actionVoiceIcon')
+        const voiceDurationDisplay = refs('voiceDurationDisplay')
+        const sendVoiceBtn = refs('sendVoiceBtn')
+
+        const updateInputButtons = () => {
+          const text = messageInput.value.trim()
+          if (text) {
+            micBtn.classList.add('d-none')
+            sendBtn.classList.remove('d-none')
+          } else {
+            micBtn.classList.remove('d-none')
+            sendBtn.classList.add('d-none')
+          }
+        }
+
+        messageInput.addEventListener('input', updateInputButtons)
+
+        let mediaRecorder = null
+        let audioChunks = []
+        let audioBlob = null
+        let audioUrl = null
+        let timerInterval = null
+        let durationSeconds = 0
+        let isRecording = false
+        let isPaused = false
+        let playbackAudio = null
+        let isPlaying = false
+
+        const formatDuration = (seconds) => {
+          const m = Math.floor(seconds / 60)
+          const s = Math.floor(seconds % 60)
+          return `${m}:${s.toString().padStart(2, '0')}`
+        }
+
+        const resetVoiceUI = () => {
+          clearInterval(timerInterval)
+          durationSeconds = 0
+          voiceDurationDisplay.textContent = '0:00'
+          
+          if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+            mediaRecorder.stop()
+          }
+          if (mediaRecorder && mediaRecorder.stream) {
+            mediaRecorder.stream.getTracks().forEach(t => t.stop())
+          }
+          if (playbackAudio) {
+            playbackAudio.pause()
+            playbackAudio = null
+          }
+          if (audioUrl) {
+            URL.revokeObjectURL(audioUrl)
+            audioUrl = null
+          }
+          
+          mediaRecorder = null
+          audioChunks = []
+          audioBlob = null
+          isRecording = false
+          isPaused = false
+          isPlaying = false
+          
+          actionVoiceIcon.className = 'bi bi-stop-fill'
+          sendVoiceBtn.classList.add('d-none')
+          
+          voiceInputGroup.classList.add('d-none')
+          voiceInputGroup.classList.remove('d-flex')
+          textInputGroup.classList.remove('d-none')
+          textInputGroup.classList.add('d-flex')
+        }
+
+        const startRecording = async () => {
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+            
+            // Switch UI
+            textInputGroup.classList.add('d-none')
+            textInputGroup.classList.remove('d-flex')
+            voiceInputGroup.classList.remove('d-none')
+            voiceInputGroup.classList.add('d-flex')
+            
+            actionVoiceIcon.className = 'bi bi-stop-fill'
+            sendVoiceBtn.classList.add('d-none')
+            
+            audioChunks = []
+            mediaRecorder = new MediaRecorder(stream)
+            
+            mediaRecorder.ondataavailable = (e) => {
+              if (e.data.size > 0) {
+                audioChunks.push(e.data)
+              }
+            }
+            
+            mediaRecorder.onstop = () => {
+              audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
+              audioUrl = URL.createObjectURL(audioBlob)
+              
+              // Switch to Review State
+              actionVoiceIcon.className = 'bi bi-play-fill'
+              sendVoiceBtn.classList.remove('d-none')
+              isRecording = false
+              isPaused = true
+              clearInterval(timerInterval)
+            }
+            
+            mediaRecorder.start()
+            isRecording = true
+            isPaused = false
+            durationSeconds = 0
+            voiceDurationDisplay.textContent = '0:00'
+            
+            timerInterval = setInterval(() => {
+              durationSeconds++
+              voiceDurationDisplay.textContent = formatDuration(durationSeconds)
+            }, 1000)
+            
+          } catch (err) {
+            console.error('Error accessing microphone', err)
+            alert('Microphone access denied or not found.')
+            resetVoiceUI()
+          }
+        }
+
+        const toggleVoiceAction = () => {
+          if (isRecording) {
+            // Stop recording
+            mediaRecorder.stop()
+            mediaRecorder.stream.getTracks().forEach(t => t.stop())
+          } else if (isPaused) {
+            // Toggle playback
+            if (isPlaying) {
+              playbackAudio.pause()
+              actionVoiceIcon.className = 'bi bi-play-fill'
+              isPlaying = false
+            } else {
+              if (!playbackAudio) {
+                playbackAudio = new Audio(audioUrl)
+                playbackAudio.onended = () => {
+                  actionVoiceIcon.className = 'bi bi-play-fill'
+                  isPlaying = false
+                }
+              }
+              playbackAudio.play()
+              actionVoiceIcon.className = 'bi bi-pause-fill'
+              isPlaying = true
+            }
+          }
+        }
+
+        micBtn.addEventListener('click', startRecording)
+        cancelVoiceBtn.addEventListener('click', resetVoiceUI)
+        actionVoiceBtn.addEventListener('click', toggleVoiceAction)
+
+        sendVoiceBtn.addEventListener('click', () => {
+          if (audioBlob) {
+            const fileName = `voice-message-${Date.now()}.webm`
+            const file = new File([audioBlob], fileName, { type: 'audio/webm' })
+            
+            emit(events('chat:file-selected'), { file })
+            
+            // Disable voice UI briefly before reset
+            sendVoiceBtn.disabled = true
+            cancelVoiceBtn.disabled = true
+            actionVoiceBtn.disabled = true
+          }
+        })
 
         const submitMessage = () => {
           const text = messageInput.value.trim()
@@ -59,6 +250,7 @@
 
         on(events('chat:message-sent'), () => {
           messageInput.value = ''
+          updateInputButtons()
           messageInput.focus()
         })
 
@@ -66,7 +258,15 @@
           messageInput.disabled = false
           sendBtn.disabled = false
           attachBtn.disabled = false
-          messageInput.focus()
+          sendVoiceBtn.disabled = false
+          cancelVoiceBtn.disabled = false
+          actionVoiceBtn.disabled = false
+          
+          if (voiceInputGroup.classList.contains('d-flex')) {
+            resetVoiceUI()
+          } else {
+            messageInput.focus()
+          }
         })
       }
     }
