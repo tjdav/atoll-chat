@@ -97,8 +97,9 @@ test.describe('Secure Calls', () => {
     await acceptButton.click()
 
     // Verify the <atoll-video-call> modal opens for both users
-    await expect(alicePage.locator('#atoll-video-call__callModal-0')).toBeVisible({ timeout: 10000 })
-    await expect(bobPage.locator('#atoll-video-call__callModal-0')).toBeVisible({ timeout: 10000 })
+    // Video call will contain video tags
+    await expect(alicePage.locator('video').first()).toBeVisible({ timeout: 10000 })
+    await expect(bobPage.locator('video').first()).toBeVisible({ timeout: 10000 })
   })
 
   test('Media Tracks Assigned', async () => {

@@ -34,7 +34,7 @@
         let currentFile = null
 
         // Listen for track updates
-        on('player:track-update', ({ file, isLiked }) => {
+        on(events('player:track-update'), ({ file, isLiked }) => {
           currentFile = file
           if (file) {
             playerTitle.textContent = file.filename || 'Unknown File'
@@ -60,7 +60,7 @@
         })
 
         // Listen for like status updates separately (e.g. user clicks like)
-        on('player:like-update', ({ fileId, isLiked }) => {
+        on(events('player:like-update'), ({ fileId, isLiked }) => {
           if (currentFile && currentFile.id === fileId) {
             if (isLiked) {
               likeIcon.className = 'bi bi-heart-fill text-danger'
@@ -72,7 +72,7 @@
 
         likeBtn.addEventListener('click', () => {
           if (currentFile) {
-            emit('player:toggle-like', { file: currentFile })
+            emit(events('player:toggle-like'), { file: currentFile })
           }
         })
 

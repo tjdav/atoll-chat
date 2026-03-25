@@ -17,7 +17,7 @@
   export default defineComponent({
     client: {
       script: ({ helpers }) => {
-        const { refs, on, emit } = helpers
+        const { refs, on, emit, events } = helpers
         
         const queueBtn = refs('queueBtn')
         const volumeBtn = refs('volumeBtn')
@@ -25,7 +25,7 @@
         const volumeSlider = refs('volumeSlider')
 
         // Parent informs us of volume change
-        on('player:volume-update', ({ volume, isMuted }) => {
+        on(events('player:volume-update'), ({ volume, isMuted }) => {
           if (!isMuted) {
             volumeSlider.value = volume * 100
           } else {
@@ -43,15 +43,15 @@
         })
 
         queueBtn.addEventListener('click', () => {
-          emit('player:toggle-queue')
+          emit(events('player:toggle-queue'))
         })
 
         volumeBtn.addEventListener('click', () => {
-          emit('player:toggle-mute')
+          emit(events('player:toggle-mute'))
         })
 
         volumeSlider.addEventListener('input', () => {
-          emit('player:set-volume', { volume: volumeSlider.value / 100 })
+          emit(events('player:set-volume'), { volume: volumeSlider.value / 100 })
         })
       }
     }
