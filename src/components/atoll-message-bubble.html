@@ -28,7 +28,7 @@
     client: {
       components: ['atoll-message-actions', 'atoll-message-reactions'],
       script: async ({ helpers, values }) => {
-        const { refs, parseMessage } = helpers
+        const { refs, parseMessage, on, emit, events, ttsGenerate } = helpers
         const wrapper = refs('wrapper')
         const bubble = refs('bubble')
         const timeDisplay = refs('timeDisplay')
@@ -67,6 +67,8 @@
 
         timeDisplay.textContent = time
 
+        let currentText = ''
+
         if (parseMessage && body) {
           const slot = body.querySelector('slot')
           
@@ -83,6 +85,8 @@
               text = body.textContent || ''
             }
             
+            currentText = text
+
             if (text && text.trim() !== '') {
               parseMessage(body, text)
             }
@@ -95,6 +99,28 @@
           } else {
             processText()
           }
+        }
+
+        // Listen for TTS play requests from the actions menu
+        if (ttsGenerate && on) {
+          on(events('chat:tts-play-requested'), async (data) => {
+            if (data.eventId === eventId && currentText && currentText.trim() !== '') {
+              try {
+                const audioBlob = await ttsGenerate(currentText, 'en')
+                if (audioBlob) {
+                  emit(events('audio:play'), { 
+                    file: { 
+                      id: eventId, 
+                      blob: audioBlob, 
+                      name: 'Message TTS Audio' 
+                    } 
+                  })
+                }
+              } catch (e) {
+                console.error('Failed to generate TTS audio:', e)
+              }
+            }
+          })
         }
       }
     }
