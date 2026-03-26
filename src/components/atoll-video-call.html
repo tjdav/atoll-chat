@@ -1,26 +1,26 @@
 <template id="atoll-video-call">
-  <div class="modal fade" tabindex="-1" role="dialog" aria-modal="true" ref="callModal" id="{{ ref_callModal }}" style="display: none;">
+  <div class="modal fade" tabindex="-1" role="dialog" aria-modal="true" ref="callModal" style="display: none;">
     <div class="modal-dialog modal-fullscreen m-0">
       <div class="modal-content bg-dark border-0">
         <!-- Main video container -->
         <div class="modal-body p-0 position-relative d-flex align-items-center justify-content-center overflow-hidden">
           <!-- Remote Video (Full Screen) -->
-          <video class="w-100 h-100 object-fit-cover" ref="remoteVideo" id="{{ ref_remoteVideo }}" autoplay playsinline></video>
+          <video class="w-100 h-100 object-fit-cover" ref="remoteVideo" autoplay playsinline></video>
           
           <!-- Local Video (Picture-in-Picture) -->
           <div class="position-absolute bottom-0 end-0 p-3 z-3">
-            <video class="rounded shadow-lg border border-secondary object-fit-cover" style="width: 150px; height: 200px;" ref="localVideo" id="{{ ref_localVideo }}" autoplay muted playsinline></video>
+            <video class="rounded shadow-lg border border-secondary object-fit-cover" style="width: 150px; height: 200px;" ref="localVideo" autoplay muted playsinline></video>
           </div>
           
           <!-- Control Bar Overlay -->
           <div class="position-absolute bottom-0 start-50 translate-middle-x mb-4 z-3 d-flex gap-3 px-4 py-2 rounded-pill bg-dark bg-opacity-75">
-            <button class="btn btn-secondary rounded-circle" style="width: 50px; height: 50px;" ref="toggleMuteBtn" id="{{ ref_toggleMuteBtn }}" title="Toggle Audio">
-              <i class="bi bi-mic-fill fs-5" ref="micIcon" id="{{ ref_micIcon }}"></i>
+            <button class="btn btn-secondary rounded-circle" style="width: 50px; height: 50px;" ref="toggleMuteBtn" title="Toggle Audio">
+              <i class="bi bi-mic-fill fs-5" ref="micIcon"></i>
             </button>
-            <button class="btn btn-secondary rounded-circle" style="width: 50px; height: 50px;" ref="toggleVideoBtn" id="{{ ref_toggleVideoBtn }}" title="Toggle Video">
-              <i class="bi bi-camera-video-fill fs-5" ref="videoIcon" id="{{ ref_videoIcon }}"></i>
+            <button class="btn btn-secondary rounded-circle" style="width: 50px; height: 50px;" ref="toggleVideoBtn" title="Toggle Video">
+              <i class="bi bi-camera-video-fill fs-5" ref="videoIcon"></i>
             </button>
-            <button class="btn btn-danger rounded-circle" style="width: 50px; height: 50px;" ref="endCallBtn" id="{{ ref_endCallBtn }}" title="End Call">
+            <button class="btn btn-danger rounded-circle" style="width: 50px; height: 50px;" ref="endCallBtn" title="End Call">
               <i class="bi bi-telephone-x-fill fs-5"></i>
             </button>
           </div>

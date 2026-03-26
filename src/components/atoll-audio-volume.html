@@ -1,13 +1,13 @@
 <template id="atoll-audio-volume">
   <!-- Right: Volume & Extra -->
   <div class="d-flex align-items-center justify-content-end gap-2" style="width: 250px;">
-    <button class="btn btn-link text-white p-1" ref="queueBtn" id="{{ ref_queueBtn }}" title="Queue">
+    <button class="btn btn-link text-white p-1" ref="queueBtn" title="Queue">
       <i class="bi bi-music-note-list"></i>
     </button>
-    <button class="btn btn-link text-white p-1" ref="volumeBtn" id="{{ ref_volumeBtn }}" title="Mute/Unmute">
-      <i class="bi bi-volume-up" ref="volumeIcon" id="{{ ref_volumeIcon }}"></i>
+    <button class="btn btn-link text-white p-1" ref="volumeBtn" title="Mute/Unmute">
+      <i class="bi bi-volume-up" ref="volumeIcon"></i>
     </button>
-    <input type="range" class="form-range" ref="volumeSlider" id="{{ ref_volumeSlider }}" value="100" min="0" max="100" style="width: 100px; height: 4px;">
+    <input type="range" class="form-range" ref="volumeSlider" value="100" min="0" max="100" style="width: 100px; height: 4px;">
   </div>
 </template>
 

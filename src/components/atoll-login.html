@@ -2,7 +2,7 @@
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4" style="width: 400px; max-width: 100%;">
       <h2 class="text-center mb-4">Login to Matrix</h2>
-      <form ref="form" id="{{ ref_form }}">
+      <form ref="form">
         <div class="form-floating mb-3">
           <input type="url" class="form-control" ref="homeserver" id="{{ ref_homeserver }}" placeholder="Homeserver URL" required>
           <label for="{{ ref_homeserver }}">Homeserver URL</label>
@@ -15,12 +15,12 @@
           <input type="password" class="form-control" ref="password" id="{{ ref_password }}" placeholder="Password" required>
           <label for="{{ ref_password }}">Password</label>
         </div>
-        <button type="submit" class="btn btn-primary w-100" ref="submitButton" id="{{ ref_submitButton }}">Login</button>
+        <button type="submit" class="btn btn-primary w-100" ref="submitButton">Login</button>
       </form>
-      <div class="alert alert-danger mt-3 d-transition-none" role="alert" ref="errorAlert" id="{{ ref_errorAlert }}"></div>
+      <div class="alert alert-danger mt-3 d-transition-none" role="alert" ref="errorAlert"></div>
       
       <div class="text-center mt-3">
-        <a href="#"  class="text-muted text-decoration-none" ref="signupLink" id="{{ ref_signupLink }}" id="{{ ref_signupLink }}">Don't have an account? Sign up.</a>
+        <a href="#"  class="text-muted text-decoration-none" ref="signupLink">Don't have an account? Sign up.</a>
       </div>
     </div>
   </div>

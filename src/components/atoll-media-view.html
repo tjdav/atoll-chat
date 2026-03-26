@@ -2,18 +2,18 @@
   <div class="d-flex flex-column h-100 bg-body">
     <!-- Header -->
     <div class="p-3 border-bottom border-secondary bg-body-tertiary d-flex justify-content-between align-items-center">
-      <h5 class="m-0 fw-bold" ref="headerTitle" id="{{ ref_headerTitle }}">Media</h5>
+      <h5 class="m-0 fw-bold" ref="headerTitle">Media</h5>
     </div>
     
     <!-- Content Area -->
-    <div class="flex-grow-1 overflow-auto p-3" ref="mediaContentContainer" id="{{ ref_mediaContentContainer }}">
-      <div ref="picturesGrid" id="{{ ref_picturesGrid }}" class="d-transition-none h-100">
+    <div class="flex-grow-1 overflow-auto p-3" ref="mediaContentContainer">
+      <div ref="picturesGrid" class="d-transition-none h-100">
         <atoll-media-grid type="pictures"></atoll-media-grid>
       </div>
-      <div ref="videosGrid" id="{{ ref_videosGrid }}" class="d-transition-none h-100">
+      <div ref="videosGrid" class="d-transition-none h-100">
         <atoll-media-grid type="videos"></atoll-media-grid>
       </div>
-      <div ref="musicPlayer" id="{{ ref_musicPlayer }}" class="d-transition-none h-100">
+      <div ref="musicPlayer" class="d-transition-none h-100">
         <atoll-audio></atoll-audio>
       </div>
     </div>
