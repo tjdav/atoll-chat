@@ -1,0 +1,89 @@
+<template id="atoll-message-actions">
+  <div class="message-actions bg-dark border border-secondary rounded-pill shadow-sm d-flex align-items-center px-2 py-1 gap-1" style="display: none !important;" ref="container">
+    <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="❤️" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">❤️</button>
+    <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="😆" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">😆</button>
+    <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="😮" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">😮</button>
+    <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="😢" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">😢</button>
+    <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="😡" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">😡</button>
+    <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="👍" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">👍</button>
+    <button class="btn btn-sm btn-secondary rounded-circle p-1 text-white ms-1" ref="moreBtn" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;" popovertarget="{{ ref_emojiPopover }}">+</button>
+
+    <div popover id="{{ ref_emojiPopover }}" ref="emojiPopover" class="bg-dark border border-secondary rounded-3 shadow p-0 m-0" style="z-index: 1050; anchor-name: --anchor-{{ ref_emojiPopover }}; position-anchor: --anchor-{{ ref_emojiPopover }}; position-area: top;">
+      <!-- Emoji picker will be injected here -->
+    </div>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      imports: [
+        { specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/database.js' },
+        { specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/picker.js' }
+      ],
+      script: ({ helpers, values }) => {
+        const { refs, emit, events } = helpers
+        const container = refs('container')
+        const emojiPopover = refs('emojiPopover')
+        const moreBtn = refs('moreBtn')
+        
+        let pickerInitialized = false
+
+        // Extract properties passed from parent
+        const eventId = values['event-id']
+        const roomId = values['room-id']
+
+        const sendReaction = (emoji) => {
+          if (!eventId || !roomId) {
+            console.error('atoll-message-actions: Missing event-id or room-id', { eventId, roomId })
+            return
+          }
+          
+          emit(events('chat:send-reaction'), {
+            roomId,
+            eventId,
+            reaction: emoji
+          })
+          
+          // Close popover if open
+          if (emojiPopover.matches(':popover-open')) {
+            emojiPopover.hidePopover()
+          }
+        }
+
+        // Handle predefined emoji clicks
+        const buttons = container.querySelectorAll('.reaction-btn')
+        buttons.forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            const emoji = e.currentTarget.dataset.emoji
+            if (emoji) {
+              sendReaction(emoji)
+            }
+          })
+        })
+
+        // Initialize emoji picker on first open
+        emojiPopover.addEventListener('beforetoggle', (e) => {
+          if (e.newState === 'open' && !pickerInitialized) {
+            pickerInitialized = true
+            const picker = document.createElement('emoji-picker')
+            // Apply dark theme styling to match the app
+            picker.classList.add('dark')
+            
+            // Set some styling variables if needed
+            picker.style.setProperty('--background', '#212529')
+            picker.style.setProperty('--border-color', '#495057')
+            
+            picker.addEventListener('emoji-click', event => {
+              sendReaction(event.detail.unicode)
+            })
+            
+            emojiPopover.appendChild(picker)
+          }
+        })
+      }
+    }
+  })
+</script>
