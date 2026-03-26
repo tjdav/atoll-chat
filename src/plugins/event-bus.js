@@ -232,6 +232,13 @@ export default createPlugin({
           schema: strictObject({
             call: any()
           })
+        },
+        'chat:tts-play-requested': {
+          id: Symbol('chat:tts-play-requested'),
+          schema: strictObject({
+            eventId: string(),
+            roomId: string()
+          })
         }
       }
 
