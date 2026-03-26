@@ -20,6 +20,13 @@
         <i class="bi bi-download me-1"></i> Download
       </button>
 
+      <div class="mt-2 form-check" ref="checkboxContainer">
+        <input class="form-check-input" type="checkbox" ref="autoAcceptCheckbox" id="{{ ref_autoAcceptCheckbox }}">
+        <label class="form-check-label text-muted" style="font-size: 0.8rem;" for="{{ ref_autoAcceptCheckbox }}">
+          Always accept files from this user
+        </label>
+      </div>
+
     </div>
   </div>
 </template>
@@ -30,7 +37,7 @@
   export default defineComponent({
     client: {
       script: ({ root, helpers, values }) => {
-        const { refs, download, saveMedia } = helpers
+        const { refs, download, saveMedia, getPreference, setPreference } = helpers
 
         const contentContainer = refs('contentContainer')
         const metaContainer = refs('metaContainer')
@@ -40,6 +47,8 @@
         const downloadBtn = refs('downloadBtn')
         const progressBarContainer = refs('progressBarContainer')
         const progressBar = refs('progressBar')
+        const checkboxContainer = refs('checkboxContainer')
+        const autoAcceptCheckbox = refs('autoAcceptCheckbox')
 
         let objectUrl = null
 
@@ -67,13 +76,22 @@
         }
 
         // Initialize UI with attributes
-        const initUI = () => {
+        const initUI = async () => {
           const payload = values['info']
           if (!payload) return
 
           fileName.textContent = payload.filename || 'Unknown File'
           fileSize.textContent = formatBytes(payload.size)
           setIcon(payload.mimeType || 'application/octet-stream')
+
+          const senderId = values['sender-id']
+          if (senderId) {
+            const autoAcceptUsers = await getPreference('atoll_auto_accept_users') || []
+            if (autoAcceptUsers.includes(senderId)) {
+              checkboxContainer.classList.add('d-none')
+              handleDownload()
+            }
+          }
         }
 
         initUI()
@@ -88,6 +106,7 @@
           progressBarContainer.classList.add('d-transition-show')
           downloadBtn.classList.remove('d-transition-show');
           downloadBtn.classList.add('d-transition-none')
+          checkboxContainer.classList.add('d-none')
 
           try {
             // 1. Download via WebTorrent
@@ -181,6 +200,20 @@
         }
 
         downloadBtn.addEventListener('click', handleDownload)
+
+        autoAcceptCheckbox.addEventListener('change', async (e) => {
+          if (e.target.checked) {
+            const senderId = values['sender-id']
+            if (senderId) {
+              const autoAcceptUsers = await getPreference('atoll_auto_accept_users') || []
+              if (!autoAcceptUsers.includes(senderId)) {
+                autoAcceptUsers.push(senderId)
+                await setPreference('atoll_auto_accept_users', autoAcceptUsers)
+              }
+              handleDownload()
+            }
+          }
+        })
 
         // Cleanup object URL
         return () => {
