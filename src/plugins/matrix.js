@@ -455,16 +455,60 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           const room = client.getRoom(roomId)
           if (!room) return []
 
+          const currentUserId = client.getUserId()
+
           return room.timeline
             .filter(event => event.getType() === 'm.room.message')
-            .map(event => ({
-              id: event.getId(),
-              sender: event.getSender(),
-              body: event.getContent().body,
-              date: event.getDate(),
-              msgtype: event.getContent().msgtype,
-              info: event.getContent().info
-            }))
+            .map(event => {
+              const eventId = event.getId()
+
+              // Extract reactions from relations
+              const timelineSet = room.getUnfilteredTimelineSet()
+              let reactionEvents = []
+
+              // Find the event in the timeline set and get relations
+              const timeline = timelineSet.getLiveTimeline()
+              const timelineEvents = timeline.getEvents()
+              const targetEvent = timelineEvents.find(e => e.getId() === eventId)
+
+              if (targetEvent) {
+                const relations = targetEvent.getEvent()?.unsigned?.['m.relations']?.['m.annotation']
+
+                // For simplicity, matrix-js-sdk might expose relations differently based on server
+                // We will manually check the timeline for m.reaction events that point to this event
+                reactionEvents = timelineEvents.filter(e => e.getType() === 'm.reaction' &&
+                  e.getRelation()?.rel_type === 'm.annotation' &&
+                  e.getRelation()?.event_id === eventId
+                )
+              }
+
+              const reactions = {}
+              reactionEvents.forEach(e => {
+                const emoji = e.getRelation()?.key
+                if (emoji) {
+                  if (!reactions[emoji]) {
+                    reactions[emoji] = {
+                      count: 0,
+                      hasReacted: false
+                    }
+                  }
+                  reactions[emoji].count++
+                  if (e.getSender() === currentUserId) {
+                    reactions[emoji].hasReacted = true
+                  }
+                }
+              })
+
+              return {
+                id: eventId,
+                sender: event.getSender(),
+                body: event.getContent().body,
+                date: event.getDate(),
+                msgtype: event.getContent().msgtype,
+                info: event.getContent().info,
+                reactions
+              }
+            })
         },
 
         onRoomMessage: (globalContext) => (localContext) => async (roomId, callback) => {
@@ -472,38 +516,151 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
           if (!client) return () => {
           }
 
+          const handleReaction = (event) => {
+            const relation = event.getRelation()
+            if (relation && relation.rel_type === 'm.annotation') {
+              const targetEventId = relation.event_id
+              const emoji = relation.key
+
+              if (targetEventId && emoji) {
+                // To get the full updated state, re-calculate reactions for the target message
+                const room = client.getRoom(roomId)
+                if (!room) return
+
+                const timeline = room.getUnfilteredTimelineSet().getLiveTimeline()
+                const timelineEvents = timeline.getEvents()
+
+                const reactionEvents = timelineEvents.filter(e => e.getType() === 'm.reaction' &&
+                    e.getRelation()?.rel_type === 'm.annotation' &&
+                    e.getRelation()?.event_id === targetEventId
+                )
+
+                const reactions = {}
+                reactionEvents.forEach(e => {
+                  const key = e.getRelation()?.key
+                  if (key) {
+                    if (!reactions[key]) {
+                      reactions[key] = {
+                        count: 0,
+                        hasReacted: false
+                      }
+                    }
+                    reactions[key].count++
+                    if (e.getSender() === client.getUserId()) {
+                      reactions[key].hasReacted = true
+                    }
+                  }
+                })
+
+                localContext.helpers.emit(localContext.helpers.events('chat:reaction-received'), {
+                  eventId: targetEventId,
+                  reactions
+                })
+              }
+            }
+          }
+
           const handler = (event) => {
-            if (event.getRoomId() === roomId && event.getType() === 'm.room.message') {
-              callback({
-                id: event.getId(),
-                sender: event.getSender(),
-                body: event.getContent().body,
-                date: event.getDate(),
-                msgtype: event.getContent().msgtype,
-                info: event.getContent().info
-              })
+            if (event.getRoomId() === roomId) {
+              if (event.getType() === 'm.room.message') {
+                callback({
+                  id: event.getId(),
+                  sender: event.getSender(),
+                  body: event.getContent().body,
+                  date: event.getDate(),
+                  msgtype: event.getContent().msgtype,
+                  info: event.getContent().info,
+                  reactions: {} // New message won't have reactions initially
+                })
+              } else if (event.getType() === 'm.reaction') {
+                handleReaction(event)
+              }
             }
           }
 
           const decryptHandler = (event) => {
-            if (event.getRoomId() === roomId && event.getType() === 'm.room.message') {
-              callback({
-                id: event.getId(),
-                sender: event.getSender(),
-                body: event.getContent().body,
-                date: event.getDate(),
-                msgtype: event.getContent().msgtype,
-                info: event.getContent().info
-              })
+            if (event.getRoomId() === roomId) {
+              if (event.getType() === 'm.room.message') {
+                callback({
+                  id: event.getId(),
+                  sender: event.getSender(),
+                  body: event.getContent().body,
+                  date: event.getDate(),
+                  msgtype: event.getContent().msgtype,
+                  info: event.getContent().info,
+                  reactions: {} // New message won't have reactions initially
+                })
+              } else if (event.getType() === 'm.reaction') {
+                handleReaction(event)
+              }
+            }
+          }
+
+          // Listen for reactions getting redacted (removed)
+          const redactionHandler = (event) => {
+            if (event.getRoomId() === roomId && event.getType() === 'm.room.redaction') {
+              const redactedEventId = event.event.redacts
+              if (!redactedEventId) return
+
+              const room = client.getRoom(roomId)
+              if (!room) return
+
+              // We don't easily know the parent of the redacted reaction here, so we could broadcast a general update
+              // But for now, since Matrix JS SDK handles redactions by modifying the original event,
+              // we can rely on `Room.timeline` or check all recent messages' reactions if needed.
+              // A simple way is just re-evaluating relations for messages.
+              // For simplicity, we can let the UI reload or rely on a specific redacted event handler if needed.
             }
           }
 
           client.on('Room.timeline', handler)
           client.on('Event.decrypted', decryptHandler)
+          client.on('Room.redaction', redactionHandler)
 
           return () => {
             client.removeListener('Room.timeline', handler)
             client.removeListener('Event.decrypted', decryptHandler)
+            client.removeListener('Room.redaction', redactionHandler)
+          }
+        },
+
+        sendReaction: (globalContext) => (localContext) => async (roomId, eventId, reactionKey) => {
+          const client = localContext.values.getClient()
+          if (!client) throw new Error('Matrix client not initialized')
+
+          const content = {
+            'm.relates_to': {
+              rel_type: 'm.annotation',
+              event_id: eventId,
+              key: reactionKey
+            }
+          }
+
+          return await client.sendEvent(roomId, 'm.reaction', content, '')
+        },
+
+        removeReaction: (globalContext) => (localContext) => async (roomId, eventId, reactionKey) => {
+          const client = localContext.values.getClient()
+          if (!client) throw new Error('Matrix client not initialized')
+
+          const room = client.getRoom(roomId)
+          if (!room) throw new Error('Room not found')
+
+          // Find our existing reaction to redact it
+          const timeline = room.getUnfilteredTimelineSet().getLiveTimeline()
+          const timelineEvents = timeline.getEvents()
+          const currentUserId = client.getUserId()
+
+          const reactionEvent = timelineEvents.find(e => e.getType() === 'm.reaction' &&
+            e.getRelation()?.rel_type === 'm.annotation' &&
+            e.getRelation()?.event_id === eventId &&
+            e.getRelation()?.key === reactionKey &&
+            e.getSender() === currentUserId &&
+            !e.isRedacted()
+          )
+
+          if (reactionEvent) {
+            return await client.redactEvent(roomId, reactionEvent.getId())
           }
         },
 

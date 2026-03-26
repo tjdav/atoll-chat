@@ -73,7 +73,7 @@
         { specifier: 'bootstrap', namespaceExport: 'bootstrap' }
       ],
       script: ({ helpers, imports }) => {
-        const { refs, on, emit, events, getRoom, sendMessage, seed, sendTorrentMessage, inviteUser, joinRoom } = helpers
+        const { refs, on, emit, events, getRoom, sendMessage, seed, sendTorrentMessage, inviteUser, joinRoom, sendReaction, removeReaction } = helpers
         const chatHeader = refs('chatHeader')
         const roomAvatar = refs('roomAvatar')
         const roomName = refs('roomName')
@@ -201,6 +201,24 @@
             emit(events('chat:message-sent'))
           } catch (error) {
             console.error('Failed to send message:', error)
+          }
+        })
+
+        on(events('chat:send-reaction'), async ({ roomId, eventId, reaction }) => {
+          if (!roomId || !eventId || !reaction) return
+          try {
+            await sendReaction(roomId, eventId, reaction)
+          } catch (error) {
+            console.error('Failed to send reaction:', error)
+          }
+        })
+
+        on(events('chat:remove-reaction'), async ({ roomId, eventId, reaction }) => {
+          if (!roomId || !eventId || !reaction) return
+          try {
+            await removeReaction(roomId, eventId, reaction)
+          } catch (error) {
+            console.error('Failed to remove reaction:', error)
           }
         })
 

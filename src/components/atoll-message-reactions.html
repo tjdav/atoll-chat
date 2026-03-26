@@ -1,0 +1,81 @@
+<template id="atoll-message-reactions">
+  <div class="message-reactions d-flex flex-wrap gap-1 mt-1" ref="container">
+    <!-- Reactions will be injected here -->
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers, values }) => {
+        const { refs, on, events, getCurrentUserId, emit } = helpers
+        const container = refs('container')
+
+        // Reactions object structure: { emoji: { count, hasReacted } }
+        let currentReactions = values.reactions || {}
+        let currentUserId = null
+
+        const eventId = values['event-id']
+        const roomId = values['room-id']
+
+        const renderReactions = () => {
+          container.innerHTML = ''
+          
+          if (!currentReactions || Object.keys(currentReactions).length === 0) {
+            return
+          }
+
+          Object.entries(currentReactions).forEach(([emoji, data]) => {
+            const btn = document.createElement('button')
+            btn.className = `btn btn-sm d-flex align-items-center gap-1 rounded-pill px-2 py-0 border ${data.hasReacted ? 'btn-secondary border-secondary text-white' : 'btn-dark border-secondary'}`
+            btn.style.fontSize = '0.8rem'
+            
+            const emojiSpan = document.createElement('span')
+            emojiSpan.textContent = emoji
+            
+            const countSpan = document.createElement('span')
+            countSpan.textContent = data.count
+            
+            btn.appendChild(emojiSpan)
+            btn.appendChild(countSpan)
+            
+            btn.addEventListener('click', () => {
+              if (data.hasReacted) {
+                emit(events('chat:remove-reaction'), {
+                  roomId,
+                  eventId,
+                  reaction: emoji
+                })
+              } else {
+                emit(events('chat:send-reaction'), {
+                  roomId,
+                  eventId,
+                  reaction: emoji
+                })
+              }
+            })
+            
+            container.appendChild(btn)
+          })
+        }
+
+        // Initialize user ID to handle highlighting own reactions
+        const init = async () => {
+          currentUserId = await getCurrentUserId()
+          renderReactions()
+        }
+        init()
+
+        // Listen for new incoming reactions to this message
+        on(events('chat:reaction-received'), (payload) => {
+           if (payload.eventId === eventId) {
+             currentReactions = payload.reactions
+             renderReactions()
+           }
+        })
+      }
+    }
+  })
+</script>

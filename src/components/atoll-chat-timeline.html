@@ -77,7 +77,12 @@
              bubble.setAttribute('current-user', isCurrentUser)
              // Use property so declarative shadow DOM isn't bypassed, or we can use attribute if we escape it. 
              // Safe way to pass message text without innerHTML execution. 
-             bubble.values = { body: message.body }
+             bubble.values = { 
+               body: message.body,
+               'event-id': message.id,
+               'room-id': currentRoomId,
+               reactions: message.reactions || {}
+             }
              // Don't set textContent immediately, let it render
              
              div.appendChild(bubble)
