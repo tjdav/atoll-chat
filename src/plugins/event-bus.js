@@ -1,5 +1,5 @@
 import { createPlugin } from 'coralite'
-import { z } from 'zod'
+import { strictObject, optional, pipe, string, minLength, boolean, fallback, instance, picklist, any, number, array, safeParse } from 'valibot'
 
 
 export default createPlugin({
@@ -7,233 +7,233 @@ export default createPlugin({
   client: {
     imports: [
       {
-        specifier: 'zod',
-        namespaceExport: 'z'
+        specifier: 'valibot',
+        namedExports: ['strictObject', 'optional', 'pipe', 'string', 'minLength', 'boolean', 'fallback', 'instance', 'picklist', 'any', 'number', 'array', 'safeParse']
       }
     ],
     setup (context) {
-      const z = context.imports.z
+      const { strictObject, optional, pipe, string, minLength, boolean, fallback, instance, picklist, any, number, array, safeParse } = context.imports
       // Define the secure events and their schemas privately inside the module
       const ChatEvents = {
         'app:logged-in': {
           id: Symbol('app:logged-in'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'app:logged-out': {
           id: Symbol('app:logged-out'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'chat:rooms-updated': {
           id: Symbol('chat:rooms-updated'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'chat:room-selected': {
           id: Symbol('chat:room-selected'),
-          schema: z.object({
-            roomId: z.string().min(1)
+          schema: strictObject({
+            roomId: pipe(string(), minLength(1))
           })
         },
         'chat:room-ready': {
           id: Symbol('chat:room-ready'),
-          schema: z.object({
-            roomId: z.string().min(1)
+          schema: strictObject({
+            roomId: pipe(string(), minLength(1))
           })
         },
         'chat:message-submitted': {
           id: Symbol('chat:message-submitted'),
-          schema: z.object({
-            text: z.string()
+          schema: strictObject({
+            text: string()
           })
         },
         'chat:message-sent': {
           id: Symbol('chat:message-sent'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'chat:message-received': {
           id: Symbol('chat:message-received'),
-          schema: z.object({
-            text: z.string(),
-            encrypted: z.boolean().default(true)
+          schema: strictObject({
+            text: string(),
+            encrypted: fallback(boolean(), true)
           })
         },
         'chat:file-selected': {
           id: Symbol('chat:file-selected'),
-          schema: z.object({
-            file: z.instanceof(File)
+          schema: strictObject({
+            file: instance(File)
           })
         },
         'chat:file-processing-done': {
           id: Symbol('chat:file-processing-done'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'auth:show-signup': {
           id: Symbol('auth:show-signup'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'auth:show-login': {
           id: Symbol('auth:show-login'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'nav:changed': {
           id: Symbol('nav:changed'),
-          schema: z.object({
-            tab: z.string()
-          }).strict()
+          schema: strictObject({
+            tab: string()
+          })
         },
         'nav:jump-to-message': {
           id: Symbol('nav:jump-to-message'),
-          schema: z.object({
-            roomId: z.string(),
-            eventId: z.string()
-          }).strict()
+          schema: strictObject({
+            roomId: string(),
+            eventId: string()
+          })
         },
         'chat:scroll-to-message': {
           id: Symbol('chat:scroll-to-message'),
-          schema: z.object({
-            eventId: z.string()
-          }).strict()
+          schema: strictObject({
+            eventId: string()
+          })
         },
         'call:incoming': {
           id: Symbol('call:incoming'),
-          schema: z.object({
-            call: z.any()
-          }).strict()
+          schema: strictObject({
+            call: any()
+          })
         },
         'call:start': {
           id: Symbol('call:start'),
-          schema: z.object({
-            roomId: z.string().min(1),
-            type: z.enum(['video', 'voice'])
-          }).strict()
+          schema: strictObject({
+            roomId: pipe(string(), minLength(1)),
+            type: picklist(['video', 'voice'])
+          })
         },
         'call:answered': {
           id: Symbol('call:answered'),
-          schema: z.object({
-            call: z.any()
-          }).strict()
+          schema: strictObject({
+            call: any()
+          })
         },
         'call:rejected': {
           id: Symbol('call:rejected'),
-          schema: z.object({
-            call: z.any()
-          }).strict()
+          schema: strictObject({
+            call: any()
+          })
         },
         'player:play-state-change': {
           id: Symbol('player:play-state-change'),
-          schema: z.object({ isPlaying: z.boolean() }).strict()
+          schema: strictObject({ isPlaying: boolean() })
         },
         'player:shuffle-change': {
           id: Symbol('player:shuffle-change'),
-          schema: z.object({ isShuffle: z.boolean() }).strict()
+          schema: strictObject({ isShuffle: boolean() })
         },
         'player:repeat-change': {
           id: Symbol('player:repeat-change'),
-          schema: z.object({ repeatMode: z.string() }).strict()
+          schema: strictObject({ repeatMode: string() })
         },
         'player:toggle-play': {
           id: Symbol('player:toggle-play'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'player:next': {
           id: Symbol('player:next'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'player:previous': {
           id: Symbol('player:previous'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'player:toggle-shuffle': {
           id: Symbol('player:toggle-shuffle'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'player:toggle-repeat': {
           id: Symbol('player:toggle-repeat'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'player:seek': {
           id: Symbol('player:seek'),
-          schema: z.object({ time: z.number() }).strict()
+          schema: strictObject({ time: number() })
         },
         'player:set-volume': {
           id: Symbol('player:set-volume'),
-          schema: z.object({ volume: z.number() }).strict()
+          schema: strictObject({ volume: number() })
         },
         'player:toggle-mute': {
           id: Symbol('player:toggle-mute'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'player:toggle-queue': {
           id: Symbol('player:toggle-queue'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'player:close-queue': {
           id: Symbol('player:close-queue'),
-          schema: z.object({}).strict().optional()
+          schema: optional(strictObject({}))
         },
         'player:play-queue-track': {
           id: Symbol('player:play-queue-track'),
-          schema: z.object({
-            index: z.number(),
-            file: z.any()
-          }).strict()
+          schema: strictObject({
+            index: number(),
+            file: any()
+          })
         },
         'player:toggle-like': {
           id: Symbol('player:toggle-like'),
-          schema: z.object({ file: z.any() }).strict()
+          schema: strictObject({ file: any() })
         },
         'player:track-update': {
           id: Symbol('player:track-update'),
-          schema: z.object({
-            file: z.any(),
-            isLiked: z.boolean()
-          }).strict()
+          schema: strictObject({
+            file: any(),
+            isLiked: boolean()
+          })
         },
         'player:like-update': {
           id: Symbol('player:like-update'),
-          schema: z.object({
-            fileId: z.string(),
-            isLiked: z.boolean()
-          }).strict()
+          schema: strictObject({
+            fileId: string(),
+            isLiked: boolean()
+          })
         },
         'player:queue-update': {
           id: Symbol('player:queue-update'),
-          schema: z.object({
-            playlist: z.array(z.any()),
-            index: z.number()
-          }).strict()
+          schema: strictObject({
+            playlist: array(any()),
+            index: number()
+          })
         },
         'player:queue-visibility': {
           id: Symbol('player:queue-visibility'),
-          schema: z.object({ isVisible: z.boolean() }).strict()
+          schema: strictObject({ isVisible: boolean() })
         },
         'player:time-update': {
           id: Symbol('player:time-update'),
-          schema: z.object({ currentTime: z.number() }).strict()
+          schema: strictObject({ currentTime: number() })
         },
         'player:duration-change': {
           id: Symbol('player:duration-change'),
-          schema: z.object({ duration: z.number() }).strict()
+          schema: strictObject({ duration: number() })
         },
         'player:volume-update': {
           id: Symbol('player:volume-update'),
-          schema: z.object({
-            volume: z.number(),
-            isMuted: z.boolean()
-          }).strict()
+          schema: strictObject({
+            volume: number(),
+            isMuted: boolean()
+          })
         },
         'audio:play': {
           id: Symbol('audio:play'),
-          schema: z.object({
-            file: z.any(),
-            playlist: z.array(z.any()).optional(),
-            index: z.number().optional()
-          }).strict()
+          schema: strictObject({
+            file: any(),
+            playlist: optional(array(any())),
+            index: optional(number())
+          })
         },
         'call:ended': {
           id: Symbol('call:ended'),
-          schema: z.object({
-            call: z.any()
-          }).strict()
+          schema: strictObject({
+            call: any()
+          })
         }
       }
 
@@ -260,18 +260,18 @@ export default createPlugin({
       SymbolicEventBroker.prototype.emit = function (eventDef, detail) {
         const sym = eventDef?.id
         if (typeof sym !== 'symbol') throw new Error('Security Error: Invalid event.')
-        if (!eventDef.schema) throw new Error('Security Error: Missing Zod schema.')
+        if (!eventDef.schema) throw new Error('Security Error: Missing Valibot schema.')
 
-        // Zod Validation Gate
-        const validation = eventDef.schema.safeParse(detail)
+        // Validation Gate
+        const validation = safeParse(eventDef.schema, detail)
         if (!validation.success) {
-          console.warn('[Security] Dropped malformed payload.', validation.error.format())
+          console.warn('[Security] Dropped malformed payload.', validation.issues)
           return
         }
 
         const callbacks = this.listeners.get(sym)
         if (callbacks) {
-          callbacks.forEach(cb => cb(validation.data))
+          callbacks.forEach(cb => cb(validation.output))
         }
       }
 
