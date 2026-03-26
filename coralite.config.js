@@ -22,7 +22,7 @@ export default defineConfig({
   plugins: [
     eventBus,
     matrixPlugin({ baseUrl: process.env.HOMESERVER_URL || 'http://localhost:6167' }),
-    webtorrentPlugin,
+    webtorrentPlugin({ trackerUrl: process.env.TRACKER_URL || 'ws://localhost:8000' }),
     mediaStorePlugin,
     markdownPlugin
   ],
