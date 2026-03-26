@@ -2,7 +2,7 @@
   <div class="d-flex align-items-center justify-content-center vh-100">
     <div class="card p-4" style="width: 400px; max-width: 100%;">
       <h2 class="text-center mb-4">Sign Up to Matrix</h2>
-      <form ref="form" id="{{ ref_form }}">
+      <form ref="form">
         <div class="form-floating mb-3">
           <input type="url" class="form-control" ref="homeserver" id="{{ ref_homeserver }}" placeholder="Homeserver URL" required>
           <label for="{{ ref_homeserver }}">Homeserver URL</label>
@@ -19,12 +19,12 @@
           <input type="password" class="form-control" ref="confirmPassword" id="{{ ref_confirmPassword }}" placeholder="Confirm Password" required>
           <label for="{{ ref_confirmPassword }}">Confirm Password</label>
         </div>
-        <button type="submit" class="btn btn-primary w-100" ref="submitButton" id="{{ ref_submitButton }}">Sign Up</button>
+        <button type="submit" class="btn btn-primary w-100" ref="submitButton">Sign Up</button>
       </form>
-      <div class="alert alert-danger mt-3 d-transition-none" role="alert" ref="errorAlert" id="{{ ref_errorAlert }}"></div>
+      <div class="alert alert-danger mt-3 d-transition-none" role="alert" ref="errorAlert"></div>
       
       <div class="text-center mt-3">
-        <a href="#"  class="text-muted text-decoration-none" ref="loginLink" id="{{ ref_loginLink }}" id="{{ ref_loginLink }}">Already have an account? Log in.</a>
+        <a href="#" class="text-muted text-decoration-none" ref="loginLink">Already have an account? Log in.</a>
       </div>
     </div>
   </div>
@@ -68,7 +68,7 @@
           if (password !== confirmPassword) {
             errorAlert.textContent = 'Passwords do not match.'
             errorAlert.classList.remove('d-transition-none');
-          errorAlert.classList.add('d-transition-show')
+            errorAlert.classList.add('d-transition-show')
             return
           }
 
@@ -91,7 +91,7 @@
             console.error('Sign up error', error)
             errorAlert.textContent = 'Registration failed. Please try again. ' + (error.message || '')
             errorAlert.classList.remove('d-transition-none');
-          errorAlert.classList.add('d-transition-show')
+            errorAlert.classList.add('d-transition-show')
             submitButton.disabled = false
             submitButton.textContent = 'Sign Up'
           }

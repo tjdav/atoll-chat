@@ -1,13 +1,13 @@
 <template id="atoll-audio-queue-panel">
   <!-- Queue Panel -->
-  <div ref="queuePanel" id="{{ ref_queuePanel }}" class="position-absolute end-0 bottom-100 bg-dark border border-secondary rounded-top d-transition-none flex-column overflow-hidden" style="width: 350px; max-height: 400px; z-index: 1060; margin-bottom: 2px;">
+  <div ref="queuePanel" class="position-absolute end-0 bottom-100 bg-dark border border-secondary rounded-top d-transition-none flex-column overflow-hidden" style="width: 350px; max-height: 400px; z-index: 1060; margin-bottom: 2px;">
     <div class="d-flex justify-content-between align-items-center p-2 border-bottom border-secondary bg-black bg-opacity-25">
       <h6 class="m-0 ms-2 text-white">Play Queue</h6>
-      <button class="btn btn-link text-white p-1 text-decoration-none" title="Close Queue" ref="closeQueueBtn" id="{{ ref_closeQueueBtn }}">
+      <button class="btn btn-link text-white p-1 text-decoration-none" title="Close Queue" ref="closeQueueBtn">
         <i class="bi bi-x-lg"></i>
       </button>
     </div>
-    <div class="list-group list-group-flush flex-grow-1 overflow-auto" ref="queueList" id="{{ ref_queueList }}">
+    <div class="list-group list-group-flush flex-grow-1 overflow-auto" ref="queueList">
       <!-- Queue items go here -->
     </div>
   </div>
