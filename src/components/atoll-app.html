@@ -1,13 +1,13 @@
 <template id="atoll-app">
-  <div ref="loginView" id="{{ ref_loginView }}" class="d-none">
+  <div ref="loginView" id="{{ ref_loginView }}" class="d-transition-none">
     <atoll-login></atoll-login>
   </div>
 
-  <div ref="signupView" id="{{ ref_signupView }}" class="d-none">
+  <div ref="signupView" id="{{ ref_signupView }}" class="d-transition-none">
     <atoll-signup></atoll-signup>
   </div>
   
-  <div ref="appView" id="{{ ref_appView }}" class="d-none">
+  <div ref="appView" id="{{ ref_appView }}" class="d-transition-none">
     <atoll-app-layout></atoll-app-layout>
   </div>
 </template>
@@ -24,27 +24,27 @@
         const appView = refs('appView')
         
         on(events('auth:show-signup'), () => {
-          if (loginView) loginView.classList.add('d-none')
-          if (appView) appView.classList.add('d-none')
-          if (signupView) signupView.classList.remove('d-none')
+          if (loginView) { loginView.classList.remove('d-transition-show'); loginView.classList.add('d-transition-none') }
+          if (appView) { appView.classList.remove('d-transition-show'); appView.classList.add('d-transition-none') }
+          if (signupView) { signupView.classList.remove('d-transition-none'); signupView.classList.add('d-transition-show') }
         })
 
         on(events('auth:show-login'), () => {
-          if (signupView) signupView.classList.add('d-none')
-          if (appView) appView.classList.add('d-none')
-          if (loginView) loginView.classList.remove('d-none')
+          if (signupView) { signupView.classList.remove('d-transition-show'); signupView.classList.add('d-transition-none') }
+          if (appView) { appView.classList.remove('d-transition-show'); appView.classList.add('d-transition-none') }
+          if (loginView) { loginView.classList.remove('d-transition-none'); loginView.classList.add('d-transition-show') }
         })
 
         on(events('app:logged-in'), () => {
-          if (loginView) loginView.classList.add('d-none')
-          if (signupView) signupView.classList.add('d-none')
-          if (appView) appView.classList.remove('d-none')
+          if (loginView) { loginView.classList.remove('d-transition-show'); loginView.classList.add('d-transition-none') }
+          if (signupView) { signupView.classList.remove('d-transition-show'); signupView.classList.add('d-transition-none') }
+          if (appView) { appView.classList.remove('d-transition-none'); appView.classList.add('d-transition-show') }
         })
 
         on(events('app:logged-out'), () => {
-          if (appView) appView.classList.add('d-none')
-          if (signupView) signupView.classList.add('d-none')
-          if (loginView) loginView.classList.remove('d-none')
+          if (appView) { appView.classList.remove('d-transition-show'); appView.classList.add('d-transition-none') }
+          if (signupView) { signupView.classList.remove('d-transition-show'); signupView.classList.add('d-transition-none') }
+          if (loginView) { loginView.classList.remove('d-transition-none'); loginView.classList.add('d-transition-show') }
         })
 
         const isRestored = await restoreSession() 
@@ -54,7 +54,8 @@
           emit(events('app:logged-in'))
         } else {
           // No session found. Reveal the login screen.
-          loginView.classList.remove('d-none')
+          loginView.classList.remove('d-transition-none')
+          loginView.classList.add('d-transition-show')
         }
       }
     }

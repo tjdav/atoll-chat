@@ -16,7 +16,7 @@
     </div>
     
     <!-- Media View Column (Hidden when on 'chats' tab) -->
-    <div class="flex-grow-1 d-none flex-column h-100 bg-body overflow-hidden" ref="mediaViewContainer" id="{{ ref_mediaViewContainer }}">
+    <div class="flex-grow-1 d-transition-none flex-column h-100 bg-body overflow-hidden" ref="mediaViewContainer" id="{{ ref_mediaViewContainer }}">
       <atoll-media-view></atoll-media-view>
     </div>
     
@@ -69,15 +69,21 @@
         on(events('nav:changed'), ({ tab }) => {
           if (tab === 'chats') {
             // Show chat columns, hide media view
-            chatListContainer.classList.remove('d-none')
-            chatWindowContainer.classList.remove('d-none')
-            mediaViewContainer.classList.add('d-none')
+            chatListContainer.classList.remove('d-transition-none');
+          chatListContainer.classList.add('d-transition-show')
+            chatWindowContainer.classList.remove('d-transition-none');
+          chatWindowContainer.classList.add('d-transition-show')
+            mediaViewContainer.classList.remove('d-transition-show');
+          mediaViewContainer.classList.add('d-transition-none')
             mediaViewContainer.classList.remove('d-flex')
           } else {
             // Hide chat columns, show media view
-            chatListContainer.classList.add('d-none')
-            chatWindowContainer.classList.add('d-none')
-            mediaViewContainer.classList.remove('d-none')
+            chatListContainer.classList.remove('d-transition-show');
+          chatListContainer.classList.add('d-transition-none')
+            chatWindowContainer.classList.remove('d-transition-show');
+          chatWindowContainer.classList.add('d-transition-none')
+            mediaViewContainer.classList.remove('d-transition-none');
+          mediaViewContainer.classList.add('d-transition-show')
             mediaViewContainer.classList.add('d-flex')
           }
         })

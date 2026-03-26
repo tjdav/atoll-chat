@@ -23,7 +23,7 @@
     </div>
 
     <!-- Invite State -->
-    <div class="flex-grow-1 d-flex justify-content-center align-items-center flex-column text-muted d-none" ref="inviteState" id="{{ ref_inviteState }}">
+    <div class="flex-grow-1 d-flex justify-content-center align-items-center flex-column text-muted d-transition-none" ref="inviteState" id="{{ ref_inviteState }}">
       <i class="bi bi-envelope-open" style="font-size: 4rem;"></i>
       <h4 class="mt-3">Room Invitation</h4>
       <p>You have been invited to this room.</p>
@@ -31,12 +31,12 @@
     </div>
 
     <!-- Timeline (Hidden Initially) -->
-    <div class="flex-grow-1 overflow-auto d-none" ref="timeline" id="{{ ref_timeline }}">
+    <div class="flex-grow-1 overflow-auto d-transition-none" ref="timeline" id="{{ ref_timeline }}">
       <atoll-chat-timeline></atoll-chat-timeline>
     </div>
 
     <!-- Input (Hidden Initially) -->
-    <div class="p-3 border-top border-secondary bg-body-tertiary d-none" ref="inputContainer" id="{{ ref_inputContainer }}">
+    <div class="p-3 border-top border-secondary bg-body-tertiary d-transition-none" ref="inputContainer" id="{{ ref_inputContainer }}">
       <atoll-chat-input></atoll-chat-input>
     </div>
 
@@ -121,16 +121,23 @@
 
             // Show header, hide empty state
             chatHeader.style.display = 'flex'
-            emptyState.classList.add('d-none')
+            emptyState.classList.remove('d-transition-show');
+          emptyState.classList.add('d-transition-none')
             
             if (roomDetails.membership === 'invite') {
-              inviteState.classList.remove('d-none')
-              timeline.classList.add('d-none')
-              inputContainer.classList.add('d-none')
+              inviteState.classList.remove('d-transition-none');
+          inviteState.classList.add('d-transition-show')
+              timeline.classList.remove('d-transition-show');
+          timeline.classList.add('d-transition-none')
+              inputContainer.classList.remove('d-transition-show');
+          inputContainer.classList.add('d-transition-none')
             } else {
-              inviteState.classList.add('d-none')
-              timeline.classList.remove('d-none')
-              inputContainer.classList.remove('d-none')
+              inviteState.classList.remove('d-transition-show');
+          inviteState.classList.add('d-transition-none')
+              timeline.classList.remove('d-transition-none');
+          timeline.classList.add('d-transition-show')
+              inputContainer.classList.remove('d-transition-none');
+          inputContainer.classList.add('d-transition-show')
               // Notify timeline to load messages
               emit(events('chat:room-ready'), { roomId })
             }
@@ -170,9 +177,12 @@
           try {
             await joinRoom(activeRoomId)
             
-            inviteState.classList.add('d-none')
-            timeline.classList.remove('d-none')
-            inputContainer.classList.remove('d-none')
+            inviteState.classList.remove('d-transition-show');
+          inviteState.classList.add('d-transition-none')
+            timeline.classList.remove('d-transition-none');
+          timeline.classList.add('d-transition-show')
+            inputContainer.classList.remove('d-transition-none');
+          inputContainer.classList.add('d-transition-show')
             
             emit(events('chat:room-ready'), { roomId: activeRoomId })
             

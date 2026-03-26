@@ -1,5 +1,5 @@
 <template id="atoll-audio-player">
-  <div class="position-absolute bottom-0 w-100 bg-dark text-white border-top border-secondary p-2 d-none align-items-center" ref="playerContainer" id="{{ ref_playerContainer }}" style="z-index: 1050; height: 80px;">
+  <div class="position-absolute bottom-0 w-100 bg-dark text-white border-top border-secondary p-2 d-transition-none align-items-center" ref="playerContainer" id="{{ ref_playerContainer }}" style="z-index: 1050; height: 80px;">
     
     <atoll-audio-track-info></atoll-audio-track-info>
 
@@ -113,7 +113,8 @@
           currentObjectUrl = URL.createObjectURL(file.blob)
           audioElement.src = currentObjectUrl
           
-          playerContainer.classList.remove('d-none')
+          playerContainer.classList.remove('d-transition-none');
+          playerContainer.classList.add('d-transition-show')
           playerContainer.classList.add('d-flex')
           
           // Emit track updates to track info and queue panel

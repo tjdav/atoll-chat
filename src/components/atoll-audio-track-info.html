@@ -11,7 +11,7 @@
     <button class="btn btn-link text-white p-1 me-1" ref="likeBtn" id="{{ ref_likeBtn }}" title="Like">
       <i class="bi bi-heart" ref="likeIcon" id="{{ ref_likeIcon }}"></i>
     </button>
-    <button class="btn btn-link text-white p-1 d-none" ref="playerJumpBtn" id="{{ ref_playerJumpBtn }}" title="Go to Message">
+    <button class="btn btn-link text-white p-1 d-transition-none" ref="playerJumpBtn" id="{{ ref_playerJumpBtn }}" title="Go to Message">
       <i class="bi bi-chat-left-text"></i>
     </button>
   </div>
@@ -41,9 +41,11 @@
             playerArtist.textContent = file.artist || 'Unknown Artist'
 
             if (file.roomId && file.id) {
-              playerJumpBtn.classList.remove('d-none')
+              playerJumpBtn.classList.remove('d-transition-none');
+          playerJumpBtn.classList.add('d-transition-show')
             } else {
-              playerJumpBtn.classList.add('d-none')
+              playerJumpBtn.classList.remove('d-transition-show');
+          playerJumpBtn.classList.add('d-transition-none')
             }
 
             if (isLiked) {
@@ -54,7 +56,8 @@
           } else {
             playerTitle.textContent = 'Select a track'
             playerArtist.textContent = 'Unknown Artist'
-            playerJumpBtn.classList.add('d-none')
+            playerJumpBtn.classList.remove('d-transition-show');
+          playerJumpBtn.classList.add('d-transition-none')
             likeIcon.className = 'bi bi-heart text-white'
           }
         })

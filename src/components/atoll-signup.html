@@ -21,7 +21,7 @@
         </div>
         <button type="submit" class="btn btn-primary w-100" ref="submitButton" id="{{ ref_submitButton }}">Sign Up</button>
       </form>
-      <div class="alert alert-danger mt-3 d-none" role="alert" ref="errorAlert" id="{{ ref_errorAlert }}"></div>
+      <div class="alert alert-danger mt-3 d-transition-none" role="alert" ref="errorAlert" id="{{ ref_errorAlert }}"></div>
       
       <div class="text-center mt-3">
         <a href="#"  class="text-muted text-decoration-none" ref="loginLink" id="{{ ref_loginLink }}" id="{{ ref_loginLink }}">Already have an account? Log in.</a>
@@ -62,11 +62,13 @@
           const urlParams = new URLSearchParams(window.location.search)
           const token = urlParams.get('token')
 
-          errorAlert.classList.add('d-none')
+          errorAlert.classList.remove('d-transition-show');
+          errorAlert.classList.add('d-transition-none')
           
           if (password !== confirmPassword) {
             errorAlert.textContent = 'Passwords do not match.'
-            errorAlert.classList.remove('d-none')
+            errorAlert.classList.remove('d-transition-none');
+          errorAlert.classList.add('d-transition-show')
             return
           }
 
@@ -88,7 +90,8 @@
           } catch (error) {
             console.error('Sign up error', error)
             errorAlert.textContent = 'Registration failed. Please try again. ' + (error.message || '')
-            errorAlert.classList.remove('d-none')
+            errorAlert.classList.remove('d-transition-none');
+          errorAlert.classList.add('d-transition-show')
             submitButton.disabled = false
             submitButton.textContent = 'Sign Up'
           }
