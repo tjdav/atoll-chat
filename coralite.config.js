@@ -4,6 +4,7 @@ import matrixPlugin from './src/plugins/matrix.js'
 import webtorrentPlugin from './src/plugins/webtorrent.js'
 import mediaStorePlugin from './src/plugins/media-store.js'
 import markdownPlugin from './src/plugins/markdown.js'
+import ttsPlugin from './src/plugins/tts.js'
 import { createRequire } from 'module'
 import path from 'path'
 
@@ -24,7 +25,8 @@ export default defineConfig({
     matrixPlugin({ baseUrl: process.env.HOMESERVER_URL || 'http://localhost:6167' }),
     webtorrentPlugin({ trackerUrl: process.env.TRACKER_URL || 'ws://localhost:8000' }),
     mediaStorePlugin,
-    markdownPlugin
+    markdownPlugin,
+    ttsPlugin
   ],
   output: 'dist',
   pages: 'src/pages',

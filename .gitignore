@@ -12,6 +12,8 @@ dist
 dist-ssr
 *.local
 .eslintcache
+public/assets/tts/
+
 
 # Editor directories and files
 .vscode/*
