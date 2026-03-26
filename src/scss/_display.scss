@@ -1,0 +1,16 @@
+.d-transition-show {
+  opacity: 1;
+
+  @include transition($transition-fade, display .15s linear allow-discrete);
+
+  @starting-style {
+    opacity: 0;
+  }
+}
+
+.d-transition-none {
+  opacity: 0;
+  display: none;
+
+  @include transition($transition-fade, display .15s linear allow-discrete);
+}
