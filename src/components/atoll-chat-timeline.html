@@ -54,7 +54,13 @@
           const div = document.createElement('div')
           div.id = `msg-${message.id}` // Add ID for scrolling
           
-          if (message.msgtype === 'm.atoll.webtorrent' && message.info) {
+          if (message.isEncrypted && !message.body) {
+             const bubble = document.createElement('atoll-message-bubble')
+             bubble.setAttribute('time', time)
+             bubble.setAttribute('current-user', isCurrentUser)
+             bubble.values = { body: '*Encrypted message*' }
+             div.appendChild(bubble)
+          } else if (message.msgtype === 'm.atoll.webtorrent' && message.info) {
              const torrentBubble = document.createElement('atoll-torrent-bubble')
              // We pass data via the context.value API mechanism
              torrentBubble.values = {
