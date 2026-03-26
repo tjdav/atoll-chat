@@ -18,20 +18,11 @@
   export default defineComponent({
     client: {
       async script ({ helpers }) {
-        const { refs, on, events, restoreSession } = helpers
+        const { refs, on, events, restoreSession, emit } = helpers
         const loginView = refs('loginView')
         const signupView = refs('signupView')
         const appView = refs('appView')
-        const isRestored = await restoreSession() 
         
-        if (isRestored) {
-          // Session found! Go straight to the app
-          emit(events('app:logged-in'))
-        } else {
-          // No session found. Reveal the login screen.
-          loginView.classList.remove('d-none')
-        }
-
         on(events('auth:show-signup'), () => {
           if (loginView) loginView.classList.add('d-none')
           if (appView) appView.classList.add('d-none')
@@ -55,6 +46,16 @@
           if (signupView) signupView.classList.add('d-none')
           if (loginView) loginView.classList.remove('d-none')
         })
+
+        const isRestored = await restoreSession() 
+        
+        if (isRestored) {
+          // Session found! Go straight to the app
+          emit(events('app:logged-in'))
+        } else {
+          // No session found. Reveal the login screen.
+          loginView.classList.remove('d-none')
+        }
       }
     }
   })

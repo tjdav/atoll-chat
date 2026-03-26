@@ -2,15 +2,23 @@ import { test, expect } from '@playwright/test'
 
 test.describe('Authentication flows', () => {
 
+  test.beforeEach(async ({ page }) => {
+    // Clear the specific atoll-user-preferences db so there's no cached session across tests
+    await page.goto('/')
+    await page.evaluate(async () => {
+      return new Promise((resolve) => {
+        const req = window.indexedDB.deleteDatabase('atoll-user-preferences')
+        req.onsuccess = resolve
+        req.onerror = resolve
+      })
+    })
+  })
+
   test('Successful Login', async ({ page }) => {
     await page.goto('/')
 
-    // Wait until the username field is actually actionable (attached to DOM and able to receive input)
-    const usernameInput = page.locator('input[placeholder="Username"]').first()
-    await usernameInput.waitFor({
-      state: 'attached',
-      timeout: 10000
-    })
+    const loginHeader = page.locator('h2:has-text("Login to Matrix")')
+    await expect(loginHeader).toBeVisible({ timeout: 10000 })
 
     // Fill the login form
     // The homeserver might be defaulted, but we ensure it points to the local test server
@@ -27,14 +35,77 @@ test.describe('Authentication flows', () => {
     await expect(sidebar).toBeVisible({ timeout: 10000 })
   })
 
+  test('Session persistence on reload', async ({ page }) => {
+    await page.goto('/')
+
+    const loginHeader = page.locator('h2:has-text("Login to Matrix")')
+    await expect(loginHeader).toBeVisible({ timeout: 10000 })
+
+    await page.locator('input[placeholder="Homeserver URL"]').first().fill('http://localhost:6167')
+    await page.locator('input[placeholder="Username"]').first().fill('alice')
+    await page.locator('input[placeholder="Password"]').first().fill('password123')
+
+    // Wait for the first successful sync network response to ensure the session and Matrix client are fully initialized
+    const syncPromise = page.waitForResponse(response => response.url().includes('/_matrix/client/v3/sync') && response.status() === 200, { timeout: 15000 })
+    await page.locator('button:has-text("Login")').first().click()
+    await syncPromise
+
+    // Verify successful login
+    const sidebar = page.locator('[ref="atoll-app-layout__layoutContainer-0"]')
+    await expect(sidebar).toBeVisible({ timeout: 10000 })
+
+    // Await IndexedDB to physically flush the atoll_session key before we trigger a reload,
+    // protecting against race conditions where the headless browser reloads before IndexedDB's
+    // internal tx.oncomplete fires inside the matrix.js plugin.
+    await page.evaluate(async () => {
+      return new Promise((resolve) => {
+        const checkDB = () => {
+          const request = window.indexedDB.open('atoll-user-preferences', 1)
+          request.onsuccess = (e) => {
+            const db = e.target.result
+            if (!db.objectStoreNames.contains('preferences')) {
+              db.close()
+              setTimeout(checkDB, 50)
+              return
+            }
+            const tx = db.transaction('preferences', 'readonly')
+            const store = tx.objectStore('preferences')
+
+            tx.oncomplete = () => db.close()
+            tx.onerror = () => db.close()
+
+            const getReq = store.get('atoll_session')
+            getReq.onsuccess = () => {
+              if (getReq.result) resolve()
+              else setTimeout(checkDB, 50)
+            }
+            getReq.onerror = () => setTimeout(checkDB, 50)
+          }
+          request.onerror = () => setTimeout(checkDB, 50)
+        }
+        checkDB()
+      })
+    })
+
+    // Setup listener for the sync endpoint after reload to verify Matrix connects
+    const reloadSyncPromise = page.waitForResponse(response => response.url().includes('/_matrix/client/v3/sync') && response.status() === 200, { timeout: 15000 })
+
+    // Reload the page
+    await page.reload()
+
+    // Await the sync response explicitly so we know the network connection succeeded
+    await reloadSyncPromise
+
+    // Verify we remain logged in by explicitly asserting the sidebar becomes visible.
+    const reloadedSidebar = page.locator('[ref="atoll-app-layout__layoutContainer-0"]')
+    await expect(reloadedSidebar).toBeVisible({ timeout: 15000 })
+  })
+
   test('Failed Login', async ({ page }) => {
     await page.goto('/')
 
-    const usernameInput = page.locator('input[placeholder="Username"]').first()
-    await usernameInput.waitFor({
-      state: 'attached',
-      timeout: 10000
-    })
+    const loginHeader = page.locator('h2:has-text("Login to Matrix")')
+    await expect(loginHeader).toBeVisible({ timeout: 10000 })
 
     await page.locator('input[placeholder="Homeserver URL"]').first().fill('http://localhost:6167')
     await page.locator('input[placeholder="Username"]').first().fill('nonexistentuser')
@@ -54,10 +125,8 @@ test.describe('Authentication flows', () => {
     const loginHeader = page.locator('h2:has-text("Login to Matrix")')
     const signupHeader = page.locator('h2:has-text("Sign Up to Matrix")')
 
-    await loginHeader.waitFor({
-      state: 'attached',
-      timeout: 10000
-    })
+    await expect(loginHeader).toBeVisible({ timeout: 10000 })
+    await expect(signupHeader).toBeHidden()
 
     // Switch to signup
     await page.locator('a:has-text("Don\'t have an account? Sign up.")').click()
@@ -78,10 +147,8 @@ test.describe('Authentication flows', () => {
 
     // Wait for page load
     const loginHeader = page.locator('h2:has-text("Login to Matrix")')
-    await loginHeader.waitFor({
-      state: 'attached',
-      timeout: 10000
-    })
+    const signupHeader = page.locator('h2:has-text("Sign Up to Matrix")')
+    await expect(loginHeader).toBeVisible({ timeout: 10000 })
 
     // Switch to signup form
     await page.locator('a:has-text("Don\'t have an account? Sign up.")').click()
@@ -105,10 +172,9 @@ test.describe('Authentication flows', () => {
     await page.goto('/?token=ci_test_token_123')
 
     const loginHeader = page.locator('h2:has-text("Login to Matrix")')
-    await loginHeader.waitFor({
-      state: 'attached',
-      timeout: 10000
-    })
+    const signupHeader = page.locator('h2:has-text("Sign Up to Matrix")')
+
+    await expect(loginHeader).toBeVisible({ timeout: 10000 })
 
     // Switch to signup form
     await page.locator('a:has-text("Don\'t have an account? Sign up.")').click()
@@ -131,10 +197,9 @@ test.describe('Authentication flows', () => {
     await page.goto('/?token=invalid_token_xyz')
 
     const loginHeader = page.locator('h2:has-text("Login to Matrix")')
-    await loginHeader.waitFor({
-      state: 'attached',
-      timeout: 10000
-    })
+    const signupHeader = page.locator('h2:has-text("Sign Up to Matrix")')
+
+    await expect(loginHeader).toBeVisible({ timeout: 10000 })
 
     // Switch to signup form
     await page.locator('a:has-text("Don\'t have an account? Sign up.")').click()

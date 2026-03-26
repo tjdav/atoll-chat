@@ -139,6 +139,73 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
         }
       },
       helpers: {
+        getPreference: (globalContext) => (localContext) => async (key) => {
+          return new Promise((resolve, reject) => {
+            const request = window.indexedDB.open('atoll-user-preferences', 1)
+            request.onupgradeneeded = (e) => {
+              e.target.result.createObjectStore('preferences')
+            }
+            request.onsuccess = (e) => {
+              const db = e.target.result
+              if (!db.objectStoreNames.contains('preferences')) {
+                db.close()
+                resolve(null)
+                return
+              }
+              const tx = db.transaction('preferences', 'readonly')
+              const store = tx.objectStore('preferences')
+              let result = null
+
+              tx.oncomplete = () => {
+                db.close()
+                resolve(result)
+              }
+
+              tx.onerror = () => {
+                db.close()
+                reject(tx.error)
+              }
+
+              const getReq = store.get(key)
+              getReq.onsuccess = () => {
+                result = getReq.result
+              }
+            }
+            request.onerror = () => reject(request.error)
+          })
+        },
+
+        setPreference: (globalContext) => (localContext) => async (key, value) => {
+          return new Promise((resolve, reject) => {
+            const request = window.indexedDB.open('atoll-user-preferences', 1)
+            request.onupgradeneeded = (e) => {
+              e.target.result.createObjectStore('preferences')
+            }
+            request.onsuccess = (e) => {
+              const db = e.target.result
+              const tx = db.transaction('preferences', 'readwrite')
+              const store = tx.objectStore('preferences')
+
+              tx.oncomplete = () => {
+                db.close()
+                resolve()
+              }
+
+              tx.onerror = () => {
+                db.close()
+                reject(tx.error)
+              }
+
+              if (value === null || value === undefined) {
+                store.delete(key)
+              } else {
+                store.put(value, key)
+              }
+            }
+            request.onerror = () => reject(request.error)
+          })
+        },
+
         getDefaultHomeserverUrl: (globalContext) => (localContext) => () => globalContext.config.baseUrl,
 
         registerUser: (globalContext) => {
@@ -207,13 +274,17 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               // Clean up cache on success
               sessionStorage.removeItem('matrix_reg_session')
 
-              // Initialize the actual client
-              return await localContext.values.initClient({
+              const credentials = {
                 baseUrl: baseUrl,
                 userId: registerData.user_id,
                 accessToken: registerData.access_token,
                 deviceId: registerData.device_id
-              }, localContext.helpers)
+              }
+
+              await localContext.helpers.setPreference('atoll_session', credentials)
+
+              // Initialize the actual client
+              return await localContext.values.initClient(credentials, localContext.helpers)
 
             } catch (error) {
               console.error('Matrix registration failed:', error)
@@ -223,12 +294,10 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
         },
 
         restoreSession: (globalContext) => (localContext) => async () => {
-          const sessionData = localStorage.getItem('atoll_session')
-          if (!sessionData) return false
+          const credentials = await localContext.helpers.getPreference('atoll_session')
+          if (!credentials) return false
 
           try {
-            const credentials = JSON.parse(sessionData)
-
             // Re-initialize the client with the saved credentials
             await localContext.values.initClient(credentials, localContext.helpers)
 
@@ -239,7 +308,7 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
             return true
           } catch (e) {
             console.error('Failed to restore Matrix session:', e)
-            localStorage.removeItem('atoll_session')
+            await localContext.helpers.setPreference('atoll_session', null)
             return false
           }
         },
@@ -265,12 +334,16 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
 
                 const loginData = await tempClient.loginRequest(requestPayload)
 
-                return await localContext.values.initClient({
+                const credentials = {
                   baseUrl: loginRequest.baseUrl || globalContext.config.baseUrl,
                   userId: loginData.user_id,
                   accessToken: loginData.access_token,
                   deviceId: loginData.device_id
-                }, localContext.helpers)
+                }
+
+                await localContext.helpers.setPreference('atoll_session', credentials)
+
+                return await localContext.values.initClient(credentials, localContext.helpers)
               } catch (error) {
                 console.error('Matrix login failed:', error)
                 throw error
