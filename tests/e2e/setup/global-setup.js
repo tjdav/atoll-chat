@@ -100,6 +100,7 @@ async function globalSetup () {
 
     await registerUser('alice', 'password123')
     await registerUser('bob', 'password123')
+    await registerUser('charlie', 'password123')
 
   } catch (err) {
     console.error('Error in global setup:', err)
