@@ -12,7 +12,7 @@
         </div>
       </div>
       
-      <div class="progress mb-2 d-none" style="height: 5px;" ref="progressBarContainer" id="{{ ref_progressBarContainer }}">
+      <div class="progress mb-2 d-transition-none" style="height: 5px;" ref="progressBarContainer" id="{{ ref_progressBarContainer }}">
         <div class="progress-bar progress-bar-striped progress-bar-animated" role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100" ref="progressBar" id="{{ ref_progressBar }}"></div>
       </div>
 
@@ -84,8 +84,10 @@
           if (!payload || !eventId) return
 
           downloadBtn.disabled = true
-          progressBarContainer.classList.remove('d-none')
-          downloadBtn.classList.add('d-none')
+          progressBarContainer.classList.remove('d-transition-none');
+          progressBarContainer.classList.add('d-transition-show')
+          downloadBtn.classList.remove('d-transition-show');
+          downloadBtn.classList.add('d-transition-none')
 
           try {
             // 1. Download via WebTorrent
@@ -131,8 +133,10 @@
             })
 
             // 6. Update UI
-            progressBarContainer.classList.add('d-none')
-            metaContainer.classList.add('d-none')
+            progressBarContainer.classList.remove('d-transition-show');
+          progressBarContainer.classList.add('d-transition-none')
+            metaContainer.classList.remove('d-transition-show');
+          metaContainer.classList.add('d-transition-none')
             
             if (payload.mimeType.startsWith('image/')) {
               objectUrl = URL.createObjectURL(decryptedBlob)
@@ -157,7 +161,8 @@
               contentContainer.appendChild(video)
             } else {
               // Just show it's done for other files
-              metaContainer.classList.remove('d-none')
+              metaContainer.classList.remove('d-transition-none');
+          metaContainer.classList.add('d-transition-show')
               const doneMsg = document.createElement('div')
               doneMsg.className = 'text-success text-center mt-2 fw-bold'
               doneMsg.textContent = 'Saved to Media Vault'
@@ -167,8 +172,10 @@
           } catch (error) {
             console.error('Failed to download and decrypt file:', error)
             downloadBtn.disabled = false
-            downloadBtn.classList.remove('d-none')
-            progressBarContainer.classList.add('d-none')
+            downloadBtn.classList.remove('d-transition-none');
+          downloadBtn.classList.add('d-transition-show')
+            progressBarContainer.classList.remove('d-transition-show');
+          progressBarContainer.classList.add('d-transition-none')
             alert('Failed to download file.')
           }
         }

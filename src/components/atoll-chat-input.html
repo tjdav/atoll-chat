@@ -9,12 +9,12 @@
       <button class="btn btn-outline-secondary border-start-0 border-end-0" type="button" aria-label="Record Voice" ref="micBtn" id="{{ ref_micBtn }}">
         <i class="bi bi-mic"></i>
       </button>
-      <button class="btn btn-primary rounded-end-pill d-none" type="button" aria-label="Send Message" ref="sendBtn" id="{{ ref_sendBtn }}">
+      <button class="btn btn-primary rounded-end-pill d-transition-none" type="button" aria-label="Send Message" ref="sendBtn" id="{{ ref_sendBtn }}">
         <i class="bi bi-send-fill"></i>
       </button>
     </div>
 
-    <div class="d-none align-items-center w-100" ref="voiceInputGroup" id="{{ ref_voiceInputGroup }}">
+    <div class="d-transition-none align-items-center w-100" ref="voiceInputGroup" id="{{ ref_voiceInputGroup }}">
       <button class="btn btn-link text-decoration-none rounded-circle text-primary me-2 flex-shrink-0 p-0" style="width: 32px; height: 32px;" type="button" aria-label="Cancel Voice Message" ref="cancelVoiceBtn" id="{{ ref_cancelVoiceBtn }}">
         <i class="bi bi-x-circle-fill fs-4"></i>
       </button>
@@ -25,7 +25,7 @@
         <div class="flex-grow-1"></div>
         <span class="text-primary bg-white rounded-pill px-2 py-0 fw-bold small me-1 flex-shrink-0" ref="voiceDurationDisplay" id="{{ ref_voiceDurationDisplay }}" style="min-width: 40px; text-align: center;">0:00</span>
       </div>
-      <button class="btn btn-link text-decoration-none text-primary ms-2 flex-shrink-0 p-0 d-none" style="width: 32px; height: 32px;" type="button" aria-label="Send Voice Message" ref="sendVoiceBtn" id="{{ ref_sendVoiceBtn }}">
+      <button class="btn btn-link text-decoration-none text-primary ms-2 flex-shrink-0 p-0 d-transition-none" style="width: 32px; height: 32px;" type="button" aria-label="Send Voice Message" ref="sendVoiceBtn" id="{{ ref_sendVoiceBtn }}">
         <i class="bi bi-send-fill fs-4"></i>
       </button>
     </div>
@@ -55,11 +55,15 @@
         const updateInputButtons = () => {
           const text = messageInput.value.trim()
           if (text) {
-            micBtn.classList.add('d-none')
-            sendBtn.classList.remove('d-none')
+            micBtn.classList.remove('d-transition-show');
+          micBtn.classList.add('d-transition-none')
+            sendBtn.classList.remove('d-transition-none');
+          sendBtn.classList.add('d-transition-show')
           } else {
-            micBtn.classList.remove('d-none')
-            sendBtn.classList.add('d-none')
+            micBtn.classList.remove('d-transition-none');
+          micBtn.classList.add('d-transition-show')
+            sendBtn.classList.remove('d-transition-show');
+          sendBtn.classList.add('d-transition-none')
           }
         }
 
@@ -110,11 +114,14 @@
           isPlaying = false
           
           actionVoiceIcon.className = 'bi bi-stop-fill'
-          sendVoiceBtn.classList.add('d-none')
+          sendVoiceBtn.classList.remove('d-transition-show');
+          sendVoiceBtn.classList.add('d-transition-none')
           
-          voiceInputGroup.classList.add('d-none')
+          voiceInputGroup.classList.remove('d-transition-show');
+          voiceInputGroup.classList.add('d-transition-none')
           voiceInputGroup.classList.remove('d-flex')
-          textInputGroup.classList.remove('d-none')
+          textInputGroup.classList.remove('d-transition-none');
+          textInputGroup.classList.add('d-transition-show')
           textInputGroup.classList.add('d-flex')
         }
 
@@ -123,13 +130,16 @@
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
             
             // Switch UI
-            textInputGroup.classList.add('d-none')
+            textInputGroup.classList.remove('d-transition-show');
+          textInputGroup.classList.add('d-transition-none')
             textInputGroup.classList.remove('d-flex')
-            voiceInputGroup.classList.remove('d-none')
+            voiceInputGroup.classList.remove('d-transition-none');
+          voiceInputGroup.classList.add('d-transition-show')
             voiceInputGroup.classList.add('d-flex')
             
             actionVoiceIcon.className = 'bi bi-stop-fill'
-            sendVoiceBtn.classList.add('d-none')
+            sendVoiceBtn.classList.remove('d-transition-show');
+          sendVoiceBtn.classList.add('d-transition-none')
             
             audioChunks = []
             mediaRecorder = new MediaRecorder(stream)
@@ -146,7 +156,8 @@
               
               // Switch to Review State
               actionVoiceIcon.className = 'bi bi-play-fill'
-              sendVoiceBtn.classList.remove('d-none')
+              sendVoiceBtn.classList.remove('d-transition-none');
+          sendVoiceBtn.classList.add('d-transition-show')
               isRecording = false
               isPaused = true
               clearInterval(timerInterval)

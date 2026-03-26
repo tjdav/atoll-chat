@@ -4,7 +4,7 @@
       <!-- Tracks rendered here -->
     </div>
     
-    <div class="d-none text-center p-5 text-muted" ref="emptyState">
+    <div class="d-transition-none text-center p-5 text-muted" ref="emptyState">
       <i class="bi bi-music-note-list" style="font-size: 3rem;"></i>
       <h5 class="mt-3">No Audio Found</h5>
       <p>Any music or voice notes you receive will appear here.</p>
@@ -39,11 +39,13 @@
           const files = await getAudioFiles()
 
           if (files.length === 0) {
-            emptyState.classList.remove('d-none')
+            emptyState.classList.remove('d-transition-none');
+          emptyState.classList.add('d-transition-show')
             return
           }
 
-          emptyState.classList.add('d-none')
+          emptyState.classList.remove('d-transition-show');
+          emptyState.classList.add('d-transition-none')
 
           files.forEach(file => {
              const listItem = document.createElement('button')

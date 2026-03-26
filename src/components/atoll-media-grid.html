@@ -4,7 +4,7 @@
       <!-- Cards rendered here -->
     </div>
     
-    <div class="d-none text-center p-5 text-muted" ref="emptyState" id="{{ ref_emptyState }}">
+    <div class="d-transition-none text-center p-5 text-muted" ref="emptyState" id="{{ ref_emptyState }}">
       <i class="bi bi-images" style="font-size: 3rem;" ref="emptyIcon" id="{{ ref_emptyIcon }}"></i>
       <h5 class="mt-3">No Media Found</h5>
       <p>Any files you receive will appear here.</p>
@@ -38,11 +38,13 @@
           }
 
           if (files.length === 0) {
-            emptyState.classList.remove('d-none')
+            emptyState.classList.remove('d-transition-none');
+          emptyState.classList.add('d-transition-show')
             return
           }
 
-          emptyState.classList.add('d-none')
+          emptyState.classList.remove('d-transition-show');
+          emptyState.classList.add('d-transition-none')
 
           files.forEach(file => {
              const col = document.createElement('div')

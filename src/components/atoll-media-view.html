@@ -7,13 +7,13 @@
     
     <!-- Content Area -->
     <div class="flex-grow-1 overflow-auto p-3" ref="mediaContentContainer" id="{{ ref_mediaContentContainer }}">
-      <div ref="picturesGrid" id="{{ ref_picturesGrid }}" class="d-none h-100">
+      <div ref="picturesGrid" id="{{ ref_picturesGrid }}" class="d-transition-none h-100">
         <atoll-media-grid type="pictures"></atoll-media-grid>
       </div>
-      <div ref="videosGrid" id="{{ ref_videosGrid }}" class="d-none h-100">
+      <div ref="videosGrid" id="{{ ref_videosGrid }}" class="d-transition-none h-100">
         <atoll-media-grid type="videos"></atoll-media-grid>
       </div>
-      <div ref="musicPlayer" id="{{ ref_musicPlayer }}" class="d-none h-100">
+      <div ref="musicPlayer" id="{{ ref_musicPlayer }}" class="d-transition-none h-100">
         <atoll-audio></atoll-audio>
       </div>
     </div>
@@ -39,19 +39,25 @@
           if (currentActiveTab === tabName) return
           currentActiveTab = tabName
 
-          picturesGrid.classList.add('d-none')
-          videosGrid.classList.add('d-none')
-          musicPlayer.classList.add('d-none')
+          picturesGrid.classList.remove('d-transition-show');
+          picturesGrid.classList.add('d-transition-none')
+          videosGrid.classList.remove('d-transition-show');
+          videosGrid.classList.add('d-transition-none')
+          musicPlayer.classList.remove('d-transition-show');
+          musicPlayer.classList.add('d-transition-none')
 
           if (tabName === 'pictures') {
             headerTitle.textContent = 'All Pictures'
-            picturesGrid.classList.remove('d-none')
+            picturesGrid.classList.remove('d-transition-none');
+          picturesGrid.classList.add('d-transition-show')
           } else if (tabName === 'videos') {
             headerTitle.textContent = 'All Videos'
-            videosGrid.classList.remove('d-none')
+            videosGrid.classList.remove('d-transition-none');
+          videosGrid.classList.add('d-transition-show')
           } else if (tabName === 'music') {
             headerTitle.textContent = 'All Music'
-            musicPlayer.classList.remove('d-none')
+            musicPlayer.classList.remove('d-transition-none');
+          musicPlayer.classList.add('d-transition-show')
           }
         }
 
