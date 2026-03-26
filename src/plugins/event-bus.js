@@ -1,6 +1,4 @@
 import { createPlugin } from 'coralite'
-import { strictObject, optional, pipe, string, minLength, boolean, fallback, instance, picklist, any, number, array, safeParse } from 'valibot'
-
 
 export default createPlugin({
   name: 'event-bus-plugin',
