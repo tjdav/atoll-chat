@@ -68,6 +68,11 @@
              const bubble = document.createElement('atoll-message-bubble')
              bubble.setAttribute('time', time)
              bubble.setAttribute('current-user', isCurrentUser)
+             bubble.values = { 
+               'event-id': message.id,
+               'room-id': currentRoomId,
+               reactions: message.reactions || {}
+             }
              bubble.appendChild(torrentBubble)
 
              div.appendChild(bubble)
