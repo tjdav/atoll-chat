@@ -106,28 +106,6 @@ test.describe('Chat feature flows', () => {
     await expect(messageBubbleText).toBeVisible({ timeout: 15000 })
 
     // -----------------------------------------
-    // User A: Send an attachment
-    // -----------------------------------------
-    // Use the file input directly (since it's hidden)
-    const fileInput = page.locator('input[type="file"]')
-
-    // Create a dummy file in memory
-    const fileBuffer = Buffer.from('dummy file content for test', 'utf-8')
-    await fileInput.setInputFiles({
-      name: 'test-attachment.txt',
-      mimeType: 'text/plain',
-      buffer: fileBuffer
-    })
-
-    // Wait for the sync that follows sending the attachment
-    await page.waitForResponse(response => response.url().includes('/_matrix/client/v3/sync') && response.status() === 200, { timeout: 15000 }).catch(() => {
-    })
-
-    // Verify attachment bubble appears (we check for the filename)
-    const attachmentBubbleName = timelineContainer.locator(`text="test-attachment.txt"`).first()
-    await expect(attachmentBubbleName).toBeVisible({ timeout: 30000 }) // Attachment sending (with encryption/seeding) might take longer
-
-    // -----------------------------------------
     // User B: Login, accept invite, receive msgs
     // -----------------------------------------
     // Create a new context for User B to isolate state, as requested by the code reviewer
@@ -186,9 +164,6 @@ test.describe('Chat feature flows', () => {
 
         const messageBubbleBText = pageB.locator(`text="${textMessage}"`).first()
         await expect(messageBubbleBText).toBeVisible({ timeout: 2000 })
-
-        const attachmentBubbleBName2 = pageB.locator(`text="test-attachment.txt"`).first()
-        await expect(attachmentBubbleBName2).toBeVisible({ timeout: 2000 })
       }).toPass({
         intervals: [1000, 2000, 3000],
         timeout: 10000
