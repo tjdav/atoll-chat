@@ -49,9 +49,7 @@
   },
   "pnpm": {
     "onlyBuiltDependencies": [
-      "node-datachannel",
-      "utp-native",
-      "webrtc-polyfill"
+      "node-datachannel"
     ]
   }
 }
