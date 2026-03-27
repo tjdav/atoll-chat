@@ -120,9 +120,9 @@
             const key = await crypto.subtle.importKey(
               'jwk',
               payload.key,
-              { name: 'AES-GCM' },
+              { name: 'AES-CTR' },
               true,
-              ['decrypt']
+              ['encrypt', 'decrypt']
             )
 
             // 3. Decode IV
@@ -133,8 +133,9 @@
             const encryptedBuffer = await encryptedBlob.arrayBuffer()
             const decryptedBuffer = await crypto.subtle.decrypt(
               {
-                name: 'AES-GCM',
-                iv: iv
+                name: 'AES-CTR',
+                counter: iv,
+                length: 64
               },
               key,
               encryptedBuffer
