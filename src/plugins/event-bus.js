@@ -54,6 +54,29 @@ export default createPlugin({
             encrypted: fallback(boolean(), true)
           })
         },
+        'chat:reaction-received': {
+          id: Symbol('chat:reaction-received'),
+          schema: strictObject({
+            eventId: string(),
+            reactions: any()
+          })
+        },
+        'chat:send-reaction': {
+          id: Symbol('chat:send-reaction'),
+          schema: strictObject({
+            roomId: string(),
+            eventId: string(),
+            reaction: string()
+          })
+        },
+        'chat:remove-reaction': {
+          id: Symbol('chat:remove-reaction'),
+          schema: strictObject({
+            roomId: string(),
+            eventId: string(),
+            reaction: string()
+          })
+        },
         'chat:file-selected': {
           id: Symbol('chat:file-selected'),
           schema: strictObject({
