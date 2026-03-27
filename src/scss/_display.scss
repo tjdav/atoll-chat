@@ -10,7 +10,7 @@
 
 .d-transition-none {
   opacity: 0;
-  display: none;
+  display: none !important;
 
   @include transition($transition-fade, display .15s linear allow-discrete);
 }
