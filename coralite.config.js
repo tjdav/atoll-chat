@@ -5,6 +5,7 @@ import webtorrentPlugin from './src/plugins/webtorrent.js'
 import mediaStorePlugin from './src/plugins/media-store.js'
 import markdownPlugin from './src/plugins/markdown.js'
 import ttsPlugin from './src/plugins/tts.js'
+import userPreferencesPlugin from './src/plugins/user-preferences.js'
 import { createRequire } from 'module'
 import path from 'path'
 
@@ -26,7 +27,8 @@ export default defineConfig({
     webtorrentPlugin({ trackerUrl: process.env.TRACKER_URL || 'ws://localhost:8000' }),
     mediaStorePlugin,
     markdownPlugin,
-    ttsPlugin
+    ttsPlugin,
+    userPreferencesPlugin
   ],
   output: 'dist',
   pages: 'src/pages',
