@@ -44,15 +44,29 @@
         // --- Like DB Init ---
         const initLikeDB = () => {
           return new Promise((resolve, reject) => {
-            const request = indexedDB.open('atoll-user-preferences', 1)
-            request.onupgradeneeded = (e) => {
+            // Step 1: Open current version to check if 'likes' exists
+            const checkReq = indexedDB.open('atoll-user-preferences')
+            checkReq.onerror = (e) => reject(e.target.error)
+            checkReq.onsuccess = (e) => {
               const db = e.target.result
-              if (!db.objectStoreNames.contains('likes')) {
-                db.createObjectStore('likes', { keyPath: 'id' })
+              if (db.objectStoreNames.contains('likes')) {
+                resolve(db)
+              } else {
+                // Step 2: Store doesn't exist, we need an upgrade
+                const nextVersion = db.version + 1
+                db.close()
+                
+                const upgradeReq = indexedDB.open('atoll-user-preferences', nextVersion)
+                upgradeReq.onupgradeneeded = (e) => {
+                  const upgradeDb = e.target.result
+                  if (!upgradeDb.objectStoreNames.contains('likes')) {
+                    upgradeDb.createObjectStore('likes', { keyPath: 'id' })
+                  }
+                }
+                upgradeReq.onsuccess = (e) => resolve(e.target.result)
+                upgradeReq.onerror = (e) => reject(e.target.error)
               }
             }
-            request.onsuccess = (e) => resolve(e.target.result)
-            request.onerror = (e) => reject(e.target.error)
           })
         }
 
