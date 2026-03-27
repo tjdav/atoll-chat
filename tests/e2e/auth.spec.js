@@ -76,8 +76,11 @@ test.describe('Authentication flows', () => {
 
             const getReq = store.get('atoll_session')
             getReq.onsuccess = () => {
-              if (getReq.result) resolve()
-              else setTimeout(checkDB, 50)
+              if (getReq.result) {
+                resolve()
+              } else {
+                setTimeout(checkDB, 50)
+              }
             }
             getReq.onerror = () => setTimeout(checkDB, 50)
           }

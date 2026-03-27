@@ -12,48 +12,54 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        on,
+        emit,
+        events
+      } = helpers
+      const queueButton = references('queueBtn')
+      const volumeButton = references('volumeBtn')
+      const volumeIcon = references('volumeIcon')
+      const volumeSlider = references('volumeSlider')
 
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, on, emit, events } = helpers
-        
-        const queueBtn = refs('queueBtn')
-        const volumeBtn = refs('volumeBtn')
-        const volumeIcon = refs('volumeIcon')
-        const volumeSlider = refs('volumeSlider')
-
-        // Parent informs us of volume change
-        on(events('player:volume-update'), ({ volume, isMuted }) => {
-          if (!isMuted) {
-            volumeSlider.value = volume * 100
-          } else {
-            volumeSlider.value = 0
-          }
-
-          volumeIcon.classList.remove('bi-volume-up', 'bi-volume-down', 'bi-volume-mute', 'bi-volume-off')
-          if (volume === 0 || isMuted) {
-            volumeIcon.classList.add('bi-volume-mute')
-          } else if (volume < 0.5) {
-            volumeIcon.classList.add('bi-volume-down')
-          } else {
-            volumeIcon.classList.add('bi-volume-up')
-          }
+      // Parent informs us of volume change
+      on(events('player:volume-update'), ({
+        volume,
+        isMuted
+      }) => {
+        if (!isMuted) {
+          volumeSlider.value = volume * 100
+        } else {
+          volumeSlider.value = 0
+        }
+        volumeIcon.classList.remove('bi-volume-up', 'bi-volume-down', 'bi-volume-mute', 'bi-volume-off')
+        if (volume === 0 || isMuted) {
+          volumeIcon.classList.add('bi-volume-mute')
+        } else if (volume < 0.5) {
+          volumeIcon.classList.add('bi-volume-down')
+        } else {
+          volumeIcon.classList.add('bi-volume-up')
+        }
+      })
+      queueButton.addEventListener('click', () => {
+        emit(events('player:toggle-queue'))
+      })
+      volumeButton.addEventListener('click', () => {
+        emit(events('player:toggle-mute'))
+      })
+      volumeSlider.addEventListener('input', () => {
+        emit(events('player:set-volume'), {
+          volume: volumeSlider.value / 100
         })
-
-        queueBtn.addEventListener('click', () => {
-          emit(events('player:toggle-queue'))
-        })
-
-        volumeBtn.addEventListener('click', () => {
-          emit(events('player:toggle-mute'))
-        })
-
-        volumeSlider.addEventListener('input', () => {
-          emit(events('player:set-volume'), { volume: volumeSlider.value / 100 })
-        })
-      }
+      })
     }
-  })
+  }
+})
 </script>

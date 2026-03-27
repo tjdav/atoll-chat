@@ -18,73 +18,84 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        on,
+        emit,
+        events
+      } = helpers
+      const playerTitle = references('playerTitle')
+      const playerArtist = references('playerArtist')
+      const likeButton = references('likeBtn')
+      const likeIcon = references('likeIcon')
+      const playerJumpBtn = references('playerJumpBtn')
+      let currentFile = null
 
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, on, emit, events } = helpers
-        
-        const playerTitle = refs('playerTitle')
-        const playerArtist = refs('playerArtist')
-        const likeBtn = refs('likeBtn')
-        const likeIcon = refs('likeIcon')
-        const playerJumpBtn = refs('playerJumpBtn')
-
-        let currentFile = null
-
-        // Listen for track updates
-        on(events('player:track-update'), ({ file, isLiked }) => {
-          currentFile = file
-          if (file) {
-            playerTitle.textContent = file.filename || 'Unknown File'
-            playerArtist.textContent = file.artist || 'Unknown Artist'
-
-            if (file.roomId && file.id) {
-              playerJumpBtn.classList.remove('d-transition-none');
-          playerJumpBtn.classList.add('d-transition-show')
-            } else {
-              playerJumpBtn.classList.remove('d-transition-show');
-          playerJumpBtn.classList.add('d-transition-none')
-            }
-
-            if (isLiked) {
-              likeIcon.className = 'bi bi-heart-fill text-danger'
-            } else {
-              likeIcon.className = 'bi bi-heart text-white'
-            }
+      // Listen for track updates
+      on(events('player:track-update'), ({
+        file,
+        isLiked
+      }) => {
+        currentFile = file
+        if (file) {
+          playerTitle.textContent = file.filename || 'Unknown File'
+          playerArtist.textContent = file.artist || 'Unknown Artist'
+          if (file.roomId && file.id) {
+            playerJumpBtn.classList.remove('d-transition-none')
+            playerJumpBtn.classList.add('d-transition-show')
           } else {
-            playerTitle.textContent = 'Select a track'
-            playerArtist.textContent = 'Unknown Artist'
-            playerJumpBtn.classList.remove('d-transition-show');
-          playerJumpBtn.classList.add('d-transition-none')
+            playerJumpBtn.classList.remove('d-transition-show')
+            playerJumpBtn.classList.add('d-transition-none')
+          }
+          if (isLiked) {
+            likeIcon.className = 'bi bi-heart-fill text-danger'
+          } else {
             likeIcon.className = 'bi bi-heart text-white'
           }
-        })
+        } else {
+          playerTitle.textContent = 'Select a track'
+          playerArtist.textContent = 'Unknown Artist'
+          playerJumpBtn.classList.remove('d-transition-show')
+          playerJumpBtn.classList.add('d-transition-none')
+          likeIcon.className = 'bi bi-heart text-white'
+        }
+      })
 
-        // Listen for like status updates separately (e.g. user clicks like)
-        on(events('player:like-update'), ({ fileId, isLiked }) => {
-          if (currentFile && currentFile.id === fileId) {
-            if (isLiked) {
-              likeIcon.className = 'bi bi-heart-fill text-danger'
-            } else {
-              likeIcon.className = 'bi bi-heart text-white'
-            }
+      // Listen for like status updates separately (e.g. user clicks like)
+      on(events('player:like-update'), ({
+        fileId,
+        isLiked
+      }) => {
+        if (currentFile && currentFile.id === fileId) {
+          if (isLiked) {
+            likeIcon.className = 'bi bi-heart-fill text-danger'
+          } else {
+            likeIcon.className = 'bi bi-heart text-white'
           }
-        })
-
-        likeBtn.addEventListener('click', () => {
-          if (currentFile) {
-            emit(events('player:toggle-like'), { file: currentFile })
-          }
-        })
-
-        playerJumpBtn.addEventListener('click', () => {
-          if (currentFile && currentFile.roomId && currentFile.id) {
-            emit(events('nav:jump-to-message'), { roomId: currentFile.roomId, eventId: currentFile.id })
-          }
-        })
-      }
+        }
+      })
+      likeButton.addEventListener('click', () => {
+        if (currentFile) {
+          emit(events('player:toggle-like'), {
+            file: currentFile
+          })
+        }
+      })
+      playerJumpBtn.addEventListener('click', () => {
+        if (currentFile && currentFile.roomId && currentFile.id) {
+          emit(events('nav:jump-to-message'), {
+            roomId: currentFile.roomId,
+            eventId: currentFile.id
+          })
+        }
+      })
     }
-  })
+  }
+})
 </script>

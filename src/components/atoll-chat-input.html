@@ -33,253 +33,242 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        emit,
+        on,
+        events
+      } = helpers
+      const messageInput = references('messageInput')
+      const sendButton = references('sendBtn')
+      const attachButton = references('attachBtn')
+      const fileInput = references('fileInput')
+      const micButton = references('micBtn')
+      const textInputGroup = references('textInputGroup')
+      const voiceInputGroup = references('voiceInputGroup')
+      const cancelVoiceBtn = references('cancelVoiceBtn')
+      const actionVoiceButton = references('actionVoiceBtn')
+      const actionVoiceIcon = references('actionVoiceIcon')
+      const voiceDurationDisplay = references('voiceDurationDisplay')
+      const sendVoiceBtn = references('sendVoiceBtn')
+      const updateInputButtons = () => {
+        const text = messageInput.value.trim()
+        if (text) {
+          micButton.classList.remove('d-transition-show')
+          micButton.classList.add('d-transition-none')
+          sendButton.classList.remove('d-transition-none')
+          sendButton.classList.add('d-transition-show')
+        } else {
+          micButton.classList.remove('d-transition-none')
+          micButton.classList.add('d-transition-show')
+          sendButton.classList.remove('d-transition-show')
+          sendButton.classList.add('d-transition-none')
+        }
+      }
+      messageInput.addEventListener('input', updateInputButtons)
+      let mediaRecorder = null
+      let audioChunks = []
+      let audioBlob = null
+      let audioUrl = null
+      let timerInterval = null
+      let durationSeconds = 0
+      let isRecording = false
+      let isPaused = false
+      let playbackAudio = null
+      let isPlaying = false
+      const formatDuration = seconds => {
+        const m = Math.floor(seconds / 60)
+        const s = Math.floor(seconds % 60)
+        return `${m}:${s.toString().padStart(2, '0')}`
+      }
+      const resetVoiceUI = () => {
+        clearInterval(timerInterval)
+        durationSeconds = 0
+        voiceDurationDisplay.textContent = '0:00'
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop()
+        }
+        if (mediaRecorder && mediaRecorder.stream) {
+          mediaRecorder.stream.getTracks().forEach(t => t.stop())
+        }
+        if (playbackAudio) {
+          playbackAudio.pause()
+          playbackAudio = null
+        }
+        if (audioUrl) {
+          URL.revokeObjectURL(audioUrl)
+          audioUrl = null
+        }
+        mediaRecorder = null
+        audioChunks = []
+        audioBlob = null
+        isRecording = false
+        isPaused = false
+        isPlaying = false
+        actionVoiceIcon.className = 'bi bi-stop-fill'
+        sendVoiceBtn.classList.remove('d-transition-show')
+        sendVoiceBtn.classList.add('d-transition-none')
+        voiceInputGroup.classList.remove('d-transition-show')
+        voiceInputGroup.classList.add('d-transition-none')
+        voiceInputGroup.classList.remove('d-flex')
+        textInputGroup.classList.remove('d-transition-none')
+        textInputGroup.classList.add('d-transition-show')
+        textInputGroup.classList.add('d-flex')
+      }
+      const startRecording = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({
+            audio: true
+          })
 
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, emit, on, events } = helpers
-        const messageInput = refs('messageInput')
-        const sendBtn = refs('sendBtn')
-        const attachBtn = refs('attachBtn')
-        const fileInput = refs('fileInput')
-        const micBtn = refs('micBtn')
-        const textInputGroup = refs('textInputGroup')
-        const voiceInputGroup = refs('voiceInputGroup')
-        const cancelVoiceBtn = refs('cancelVoiceBtn')
-        const actionVoiceBtn = refs('actionVoiceBtn')
-        const actionVoiceIcon = refs('actionVoiceIcon')
-        const voiceDurationDisplay = refs('voiceDurationDisplay')
-        const sendVoiceBtn = refs('sendVoiceBtn')
-
-        const updateInputButtons = () => {
-          const text = messageInput.value.trim()
-          if (text) {
-            micBtn.classList.remove('d-transition-show');
-          micBtn.classList.add('d-transition-none')
-            sendBtn.classList.remove('d-transition-none');
-          sendBtn.classList.add('d-transition-show')
-          } else {
-            micBtn.classList.remove('d-transition-none');
-          micBtn.classList.add('d-transition-show')
-            sendBtn.classList.remove('d-transition-show');
-          sendBtn.classList.add('d-transition-none')
+          // Switch UI
+          textInputGroup.classList.remove('d-transition-show')
+          textInputGroup.classList.add('d-transition-none')
+          textInputGroup.classList.remove('d-flex')
+          voiceInputGroup.classList.remove('d-transition-none')
+          voiceInputGroup.classList.add('d-transition-show')
+          voiceInputGroup.classList.add('d-flex')
+          actionVoiceIcon.className = 'bi bi-stop-fill'
+          sendVoiceBtn.classList.remove('d-transition-show')
+          sendVoiceBtn.classList.add('d-transition-none')
+          audioChunks = []
+          mediaRecorder = new MediaRecorder(stream)
+          mediaRecorder.ondataavailable = event => {
+            if (event.data.size > 0) {
+              audioChunks.push(event.data)
+            }
           }
-        }
+          mediaRecorder.onstop = () => {
+            audioBlob = new Blob(audioChunks, {
+              type: 'audio/webm'
+            })
+            audioUrl = URL.createObjectURL(audioBlob)
 
-        messageInput.addEventListener('input', updateInputButtons)
-
-        let mediaRecorder = null
-        let audioChunks = []
-        let audioBlob = null
-        let audioUrl = null
-        let timerInterval = null
-        let durationSeconds = 0
-        let isRecording = false
-        let isPaused = false
-        let playbackAudio = null
-        let isPlaying = false
-
-        const formatDuration = (seconds) => {
-          const m = Math.floor(seconds / 60)
-          const s = Math.floor(seconds % 60)
-          return `${m}:${s.toString().padStart(2, '0')}`
-        }
-
-        const resetVoiceUI = () => {
-          clearInterval(timerInterval)
+            // Switch to Review State
+            actionVoiceIcon.className = 'bi bi-play-fill'
+            sendVoiceBtn.classList.remove('d-transition-none')
+            sendVoiceBtn.classList.add('d-transition-show')
+            isRecording = false
+            isPaused = true
+            clearInterval(timerInterval)
+          }
+          mediaRecorder.start()
+          isRecording = true
+          isPaused = false
           durationSeconds = 0
           voiceDurationDisplay.textContent = '0:00'
-          
-          if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-            mediaRecorder.stop()
-          }
-          if (mediaRecorder && mediaRecorder.stream) {
-            mediaRecorder.stream.getTracks().forEach(t => t.stop())
-          }
-          if (playbackAudio) {
-            playbackAudio.pause()
-            playbackAudio = null
-          }
-          if (audioUrl) {
-            URL.revokeObjectURL(audioUrl)
-            audioUrl = null
-          }
-          
-          mediaRecorder = null
-          audioChunks = []
-          audioBlob = null
-          isRecording = false
-          isPaused = false
-          isPlaying = false
-          
-          actionVoiceIcon.className = 'bi bi-stop-fill'
-          sendVoiceBtn.classList.remove('d-transition-show');
-          sendVoiceBtn.classList.add('d-transition-none')
-          
-          voiceInputGroup.classList.remove('d-transition-show');
-          voiceInputGroup.classList.add('d-transition-none')
-          voiceInputGroup.classList.remove('d-flex')
-          textInputGroup.classList.remove('d-transition-none');
-          textInputGroup.classList.add('d-transition-show')
-          textInputGroup.classList.add('d-flex')
+          timerInterval = setInterval(() => {
+            durationSeconds++
+            voiceDurationDisplay.textContent = formatDuration(durationSeconds)
+          }, 1000)
+        } catch (error) {
+          console.error('Error accessing microphone', error)
+          alert('Microphone access denied or not found.')
+          resetVoiceUI()
         }
-
-        const startRecording = async () => {
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-            
-            // Switch UI
-            textInputGroup.classList.remove('d-transition-show');
-          textInputGroup.classList.add('d-transition-none')
-            textInputGroup.classList.remove('d-flex')
-            voiceInputGroup.classList.remove('d-transition-none');
-          voiceInputGroup.classList.add('d-transition-show')
-            voiceInputGroup.classList.add('d-flex')
-            
-            actionVoiceIcon.className = 'bi bi-stop-fill'
-            sendVoiceBtn.classList.remove('d-transition-show');
-          sendVoiceBtn.classList.add('d-transition-none')
-            
-            audioChunks = []
-            mediaRecorder = new MediaRecorder(stream)
-            
-            mediaRecorder.ondataavailable = (e) => {
-              if (e.data.size > 0) {
-                audioChunks.push(e.data)
-              }
-            }
-            
-            mediaRecorder.onstop = () => {
-              audioBlob = new Blob(audioChunks, { type: 'audio/webm' })
-              audioUrl = URL.createObjectURL(audioBlob)
-              
-              // Switch to Review State
-              actionVoiceIcon.className = 'bi bi-play-fill'
-              sendVoiceBtn.classList.remove('d-transition-none');
-          sendVoiceBtn.classList.add('d-transition-show')
-              isRecording = false
-              isPaused = true
-              clearInterval(timerInterval)
-            }
-            
-            mediaRecorder.start()
-            isRecording = true
-            isPaused = false
-            durationSeconds = 0
-            voiceDurationDisplay.textContent = '0:00'
-            
-            timerInterval = setInterval(() => {
-              durationSeconds++
-              voiceDurationDisplay.textContent = formatDuration(durationSeconds)
-            }, 1000)
-            
-          } catch (err) {
-            console.error('Error accessing microphone', err)
-            alert('Microphone access denied or not found.')
-            resetVoiceUI()
-          }
-        }
-
-        const toggleVoiceAction = () => {
-          if (isRecording) {
-            // Stop recording
-            mediaRecorder.stop()
-            mediaRecorder.stream.getTracks().forEach(t => t.stop())
-          } else if (isPaused) {
-            // Toggle playback
-            if (isPlaying) {
-              playbackAudio.pause()
-              actionVoiceIcon.className = 'bi bi-play-fill'
-              isPlaying = false
-            } else {
-              if (!playbackAudio) {
-                playbackAudio = new Audio(audioUrl)
-                playbackAudio.onended = () => {
-                  actionVoiceIcon.className = 'bi bi-play-fill'
-                  isPlaying = false
-                }
-              }
-              playbackAudio.play()
-              actionVoiceIcon.className = 'bi bi-pause-fill'
-              isPlaying = true
-            }
-          }
-        }
-
-        micBtn.addEventListener('click', startRecording)
-        cancelVoiceBtn.addEventListener('click', resetVoiceUI)
-        actionVoiceBtn.addEventListener('click', toggleVoiceAction)
-
-        sendVoiceBtn.addEventListener('click', () => {
-          if (audioBlob) {
-            const fileName = `voice-message-${Date.now()}.webm`
-            const file = new File([audioBlob], fileName, { type: 'audio/webm' })
-            
-            emit(events('chat:file-selected'), { file })
-            
-            // Disable voice UI briefly before reset
-            sendVoiceBtn.disabled = true
-            cancelVoiceBtn.disabled = true
-            actionVoiceBtn.disabled = true
-          }
-        })
-
-        const submitMessage = () => {
-          const text = messageInput.value.trim()
-          if (text) {
-            emit(events('chat:message-submitted'), { text })
-          }
-        }
-
-        sendBtn.addEventListener('click', submitMessage)
-
-        attachBtn.addEventListener('click', () => {
-          fileInput.click()
-        })
-
-        fileInput.addEventListener('change', (e) => {
-          const file = e.target.files[0]
-          if (file) {
-            emit(events('chat:file-selected'), { file })
-            
-            // Disable input while processing
-            messageInput.disabled = true
-            sendBtn.disabled = true
-            attachBtn.disabled = true
-            
-            // Reset the file input so the same file can be selected again
-            fileInput.value = ''
-          }
-        })
-
-        messageInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') {
-            submitMessage()
-          }
-        })
-
-        on(events('chat:message-sent'), () => {
-          messageInput.value = ''
-          updateInputButtons()
-          messageInput.focus()
-        })
-
-        on(events('chat:file-processing-done'), () => {
-          messageInput.disabled = false
-          sendBtn.disabled = false
-          attachBtn.disabled = false
-          sendVoiceBtn.disabled = false
-          cancelVoiceBtn.disabled = false
-          actionVoiceBtn.disabled = false
-          
-          if (voiceInputGroup.classList.contains('d-flex')) {
-            resetVoiceUI()
-          } else {
-            messageInput.focus()
-          }
-        })
       }
+      const toggleVoiceAction = () => {
+        if (isRecording) {
+          // Stop recording
+          mediaRecorder.stop()
+          mediaRecorder.stream.getTracks().forEach(t => t.stop())
+        } else if (isPaused) {
+          // Toggle playback
+          if (isPlaying) {
+            playbackAudio.pause()
+            actionVoiceIcon.className = 'bi bi-play-fill'
+            isPlaying = false
+          } else {
+            if (!playbackAudio) {
+              playbackAudio = new Audio(audioUrl)
+              playbackAudio.onended = () => {
+                actionVoiceIcon.className = 'bi bi-play-fill'
+                isPlaying = false
+              }
+            }
+            playbackAudio.play()
+            actionVoiceIcon.className = 'bi bi-pause-fill'
+            isPlaying = true
+          }
+        }
+      }
+      micButton.addEventListener('click', startRecording)
+      cancelVoiceBtn.addEventListener('click', resetVoiceUI)
+      actionVoiceButton.addEventListener('click', toggleVoiceAction)
+      sendVoiceBtn.addEventListener('click', () => {
+        if (audioBlob) {
+          const fileName = `voice-message-${Date.now()}.webm`
+          const file = new File([audioBlob], fileName, {
+            type: 'audio/webm'
+          })
+          emit(events('chat:file-selected'), {
+            file
+          })
+
+          // Disable voice UI briefly before reset
+          sendVoiceBtn.disabled = true
+          cancelVoiceBtn.disabled = true
+          actionVoiceButton.disabled = true
+        }
+      })
+      const submitMessage = () => {
+        const text = messageInput.value.trim()
+        if (text) {
+          emit(events('chat:message-submitted'), {
+            text
+          })
+        }
+      }
+      sendButton.addEventListener('click', submitMessage)
+      attachButton.addEventListener('click', () => {
+        fileInput.click()
+      })
+      fileInput.addEventListener('change', event => {
+        const file = event.target.files[0]
+        if (file) {
+          emit(events('chat:file-selected'), {
+            file
+          })
+
+          // Disable input while processing
+          messageInput.disabled = true
+          sendButton.disabled = true
+          attachButton.disabled = true
+
+          // Reset the file input so the same file can be selected again
+          fileInput.value = ''
+        }
+      })
+      messageInput.addEventListener('keypress', event => {
+        if (event.key === 'Enter') {
+          submitMessage()
+        }
+      })
+      on(events('chat:message-sent'), () => {
+        messageInput.value = ''
+        updateInputButtons()
+        messageInput.focus()
+      })
+      on(events('chat:file-processing-done'), () => {
+        messageInput.disabled = false
+        sendButton.disabled = false
+        attachButton.disabled = false
+        sendVoiceBtn.disabled = false
+        cancelVoiceBtn.disabled = false
+        actionVoiceButton.disabled = false
+        if (voiceInputGroup.classList.contains('d-flex')) {
+          resetVoiceUI()
+        } else {
+          messageInput.focus()
+        }
+      })
     }
-  })
+  }
+})
 </script>

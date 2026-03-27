@@ -27,63 +27,62 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, login, sync, emit, events } = helpers
-        const form = refs('form')
-        const homeserverInput = refs('homeserver')
-        const usernameInput = refs('username')
-        const passwordInput = refs('password')
-        const errorAlert = refs('errorAlert')
-        const submitButton = refs('submitButton')
-        const signupLink = refs('signupLink')
-
-        homeserverInput.value = (helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl()) || 'https://matrix.org'
-
-        signupLink.addEventListener('click', (e) => {
-          e.preventDefault()
-          emit(events('auth:show-signup'))
-        })
-
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault()
-
-          const baseUrl = homeserverInput.value
-          const username = usernameInput.value
-          const password = passwordInput.value
-
-          errorAlert.classList.remove('d-transition-show');
-          errorAlert.classList.add('d-transition-none')
-          submitButton.disabled = true
-          submitButton.textContent = 'Logging in...'
-
-          try {
-            await login({
-              baseUrl: baseUrl,
-              type: 'm.login.password',
-              identifier: {
-                type: 'm.id.user',
-                user: username
-              },
-              password: password
-            })
-
-            submitButton.textContent = 'Syncing...'
-            await sync()
-
-            emit(events('app:logged-in'))
-          } catch (error) {
-            errorAlert.textContent = 'Login failed. Please check your credentials.'
-            errorAlert.classList.remove('d-transition-none');
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        login,
+        sync,
+        emit,
+        events
+      } = helpers
+      const form = references('form')
+      const homeserverInput = references('homeserver')
+      const usernameInput = references('username')
+      const passwordInput = references('password')
+      const errorAlert = references('errorAlert')
+      const submitButton = references('submitButton')
+      const signupLink = references('signupLink')
+      homeserverInput.value = helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl() || 'https://matrix.org'
+      signupLink.addEventListener('click', event => {
+        event.preventDefault()
+        emit(events('auth:show-signup'))
+      })
+      form.addEventListener('submit', async event => {
+        event.preventDefault()
+        const baseUrl = homeserverInput.value
+        const username = usernameInput.value
+        const password = passwordInput.value
+        errorAlert.classList.remove('d-transition-show')
+        errorAlert.classList.add('d-transition-none')
+        submitButton.disabled = true
+        submitButton.textContent = 'Logging in...'
+        try {
+          await login({
+            baseUrl: baseUrl,
+            type: 'm.login.password',
+            identifier: {
+              type: 'm.id.user',
+              user: username
+            },
+            password: password
+          })
+          submitButton.textContent = 'Syncing...'
+          await sync()
+          emit(events('app:logged-in'))
+        } catch (error) {
+          errorAlert.textContent = 'Login failed. Please check your credentials.'
+          errorAlert.classList.remove('d-transition-none')
           errorAlert.classList.add('d-transition-show')
-            submitButton.disabled = false
-            submitButton.textContent = 'Login'
-          }
-        })
-      }
+          submitButton.disabled = false
+          submitButton.textContent = 'Login'
+        }
+      })
     }
-  })
+  }
+})
 </script>

@@ -1,17 +1,29 @@
 import { createPlugin } from 'coralite'
-
 export default createPlugin({
   name: 'event-bus-plugin',
   client: {
-    imports: [
-      {
-        specifier: 'valibot',
-        namedExports: ['strictObject', 'optional', 'pipe', 'string', 'minLength', 'boolean', 'fallback', 'instance', 'picklist', 'any', 'number', 'array', 'safeParse']
-      }
-    ],
+    imports: [{
+      specifier: 'valibot',
+      namedExports: ['strictObject', 'optional', 'pipe', 'string', 'minLength', 'boolean', 'fallback', 'instance', 'picklist', 'any', 'number', 'array', 'safeParse']
+    }],
     setup (context) {
-      const { strictObject, optional, pipe, string, minLength, boolean, fallback, instance, picklist, any, number, array, safeParse } = context.imports
+      const {
+        strictObject,
+        optional,
+        pipe,
+        string,
+        minLength,
+        boolean,
+        fallback,
+        instance,
+        picklist,
+        any,
+        number,
+        array,
+        safeParse
+      } = context.imports
       // Define the secure events and their schemas privately inside the module
+
       const ChatEvents = {
         'app:logged-in': {
           id: Symbol('app:logged-in'),
@@ -141,15 +153,21 @@ export default createPlugin({
         },
         'player:play-state-change': {
           id: Symbol('player:play-state-change'),
-          schema: strictObject({ isPlaying: boolean() })
+          schema: strictObject({
+            isPlaying: boolean()
+          })
         },
         'player:shuffle-change': {
           id: Symbol('player:shuffle-change'),
-          schema: strictObject({ isShuffle: boolean() })
+          schema: strictObject({
+            isShuffle: boolean()
+          })
         },
         'player:repeat-change': {
           id: Symbol('player:repeat-change'),
-          schema: strictObject({ repeatMode: string() })
+          schema: strictObject({
+            repeatMode: string()
+          })
         },
         'player:toggle-play': {
           id: Symbol('player:toggle-play'),
@@ -173,11 +191,15 @@ export default createPlugin({
         },
         'player:seek': {
           id: Symbol('player:seek'),
-          schema: strictObject({ time: number() })
+          schema: strictObject({
+            time: number()
+          })
         },
         'player:set-volume': {
           id: Symbol('player:set-volume'),
-          schema: strictObject({ volume: number() })
+          schema: strictObject({
+            volume: number()
+          })
         },
         'player:toggle-mute': {
           id: Symbol('player:toggle-mute'),
@@ -200,7 +222,9 @@ export default createPlugin({
         },
         'player:toggle-like': {
           id: Symbol('player:toggle-like'),
-          schema: strictObject({ file: any() })
+          schema: strictObject({
+            file: any()
+          })
         },
         'player:track-update': {
           id: Symbol('player:track-update'),
@@ -225,15 +249,21 @@ export default createPlugin({
         },
         'player:queue-visibility': {
           id: Symbol('player:queue-visibility'),
-          schema: strictObject({ isVisible: boolean() })
+          schema: strictObject({
+            isVisible: boolean()
+          })
         },
         'player:time-update': {
           id: Symbol('player:time-update'),
-          schema: strictObject({ currentTime: number() })
+          schema: strictObject({
+            currentTime: number()
+          })
         },
         'player:duration-change': {
           id: Symbol('player:duration-change'),
-          schema: strictObject({ duration: number() })
+          schema: strictObject({
+            duration: number()
+          })
         },
         'player:volume-update': {
           id: Symbol('player:volume-update'),
@@ -266,55 +296,58 @@ export default createPlugin({
       }
 
       // The Broker Constructor
+
       function SymbolicEventBroker () {
         this.listeners = new Map()
       }
-
       SymbolicEventBroker.prototype.on = function (eventDef, callback) {
-        const sym = eventDef?.id
-        if (typeof sym !== 'symbol') throw new Error('Security Error: Invalid event.')
-
-        if (!this.listeners.has(sym)) {
-          this.listeners.set(sym, new Set())
+        const symbol = eventDef?.id
+        if (typeof symbol !== 'symbol') {
+          throw new Error('Security Error: Invalid event.')
         }
-
-        this.listeners.get(sym).add(callback)
+        if (!this.listeners.has(symbol)) {
+          this.listeners.set(symbol, new Set())
+        }
+        this.listeners.get(symbol).add(callback)
         return () => {
-          const callbacks = this.listeners.get(sym)
-          if (callbacks) callbacks.delete(callback)
+          const callbacks = this.listeners.get(symbol)
+          if (callbacks) {
+            callbacks.delete(callback)
+          }
         }
       }
-
       SymbolicEventBroker.prototype.emit = function (eventDef, detail) {
-        const sym = eventDef?.id
-        if (typeof sym !== 'symbol') throw new Error('Security Error: Invalid event.')
-        if (!eventDef.schema) throw new Error('Security Error: Missing Valibot schema.')
+        const symbol = eventDef?.id
+        if (typeof symbol !== 'symbol') {
+          throw new Error('Security Error: Invalid event.')
+        }
+        if (!eventDef.schema) {
+          throw new Error('Security Error: Missing Valibot schema.')
+        }
 
         // Validation Gate
+
         const validation = safeParse(eventDef.schema, detail)
         if (!validation.success) {
           console.warn('[Security] Dropped malformed payload.', validation.issues)
           return
         }
-
-        const callbacks = this.listeners.get(sym)
+        const callbacks = this.listeners.get(symbol)
         if (callbacks) {
-          callbacks.forEach(cb => cb(validation.output))
+          callbacks.forEach(callback => callback(validation.output))
         }
       }
-
       return {
         ChatEvents,
         globalBroker: new SymbolicEventBroker()
       }
     },
     helpers: {
-      events: (globalContext) => (localContext) => (id) => localContext.values.ChatEvents[id],
-
-      emit: (globalContext) => (localContext) => (eventDef, detail) => {
+      events: globalContext => localContext => id => localContext.values.ChatEvents[id],
+      emit: globalContext => localContext => (eventDef, detail) => {
         localContext.values.globalBroker.emit(eventDef, detail)
       },
-      on: (globalContext) => (localContext) => (eventDef, callback) => {
+      on: globalContext => localContext => (eventDef, callback) => {
         return localContext.values.globalBroker.on(eventDef, callback)
       }
     }

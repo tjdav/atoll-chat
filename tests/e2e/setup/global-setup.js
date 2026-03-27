@@ -3,6 +3,9 @@ import { promisify } from 'util'
 
 const execAsync = promisify(exec)
 
+/**
+ *
+ */
 async function globalSetup () {
   console.log('Starting Continuwuity local server via Docker Compose...')
   try {

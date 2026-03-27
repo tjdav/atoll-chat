@@ -34,6 +34,8 @@
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^10.0.2",
+    "eslint-plugin-html": "^8.1.4",
+    "eslint-plugin-jsdoc": "^62.8.1",
     "sirv-cli": "^3.0.1"
   },
   "dependencies": {

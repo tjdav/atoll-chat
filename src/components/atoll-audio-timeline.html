@@ -8,60 +8,66 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, on, emit, events } = helpers
-        
-        const currentTimeDisplay = refs('currentTimeDisplay')
-        const seekSlider = refs('seekSlider')
-        const durationDisplay = refs('durationDisplay')
-
-        let isSeeking = false
-
-        const formatTime = (seconds) => {
-          if (isNaN(seconds) || seconds < 0) return '0:00'
-          const m = Math.floor(seconds / 60)
-          const s = Math.floor(seconds % 60)
-          return `${m}:${s.toString().padStart(2, '0')}`
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        on,
+        emit,
+        events
+      } = helpers
+      const currentTimeDisplay = references('currentTimeDisplay')
+      const seekSlider = references('seekSlider')
+      const durationDisplay = references('durationDisplay')
+      let isSeeking = false
+      const formatTime = seconds => {
+        if (isNaN(seconds) || seconds < 0) {
+          return '0:00'
         }
-
-        // Listen for time updates from the parent audio player
-        on(events('player:time-update'), ({ currentTime }) => {
-          if (!isSeeking) {
-            seekSlider.value = currentTime
-            currentTimeDisplay.textContent = formatTime(currentTime)
-          }
-        })
-
-        on(events('player:duration-change'), ({ duration }) => {
-          seekSlider.max = duration
-          durationDisplay.textContent = formatTime(duration)
-        })
-
-        // Handle seeking
-        seekSlider.addEventListener('mousedown', () => {
-          isSeeking = true
-        })
-
-        seekSlider.addEventListener('touchstart', () => {
-          isSeeking = true
-        })
-
-        seekSlider.addEventListener('input', () => {
-          currentTimeDisplay.textContent = formatTime(seekSlider.value)
-        })
-
-        const finishSeek = () => {
-          isSeeking = false
-          emit(events('player:seek'), { time: parseFloat(seekSlider.value) })
-        }
-
-        seekSlider.addEventListener('mouseup', finishSeek)
-        seekSlider.addEventListener('touchend', finishSeek)
+        const m = Math.floor(seconds / 60)
+        const s = Math.floor(seconds % 60)
+        return `${m}:${s.toString().padStart(2, '0')}`
       }
+
+      // Listen for time updates from the parent audio player
+      on(events('player:time-update'), ({
+        currentTime
+      }) => {
+        if (!isSeeking) {
+          seekSlider.value = currentTime
+          currentTimeDisplay.textContent = formatTime(currentTime)
+        }
+      })
+      on(events('player:duration-change'), ({
+        duration
+      }) => {
+        seekSlider.max = duration
+        durationDisplay.textContent = formatTime(duration)
+      })
+
+      // Handle seeking
+      seekSlider.addEventListener('mousedown', () => {
+        isSeeking = true
+      })
+      seekSlider.addEventListener('touchstart', () => {
+        isSeeking = true
+      })
+      seekSlider.addEventListener('input', () => {
+        currentTimeDisplay.textContent = formatTime(seekSlider.value)
+      })
+      const finishSeek = () => {
+        isSeeking = false
+        emit(events('player:seek'), {
+          time: parseFloat(seekSlider.value)
+        })
+      }
+      seekSlider.addEventListener('mouseup', finishSeek)
+      seekSlider.addEventListener('touchend', finishSeek)
     }
-  })
+  }
+})
 </script>

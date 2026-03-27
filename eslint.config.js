@@ -1,11 +1,99 @@
 import stylisticJs from '@stylistic/eslint-plugin'
+import jsdoc from 'eslint-plugin-jsdoc'
+import html from 'eslint-plugin-html'
 
 export default [
   {
+    files: ['**/*.html', '**/*.js'],
     plugins: {
-      '@stylistic/js': stylisticJs
+      '@stylistic/js': stylisticJs,
+      jsdoc,
+      html
+    },
+    settings: {
+      jsdoc: {
+        exemptDestructuredRootsFromChecks: true
+      }
     },
     rules: {
+      'id-denylist': [
+        'error',
+        'attr',
+        'err',
+        'e',
+        'cb',
+        'req',
+        'res',
+        'idx',
+        'ndx',
+        'val',
+        'obj',
+        'arr'
+      ],
+      'no-inline-comments': 'error',
+      curly: ['error', 'all'],
+      'no-nested-ternary': 'error',
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: 'ChainExpression MemberExpression[optional=true] > MemberExpression[optional=true] > MemberExpression[optional=true]',
+          message: 'Avoid deep optional chaining. Validate data existence earlier using standard if statements.'
+        }
+      ],
+      'jsdoc/require-jsdoc': [
+        'error',
+        {
+          publicOnly: true,
+          require: {
+            FunctionDeclaration: true,
+            MethodDefinition: true,
+            ClassDeclaration: true,
+            ArrowFunctionExpression: true,
+            FunctionExpression: true
+          }
+        }
+      ],
+      'jsdoc/check-tag-names': [
+        'warn',
+        {
+          definedTags: [
+            'note',
+            'overload',
+            'query-parameters',
+            'returns-error',
+            'returns-response',
+            'returns-success',
+            'supported-operators',
+            'supported-values'
+          ]
+        }
+      ],
+      'jsdoc/require-param-description': 'error',
+      'jsdoc/require-param-type': 'error',
+      'jsdoc/check-syntax': 'error',
+      'jsdoc/no-undefined-types': [
+        'error',
+        {
+          definedTypes: [
+            'Buffer',
+            'DOMHighResTimeStamp',
+            'Element',
+            'File',
+            'FormData',
+            'HTMLCollection',
+            'HTMLElement',
+            'HTMLFormControlsCollection',
+            'Node',
+            'NodeJS',
+            'TestContext',
+            'validateSchemaArray',
+            'validateSchemaArrayOption',
+            'validateSchemaObject',
+            'validateSchemaObjectOption',
+            'validateSchemaObjectProperties'
+          ]
+        }
+      ],
       '@stylistic/js/curly-newline': ['error', 'always'],
       '@stylistic/js/indent': [
         'error', 2, {

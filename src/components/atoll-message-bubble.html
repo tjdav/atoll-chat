@@ -22,107 +22,114 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    components: ['atoll-message-actions', 'atoll-message-reactions'],
+    script: async ({
+      helpers,
+      values
+    }) => {
+      const {
+        refs: references,
+        parseMessage,
+        on,
+        emit,
+        events,
+        ttsGenerate
+      } = helpers
+      const wrapper = references('wrapper')
+      const bubble = references('bubble')
+      const timeDisplay = references('timeDisplay')
+      const body = references('body')
+      const actionsContainer = references('actionsContainer')
+      const reactionsContainer = references('reactionsContainer')
+      const isCurrentUser = values['current-user'] === 'true'
+      const time = values.time || ''
+      const eventId = values['event-id']
+      const roomId = values['room-id']
+      const initialReactions = values.reactions || {}
 
-  export default defineComponent({
-    client: {
-      components: ['atoll-message-actions', 'atoll-message-reactions'],
-      script: async ({ helpers, values }) => {
-        const { refs, parseMessage, on, emit, events, ttsGenerate } = helpers
-        const wrapper = refs('wrapper')
-        const bubble = refs('bubble')
-        const timeDisplay = refs('timeDisplay')
-        const body = refs('body')
-        const actionsContainer = refs('actionsContainer')
-        const reactionsContainer = refs('reactionsContainer')
-        const isCurrentUser = values['current-user'] === 'true'
-        const time = values.time || ''
-        const eventId = values['event-id']
-        const roomId = values['room-id']
-        const initialReactions = values.reactions || {}
-
-        // Pass down properties to child components
-        const actionsEl = actionsContainer.querySelector('atoll-message-actions')
-        if (actionsEl) {
-          actionsEl.values = { 'event-id': eventId, 'room-id': roomId }
-        }
-
-        const reactionsEl = reactionsContainer
-        if (reactionsEl) {
-          reactionsEl.values = { 'event-id': eventId, 'room-id': roomId, reactions: initialReactions }
-        }
-
-        if (isCurrentUser) {
-          wrapper.classList.add('justify-content-end')
-          bubble.classList.add('bg-primary', 'text-white')
-          timeDisplay.classList.add('text-white-50', 'text-end')
-          // Align actions left on user messages, align right on other messages
-          actionsContainer.style.left = '-40px'
-          actionsContainer.style.right = 'auto'
-        } else {
-          wrapper.classList.add('justify-content-start')
-          bubble.classList.add('bg-body-secondary', 'text-body')
-          timeDisplay.classList.add('text-muted')
-        }
-
-        timeDisplay.textContent = time
-
-        let currentText = ''
-
-        if (parseMessage && body) {
-          const slot = body.querySelector('slot')
-          
-          const processText = () => {
-            let text = ''
-            if (values.body) {
-              text = values.body
-            } else if (slot) {
-              const nodes = slot.assignedNodes()
-              if (nodes.length > 0) {
-                text = Array.from(nodes).map(n => n.textContent).join('')
-              }
-            } else {
-              text = body.textContent || ''
-            }
-            
-            currentText = text
-
-            if (text && text.trim() !== '') {
-              parseMessage(body, text)
-            }
-          }
-          
-          if (slot) {
-            slot.addEventListener('slotchange', processText)
-            // also try immediately in case it's already assigned
-            processText()
-          } else {
-            processText()
-          }
-        }
-
-        // Listen for TTS play requests from the actions menu
-        if (ttsGenerate && on) {
-          on(events('chat:tts-play-requested'), async (data) => {
-            if (data.eventId === eventId && currentText && currentText.trim() !== '') {
-              try {
-                const audioBlob = await ttsGenerate(currentText, 'en')
-                if (audioBlob) {
-                  emit(events('audio:play'), { 
-                    file: { 
-                      id: eventId, 
-                      blob: audioBlob, 
-                      name: 'Message TTS Audio' 
-                    } 
-                  })
-                }
-              } catch (e) {
-                console.error('Failed to generate TTS audio:', e)
-              }
-            }
-          })
+      // Pass down properties to child components
+      const actionsEl = actionsContainer.querySelector('atoll-message-actions')
+      if (actionsEl) {
+        actionsEl.values = {
+          'event-id': eventId,
+          'room-id': roomId
         }
       }
+      const reactionsEl = reactionsContainer
+      if (reactionsEl) {
+        reactionsEl.values = {
+          'event-id': eventId,
+          'room-id': roomId,
+          reactions: initialReactions
+        }
+      }
+      if (isCurrentUser) {
+        wrapper.classList.add('justify-content-end')
+        bubble.classList.add('bg-primary', 'text-white')
+        timeDisplay.classList.add('text-white-50', 'text-end')
+        // Align actions left on user messages, align right on other messages
+        actionsContainer.style.left = '-40px'
+        actionsContainer.style.right = 'auto'
+      } else {
+        wrapper.classList.add('justify-content-start')
+        bubble.classList.add('bg-body-secondary', 'text-body')
+        timeDisplay.classList.add('text-muted')
+      }
+      timeDisplay.textContent = time
+      let currentText = ''
+      if (parseMessage && body) {
+        const slot = body.querySelector('slot')
+        const processText = () => {
+          let text = ''
+          if (values.body) {
+            text = values.body
+          } else if (slot) {
+            const nodes = slot.assignedNodes()
+            if (nodes.length > 0) {
+              text = Array.from(nodes).map(n => n.textContent).join('')
+            }
+          } else {
+            text = body.textContent || ''
+          }
+          currentText = text
+          if (text && text.trim() !== '') {
+            parseMessage(body, text)
+          }
+        }
+        if (slot) {
+          slot.addEventListener('slotchange', processText)
+          // also try immediately in case it's already assigned
+          processText()
+        } else {
+          processText()
+        }
+      }
+
+      // Listen for TTS play requests from the actions menu
+      if (ttsGenerate && on) {
+        on(events('chat:tts-play-requested'), async data => {
+          if (data.eventId === eventId && currentText && currentText.trim() !== '') {
+            try {
+              const audioBlob = await ttsGenerate(currentText, 'en')
+              if (audioBlob) {
+                emit(events('audio:play'), {
+                  file: {
+                    id: eventId,
+                    blob: audioBlob,
+                    name: 'Message TTS Audio'
+                  }
+                })
+              }
+            } catch (event) {
+              console.error('Failed to generate TTS audio:', event)
+            }
+          }
+        })
+      }
     }
-  })
+  }
+})
 </script>

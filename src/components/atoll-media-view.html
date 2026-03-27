@@ -21,52 +21,55 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, on, events } = helpers
-        
-        const headerTitle = refs('headerTitle')
-        const picturesGrid = refs('picturesGrid')
-        const videosGrid = refs('videosGrid')
-        const musicPlayer = refs('musicPlayer')
-
-        let currentActiveTab = null
-
-        const renderMediaComponent = (tabName) => {
-          if (currentActiveTab === tabName) return
-          currentActiveTab = tabName
-
-          picturesGrid.classList.remove('d-transition-show');
-          picturesGrid.classList.add('d-transition-none')
-          videosGrid.classList.remove('d-transition-show');
-          videosGrid.classList.add('d-transition-none')
-          musicPlayer.classList.remove('d-transition-show');
-          musicPlayer.classList.add('d-transition-none')
-
-          if (tabName === 'pictures') {
-            headerTitle.textContent = 'All Pictures'
-            picturesGrid.classList.remove('d-transition-none');
-          picturesGrid.classList.add('d-transition-show')
-          } else if (tabName === 'videos') {
-            headerTitle.textContent = 'All Videos'
-            videosGrid.classList.remove('d-transition-none');
-          videosGrid.classList.add('d-transition-show')
-          } else if (tabName === 'music') {
-            headerTitle.textContent = 'All Music'
-            musicPlayer.classList.remove('d-transition-none');
-          musicPlayer.classList.add('d-transition-show')
-          }
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        on,
+        events
+      } = helpers
+      const headerTitle = references('headerTitle')
+      const picturesGrid = references('picturesGrid')
+      const videosGrid = references('videosGrid')
+      const musicPlayer = references('musicPlayer')
+      let currentActiveTab = null
+      const renderMediaComponent = tabName => {
+        if (currentActiveTab === tabName) {
+          return
         }
-
-        on(events('nav:changed'), ({ tab }) => {
-           if (tab !== 'chats' && tab !== 'requests') {
-              renderMediaComponent(tab)
-           }
-        })
+        currentActiveTab = tabName
+        picturesGrid.classList.remove('d-transition-show')
+        picturesGrid.classList.add('d-transition-none')
+        videosGrid.classList.remove('d-transition-show')
+        videosGrid.classList.add('d-transition-none')
+        musicPlayer.classList.remove('d-transition-show')
+        musicPlayer.classList.add('d-transition-none')
+        if (tabName === 'pictures') {
+          headerTitle.textContent = 'All Pictures'
+          picturesGrid.classList.remove('d-transition-none')
+          picturesGrid.classList.add('d-transition-show')
+        } else if (tabName === 'videos') {
+          headerTitle.textContent = 'All Videos'
+          videosGrid.classList.remove('d-transition-none')
+          videosGrid.classList.add('d-transition-show')
+        } else if (tabName === 'music') {
+          headerTitle.textContent = 'All Music'
+          musicPlayer.classList.remove('d-transition-none')
+          musicPlayer.classList.add('d-transition-show')
+        }
       }
+      on(events('nav:changed'), ({
+        tab
+      }) => {
+        if (tab !== 'chats' && tab !== 'requests') {
+          renderMediaComponent(tab)
+        }
+      })
     }
-  })
+  }
+})
 </script>

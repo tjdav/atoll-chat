@@ -31,143 +31,155 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        on,
+        events,
+        emit,
+        rejectCall
+      } = helpers
+      const callModal = references('callModal')
+      const remoteVideo = references('remoteVideo')
+      const localVideo = references('localVideo')
+      const toggleMuteBtn = references('toggleMuteBtn')
+      const toggleVideoBtn = references('toggleVideoBtn')
+      const endCallBtn = references('endCallBtn')
+      const micIcon = references('micIcon')
+      const videoIcon = references('videoIcon')
+      let currentCall = null
+      let localStream = null
+      let isMuted = false
+      let isVideoOff = false
 
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, on, events, emit, rejectCall } = helpers
-        
-        const callModal = refs('callModal')
-        const remoteVideo = refs('remoteVideo')
-        const localVideo = refs('localVideo')
-        const toggleMuteBtn = refs('toggleMuteBtn')
-        const toggleVideoBtn = refs('toggleVideoBtn')
-        const endCallBtn = refs('endCallBtn')
-        const micIcon = refs('micIcon')
-        const videoIcon = refs('videoIcon')
-
-        let currentCall = null
-        let localStream = null
-        let isMuted = false
-        let isVideoOff = false
-
-        // --- Hardware & UI Cleanup ---
-        const cleanupCall = () => {
-          // Hardware cleanup
-          if (localStream) {
-            localStream.getTracks().forEach(track => track.stop())
-            localStream = null
-          }
-          
-          // UI cleanup
-          remoteVideo.srcObject = null
-          localVideo.srcObject = null
-          currentCall = null
-          
-          // Hide modal
-          callModal.classList.remove('show')
-          setTimeout(() => {
-            callModal.style.display = 'none'
-            // Inform app that the call has ended to transition UI if needed
-            emit(events('call:ended'), { call: null })
-          }, 150) // Allow fade transition
+      /**
+      *  Hardware & UI Cleanup
+      */
+      const cleanupCall = () => {
+        // Hardware cleanup
+        if (localStream) {
+          localStream.getTracks().forEach(track => track.stop())
+          localStream = null
         }
 
-        // --- Call Control Actions ---
-        toggleMuteBtn.addEventListener('click', () => {
-          if (!localStream) return
-          isMuted = !isMuted
-          localStream.getAudioTracks().forEach(track => {
-            track.enabled = !isMuted
-          })
-          
-          if (isMuted) {
-            micIcon.classList.remove('bi-mic-fill')
-            micIcon.classList.add('bi-mic-mute-fill')
-            toggleMuteBtn.classList.replace('btn-secondary', 'btn-outline-secondary')
-          } else {
-            micIcon.classList.remove('bi-mic-mute-fill')
-            micIcon.classList.add('bi-mic-fill')
-            toggleMuteBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
-          }
-        })
+        // UI cleanup
+        remoteVideo.srcObject = null
+        localVideo.srcObject = null
+        currentCall = null
 
-        toggleVideoBtn.addEventListener('click', () => {
-          if (!localStream) return
-          isVideoOff = !isVideoOff
-          localStream.getVideoTracks().forEach(track => {
-            track.enabled = !isVideoOff
+        // Hide modal
+        callModal.classList.remove('show')
+        setTimeout(() => {
+          callModal.style.display = 'none'
+          // Inform app that the call has ended to transition UI if needed
+          emit(events('call:ended'), {
+            call: null
           })
-          
-          if (isVideoOff) {
-            videoIcon.classList.remove('bi-camera-video-fill')
-            videoIcon.classList.add('bi-camera-video-off-fill')
-            toggleVideoBtn.classList.replace('btn-secondary', 'btn-outline-secondary')
-          } else {
-            videoIcon.classList.remove('bi-camera-video-off-fill')
-            videoIcon.classList.add('bi-camera-video-fill')
-            toggleVideoBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
-          }
-        })
+          // Allow fade transition
+        }, 150)
+      }
 
-        endCallBtn.addEventListener('click', () => {
-          if (currentCall) {
-            // Using rejectCall here because the method in matrix.js handles calling hangup()
-            // on the MatrixCall object.
-            rejectCall(currentCall).catch(err => console.error('Failed to hangup call:', err))
-          }
+      /**
+       *  Call Control Actions
+       */
+      toggleMuteBtn.addEventListener('click', () => {
+        if (!localStream) {
+          return
+        }
+        isMuted = !isMuted
+        localStream.getAudioTracks().forEach(track => {
+          track.enabled = !isMuted
+        })
+        if (isMuted) {
+          micIcon.classList.remove('bi-mic-fill')
+          micIcon.classList.add('bi-mic-mute-fill')
+          toggleMuteBtn.classList.replace('btn-secondary', 'btn-outline-secondary')
+        } else {
+          micIcon.classList.remove('bi-mic-mute-fill')
+          micIcon.classList.add('bi-mic-fill')
+          toggleMuteBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
+        }
+      })
+      toggleVideoBtn.addEventListener('click', () => {
+        if (!localStream) {
+          return
+        }
+        isVideoOff = !isVideoOff
+        localStream.getVideoTracks().forEach(track => {
+          track.enabled = !isVideoOff
+        })
+        if (isVideoOff) {
+          videoIcon.classList.remove('bi-camera-video-fill')
+          videoIcon.classList.add('bi-camera-video-off-fill')
+          toggleVideoBtn.classList.replace('btn-secondary', 'btn-outline-secondary')
+        } else {
+          videoIcon.classList.remove('bi-camera-video-off-fill')
+          videoIcon.classList.add('bi-camera-video-fill')
+          toggleVideoBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
+        }
+      })
+      endCallBtn.addEventListener('click', () => {
+        if (currentCall) {
+          // Using rejectCall here because the method in matrix.js handles calling hangup()
+          // on the MatrixCall object.
+          rejectCall(currentCall).catch(error => console.error('Failed to hangup call:', error))
+        }
+        cleanupCall()
+      })
+
+      /**
+       *  Wiring up to global events
+       */
+      const bindCallEvents = call => {
+        currentCall = call
+
+        // Reset UI state
+        isMuted = false
+        isVideoOff = false
+        micIcon.classList.replace('bi-mic-mute-fill', 'bi-mic-fill')
+        toggleMuteBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
+        videoIcon.classList.replace('bi-camera-video-off-fill', 'bi-camera-video-fill')
+        toggleVideoBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
+
+        // Race condition fix (hack): Check if streams were already acquired
+        const existingLocal = call.local_stream || call.localStream
+        if (existingLocal) {
+          localStream = existingLocal
+          localVideo.srcObject = existingLocal
+        }
+        const existingRemote = call.remote_stream || call.remoteStream
+        if (existingRemote) {
+          remoteVideo.srcObject = existingRemote
+          remoteVideo.play().catch(event => console.error('Error playing remote video:', event))
+        }
+        call.on('local_stream', stream => {
+          localStream = stream
+          localVideo.srcObject = stream
+        })
+        call.on('remote_stream', stream => {
+          remoteVideo.srcObject = stream
+          remoteVideo.play().catch(event => console.error('Error playing remote video:', event))
+        })
+        call.on('hangup', () => {
           cleanupCall()
         })
-
-        // --- Wiring up to global events ---
-        const bindCallEvents = (call) => {
-          currentCall = call
-          
-          // Reset UI state
-          isMuted = false
-          isVideoOff = false
-          micIcon.classList.replace('bi-mic-mute-fill', 'bi-mic-fill')
-          toggleMuteBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
-          videoIcon.classList.replace('bi-camera-video-off-fill', 'bi-camera-video-fill')
-          toggleVideoBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
-          
-          // 1. Race Condition Fix: Check if streams were already acquired
-          const existingLocal = call.local_stream || call.localStream
-          if (existingLocal) {
-            localStream = existingLocal
-            localVideo.srcObject = existingLocal
-          }
-
-          const existingRemote = call.remote_stream || call.remoteStream
-          if (existingRemote) {
-            remoteVideo.srcObject = existingRemote
-            remoteVideo.play().catch(e => console.error('Error playing remote video:', e))
-          }
-
-          call.on('local_stream', (stream) => {
-            localStream = stream
-            localVideo.srcObject = stream
-          })
-
-          call.on('remote_stream', (stream) => {
-            remoteVideo.srcObject = stream
-            remoteVideo.play().catch(e => console.error('Error playing remote video:', e))
-          })
-
-          call.on('hangup', () => {
-            cleanupCall()
-          })
-        }
-
-        // When a call is started or answered successfully, display the UI.
-        on(events('call:answered'), ({ call }) => {
-          bindCallEvents(call)
-          callModal.style.display = 'block'
-          // Small delay to allow display: block to apply before adding opacity class
-          setTimeout(() => callModal.classList.add('show'), 10)
-        })
       }
+
+      // When a call is started or answered successfully, display the UI.
+      on(events('call:answered'), ({
+        call
+      }) => {
+        bindCallEvents(call)
+        callModal.style.display = 'block'
+        // Small delay to allow display: block to apply before adding opacity class
+        setTimeout(() => callModal.classList.add('show'), 10)
+      })
     }
-  })
+  }
+})
 </script>

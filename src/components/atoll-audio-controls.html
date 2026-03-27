@@ -12,75 +12,81 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        on,
+        emit,
+        events
+      } = helpers
+      const shuffleButton = references('shuffleBtn')
+      const shuffleIcon = references('shuffleIcon')
+      const previousButton = references('prevBtn')
+      const playPauseBtn = references('playPauseBtn')
+      const playPauseIcon = references('playPauseIcon')
+      const nextButton = references('nextBtn')
+      const repeatButton = references('repeatBtn')
+      const repeatIcon = references('repeatIcon')
 
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, on, emit, events } = helpers
-        
-        const shuffleBtn = refs('shuffleBtn')
-        const shuffleIcon = refs('shuffleIcon')
-        const prevBtn = refs('prevBtn')
-        const playPauseBtn = refs('playPauseBtn')
-        const playPauseIcon = refs('playPauseIcon')
-        const nextBtn = refs('nextBtn')
-        const repeatBtn = refs('repeatBtn')
-        const repeatIcon = refs('repeatIcon')
+      // Listen for state changes from the parent
 
-        // Listen for state changes from the parent
-        on(events('player:play-state-change'), ({ isPlaying }) => {
-          if (isPlaying) {
-            playPauseIcon.classList.remove('bi-play-circle-fill')
-            playPauseIcon.classList.add('bi-pause-circle-fill')
-          } else {
-            playPauseIcon.classList.remove('bi-pause-circle-fill')
-            playPauseIcon.classList.add('bi-play-circle-fill')
-          }
-        })
+      on(events('player:play-state-change'), ({
+        isPlaying
+      }) => {
+        if (isPlaying) {
+          playPauseIcon.classList.remove('bi-play-circle-fill')
+          playPauseIcon.classList.add('bi-pause-circle-fill')
+        } else {
+          playPauseIcon.classList.remove('bi-pause-circle-fill')
+          playPauseIcon.classList.add('bi-play-circle-fill')
+        }
+      })
+      on(events('player:shuffle-change'), ({
+        isShuffle
+      }) => {
+        if (isShuffle) {
+          shuffleIcon.classList.add('text-primary')
+        } else {
+          shuffleIcon.classList.remove('text-primary')
+        }
+      })
+      on(events('player:repeat-change'), ({
+        repeatMode
+      }) => {
+        if (repeatMode === 'all') {
+          repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
+          repeatIcon.classList.add('bi-repeat', 'text-primary')
+        } else if (repeatMode === 'one') {
+          repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
+          repeatIcon.classList.add('bi-repeat-1', 'text-primary')
+        } else {
+          repeatIcon.classList.remove('bi-repeat-1', 'text-primary')
+          repeatIcon.classList.add('bi-repeat')
+        }
+      })
 
-        on(events('player:shuffle-change'), ({ isShuffle }) => {
-          if (isShuffle) {
-            shuffleIcon.classList.add('text-primary')
-          } else {
-            shuffleIcon.classList.remove('text-primary')
-          }
-        })
-
-        on(events('player:repeat-change'), ({ repeatMode }) => {
-          if (repeatMode === 'all') {
-            repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
-            repeatIcon.classList.add('bi-repeat', 'text-primary')
-          } else if (repeatMode === 'one') {
-            repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
-            repeatIcon.classList.add('bi-repeat-1', 'text-primary')
-          } else {
-            repeatIcon.classList.remove('bi-repeat-1', 'text-primary')
-            repeatIcon.classList.add('bi-repeat')
-          }
-        })
-
-        // Emit events when buttons are clicked
-        playPauseBtn.addEventListener('click', () => {
-          emit(events('player:toggle-play'))
-        })
-
-        prevBtn.addEventListener('click', () => {
-          emit(events('player:previous'))
-        })
-
-        nextBtn.addEventListener('click', () => {
-          emit(events('player:next'))
-        })
-
-        shuffleBtn.addEventListener('click', () => {
-          emit(events('player:toggle-shuffle'))
-        })
-
-        repeatBtn.addEventListener('click', () => {
-          emit(events('player:toggle-repeat'))
-        })
-      }
+      // Emit events when buttons are clicked
+      playPauseBtn.addEventListener('click', () => {
+        emit(events('player:toggle-play'))
+      })
+      previousButton.addEventListener('click', () => {
+        emit(events('player:previous'))
+      })
+      nextButton.addEventListener('click', () => {
+        emit(events('player:next'))
+      })
+      shuffleButton.addEventListener('click', () => {
+        emit(events('player:toggle-shuffle'))
+      })
+      repeatButton.addEventListener('click', () => {
+        emit(events('player:toggle-repeat'))
+      })
     }
-  })
+  }
+})
 </script>

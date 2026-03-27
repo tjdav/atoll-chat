@@ -5,206 +5,207 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    client: {
-      components: ['atoll-message-bubble', 'atoll-torrent-bubble'],
-      script: ({ helpers }) => {
-        const { refs, on, events, getCurrentUserId, getRoomMessages, onRoomMessage } = helpers
-        const messagesContainer = refs('messagesContainer')
-        let currentCleanup = null
-
-        const scrollToBottom = (smooth = true) => {
-          messagesContainer.scrollTo({
-            top: messagesContainer.scrollHeight,
-            behavior: smooth ? 'smooth' : 'auto'
-          })
-        }
-
-        const isNearBottom = () => {
-          return messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 100
-        }
-
-        let currentRoomId = null
-        let pendingScrollEventId = null
-
-        let messageObserver = null
-        const messageDataMap = new WeakMap()
-
-        const handleIntersection = (entries) => {
-          entries.forEach(entry => {
-            const div = entry.target
-            if (entry.isIntersecting) {
-              if (div.children.length === 0) {
-                const data = messageDataMap.get(div)
-                if (data) {
-                  const content = createInnerContent(data.message, data.isCurrentUser)
-                  div.appendChild(content)
-                  div.style.removeProperty('height')
-                  div.style.removeProperty('min-height')
-                }
-              }
-            } else {
-              if (div.children.length > 0) {
-                const height = div.getBoundingClientRect().height
-                if (height > 0) {
-                  div.style.height = `${height}px`
-                  div.style.minHeight = `${height}px`
-                  div.innerHTML = ''
-                }
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    components: ['atoll-message-bubble', 'atoll-torrent-bubble'],
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        on,
+        events,
+        getCurrentUserId,
+        getRoomMessages,
+        onRoomMessage
+      } = helpers
+      const messagesContainer = references('messagesContainer')
+      let currentCleanup = null
+      const scrollToBottom = (smooth = true) => {
+        messagesContainer.scrollTo({
+          top: messagesContainer.scrollHeight,
+          behavior: smooth ? 'smooth' : 'auto'
+        })
+      }
+      const isNearBottom = () => {
+        return messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 100
+      }
+      let currentRoomId = null
+      let pendingScrollEventId = null
+      let messageObserver = null
+      const messageDataMap = new WeakMap()
+      const handleIntersection = entries => {
+        entries.forEach(entry => {
+          const div = entry.target
+          if (entry.isIntersecting) {
+            if (div.children.length === 0) {
+              const data = messageDataMap.get(div)
+              if (data) {
+                const content = createInnerContent(data.message, data.isCurrentUser)
+                div.appendChild(content)
+                div.style.removeProperty('height')
+                div.style.removeProperty('min-height')
               }
             }
-          })
-        }
-
-        const executePendingScroll = () => {
-          if (!pendingScrollEventId) return
-
-          const msgElement = messagesContainer.querySelector(`#msg-${pendingScrollEventId.replace(/[^a-zA-Z0-9_-]/g, '\\$&')}`)
-          if (msgElement) {
-            msgElement.scrollIntoView({ behavior: 'smooth', block: 'center' })
-            const bubble = msgElement.querySelector('atoll-message-bubble')
-            if (bubble) {
-               bubble.style.transition = 'background-color 0.5s'
-               const originalBg = bubble.style.backgroundColor
-               bubble.style.backgroundColor = 'rgba(13, 110, 253, 0.2)'
-               setTimeout(() => {
-                 bubble.style.backgroundColor = originalBg
-               }, 2000)
-            }
-            pendingScrollEventId = null
-          }
-        }
-
-        const createInnerContent = (message, isCurrentUser) => {
-          const time = new Date(message.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-
-          if (message.isEncrypted && !message.body) {
-             const bubble = document.createElement('atoll-message-bubble')
-             bubble.setAttribute('time', time)
-             bubble.setAttribute('current-user', isCurrentUser)
-             bubble.values = { body: '*Encrypted message*' }
-             return bubble
-          } else if (message.msgtype === 'm.atoll.webtorrent' && message.info) {
-             const torrentBubble = document.createElement('atoll-torrent-bubble')
-             torrentBubble.values = {
-               info: message.info,
-               'event-id': message.id,
-               'sender-id': message.sender,
-               'room-id': currentRoomId
-             }
-
-             const bubble = document.createElement('atoll-message-bubble')
-             bubble.setAttribute('time', time)
-             bubble.setAttribute('current-user', isCurrentUser)
-             bubble.values = { 
-               'event-id': message.id,
-               'room-id': currentRoomId,
-               reactions: message.reactions || {}
-             }
-             bubble.appendChild(torrentBubble)
-
-             return bubble
           } else {
-             const bubble = document.createElement('atoll-message-bubble')
-             bubble.setAttribute('time', time)
-             bubble.setAttribute('current-user', isCurrentUser)
-             bubble.values = { 
-               body: message.body,
-               'event-id': message.id,
-               'room-id': currentRoomId,
-               reactions: message.reactions || {}
-             }
-             
-             return bubble
-          }
-        }
-
-        const renderMessage = (message, isCurrentUser) => {
-          const div = document.createElement('div')
-          div.id = `msg-${message.id}` // Add ID for scrolling
-          
-          messageDataMap.set(div, { message, isCurrentUser })
-
-          const content = createInnerContent(message, isCurrentUser)
-          div.appendChild(content)
-
-          if (messageObserver) {
-            messageObserver.observe(div)
-          }
-
-          return div
-        }
-
-        on(events('chat:room-ready'), async ({ roomId }) => {
-          if (currentCleanup) {
-            currentCleanup()
-          }
-
-          if (messageObserver) {
-            messageObserver.disconnect()
-          }
-          
-          messageObserver = new IntersectionObserver(handleIntersection, {
-            root: messagesContainer,
-            rootMargin: '500px 0px'
-          })
-
-          currentRoomId = roomId
-
-          messagesContainer.innerHTML = ''
-
-          const currentUserId = await getCurrentUserId()
-
-          // Fetch initial history
-          const history = await getRoomMessages(roomId)
-
-          history.forEach(msg => {
-            const isCurrentUser = msg.sender === currentUserId
-            const msgEl = renderMessage(msg, isCurrentUser)
-            messagesContainer.appendChild(msgEl)
-          })
-
-          if (pendingScrollEventId) {
-             // If we have a pending scroll, execute it after a brief tick for render
-             setTimeout(executePendingScroll, 50)
-          } else {
-             // Scroll to bottom immediately
-             setTimeout(() => scrollToBottom(false), 0)
-          }
-
-          // Listen for new messages
-          currentCleanup = await onRoomMessage(roomId, (newMsg) => {
-            const isCurrentUser = newMsg.sender === currentUserId
-            const nearBottom = isNearBottom()
-
-            const msgEl = renderMessage(newMsg, isCurrentUser)
-            messagesContainer.appendChild(msgEl)
-
-            // Auto-scroll logic: only if near bottom or if it's our own message
-            if (nearBottom || isCurrentUser) {
-              setTimeout(() => scrollToBottom(true), 0)
+            if (div.children.length > 0) {
+              const height = div.getBoundingClientRect().height
+              if (height > 0) {
+                div.style.height = `${height}px`
+                div.style.minHeight = `${height}px`
+                div.innerHTML = ''
+              }
             }
+          }
+        })
+      }
+      const executePendingScroll = () => {
+        if (!pendingScrollEventId) {
+          return
+        }
+        const msgElement = messagesContainer.querySelector(`#msg-${pendingScrollEventId.replace(/[^a-zA-Z0-9_-]/g, '\\$&')}`)
+        if (msgElement) {
+          msgElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
           })
-        })
-
-        // Listen for requests to scroll to a specific message
-        on(events('chat:scroll-to-message'), ({ eventId }) => {
-          pendingScrollEventId = eventId
-          // Try executing immediately in case the room is already loaded and we're just jumping
-          executePendingScroll()
-        })
-
-        return () => {
-          if (currentCleanup) {
-            currentCleanup()
+          const bubble = msgElement.querySelector('atoll-message-bubble')
+          if (bubble) {
+            bubble.style.transition = 'background-color 0.5s'
+            const originalBg = bubble.style.backgroundColor
+            bubble.style.backgroundColor = 'rgba(13, 110, 253, 0.2)'
+            setTimeout(() => {
+              bubble.style.backgroundColor = originalBg
+            }, 2000)
           }
-          if (messageObserver) {
-            messageObserver.disconnect()
+          pendingScrollEventId = null
+        }
+      }
+      const createInnerContent = (message, isCurrentUser) => {
+        const time = new Date(message.date).toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        })
+        if (message.isEncrypted && !message.body) {
+          const bubble = document.createElement('atoll-message-bubble')
+          bubble.setAttribute('time', time)
+          bubble.setAttribute('current-user', isCurrentUser)
+          bubble.values = {
+            body: '*Encrypted message*'
           }
+          return bubble
+        } else if (message.msgtype === 'm.atoll.webtorrent' && message.info) {
+          const torrentBubble = document.createElement('atoll-torrent-bubble')
+          torrentBubble.values = {
+            info: message.info,
+            'event-id': message.id,
+            'sender-id': message.sender,
+            'room-id': currentRoomId
+          }
+          const bubble = document.createElement('atoll-message-bubble')
+          bubble.setAttribute('time', time)
+          bubble.setAttribute('current-user', isCurrentUser)
+          bubble.values = {
+            'event-id': message.id,
+            'room-id': currentRoomId,
+            reactions: message.reactions || {}
+          }
+          bubble.appendChild(torrentBubble)
+          return bubble
+        } else {
+          const bubble = document.createElement('atoll-message-bubble')
+          bubble.setAttribute('time', time)
+          bubble.setAttribute('current-user', isCurrentUser)
+          bubble.values = {
+            body: message.body,
+            'event-id': message.id,
+            'room-id': currentRoomId,
+            reactions: message.reactions || {}
+          }
+          return bubble
+        }
+      }
+      const renderMessage = (message, isCurrentUser) => {
+        const div = document.createElement('div')
+        // Add ID for scrolling
+        div.id = `msg-${message.id}`
+        messageDataMap.set(div, {
+          message,
+          isCurrentUser
+        })
+        const content = createInnerContent(message, isCurrentUser)
+        div.appendChild(content)
+        if (messageObserver) {
+          messageObserver.observe(div)
+        }
+        return div
+      }
+      on(events('chat:room-ready'), async ({
+        roomId
+      }) => {
+        if (currentCleanup) {
+          currentCleanup()
+        }
+        if (messageObserver) {
+          messageObserver.disconnect()
+        }
+        messageObserver = new IntersectionObserver(handleIntersection, {
+          root: messagesContainer,
+          rootMargin: '500px 0px'
+        })
+        currentRoomId = roomId
+        messagesContainer.innerHTML = ''
+        const currentUserId = await getCurrentUserId()
+
+        // Fetch initial history
+        const history = await getRoomMessages(roomId)
+        history.forEach(message => {
+          const isCurrentUser = message.sender === currentUserId
+          const msgEl = renderMessage(message, isCurrentUser)
+          messagesContainer.appendChild(msgEl)
+        })
+        if (pendingScrollEventId) {
+          // If we have a pending scroll, execute it after a brief tick for render
+
+          setTimeout(executePendingScroll, 50)
+        } else {
+          // Scroll to bottom immediately
+
+          setTimeout(() => scrollToBottom(false), 0)
+        }
+
+        // Listen for new messages
+        currentCleanup = await onRoomMessage(roomId, newMsg => {
+          const isCurrentUser = newMsg.sender === currentUserId
+          const nearBottom = isNearBottom()
+          const msgEl = renderMessage(newMsg, isCurrentUser)
+          messagesContainer.appendChild(msgEl)
+
+          // Auto-scroll logic: only if near bottom or if it's our own message
+          if (nearBottom || isCurrentUser) {
+            setTimeout(() => scrollToBottom(true), 0)
+          }
+        })
+      })
+
+      // Listen for requests to scroll to a specific message
+      on(events('chat:scroll-to-message'), ({
+        eventId
+      }) => {
+        pendingScrollEventId = eventId
+        // Try executing immediately in case the room is already loaded and we're just jumping
+        executePendingScroll()
+      })
+      return () => {
+        if (currentCleanup) {
+          currentCleanup()
+        }
+        if (messageObserver) {
+          messageObserver.disconnect()
         }
       }
     }
-  })
+  }
+})
 </script>

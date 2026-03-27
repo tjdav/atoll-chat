@@ -13,111 +13,109 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    client: {
-      script: ({ helpers, values }) => {
-        const { refs, emit, events, getImageFiles, getVideoFiles } = helpers
-        
-        const gridContainer = refs('gridContainer')
-        const emptyState = refs('emptyState')
-        const emptyIcon = refs('emptyIcon')
-
-        const mediaType = values['type'] || 'pictures'
-        let generatedUrls = []
-
-        const init = async () => {
-          let files = []
-          if (mediaType === 'pictures') {
-             files = await getImageFiles()
-             emptyIcon.className = 'bi bi-images'
-          } else if (mediaType === 'videos') {
-             files = await getVideoFiles()
-             emptyIcon.className = 'bi bi-camera-video'
-          }
-
-          if (files.length === 0) {
-            emptyState.classList.remove('d-transition-none');
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers,
+      values
+    }) => {
+      const {
+        refs: references,
+        emit,
+        events,
+        getImageFiles,
+        getVideoFiles
+      } = helpers
+      const gridContainer = references('gridContainer')
+      const emptyState = references('emptyState')
+      const emptyIcon = references('emptyIcon')
+      const mediaType = values['type'] || 'pictures'
+      let generatedUrls = []
+      const initialize = async () => {
+        let files = []
+        if (mediaType === 'pictures') {
+          files = await getImageFiles()
+          emptyIcon.className = 'bi bi-images'
+        } else if (mediaType === 'videos') {
+          files = await getVideoFiles()
+          emptyIcon.className = 'bi bi-camera-video'
+        }
+        if (files.length === 0) {
+          emptyState.classList.remove('d-transition-none')
           emptyState.classList.add('d-transition-show')
-            return
+          return
+        }
+        emptyState.classList.remove('d-transition-show')
+        emptyState.classList.add('d-transition-none')
+        files.forEach(file => {
+          const col = document.createElement('div')
+          col.className = 'col-6 col-md-4 col-lg-3'
+          const card = document.createElement('div')
+          card.className = 'card h-100 bg-body shadow-sm'
+          const objectUrl = URL.createObjectURL(file.blob)
+          generatedUrls.push(objectUrl)
+
+          // Create media element securely
+          let mediaElement
+          if (mediaType === 'pictures') {
+            mediaElement = document.createElement('img')
+            mediaElement.className = 'card-img-top object-fit-cover'
+            mediaElement.style.height = '150px'
+            // Set src later, after checking it's an objectUrl
+            mediaElement.src = objectUrl
+            // Use setAttribute for safety, although setting properties is generally safe
+            mediaElement.setAttribute('alt', file.filename || '')
+          } else {
+            mediaElement = document.createElement('video')
+            mediaElement.className = 'card-img-top object-fit-cover'
+            mediaElement.style.height = '150px'
+            mediaElement.controls = true
+            mediaElement.preload = 'metadata'
+            mediaElement.src = objectUrl
           }
+          card.appendChild(mediaElement)
 
-          emptyState.classList.remove('d-transition-show');
-          emptyState.classList.add('d-transition-none')
+          // Create card body
+          const cardBody = document.createElement('div')
+          cardBody.className = 'card-body p-2 d-flex justify-content-between align-items-center'
 
-          files.forEach(file => {
-             const col = document.createElement('div')
-             col.className = 'col-6 col-md-4 col-lg-3'
+          // Create filename text element securely to prevent XSS
+          const titleDiv = document.createElement('div')
+          titleDiv.className = 'text-truncate flex-grow-1 small me-2'
+          titleDiv.title = file.filename || 'Unknown File'
+          // Safe against XSS
+          titleDiv.textContent = file.filename || 'Unknown File'
+          cardBody.appendChild(titleDiv)
 
-             const card = document.createElement('div')
-             card.className = 'card h-100 bg-body shadow-sm'
+          // Only show the "Go to Message" button if we have the roomId
+          if (file.roomId && file.event_id) {
+            const jumpButton = document.createElement('button')
+            jumpButton.className = 'btn btn-sm btn-outline-primary jump-btn'
+            jumpButton.title = 'Go to Message'
+            // This is safe, fixed HTML
+            jumpButton.innerHTML = '<i class="bi bi-chat-left-text"></i>'
+            jumpButton.addEventListener('click', () => {
+              emit(events('nav:jump-to-message'), {
+                roomId: file.roomId,
+                eventId: file.event_id
+              })
+            })
+            cardBody.appendChild(jumpButton)
+          }
+          card.appendChild(cardBody)
+          col.appendChild(card)
+          gridContainer.appendChild(col)
+        })
+      }
+      initialize()
 
-             const objectUrl = URL.createObjectURL(file.blob)
-             generatedUrls.push(objectUrl)
-
-             // Create media element securely
-             let mediaElement
-             if (mediaType === 'pictures') {
-                 mediaElement = document.createElement('img')
-                 mediaElement.className = 'card-img-top object-fit-cover'
-                 mediaElement.style.height = '150px'
-                 // Set src later, after checking it's an objectUrl
-                 mediaElement.src = objectUrl
-                 // Use setAttribute for safety, although setting properties is generally safe
-                 mediaElement.setAttribute('alt', file.filename || '')
-             } else {
-                 mediaElement = document.createElement('video')
-                 mediaElement.className = 'card-img-top object-fit-cover'
-                 mediaElement.style.height = '150px'
-                 mediaElement.controls = true
-                 mediaElement.preload = 'metadata'
-                 mediaElement.src = objectUrl
-             }
-             
-             card.appendChild(mediaElement)
-
-             // Create card body
-             const cardBody = document.createElement('div')
-             cardBody.className = 'card-body p-2 d-flex justify-content-between align-items-center'
-             
-             // Create filename text element securely to prevent XSS
-             const titleDiv = document.createElement('div')
-             titleDiv.className = 'text-truncate flex-grow-1 small me-2'
-             titleDiv.title = file.filename || 'Unknown File'
-             titleDiv.textContent = file.filename || 'Unknown File' // Safe against XSS
-             
-             cardBody.appendChild(titleDiv)
-
-             // Only show the "Go to Message" button if we have the roomId
-             if (file.roomId && file.event_id) {
-               const jumpBtn = document.createElement('button')
-               jumpBtn.className = 'btn btn-sm btn-outline-primary jump-btn'
-               jumpBtn.title = 'Go to Message'
-               jumpBtn.innerHTML = '<i class="bi bi-chat-left-text"></i>' // This is safe, fixed HTML
-               
-               jumpBtn.addEventListener('click', () => {
-                 emit(events('nav:jump-to-message'), { roomId: file.roomId, eventId: file.event_id })
-               })
-               
-               cardBody.appendChild(jumpBtn)
-             }
-
-             card.appendChild(cardBody)
-
-             col.appendChild(card)
-             gridContainer.appendChild(col)
-          })
-        }
-
-        init()
-
-        // Cleanup object URLs when component is destroyed/removed
-        return () => {
-           generatedUrls.forEach(url => URL.revokeObjectURL(url))
-           generatedUrls = []
-        }
+      // Cleanup object URLs when component is destroyed/removed
+      return () => {
+        generatedUrls.forEach(url => URL.revokeObjectURL(url))
+        generatedUrls = []
       }
     }
-  })
+  }
+})
 </script>

@@ -32,197 +32,206 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      root,
+      helpers,
+      values
+    }) => {
+      const {
+        refs: references,
+        download,
+        saveMedia,
+        getPreference,
+        setPreference
+      } = helpers
+      const contentContainer = references('contentContainer')
+      const metaContainer = references('metaContainer')
+      const fileIcon = references('fileIcon')
+      const fileName = references('fileName')
+      const fileSize = references('fileSize')
+      const downloadButton = references('downloadBtn')
+      const progressBarContainer = references('progressBarContainer')
+      const progressBar = references('progressBar')
+      const checkboxContainer = references('checkboxContainer')
+      const autoAcceptCheckbox = references('autoAcceptCheckbox')
+      let objectUrl = null
 
-  export default defineComponent({
-    client: {
-      script: ({ root, helpers, values }) => {
-        const { refs, download, saveMedia, getPreference, setPreference } = helpers
+      // Format file size
 
-        const contentContainer = refs('contentContainer')
-        const metaContainer = refs('metaContainer')
-        const fileIcon = refs('fileIcon')
-        const fileName = refs('fileName')
-        const fileSize = refs('fileSize')
-        const downloadBtn = refs('downloadBtn')
-        const progressBarContainer = refs('progressBarContainer')
-        const progressBar = refs('progressBar')
-        const checkboxContainer = refs('checkboxContainer')
-        const autoAcceptCheckbox = refs('autoAcceptCheckbox')
-
-        let objectUrl = null
-
-        // Format file size
-        const formatBytes = (bytes, decimals = 2) => {
-          if (!+bytes) return '0 Bytes'
-          const k = 1024
-          const dm = decimals < 0 ? 0 : decimals
-          const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
-          const i = Math.floor(Math.log(bytes) / Math.log(k))
-          return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+      const formatBytes = (bytes, decimals = 2) => {
+        if (!+bytes) {
+          return '0 Bytes'
         }
+        const k = 1024
+        const dm = decimals < 0 ? 0 : decimals
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB', 'PB', 'EB', 'ZB', 'YB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`
+      }
 
-        // Set Icon based on mimeType
-        const setIcon = (mimeType) => {
-          if (mimeType.startsWith('image/')) {
-            fileIcon.className = 'bi bi-file-earmark-image-fill fs-3'
-          } else if (mimeType.startsWith('video/')) {
-            fileIcon.className = 'bi bi-file-earmark-play-fill fs-3'
-          } else if (mimeType.startsWith('audio/')) {
-            fileIcon.className = 'bi bi-file-earmark-music-fill fs-3'
-          } else {
-            fileIcon.className = 'bi bi-file-earmark-fill fs-3'
-          }
+      // Set Icon based on mimeType
+
+      const setIcon = mimeType => {
+        if (mimeType.startsWith('image/')) {
+          fileIcon.className = 'bi bi-file-earmark-image-fill fs-3'
+        } else if (mimeType.startsWith('video/')) {
+          fileIcon.className = 'bi bi-file-earmark-play-fill fs-3'
+        } else if (mimeType.startsWith('audio/')) {
+          fileIcon.className = 'bi bi-file-earmark-music-fill fs-3'
+        } else {
+          fileIcon.className = 'bi bi-file-earmark-fill fs-3'
         }
+      }
 
-        // Initialize UI with attributes
-        const initUI = async () => {
-          const payload = values['info']
-          if (!payload) return
+      // Initialize UI with attributes
 
-          fileName.textContent = payload.filename || 'Unknown File'
-          fileSize.textContent = formatBytes(payload.size)
-          setIcon(payload.mimeType || 'application/octet-stream')
-
-          const senderId = values['sender-id']
-          if (senderId) {
-            const autoAcceptUsers = await getPreference('atoll_auto_accept_users') || []
-            if (autoAcceptUsers.includes(senderId)) {
-              checkboxContainer.classList.add('d-none')
-              handleDownload()
-            }
-          }
+      const initUI = async () => {
+        const payload = values['info']
+        if (!payload) {
+          return
         }
-
-        initUI()
-
-        const handleDownload = async () => {
-          const payload = values['info']
-          const eventId = values['event-id']
-          if (!payload || !eventId) return
-
-          downloadBtn.disabled = true
-          progressBarContainer.classList.remove('d-transition-none');
-          progressBarContainer.classList.add('d-transition-show')
-          downloadBtn.classList.remove('d-transition-show');
-          downloadBtn.classList.add('d-transition-none')
-          checkboxContainer.classList.add('d-none')
-
-          try {
-            // 1. Download via WebTorrent
-            const encryptedBlob = await download(payload.magnetURI, (progress) => {
-              const percent = Math.round(progress * 100)
-              progressBar.style.width = `${percent}%`
-              progressBar.setAttribute('aria-valuenow', percent.toString())
-            })
-
-            // 2. Import Key
-            const key = await crypto.subtle.importKey(
-              'jwk',
-              payload.key,
-              { name: 'AES-CTR' },
-              true,
-              ['encrypt', 'decrypt']
-            )
-
-            // 3. Decode IV
-            const ivStr = atob(payload.iv)
-            const iv = Uint8Array.from(ivStr, c => c.charCodeAt(0))
-
-            // 4. Decrypt File
-            const encryptedBuffer = await encryptedBlob.arrayBuffer()
-            const decryptedBuffer = await crypto.subtle.decrypt(
-              {
-                name: 'AES-CTR',
-                counter: iv,
-                length: 64
-              },
-              key,
-              encryptedBuffer
-            )
-            const decryptedBlob = new Blob([decryptedBuffer], { type: payload.mimeType })
-
-            // 5. Save to Media Store
-            await saveMedia(eventId, decryptedBlob, {
-              filename: payload.filename,
-              mimeType: payload.mimeType,
-              size: payload.size,
-              timestamp: Date.now(), // Fallback if matrix event date isn't easily passed
-              sender: values['sender-id'],
-              roomId: values['room-id']
-            })
-
-            // 6. Update UI
-            progressBarContainer.classList.remove('d-transition-show');
-          progressBarContainer.classList.add('d-transition-none')
-            metaContainer.classList.remove('d-transition-show');
-          metaContainer.classList.add('d-transition-none')
-            
-            if (payload.mimeType.startsWith('image/')) {
-              objectUrl = URL.createObjectURL(decryptedBlob)
-              const img = document.createElement('img')
-              img.src = objectUrl
-              img.className = 'img-fluid rounded'
-              img.alt = payload.filename
-              contentContainer.appendChild(img)
-            } else if (payload.mimeType.startsWith('audio/')) {
-              objectUrl = URL.createObjectURL(decryptedBlob)
-              const audio = document.createElement('audio')
-              audio.src = objectUrl
-              audio.controls = true
-              audio.className = 'w-100'
-              contentContainer.appendChild(audio)
-            } else if (payload.mimeType.startsWith('video/')) {
-              objectUrl = URL.createObjectURL(decryptedBlob)
-              const video = document.createElement('video')
-              video.src = objectUrl
-              video.controls = true
-              video.className = 'img-fluid rounded'
-              contentContainer.appendChild(video)
-            } else {
-              // Just show it's done for other files
-              metaContainer.classList.remove('d-transition-none');
-          metaContainer.classList.add('d-transition-show')
-              const doneMsg = document.createElement('div')
-              doneMsg.className = 'text-success text-center mt-2 fw-bold'
-              doneMsg.textContent = 'Saved to Media Vault'
-              contentContainer.appendChild(doneMsg)
-            }
-
-          } catch (error) {
-            console.error('Failed to download and decrypt file:', error)
-            downloadBtn.disabled = false
-            downloadBtn.classList.remove('d-transition-none');
-          downloadBtn.classList.add('d-transition-show')
-            progressBarContainer.classList.remove('d-transition-show');
-          progressBarContainer.classList.add('d-transition-none')
-            alert('Failed to download file.')
-          }
-        }
-
-        downloadBtn.addEventListener('click', handleDownload)
-
-        autoAcceptCheckbox.addEventListener('change', async (e) => {
-          if (e.target.checked) {
-            const senderId = values['sender-id']
-            if (senderId) {
-              const autoAcceptUsers = await getPreference('atoll_auto_accept_users') || []
-              if (!autoAcceptUsers.includes(senderId)) {
-                autoAcceptUsers.push(senderId)
-                await setPreference('atoll_auto_accept_users', autoAcceptUsers)
-              }
-              handleDownload()
-            }
-          }
-        })
-
-        // Cleanup object URL
-        return () => {
-          if (objectUrl) {
-            URL.revokeObjectURL(objectUrl)
+        fileName.textContent = payload.filename || 'Unknown File'
+        fileSize.textContent = formatBytes(payload.size)
+        setIcon(payload.mimeType || 'application/octet-stream')
+        const senderId = values['sender-id']
+        if (senderId) {
+          const autoAcceptUsers = (await getPreference('atoll_auto_accept_users')) || []
+          if (autoAcceptUsers.includes(senderId)) {
+            checkboxContainer.classList.add('d-none')
+            handleDownload()
           }
         }
       }
+      initUI()
+      const handleDownload = async () => {
+        const payload = values['info']
+        const eventId = values['event-id']
+        if (!payload || !eventId) {
+          return
+        }
+        downloadButton.disabled = true
+        progressBarContainer.classList.remove('d-transition-none')
+        progressBarContainer.classList.add('d-transition-show')
+        downloadButton.classList.remove('d-transition-show')
+        downloadButton.classList.add('d-transition-none')
+        checkboxContainer.classList.add('d-none')
+        try {
+          // 1. Download via WebTorrent
+
+          const encryptedBlob = await download(payload.magnetURI, progress => {
+            const percent = Math.round(progress * 100)
+            progressBar.style.width = `${percent}%`
+            progressBar.setAttribute('aria-valuenow', percent.toString())
+          })
+
+          // 2. Import Key
+
+          const key = await crypto.subtle.importKey('jwk', payload.key, {
+            name: 'AES-CTR'
+          }, true, ['encrypt', 'decrypt'])
+
+          // 3. Decode IV
+
+          const ivStr = atob(payload.iv)
+          const iv = Uint8Array.from(ivStr, c => c.charCodeAt(0))
+
+          // 4. Decrypt File
+
+          const encryptedBuffer = await encryptedBlob.arrayBuffer()
+          const decryptedBuffer = await crypto.subtle.decrypt({
+            name: 'AES-CTR',
+            counter: iv,
+            length: 64
+          }, key, encryptedBuffer)
+          const decryptedBlob = new Blob([decryptedBuffer], {
+            type: payload.mimeType
+          })
+
+          // 5. Save to Media Store
+
+          await saveMedia(eventId, decryptedBlob, {
+            filename: payload.filename,
+            mimeType: payload.mimeType,
+            size: payload.size,
+            timestamp: Date.now(),
+            // Fallback if matrix event date isn't easily passed
+
+            sender: values['sender-id'],
+            roomId: values['room-id']
+          })
+
+          // 6. Update UI
+
+          progressBarContainer.classList.remove('d-transition-show')
+          progressBarContainer.classList.add('d-transition-none')
+          metaContainer.classList.remove('d-transition-show')
+          metaContainer.classList.add('d-transition-none')
+          if (payload.mimeType.startsWith('image/')) {
+            objectUrl = URL.createObjectURL(decryptedBlob)
+            const image = document.createElement('img')
+            image.src = objectUrl
+            image.className = 'img-fluid rounded'
+            image.alt = payload.filename
+            contentContainer.appendChild(image)
+          } else if (payload.mimeType.startsWith('audio/')) {
+            objectUrl = URL.createObjectURL(decryptedBlob)
+            const audio = document.createElement('audio')
+            audio.src = objectUrl
+            audio.controls = true
+            audio.className = 'w-100'
+            contentContainer.appendChild(audio)
+          } else if (payload.mimeType.startsWith('video/')) {
+            objectUrl = URL.createObjectURL(decryptedBlob)
+            const video = document.createElement('video')
+            video.src = objectUrl
+            video.controls = true
+            video.className = 'img-fluid rounded'
+            contentContainer.appendChild(video)
+          } else {
+            // Just show it's done for other files
+
+            metaContainer.classList.remove('d-transition-none')
+            metaContainer.classList.add('d-transition-show')
+            const doneMsg = document.createElement('div')
+            doneMsg.className = 'text-success text-center mt-2 fw-bold'
+            doneMsg.textContent = 'Saved to Media Vault'
+            contentContainer.appendChild(doneMsg)
+          }
+        } catch (error) {
+          console.error('Failed to download and decrypt file:', error)
+          downloadButton.disabled = false
+          downloadButton.classList.remove('d-transition-none')
+          downloadButton.classList.add('d-transition-show')
+          progressBarContainer.classList.remove('d-transition-show')
+          progressBarContainer.classList.add('d-transition-none')
+          alert('Failed to download file.')
+        }
+      }
+      downloadButton.addEventListener('click', handleDownload)
+      autoAcceptCheckbox.addEventListener('change', async event => {
+        if (event.target.checked) {
+          const senderId = values['sender-id']
+          if (senderId) {
+            const autoAcceptUsers = (await getPreference('atoll_auto_accept_users')) || []
+            if (!autoAcceptUsers.includes(senderId)) {
+              autoAcceptUsers.push(senderId)
+              await setPreference('atoll_auto_accept_users', autoAcceptUsers)
+            }
+            handleDownload()
+          }
+        }
+      })
+
+      // Cleanup object URL
+      return () => {
+        if (objectUrl) {
+          URL.revokeObjectURL(objectUrl)
+        }
+      }
     }
-  })
+  }
+})
 </script>

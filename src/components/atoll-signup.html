@@ -31,72 +31,71 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    client: {
-      script: ({ helpers, context }) => {
-        const { refs, registerUser, sync, emit, events } = helpers
-        const form = refs('form')
-        const homeserverInput = refs('homeserver')
-        const usernameInput = refs('username')
-        const passwordInput = refs('password')
-        const confirmPasswordInput = refs('confirmPassword')
-        const errorAlert = refs('errorAlert')
-        const submitButton = refs('submitButton')
-        const loginLink = refs('loginLink')
-        homeserverInput.value = (helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl()) || 'https://matrix.org'
-
-        loginLink.addEventListener('click', (e) => {
-          e.preventDefault()
-          emit(events('auth:show-login'))
-        })
-
-        form.addEventListener('submit', async (e) => {
-          e.preventDefault()
-
-          const baseUrl = homeserverInput.value
-          const username = usernameInput.value
-          const password = passwordInput.value
-          const confirmPassword = confirmPasswordInput.value
-          const urlParams = new URLSearchParams(window.location.search)
-          const token = urlParams.get('token')
-
-          errorAlert.classList.remove('d-transition-show');
-          errorAlert.classList.add('d-transition-none')
-          
-          if (password !== confirmPassword) {
-            errorAlert.textContent = 'Passwords do not match.'
-            errorAlert.classList.remove('d-transition-none');
-            errorAlert.classList.add('d-transition-show')
-            return
-          }
-
-          submitButton.disabled = true
-          submitButton.textContent = 'Signing up...'
-
-          try {
-            await registerUser({
-              baseUrl,
-              username,
-              password,
-              token
-            })
-
-            submitButton.textContent = 'Syncing...'
-            await sync()
-
-            emit(events('app:logged-in'))
-          } catch (error) {
-            console.error('Sign up error', error)
-            errorAlert.textContent = 'Registration failed. Please try again. ' + (error.message || '')
-            errorAlert.classList.remove('d-transition-none');
-            errorAlert.classList.add('d-transition-show')
-            submitButton.disabled = false
-            submitButton.textContent = 'Sign Up'
-          }
-        })
-      }
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers,
+      context
+    }) => {
+      const {
+        refs: references,
+        registerUser,
+        sync,
+        emit,
+        events
+      } = helpers
+      const form = references('form')
+      const homeserverInput = references('homeserver')
+      const usernameInput = references('username')
+      const passwordInput = references('password')
+      const confirmPasswordInput = references('confirmPassword')
+      const errorAlert = references('errorAlert')
+      const submitButton = references('submitButton')
+      const loginLink = references('loginLink')
+      homeserverInput.value = helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl() || 'https://matrix.org'
+      loginLink.addEventListener('click', event => {
+        event.preventDefault()
+        emit(events('auth:show-login'))
+      })
+      form.addEventListener('submit', async event => {
+        event.preventDefault()
+        const baseUrl = homeserverInput.value
+        const username = usernameInput.value
+        const password = passwordInput.value
+        const confirmPassword = confirmPasswordInput.value
+        const urlParams = new URLSearchParams(window.location.search)
+        const token = urlParams.get('token')
+        errorAlert.classList.remove('d-transition-show')
+        errorAlert.classList.add('d-transition-none')
+        if (password !== confirmPassword) {
+          errorAlert.textContent = 'Passwords do not match.'
+          errorAlert.classList.remove('d-transition-none')
+          errorAlert.classList.add('d-transition-show')
+          return
+        }
+        submitButton.disabled = true
+        submitButton.textContent = 'Signing up...'
+        try {
+          await registerUser({
+            baseUrl,
+            username,
+            password,
+            token
+          })
+          submitButton.textContent = 'Syncing...'
+          await sync()
+          emit(events('app:logged-in'))
+        } catch (error) {
+          console.error('Sign up error', error)
+          errorAlert.textContent = 'Registration failed. Please try again. ' + (error.message || '')
+          errorAlert.classList.remove('d-transition-none')
+          errorAlert.classList.add('d-transition-show')
+          submitButton.disabled = false
+          submitButton.textContent = 'Sign Up'
+        }
+      })
     }
-  })
+  }
+})
 </script>

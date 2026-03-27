@@ -43,46 +43,56 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
 
-  export default defineComponent({
-    client: {
-      imports: [
-        { specifier: 'bootstrap', namespaceExport: 'bootstrap' }
-      ],
-      script: ({ helpers, imports }) => {
-        const { refs, getRooms, createEncryptedRoom, emit, on, events } = helpers
-        const { bootstrap } = imports
-        const roomList = refs('roomList')
-        const newRoomModal = refs('newRoomModal')
-        const roomNameInput = refs('roomNameInput')
-        const createRoomBtn = refs('createRoomBtn')
-        const openNewRoomModalBtn = refs('openNewRoomModalBtn')
-
-        const showModal = () => {
-          try {
-            const modal = bootstrap.Modal.getOrCreateInstance(newRoomModal)
-            modal.show()
-          } catch (e) {
-            console.error('Failed to show new room modal', e)
-          }
+export default defineComponent({
+  client: {
+    imports: [{
+      specifier: 'bootstrap',
+      namespaceExport: 'bootstrap'
+    }],
+    script: ({
+      helpers,
+      imports
+    }) => {
+      const {
+        refs: references,
+        getRooms,
+        createEncryptedRoom,
+        emit,
+        on,
+        events
+      } = helpers
+      const {
+        bootstrap
+      } = imports
+      const roomList = references('roomList')
+      const newRoomModal = references('newRoomModal')
+      const roomNameInput = references('roomNameInput')
+      const createRoomBtn = references('createRoomBtn')
+      const openNewRoomModalBtn = references('openNewRoomModalBtn')
+      const showModal = () => {
+        try {
+          const modal = bootstrap.Modal.getOrCreateInstance(newRoomModal)
+          modal.show()
+        } catch (event) {
+          console.error('Failed to show new room modal', event)
         }
-        if (openNewRoomModalBtn) openNewRoomModalBtn.addEventListener('click', showModal)
-
-        const createAvatarHTML = (roomName, avatarUrl) => {
-          if (avatarUrl) {
-            return '<img src="' + avatarUrl + '" alt="' + roomName + '" class="rounded-circle me-3" style="width: 48px; height: 48px; object-fit: cover;">'
-          }
-
-          const initials = roomName ? roomName.substring(0, 2).toUpperCase() : '?'
-          return '<div class="rounded-circle me-3 bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 48px; height: 48px; flex-shrink: 0;">' + initials + '</div>'
+      }
+      if (openNewRoomModalBtn) {
+        openNewRoomModalBtn.addEventListener('click', showModal)
+      }
+      const createAvatarHTML = (roomName, avatarUrl) => {
+        if (avatarUrl) {
+          return '<img src="' + avatarUrl + '" alt="' + roomName + '" class="rounded-circle me-3" style="width: 48px; height: 48px; object-fit: cover;">'
         }
-
-        const renderRooms = async () => {
-          const rooms = await getRooms()
-
-          roomList.innerHTML = rooms.map(room => `
-            <button class="list-gr  oup-item list-group-item-action d-flex align-items-center py-3 bg-transparent border-bottom border-secondary-subtle room-item" data-room-id="${room.id}">
+        const initials = roomName ? roomName.substring(0, 2).toUpperCase() : '?'
+        return '<div class="rounded-circle me-3 bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 48px; height: 48px; flex-shrink: 0;">' + initials + '</div>'
+      }
+      const renderRooms = async () => {
+        const rooms = await getRooms()
+        roomList.innerHTML = rooms.map(room => `
+            <button class="list-group-item list-group-item-action d-flex align-items-center py-3 bg-transparent border-bottom border-secondary-subtle room-item" data-room-id="${room.id}">
               ${createAvatarHTML(room.name, room.avatarUrl)}
               <div class="flex-grow-1 overflow-hidden">
                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -93,48 +103,48 @@
               </div>
             </button>
           `).join('')
-
-          const items = roomList.querySelectorAll('.room-item')
-          items.forEach(item => {
-            item.addEventListener('click', () => {
-              // Remove active class from all
-              items.forEach(i => i.classList.remove('active', 'bg-body-secondary'))
-              // Add active class to clicked
-              item.classList.add('active', 'bg-body-secondary')
-
-              emit(events('chat:room-selected'), { roomId: item.dataset.roomId })
+        const items = roomList.querySelectorAll('.room-item')
+        items.forEach(item => {
+          item.addEventListener('click', () => {
+            // Remove active class from all
+            items.forEach(i => i.classList.remove('active', 'bg-body-secondary'))
+            // Add active class to clicked
+            item.classList.add('active', 'bg-body-secondary')
+            emit(events('chat:room-selected'), {
+              roomId: item.dataset.roomId
             })
           })
-        }
-
-        createRoomBtn.addEventListener('click', async () => {
-          const roomName = roomNameInput.value.trim()
-          if (!roomName) return
-
-          try {
-            await createEncryptedRoom(roomName)
-            roomNameInput.value = ''
-            // Hide the modal using Bootstrap's modal instance if available,
-            // otherwise just hide it manually (or relying on renderRooms to refresh).
-            const modalElement = newRoomModal
-            const bootstrapModal = bootstrap.Modal.getInstance(modalElement)
-            if (bootstrapModal) bootstrapModal.hide()
-
-            // Re-render rooms list
-            await renderRooms()
-          } catch (error) {
-            console.error('Failed to create room:', error)
-          }
-        })
-
-        on(events('app:logged-in'), () => {
-          renderRooms()
-        })
-        
-        on(events('chat:rooms-updated'), () => {
-          renderRooms()
         })
       }
+      createRoomBtn.addEventListener('click', async () => {
+        const roomName = roomNameInput.value.trim()
+        if (!roomName) {
+          return
+        }
+        try {
+          await createEncryptedRoom(roomName)
+          roomNameInput.value = ''
+          // Hide the modal using Bootstrap's modal instance if available,
+          // otherwise just hide it manually (or relying on renderRooms to refresh).
+          const modalElement = newRoomModal
+          const bootstrapModal = bootstrap.Modal.getInstance(modalElement)
+          if (bootstrapModal) {
+            bootstrapModal.hide()
+          }
+
+          // Re-render rooms list
+          await renderRooms()
+        } catch (error) {
+          console.error('Failed to create room:', error)
+        }
+      })
+      on(events('app:logged-in'), () => {
+        renderRooms()
+      })
+      on(events('chat:rooms-updated'), () => {
+        renderRooms()
+      })
     }
-  })
+  }
+})
 </script>

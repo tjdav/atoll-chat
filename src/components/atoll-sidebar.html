@@ -55,52 +55,60 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, emit, events, on, logout } = helpers
-        const signOutLink = refs('signOutLink')
-        
-        signOutLink.addEventListener('click', async (e) => {
-          e.preventDefault()
-          if (logout) {
-            await logout()
-          }
-          emit(events('app:logged-out'))
-        })
-        const navList = refs('navList')
-        const links = navList.querySelectorAll('.nav-link')
-
-        const updateActiveTab = (tabName) => {
-          links.forEach(link => {
-            if (link.dataset.tab === tabName) {
-              link.classList.add('active')
-              link.classList.remove('text-white')
-              link.setAttribute('aria-current', 'page')
-            } else {
-              link.classList.remove('active')
-              link.classList.add('text-white')
-              link.removeAttribute('aria-current')
-            }
-          })
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        emit,
+        events,
+        on,
+        logout
+      } = helpers
+      const signOutLink = references('signOutLink')
+      signOutLink.addEventListener('click', async event => {
+        event.preventDefault()
+        if (logout) {
+          await logout()
         }
-
+        emit(events('app:logged-out'))
+      })
+      const navList = references('navList')
+      const links = navList.querySelectorAll('.nav-link')
+      const updateActiveTab = tabName => {
         links.forEach(link => {
-          link.addEventListener('click', (e) => {
-            e.preventDefault()
-            const tabName = link.dataset.tab
-            updateActiveTab(tabName)
-            emit(events('nav:changed'), { tab: tabName })
-          })
-        })
-
-        // update if navigation is changed programmatically
-        on(events('nav:changed'), ({ tab }) => {
-          updateActiveTab(tab)
+          if (link.dataset.tab === tabName) {
+            link.classList.add('active')
+            link.classList.remove('text-white')
+            link.setAttribute('aria-current', 'page')
+          } else {
+            link.classList.remove('active')
+            link.classList.add('text-white')
+            link.removeAttribute('aria-current')
+          }
         })
       }
+      links.forEach(link => {
+        link.addEventListener('click', event => {
+          event.preventDefault()
+          const tabName = link.dataset.tab
+          updateActiveTab(tabName)
+          emit(events('nav:changed'), {
+            tab: tabName
+          })
+        })
+      })
+
+      // update if navigation is changed programmatically
+      on(events('nav:changed'), ({
+        tab
+      }) => {
+        updateActiveTab(tab)
+      })
     }
-  })
+  }
+})
 </script>

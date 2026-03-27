@@ -65,219 +65,242 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    client: {
-      imports: [
-        { specifier: 'bootstrap', namespaceExport: 'bootstrap' }
-      ],
-      script: ({ helpers, imports }) => {
-        const { refs, on, emit, events, getRoom, sendMessage, seed, sendTorrentMessage, inviteUser, joinRoom, sendReaction, removeReaction } = helpers
-        const chatHeader = refs('chatHeader')
-        const roomAvatar = refs('roomAvatar')
-        const roomName = refs('roomName')
-        const emptyState = refs('emptyState')
-        const inviteState = refs('inviteState')
-        const timeline = refs('timeline')
-        const inputContainer = refs('inputContainer')
-        const startVoiceCallBtn = refs('startVoiceCallBtn')
-        const startVideoCallBtn = refs('startVideoCallBtn')
-        const inviteModal = refs('inviteModal')
-        const inviteUserIdInput = refs('inviteUserIdInput')
-        const sendInviteBtn = refs('sendInviteBtn')
-        const joinRoomBtn = refs('joinRoomBtn')
-
-        let activeRoomId = null
-
-        startVoiceCallBtn.addEventListener('click', () => {
-          if (activeRoomId) {
-            emit(events('call:start'), { roomId: activeRoomId, type: 'voice' })
-          }
-        })
-
-        startVideoCallBtn.addEventListener('click', () => {
-          if (activeRoomId) {
-            emit(events('call:start'), { roomId: activeRoomId, type: 'video' })
-          }
-        })
-
-        const createAvatarHTML = (name, url) => {
-          if (url) {
-            return '<img src="' + url + '" alt="' + name + '" class="rounded-circle object-fit-cover" style="width: 30px; height: 30px;">'
-          }
-
-          const initials = name ? name.substring(0, 2).toUpperCase() : '?'
-          return '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-6" style="width: 30px; height: 30px;">' + initials + '</div>'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    imports: [{
+      specifier: 'bootstrap',
+      namespaceExport: 'bootstrap'
+    }],
+    script: ({
+      helpers,
+      imports
+    }) => {
+      const {
+        refs: references,
+        on,
+        emit,
+        events,
+        getRoom,
+        sendMessage,
+        seed,
+        sendTorrentMessage,
+        inviteUser,
+        joinRoom,
+        sendReaction,
+        removeReaction
+      } = helpers
+      const chatHeader = references('chatHeader')
+      const roomAvatar = references('roomAvatar')
+      const roomName = references('roomName')
+      const emptyState = references('emptyState')
+      const inviteState = references('inviteState')
+      const timeline = references('timeline')
+      const inputContainer = references('inputContainer')
+      const startVoiceCallBtn = references('startVoiceCallBtn')
+      const startVideoCallBtn = references('startVideoCallBtn')
+      const inviteModal = references('inviteModal')
+      const inviteUserIdInput = references('inviteUserIdInput')
+      const sendInviteBtn = references('sendInviteBtn')
+      const joinRoomBtn = references('joinRoomBtn')
+      let activeRoomId = null
+      startVoiceCallBtn.addEventListener('click', () => {
+        if (activeRoomId) {
+          emit(events('call:start'), {
+            roomId: activeRoomId,
+            type: 'voice'
+          })
         }
-
-        on(events('chat:room-selected'), async ({ roomId }) => {
-          activeRoomId = roomId
-          const roomDetails = await getRoom(roomId)
-
-          if (roomDetails) {
-            roomName.textContent = roomDetails.name
-            roomAvatar.innerHTML = createAvatarHTML(roomDetails.name, roomDetails.avatarUrl)
-
-            // Show header, hide empty state
-            chatHeader.style.display = 'flex'
-            emptyState.classList.remove('d-transition-show');
-          emptyState.classList.add('d-transition-none')
-            
-            if (roomDetails.membership === 'invite') {
-              inviteState.classList.remove('d-transition-none');
-          inviteState.classList.add('d-transition-show')
-              timeline.classList.remove('d-transition-show');
-          timeline.classList.add('d-transition-none')
-              inputContainer.classList.remove('d-transition-show');
-          inputContainer.classList.add('d-transition-none')
-            } else {
-              inviteState.classList.remove('d-transition-show');
-          inviteState.classList.add('d-transition-none')
-              timeline.classList.remove('d-transition-none');
-          timeline.classList.add('d-transition-show')
-              inputContainer.classList.remove('d-transition-none');
-          inputContainer.classList.add('d-transition-show')
-              // Notify timeline to load messages
-              emit(events('chat:room-ready'), { roomId })
-            }
-          }
-        })
-
-      helpers.refs('openInviteModalBtn').addEventListener('click', () => {
-         const modal = imports.bootstrap.Modal.getOrCreateInstance(helpers.refs('inviteModal'));
-         modal.show();
-      });
-      helpers.refs('openInviteModalHiddenBtn').addEventListener('click', () => {
-         const modal = imports.bootstrap.Modal.getOrCreateInstance(helpers.refs('inviteModal'));
-         modal.show();
-      });
-
-        sendInviteBtn.addEventListener('click', async () => {
-          if (!activeRoomId) return
-          const userId = inviteUserIdInput.value.trim()
-          if (!userId) return
-
-          try {
-            await inviteUser(activeRoomId, userId)
-            inviteUserIdInput.value = ''
-            
-            const modalElement = inviteModal
-            const bootstrapModal = imports.bootstrap.Modal.getInstance(modalElement)
-            if (bootstrapModal) bootstrapModal.hide()
-
-          } catch (error) {
-            console.error('Failed to send invite:', error)
-          }
-        })
-
-        joinRoomBtn.addEventListener('click', async () => {
-          if (!activeRoomId) return
-
-          try {
-            await joinRoom(activeRoomId)
-            
-            inviteState.classList.remove('d-transition-show');
-          inviteState.classList.add('d-transition-none')
-            timeline.classList.remove('d-transition-none');
-          timeline.classList.add('d-transition-show')
-            inputContainer.classList.remove('d-transition-none');
-          inputContainer.classList.add('d-transition-show')
-            
-            emit(events('chat:room-ready'), { roomId: activeRoomId })
-            
-            // Optionally, emit an event so chat-list can re-render if needed
-            emit(events('chat:rooms-updated'))
-          } catch (error) {
-            console.error('Failed to join room:', error)
-          }
-        })
-
-        on(events('chat:message-submitted'), async ({ text }) => {
-          if (!activeRoomId) return
-
-          try {
-            await sendMessage(activeRoomId, text)
-            emit(events('chat:message-sent'))
-          } catch (error) {
-            console.error('Failed to send message:', error)
-          }
-        })
-
-        on(events('chat:send-reaction'), async ({ roomId, eventId, reaction }) => {
-          if (!roomId || !eventId || !reaction) return
-          try {
-            await sendReaction(roomId, eventId, reaction)
-          } catch (error) {
-            console.error('Failed to send reaction:', error)
-          }
-        })
-
-        on(events('chat:remove-reaction'), async ({ roomId, eventId, reaction }) => {
-          if (!roomId || !eventId || !reaction) return
-          try {
-            await removeReaction(roomId, eventId, reaction)
-          } catch (error) {
-            console.error('Failed to remove reaction:', error)
-          }
-        })
-
-        on(events('chat:file-selected'), async ({ file }) => {
-          if (!activeRoomId) return
-
-          try {
-            // 1. Generate AES-GCM key
-            const key = await crypto.subtle.generateKey(
-              {
-                name: 'AES-GCM',
-                length: 256
-              },
-              true,
-              ['encrypt', 'decrypt']
-            )
-
-            // 2. Generate IV
-            const iv = crypto.getRandomValues(new Uint8Array(12))
-
-            // 3. Encrypt file
-            const fileBuffer = await file.arrayBuffer()
-            const encryptedBuffer = await crypto.subtle.encrypt(
-              {
-                name: 'AES-GCM',
-                iv: iv
-              },
-              key,
-              fileBuffer
-            )
-            const encryptedBlob = new Blob([encryptedBuffer])
-
-            // 4. Start Seeding
-            const magnetURI = await seed(encryptedBlob)
-
-            // 5. Export Key to JWK and IV to Base64
-            const jwk = await crypto.subtle.exportKey('jwk', key)
-            const base64Iv = btoa(Array.from(iv, (byte) => String.fromCodePoint(byte)).join(''))
-
-            // 6. Send Matrix Signal
-            const torrentPayload = {
-              magnetURI,
-              key: jwk,
-              iv: base64Iv,
-              filename: file.name,
-              size: file.size,
-              mimeType: file.type || 'application/octet-stream'
-            }
-
-            await sendTorrentMessage(activeRoomId, torrentPayload)
-
-          } catch (error) {
-            console.error('Failed to process and send file:', error)
-          } finally {
-            // 7. Re-enable UI
-            emit(events('chat:file-processing-done'))
-          }
-        })
+      })
+      startVideoCallBtn.addEventListener('click', () => {
+        if (activeRoomId) {
+          emit(events('call:start'), {
+            roomId: activeRoomId,
+            type: 'video'
+          })
+        }
+      })
+      const createAvatarHTML = (name, url) => {
+        if (url) {
+          return '<img src="' + url + '" alt="' + name + '" class="rounded-circle object-fit-cover" style="width: 30px; height: 30px;">'
+        }
+        const initials = name ? name.substring(0, 2).toUpperCase() : '?'
+        return '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-6" style="width: 30px; height: 30px;">' + initials + '</div>'
       }
+      on(events('chat:room-selected'), async ({
+        roomId
+      }) => {
+        activeRoomId = roomId
+        const roomDetails = await getRoom(roomId)
+        if (roomDetails) {
+          roomName.textContent = roomDetails.name
+          roomAvatar.innerHTML = createAvatarHTML(roomDetails.name, roomDetails.avatarUrl)
+
+          // Show header, hide empty state
+          chatHeader.style.display = 'flex'
+          emptyState.classList.remove('d-transition-show')
+          emptyState.classList.add('d-transition-none')
+          if (roomDetails.membership === 'invite') {
+            inviteState.classList.remove('d-transition-none')
+            inviteState.classList.add('d-transition-show')
+            timeline.classList.remove('d-transition-show')
+            timeline.classList.add('d-transition-none')
+            inputContainer.classList.remove('d-transition-show')
+            inputContainer.classList.add('d-transition-none')
+          } else {
+            inviteState.classList.remove('d-transition-show')
+            inviteState.classList.add('d-transition-none')
+            timeline.classList.remove('d-transition-none')
+            timeline.classList.add('d-transition-show')
+            inputContainer.classList.remove('d-transition-none')
+            inputContainer.classList.add('d-transition-show')
+            // Notify timeline to load messages
+            emit(events('chat:room-ready'), {
+              roomId
+            })
+          }
+        }
+      })
+      helpers.refs('openInviteModalBtn').addEventListener('click', () => {
+        const modal = imports.bootstrap.Modal.getOrCreateInstance(helpers.refs('inviteModal'))
+        modal.show()
+      })
+      helpers.refs('openInviteModalHiddenBtn').addEventListener('click', () => {
+        const modal = imports.bootstrap.Modal.getOrCreateInstance(helpers.refs('inviteModal'))
+        modal.show()
+      })
+      sendInviteBtn.addEventListener('click', async () => {
+        if (!activeRoomId) {
+          return
+        }
+        const userId = inviteUserIdInput.value.trim()
+        if (!userId) {
+          return
+        }
+        try {
+          await inviteUser(activeRoomId, userId)
+          inviteUserIdInput.value = ''
+          const modalElement = inviteModal
+          const bootstrapModal = imports.bootstrap.Modal.getInstance(modalElement)
+          if (bootstrapModal) {
+            bootstrapModal.hide()
+          }
+        } catch (error) {
+          console.error('Failed to send invite:', error)
+        }
+      })
+      joinRoomBtn.addEventListener('click', async () => {
+        if (!activeRoomId) {
+          return
+        }
+        try {
+          await joinRoom(activeRoomId)
+          inviteState.classList.remove('d-transition-show')
+          inviteState.classList.add('d-transition-none')
+          timeline.classList.remove('d-transition-none')
+          timeline.classList.add('d-transition-show')
+          inputContainer.classList.remove('d-transition-none')
+          inputContainer.classList.add('d-transition-show')
+          emit(events('chat:room-ready'), {
+            roomId: activeRoomId
+          })
+
+          // Optionally, emit an event so chat-list can re-render if needed
+          emit(events('chat:rooms-updated'))
+        } catch (error) {
+          console.error('Failed to join room:', error)
+        }
+      })
+      on(events('chat:message-submitted'), async ({
+        text
+      }) => {
+        if (!activeRoomId) {
+          return
+        }
+        try {
+          await sendMessage(activeRoomId, text)
+          emit(events('chat:message-sent'))
+        } catch (error) {
+          console.error('Failed to send message:', error)
+        }
+      })
+      on(events('chat:send-reaction'), async ({
+        roomId,
+        eventId,
+        reaction
+      }) => {
+        if (!roomId || !eventId || !reaction) {
+          return
+        }
+        try {
+          await sendReaction(roomId, eventId, reaction)
+        } catch (error) {
+          console.error('Failed to send reaction:', error)
+        }
+      })
+      on(events('chat:remove-reaction'), async ({
+        roomId,
+        eventId,
+        reaction
+      }) => {
+        if (!roomId || !eventId || !reaction) {
+          return
+        }
+        try {
+          await removeReaction(roomId, eventId, reaction)
+        } catch (error) {
+          console.error('Failed to remove reaction:', error)
+        }
+      })
+      on(events('chat:file-selected'), async ({
+        file
+      }) => {
+        if (!activeRoomId) {
+          return
+        }
+        try {
+          // Generate AES-GCM key
+          const key = await crypto.subtle.generateKey({
+            name: 'AES-GCM',
+            length: 256
+          }, true, ['encrypt', 'decrypt'])
+
+          // Generate IV
+          const iv = crypto.getRandomValues(new Uint8Array(12))
+
+          // Encrypt file
+          const fileBuffer = await file.arrayBuffer()
+          const encryptedBuffer = await crypto.subtle.encrypt({
+            name: 'AES-GCM',
+            iv: iv
+          }, key, fileBuffer)
+          const encryptedBlob = new Blob([encryptedBuffer])
+
+          // Start Seeding
+          const magnetURI = await seed(encryptedBlob)
+
+          // Export Key to JWK and IV to Base64
+          const jwk = await crypto.subtle.exportKey('jwk', key)
+          const base64Iv = btoa(Array.from(iv, byte => String.fromCodePoint(byte)).join(''))
+
+          // Send Matrix Signal
+          const torrentPayload = {
+            magnetURI,
+            key: jwk,
+            iv: base64Iv,
+            filename: file.name,
+            size: file.size,
+            mimeType: file.type || 'application/octet-stream'
+          }
+          await sendTorrentMessage(activeRoomId, torrentPayload)
+        } catch (error) {
+          console.error('Failed to process and send file:', error)
+        } finally {
+          // Re-enable UI
+          emit(events('chat:file-processing-done'))
+        }
+      })
     }
-  })
+  }
+})
 </script>

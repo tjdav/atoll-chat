@@ -14,104 +14,104 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
-
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, on, emit, events } = helpers
-        
-        const queuePanel = refs('queuePanel')
-        const closeQueueBtn = refs('closeQueueBtn')
-        const queueList = refs('queueList')
-
-        let currentPlaylist = []
-        let currentIndex = -1
-
-        const formatTime = (seconds) => {
-          if (isNaN(seconds) || seconds < 0) return '0:00'
-          const m = Math.floor(seconds / 60)
-          const s = Math.floor(seconds % 60)
-          return `${m}:${s.toString().padStart(2, '0')}`
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        on,
+        emit,
+        events
+      } = helpers
+      const queuePanel = references('queuePanel')
+      const closeQueueBtn = references('closeQueueBtn')
+      const queueList = references('queueList')
+      let currentPlaylist = []
+      let currentIndex = -1
+      const formatTime = seconds => {
+        if (isNaN(seconds) || seconds < 0) {
+          return '0:00'
         }
-
-        const renderQueue = () => {
-          queueList.innerHTML = ''
-          currentPlaylist.forEach((file, index) => {
-            const btn = document.createElement('button')
-            btn.className = `list-group-item list-group-item-action bg-transparent text-white border-secondary p-2 d-flex align-items-center ${index === currentIndex ? 'active bg-primary border-primary' : ''}`
-            
-            const icon = document.createElement('i')
-            icon.className = index === currentIndex ? 'bi bi-volume-up-fill me-3 text-white' : 'bi bi-music-note me-3 text-secondary'
-            
-            const infoDiv = document.createElement('div')
-            infoDiv.className = 'flex-grow-1 overflow-hidden d-flex flex-column'
-            
-            const titleDiv = document.createElement('div')
-            titleDiv.className = 'text-truncate fw-bold'
-            titleDiv.style.fontSize = '0.9rem'
-            titleDiv.textContent = file.filename || 'Unknown File'
-
-            const metaDiv = document.createElement('div')
-            metaDiv.className = 'd-flex justify-content-between text-muted text-truncate'
-            metaDiv.style.fontSize = '0.75rem'
-
-            const artistSpan = document.createElement('span')
-            artistSpan.textContent = file.artist || 'Unknown Artist'
-
-            const durationSpan = document.createElement('span')
-            // Mock duration or format file size if no duration is known. 
-            // Often audio blobs in matrix lack duration before load.
-            durationSpan.textContent = file.duration ? formatTime(file.duration) : ''
-
-            metaDiv.appendChild(artistSpan)
-            metaDiv.appendChild(durationSpan)
-            
-            infoDiv.appendChild(titleDiv)
-            infoDiv.appendChild(metaDiv)
-            
-            btn.appendChild(icon)
-            btn.appendChild(infoDiv)
-            
-            btn.addEventListener('click', () => {
-              emit(events('player:play-queue-track'), { index, file })
-            })
-            
-            queueList.appendChild(btn)
-          })
-
-          // Scroll current item into view if possible
-          const activeItem = queueList.querySelector('.active')
-          if (activeItem) {
-            activeItem.scrollIntoView({ block: 'nearest' })
-          }
-        }
-
-        on(events('player:queue-update'), ({ playlist, index }) => {
-          currentPlaylist = playlist
-          currentIndex = index
-          if (!queuePanel.classList.contains('d-transition-none')) {
-            renderQueue()
-          }
-        })
-
-        on(events('player:queue-visibility'), ({ isVisible }) => {
-          if (isVisible) {
-            queuePanel.classList.remove('d-transition-none');
-          queuePanel.classList.add('d-transition-show')
-            queuePanel.classList.add('d-flex')
-            renderQueue()
-          } else {
-            queuePanel.classList.remove('d-transition-show');
-          queuePanel.classList.add('d-transition-none')
-            queuePanel.classList.remove('d-flex')
-          }
-        })
-
-        closeQueueBtn.addEventListener('click', () => {
-          emit(events('player:close-queue'))
-        })
+        const m = Math.floor(seconds / 60)
+        const s = Math.floor(seconds % 60)
+        return `${m}:${s.toString().padStart(2, '0')}`
       }
+      const renderQueue = () => {
+        queueList.innerHTML = ''
+        currentPlaylist.forEach((file, index) => {
+          const button = document.createElement('button')
+          button.className = `list-group-item list-group-item-action bg-transparent text-white border-secondary p-2 d-flex align-items-center ${index === currentIndex ? 'active bg-primary border-primary' : ''}`
+          const icon = document.createElement('i')
+          icon.className = index === currentIndex ? 'bi bi-volume-up-fill me-3 text-white' : 'bi bi-music-note me-3 text-secondary'
+          const infoDiv = document.createElement('div')
+          infoDiv.className = 'flex-grow-1 overflow-hidden d-flex flex-column'
+          const titleDiv = document.createElement('div')
+          titleDiv.className = 'text-truncate fw-bold'
+          titleDiv.style.fontSize = '0.9rem'
+          titleDiv.textContent = file.filename || 'Unknown File'
+          const metaDiv = document.createElement('div')
+          metaDiv.className = 'd-flex justify-content-between text-muted text-truncate'
+          metaDiv.style.fontSize = '0.75rem'
+          const artistSpan = document.createElement('span')
+          artistSpan.textContent = file.artist || 'Unknown Artist'
+          const durationSpan = document.createElement('span')
+          // Mock duration or format file size if no duration is known.
+          // Often audio blobs in matrix lack duration before load.
+          durationSpan.textContent = file.duration ? formatTime(file.duration) : ''
+          metaDiv.appendChild(artistSpan)
+          metaDiv.appendChild(durationSpan)
+          infoDiv.appendChild(titleDiv)
+          infoDiv.appendChild(metaDiv)
+          button.appendChild(icon)
+          button.appendChild(infoDiv)
+          button.addEventListener('click', () => {
+            emit(events('player:play-queue-track'), {
+              index,
+              file
+            })
+          })
+          queueList.appendChild(button)
+        })
+
+        // Scroll current item into view if possible
+        const activeItem = queueList.querySelector('.active')
+        if (activeItem) {
+          activeItem.scrollIntoView({
+            block: 'nearest'
+          })
+        }
+      }
+      on(events('player:queue-update'), ({
+        playlist,
+        index
+      }) => {
+        currentPlaylist = playlist
+        currentIndex = index
+        if (!queuePanel.classList.contains('d-transition-none')) {
+          renderQueue()
+        }
+      })
+      on(events('player:queue-visibility'), ({
+        isVisible
+      }) => {
+        if (isVisible) {
+          queuePanel.classList.remove('d-transition-none')
+          queuePanel.classList.add('d-transition-show')
+          queuePanel.classList.add('d-flex')
+          renderQueue()
+        } else {
+          queuePanel.classList.remove('d-transition-show')
+          queuePanel.classList.add('d-transition-none')
+          queuePanel.classList.remove('d-flex')
+        }
+      })
+      closeQueueBtn.addEventListener('click', () => {
+        emit(events('player:close-queue'))
+      })
     }
-  })
+  }
+})
 </script>

@@ -19,85 +19,93 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    imports: [{
+      specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/database.js'
+    }, {
+      specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/picker.js'
+    }],
+    script: ({
+      helpers,
+      values
+    }) => {
+      const {
+        refs: references,
+        emit,
+        events
+      } = helpers
+      const container = references('container')
+      const emojiPopover = references('emojiPopover')
+      const moreBtn = references('moreBtn')
+      const playButton = references('playBtn')
+      let pickerInitialized = false
 
-  export default defineComponent({
-    client: {
-      imports: [
-        { specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/database.js' },
-        { specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/picker.js' }
-      ],
-      script: ({ helpers, values }) => {
-        const { refs, emit, events } = helpers
-        const container = refs('container')
-        const emojiPopover = refs('emojiPopover')
-        const moreBtn = refs('moreBtn')
-        const playBtn = refs('playBtn')
-        
-        let pickerInitialized = false
+      // Extract properties passed from parent
+      const eventId = values['event-id']
+      const roomId = values['room-id']
 
-        // Extract properties passed from parent
-        const eventId = values['event-id']
-        const roomId = values['room-id']
-
-        // Play button handler
-        if (playBtn) {
-          playBtn.addEventListener('click', () => {
-            if (eventId && roomId) {
-              emit(events('chat:tts-play-requested'), { eventId, roomId })
-            }
-          })
-        }
-
-        const sendReaction = (emoji) => {
-          if (!eventId || !roomId) {
-            console.error('atoll-message-actions: Missing event-id or room-id', { eventId, roomId })
-            return
-          }
-          
-          emit(events('chat:send-reaction'), {
-            roomId,
-            eventId,
-            reaction: emoji
-          })
-          
-          // Close popover if open
-          if (emojiPopover.matches(':popover-open')) {
-            emojiPopover.hidePopover()
-          }
-        }
-
-        // Handle predefined emoji clicks
-        const buttons = container.querySelectorAll('.reaction-btn')
-        buttons.forEach(btn => {
-          btn.addEventListener('click', (e) => {
-            const emoji = e.currentTarget.dataset.emoji
-            if (emoji) {
-              sendReaction(emoji)
-            }
-          })
-        })
-
-        // Initialize emoji picker on first open
-        emojiPopover.addEventListener('beforetoggle', (e) => {
-          if (e.newState === 'open' && !pickerInitialized) {
-            pickerInitialized = true
-            const picker = document.createElement('emoji-picker')
-            // Apply dark theme styling to match the app
-            picker.classList.add('dark')
-            
-            // Set some styling variables if needed
-            picker.style.setProperty('--background', '#212529')
-            picker.style.setProperty('--border-color', '#495057')
-            
-            picker.addEventListener('emoji-click', event => {
-              sendReaction(event.detail.unicode)
+      // Play button handler
+      if (playButton) {
+        playButton.addEventListener('click', () => {
+          if (eventId && roomId) {
+            emit(events('chat:tts-play-requested'), {
+              eventId,
+              roomId
             })
-            
-            emojiPopover.appendChild(picker)
           }
         })
       }
+      const sendReaction = emoji => {
+        if (!eventId || !roomId) {
+          console.error('atoll-message-actions: Missing event-id or room-id', {
+            eventId,
+            roomId
+          })
+          return
+        }
+        emit(events('chat:send-reaction'), {
+          roomId,
+          eventId,
+          reaction: emoji
+        })
+
+        // Close popover if open
+        if (emojiPopover.matches(':popover-open')) {
+          emojiPopover.hidePopover()
+        }
+      }
+
+      // Handle predefined emoji clicks
+      const buttons = container.querySelectorAll('.reaction-btn')
+      buttons.forEach(button => {
+        button.addEventListener('click', event => {
+          const emoji = event.currentTarget.dataset.emoji
+          if (emoji) {
+            sendReaction(emoji)
+          }
+        })
+      })
+
+      // Initialize emoji picker on first open
+      emojiPopover.addEventListener('beforetoggle', event => {
+        if (event.newState === 'open' && !pickerInitialized) {
+          pickerInitialized = true
+          const picker = document.createElement('emoji-picker')
+          // Apply dark theme styling to match the app
+          picker.classList.add('dark')
+
+          // Set some styling variables if needed
+          picker.style.setProperty('--background', '#212529')
+          picker.style.setProperty('--border-color', '#495057')
+          picker.addEventListener('emoji-click', event => {
+            sendReaction(event.detail.unicode)
+          })
+          emojiPopover.appendChild(picker)
+        }
+      })
     }
-  })
+  }
+})
 </script>

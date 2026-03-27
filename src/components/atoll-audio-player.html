@@ -18,295 +18,348 @@
 </template>
 
 <script type="module" client>
-  import { defineComponent } from 'coralite'
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  client: {
+    script: ({
+      helpers
+    }) => {
+      const {
+        refs: references,
+        on,
+        emit,
+        events,
+        getLikes,
+        toggleLike
+      } = helpers
+      const playerContainer = references('playerContainer')
+      const audioElement = references('audioElement')
 
-  export default defineComponent({
-    client: {
-      script: ({ helpers }) => {
-        const { refs, on, emit, events, getLikes, toggleLike } = helpers
-        
-        const playerContainer = refs('playerContainer')
-        const audioElement = refs('audioElement')
+      /**
+       *  State
+       */
+      let currentPlaylist = []
+      let originalPlaylist = []
+      let currentIndex = -1
+      let isShuffle = false
+      // 'none', 'all', 'one'
+      let repeatMode = 'none'
+      // Store string IDs of liked tracks
+      let likedTracks = new Set()
+      let currentObjectUrl = null
+      let isMuted = false
+      let previousVolume = 1
+      let isQueueVisible = false
 
-        // --- State ---
-        let currentPlaylist = []
-        let originalPlaylist = []
-        let currentIndex = -1
-        let isShuffle = false
-        let repeatMode = 'none' // 'none', 'all', 'one'
-        let likedTracks = new Set() // Store string IDs of liked tracks
+      /**
+       *  Like DB Init
+       */
+      const loadLikes = async () => {
+        try {
+          const likesArray = await getLikes()
+          likedTracks = new Set(likesArray)
+        } catch (event) {
+          console.error('Error loading likes from IndexedDB:', event)
+        }
+      }
+      loadLikes()
 
-        let currentObjectUrl = null
-        let isMuted = false
-        let previousVolume = 1
-        let isQueueVisible = false
+      /**
+       *  Audio Element Listeners
+       */
+      audioElement.addEventListener('play', () => {
+        emit(events('player:play-state-change'), {
+          isPlaying: true
+        })
+      })
+      audioElement.addEventListener('pause', () => {
+        emit(events('player:play-state-change'), {
+          isPlaying: false
+        })
+      })
+      audioElement.addEventListener('loadedmetadata', () => {
+        emit(events('player:duration-change'), {
+          duration: audioElement.duration
+        })
+      })
+      audioElement.addEventListener('timeupdate', () => {
+        emit(events('player:time-update'), {
+          currentTime: audioElement.currentTime
+        })
+      })
+      audioElement.addEventListener('ended', () => {
+        if (repeatMode === 'one') {
+          audioElement.currentTime = 0
+          audioElement.play().catch(event => console.error('Error replaying audio:', event))
+        } else {
+          playNext(false)
+        }
+      })
 
-        // --- Like DB Init ---
-        const loadLikes = async () => {
-          try {
-            const likesArray = await getLikes()
-            likedTracks = new Set(likesArray)
-          } catch (e) {
-            console.error('Error loading likes from IndexedDB:', e)
+      // Initial volume setup
+      audioElement.volume = 1
+      previousVolume = audioElement.volume
+      emit(events('player:volume-update'), {
+        volume: audioElement.volume,
+        isMuted: audioElement.muted
+      })
+
+      /**
+       *  Playback Internal
+       */
+      const playTrack = file => {
+        if (currentObjectUrl) {
+          URL.revokeObjectURL(currentObjectUrl)
+        }
+        currentObjectUrl = URL.createObjectURL(file.blob)
+        audioElement.src = currentObjectUrl
+        playerContainer.classList.remove('d-transition-none')
+        playerContainer.classList.add('d-transition-show')
+        playerContainer.classList.add('d-flex')
+
+        // Emit track updates to track info and queue panel
+        emit(events('player:track-update'), {
+          file,
+          isLiked: likedTracks.has(file.id)
+        })
+        emit(events('player:queue-update'), {
+          playlist: currentPlaylist,
+          index: currentIndex
+        })
+        audioElement.play().catch(event => console.error('Error playing audio:', event))
+      }
+      const playNext = (manual = true) => {
+        if (currentPlaylist.length === 0) {
+          return
+        }
+
+        // If not manual, and repeatMode is 'none', and at the end of playlist, stop
+        if (!manual && repeatMode === 'none' && currentIndex === currentPlaylist.length - 1) {
+          audioElement.pause()
+          audioElement.currentTime = 0
+          emit(events('player:play-state-change'), {
+            isPlaying: false
+          })
+          return
+        }
+        currentIndex = (currentIndex + 1) % currentPlaylist.length
+        const nextFile = currentPlaylist[currentIndex]
+        if (nextFile) {
+          playTrack(nextFile)
+        }
+      }
+      const playPrevious = () => {
+        if (currentPlaylist.length === 0) {
+          return
+        }
+        currentIndex = (currentIndex - 1 + currentPlaylist.length) % currentPlaylist.length
+        const prevFile = currentPlaylist[currentIndex]
+        if (prevFile) {
+          playTrack(prevFile)
+        }
+      }
+
+      /**
+       *  Event Bus Listeners from Child Components
+       */
+      // Controls
+      on(events('player:toggle-play'), () => {
+        if (audioElement.paused) {
+          audioElement.play().catch(event => console.error('Error playing audio:', event))
+        } else {
+          audioElement.pause()
+        }
+      })
+      on(events('player:next'), () => playNext(true))
+      on(events('player:previous'), () => playPrevious())
+      on(events('player:toggle-shuffle'), () => {
+        isShuffle = !isShuffle
+        if (isShuffle) {
+          emit(events('player:shuffle-change'), {
+            isShuffle: true
+          })
+          if (currentPlaylist.length > 0) {
+            const currentFile = currentPlaylist[currentIndex]
+            const rest = [...originalPlaylist]
+            const origIndex = rest.findIndex(f => f.id === currentFile.id)
+            if (origIndex !== -1) {
+              rest.splice(origIndex, 1)
+            }
+            for (let i = rest.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [rest[i], rest[j]] = [rest[j], rest[i]]
+            }
+            currentPlaylist = [currentFile, ...rest]
+            currentIndex = 0
+          }
+        } else {
+          emit(events('player:shuffle-change'), {
+            isShuffle: false
+          })
+          if (currentPlaylist.length > 0) {
+            const currentFile = currentPlaylist[currentIndex]
+            currentPlaylist = [...originalPlaylist]
+            currentIndex = currentPlaylist.findIndex(f => f.id === currentFile.id)
           }
         }
-        
-        loadLikes()
-
-        // --- Audio Element Listeners ---
-        audioElement.addEventListener('play', () => {
-          emit(events('player:play-state-change'), { isPlaying: true })
+        // Update queue when shuffled
+        emit(events('player:queue-update'), {
+          playlist: currentPlaylist,
+          index: currentIndex
         })
-
-        audioElement.addEventListener('pause', () => {
-          emit(events('player:play-state-change'), { isPlaying: false })
+      })
+      on(events('player:toggle-repeat'), () => {
+        if (repeatMode === 'none') {
+          repeatMode = 'all'
+        } else if (repeatMode === 'all') {
+          repeatMode = 'one'
+        } else {
+          repeatMode = 'none'
+        }
+        emit(events('player:repeat-change'), {
+          repeatMode
         })
+      })
 
-        audioElement.addEventListener('loadedmetadata', () => {
-          emit(events('player:duration-change'), { duration: audioElement.duration })
+      // Timeline
+      on(events('player:seek'), ({
+        time
+      }) => {
+        audioElement.currentTime = time
+      })
+
+      // Volume & Queue Toggles
+      on(events('player:set-volume'), ({
+        volume
+      }) => {
+        if (isMuted && volume > 0) {
+          isMuted = false
+          audioElement.muted = false
+        }
+        audioElement.volume = volume
+        previousVolume = volume
+        emit(events('player:volume-update'), {
+          volume: audioElement.volume,
+          isMuted: audioElement.muted
         })
-
-        audioElement.addEventListener('timeupdate', () => {
-          emit(events('player:time-update'), { currentTime: audioElement.currentTime })
+      })
+      on(events('player:toggle-mute'), () => {
+        if (isMuted) {
+          isMuted = false
+          audioElement.muted = false
+          audioElement.volume = previousVolume
+          emit(events('player:volume-update'), {
+            volume: previousVolume,
+            isMuted: false
+          })
+        } else {
+          isMuted = true
+          audioElement.muted = true
+          emit(events('player:volume-update'), {
+            volume: 0,
+            isMuted: true
+          })
+        }
+      })
+      on(events('player:toggle-queue'), () => {
+        isQueueVisible = !isQueueVisible
+        emit(events('player:queue-visibility'), {
+          isVisible: isQueueVisible
         })
+      })
+      on(events('player:close-queue'), () => {
+        isQueueVisible = false
+        emit(events('player:queue-visibility'), {
+          isVisible: isQueueVisible
+        })
+      })
 
-        audioElement.addEventListener('ended', () => {
-          if (repeatMode === 'one') {
-            audioElement.currentTime = 0
-            audioElement.play().catch(e => console.error('Error replaying audio:', e))
+      // Queue panel specific play
+      on(events('player:play-queue-track'), ({
+        index,
+        file
+      }) => {
+        currentIndex = index
+        playTrack(file)
+      })
+
+      // Track Info Like Toggle
+      on(events('player:toggle-like'), async ({
+        file
+      }) => {
+        if (!file) {
+          return
+        }
+        const fileId = file.id
+        const isLiked = likedTracks.has(fileId)
+        try {
+          const newLikedState = await toggleLike(fileId)
+          if (newLikedState) {
+            likedTracks.add(fileId)
           } else {
-            playNext(false)
+            likedTracks.delete(fileId)
           }
-        })
-
-        // Initial volume setup
-        audioElement.volume = 1
-        previousVolume = audioElement.volume
-        emit(events('player:volume-update'), { volume: audioElement.volume, isMuted: audioElement.muted })
-
-
-        // --- Playback Internal ---
-        const playTrack = (file) => {
-          if (currentObjectUrl) {
-            URL.revokeObjectURL(currentObjectUrl)
-          }
-
-          currentObjectUrl = URL.createObjectURL(file.blob)
-          audioElement.src = currentObjectUrl
-          
-          playerContainer.classList.remove('d-transition-none');
-          playerContainer.classList.add('d-transition-show')
-          playerContainer.classList.add('d-flex')
-          
-          // Emit track updates to track info and queue panel
-          emit(events('player:track-update'), { file, isLiked: likedTracks.has(file.id) })
-          emit(events('player:queue-update'), { playlist: currentPlaylist, index: currentIndex })
-
-          audioElement.play().catch(e => console.error('Error playing audio:', e))
+          emit(events('player:like-update'), {
+            fileId,
+            isLiked: newLikedState
+          })
+        } catch (event) {
+          console.error('Error updating like in IndexedDB:', event)
         }
+      })
 
-        const playNext = (manual = true) => {
-          if (currentPlaylist.length === 0) return
-
-          // If not manual, and repeatMode is 'none', and at the end of playlist, stop
-          if (!manual && repeatMode === 'none' && currentIndex === currentPlaylist.length - 1) {
-            audioElement.pause()
-            audioElement.currentTime = 0
-            emit(events('player:play-state-change'), { isPlaying: false })
-            return
-          }
-
-          currentIndex = (currentIndex + 1) % currentPlaylist.length
-          const nextFile = currentPlaylist[currentIndex]
-          
-          if (nextFile) {
-            playTrack(nextFile)
-          }
+      /**
+       *  Global Application Event Listeners
+       */
+      on(events('audio:play'), ({
+        file,
+        playlist,
+        index
+      }) => {
+        let isQueueClick = false
+        if (playlist && originalPlaylist.length === playlist.length && originalPlaylist.every((f, i) => f.id === playlist[i].id)) {
+          isQueueClick = true
         }
-
-        const playPrevious = () => {
-          if (currentPlaylist.length === 0) return
-          currentIndex = (currentIndex - 1 + currentPlaylist.length) % currentPlaylist.length
-          const prevFile = currentPlaylist[currentIndex]
-          
-          if (prevFile) {
-            playTrack(prevFile)
-          }
-        }
-
-
-        // --- Event Bus Listeners from Child Components ---
-
-        // Controls
-        on(events('player:toggle-play'), () => {
-          if (audioElement.paused) {
-            audioElement.play().catch(e => console.error('Error playing audio:', e))
-          } else {
-            audioElement.pause()
-          }
-        })
-
-        on(events('player:next'), () => playNext(true))
-        on(events('player:previous'), () => playPrevious())
-
-        on(events('player:toggle-shuffle'), () => {
-          isShuffle = !isShuffle
-          
-          if (isShuffle) {
-            emit(events('player:shuffle-change'), { isShuffle: true })
-            if (currentPlaylist.length > 0) {
-              const currentFile = currentPlaylist[currentIndex]
+        if (!isQueueClick) {
+          if (playlist) {
+            originalPlaylist = [...playlist]
+            if (isShuffle) {
               const rest = [...originalPlaylist]
-              const origIndex = rest.findIndex(f => f.id === currentFile.id)
-              if (origIndex !== -1) rest.splice(origIndex, 1)
-              
+              const origIndex = rest.findIndex(f => f.id === file.id)
+              if (origIndex !== -1) {
+                rest.splice(origIndex, 1)
+              } else if (index !== undefined) {
+                rest.splice(index, 1)
+              }
               for (let i = rest.length - 1; i > 0; i--) {
-                const j = Math.floor(Math.random() * (i + 1))
-                ;[rest[i], rest[j]] = [rest[j], rest[i]]
+                const j = Math.floor(Math.random() * (i + 1));
+                [rest[i], rest[j]] = [rest[j], rest[i]]
               }
-              currentPlaylist = [currentFile, ...rest]
+              currentPlaylist = [file, ...rest]
               currentIndex = 0
-            }
-          } else {
-            emit(events('player:shuffle-change'), { isShuffle: false })
-            if (currentPlaylist.length > 0) {
-              const currentFile = currentPlaylist[currentIndex]
-              currentPlaylist = [...originalPlaylist]
-              currentIndex = currentPlaylist.findIndex(f => f.id === currentFile.id)
-            }
-          }
-          // Update queue when shuffled
-          emit(events('player:queue-update'), { playlist: currentPlaylist, index: currentIndex })
-        })
-
-        on(events('player:toggle-repeat'), () => {
-          if (repeatMode === 'none') {
-            repeatMode = 'all'
-          } else if (repeatMode === 'all') {
-            repeatMode = 'one'
-          } else {
-            repeatMode = 'none'
-          }
-          emit(events('player:repeat-change'), { repeatMode })
-        })
-
-        // Timeline
-        on(events('player:seek'), ({ time }) => {
-          audioElement.currentTime = time
-        })
-
-        // Volume & Queue Toggles
-        on(events('player:set-volume'), ({ volume }) => {
-          if (isMuted && volume > 0) {
-            isMuted = false
-            audioElement.muted = false
-          }
-          audioElement.volume = volume
-          previousVolume = volume
-          emit(events('player:volume-update'), { volume: audioElement.volume, isMuted: audioElement.muted })
-        })
-
-        on(events('player:toggle-mute'), () => {
-          if (isMuted) {
-            isMuted = false
-            audioElement.muted = false
-            audioElement.volume = previousVolume
-            emit(events('player:volume-update'), { volume: previousVolume, isMuted: false })
-          } else {
-            isMuted = true
-            audioElement.muted = true
-            emit(events('player:volume-update'), { volume: 0, isMuted: true })
-          }
-        })
-
-        on(events('player:toggle-queue'), () => {
-          isQueueVisible = !isQueueVisible
-          emit(events('player:queue-visibility'), { isVisible: isQueueVisible })
-        })
-
-        on(events('player:close-queue'), () => {
-          isQueueVisible = false
-          emit(events('player:queue-visibility'), { isVisible: isQueueVisible })
-        })
-
-        // Queue panel specific play
-        on(events('player:play-queue-track'), ({ index, file }) => {
-          currentIndex = index
-          playTrack(file)
-        })
-
-        // Track Info Like Toggle
-        on(events('player:toggle-like'), async ({ file }) => {
-          if (!file) return
-          
-          const fileId = file.id
-          const isLiked = likedTracks.has(fileId)
-          
-          try {
-            const newLikedState = await toggleLike(fileId)
-            
-            if (newLikedState) {
-              likedTracks.add(fileId)
             } else {
-              likedTracks.delete(fileId)
-            }
-            
-            emit(events('player:like-update'), { fileId, isLiked: newLikedState })
-          } catch (e) {
-            console.error('Error updating like in IndexedDB:', e)
-          }
-        })
-
-
-        // --- Global Application Event Listeners ---
-        on(events('audio:play'), ({ file, playlist, index }) => {
-          let isQueueClick = false
-          if (playlist && originalPlaylist.length === playlist.length && originalPlaylist.every((f, i) => f.id === playlist[i].id)) {
-            isQueueClick = true
-          }
-
-          if (!isQueueClick) {
-            if (playlist) {
-              originalPlaylist = [...playlist]
-              if (isShuffle) {
-                const rest = [...originalPlaylist]
-                const origIndex = rest.findIndex(f => f.id === file.id)
-                if (origIndex !== -1) {
-                  rest.splice(origIndex, 1)
-                } else if (index !== undefined) {
-                  rest.splice(index, 1)
-                }
-                
-                for (let i = rest.length - 1; i > 0; i--) {
-                  const j = Math.floor(Math.random() * (i + 1))
-                  ;[rest[i], rest[j]] = [rest[j], rest[i]]
-                }
-                currentPlaylist = [file, ...rest]
-                currentIndex = 0
-              } else {
-                currentPlaylist = originalPlaylist
-                currentIndex = index !== undefined ? index : currentPlaylist.findIndex(f => f.id === file.id)
-              }
-            } else {
-              originalPlaylist = [file]
-              currentPlaylist = [file]
-              currentIndex = 0
+              currentPlaylist = originalPlaylist
+              currentIndex = index !== undefined ? index : currentPlaylist.findIndex(f => f.id === file.id)
             }
           } else {
-             currentIndex = currentPlaylist.findIndex(f => f.id === file.id)
+            originalPlaylist = [file]
+            currentPlaylist = [file]
+            currentIndex = 0
           }
-          
-          playTrack(file)
-        })
+        } else {
+          currentIndex = currentPlaylist.findIndex(f => f.id === file.id)
+        }
+        playTrack(file)
+      })
 
-        // Cleanup
-        return () => {
-          if (currentObjectUrl) {
-            URL.revokeObjectURL(currentObjectUrl)
-            currentObjectUrl = null
-          }
+      // Cleanup
+      return () => {
+        if (currentObjectUrl) {
+          URL.revokeObjectURL(currentObjectUrl)
+          currentObjectUrl = null
         }
       }
     }
-  })
+  }
+})
 </script>
