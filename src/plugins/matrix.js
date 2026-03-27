@@ -405,8 +405,6 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
               const targetEvent = timelineEvents.find(e => e.getId() === eventId)
 
               if (targetEvent) {
-                const relations = targetEvent.getEvent()?.unsigned?.['m.relations']?.['m.annotation']
-
                 // For simplicity, matrix-js-sdk might expose relations differently based on server
                 // We will manually check the timeline for m.reaction events that point to this event
                 reactionEvents = timelineEvents.filter(e => e.getType() === 'm.reaction' &&
