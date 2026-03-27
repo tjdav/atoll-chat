@@ -11,6 +11,7 @@ services:
       CONTINUWUITY_REGISTRATION_TOKEN: 'ci_test_token_123' 
       CONTINUWUITY_ALLOW_FEDERATION: 'false'
       CONTINUWUITY_ADDRESS: 0.0.0.0
+      CONTINUWUITY_TURN_URIS: '["stun.nextcloud.com:443"]'
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:6167/_matrix/client/versions"]
       interval: 5s
