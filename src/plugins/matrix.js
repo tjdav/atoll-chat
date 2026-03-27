@@ -141,17 +141,31 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
       helpers: {
         getPreference: (globalContext) => (localContext) => async (key) => {
           return new Promise((resolve, reject) => {
-            const request = window.indexedDB.open('atoll-user-preferences', 1)
-            request.onupgradeneeded = (e) => {
-              e.target.result.createObjectStore('preferences')
-            }
-            request.onsuccess = (e) => {
-              const db = e.target.result
-              if (!db.objectStoreNames.contains('preferences')) {
-                db.close()
-                resolve(null)
-                return
+            const initDB = () => {
+              const checkReq = window.indexedDB.open('atoll-user-preferences')
+              checkReq.onerror = () => reject(checkReq.error)
+              checkReq.onsuccess = (e) => {
+                const db = e.target.result
+                if (!db.objectStoreNames.contains('preferences')) {
+                  const nextVersion = db.version + 1
+                  db.close()
+
+                  const upgradeReq = window.indexedDB.open('atoll-user-preferences', nextVersion)
+                  upgradeReq.onupgradeneeded = (e) => {
+                    const upgradeDb = e.target.result
+                    if (!upgradeDb.objectStoreNames.contains('preferences')) {
+                      upgradeDb.createObjectStore('preferences')
+                    }
+                  }
+                  upgradeReq.onsuccess = (e) => fetchValue(e.target.result)
+                  upgradeReq.onerror = () => reject(upgradeReq.error)
+                } else {
+                  fetchValue(db)
+                }
               }
+            }
+
+            const fetchValue = (db) => {
               const tx = db.transaction('preferences', 'readonly')
               const store = tx.objectStore('preferences')
               let result = null
@@ -171,18 +185,38 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
                 result = getReq.result
               }
             }
-            request.onerror = () => reject(request.error)
+
+            initDB()
           })
         },
 
         setPreference: (globalContext) => (localContext) => async (key, value) => {
           return new Promise((resolve, reject) => {
-            const request = window.indexedDB.open('atoll-user-preferences', 1)
-            request.onupgradeneeded = (e) => {
-              e.target.result.createObjectStore('preferences')
+            const initDB = () => {
+              const checkReq = window.indexedDB.open('atoll-user-preferences')
+              checkReq.onerror = () => reject(checkReq.error)
+              checkReq.onsuccess = (e) => {
+                const db = e.target.result
+                if (!db.objectStoreNames.contains('preferences')) {
+                  const nextVersion = db.version + 1
+                  db.close()
+
+                  const upgradeReq = window.indexedDB.open('atoll-user-preferences', nextVersion)
+                  upgradeReq.onupgradeneeded = (e) => {
+                    const upgradeDb = e.target.result
+                    if (!upgradeDb.objectStoreNames.contains('preferences')) {
+                      upgradeDb.createObjectStore('preferences')
+                    }
+                  }
+                  upgradeReq.onsuccess = (e) => storeValue(e.target.result)
+                  upgradeReq.onerror = () => reject(upgradeReq.error)
+                } else {
+                  storeValue(db)
+                }
+              }
             }
-            request.onsuccess = (e) => {
-              const db = e.target.result
+
+            const storeValue = (db) => {
               const tx = db.transaction('preferences', 'readwrite')
               const store = tx.objectStore('preferences')
 
@@ -202,7 +236,8 @@ export default function ({ baseUrl = 'https://matrix.org' } = {}) {
                 store.put(value, key)
               }
             }
-            request.onerror = () => reject(request.error)
+
+            initDB()
           })
         },
 

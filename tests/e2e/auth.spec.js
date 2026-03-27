@@ -60,7 +60,7 @@ test.describe('Authentication flows', () => {
     await page.evaluate(async () => {
       return new Promise((resolve) => {
         const checkDB = () => {
-          const request = window.indexedDB.open('atoll-user-preferences', 1)
+          const request = window.indexedDB.open('atoll-user-preferences')
           request.onsuccess = (e) => {
             const db = e.target.result
             if (!db.objectStoreNames.contains('preferences')) {
