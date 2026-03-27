@@ -6,6 +6,7 @@ import mediaStorePlugin from './src/plugins/media-store.js'
 import markdownPlugin from './src/plugins/markdown.js'
 import ttsPlugin from './src/plugins/tts.js'
 import userPreferencesPlugin from './src/plugins/user-preferences.js'
+import transcriberPlugin from './src/plugins/transcriber.js'
 import { createRequire } from 'module'
 import path from 'path'
 
@@ -19,6 +20,11 @@ export default defineConfig({
     {
       src: wasmSrc,
       dest: 'pkg/matrix_sdk_crypto_wasm_bg.wasm'
+    },
+    {
+      pkg: '@transcribe/shout',
+      path: 'src/shout/shout.wasm.js',
+      dest: 'public/assets/transcribe/shout.wasm.js'
     }
   ],
   plugins: [
@@ -28,7 +34,8 @@ export default defineConfig({
     mediaStorePlugin,
     markdownPlugin,
     ttsPlugin,
-    userPreferencesPlugin
+    userPreferencesPlugin,
+    transcriberPlugin
   ],
   output: 'dist',
   pages: 'src/pages',

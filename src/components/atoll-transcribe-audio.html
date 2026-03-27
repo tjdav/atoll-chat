@@ -1,0 +1,65 @@
+<template id="atoll-transcribe-audio">
+  <div class="transcription-container mt-2 pt-2 border-top border-secondary d-transition-none" ref="container">
+    <div class="d-flex align-items-center mb-1">
+      <i class="bi bi-soundwave me-2 text-info small"></i>
+      <span class="small fw-bold text-info">Transcription</span>
+    </div>
+    <div class="small text-muted fst-italic" ref="statusText">Transcribing...</div>
+    <div class="small text-body d-none" ref="transcriptionText" style="white-space: pre-wrap;"></div>
+  </div>
+</template>
+
+<script type="module" client>
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: {
+      script: ({ helpers, values }) => {
+        const { refs, on, events, transcribeAudio } = helpers
+  
+        const container = refs('container')
+        const statusText = refs('statusText')
+        const transcriptionText = refs('transcriptionText')
+  
+        const eventId = values['event-id']
+        const roomId = values['room-id']
+
+        if (on && events && transcribeAudio) {
+          on(events('chat:transcribe-requested'), async (data) => {
+            if (data.eventId === eventId && data.roomId === roomId) {
+              // Show container
+              container.classList.remove('d-transition-none')
+              container.classList.add('d-transition-show')
+  
+              statusText.classList.remove('d-none')
+              transcriptionText.classList.add('d-none')
+              statusText.textContent = 'Transcribing...'
+              statusText.classList.remove('text-danger')
+              statusText.classList.add('text-muted')
+  
+              try {
+                // Fetch the audio blob from the message context
+                // Get the blob from the message bubble directly
+                const audioBlob = values['audio-blob']
+                if (!audioBlob) {
+                  throw new Error('Audio file not found for event.')
+                }
+
+                const text = await transcribeAudio(audioBlob, 'en')
+  
+                statusText.classList.add('d-none')
+                transcriptionText.classList.remove('d-none')
+                transcriptionText.textContent = text
+              } catch (error) {
+                console.error('Failed to transcribe:', error)
+                statusText.textContent = 'Failed to transcribe.'
+                statusText.classList.add('text-danger')
+                statusText.classList.remove('text-muted')
+              }
+            }
+          })
+        }
+      }
+    }
+  })
+</script>

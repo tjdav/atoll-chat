@@ -12,7 +12,10 @@ dist
 dist-ssr
 *.local
 .eslintcache
+
+# assets
 public/assets/tts/
+public/assets/models/
 
 
 # Editor directories and files

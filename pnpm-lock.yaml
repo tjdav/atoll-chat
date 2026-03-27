@@ -11,6 +11,12 @@ importers:
       '@matrix-org/matrix-sdk-crypto-wasm':
         specifier: ^18.0.0
         version: 18.0.0
+      '@transcribe/shout':
+        specifier: ^1.0.7
+        version: 1.0.7
+      '@transcribe/transcriber':
+        specifier: ^3.0.1
+        version: 3.0.1(@transcribe/shout@1.0.7)
       bittorrent-tracker:
         specifier: ^11.2.2
         version: 11.2.2
@@ -485,6 +491,14 @@ packages:
   '@thaunknown/thirty-two@1.0.5':
     resolution: {integrity: sha512-Q53KyCXweV1CS62EfqtPDqfpksn5keQ59PGqzzkK+g8Vif1jB4inoBCcs/BUSdsqddhE3G+2Fn+4RX3S6RqT0A==}
     engines: {node: '>=0.2.6'}
+
+  '@transcribe/shout@1.0.7':
+    resolution: {integrity: sha512-1QCe9oJYimE2bh4kzZZjHr3645ICvEPF31XPOXnH2WUU41FmG7a6RHAvpuaPAGDhUf5ASdzLP/hwMLsquffnWw==}
+
+  '@transcribe/transcriber@3.0.1':
+    resolution: {integrity: sha512-zppcSobOufAia0CAtNSi+dOyECATPeXBju8NEU7qgCKJS++A/BfHX0ch1qhSq+xVUUrF8bJxarK93aPC9L4HNg==}
+    peerDependencies:
+      '@transcribe/shout': ~1.0.7
 
   '@types/esrecurse@4.3.1':
     resolution: {integrity: sha512-xJBAbDifo5hpffDBuHl0Y8ywswbiAp/Wi7Y/GtAgSlZyIABppyurxVueOPE8LUQOxdlgi6Zqce7uoEpqNTeiUw==}
@@ -2500,6 +2514,12 @@ snapshots:
   '@thaunknown/thirty-two@1.0.5':
     dependencies:
       uint8-util: 2.2.6
+
+  '@transcribe/shout@1.0.7': {}
+
+  '@transcribe/transcriber@3.0.1(@transcribe/shout@1.0.7)':
+    dependencies:
+      '@transcribe/shout': 1.0.7
 
   '@types/esrecurse@4.3.1': {}
 

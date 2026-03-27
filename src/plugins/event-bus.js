@@ -292,6 +292,13 @@ export default createPlugin({
             eventId: string(),
             roomId: string()
           })
+        },
+        'chat:transcribe-requested': {
+          id: Symbol('chat:transcribe-requested'),
+          schema: strictObject({
+            eventId: string(),
+            roomId: string()
+          })
         }
       }
 

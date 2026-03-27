@@ -40,6 +40,8 @@
   },
   "dependencies": {
     "@matrix-org/matrix-sdk-crypto-wasm": "^18.0.0",
+    "@transcribe/shout": "^1.0.7",
+    "@transcribe/transcriber": "^3.0.1",
     "bittorrent-tracker": "^11.2.2",
     "emoji-picker-element": "^1.29.1",
     "isomorphic-dompurify": "^3.0.0",

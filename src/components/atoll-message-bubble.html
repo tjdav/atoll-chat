@@ -5,6 +5,9 @@
       <div class="small" ref="timeDisplay" style="font-size: 0.75rem;">
       </div>
       
+       <!-- Transcription -->
+      <atoll-transcribe-audio ref="transcribeContainer"></atoll-transcribe-audio>
+
       <!-- Reactions Pill -->
       <atoll-message-reactions ref="reactionsContainer"></atoll-message-reactions>
 
@@ -25,7 +28,7 @@
 import { defineComponent } from 'coralite'
 export default defineComponent({
   client: {
-    components: ['atoll-message-actions', 'atoll-message-reactions'],
+    components: ['atoll-message-actions', 'atoll-message-reactions', 'atoll-transcribe-audio'],
     script: async ({
       helpers,
       values
@@ -44,6 +47,8 @@ export default defineComponent({
       const body = references('body')
       const actionsContainer = references('actionsContainer')
       const reactionsContainer = references('reactionsContainer')
+      const transcribeContainer = references('transcribeContainer')
+
       const isCurrentUser = values['current-user'] === 'true'
       const time = values.time || ''
       const eventId = values['event-id']
