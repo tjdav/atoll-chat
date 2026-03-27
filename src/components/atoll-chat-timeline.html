@@ -29,6 +29,35 @@
         let currentRoomId = null
         let pendingScrollEventId = null
 
+        let messageObserver = null
+        const messageDataMap = new WeakMap()
+
+        const handleIntersection = (entries) => {
+          entries.forEach(entry => {
+            const div = entry.target
+            if (entry.isIntersecting) {
+              if (div.children.length === 0) {
+                const data = messageDataMap.get(div)
+                if (data) {
+                  const content = createInnerContent(data.message, data.isCurrentUser)
+                  div.appendChild(content)
+                  div.style.removeProperty('height')
+                  div.style.removeProperty('min-height')
+                }
+              }
+            } else {
+              if (div.children.length > 0) {
+                const height = div.getBoundingClientRect().height
+                if (height > 0) {
+                  div.style.height = `${height}px`
+                  div.style.minHeight = `${height}px`
+                  div.innerHTML = ''
+                }
+              }
+            }
+          })
+        }
+
         const executePendingScroll = () => {
           if (!pendingScrollEventId) return
 
@@ -48,21 +77,17 @@
           }
         }
 
-        const renderMessage = (message, isCurrentUser) => {
+        const createInnerContent = (message, isCurrentUser) => {
           const time = new Date(message.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
 
-          const div = document.createElement('div')
-          div.id = `msg-${message.id}` // Add ID for scrolling
-          
           if (message.isEncrypted && !message.body) {
              const bubble = document.createElement('atoll-message-bubble')
              bubble.setAttribute('time', time)
              bubble.setAttribute('current-user', isCurrentUser)
              bubble.values = { body: '*Encrypted message*' }
-             div.appendChild(bubble)
+             return bubble
           } else if (message.msgtype === 'm.atoll.webtorrent' && message.info) {
              const torrentBubble = document.createElement('atoll-torrent-bubble')
-             // We pass data via the context.value API mechanism
              torrentBubble.values = {
                info: message.info,
                'event-id': message.id,
@@ -70,7 +95,6 @@
                'room-id': currentRoomId
              }
 
-             // Wrap it in a message bubble to get the correct alignment and time
              const bubble = document.createElement('atoll-message-bubble')
              bubble.setAttribute('time', time)
              bubble.setAttribute('current-user', isCurrentUser)
@@ -81,22 +105,33 @@
              }
              bubble.appendChild(torrentBubble)
 
-             div.appendChild(bubble)
+             return bubble
           } else {
              const bubble = document.createElement('atoll-message-bubble')
              bubble.setAttribute('time', time)
              bubble.setAttribute('current-user', isCurrentUser)
-             // Use property so declarative shadow DOM isn't bypassed, or we can use attribute if we escape it. 
-             // Safe way to pass message text without innerHTML execution. 
              bubble.values = { 
                body: message.body,
                'event-id': message.id,
                'room-id': currentRoomId,
                reactions: message.reactions || {}
              }
-             // Don't set textContent immediately, let it render
              
-             div.appendChild(bubble)
+             return bubble
+          }
+        }
+
+        const renderMessage = (message, isCurrentUser) => {
+          const div = document.createElement('div')
+          div.id = `msg-${message.id}` // Add ID for scrolling
+          
+          messageDataMap.set(div, { message, isCurrentUser })
+
+          const content = createInnerContent(message, isCurrentUser)
+          div.appendChild(content)
+
+          if (messageObserver) {
+            messageObserver.observe(div)
           }
 
           return div
@@ -106,6 +141,15 @@
           if (currentCleanup) {
             currentCleanup()
           }
+
+          if (messageObserver) {
+            messageObserver.disconnect()
+          }
+          
+          messageObserver = new IntersectionObserver(handleIntersection, {
+            root: messagesContainer,
+            rootMargin: '500px 0px'
+          })
 
           currentRoomId = roomId
 
@@ -151,6 +195,15 @@
           // Try executing immediately in case the room is already loaded and we're just jumping
           executePendingScroll()
         })
+
+        return () => {
+          if (currentCleanup) {
+            currentCleanup()
+          }
+          if (messageObserver) {
+            messageObserver.disconnect()
+          }
+        }
       }
     }
   })
