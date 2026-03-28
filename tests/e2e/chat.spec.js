@@ -66,9 +66,6 @@ test.describe('Chat feature flows', () => {
     await pageA.getByRole('textbox', { name: 'Type a message' }).fill(textMessage)
     await pageA.getByRole('button', { name: 'Send Message' }).click()
 
-    // Wait for network sync after sending to ensure it reaches matrix
-    await pageA.waitForResponse(response => response.url().includes('/_matrix/client/v3/sync') && response.status() === 200, { timeout: 15000 })
-
     // Verify the message appears for User A
     await expect(pageA.getByText(textMessage).first()).toBeVisible({ timeout: 15000 })
 
