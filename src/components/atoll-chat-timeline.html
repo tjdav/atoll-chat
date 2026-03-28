@@ -63,7 +63,7 @@ export default defineComponent({
         if (!pendingScrollEventId) {
           return
         }
-        const msgElement = messagesContainer.querySelector(`#msg-${pendingScrollEventId.replace(/[^a-zA-Z0-9_-]/g, '\\$&')}`)
+        const msgElement = document.getElementById(`msg-${pendingScrollEventId}`)
         if (msgElement) {
           msgElement.scrollIntoView({
             behavior: 'smooth',
@@ -161,7 +161,7 @@ export default defineComponent({
 
         const handleIncomingMessage = (msg, isCurrentUser) => {
           // If the message ID is already in the DOM, skip it.
-          if (messagesContainer.querySelector(`#msg-${msg.id}`)) {
+          if (document.getElementById(`msg-${msg.id}`)) {
             return
           }
 
