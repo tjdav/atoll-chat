@@ -36,9 +36,8 @@ export default defineComponent({
       const {
         refs: references,
         parseMessage,
-        on,
-        emit,
-        events,
+        subscribe,
+        setState,
         ttsGenerate
       } = helpers
       const wrapper = references('wrapper')
@@ -114,18 +113,22 @@ export default defineComponent({
       }
 
       // Listen for TTS play requests from the actions menu
-      if (ttsGenerate && on) {
-        on(events('chat:tts-play-requested'), async data => {
+      if (ttsGenerate && subscribe) {
+        subscribe('triggerTtsPlayRequested', async (data) => {
+          if (!data) {
+            return
+          }
           if (data.eventId === eventId && currentText && currentText.trim() !== '') {
             try {
               const audioBlob = await ttsGenerate(currentText, 'en')
               if (audioBlob) {
-                emit(events('audio:play'), {
+                setState('triggerAudioPlay', {
                   file: {
                     id: eventId,
                     blob: audioBlob,
                     name: 'Message TTS Audio'
-                  }
+                  },
+                  ts: Date.now()
                 })
               }
             } catch (event) {

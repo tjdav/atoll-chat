@@ -42,8 +42,7 @@ export default defineComponent({
         refs: references,
         registerUser,
         sync,
-        emit,
-        events
+        setState
       } = helpers
       const form = references('form')
       const homeserverInput = references('homeserver')
@@ -56,7 +55,7 @@ export default defineComponent({
       homeserverInput.value = (helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl()) || 'https://matrix.org'
       loginLink.addEventListener('click', event => {
         event.preventDefault()
-        emit(events('auth:show-login'))
+        setState('triggerShowLogin', { ts: Date.now() })
       })
       form.addEventListener('submit', async event => {
         event.preventDefault()
@@ -85,7 +84,7 @@ export default defineComponent({
           })
           submitButton.textContent = 'Syncing...'
           await sync()
-          emit(events('app:logged-in'))
+          setState('isLoggedIn', true)
         } catch (error) {
           console.error('Sign up error', error)
           errorAlert.textContent = 'Registration failed. Please try again. ' + (error.message || '')

@@ -14,10 +14,9 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        events,
-        getCurrentUserId,
-        emit
+        subscribe,
+        setState,
+        getCurrentUserId
       } = helpers
       const container = references('container')
 
@@ -43,16 +42,18 @@ export default defineComponent({
           button.appendChild(countSpan)
           button.addEventListener('click', () => {
             if (data.hasReacted) {
-              emit(events('chat:remove-reaction'), {
+              setState('triggerRemoveReaction', {
                 roomId,
                 eventId,
-                reaction: emoji
+                reaction: emoji,
+                ts: Date.now()
               })
             } else {
-              emit(events('chat:send-reaction'), {
+              setState('triggerSendReaction', {
                 roomId,
                 eventId,
-                reaction: emoji
+                reaction: emoji,
+                ts: Date.now()
               })
             }
           })
@@ -68,7 +69,10 @@ export default defineComponent({
       initialize()
 
       // Listen for new incoming reactions to this message
-      on(events('chat:reaction-received'), payload => {
+      subscribe('triggerReactionReceived', (payload) => {
+        if (!payload) {
+          return
+        }
         if (payload.eventId === eventId) {
           currentReactions = payload.reactions
           renderReactions()

@@ -62,9 +62,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        emit,
-        events,
+        subscribe,
+        setState,
         placeCall,
         getRoom,
         answerCall,
@@ -75,9 +74,10 @@ export default defineComponent({
       const mediaViewContainer = references('mediaViewContainer')
 
       // Listen for navigation changes from the sidebar
-      on(events('nav:changed'), ({
-        tab
-      }) => {
+      subscribe('activeNavTab', (tab) => {
+        if (!tab) {
+          return
+        }
         if (tab === 'chats') {
           // Show chat columns, hide media view
           chatListContainer.classList.remove('d-transition-none')
@@ -100,26 +100,22 @@ export default defineComponent({
       })
 
       // Listen for "Go to Message" requests from the media view
-      on(events('nav:jump-to-message'), ({
-        roomId,
-        eventId
-      }) => {
-        // Switch tab back to 'chats'
-        emit(events('nav:changed'), {
-          tab: 'chats'
-        })
+      subscribe('triggerJumpToMessage', (payload) => {
+        if (!payload) {
+          return
+        }
+        const { roomId, eventId } = payload
 
-        //  Open the specific room
-        emit(events('chat:room-selected'), {
-          roomId
-        })
+        // Switch tab back to 'chats'
+        setState('activeNavTab', 'chats')
+
+        // Open the specific room
+        setState('activeRoomId', roomId)
 
         // Tell the timeline to scroll to the specific message.
-        // We wait a tiny bit to let the room load asynchronously. Ideally, the timeline component
-        // would cache this request, but sending it slightly delayed or setting a global pending scroll works too.
-        // For a robust fix, we will just emit the scroll event which the timeline will now handle intelligently.
-        emit(events('chat:scroll-to-message'), {
-          eventId
+        setState('targetScrollEventId', {
+          eventId,
+          ts: Date.now()
         })
       })
 
@@ -158,24 +154,25 @@ export default defineComponent({
       }
 
       // Outbound: User initiates a call
-      on(events('call:start'), async ({
-        roomId,
-        type
-      }) => {
+      subscribe('triggerCallStart', async (payload) => {
+        if (!payload) {
+          return
+        }
+        const { roomId, type } = payload
         try {
           const call = await placeCall(roomId, type)
-          emit(events('call:answered'), {
-            call
-          })
+          setState('activeCall', call)
         } catch (error) {
           console.error('Failed to start call:', error)
         }
       })
 
       // Inbound: Matrix SDK detects a call
-      on(events('call:incoming'), ({
-        call
-      }) => {
+      subscribe('triggerCallIncoming', (payload) => {
+        if (!payload) {
+          return
+        }
+        const { call } = payload
         // Check if already in a call or already showing a modal
         if (isIncomingCallModalOpen) {
           // Already ringing, auto reject or ignore
@@ -193,9 +190,7 @@ export default defineComponent({
         }
         try {
           await answerCall(activeIncomingCall)
-          emit(events('call:answered'), {
-            call: activeIncomingCall
-          })
+          setState('activeCall', activeIncomingCall)
           hideIncomingModal()
         } catch (error) {
           console.error('Failed to answer call:', error)

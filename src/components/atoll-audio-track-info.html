@@ -26,9 +26,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        emit,
-        events
+        subscribe,
+        setState
       } = helpers
       const playerTitle = references('playerTitle')
       const playerArtist = references('playerArtist')
@@ -38,10 +37,11 @@ export default defineComponent({
       let currentFile = null
 
       // Listen for track updates
-      on(events('player:track-update'), ({
-        file,
-        isLiked
-      }) => {
+      subscribe('playerCurrentTrack', (payload) => {
+        if (!payload) {
+          return
+        }
+        const { file, isLiked } = payload
         currentFile = file
         if (file) {
           playerTitle.textContent = file.filename || 'Unknown File'
@@ -68,10 +68,11 @@ export default defineComponent({
       })
 
       // Listen for like status updates separately (e.g. user clicks like)
-      on(events('player:like-update'), ({
-        fileId,
-        isLiked
-      }) => {
+      subscribe('playerTrackLikeState', (payload) => {
+        if (!payload) {
+          return
+        }
+        const { fileId, isLiked } = payload
         if (currentFile && currentFile.id === fileId) {
           if (isLiked) {
             likeIcon.className = 'bi bi-heart-fill text-danger'
@@ -82,16 +83,18 @@ export default defineComponent({
       })
       likeButton.addEventListener('click', () => {
         if (currentFile) {
-          emit(events('player:toggle-like'), {
-            file: currentFile
+          setState('triggerToggleLike', {
+            file: currentFile,
+            ts: Date.now()
           })
         }
       })
       playerJumpBtn.addEventListener('click', () => {
         if (currentFile && currentFile.roomId && currentFile.id) {
-          emit(events('nav:jump-to-message'), {
+          setState('triggerJumpToMessage', {
             roomId: currentFile.roomId,
-            eventId: currentFile.id
+            eventId: currentFile.id,
+            ts: Date.now()
           })
         }
       })

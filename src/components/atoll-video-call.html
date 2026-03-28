@@ -39,9 +39,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        events,
-        emit,
+        subscribe,
+        setState,
         rejectCall
       } = helpers
       const callModal = references('callModal')
@@ -77,9 +76,7 @@ export default defineComponent({
         setTimeout(() => {
           callModal.style.display = 'none'
           // Inform app that the call has ended to transition UI if needed
-          emit(events('call:ended'), {
-            call: null
-          })
+          setState('activeCall', null)
           // Allow fade transition
         }, 150)
       }
@@ -171,9 +168,10 @@ export default defineComponent({
       }
 
       // When a call is started or answered successfully, display the UI.
-      on(events('call:answered'), ({
-        call
-      }) => {
+      subscribe('activeCall', (call) => {
+        if (!call) {
+          return
+        }
         bindCallEvents(call)
         callModal.style.display = 'block'
         // Small delay to allow display: block to apply before adding opacity class

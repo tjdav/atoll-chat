@@ -59,9 +59,8 @@ export default defineComponent({
         refs: references,
         getRooms,
         createEncryptedRoom,
-        emit,
-        on,
-        events
+        subscribe,
+        setState
       } = helpers
       const {
         bootstrap
@@ -110,9 +109,7 @@ export default defineComponent({
             items.forEach(i => i.classList.remove('active', 'bg-body-secondary'))
             // Add active class to clicked
             item.classList.add('active', 'bg-body-secondary')
-            emit(events('chat:room-selected'), {
-              roomId: item.dataset.roomId
-            })
+            setState('activeRoomId', item.dataset.roomId)
           })
         })
       }
@@ -138,10 +135,15 @@ export default defineComponent({
           console.error('Failed to create room:', error)
         }
       })
-      on(events('app:logged-in'), () => {
-        renderRooms()
+      subscribe('isLoggedIn', (isLoggedIn) => {
+        if (isLoggedIn) {
+          renderRooms()
+        }
       })
-      on(events('chat:rooms-updated'), () => {
+      subscribe('triggerRoomsUpdated', (payload) => {
+        if (!payload) {
+          return
+        }
         renderRooms()
       })
     }

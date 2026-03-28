@@ -41,9 +41,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        emit,
-        on,
-        events
+        subscribe,
+        setState
       } = helpers
       const messageInput = references('messageInput')
       const sendButton = references('sendBtn')
@@ -207,8 +206,9 @@ export default defineComponent({
           const file = new File([audioBlob], fileName, {
             type: 'audio/webm'
           })
-          emit(events('chat:file-selected'), {
-            file
+          setState('triggerFileSelected', {
+            file,
+            ts: Date.now()
           })
 
           // Disable voice UI briefly before reset
@@ -220,8 +220,9 @@ export default defineComponent({
       const submitMessage = () => {
         const text = messageInput.value.trim()
         if (text) {
-          emit(events('chat:message-submitted'), {
-            text
+          setState('triggerMessageSubmitted', {
+            text,
+            ts: Date.now()
           })
         }
       }
@@ -232,8 +233,9 @@ export default defineComponent({
       fileInput.addEventListener('change', event => {
         const file = event.target.files[0]
         if (file) {
-          emit(events('chat:file-selected'), {
-            file
+          setState('triggerFileSelected', {
+            file,
+            ts: Date.now()
           })
 
           // Disable input while processing
@@ -250,12 +252,18 @@ export default defineComponent({
           submitMessage()
         }
       })
-      on(events('chat:message-sent'), () => {
+      subscribe('triggerMessageSent', (payload) => {
+        if (!payload) {
+          return
+        }
         messageInput.value = ''
         updateInputButtons()
         messageInput.focus()
       })
-      on(events('chat:file-processing-done'), () => {
+      subscribe('triggerFileProcessingDone', (payload) => {
+        if (!payload) {
+          return
+        }
         messageInput.disabled = false
         sendButton.disabled = false
         attachButton.disabled = false

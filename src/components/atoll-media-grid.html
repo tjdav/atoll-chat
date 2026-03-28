@@ -22,8 +22,7 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        emit,
-        events,
+        setState,
         getImageFiles,
         getVideoFiles
       } = helpers
@@ -96,9 +95,10 @@ export default defineComponent({
             // This is safe, fixed HTML
             jumpButton.innerHTML = '<i class="bi bi-chat-left-text"></i>'
             jumpButton.addEventListener('click', () => {
-              emit(events('nav:jump-to-message'), {
+              setState('triggerJumpToMessage', {
                 roomId: file.roomId,
-                eventId: file.event_id
+                eventId: file.event_id,
+                ts: Date.now()
               })
             })
             cardBody.appendChild(jumpButton)

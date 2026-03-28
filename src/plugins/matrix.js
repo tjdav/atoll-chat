@@ -86,30 +86,30 @@ export default function ({
           }
           client = await createAndInit()
           if (helpers) {
-            const emit = helpers.emit
-            const events = helpers.events
+            const setState = helpers.setState
 
             // Listen for incoming calls
             client.on('Call.incoming', call => {
-              emit(events('call:incoming'), {
-                call
+              setState('triggerCallIncoming', {
+                call,
+                ts: Date.now()
               })
             })
 
             // Listen for incoming messages to trigger room list updates
             client.on('Room.timeline', (event, room, toStartOfTimeline) => {
               if (event.getType() === 'm.room.message' && !toStartOfTimeline) {
-                emit(events('chat:rooms-updated'))
+                setState('triggerRoomsUpdated', { ts: Date.now() })
               }
             })
             client.on('Room', () => {
-              emit(events('chat:rooms-updated'))
+              setState('triggerRoomsUpdated', { ts: Date.now() })
             })
             client.on('RoomState.events', () => {
-              emit(events('chat:rooms-updated'))
+              setState('triggerRoomsUpdated', { ts: Date.now() })
             })
             client.on('Event.decrypted', event => {
-              emit(events('chat:rooms-updated'))
+              setState('triggerRoomsUpdated', { ts: Date.now() })
             })
           }
           return client
@@ -448,9 +448,10 @@ export default function ({
                     }
                   }
                 })
-                localContext.helpers.emit(localContext.helpers.events('chat:reaction-received'), {
+                localContext.helpers.setState('triggerReactionReceived', {
                   eventId: targetEventId,
-                  reactions
+                  reactions,
+                  ts: Date.now()
                 })
               }
             }

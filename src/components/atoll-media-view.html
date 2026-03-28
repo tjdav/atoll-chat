@@ -29,8 +29,7 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        events
+        subscribe
       } = helpers
       const headerTitle = references('headerTitle')
       const picturesGrid = references('picturesGrid')
@@ -62,9 +61,10 @@ export default defineComponent({
           musicPlayer.classList.add('d-transition-show')
         }
       }
-      on(events('nav:changed'), ({
-        tab
-      }) => {
+      subscribe('activeNavTab', (tab) => {
+        if (!tab) {
+          return
+        }
         if (tab !== 'chats' && tab !== 'requests') {
           renderMediaComponent(tab)
         }

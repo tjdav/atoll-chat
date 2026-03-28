@@ -21,8 +21,7 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        emit,
-        events,
+        setState,
         getAudioFiles
       } = helpers
       const trackList = references('trackList')
@@ -100,10 +99,11 @@ export default defineComponent({
             listItem.classList.add('active')
             currentActiveItem = listItem
             const index = files.findIndex(f => f.id === file.id)
-            emit(events('audio:play'), {
+            setState('triggerAudioPlay', {
               file,
               playlist: files,
-              index
+              index,
+              ts: Date.now()
             })
           })
           trackList.appendChild(listItem)
