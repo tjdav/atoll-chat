@@ -55,7 +55,6 @@ export default function ({
                 console.warn('Account mismatch detected in store, clearing indexedDB stores and retrying...')
 
                 // Stop the client to close any open database connections
-
                 temporaryClient.stopClient()
                 if (store && store.destroy) {
                   await store.destroy()
@@ -69,11 +68,8 @@ export default function ({
                     request.onblocked = () => {
                       console.warn(`Deletion of IndexedDB ${dbName} is blocked.`)
                       // Resolving here can cause race conditions, but we need to proceed
-
                       // if the browser doesn't cleanly free the lock.
-
                       // Usually destroying the store releases the lock.
-
                       setTimeout(resolve, 500)
                     }
                   })
@@ -94,7 +90,6 @@ export default function ({
             const events = helpers.events
 
             // Listen for incoming calls
-
             client.on('Call.incoming', call => {
               emit(events('call:incoming'), {
                 call
@@ -102,7 +97,6 @@ export default function ({
             })
 
             // Listen for incoming messages to trigger room list updates
-
             client.on('Room.timeline', (event, room, toStartOfTimeline) => {
               if (event.getType() === 'm.room.message' && !toStartOfTimeline) {
                 emit(events('chat:rooms-updated'))
@@ -142,7 +136,6 @@ export default function ({
               })
 
               // Helper function to gracefully fetch a session without throwing an exception
-
               const fetchNewSession = async () => {
                 const response = await fetch(`${baseUrl}/_matrix/client/v3/register`, {
                   method: 'POST',
@@ -159,7 +152,6 @@ export default function ({
               }
 
               //  Get session
-
               let session = sessionStorage.getItem('matrix_reg_session')
               if (!session) {
                 session = await fetchNewSession()
@@ -180,28 +172,23 @@ export default function ({
               })
               try {
                 // Attempt registration
-
                 registerData = await temporaryClient.registerRequest(getRequestBody(session))
               } catch (error) {
                 // If our cached session was rejected (401 or 403), fetch a fresh one and retry exactly once
-
                 if (error.httpStatus === 401 || error.httpStatus === 403) {
                   console.warn('Matrix session expired or invalid. Refreshing session...')
                   session = await fetchNewSession()
                   sessionStorage.setItem('matrix_reg_session', session)
 
                   // Retry with the fresh session
-
                   registerData = await temporaryClient.registerRequest(getRequestBody(session))
                 } else {
                   // Rethrow actual errors (e.g., username taken, password too weak)
-
                   throw error
                 }
               }
 
               // Clean up cache on success
-
               sessionStorage.removeItem('matrix_reg_session')
               const credentials = {
                 baseUrl: baseUrl,
@@ -212,7 +199,6 @@ export default function ({
               await localContext.helpers.setPreference('atoll_session', credentials)
 
               // Initialize the actual client
-
               return await localContext.values.initClient(credentials, localContext.helpers)
             } catch (error) {
               console.error('Matrix registration failed:', error)
@@ -227,11 +213,9 @@ export default function ({
           }
           try {
             // Re-initialize the client with the saved credentials
-
             await localContext.values.initClient(credentials, localContext.helpers)
 
             // Start syncing in the background automatically
-
             const client = localContext.values.getClient()
             await client.startClient({
               initialSyncLimit: 10
@@ -254,15 +238,12 @@ export default function ({
             return async loginRequest => {
               try {
                 // Temporarily create a basic client to perform login
-
                 const temporaryClient = sdk.createClient({
                   baseUrl: loginRequest.baseUrl || globalContext.config.baseUrl
                 })
 
                 // Remove baseUrl from the loginRequest since it's not a standard Matrix API field
-
                 // and might cause issues with some homeservers if sent in the payload
-
                 const requestPayload = {
                   ...loginRequest
                 }
@@ -392,20 +373,16 @@ export default function ({
             const eventId = event.getId()
 
             // Extract reactions from relations
-
             const timelineSet = room.getUnfilteredTimelineSet()
             let reactionEvents = []
 
             // Find the event in the timeline set and get relations
-
             const timeline = timelineSet.getLiveTimeline()
             const timelineEvents = timeline.getEvents()
             const targetEvent = timelineEvents.find(event => event.getId() === eventId)
             if (targetEvent) {
               // For simplicity, matrix-js-sdk might expose relations differently based on server
-
               // We will manually check the timeline for m.reaction events that point to this event
-
               reactionEvents = timelineEvents.filter(event => event.getType() === 'm.reaction' && event.getRelation()?.rel_type === 'm.annotation' && event.getRelation()?.event_id === eventId)
             }
             const reactions = {}
@@ -568,7 +545,6 @@ export default function ({
           }
 
           // Find our existing reaction to redact it
-
           const timeline = room.getUnfilteredTimelineSet().getLiveTimeline()
           const timelineEvents = timeline.getEvents()
           const currentUserId = client.getUserId()
