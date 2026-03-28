@@ -26,9 +26,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        emit,
-        events,
+        subscribe,
+        setState,
         getLikes,
         toggleLike
       } = helpers
@@ -68,24 +67,16 @@ export default defineComponent({
        *  Audio Element Listeners
        */
       audioElement.addEventListener('play', () => {
-        emit(events('player:play-state-change'), {
-          isPlaying: true
-        })
+        setState('playerIsPlaying', true)
       })
       audioElement.addEventListener('pause', () => {
-        emit(events('player:play-state-change'), {
-          isPlaying: false
-        })
+        setState('playerIsPlaying', false)
       })
       audioElement.addEventListener('loadedmetadata', () => {
-        emit(events('player:duration-change'), {
-          duration: audioElement.duration
-        })
+        setState('playerDuration', audioElement.duration)
       })
       audioElement.addEventListener('timeupdate', () => {
-        emit(events('player:time-update'), {
-          currentTime: audioElement.currentTime
-        })
+        setState('playerCurrentTime', audioElement.currentTime)
       })
       audioElement.addEventListener('ended', () => {
         if (repeatMode === 'one') {
@@ -99,7 +90,7 @@ export default defineComponent({
       // Initial volume setup
       audioElement.volume = 1
       previousVolume = audioElement.volume
-      emit(events('player:volume-update'), {
+      setState('playerVolumeState', {
         volume: audioElement.volume,
         isMuted: audioElement.muted
       })
@@ -118,11 +109,11 @@ export default defineComponent({
         playerContainer.classList.add('d-flex')
 
         // Emit track updates to track info and queue panel
-        emit(events('player:track-update'), {
+        setState('playerCurrentTrack', {
           file,
           isLiked: likedTracks.has(file.id)
         })
-        emit(events('player:queue-update'), {
+        setState('playerQueueState', {
           playlist: currentPlaylist,
           index: currentIndex
         })
@@ -137,9 +128,7 @@ export default defineComponent({
         if (!manual && repeatMode === 'none' && currentIndex === currentPlaylist.length - 1) {
           audioElement.pause()
           audioElement.currentTime = 0
-          emit(events('player:play-state-change'), {
-            isPlaying: false
-          })
+          setState('playerIsPlaying', false)
           return
         }
         currentIndex = (currentIndex + 1) % currentPlaylist.length
@@ -160,24 +149,38 @@ export default defineComponent({
       }
 
       /**
-       *  Event Bus Listeners from Child Components
+       *  State Listeners from Child Components
        */
       // Controls
-      on(events('player:toggle-play'), () => {
+      subscribe('triggerPlayerTogglePlay', (payload) => {
+        if (!payload) {
+          return
+        }
         if (audioElement.paused) {
           audioElement.play().catch(event => console.error('Error playing audio:', event))
         } else {
           audioElement.pause()
         }
       })
-      on(events('player:next'), () => playNext(true))
-      on(events('player:previous'), () => playPrevious())
-      on(events('player:toggle-shuffle'), () => {
+      subscribe('triggerPlayerNext', (payload) => {
+        if (!payload) {
+          return
+        }
+        playNext(true)
+      })
+      subscribe('triggerPlayerPrevious', (payload) => {
+        if (!payload) {
+          return
+        }
+        playPrevious()
+      })
+      subscribe('triggerPlayerToggleShuffle', (payload) => {
+        if (!payload) {
+          return
+        }
         isShuffle = !isShuffle
         if (isShuffle) {
-          emit(events('player:shuffle-change'), {
-            isShuffle: true
-          })
+          setState('playerIsShuffle', true)
           if (currentPlaylist.length > 0) {
             const currentFile = currentPlaylist[currentIndex]
             const rest = [...originalPlaylist]
@@ -193,9 +196,7 @@ export default defineComponent({
             currentIndex = 0
           }
         } else {
-          emit(events('player:shuffle-change'), {
-            isShuffle: false
-          })
+          setState('playerIsShuffle', false)
           if (currentPlaylist.length > 0) {
             const currentFile = currentPlaylist[currentIndex]
             currentPlaylist = [...originalPlaylist]
@@ -203,12 +204,15 @@ export default defineComponent({
           }
         }
         // Update queue when shuffled
-        emit(events('player:queue-update'), {
+        setState('playerQueueState', {
           playlist: currentPlaylist,
           index: currentIndex
         })
       })
-      on(events('player:toggle-repeat'), () => {
+      subscribe('triggerPlayerToggleRepeat', (payload) => {
+        if (!payload) {
+          return
+        }
         if (repeatMode === 'none') {
           repeatMode = 'all'
         } else if (repeatMode === 'all') {
@@ -216,82 +220,90 @@ export default defineComponent({
         } else {
           repeatMode = 'none'
         }
-        emit(events('player:repeat-change'), {
-          repeatMode
-        })
+        setState('playerRepeatMode', repeatMode)
       })
 
       // Timeline
-      on(events('player:seek'), ({
-        time
-      }) => {
-        audioElement.currentTime = time
+      subscribe('triggerPlayerSeek', (payload) => {
+        if (!payload) {
+          return
+        }
+        audioElement.currentTime = payload.time
       })
 
       // Volume & Queue Toggles
-      on(events('player:set-volume'), ({
-        volume
-      }) => {
+      subscribe('triggerSetVolume', (payload) => {
+        if (!payload) {
+          return
+        }
+        const volume = payload.volume
         if (isMuted && volume > 0) {
           isMuted = false
           audioElement.muted = false
         }
         audioElement.volume = volume
         previousVolume = volume
-        emit(events('player:volume-update'), {
+        setState('playerVolumeState', {
           volume: audioElement.volume,
           isMuted: audioElement.muted
         })
       })
-      on(events('player:toggle-mute'), () => {
+      subscribe('triggerToggleMute', (payload) => {
+        if (!payload) {
+          return
+        }
         if (isMuted) {
           isMuted = false
           audioElement.muted = false
           audioElement.volume = previousVolume
-          emit(events('player:volume-update'), {
+          setState('playerVolumeState', {
             volume: previousVolume,
             isMuted: false
           })
         } else {
           isMuted = true
           audioElement.muted = true
-          emit(events('player:volume-update'), {
+          setState('playerVolumeState', {
             volume: 0,
             isMuted: true
           })
         }
       })
-      on(events('player:toggle-queue'), () => {
+      subscribe('triggerToggleQueue', (payload) => {
+        if (!payload) {
+          return
+        }
         isQueueVisible = !isQueueVisible
-        emit(events('player:queue-visibility'), {
-          isVisible: isQueueVisible
-        })
+        setState('playerIsQueueVisible', isQueueVisible)
       })
-      on(events('player:close-queue'), () => {
+      subscribe('triggerCloseQueue', (payload) => {
+        if (!payload) {
+          return
+        }
         isQueueVisible = false
-        emit(events('player:queue-visibility'), {
-          isVisible: isQueueVisible
-        })
+        setState('playerIsQueueVisible', isQueueVisible)
       })
 
       // Queue panel specific play
-      on(events('player:play-queue-track'), ({
-        index,
-        file
-      }) => {
-        currentIndex = index
-        playTrack(file)
+      subscribe('triggerPlayQueueTrack', (payload) => {
+        if (!payload) {
+          return
+        }
+        currentIndex = payload.index
+        playTrack(payload.file)
       })
 
       // Track Info Like Toggle
-      on(events('player:toggle-like'), async ({
-        file
-      }) => {
+      subscribe('triggerToggleLike', async (payload) => {
+        if (!payload) {
+          return
+        }
+        const file = payload.file
         if (!file) {
           return
         }
+
         const fileId = file.id
-        const isLiked = likedTracks.has(fileId)
         try {
           const newLikedState = await toggleLike(fileId)
           if (newLikedState) {
@@ -299,9 +311,10 @@ export default defineComponent({
           } else {
             likedTracks.delete(fileId)
           }
-          emit(events('player:like-update'), {
+          setState('playerTrackLikeState', {
             fileId,
-            isLiked: newLikedState
+            isLiked: newLikedState,
+            ts: Date.now()
           })
         } catch (event) {
           console.error('Error updating like in IndexedDB:', event)
@@ -311,11 +324,11 @@ export default defineComponent({
       /**
        *  Global Application Event Listeners
        */
-      on(events('audio:play'), ({
-        file,
-        playlist,
-        index
-      }) => {
+      subscribe('triggerAudioPlay', (payload) => {
+        if (!payload) {
+          return
+        }
+        const { file, playlist, index } = payload
         let isQueueClick = false
         if (playlist && originalPlaylist.length === playlist.length && originalPlaylist.every((f, i) => f.id === playlist[i].id)) {
           isQueueClick = true

@@ -63,9 +63,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        emit,
-        events,
-        on,
+        subscribe,
+        setState,
         logout
       } = helpers
       const signOutLink = references('signOutLink')
@@ -74,7 +73,7 @@ export default defineComponent({
         if (logout) {
           await logout()
         }
-        emit(events('app:logged-out'))
+        setState('isLoggedIn', false)
       })
       const navList = references('navList')
       const links = navList.querySelectorAll('.nav-link')
@@ -95,17 +94,15 @@ export default defineComponent({
         link.addEventListener('click', event => {
           event.preventDefault()
           const tabName = link.dataset.tab
-          updateActiveTab(tabName)
-          emit(events('nav:changed'), {
-            tab: tabName
-          })
+          setState('activeNavTab', tabName)
         })
       })
 
       // update if navigation is changed programmatically
-      on(events('nav:changed'), ({
-        tab
-      }) => {
+      subscribe('activeNavTab', (tab) => {
+        if (!tab) {
+          return
+        }
         updateActiveTab(tab)
       })
     }

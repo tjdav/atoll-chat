@@ -78,9 +78,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        emit,
-        events,
+        subscribe,
+        setState,
         getRoom,
         sendMessage,
         seed,
@@ -106,17 +105,19 @@ export default defineComponent({
       let activeRoomId = null
       startVoiceCallBtn.addEventListener('click', () => {
         if (activeRoomId) {
-          emit(events('call:start'), {
+          setState('triggerCallStart', {
             roomId: activeRoomId,
-            type: 'voice'
+            type: 'voice',
+            ts: Date.now()
           })
         }
       })
       startVideoCallBtn.addEventListener('click', () => {
         if (activeRoomId) {
-          emit(events('call:start'), {
+          setState('triggerCallStart', {
             roomId: activeRoomId,
-            type: 'video'
+            type: 'video',
+            ts: Date.now()
           })
         }
       })
@@ -127,9 +128,10 @@ export default defineComponent({
         const initials = name ? name.substring(0, 2).toUpperCase() : '?'
         return '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-6" style="width: 30px; height: 30px;">' + initials + '</div>'
       }
-      on(events('chat:room-selected'), async ({
-        roomId
-      }) => {
+      subscribe('activeRoomId', async (roomId) => {
+        if (!roomId) {
+          return
+        }
         activeRoomId = roomId
         const roomDetails = await getRoom(roomId)
         if (roomDetails) {
@@ -155,8 +157,9 @@ export default defineComponent({
             inputContainer.classList.remove('d-transition-none')
             inputContainer.classList.add('d-transition-show')
             // Notify timeline to load messages
-            emit(events('chat:room-ready'), {
-              roomId
+            setState('activeRoomReady', {
+              roomId,
+              ts: Date.now()
             })
           }
         }
@@ -201,34 +204,34 @@ export default defineComponent({
           timeline.classList.add('d-transition-show')
           inputContainer.classList.remove('d-transition-none')
           inputContainer.classList.add('d-transition-show')
-          emit(events('chat:room-ready'), {
-            roomId: activeRoomId
+          setState('activeRoomReady', {
+            roomId: activeRoomId,
+            ts: Date.now()
           })
 
-          // Optionally, emit an event so chat-list can re-render if needed
-          emit(events('chat:rooms-updated'))
+          // Optionally, trigger chat-list to re-render if needed
+          setState('triggerRoomsUpdated', { ts: Date.now() })
         } catch (error) {
           console.error('Failed to join room:', error)
         }
       })
-      on(events('chat:message-submitted'), async ({
-        text
-      }) => {
-        if (!activeRoomId) {
+      subscribe('triggerMessageSubmitted', async (payload) => {
+        if (!payload || !activeRoomId) {
           return
         }
+        const text = payload.text
         try {
           await sendMessage(activeRoomId, text)
-          emit(events('chat:message-sent'))
+          setState('triggerMessageSent', { ts: Date.now() })
         } catch (error) {
           console.error('Failed to send message:', error)
         }
       })
-      on(events('chat:send-reaction'), async ({
-        roomId,
-        eventId,
-        reaction
-      }) => {
+      subscribe('triggerSendReaction', async (payload) => {
+        if (!payload) {
+          return
+        }
+        const { roomId, eventId, reaction } = payload
         if (!roomId || !eventId || !reaction) {
           return
         }
@@ -238,11 +241,11 @@ export default defineComponent({
           console.error('Failed to send reaction:', error)
         }
       })
-      on(events('chat:remove-reaction'), async ({
-        roomId,
-        eventId,
-        reaction
-      }) => {
+      subscribe('triggerRemoveReaction', async (payload) => {
+        if (!payload) {
+          return
+        }
+        const { roomId, eventId, reaction } = payload
         if (!roomId || !eventId || !reaction) {
           return
         }
@@ -252,12 +255,11 @@ export default defineComponent({
           console.error('Failed to remove reaction:', error)
         }
       })
-      on(events('chat:file-selected'), async ({
-        file
-      }) => {
-        if (!activeRoomId) {
+      subscribe('triggerFileSelected', async (payload) => {
+        if (!payload || !activeRoomId) {
           return
         }
+        const file = payload.file
         try {
           // Generate AES-GCM key
           const key = await crypto.subtle.generateKey({
@@ -297,7 +299,7 @@ export default defineComponent({
           console.error('Failed to process and send file:', error)
         } finally {
           // Re-enable UI
-          emit(events('chat:file-processing-done'))
+          setState('triggerFileProcessingDone', { ts: Date.now() })
         }
       })
     }

@@ -37,8 +37,7 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        emit,
-        events
+        setState
       } = helpers
       const container = references('container')
       const emojiPopover = references('emojiPopover')
@@ -55,9 +54,10 @@ export default defineComponent({
       // Play button handler
       playButton.addEventListener('click', () => {
         if (eventId && roomId) {
-          emit(events('chat:tts-play-requested'), {
+          setState('triggerTtsPlayRequested', {
             eventId,
-            roomId
+            roomId,
+            ts: Date.now()
           })
         }
       })
@@ -65,9 +65,10 @@ export default defineComponent({
       // Transcribe button handler
       transcribeBtn.addEventListener('click', () => {
         if (eventId && roomId) {
-          emit(events('chat:transcribe-requested'), {
+          setState('triggerTranscribeAudio', {
             eventId,
-            roomId
+            roomId,
+            ts: Date.now()
           })
         }
       })
@@ -80,10 +81,11 @@ export default defineComponent({
           })
           return
         }
-        emit(events('chat:send-reaction'), {
+        setState('triggerSendReaction', {
           roomId,
           eventId,
-          reaction: emoji
+          reaction: emoji,
+          ts: Date.now()
         })
 
         // Close popover if open

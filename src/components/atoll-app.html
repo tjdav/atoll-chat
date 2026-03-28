@@ -21,15 +21,17 @@ export default defineComponent({
     }) {
       const {
         refs: references,
-        on,
-        events,
-        restoreSession,
-        emit
+        subscribe,
+        setState,
+        restoreSession
       } = helpers
       const loginView = references('loginView')
       const signupView = references('signupView')
       const appView = references('appView')
-      on(events('auth:show-signup'), () => {
+      subscribe('triggerShowSignup', (payload) => {
+        if (!payload) {
+          return
+        }
         if (loginView) {
           loginView.classList.remove('d-transition-show')
           loginView.classList.add('d-transition-none')
@@ -43,7 +45,10 @@ export default defineComponent({
           signupView.classList.add('d-transition-show')
         }
       })
-      on(events('auth:show-login'), () => {
+      subscribe('triggerShowLogin', (payload) => {
+        if (!payload) {
+          return
+        }
         if (signupView) {
           signupView.classList.remove('d-transition-show')
           signupView.classList.add('d-transition-none')
@@ -57,44 +62,46 @@ export default defineComponent({
           loginView.classList.add('d-transition-show')
         }
       })
-      on(events('app:logged-in'), () => {
-        if (loginView) {
-          loginView.classList.remove('d-transition-show')
-          loginView.classList.add('d-transition-none')
+      subscribe('isLoggedIn', (isLoggedIn) => {
+        if (isLoggedIn === undefined) {
+          return
         }
-        if (signupView) {
-          signupView.classList.remove('d-transition-show')
-          signupView.classList.add('d-transition-none')
-        }
-        if (appView) {
-          appView.classList.remove('d-transition-none')
-          appView.classList.add('d-transition-show')
-        }
-      })
-      on(events('app:logged-out'), () => {
-        if (appView) {
-          appView.classList.remove('d-transition-show')
-          appView.classList.add('d-transition-none')
-        }
-        if (signupView) {
-          signupView.classList.remove('d-transition-show')
-          signupView.classList.add('d-transition-none')
-        }
-        if (loginView) {
-          loginView.classList.remove('d-transition-none')
-          loginView.classList.add('d-transition-show')
+        if (isLoggedIn) {
+          if (loginView) {
+            loginView.classList.remove('d-transition-show')
+            loginView.classList.add('d-transition-none')
+          }
+          if (signupView) {
+            signupView.classList.remove('d-transition-show')
+            signupView.classList.add('d-transition-none')
+          }
+          if (appView) {
+            appView.classList.remove('d-transition-none')
+            appView.classList.add('d-transition-show')
+          }
+        } else {
+          if (appView) {
+            appView.classList.remove('d-transition-show')
+            appView.classList.add('d-transition-none')
+          }
+          if (signupView) {
+            signupView.classList.remove('d-transition-show')
+            signupView.classList.add('d-transition-none')
+          }
+          if (loginView) {
+            loginView.classList.remove('d-transition-none')
+            loginView.classList.add('d-transition-show')
+          }
         }
       })
       const isRestored = await restoreSession()
       if (isRestored) {
         // Session found! Go straight to the app
 
-        emit(events('app:logged-in'))
+        setState('isLoggedIn', true)
       } else {
         // No session found. Reveal the login screen.
-
-        loginView.classList.remove('d-transition-none')
-        loginView.classList.add('d-transition-show')
+        setState('isLoggedIn', false)
       }
     }
   }

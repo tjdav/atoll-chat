@@ -14,8 +14,7 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        events,
+        subscribe,
         getCurrentUserId,
         getRoomMessages,
         onRoomMessage
@@ -141,9 +140,11 @@ export default defineComponent({
         }
         return div
       }
-      on(events('chat:room-ready'), async ({
-        roomId
-      }) => {
+      subscribe('activeRoomReady', async (payload) => {
+        if (!payload) {
+          return
+        }
+        const { roomId } = payload
         if (currentCleanup) {
           currentCleanup()
         }
@@ -194,10 +195,11 @@ export default defineComponent({
       })
 
       // Listen for requests to scroll to a specific message
-      on(events('chat:scroll-to-message'), ({
-        eventId
-      }) => {
-        pendingScrollEventId = eventId
+      subscribe('targetScrollEventId', (payload) => {
+        if (!payload) {
+          return
+        }
+        pendingScrollEventId = payload.eventId
         executePendingScroll()
       })
       return () => {

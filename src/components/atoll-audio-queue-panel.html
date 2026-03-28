@@ -22,9 +22,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        emit,
-        events
+        subscribe,
+        setState
       } = helpers
       const queuePanel = references('queuePanel')
       const closeQueueBtn = references('closeQueueBtn')
@@ -68,9 +67,10 @@ export default defineComponent({
           button.appendChild(icon)
           button.appendChild(infoDiv)
           button.addEventListener('click', () => {
-            emit(events('player:play-queue-track'), {
+            setState('triggerPlayQueueTrack', {
               index,
-              file
+              file,
+              ts: Date.now()
             })
           })
           queueList.appendChild(button)
@@ -84,19 +84,20 @@ export default defineComponent({
           })
         }
       }
-      on(events('player:queue-update'), ({
-        playlist,
-        index
-      }) => {
-        currentPlaylist = playlist
-        currentIndex = index
+      subscribe('playerQueueState', (payload) => {
+        if (!payload) {
+          return
+        }
+        currentPlaylist = payload.playlist
+        currentIndex = payload.index
         if (!queuePanel.classList.contains('d-transition-none')) {
           renderQueue()
         }
       })
-      on(events('player:queue-visibility'), ({
-        isVisible
-      }) => {
+      subscribe('playerIsQueueVisible', (isVisible) => {
+        if (isVisible === undefined) {
+          return
+        }
         if (isVisible) {
           queuePanel.classList.remove('d-transition-none')
           queuePanel.classList.add('d-transition-show')
@@ -109,7 +110,7 @@ export default defineComponent({
         }
       })
       closeQueueBtn.addEventListener('click', () => {
-        emit(events('player:close-queue'))
+        setState('triggerCloseQueue', { ts: Date.now() })
       })
     }
   }

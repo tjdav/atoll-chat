@@ -20,9 +20,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        emit,
-        events
+        subscribe,
+        setState
       } = helpers
       const shuffleButton = references('shuffleBtn')
       const shuffleIcon = references('shuffleIcon')
@@ -35,9 +34,10 @@ export default defineComponent({
 
       // Listen for state changes from the parent
 
-      on(events('player:play-state-change'), ({
-        isPlaying
-      }) => {
+      subscribe('playerIsPlaying', (isPlaying) => {
+        if (isPlaying === undefined) {
+          return
+        }
         if (isPlaying) {
           playPauseIcon.classList.remove('bi-play-circle-fill')
           playPauseIcon.classList.add('bi-pause-circle-fill')
@@ -46,18 +46,20 @@ export default defineComponent({
           playPauseIcon.classList.add('bi-play-circle-fill')
         }
       })
-      on(events('player:shuffle-change'), ({
-        isShuffle
-      }) => {
+      subscribe('playerIsShuffle', (isShuffle) => {
+        if (isShuffle === undefined) {
+          return
+        }
         if (isShuffle) {
           shuffleIcon.classList.add('text-primary')
         } else {
           shuffleIcon.classList.remove('text-primary')
         }
       })
-      on(events('player:repeat-change'), ({
-        repeatMode
-      }) => {
+      subscribe('playerRepeatMode', (repeatMode) => {
+        if (repeatMode === undefined) {
+          return
+        }
         if (repeatMode === 'all') {
           repeatIcon.classList.remove('bi-repeat', 'bi-repeat-1')
           repeatIcon.classList.add('bi-repeat', 'text-primary')
@@ -72,19 +74,19 @@ export default defineComponent({
 
       // Emit events when buttons are clicked
       playPauseBtn.addEventListener('click', () => {
-        emit(events('player:toggle-play'))
+        setState('triggerPlayerTogglePlay', { ts: Date.now() })
       })
       previousButton.addEventListener('click', () => {
-        emit(events('player:previous'))
+        setState('triggerPlayerPrevious', { ts: Date.now() })
       })
       nextButton.addEventListener('click', () => {
-        emit(events('player:next'))
+        setState('triggerPlayerNext', { ts: Date.now() })
       })
       shuffleButton.addEventListener('click', () => {
-        emit(events('player:toggle-shuffle'))
+        setState('triggerPlayerToggleShuffle', { ts: Date.now() })
       })
       repeatButton.addEventListener('click', () => {
-        emit(events('player:toggle-repeat'))
+        setState('triggerPlayerToggleRepeat', { ts: Date.now() })
       })
     }
   }

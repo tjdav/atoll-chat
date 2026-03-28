@@ -1,5 +1,5 @@
 import { defineConfig } from 'coralite-scripts'
-import eventBus from './src/plugins/event-bus.js'
+import globalStatePlugin from './src/plugins/global-state.js'
 import matrixPlugin from './src/plugins/matrix.js'
 import webtorrentPlugin from './src/plugins/webtorrent.js'
 import mediaStorePlugin from './src/plugins/media-store.js'
@@ -28,7 +28,7 @@ export default defineConfig({
     }
   ],
   plugins: [
-    eventBus,
+    globalStatePlugin,
     matrixPlugin({ baseUrl: process.env.HOMESERVER_URL || 'http://localhost:6167' }),
     webtorrentPlugin({ trackerUrl: process.env.TRACKER_URL || 'ws://localhost:8000' }),
     mediaStorePlugin,

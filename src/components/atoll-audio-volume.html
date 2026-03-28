@@ -20,9 +20,8 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        on,
-        emit,
-        events
+        subscribe,
+        setState
       } = helpers
       const queueButton = references('queueBtn')
       const volumeButton = references('volumeBtn')
@@ -30,10 +29,10 @@ export default defineComponent({
       const volumeSlider = references('volumeSlider')
 
       // Parent informs us of volume change
-      on(events('player:volume-update'), ({
-        volume,
-        isMuted
-      }) => {
+      subscribe('playerVolumeState', ({ volume, isMuted } = {}) => {
+        if (volume === undefined) {
+          return
+        }
         if (!isMuted) {
           volumeSlider.value = volume * 100
         } else {
@@ -49,14 +48,15 @@ export default defineComponent({
         }
       })
       queueButton.addEventListener('click', () => {
-        emit(events('player:toggle-queue'))
+        setState('triggerToggleQueue', { ts: Date.now() })
       })
       volumeButton.addEventListener('click', () => {
-        emit(events('player:toggle-mute'))
+        setState('triggerToggleMute', { ts: Date.now() })
       })
       volumeSlider.addEventListener('input', () => {
-        emit(events('player:set-volume'), {
-          volume: volumeSlider.value / 100
+        setState('triggerSetVolume', {
+          volume: volumeSlider.value / 100,
+          ts: Date.now()
         })
       })
     }

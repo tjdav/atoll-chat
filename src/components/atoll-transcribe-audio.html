@@ -15,7 +15,7 @@
   export default defineComponent({
     client: {
       script: ({ helpers, values }) => {
-        const { refs, on, events, transcribeAudio } = helpers
+        const { refs, subscribe, transcribeAudio } = helpers
   
         const container = refs('container')
         const statusText = refs('statusText')
@@ -24,8 +24,11 @@
         const eventId = values['event-id']
         const roomId = values['room-id']
 
-        if (on && events && transcribeAudio) {
-          on(events('chat:transcribe-requested'), async (data) => {
+        if (subscribe && transcribeAudio) {
+          subscribe('triggerTranscribeAudio', async (data) => {
+            if (!data) {
+              return
+            }
             if (data.eventId === eventId && data.roomId === roomId) {
               // Show container
               container.classList.remove('d-transition-none')
