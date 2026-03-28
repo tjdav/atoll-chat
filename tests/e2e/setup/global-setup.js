@@ -21,13 +21,13 @@ async function globalSetup () {
 
     while (!isReady && attempts < maxAttempts) {
       try {
-        const res = await fetch(`${homeserverUrl}/_matrix/client/versions`)
-        if (res.ok) {
+        const response = await fetch(`${homeserverUrl}/_matrix/client/versions`)
+        if (response.ok) {
           isReady = true
         } else {
           throw new Error('Not ready')
         }
-      } catch (e) {
+      } catch (error) {
         attempts++
         await new Promise(resolve => setTimeout(resolve, 1000))
       }
@@ -96,8 +96,8 @@ async function globalSetup () {
         } else {
           console.log(`Failed to provision user ${username}: ${JSON.stringify(data)}`)
         }
-      } catch (e) {
-        console.error(`Error provisioning user ${username}:`, e)
+      } catch (error) {
+        console.error(`Error provisioning user ${username}:`, error)
       }
     }
 
@@ -105,8 +105,8 @@ async function globalSetup () {
     await registerUser('bob', 'password123')
     await registerUser('charlie', 'password123')
 
-  } catch (err) {
-    console.error('Error in global setup:', err)
+  } catch (error) {
+    console.error('Error in global setup:', error)
   }
 }
 
