@@ -152,7 +152,7 @@ export default defineComponent({
         if (currentPlaylist.length === 0) {
           return
         }
-        currentIndex = (currentIndex - 1 + currentPlaylist.length) % currentPlaylist.length
+        currentIndex = ((currentIndex - 1) + currentPlaylist.length) % currentPlaylist.length
         const prevFile = currentPlaylist[currentIndex]
         if (prevFile) {
           playTrack(prevFile)

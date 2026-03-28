@@ -158,35 +158,39 @@ export default defineComponent({
         messagesContainer.innerHTML = ''
         const currentUserId = await getCurrentUserId()
 
-        // Fetch initial history
-        const history = await getRoomMessages(roomId)
-        history.forEach(message => {
-          const isCurrentUser = message.sender === currentUserId
-          const msgEl = renderMessage(message, isCurrentUser)
-          messagesContainer.appendChild(msgEl)
-        })
-        if (pendingScrollEventId) {
-          // If we have a pending scroll, execute it after a brief tick for render
+        const handleIncomingMessage = (msg, isCurrentUser) => {
+          // If the message ID is already in the DOM, skip it.
+          if (messagesContainer.querySelector(`#msg-${msg.id}`)) {
+            return
+          }
 
-          setTimeout(executePendingScroll, 50)
-        } else {
-          // Scroll to bottom immediately
-
-          setTimeout(() => scrollToBottom(false), 0)
-        }
-
-        // Listen for new messages
-        currentCleanup = await onRoomMessage(roomId, newMsg => {
-          const isCurrentUser = newMsg.sender === currentUserId
           const nearBottom = isNearBottom()
-          const msgEl = renderMessage(newMsg, isCurrentUser)
+          const msgEl = renderMessage(msg, isCurrentUser)
           messagesContainer.appendChild(msgEl)
 
-          // Auto-scroll logic: only if near bottom or if it's our own message
           if (nearBottom || isCurrentUser) {
             setTimeout(() => scrollToBottom(true), 0)
           }
+        }
+
+        // Catch any incoming syncs immediately
+        currentCleanup = await onRoomMessage(roomId, newMsg => {
+          const isCurrentUser = newMsg.sender === currentUserId
+          handleIncomingMessage(newMsg, isCurrentUser)
         })
+
+        // Backfill whatever was already in memory
+        const history = await getRoomMessages(roomId)
+        history.forEach(message => {
+          const isCurrentUser = message.sender === currentUserId
+          handleIncomingMessage(message, isCurrentUser)
+        })
+
+        if (pendingScrollEventId) {
+          setTimeout(executePendingScroll, 50)
+        } else {
+          setTimeout(() => scrollToBottom(false), 0)
+        }
       })
 
       // Listen for requests to scroll to a specific message
@@ -194,7 +198,6 @@ export default defineComponent({
         eventId
       }) => {
         pendingScrollEventId = eventId
-        // Try executing immediately in case the room is already loaded and we're just jumping
         executePendingScroll()
       })
       return () => {

@@ -47,7 +47,7 @@ export default defineComponent({
       const errorAlert = references('errorAlert')
       const submitButton = references('submitButton')
       const signupLink = references('signupLink')
-      homeserverInput.value = helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl() || 'https://matrix.org'
+      homeserverInput.value = (helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl()) || 'https://matrix.org'
       signupLink.addEventListener('click', event => {
         event.preventDefault()
         emit(events('auth:show-signup'))

@@ -455,7 +455,7 @@ export default function ({
               }
             }
           }
-          const handler = event => {
+          const handler = (event, room, toStartOfTimeline) => {
             if (event.getRoomId() === roomId) {
               if (event.getType() === 'm.room.message') {
                 callback({

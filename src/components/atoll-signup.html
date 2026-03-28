@@ -53,7 +53,7 @@ export default defineComponent({
       const errorAlert = references('errorAlert')
       const submitButton = references('submitButton')
       const loginLink = references('loginLink')
-      homeserverInput.value = helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl() || 'https://matrix.org'
+      homeserverInput.value = (helpers.getDefaultHomeserverUrl && helpers.getDefaultHomeserverUrl()) || 'https://matrix.org'
       loginLink.addEventListener('click', event => {
         event.preventDefault()
         emit(events('auth:show-login'))
