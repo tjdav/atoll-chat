@@ -12,7 +12,7 @@
     "javascript"
   ],
   "scripts": {
-    "start": "concurrently \"npm run start:tracker\" \"npm run start:app\"",
+    "start": "concurrently \"pnpm run start:tracker\" \"pnpm run start:app\"",
     "start:app": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
     "start:tracker": "node src/server/tracker.js",
     "build": "coralite-scripts build",
@@ -30,8 +30,8 @@
     "@stylistic/eslint-plugin": "^5.9.0",
     "bootstrap": "^5.3.8",
     "concurrently": "^9.2.1",
-    "coralite": "^0.29.2",
-    "coralite-scripts": "^0.29.2",
+    "coralite": "^0.29.3",
+    "coralite-scripts": "^0.29.3",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^10.0.2",
