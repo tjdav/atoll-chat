@@ -19,7 +19,7 @@ export default defineConfig({
   assets: [
     {
       src: wasmSrc,
-      dest: 'pkg/matrix_sdk_crypto_wasm_bg.wasm'
+      dest: 'assets/js/pkg/matrix_sdk_crypto_wasm_bg.wasm'
     },
     {
       pkg: '@transcribe/shout',
