@@ -14,7 +14,7 @@
 
   export default defineComponent({
     client: {
-      script: ({ helpers, values }) => {
+      script: ({ helpers, values, signal }) => {
         const { refs, subscribe, transcribeAudio } = helpers
   
         const container = refs('container')

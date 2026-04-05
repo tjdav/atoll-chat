@@ -33,7 +33,8 @@ export default defineComponent({
     }],
     script: ({
       helpers,
-      values
+      values,
+      signal
     }) => {
       const {
         refs: references,
@@ -60,7 +61,7 @@ export default defineComponent({
             ts: Date.now()
           })
         }
-      })
+      }, { signal })
 
       // Transcribe button handler
       transcribeBtn.addEventListener('click', () => {
@@ -71,7 +72,7 @@ export default defineComponent({
             ts: Date.now()
           })
         }
-      })
+      }, { signal })
 
       const sendReaction = emoji => {
         if (!eventId || !roomId) {
@@ -102,7 +103,7 @@ export default defineComponent({
           if (emoji) {
             sendReaction(emoji)
           }
-        })
+        }, { signal })
       })
 
       // Initialize emoji picker on first open
@@ -118,10 +119,10 @@ export default defineComponent({
           picker.style.setProperty('--border-color', '#495057')
           picker.addEventListener('emoji-click', event => {
             sendReaction(event.detail.unicode)
-          })
+          }, { signal })
           emojiPopover.appendChild(picker)
         }
-      })
+      }, { signal })
     }
   }
 })

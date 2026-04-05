@@ -10,7 +10,8 @@ export default defineComponent({
   client: {
     script: ({
       helpers,
-      values
+      values,
+      signal
     }) => {
       const {
         refs: references,
@@ -56,7 +57,7 @@ export default defineComponent({
                 ts: Date.now()
               })
             }
-          })
+          }, { signal })
           container.appendChild(button)
         })
       }

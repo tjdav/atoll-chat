@@ -38,7 +38,8 @@ export default defineComponent({
     script: ({
       root,
       helpers,
-      values
+      values,
+      signal
     }) => {
       const {
         refs: references,
@@ -210,7 +211,7 @@ export default defineComponent({
           alert('Failed to download file.')
         }
       }
-      downloadButton.addEventListener('click', handleDownload)
+      downloadButton.addEventListener('click', handleDownload, { signal })
       autoAcceptCheckbox.addEventListener('change', async event => {
         if (event.target.checked) {
           const senderId = values['sender-id']
@@ -223,7 +224,7 @@ export default defineComponent({
             handleDownload()
           }
         }
-      })
+      }, { signal })
 
       // Cleanup object URL
       return () => {

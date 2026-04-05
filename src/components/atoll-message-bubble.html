@@ -31,7 +31,8 @@ export default defineComponent({
     components: ['atoll-message-actions', 'atoll-message-reactions', 'atoll-transcribe-audio'],
     script: async ({
       helpers,
-      values
+      values,
+      signal
     }) => {
       const {
         refs: references,
@@ -104,7 +105,7 @@ export default defineComponent({
           }
         }
         if (slot) {
-          slot.addEventListener('slotchange', processText)
+          slot.addEventListener('slotchange', processText, { signal })
           // also try immediately in case it's already assigned
           processText()
         } else {
