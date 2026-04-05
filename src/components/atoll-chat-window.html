@@ -134,6 +134,11 @@ export default defineComponent({
         }
         activeRoomId = roomId
         const roomDetails = await getRoom(roomId)
+
+        if (activeRoomId !== roomId) {
+          return
+        }
+
         if (roomDetails) {
           roomName.textContent = roomDetails.name
           roomAvatar.innerHTML = createAvatarHTML(roomDetails.name, roomDetails.avatarUrl)

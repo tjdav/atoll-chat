@@ -35,11 +35,13 @@ export default createPlugin({
 
         // Check if the key exists, allowing explicit 'undefined' values to be passed
         if (key in state) {
-          try {
-            callback(state[key])
-          } catch (error) {
-            console.error(`[Global State] Error in immediate subscriber for "${key}":`, error)
-          }
+          queueMicrotask(() => {
+            try {
+              callback(state[key])
+            } catch (error) {
+              console.error(`[Global State] Error in immediate subscriber for "${key}":`, error)
+            }
+          })
         }
 
         // Return cleanup function
