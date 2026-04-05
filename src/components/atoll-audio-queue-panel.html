@@ -39,7 +39,7 @@ export default defineComponent({
         return `${m}:${s.toString().padStart(2, '0')}`
       }
       const renderQueue = () => {
-        queueList.innerHTML = ''
+        queueList.replaceChildren()
         currentPlaylist.forEach((file, index) => {
           const button = document.createElement('button')
           button.className = `list-group-item list-group-item-action bg-transparent text-white border-secondary p-2 d-flex align-items-center ${index === currentIndex ? 'active bg-primary border-primary' : ''}`

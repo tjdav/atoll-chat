@@ -53,7 +53,7 @@ export default defineComponent({
               if (height > 0) {
                 div.style.height = `${height}px`
                 div.style.minHeight = `${height}px`
-                div.innerHTML = ''
+                div.replaceChildren()
               }
             }
           }
@@ -156,7 +156,7 @@ export default defineComponent({
           rootMargin: '500px 0px'
         })
         currentRoomId = roomId
-        messagesContainer.innerHTML = ''
+        messagesContainer.replaceChildren()
         const currentUserId = await getCurrentUserId()
 
         const handleIncomingMessage = (msg, isCurrentUser) => {

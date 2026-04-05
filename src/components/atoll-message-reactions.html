@@ -27,7 +27,7 @@ export default defineComponent({
       const eventId = values['event-id']
       const roomId = values['room-id']
       const renderReactions = () => {
-        container.innerHTML = ''
+        container.replaceChildren()
         if (!currentReactions || Object.keys(currentReactions).length === 0) {
           return
         }

@@ -60,7 +60,9 @@ export default defineComponent({
           const iconDiv = document.createElement('div')
           iconDiv.className = 'me-3 text-secondary'
           // Static safe HTML
-          iconDiv.innerHTML = '<i class="bi bi-music-note-beamed fs-4"></i>'
+          const iconNote = document.createElement('i')
+          iconNote.className = 'bi bi-music-note-beamed fs-4'
+          iconDiv.replaceChildren(iconNote)
 
           // Text details
           const textDiv = document.createElement('div')

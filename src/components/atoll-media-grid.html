@@ -93,7 +93,9 @@ export default defineComponent({
             jumpButton.className = 'btn btn-sm btn-outline-primary jump-btn'
             jumpButton.title = 'Go to Message'
             // This is safe, fixed HTML
-            jumpButton.innerHTML = '<i class="bi bi-chat-left-text"></i>'
+            const jumpIcon = document.createElement('i')
+            jumpIcon.className = 'bi bi-chat-left-text'
+            jumpButton.replaceChildren(jumpIcon)
             jumpButton.addEventListener('click', () => {
               setState('triggerJumpToMessage', {
                 roomId: file.roomId,
