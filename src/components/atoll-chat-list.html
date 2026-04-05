@@ -60,7 +60,8 @@ export default defineComponent({
         getRooms,
         createEncryptedRoom,
         subscribe,
-        setState
+        setState,
+        getState
       } = helpers
       const {
         bootstrap
@@ -81,37 +82,149 @@ export default defineComponent({
       if (openNewRoomModalBtn) {
         openNewRoomModalBtn.addEventListener('click', showModal)
       }
-      const createAvatarHTML = (roomName, avatarUrl) => {
+      const updateAvatarNode = (container, roomName, avatarUrl) => {
         if (avatarUrl) {
-          return '<img src="' + avatarUrl + '" alt="' + roomName + '" class="rounded-circle me-3" style="width: 48px; height: 48px; object-fit: cover;">'
+          let img = container.querySelector('img')
+          if (!img) {
+            container.innerHTML = ''
+            img = document.createElement('img')
+            img.className = 'rounded-circle me-3'
+            img.style.width = '48px'
+            img.style.height = '48px'
+            img.style.objectFit = 'cover'
+            container.appendChild(img)
+          }
+          if (img.src !== avatarUrl) {
+            img.src = avatarUrl
+          }
+          if (img.alt !== roomName) {
+            img.alt = roomName
+          }
+        } else {
+          let div = container.querySelector('div')
+          if (!div) {
+            container.innerHTML = ''
+            div = document.createElement('div')
+            div.className = 'rounded-circle me-3 bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-5'
+            div.style.width = '48px'
+            div.style.height = '48px'
+            div.style.flexShrink = '0'
+            container.appendChild(div)
+          }
+          const initials = roomName ? roomName.substring(0, 2).toUpperCase() : '?'
+          if (div.textContent !== initials) {
+            div.textContent = initials
+          }
         }
-        const initials = roomName ? roomName.substring(0, 2).toUpperCase() : '?'
-        return '<div class="rounded-circle me-3 bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-5" style="width: 48px; height: 48px; flex-shrink: 0;">' + initials + '</div>'
       }
+
       const renderRooms = async () => {
         const rooms = await getRooms()
-        roomList.innerHTML = rooms.map(room => `
-            <button class="list-group-item list-group-item-action d-flex align-items-center py-3 bg-transparent border-bottom border-secondary-subtle room-item" data-room-id="${room.id}">
-              ${createAvatarHTML(room.name, room.avatarUrl)}
-              <div class="flex-grow-1 overflow-hidden">
-                <div class="d-flex justify-content-between align-items-center mb-1">
-                  <h6 class="mb-0 text-truncate fw-semibold">${room.name}</h6>
-                  ${room.unreadCount > 0 ? '<span class="badge rounded-pill text-bg-danger ms-2">' + room.unreadCount + '</span>' : ''}
-                </div>
-                <p class="mb-0 text-muted small text-truncate">${room.lastMessage || 'No recent messages'}</p>
-              </div>
-            </button>
-          `).join('')
-        const items = roomList.querySelectorAll('.room-item')
-        items.forEach(item => {
-          item.addEventListener('click', () => {
-            // Remove active class from all
-            items.forEach(i => i.classList.remove('active', 'bg-body-secondary'))
-            // Add active class to clicked
-            item.classList.add('active', 'bg-body-secondary')
-            setState('activeRoomId', item.dataset.roomId)
-          })
+
+        const existingNodes = new Map()
+        Array.from(roomList.children).forEach(child => {
+          existingNodes.set(child.dataset.roomId, child)
         })
+
+        const activeRoomId = getState ? getState('activeRoomId') : null
+
+        rooms.forEach((room, index) => {
+          let roomNode = existingNodes.get(room.id)
+
+          if (!roomNode) {
+            roomNode = document.createElement('button')
+            roomNode.className = 'list-group-item list-group-item-action d-flex align-items-center py-3 bg-transparent border-bottom border-secondary-subtle room-item'
+            roomNode.dataset.roomId = room.id
+
+            roomNode.addEventListener('click', () => {
+              const allItems = roomList.querySelectorAll('.room-item')
+              allItems.forEach(i => i.classList.remove('active', 'bg-body-secondary'))
+              roomNode.classList.add('active', 'bg-body-secondary')
+              setState('activeRoomId', room.id)
+            })
+
+            const avatarContainer = document.createElement('div')
+            avatarContainer.className = 'avatar-container d-flex align-items-center'
+
+            const contentContainer = document.createElement('div')
+            contentContainer.className = 'flex-grow-1 overflow-hidden'
+
+            const headerContainer = document.createElement('div')
+            headerContainer.className = 'd-flex justify-content-between align-items-center mb-1'
+
+            const nameElement = document.createElement('h6')
+            nameElement.className = 'mb-0 text-truncate fw-semibold room-name'
+
+            const badgeElement = document.createElement('span')
+            badgeElement.className = 'badge rounded-pill text-bg-danger ms-2 unread-badge'
+
+            const messageElement = document.createElement('p')
+            messageElement.className = 'mb-0 text-muted small text-truncate last-message'
+
+            headerContainer.appendChild(nameElement)
+            headerContainer.appendChild(badgeElement)
+
+            contentContainer.appendChild(headerContainer)
+            contentContainer.appendChild(messageElement)
+
+            roomNode.appendChild(avatarContainer)
+            roomNode.appendChild(contentContainer)
+          }
+
+          const avatarContainer = roomNode.querySelector('.avatar-container')
+          updateAvatarNode(avatarContainer, room.name, room.avatarUrl)
+
+          const nameElement = roomNode.querySelector('.room-name')
+          if (nameElement.textContent !== room.name) {
+            nameElement.textContent = room.name
+          }
+
+          const badgeElement = roomNode.querySelector('.unread-badge')
+          if (room.unreadCount > 0) {
+            if (badgeElement.textContent !== String(room.unreadCount)) {
+              badgeElement.textContent = room.unreadCount
+            }
+            if (badgeElement.style.display !== '') {
+              badgeElement.style.display = ''
+            }
+          } else {
+            if (badgeElement.textContent !== '') {
+              badgeElement.textContent = ''
+            }
+            if (badgeElement.style.display !== 'none') {
+              badgeElement.style.display = 'none'
+            }
+          }
+
+          const messageElement = roomNode.querySelector('.last-message')
+          const lastMessageText = room.lastMessage || 'No recent messages'
+          if (messageElement.textContent !== lastMessageText) {
+            messageElement.textContent = lastMessageText
+          }
+
+          if (activeRoomId === room.id) {
+            if (!roomNode.classList.contains('active')) {
+              roomNode.classList.add('active', 'bg-body-secondary')
+            }
+          } else {
+            if (roomNode.classList.contains('active')) {
+              roomNode.classList.remove('active', 'bg-body-secondary')
+            }
+          }
+
+          const currentChildAtPos = roomList.children[index]
+          if (currentChildAtPos) {
+            if (currentChildAtPos !== roomNode) {
+              roomList.insertBefore(roomNode, currentChildAtPos)
+            }
+          } else {
+            roomList.appendChild(roomNode)
+          }
+
+          existingNodes.delete(room.id)
+        })
+
+        existingNodes.forEach(node => node.remove())
       }
       createRoomBtn.addEventListener('click', async () => {
         const roomName = roomNameInput.value.trim()
