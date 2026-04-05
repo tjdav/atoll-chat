@@ -86,7 +86,7 @@ export default defineComponent({
         if (avatarUrl) {
           let img = container.querySelector('img')
           if (!img) {
-            container.innerHTML = ''
+            container.replaceChildren()
             img = document.createElement('img')
             img.className = 'rounded-circle me-3'
             img.style.width = '48px'
@@ -103,7 +103,7 @@ export default defineComponent({
         } else {
           let div = container.querySelector('div')
           if (!div) {
-            container.innerHTML = ''
+            container.replaceChildren()
             div = document.createElement('div')
             div.className = 'rounded-circle me-3 bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-5'
             div.style.width = '48px'

@@ -121,12 +121,23 @@ export default defineComponent({
           })
         }
       })
-      const createAvatarHTML = (name, url) => {
+      const createAvatarNode = (name, url) => {
         if (url) {
-          return '<img src="' + url + '" alt="' + name + '" class="rounded-circle object-fit-cover" style="width: 30px; height: 30px;">'
+          const img = document.createElement('img')
+          img.src = url
+          img.alt = name
+          img.className = 'rounded-circle object-fit-cover'
+          img.style.width = '30px'
+          img.style.height = '30px'
+          return img
         }
         const initials = name ? name.substring(0, 2).toUpperCase() : '?'
-        return '<div class="rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-6" style="width: 30px; height: 30px;">' + initials + '</div>'
+        const div = document.createElement('div')
+        div.className = 'rounded-circle bg-secondary text-white d-flex align-items-center justify-content-center fw-bold fs-6'
+        div.style.width = '30px'
+        div.style.height = '30px'
+        div.textContent = initials
+        return div
       }
       subscribe('activeRoomId', async (roomId) => {
         if (!roomId) {
@@ -141,7 +152,7 @@ export default defineComponent({
 
         if (roomDetails) {
           roomName.textContent = roomDetails.name
-          roomAvatar.innerHTML = createAvatarHTML(roomDetails.name, roomDetails.avatarUrl)
+          roomAvatar.replaceChildren(createAvatarNode(roomDetails.name, roomDetails.avatarUrl))
 
           // Show header, hide empty state
           chatHeader.style.display = 'flex'

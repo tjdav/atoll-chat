@@ -143,10 +143,16 @@ export default defineComponent({
         const room = await getRoom(call.roomId)
         callerName.textContent = room ? room.name : 'Unknown Caller'
         if (room && room.avatarUrl) {
-          callerAvatar.innerHTML = `<img src="${room.avatarUrl}" alt="${room.name}" class="rounded-circle w-100 h-100 object-fit-cover">`
+          const img = document.createElement('img')
+          img.src = room.avatarUrl
+          img.alt = room.name
+          img.className = 'rounded-circle w-100 h-100 object-fit-cover'
+          callerAvatar.replaceChildren(img)
           callerAvatar.classList.remove('bg-primary')
         } else {
-          callerAvatar.innerHTML = '<i class="bi bi-person fs-3"></i>'
+          const icon = document.createElement('i')
+          icon.className = 'bi bi-person fs-3'
+          callerAvatar.replaceChildren(icon)
           callerAvatar.classList.add('bg-primary')
         }
         incomingCallModal.style.display = 'block'
