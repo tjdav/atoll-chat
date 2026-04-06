@@ -159,7 +159,7 @@ export default defineComponent({
             badgeElement.className = 'badge rounded-pill text-bg-danger ms-2 unread-badge'
 
             const messageElement = document.createElement('p')
-            messageElement.className = 'mb-0 text-muted small text-truncate last-message'
+            messageElement.className = 'mb-0 text-muted small text-truncate mw-300 last-message'
 
             headerContainer.appendChild(nameElement)
             headerContainer.appendChild(badgeElement)
@@ -199,7 +199,7 @@ export default defineComponent({
           const messageElement = roomNode.querySelector('.last-message')
           const lastMessageText = room.lastMessage || 'No recent messages'
           if (messageElement.textContent !== lastMessageText) {
-            messageElement.textContent = lastMessageText
+            messageElement.textContent = lastMessageText.substring(0, 100)
           }
 
           if (activeRoomId === room.id) {
