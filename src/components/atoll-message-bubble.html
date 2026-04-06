@@ -92,9 +92,7 @@ export default defineComponent({
         const slot = body.querySelector('slot')
         const processText = () => {
           let text = ''
-          if (values.body) {
-            text = values.body
-          } else if (slot) {
+          if (slot) {
             const nodes = slot.assignedNodes()
             if (nodes.length > 0) {
               text = Array.from(nodes).map(n => n.textContent).join('')

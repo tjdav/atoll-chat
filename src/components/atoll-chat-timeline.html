@@ -90,7 +90,7 @@ export default defineComponent({
           const bubble = document.createElement('atoll-message-bubble')
           bubble.setAttribute('time', time)
           bubble.setAttribute('current-user', isCurrentUser)
-          bubble.setAttribute('body', '*Encrypted message*')
+          bubble.appendChild(document.createTextNode('*Encrypted message*'))
           return bubble
         } else if (message.msgtype === 'm.atoll.webtorrent' && message.info) {
           const torrentBubble = document.createElement('atoll-torrent-bubble')
@@ -117,7 +117,7 @@ export default defineComponent({
           bubble.setAttribute('event-id', message.id)
           bubble.setAttribute('room-id', currentRoomId)
           if (message.body) {
-            bubble.setAttribute('body', message.body)
+            bubble.appendChild(document.createTextNode(message.body))
           }
           if (message.reactions) {
             bubble.setAttribute('reactions', JSON.stringify(message.reactions))
