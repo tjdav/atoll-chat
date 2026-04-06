@@ -23,6 +23,13 @@ export default defineComponent({
 
       // Reactions object structure: { emoji: { count, hasReacted } }
       let currentReactions = values.reactions || {}
+      if (typeof currentReactions === 'string') {
+        try {
+          currentReactions = JSON.parse(currentReactions)
+        } catch (e) {
+          currentReactions = {}
+        }
+      }
       let currentUserId = null
       const eventId = values['event-id']
       const roomId = values['room-id']

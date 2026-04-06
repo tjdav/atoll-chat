@@ -90,7 +90,13 @@ export default defineComponent({
       // Initialize UI with attributes
 
       const initUI = async () => {
-        const payload = values['info']
+        let payload = values['info']
+        if (typeof payload === 'string') {
+          try {
+            payload = JSON.parse(payload)
+          } catch (error) {
+          }
+        }
         if (!payload) {
           return
         }
@@ -108,7 +114,13 @@ export default defineComponent({
       }
       initUI()
       const handleDownload = async () => {
-        const payload = values['info']
+        let payload = values['info']
+        if (typeof payload === 'string') {
+          try {
+            payload = JSON.parse(payload)
+          } catch (error) {
+          }
+        }
         const eventId = values['event-id']
         if (!payload || !eventId) {
           return
@@ -120,27 +132,23 @@ export default defineComponent({
         downloadButton.classList.add('d-transition-none')
         checkboxContainer.classList.add('d-none')
         try {
-          // 1. Download via WebTorrent
-
+          // Download via WebTorrent
           const encryptedBlob = await download(payload.magnetURI, progress => {
             const percent = Math.round(progress * 100)
             progressBar.style.width = `${percent}%`
             progressBar.setAttribute('aria-valuenow', percent.toString())
           })
 
-          // 2. Import Key
-
+          // Import Key
           const key = await crypto.subtle.importKey('jwk', payload.key, {
             name: 'AES-CTR'
           }, true, ['encrypt', 'decrypt'])
 
-          // 3. Decode IV
-
+          // Decode IV
           const ivStr = atob(payload.iv)
           const iv = Uint8Array.from(ivStr, c => c.charCodeAt(0))
 
-          // 4. Decrypt File
-
+          // Decrypt File
           const encryptedBuffer = await encryptedBlob.arrayBuffer()
           const decryptedBuffer = await crypto.subtle.decrypt({
             name: 'AES-CTR',
@@ -151,8 +159,7 @@ export default defineComponent({
             type: payload.mimeType
           })
 
-          // 5. Save to Media Store
-
+          // Save to media store
           await saveMedia(eventId, decryptedBlob, {
             filename: payload.filename,
             mimeType: payload.mimeType,
@@ -163,8 +170,6 @@ export default defineComponent({
             sender: values['sender-id'],
             roomId: values['room-id']
           })
-
-          // 6. Update UI
 
           progressBarContainer.classList.remove('d-transition-show')
           progressBarContainer.classList.add('d-transition-none')
