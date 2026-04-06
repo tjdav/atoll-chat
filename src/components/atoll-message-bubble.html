@@ -53,23 +53,26 @@ export default defineComponent({
       const time = values.time || ''
       const eventId = values['event-id']
       const roomId = values['room-id']
-      const initialReactions = values.reactions || {}
+      let initialReactions = values.reactions || {}
+      if (typeof initialReactions === 'string') {
+        try {
+          initialReactions = JSON.parse(initialReactions)
+        } catch (e) {
+          initialReactions = {}
+        }
+      }
 
       // Pass down properties to child components
       const actionsEl = actionsContainer.querySelector('atoll-message-actions')
       if (actionsEl) {
-        actionsEl.values = {
-          'event-id': eventId,
-          'room-id': roomId
-        }
+        actionsEl.setAttribute('event-id', eventId)
+        actionsEl.setAttribute('room-id', roomId)
       }
       const reactionsEl = reactionsContainer
       if (reactionsEl) {
-        reactionsEl.values = {
-          'event-id': eventId,
-          'room-id': roomId,
-          reactions: initialReactions
-        }
+        reactionsEl.setAttribute('event-id', eventId)
+        reactionsEl.setAttribute('room-id', roomId)
+        reactionsEl.setAttribute('reactions', JSON.stringify(initialReactions))
       }
       if (isCurrentUser) {
         wrapper.classList.add('justify-content-end')
