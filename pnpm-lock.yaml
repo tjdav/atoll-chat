@@ -55,11 +55,11 @@ importers:
         specifier: ^9.2.1
         version: 9.2.1
       coralite:
-        specifier: ^0.29.5
-        version: 0.29.5
+        specifier: ^0.30.0
+        version: 0.30.0
       coralite-scripts:
-        specifier: ^0.29.6
-        version: 0.29.6
+        specifier: ^0.30.0
+        version: 0.30.0
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -817,8 +817,8 @@ packages:
     resolution: {integrity: sha512-pMD+MVR538ipqkG5JXeOEbKWS5um1H4LUUccUQG68qpeqBYbzYy79Gh55jkd2TtPdRfUaLWdv6LPP//5Zt0aPQ==}
     engines: {node: '>=4'}
 
-  content-disposition@1.0.1:
-    resolution: {integrity: sha512-oIXISMynqSqm241k6kcQ5UwttDILMK4BiurCfGEREw6+X9jkkpEe5T9FZaApyLGGOnFuyMWZpdolTXMtvEJ08Q==}
+  content-disposition@1.1.0:
+    resolution: {integrity: sha512-5jRCH9Z/+DRP7rkvY83B+yGIGX96OYdJmzngqnw2SBSxqCFPd0w2km3s5iawpGX8krnwSGmF0FW5Nhr0Hfai3g==}
     engines: {node: '>=18'}
 
   content-type@1.0.5:
@@ -833,12 +833,12 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.29.6:
-    resolution: {integrity: sha512-6jAz9gwLBsBKYtKh3SpVUMDyYfJhQ7hRyzM8Yxtjs2YX75anNyKBxTAhOoVb2CmdAr/aq7RJrkhhwEiwToxWjQ==}
+  coralite-scripts@0.30.0:
+    resolution: {integrity: sha512-/WaxaLAR4TsK6EhWm4GpH9PL/0uPhlSo4eSknr9SXCvL44uwpwFiAezVk+RT/su1hx+fDu4ePlAV6wvcTKT+sQ==}
     hasBin: true
 
-  coralite@0.29.5:
-    resolution: {integrity: sha512-Xow2ljMwz99w9SU9H5qcPeDQWXUUk6ogCZwLIxcpcYGzQaMWQhskZ5/YM24/Zg0+26CzyxMQhnqX0C8r0EVJUQ==}
+  coralite@0.30.0:
+    resolution: {integrity: sha512-ZIZ0cgyCHOsqXyFEh2xHqy+LO0RSqpRBwTmX8Av3XjnCyfyKxUxYBKtyLn7CF8wzbie1N+Qw9wSwdpLE5cLwUA==}
     engines: {node: '>20.19.0'}
     hasBin: true
 
@@ -1659,8 +1659,8 @@ packages:
     resolution: {integrity: sha512-haREypq7xkM7ErfgIyA0z+Bj4AGKlMSdlQE2jvJo6huWD1EdkKYV+G/T4nq0YEF2vgTT8kqMFKo1uHn950r4SQ==}
     engines: {node: '>=12'}
 
-  path-to-regexp@8.4.0:
-    resolution: {integrity: sha512-PuseHIvAnz3bjrM2rGJtSgo1zjgxapTLZ7x2pjhzWwlp4SJQgK3f3iZIQwkpEnBaKz6seKBADpM4B4ySkuYypg==}
+  path-to-regexp@8.4.2:
+    resolution: {integrity: sha512-qRcuIdP69NPm4qbACK+aDogI5CBDMi1jKe0ry5rSQJz8JVLsC7jV8XpiJjGRLLol3N+R5ihGYcrPLTno6pAdBA==}
 
   pathe@2.0.3:
     resolution: {integrity: sha512-WUjGcAqP1gQacoQe+OBJsFA7Ld4DyXuUIjZ5cc75cLHvJ7dtNsTugphxIADwspS+AraAUePCKrSVtPLFj/F88w==}
@@ -1699,8 +1699,8 @@ packages:
     resolution: {integrity: sha512-orRsuYpJVw8LdAwqqLykBj9ecS5/cRHlI5+nvTo8LcCKmzDmqVORXtOIYEEQuL9D4BxtA1lm5isAqzQZCoQ6Eg==}
     engines: {node: '>=4'}
 
-  postcss@8.5.8:
-    resolution: {integrity: sha512-OW/rX8O/jXnm82Ey1k44pObPtdblfiuWnrd8X7GJ7emImCOstunGbXUpp7HdBrFQX6rJzn3sPT397Wp5aCwCHg==}
+  postcss@8.5.9:
+    resolution: {integrity: sha512-7a70Nsot+EMX9fFU3064K/kdHWZqGVY+BADLyXc8Dfv+mTLLVl6JzJpPaCZ2kQL9gIJvKXSLMHhqdRRjwQeFtw==}
     engines: {node: ^10 || ^12 || >=14}
 
   prebuild-install@7.1.3:
@@ -1826,8 +1826,8 @@ packages:
   safer-buffer@2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
 
-  sass@1.98.0:
-    resolution: {integrity: sha512-+4N/u9dZ4PrgzGgPlKnaaRQx64RO0JBKs9sDhQ2pLgN6JQZ25uPQZKQYaBJU48Kd5BxgXoJ4e09Dq7nMcOUW3A==}
+  sass@1.99.0:
+    resolution: {integrity: sha512-kgW13M54DUB7IsIRM5LvJkNlpH+WhMpooUcaWGFARkF1Tc82v9mIWkCbCYf+MBvpIUBSeSOTilpZjEPr2VYE6Q==}
     engines: {node: '>=14.0.0'}
     hasBin: true
 
@@ -2895,7 +2895,7 @@ snapshots:
 
   console-clear@1.1.1: {}
 
-  content-disposition@1.0.1: {}
+  content-disposition@1.1.0: {}
 
   content-type@1.0.5: {}
 
@@ -2903,23 +2903,23 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.29.6:
+  coralite-scripts@0.30.0:
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.29.5
+      coralite: 0.30.0
       cross-env: 10.1.0
       express: 5.2.1
       kleur: 4.1.5
       local-access: 1.1.0
       ora: 9.3.0
       portfinder: 1.0.38
-      postcss: 8.5.8
-      sass: 1.98.0
+      postcss: 8.5.9
+      sass: 1.99.0
     transitivePeerDependencies:
       - supports-color
 
-  coralite@0.29.5:
+  coralite@0.30.0:
     dependencies:
       acorn: 8.16.0
       acorn-walk: 8.3.5
@@ -2930,7 +2930,7 @@ snapshots:
       htmlparser2: 10.1.0
       kleur: 4.1.5
       p-limit: 7.3.0
-      postcss: 8.5.8
+      postcss: 8.5.9
       postcss-selector-parser: 7.1.1
       serialize-javascript: 7.0.5
 
@@ -3238,7 +3238,7 @@ snapshots:
     dependencies:
       accepts: 2.0.0
       body-parser: 2.2.2
-      content-disposition: 1.0.1
+      content-disposition: 1.1.0
       content-type: 1.0.5
       cookie: 0.7.2
       cookie-signature: 1.2.2
@@ -3827,7 +3827,7 @@ snapshots:
 
   path-key@4.0.0: {}
 
-  path-to-regexp@8.4.0: {}
+  path-to-regexp@8.4.2: {}
 
   pathe@2.0.3: {}
 
@@ -3869,7 +3869,7 @@ snapshots:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
 
-  postcss@8.5.8:
+  postcss@8.5.9:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
@@ -3998,7 +3998,7 @@ snapshots:
       depd: 2.0.0
       is-promise: 4.0.0
       parseurl: 1.3.3
-      path-to-regexp: 8.4.0
+      path-to-regexp: 8.4.2
     transitivePeerDependencies:
       - supports-color
 
@@ -4024,7 +4024,7 @@ snapshots:
 
   safer-buffer@2.1.2: {}
 
-  sass@1.98.0:
+  sass@1.99.0:
     dependencies:
       chokidar: 4.0.3
       immutable: 5.1.5
