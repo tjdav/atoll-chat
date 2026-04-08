@@ -13,13 +13,13 @@ export default defineComponent({
       helpers
     }) => {
       const {
-        refs: references,
+        refs,
         subscribe,
         getCurrentUserId,
         getRoomMessages,
         onRoomMessage
       } = helpers
-      const messagesContainer = references('messagesContainer')
+      const messagesContainer = refs('messagesContainer')
       let currentCleanup = null
       const scrollToBottom = (smooth = true) => {
         messagesContainer.scrollTo({

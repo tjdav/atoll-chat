@@ -26,25 +26,28 @@
 import { defineComponent } from 'coralite'
 export default defineComponent({
   client: {
-    imports: [{
-      specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/database.js'
-    }, {
-      specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/picker.js'
-    }],
+    imports: [
+      {
+        specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/database.js'
+      },
+      {
+        specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/picker.js'
+      }
+    ],
     script: ({
       helpers,
       values,
       signal
     }) => {
       const {
-        refs: references,
+        refs,
         setState
       } = helpers
-      const container = references('container')
-      const emojiPopover = references('emojiPopover')
-      const moreBtn = references('moreBtn')
-      const playButton = references('playBtn')
-      const transcribeBtn = references('transcribeBtn')
+      const container = refs('container')
+      const emojiPopover = refs('emojiPopover')
+      const moreBtn = refs('moreBtn')
+      const playButton = refs('playBtn')
+      const transcribeBtn = refs('transcribeBtn')
 
       let pickerInitialized = false
 
