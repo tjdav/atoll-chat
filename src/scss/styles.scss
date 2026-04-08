@@ -52,7 +52,7 @@ $utilities: map-merge($utilities,
 @import "bootstrap/scss/placeholders";
 @import "bootstrap/scss/helpers";
 
-@import "display";
-
 // This specifically triggers the API to generate the CSS classes
 @import "bootstrap/scss/utilities/api";
+
+@import "display";
