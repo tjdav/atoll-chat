@@ -5,7 +5,7 @@ export default createPlugin({
     setup () {
       const DB_NAME = 'atoll-media-vault'
       const STORE_NAME = 'media'
-      const DB_VERSION = 2
+      const DB_VERSION = 3
       let dbPromise = null
       const getDB = () => {
         if (!dbPromise) {
@@ -35,6 +35,12 @@ export default createPlugin({
                   unique: false
                 })
               }
+
+              if (!store.indexNames.contains('magnetURI')) {
+                store.createIndex('magnetURI', 'magnetURI', {
+                  unique: false
+                })
+              }
             }
             request.onsuccess = event => {
               resolve(event.target.result)
@@ -52,6 +58,39 @@ export default createPlugin({
       }
     },
     helpers: {
+      getMedia: globalContext => localContext => {
+        const {
+          getDB,
+          STORE_NAME
+        } = localContext.values
+        return async id => {
+          const db = await getDB()
+          return new Promise((resolve, reject) => {
+            const transaction = db.transaction([STORE_NAME], 'readonly')
+            const store = transaction.objectStore(STORE_NAME)
+            const request = store.get(id)
+            request.onsuccess = event => resolve(event.target.result)
+            request.onerror = event => reject(event.target.error)
+          })
+        }
+      },
+      getMediaByMagnetURI: globalContext => localContext => {
+        const {
+          getDB,
+          STORE_NAME
+        } = localContext.values
+        return async magnetURI => {
+          const db = await getDB()
+          return new Promise((resolve, reject) => {
+            const transaction = db.transaction([STORE_NAME], 'readonly')
+            const store = transaction.objectStore(STORE_NAME)
+            const index = store.index('magnetURI')
+            const request = index.get(magnetURI)
+            request.onsuccess = event => resolve(event.target.result)
+            request.onerror = event => reject(event.target.error)
+          })
+        }
+      },
       saveMedia: globalContext => localContext => {
         const {
           getDB,

@@ -57,7 +57,7 @@ export default defineComponent({
       if (typeof initialReactions === 'string') {
         try {
           initialReactions = JSON.parse(initialReactions)
-        } catch (e) {
+        } catch (error) {
           initialReactions = {}
         }
       }

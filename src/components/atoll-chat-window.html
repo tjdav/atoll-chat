@@ -276,6 +276,7 @@ export default defineComponent({
           return
         }
         const file = payload.file
+        const { saveMedia } = helpers
         try {
           // Generate AES-GCM key
           const key = await crypto.subtle.generateKey({
@@ -310,7 +311,30 @@ export default defineComponent({
             size: file.size,
             mimeType: file.type || 'application/octet-stream'
           }
-          await sendTorrentMessage(activeRoomId, torrentPayload)
+
+          // Save the original media using a temporary ID first so it's instantly available for local echo
+          const tempId = `temp-${Date.now()}`
+          await saveMedia(tempId, file, {
+            filename: file.name,
+            mimeType: file.type || 'application/octet-stream',
+            size: file.size,
+            timestamp: Date.now(),
+            roomId: activeRoomId,
+            magnetURI: magnetURI
+          })
+
+          const response = await sendTorrentMessage(activeRoomId, torrentPayload)
+          if (response && response.event_id) {
+            // Re-save with the actual event ID to ensure it is correctly associated long-term
+            await saveMedia(response.event_id, file, {
+              filename: file.name,
+              mimeType: file.type || 'application/octet-stream',
+              size: file.size,
+              timestamp: Date.now(),
+              roomId: activeRoomId,
+              magnetURI: magnetURI
+            })
+          }
         } catch (error) {
           console.error('Failed to process and send file:', error)
         } finally {

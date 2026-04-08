@@ -26,7 +26,7 @@ export default defineComponent({
       if (typeof currentReactions === 'string') {
         try {
           currentReactions = JSON.parse(currentReactions)
-        } catch (e) {
+        } catch (error) {
           currentReactions = {}
         }
       }
