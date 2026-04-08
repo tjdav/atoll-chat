@@ -1,92 +1,107 @@
 <template id="atoll-message-bubble">
-  <div class="d-flex mb-3 position-relative message-wrapper" ref="wrapper">
-    <div class="message-bubble p-3 rounded-4 shadow-sm position-relative" ref="bubble" style="max-width: 75%;">
+  <div class="d-flex mb-3 position-relative message-wrapper {{ wrapperClass }}" ref="wrapper">
+    <div class="message-bubble p-3 rounded-4 shadow-sm position-relative {{ bubbleClass }}" ref="bubble" style="max-width: 75%;">
       <div class="mb-1" ref="body"><slot></slot></div>
-      <div class="small" ref="timeDisplay" style="font-size: 0.75rem;">
+      <div class="small {{ timeClass }}" ref="timeDisplay" style="font-size: 0.75rem;">
+        {{ time }}
       </div>
       
        <!-- Transcription -->
-      <atoll-transcribe-audio ref="transcribeContainer"></atoll-transcribe-audio>
+      <atoll-transcribe-audio event-id="{{ eventId }}" room-id="{{ roomId }}"></atoll-transcribe-audio>
 
       <!-- Reactions Pill -->
-      <atoll-message-reactions ref="reactionsContainer"></atoll-message-reactions>
+      <atoll-message-reactions event-id="{{ eventId }}" room-id="{{ roomId }}" reactions="{{ initialReactions }}"></atoll-message-reactions>
 
       <!-- Hover Menu -->
-      <div class="position-absolute message-actions-container" style="top: -20px; right: -40px; z-index: 10;" ref="actionsContainer">
-        <atoll-message-actions></atoll-message-actions>
+      <div class="position-absolute message-actions-container d-transition-none z-3" ref="actionsContainer">
+        <atoll-message-actions event-id="{{ eventId }}" room-id="{{ roomId }}"></atoll-message-actions>
       </div>
     </div>
   </div>
-  <style>
-    .message-wrapper:hover .message-actions-container .message-actions {
-      display: flex !important;
-    }
-  </style>
 </template>
 
 <script type="module" client>
 import { defineComponent } from 'coralite'
 export default defineComponent({
   client: {
-    components: ['atoll-message-actions', 'atoll-message-reactions', 'atoll-transcribe-audio'],
+    imports: [
+      {
+        specifier: 'https://unpkg.com/@popperjs/core@2'
+      }
+    ],
+    tokens: {
+      initialReactions (values) {
+        return JSON.stringify(values.reactions || {})
+      },
+      wrapperClass ({ values }) {
+        return values.currentUser === 'true' ? 'justify-content-end' : 'justify-content-start'
+      },
+      bubbleClass ({ values }) {
+        return values.currentUser === 'true' ? 'bg-primary text-white' : 'bg-body-secondary text-body'
+      },
+      timeClass ({ values }) {
+        return values.currentUser === 'true' ? 'text-white-50 text-end' : 'text-muted'
+      }
+    },
     script: async ({
       helpers,
       values,
       signal
     }) => {
       const {
-        refs: references,
+        refs,
         parseMessage,
         subscribe,
         setState,
         ttsGenerate
       } = helpers
-      const wrapper = references('wrapper')
-      const bubble = references('bubble')
-      const timeDisplay = references('timeDisplay')
-      const body = references('body')
-      const actionsContainer = references('actionsContainer')
-      const reactionsContainer = references('reactionsContainer')
-      const transcribeContainer = references('transcribeContainer')
-
-      const isCurrentUser = values['current-user'] === 'true'
+      const wrapper = refs('wrapper')
+      const body = refs('body')
+      const actionsContainer = refs('actionsContainer')
+      const isCurrentUser = values.currentUser === 'true'
       const time = values.time || ''
-      const eventId = values['event-id']
-      const roomId = values['room-id']
-      let initialReactions = values.reactions || {}
-      if (typeof initialReactions === 'string') {
-        try {
-          initialReactions = JSON.parse(initialReactions)
-        } catch (error) {
-          initialReactions = {}
-        }
-      }
+      const eventId = values.eventId
+      const roomId = values.roomId
 
-      // Pass down properties to child components
-      const actionsEl = actionsContainer.querySelector('atoll-message-actions')
-      if (actionsEl) {
-        actionsEl.setAttribute('event-id', eventId)
-        actionsEl.setAttribute('room-id', roomId)
-      }
-      const reactionsEl = reactionsContainer
-      if (reactionsEl) {
-        reactionsEl.setAttribute('event-id', eventId)
-        reactionsEl.setAttribute('room-id', roomId)
-        reactionsEl.setAttribute('reactions', JSON.stringify(initialReactions))
-      }
-      if (isCurrentUser) {
-        wrapper.classList.add('justify-content-end')
-        bubble.classList.add('bg-primary', 'text-white')
-        timeDisplay.classList.add('text-white-50', 'text-end')
-        // Align actions left on user messages, align right on other messages
-        actionsContainer.style.left = '-40px'
-        actionsContainer.style.right = 'auto'
-      } else {
-        wrapper.classList.add('justify-content-start')
-        bubble.classList.add('bg-body-secondary', 'text-body')
-        timeDisplay.classList.add('text-muted')
-      }
-      timeDisplay.textContent = time
+      let popperInstance = null
+
+      wrapper.addEventListener('mouseenter', () => {
+        const timelineElement = document.querySelector(values.chatTimelineRef)
+
+        actionsContainer.classList.remove('d-transition-none')
+        actionsContainer.classList.add('d-transition-show')
+
+        if (!popperInstance && window.Popper) {
+          popperInstance = window.Popper.createPopper(bubble, actionsContainer, {
+            placement: isCurrentUser ? 'left-start' : 'right-start',
+            modifiers: [
+              {
+                name: 'offset',
+                options: {
+                  offset: [0, 8]
+                }
+              },
+              {
+                name: 'preventOverflow',
+                options: {
+                  boundary: timelineElement
+                }
+              }
+            ]
+          })
+        }
+      }, { signal })
+
+      wrapper.addEventListener('mouseleave', () => {
+        actionsContainer.classList.remove('d-transition-show')
+        actionsContainer.classList.add('d-transition-none')
+
+        if (popperInstance) {
+          popperInstance.destroy()
+          popperInstance = null
+        }
+      }, { signal })
+
       let currentText = ''
       if (parseMessage && body) {
         const slot = body.querySelector('slot')
