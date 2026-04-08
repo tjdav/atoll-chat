@@ -45,6 +45,9 @@ export default defineComponent({
         refs: references,
         download,
         saveMedia,
+        getMedia,
+        getMediaByMagnetURI,
+        seed,
         getPreference,
         setPreference
       } = helpers
@@ -104,6 +107,47 @@ export default defineComponent({
         }
       }
 
+      const renderMedia = (decryptedBlob, payload) => {
+        downloadButton.classList.remove('d-transition-show')
+        downloadButton.classList.add('d-transition-none')
+        progressBarContainer.classList.remove('d-transition-show')
+        progressBarContainer.classList.add('d-transition-none')
+        metaContainer.classList.remove('d-transition-show')
+        metaContainer.classList.add('d-transition-none')
+        checkboxContainer.classList.add('d-none')
+        if (payload.mimeType.startsWith('image/')) {
+          objectUrl = URL.createObjectURL(decryptedBlob)
+          const image = document.createElement('img')
+          image.src = objectUrl
+          image.className = 'img-fluid rounded'
+          image.alt = payload.filename
+          contentContainer.appendChild(image)
+        } else if (payload.mimeType.startsWith('audio/')) {
+          objectUrl = URL.createObjectURL(decryptedBlob)
+          const audio = document.createElement('audio')
+          audio.src = objectUrl
+          audio.controls = true
+          audio.className = 'w-100'
+          contentContainer.appendChild(audio)
+        } else if (payload.mimeType.startsWith('video/')) {
+          objectUrl = URL.createObjectURL(decryptedBlob)
+          const video = document.createElement('video')
+          video.src = objectUrl
+          video.controls = true
+          video.className = 'img-fluid rounded'
+          contentContainer.appendChild(video)
+        } else {
+          // Just show it's done for other files
+
+          metaContainer.classList.remove('d-transition-none')
+          metaContainer.classList.add('d-transition-show')
+          const doneMsg = document.createElement('div')
+          doneMsg.className = 'text-success text-center mt-2 fw-bold'
+          doneMsg.textContent = 'Saved to Media Vault'
+          contentContainer.appendChild(doneMsg)
+        }
+      }
+
       const initUI = async () => {
         const payload = getPayload()
         if (!payload.filename) {
@@ -112,6 +156,46 @@ export default defineComponent({
         fileName.textContent = payload.filename || 'Unknown File'
         fileSize.textContent = formatBytes(payload.size)
         setIcon(payload.mimeType || 'application/octet-stream')
+
+        let storedMedia = null
+
+        const eventId = values['event-id']
+        if (eventId) {
+          storedMedia = await getMedia(eventId)
+        }
+
+        if ((!storedMedia || !storedMedia.blob) && payload.magnetURI) {
+          storedMedia = await getMediaByMagnetURI(payload.magnetURI)
+        }
+
+        if (storedMedia && storedMedia.blob) {
+          renderMedia(storedMedia.blob, payload)
+
+          // Re-encrypt and seed if it's our own media
+          try {
+            const key = await crypto.subtle.importKey('jwk', payload.key, {
+              name: 'AES-GCM'
+            }, true, ['encrypt', 'decrypt'])
+            const ivStr = atob(payload.iv)
+            const iv = Uint8Array.from(ivStr, c => c.charCodeAt(0))
+            const fileBuffer = await storedMedia.blob.arrayBuffer()
+            const encryptedBuffer = await crypto.subtle.encrypt({
+              name: 'AES-GCM',
+              iv: iv
+            }, key, fileBuffer)
+            const encryptedBlob = new Blob([encryptedBuffer])
+
+            await seed(encryptedBlob)
+          } catch (error) {
+            if (error.message && error.message.includes('duplicate torrent')) {
+              // Ignore, we are already seeding it
+            } else {
+              console.error('Failed to seed local media:', error)
+            }
+          }
+          return
+        }
+
         const senderId = values['sender-id']
         if (senderId) {
           const autoAcceptUsers = (await getPreference('atoll_auto_accept_users')) || []
@@ -144,7 +228,7 @@ export default defineComponent({
 
           // Import Key
           const key = await crypto.subtle.importKey('jwk', payload.key, {
-            name: 'AES-CTR'
+            name: 'AES-GCM'
           }, true, ['encrypt', 'decrypt'])
 
           // Decode IV
@@ -154,9 +238,8 @@ export default defineComponent({
           // Decrypt File
           const encryptedBuffer = await encryptedBlob.arrayBuffer()
           const decryptedBuffer = await crypto.subtle.decrypt({
-            name: 'AES-CTR',
-            counter: iv,
-            length: 64
+            name: 'AES-GCM',
+            iv: iv
           }, key, encryptedBuffer)
           const decryptedBlob = new Blob([decryptedBuffer], {
             type: payload.mimeType
@@ -173,41 +256,7 @@ export default defineComponent({
             roomId: values['room-id']
           })
 
-          progressBarContainer.classList.remove('d-transition-show')
-          progressBarContainer.classList.add('d-transition-none')
-          metaContainer.classList.remove('d-transition-show')
-          metaContainer.classList.add('d-transition-none')
-          if (payload.mimeType.startsWith('image/')) {
-            objectUrl = URL.createObjectURL(decryptedBlob)
-            const image = document.createElement('img')
-            image.src = objectUrl
-            image.className = 'img-fluid rounded'
-            image.alt = payload.filename
-            contentContainer.appendChild(image)
-          } else if (payload.mimeType.startsWith('audio/')) {
-            objectUrl = URL.createObjectURL(decryptedBlob)
-            const audio = document.createElement('audio')
-            audio.src = objectUrl
-            audio.controls = true
-            audio.className = 'w-100'
-            contentContainer.appendChild(audio)
-          } else if (payload.mimeType.startsWith('video/')) {
-            objectUrl = URL.createObjectURL(decryptedBlob)
-            const video = document.createElement('video')
-            video.src = objectUrl
-            video.controls = true
-            video.className = 'img-fluid rounded'
-            contentContainer.appendChild(video)
-          } else {
-            // Just show it's done for other files
-
-            metaContainer.classList.remove('d-transition-none')
-            metaContainer.classList.add('d-transition-show')
-            const doneMsg = document.createElement('div')
-            doneMsg.className = 'text-success text-center mt-2 fw-bold'
-            doneMsg.textContent = 'Saved to Media Vault'
-            contentContainer.appendChild(doneMsg)
-          }
+          renderMedia(decryptedBlob, payload)
         } catch (error) {
           console.error('Failed to download and decrypt file:', error)
           downloadButton.disabled = false
