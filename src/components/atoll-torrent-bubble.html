@@ -61,7 +61,6 @@ export default defineComponent({
       let objectUrl = null
 
       // Format file size
-
       const formatBytes = (bytes, decimals = 2) => {
         if (!+bytes) {
           return '0 Bytes'
@@ -74,7 +73,6 @@ export default defineComponent({
       }
 
       // Set Icon based on mimeType
-
       const setIcon = mimeType => {
         if (mimeType.startsWith('image/')) {
           fileIcon.className = 'bi bi-file-earmark-image-fill fs-3'
@@ -88,16 +86,27 @@ export default defineComponent({
       }
 
       // Initialize UI with attributes
-
-      const initUI = async () => {
-        let payload = values['info']
-        if (typeof payload === 'string') {
+      const getPayload = () => {
+        let key = values['info-key']
+        if (typeof key === 'string') {
           try {
-            payload = JSON.parse(payload)
+            key = JSON.parse(key)
           } catch (error) {
           }
         }
-        if (!payload) {
+        return {
+          filename: values['info-filename'],
+          size: parseInt(values['info-size'] || '0', 10),
+          mimeType: values['info-mime-type'],
+          magnetURI: values['info-magnet-uri'],
+          key: key,
+          iv: values['info-iv']
+        }
+      }
+
+      const initUI = async () => {
+        const payload = getPayload()
+        if (!payload.filename) {
           return
         }
         fileName.textContent = payload.filename || 'Unknown File'
@@ -114,15 +123,9 @@ export default defineComponent({
       }
       initUI()
       const handleDownload = async () => {
-        let payload = values['info']
-        if (typeof payload === 'string') {
-          try {
-            payload = JSON.parse(payload)
-          } catch (error) {
-          }
-        }
+        const payload = getPayload()
         const eventId = values['event-id']
-        if (!payload || !eventId) {
+        if (!payload.magnetURI || !eventId) {
           return
         }
         downloadButton.disabled = true
@@ -166,7 +169,6 @@ export default defineComponent({
             size: payload.size,
             timestamp: Date.now(),
             // Fallback if matrix event date isn't easily passed
-
             sender: values['sender-id'],
             roomId: values['room-id']
           })

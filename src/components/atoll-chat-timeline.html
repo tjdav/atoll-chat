@@ -94,8 +94,26 @@ export default defineComponent({
           return bubble
         } else if (message.msgtype === 'm.atoll.webtorrent' && message.info) {
           const torrentBubble = document.createElement('atoll-torrent-bubble')
-          // Serialize complex objects for attributes
-          torrentBubble.setAttribute('info', JSON.stringify(message.info))
+          // Flatten info object into individual attributes
+          if (message.info.filename) {
+            torrentBubble.setAttribute('info-filename', message.info.filename)
+          }
+          if (message.info.size) {
+            torrentBubble.setAttribute('info-size', message.info.size)
+          }
+          if (message.info.mimeType) {
+            torrentBubble.setAttribute('info-mime-type', message.info.mimeType)
+          }
+          if (message.info.magnetURI) {
+            torrentBubble.setAttribute('info-magnet-uri', message.info.magnetURI)
+          }
+          if (message.info.key) {
+            torrentBubble.setAttribute('info-key', JSON.stringify(message.info.key))
+          }
+          if (message.info.iv) {
+            torrentBubble.setAttribute('info-iv', message.info.iv)
+          }
+
           torrentBubble.setAttribute('event-id', message.id)
           torrentBubble.setAttribute('sender-id', message.sender)
           torrentBubble.setAttribute('room-id', currentRoomId)
