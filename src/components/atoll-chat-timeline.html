@@ -71,6 +71,7 @@ export default defineComponent({
           })
           const bubble = msgElement.querySelector('atoll-message-bubble')
           if (bubble) {
+            bubble.setAttribute('chat-timeline-ref', messagesContainer.getAttribute('ref'))
             bubble.style.transition = 'background-color 0.5s'
             const originalBg = bubble.style.backgroundColor
             bubble.style.backgroundColor = 'rgba(13, 110, 253, 0.2)'
