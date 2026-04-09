@@ -305,6 +305,12 @@ export default function ({
               content: {
                 algorithm: 'm.megolm.v1.aes-sha2'
               }
+            }, {
+              type: 'm.room.history_visibility',
+              state_key: '',
+              content: {
+                history_visibility: 'shared'
+              }
             }]
           })
         },
