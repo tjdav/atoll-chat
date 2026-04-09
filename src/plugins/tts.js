@@ -367,6 +367,9 @@ export default createPlugin({
           const modelPaths = [`${basePath}/duration_predictor.onnx`, `${basePath}/text_encoder.onnx`, `${basePath}/vector_estimator.onnx`, `${basePath}/vocoder.onnx`]
           const sessions = await Promise.all(modelPaths.map(async p => {
             const response = await fetch(p)
+            if (!response.ok) {
+              throw new Error(`Failed to fetch model ${p}: ${response.status} ${response.statusText}`)
+            }
             const arrayBuffer = await response.arrayBuffer()
             return InferenceSession.create(new Uint8Array(arrayBuffer), options)
           }));
@@ -374,6 +377,9 @@ export default createPlugin({
         }
         const loadVoiceStyle = async path => {
           const response = await fetch(path)
+          if (!response.ok) {
+            throw new Error(`Failed to fetch voice style ${path}: ${response.status} ${response.statusText}`)
+          }
           const voiceStyle = await response.json()
 
           const ttlDims = voiceStyle.style_ttl.dims
