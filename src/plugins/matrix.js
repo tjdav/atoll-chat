@@ -111,6 +111,9 @@ export default function ({
             client.on('Event.decrypted', event => {
               setState('triggerRoomsUpdated', { ts: Date.now() })
             })
+            client.on('Room.myMembership', () => {
+              setState('triggerRoomsUpdated', { ts: Date.now() })
+            })
           }
           return client
         }
