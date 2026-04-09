@@ -287,6 +287,7 @@ export default function ({
             msgtype: 'm.text',
             body: messageText
           }
+
           return await client.sendEvent(roomId, 'm.room.message', content, '')
         },
         createEncryptedRoom: globalContext => localContext => async (name, inviteUserId) => {
@@ -295,6 +296,7 @@ export default function ({
           if (!client) {
             throw new Error('Matrix client not initialized')
           }
+          await client.waitForClientWellKnown()
           return await client.createRoom({
             visibility: 'private',
             name: name,
