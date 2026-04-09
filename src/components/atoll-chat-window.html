@@ -11,6 +11,8 @@
         <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="startVideoCallBtn"><i class="bi bi-camera-video"></i></button>
         <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="openInviteModalBtn" aria-label="Invite"><i class="bi bi-person-plus"></i></button>
         <button class="d-none" ref="openInviteModalHiddenBtn">Invite</button>
+        <button class="btn btn-sm btn-outline-secondary rounded-circle me-2" ref="openLeaveModalBtn" aria-label="Leave Room"><i class="bi bi-box-arrow-left"></i></button>
+        <button class="d-none" ref="openLeaveModalHiddenBtn">Leave</button>
         <button class="btn btn-sm btn-outline-secondary rounded-circle"><i class="bi bi-three-dots"></i></button>
       </div>
     </div>
@@ -38,6 +40,25 @@
     <!-- Input (Hidden Initially) -->
     <div class="p-3 border-top border-secondary bg-body-tertiary d-transition-none" ref="inputContainer">
       <atoll-chat-input></atoll-chat-input>
+    </div>
+
+    <!-- Leave Room Modal -->
+    <div class="modal fade" tabindex="-1" aria-labelledby="{{ ref_leaveModalLabel }}" aria-hidden="true" ref="leaveModal">
+      <div class="modal-dialog">
+        <div class="modal-content text-bg-dark">
+          <div class="modal-header border-secondary">
+            <h1 class="modal-title fs-5" id="{{ ref_leaveModalLabel }}" ref="leaveModalLabel">Leave Room?</h1>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Are you sure you want to leave this room?</p>
+          </div>
+          <div class="modal-footer border-secondary">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-danger" ref="confirmLeaveBtn">Leave Room</button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- Invite Modal -->
@@ -86,6 +107,7 @@ export default defineComponent({
         sendTorrentMessage,
         inviteUser,
         joinRoom,
+        leaveRoom,
         sendReaction,
         removeReaction
       } = helpers
@@ -102,6 +124,8 @@ export default defineComponent({
       const inviteUserIdInput = references('inviteUserIdInput')
       const sendInviteBtn = references('sendInviteBtn')
       const joinRoomBtn = references('joinRoomBtn')
+      const leaveModal = references('leaveModal')
+      const confirmLeaveBtn = references('confirmLeaveBtn')
       let activeRoomId = null
       startVoiceCallBtn.addEventListener('click', () => {
         if (activeRoomId) {
@@ -188,6 +212,44 @@ export default defineComponent({
         const modal = imports.bootstrap.Modal.getOrCreateInstance(helpers.refs('inviteModal'))
         modal.show()
       })
+      helpers.refs('openLeaveModalBtn').addEventListener('click', () => {
+        const modal = imports.bootstrap.Modal.getOrCreateInstance(helpers.refs('leaveModal'))
+        modal.show()
+      })
+      helpers.refs('openLeaveModalHiddenBtn').addEventListener('click', () => {
+        const modal = imports.bootstrap.Modal.getOrCreateInstance(helpers.refs('leaveModal'))
+        modal.show()
+      })
+
+      confirmLeaveBtn.addEventListener('click', async () => {
+        if (!activeRoomId) {
+          return
+        }
+        try {
+          await leaveRoom(activeRoomId)
+          const modalElement = leaveModal
+          const bootstrapModal = imports.bootstrap.Modal.getInstance(modalElement)
+          if (bootstrapModal) {
+            bootstrapModal.hide()
+          }
+          setState('activeRoomId', null)
+          setState('triggerRoomsUpdated', { ts: Date.now() })
+
+          // Hide header, show empty state
+          chatHeader.style.display = 'none'
+          inviteState.classList.remove('d-transition-show')
+          inviteState.classList.add('d-transition-none')
+          timeline.classList.remove('d-transition-show')
+          timeline.classList.add('d-transition-none')
+          inputContainer.classList.remove('d-transition-show')
+          inputContainer.classList.add('d-transition-none')
+          emptyState.classList.remove('d-transition-none')
+          emptyState.classList.add('d-transition-show')
+        } catch (error) {
+          console.error('Failed to leave room:', error)
+        }
+      })
+
       sendInviteBtn.addEventListener('click', async () => {
         if (!activeRoomId) {
           return
