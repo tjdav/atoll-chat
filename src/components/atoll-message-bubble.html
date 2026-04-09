@@ -5,8 +5,7 @@
       <div class="small {{ timeClass }}" ref="timeDisplay" style="font-size: 0.75rem;">
         {{ time }}
       </div>
-      
-       <!-- Transcription -->
+      <!-- Transcription -->
       <atoll-transcribe-audio event-id="{{ eventId }}" room-id="{{ roomId }}"></atoll-transcribe-audio>
 
       <!-- Reactions Pill -->
@@ -23,26 +22,26 @@
 <script type="module" client>
 import { defineComponent } from 'coralite'
 export default defineComponent({
+  tokens: {
+    initialReactions (values) {
+      return JSON.stringify(values.reactions || {})
+    },
+    wrapperClass (values) {
+      return values.currentUser === 'true' ? 'justify-content-end' : 'justify-content-start'
+    },
+    bubbleClass (values) {
+      return values.currentUser === 'true' ? 'bg-primary text-white' : 'bg-body-secondary text-body'
+    },
+    timeClass (values) {
+      return values.currentUser === 'true' ? 'text-white-50 text-end' : 'text-muted'
+    }
+  },
   client: {
     imports: [
       {
         specifier: 'https://unpkg.com/@popperjs/core@2'
       }
     ],
-    tokens: {
-      initialReactions (values) {
-        return JSON.stringify(values.reactions || {})
-      },
-      wrapperClass ({ values }) {
-        return values.currentUser === 'true' ? 'justify-content-end' : 'justify-content-start'
-      },
-      bubbleClass ({ values }) {
-        return values.currentUser === 'true' ? 'bg-primary text-white' : 'bg-body-secondary text-body'
-      },
-      timeClass ({ values }) {
-        return values.currentUser === 'true' ? 'text-white-50 text-end' : 'text-muted'
-      }
-    },
     script: async ({
       helpers,
       values,
