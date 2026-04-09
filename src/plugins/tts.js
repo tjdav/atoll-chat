@@ -8,8 +8,8 @@ export default createPlugin({
     }],
     helpers: {
       ttsGenerate: async globalContext => {
-        const ort = globalContext.imports
-        ort.env.wasm.wasmPaths = 'https://esm.sh/onnxruntime-web@1.17.0/dist/'
+        const { env, InferenceSession, Tensor } = globalContext.imports
+        env.wasm.wasmPaths = 'https://esm.sh/onnxruntime-web@1.17.0/dist/'
         let configurations = null
         let textProcessor = null
         let durationPredictorOrt = null
@@ -220,19 +220,33 @@ export default createPlugin({
             } = this.textProcessor.call(textList, langList)
             const textIdsFlat = new BigInt64Array(textIds.flat().map(x => BigInt(x)))
             const textIdsShape = [batchSize, textIds[0].length]
-            const textIdsTensor = new ort.Tensor('int64', textIdsFlat, textIdsShape)
+            const textIdsTensor = new Tensor('int64', textIdsFlat, textIdsShape)
             const textMaskFlat = new Float32Array(textMask.flat(2))
             const textMaskShape = [batchSize, 1, textMask[0][0].length]
-            const textMaskTensor = new ort.Tensor('float32', textMaskFlat, textMaskShape)
+            const textMaskTensor = new Tensor('float32', textMaskFlat, textMaskShape)
 
             // Style tensors
+            let styleDurationPredictorTensor = style.style_dp
+            let styleTextToLatentTensor = style.style_ttl
 
-            const styleDurationPredictorDimensions = style.style_dp.dims
-            const styleDurationPredictorFlat = new Float32Array(style.style_dp.data.flat(Infinity))
-            const styleDurationPredictorTensor = new ort.Tensor('float32', styleDurationPredictorFlat, [batchSize, styleDurationPredictorDimensions[0], styleDurationPredictorDimensions[1]])
-            const styleTextToLatentDimensions = style.style_ttl.dims
-            const styleTextToLatentFlat = new Float32Array(style.style_ttl.data.flat(Infinity))
-            const styleTextToLatentTensor = new ort.Tensor('float32', styleTextToLatentFlat, [batchSize, styleTextToLatentDimensions[0], styleTextToLatentDimensions[1]])
+            if (batchSize > 1) {
+              const styleDurationPredictorDimensions = style.style_dp.dims
+              const styleDurationPredictorFlat = new Float32Array(batchSize * styleDurationPredictorDimensions[1] * styleDurationPredictorDimensions[2])
+              const singleDpFlat = style.style_dp.data
+              for (let i = 0; i < batchSize; i++) {
+                styleDurationPredictorFlat.set(singleDpFlat, i * singleDpFlat.length)
+              }
+              styleDurationPredictorTensor = new Tensor('float32', styleDurationPredictorFlat, [batchSize, styleDurationPredictorDimensions[1], styleDurationPredictorDimensions[2]])
+
+              const styleTextToLatentDimensions = style.style_ttl.dims
+              const styleTextToLatentFlat = new Float32Array(batchSize * styleTextToLatentDimensions[1] * styleTextToLatentDimensions[2])
+              const singleTtlFlat = style.style_ttl.data
+              for (let i = 0; i < batchSize; i++) {
+                styleTextToLatentFlat.set(singleTtlFlat, i * singleTtlFlat.length)
+              }
+              styleTextToLatentTensor = new Tensor('float32', styleTextToLatentFlat, [batchSize, styleTextToLatentDimensions[1], styleTextToLatentDimensions[2]])
+            }
+
             const durationPredictorOutputs = await this.dpOrt.run({
               text_ids: textIdsTensor,
               style_dp: styleDurationPredictorTensor,
@@ -262,15 +276,15 @@ export default createPlugin({
             } = this.sampleNoisyLatent(duration, this.sampleRate, this.cfgs.ae.base_chunk_size, this.cfgs.ttl.chunk_compress_factor, this.cfgs.ttl.latent_dim)
             const latentMaskFlat = new Float32Array(latentMask.flat(2))
             const latentMaskShape = [batchSize, 1, latentMask[0][0].length]
-            const latentMaskTensor = new ort.Tensor('float32', latentMaskFlat, latentMaskShape)
+            const latentMaskTensor = new Tensor('float32', latentMaskFlat, latentMaskShape)
             const totalStepArray = new Float32Array(batchSize).fill(totalStep)
-            const totalStepTensor = new ort.Tensor('float32', totalStepArray, [batchSize])
+            const totalStepTensor = new Tensor('float32', totalStepArray, [batchSize])
             for (let step = 0; step < totalStep; step++) {
               const currentStepArray = new Float32Array(batchSize).fill(step)
-              const currentStepTensor = new ort.Tensor('float32', currentStepArray, [batchSize])
+              const currentStepTensor = new Tensor('float32', currentStepArray, [batchSize])
               const xtFlat = new Float32Array(noisyLatent.flat(2))
               const xtShape = [batchSize, noisyLatent[0].length, noisyLatent[0][0].length]
-              const xtTensor = new ort.Tensor('float32', xtFlat, xtShape)
+              const xtTensor = new Tensor('float32', xtFlat, xtShape)
               const vectorEstimatorOutputs = await this.vectorEstOrt.run({
                 noisy_latent: xtTensor,
                 text_emb: textEmbedding,
@@ -299,7 +313,7 @@ export default createPlugin({
             }
             const finalXtFlat = new Float32Array(noisyLatent.flat(2))
             const finalXtShape = [batchSize, noisyLatent[0].length, noisyLatent[0][0].length]
-            const finalXtTensor = new ort.Tensor('float32', finalXtFlat, finalXtShape)
+            const finalXtTensor = new Tensor('float32', finalXtFlat, finalXtShape)
             const vocoderOutputs = await this.vocoderOrt.run({
               latent: finalXtTensor
             })
@@ -351,12 +365,30 @@ export default createPlugin({
             graphOptimizationLevel: 'all'
           }
           const modelPaths = [`${basePath}/duration_predictor.onnx`, `${basePath}/text_encoder.onnx`, `${basePath}/vector_estimator.onnx`, `${basePath}/vocoder.onnx`]
-          const sessions = await Promise.all(modelPaths.map(p => ort.InferenceSession.create(p, options)));
+          const sessions = await Promise.all(modelPaths.map(async p => {
+            const response = await fetch(p)
+            const arrayBuffer = await response.arrayBuffer()
+            return InferenceSession.create(new Uint8Array(arrayBuffer), options)
+          }));
           [durationPredictorOrt, textEncoderOrt, vectorEstimatorOrt, vocoderOrt] = sessions
         }
         const loadVoiceStyle = async path => {
           const response = await fetch(path)
-          return await response.json()
+          const voiceStyle = await response.json()
+
+          const ttlDims = voiceStyle.style_ttl.dims
+          const dpDims = voiceStyle.style_dp.dims
+
+          const ttlFlat = new Float32Array(voiceStyle.style_ttl.data.flat(Infinity))
+          const dpFlat = new Float32Array(voiceStyle.style_dp.data.flat(Infinity))
+
+          const ttlTensor = new Tensor('float32', ttlFlat, [1, ttlDims[1], ttlDims[2]])
+          const dpTensor = new Tensor('float32', dpFlat, [1, dpDims[1], dpDims[2]])
+
+          return {
+            style_ttl: ttlTensor,
+            style_dp: dpTensor
+          }
         }
         const writeWavBlob = (audioData, sampleRate) => {
           const numChannels = 1
