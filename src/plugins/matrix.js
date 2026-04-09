@@ -332,6 +332,14 @@ export default function ({
           }
           return await client.joinRoom(roomId)
         },
+        leaveRoom: globalContext => localContext => async roomId => {
+          /** @type {MatrixClient} */
+          const client = localContext.values.getClient()
+          if (!client) {
+            throw new Error('Matrix client not initialized')
+          }
+          return await client.leave(roomId)
+        },
         getRooms: globalContext => localContext => async () => {
           const client = localContext.values.getClient()
           if (!client) {
