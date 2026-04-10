@@ -1,0 +1,46 @@
+<template id="atoll-message-reaction">
+  <button class="btn btn-sm d-flex align-items-center gap-1 rounded-pill px-2 py-0 border {{ buttonClass }}" style="font-size: 0.8rem;" ref="button">
+    <span ref="emojiDisplay">{{ emoji }}</span>
+    <span ref="countDisplay">{{ count }}</span>
+  </button>
+</template>
+
+<script type="module" client>
+import { defineComponent } from 'coralite'
+export default defineComponent({
+  tokens: {
+    buttonClass (values) {
+      return values['has-reacted'] === 'true' ? 'btn-secondary border-secondary text-white' : 'btn-dark border-secondary'
+    }
+  },
+  client: {
+    script: ({ helpers, values, signal }) => {
+      const { refs, setState } = helpers
+      const button = refs('button')
+
+      const roomId = values['room-id']
+      const eventId = values['event-id']
+      const emoji = values.emoji
+      const hasReacted = values['has-reacted'] === 'true'
+
+      button.addEventListener('click', () => {
+        if (hasReacted) {
+          setState('triggerRemoveReaction', {
+            roomId,
+            eventId,
+            reaction: emoji,
+            ts: Date.now()
+          })
+        } else {
+          setState('triggerSendReaction', {
+            roomId,
+            eventId,
+            reaction: emoji,
+            ts: Date.now()
+          })
+        }
+      }, { signal })
+    }
+  }
+})
+</script>

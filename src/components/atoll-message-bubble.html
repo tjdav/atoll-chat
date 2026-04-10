@@ -9,7 +9,7 @@
       <atoll-transcribe-audio event-id="{{ eventId }}" room-id="{{ roomId }}"></atoll-transcribe-audio>
 
       <!-- Reactions Pill -->
-      <atoll-message-reactions event-id="{{ eventId }}" room-id="{{ roomId }}" reactions="{{ initialReactions }}"></atoll-message-reactions>
+      <slot name="reactions"></slot>
 
       <!-- Hover Menu -->
       <div class="position-absolute message-actions-container d-transition-none z-3" ref="actionsContainer">
@@ -23,9 +23,6 @@
 import { defineComponent } from 'coralite'
 export default defineComponent({
   tokens: {
-    initialReactions (values) {
-      return JSON.stringify(values.reactions || {})
-    },
     wrapperClass (values) {
       return values.currentUser === 'true' ? 'justify-content-end' : 'justify-content-start'
     },

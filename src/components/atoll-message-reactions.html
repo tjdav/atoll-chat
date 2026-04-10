@@ -1,6 +1,6 @@
 <template id="atoll-message-reactions">
   <div class="message-reactions d-flex flex-wrap gap-1 mt-1" ref="container">
-    <!-- Reactions will be injected here -->
+    <slot></slot>
   </div>
 </template>
 
@@ -8,6 +8,7 @@
 import { defineComponent } from 'coralite'
 export default defineComponent({
   client: {
+    components: ['atoll-message-reaction'],
     script: ({
       helpers,
       values,
@@ -15,66 +16,28 @@ export default defineComponent({
     }) => {
       const {
         refs: references,
-        subscribe,
-        setState,
-        getCurrentUserId
+        subscribe
       } = helpers
       const container = references('container')
 
-      // Reactions object structure: { emoji: { count, hasReacted } }
-      let currentReactions = values.reactions || {}
-      if (typeof currentReactions === 'string') {
-        try {
-          currentReactions = JSON.parse(currentReactions)
-        } catch (error) {
-          currentReactions = {}
-        }
-      }
-      let currentUserId = null
       const eventId = values['event-id']
       const roomId = values['room-id']
-      const renderReactions = () => {
+
+      const renderReactions = (reactionsData) => {
         container.replaceChildren()
-        if (!currentReactions || Object.keys(currentReactions).length === 0) {
+        if (!reactionsData || Object.keys(reactionsData).length === 0) {
           return
         }
-        Object.entries(currentReactions).forEach(([emoji, data]) => {
-          const button = document.createElement('button')
-          button.className = `btn btn-sm d-flex align-items-center gap-1 rounded-pill px-2 py-0 border ${data.hasReacted ? 'btn-secondary border-secondary text-white' : 'btn-dark border-secondary'}`
-          button.style.fontSize = '0.8rem'
-          const emojiSpan = document.createElement('span')
-          emojiSpan.textContent = emoji
-          const countSpan = document.createElement('span')
-          countSpan.textContent = data.count
-          button.appendChild(emojiSpan)
-          button.appendChild(countSpan)
-          button.addEventListener('click', () => {
-            if (data.hasReacted) {
-              setState('triggerRemoveReaction', {
-                roomId,
-                eventId,
-                reaction: emoji,
-                ts: Date.now()
-              })
-            } else {
-              setState('triggerSendReaction', {
-                roomId,
-                eventId,
-                reaction: emoji,
-                ts: Date.now()
-              })
-            }
-          }, { signal })
-          container.appendChild(button)
+        Object.entries(reactionsData).forEach(([emoji, data]) => {
+          const reactionElement = document.createElement('atoll-message-reaction')
+          reactionElement.setAttribute('emoji', emoji)
+          reactionElement.setAttribute('count', data.count)
+          reactionElement.setAttribute('has-reacted', data.hasReacted)
+          reactionElement.setAttribute('event-id', eventId)
+          reactionElement.setAttribute('room-id', roomId)
+          container.appendChild(reactionElement)
         })
       }
-
-      // Initialize user ID to handle highlighting own reactions
-      const initialize = async () => {
-        currentUserId = await getCurrentUserId()
-        renderReactions()
-      }
-      initialize()
 
       // Listen for new incoming reactions to this message
       subscribe('triggerReactionReceived', (payload) => {
@@ -82,8 +45,7 @@ export default defineComponent({
           return
         }
         if (payload.eventId === eventId) {
-          currentReactions = payload.reactions
-          renderReactions()
+          renderReactions(payload.reactions)
         }
       })
     }

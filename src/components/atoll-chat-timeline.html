@@ -8,7 +8,7 @@
 import { defineComponent } from 'coralite'
 export default defineComponent({
   client: {
-    components: ['atoll-message-bubble', 'atoll-torrent-bubble'],
+    components: ['atoll-message-bubble', 'atoll-torrent-bubble', 'atoll-message-reactions', 'atoll-message-reaction'],
     script: ({
       helpers
     }) => {
@@ -124,10 +124,26 @@ export default defineComponent({
           bubble.setAttribute('current-user', isCurrentUser)
           bubble.setAttribute('event-id', message.id)
           bubble.setAttribute('room-id', currentRoomId)
-          if (message.reactions) {
-            bubble.setAttribute('reactions', JSON.stringify(message.reactions))
-          }
           bubble.appendChild(torrentBubble)
+
+          const reactionsContainer = document.createElement('atoll-message-reactions')
+          reactionsContainer.setAttribute('slot', 'reactions')
+          reactionsContainer.setAttribute('event-id', message.id)
+          reactionsContainer.setAttribute('room-id', currentRoomId)
+
+          if (message.reactions) {
+            Object.entries(message.reactions).forEach(([emoji, data]) => {
+              const reactionElement = document.createElement('atoll-message-reaction')
+              reactionElement.setAttribute('emoji', emoji)
+              reactionElement.setAttribute('count', data.count)
+              reactionElement.setAttribute('has-reacted', data.hasReacted)
+              reactionElement.setAttribute('event-id', message.id)
+              reactionElement.setAttribute('room-id', currentRoomId)
+              reactionsContainer.appendChild(reactionElement)
+            })
+          }
+          bubble.appendChild(reactionsContainer)
+
           return bubble
         } else {
           const bubble = document.createElement('atoll-message-bubble')
@@ -138,9 +154,25 @@ export default defineComponent({
           if (message.body) {
             bubble.appendChild(document.createTextNode(message.body))
           }
+
+          const reactionsContainer2 = document.createElement('atoll-message-reactions')
+          reactionsContainer2.setAttribute('slot', 'reactions')
+          reactionsContainer2.setAttribute('event-id', message.id)
+          reactionsContainer2.setAttribute('room-id', currentRoomId)
+
           if (message.reactions) {
-            bubble.setAttribute('reactions', JSON.stringify(message.reactions))
+            Object.entries(message.reactions).forEach(([emoji, data]) => {
+              const reactionElement = document.createElement('atoll-message-reaction')
+              reactionElement.setAttribute('emoji', emoji)
+              reactionElement.setAttribute('count', data.count)
+              reactionElement.setAttribute('has-reacted', data.hasReacted)
+              reactionElement.setAttribute('event-id', message.id)
+              reactionElement.setAttribute('room-id', currentRoomId)
+              reactionsContainer2.appendChild(reactionElement)
+            })
           }
+          bubble.appendChild(reactionsContainer2)
+
           return bubble
         }
       }
