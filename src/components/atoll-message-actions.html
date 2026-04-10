@@ -1,12 +1,18 @@
 <template id="atoll-message-actions">
-  <div class="message-actions bg-dark border border-secondary rounded-pill shadow-sm d-flex align-items-center px-2 py-1 gap-1" ref="container">
+  <nav class="message-actions bg-dark border border-secondary rounded-pill shadow-sm d-flex align-items-center px-2 py-1 gap-1" ref="container">
     <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="❤️" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">❤️</button>
     <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="😆" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">😆</button>
     <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="😮" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">😮</button>
     <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="😢" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">😢</button>
     <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="😡" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">😡</button>
     <button class="btn btn-sm btn-dark rounded-circle p-1 reaction-btn" data-emoji="👍" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;">👍</button>
-    <button class="btn btn-sm btn-secondary rounded-circle p-1 text-white ms-1" ref="moreBtn" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;" popovertarget="{{ ref_emojiPopover }}">+</button>
+    
+    <div class="dropup ms-1">
+      <button class="btn btn-sm btn-secondary rounded-circle p-1 text-white" ref="moreBtn" style="width: 32px; height: 32px; font-size: 1.1rem; line-height: 1;" data-bs-toggle="dropdown" aria-expanded="false" data-bs-auto-close="outside">+</button>
+      <div class="dropdown-menu p-0 bg-dark border border-secondary shadow" ref="emojiPopover" style="z-index: 1050;">
+        <!-- Emoji picker will be injected here -->
+      </div>
+    </div>
     
     <button class="btn btn-sm btn-info rounded-circle p-1 text-white ms-1 d-flex align-items-center justify-content-center" ref="playBtn" style="width: 32px; height: 32px; line-height: 1;">
       <i class="bi bi-play-fill" style="font-size: 1.2rem; margin-left: 2px;"></i>
@@ -15,11 +21,7 @@
     <button class="btn btn-sm btn-info rounded-circle p-1 text-white ms-1 d-flex align-items-center justify-content-center" ref="transcribeBtn" style="width: 32px; height: 32px; line-height: 1;">
       <i class="bi bi-soundwave" style="font-size: 1.2rem;"></i>
     </button>
-
-    <div popover id="{{ ref_emojiPopover }}" ref="emojiPopover" class="bg-dark border border-secondary rounded-3 shadow p-0 m-0" style="z-index: 1050; anchor-name: --anchor-{{ ref_emojiPopover }}; position-anchor: --anchor-{{ ref_emojiPopover }}; position-area: top;">
-      <!-- Emoji picker will be injected here -->
-    </div>
-  </div>
+  </nav>
 </template>
 
 <script type="module" client>
@@ -92,9 +94,10 @@ export default defineComponent({
           ts: Date.now()
         })
 
-        // Close popover if open
-        if (emojiPopover.matches(':popover-open')) {
-          emojiPopover.hidePopover()
+        // Close dropdown if open
+        const dropdownInstance = bootstrap.Dropdown.getInstance(moreBtn)
+        if (dropdownInstance) {
+          dropdownInstance.hide()
         }
       }
 
@@ -110,8 +113,8 @@ export default defineComponent({
       })
 
       // Initialize emoji picker on first open
-      emojiPopover.addEventListener('beforetoggle', event => {
-        if (event.newState === 'open' && !pickerInitialized) {
+      moreBtn.addEventListener('show.bs.dropdown', () => {
+        if (!pickerInitialized) {
           pickerInitialized = true
           const picker = document.createElement('emoji-picker')
           // Apply dark theme styling to match the app
