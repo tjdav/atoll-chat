@@ -1,0 +1,27 @@
+// Mobile Responsive Layout Overrides
+@include media-breakpoint-down(sm) {
+
+  // Hide Chat List when a chat is active
+  .layout-container.chat-active .app-chat-list-col {
+    display: none !important;
+  }
+
+  // Show Chat Window when a chat is active (overriding default hidden states)
+  .layout-container.chat-active .app-chat-window-col {
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  // Hide Chat Window when no chat is active
+  .layout-container:not(.chat-active) .app-chat-window-col {
+    display: none !important;
+  }
+
+  // Make Chat List full width when no chat is active
+  .layout-container:not(.chat-active) .app-chat-list-col {
+    display: flex !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+}

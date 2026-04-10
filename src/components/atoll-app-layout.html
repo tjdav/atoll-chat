@@ -1,21 +1,27 @@
 <template id="atoll-app-layout">
-  <div class="d-flex vh-100 overflow-hidden" ref="layoutContainer">
-    <!-- Left Sidebar Column (Always Visible) -->
-    <div class="w-250px bg-dark text-white d-flex flex-column border-end border-secondary">
-      <atoll-sidebar></atoll-sidebar>
+  <div class="d-flex vh-100 overflow-hidden layout-container" ref="layoutContainer">
+    <!-- Left Sidebar Column -->
+    <div class="offcanvas-sm offcanvas-start w-250px bg-dark text-white d-flex flex-column border-end border-secondary app-sidebar-col" tabindex="-1" id="sidebarMenu" aria-labelledby="sidebarMenuLabel">
+      <div class="offcanvas-header d-sm-none border-bottom border-secondary">
+        <h5 class="offcanvas-title" id="sidebarMenuLabel">Menu</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#sidebarMenu" aria-label="Close"></button>
+      </div>
+      <div class="offcanvas-body flex-column h-100 p-0 overflow-hidden">
+        <atoll-sidebar></atoll-sidebar>
+      </div>
     </div>
     
-    <!-- Middle Column: Chat List (Hidden when not on 'chats' tab) -->
-    <div class="max-width-600 border-end border-secondary d-flex flex-column h-100" ref="chatListContainer">
+    <!-- Middle Column: Chat List -->
+    <div class="max-width-600 border-end border-secondary d-flex flex-column h-100 app-chat-list-col" ref="chatListContainer">
       <atoll-chat-list></atoll-chat-list>
     </div>
     
-    <!-- Right Column: Chat Window (Hidden when not on 'chats' tab) -->
-    <div class="flex-grow-1 d-flex flex-column h-100 bg-body" ref="chatWindowContainer">
+    <!-- Right Column: Chat Window -->
+    <div class="flex-grow-1 d-flex flex-column h-100 bg-body app-chat-window-col" ref="chatWindowContainer">
       <atoll-chat-window></atoll-chat-window>
     </div>
     
-    <!-- Media View Column (Hidden when on 'chats' tab) -->
+    <!-- Media View Column -->
     <div class="flex-grow-1 d-transition-none flex-column h-100 bg-body overflow-hidden" ref="mediaViewContainer">
       <atoll-media-view></atoll-media-view>
     </div>
@@ -72,6 +78,16 @@ export default defineComponent({
       const chatListContainer = references('chatListContainer')
       const chatWindowContainer = references('chatWindowContainer')
       const mediaViewContainer = references('mediaViewContainer')
+      const layoutContainer = references('layoutContainer')
+
+      // Toggle layout class based on whether a chat is active
+      subscribe('activeRoomId', (roomId) => {
+        if (roomId) {
+          layoutContainer.classList.add('chat-active')
+        } else {
+          layoutContainer.classList.remove('chat-active')
+        }
+      })
 
       // Listen for navigation changes from the sidebar
       subscribe('activeNavTab', (tab) => {
