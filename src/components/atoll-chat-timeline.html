@@ -87,10 +87,17 @@ export default defineComponent({
           hour: '2-digit',
           minute: '2-digit'
         })
+
+        const timelineRef = messagesContainer.getAttribute('ref')
         if (message.isEncrypted && !message.body) {
           const bubble = document.createElement('atoll-message-bubble')
           bubble.setAttribute('time', time)
           bubble.setAttribute('current-user', isCurrentUser)
+
+          if (timelineRef) {
+            bubble.setAttribute('chat-timeline-ref', timelineRef)
+          }
+
           bubble.appendChild(document.createTextNode('*Encrypted message*'))
           return bubble
         } else if (message.msgtype === 'm.atoll.webtorrent' && message.info) {
@@ -124,6 +131,11 @@ export default defineComponent({
           bubble.setAttribute('current-user', isCurrentUser)
           bubble.setAttribute('event-id', message.id)
           bubble.setAttribute('room-id', currentRoomId)
+
+          if (timelineRef) {
+            bubble.setAttribute('chat-timeline-ref', timelineRef)
+          }
+
           bubble.appendChild(torrentBubble)
 
           const reactionsContainer = document.createElement('atoll-message-reactions')
@@ -151,6 +163,11 @@ export default defineComponent({
           bubble.setAttribute('current-user', isCurrentUser)
           bubble.setAttribute('event-id', message.id)
           bubble.setAttribute('room-id', currentRoomId)
+
+          if (timelineRef) {
+            bubble.setAttribute('chat-timeline-ref', timelineRef)
+          }
+
           if (message.body) {
             bubble.appendChild(document.createTextNode(message.body))
           }
