@@ -62,7 +62,7 @@ export default defineComponent({
       let popperInstance = null
 
       wrapper.addEventListener('mouseenter', () => {
-        const timelineElement = document.querySelector(values.chatTimelineRef)
+        const timelineElement = values.chatTimelineRef ? document.querySelector(`[ref="${values.chatTimelineRef}"]`) : null
 
         actionsContainer.classList.remove('d-transition-none')
         actionsContainer.classList.add('d-transition-show')
@@ -78,9 +78,14 @@ export default defineComponent({
                 }
               },
               {
+                name: 'flip',
+                enabled: false
+              },
+              {
                 name: 'preventOverflow',
                 options: {
-                  boundary: timelineElement
+                  boundary: timelineElement || 'clippingParents',
+                  altAxis: true
                 }
               }
             ]
