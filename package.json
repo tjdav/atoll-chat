@@ -46,7 +46,7 @@
     "emoji-picker-element": "^1.29.1",
     "isomorphic-dompurify": "^3.0.0",
     "marked": "^17.0.4",
-    "matrix-js-sdk": "^41.1.0",
+    "matrix-js-sdk": "^41.3.0",
     "node-datachannel": "^0.32.1",
     "turndown": "^7.2.2",
     "webtorrent": "2.8.5"

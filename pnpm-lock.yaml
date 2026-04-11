@@ -33,8 +33,8 @@ importers:
         specifier: ^17.0.4
         version: 17.0.4
       matrix-js-sdk:
-        specifier: ^41.1.0
-        version: 41.1.0
+        specifier: ^41.3.0
+        version: 41.3.0
       node-datachannel:
         specifier: ^0.32.1
         version: 0.32.1
@@ -354,10 +354,6 @@ packages:
 
   '@jspm/core@2.1.0':
     resolution: {integrity: sha512-3sRl+pkyFY/kLmHl0cgHiFp2xEqErA8N3ECjMs7serSUBmoJ70lBa0PG5t0IM6WJgdZNyyI0R8YFfi5wM8+mzg==}
-
-  '@matrix-org/matrix-sdk-crypto-wasm@17.1.0':
-    resolution: {integrity: sha512-yKPqBvKlHSqkt/UJh+Z+zLKQP8bd19OxokXYXh3VkKbW0+C44nPHsidSwd3SH+RxT+Ck2PDRwVcVXEnUft+/2g==}
-    engines: {node: '>= 18'}
 
   '@matrix-org/matrix-sdk-crypto-wasm@18.0.0':
     resolution: {integrity: sha512-88+n+dvxLI1cjS10UIlKXVYK7TGWbpAnnaDC9fow7ch/hCvdu3dFhJ3tS3/13N9s9+1QFXB4FFuommj+tHJPhQ==}
@@ -1406,8 +1402,8 @@ packages:
   matrix-events-sdk@0.0.1:
     resolution: {integrity: sha512-1QEOsXO+bhyCroIe2/A5OwaxHvBm7EsSQ46DEDn8RBIfQwN5HWBpFvyWWR4QY0KHPPnnJdI99wgRiAl7Ad5qaA==}
 
-  matrix-js-sdk@41.1.0:
-    resolution: {integrity: sha512-k26BTennxHGCqJbeGlg680pCa6kQvEk9lftmgdEKSpqGHQCm37LriqEwuOtCqcQ4CGAqtD/00xbrc6rOxOXXvA==}
+  matrix-js-sdk@41.3.0:
+    resolution: {integrity: sha512-QTNHpBQEKPH3WS4O92CBfFj6GxeyijT8osI/QxNvOrM3rE6CySXRtRRKnzR0ntFSdrk1CxrDGV6h2wmk7B3peQ==}
     engines: {node: '>=22.0.0'}
 
   matrix-widget-api@1.17.0:
@@ -2321,8 +2317,6 @@ snapshots:
   '@humanwhocodes/retry@0.4.3': {}
 
   '@jspm/core@2.1.0': {}
-
-  '@matrix-org/matrix-sdk-crypto-wasm@17.1.0': {}
 
   '@matrix-org/matrix-sdk-crypto-wasm@18.0.0': {}
 
@@ -3490,10 +3484,10 @@ snapshots:
 
   matrix-events-sdk@0.0.1: {}
 
-  matrix-js-sdk@41.1.0:
+  matrix-js-sdk@41.3.0:
     dependencies:
       '@babel/runtime': 7.28.6
-      '@matrix-org/matrix-sdk-crypto-wasm': 17.1.0
+      '@matrix-org/matrix-sdk-crypto-wasm': 18.0.0
       another-json: 0.2.0
       bs58: 6.0.0
       content-type: 1.0.5
