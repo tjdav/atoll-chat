@@ -62,14 +62,13 @@ export default defineComponent({
       let popperInstance = null
 
       wrapper.addEventListener('mouseenter', () => {
-        const timelineElement = values.chatTimelineRef ? document.querySelector(`[ref="${values.chatTimelineRef}"]`) : null
-
         actionsContainer.classList.remove('d-transition-none')
         actionsContainer.classList.add('d-transition-show')
 
         if (!popperInstance && window.Popper) {
           popperInstance = window.Popper.createPopper(bubble, actionsContainer, {
             placement: isCurrentUser ? 'left-start' : 'right-start',
+            strategy: 'fixed',
             modifiers: [
               {
                 name: 'offset',
@@ -79,13 +78,15 @@ export default defineComponent({
               },
               {
                 name: 'flip',
-                enabled: false
+                enabled: true
               },
               {
                 name: 'preventOverflow',
                 options: {
-                  boundary: timelineElement,
-                  padding: 8
+                  rootBoundary: 'viewport',
+                  padding: 16,
+                  altAxis: true,
+                  tether: false
                 }
               }
             ]
