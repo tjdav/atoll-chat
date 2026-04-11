@@ -32,43 +32,18 @@ export default defineComponent({
       }
       let currentRoomId = null
       let pendingScrollEventId = null
-      let messageObserver = null
-      const messageDataMap = new WeakMap()
-      const handleIntersection = entries => {
-        entries.forEach(entry => {
-          const div = entry.target
-          if (entry.isIntersecting) {
-            if (div.children.length === 0) {
-              const data = messageDataMap.get(div)
-              if (data) {
-                const content = createInnerContent(data.message, data.isCurrentUser)
-                div.appendChild(content)
-                div.style.removeProperty('height')
-                div.style.removeProperty('min-height')
-              }
-            }
-          } else {
-            if (div.children.length > 0) {
-              const height = div.getBoundingClientRect().height
-              if (height > 0) {
-                div.style.height = `${height}px`
-                div.style.minHeight = `${height}px`
-                div.replaceChildren()
-              }
-            }
-          }
-        })
-      }
       const executePendingScroll = () => {
         if (!pendingScrollEventId) {
           return
         }
+
         const msgElement = document.getElementById(`msg-${pendingScrollEventId}`)
         if (msgElement) {
           msgElement.scrollIntoView({
             behavior: 'smooth',
             block: 'center'
           })
+
           const bubble = msgElement.querySelector('atoll-message-bubble')
           if (bubble) {
             bubble.setAttribute('chat-timeline-ref', messagesContainer.getAttribute('ref'))
@@ -82,6 +57,7 @@ export default defineComponent({
           pendingScrollEventId = null
         }
       }
+
       const createInnerContent = (message, isCurrentUser) => {
         const time = new Date(message.date).toLocaleTimeString([], {
           hour: '2-digit',
@@ -194,19 +170,10 @@ export default defineComponent({
         }
       }
       const renderMessage = (message, isCurrentUser) => {
-        const div = document.createElement('div')
-        // Add ID for scrolling
-        div.id = `msg-${message.id}`
-        messageDataMap.set(div, {
-          message,
-          isCurrentUser
-        })
         const content = createInnerContent(message, isCurrentUser)
-        div.appendChild(content)
-        if (messageObserver) {
-          messageObserver.observe(div)
-        }
-        return div
+        // Add ID for scrolling
+        content.id = `msg-${message.id}`
+        return content
       }
       subscribe('activeRoomReady', async (payload) => {
         if (!payload) {
@@ -216,13 +183,6 @@ export default defineComponent({
         if (currentCleanup) {
           currentCleanup()
         }
-        if (messageObserver) {
-          messageObserver.disconnect()
-        }
-        messageObserver = new IntersectionObserver(handleIntersection, {
-          root: messagesContainer,
-          rootMargin: '500px 0px'
-        })
         currentRoomId = roomId
         messagesContainer.replaceChildren()
         const currentUserId = await getCurrentUserId()
@@ -270,12 +230,10 @@ export default defineComponent({
         pendingScrollEventId = payload.eventId
         executePendingScroll()
       })
+
       return () => {
         if (currentCleanup) {
           currentCleanup()
-        }
-        if (messageObserver) {
-          messageObserver.disconnect()
         }
       }
     }
