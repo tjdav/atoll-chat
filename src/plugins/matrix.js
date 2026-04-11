@@ -70,26 +70,66 @@ export default function ({
             try {
               await temporaryClient.initRustCrypto()
 
-              // Run bootstrapSecretStorage in the background so it doesn't block the initial loading
-              temporaryClient.getCrypto().bootstrapSecretStorage({
-                createSecretStorageKey: async () => {
-                  return new Promise((resolve) => {
-                    const promptId = Date.now()
-                    const abortController = new AbortController()
-                    const handler = (payload) => {
-                      if (payload && payload.promptId === promptId) {
-                        abortController.abort()
-                        resolve(payload.password)
-                      }
+              // Run crypto bootstrapping in the background so it doesn't block the initial loading
+              ;(async () => {
+                try {
+                  await temporaryClient.getCrypto().bootstrapSecretStorage({
+                    createSecretStorageKey: async () => {
+                      return new Promise((resolve) => {
+                        const promptId = Date.now()
+                        const abortController = new AbortController()
+                        const handler = (payload) => {
+                          if (payload && payload.promptId === promptId) {
+                            abortController.abort()
+                            resolve(payload.password)
+                          }
+                        }
+                        helpers.subscribe('triggerPasswordPromptResolved', handler, { signal: abortController.signal })
+                        helpers.setState('triggerPasswordPrompt', {
+                          promptId,
+                          ts: Date.now()
+                        })
+                      })
                     }
-                    helpers.subscribe('triggerPasswordPromptResolved', handler, { signal: abortController.signal })
-                    helpers.setState('triggerPasswordPrompt', {
-                      promptId,
-                      ts: Date.now()
-                    })
                   })
+
+                  await temporaryClient.getCrypto().bootstrapCrossSigning({
+                    authUploadDeviceSigningKeys: async (makeRequest) => {
+                      const password = await new Promise((resolve) => {
+                        const promptId = Date.now()
+                        const abortController = new AbortController()
+                        const handler = (payload) => {
+                          if (payload && payload.promptId === promptId) {
+                            abortController.abort()
+                            resolve(payload.password)
+                          }
+                        }
+                        helpers.subscribe('triggerPasswordPromptResolved', handler, { signal: abortController.signal })
+                        helpers.setState('triggerPasswordPrompt', {
+                          promptId,
+                          ts: Date.now()
+                        })
+                      })
+
+                      return makeRequest({
+                        type: 'm.login.password',
+                        identifier: {
+                          type: 'm.id.user',
+                          user: credentials.userId || temporaryClient.getUserId()
+                        },
+                        password: password
+                      })
+                    }
+                  })
+
+                  const hasKeyBackup = (await temporaryClient.getCrypto().checkKeyBackupAndEnable()) !== null
+                  if (!hasKeyBackup) {
+                    await temporaryClient.getCrypto().resetKeyBackup()
+                  }
+                } catch (error) {
+                  console.warn('Failed to bootstrap crypto:', error)
                 }
-              }).catch(error => console.warn('Failed to bootstrap Secret Storage:', error))
+              })()
 
               return temporaryClient
             } catch (error) {
