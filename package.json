@@ -28,8 +28,6 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@stylistic/eslint-plugin": "^5.9.0",
-    "bootstrap": "^5.3.8",
-    "concurrently": "^9.2.1",
     "coralite": "^0.31.5",
     "coralite-scripts": "^0.31.5",
     "cross-env": "^10.1.0",
@@ -44,6 +42,7 @@
     "@transcribe/shout": "^1.0.7",
     "@transcribe/transcriber": "^3.0.1",
     "bittorrent-tracker": "^11.2.2",
+    "bootstrap": "^5.3.8",
     "emoji-picker-element": "^1.29.1",
     "isomorphic-dompurify": "^3.0.0",
     "marked": "^17.0.4",

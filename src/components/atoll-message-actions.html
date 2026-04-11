@@ -34,13 +34,19 @@ export default defineComponent({
       },
       {
         specifier: 'https://cdn.jsdelivr.net/npm/emoji-picker-element@^1.27/picker.js'
+      },
+      {
+        specifier: 'bootstrap',
+        namespaceExport: 'bootstrap'
       }
     ],
     script: ({
       helpers,
       values,
-      signal
+      signal,
+      imports
     }) => {
+      const bootstrap = imports.bootstrap
       const {
         refs,
         setState
