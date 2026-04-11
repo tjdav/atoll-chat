@@ -422,6 +422,8 @@ export default function ({
             })
             return {
               id: eventId,
+              txnId: event.getTxnId(),
+              status: event.status,
               sender: event.getSender(),
               body: event.getContent().body,
               date: event.getDate(),
@@ -480,6 +482,8 @@ export default function ({
               if (event.getType() === 'm.room.message') {
                 callback({
                   id: event.getId(),
+                  txnId: event.getTxnId(),
+                  status: event.status,
                   sender: event.getSender(),
                   body: event.getContent().body,
                   date: event.getDate(),
@@ -498,6 +502,8 @@ export default function ({
               if (event.getType() === 'm.room.message') {
                 callback({
                   id: event.getId(),
+                  txnId: event.getTxnId(),
+                  status: event.status,
                   sender: event.getSender(),
                   body: event.getContent().body,
                   date: event.getDate(),
@@ -509,6 +515,21 @@ export default function ({
               } else if (event.getType() === 'm.reaction') {
                 handleReaction(event)
               }
+            }
+          }
+          const localEchoUpdatedHandler = event => {
+            if (event.getRoomId() === roomId && event.getType() === 'm.room.message') {
+              callback({
+                id: event.getId(),
+                txnId: event.getTxnId(),
+                status: event.status,
+                sender: event.getSender(),
+                body: event.getContent().body,
+                date: event.getDate(),
+                msgtype: event.getContent().msgtype,
+                info: event.getContent().info,
+                reactions: {}
+              })
             }
           }
 
@@ -534,10 +555,12 @@ export default function ({
           client.on('Room.timeline', handler)
           client.on('Event.decrypted', decryptHandler)
           client.on('Room.redaction', redactionHandler)
+          client.on('Room.localEchoUpdated', localEchoUpdatedHandler)
           return () => {
             client.removeListener('Room.timeline', handler)
             client.removeListener('Event.decrypted', decryptHandler)
             client.removeListener('Room.redaction', redactionHandler)
+            client.removeListener('Room.localEchoUpdated', localEchoUpdatedHandler)
           }
         },
         sendReaction: globalContext => localContext => async (roomId, eventId, reactionKey) => {

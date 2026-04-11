@@ -172,7 +172,8 @@ export default defineComponent({
       const renderMessage = (message, isCurrentUser) => {
         const content = createInnerContent(message, isCurrentUser)
         // Add ID for scrolling
-        content.id = `msg-${message.id}`
+        content.id = `msg-${message.txnId || message.id}`
+
         return content
       }
       subscribe('activeRoomReady', async (payload) => {
@@ -188,8 +189,40 @@ export default defineComponent({
         const currentUserId = await getCurrentUserId()
 
         const handleIncomingMessage = (msg, isCurrentUser) => {
+          // In Matrix, local echo IDs look like `~!<room>:localhost:m12345.0` but the getTxnId() might return `m12345.0`.
+          // We find the element that has `msg.txnId` in its ID string if exact match fails.
+          // Upgrade an existing local echo message if it was matched by txnId.
+          if (msg.txnId) {
+            let existingEcho = document.getElementById(`msg-${msg.txnId}`)
+            if (!existingEcho) {
+              // Try to find the local echo by matching the end of the id, as matrix-js-sdk prepends the room id and tilde.
+              const echoes = document.querySelectorAll(`[id*="${msg.txnId}"]`)
+              if (echoes.length > 0) {
+                existingEcho = echoes[0]
+              }
+            }
+            if (existingEcho && existingEcho.id !== `msg-${msg.id}`) {
+              existingEcho.id = `msg-${msg.id}`
+              // Upgrade the bubble's event-id
+              const bubble = existingEcho.querySelector('atoll-message-bubble') || existingEcho
+              bubble.setAttribute('event-id', msg.id)
+
+              // Ensure the inner torrent bubble also gets upgraded
+              const torrentBubble = existingEcho.querySelector('atoll-torrent-bubble')
+              if (torrentBubble) {
+                torrentBubble.setAttribute('event-id', msg.id)
+              }
+
+              // Also upgrade reactions container so incoming reactions match
+              const reactionsContainer = existingEcho.querySelector('atoll-message-reactions')
+              if (reactionsContainer) {
+                reactionsContainer.setAttribute('event-id', msg.id)
+              }
+            }
+          }
+
           // If the message ID is already in the DOM, skip it.
-          if (document.getElementById(`msg-${msg.id}`)) {
+          if (document.getElementById(`msg-${msg.id}`) || (msg.txnId && document.getElementById(`msg-${msg.txnId}`)) || (msg.txnId && document.querySelector(`[id*="${msg.txnId}"]`))) {
             return
           }
 
