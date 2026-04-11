@@ -12,7 +12,7 @@
     "javascript"
   ],
   "scripts": {
-    "start": "concurrently \"pnpm run start:tracker\" \"pnpm run start:app\"",
+    "start": "node scripts/start-dev.js",
     "start:app": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
     "start:tracker": "node src/server/tracker.js",
     "build": "coralite-scripts build",
@@ -21,7 +21,7 @@
     "test:unit": "pnpm --test",
     "test:unit:coverage": "pnpm --experimental-test-coverage --test",
     "test:e2e": "pnpm run build && pnpm exec playwright test",
-    "test:e2e:ui": "pnpm exec playwright test --ui",
+    "test:e2e:ui": "pnpm run build && pnpm exec playwright test --ui",
     "setup:tts": "node ./scripts/download-tts-models.js",
     "setup:transcribe": "node ./scripts/download-transcribe-models.js"
   },
