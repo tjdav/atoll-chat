@@ -14,6 +14,7 @@ export default createPlugin({
             request.onupgradeneeded = event => {
               const db = event.target.result
               let store
+
               if (!db.objectStoreNames.contains(STORE_NAME)) {
                 store = db.createObjectStore(STORE_NAME, {
                   keyPath: 'id'
@@ -29,7 +30,6 @@ export default createPlugin({
               }
 
               // Add the userId index if it doesn't exist
-
               if (!store.indexNames.contains('userId')) {
                 store.createIndex('userId', 'userId', {
                   unique: false
@@ -42,9 +42,11 @@ export default createPlugin({
                 })
               }
             }
+
             request.onsuccess = event => {
               resolve(event.target.result)
             }
+
             request.onerror = event => {
               reject(event.target.error)
             }
@@ -62,9 +64,10 @@ export default createPlugin({
         const {
           getDB,
           STORE_NAME
-        } = localContext.values
+        } = globalContext.values
         return async id => {
           const db = await getDB()
+
           return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readonly')
             const store = transaction.objectStore(STORE_NAME)
@@ -78,9 +81,10 @@ export default createPlugin({
         const {
           getDB,
           STORE_NAME
-        } = localContext.values
+        } = globalContext.values
         return async magnetURI => {
           const db = await getDB()
+
           return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readonly')
             const store = transaction.objectStore(STORE_NAME)
@@ -95,13 +99,13 @@ export default createPlugin({
         const {
           getDB,
           STORE_NAME
-        } = localContext.values
+        } = globalContext.values
         return async (id, blob, metadata) => {
           const db = await getDB()
 
           // Grab the currently logged-in user from the Matrix plugin
-
           const userId = await localContext.helpers.getCurrentUserId()
+
           return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readwrite')
             const store = transaction.objectStore(STORE_NAME)
@@ -122,12 +126,11 @@ export default createPlugin({
         const {
           getDB,
           STORE_NAME
-        } = localContext.values
+        } = globalContext.values
         return async mimeTypePrefix => {
           const db = await getDB()
 
           // Get the currently logged-in user
-
           const userId = await localContext.helpers.getCurrentUserId()
           return new Promise((resolve, reject) => {
             const transaction = db.transaction([STORE_NAME], 'readonly')
@@ -137,11 +140,9 @@ export default createPlugin({
               const userRecords = event.target.result
 
               // Filter records down to the requested mimeType (e.g., 'audio/', 'image/')
-
               const matchedRecords = userRecords.filter(record => record.mimeType && record.mimeType.startsWith(mimeTypePrefix))
 
               // Sort by timestamp descending (newest first)
-
               matchedRecords.sort((a, b) => b.timestamp - a.timestamp)
               resolve(matchedRecords)
             }
