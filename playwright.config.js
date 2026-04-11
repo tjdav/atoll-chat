@@ -9,7 +9,7 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 1,
-  reporter: 'html',
+  reporter: 'line',
   globalSetup: './tests/e2e/setup/global-setup.js',
   globalTeardown: './tests/e2e/setup/global-teardown.js',
   use: {
