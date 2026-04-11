@@ -34,7 +34,7 @@
     </ul>
 
     <div class="mt-auto border-top border-secondary pt-3">
-      <button class="btn btn-outline-light w-100 mb-2 d-flex align-items-center justify-content-center" type="button" aria-label="Settings">
+      <button class="btn btn-outline-light w-100 mb-2 d-flex align-items-center justify-content-center" type="button" aria-label="Settings" ref="settingsBtn">
         <i class="bi bi-gear me-2"></i> Settings
       </button>
       <div class="dropdown">
@@ -74,6 +74,10 @@ export default defineComponent({
           await logout()
         }
         setState('isLoggedIn', false)
+      })
+      const settingsBtn = references('settingsBtn')
+      settingsBtn.addEventListener('click', () => {
+        setState('activeNavTab', 'settings')
       })
       const navList = references('navList')
       const links = navList.querySelectorAll('.nav-link')

@@ -21,6 +21,11 @@
       <atoll-chat-window></atoll-chat-window>
     </div>
     
+    <!-- Settings Column -->
+    <div class="flex-grow-1 d-transition-none flex-column h-100 bg-body overflow-hidden" ref="settingsContainer">
+      <atoll-settings></atoll-settings>
+    </div>
+    
     <!-- Media View Column -->
     <div class="flex-grow-1 d-transition-none flex-column h-100 bg-body overflow-hidden" ref="mediaViewContainer">
       <atoll-media-view></atoll-media-view>
@@ -31,6 +36,9 @@
     
     <!-- Global Audio Player -->
     <atoll-audio-player></atoll-audio-player>
+
+    <!-- Password Prompt Modal -->
+    <atoll-password-prompt></atoll-password-prompt>
     
     <!-- Incoming Call Toast/Modal (Ringing) -->
     <div class="modal fade" tabindex="-1" role="dialog" aria-modal="true" ref="incomingCallModal" style="display: none; background: rgba(0,0,0,0.5);">
@@ -63,6 +71,7 @@
 import { defineComponent } from 'coralite'
 export default defineComponent({
   client: {
+    components: ['atoll-settings', 'atoll-password-prompt'],
     script: ({
       helpers
     }) => {
@@ -78,6 +87,7 @@ export default defineComponent({
       const chatListContainer = references('chatListContainer')
       const chatWindowContainer = references('chatWindowContainer')
       const mediaViewContainer = references('mediaViewContainer')
+      const settingsContainer = references('settingsContainer')
       const layoutContainer = references('layoutContainer')
 
       // Toggle layout class based on whether a chat is active
@@ -95,7 +105,7 @@ export default defineComponent({
           return
         }
         if (tab === 'chats') {
-          // Show chat columns, hide media view
+          // Show chat columns, hide media view & settings
           chatListContainer.classList.remove('d-transition-none')
           chatListContainer.classList.add('d-transition-show')
           chatWindowContainer.classList.remove('d-transition-none')
@@ -103,12 +113,30 @@ export default defineComponent({
           mediaViewContainer.classList.remove('d-transition-show')
           mediaViewContainer.classList.add('d-transition-none')
           mediaViewContainer.classList.remove('d-flex')
-        } else {
-          // Hide chat columns, show media view
+          settingsContainer.classList.remove('d-transition-show')
+          settingsContainer.classList.add('d-transition-none')
+          settingsContainer.classList.remove('d-flex')
+        } else if (tab === 'settings') {
+          // Hide chat columns & media view, show settings
           chatListContainer.classList.remove('d-transition-show')
           chatListContainer.classList.add('d-transition-none')
           chatWindowContainer.classList.remove('d-transition-show')
           chatWindowContainer.classList.add('d-transition-none')
+          mediaViewContainer.classList.remove('d-transition-show')
+          mediaViewContainer.classList.add('d-transition-none')
+          mediaViewContainer.classList.remove('d-flex')
+          settingsContainer.classList.remove('d-transition-none')
+          settingsContainer.classList.add('d-transition-show')
+          settingsContainer.classList.add('d-flex')
+        } else {
+          // Hide chat columns & settings, show media view
+          chatListContainer.classList.remove('d-transition-show')
+          chatListContainer.classList.add('d-transition-none')
+          chatWindowContainer.classList.remove('d-transition-show')
+          chatWindowContainer.classList.add('d-transition-none')
+          settingsContainer.classList.remove('d-transition-show')
+          settingsContainer.classList.add('d-transition-none')
+          settingsContainer.classList.remove('d-flex')
           mediaViewContainer.classList.remove('d-transition-none')
           mediaViewContainer.classList.add('d-transition-show')
           mediaViewContainer.classList.add('d-flex')

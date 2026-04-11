@@ -44,11 +44,51 @@ export default function ({
               accessToken: credentials.accessToken,
               deviceId: credentials.deviceId,
               store: store,
-              cryptoStore: cryptoStore
+              cryptoStore: cryptoStore,
+              cryptoCallbacks: {
+                getSecretStorageKey: async ({ keys }, name) => {
+                  return new Promise((resolve) => {
+                    const promptId = Date.now()
+                    const handler = (payload) => {
+                      if (payload && payload.promptId === promptId) {
+                        helpers.unsubscribe('triggerPasswordPromptResolved', handler)
+                        resolve(payload.password)
+                      }
+                    }
+                    helpers.subscribe('triggerPasswordPromptResolved', handler)
+                    helpers.setState('triggerPasswordPrompt', {
+                      promptId,
+                      ts: Date.now()
+                    })
+                  })
+                }
+              }
+
             })
             await store.startup()
             try {
               await temporaryClient.initRustCrypto()
+
+              // Run bootstrapSecretStorage in the background so it doesn't block the initial loading
+              temporaryClient.getCrypto().bootstrapSecretStorage({
+                createSecretStorageKey: async () => {
+                  return new Promise((resolve) => {
+                    const promptId = Date.now()
+                    const handler = (payload) => {
+                      if (payload && payload.promptId === promptId) {
+                        helpers.unsubscribe('triggerPasswordPromptResolved', handler)
+                        resolve(payload.password)
+                      }
+                    }
+                    helpers.subscribe('triggerPasswordPromptResolved', handler)
+                    helpers.setState('triggerPasswordPrompt', {
+                      promptId,
+                      ts: Date.now()
+                    })
+                  })
+                }
+              }).catch(error => console.warn('Failed to bootstrap Secret Storage:', error))
+
               return temporaryClient
             } catch (error) {
               if (!isRetry && error.message && error.message.includes("doesn't match the account in the constructor")) {
