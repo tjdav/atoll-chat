@@ -49,13 +49,14 @@ export default function ({
                 getSecretStorageKey: async ({ keys }, name) => {
                   return new Promise((resolve) => {
                     const promptId = Date.now()
+                    const abortController = new AbortController()
                     const handler = (payload) => {
                       if (payload && payload.promptId === promptId) {
-                        helpers.unsubscribe('triggerPasswordPromptResolved', handler)
+                        abortController.abort()
                         resolve(payload.password)
                       }
                     }
-                    helpers.subscribe('triggerPasswordPromptResolved', handler)
+                    helpers.subscribe('triggerPasswordPromptResolved', handler, { signal: abortController.signal })
                     helpers.setState('triggerPasswordPrompt', {
                       promptId,
                       ts: Date.now()
@@ -74,13 +75,14 @@ export default function ({
                 createSecretStorageKey: async () => {
                   return new Promise((resolve) => {
                     const promptId = Date.now()
+                    const abortController = new AbortController()
                     const handler = (payload) => {
                       if (payload && payload.promptId === promptId) {
-                        helpers.unsubscribe('triggerPasswordPromptResolved', handler)
+                        abortController.abort()
                         resolve(payload.password)
                       }
                     }
-                    helpers.subscribe('triggerPasswordPromptResolved', handler)
+                    helpers.subscribe('triggerPasswordPromptResolved', handler, { signal: abortController.signal })
                     helpers.setState('triggerPasswordPrompt', {
                       promptId,
                       ts: Date.now()
