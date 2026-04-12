@@ -232,10 +232,22 @@ export default defineComponent({
           return
         }
         try {
-          modalInstance.hide()
+          const loadingSpinner = document.createElement('span')
+          const loadingSpinnerStatus = document.createElement('span')
+          
+          createRoomBtn.disabled = true
+          loadingSpinnerStatus.setAttribute('role', 'status')
+          loadingSpinner.setAttribute('class', 'spinner-border spinner-border-sm me-1')
+          loadingSpinner.setAttribute('aria-hidden', 'true')
+
+          loadingSpinnerStatus.textContent = 'Loading...'
+          createRoomBtn.replaceChildren(loadingSpinner, loadingSpinnerStatus)
 
           await createEncryptedRoom(roomName)
           roomNameInput.value = ''
+          
+          createRoomBtn.textContent = 'Create'
+          modalInstance.hide()
 
           // Re-render rooms list
           await renderRooms()
