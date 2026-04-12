@@ -52,10 +52,12 @@ import { defineComponent } from 'coralite'
 
 export default defineComponent({
   client: {
-    imports: [{
-      specifier: 'bootstrap',
-      namespaceExport: 'bootstrap'
-    }],
+    imports: [
+      {
+        specifier: 'bootstrap',
+        namedExports: ['Modal']
+      }
+    ],
     script: ({
       helpers,
       imports
@@ -68,25 +70,18 @@ export default defineComponent({
         setState,
         getState
       } = helpers
-      const {
-        bootstrap
-      } = imports
+      const { Modal } = imports
       const roomList = references('roomList')
       const newRoomModal = references('newRoomModal')
       const roomNameInput = references('roomNameInput')
       const createRoomBtn = references('createRoomBtn')
       const openNewRoomModalBtn = references('openNewRoomModalBtn')
-      const showModal = () => {
-        try {
-          const modal = bootstrap.Modal.getOrCreateInstance(newRoomModal)
-          modal.show()
-        } catch (event) {
-          console.error('Failed to show new room modal', event)
-        }
-      }
-      if (openNewRoomModalBtn) {
-        openNewRoomModalBtn.addEventListener('click', showModal)
-      }
+      const modalInstance = Modal.getOrCreateInstance(newRoomModal)
+
+      openNewRoomModalBtn.addEventListener('click', () => {
+        modalInstance.show()
+      })
+
       const updateAvatarNode = (container, roomName, avatarUrl) => {
         if (avatarUrl) {
           let img = container.querySelector('img')
@@ -237,15 +232,10 @@ export default defineComponent({
           return
         }
         try {
+          modalInstance.hide()
+
           await createEncryptedRoom(roomName)
           roomNameInput.value = ''
-          // Hide the modal using Bootstrap's modal instance if available,
-          // otherwise just hide it manually (or relying on renderRooms to refresh).
-          const modalElement = newRoomModal
-          const bootstrapModal = bootstrap.Modal.getInstance(modalElement)
-          if (bootstrapModal) {
-            bootstrapModal.hide()
-          }
 
           // Re-render rooms list
           await renderRooms()
