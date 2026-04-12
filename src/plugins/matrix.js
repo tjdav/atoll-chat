@@ -24,6 +24,7 @@ export default function ({
       }],
       setup (context) {
         let client = null
+
         const initClient = async (credentials, helpers) => {
           if (client) {
             return client
@@ -34,17 +35,16 @@ export default function ({
           const createAndInit = async (isRetry = false) => {
             const store = new sdk.IndexedDBStore({
               indexedDB: window.indexedDB,
-              dbName: 'matrix-js-sdk:atoll',
-              localStorage: window.localStorage
+              localStorage: window.localStorage,
+              dbName: 'matrix-js-sdk:atoll'
             })
-            const cryptoStore = new sdk.IndexedDBCryptoStore(window.indexedDB, 'matrix-js-sdk:crypto')
+
             const temporaryClient = sdk.createClient({
               baseUrl: credentials.baseUrl || context.config.baseUrl,
               userId: credentials.userId,
               accessToken: credentials.accessToken,
               deviceId: credentials.deviceId,
               store: store,
-              cryptoStore: cryptoStore,
               cryptoCallbacks: {
                 getSecretStorageKey: async ({ keys }, name) => {
                   return new Promise((resolve) => {
@@ -56,6 +56,7 @@ export default function ({
                         resolve(payload.password)
                       }
                     }
+
                     helpers.subscribe('triggerPasswordPromptResolved', handler, { signal: abortController.signal })
                     helpers.setState('triggerPasswordPrompt', {
                       promptId,
@@ -64,12 +65,13 @@ export default function ({
                   })
                 }
               }
-
             })
+            
             await store.startup()
+            
             try {
               await temporaryClient.initRustCrypto()
-
+              // ... rest of your background bootstrapping logic stays exactly the same
               // Run crypto bootstrapping in the background so it doesn't block the initial loading
               ;(async () => {
                 try {
@@ -166,7 +168,9 @@ export default function ({
               }
             }
           }
+
           client = await createAndInit()
+
           if (helpers) {
             const setState = helpers.setState
 
@@ -373,30 +377,88 @@ export default function ({
           return await client.sendEvent(roomId, 'm.room.message', content, '')
         },
         createEncryptedRoom: globalContext => localContext => async (name, inviteUserId) => {
-          /** @type {MatrixClient} */
+          /** @type {import('matrix-js-sdk')} */
+          const sdk = globalContext.imports.sdk
           const client = localContext.values.getClient()
+          
           if (!client) {
             throw new Error('Matrix client not initialized')
           }
           await client.waitForClientWellKnown()
-          return await client.createRoom({
-            visibility: 'private',
-            name: name,
+          
+          const createResult = await client.createRoom({
+            name,
+            preset: sdk.Preset.PrivateChat,
+            is_direct: !!inviteUserId,
             invite: inviteUserId ? [inviteUserId] : [],
-            initial_state: [{
-              type: 'm.room.encryption',
-              state_key: '',
-              content: {
-                algorithm: 'm.megolm.v1.aes-sha2'
+            initial_state: [
+              {
+                type: 'm.room.encryption',
+                state_key: '',
+                content: { algorithm: 'm.megolm.v1.aes-sha2' }
+              }, 
+              {
+                type: 'm.room.history_visibility',
+                state_key: '',
+                content: { history_visibility: 'shared' }
               }
-            }, {
-              type: 'm.room.history_visibility',
-              state_key: '',
-              content: {
-                history_visibility: 'shared'
-              }
-            }]
+            ]
           })
+
+          const roomId = createResult.room_id
+
+          // Wait for Crypto and Member State to fully settle
+          await new Promise((resolve) => {
+            const checkReady = () => {
+              const room = client.getRoom(roomId)
+              if (!room) return false
+              
+              // Ensure the client knows this room is E2EE
+              if (!client.isRoomEncrypted(roomId)) return false
+
+              // Ensure the invited user is actually registered in the state
+              if (inviteUserId) {
+                const member = room.getMember(inviteUserId)
+                if (!member || member.membership !== 'invite') return false
+              }
+              
+              return true
+            }
+
+            if (checkReady()) return resolve()
+
+            const onStateEvent = (event) => {
+              if (event.getRoomId() === roomId && checkReady()) {
+                client.removeListener('RoomState.events', onStateEvent)
+                resolve()
+              }
+            }
+            client.on('RoomState.events', onStateEvent)
+          })
+
+          // Download keys and VERIFY devices exist
+          if (inviteUserId) {
+            try {
+              const keys = await client.downloadKeys([inviteUserId], true)
+              
+              // Verify the user actually has devices uploaded to the homeserver
+              const userDevices = keys[inviteUserId]
+              if (!userDevices || Object.keys(userDevices).length === 0) {
+                console.warn(
+                  `⚠️ CRITICAL: ${inviteUserId} has no devices on the server! ` +
+                  `Any messages sent now CANNOT be decrypted by them later. ` +
+                  `They must log in and sync at least once before receiving E2EE messages.`
+                )
+              }
+            } catch (err) {
+              console.warn(`Failed to pre-fetch keys for ${inviteUserId}`, err)
+            }
+          }
+
+          // Small buffer to let the Rust crypto thread digest the downloaded keys
+          await new Promise(r => setTimeout(r, 250))
+
+          return createResult
         },
         inviteUser: globalContext => localContext => async (roomId, userId) => {
           /** @type {MatrixClient} */
@@ -404,7 +466,9 @@ export default function ({
           if (!client) {
             throw new Error('Matrix client not initialized')
           }
-          return await client.invite(roomId, userId)
+          return await client.invite(roomId, userId, {
+            shareEncryptedHistory: true
+          })
         },
         joinRoom: globalContext => localContext => async roomId => {
           /** @type {MatrixClient} */
@@ -412,7 +476,63 @@ export default function ({
           if (!client) {
             throw new Error('Matrix client not initialized')
           }
-          return await client.joinRoom(roomId)
+          
+          // Send the HTTP request to join
+          const joinResult = await client.joinRoom(roomId)
+
+          // Wait for the local client to sync the room state via Events
+          return new Promise((resolve) => {
+            // Helper function to check if the room meets our criteria
+            const checkReady = () => {
+              const room = client.getRoom(roomId)
+              
+              if (room && room.hasMembershipState(client.getUserId(), 'join')) {
+                if (room.hasEncryptionStateEvent()) {
+                  // Give the Rust crypto layer a tiny buffer to initialize the encryptor
+                  // after the m.room.encryption state event actually arrives.
+                  setTimeout(() => resolve(joinResult), 300)
+                } else {
+                  // Not encrypted, ready immediately
+                  resolve(joinResult)
+                }
+                return true
+              }
+              return false
+            }
+
+            // It might already be ready (e.g., if we were previously in the room)
+            if (checkReady()) {
+              return
+            }
+
+            // Fired when the room is added to the client
+            const onRoom = (room) => {
+              if (room.roomId === roomId && checkReady()) cleanup()
+            }
+
+            // Fired when state events (like m.room.encryption) arrive
+            const onRoomStateEvent = (event) => {
+              if (event.getRoomId() === roomId && checkReady()) cleanup()
+            }
+
+            // Helper to prevent memory leaks
+            const cleanup = () => {
+              client.removeListener('Room', onRoom)
+              client.removeListener('RoomState.events', onRoomStateEvent)
+              clearTimeout(timeoutId)
+            }
+
+            // Attach the listeners
+            client.on('Room', onRoom)
+            client.on('RoomState.events', onRoomStateEvent)
+
+            // Safety fallback: if the sync hangs or events miss, resolve anyway after 5 seconds
+            const timeoutId = setTimeout(() => {
+              console.warn(`Timeout waiting for event-driven sync on room ${roomId}. Resolving.`)
+              cleanup()
+              resolve(joinResult)
+            }, 5000)
+          })
         },
         leaveRoom: globalContext => localContext => async roomId => {
           /** @type {MatrixClient} */
