@@ -768,6 +768,24 @@ export default function ({
                   // New message won't have reactions initially
                   reactions: {}
                 })
+              } else if (event.getType() === 'm.room.member' && event.getContent().membership === 'invite') {
+                const room = client.getRoom(roomId)
+                const targetId = event.getStateKey()
+                const senderId = event.getSender()
+                const senderName = room?.getMember(senderId)?.name || senderId
+                const targetName = room?.getMember(targetId)?.name || targetId
+
+                callback({
+                  id: event.getId(),
+                  txnId: event.getTxnId(),
+                  status: event.status,
+                  sender: senderId,
+                  body: `${senderName} sent an invite to ${targetName}`,
+                  date: event.getDate(),
+                  msgtype: 'm.invite',
+                  info: {},
+                  reactions: {}
+                })
               } else if (event.getType() === 'm.reaction') {
                 handleReaction(event)
               }
