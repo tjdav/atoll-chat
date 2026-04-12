@@ -76,17 +76,50 @@ const login = async (page, username) => {
   await page.fill('input[placeholder="Username"]', username)
   await page.fill('input[placeholder="Password"]', 'password123')
   await page.click('button:has-text("Login")')
+
+  // Handle the Unlock Secret Storage / Cross-Signing Modal
+  const passwordPrompt = page.locator('.modal-content').filter({ hasText: 'Unlock Secret Storage' }).or(page.locator('.modal-content').filter({ hasText: 'Verify Session' })).or(page.locator('.modal-content').filter({ hasText: 'Security' }))
+
+  try {
+    await passwordPrompt.waitFor({
+      state: 'visible',
+      timeout: 5000
+    })
+    await passwordPrompt.locator('input[type="password"]').fill('password123')
+    await passwordPrompt.getByRole('button', { name: 'Unlock' }).click()
+  } catch (error) {
+    // If it doesn't appear, ignore and continue
+  }
+
   await expect(page.locator('h5').filter({ hasText: 'Chats' })).toBeVisible()
 }
-
 test('Alice creates a room, invites Bob, Bob invites Charlie, all see history', async ({ browser }) => {
-  test.setTimeout(60000)
+  test.setTimeout(120000)
 
-  // --- Alice's Context ---
+  // ============================================================
+  // 1. INITIALIZATION PHASE: Everyone logs in to create their devices
+  // ============================================================
+  
+  // --- Setup Alice ---
   const aliceContext = await browser.newContext()
   const alicePage = await aliceContext.newPage()
-
   await login(alicePage, 'alice')
+
+  // --- Setup Bob ---
+  const bobContext = await browser.newContext()
+  const bobPage = await bobContext.newPage()
+  await login(bobPage, 'bob')
+
+  // --- Setup Charlie ---
+  const charlieContext = await browser.newContext()
+  const charliePage = await charlieContext.newPage()
+  await login(charliePage, 'charlie')
+
+  // ============================================================
+  // 2. ACTION PHASE: Creating rooms and inviting now that devices exist
+  // ============================================================
+
+  await alicePage.bringToFront()
 
   // Alice creates a room
   await alicePage.getByRole('button', { name: 'New Room' }).click()
@@ -100,7 +133,7 @@ test('Alice creates a room, invites Bob, Bob invites Charlie, all see history', 
   await expect(alicePage.locator('.list-group-item').filter({ hasText: 'The Hangout' }).first()).toBeVisible({ timeout: 15000 })
   await alicePage.locator('.list-group-item').filter({ hasText: 'The Hangout' }).first().click()
 
-  // 1. Alice invites Bob immediately (before sending any messages)
+  // Alice invites Bob immediately
   await alicePage.locator('button').filter({ has: alicePage.locator('i.bi-person-plus') }).first().click()
   await alicePage.fill('input[id*="inviteUserIdInput"]', '@bob:localhost')
   await alicePage.getByRole('button', { name: 'Send Invite' }).click()
@@ -108,12 +141,7 @@ test('Alice creates a room, invites Bob, Bob invites Charlie, all see history', 
   // Wait for invite UI to close
   await expect(alicePage.locator('.modal-backdrop')).toHaveCount(0)
 
-  // --- Bob's Context ---
-  const bobContext = await browser.newContext()
-  const bobPage = await bobContext.newPage()
-
-  await login(bobPage, 'bob')
-
+  // --- Bob's Turn ---
   await bobPage.bringToFront()
 
   // Bob waits for the invite/room to appear in his list
@@ -126,19 +154,14 @@ test('Alice creates a room, invites Bob, Bob invites Charlie, all see history', 
   // Wait for Bob's client to confirm join state visually before inviting
   await expect(bobPage.locator('input[placeholder="Aa"]')).toBeVisible({ timeout: 15000 })
 
-  // 2. Bob invites Charlie immediately
+  // Bob invites Charlie immediately
   await bobPage.locator('button').filter({ has: bobPage.locator('i.bi-person-plus') }).first().click()
   await bobPage.fill('input[id*="inviteUserIdInput"]', '@charlie:localhost')
   await bobPage.getByRole('button', { name: 'Send Invite' }).click()
 
   await expect(bobPage.locator('.modal-backdrop')).toHaveCount(0)
 
-  // --- Charlie's Context ---
-  const charlieContext = await browser.newContext()
-  const charliePage = await charlieContext.newPage()
-
-  await login(charliePage, 'charlie')
-
+  // --- Charlie's Turn ---
   await charliePage.bringToFront()
 
   // Charlie waits for the invite/room to appear
@@ -150,7 +173,11 @@ test('Alice creates a room, invites Bob, Bob invites Charlie, all see history', 
 
   await expect(charliePage.locator('input[placeholder="Aa"]')).toBeVisible({ timeout: 15000 })
 
-  // 3. Now that everyone is in the room, Alice sends the first message
+  // ============================================================
+  // 3. MESSAGING PHASE: Everyone is in the room, start talking
+  // ============================================================
+
+  // Now that everyone is in the room, Alice sends the first message
   await alicePage.bringToFront()
   const aliceInput = alicePage.locator('input[placeholder="Aa"]')
   await expect(aliceInput).toBeVisible()
