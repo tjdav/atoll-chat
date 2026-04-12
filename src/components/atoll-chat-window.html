@@ -294,22 +294,33 @@ export default defineComponent({
           return
         }
         try {
+          joinRoomBtn.disabled = true
+          joinRoomBtn.textContent = 'Joining...'
+
           await joinRoom(activeRoomId)
+
           inviteState.classList.remove('d-transition-show')
           inviteState.classList.add('d-transition-none')
           timeline.classList.remove('d-transition-none')
           timeline.classList.add('d-transition-show')
           inputContainer.classList.remove('d-transition-none')
           inputContainer.classList.add('d-transition-show')
+
           setState('activeRoomReady', {
             roomId: activeRoomId,
             ts: Date.now()
           })
 
+          joinRoomBtn.disabled = false
+          joinRoomBtn.textContent = 'Join'
+
           // Optionally, trigger chat-list to re-render if needed
           setState('triggerRoomsUpdated', { ts: Date.now() })
         } catch (error) {
           console.error('Failed to join room:', error)
+          
+          joinRoomBtn.disabled = false
+          joinRoomBtn.textContent = 'Join'
         }
       })
       subscribe('triggerMessageSubmitted', async (payload) => {
