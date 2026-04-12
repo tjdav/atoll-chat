@@ -17,18 +17,11 @@ export default [
     },
     rules: {
       'id-denylist': [
-        'error',
-        'attr',
-        'err',
-        'e',
-        'cb',
-        'req',
-        'res',
-        'idx',
-        'ndx',
-        'val',
-        'obj',
-        'arr'
+        'attr', 'err', 'e', 'cb', 'req', 'res', 'idx', 'ndx', 'val', 'obj', 'arr',
+        'evt', 'el', 'elem', 'btn', 'msg', 'txt',
+        'str', 'num', 'bool', 'char', 'tmp', 'temp', 'len',
+        'fn', 'func', 'arg', 'args', 'param', 'params', 'ret', 'acc', 'cur', 'curr', 'prev',
+        'ctx', 'cfg', 'conf', 'env', 'dir', 'conn', 'pkg'
       ],
       'no-inline-comments': 'error',
       curly: ['error', 'all'],
