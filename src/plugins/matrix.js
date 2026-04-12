@@ -470,8 +470,36 @@ export default function ({
             return []
           }
           const currentUserId = client.getUserId()
-          return room.timeline.filter(event => event.getType() === 'm.room.message').map(event => {
+
+          return room.timeline.filter(event => {
+            if (event.getType() === 'm.room.message') {
+              return true
+            }
+            if (event.getType() === 'm.room.member' && event.getContent().membership === 'invite') {
+              return true
+            }
+            return false
+          }).map(event => {
             const eventId = event.getId()
+
+            if (event.getType() === 'm.room.member' && event.getContent().membership === 'invite') {
+              const targetId = event.getStateKey()
+              const senderId = event.getSender()
+              const senderName = room.getMember(senderId)?.name || senderId
+              const targetName = room.getMember(targetId)?.name || targetId
+
+              return {
+                id: eventId,
+                txnId: event.getTxnId(),
+                status: event.status,
+                sender: senderId,
+                body: `${senderName} sent an invite to ${targetName}`,
+                date: event.getDate(),
+                msgtype: 'm.invite',
+                info: {},
+                reactions: {}
+              }
+            }
 
             // Extract reactions from relations
             const timelineSet = room.getUnfilteredTimelineSet()
@@ -592,6 +620,24 @@ export default function ({
                   msgtype: event.getContent().msgtype,
                   info: event.getContent().info,
                   // New message won't have reactions initially
+                  reactions: {}
+                })
+              } else if (event.getType() === 'm.room.member' && event.getContent().membership === 'invite') {
+                const room = client.getRoom(roomId)
+                const targetId = event.getStateKey()
+                const senderId = event.getSender()
+                const senderName = room?.getMember(senderId)?.name || senderId
+                const targetName = room?.getMember(targetId)?.name || targetId
+
+                callback({
+                  id: event.getId(),
+                  txnId: event.getTxnId(),
+                  status: event.status,
+                  sender: senderId,
+                  body: `${senderName} sent an invite to ${targetName}`,
+                  date: event.getDate(),
+                  msgtype: 'm.invite',
+                  info: {},
                   reactions: {}
                 })
               } else if (event.getType() === 'm.reaction') {

@@ -8,7 +8,7 @@
 import { defineComponent } from 'coralite'
 export default defineComponent({
   client: {
-    components: ['atoll-message-bubble', 'atoll-torrent-bubble', 'atoll-message-reactions', 'atoll-message-reaction'],
+    components: ['atoll-message-bubble', 'atoll-torrent-bubble', 'atoll-message-reactions', 'atoll-message-reaction', 'atoll-system-message'],
     script: ({
       helpers
     }) => {
@@ -65,7 +65,11 @@ export default defineComponent({
         })
 
         const timelineRef = messagesContainer.getAttribute('ref')
-        if (message.isEncrypted && !message.body) {
+        if (message.msgtype === 'm.invite') {
+          const bubble = document.createElement('atoll-system-message')
+          bubble.appendChild(document.createTextNode(message.body))
+          return bubble
+        } else if (message.isEncrypted && !message.body) {
           const bubble = document.createElement('atoll-message-bubble')
           bubble.setAttribute('time', time)
           bubble.setAttribute('current-user', isCurrentUser)
