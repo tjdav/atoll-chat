@@ -66,9 +66,9 @@ export default function ({
                 }
               }
             })
-            
+
             await store.startup()
-            
+
             try {
               await temporaryClient.initRustCrypto()
               // ... rest of your background bootstrapping logic stays exactly the same
@@ -376,56 +376,96 @@ export default function ({
 
           return await client.sendEvent(roomId, 'm.room.message', content, '')
         },
-        createEncryptedRoom: globalContext => localContext => async (name, inviteUserId) => {
+        createRoom: globalContext => localContext => async (options) => {
           /** @type {import('matrix-js-sdk')} */
           const sdk = globalContext.imports.sdk
           const client = localContext.values.getClient()
-          
+
           if (!client) {
             throw new Error('Matrix client not initialized')
           }
           await client.waitForClientWellKnown()
-          
-          const createResult = await client.createRoom({
-            name,
-            preset: sdk.Preset.PrivateChat,
-            is_direct: !!inviteUserId,
-            invite: inviteUserId ? [inviteUserId] : [],
-            initial_state: [
-              {
-                type: 'm.room.encryption',
-                state_key: '',
-                content: { algorithm: 'm.megolm.v1.aes-sha2' }
-              }, 
-              {
-                type: 'm.room.history_visibility',
-                state_key: '',
-                content: { history_visibility: 'shared' }
-              }
-            ]
+
+          const roomOptions = {
+            name: options.name,
+            preset: options.preset || sdk.Preset.PrivateChat,
+            is_direct: !!options.is_direct
+          }
+
+          if (options.visibility) {
+            roomOptions.visibility = options.visibility
+          }
+
+          if (options.topic) {
+            roomOptions.topic = options.topic
+          }
+
+          if (options.room_alias_name) {
+            roomOptions.room_alias_name = options.room_alias_name
+          }
+
+          const initialState = []
+
+          if (options.enableEncryption !== false) {
+            initialState.push({
+              type: 'm.room.encryption',
+              state_key: '',
+              content: { algorithm: 'm.megolm.v1.aes-sha2' }
+            })
+          }
+
+          initialState.push({
+            type: 'm.room.history_visibility',
+            state_key: '',
+            content: { history_visibility: 'shared' }
           })
 
+          roomOptions.initial_state = initialState
+
+          const createResult = await client.createRoom(roomOptions)
+
           const roomId = createResult.room_id
+
+          // Manually invite users with MSC4268 shareEncryptedHistory option
+          if (options.invite && options.invite.length > 0) {
+            for (const userId of options.invite) {
+              try {
+                await client.invite(roomId, userId, { shareEncryptedHistory: true })
+              } catch (error) {
+                console.error(`Failed to invite user ${userId} to room ${roomId}`, error)
+              }
+            }
+          }
 
           // Wait for Crypto and Member State to fully settle
           await new Promise((resolve) => {
             const checkReady = () => {
               const room = client.getRoom(roomId)
-              if (!room) return false
-              
+              if (!room) {
+                return false
+              }
+
               // Ensure the client knows this room is E2EE
-              if (!client.isRoomEncrypted(roomId)) return false
+              if (options.enableEncryption !== false && !client.isRoomEncrypted(roomId)) {
+                return false
+              }
 
               // Ensure the invited user is actually registered in the state
-              if (inviteUserId) {
-                const member = room.getMember(inviteUserId)
-                if (!member || member.membership !== 'invite') return false
+              if (options.invite && options.invite.length > 0) {
+                for (const userId of options.invite) {
+                  const member = room.getMember(userId)
+                  if (!member || member.membership !== 'invite') {
+                    return false
+                  }
+                }
               }
-              
+
               return true
             }
 
-            if (checkReady()) return resolve()
+            if (checkReady()) {
+              return resolve()
+            }
 
             const onStateEvent = (event) => {
               if (event.getRoomId() === roomId && checkReady()) {
@@ -437,21 +477,23 @@ export default function ({
           })
 
           // Download keys and VERIFY devices exist
-          if (inviteUserId) {
-            try {
-              const keys = await client.downloadKeys([inviteUserId], true)
-              
-              // Verify the user actually has devices uploaded to the homeserver
-              const userDevices = keys[inviteUserId]
-              if (!userDevices || Object.keys(userDevices).length === 0) {
-                console.warn(
-                  `⚠️ CRITICAL: ${inviteUserId} has no devices on the server! ` +
-                  `Any messages sent now CANNOT be decrypted by them later. ` +
-                  `They must log in and sync at least once before receiving E2EE messages.`
-                )
+          if (options.invite && options.invite.length > 0) {
+            for (const inviteUserId of options.invite) {
+              try {
+                const keys = await client.downloadKeys([inviteUserId], true)
+
+                // Verify the user actually has devices uploaded to the homeserver
+                const userDevices = keys[inviteUserId]
+                if (!userDevices || Object.keys(userDevices).length === 0) {
+                  console.warn(
+                    `⚠️ CRITICAL: ${inviteUserId} has no devices on the server! ` +
+                    `Any messages sent now CANNOT be decrypted by them later. ` +
+                    `They must log in and sync at least once before receiving E2EE messages.`
+                  )
+                }
+              } catch (error) {
+                console.warn(`Failed to pre-fetch keys for ${inviteUserId}`, error)
               }
-            } catch (err) {
-              console.warn(`Failed to pre-fetch keys for ${inviteUserId}`, err)
             }
           }
 
@@ -476,7 +518,7 @@ export default function ({
           if (!client) {
             throw new Error('Matrix client not initialized')
           }
-          
+
           // Send the HTTP request to join
           const joinResult = await client.joinRoom(roomId)
 
@@ -485,7 +527,7 @@ export default function ({
             // Helper function to check if the room meets our criteria
             const checkReady = () => {
               const room = client.getRoom(roomId)
-              
+
               if (room && room.hasMembershipState(client.getUserId(), 'join')) {
                 if (room.hasEncryptionStateEvent()) {
                   // Give the Rust crypto layer a tiny buffer to initialize the encryptor
@@ -507,12 +549,16 @@ export default function ({
 
             // Fired when the room is added to the client
             const onRoom = (room) => {
-              if (room.roomId === roomId && checkReady()) cleanup()
+              if (room.roomId === roomId && checkReady()) {
+                cleanup()
+              }
             }
 
             // Fired when state events (like m.room.encryption) arrive
             const onRoomStateEvent = (event) => {
-              if (event.getRoomId() === roomId && checkReady()) cleanup()
+              if (event.getRoomId() === roomId && checkReady()) {
+                cleanup()
+              }
             }
 
             // Helper to prevent memory leaks

@@ -1,0 +1,114 @@
+<template id="atoll-invite-users">
+  <div class="mb-3">
+    <label class="form-label" for="inviteInput">Invite Users</label>
+    <div class="input-group mb-2">
+      <input type="text" class="form-control bg-dark text-white border-secondary" id="inviteInput" placeholder="@user:example.com" ref="inviteInput">
+      <button class="btn btn-outline-secondary" type="button" ref="addBtn">Add</button>
+    </div>
+    <div ref="errorContainer" class="text-danger small mb-2" style="display: none;"></div>
+    <div ref="badgeContainer" class="d-flex flex-wrap gap-2"></div>
+    <input type="hidden" name="invitedUsers" ref="hiddenInput" value="">
+  </div>
+</template>
+
+<script type="module" client>
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  client: {
+    script: ({ helpers }) => {
+      const { refs, getClient } = helpers
+
+      const inviteInput = refs('inviteInput')
+      const addBtn = refs('addBtn')
+      const badgeContainer = refs('badgeContainer')
+      const hiddenInput = refs('hiddenInput')
+      const errorContainer = refs('errorContainer')
+
+      const invitedUsers = new Set()
+
+      const updateHiddenInput = () => {
+        hiddenInput.value = Array.from(invitedUsers).join(',')
+      }
+
+      const renderBadges = () => {
+        badgeContainer.replaceChildren()
+        invitedUsers.forEach(userId => {
+          const badge = document.createElement('span')
+          badge.className = 'badge rounded-pill text-bg-secondary d-flex align-items-center'
+
+          const textNode = document.createTextNode(userId)
+          badge.appendChild(textNode)
+
+          const removeBtn = document.createElement('button')
+          removeBtn.type = 'button'
+          removeBtn.className = 'btn-close btn-close-white ms-2'
+          removeBtn.style.fontSize = '0.5em'
+          removeBtn.setAttribute('aria-label', 'Remove')
+
+          removeBtn.addEventListener('click', () => {
+            invitedUsers.delete(userId)
+            renderBadges()
+            updateHiddenInput()
+          })
+
+          badge.appendChild(removeBtn)
+          badgeContainer.appendChild(badge)
+        })
+      }
+
+      const showError = (message) => {
+        errorContainer.textContent = message
+        errorContainer.style.display = 'block'
+      }
+
+      const hideError = () => {
+        errorContainer.textContent = ''
+        errorContainer.style.display = 'none'
+      }
+
+      const handleAdd = async () => {
+        const userId = inviteInput.value.trim()
+        if (!userId) {
+          return
+        }
+
+        if (invitedUsers.has(userId)) {
+          showError('User already added')
+          return
+        }
+
+        const client = getClient ? getClient() : null
+        if (!client) {
+          showError('Matrix client not initialized')
+          return
+        }
+
+        hideError()
+
+        try {
+          // Attempt to verify the user exists by getting their profile
+          await client.getProfileInfo(userId)
+
+          invitedUsers.add(userId)
+          inviteInput.value = ''
+          renderBadges()
+          updateHiddenInput()
+        } catch (error) {
+          console.error('Failed to verify user:', error)
+          showError('User not found or could not be verified')
+        }
+      }
+
+      addBtn.addEventListener('click', handleAdd)
+
+      inviteInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault()
+          handleAdd()
+        }
+      })
+    }
+  }
+})
+</script>

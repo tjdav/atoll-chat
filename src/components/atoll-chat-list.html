@@ -27,20 +27,51 @@
     <div class="modal fade"  tabindex="-1" aria-labelledby="{{ ref_newRoomModalLabel }}" aria-hidden="true" ref="newRoomModal">
       <div class="modal-dialog">
         <div class="modal-content text-bg-dark">
-          <div class="modal-header border-secondary">
-            <h1 class="modal-title fs-5" id="{{ ref_newRoomModalLabel }}">Create New Room</h1>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-          </div>
-          <div class="modal-body">
-            <div class="mb-3">
-              <label for="{{ ref_roomNameInput }}" class="form-label">Room Name</label>
-              <input type="text" class="form-control bg-dark text-white border-secondary" ref="roomNameInput" id="{{ ref_roomNameInput  }}">
+          <form id="{{ ref_createRoomForm }}" ref="createRoomForm">
+            <div class="modal-header border-secondary">
+              <h1 class="modal-title fs-5" id="{{ ref_newRoomModalLabel }}">Create New Room</h1>
+              <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-          </div>
-          <div class="modal-footer border-secondary">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-            <button type="button" class="btn btn-primary" ref="createRoomBtn">Create</button>
-          </div>
+            <div class="modal-body">
+              <div class="mb-3">
+                <label for="{{ ref_roomNameInput }}" class="form-label">Room Name</label>
+                <input type="text" name="name" class="form-control bg-dark text-white border-secondary" ref="roomNameInput" id="{{ ref_roomNameInput  }}" required>
+              </div>
+              <div class="mb-3">
+                <label for="{{ ref_roomPreset }}" class="form-label">Preset</label>
+                <select name="preset" class="form-select bg-dark text-white border-secondary" id="{{ ref_roomPreset }}">
+                  <option value="private_chat">Private Chat</option>
+                  <option value="public_chat">Public Chat</option>
+                  <option value="trusted_private_chat">Trusted Private Chat</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="{{ ref_roomVisibility }}" class="form-label">Visibility</label>
+                <select name="visibility" class="form-select bg-dark text-white border-secondary" id="{{ ref_roomVisibility }}">
+                  <option value="private">Private</option>
+                  <option value="public">Public</option>
+                </select>
+              </div>
+              <div class="mb-3">
+                <label for="{{ ref_roomTopic }}" class="form-label">Topic</label>
+                <input type="text" name="topic" class="form-control bg-dark text-white border-secondary" id="{{ ref_roomTopic }}">
+              </div>
+              <div class="mb-3 form-check">
+                <input type="checkbox" name="is_direct" class="form-check-input" id="{{ ref_isDirectCheck }}">
+                <label class="form-check-label" for="{{ ref_isDirectCheck }}">Direct Message</label>
+              </div>
+              <div class="mb-3 form-check">
+                <input type="checkbox" name="enableEncryption" class="form-check-input" id="{{ ref_enableEncryptionCheck }}" checked>
+                <label class="form-check-label" for="{{ ref_enableEncryptionCheck }}">Enable Encryption</label>
+              </div>
+              
+              <atoll-invite-users></atoll-invite-users>
+            </div>
+            <div class="modal-footer border-secondary">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+              <button type="submit" class="btn btn-primary" ref="createRoomBtn">Create</button>
+            </div>
+          </form>
         </div>
       </div>
     </div>
@@ -52,6 +83,7 @@ import { defineComponent } from 'coralite'
 
 export default defineComponent({
   client: {
+    components: ['atoll-invite-users'],
     imports: [
       {
         specifier: 'bootstrap',
@@ -65,7 +97,7 @@ export default defineComponent({
       const {
         refs: references,
         getRooms,
-        createEncryptedRoom,
+        createRoom,
         subscribe,
         setState,
         getState
@@ -73,7 +105,7 @@ export default defineComponent({
       const { Modal } = imports
       const roomList = references('roomList')
       const newRoomModal = references('newRoomModal')
-      const roomNameInput = references('roomNameInput')
+      const createRoomForm = references('createRoomForm')
       const createRoomBtn = references('createRoomBtn')
       const openNewRoomModalBtn = references('openNewRoomModalBtn')
       const modalInstance = Modal.getOrCreateInstance(newRoomModal)
@@ -226,15 +258,31 @@ export default defineComponent({
 
         existingNodes.forEach(node => node.remove())
       }
-      createRoomBtn.addEventListener('click', async () => {
-        const roomName = roomNameInput.value.trim()
-        if (!roomName) {
+      createRoomForm.addEventListener('submit', async (event) => {
+        event.preventDefault()
+        const formData = new FormData(createRoomForm)
+
+        const options = {
+          name: formData.get('name').trim(),
+          preset: formData.get('preset'),
+          visibility: formData.get('visibility'),
+          topic: formData.get('topic').trim(),
+          is_direct: formData.get('is_direct') === 'on',
+          enableEncryption: formData.get('enableEncryption') === 'on'
+        }
+
+        const invitedUsers = formData.get('invitedUsers')
+        if (invitedUsers) {
+          options.invite = invitedUsers.split(',').map(id => id.trim()).filter(id => id.length > 0)
+        }
+
+        if (!options.name) {
           return
         }
         try {
           const loadingSpinner = document.createElement('span')
           const loadingSpinnerStatus = document.createElement('span')
-          
+
           createRoomBtn.disabled = true
           loadingSpinnerStatus.setAttribute('role', 'status')
           loadingSpinner.setAttribute('class', 'spinner-border spinner-border-sm me-1')
@@ -243,16 +291,25 @@ export default defineComponent({
           loadingSpinnerStatus.textContent = 'Loading...'
           createRoomBtn.replaceChildren(loadingSpinner, loadingSpinnerStatus)
 
-          await createEncryptedRoom(roomName)
-          roomNameInput.value = ''
-          
+          await createRoom(options)
+
+          createRoomForm.reset()
+          const inviteComponent = createRoomForm.querySelector('atoll-invite-users')
+          if (inviteComponent) {
+            inviteComponent.setAttribute('reset', Date.now().toString())
+          }
+
           createRoomBtn.textContent = 'Create'
+          createRoomBtn.disabled = false
           modalInstance.hide()
 
           // Re-render rooms list
           await renderRooms()
         } catch (error) {
           console.error('Failed to create room:', error)
+        } finally {
+          createRoomBtn.disabled = false
+          createRoomBtn.textContent = 'Create'
         }
       })
       subscribe('isLoggedIn', (isLoggedIn) => {

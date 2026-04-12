@@ -318,7 +318,7 @@ export default defineComponent({
           setState('triggerRoomsUpdated', { ts: Date.now() })
         } catch (error) {
           console.error('Failed to join room:', error)
-          
+
           joinRoomBtn.disabled = false
           joinRoomBtn.textContent = 'Join'
         }
