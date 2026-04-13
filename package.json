@@ -14,6 +14,7 @@
   "scripts": {
     "start": "node scripts/start-dev.js",
     "start:app": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
+    "start:services": "docker compose up -d",
     "start:tracker": "node src/server/tracker.js",
     "build": "coralite-scripts build",
     "lint:format": "eslint --cache --fix .",
