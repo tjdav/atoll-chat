@@ -47,6 +47,22 @@ export default function ({
               store: store,
               cryptoCallbacks: {
                 getSecretStorageKey: async ({ keys }, name) => {
+                  // Check if we have a cached secret storage key for any of the requested keys
+                  for (const keyId of Object.keys(keys)) {
+                    const cachedKeyStr = await helpers.getPreference(`secret_storage_key_${keyId}`)
+                    if (cachedKeyStr) {
+                      try {
+                        // The cached string is a comma-separated list of numbers
+                        const keyArray = cachedKeyStr.split(',').map(Number)
+                        const privateKey = new Uint8Array(keyArray)
+                        return [keyId, privateKey]
+                      } catch (error) {
+                        console.warn('Failed to parse cached secret storage key', error)
+                      }
+                    }
+                  }
+
+                  // If no cached key was found, prompt the user
                   return new Promise((resolve) => {
                     const promptId = Date.now()
                     const abortController = new AbortController()
@@ -63,6 +79,16 @@ export default function ({
                       ts: Date.now()
                     })
                   })
+                },
+                cacheSecretStorageKey: async (keyId, keyInfo, privateKey) => {
+                  try {
+                    // Convert Uint8Array to comma-separated string for easy storage
+                    const keyArray = Array.from(privateKey)
+                    const keyStr = keyArray.join(',')
+                    await helpers.setPreference(`secret_storage_key_${keyId}`, keyStr)
+                  } catch (error) {
+                    console.warn('Failed to cache secret storage key', error)
+                  }
                 }
               }
             })
