@@ -1,6 +1,11 @@
 <template id="atoll-chat-timeline">
-  <div class="d-flex flex-column p-4 overflow-auto h-100" ref="messagesContainer">
-    <!-- Messages rendered here -->
+  <div class="d-flex flex-column h-100 position-relative">
+    <div class="d-flex flex-column p-4 overflow-auto flex-grow-1" ref="messagesContainer">
+      <!-- Messages rendered here -->
+    </div>
+    <div ref="typingIndicatorContainer" class="position-absolute bottom-0 start-50 translate-middle-x mb-2 d-none" style="z-index: 10;">
+      <!-- Typing indicator rendered here -->
+    </div>
   </div>
 </template>
 
@@ -17,9 +22,11 @@ export default defineComponent({
         subscribe,
         getCurrentUserId,
         getRoomMessages,
-        onRoomMessage
+        onRoomMessage,
+        getRoom
       } = helpers
       const messagesContainer = refs('messagesContainer')
+      const typingIndicatorContainer = refs('typingIndicatorContainer')
       let currentCleanup = null
       const scrollToBottom = (smooth = true) => {
         messagesContainer.scrollTo({
@@ -190,6 +197,8 @@ export default defineComponent({
         }
         currentRoomId = roomId
         messagesContainer.replaceChildren()
+        typingMembers.clear()
+        updateTypingIndicator()
         const currentUserId = await getCurrentUserId()
 
         const handleIncomingMessage = (msg, isCurrentUser) => {
@@ -268,9 +277,78 @@ export default defineComponent({
         executePendingScroll()
       })
 
+      const typingMembers = new Set()
+
+      const updateTypingIndicator = async () => {
+        if (typingMembers.size === 0) {
+          typingIndicatorContainer.classList.add('d-none')
+          typingIndicatorContainer.replaceChildren()
+          return
+        }
+
+        const room = await getRoom(currentRoomId)
+        if (!room || room.id !== currentRoomId) {
+          return
+        }
+
+        const memberNames = []
+        for (const userId of typingMembers) {
+          const member = room.members?.find(m => m.userId === userId)
+          memberNames.push(member?.name || userId)
+        }
+
+        let text = ''
+        if (memberNames.length === 1) {
+          text = `${memberNames[0]} is typing...`
+        } else if (memberNames.length === 2) {
+          text = `${memberNames[0]} and ${memberNames[1]} are typing...`
+        } else {
+          text = 'Several people are typing...'
+        }
+
+        const systemMsg = document.createElement('atoll-system-message')
+        systemMsg.appendChild(document.createTextNode(text))
+
+        typingIndicatorContainer.replaceChildren(systemMsg)
+        typingIndicatorContainer.classList.remove('d-none')
+      }
+
+      // Track the subscription cleanup
+      let typingSubscriptionCleanup = null
+
+      const setupTypingSubscription = () => {
+        if (typingSubscriptionCleanup) {
+          typingSubscriptionCleanup.abort()
+        }
+        const ac = new AbortController()
+        typingSubscriptionCleanup = ac
+        subscribe('triggerTypingStateChanged', async (payload) => {
+          if (!payload || payload.roomId !== currentRoomId) {
+            return
+          }
+
+          const currentUserId = await getCurrentUserId()
+          if (payload.userId === currentUserId) {
+            return
+          }
+
+          if (payload.isTyping) {
+            typingMembers.add(payload.userId)
+          } else {
+            typingMembers.delete(payload.userId)
+          }
+
+          updateTypingIndicator()
+        }, { signal: ac.signal })
+      }
+      setupTypingSubscription()
+
       return () => {
         if (currentCleanup) {
           currentCleanup()
+        }
+        if (typingSubscriptionCleanup) {
+          typingSubscriptionCleanup.abort()
         }
       }
     }

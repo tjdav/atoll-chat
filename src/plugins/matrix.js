@@ -200,6 +200,14 @@ export default function ({
             client.on('Room.myMembership', () => {
               setState('triggerRoomsUpdated', { ts: Date.now() })
             })
+            client.on('RoomMember.typing', (event, member) => {
+              setState('triggerTypingStateChanged', {
+                roomId: member.roomId,
+                userId: member.userId,
+                isTyping: member.typing,
+                ts: Date.now()
+              })
+            })
           }
           return client
         }
@@ -375,6 +383,15 @@ export default function ({
           }
 
           return await client.sendEvent(roomId, 'm.room.message', content, '')
+        },
+        sendTypingStatus: globalContext => localContext => async (roomId, isTyping) => {
+          /** @type {MatrixClient}  */
+          const client = localContext.values.getClient()
+          if (!client) {
+            throw new Error('Matrix client not initialized')
+          }
+          // Default timeout of 30 seconds
+          return await client.sendTyping(roomId, isTyping, 30000)
         },
         createRoom: globalContext => localContext => async (options) => {
           /** @type {import('matrix-js-sdk')} */

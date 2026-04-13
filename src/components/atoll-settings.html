@@ -25,7 +25,20 @@
       <!-- General Settings -->
       <div ref="generalSettings" class="settings-section">
         <h2 class="mb-4 border-bottom border-secondary pb-2">General Settings</h2>
-        <p class="text-muted">General application settings will be added here.</p>
+        
+        <div class="card bg-dark text-white border-secondary mb-4">
+          <div class="card-body">
+            <h5 class="card-title"><i class="bi bi-chat-dots text-primary me-2"></i> Chat Settings</h5>
+            
+            <div class="form-check form-switch mt-3">
+              <input class="form-check-input" type="checkbox" role="switch" id="typingNotificationsSwitch" ref="typingNotificationsSwitch" checked>
+              <label class="form-check-label" for="typingNotificationsSwitch">
+                Send typing notifications
+                <small class="d-block text-muted">Let others know when you are typing a message. You will still be able to see when others are typing even if this is disabled.</small>
+              </label>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Secret Storage Settings -->
@@ -71,6 +84,28 @@ export default defineComponent({
       const generalSettings = references('generalSettings')
       const secretStorageSettings = references('secretStorageSettings')
       const bootstrapStorageBtn = references('bootstrapStorageBtn')
+      const typingNotificationsSwitch = references('typingNotificationsSwitch')
+
+      const { getTypingNotificationsPreference, setTypingNotificationsPreference } = helpers
+
+      // Initialize switch
+      const initSettings = async () => {
+        try {
+          const typingPref = await getTypingNotificationsPreference()
+          typingNotificationsSwitch.checked = typingPref
+        } catch (error) {
+          console.error('Failed to get preferences:', error)
+        }
+      }
+      initSettings()
+
+      typingNotificationsSwitch.addEventListener('change', async (event) => {
+        try {
+          await setTypingNotificationsPreference(event.target.checked)
+        } catch (error) {
+          console.error('Failed to set typing notification preference:', error)
+        }
+      })
 
       const sections = {
         general: generalSettings,

@@ -42,7 +42,9 @@ export default defineComponent({
       const {
         refs: references,
         subscribe,
-        setState
+        setState,
+        getTypingNotificationsPreference,
+        sendTypingStatus
       } = helpers
       const messageInput = references('messageInput')
       const sendButton = references('sendBtn')
@@ -56,6 +58,35 @@ export default defineComponent({
       const actionVoiceIcon = references('actionVoiceIcon')
       const voiceDurationDisplay = references('voiceDurationDisplay')
       const sendVoiceBtn = references('sendVoiceBtn')
+
+      let typingTimeout = null
+      let isTyping = false
+      let activeRoomId = null
+
+      subscribe('activeRoomId', roomId => {
+        activeRoomId = roomId
+      })
+
+      const handleTyping = async () => {
+        const shouldSend = await getTypingNotificationsPreference()
+
+        if (!shouldSend || !activeRoomId) {
+          return
+        }
+
+        if (!isTyping) {
+          isTyping = true
+          sendTypingStatus(activeRoomId, true).catch(console.error)
+        }
+
+        clearTimeout(typingTimeout)
+
+        typingTimeout = setTimeout(() => {
+          isTyping = false
+          sendTypingStatus(activeRoomId, false).catch(console.error)
+        }, 3000)
+      }
+
       const updateInputButtons = () => {
         const text = messageInput.value.trim()
         if (text) {
@@ -70,7 +101,12 @@ export default defineComponent({
           sendButton.classList.add('d-transition-none')
         }
       }
-      messageInput.addEventListener('input', updateInputButtons)
+
+      messageInput.addEventListener('input', () => {
+        updateInputButtons()
+        handleTyping()
+      })
+
       let mediaRecorder = null
       let audioChunks = []
       let audioBlob = null

@@ -101,6 +101,26 @@ export default createPlugin({
           openReq.onerror = event => reject(openReq.error)
         })
       },
+      getTypingNotificationsPreference: globalContext => localContext => async () => {
+        const { getPreference } = localContext.helpers
+
+        try {
+          const value = await getPreference('typingNotifications')
+
+          if (value === null || value === undefined) {
+            return true
+          }
+
+          return value
+        } catch (error) {
+          console.error('Error getting typing notifications preference:', error)
+          return true
+        }
+      },
+      setTypingNotificationsPreference: globalContext => localContext => async (value) => {
+        const { setPreference } = localContext.helpers
+        await setPreference('typingNotifications', value)
+      },
       getLikes: globalContext => localContext => async () => {
         await localContext.values.initDB()
         return new Promise((resolve, reject) => {
