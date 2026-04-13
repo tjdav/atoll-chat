@@ -39,16 +39,16 @@
     "sirv-cli": "^3.0.1"
   },
   "dependencies": {
-    "@matrix-org/matrix-sdk-crypto-wasm": "^18.0.0",
     "@transcribe/shout": "^1.0.7",
     "@transcribe/transcriber": "^3.0.1",
     "bittorrent-tracker": "^11.2.2",
     "bootstrap": "^5.3.8",
     "emoji-picker-element": "^1.29.1",
+    "idb": "^8.0.3",
     "isomorphic-dompurify": "^3.0.0",
     "marked": "^17.0.4",
-    "matrix-js-sdk": "^41.3.0",
     "node-datachannel": "^0.32.1",
+    "pocketbase": "^0.26.8",
     "turndown": "^7.2.2",
     "webtorrent": "2.8.5"
   },
