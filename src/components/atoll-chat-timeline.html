@@ -3,8 +3,8 @@
     <div class="d-flex flex-column p-4 overflow-auto flex-grow-1" ref="messagesContainer">
       <!-- Messages rendered here -->
     </div>
-    <div ref="typingIndicatorContainer" class="position-absolute bottom-0 start-50 translate-middle-x mb-2 d-none" style="z-index: 10;">
-      <!-- Typing indicator rendered here -->
+    <div class="position-absolute bottom-0 start-50 translate-middle-x mb-2" style="z-index: 10;">
+      <atoll-typing-indicator></atoll-typing-indicator>
     </div>
   </div>
 </template>
@@ -13,20 +13,19 @@
 import { defineComponent } from 'coralite'
 export default defineComponent({
   client: {
-    components: ['atoll-message-bubble', 'atoll-torrent-bubble', 'atoll-message-reactions', 'atoll-message-reaction', 'atoll-system-message'],
+    components: ['atoll-message-bubble', 'atoll-torrent-bubble', 'atoll-message-reactions', 'atoll-message-reaction', 'atoll-system-message', 'atoll-typing-indicator'],
     script: ({
-      helpers
+      helpers,
+      signal
     }) => {
       const {
         refs,
         subscribe,
         getCurrentUserId,
         getRoomMessages,
-        onRoomMessage,
-        getRoom
+        onRoomMessage
       } = helpers
       const messagesContainer = refs('messagesContainer')
-      const typingIndicatorContainer = refs('typingIndicatorContainer')
       let currentCleanup = null
       const scrollToBottom = (smooth = true) => {
         messagesContainer.scrollTo({
@@ -44,7 +43,7 @@ export default defineComponent({
           return
         }
 
-        const msgElement = document.getElementById(`msg-${pendingScrollEventId}`)
+        const msgElement = document.getElementById(`messageData-${pendingScrollEventId}`)
         if (msgElement) {
           msgElement.scrollIntoView({
             behavior: 'smooth',
@@ -183,7 +182,7 @@ export default defineComponent({
       const renderMessage = (message, isCurrentUser) => {
         const content = createInnerContent(message, isCurrentUser)
         // Add ID for scrolling
-        content.id = `msg-${message.txnId || message.id}`
+        content.id = `messageData-${message.txnId || message.id}`
 
         return content
       }
@@ -197,50 +196,48 @@ export default defineComponent({
         }
         currentRoomId = roomId
         messagesContainer.replaceChildren()
-        typingMembers.clear()
-        updateTypingIndicator()
         const currentUserId = await getCurrentUserId()
 
-        const handleIncomingMessage = (msg, isCurrentUser) => {
+        const handleIncomingMessage = (messageData, isCurrentUser) => {
           // In Matrix, local echo IDs look like `~!<room>:localhost:m12345.0` but the getTxnId() might return `m12345.0`.
-          // We find the element that has `msg.txnId` in its ID string if exact match fails.
+          // We find the element that has `messageData.txnId` in its ID string if exact match fails.
           // Upgrade an existing local echo message if it was matched by txnId.
-          if (msg.txnId) {
-            let existingEcho = document.getElementById(`msg-${msg.txnId}`)
+          if (messageData.txnId) {
+            let existingEcho = document.getElementById(`messageData-${messageData.txnId}`)
             if (!existingEcho) {
               // Try to find the local echo by matching the end of the id, as matrix-js-sdk prepends the room id and tilde.
-              const echoes = document.querySelectorAll(`[id*="${msg.txnId}"]`)
+              const echoes = document.querySelectorAll(`[id*="${messageData.txnId}"]`)
               if (echoes.length > 0) {
                 existingEcho = echoes[0]
               }
             }
-            if (existingEcho && existingEcho.id !== `msg-${msg.id}`) {
-              existingEcho.id = `msg-${msg.id}`
+            if (existingEcho && existingEcho.id !== `messageData-${messageData.id}`) {
+              existingEcho.id = `messageData-${messageData.id}`
               // Upgrade the bubble's event-id
               const bubble = existingEcho.querySelector('atoll-message-bubble') || existingEcho
-              bubble.setAttribute('event-id', msg.id)
+              bubble.setAttribute('event-id', messageData.id)
 
               // Ensure the inner torrent bubble also gets upgraded
               const torrentBubble = existingEcho.querySelector('atoll-torrent-bubble')
               if (torrentBubble) {
-                torrentBubble.setAttribute('event-id', msg.id)
+                torrentBubble.setAttribute('event-id', messageData.id)
               }
 
               // Also upgrade reactions container so incoming reactions match
               const reactionsContainer = existingEcho.querySelector('atoll-message-reactions')
               if (reactionsContainer) {
-                reactionsContainer.setAttribute('event-id', msg.id)
+                reactionsContainer.setAttribute('event-id', messageData.id)
               }
             }
           }
 
           // If the message ID is already in the DOM, skip it.
-          if (document.getElementById(`msg-${msg.id}`) || (msg.txnId && document.getElementById(`msg-${msg.txnId}`)) || (msg.txnId && document.querySelector(`[id*="${msg.txnId}"]`))) {
+          if (document.getElementById(`messageData-${messageData.id}`) || (messageData.txnId && document.getElementById(`messageData-${messageData.txnId}`)) || (messageData.txnId && document.querySelector(`[id*="${messageData.txnId}"]`))) {
             return
           }
 
           const nearBottom = isNearBottom()
-          const msgEl = renderMessage(msg, isCurrentUser)
+          const msgEl = renderMessage(messageData, isCurrentUser)
           messagesContainer.appendChild(msgEl)
 
           if (nearBottom || isCurrentUser) {
@@ -266,7 +263,7 @@ export default defineComponent({
         } else {
           setTimeout(() => scrollToBottom(false), 0)
         }
-      })
+      }, { signal })
 
       // Listen for requests to scroll to a specific message
       subscribe('targetScrollEventId', (payload) => {
@@ -275,80 +272,11 @@ export default defineComponent({
         }
         pendingScrollEventId = payload.eventId
         executePendingScroll()
-      })
-
-      const typingMembers = new Set()
-
-      const updateTypingIndicator = async () => {
-        if (typingMembers.size === 0) {
-          typingIndicatorContainer.classList.add('d-none')
-          typingIndicatorContainer.replaceChildren()
-          return
-        }
-
-        const room = await getRoom(currentRoomId)
-        if (!room || room.id !== currentRoomId) {
-          return
-        }
-
-        const memberNames = []
-        for (const userId of typingMembers) {
-          const member = room.members?.find(m => m.userId === userId)
-          memberNames.push(member?.name || userId)
-        }
-
-        let text = ''
-        if (memberNames.length === 1) {
-          text = `${memberNames[0]} is typing...`
-        } else if (memberNames.length === 2) {
-          text = `${memberNames[0]} and ${memberNames[1]} are typing...`
-        } else {
-          text = 'Several people are typing...'
-        }
-
-        const systemMsg = document.createElement('atoll-system-message')
-        systemMsg.appendChild(document.createTextNode(text))
-
-        typingIndicatorContainer.replaceChildren(systemMsg)
-        typingIndicatorContainer.classList.remove('d-none')
-      }
-
-      // Track the subscription cleanup
-      let typingSubscriptionCleanup = null
-
-      const setupTypingSubscription = () => {
-        if (typingSubscriptionCleanup) {
-          typingSubscriptionCleanup.abort()
-        }
-        const ac = new AbortController()
-        typingSubscriptionCleanup = ac
-        subscribe('triggerTypingStateChanged', async (payload) => {
-          if (!payload || payload.roomId !== currentRoomId) {
-            return
-          }
-
-          const currentUserId = await getCurrentUserId()
-          if (payload.userId === currentUserId) {
-            return
-          }
-
-          if (payload.isTyping) {
-            typingMembers.add(payload.userId)
-          } else {
-            typingMembers.delete(payload.userId)
-          }
-
-          updateTypingIndicator()
-        }, { signal: ac.signal })
-      }
-      setupTypingSubscription()
+      }, { signal })
 
       return () => {
         if (currentCleanup) {
           currentCleanup()
-        }
-        if (typingSubscriptionCleanup) {
-          typingSubscriptionCleanup.abort()
         }
       }
     }
