@@ -13,7 +13,7 @@
         <li class="nav-item mb-2">
           <a href="#" data-setting="secret-storage" class="nav-link text-white rounded-3 d-flex align-items-center">
             <i class="bi bi-shield-lock me-3 fs-5"></i>
-            Secret Storage
+            Password & Security
           </a>
         </li>
       </ul>
@@ -41,20 +41,20 @@
         </div>
       </div>
 
-      <!-- Secret Storage Settings -->
+      <!-- Password & Security Settings -->
       <div ref="secretStorageSettings" class="settings-section d-none">
-        <h2 class="mb-4 border-bottom border-secondary pb-2">Secret Storage</h2>
+        <h2 class="mb-4 border-bottom border-secondary pb-2">Password & Security</h2>
         <div class="card bg-dark text-white border-secondary mb-4">
           <div class="card-body">
-            <h5 class="card-title"><i class="bi bi-shield-lock text-success me-2"></i> Matrix Secret Storage</h5>
+            <h5 class="card-title"><i class="bi bi-shield-lock text-success me-2"></i> Local Vault</h5>
             <p class="card-text text-muted mb-4">
-              Secret storage allows you to securely store account data, such as end-to-end encryption keys, on your homeserver. Your data is encrypted before it leaves your device, so your homeserver cannot read it.
+              The local vault uses your password to encrypt and decrypt sensitive data securely stored in your browser.
             </p>
             <div class="alert alert-info border-info bg-transparent text-info">
-              <i class="bi bi-info-circle me-2"></i> Secret storage is automatically initialized when you log in. If a key is required, you will be prompted.
+              <i class="bi bi-info-circle me-2"></i> Test the password prompt below.
             </div>
             <button class="btn btn-outline-light" ref="bootstrapStorageBtn">
-              <i class="bi bi-arrow-clockwise me-2"></i> Re-verify / Setup Storage
+              <i class="bi bi-arrow-clockwise me-2"></i> Test Password Prompt
             </button>
           </div>
         </div>
@@ -145,35 +145,22 @@ export default defineComponent({
       })
 
       bootstrapStorageBtn.addEventListener('click', async () => {
-        const client = getClient()
-        if (client) {
-          try {
-            await client.getCrypto().bootstrapSecretStorage({
-              createSecretStorageKey: async () => {
-                return new Promise((resolve) => {
-                  const promptId = Date.now()
-                  const abortController = new AbortController()
-                  const handler = (payload) => {
-                    if (payload && payload.promptId === promptId) {
-                      abortController.abort()
-                      resolve(payload.password)
-                    }
-                  }
-                  helpers.subscribe('triggerPasswordPromptResolved', handler, { signal: abortController.signal })
-                  setState('triggerPasswordPrompt', {
-                    promptId,
-                    ts: Date.now()
-                  })
-                })
-              }
-            })
-            /**
-             * @todo Could add a toast here for success
-             */
-          } catch (error) {
-            console.error('Failed to bootstrap secret storage:', error)
+
+        const promptId = Date.now()
+        const abortController = new AbortController()
+        const handler = (payload) => {
+          if (payload && payload.promptId === promptId) {
+            abortController.abort()
+            console.log('Derived Key via PBKDF2:', payload.key)
+            alert('Password successfully derived to key! Check console.')
           }
         }
+        helpers.subscribe('triggerPasswordPromptResolved', handler, { signal: abortController.signal })
+        setState('triggerPasswordPrompt', {
+          promptId,
+          ts: Date.now()
+        })
+
       })
     }
   }

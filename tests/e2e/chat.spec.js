@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 test.use({
   launchOptions: {
-    args: [
+    args: [ // eslint-disable-line id-denylist
       '--use-fake-ui-for-media-stream',
       '--use-fake-device-for-media-stream',
       '--allow-loopback-in-peer-connection',

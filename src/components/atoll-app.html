@@ -23,8 +23,11 @@ export default defineComponent({
         refs: references,
         subscribe,
         setState,
-        restoreSession
+        restoreSession,
+        getCryptoManager
       } = helpers
+
+      getCryptoManager().initPasswordFlow(helpers)
       const loginView = references('loginView')
       const signupView = references('signupView')
       const appView = references('appView')

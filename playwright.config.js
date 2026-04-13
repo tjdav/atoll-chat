@@ -16,7 +16,7 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     launchOptions: {
-      args: [
+      args: [ // eslint-disable-line id-denylist
         '--use-fake-ui-for-media-stream',
         '--use-fake-device-for-media-stream',
         '--use-fake-device-for-media-stream',
