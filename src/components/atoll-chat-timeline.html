@@ -204,40 +204,8 @@ export default defineComponent({
         const currentUserId = await getCurrentUserId()
 
         const handleIncomingMessage = (messageData, isCurrentUser) => {
-          // In Matrix, local echo IDs look like `~!<room>:localhost:m12345.0` but the getTxnId() might return `m12345.0`.
-          // We find the element that has `messageData.txnId` in its ID string if exact match fails.
-          // Upgrade an existing local echo message if it was matched by txnId.
-          if (messageData.txnId) {
-            let existingEcho = document.getElementById(`messageData-${messageData.txnId}`)
-            if (!existingEcho) {
-              // Try to find the local echo by matching the end of the id, as matrix-js-sdk prepends the room id and tilde.
-              const echoes = document.querySelectorAll(`[id*="${messageData.txnId}"]`)
-              if (echoes.length > 0) {
-                existingEcho = echoes[0]
-              }
-            }
-            if (existingEcho && existingEcho.id !== `messageData-${messageData.id}`) {
-              existingEcho.id = `messageData-${messageData.id}`
-              // Upgrade the bubble's event-id
-              const bubble = existingEcho.querySelector('atoll-message-bubble') || existingEcho
-              bubble.setAttribute('event-id', messageData.id)
-
-              // Ensure the inner torrent bubble also gets upgraded
-              const torrentBubble = existingEcho.querySelector('atoll-torrent-bubble')
-              if (torrentBubble) {
-                torrentBubble.setAttribute('event-id', messageData.id)
-              }
-
-              // Also upgrade reactions container so incoming reactions match
-              const reactionsContainer = existingEcho.querySelector('atoll-message-reactions')
-              if (reactionsContainer) {
-                reactionsContainer.setAttribute('event-id', messageData.id)
-              }
-            }
-          }
-
           // If the message ID is already in the DOM, skip it.
-          if (document.getElementById(`messageData-${messageData.id}`) || (messageData.txnId && document.getElementById(`messageData-${messageData.txnId}`)) || (messageData.txnId && document.querySelector(`[id*="${messageData.txnId}"]`))) {
+          if (document.getElementById(`messageData-${messageData.id}`)) {
             return
           }
 

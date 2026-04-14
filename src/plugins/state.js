@@ -1,6 +1,6 @@
-import { createPlugin } from 'coralite'
+import { definePlugin } from 'coralite'
 
-export default createPlugin({
+export default definePlugin({
   name: 'state',
   client: {
     setup () {

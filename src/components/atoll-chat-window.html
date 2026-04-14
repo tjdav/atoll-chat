@@ -394,7 +394,6 @@ export default defineComponent({
           const jwk = await crypto.subtle.exportKey('jwk', key)
           const base64Iv = btoa(Array.from(iv, byte => String.fromCodePoint(byte)).join(''))
 
-          // Send Matrix Signal
           const torrentPayload = {
             magnetURI,
             key: jwk,

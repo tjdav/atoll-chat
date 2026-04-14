@@ -58,7 +58,6 @@ export default defineComponent({
           artistSpan.textContent = file.artist || 'Unknown Artist'
           const durationSpan = document.createElement('span')
           // Mock duration or format file size if no duration is known.
-          // Often audio blobs in matrix lack duration before load.
           durationSpan.textContent = file.duration ? formatTime(file.duration) : ''
           metaDiv.appendChild(artistSpan)
           metaDiv.appendChild(durationSpan)

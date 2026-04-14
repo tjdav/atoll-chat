@@ -1,5 +1,5 @@
-import { createPlugin } from 'coralite'
-export default createPlugin({
+import { definePlugin } from 'coralite'
+export default definePlugin({
   name: 'user-preferences-plugin',
   client: {
     setup (context) {

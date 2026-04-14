@@ -41,7 +41,7 @@ export default defineComponent({
         refs: references,
         subscribe,
         setState,
-        rejectCall
+        hangupCall
       } = helpers
       const callModal = references('callModal')
       const remoteVideo = references('remoteVideo')
@@ -121,10 +121,10 @@ export default defineComponent({
         }
       })
       endCallBtn.addEventListener('click', () => {
-        if (currentCall) {
-          // Using rejectCall here because the method in matrix.js handles calling hangup()
-          // on the MatrixCall object.
-          rejectCall(currentCall).catch(error => console.error('Failed to hangup call:', error))
+        if (currentCall && currentCall.roomId) {
+          hangupCall(currentCall.roomId).catch(error => console.error('Failed to hangup call:', error))
+        } else if (currentCall) {
+          currentCall.close()
         }
         cleanupCall()
       })
@@ -144,26 +144,27 @@ export default defineComponent({
         toggleVideoBtn.classList.replace('btn-outline-secondary', 'btn-secondary')
 
         // Race condition fix (hack): Check if streams were already acquired
-        const existingLocal = call.local_stream || call.localStream
+        const existingLocal = call.localStream
         if (existingLocal) {
           localStream = existingLocal
           localVideo.srcObject = existingLocal
         }
-        const existingRemote = call.remote_stream || call.remoteStream
+        const existingRemote = call.remoteStream
         if (existingRemote) {
           remoteVideo.srcObject = existingRemote
           remoteVideo.play().catch(event => console.error('Error playing remote video:', event))
         }
-        call.on('local_stream', stream => {
-          localStream = stream
-          localVideo.srcObject = stream
-        })
-        call.on('remote_stream', stream => {
-          remoteVideo.srcObject = stream
+
+        call.addEventListener('remote_stream', event => {
+          remoteVideo.srcObject = event.stream
           remoteVideo.play().catch(event => console.error('Error playing remote video:', event))
         })
-        call.on('hangup', () => {
-          cleanupCall()
+
+        // WebRTC standard connection state
+        call.addEventListener('connectionstatechange', () => {
+          if (call.connectionState === 'disconnected' || call.connectionState === 'failed' || call.connectionState === 'closed') {
+            cleanupCall()
+          }
         })
       }
 

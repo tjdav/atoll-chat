@@ -1,4 +1,4 @@
-import { createPlugin } from 'coralite'
+import { definePlugin } from 'coralite'
 import PocketBase from 'pocketbase'
 import { openDB } from 'idb'
 
@@ -6,7 +6,7 @@ import { openDB } from 'idb'
  *
  */
 export default function (pluginOptions) {
-  return createPlugin({
+  return definePlugin({
     name: 'pocketbase-plugin',
     client: {
       config: {
@@ -629,7 +629,7 @@ export default function (pluginOptions) {
         }
 
         const sync = async () => {
-        // Stub for UI compatibility (Matrix plugin had a sync function)
+          // Stub for UI compatibility
           return Promise.resolve()
         }
 
@@ -692,6 +692,36 @@ export default function (pluginOptions) {
               }
               const decoded = await decryptMessage(payloadStr, roomKey)
               event.record.decryptedPayload = decoded
+
+              // Handle WebRTC Signaling internally
+              if (event.record.msgtype === 'm.call.invite') {
+                const call = {
+                  roomId,
+                  type: decoded.type,
+                  offer: decoded.offer,
+                  answer: async () => {
+                    return await answerCall(roomId, decoded.offer, decoded.type)
+                  },
+                  reject: async () => {
+                    await rejectCall(roomId)
+                  }
+                }
+                // Dispatch to the UI
+                if (globalContext.helpers && globalContext.helpers.setState) {
+                  globalContext.helpers.setState('triggerCallIncoming', { call })
+                }
+              } else if (event.record.msgtype === 'm.call.answer' && activePeerConnection) {
+                await activePeerConnection.setRemoteDescription(new RTCSessionDescription(decoded.answer))
+              } else if (event.record.msgtype === 'm.call.candidates' && activePeerConnection) {
+                await activePeerConnection.addIceCandidate(new RTCIceCandidate(decoded.candidate))
+              } else if (event.record.msgtype === 'm.call.hangup' && activePeerConnection) {
+                activePeerConnection.close()
+                activePeerConnection = null
+                if (globalContext.helpers && globalContext.helpers.setState) {
+                  globalContext.helpers.setState('activeCall', null)
+                }
+              }
+
               callback(event.record)
             }
           })
@@ -700,6 +730,137 @@ export default function (pluginOptions) {
         const unsubscribeRoomMessages = () => {
           return pb.collection('messages').unsubscribe('*')
         }
+
+        // WebRTC Signaling methods via PocketBase
+        let activePeerConnection = null
+        const placeCall = async (roomId, type = 'video') => {
+          activePeerConnection = new RTCPeerConnection({
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+          })
+          activePeerConnection.roomId = roomId
+
+          const localStream = await navigator.mediaDevices.getUserMedia({
+            video: type === 'video',
+            audio: true
+          })
+          localStream.getTracks().forEach(track => activePeerConnection.addTrack(track, localStream))
+          activePeerConnection.localStream = localStream
+
+          activePeerConnection.ontrack = event => {
+            if (!activePeerConnection.remoteStream) {
+              activePeerConnection.remoteStream = new MediaStream()
+            }
+            activePeerConnection.remoteStream.addTrack(event.track)
+
+            // Dispatch event for UI
+            const callEvent = new Event('remote_stream')
+            callEvent.stream = activePeerConnection.remoteStream
+            activePeerConnection.dispatchEvent(callEvent)
+          }
+
+          activePeerConnection.onicecandidate = async event => {
+            if (event.candidate) {
+              await sendMessage({
+                roomId,
+                msgtype: 'm.call.candidates',
+                payload: { candidate: event.candidate.toJSON() }
+              })
+            }
+          }
+
+          const offer = await activePeerConnection.createOffer()
+          await activePeerConnection.setLocalDescription(offer)
+
+          await sendMessage({
+            roomId,
+            msgtype: 'm.call.invite',
+            payload: {
+              offer: offer.toJSON(),
+              type
+            }
+          })
+
+          return activePeerConnection
+        }
+
+        const answerCall = async (roomId, offer, type = 'video') => {
+          activePeerConnection = new RTCPeerConnection({
+            iceServers: [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:stun1.l.google.com:19302' }
+            ]
+          })
+          activePeerConnection.roomId = roomId
+
+          const localStream = await navigator.mediaDevices.getUserMedia({
+            video: type === 'video',
+            audio: true
+          })
+          localStream.getTracks().forEach(track => activePeerConnection.addTrack(track, localStream))
+          activePeerConnection.localStream = localStream
+
+          activePeerConnection.ontrack = event => {
+            if (!activePeerConnection.remoteStream) {
+              activePeerConnection.remoteStream = new MediaStream()
+            }
+            activePeerConnection.remoteStream.addTrack(event.track)
+
+            const callEvent = new Event('remote_stream')
+            callEvent.stream = activePeerConnection.remoteStream
+            activePeerConnection.dispatchEvent(callEvent)
+          }
+
+          activePeerConnection.onicecandidate = async event => {
+            if (event.candidate) {
+              await sendMessage({
+                roomId,
+                msgtype: 'm.call.candidates',
+                payload: { candidate: event.candidate.toJSON() }
+              })
+            }
+          }
+
+          await activePeerConnection.setRemoteDescription(new RTCSessionDescription(offer))
+          const answer = await activePeerConnection.createAnswer()
+          await activePeerConnection.setLocalDescription(answer)
+
+          await sendMessage({
+            roomId,
+            msgtype: 'm.call.answer',
+            payload: { answer: answer.toJSON() }
+          })
+
+          return activePeerConnection
+        }
+
+        const rejectCall = async (roomId) => {
+          if (activePeerConnection) {
+            activePeerConnection.close()
+            activePeerConnection = null
+          }
+          await sendMessage({
+            roomId,
+            msgtype: 'm.call.hangup',
+            payload: { reason: 'rejected' }
+          })
+        }
+
+        const hangupCall = async (roomId) => {
+          if (activePeerConnection) {
+            activePeerConnection.close()
+            activePeerConnection = null
+          }
+          await sendMessage({
+            roomId,
+            msgtype: 'm.call.hangup',
+            payload: { reason: 'hangup' }
+          })
+        }
+
+        const getActiveCall = () => activePeerConnection
 
         return {
           pb,
@@ -726,7 +887,12 @@ export default function (pluginOptions) {
           isUserTrusted,
           trustUser,
           getCurrentUserId,
-          getAuthStore
+          getAuthStore,
+          placeCall,
+          answerCall,
+          rejectCall,
+          hangupCall,
+          getActiveCall
         }
       },
       helpers: {
@@ -749,6 +915,11 @@ export default function (pluginOptions) {
         trustUser: (globalContext) => () => async (userId) => globalContext.values.trustUser(userId),
         getCurrentUserId: (globalContext) => () => () => globalContext.values.getCurrentUserId(),
         getAuthStore: (globalContext) => () => () => globalContext.values.getAuthStore(),
+        placeCall: (globalContext) => () => async (roomId, type) => globalContext.values.placeCall(roomId, type),
+        answerCall: (globalContext) => () => async (roomId, offer, type) => globalContext.values.answerCall(roomId, offer, type),
+        rejectCall: (globalContext) => () => async (roomId) => globalContext.values.rejectCall(roomId),
+        hangupCall: (globalContext) => () => async (roomId) => globalContext.values.hangupCall(roomId),
+        getActiveCall: (globalContext) => () => () => globalContext.values.getActiveCall(),
         getDefaultHomeserverUrl: () => () => 'http://localhost:8090',
         crypto: (globalContext) => () => {
           return {

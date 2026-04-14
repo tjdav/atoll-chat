@@ -80,9 +80,7 @@ export default defineComponent({
         subscribe,
         setState,
         placeCall,
-        getRoom,
-        answerCall,
-        rejectCall
+        getRoom
       } = helpers
       const chatListContainer = references('chatListContainer')
       const chatWindowContainer = references('chatWindowContainer')
@@ -217,7 +215,7 @@ export default defineComponent({
         }
       })
 
-      // Inbound: Matrix SDK detects a call
+      // Inbound: WebRTC Signaling detects a call
       subscribe('triggerCallIncoming', (payload) => {
         if (!payload) {
           return
@@ -226,7 +224,7 @@ export default defineComponent({
         // Check if already in a call or already showing a modal
         if (isIncomingCallModalOpen) {
           // Already ringing, auto reject or ignore
-          rejectCall(call).catch(() => {
+          call.reject().catch(() => {
           })
           return
         }
@@ -239,8 +237,8 @@ export default defineComponent({
           return
         }
         try {
-          await answerCall(activeIncomingCall)
-          setState('activeCall', activeIncomingCall)
+          const peerConnection = await activeIncomingCall.answer()
+          setState('activeCall', peerConnection)
           hideIncomingModal()
         } catch (error) {
           console.error('Failed to answer call:', error)
@@ -252,7 +250,7 @@ export default defineComponent({
           return
         }
         try {
-          await rejectCall(activeIncomingCall)
+          await activeIncomingCall.reject()
         } catch (error) {
           console.error('Failed to decline call:', error)
         } finally {

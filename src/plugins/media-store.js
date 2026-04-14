@@ -1,5 +1,5 @@
-import { createPlugin } from 'coralite'
-export default createPlugin({
+import { definePlugin } from 'coralite'
+export default definePlugin({
   name: 'media-store-plugin',
   client: {
     setup () {
@@ -103,7 +103,6 @@ export default createPlugin({
         return async (id, blob, metadata) => {
           const db = await getDB()
 
-          // Grab the currently logged-in user from the Matrix plugin
           const userId = await localContext.helpers.getCurrentUserId()
 
           return new Promise((resolve, reject) => {

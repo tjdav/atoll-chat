@@ -1,11 +1,11 @@
-import { createPlugin } from 'coralite'
+import { definePlugin } from 'coralite'
 /**
  *
  */
 export default function ({
   trackerUrl = 'ws://localhost:8000'
 } = {}) {
-  return createPlugin({
+  return definePlugin({
     name: 'webtorrent-plugin',
     client: {
       config: {
