@@ -31,7 +31,7 @@ export default createPlugin({
       // 3. wrapKey and unwrapKey using AES-GCM direct encryption
       const wrapKey = async (keyToWrap, wrappingKey) => {
         // Export the key to raw format first
-        const exportedKey = await window.crypto.subtle.exportKey('raw', keyToWrap)
+        const exportedKey = await window.crypto.subtle.exportKey(keyToWrap.type === 'private' ? 'pkcs8' : 'raw', keyToWrap)
 
         // Generate a random IV
         const iv = window.crypto.getRandomValues(new Uint8Array(12))
@@ -52,11 +52,13 @@ export default createPlugin({
         }
       }
 
-      const unwrapKey = async (wrappedData, wrappingKey) => {
+      const unwrapKey = async (wrappedData, wrappingKey, format = 'raw', importAlg = {
+        name: 'AES-GCM',
+        length: 256
+      }, keyUsages = ['encrypt', 'decrypt']) => {
         const ivBuffer = new Uint8Array(wrappedData.iv)
         const ciphertextBuffer = new Uint8Array(wrappedData.ciphertext)
 
-        // Decrypt the key material
         const decryptedRawKey = await window.crypto.subtle.decrypt(
           {
             name: 'AES-GCM',
@@ -66,16 +68,12 @@ export default createPlugin({
           ciphertextBuffer
         )
 
-        // Import the decrypted raw bytes back into a CryptoKey
         return window.crypto.subtle.importKey(
-          'raw',
+          format,
           decryptedRawKey,
-          {
-            name: 'AES-GCM',
-            length: 256
-          },
+          importAlg,
           true,
-          ['encrypt', 'decrypt']
+          keyUsages
         )
       }
 
