@@ -17,7 +17,6 @@ export default [
     },
     rules: {
       'id-denylist': [
-        'error',
         'attr',
         'err',
         'e',
@@ -40,14 +39,11 @@ export default [
         'bool',
         'char',
         'tmp',
-        'temp',
         'len',
         'fn',
         'func',
         'arg',
         'args',
-        'param',
-        'params',
         'ret',
         'acc',
         'cur',
@@ -56,10 +52,8 @@ export default [
         'ctx',
         'cfg',
         'conf',
-        'env',
         'dir',
-        'conn',
-        'pkg'
+        'conn'
       ],
       'no-inline-comments': 'error',
       curly: ['error', 'all'],
