@@ -19,7 +19,7 @@ export default defineConfig({
     }
   ],
   plugins: [
-    pocketbasePlugin,
+    pocketbasePlugin({ baseUrl: process.env.DATABASE_URL || 'http://localhost:8090' }),
     localDbPlugin,
     globalStatePlugin,
     webtorrentPlugin({ trackerUrl: process.env.TRACKER_URL || 'ws://localhost:8000' }),

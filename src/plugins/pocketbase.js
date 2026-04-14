@@ -9,6 +9,9 @@ export default function (pluginOptions) {
   return createPlugin({
     name: 'pocketbase-plugin',
     client: {
+      config: {
+        baseUrl: pluginOptions?.baseUrl || 'http://localhost:8090'
+      },
       imports: [
         {
           specifier: 'pocketbase',
@@ -27,7 +30,7 @@ export default function (pluginOptions) {
         const { sodium } = context.imports
         await sodium.ready
 
-        const baseUrl = pluginOptions?.baseUrl || 'http://localhost:8090'
+        const baseUrl = context.config.baseUrl
         const pb = new PocketBase(baseUrl)
 
         let dbPromise = null
