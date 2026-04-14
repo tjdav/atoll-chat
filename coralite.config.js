@@ -13,7 +13,7 @@ export default defineConfig({
   public: 'public',
   assets: [
     {
-      pkg: '@transcribe/shout', // eslint-disable-line id-denylist
+      pkg: '@transcribe/shout',
       path: 'src/shout/shout.wasm.js',
       dest: 'public/assets/transcribe/shout.wasm.js'
     }
