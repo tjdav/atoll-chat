@@ -8,6 +8,8 @@ import markdownPlugin from './src/plugins/markdown.js'
 import ttsPlugin from './src/plugins/tts.js'
 import userPreferencesPlugin from './src/plugins/user-preferences.js'
 import transcriberPlugin from './src/plugins/transcriber.js'
+import pocketbasePlugin from './src/plugins/pocketbase.js'
+
 export default defineConfig({
   public: 'public',
   assets: [
@@ -26,7 +28,8 @@ export default defineConfig({
     markdownPlugin,
     ttsPlugin,
     userPreferencesPlugin,
-    transcriberPlugin
+    transcriberPlugin,
+    pocketbasePlugin
   ],
   output: 'dist',
   pages: 'src/pages',
