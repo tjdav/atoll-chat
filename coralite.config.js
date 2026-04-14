@@ -1,7 +1,6 @@
 import { defineConfig } from 'coralite-scripts'
 import globalStatePlugin from './src/plugins/global-state.js'
 import localDbPlugin from './src/plugins/local-db.js'
-import cryptoPlugin from './src/plugins/crypto.js'
 import webtorrentPlugin from './src/plugins/webtorrent.js'
 import mediaStorePlugin from './src/plugins/media-store.js'
 import markdownPlugin from './src/plugins/markdown.js'
@@ -22,7 +21,6 @@ export default defineConfig({
   plugins: [
     pocketbasePlugin,
     localDbPlugin,
-    cryptoPlugin,
     globalStatePlugin,
     webtorrentPlugin({ trackerUrl: process.env.TRACKER_URL || 'ws://localhost:8000' }),
     mediaStorePlugin,

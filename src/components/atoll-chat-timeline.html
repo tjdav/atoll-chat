@@ -75,7 +75,24 @@ export default defineComponent({
           const bubble = document.createElement('atoll-system-message')
           bubble.appendChild(document.createTextNode(message.body))
           return bubble
-        } else if (message.isEncrypted && !message.body) {
+        } else if (message.decryptedPayload && message.decryptedPayload.type === 'tombstone') {
+          // Tombstone for Ghost Chat / Key Mismatch
+          const bubble = document.createElement('atoll-message-bubble')
+          bubble.setAttribute('time', time)
+          bubble.setAttribute('current-user', isCurrentUser)
+          bubble.setAttribute('tombstone', 'true')
+
+          if (timelineRef) {
+            bubble.setAttribute('chat-timeline-ref', timelineRef)
+          }
+
+          const tombstoneDiv = document.createElement('div')
+          tombstoneDiv.className = 'text-muted fst-italic'
+          tombstoneDiv.innerHTML = '<i class="bi bi-shield-lock me-1"></i> Message encrypted with an older key'
+          bubble.appendChild(tombstoneDiv)
+
+          return bubble
+        } else if (message.isEncrypted && !message.body && (!message.decryptedPayload || message.decryptedPayload.payload === undefined)) {
           const bubble = document.createElement('atoll-message-bubble')
           bubble.setAttribute('time', time)
           bubble.setAttribute('current-user', isCurrentUser)
@@ -86,30 +103,35 @@ export default defineComponent({
 
           bubble.appendChild(document.createTextNode('*Encrypted message*'))
           return bubble
-        } else if (message.msgtype === 'm.atoll.webtorrent' && message.info) {
+        } else if (message.msgtype === 'webtorrent' && message.decryptedPayload && message.decryptedPayload.payload) {
+          let info = {}
+          try {
+            info = JSON.parse(message.decryptedPayload.payload)
+          } catch (error){
+          }
           const torrentBubble = document.createElement('atoll-torrent-bubble')
           // Flatten info object into individual attributes
-          if (message.info.filename) {
-            torrentBubble.setAttribute('info-filename', message.info.filename)
+          if (info.filename) {
+            torrentBubble.setAttribute('info-filename', info.filename)
           }
-          if (message.info.size) {
-            torrentBubble.setAttribute('info-size', message.info.size)
+          if (info.size) {
+            torrentBubble.setAttribute('info-size', info.size)
           }
-          if (message.info.mimeType) {
-            torrentBubble.setAttribute('info-mime-type', message.info.mimeType)
+          if (info.mimeType) {
+            torrentBubble.setAttribute('info-mime-type', info.mimeType)
           }
-          if (message.info.magnetURI) {
-            torrentBubble.setAttribute('info-magnet-uri', message.info.magnetURI)
+          if (info.magnetURI) {
+            torrentBubble.setAttribute('info-magnet-uri', info.magnetURI)
           }
-          if (message.info.key) {
-            torrentBubble.setAttribute('info-key', JSON.stringify(message.info.key))
+          if (info.key) {
+            torrentBubble.setAttribute('info-key', JSON.stringify(info.key))
           }
-          if (message.info.iv) {
-            torrentBubble.setAttribute('info-iv', message.info.iv)
+          if (info.iv) {
+            torrentBubble.setAttribute('info-iv', info.iv)
           }
 
           torrentBubble.setAttribute('event-id', message.id)
-          torrentBubble.setAttribute('sender-id', message.sender)
+          torrentBubble.setAttribute('sender-id', message.sender_id)
           torrentBubble.setAttribute('room-id', currentRoomId)
 
           const bubble = document.createElement('atoll-message-bubble')
@@ -124,24 +146,6 @@ export default defineComponent({
 
           bubble.appendChild(torrentBubble)
 
-          const reactionsContainer = document.createElement('atoll-message-reactions')
-          reactionsContainer.setAttribute('slot', 'reactions')
-          reactionsContainer.setAttribute('event-id', message.id)
-          reactionsContainer.setAttribute('room-id', currentRoomId)
-
-          if (message.reactions) {
-            Object.entries(message.reactions).forEach(([emoji, data]) => {
-              const reactionElement = document.createElement('atoll-message-reaction')
-              reactionElement.setAttribute('emoji', emoji)
-              reactionElement.setAttribute('count', data.count)
-              reactionElement.setAttribute('has-reacted', data.hasReacted)
-              reactionElement.setAttribute('event-id', message.id)
-              reactionElement.setAttribute('room-id', currentRoomId)
-              reactionsContainer.appendChild(reactionElement)
-            })
-          }
-          bubble.appendChild(reactionsContainer)
-
           return bubble
         } else {
           const bubble = document.createElement('atoll-message-bubble')
@@ -154,8 +158,9 @@ export default defineComponent({
             bubble.setAttribute('chat-timeline-ref', timelineRef)
           }
 
-          if (message.body) {
-            bubble.appendChild(document.createTextNode(message.body))
+          const decryptedBody = message.decryptedPayload ? message.decryptedPayload.payload : message.body
+          if (decryptedBody) {
+            bubble.appendChild(document.createTextNode(decryptedBody))
           }
 
           const reactionsContainer2 = document.createElement('atoll-message-reactions')
@@ -247,14 +252,14 @@ export default defineComponent({
 
         // Catch any incoming syncs immediately
         currentCleanup = await onRoomMessage(roomId, newMsg => {
-          const isCurrentUser = newMsg.sender === currentUserId
+          const isCurrentUser = newMsg.sender_id === currentUserId
           handleIncomingMessage(newMsg, isCurrentUser)
         })
 
         // Backfill whatever was already in memory
         const history = await getRoomMessages(roomId)
         history.forEach(message => {
-          const isCurrentUser = message.sender === currentUserId
+          const isCurrentUser = message.sender_id === currentUserId
           handleIncomingMessage(message, isCurrentUser)
         })
 

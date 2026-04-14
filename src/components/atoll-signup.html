@@ -23,6 +23,22 @@
         <a href="#" class="text-muted text-decoration-none" ref="loginLink">Already have an account? Log in.</a>
       </div>
     </div>
+    
+    <!-- Backup Code Modal Container -->
+    <div ref="backupCodeModalContainer" class="d-none position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-75 z-3 align-items-center justify-content-center">
+      <div class="card p-4 bg-dark text-white border-secondary" style="width: 500px; max-width: 90%;">
+        <h3 class="text-danger mb-3"><i class="bi bi-exclamation-triangle-fill me-2"></i> Save Your Backup Code</h3>
+        <p>This is the <strong>only time</strong> you will see this code. If you lose access to your device or forget your PIN, you will need this to recover your encrypted messages.</p>
+        <div class="bg-black p-3 rounded mb-3 text-center fs-5 text-monospace user-select-all" ref="backupCodeDisplay"></div>
+        <div class="form-check mb-4">
+          <input class="form-check-input" type="checkbox" id="backupSavedCheck" ref="backupSavedCheck">
+          <label class="form-check-label" for="backupSavedCheck">
+            I have safely stored this backup code.
+          </label>
+        </div>
+        <button class="btn btn-primary w-100" ref="continueButton" disabled>Continue</button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -47,6 +63,10 @@ export default defineComponent({
       const errorAlert = references('errorAlert')
       const submitButton = references('submitButton')
       const loginLink = references('loginLink')
+      const backupCodeModalContainer = references('backupCodeModalContainer')
+      const backupCodeDisplay = references('backupCodeDisplay')
+      const backupSavedCheck = references('backupSavedCheck')
+      const continueButton = references('continueButton')
 
       loginLink.addEventListener('click', event => {
         event.preventDefault()
@@ -70,14 +90,24 @@ export default defineComponent({
         submitButton.disabled = true
         submitButton.textContent = 'Signing up...'
         try {
-          await registerUser({
+
+          const result = await helpers.crypto().registerWithPasskey({
             username,
             password,
-            token
+            displayName: username,
+            pin: password
           })
-          submitButton.textContent = 'Syncing...'
-          await sync()
-          setState('isLoggedIn', true)
+
+          if (result.success && result.backupCode) {
+            backupCodeDisplay.textContent = result.backupCode
+            backupCodeModalContainer.classList.remove('d-none')
+            backupCodeModalContainer.classList.add('d-flex')
+          } else {
+
+            await sync()
+            setState('isLoggedIn', true)
+          }
+
         } catch (error) {
           console.error('Sign up error', error)
           errorAlert.textContent = 'Registration failed. Please try again. ' + (error.message || '')
@@ -86,6 +116,18 @@ export default defineComponent({
           submitButton.disabled = false
           submitButton.textContent = 'Sign Up'
         }
+      })
+
+      backupSavedCheck.addEventListener('change', (event) => {
+        continueButton.disabled = !event.target.checked
+      })
+
+      continueButton.addEventListener('click', async () => {
+        backupCodeModalContainer.classList.remove('d-flex')
+        backupCodeModalContainer.classList.add('d-none')
+        submitButton.textContent = 'Syncing...'
+        await sync()
+        setState('isLoggedIn', true)
       })
     }
   }

@@ -46,15 +46,12 @@
         <h2 class="mb-4 border-bottom border-secondary pb-2">Password & Security</h2>
         <div class="card bg-dark text-white border-secondary mb-4">
           <div class="card-body">
-            <h5 class="card-title"><i class="bi bi-shield-lock text-success me-2"></i> Local Vault</h5>
+            <h5 class="card-title text-danger"><i class="bi bi-shield-lock me-2"></i> Revoke Devices</h5>
             <p class="card-text text-muted mb-4">
-              The local vault uses your password to encrypt and decrypt sensitive data securely stored in your browser.
+              Revoking devices will permanently segment your chat history. You will lose access to previous messages encrypted with your old key.
             </p>
-            <div class="alert alert-info border-info bg-transparent text-info">
-              <i class="bi bi-info-circle me-2"></i> Test the password prompt below.
-            </div>
-            <button class="btn btn-outline-light" ref="bootstrapStorageBtn">
-              <i class="bi bi-arrow-clockwise me-2"></i> Test Password Prompt
+            <button class="btn btn-danger" ref="revokeDevicesBtn">
+              <i class="bi bi-exclamation-triangle me-2"></i> Revoke Devices
             </button>
           </div>
         </div>
@@ -83,7 +80,7 @@ export default defineComponent({
 
       const generalSettings = references('generalSettings')
       const secretStorageSettings = references('secretStorageSettings')
-      const bootstrapStorageBtn = references('bootstrapStorageBtn')
+      const revokeDevicesBtn = references('revokeDevicesBtn')
       const typingNotificationsSwitch = references('typingNotificationsSwitch')
 
       const { getTypingNotificationsPreference, setTypingNotificationsPreference } = helpers
@@ -144,23 +141,24 @@ export default defineComponent({
         })
       })
 
-      bootstrapStorageBtn.addEventListener('click', async () => {
+      revokeDevicesBtn.addEventListener('click', async () => {
+        if (confirm('Are you sure you want to revoke devices? This will break encryption for older messages.')) {
+          const pin = prompt('Please enter your PIN/Password to confirm revocation and re-encrypt your vault.')
+          if (!pin) {
+            return
+          }
 
-        const promptId = Date.now()
-        const abortController = new AbortController()
-        const handler = (payload) => {
-          if (payload && payload.promptId === promptId) {
-            abortController.abort()
-            console.log('Derived Key via PBKDF2:', payload.key)
-            alert('Password successfully derived to key! Check console.')
+          try {
+            const result = await helpers.crypto().revokeDevices(pin)
+            if (result.success) {
+              alert('Devices revoked. Your new Backup Code is: ' + result.newBackupCode + '\n\nPlease save it safely. You will now be logged out.')
+              helpers.setState('isLoggedIn', false)
+            }
+          } catch (error) {
+            console.error(error)
+            alert('Failed to revoke devices: ' + error.message)
           }
         }
-        helpers.subscribe('triggerPasswordPromptResolved', handler, { signal: abortController.signal })
-        setState('triggerPasswordPrompt', {
-          promptId,
-          ts: Date.now()
-        })
-
       })
     }
   }

@@ -55,10 +55,16 @@ export default defineComponent({
         submitButton.disabled = true
         submitButton.textContent = 'Logging in...'
         try {
-          await login({
+          const authData = await login({
             username: username,
             password: password
           })
+
+          if (authData.record.encrypted_master_keys) {
+            submitButton.textContent = 'Unlocking Vault...'
+            await helpers.crypto().unlockWithPin(password)
+          }
+
           submitButton.textContent = 'Syncing...'
           await sync()
           setState('isLoggedIn', true)

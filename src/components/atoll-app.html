@@ -23,11 +23,9 @@ export default defineComponent({
         refs: references,
         subscribe,
         setState,
-        restoreSession,
-        getCryptoManager
+        restoreSession
       } = helpers
 
-      getCryptoManager().initPasswordFlow(helpers)
       const loginView = references('loginView')
       const signupView = references('signupView')
       const appView = references('appView')
@@ -99,9 +97,25 @@ export default defineComponent({
       })
       const isRestored = await restoreSession()
       if (isRestored) {
-        // Session found! Go straight to the app
-
-        setState('isLoggedIn', true)
+        const isUnlocked = helpers.crypto().isVaultUnlocked()
+        if (!isUnlocked) {
+          const pin = prompt('Session restored, but Vault is locked. Please enter your PIN or Password to unlock your Vault.')
+          if (pin) {
+            try {
+              await helpers.crypto().unlockWithPin(pin)
+              setState('isLoggedIn', true)
+            } catch (error) {
+              alert('Invalid PIN. Logging out.')
+              await helpers.crypto().lockApp()
+              setState('isLoggedIn', false)
+            }
+          } else {
+            await helpers.crypto().lockApp()
+            setState('isLoggedIn', false)
+          }
+        } else {
+          setState('isLoggedIn', true)
+        }
       } else {
         // No session found. Reveal the login screen.
         setState('isLoggedIn', false)
