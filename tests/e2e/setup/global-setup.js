@@ -5,6 +5,27 @@ import PocketBase from 'pocketbase'
 const execAsync = promisify(exec)
 
 /**
+ * Ensures a user exists and authenticates them.
+ *
+ * @param {PocketBase} pb - The PocketBase instance.
+ * @param {string} email - The user's email.
+ * @param {string} password - The user's password.
+ */
+async function ensureUserAndAuth (pb, email, password) {
+  try {
+    await pb.collection('users').authWithPassword(email, password)
+  } catch (error) {
+    console.log(`User ${email} not found, creating...`)
+    await pb.collection('users').create({
+      email,
+      password,
+      passwordConfirm: password
+    })
+    await pb.collection('users').authWithPassword(email, password)
+  }
+}
+
+/**
  *
  */
 async function globalSetup () {
@@ -39,15 +60,26 @@ async function globalSetup () {
     }
     console.log('PocketBase server is ready.')
 
+    // Ensure superuser is created using CLI (as SDK requires superuser to create superuser)
+    try {
+      await execAsync('docker compose exec pocketbase /usr/local/bin/pocketbase superuser upsert admin@example.com password123')
+      console.log('Superuser upserted.')
+    } catch (error) {
+      console.error('Failed to upsert superuser:', error)
+    }
+
     const pb = new PocketBase(pbUrl)
 
     await pb.collection('_superusers').authWithPassword('admin@example.com', 'password123')
-    await pb.collection('users').authWithPassword('alice@example.com', 'password123')
-    await pb.collection('users').authWithPassword('bob@example.com', 'password123')
-    await pb.collection('users').authWithPassword('charlie@example.com', 'password123')
 
+    await ensureUserAndAuth(pb, 'alice@example.com', 'password123')
+    await ensureUserAndAuth(pb, 'bob@example.com', 'password123')
+    await ensureUserAndAuth(pb, 'charlie@example.com', 'password123')
+
+    console.log('Test users verified/created successfully.')
   } catch (error) {
     console.error('Error in global setup:', error)
+    throw error
   }
 }
 
