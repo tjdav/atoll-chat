@@ -1,5 +1,6 @@
 import { exec } from 'child_process'
 import { promisify } from 'util'
+import PocketBase from 'pocketbase'
 
 const execAsync = promisify(exec)
 
@@ -7,21 +8,21 @@ const execAsync = promisify(exec)
  *
  */
 async function globalSetup () {
-  console.log('Starting Continuwuity local server via Docker Compose...')
+  console.log('Starting PocketBase local server via Docker Compose...')
   try {
-    await execAsync('docker compose up -d')
-    console.log('Continuwuity server started.')
+    await execAsync('docker compose up -d pocketbase')
+    console.log('PocketBase server started.')
 
-    const homeserverUrl = 'http://localhost:6167'
+    const pbUrl = 'http://localhost:8090'
 
-    console.log('Waiting for Continuwuity to be ready...')
+    console.log('Waiting for PocketBase to be ready...')
     let isReady = false
     let attempts = 0
     const maxAttempts = 30
 
     while (!isReady && attempts < maxAttempts) {
       try {
-        const response = await fetch(`${homeserverUrl}/_matrix/client/versions`)
+        const response = await fetch(`${pbUrl}/api/health`)
         if (response.ok) {
           isReady = true
         } else {
@@ -34,76 +35,16 @@ async function globalSetup () {
     }
 
     if (!isReady) {
-      throw new Error('Continuwuity server failed to start within the expected time.')
+      throw new Error('PocketBase server failed to start within the expected time.')
     }
-    console.log('Continuwuity server is ready.')
+    console.log('PocketBase server is ready.')
 
-    console.log('Provisioning test users...')
+    const pb = new PocketBase(pbUrl)
 
-    const getInitialRegistrationToken = async () => {
-      let attempts = 0
-      while (attempts < 30) {
-        const { stdout } = await execAsync('docker compose logs homeserver')
-        const tokenMatch = stdout.match(/using the registration token \u001b\[1;32m([a-zA-Z0-9]+)\u001b\[0m/)
-        if (tokenMatch) {
-          return tokenMatch[1]
-        }
-        attempts++
-        await new Promise(resolve => setTimeout(resolve, 1000))
-      }
-      return 'ci_test_token_123'
-    }
-
-    const firstUserToken = await getInitialRegistrationToken()
-
-    // EXPORT the token to Playwright's environment variables
-    // process.env.E2E_REGISTRATION_TOKEN = firstUserToken
-
-    const registerUser = async (username, password) => {
-      try {
-        const registrationToken = username === 'alice' ? firstUserToken : 'ci_test_token_123'
-
-        // First get the session ID and flows by making an empty request
-        const initResponse = await fetch(`${homeserverUrl}/_matrix/client/v3/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({})
-        })
-        const initData = await initResponse.json()
-        const session = initData.session
-
-        const response = await fetch(`${homeserverUrl}/_matrix/client/v3/register`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            auth: {
-              type: 'm.login.registration_token',
-              token: registrationToken,
-              session: session
-            },
-            username: username,
-            password: password
-          })
-        })
-
-        const data = await response.json()
-        if (response.ok) {
-          console.log(`Successfully provisioned user ${username}`)
-        } else {
-          console.log(`Failed to provision user ${username}: ${JSON.stringify(data)}`)
-        }
-      } catch (error) {
-        console.error(`Error provisioning user ${username}:`, error)
-      }
-    }
-
-    await registerUser('alice', 'password123')
-    await registerUser('bob', 'password123')
-    await registerUser('charlie', 'password123')
+    await pb.collection('_superusers').authWithPassword('admin@example.com', 'password123')
+    await pb.collection('users').authWithPassword('alice@example.com', 'password123')
+    await pb.collection('users').authWithPassword('bob@example.com', 'password123')
+    await pb.collection('users').authWithPassword('charlie@example.com', 'password123')
 
   } catch (error) {
     console.error('Error in global setup:', error)
