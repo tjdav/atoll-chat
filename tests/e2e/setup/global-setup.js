@@ -70,8 +70,6 @@ async function globalSetup () {
 
     const pb = new PocketBase(pbUrl)
 
-    await pb.collection('_superusers').authWithPassword('admin@example.com', 'password123')
-
     await ensureUserAndAuth(pb, 'alice@example.com', 'password123')
     await ensureUserAndAuth(pb, 'bob@example.com', 'password123')
     await ensureUserAndAuth(pb, 'charlie@example.com', 'password123')
