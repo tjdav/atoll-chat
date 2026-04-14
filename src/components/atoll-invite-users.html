@@ -80,20 +80,23 @@ export default defineComponent({
 
         const client = getClient ? getClient() : null
         if (!client) {
-          showError('Matrix client not initialized')
+          showError('PocketBase client not initialized')
           return
         }
 
         hideError()
 
         try {
-          // Attempt to verify the user exists by getting their profile
-          await client.getProfileInfo(userId)
+          // Attempt to verify the user exists by querying PocketBase
+          // Since PocketBase users ID might not be what they type, we look up by username
+          const user = await client.collection('users').getFirstListItem(`username="${userId}"`)
 
-          invitedUsers.add(userId)
-          inviteInput.value = ''
-          renderBadges()
-          updateHiddenInput()
+          if (user) {
+            invitedUsers.add(user.id)
+            inviteInput.value = ''
+            renderBadges()
+            updateHiddenInput()
+          }
         } catch (error) {
           console.error('Failed to verify user:', error)
           showError('User not found or could not be verified')
