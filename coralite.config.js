@@ -20,6 +20,7 @@ export default defineConfig({
     }
   ],
   plugins: [
+    pocketbasePlugin,
     localDbPlugin,
     cryptoPlugin,
     globalStatePlugin,
@@ -28,8 +29,7 @@ export default defineConfig({
     markdownPlugin,
     ttsPlugin,
     userPreferencesPlugin,
-    transcriberPlugin,
-    pocketbasePlugin
+    transcriberPlugin
   ],
   output: 'dist',
   pages: 'src/pages',

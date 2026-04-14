@@ -217,6 +217,14 @@ export default function (pluginOptions) {
           document.cookie = pb.authStore.exportToCookie({ httpOnly: false })
         }
 
+        const getCurrentUserId = () => {
+          return pb.authStore.record?.id
+        }
+
+        const getAuthStore = () => {
+          return pb.authStore
+        }
+
         const wrapKey = async (roomKey, recipientPublicKeyJwk, senderPrivateKey) => {
           const recipientPublicKey = await importPublicKey(recipientPublicKeyJwk)
           const sharedSecret = await window.crypto.subtle.deriveKey(
@@ -480,7 +488,9 @@ export default function (pluginOptions) {
           unsubscribeRoomMessages,
           sync,
           isUserTrusted,
-          trustUser
+          trustUser,
+          getCurrentUserId,
+          getAuthStore
         }
       },
       helpers: {
@@ -501,6 +511,8 @@ export default function (pluginOptions) {
         unsubscribeRoomMessages: (globalContext) => () => () => globalContext.values.unsubscribeRoomMessages(),
         isUserTrusted: (globalContext) => () => async (userId) => globalContext.values.isUserTrusted(userId),
         trustUser: (globalContext) => () => async (userId) => globalContext.values.trustUser(userId),
+        getCurrentUserId: (globalContext) => () => () => globalContext.values.getCurrentUserId(),
+        getAuthStore: (globalContext) => () => () => globalContext.values.getAuthStore(),
         getDefaultHomeserverUrl: () => () => 'http://localhost:8090',
         cryptoHelpers: (globalContext) => () => {
           return {
