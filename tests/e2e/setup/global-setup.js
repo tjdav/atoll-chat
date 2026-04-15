@@ -60,14 +60,6 @@ async function globalSetup () {
     }
     console.log('PocketBase server is ready.')
 
-    // Ensure superuser is created using CLI (as SDK requires superuser to create superuser)
-    try {
-      await execAsync('docker compose exec pocketbase /usr/local/bin/pocketbase superuser upsert admin@example.com password123')
-      console.log('Superuser upserted.')
-    } catch (error) {
-      console.error('Failed to upsert superuser:', error)
-    }
-
     const pb = new PocketBase(pbUrl)
 
     await ensureUserAndAuth(pb, 'alice@example.com', 'password123')
