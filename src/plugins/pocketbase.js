@@ -375,6 +375,7 @@ export default function (pluginOptions) {
             await pb.collection('room_members').create({
               room_id: room.id,
               user_id: userRecord.id,
+              invited_by: currentUser.id,
               status: user.id === currentUser.id ? 'joined' : 'invited',
               encrypted_room_key: sodium.to_base64(combined, sodium.base64_variants.ORIGINAL)
             })
@@ -395,7 +396,13 @@ export default function (pluginOptions) {
             msg_id: crypto.randomUUID()
           })
 
-          const ciphertext = sodium.crypto_secretbox_easy(framedPayload, nonce, roomKey)
+          const signature = sodium.crypto_sign_detached(framedPayload, activeSessionKeys.identityPrivateKey)
+          
+          const signedPayload = new Uint8Array(signature.length + sodium.from_string(framedPayload).length)
+          signedPayload.set(signature)
+          signedPayload.set(sodium.from_string(framedPayload), signature.length)
+
+          const ciphertext = sodium.crypto_secretbox_easy(signedPayload, nonce, roomKey)
 
           // Prepend nonce to ciphertext
           const combined = new Uint8Array(nonce.length + ciphertext.length)
@@ -405,7 +412,7 @@ export default function (pluginOptions) {
           return sodium.to_base64(combined, sodium.base64_variants.ORIGINAL)
         }
 
-        const decryptMessage = async (encryptedPayloadBase64, roomKey, lastTimestamp = 0) => {
+        const decryptMessage = async (encryptedPayloadBase64, roomKey, senderPublicSignKey, lastTimestamp = 0) => {
           try {
             const combined = sodium.from_base64(encryptedPayloadBase64, sodium.base64_variants.ORIGINAL)
 
@@ -420,14 +427,47 @@ export default function (pluginOptions) {
             const ciphertext = combined.slice(sodium.crypto_secretbox_NONCEBYTES)
 
             const decryptedBytes = sodium.crypto_secretbox_open_easy(ciphertext, nonce, roomKey)
-            const framedPayload = JSON.parse(sodium.to_string(decryptedBytes))
+            
+            if (decryptedBytes.length < sodium.crypto_sign_BYTES) {
+               return {
+                  type: 'tombstone',
+                  reason: 'INVALID_PAYLOAD'
+               }
+            }
 
-            if (framedPayload.timestamp < lastTimestamp) {
+            const signature = decryptedBytes.slice(0, sodium.crypto_sign_BYTES)
+            const payloadBytes = decryptedBytes.slice(sodium.crypto_sign_BYTES)
+            const payloadStr = sodium.to_string(payloadBytes)
+
+            if (!senderPublicSignKey) {
               return {
-                error: 'REPLAY_DETECTED',
-                payload: null
+                type: 'tombstone',
+                reason: 'MISSING_SENDER_KEY'
               }
             }
+
+            const senderSignKeyBytes = sodium.from_base64(senderPublicSignKey, sodium.base64_variants.ORIGINAL)
+            const isValid = sodium.crypto_sign_verify_detached(signature, payloadStr, senderSignKeyBytes)
+
+            if (!isValid) {
+              return {
+                type: 'tombstone',
+                reason: 'SIGNATURE_MISMATCH'
+              }
+            }
+
+            const framedPayload = JSON.parse(payloadStr)
+
+            const db = await initDB()
+            const exists = await db.get('decrypted_messages', framedPayload.msg_id)
+            if (exists) {
+              return {
+                type: 'tombstone',
+                reason: 'REPLAY_DETECTED'
+              }
+            }
+            
+            await db.put('decrypted_messages', true, framedPayload.msg_id)
 
             return {
               payload: framedPayload.data,
@@ -453,45 +493,33 @@ export default function (pluginOptions) {
             throw new Error('App is locked. Keys not in memory.')
           }
           const currentUser = pb.authStore.model
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${currentUser.id}"`)
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${currentUser.id}"`, {
+            expand: 'invited_by'
+          })
 
           if (!memberRecord || !memberRecord.encrypted_room_key) {
             throw new Error('No room key found')
+          }
+
+          if (!memberRecord.expand || !memberRecord.expand.invited_by || !memberRecord.expand.invited_by.public_box_key) {
+            throw new Error('Inviter information is missing')
           }
 
           const combined = sodium.from_base64(memberRecord.encrypted_room_key, sodium.base64_variants.ORIGINAL)
           const nonce = combined.slice(0, sodium.crypto_box_NONCEBYTES)
           const ciphertext = combined.slice(sodium.crypto_box_NONCEBYTES)
 
-          // We need the sender's public box key. We can fetch it, or assume room was created by someone and we iterate.
-          // In a perfect system, the sender_id of the key would be tracked. Here we can iterate trusted contacts or group members.
-          // Given constraints, a simplification: everyone wraps with their own senderPrivateKey.
-          // Thus we need the sender public key. Since PB members doesn't store who invited, we have to look it up.
-          // A safer architectural change: standard group ratchet, but here we just need to decode.
-          // For now, let's assume sender is the room creator. This gets complex without schema changes to track the inviter.
-          // Standard approach in this schema: we find the room creator, or fetch all users in room.
-          // Wait, `crypto_box_open_easy` requires the SENDER's public key.
-
-          const members = await pb.collection('room_members').getFullList({
-            filter: `room_id="${roomId}"`,
-            expand: 'user_id'
-          })
           let decryptedRoomKey = null
 
-          for (const m of members) {
-            try {
-              const senderPub = sodium.from_base64(m.expand.user_id.public_box_key, sodium.base64_variants.ORIGINAL)
-              decryptedRoomKey = sodium.crypto_box_open_easy(ciphertext, nonce, senderPub, activeSessionKeys.encryptionPrivateKey)
-              if (decryptedRoomKey) {
-                break
-              }
-            } catch (error) {
-              // Ignore failure, try next member as sender
-            }
+          try {
+            const senderPub = sodium.from_base64(memberRecord.expand.invited_by.public_box_key, sodium.base64_variants.ORIGINAL)
+            decryptedRoomKey = sodium.crypto_box_open_easy(ciphertext, nonce, senderPub, activeSessionKeys.encryptionPrivateKey)
+          } catch (error) {
+            throw new Error('Failed to decrypt room key')
           }
 
           if (!decryptedRoomKey) {
-            throw new Error('Failed to decrypt room key from any known member')
+            throw new Error('Failed to decrypt room key from the inviter')
           }
 
           await db.put('room_keys', decryptedRoomKey, roomId)
@@ -673,7 +701,8 @@ export default function (pluginOptions) {
             } catch (error) {
             }
 
-            const decoded = await decryptMessage(payloadStr, roomKey)
+            const senderPublicSignKey = message.expand?.sender_id?.public_sign_key
+            const decoded = await decryptMessage(payloadStr, roomKey, senderPublicSignKey)
             message.decryptedPayload = decoded
             decryptedItems.push(message)
           }
@@ -690,7 +719,16 @@ export default function (pluginOptions) {
                 payloadStr = JSON.parse(event.record.payload)
               } catch (error) {
               }
-              const decoded = await decryptMessage(payloadStr, roomKey)
+              
+              let senderPublicSignKey = null
+              try {
+                const sender = await pb.collection('users').getOne(event.record.sender_id)
+                senderPublicSignKey = sender.public_sign_key
+              } catch (error) {
+                // Ignore error if sender user not found
+              }
+
+              const decoded = await decryptMessage(payloadStr, roomKey, senderPublicSignKey)
               event.record.decryptedPayload = decoded
 
               // Handle WebRTC Signaling internally
