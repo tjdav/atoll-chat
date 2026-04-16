@@ -356,6 +356,14 @@ export default function (pluginOptions) {
 
           const db = await initDB()
 
+          // Create default roles for the room
+          const [ownerRole, adminRole, modRole, memberRole] = await Promise.all([
+            pb.collection('room_roles').create({ room_id: room.id, name: 'Owner' }),
+            pb.collection('room_roles').create({ room_id: room.id, name: 'Administrator' }),
+            pb.collection('room_roles').create({ room_id: room.id, name: 'Moderator' }),
+            pb.collection('room_roles').create({ room_id: room.id, name: 'Member' })
+          ])
+
           for (const user of usersToInvite) {
             let userRecord
             if (user.id === currentUser.id) {
@@ -378,6 +386,14 @@ export default function (pluginOptions) {
               invited_by: currentUser.id,
               status: user.id === currentUser.id ? 'joined' : 'invited',
               encrypted_room_key: sodium.to_base64(combined, sodium.base64_variants.ORIGINAL)
+            })
+
+            // Assign role
+            const roleToAssign = user.id === currentUser.id ? ownerRole : memberRole
+            await pb.collection('room_user_roles').create({
+              room_id: room.id,
+              user_id: userRecord.id,
+              role_id: roleToAssign.id
             })
           }
 
