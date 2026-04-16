@@ -1,7 +1,10 @@
 services:
   pocketbase:
     image: ghcr.io/muchobien/pocketbase:latest
+    container_name: pocketbase-dev
     environment:
+      PB_HOST: 0.0.0.0
+      PB_PORT: 8090
       PB_ADMIN_EMAIL: admin@example.com
       PB_ADMIN_PASSWORD: password123
     ports:
