@@ -358,10 +358,22 @@ export default function (pluginOptions) {
 
           // Create default roles for the room
           const [ownerRole, adminRole, modRole, memberRole] = await Promise.all([
-            pb.collection('room_roles').create({ room_id: room.id, name: 'Owner' }),
-            pb.collection('room_roles').create({ room_id: room.id, name: 'Administrator' }),
-            pb.collection('room_roles').create({ room_id: room.id, name: 'Moderator' }),
-            pb.collection('room_roles').create({ room_id: room.id, name: 'Member' })
+            pb.collection('room_roles').create({
+              room_id: room.id,
+              name: 'Owner'
+            }),
+            pb.collection('room_roles').create({
+              room_id: room.id,
+              name: 'Administrator'
+            }),
+            pb.collection('room_roles').create({
+              room_id: room.id,
+              name: 'Moderator'
+            }),
+            pb.collection('room_roles').create({
+              room_id: room.id,
+              name: 'Member'
+            })
           ])
 
           for (const user of usersToInvite) {
@@ -413,7 +425,7 @@ export default function (pluginOptions) {
           })
 
           const signature = sodium.crypto_sign_detached(framedPayload, activeSessionKeys.identityPrivateKey)
-          
+
           const signedPayload = new Uint8Array(signature.length + sodium.from_string(framedPayload).length)
           signedPayload.set(signature)
           signedPayload.set(sodium.from_string(framedPayload), signature.length)
@@ -443,12 +455,12 @@ export default function (pluginOptions) {
             const ciphertext = combined.slice(sodium.crypto_secretbox_NONCEBYTES)
 
             const decryptedBytes = sodium.crypto_secretbox_open_easy(ciphertext, nonce, roomKey)
-            
+
             if (decryptedBytes.length < sodium.crypto_sign_BYTES) {
-               return {
-                  type: 'tombstone',
-                  reason: 'INVALID_PAYLOAD'
-               }
+              return {
+                type: 'tombstone',
+                reason: 'INVALID_PAYLOAD'
+              }
             }
 
             const signature = decryptedBytes.slice(0, sodium.crypto_sign_BYTES)
@@ -482,7 +494,7 @@ export default function (pluginOptions) {
                 reason: 'REPLAY_DETECTED'
               }
             }
-            
+
             await db.put('decrypted_messages', true, framedPayload.msg_id)
 
             return {
@@ -735,7 +747,7 @@ export default function (pluginOptions) {
                 payloadStr = JSON.parse(event.record.payload)
               } catch (error) {
               }
-              
+
               let senderPublicSignKey = null
               try {
                 const sender = await pb.collection('users').getOne(event.record.sender_id)
