@@ -9,13 +9,13 @@ migrate((app) => {
       app.findAuthRecordByEmail('users', email)
     } catch (error) {
       const record = new Record(usersCollection)
-      
+
       // Direct record property access
       record.set('email', email)
       record.setPassword('password123')
       record.set('emailVisibility', true)
       record.set('verified', true)
-      
+
       app.save(record)
     }
   }

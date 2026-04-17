@@ -96,10 +96,10 @@ migrate((app) => {
 }, (app) => {
   const messages = app.findCollectionByNameOrId('messages')
   app.delete(messages)
-  
+
   const roomMembers = app.findCollectionByNameOrId('room_members')
   app.delete(roomMembers)
-  
+
   const rooms = app.findCollectionByNameOrId('rooms')
   app.delete(rooms)
 })
