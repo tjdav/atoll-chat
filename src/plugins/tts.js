@@ -8,8 +8,8 @@ export default definePlugin({
     }],
     helpers: {
       ttsGenerate: async globalContext => {
-        const { env, InferenceSession, Tensor } = globalContext.imports // eslint-disable-line id-denylist
-        env.wasm.wasmPaths = 'https://esm.sh/onnxruntime-web@1.17.0/dist/' // eslint-disable-line id-denylist
+        const { env, InferenceSession, Tensor } = globalContext.imports
+        env.wasm.wasmPaths = 'https://esm.sh/onnxruntime-web@1.17.0/dist/'
         let configurations = null
         let textProcessor = null
         let durationPredictorOrt = null
