@@ -1,0 +1,151 @@
+<template id="atoll-room-settings">
+  <div class="modal fade" tabindex="-1" aria-labelledby="roomSettingsModalLabel" aria-hidden="true" ref="roomSettingsModal">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content text-bg-dark border-secondary">
+        <div class="modal-header border-secondary">
+          <h5 class="modal-title" id="roomSettingsModalLabel">Room Settings</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <h6>Members</h6>
+          <div class="list-group list-group-flush border border-secondary rounded overflow-auto" style="max-height: 300px;" ref="membersList">
+            <!-- Members injected here -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module" client>
+import { defineComponent } from 'coralite'
+
+export default defineComponent({
+  client: {
+    imports: [{
+      specifier: 'bootstrap',
+      namespaceExport: 'bootstrap'
+    }],
+    script: ({ helpers, imports }) => {
+      const { refs, subscribe, getPb, getCurrentUserId } = helpers
+      const membersList = refs('membersList')
+      const roomSettingsModal = refs('roomSettingsModal')
+
+      let activeRoomId = null
+      let currentUserRoleName = null
+
+      const pb = getPb ? getPb() : null
+
+      const loadMembers = async () => {
+        if (!activeRoomId || !pb) {
+          return
+        }
+
+        try {
+          const members = await pb.collection('room_members').getFullList({
+            filter: `room_id="${activeRoomId}"`,
+            expand: 'user_id'
+          })
+
+          const roles = await pb.collection('room_user_roles').getFullList({
+            filter: `room_id="${activeRoomId}"`,
+            expand: 'role_id'
+          })
+
+          const rolesMap = {}
+          const userRoleIdMap = {}
+          roles.forEach(r => {
+            if (r.expand?.role_id) {
+              rolesMap[r.user_id] = r.expand.role_id.name
+              userRoleIdMap[r.user_id] = r.id
+            }
+          })
+
+          const roomRolesList = await pb.collection('room_roles').getFullList({
+            filter: `room_id="${activeRoomId}"`
+          })
+
+          const currentUserId = getCurrentUserId ? getCurrentUserId() : null
+          currentUserRoleName = rolesMap[currentUserId] || 'Member'
+          const canManageRoles = currentUserRoleName === 'Owner' || currentUserRoleName === 'Administrator'
+
+          membersList.innerHTML = ''
+
+          members.forEach(member => {
+            const roleName = rolesMap[member.user_id] || 'Member'
+            const user = member.expand?.user_id
+            if (!user) {
+              return
+            }
+
+            const li = document.createElement('div')
+            li.className = 'list-group-item bg-dark text-white border-secondary d-flex justify-content-between align-items-center'
+
+            const userInfo = document.createElement('div')
+            userInfo.textContent = `${user.username} (${member.status})`
+            if (member.user_id === currentUserId) {
+              userInfo.textContent += ' (You)'
+            }
+            li.appendChild(userInfo)
+
+            const controls = document.createElement('div')
+
+            if (canManageRoles && member.user_id !== currentUserId) {
+              const select = document.createElement('select')
+              select.className = 'form-select form-select-sm bg-dark text-white border-secondary d-inline-block w-auto'
+
+              roomRolesList.forEach(rr => {
+                const option = document.createElement('option')
+                option.value = rr.id
+                option.textContent = rr.name
+                if (rr.name === roleName) {
+                  option.selected = true
+                }
+                select.appendChild(option)
+              })
+
+              select.addEventListener('change', async (roleEvent) => {
+                const newRoleId = roleEvent.target.value
+                const urId = userRoleIdMap[member.user_id]
+                if (urId) {
+                  await pb.collection('room_user_roles').update(urId, { role_id: newRoleId })
+                } else {
+                  await pb.collection('room_user_roles').create({
+                    room_id: activeRoomId,
+                    user_id: member.user_id,
+                    role_id: newRoleId
+                  })
+                }
+                loadMembers()
+              })
+
+              controls.appendChild(select)
+            } else {
+              const badge = document.createElement('span')
+              badge.className = 'badge bg-secondary'
+              badge.textContent = roleName
+              controls.appendChild(badge)
+            }
+
+            li.appendChild(controls)
+            membersList.appendChild(li)
+          })
+        } catch (error) {
+          console.error('Failed to load room members:', error)
+          membersList.innerHTML = '<div class="p-3 text-danger">Failed to load members</div>'
+        }
+      }
+
+      subscribe('activeRoomId', (roomId) => {
+        activeRoomId = roomId
+      })
+
+      subscribe('triggerOpenRoomSettings', () => {
+        loadMembers()
+        const modal = imports.bootstrap.Modal.getOrCreateInstance(roomSettingsModal)
+        modal.show()
+      })
+    }
+  }
+})
+</script>
