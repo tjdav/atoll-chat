@@ -20,8 +20,8 @@ importers:
       isomorphic-dompurify:
         specifier: ^3.0.0
         version: 3.0.0
-      libsodium-wrappers:
-        specifier: ^0.8.3
+      libsodium-wrappers-sumo:
+        specifier: 0.8.3
         version: 0.8.3
       marked:
         specifier: ^17.0.4
@@ -63,6 +63,9 @@ importers:
       sirv-cli:
         specifier: ^3.0.1
         version: 3.0.1
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
 
 packages:
 
@@ -1035,11 +1038,11 @@ packages:
     resolution: {integrity: sha512-+bT2uH4E5LGE7h/n3evcS/sQlJXCpIp6ym8OWJ5eV6+67Dsql/LaaT7qJBAt2rzfoa/5QBGBhxDix1dMt2kQKQ==}
     engines: {node: '>= 0.8.0'}
 
-  libsodium-wrappers@0.8.3:
-    resolution: {integrity: sha512-Ri4G16uT3HiJsvIobXp1G1bpvGN4dcIjLONh8CHuzwqsT92F3GZ7EAxk3sL53NeuFCwi1XWSggsMMpGJ4Y+x/g==}
+  libsodium-sumo@0.8.4:
+    resolution: {integrity: sha512-TMtHShQfVVsaxDygyapvUC3o7YsPgXa/hRWeIgzyFz6w5k/1hirGptCxp1U7XwW3rCskaTTYKgV10v86UiGgNw==}
 
-  libsodium@0.8.3:
-    resolution: {integrity: sha512-wl+twQjqb04RUbqlkCBV6qoFyajrSlSkquMBLbREDPPBriM8fd9HTIFVmhruGnpaidY6HfhvdYqrwHFMlUFCWw==}
+  libsodium-wrappers-sumo@0.8.3:
+    resolution: {integrity: sha512-EfLSlxKJ7RUGVospOlvbvse0suAAVPR+CkZfFcFjPzPtTEgVfvIaZUPsWndVjxYp/om2HDc0iLeR5wLF8YbHZg==}
 
   local-access@1.1.0:
     resolution: {integrity: sha512-XfegD5pyTAfb+GY6chk283Ox5z8WexG56OvM06RWLpAc/UHozO8X6xAxEkIitZOtsSMM1Yr3DkHgW5W+onLhCw==}
@@ -1450,6 +1453,11 @@ packages:
   type-is@2.0.1:
     resolution: {integrity: sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw==}
     engines: {node: '>= 0.6'}
+
+  typescript@6.0.3:
+    resolution: {integrity: sha512-y2TvuxSZPDyQakkFRPZHKFm+KKVqIisdg9/CZwm9ftvKXLP8NRWj38/ODjNbr43SsoXqNuAisEf1GdCxqWcdBw==}
+    engines: {node: '>=14.17'}
+    hasBin: true
 
   ufo@1.6.3:
     resolution: {integrity: sha512-yDJTmhydvl5lJzBmy/hyOAA0d+aqCBuwl818haVdYCRrWV84o7YyeVm4QlVHStqNrrJSTb6jKuFAVqAFsr+K3Q==}
@@ -2481,11 +2489,11 @@ snapshots:
       prelude-ls: 1.2.1
       type-check: 0.4.0
 
-  libsodium-wrappers@0.8.3:
-    dependencies:
-      libsodium: 0.8.3
+  libsodium-sumo@0.8.4: {}
 
-  libsodium@0.8.3: {}
+  libsodium-wrappers-sumo@0.8.3:
+    dependencies:
+      libsodium-sumo: 0.8.4
 
   local-access@1.1.0: {}
 
@@ -2895,6 +2903,8 @@ snapshots:
       content-type: 1.0.5
       media-typer: 1.1.0
       mime-types: 3.0.2
+
+  typescript@6.0.3: {}
 
   ufo@1.6.3: {}
 

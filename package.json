@@ -16,6 +16,7 @@
     "start:app": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
     "start:services": "docker compose up -d",
     "build": "coralite-scripts build",
+    "lint:types": "pnpm exec tsc --noEmit",
     "lint:format": "eslint --cache --fix .",
     "test:server": "sirv dist --dev --port 3000",
     "test:unit": "pnpm --test",
@@ -33,14 +34,15 @@
     "eslint": "^10.0.2",
     "eslint-plugin-html": "^8.1.4",
     "eslint-plugin-jsdoc": "^62.8.1",
-    "sirv-cli": "^3.0.1"
+    "sirv-cli": "^3.0.1",
+    "typescript": "^6.0.3"
   },
   "dependencies": {
     "bootstrap": "^5.3.8",
     "emoji-picker-element": "^1.29.1",
     "idb": "^8.0.3",
     "isomorphic-dompurify": "^3.0.0",
-    "libsodium-wrappers": "^0.8.3",
+    "libsodium-wrappers-sumo": "0.8.3",
     "marked": "^17.0.4",
     "pocketbase": "^0.27.0",
     "turndown": "^7.2.2"
