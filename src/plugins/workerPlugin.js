@@ -17,11 +17,22 @@ export default function workerPlugin () {
 
             if (type === 'WORKER_READY') {
               isReady = true
+
+              // Send INIT message with baseUrl
+              const baseUrl = globalContext.config?.url || 'http://localhost:8090'
+              worker.postMessage({ type: 'INIT', payload: { baseUrl } })
+
               while (readyQueue.length > 0) {
                 const { type, payload, resolve, reject, id } = readyQueue.shift()
                 pendingRequests.set(id, { resolve, reject })
                 worker.postMessage({ id, type, payload })
               }
+              return
+            }
+
+            // Background broadcasts (e.g., from decryption pipeline)
+            if (!id && type === 'NEW_LOCAL_DATA') {
+              globalContext.$bus.emit('NEW_LOCAL_DATA', payload)
               return
             }
 
