@@ -55,10 +55,10 @@
           updateStatus('Locating account...')
 
           const pbInstance = await pb()
-          
+  
           // Query user record by username
           const record = await pbInstance.collection('users').getFirstListItem(`username="${username}"`)
-          
+  
           const { pin_salt: pinSaltBase64, encrypted_master_keys: encryptedMasterKeys } = record
 
           updateStatus('Unlocking secure vault...')
@@ -99,7 +99,7 @@
         } catch (error) {
           console.error('Login error:', error)
           let errorMessage = 'Login failed'
-          
+  
           if (error.status === 404) {
             errorMessage = 'User not found'
           } else if (error.message && error.message.includes('decrypt')) {
@@ -107,7 +107,7 @@
           } else if (error.message) {
             errorMessage = error.message
           }
-          
+  
           updateStatus(errorMessage)
         }
       })

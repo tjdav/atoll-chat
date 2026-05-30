@@ -81,7 +81,7 @@
 
           const payload = {
             username,
-            password: pin, // Using pin as password for PocketBase Auth
+            password: pin,
             passwordConfirm: pin,
             public_box_key: masterKeys.public_box_key,
             public_sign_key: masterKeys.public_sign_key,
@@ -100,7 +100,7 @@
           // Notify the application
           $bus.emit('auth:registered', {
             user,
-            payload // Including payload for debugging or immediate state sync if needed
+            payload
           })
 
         } catch (error) {
