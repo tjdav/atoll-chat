@@ -11,6 +11,9 @@ importers:
       bootstrap:
         specifier: ^5.3.8
         version: 5.3.8(@popperjs/core@2.11.8)
+      dexie:
+        specifier: ^4.4.3
+        version: 4.4.3
       emoji-picker-element:
         specifier: ^1.29.1
         version: 1.29.1
@@ -684,6 +687,9 @@ packages:
   detect-libc@2.1.2:
     resolution: {integrity: sha512-Btj2BOOO83o3WyH59e8MgXsxEQVcarkUOpEYrubB0urwnN10yQ364rsiByU11nZlqWYZm05i/of7io4mzihBtQ==}
     engines: {node: '>=8'}
+
+  dexie@4.4.3:
+    resolution: {integrity: sha512-N+3IGQ3HPlyO2YAkntGAwitm42BpBGV86MttzUMiRzWLa4NGh0pltVRcUVF4ybL/OnXjCrr9k7SDPIKkFYP2Lg==}
 
   dom-serializer@2.0.0:
     resolution: {integrity: sha512-wIkAryiqt/nV5EQKqQpo3SToSOV9J0DnbJqwK7Wv/Trc92zIAYZ4FlMu+JPFW1DfGFt81ZTCGgDEabffXeLyJg==}
@@ -2025,6 +2031,8 @@ snapshots:
 
   detect-libc@2.1.2:
     optional: true
+
+  dexie@4.4.3: {}
 
   dom-serializer@2.0.0:
     dependencies:
