@@ -56,4 +56,13 @@ $utilities: map-merge($utilities,
 @import "bootstrap/scss/utilities/api";
 
 @import "display";
-@import "layout"; 
+@import "layout";
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}

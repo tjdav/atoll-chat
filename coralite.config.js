@@ -10,7 +10,7 @@ export default defineConfig({
   plugins: [
     pocketbasePlugin({ baseUrl: process.env.DATABASE_URL || 'http://localhost:8090' }),
     eventBus,
-    statePlugin(),
+    statePlugin({ initialState: { currentAppView: 'chats' } }),
     localDbPlugin(),
     workerPlugin()
   ],

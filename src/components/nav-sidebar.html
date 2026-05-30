@@ -1,0 +1,84 @@
+<template id="nav-sidebar">
+  <div class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100">
+    <div class="nav flex-column nav-pills w-100 px-2 gap-3">
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isChatsActive }}" ref="btnChats" title="Chats">
+        <i class="bi bi-chat-left-text fs-4"></i>
+      </button>
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isMusicActive }}" ref="btnMusic" title="Music">
+        <i class="bi bi-music-note-list fs-4"></i>
+      </button>
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isPicturesActive }}" ref="btnPictures" title="Pictures">
+        <i class="bi bi-image fs-4"></i>
+      </button>
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isVideosActive }}" ref="btnVideos" title="Videos">
+        <i class="bi bi-camera-video fs-4"></i>
+      </button>
+    </div>
+    <div class="mt-auto w-100 px-2">
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings">
+        <i class="bi bi-gear-fill fs-4"></i>
+      </button>
+    </div>
+  </div>
+</template>
+
+<style>
+  .nav-sidebar {
+    width: 80px;
+  }
+  .nav-link {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border-radius: 12px;
+    color: var(--bs-secondary-color);
+  }
+  .nav-link:hover {
+    background-color: var(--bs-tertiary-bg);
+  }
+  .nav-link.active {
+    background-color: var(--bs-primary-bg-subtle) !important;
+    color: var(--bs-primary) !important;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    getters: {
+      isChatsActive: (state) => (state.currentAppView === 'chats' ? 'active' : ''),
+      isMusicActive: (state) => (state.currentAppView === 'music' ? 'active' : ''),
+      isPicturesActive: (state) => (state.currentAppView === 'pictures' ? 'active' : ''),
+      isVideosActive: (state) => (state.currentAppView === 'videos' ? 'active' : ''),
+      isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : '')
+    },
+    script: ({ refs, state, $state }) => {
+      // Sync global state to component local state for reactivity in getters/template
+      state.currentAppView = $state.currentAppView || 'chats'
+
+      // Subscribe to global state changes if the state plugin supports it
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('currentAppView', (value) => {
+          state.currentAppView = value
+        })
+      }
+
+      const views = {
+        btnChats: 'chats',
+        btnMusic: 'music',
+        btnPictures: 'pictures',
+        btnVideos: 'videos',
+        btnSettings: 'settings'
+      }
+
+      Object.entries(views).forEach(([refName, viewName]) => {
+        const btn = refs(refName)
+        if (btn) {
+          btn.addEventListener('click', () => {
+            $state.currentAppView = viewName
+          })
+        }
+      })
+    }
+  })
+</script>

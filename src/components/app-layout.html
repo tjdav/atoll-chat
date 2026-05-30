@@ -1,0 +1,45 @@
+<template id="app-layout">
+  <div class="app-layout d-flex vh-100 vw-100 overflow-hidden bg-body">
+    <!-- Column 1: Navigation Sidebar (Fixed 80px) -->
+    <nav-sidebar></nav-sidebar>
+
+    <!-- Column 2: Contextual List (Fixed 350px) -->
+    <div ref="columnTwo" class="contextual-list border-end bg-body-tertiary d-flex flex-column" style="width: 350px; min-width: 350px;">
+      <div class="p-3 border-bottom bg-body">
+        <h5 class="mb-0 text-capitalize">{{ currentViewTitle }}</h5>
+      </div>
+      <div class="p-4 text-center">
+        <p class="text-muted small">Rendering list for: {{ currentAppView }}</p>
+      </div>
+    </div>
+
+    <!-- Column 3: Main Detail View (Fluid) -->
+    <div ref="columnThree" class="detail-view flex-grow-1 d-flex align-items-center justify-content-center bg-body-secondary">
+      <div class="text-center">
+        <i class="bi bi-chat-dots fs-1 text-secondary mb-3 d-block"></i>
+        <p class="text-muted mb-0">Select a conversation or media item</p>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    getters: {
+      currentViewTitle: (state) => state.currentAppView || 'Chats'
+    },
+    script: ({ state, $state }) => {
+      state.currentAppView = $state.currentAppView
+
+      // Subscribe to global state changes to keep component state in sync
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('currentAppView', (value) => {
+          state.currentAppView = value
+          console.log(`[app-layout] App view changed to: ${value}`)
+        })
+      }
+    }
+  })
+</script>
