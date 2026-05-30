@@ -1,0 +1,70 @@
+/**
+ * Generates a 16-byte cryptographically secure salt using libsodium.
+ *
+ * @param {Object} sodium - The initialized libsodium-wrappers instance.
+ * @returns {Uint8Array} A 16-byte salt.
+ */
+export function generateSalt (sodium) {
+  return sodium.randombytes_buf(16)
+}
+
+/**
+ * Derives a 32-byte Key Encryption Key (KEK) from a PIN and salt using Argon2id.
+ *
+ * @param {string} pin - The user's PIN.
+ * @param {Uint8Array} saltUint8Array - The 16-byte salt.
+ * @param {Object} sodium - The initialized libsodium-wrappers instance.
+ * @returns {Promise<Uint8Array>} A promise that resolves to the 32-byte derived KEK.
+ */
+export async function deriveKeyFromPin (pin, saltUint8Array, sodium) {
+  return sodium.crypto_pwhash(
+    32,
+    pin,
+    saltUint8Array,
+    sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+    sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+    sodium.crypto_pwhash_ALG_ARGON2ID13
+  )
+}
+
+/**
+ * Derives a 32-byte Key Encryption Key (KEK) from a passkey using the WebAuthn PRF extension.
+ *
+ * @param {Uint8Array} credentialId - The ID of the credential to use.
+ * @param {Uint8Array} challengeBuffer - A random challenge buffer (usually 32 bytes).
+ * @param {Uint8Array} saltBuffer - A 32-byte salt buffer for the PRF extension.
+ * @returns {Promise<Uint8Array>} A promise that resolves to the 32-byte derived KEK.
+ * @throws {Error} If the WebAuthn PRF extension is not supported or fails.
+ */
+export async function deriveKeyFromPasskey (credentialId, challengeBuffer, saltBuffer) {
+  if (!window.PublicKeyCredential) {
+    throw new Error('WebAuthn PRF extension is not supported on this device or browser.')
+  }
+
+  const assertion = await navigator.credentials.get({
+    publicKey: {
+      challenge: challengeBuffer,
+      allowCredentials: [{
+        type: 'public-key',
+        id: credentialId
+      }],
+      userVerification: 'required',
+      extensions: {
+        prf: {
+          eval: {
+            first: saltBuffer
+          }
+        }
+      }
+    }
+  })
+
+  const extensionResults = assertion.getClientExtensionResults()
+  const prfResults = extensionResults?.prf?.results?.first
+
+  if (!prfResults) {
+    throw new Error('WebAuthn PRF extension is not supported on this device or browser.')
+  }
+
+  return new Uint8Array(prfResults)
+}
