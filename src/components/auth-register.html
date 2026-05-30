@@ -1,0 +1,113 @@
+<template id="auth-register">
+  <div class="auth-register-container">
+    <form ref="registerForm" class="auth-form">
+      <h3>Create Account</h3>
+      <div class="form-group mb-3">
+        <label for="username">Username</label>
+        <input ref="username" id="username" type="text" class="form-control" placeholder="Choose a username" required>
+      </div>
+      <div class="form-group mb-3">
+        <label for="pin">PIN (min 6 characters)</label>
+        <input ref="pin" id="pin" type="password" class="form-control" placeholder="Enter PIN" minlength="6" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Register</button>
+    </form>
+    <div ref="statusMsg" class="status-message mt-3 text-muted text-center"></div>
+  </div>
+</template>
+
+<style>
+  .auth-register-container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+  }
+  .status-message {
+    font-size: 0.875rem;
+    min-height: 1.25rem;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    script: ({ refs, pb, $bus }) => {
+      const registerForm = refs('registerForm')
+      const usernameInput = refs('username')
+      const pinInput = refs('pin')
+      const statusMsg = refs('statusMsg')
+
+      const updateStatus = (message) => {
+        statusMsg.textContent = message
+      }
+
+      registerForm.addEventListener('submit', async (event) => {
+        event.preventDefault()
+
+        const username = usernameInput.value
+        const pin = pinInput.value
+
+        try {
+          updateStatus('Initializing cryptographic modules...')
+  
+          // Dynamically import dependencies
+          const [{ default: sodium }, {
+            generateMasterKeys,
+            generateSalt,
+            deriveKeyFromPin,
+            encryptVault
+          }] = await Promise.all([
+            import('libsodium-wrappers-sumo'),
+            import('../utils/cryptoUtils.js')
+          ])
+
+          await sodium.ready
+
+          updateStatus('Generating cryptographic keys...')
+          const masterKeys = await generateMasterKeys(sodium)
+          const pinSalt = generateSalt(sodium)
+
+          updateStatus('Securing vault...')
+          const KEK = await deriveKeyFromPin(pin, pinSalt, sodium)
+  
+          const encryptedVault = encryptVault({
+            private_box_key: masterKeys.private_box_key,
+            private_sign_key: masterKeys.private_sign_key
+          }, KEK, sodium)
+
+          const payload = {
+            username,
+            password: pin, // Using pin as password for PocketBase Auth
+            passwordConfirm: pin,
+            public_box_key: masterKeys.public_box_key,
+            public_sign_key: masterKeys.public_sign_key,
+            pin_salt: sodium.to_base64(pinSalt, sodium.base64_variants.ORIGINAL),
+            encrypted_master_keys: encryptedVault
+          }
+
+          updateStatus('Finalizing registration...')
+  
+          // Create the user record in PocketBase
+          const pbInstance = await pb()
+          const user = await pbInstance.collection('users').create(payload)
+  
+          updateStatus('Registration successful!')
+  
+          // Notify the application
+          $bus.emit('auth:registered', {
+            user,
+            payload // Including payload for debugging or immediate state sync if needed
+          })
+
+        } catch (error) {
+          console.error('Registration error:', error)
+          updateStatus(`Error: ${error.message || 'Registration failed'}`)
+        }
+      })
+    }
+  })
+</script>

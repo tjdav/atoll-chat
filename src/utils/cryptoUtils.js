@@ -134,3 +134,26 @@ export async function generateMasterKeys (sodium) {
     private_sign_key: identityKeys.privateKey
   }
 }
+
+/**
+ * Encrypts the private keys using the derived KEK.
+ *
+ * @param {Object} privateKeys - Object containing { private_box_key, private_sign_key } as base64 strings.
+ * @param {Uint8Array} KEK - The 32-byte derived Key Encryption Key.
+ * @param {Object} sodium - The initialized libsodium-wrappers instance.
+ * @returns {Object} An object containing { ciphertext, nonce } as base64 strings.
+ */
+export function encryptVault (privateKeys, KEK, sodium) {
+  const vaultPlaintext = JSON.stringify({
+    private_box_key: privateKeys.private_box_key,
+    private_sign_key: privateKeys.private_sign_key
+  })
+
+  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+  const ciphertext = sodium.crypto_secretbox_easy(vaultPlaintext, nonce, KEK)
+
+  return {
+    ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+    nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+  }
+}
