@@ -1,5 +1,8 @@
 import { definePlugin } from 'coralite'
 
+/**
+ *
+ */
 export default function workerPlugin () {
   return definePlugin({
     name: 'crypto-worker',
@@ -20,12 +23,22 @@ export default function workerPlugin () {
 
               // Send INIT message with baseUrl
               const baseUrl = globalContext.config?.url || 'http://localhost:8090'
-              worker.postMessage({ type: 'INIT', payload: { baseUrl } })
+              worker.postMessage({
+                type: 'INIT',
+                payload: { baseUrl }
+              })
 
               while (readyQueue.length > 0) {
                 const { type, payload, resolve, reject, id } = readyQueue.shift()
-                pendingRequests.set(id, { resolve, reject })
-                worker.postMessage({ id, type, payload })
+                pendingRequests.set(id, {
+                  resolve,
+                  reject
+                })
+                worker.postMessage({
+                  id,
+                  type,
+                  payload
+                })
               }
               return
             }
@@ -63,12 +76,25 @@ export default function workerPlugin () {
               execute: (type, payload) => {
                 return new Promise((resolve, reject) => {
                   const id = crypto.randomUUID()
-                  
+
                   if (!isReady) {
-                    readyQueue.push({ id, type, payload, resolve, reject })
+                    readyQueue.push({
+                      id,
+                      type,
+                      payload,
+                      resolve,
+                      reject
+                    })
                   } else {
-                    pendingRequests.set(id, { resolve, reject })
-                    worker.postMessage({ id, type, payload })
+                    pendingRequests.set(id, {
+                      resolve,
+                      reject
+                    })
+                    worker.postMessage({
+                      id,
+                      type,
+                      payload
+                    })
                   }
                 })
               }

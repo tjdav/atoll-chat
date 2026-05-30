@@ -11,6 +11,7 @@ importScripts('https://unpkg.com/dexie@4.0.10/dist/dexie.js')
 let db
 let baseUrl
 const publicKeyCache = new Map()
+let currentUserKeys = null
 
 let isProcessing = false
 const messageQueue = []
@@ -40,7 +41,9 @@ self.onmessage = (event) => {
 let readyPromise
 
 async function processQueue () {
-  if (isProcessing || messageQueue.length === 0) return
+  if (isProcessing || messageQueue.length === 0) {
+    return
+  }
   isProcessing = true
 
   const event = messageQueue.shift()
@@ -70,14 +73,33 @@ async function handleEvent (event) {
   }
 
   try {
+    if (type === 'INIT_KEYS') {
+      currentUserKeys = payload
+      self.postMessage({
+        id,
+        type,
+        result: 'ACK'
+      })
+      return
+    }
+
     if (type === 'test-rpc') {
-      self.postMessage({ id, type, payload, result: 'ACK' })
+      self.postMessage({
+        id,
+        type,
+        payload,
+        result: 'ACK'
+      })
       return
     }
 
     if (type === 'generateSalt') {
       const salt = sodium.randombytes_buf(16)
-      self.postMessage({ id, type, result: salt })
+      self.postMessage({
+        id,
+        type,
+        result: salt
+      })
       return
     }
 
@@ -91,7 +113,11 @@ async function handleEvent (event) {
         sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
         sodium.crypto_pwhash_ALG_ARGON2ID13
       )
-      self.postMessage({ id, type, result: KEK })
+      self.postMessage({
+        id,
+        type,
+        result: KEK
+      })
       return
     }
 
@@ -101,9 +127,22 @@ async function handleEvent (event) {
       return
     }
 
-    self.postMessage({ id, type, error: `Unknown task type: ${type}` })
+    if (type === 'PROCESS_NEW_ROOM_KEY') {
+      await processNewRoomKey(id, payload)
+      return
+    }
+
+    self.postMessage({
+      id,
+      type,
+      error: `Unknown task type: ${type}`
+    })
   } catch (error) {
-    self.postMessage({ id, type, error: error.message })
+    self.postMessage({
+      id,
+      type,
+      error: error.message
+    })
   }
 }
 
@@ -121,15 +160,25 @@ async function processIncomingMessage (rpcId, payload) {
   } = payload
 
   // 1. Fetch Sender Key
-  let publicSignKey = publicKeyCache.get(senderId)
-  if (!publicSignKey) {
-    if (!baseUrl) throw new Error('Base URL not initialized')
+  let senderKeys = publicKeyCache.get(senderId)
+  if (!senderKeys || !senderKeys.public_sign_key) {
+    if (!baseUrl) {
+      throw new Error('Base URL not initialized')
+    }
     const response = await fetch(`${baseUrl}/api/collections/users/records/${senderId}`)
-    if (!response.ok) throw new Error(`Failed to fetch sender public key: ${response.statusText}`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch sender public key: ${response.statusText}`)
+    }
     const userRecord = await response.json()
-    publicSignKey = userRecord.public_sign_key
-    publicKeyCache.set(senderId, publicSignKey)
+    senderKeys = {
+      ...(senderKeys || {}),
+      public_box_key: userRecord.public_box_key,
+      public_sign_key: userRecord.public_sign_key
+    }
+    publicKeyCache.set(senderId, senderKeys)
   }
+
+  const publicSignKey = senderKeys.public_sign_key
 
   // 2. Identity Verification (Ed25519)
   const signatureBuffer = sodium.from_base64(signature)
@@ -145,10 +194,14 @@ async function processIncomingMessage (rpcId, payload) {
 
   // 3. Symmetric Decryption (X25519)
   const room = await db.local_rooms.get(roomId)
-  if (!room) throw new Error(`Local room ${roomId} not found`)
+  if (!room) {
+    throw new Error(`Local room ${roomId} not found`)
+  }
 
   const activeEpoch = room.key_history?.find(h => h.epoch_id === epochId)
-  if (!activeEpoch) throw new Error('Missing cryptographic key for this epoch.')
+  if (!activeEpoch) {
+    throw new Error('Missing cryptographic key for this epoch.')
+  }
 
   const ciphertextBuffer = sodium.from_base64(ciphertext)
   const nonceBuffer = sodium.from_base64(nonce)
@@ -161,7 +214,9 @@ async function processIncomingMessage (rpcId, payload) {
     throw new Error('Decryption failed')
   }
 
-  if (!decryptedBuffer) throw new Error('Decryption failed (null result)')
+  if (!decryptedBuffer) {
+    throw new Error('Decryption failed (null result)')
+  }
 
   const decryptedString = new TextDecoder().decode(decryptedBuffer)
   const decryptedPayload = JSON.parse(decryptedString)
@@ -182,8 +237,106 @@ async function processIncomingMessage (rpcId, payload) {
   await db.local_messages.put(decryptedMessage)
 
   // 5. Notify UI & Resolve RPC
-  self.postMessage({ type: 'NEW_LOCAL_DATA', payload: { room_id: roomId } })
-  self.postMessage({ id: rpcId, type: 'PROCESS_INCOMING_MESSAGE', result: { success: true } })
+  self.postMessage({
+    type: 'NEW_LOCAL_DATA',
+    payload: { room_id: roomId }
+  })
+  self.postMessage({
+    id: rpcId,
+    type: 'PROCESS_INCOMING_MESSAGE',
+    result: { success: true }
+  })
+}
+
+async function processNewRoomKey (rpcId, payload) {
+  const { room_id, wrapped_by, encrypted_room_key, key_nonce, epoch_id } = payload
+
+  if (!currentUserKeys || !currentUserKeys.private_box_key) {
+    throw new Error('User keys not initialized in worker')
+  }
+
+  // 1. Fetch Inviter's Public Key
+  let inviterKeys = publicKeyCache.get(wrapped_by)
+  if (!inviterKeys || !inviterKeys.public_box_key) {
+    if (!baseUrl) {
+      throw new Error('Base URL not initialized')
+    }
+    const response = await fetch(`${baseUrl}/api/collections/users/records/${wrapped_by}`)
+    if (!response.ok) {
+      throw new Error(`Failed to fetch inviter public key: ${response.statusText}`)
+    }
+    const userRecord = await response.json()
+    inviterKeys = {
+      ...(inviterKeys || {}),
+      public_box_key: userRecord.public_box_key,
+      public_sign_key: userRecord.public_sign_key
+    }
+    publicKeyCache.set(wrapped_by, inviterKeys)
+  }
+
+  const inviterPublicKey = inviterKeys.public_box_key
+
+  // 2. Decrypt (Unwrap)
+  const encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key)
+  const nonceBuffer = sodium.from_base64(key_nonce)
+  const inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey)
+  const userPrivateKeyBuffer = sodium.from_base64(currentUserKeys.private_box_key)
+
+  let unwrappedKeyBuffer
+  try {
+    unwrappedKeyBuffer = sodium.crypto_box_open_easy(
+      encryptedRoomKeyBuffer,
+      nonceBuffer,
+      inviterPublicKeyBuffer,
+      userPrivateKeyBuffer
+    )
+  } catch (e) {
+    throw new Error('Failed to unwrap room key: Decryption error')
+  }
+
+  if (!unwrappedKeyBuffer) {
+    throw new Error('Failed to unwrap room key: Null result')
+  }
+
+  // 3. Epoch Management & Local Storage
+  let room = await db.local_rooms.get(room_id)
+  if (!room) {
+    // For brand new invites, we might not know if it's a group yet from the key alone,
+    // but typically metadata follows. Defaulting to true as most chats are technically groups or 1-on-1s.
+    room = {
+      id: room_id,
+      is_group: true,
+      key_history: []
+    }
+  }
+
+  if (!room.key_history) {
+    room.key_history = []
+  }
+
+  // Use authoritative epoch_id from payload
+  const existingEpochIndex = room.key_history.findIndex(h => h.epoch_id === epoch_id)
+  if (existingEpochIndex !== -1) {
+    room.key_history[existingEpochIndex].key = sodium.to_base64(unwrappedKeyBuffer)
+  } else {
+    room.key_history.push({
+      epoch_id,
+      key: sodium.to_base64(unwrappedKeyBuffer)
+    })
+  }
+
+  await db.local_rooms.put(room)
+
+  // 4. UI Notification
+  self.postMessage({
+    type: 'NEW_LOCAL_ROOM',
+    payload: { room_id }
+  })
+  self.postMessage({
+    id: rpcId,
+    type: 'PROCESS_NEW_ROOM_KEY',
+    result: { success: true }
+  })
 }
 
 readyPromise = init()
