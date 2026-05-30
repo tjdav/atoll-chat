@@ -1,0 +1,190 @@
+<template id="list-pane">
+  <div class="list-pane d-flex flex-column h-100">
+    <header class="p-3 border-bottom bg-body">
+      <h5 class="mb-0 text-capitalize" ref="paneTitle">Chats</h5>
+    </header>
+    <div class="flex-grow-1 overflow-y-auto" ref="listContainer">
+      <!-- Dynamic list items will be rendered here -->
+    </div>
+  </div>
+</template>
+
+<style>
+  .list-pane {
+    background-color: var(--bs-tertiary-bg);
+  }
+  .list-item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: var(--bs-secondary-bg);
+    margin-right: 12px;
+  }
+  .list-group-item.active .list-item-icon {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    script: ({ refs, state, $state, localDb, $bus }) => {
+      // Sync global state to component local state
+      state.currentAppView = $state.currentAppView || 'chats'
+      state.activeSelectionId = $state.activeSelectionId || null
+
+      const getIconForMimeType = (mimeType) => {
+        if (mimeType.startsWith('image/')) {
+          return 'bi-image'
+        }
+        if (mimeType.startsWith('video/')) {
+          return 'bi-camera-video'
+        }
+        if (mimeType.startsWith('audio/')) {
+          return 'bi-music-note'
+        }
+        return 'bi-file-earmark'
+      }
+
+      const renderList = async () => {
+        const view = state.currentAppView
+        const activeId = state.activeSelectionId
+        const container = refs('listContainer')
+        const titleRef = refs('paneTitle')
+
+        if (!container) {
+          return
+        }
+
+        let items = []
+        let title = 'Chats'
+
+        try {
+          if (view === 'chats') {
+            title = 'Chats'
+            items = await localDb.local_rooms.toArray()
+          } else if (view === 'music') {
+            title = 'Music'
+            items = await localDb.local_assets.filter(asset => asset.mime_type.startsWith('audio/')).toArray()
+          } else if (view === 'pictures') {
+            title = 'Pictures'
+            items = await localDb.local_assets.filter(asset => asset.mime_type.startsWith('image/')).toArray()
+          } else if (view === 'videos') {
+            title = 'Videos'
+            items = await localDb.local_assets.filter(asset => asset.mime_type.startsWith('video/')).toArray()
+          } else if (view === 'settings') {
+            title = 'Settings'
+            container.innerHTML = '<div class="p-4 text-center text-muted">Settings configuration coming soon.</div>'
+            if (titleRef) {
+              titleRef.textContent = title
+            }
+            return
+          }
+        } catch (error) {
+          console.error('[list-pane] Query error:', error)
+        }
+
+        // Race condition check: Ensure the view hasn't changed while we were awaiting the DB
+        if (view !== state.currentAppView) {
+          return
+        }
+
+        if (titleRef) {
+          titleRef.textContent = title
+        }
+        container.innerHTML = ''
+
+        if (items.length === 0) {
+          const emptyMsg = document.createElement('div')
+          emptyMsg.className = 'p-4 text-center text-muted'
+          const emptyP = document.createElement('p')
+          emptyP.className = 'mt-4'
+          emptyP.textContent = `No ${view} found`
+          emptyMsg.appendChild(emptyP)
+          container.appendChild(emptyMsg)
+          return
+        }
+
+        const listGroup = document.createElement('div')
+        listGroup.className = 'list-group list-group-flush'
+
+        items.forEach(item => {
+          const btn = document.createElement('button')
+          btn.type = 'button'
+          btn.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 ${item.id === activeId ? 'active' : ''}`
+  
+          let iconClass = 'bi-chat-left-text'
+          let displayName = ''
+          let subText = ''
+
+          if (view === 'chats') {
+            displayName = item.name || (item.is_group ? 'Unnamed Group' : 'Direct Message')
+            subText = item.is_group ? 'Group Chat' : 'Private'
+          } else {
+            iconClass = getIconForMimeType(item.mime_type)
+            displayName = new Date(item.created_at).toLocaleString()
+            subText = item.mime_type
+          }
+
+          // Use safe element construction to prevent XSS
+          const iconWrapper = document.createElement('div')
+          iconWrapper.className = 'list-item-icon'
+          const icon = document.createElement('i')
+          icon.className = `bi ${iconClass} fs-5`
+          iconWrapper.appendChild(icon)
+
+          const contentWrapper = document.createElement('div')
+          contentWrapper.className = 'text-truncate'
+  
+          const nameDiv = document.createElement('div')
+          nameDiv.className = 'fw-bold text-truncate'
+          nameDiv.textContent = displayName
+  
+          const subTextSmall = document.createElement('small')
+          subTextSmall.className = 'opacity-75 d-block text-truncate'
+          subTextSmall.textContent = subText
+
+          contentWrapper.appendChild(nameDiv)
+          contentWrapper.appendChild(subTextSmall)
+
+          btn.appendChild(iconWrapper)
+          btn.appendChild(contentWrapper)
+
+          btn.addEventListener('click', () => {
+            $state.activeSelectionId = item.id
+            $state.activeSelectionType = view
+          })
+
+          listGroup.appendChild(btn)
+        })
+
+        container.appendChild(listGroup)
+      }
+
+      // Initial render
+      renderList()
+
+      // Reactivity to global state
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('currentAppView', (val) => {
+          state.currentAppView = val
+          renderList()
+        })
+        $state.subscribe('activeSelectionId', (val) => {
+          state.activeSelectionId = val
+          renderList()
+        })
+      }
+
+      // Reactivity to background data
+      $bus.on('new_local_data', () => {
+        console.log('[list-pane] New data received, refreshing list...')
+        renderList()
+      })
+    }
+  })
+</script>
