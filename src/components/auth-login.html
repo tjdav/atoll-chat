@@ -1,0 +1,116 @@
+<template id="auth-login">
+  <div class="auth-login-container">
+    <form ref="loginForm" class="auth-form">
+      <h3>Login</h3>
+      <div class="form-group mb-3">
+        <label for="username">Username</label>
+        <input ref="username" id="username" type="text" class="form-control" placeholder="Enter username" required>
+      </div>
+      <div class="form-group mb-3">
+        <label for="pin">PIN</label>
+        <input ref="pin" id="pin" type="password" class="form-control" placeholder="Enter PIN" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-100">Unlock Vault & Login</button>
+    </form>
+    <div ref="statusMsg" class="status-message mt-3 text-muted text-center"></div>
+  </div>
+</template>
+
+<style>
+  .auth-login-container {
+    max-width: 400px;
+    margin: 2rem auto;
+    padding: 2rem;
+    border: 1px solid #dee2e6;
+    border-radius: 0.5rem;
+    background-color: #f8f9fa;
+  }
+  .status-message {
+    font-size: 0.875rem;
+    min-height: 1.25rem;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    script: ({ refs, pb, $bus }) => {
+      const loginForm = refs('loginForm')
+      const usernameInput = refs('username')
+      const pinInput = refs('pin')
+      const statusMsg = refs('statusMsg')
+
+      const updateStatus = (message) => {
+        statusMsg.textContent = message
+      }
+
+      loginForm.addEventListener('submit', async (event) => {
+        event.preventDefault()
+
+        const username = usernameInput.value
+        const pin = pinInput.value
+
+        try {
+          updateStatus('Locating account...')
+
+          const pbInstance = await pb()
+          
+          // Query user record by username
+          const record = await pbInstance.collection('users').getFirstListItem(`username="${username}"`)
+          
+          const { pin_salt: pinSaltBase64, encrypted_master_keys: encryptedMasterKeys } = record
+
+          updateStatus('Unlocking secure vault...')
+
+          // Dynamically import dependencies
+          const [{ default: sodium }, {
+            deriveKeyFromPin,
+            decryptVault
+          }] = await Promise.all([
+            import('libsodium-wrappers-sumo'),
+            import('../utils/cryptoUtils.js')
+          ])
+
+          await sodium.ready
+
+          const pinSalt = sodium.from_base64(pinSaltBase64, sodium.base64_variants.ORIGINAL)
+          const KEK = await deriveKeyFromPin(pin, pinSalt, sodium)
+
+          // Decrypt the vault
+          const decryptedKeys = decryptVault(
+            encryptedMasterKeys.ciphertext,
+            encryptedMasterKeys.nonce,
+            KEK,
+            sodium
+          )
+
+          updateStatus('Vault unlocked. Entering chat...')
+
+          // Perform PocketBase authentication
+          await pbInstance.collection('users').authWithPassword(username, pin)
+
+          // Emit successful login event
+          $bus.emit('auth:unlocked', {
+            keys: decryptedKeys,
+            userRecord: record
+          })
+
+        } catch (error) {
+          console.error('Login error:', error)
+          let errorMessage = 'Login failed'
+          
+          if (error.status === 404) {
+            errorMessage = 'User not found'
+          } else if (error.message && error.message.includes('decrypt')) {
+            errorMessage = 'Invalid PIN or Corrupt Vault'
+          } else if (error.message) {
+            errorMessage = error.message
+          }
+          
+          updateStatus(errorMessage)
+        }
+      })
+    }
+  })
+</script>

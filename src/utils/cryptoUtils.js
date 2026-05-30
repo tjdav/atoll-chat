@@ -157,3 +157,27 @@ export function encryptVault (privateKeys, KEK, sodium) {
     nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
   }
 }
+
+/**
+ * Decrypts the private keys from the vault using the derived KEK.
+ *
+ * @param {string} ciphertextBase64 - The base64-encoded ciphertext.
+ * @param {string} nonceBase64 - The base64-encoded nonce.
+ * @param {Uint8Array} KEK - The 32-byte derived Key Encryption Key.
+ * @param {Object} sodium - The initialized libsodium-wrappers instance.
+ * @returns {Object} The decrypted private keys: { private_box_key, private_sign_key }.
+ * @throws {Error} If decryption fails.
+ */
+export function decryptVault (ciphertextBase64, nonceBase64, KEK, sodium) {
+  const ciphertext = sodium.from_base64(ciphertextBase64, sodium.base64_variants.ORIGINAL)
+  const nonce = sodium.from_base64(nonceBase64, sodium.base64_variants.ORIGINAL)
+
+  const decrypted = sodium.crypto_secretbox_open_easy(ciphertext, nonce, KEK)
+
+  if (!decrypted) {
+    throw new Error('Failed to decrypt vault. Invalid PIN or corrupt data.')
+  }
+
+  const vaultPlaintext = sodium.to_string(decrypted)
+  return JSON.parse(vaultPlaintext)
+}
