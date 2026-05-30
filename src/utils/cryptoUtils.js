@@ -41,18 +41,26 @@ export async function deriveKeyFromPasskey (credentialId, challengeBuffer, saltB
     throw new Error('WebAuthn PRF extension is not supported on this device or browser.')
   }
 
+  /** @type {any} */
+  const challenge = challengeBuffer
+  /** @type {any} */
+  const id = credentialId
+  /** @type {any} */
+  const first = saltBuffer
+
+  /** @type {any} */
   const assertion = await navigator.credentials.get({
     publicKey: {
-      challenge: challengeBuffer,
+      challenge,
       allowCredentials: [{
         type: 'public-key',
-        id: credentialId
+        id
       }],
       userVerification: 'required',
       extensions: {
         prf: {
           eval: {
-            first: saltBuffer
+            first
           }
         }
       }
@@ -60,11 +68,69 @@ export async function deriveKeyFromPasskey (credentialId, challengeBuffer, saltB
   })
 
   const extensionResults = assertion.getClientExtensionResults()
-  const prfResults = extensionResults?.prf?.results?.first
-
-  if (!prfResults) {
+  if (!extensionResults.prf || !extensionResults.prf.results || !extensionResults.prf.results.first) {
     throw new Error('WebAuthn PRF extension is not supported on this device or browser.')
   }
+  const prfResults = extensionResults.prf.results.first
+  /** @type {ArrayBuffer} */
+  const resultsBuffer = prfResults
 
-  return new Uint8Array(prfResults)
+  return new Uint8Array(resultsBuffer)
+}
+
+/**
+ * Generates an X25519 keypair for encryption.
+ *
+ * @param {Object} sodium - The initialized libsodium-wrappers instance.
+ * @returns {Object} An object containing { publicKey, privateKey } as base64 strings.
+ */
+export function generateEncryptionKeys (sodium) {
+  if (!sodium || typeof sodium.crypto_box_keypair !== 'function') {
+    throw new Error('Libsodium instance is missing or not fully initialized.')
+  }
+
+  const { publicKey, privateKey } = sodium.crypto_box_keypair()
+
+  return {
+    publicKey: sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL),
+    privateKey: sodium.to_base64(privateKey, sodium.base64_variants.ORIGINAL)
+  }
+}
+
+/**
+ * Generates an Ed25519 keypair for signing/identity.
+ *
+ * @param {Object} sodium - The initialized libsodium-wrappers instance.
+ * @returns {Object} An object containing { publicKey, privateKey } as base64 strings.
+ */
+export function generateIdentityKeys (sodium) {
+  if (!sodium || typeof sodium.crypto_sign_keypair !== 'function') {
+    throw new Error('Libsodium instance is missing or not fully initialized.')
+  }
+
+  const { publicKey, privateKey } = sodium.crypto_sign_keypair()
+
+  return {
+    publicKey: sodium.to_base64(publicKey, sodium.base64_variants.ORIGINAL),
+    privateKey: sodium.to_base64(privateKey, sodium.base64_variants.ORIGINAL)
+  }
+}
+
+/**
+ * Unified helper to generate both encryption and identity keypairs.
+ * Maps keys to the specific snake_case names required for the Atoll Vault/Database.
+ *
+ * @param {Object} sodium - The initialized libsodium-wrappers instance.
+ * @returns {Promise<Object>} A promise resolving to an object with snake_case keys.
+ */
+export async function generateMasterKeys (sodium) {
+  const encryptionKeys = generateEncryptionKeys(sodium)
+  const identityKeys = generateIdentityKeys(sodium)
+
+  return {
+    public_box_key: encryptionKeys.publicKey,
+    private_box_key: encryptionKeys.privateKey,
+    public_sign_key: identityKeys.publicKey,
+    private_sign_key: identityKeys.privateKey
+  }
 }
