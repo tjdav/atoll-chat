@@ -21,9 +21,9 @@ async function init () {
     await sodium.ready
 
     db = new Dexie('AtollChatDB')
-    db.version(1).stores({
-      local_rooms: 'id, is_group',
-      local_messages: 'id, room_id, [room_id+created_at], type',
+    db.version(2).stores({
+      local_rooms: 'id, is_group, updated_at',
+      local_messages: 'id, room_id, created_at, [room_id+created_at], type',
       local_assets: 'id, room_id, mime_type, created_at'
     })
 
@@ -249,7 +249,7 @@ async function processIncomingMessage (rpcId, payload) {
 }
 
 async function processNewRoomKey (rpcId, payload) {
-  const { room_id, wrapped_by, encrypted_room_key, key_nonce, epoch_id } = payload
+  const { room_id, wrapped_by, encrypted_room_key, key_nonce, epoch_id, updated } = payload
 
   if (!currentUserKeys || !currentUserKeys.private_box_key) {
     throw new Error('User keys not initialized in worker')
@@ -306,8 +306,11 @@ async function processNewRoomKey (rpcId, payload) {
     room = {
       id: room_id,
       is_group: true,
-      key_history: []
+      key_history: [],
+      updated_at: updated
     }
+  } else {
+    room.updated_at = updated
   }
 
   if (!room.key_history) {
