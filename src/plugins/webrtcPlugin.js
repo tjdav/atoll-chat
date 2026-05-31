@@ -9,7 +9,9 @@ export default function webrtcPlugin () {
     name: 'webrtc-manager',
     client: {
       context: {
-        $webrtc: (globalContext) => {
+        $webrtc: async (globalContext) => {
+          const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
+
           // Phase 1: Global Setup
           const activeCalls = new Map()
           const { $bus, $localDb, pb, $state } = globalContext
@@ -81,8 +83,8 @@ export default function webrtcPlugin () {
               }
             } else if (message.type === 'ice_candidate') {
               const pc = activeCalls.get(roomId)
-              if (pc && message.content) {
-                await pc.addIceCandidate(new RTCIceCandidate(message.content))
+              if (pc && message.candidate) {
+                await pc.addIceCandidate(new RTCIceCandidate(message.candidate))
               }
             } else if (message.type === 'call_end') {
               teardownCall(roomId)
@@ -91,7 +93,22 @@ export default function webrtcPlugin () {
           })
 
           // Phase 2: Instance Context
-          return (instanceContext) => {
+          return async (instanceContext) => {
+            /**
+             * Helper to send an E2EE signaling message through the standard pipeline.
+             */
+            const sendSignalingMessage = async (roomId, type, payload = {}) => {
+              await sendEncryptedMessage(roomId, {
+                type,
+                ...payload,
+                timestamp: Date.now()
+              }, {
+                pb,
+                $localDb,
+                $state
+              })
+            }
+
             const setupPeerConnection = (roomId, mediaStream) => {
               const pc = new RTCPeerConnection(rtcConfig)
 
@@ -101,15 +118,8 @@ export default function webrtcPlugin () {
 
               pc.onicecandidate = async (event) => {
                 if (event.candidate) {
-                  const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
-                  await sendEncryptedMessage(roomId, {
-                    type: 'ice_candidate',
-                    content: event.candidate,
-                    timestamp: Date.now()
-                  }, {
-                    pb,
-                    $localDb,
-                    $state
+                  await sendSignalingMessage(roomId, 'ice_candidate', {
+                    candidate: event.candidate
                   })
                 }
               }
@@ -143,16 +153,9 @@ export default function webrtcPlugin () {
                 const offer = await pc.createOffer()
                 await pc.setLocalDescription(offer)
 
-                const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
-                await sendEncryptedMessage(roomId, {
-                  type: 'call_offer',
+                await sendSignalingMessage(roomId, 'call_offer', {
                   content: offer,
-                  media_types: ['audio', 'video'],
-                  timestamp: Date.now()
-                }, {
-                  pb,
-                  $localDb,
-                  $state
+                  media_types: ['audio', 'video']
                 })
               },
 
@@ -162,29 +165,14 @@ export default function webrtcPlugin () {
                 const answer = await pc.createAnswer()
                 await pc.setLocalDescription(answer)
 
-                const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
-                await sendEncryptedMessage(roomId, {
-                  type: 'call_answer',
-                  content: answer,
-                  timestamp: Date.now()
-                }, {
-                  pb,
-                  $localDb,
-                  $state
+                await sendSignalingMessage(roomId, 'call_answer', {
+                  content: answer
                 })
               },
 
               endCall: async (roomId) => {
                 teardownCall(roomId)
-                const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
-                await sendEncryptedMessage(roomId, {
-                  type: 'call_end',
-                  timestamp: Date.now()
-                }, {
-                  pb,
-                  $localDb,
-                  $state
-                })
+                await sendSignalingMessage(roomId, 'call_end')
               }
             }
           }

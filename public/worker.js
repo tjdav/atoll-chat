@@ -220,7 +220,7 @@ async function processIncomingMessage (rpcId, payload) {
 
   const decryptedString = new TextDecoder().decode(decryptedBuffer)
   const decryptedPayload = JSON.parse(decryptedString)
-  const { type, content, timestamp } = decryptedPayload
+  const { type, content, candidate, timestamp } = decryptedPayload
 
   // Storage and causal chain resolution.
   const decryptedMessage = {
@@ -229,6 +229,7 @@ async function processIncomingMessage (rpcId, payload) {
     sender_id: senderId,
     type,
     content,
+    candidate,
     timestamp,
     previous_msg_uuid: previousMsgUuid,
     created_at: created
