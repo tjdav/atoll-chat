@@ -1,0 +1,216 @@
+<template id="create-room-modal">
+  <dialog ref="roomModal" class="modal-dialog-centered border-0 rounded-3 shadow" style="width: 500px; padding: 0; background: transparent;">
+    <div class="modal-content border">
+      <div class="modal-header px-4 py-3 border-bottom">
+        <h5 class="modal-title">Create New Room</h5>
+        <button type="button" class="btn-close" ref="btnCloseTop" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4">
+        <div class="mb-3" ref="roomNameContainer" style="display: {{ roomNameDisplay }};">
+          <label class="form-label fw-bold">Room Name</label>
+          <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput">
+        </div>
+
+        <div class="mb-3">
+          <label class="form-label fw-bold">Participants</label>
+          <div class="d-flex flex-wrap gap-2 mb-2" ref="selectedUsers"></div>
+          <div class="input-group">
+            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control border-start-0 ps-0" placeholder="Search by username..." ref="searchInput">
+          </div>
+        </div>
+
+        <div class="search-results-container border rounded overflow-hidden" style="max-height: 200px; overflow-y: auto;" ref="searchResults"></div>
+      </div>
+      <div class="modal-footer px-4 py-3 border-top">
+        <button type="button" class="btn btn-secondary" ref="btnCancel">Cancel</button>
+        <button type="button" class="btn btn-primary" ref="btnCreate" disabled>Create Room</button>
+      </div>
+    </div>
+  </dialog>
+</template>
+
+<style>
+  dialog::backdrop {
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(2px);
+  }
+  .modal-content { background-color: var(--bs-body-bg); }
+  .user-chip {
+    padding: 4px 12px;
+    background-color: var(--bs-primary-bg-subtle);
+    color: var(--bs-primary);
+    border-radius: 20px;
+    display: flex;
+    align-items: center;
+    font-size: 0.9rem;
+  }
+  .user-chip .btn-close {
+    font-size: 0.6rem;
+    margin-left: 8px;
+    padding: 4px;
+  }
+  .search-result-item {
+    cursor: pointer;
+    padding: 10px 15px;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+  }
+  .search-result-item:hover { background-color: var(--bs-tertiary-bg); }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    data: () => ({
+      roomName: '',
+      searchQuery: '',
+      searchResults: [],
+      selectedParticipants: [],
+      _searchTimeout: null
+    }),
+    getters: {
+      isGroup: (state) => (state.selectedParticipants || []).length > 1,
+      canCreate: (state) => {
+        const p = state.selectedParticipants || []
+        if (p.length === 0) {
+          return false
+        }
+        const isGroup = p.length > 1
+        if (isGroup) {
+          return (state.roomName || '').trim().length > 0
+        }
+        return true
+      },
+      roomNameDisplay: (state) => (((state.selectedParticipants || []).length > 1) ? 'block' : 'none')
+    },
+    script: ({ refs, state, pb, $bus }) => {
+      const modal = refs('roomModal')
+      const searchInput = refs('searchInput')
+      const roomNameInput = refs('roomNameInput')
+      const btnCreate = refs('btnCreate')
+      const roomNameContainer = refs('roomNameContainer')
+      const selectedUsersContainer = refs('selectedUsers')
+      const searchResultsContainer = refs('searchResults')
+
+      const render = () => {
+        // UI logic utilizing state (getters are available on proxy in script)
+        roomNameContainer.style.display = state.roomNameDisplay
+        btnCreate.disabled = !state.canCreate
+
+        // Render lists
+        selectedUsersContainer.innerHTML = ''
+        state.selectedParticipants.forEach(user => {
+          const chip = document.createElement('div')
+          chip.className = 'user-chip'
+          chip.textContent = user.username
+          const closeBtn = document.createElement('button')
+          closeBtn.type = 'button'
+          closeBtn.className = 'btn-close'
+          closeBtn.onclick = () => {
+            state.selectedParticipants = state.selectedParticipants.filter(p => p.id !== user.id)
+            render()
+          }
+          chip.appendChild(closeBtn)
+          selectedUsersContainer.appendChild(chip)
+        })
+
+        searchResultsContainer.innerHTML = ''
+        if (state.searchResults.length === 0) {
+          const msg = document.createElement('div')
+          msg.className = 'p-3 text-center text-muted'
+          msg.textContent = state.searchQuery ? 'No users found' : 'Type to search users...'
+          searchResultsContainer.appendChild(msg)
+        } else {
+          state.searchResults.forEach(user => {
+            if (state.selectedParticipants.find(p => p.id === user.id)) {
+              return
+            }
+            const item = document.createElement('div')
+            item.className = 'search-result-item'
+            item.textContent = user.username
+            item.onclick = () => {
+              state.selectedParticipants = [...state.selectedParticipants, user]
+              state.searchQuery = ''
+              state.searchResults = []
+              searchInput.value = ''
+              render()
+            }
+            searchResultsContainer.appendChild(item)
+          })
+        }
+      }
+
+      // Initial render
+      render()
+
+      searchInput.oninput = (e) => {
+        state.searchQuery = e.target.value
+        if (state.searchQuery.length < 2) {
+          state.searchResults = []
+          render()
+          return
+        }
+        clearTimeout(state._searchTimeout)
+        state._searchTimeout = setTimeout(async () => {
+          try {
+            const pbInstance = await pb()
+            const res = await pbInstance.collection('users').getList(1, 5, {
+              filter: `username ~ "${state.searchQuery}"`
+            })
+            state.searchResults = res.items
+            render()
+          } catch (err) {
+            console.error('[create-room-modal] Search failed:', err)
+          }
+        }, 300)
+      }
+
+      roomNameInput.oninput = (e) => {
+        state.roomName = e.target.value
+        render()
+      }
+
+      $bus.on('open-create-room', () => {
+        state.roomName = ''
+        state.searchQuery = ''
+        state.searchResults = []
+        state.selectedParticipants = []
+        searchInput.value = ''
+        roomNameInput.value = ''
+        render()
+        modal.showModal()
+      })
+
+      const close = () => modal.close()
+      refs('btnCloseTop').onclick = close
+      refs('btnCancel').onclick = close
+      modal.onclick = (e) => {
+        if (e.target === modal) {
+          close()
+        }
+      }
+
+      btnCreate.onclick = async () => {
+        try {
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+          const roomKey = sodium.randombytes_buf(32)
+          const metadata = JSON.stringify({
+            name: state.roomName,
+            avatar: ''
+          })
+          const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+          const enc = sodium.crypto_secretbox_easy(metadata, nonce, roomKey)
+          console.log('[create-room-modal] Room creation payload generated:', {
+            roomKey: sodium.to_base64(roomKey, sodium.base64_variants.ORIGINAL),
+            encrypted_metadata: sodium.to_base64(enc, sodium.base64_variants.ORIGINAL),
+            metadata_nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+          })
+        } catch (err) {
+          console.error('[create-room-modal] Key generation failed:', err)
+        }
+      }
+    }
+  })
+</script>

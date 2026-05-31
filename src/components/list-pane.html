@@ -1,7 +1,10 @@
 <template id="list-pane">
   <div class="list-pane d-flex flex-column h-100">
-    <header class="p-3 border-bottom bg-body">
+    <header class="p-3 border-bottom bg-body d-flex justify-content-between align-items-center">
       <h5 class="mb-0 text-capitalize" ref="paneTitle">Chats</h5>
+      <button class="btn btn-sm btn-primary rounded-circle" ref="btnCreateRoom" title="Create Room" style="display: none;">
+        <i class="bi bi-plus-lg"></i>
+      </button>
     </header>
     <div class="flex-grow-1 overflow-y-auto" ref="listContainer">
       <!-- Dynamic list items will be rendered here -->
@@ -168,11 +171,29 @@
       // Initial render
       renderList()
 
+      const btnCreateRoom = refs('btnCreateRoom')
+      if (btnCreateRoom) {
+        btnCreateRoom.addEventListener('click', () => {
+          $bus.emit('open-create-room')
+        })
+      }
+
+      const updateHeaderUI = () => {
+        if (state.currentAppView === 'chats') {
+          btnCreateRoom.style.display = 'block'
+        } else {
+          btnCreateRoom.style.display = 'none'
+        }
+      }
+
+      updateHeaderUI()
+
       // Reactivity to global state
       if (typeof $state.subscribe === 'function') {
         $state.subscribe('currentAppView', (val) => {
           state.currentAppView = val
           renderList()
+          updateHeaderUI()
         })
         $state.subscribe('activeSelectionId', (val) => {
           state.activeSelectionId = val
