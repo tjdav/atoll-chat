@@ -9,10 +9,15 @@
     </div>
 
     <!-- Column 3: Main Detail View (Fluid) -->
-    <div ref="columnThree" class="detail-view flex-grow-1 d-flex align-items-center justify-content-center bg-body-secondary">
-      <div class="text-center">
-        <i class="bi bi-chat-dots fs-1 text-secondary mb-3 d-block"></i>
-        <p class="text-muted mb-0">Select a conversation or media item</p>
+    <div ref="columnThree" class="detail-view flex-grow-1 bg-body-secondary">
+      <div class="h-100 d-flex align-items-center justify-content-center" style="display: {{ emptyStateDisplay }};">
+        <div class="text-center">
+          <i class="bi bi-chat-dots fs-1 text-secondary mb-3 d-block"></i>
+          <p class="text-muted mb-0">Select a conversation or media item</p>
+        </div>
+      </div>
+      <div class="h-100" style="display: {{ chatViewDisplay }};">
+        <chat-view></chat-view>
       </div>
     </div>
   </div>
@@ -22,17 +27,30 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    data: () => ({
+      activeSelectionId: null,
+      activeSelectionType: null
+    }),
     getters: {
-      currentViewTitle: (state) => state.currentAppView || 'Chats'
+      currentViewTitle: (state) => state.currentAppView || 'Chats',
+      emptyStateDisplay: (state) => ((!state.activeSelectionId || state.activeSelectionType !== 'chats') ? 'flex' : 'none'),
+      chatViewDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'chats') ? 'block' : 'none')
     },
     script: ({ state, $state }) => {
       state.currentAppView = $state.currentAppView
+      state.activeSelectionId = $state.activeSelectionId
+      state.activeSelectionType = $state.activeSelectionType
 
       // Subscribe to global state changes to keep component state in sync
       if (typeof $state.subscribe === 'function') {
         $state.subscribe('currentAppView', (value) => {
           state.currentAppView = value
-          console.log(`[app-layout] App view changed to: ${value}`)
+        })
+        $state.subscribe('activeSelectionId', (value) => {
+          state.activeSelectionId = value
+        })
+        $state.subscribe('activeSelectionType', (value) => {
+          state.activeSelectionType = value
         })
       }
     }

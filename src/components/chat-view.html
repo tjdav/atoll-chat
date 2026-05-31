@@ -1,0 +1,130 @@
+<template id="chat-view">
+  <div class="chat-view d-flex flex-column h-100 bg-body">
+    <!-- Chat Header -->
+    <header class="p-3 border-bottom d-flex justify-content-between align-items-center bg-body shadow-sm">
+      <div class="d-flex align-items-center">
+        <div class="avatar-placeholder me-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
+          {{ roomInitial }}
+        </div>
+        <div>
+          <h6 class="mb-0 fw-bold">{{ roomName }}</h6>
+          <small class="text-muted">{{ roomStatus }}</small>
+        </div>
+      </div>
+      <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" ref="btnDetails">
+        <i class="bi bi-info-circle me-1"></i> Details
+      </button>
+    </header>
+
+    <!-- Main Content Area -->
+    <div class="flex-grow-1 position-relative overflow-hidden">
+      <!-- Message Timeline (Placeholder) -->
+      <div class="h-100 d-flex flex-column p-3 bg-light bg-opacity-10" ref="timelineContainer">
+        <div class="mt-auto text-center text-muted p-5">
+          <i class="bi bi-shield-lock fs-1 mb-3 d-block"></i>
+          <p>Messages are end-to-end encrypted. No one outside of this chat, not even Atoll, can read them.</p>
+        </div>
+      </div>
+
+      <!-- Room Details Sidebar (Slide-over) -->
+      <div ref="sidebarContainer" class="sidebar-slide-over shadow-lg border-start bg-body" style="display: {{ sidebarDisplay }};">
+        <room-details-sidebar></room-details-sidebar>
+      </div>
+    </div>
+
+    <!-- Chat Input (Placeholder) -->
+    <div class="p-3 border-top bg-body">
+      <div class="input-group">
+        <input type="text" class="form-control" placeholder="Type a message..." disabled>
+        <button class="btn btn-primary" type="button" disabled>
+          <i class="bi bi-send"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+  .chat-view {
+    height: 100%;
+  }
+  .sidebar-slide-over {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 350px;
+    z-index: 1050;
+    transition: transform 0.3s ease-in-out;
+  }
+  .avatar-placeholder {
+    font-size: 1.2rem;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite/plugins'
+
+  export default defineComponent({
+    data: () => ({
+      roomName: 'Loading...',
+      roomInitial: '?',
+      roomStatus: 'Encrypted',
+      isRoomDetailsOpen: false
+    }),
+    getters: {
+      sidebarDisplay: (state) => (state.isRoomDetailsOpen ? 'block' : 'none')
+    },
+    script: ({ refs, state, $state, $localDb, $bus }) => {
+      state.isRoomDetailsOpen = $state.isRoomDetailsOpen || false
+
+      const updateRoomInfo = async (roomId) => {
+        if (!roomId) {
+          return
+        }
+  
+        try {
+          const db = await $localDb()
+          const room = await db.local_rooms.get(roomId)
+          if (room) {
+            state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
+            state.roomInitial = state.roomName.charAt(0).toUpperCase()
+            state.roomStatus = room.is_group ? 'Group Chat' : 'Private'
+          }
+        } catch (err) {
+          console.error('[chat-view] Failed to load room info:', err)
+        }
+      }
+
+      // Initial load
+      updateRoomInfo($state.activeSelectionId)
+
+      // Watch for room changes
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('activeSelectionId', (val) => {
+          updateRoomInfo(val)
+          // Close details when switching rooms
+          state.isRoomDetailsOpen = false
+          $state.isRoomDetailsOpen = false
+        })
+
+        $state.subscribe('isRoomDetailsOpen', (val) => {
+          state.isRoomDetailsOpen = val
+        })
+      }
+
+      const btnDetails = refs('btnDetails')
+      if (btnDetails) {
+        btnDetails.addEventListener('click', () => {
+          state.isRoomDetailsOpen = !state.isRoomDetailsOpen
+          $state.isRoomDetailsOpen = state.isRoomDetailsOpen
+        })
+      }
+
+      $bus.on('close-room-details', () => {
+        state.isRoomDetailsOpen = false
+        $state.isRoomDetailsOpen = false
+      })
+    }
+  })
+</script>

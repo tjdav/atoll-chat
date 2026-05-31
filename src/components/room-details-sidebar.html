@@ -1,0 +1,286 @@
+<template id="room-details-sidebar">
+  <div class="room-details d-flex flex-column h-100 bg-body">
+    <div class="sidebar-header p-3 border-bottom d-flex justify-content-between align-items-center bg-body">
+      <h6 class="mb-0 fw-bold">Room Details</h6>
+      <button type="button" class="btn-close" ref="btnClose" aria-label="Close"></button>
+    </div>
+
+    <div class="sidebar-content flex-grow-1 overflow-y-auto p-3">
+      <div class="section-title text-uppercase text-muted small fw-bold mb-3">Members ({{ memberCount }})</div>
+      <div class="member-list list-group list-group-flush" ref="memberList">
+        <!-- Members will be rendered here -->
+      </div>
+    </div>
+
+    <div ref="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-75 d-flex align-items-center justify-content-center" style="display: none; z-index: 1060;">
+      <div class="text-center">
+        <div class="spinner-border text-primary mb-2" role="status"></div>
+        <div class="small fw-bold" ref="loadingText">Loading members...</div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+  .room-details {
+    height: 100%;
+  }
+  .member-item {
+    padding: 12px 0;
+    border-bottom: 1px solid var(--bs-border-color-translucent);
+  }
+  .member-item:last-child {
+    border-bottom: none;
+  }
+  .member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background-color: var(--bs-secondary-bg);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-right: 10px;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    data: () => ({
+      members: [],
+      isAdmin: false,
+      isKicking: false
+    }),
+    getters: {
+      memberCount: (state) => (state.members || []).length
+    },
+    script: ({ refs, state, pb, $bus, $state, $localDb }) => {
+      const memberListContainer = refs('memberList')
+      const loadingOverlay = refs('loadingOverlay')
+      const loadingText = refs('loadingText')
+
+      const showLoading = (text) => {
+        loadingText.textContent = text || 'Loading...'
+        loadingOverlay.style.display = 'flex'
+      }
+
+      const hideLoading = () => {
+        loadingOverlay.style.display = 'none'
+      }
+
+      const fetchMembers = async () => {
+        const roomId = $state.activeSelectionId
+        if (!roomId) {
+          return
+        }
+
+        showLoading('Fetching members...')
+        try {
+          const pbInstance = await pb()
+          const members = await pbInstance.collection('room_members').getFullList({
+            filter: `room_id="${roomId}"`,
+            expand: 'user_id'
+          })
+
+          state.members = members
+  
+          // Check if current user is admin
+          const currentUser = $state.currentUser
+          const currentMember = members.find(m => m.user_id === currentUser.id)
+          state.isAdmin = currentMember && currentMember.role === 'admin'
+
+          renderMembers()
+        } catch (err) {
+          console.error('[room-details-sidebar] Failed to fetch members:', err)
+        } finally {
+          hideLoading()
+        }
+      }
+
+      const renderMembers = () => {
+        if (!memberListContainer) {
+          return
+        }
+        memberListContainer.innerHTML = ''
+
+        state.members.forEach(member => {
+          const user = member.expand.user_id
+          const isCurrentUser = user.id === $state.currentUser.id
+
+          const item = document.createElement('div')
+          item.className = 'member-item d-flex align-items-center justify-content-between px-2'
+
+          const info = document.createElement('div')
+          info.className = 'd-flex align-items-center'
+
+          const avatar = document.createElement('div')
+          avatar.className = 'member-avatar bg-primary-subtle text-primary'
+          avatar.textContent = user.username.charAt(0).toUpperCase()
+
+          const nameWrapper = document.createElement('div')
+          const name = document.createElement('div')
+          name.className = 'fw-bold'
+          name.textContent = user.username + (isCurrentUser ? ' (You)' : '')
+
+          const role = document.createElement('span')
+          role.className = 'badge bg-light text-dark border ms-2 small'
+          role.style.fontSize = '0.7rem'
+          role.textContent = member.role === 'admin' ? 'Admin' : 'Member'
+
+          name.appendChild(role)
+          nameWrapper.appendChild(name)
+          info.appendChild(avatar)
+          info.appendChild(nameWrapper)
+          item.appendChild(info)
+
+          // Show Remove button if current user is admin and the member is not themselves
+          if (state.isAdmin && !isCurrentUser) {
+            const removeBtn = document.createElement('button')
+            removeBtn.className = 'btn btn-sm btn-outline-danger border-0'
+            removeBtn.innerHTML = '<i class="bi bi-person-x"></i>'
+            removeBtn.title = 'Remove member'
+            removeBtn.onclick = () => handleKickUser(member)
+            item.appendChild(removeBtn)
+          }
+
+          memberListContainer.appendChild(item)
+        })
+      }
+
+      const handleKickUser = async (member) => {
+        const user = member.expand.user_id
+        if (!confirm(`Are you sure you want to remove ${user.username} from the room? This will rotate all cryptographic keys.`)) {
+          return
+        }
+
+        $bus.emit('trigger-kick-user', {
+          kickedMemberId: member.id,
+          kickedUserId: user.id,
+          kickedUsername: user.username,
+          roomId: $state.activeSelectionId
+        })
+      }
+
+      // Initial fetch
+      fetchMembers()
+
+      // Listen for global kick events (we'll handle the logic here)
+      $bus.on('trigger-kick-user', async (data) => {
+        const { kickedMemberId, kickedUserId, kickedUsername, roomId } = data
+  
+        try {
+          showLoading(`Rotating keys and removing ${kickedUsername}...`)
+  
+          const [{ default: sodium }] = await Promise.all([
+            import('libsodium-wrappers-sumo')
+          ])
+          await sodium.ready
+
+          const pbInstance = await pb()
+          const currentUser = $state.currentUser
+
+          // 1. Identify Survivors & Generate New Key
+          const allMembers = await pbInstance.collection('room_members').getFullList({
+            filter: `room_id="${roomId}"`,
+            expand: 'user_id'
+          })
+
+          const survivors = allMembers.filter(m => m.id !== kickedMemberId)
+          const newEpochKey = sodium.randombytes_buf(32)
+
+          // 2. Wrap the New Key for Survivors
+          const adminPrivateKey = sodium.from_base64(currentUser.private_box_key, sodium.base64_variants.ORIGINAL)
+  
+          const wrapPromises = survivors.map(async (survivor) => {
+            const user = survivor.expand.user_id
+            const participantPublicKey = sodium.from_base64(user.public_box_key, sodium.base64_variants.ORIGINAL)
+            const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES)
+            const encryptedKey = sodium.crypto_box_easy(newEpochKey, nonce, participantPublicKey, adminPrivateKey)
+
+            return pbInstance.collection('room_members').update(survivor.id, {
+              wrapped_by: currentUser.id,
+              encrypted_room_key: sodium.to_base64(encryptedKey, sodium.base64_variants.ORIGINAL),
+              key_nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+            })
+          })
+
+          // 3. The Server Transaction
+          // Update all survivors and delete the kicked user
+          await Promise.all([
+            ...wrapPromises,
+            pbInstance.collection('room_members').delete(kickedMemberId)
+          ])
+
+          // 4. Update the Local Cache (Key History)
+          const db = await $localDb()
+          const localRoom = await db.local_rooms.get(roomId)
+          const nextEpochId = (localRoom.key_history || []).length + 1
+  
+          if (!localRoom.key_history) {
+            localRoom.key_history = []
+          }
+  
+          localRoom.key_history.push({
+            epoch_id: nextEpochId,
+            key: sodium.to_base64(newEpochKey, sodium.base64_variants.ORIGINAL)
+          })
+  
+          await db.local_rooms.put(localRoom)
+
+          // 5. Send a System Message
+          const systemContent = `${kickedUsername} was removed from the chat.`
+          const plaintextObj = JSON.stringify({
+            type: 'system',
+            content: systemContent,
+            timestamp: Date.now()
+          })
+
+          const msgNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+          const ciphertext = sodium.crypto_secretbox_easy(plaintextObj, msgNonce, newEpochKey)
+  
+          const adminSignKey = sodium.from_base64(currentUser.private_sign_key, sodium.base64_variants.ORIGINAL)
+          const validationString = `${roomId}|${nextEpochId}|${localRoom.last_msg_id || ''}|${sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL)}`
+          const validationBuffer = new TextEncoder().encode(validationString)
+          const signature = sodium.crypto_sign_detached(validationBuffer, adminSignKey)
+
+          await pbInstance.collection('messages').create({
+            room_id: roomId,
+            sender_id: currentUser.id,
+            epoch_id: nextEpochId,
+            previous_msg_uuid: localRoom.last_msg_id || '',
+            payload: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+            nonce: sodium.to_base64(msgNonce, sodium.base64_variants.ORIGINAL),
+            signature: sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
+          })
+
+          // Refresh the member list UI
+          await fetchMembers()
+  
+          // Notify the app of new local data to refresh timeline if needed
+          $bus.emit('new_local_data', { room_id: roomId })
+  
+        } catch (err) {
+          console.error('[room-details-sidebar] Kick flow failed:', err)
+          alert('Failed to remove user: ' + (err.message || 'Unknown error'))
+        } finally {
+          hideLoading()
+        }
+      })
+
+      refs('btnClose').onclick = () => {
+        $bus.emit('close-room-details')
+      }
+
+      // Re-fetch when room changes
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('activeSelectionId', () => {
+          fetchMembers()
+        })
+      }
+    }
+  })
+</script>

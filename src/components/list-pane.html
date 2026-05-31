@@ -35,7 +35,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, state, $state, localDb, $bus }) => {
+    script: ({ refs, state, $state, $localDb, $bus }) => {
       // Sync global state to component local state
       state.currentAppView = $state.currentAppView || 'chats'
       state.activeSelectionId = $state.activeSelectionId || null
@@ -69,16 +69,16 @@
         try {
           if (view === 'chats') {
             title = 'Chats'
-            items = await localDb.local_rooms.toArray()
+            items = await $localDb.local_rooms.toArray()
           } else if (view === 'music') {
             title = 'Music'
-            items = await localDb.local_assets.filter(asset => asset.mime_type.startsWith('audio/')).toArray()
+            items = await $localDb.local_assets.filter(asset => asset.mime_type.startsWith('audio/')).toArray()
           } else if (view === 'pictures') {
             title = 'Pictures'
-            items = await localDb.local_assets.filter(asset => asset.mime_type.startsWith('image/')).toArray()
+            items = await $localDb.local_assets.filter(asset => asset.mime_type.startsWith('image/')).toArray()
           } else if (view === 'videos') {
             title = 'Videos'
-            items = await localDb.local_assets.filter(asset => asset.mime_type.startsWith('video/')).toArray()
+            items = await $localDb.local_assets.filter(asset => asset.mime_type.startsWith('video/')).toArray()
           } else if (view === 'settings') {
             title = 'Settings'
             container.innerHTML = '<div class="p-4 text-center text-muted">Settings configuration coming soon.</div>'
