@@ -1,0 +1,120 @@
+<template id="music-list">
+  <div class="music-list h-100 overflow-y-auto">
+    <div class="list-group list-group-flush" ref="listGroup">
+      <!-- Music will be rendered here -->
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    script: ({ state, signal, $localDb, $bus, $state, refs }) => {
+      const listGroup = refs('listGroup')
+
+      const render = async () => {
+        if (!listGroup) return
+
+        try {
+          const assets = await $localDb.local_assets.where('mime_type').startsWith('audio/').reverse().sortBy('created_at')
+          
+          // Enrich assets with room names
+          const items = await Promise.all(assets.map(async (asset) => {
+            const room = await $localDb.local_rooms.get(asset.room_id)
+            return {
+              ...asset,
+              roomName: room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat',
+              timestamp: new Date(asset.created_at).toLocaleString()
+            }
+          }))
+
+          listGroup.innerHTML = ''
+
+          if (items.length === 0) {
+            const emptyMsg = document.createElement('div')
+            emptyMsg.className = 'p-4 text-center text-muted'
+            emptyMsg.textContent = 'No music found'
+            listGroup.appendChild(emptyMsg)
+            return
+          }
+
+          items.forEach(item => {
+            const btn = document.createElement('button')
+            btn.type = 'button'
+            const isActive = item.id === $state.activeSelectionId
+            btn.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 ${isActive ? 'active' : ''}`
+
+            const iconWrapper = document.createElement('div')
+            iconWrapper.className = 'list-item-icon'
+            const icon = document.createElement('i')
+            icon.className = 'bi bi-music-note fs-5'
+            iconWrapper.appendChild(icon)
+
+            const contentWrapper = document.createElement('div')
+            contentWrapper.className = 'text-truncate'
+    
+            const nameDiv = document.createElement('div')
+            nameDiv.className = 'fw-bold text-truncate'
+            nameDiv.textContent = item.roomName
+    
+            const subTextSmall = document.createElement('small')
+            subTextSmall.className = 'opacity-75 d-block text-truncate'
+            subTextSmall.textContent = item.timestamp
+
+            contentWrapper.appendChild(nameDiv)
+            contentWrapper.appendChild(subTextSmall)
+
+            btn.appendChild(iconWrapper)
+            btn.appendChild(contentWrapper)
+
+            const playIcon = document.createElement('i')
+            playIcon.className = 'bi bi-play-circle fs-4 ms-auto opacity-50'
+            btn.appendChild(playIcon)
+
+            btn.addEventListener('click', () => {
+              $state.activeSelectionId = item.id
+              $state.activeSelectionType = 'music'
+            })
+
+            listGroup.appendChild(btn)
+          })
+        } catch (error) {
+          console.error('[music-list] Error fetching music:', error)
+        }
+      }
+
+      // Initial render
+      render()
+
+      // Handle selection change
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('activeSelectionId', () => {
+          render()
+        })
+      }
+
+      const handleNewData = () => {
+        render()
+      }
+
+      $bus.on('NEW_LOCAL_DATA', handleNewData)
+    }
+  })
+</script>
+
+<style>
+  .list-item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: var(--bs-secondary-bg);
+    margin-right: 12px;
+  }
+  .list-group-item.active .list-item-icon {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+</style>

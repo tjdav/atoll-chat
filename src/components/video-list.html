@@ -1,0 +1,107 @@
+<template id="video-list">
+  <div class="video-list h-100 overflow-y-auto p-3">
+    <div class="row row-cols-2 g-3" ref="gridContainer">
+      <!-- Videos will be rendered here -->
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    script: ({ state, signal, $localDb, $bus, $state, refs }) => {
+      const gridContainer = refs('gridContainer')
+
+      const render = async () => {
+        if (!gridContainer) return
+
+        try {
+          const rawItems = await $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at')
+          gridContainer.innerHTML = ''
+
+          if (rawItems.length === 0) {
+            const emptyMsg = document.createElement('div')
+            emptyMsg.className = 'col-12 p-4 text-center text-muted'
+            emptyMsg.textContent = 'No videos found'
+            gridContainer.appendChild(emptyMsg)
+            return
+          }
+
+          rawItems.forEach(item => {
+            const dt = new Date(item.created_at)
+            const dateStr = dt.toLocaleDateString()
+            const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+
+            const col = document.createElement('div')
+            col.className = 'col'
+
+            const card = document.createElement('div')
+            const isActive = item.id === $state.activeSelectionId
+            card.className = `card h-100 border-0 shadow-sm overflow-hidden clickable-card ${isActive ? 'border border-primary border-2' : ''}`
+            
+            const imgPlaceholder = document.createElement('div')
+            imgPlaceholder.className = 'ratio ratio-16x9 d-flex align-items-center justify-content-center bg-dark bg-opacity-75'
+            const icon = document.createElement('i')
+            icon.className = 'bi bi-camera-video fs-1 text-white opacity-50'
+            imgPlaceholder.appendChild(icon)
+            
+            const cardBody = document.createElement('div')
+            cardBody.className = 'card-body p-2'
+            
+            const dateText = document.createElement('small')
+            dateText.className = 'd-block text-truncate text-muted'
+            dateText.textContent = dateStr
+            
+            const timeText = document.createElement('small')
+            timeText.className = 'd-block text-truncate text-muted opacity-75'
+            timeText.style.fontSize = '0.75rem'
+            timeText.textContent = timeStr
+
+            cardBody.appendChild(dateText)
+            cardBody.appendChild(timeText)
+            
+            card.appendChild(imgPlaceholder)
+            card.appendChild(cardBody)
+            col.appendChild(card)
+
+            card.addEventListener('click', () => {
+              $state.activeSelectionId = item.id
+              $state.activeSelectionType = 'videos'
+            })
+
+            gridContainer.appendChild(col)
+          })
+        } catch (error) {
+          console.error('[video-list] Error fetching videos:', error)
+        }
+      }
+
+      // Initial render
+      render()
+
+      // Handle selection change
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('activeSelectionId', () => {
+          render()
+        })
+      }
+
+      const handleNewData = () => {
+        render()
+      }
+
+      $bus.on('NEW_LOCAL_DATA', handleNewData)
+    }
+  })
+</script>
+
+<style>
+  .clickable-card {
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .clickable-card:hover {
+    transform: translateY(-2px);
+  }
+</style>
