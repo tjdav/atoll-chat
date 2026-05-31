@@ -12,7 +12,13 @@ export default defineConfig({
   plugins: [
     pocketbasePlugin({ baseUrl: process.env.DATABASE_URL || 'http://localhost:8090' }),
     eventBus,
-    statePlugin({ initialState: { currentAppView: 'chats' } }),
+    statePlugin({
+      initialState: {
+        currentAppView: 'chats',
+        callStatus: 'idle',
+        activeCallRoomId: null
+      }
+    }),
     localDbPlugin(),
     workerPlugin(),
     syncPlugin(),

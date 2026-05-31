@@ -1,0 +1,184 @@
+<template id="call-overlay">
+  <div class="call-overlay position-fixed top-0 start-0 w-100 h-100 bg-dark z-3" style="display: {{ overlayDisplay }}; z-index: 9999;">
+    
+    <!-- Incoming Call View -->
+    <div class="incoming-view h-100 d-flex flex-column align-items-center justify-content-center text-white" style="display: {{ incomingDisplay }};">
+      <div class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-4 shadow" style="width: 120px; height: 120px; font-size: 3rem;">
+        {{ callerInitial }}
+      </div>
+      <h2 class="mb-2">{{ callerName }}</h2>
+      <p class="text-light mb-5">Incoming Video Call...</p>
+      
+      <div class="d-flex gap-4">
+        <button ref="btnAccept" class="btn btn-success btn-lg rounded-circle p-3 shadow" title="Accept Call">
+          <i class="bi bi-telephone-fill fs-3"></i>
+        </button>
+        <button ref="btnReject" class="btn btn-danger btn-lg rounded-circle p-3 shadow" title="Reject Call">
+          <i class="bi bi-telephone-x-fill fs-3"></i>
+        </button>
+      </div>
+    </div>
+
+    <!-- Active Call View -->
+    <div class="active-view h-100 position-relative" style="display: {{ activeDisplay }};">
+      <video-grid></video-grid>
+      
+      <!-- Control Bar -->
+      <div class="control-bar position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-3 p-3 rounded-pill bg-dark bg-opacity-75 shadow-lg border border-secondary">
+        <button ref="btnToggleAudio" class="btn {{ audioBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+          <i class="bi {{ audioIconClass }} fs-4"></i>
+        </button>
+        <button ref="btnToggleVideo" class="btn {{ videoBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+          <i class="bi {{ videoIconClass }} fs-4"></i>
+        </button>
+        <button ref="btnEndCall" class="btn btn-danger rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+          <i class="bi bi-telephone-x-fill fs-4"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    data: () => ({
+      callStatus: 'idle',
+      callerName: 'Unknown Caller',
+      callerInitial: '?',
+      isAudioEnabled: true,
+      isVideoEnabled: true,
+      localStream: null,
+      remoteOffer: null
+    }),
+    getters: {
+      overlayDisplay: (state) => (state.callStatus !== 'idle' ? 'block' : 'none'),
+      incomingDisplay: (state) => (state.callStatus === 'incoming' ? 'flex' : 'none'),
+      activeDisplay: (state) => (state.callStatus === 'active' ? 'block' : 'none'),
+      audioBtnClass: (state) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
+      audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
+      videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
+      videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill')
+    },
+    script: async ({ state, $state, $bus, $webrtc, $localDb, refs, signal }) => {
+      const webrtc = await $webrtc()
+      const db = await $localDb()
+
+      // Sync local state with global state
+      state.callStatus = $state.callStatus
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('callStatus', (val) => {
+          state.callStatus = val
+        })
+      }
+
+      const stopTracks = () => {
+        if (state.localStream) {
+          state.localStream.getTracks().forEach(track => track.stop())
+          state.localStream = null
+        }
+      }
+
+      const endCall = async () => {
+        if ($state.activeCallRoomId) {
+          await webrtc.endCall($state.activeCallRoomId)
+        }
+        stopTracks()
+        $state.callStatus = 'idle'
+        $state.activeCallRoomId = null
+        state.remoteOffer = null
+      }
+
+      // Listen for incoming calls
+      $bus.on('call_incoming', async ({ roomId, offer }) => {
+        if ($state.callStatus !== 'idle') {
+          console.warn('[call-overlay] Ignoring incoming call, already in a call.')
+          return
+        }
+
+        const room = await db.local_rooms.get(roomId)
+        state.callerName = room?.name || 'Unknown Caller'
+        state.callerInitial = state.callerName.charAt(0).toUpperCase()
+        state.remoteOffer = offer
+  
+        $state.activeCallRoomId = roomId
+        $state.callStatus = 'incoming'
+      }, { signal })
+
+      // Listen for locally initiated calls to grab the stream
+      $bus.on('call_initiated_locally', ({ localStream }) => {
+        state.localStream = localStream
+        state.isAudioEnabled = localStream.getAudioTracks().some(t => t.enabled)
+        state.isVideoEnabled = localStream.getVideoTracks().some(t => t.enabled)
+  
+        // Re-emit for video-grid
+        $bus.emit('local_stream_available', { stream: localStream })
+      }, { signal })
+
+      // Listen for call ended from remote
+      $bus.on('call_ended', ({ roomId }) => {
+        if ($state.activeCallRoomId === roomId) {
+          stopTracks()
+          $state.callStatus = 'idle'
+          $state.activeCallRoomId = null
+          state.remoteOffer = null
+        }
+      }, { signal })
+
+      // Accept Call
+      refs('btnAccept').addEventListener('click', async () => {
+        try {
+          state.localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: true
+          })
+          $bus.emit('local_stream_available', { stream: state.localStream })
+  
+          await webrtc.answerCall($state.activeCallRoomId, state.localStream, state.remoteOffer)
+          $state.callStatus = 'active'
+        } catch (err) {
+          console.error('[call-overlay] Failed to accept call:', err)
+          endCall()
+        }
+      })
+
+      // Reject Call
+      refs('btnReject').addEventListener('click', () => {
+        endCall()
+      })
+
+      // Toggle Audio
+      refs('btnToggleAudio').addEventListener('click', () => {
+        if (state.localStream) {
+          const audioTrack = state.localStream.getAudioTracks()[0]
+          if (audioTrack) {
+            audioTrack.enabled = !audioTrack.enabled
+            state.isAudioEnabled = audioTrack.enabled
+          }
+        }
+      })
+
+      // Toggle Video
+      refs('btnToggleVideo').addEventListener('click', () => {
+        if (state.localStream) {
+          const videoTrack = state.localStream.getVideoTracks()[0]
+          if (videoTrack) {
+            videoTrack.enabled = !videoTrack.enabled
+            state.isVideoEnabled = videoTrack.enabled
+          }
+        }
+      })
+
+      // End Call
+      refs('btnEndCall').addEventListener('click', () => {
+        endCall()
+      })
+
+      // Cleanup on unmount
+      signal.addEventListener('abort', () => {
+        stopTracks()
+      })
+    }
+  })
+</script>

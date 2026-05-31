@@ -12,10 +12,10 @@
         </div>
       </div>
       <div class="d-flex gap-2">
-        <button class="btn btn-light btn-sm rounded-circle" title="Audio Call">
+        <button ref="btnAudioCall" class="btn btn-light btn-sm rounded-circle" title="Audio Call">
           <i class="bi bi-telephone"></i>
         </button>
-        <button class="btn btn-light btn-sm rounded-circle" title="Video Call">
+        <button ref="btnVideoCall" class="btn btn-light btn-sm rounded-circle" title="Video Call">
           <i class="bi bi-camera-video"></i>
         </button>
         <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" ref="btnDetails">
@@ -71,8 +71,10 @@
     getters: {
       sidebarDisplay: (state) => (state.isRoomDetailsOpen ? 'block' : 'none')
     },
-    script: ({ refs, state, $state, $localDb, $bus }) => {
+    script: async ({ refs, state, $state, $localDb, $bus, $webrtc }) => {
       state.isRoomDetailsOpen = $state.isRoomDetailsOpen || false
+
+      const webrtc = await $webrtc()
 
       const updateRoomInfo = async (roomId) => {
         if (!roomId) {
@@ -121,6 +123,38 @@
         state.isRoomDetailsOpen = false
         $state.isRoomDetailsOpen = false
       })
+
+      const initiateCall = async (video = true) => {
+        if ($state.callStatus !== 'idle') {
+          return
+        }
+
+        try {
+          const localStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video
+          })
+  
+          /**
+           * @todo We'll need a way to pass this stream to the call-overlay.
+           * Since call-overlay is global and reacts to callStatus, we can use $bus or shared state.
+           * For now, let's assume call-overlay will fetch its own stream or we pass it via a custom event.
+           */
+  
+          $state.activeCallRoomId = $state.activeSelectionId
+          $state.callStatus = 'active'
+  
+          // Emit event so call-overlay can pick up the localStream we just created
+          $bus.emit('call_initiated_locally', { localStream })
+  
+          await webrtc.initiateCall($state.activeCallRoomId, localStream)
+        } catch (err) {
+          console.error('[chat-view] Failed to initiate call:', err)
+        }
+      }
+
+      refs('btnAudioCall').addEventListener('click', () => initiateCall(false))
+      refs('btnVideoCall').addEventListener('click', () => initiateCall(true))
     }
   })
 </script>

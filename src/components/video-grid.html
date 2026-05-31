@@ -1,0 +1,56 @@
+<template id="video-grid">
+  <div class="video-grid position-relative w-100 h-100 bg-dark overflow-hidden">
+    <!-- Main background video (Remote) -->
+    <video ref="remoteVideo" class="w-100 h-100 object-fit-cover" autoplay playsinline></video>
+    
+    <!-- Picture-in-Picture local video -->
+    <video ref="localVideo" class="position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
+
+    <!-- Overlay if no remote video yet -->
+    <div ref="remotePlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
+      <div class="spinner-border text-primary mb-3" role="status">
+        <span class="visually-hidden">Connecting...</span>
+      </div>
+      <p class="h5">Waiting for remote participant...</p>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    script: ({ refs, $bus, signal }) => {
+      const remoteVideo = refs('remoteVideo')
+      const localVideo = refs('localVideo')
+      const remotePlaceholder = refs('remotePlaceholder')
+
+      // Listen for local stream
+      $bus.on('local_stream_available', ({ stream }) => {
+        if (localVideo) {
+          localVideo.srcObject = stream
+        }
+      }, { signal })
+
+      // Listen for remote track arrival
+      $bus.on('remote_track_arrival', ({ stream }) => {
+        if (remoteVideo) {
+          remoteVideo.srcObject = stream
+          if (remotePlaceholder) {
+            remotePlaceholder.style.display = 'none'
+          }
+        }
+      }, { signal })
+
+      // Handle video element cleanup
+      signal.addEventListener('abort', () => {
+        if (remoteVideo) {
+          remoteVideo.srcObject = null
+        }
+        if (localVideo) {
+          localVideo.srcObject = null
+        }
+      })
+    }
+  })
+</script>
