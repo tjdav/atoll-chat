@@ -1,6 +1,21 @@
 <template id="chat-input">
-  <div class="chat-input-container p-3 border-top bg-body">
+  <div ref="chatInputContainer" class="chat-input-container p-3 border-top bg-body">
+    <!-- Attachment Preview Bar -->
+    <div v-if="hasFile" class="attachment-preview p-2 mb-2 bg-light rounded d-flex align-items-center justify-content-between border">
+      <div class="d-flex align-items-center">
+        <i class="bi bi-file-earmark-arrow-up text-primary fs-4 me-2"></i>
+        <div>
+          <div class="small fw-bold text-truncate" style="max-width: 200px;">{{ fileName }}</div>
+          <div class="x-small text-muted">{{ uploadStatus }}</div>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-link text-danger" ref="cancelFileButton" title="Cancel" {{ isDisabled }}>
+        <i class="bi bi-x-circle"></i>
+      </button>
+    </div>
+
     <div class="input-group">
+      <input type="file" ref="fileInput" class="d-none" accept="image/*, video/*, audio/*">
       <button class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" {{ isDisabled }}>
         <i class="bi bi-paperclip"></i>
       </button>
@@ -35,6 +50,16 @@
     align-self: flex-end;
     height: 38px; /* Match single line bootstrap input height */
   }
+  .attachment-preview {
+    animation: fadeIn 0.3s ease;
+  }
+  .x-small {
+    font-size: 0.75rem;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 </style>
 
 <script type="module">
@@ -42,118 +67,215 @@
 
   export default defineComponent({
     data: () => ({
-      isSending: false
+      isSending: false,
+      isUploading: false,
+      uploadStatus: '',
+      fileName: '',
+      hasFile: false
     }),
     getters: {
-      isDisabled: (state) => (state.isSending ? 'disabled' : ''),
-      sendTextClasses: (state) => (state.isSending ? 'd-none' : 'd-none d-sm-inline'),
-      iconClasses: (state) => (state.isSending ? 'd-none' : ''),
-      spinnerClasses: (state) => (state.isSending ? '' : 'd-none')
+      isDisabled: (state) => (state.isSending || state.isUploading ? 'disabled' : ''),
+      sendTextClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : 'd-none d-sm-inline'),
+      iconClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : ''),
+      spinnerClasses: (state) => (state.isSending || state.isUploading ? '' : 'd-none')
     },
-    script: ({ refs, state, $state, pb, $localDb }) => {
+    script: ({ refs, state, $state, pb, $localDb, signal }) => {
       const messageInput = refs('messageInput')
       const sendButton = refs('sendButton')
+      const attachButton = refs('attachButton')
+      const fileInput = refs('fileInput')
 
       const autoExpand = () => {
         messageInput.style.height = 'auto'
         messageInput.style.height = messageInput.scrollHeight + 'px'
       }
 
-      messageInput.addEventListener('input', autoExpand)
+      messageInput.addEventListener('input', autoExpand, { signal })
+
+      const resetUI = () => {
+        state.isSending = false
+        state.isUploading = false
+        state.uploadStatus = ''
+        state.fileName = ''
+        state.hasFile = false
+        fileInput.value = ''
+        messageInput.value = ''
+        autoExpand()
+      }
+
+      const dispatchMessage = async (plaintextObj) => {
+        const { default: sodium } = await import('libsodium-wrappers-sumo')
+        await sodium.ready
+
+        const roomId = $state.activeSelectionId
+        if (!roomId) {
+          throw new Error('No active room selected')
+        }
+
+        const db = $localDb
+
+        // Fetch room key
+        const room = await db.local_rooms.get(roomId)
+        if (!room || !room.key_history || room.key_history.length === 0) {
+          throw new Error('Encryption keys not found for this room')
+        }
+
+        const latestKeyObj = room.key_history.reduce((prev, current) => {
+          const prevEpoch = parseInt(prev.epoch_id, 10)
+          const currEpoch = parseInt(current.epoch_id, 10)
+          return (prevEpoch > currEpoch) ? prev : current
+        })
+        const latestEpochId = latestKeyObj.epoch_id
+        const roomKey = sodium.from_base64(latestKeyObj.key, sodium.base64_variants.ORIGINAL)
+
+        // Fetch causal link
+        const { default: Dexie } = await import('dexie')
+        const lastMsg = await db.local_messages
+          .where('[room_id+created_at]')
+          .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
+          .last()
+  
+        const previousMsgId = lastMsg ? lastMsg.id : ''
+
+        // Construct Plaintext
+        const plaintextStr = JSON.stringify(plaintextObj)
+
+        // Encryption
+        const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+        const ciphertextBuffer = sodium.crypto_secretbox_easy(plaintextStr, nonce, roomKey)
+        const ciphertextBase64 = sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL)
+
+        // Signature
+        if (!$state.currentUser || !$state.currentUser.private_sign_key) {
+          throw new Error('User identity keys not found')
+        }
+  
+        const validationString = `${roomId}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}`
+        const validationBuffer = new TextEncoder().encode(validationString)
+  
+        const privateSignKeyBuffer = sodium.from_base64($state.currentUser.private_sign_key, sodium.base64_variants.ORIGINAL)
+        const signatureBuffer = sodium.crypto_sign_detached(validationBuffer, privateSignKeyBuffer)
+
+        // Server upload
+        const payload = {
+          room_id: roomId,
+          sender_id: $state.currentUser.id,
+          epoch_id: latestEpochId,
+          ciphertext: ciphertextBase64,
+          nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL),
+          signature: sodium.to_base64(signatureBuffer, sodium.base64_variants.ORIGINAL),
+          previous_msg_uuid: previousMsgId
+        }
+
+        return await pb.collection('messages').create(payload)
+      }
 
       const sendMessage = async () => {
+        if (state.isSending || state.isUploading) {
+          return
+        }
+
         const text = messageInput.value.trim()
-        if (!text || state.isSending) return
+        const file = fileInput.files[0]
+
+        if (!text && !file) {
+          return
+        }
 
         state.isSending = true
 
         try {
-          // 1. Initialize Sodium
-          const { default: sodium } = await import('libsodium-wrappers-sumo')
-          await sodium.ready
+          if (file) {
+            // Media Flow
+            state.isUploading = true
+            state.uploadStatus = 'Encrypting file...'
+  
+            const { default: sodium } = await import('libsodium-wrappers-sumo')
+            await sodium.ready
 
-          const roomId = $state.activeSelectionId
-          if (!roomId) throw new Error('No active room selected')
-
-          // $localDb is the instance, as confirmed by code review feedback
-          const db = $localDb
-
-          // 2. Fetch Room Key & Epoch
-          const room = await db.local_rooms.get(roomId)
-          if (!room || !room.key_history || room.key_history.length === 0) {
-            throw new Error('Encryption keys not found for this room')
+            // 1. Encrypt File
+            const fileBuffer = new Uint8Array(await file.arrayBuffer())
+            const fileKey = sodium.randombytes_buf(32)
+            const fileNonce = sodium.randombytes_buf(24)
+            const encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, fileNonce, fileKey)
+  
+            // 2. Upload to media collection
+            state.uploadStatus = 'Uploading...'
+            const blob = new Blob([encryptedFile], { type: 'application/octet-stream' })
+            const formData = new FormData()
+            formData.append('file', blob, 'encrypted.bin')
+  
+            const mediaRecord = await pb.collection('media').create(formData)
+  
+            // 3. Dispatch media message
+            const mediaPlaintext = {
+              type: 'media',
+              mime_type: file.type,
+              media_id: mediaRecord.id,
+              file_key: sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL),
+              file_nonce: sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL),
+              timestamp: Date.now()
+            }
+  
+            await dispatchMessage(mediaPlaintext)
+          } else {
+            // Standard Text Flow
+            await dispatchMessage({
+              type: 'text',
+              content: text,
+              timestamp: Date.now()
+            })
           }
 
-          // Identify the latest epoch - explicitly parse IDs as integers
-          const latestKeyObj = room.key_history.reduce((prev, current) => {
-            const prevEpoch = parseInt(prev.epoch_id, 10)
-            const currEpoch = parseInt(current.epoch_id, 10)
-            return (prevEpoch > currEpoch) ? prev : current
-          })
-          const latestEpochId = latestKeyObj.epoch_id
-          const roomKey = sodium.from_base64(latestKeyObj.key, sodium.base64_variants.ORIGINAL)
-
-          // 3. Fetch Causal Link (previous_msg_uuid)
-          // Use the compound index [room_id+created_at] for maximum performance
-          // and .last() to get the most recent message.
-          const { default: Dexie } = await import('dexie')
-          const lastMsg = await db.local_messages
-            .where('[room_id+created_at]')
-            .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
-            .last()
-          
-          const previousMsgId = lastMsg ? lastMsg.id : ""
-
-          // 4. Construct Plaintext
-          const plaintextObj = {
-            type: 'text',
-            content: text,
-            timestamp: Date.now()
-          }
-          const plaintextStr = JSON.stringify(plaintextObj)
-
-          // 5. Encryption
-          const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-          const ciphertextBuffer = sodium.crypto_secretbox_easy(plaintextStr, nonce, roomKey)
-
-          // 6. Signature
-          if (!$state.currentUser || !$state.currentUser.private_sign_key) {
-            throw new Error('User identity keys not found')
-          }
-          const privateSignKeyBuffer = sodium.from_base64($state.currentUser.private_sign_key, sodium.base64_variants.ORIGINAL)
-          const signatureBuffer = sodium.crypto_sign_detached(ciphertextBuffer, privateSignKeyBuffer)
-
-          // 7. Server Upload
-          const payload = {
-            room_id: roomId,
-            epoch_id: latestEpochId,
-            ciphertext: sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL),
-            nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL),
-            signature: sodium.to_base64(signatureBuffer, sodium.base64_variants.ORIGINAL),
-            previous_msg_uuid: previousMsgId
-          }
-
-          await pb.collection('messages').create(payload)
-
-          // Success: Clear input
-          messageInput.value = ''
-          autoExpand()
+          resetUI()
         } catch (err) {
-          console.error('[chat-input] Failed to send message:', err)
-          alert('Failed to send message: ' + err.message)
-        } finally {
+          console.error('[chat-input] Failed to send:', err)
+          alert('Failed to send: ' + err.message)
           state.isSending = false
+          state.isUploading = false
         }
       }
 
-      sendButton.addEventListener('click', sendMessage)
+      attachButton.addEventListener('click', () => {
+        fileInput.click()
+      }, { signal })
+
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0]
+        if (!file) {
+          return
+        }
+
+        if (file.size > 25 * 1024 * 1024) {
+          alert('File is too large. Maximum size is 25MB.')
+          fileInput.value = ''
+          return
+        }
+
+        state.fileName = file.name
+        state.hasFile = true
+        state.uploadStatus = 'Ready to send'
+      }, { signal })
+
+      // Handle Cancel button via delegation
+      const container = refs('chatInputContainer')
+      container.addEventListener('click', (e) => {
+        const cancelBtn = e.target.closest('[ref="cancelFileButton"]')
+        if (cancelBtn) {
+          fileInput.value = ''
+          state.hasFile = false
+          state.fileName = ''
+        }
+      }, { signal })
+
+      sendButton.addEventListener('click', sendMessage, { signal })
 
       messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault()
           sendMessage()
         }
-      })
+      }, { signal })
     }
   })
 </script>
