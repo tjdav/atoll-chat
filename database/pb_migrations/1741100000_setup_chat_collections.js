@@ -16,7 +16,7 @@ migrate((app) => {
     help: 'True if it\'s a multi-user group chat, false for a standard 1-to-1 conversation.'
   }))
 
-  rooms.fields.add(new core.TextField({
+  rooms.fields.add(new core.JSONField({
     name: 'encrypted_metadata',
     required: true,
     help: 'Stores the symmetrically encrypted JSON containing the group\'s name and avatar URL.'

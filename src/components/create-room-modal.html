@@ -84,7 +84,7 @@
       },
       roomNameDisplay: (state) => (((state.selectedParticipants || []).length > 1) ? 'block' : 'none')
     },
-    script: ({ refs, state, pb, $bus }) => {
+    script: ({ refs, state, pb, $bus, $state, $localDb }) => {
       const modal = refs('roomModal')
       const searchInput = refs('searchInput')
       const roomNameInput = refs('roomNameInput')
@@ -195,20 +195,86 @@
         try {
           const { default: sodium } = await import('libsodium-wrappers-sumo')
           await sodium.ready
+
+          // Prepare participants
+          const creator = $state.currentUser
+          if (!creator) {
+            throw new Error('Current user session not found in global state.')
+          }
+
+          // Ensure creator is included and deduplicate
+          const participants = [
+            creator,
+            ...state.selectedParticipants.filter(p => p.id !== creator.id)
+          ]
+
+          // Generate room key and encrypt metadata
           const roomKey = sodium.randombytes_buf(32)
+          const isGroup = state.isGroup
+          const roomName = isGroup ? state.roomName : (state.selectedParticipants[0]?.username || 'Direct Message')
+
           const metadata = JSON.stringify({
-            name: state.roomName,
+            name: roomName,
             avatar: ''
           })
-          const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-          const enc = sodium.crypto_secretbox_easy(metadata, nonce, roomKey)
-          console.log('[create-room-modal] Room creation payload generated:', {
-            roomKey: sodium.to_base64(roomKey, sodium.base64_variants.ORIGINAL),
-            encrypted_metadata: sodium.to_base64(enc, sodium.base64_variants.ORIGINAL),
-            metadata_nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+          const metadataNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+          const encryptedMetadata = sodium.crypto_secretbox_easy(metadata, metadataNonce, roomKey)
+
+          const metadataPayload = {
+            ciphertext: sodium.to_base64(encryptedMetadata, sodium.base64_variants.ORIGINAL),
+            nonce: sodium.to_base64(metadataNonce, sodium.base64_variants.ORIGINAL)
+          }
+
+          // Key wrapping loop
+          const currentUserPrivateKey = sodium.from_base64(creator.private_box_key, sodium.base64_variants.ORIGINAL)
+          const wrappedMemberRecords = participants.map(participant => {
+            const participantPublicKey = sodium.from_base64(participant.public_box_key, sodium.base64_variants.ORIGINAL)
+            const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES)
+            const encryptedKey = sodium.crypto_box_easy(roomKey, nonce, participantPublicKey, currentUserPrivateKey)
+
+            return {
+              user_id: participant.id,
+              wrapped_by: creator.id,
+              encrypted_room_key: sodium.to_base64(encryptedKey, sodium.base64_variants.ORIGINAL),
+              key_nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL),
+              role: participant.id === creator.id ? 'admin' : 'member'
+            }
           })
+
+          // Batch server transaction
+          const pbInstance = await pb()
+          const newRoom = await pbInstance.collection('rooms').create({
+            is_group: isGroup,
+            encrypted_metadata: metadataPayload
+          })
+
+          await Promise.all(wrappedMemberRecords.map(record => {
+            return pbInstance.collection('room_members').create({
+              ...record,
+              room_id: newRoom.id
+            })
+          }))
+
+          // Update local cache
+          const db = await $localDb()
+          await db.local_rooms.put({
+            id: newRoom.id,
+            is_group: isGroup,
+            name: roomName,
+            key_history: [{
+              epoch_id: 1,
+              key: sodium.to_base64(roomKey, sodium.base64_variants.ORIGINAL)
+            }],
+            created_at: newRoom.created
+          })
+
+          // Navigation & cleanup
+          $bus.emit('modal:close')
+          $state.activeSelectionId = newRoom.id
+          modal.close()
+
         } catch (err) {
-          console.error('[create-room-modal] Key generation failed:', err)
+          console.error('[create-room-modal] Room creation failed:', err)
         }
       }
     }
