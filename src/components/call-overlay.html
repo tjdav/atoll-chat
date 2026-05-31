@@ -151,10 +151,13 @@
       // Toggle Audio
       refs('btnToggleAudio').addEventListener('click', () => {
         if (state.localStream) {
-          const audioTrack = state.localStream.getAudioTracks()[0]
-          if (audioTrack) {
-            audioTrack.enabled = !audioTrack.enabled
-            state.isAudioEnabled = audioTrack.enabled
+          const tracks = state.localStream.getAudioTracks()
+          if (tracks.length > 0) {
+            const nextState = !tracks[0].enabled
+            tracks.forEach(track => {
+              track.enabled = nextState
+            })
+            state.isAudioEnabled = nextState
           }
         }
       })
@@ -162,10 +165,13 @@
       // Toggle Video
       refs('btnToggleVideo').addEventListener('click', () => {
         if (state.localStream) {
-          const videoTrack = state.localStream.getVideoTracks()[0]
-          if (videoTrack) {
-            videoTrack.enabled = !videoTrack.enabled
-            state.isVideoEnabled = videoTrack.enabled
+          const tracks = state.localStream.getVideoTracks()
+          if (tracks.length > 0) {
+            const nextState = !tracks[0].enabled
+            tracks.forEach(track => {
+              track.enabled = nextState
+            })
+            state.isVideoEnabled = nextState
           }
         }
       })

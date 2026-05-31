@@ -42,6 +42,19 @@
         }
       }, { signal })
 
+      // Listen for call ended to release UI resources immediately
+      $bus.on('call_ended', () => {
+        if (remoteVideo) {
+          remoteVideo.srcObject = null
+        }
+        if (localVideo) {
+          localVideo.srcObject = null
+        }
+        if (remotePlaceholder) {
+          remotePlaceholder.style.display = 'flex'
+        }
+      }, { signal })
+
       // Handle video element cleanup
       signal.addEventListener('abort', () => {
         if (remoteVideo) {

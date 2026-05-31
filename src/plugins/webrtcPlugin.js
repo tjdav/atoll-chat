@@ -29,9 +29,16 @@ export default function webrtcPlugin () {
           const teardownCall = (roomId) => {
             const pc = activeCalls.get(roomId)
             if (pc) {
+              // Stop local tracks being sent
               pc.getSenders().forEach(sender => {
                 if (sender.track) {
                   sender.track.stop()
+                }
+              })
+              // Stop remote tracks being received
+              pc.getReceivers().forEach(receiver => {
+                if (receiver.track) {
+                  receiver.track.stop()
                 }
               })
               pc.close()
