@@ -1,0 +1,159 @@
+<template id="chat-input">
+  <div class="chat-input-container p-3 border-top bg-body">
+    <div class="input-group">
+      <button class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" {{ isDisabled }}>
+        <i class="bi bi-paperclip"></i>
+      </button>
+      <textarea
+        ref="messageInput"
+        class="form-control"
+        placeholder="Type a message..."
+        rows="1"
+        style="resize: none; max-height: 200px;"
+        {{ isDisabled }}
+      ></textarea>
+      <button class="btn btn-primary d-flex align-items-center" type="button" ref="sendButton" {{ isDisabled }}>
+        <span class="me-1 {{ sendTextClasses }}">Send</span>
+        <i class="bi bi-send {{ iconClasses }}"></i>
+        <div class="spinner-border spinner-border-sm {{ spinnerClasses }}" role="status">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+      </button>
+    </div>
+  </div>
+</template>
+
+<style>
+  .chat-input-container {
+    transition: background-color 0.2s ease;
+  }
+  .chat-input-container textarea {
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .chat-input-container .btn {
+    align-self: flex-end;
+    height: 38px; /* Match single line bootstrap input height */
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    data: () => ({
+      isSending: false
+    }),
+    getters: {
+      isDisabled: (state) => (state.isSending ? 'disabled' : ''),
+      sendTextClasses: (state) => (state.isSending ? 'd-none' : 'd-none d-sm-inline'),
+      iconClasses: (state) => (state.isSending ? 'd-none' : ''),
+      spinnerClasses: (state) => (state.isSending ? '' : 'd-none')
+    },
+    script: ({ refs, state, $state, pb, $localDb }) => {
+      const messageInput = refs('messageInput')
+      const sendButton = refs('sendButton')
+
+      const autoExpand = () => {
+        messageInput.style.height = 'auto'
+        messageInput.style.height = messageInput.scrollHeight + 'px'
+      }
+
+      messageInput.addEventListener('input', autoExpand)
+
+      const sendMessage = async () => {
+        const text = messageInput.value.trim()
+        if (!text || state.isSending) return
+
+        state.isSending = true
+
+        try {
+          // 1. Initialize Sodium
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+
+          const roomId = $state.activeSelectionId
+          if (!roomId) throw new Error('No active room selected')
+
+          // $localDb is the instance, as confirmed by code review feedback
+          const db = $localDb
+
+          // 2. Fetch Room Key & Epoch
+          const room = await db.local_rooms.get(roomId)
+          if (!room || !room.key_history || room.key_history.length === 0) {
+            throw new Error('Encryption keys not found for this room')
+          }
+
+          // Identify the latest epoch - explicitly parse IDs as integers
+          const latestKeyObj = room.key_history.reduce((prev, current) => {
+            const prevEpoch = parseInt(prev.epoch_id, 10)
+            const currEpoch = parseInt(current.epoch_id, 10)
+            return (prevEpoch > currEpoch) ? prev : current
+          })
+          const latestEpochId = latestKeyObj.epoch_id
+          const roomKey = sodium.from_base64(latestKeyObj.key, sodium.base64_variants.ORIGINAL)
+
+          // 3. Fetch Causal Link (previous_msg_uuid)
+          // Use the compound index [room_id+created_at] for maximum performance
+          // and .last() to get the most recent message.
+          const { default: Dexie } = await import('dexie')
+          const lastMsg = await db.local_messages
+            .where('[room_id+created_at]')
+            .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
+            .last()
+          
+          const previousMsgId = lastMsg ? lastMsg.id : ""
+
+          // 4. Construct Plaintext
+          const plaintextObj = {
+            type: 'text',
+            content: text,
+            timestamp: Date.now()
+          }
+          const plaintextStr = JSON.stringify(plaintextObj)
+
+          // 5. Encryption
+          const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+          const ciphertextBuffer = sodium.crypto_secretbox_easy(plaintextStr, nonce, roomKey)
+
+          // 6. Signature
+          if (!$state.currentUser || !$state.currentUser.private_sign_key) {
+            throw new Error('User identity keys not found')
+          }
+          const privateSignKeyBuffer = sodium.from_base64($state.currentUser.private_sign_key, sodium.base64_variants.ORIGINAL)
+          const signatureBuffer = sodium.crypto_sign_detached(ciphertextBuffer, privateSignKeyBuffer)
+
+          // 7. Server Upload
+          const payload = {
+            room_id: roomId,
+            epoch_id: latestEpochId,
+            ciphertext: sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL),
+            nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL),
+            signature: sodium.to_base64(signatureBuffer, sodium.base64_variants.ORIGINAL),
+            previous_msg_uuid: previousMsgId
+          }
+
+          await pb.collection('messages').create(payload)
+
+          // Success: Clear input
+          messageInput.value = ''
+          autoExpand()
+        } catch (err) {
+          console.error('[chat-input] Failed to send message:', err)
+          alert('Failed to send message: ' + err.message)
+        } finally {
+          state.isSending = false
+        }
+      }
+
+      sendButton.addEventListener('click', sendMessage)
+
+      messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault()
+          sendMessage()
+        }
+      })
+    }
+  })
+</script>
