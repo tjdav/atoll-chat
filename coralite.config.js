@@ -5,6 +5,7 @@ import statePlugin from './src/plugins/state-plugin.js'
 import localDbPlugin from './src/plugins/localDbPlugin.js'
 import workerPlugin from './src/plugins/workerPlugin.js'
 import syncPlugin from './src/plugins/syncPlugin.js'
+import webrtcPlugin from './src/plugins/webrtcPlugin.js'
 
 export default defineConfig({
   public: 'public',
@@ -14,7 +15,8 @@ export default defineConfig({
     statePlugin({ initialState: { currentAppView: 'chats' } }),
     localDbPlugin(),
     workerPlugin(),
-    syncPlugin()
+    syncPlugin(),
+    webrtcPlugin()
   ],
   output: 'dist',
   pages: 'src/pages',
