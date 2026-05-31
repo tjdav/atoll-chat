@@ -1077,19 +1077,18 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > **Instructions:**
 > You are building the WebRTC signaling foundation for `atoll chat`. Standard WebRTC requires a signaling server. Instead of building a dedicated WebSocket server, we will use our existing, highly secure PocketBase message routing. The server will just see standard encrypted blobs, completely unaware that a call is being negotiated.
 > 
-> **CRITICAL CORALITE & UI DIRECTIVES:**
+> **CRITICAL CORALITE DIRECTIVES:**
 > 1. Use `definePlugin` from `coralite`. Name it `webrtc-manager`.
-> 2. **SERIALIZATION BOUNDARY:** Do NOT define shared state variables in the top-level file scope. You MUST use the Two-Phase Currying pattern in `client.context` and define shared state (like the active calls registry) inside Phase 1 (`globalContext`).
-> 3. If any DOM elements or alerts need to be rendered dynamically based on WebRTC connection states, utilize modern Bootstrap utility classes for styling.
+> 2. The plugin must maintain a global registry of active `RTCPeerConnection` instances mapped by `room_id`.
 > 
 > **1. task: Plugin Initialization & Dependency Injection**
-> - Inside the `client.context` object, define `$webrtc` as a curried function: `(globalContext) => { ... }`.
-> - In Phase 1 (`globalContext`), create a `Map` to hold active calls: `const activeCalls = new Map();`. This ensures the state persists across all component instances in the browser.
-> - Return Phase 2: `(instanceContext) => { ... }`.
+> - In the global closure, create a `Map` to hold active calls: `const activeCalls = new Map();`.
+> - Return the instance injector mapping to `client.context.$webrtc`.
+> - Ensure the plugin has access to `$bus` (to listen for incoming decrypted signals) and `$localDb` (to fetch room keys for outgoing signals).
 > 
 > **2. task: The Connection Factory**
-> - Inside Phase 2 (`instanceContext`), return an object exposing the method `initiateCall(roomId, mediaStream)`.
-> - Inside `initiateCall`, instantiate a `new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })`.
+> - Expose a method `initiateCall(roomId, mediaStream)`.
+> - Inside, instantiate a `new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })`.
 > - Add the local `mediaStream` tracks to the connection.
 > - Store the connection in `activeCalls.set(roomId, peerConnection)`.
 > 
@@ -1097,13 +1096,13 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > - Attach an `onicecandidate` listener to the `peerConnection`.
 > - When an ICE candidate is generated (`event.candidate`), construct a JSON payload: 
 >   `{ type: 'ice_candidate', candidate: event.candidate, timestamp: Date.now() }`.
-> - **CRITICAL:** You must pass this JSON payload through the exact same Libsodium encryption and PocketBase upload pipeline used in `<chat-input>` to ensure the ICE data is symmetrically encrypted with the Room Key and signed with Ed25519.
+> - **CRITICAL:** You must pass this JSON payload through the exact same Libsodium encryption and PocketBase upload pipeline used in `<chat-input>` (Track 4.3.2) to ensure the ICE data is symmetrically encrypted with the Room Key and signed with Ed25519.
 > 
 > **4. task: Intercepting Incoming Signals via `$bus`**
-> - Inside Phase 1 (`globalContext`), set up a single global listener for new local data: `globalContext.$bus.on('new_local_data', async (payload) => { ... })`. *(Do not put this in Phase 2, or you will create duplicate memory-leaking listeners every time a component mounts)*.
+> - In the plugin's global closure, listen for new local data: `$bus.on('new_local_data', async (payload) => { ... })`.
 > - Query the `$localDb.local_messages` for the new message.
 > - If `message.type === 'call_offer'`, instantiate a `RTCPeerConnection`, set the remote description, generate an answer, and send the `call_answer` back through the E2EE pipeline.
-> - If `message.type === 'call_answer'`, apply the remote description to the existing `peerConnection` found in `activeCalls`.
+> - If `message.type === 'call_answer'`, apply the remote description to the existing `peerConnection`.
 > - If `message.type === 'ice_candidate'`, apply the candidate using `peerConnection.addIceCandidate()`.
 > - If the message type is standard (`text`, `media`), ignore it (the `<chat-view>` timeline will handle it).
 
@@ -1119,31 +1118,33 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > You are refining the `src/plugins/webrtcPlugin.js` to ensure reliable Peer-to-Peer connectivity outside of local networks. To do this, WebRTC needs to discover the client's public IP using a STUN (Session Traversal Utilities for NAT) server.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Continue working within the `definePlugin` closure of `webrtc-manager`.
-> 2. Do not use TURN servers yet; rely strictly on free public STUN servers for this foundational step.
+> 1. Continue working strictly within the `definePlugin` schema for `webrtc-manager`. 
+> 2. **Serialization Boundary Check:** Top-level variables outside the `client` block are stripped. You must manage your global WebRTC state (e.g., the `activeCalls` map) inside Phase 1 (`globalContext`), and build the connection factories inside Phase 2 (`instanceContext`).
+> 3. Do not use TURN servers yet; rely strictly on free public STUN servers for this foundational step.
 > 
 > **1. task: Robust STUN Configuration**
-> - Update the `initiateCall` and answer-generation methods where `RTCPeerConnection` is instantiated.
-> - Provide a comprehensive `RTCConfiguration` object with multiple reliable public STUN servers to ensure fallback redundancy.
+> - Inside your Phase 2 `instanceContext` curried return (where `initiateCall` and answer-generation methods are exposed), provide a comprehensive `RTCConfiguration` object.
+> - Include multiple reliable public STUN servers to ensure fallback redundancy.
 > - Example configuration to implement: 
 >   `const rtcConfig = { iceServers: [ { urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:global.stun.twilio.com:3478' } ] };`
-> - Pass `rtcConfig` into `new RTCPeerConnection(rtcConfig)`.
+> - Pass `rtcConfig` into your `new RTCPeerConnection(rtcConfig)` instantiation.
 > 
 > **2. task: The Candidate Gathering Lifecycle**
 > - Inside your connection setup, ensure the `peerConnection.onicecandidate` event listener is robust.
 > - Add a check: `if (event.candidate) { ... }`. (When the ICE gathering process finishes, the browser fires one final event where `event.candidate` is `null`. You must ignore this null candidate to prevent crashing the signaling pipeline).
-> - Set up a listener for `peerConnection.onicegatheringstatechange`. Log the $state (`peerConnection.iceGatheringState`) to the console so we can visually debug the transition from "new" to "gathering" to "complete" during development.
+> - Set up a listener for `peerConnection.onicegatheringstatechange`. Log the state (`peerConnection.iceGatheringState`) to the console so we can visually debug the transition from "new" to "gathering" to "complete" during development.
 > 
 > **3. task: Dispatching to the Secure Pipeline**
 > - When a valid `event.candidate` is caught, construct the signaling object: 
 >   `const signalPayload = { type: 'ice_candidate', candidate: event.candidate, timestamp: Date.now() };`
-> - Call your internal helper method (or emit an event to your `$bus`) that encrypts this JSON using the symmetric Room Key, signs it with the user's Ed25519 key, and uploads it to the PocketBase `messages` collection.
+> - Utilize your plugin's `instanceContext` to access the global `$bus` or the PocketBase database connections.
+> - Call your internal helper method (or emit an event to the `$bus`) that encrypts this JSON using the symmetric Room Key, signs it with the user's Ed25519 key, and uploads it to the PocketBase `messages` collection.
 > - This guarantees that the network topology (IP addresses) revealed by the STUN server is completely hidden from the PocketBase server.
 
 ### track 6.2: The Call Interface
 
 #### task 6.2.1: Build `<call-overlay>` with `<video-grid>` to display the P2P DTLS-SRTP encrypted streams
-- Create a global, full-screen overlay component to handle incoming rings and active call $states.
+- Create a global, full-screen overlay component to handle incoming rings and active call states.
 - Build the `<video-grid>` component to securely bind the raw `MediaStream` objects from the `webrtcPlugin` to HTML5 `<video>` tags.
 - Implement the call controls (Mute, Disable Camera, Hang Up) and ensure proper cleanup of hardware resources when the call terminates.
 
@@ -1153,34 +1154,38 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > **Instructions:**
 > You are building the visual interface for active WebRTC calls in `atoll chat`. These components will mount over the main application layout when a call is initiated or received.
 > 
-> **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite`.
-> 2. You cannot serialize a `MediaStream` object into $state or the local database. You must request it from the `$webrtc` plugin dynamically and bind it directly to the DOM element using `HTMLMediaElement.srcObject`.
 > 
 > **1. task: The Call Overlay Wrapper (`src/components/call-overlay.html`)**
-> - Define the component template as a full-screen absolute or fixed overlay with a high z-index.
-> - Create a UI $state for "Incoming Call" (showing caller's name, "Accept" button, "Reject" button).
-> - Create a UI $state for "Active Call" containing the un-implemented `<video-grid></video-grid>` and a control bar (Mute Audio, Disable Video, End Call).
-> - In the `script: ({ refs, $state, $bus, $webrtc }) => {}` block, listen for an incoming call event via `$bus` (e.g., `$bus.on('call_incoming', ...)` triggered when Track 6.1 intercepts a `call_offer`). Update local reactive $state to show the "Incoming" UI.
+> - Define the component `<template id="call-overlay">`. Use Bootstrap 5 utility classes for a full-screen fixed overlay (e.g., `<div class="position-fixed top-0 start-0 w-100 h-100 bg-dark z-3 d-flex flex-column justify-content-center align-items-center">`).
+> - Create a UI `state` (e.g., `state.callStatus = 'incoming' | 'active' | null`) to conditionally render the "Incoming Call" view (showing caller's name, "Accept" `btn-success`, "Reject" `btn-danger`) or the "Active Call" view.
+> - The "Active Call" view should contain the `<video-grid></video-grid>` and a control bar (Mute Audio, Disable Video, End Call).
+> - In the `script` block, listen for an incoming call event via `$bus` (e.g., `$bus.on('call_incoming', ...)` triggered when Track 6.1 intercepts a `call_offer`). Update `state` to show the "Incoming" UI. Tie this listener to the `signal` for automatic teardown.
 > 
 > **2. task: The Video Grid (`src/components/video-grid.html`)**
-> - Define the template with two `<video>` elements: `<video ref="remoteVideo" autoplay playsinline></video>` and a smaller Picture-in-Picture `<video ref="localVideo" autoplay playsinline muted></video>`.
+> - Define the `<template id="video-grid">`  with a Bootstrap-styled container (e.g., `position-relative w-100 h-100`).
+> - Add two `<video>` elements: A main background video `<video ref="remoteVideo" class="w-100 h-100 object-fit-cover" autoplay playsinline></video>` and a smaller Picture-in-Picture local video `<video ref="localVideo" class="position-absolute bottom-0 end-0 m-3 rounded shadow" style="width: 150px;" autoplay playsinline muted></video>`.
 > - In the `script` setup, fetch the active local stream from the user's hardware: `const localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })`.
 > - Assign it immediately to the local video ref: `refs('localVideo').srcObject = localStream`.
 > 
 > **3. task: Wiring the Streams**
 > - Pass the `localStream` to the `$webrtc` plugin to initiate or answer the call: `$webrtc.answerCall(roomId, localStream)`.
-> - Set up a listener on the `RTCPeerConnection` (exposed via the plugin or event bus) for the `ontrack` event.
+> - Set up a listener on the `RTCPeerConnection` (exposed via the plugin or event bus) for the `ontrack` event. Again, ensure this respects the component's `signal`.
 > - When the remote peer's track arrives, assign it to the remote video: 
 >   `refs('remoteVideo').srcObject = event.streams[0]`.
 > 
 > **4. task: Hardware Cleanup & Teardown**
 > - Attach click listeners to the control bar buttons in `<call-overlay>`.
-> - **Mute/Video toggle:** Iterate over `localStream.getTracks()` and set `track.enabled = false` based on the user's toggle.
-> - **End Call:** When the user hangs up, you MUST stop the hardware tracks to turn off the webcam light: `localStream.getTracks().forEach(track => track.stop())`.
+> - **Mute/Video toggle:** Iterate over `localStream.getTracks()` and set `track.enabled = false` based on the user's toggle. Update the UI state to reflect this.
+> - **End Call:** When the user hangs up, you MUST stop the hardware tracks to release the hardware lock and turn off the webcam light: `localStream.getTracks().forEach(track => track.stop())`.
 > - Call `$webrtc.endCall(roomId)` to close the `RTCPeerConnection` and emit a hang-up message through the secure signaling pipeline.
-> - Unmount the overlay or reset its visibility $state.
+> - Reset the component's visibility `state` to unmount the overlay.
 
+#### task 6.2.2: Implement call controls (Mute, Camera off, End Call)
+- Expand the `<call-overlay>` component to handle active manipulation of the local hardware streams.
+- Implement the logic to temporarily disable (mute) audio and video tracks without severing the P2P connection.
+- Build the exact teardown sequence required to release hardware locks (turning off the webcam light) and signal the remote peer that the call has ended.
+
+##### Jules prompt
 #### task 6.2.2: Implement call controls (Mute, Camera off, End Call)
 - Expand the `<call-overlay>` component to handle active manipulation of the local hardware streams.
 - Implement the logic to temporarily disable (mute) audio and video tracks without severing the P2P connection.
@@ -1192,23 +1197,25 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > **Instructions:**
 > You are finalizing the `<call-overlay>` component for `atoll chat`. Managing WebRTC requires strict attention to hardware lifecycles; if a user hangs up, their webcam light must instantly turn off, and the remote peer must be notified.
 > 
-> **CRITICAL CORALITE DIRECTIVES:**
-> 1. Continue using the `defineComponent` scope of `<call-overlay>`.
-> 2. Maintain a reactive internal $state for `isMuted` and `isVideoOff` to accurately reflect the button UI.
+> **CRITICAL CORALITE & BOOTSTRAP DIRECTIVES:**
+> 1. Continue using the `defineComponent` scope of `<call-overlay>`].
+> 2. Maintain a reactive internal state within the unified `state` proxy (e.g., `state.isMuted` and `state.isVideoOff`). Because Coralite templates are "dumb" and only render flat keys , use these state properties to dynamically update text nodes or use the `refs` dictionary to imperatively toggle Bootstrap classes on the buttons.
+> 3. Use standard Bootstrap 5 utility classes for the control bar (e.g., `<div class="d-flex justify-content-center gap-3 mt-4">` and buttons like `btn btn-secondary rounded-circle`, `btn btn-danger`).
 > 
 > **1. task: Toggle Media Tracks (Mute / Camera Off)**
-> - In your control bar UI, attach click listeners to the "Mute" and "Camera" buttons.
+> - In your control bar HTML template, add `ref` attributes to your buttons (e.g., `ref="muteBtn"`, `ref="videoBtn"`).
+> - Inside the `script` block, use `refs('muteBtn').addEventListener('click', ...)` to attach listeners.
 > - Ensure you have access to the `localStream` (this might require storing the stream reference in the component's internal scope when it was created in Task 6.2.1).
 > - **Mute Logic:** `localStream.getAudioTracks().forEach(track => { track.enabled = !track.enabled; });`
-> - Toggle the `isMuted` $state variable to update the UI (e.g., show a strike-through microphone icon).
+> - Toggle `state.isMuted` to update the UI (e.g., swap the button icon or toggle a `btn-danger` class to indicate the muted state).
 > - **Video Logic:** `localStream.getVideoTracks().forEach(track => { track.enabled = !track.enabled; });`
-> - Toggle the `isVideoOff` $state variable.
+> - Toggle `state.isVideoOff`.
 > 
 > **2. task: Ending the Call (Local Teardown)**
-> - Attach a click listener to the "End Call" button.
+> - Attach a click listener to your `ref="endCallBtn"` (styled with Bootstrap's `btn-danger`).
 > - **Hardware Release:** This is critical. You must stop the tracks to release the hardware: `localStream.getTracks().forEach(track => track.stop());`.
 > - Call the WebRTC plugin to close the connection: `$webrtc.endCall(state.activeSelectionId)`.
-> - Reset the component's UI $state (e.g., hide the overlay entirely or return to a "Call Ended" summary screen).
+> - Reset the component's UI `state` (e.g., hide the overlay entirely or return to a "Call Ended" summary screen).
 > 
 > **3. task: The `call_end` Signal (Remote Teardown)**
 > - Update the `$webrtc.endCall(roomId)` method inside your `webrtcPlugin.js`.
@@ -1217,11 +1224,12 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > - Push this payload through your secure End-to-End Encrypted signaling pipeline (encrypt with Room Key, sign with Ed25519, upload to PocketBase `messages`).
 > 
 > **4. task: Handling the Remote Hang-up**
-> - In your `$bus.on('new_local_data', ...)` listener inside `<call-overlay>` (or the plugin), watch for `message.type === 'call_end'`.
+> - In your `script` block, set up a global listener: `$bus.on('new_local_data', ...)`.
+> - **CRITICAL:** You must bind this listener to the component's injected `signal` (AbortSignal) so it is properly removed when the component unmounts to prevent memory leaks.
+> - Inside the listener, watch for `message.type === 'call_end'`.
 > - If received, trigger the exact same teardown logic: call `.close()` on the peer connection, `.stop()` all tracks on both local and remote streams, and hide the `<call-overlay>`.
 
 ### track 6.3: Progressive Web App (PWA) & Offline Reliability
-
 #### task 6.3.1: Implement the Service Worker for static asset caching
 - Create the Service Worker script (`sw.js`) to cache the application shell, UI components, and static assets.
 - Explicitly cache the Libsodium WebAssembly (WASM) module and background worker scripts so the cryptographic engine can boot without an internet connection.
@@ -1234,14 +1242,14 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > **Instructions:**
 > You are building the static caching layer for `atoll chat`. We have already secured the offline data via IndexedDB and Web Workers, but if the browser cannot load the HTML, CSS, and Libsodium WASM files, the app will fail to launch on an airplane or in a dead zone.
 > 
-> **CRITICAL PWA DIRECTIVES:**
-> 1. Ensure the Service Worker file (`sw.js`) is placed in the root of your `public` directory so its scope encompasses the entire application.
+> **CRITICAL PWA & CORALITE DIRECTIVES:**
+> 1. Ensure your `sw.js` and `worker.js` files are placed at the root of your application. If you are keeping them in a separate source folder, you **must** use the `assets` array in `coralite.config.js`  to copy them directly to the build output root so their scope encompasses the entire application.
 > 2. You must specifically target the Libsodium libraries in the install cache to ensure the offline cryptographic engine can initialize.
 > 
 > **1. task: The Install Event & Cache Manifest (`public/sw.js`)**
 > - Define a cache name constant at the top of the file: `const CACHE_NAME = 'atoll-chat-v1';`.
-> - Define an array of essential URLs to cache: `const ASSETS_TO_CACHE = ['/', '/index.html', '/worker.js', /* add your bundled CSS/JS paths here */]`.
-> - **CRITICAL:** Include the exact CDN URLs or local paths used to load `libsodium-wrappers` and its `.wasm` binary in this array.
+> - Define an array of essential URLs to cache: `const ASSETS_TO_CACHE = ['/', '/index.html', '/worker.js']`.
+> - **CRITICAL:** Include the exact CDN URLs or the local paths (managed via Coralite's asset plugin) used to load `libsodium-wrappers` and its `.wasm` binary in this array. Also include the paths to Coralite's bundled client-side JavaScript and CSS chunks.
 > - Add the `self.addEventListener('install', (event) => { ... })` lifecycle block.
 > - Inside, use `event.waitUntil(caches.open(CACHE_NAME).then(cache => cache.addAll(ASSETS_TO_CACHE)))`.
 > 
@@ -1252,42 +1260,45 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > 
 > **3. task: The Fetch Interceptor (Stale-While-Revalidate or Cache-First)**
 > - Add the `self.addEventListener('fetch', (event) => { ... })` block.
-> - Exclude API and SSE calls to PocketBase from the Service Worker cache (e.g., `if (event.request.url.includes('/api/')) return;`). The `$localDb` and `syncPlugin` already handle data caching.
+> - Exclude API and SSE calls to PocketBase from the Service Worker cache (e.g., `if (event.request.url.includes('/api/')) return;`). The injected `localDb` and `syncPlugin` already handle data caching.
 > - For static assets, implement a Cache-First or Stale-While-Revalidate strategy: `event.respondWith(caches.match(event.request).then(cachedResponse => cachedResponse || fetch(event.request)))`.
 > 
 > **4. task: Service Worker Registration**
-> - Open your main `index.html` file.
-> - Inside a `<script>` tag at the bottom of the body (or in your main client bootstrapper), add the registration block:
+> - Open your main `index.html` file (which in Coralite acts as the consuming Page ).
+> - Inside a standard `<script type="module">` tag at the bottom of the body, add the registration block:
 >   `if ('serviceWorker' in navigator) { window.addEventListener('load', () => { navigator.serviceWorker.register('/sw.js'); }); }`
 
 #### task 6.3.2: Configure PocketBase to send generic "New Message" web push events
 - Update the PocketBase `users` collection to store Web Push subscription objects.
-- Implement the client-side logic to request notification permissions and subscribe to the browser's PushManager using a VAPID public key.
+- Implement the client-side logic within a Coralite plugin to request notification permissions and subscribe to the browser's PushManager.
 - Create a PocketBase hook (`pb_hooks`) to intercept new messages, look up the room's participants, and trigger a push request.
 - Update the Service Worker to listen for the `push` event and display a generic, privacy-preserving notification.
 
 ##### Jules prompt
-> **Goal:** Implement privacy-preserving Web Push notifications by linking the client's Service Worker to a custom PocketBase hook.
+> **Goal:** Implement privacy-preserving Web Push notifications by linking the client's Service Worker to a custom PocketBase hook, orchestrated through a Coralite plugin.
 > 
 > **Instructions:**
 > You are building the background notification pipeline for `atoll chat`. Because this is a strict End-to-End Encrypted application, the server does not know the contents of the message or even the sender's plaintext name. Push notifications must be entirely generic to maintain the zero-knowledge architecture.
 > 
-> **CRITICAL PWA DIRECTIVES:**
+> **CRITICAL PWA & CORALITE DIRECTIVES:**
 > 1. Never include `ciphertext`, symmetric keys, or specific message metadata in the push payload.
 > 2. The push notification must rely solely on standard Web Push protocols (VAPID) to ensure compatibility across iOS, Android, and Desktop browsers.
+> 3. Client-side browser APIs (`Notification`, `ServiceWorker`) must be encapsulated within the `client` block of a Coralite `definePlugin` configuration.
 > 
 > **1. task: Database Schema Update**
 > - Instruct the user to open the PocketBase Admin UI.
 > - Add a new field of type `JSON` to the `users` collection named `push_subscription`.
 > - Add a new field of type `JSON` to the `room_members` collection named `notification_preferences` (optional, for muting chats).
 > 
-> **2. task: Client-Side Subscription Routine**
-> - Inside your `syncPlugin.js` (or a dedicated `notificationsPlugin`), write a function `enablePushNotifications()`.
+> **2. task: Client-Side Subscription Routine (Coralite Plugin)**
+> - Inside your `src/plugins/syncPlugin.js` (or a dedicated `notificationsPlugin` using `definePlugin`), locate the `client.context` curried setup.
+> - Define an `enablePushNotifications()` function to be injected into the component context.
 > - Request permission: `const permission = await Notification.requestPermission();`.
 > - If granted, get the active Service Worker registration: `const registration = await navigator.serviceWorker.ready;`.
 > - Subscribe to the push manager using your application's VAPID public key: 
 >   `const subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: 'YOUR_VAPID_PUBLIC_KEY' });`
-> - Send an `update` request to PocketBase to save this subscription object to the current user's `push_subscription` field.
+> - Send an `update` request to PocketBase (using the injected `pb` instance) to save this subscription object to the current user's `push_subscription` field.
+> - Ensure this method is exposed so a component (like a Settings view) can trigger it.
 > 
 > **3. task: The PocketBase Trigger (`pb_hooks/push.pb.js`)**
 > - Create a new JavaScript hook file in the PocketBase `pb_hooks` directory.
@@ -1320,7 +1331,7 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > 
 > **CRITICAL PWA DIRECTIVES:**
 > 1. A Service Worker operates on a strict lifecycle. You **must** wrap all asynchronous fetching and decryption logic inside `event.waitUntil()` or the browser will terminate the worker before decryption finishes.
-> 2. The Service Worker has no access to the DOM or the `coralite` $state. It must instantiate its own independent connection to `Dexie` and `libsodium-wrappers`.
+> 2. The Service Worker has no access to the DOM or the Coralite unified `state`. It must instantiate its own independent connection to `Dexie` and `libsodium-wrappers` using `importScripts`.
 > 
 > **1. task: Intercept and Extend the Push Event**
 > - Open `public/sw.js`. Locate the `self.addEventListener('push', (event) => { ... })` block from the previous task.
@@ -1328,8 +1339,8 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 >   `event.waitUntil((async () => { /* Decryption logic goes here */ })());`
 > 
 > **2. task: Background Network & DB Initialization**
-> - Inside the async block, initialize Dexie: `const db = new Dexie('AtollChatDB');` and define the schema for `local_rooms` and `local_messages` just like you did in the Web Worker.
-> - Import Libsodium (via `importScripts` if not already imported) and `await sodium.ready`.
+> - Inside the async block, initialize Dexie: `const db = new Dexie('AtollChatDB');` and define the schema for `local_rooms` and `local_messages` exactly as you did in the Web Worker.
+> - Import Libsodium via `importScripts` and call `await sodium.ready`.
 > - Because this is a background sync, we don't have an active PocketBase SSE connection. Perform a standard REST API fetch to get the most recent message:
 >   `const response = await fetch('https://your-pocketbase-url.com/api/collections/messages/records?sort=-created&limit=1');`
 > - Parse the JSON to extract the latest hostile-server payload (`record`).
@@ -1349,3 +1360,45 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > - Finally, trigger the OS notification with the decrypted data:
 >   `await self.registration.showNotification(senderName, { body: notificationBody, icon: '/icon-192x192.png', tag: 'atoll-chat-msg' });`
 > - **Edge Case Handling:** Wrap the entire block in a `try/catch`. If decryption fails (e.g., keys aren't synced), fallback to the generic notification: `await self.registration.showNotification('atoll chat', { body: 'You have a new secure message.' });`.
+
+
+### track 7.1: UI/UX Refinement & Layout Patterns
+
+#### task 7.1.1: Refactor Settings View to adhere to the Three-Column Layout Pattern
+- Correct the layout hierarchy so the second column acts strictly as a contextual navigation menu for Settings (e.g., a list of categories).
+- Move the actual interactive settings cards (Notifications, Account) into the third column (the detail view).
+- Implement state management to toggle the active settings pane in the third column based on the selection in the second column.
+
+##### Jules prompt
+> **Goal:** Refactor the Settings interface to match the global three-column design pattern, separating the settings navigation menu (Column 2) from the settings content panels (Column 3).
+> 
+> **Instructions:**
+> You are restructuring the Settings view in `atoll chat`. Currently, the settings cards are incorrectly placed in the second column, leaving the main content area empty. You must split this into a navigation list and a dynamic detail view.
+> 
+> **CRITICAL CORALITE & BOOTSTRAP DIRECTIVES:**
+> 1. You must use `defineComponent` for all component logic.
+> 2. Because Coralite templates are strictly declarative and "dumb", you cannot use `v-if` or JavaScript logic in the HTML. You must render all settings panels in the third column and use the `refs` dictionary to imperatively toggle Bootstrap visibility classes (like `d-none`).
+> 3. Use standard Bootstrap 5 UI patterns (e.g., `.list-group` for the navigation menu).
+> 
+> **1. task: Update the Settings Sidebar (Column 2)**
+> - Open the component responsible for the second column in the settings view.
+> - Remove the "Notifications" and "Account" cards from this template.
+> - Replace them with a Bootstrap `.list-group`. Create list items for "Notifications" and "Account".
+> - Add a `ref` attribute to each list item (e.g., `ref="navNotifications"`, `ref="navAccount"`).
+> - In the `script` block, attach click listeners to these refs to emit an event via `$bus` (e.g., `$bus.emit('settings_nav_select', 'notifications')`) indicating which category was clicked. 
+> - Imperatively manage the `.active` Bootstrap class on the `refs` to highlight the selected menu item.
+> 
+> **2. task: Create the Settings Detail View (Column 3)**
+> - Create or update the component responsible for the third column when the Settings context is active.
+> - Paste the "Notifications" and "Account" cards (previously removed from the sidebar) into this template.
+> - Wrap each card (or group of cards) in a container `div` and assign a `ref` (e.g., `ref="paneNotifications"`, `ref="paneAccount"`). 
+> - Add the Bootstrap `d-none` class to all panes except the default one (e.g., hide the Account pane by default).
+> 
+> **3. task: Wire the Navigation State**
+> - In the `script` block of your third-column component, use `$bus.on('settings_nav_select', ...)` to listen for navigation changes.
+> - **CRITICAL:** Bind this listener to the component's injected `signal` (`AbortSignal`) to ensure it cleans up properly when the component unmounts.
+> - Inside the listener, use the `refs` dictionary to toggle the `d-none` class. For example, if 'account' is selected, add `d-none` to `refs('paneNotifications')` and remove `d-none` from `refs('paneAccount')`.
+> 
+> **4. task: Re-bind the Functionality**
+> - Ensure the "Enable Push Notifications" and "Logout" buttons still have their respective `ref` attributes.
+> - Re-attach their click event listeners in the `script` block of this new third-column component so the cryptographic and session logic remains fully functional.
