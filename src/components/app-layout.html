@@ -19,6 +19,12 @@
       <div class="h-100" style="display: {{ chatViewDisplay }};">
         <chat-view></chat-view>
       </div>
+      <div class="h-100" style="display: {{ imageViewerDisplay }};">
+        <image-viewer></image-viewer>
+      </div>
+      <div class="h-100" style="display: {{ videoPlayerDisplay }};">
+        <video-player-view></video-player-view>
+      </div>
     </div>
   </div>
 </template>
@@ -29,12 +35,15 @@
   export default defineComponent({
     data: () => ({
       activeSelectionId: null,
-      activeSelectionType: null
+      activeSelectionType: null,
+      currentAppView: 'chats'
     }),
     getters: {
       currentViewTitle: (state) => state.currentAppView || 'Chats',
-      emptyStateDisplay: (state) => ((!state.activeSelectionId || state.activeSelectionType !== 'chats') ? 'flex' : 'none'),
-      chatViewDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'chats') ? 'block' : 'none')
+      emptyStateDisplay: (state) => ((!state.activeSelectionId || (state.activeSelectionType !== 'chats' && state.activeSelectionType !== 'pictures' && state.activeSelectionType !== 'videos')) ? 'flex' : 'none'),
+      chatViewDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'chats') ? 'block' : 'none'),
+      imageViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'pictures') ? 'block' : 'none'),
+      videoPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'videos') ? 'block' : 'none')
     },
     script: ({ state, $state }) => {
       state.currentAppView = $state.currentAppView

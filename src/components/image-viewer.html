@@ -1,0 +1,140 @@
+<template id="image-viewer">
+  <div class="image-viewer-container d-flex justify-content-center align-items-center h-100 bg-black position-relative">
+    <div class="spinner-border text-primary" ref="loader" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    
+    <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}">
+      {{ errorMessage }}
+    </div>
+
+    <img ref="mediaDisplay" class="d-none img-fluid h-100 object-fit-contain" alt="Decrypted image">
+  </div>
+</template>
+
+<style>
+  .image-viewer-container {
+    background-color: #000;
+    width: 100%;
+    height: 100%;
+  }
+  .object-fit-contain {
+    object-fit: contain;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    data: () => ({
+      isErrorHidden: true,
+      errorMessage: ''
+    }),
+    script: async ({ state, signal, refs, pb, $localDb, $state }) => {
+      const loader = refs('loader')
+      const mediaDisplay = refs('mediaDisplay')
+      let currentObjectUrl = null
+
+      const cleanup = () => {
+        if (currentObjectUrl) {
+          URL.revokeObjectURL(currentObjectUrl)
+          currentObjectUrl = null
+        }
+      }
+
+      // Cleanup on component unmount
+      signal.addEventListener('abort', cleanup)
+
+      const loadMedia = async (id) => {
+        if (!id) return
+
+        // Reset UI
+        state.isErrorHidden = true
+        state.errorMessage = ''
+        loader.classList.remove('d-none')
+        mediaDisplay.classList.add('d-none')
+        mediaDisplay.src = ''
+        cleanup()
+
+        try {
+          // Get asset from local DB.
+          const asset = await $localDb.local_assets.get(id)
+          if (!asset) {
+            throw new Error('Media asset not found in local database')
+          }
+
+          // Fetch from PocketBase using the deterministic path.
+          const url = `${pb.baseUrl}/api/files/media/${asset.media_id}/encrypted.bin`
+          const response = await fetch(url, { signal })
+          if (!response.ok) {
+            throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+          }
+          const arrayBuffer = await response.arrayBuffer()
+          const encryptedFileBuffer = new Uint8Array(arrayBuffer)
+
+          // Load sodium and prepare for decryption.
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+
+          const fileKeyBuffer = sodium.from_base64(asset.file_key, sodium.base64_variants.ORIGINAL)
+          const nonceBuffer = sodium.from_base64(asset.file_nonce, sodium.base64_variants.ORIGINAL)
+
+          let decryptedFileBuffer
+          try {
+            decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)
+          } catch (e) {
+            throw new Error('Media Corrupted or Key Invalid')
+          }
+
+          if (!decryptedFileBuffer) {
+             throw new Error('Media Corrupted or Key Invalid')
+          }
+
+          // Create Blob and local object URL.
+          const mediaBlob = new Blob([decryptedFileBuffer], { type: asset.mime_type })
+          currentObjectUrl = URL.createObjectURL(mediaBlob)
+          
+          // Reveal the media and hide the loader.
+          if (!signal.aborted) {
+            mediaDisplay.src = currentObjectUrl
+            mediaDisplay.classList.remove('d-none')
+            loader.classList.add('d-none')
+          } else {
+            cleanup()
+          }
+
+        } catch (err) {
+          if (err.name === 'AbortError') return
+          console.error('[image-viewer] Error:', err)
+          state.errorMessage = err.message || 'Media Corrupted or Key Invalid'
+          state.isErrorHidden = false
+          loader.classList.add('d-none')
+        }
+      }
+
+      // Initial load
+      if ($state.activeSelectionId && $state.activeSelectionType === 'pictures') {
+        loadMedia($state.activeSelectionId)
+      }
+
+      // Watch for selection changes.
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('activeSelectionId', (id) => {
+          if ($state.activeSelectionType === 'pictures') {
+            loadMedia(id)
+          }
+        })
+
+        // Cleanup when switching away from pictures view.
+        $state.subscribe('activeSelectionType', (type) => {
+          if (type !== 'pictures') {
+            cleanup()
+            mediaDisplay.src = ''
+            mediaDisplay.classList.add('d-none')
+          }
+        })
+      }
+    }
+  })
+</script>

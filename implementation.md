@@ -942,32 +942,37 @@ Objective: Establish the Server-Sent Events (SSE) connection and handle off-thre
 > **Instructions:**
 > You are building the media upload pipeline for `atoll chat`. Because files can be large, we do not encrypt them with the Room Key directly, nor do we store them in the main `messages` table. Instead, we encrypt them with a unique File Key, upload the blob, and send the File Key securely inside the room message.
 > 
-> **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `refsPlugin` to interact with a hidden `<input type="file">`.
-> 2. Ensure the UI provides feedback (e.g., "Encrypting file...", "Uploading...") as file processing can take a moment.
+> **CRITICAL CORALITE & BOOTSTRAP DIRECTIVES:**
+> 1. Use the injected `refs` function from the `script: ({ state, refs, signal, pb }) => { ... }` context to interact with the file input. 
+> 2. **Never** use top-level imports in the `script` block. You must dynamically import `libsodium-wrappers-sumo` when needed.
+> 3. Manage UI feedback (e.g., "Encrypting file...") strictly through the unified `state` proxy, using Bootstrap spinners and utility classes for rendering.
 > 
 > **1. task: Template Expansion (`src/components/chat-input.html`)**
-> - Add a hidden file input to the template: `<input type="file" ref="fileInput" style="display: none;" accept="image/*, video/*, audio/*">`.
-> - Attach a click listener to your existing `ref="attachButton"` that triggers `refs('fileInput').click()`.
+> - Add a hidden file input to your template using Bootstrap's `d-none` utility class: `<input type="file" ref="fileInput" class="d-none" accept="image/*, video/*, audio/*">`.
+> - Add a UI feedback container (e.g., showing a Bootstrap `<div class="spinner-border spinner-border-sm text-primary"></div>` and a status text) that conditionally renders based on `{{ isUploading }}` and `{{ uploadStatus }}` flat keys in the state.
+> - Attach a click listener to your `ref="attachButton"` that triggers `refs('fileInput').click()`. **Always** pass `{ signal }` to your event listeners for automatic cleanup.
 > 
 > **2. task: Cryptographic File Encryption**
-> - In your `script` block, add an event listener for the `change` event on `refs('fileInput')`.
-> - When a file is selected, read it as an `ArrayBuffer` using `file.arrayBuffer()`. Convert it to a `Uint8Array`.
-> - Import `libsodium-wrappers` and await `sodium.ready`.
+> - In your `script` block, attach a `change` event listener to `refs('fileInput')`.
+> - When triggered, immediately update the reactive proxy: `state.isUploading = true; state.uploadStatus = 'Encrypting...';`.
+> - Read the selected file as an `ArrayBuffer` using `file.arrayBuffer()` and convert it to a `Uint8Array`.
+> - **Dynamically import** Libsodium: `const { default: sodium } = await import('libsodium-wrappers-sumo'); await sodium.ready;`.
 > - Generate a unique 32-byte key specifically for this file: `const fileKey = sodium.randombytes_buf(32);`.
 > - Generate a 24-byte nonce.
 > - Encrypt the file buffer: `const encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, nonce, fileKey);`.
 > 
 > **3. task: Server Upload (The `media` Collection)**
+> - Update state: `state.uploadStatus = 'Uploading...';`.
 > - Convert the `encryptedFile` buffer to a standard `Blob`.
-> - Create a `FormData` object. Append the Blob as a file field (e.g., `formData.append('file', blob, 'encrypted.bin')`).
-> - Send a `create` request to a new PocketBase `media` collection: `const mediaRecord = await pb.collection('media').create(formData)`.
+> - Create a `FormData` object and append the Blob (e.g., `formData.append('file', blob, 'encrypted.bin')`).
+> - Send a `create` request to the PocketBase `media` collection: `const mediaRecord = await pb.collection('media').create(formData)`.
 > 
-> **4. task: Payload Construction**
-> - Now that the file is uploaded, you must construct the plaintext message JSON to be sent to the room.
-> - Structure: `{ type: 'media', mime_type: file.type, media_id: mediaRecord.id, file_key: sodium.to_base64(fileKey), file_nonce: sodium.to_base64(nonce), timestamp: Date.now() }`.
+> **4. task: Payload Construction & Cleanup**
+> - Construct the plaintext message JSON to be sent to the room:
+>   `{ type: 'media', mime_type: file.type, media_id: mediaRecord.id, file_key: sodium.to_base64(fileKey), file_nonce: sodium.to_base64(nonce), timestamp: Date.now() }`.
 > - Pass this JSON string into the exact same Room Key encryption and Ed25519 signature pipeline you built in Task 4.3.2.
 > - Send the resulting payload to the PocketBase `messages` collection. The file is now securely linked and perfectly zero-knowledge.
+> - Reset the input and UI state: `state.isUploading = false; state.uploadStatus = ''; refs('fileInput').value = '';`.
 
 ### track 5.3: The Global Media Archive
 
@@ -984,30 +989,35 @@ Objective: Establish the Server-Sent Events (SSE) connection and handle off-thre
 > You are building the specific media navigation components for `atoll chat`. These will replace the generic list-rendering logic we temporarily placed in the `<list-pane>` component during Phase 4.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite`.
-> 2. Ensure these components are strictly offline-first. They must only read from the injected `$localDb`.
+> 1. Use `defineComponent` exported strictly from `'coralite'`.
+> 2. Ensure these components are strictly offline-first. Because IndexedDB is a browser-only API, you MUST perform all data fetching inside the client-side `script` block, NOT the server-side `data` block.
+> 3. Remember the "Smart State, Dumb Template" paradigm. Mutate the local `state` proxy with your fetched arrays, and let the template declaratively render the UI.
 > 
 > **1. task: Refactor `<list-pane>` Mounting**
-> - Update the `switch` $statement or reactive block in your existing `<list-pane>` component. 
-> - Instead of manually constructing DOM nodes for every query, delegate the rendering. Mount or toggle the visibility of `<picture-list>`, `<video-list>`, or `<music-list>` based on `$state.currentAppView`.
+> - Update the routing or reactive block in your existing `<list-pane>` component. 
+> - If you are imperatively mounting these components based on `$state.currentAppView`, you MUST use `document.createElement('picture-list')` and append it. 
+> - **DO NOT** use `element.innerHTML = '<picture-list></picture-list>'` as this bypasses Coralite's component initialization.
 > 
-> **2. task: Data Querying per Component**
-> - Inside the `script: ({ $localDb, $bus }) => {}` block for each respective component, fetch the sorted data:
-> - **`<picture-list>`:** `await $localDb.local_assets.where('mime_type').startsWith('image/').reverse().sortBy('created_at')`.
-> - **`<video-list>`:** `await $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at')`.
-> - **`<music-list>`:** `await $localDb.local_assets.where('mime_type').startsWith('audio/').reverse().sortBy('created_at')`.
-> - *Note: Ensure you set up an event listener on `$bus` to re-run these queries when `NEW_LOCAL_DATA` arrives from the Web Worker.*
+> **2. task: Data Querying per Component & Cleanup**
+> - Set up the `script` block and properly destructure the context: `script: ({ state, signal, $localDb, $bus, $state }) => { ... }`.
+> - Fetch the sorted data and assign it directly to the component's mutable state (e.g., `state.mediaItems = await ...`):
+>   - **`<picture-list>`:** `await $localDb.local_assets.where('mime_type').startsWith('image/').reverse().sortBy('created_at')`.
+>   - **`<video-list>`:** `await $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at')`.
+>   - **`<music-list>`:** `await $localDb.local_assets.where('mime_type').startsWith('audio/').reverse().sortBy('created_at')`.
+> - **CRITICAL CLEANUP:** When listening to `$bus` for `NEW_LOCAL_DATA`, you MUST tie the listener removal to Coralite's `signal` to prevent memory leaks when navigating away:
+>   `signal.addEventListener('abort', () => { /* remove $bus listener */ })`.
 > 
-> **3. task: Contextual UI Rendering**
-> - **Pictures & Videos:** Iterate over the queried arrays and render a CSS Grid (`display: grid; grid-template-columns: 1fr 1fr;`) of thumbnails. Because the actual image/video files are encrypted blobs, rendering the true thumbnail requires an asynchronous decryption pass. For this task, render a stylish placeholder `div` displaying the date, time, and a generic media icon.
-> - **Music:** Iterate over the audio array and render a vertical list. Include a play icon, the timestamp, and perform a quick secondary query to `$localDb.local_rooms.get(item.room_id)` to display the name of the chat where the track originated.
+> **3. task: Contextual UI Rendering (Bootstrap)**
+> - Use Bootstrap 5 classes in your `<template>` block.
+> - **Pictures & Videos:** Render a grid of placeholders using Bootstrap grid utilities (`<div class="row row-cols-2 g-3">`). Inside the loop, use Bootstrap `card` and `placeholder-glow` classes to design a stylish placeholder displaying the date, time, and a generic media icon, as the true thumbnails require asynchronous RAM decryption.
+> - **Music:** Render a vertical list using Bootstrap's `<div class="list-group list-group-flush">`. Include a play icon, timestamp, and perform a quick secondary query to `$localDb.local_rooms.get(item.room_id)` to display the chat name. Assign the result to the item object so the template can read it.
 > 
-> **4. task: $state Dispatch & Selection**
-> - Attach a click event listener to every rendered media item.
-> - When clicked, update the global $state to notify the rest of the application:
+> **4. task: Global State Dispatch & Selection**
+> - Attach a click event listener inside the `script` block to your rendered media items.
+> - When clicked, update the globally injected `$state` to notify the rest of the application:
 >   `$state.activeSelectionId = item.id;`
 >   `$state.activeSelectionType = $state.currentAppView;`
-> - This crucial $state change will tell Column 3 to unmount the standard `<chat-view>` and mount the secure media players.
+> - This global state mutation will tell Column 3 to unmount the standard `<chat-view>` and securely mount the dedicated media players.
 
 #### task 5.3.2: Build `<image-viewer>` and `<video-player-view>` for Column 3, implementing on-the-fly RAM decryption of the binary streams
 - Create the dedicated display components that mount in Column 3 when a media item is selected from the list pane.
@@ -1023,32 +1033,33 @@ Objective: Establish the Server-Sent Events (SSE) connection and handle off-thre
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
 > 1. Use `defineComponent` exported from `coralite`.
-> 2. **MEMORY LEAK PREVENTION:** You must tie the `URL.revokeObjectURL` cleanup function to the component's unmount lifecycle using `instanceContext.signal.addEventListener('abort', ...)` to ensure the browser garbage collects the decrypted blobs when the user navigates away.
+> 2. **MEMORY LEAK PREVENTION:** You must tie the `URL.revokeObjectURL` cleanup function to the component's unmount lifecycle using the natively injected `signal` (AbortSignal) via `signal.addEventListener('abort', ...)`. This ensures the browser garbage collects the decrypted blobs when the component is unmounted.
+> 3. Use standard dynamic imports (`await import('pkg')`) for client-side dependencies within the `script` block.
 > 
-> **1. task: Template Construction**
-> - **`<image-viewer>` (`src/components/image-viewer.html`):** Create a flex-centered container. Include a loading spinner `div` (`ref="loader"`) and an `<img>` tag (`ref="mediaDisplay"`, initially hidden or empty).
-> - **`<video-player-view>` (`src/components/video-player-view.html`):** Similar layout, but use a `<video controls autoplay>` tag (`ref="mediaDisplay"`).
+> **1. task: Template Construction (with Bootstrap)**
+> - **`<image-viewer>` (`src/components/image-viewer.html`):** Create a flex-centered container using Bootstrap utility classes (e.g., `<div class="d-flex justify-content-center align-items-center h-100">`). Include a Bootstrap loading spinner (`<div class="spinner-border text-primary" ref="loader" role="status"></div>`) and an `<img>` tag (`ref="mediaDisplay"`, initially hidden using the `d-none` class).
+> - **`<video-player-view>` (`src/components/video-player-view.html`):** Similar layout, but use a `<video controls autoplay class="d-none" ref="mediaDisplay"></video>` tag.
 > 
 > **2. task: Data Retrieval & The Network Fetch**
-> - In the `script: ({ refs, $state, pb, $localDb }, instanceContext) => {}` block, set up a reactive effect watching `$state.activeSelectionId`.
-> - When triggered, show the `loader`.
-> - Query the local database for the necessary keys: `const asset = await $localDb.local_assets.get(state.activeSelectionId)`.
-> - Fetch the encrypted binary blob from PocketBase using the `asset.media_id` (e.g., via `pb.getFileUrl()` combined with a standard `fetch()` request that returns an `.arrayBuffer()`).
+> - In the `script: ({ state, signal, refs, pb, localDb }) => {}` block, set up the logic to react to the selected media. *(Assuming `pb` and `localDb` are injected via your configured plugins)*.
+> - When triggered, ensure the `loader` is visible (remove `d-none` via `refs('loader').classList.remove('d-none')`) and `mediaDisplay` is hidden.
+> - Query the local database for the necessary keys: `const asset = await localDb.local_assets.get(state.activeSelectionId)`.
+> - Fetch the encrypted binary blob from PocketBase using the `asset.media_id` via a standard `fetch()` request that returns an `.arrayBuffer()`.
 > 
 > **3. task: On-the-Fly RAM Decryption**
 > - Convert the fetched ArrayBuffer to a `Uint8Array`.
-> - Dynamically import `libsodium-wrappers` and await `sodium.ready`.
+> - Dynamically import the cryptography library natively: `const { default: sodium } = await import('libsodium-wrappers');`, and await `sodium.ready`.
 > - Convert the `asset.file_key` and `asset.file_nonce` from base64 strings back to `Uint8Array` buffers.
 > - **Decrypt:** `const decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)`.
-> - *Error Handling:* Wrap this in a `try/catch`. If decryption fails, update the UI to show "Media Corrupted or Key Invalid" and hide the loader.
+> - *Error Handling:* Wrap this in a `try/catch`. If decryption fails, update the UI to show an error message (using a Bootstrap alert: `<div class="alert alert-danger">Media Corrupted or Key Invalid</div>`) and hide the loader.
 > 
 > **4. task: Blob URL Generation & Cleanup**
 > - Convert the `decryptedFileBuffer` into a browser Blob: `const mediaBlob = new Blob([decryptedFileBuffer], { type: asset.mime_type })`.
 > - Generate the local memory URL: `const objectUrl = URL.createObjectURL(mediaBlob)`.
 > - Assign the URL to the DOM element: `refs('mediaDisplay').src = objectUrl`.
-> - Hide the `loader` and reveal the `mediaDisplay`.
-> - **CRITICAL CLEANUP:** Attach the abort listener to revoke the URL when the user switches views and the component unmounts:
->   `instanceContext.signal.addEventListener('abort', () => { URL.revokeObjectURL(objectUrl); });`
+> - Hide the `loader` (add `d-none` class) and reveal the `mediaDisplay` (remove `d-none` class).
+> - **CRITICAL CLEANUP:** Attach the abort listener to revoke the URL when the user switches views:
+>   `signal.addEventListener('abort', () => { URL.revokeObjectURL(objectUrl); });`
 
 ## phase 6: Peer-to-Peer Calling & WebRTC
 Objective: Establish secure audio/video channels using the existing End-to-End Encrypted pipeline for zero-knowledge signaling.
@@ -1066,18 +1077,19 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > **Instructions:**
 > You are building the WebRTC signaling foundation for `atoll chat`. Standard WebRTC requires a signaling server. Instead of building a dedicated WebSocket server, we will use our existing, highly secure PocketBase message routing. The server will just see standard encrypted blobs, completely unaware that a call is being negotiated.
 > 
-> **CRITICAL CORALITE DIRECTIVES:**
+> **CRITICAL CORALITE & UI DIRECTIVES:**
 > 1. Use `definePlugin` from `coralite`. Name it `webrtc-manager`.
-> 2. The plugin must maintain a global registry of active `RTCPeerConnection` instances mapped by `room_id`.
+> 2. **SERIALIZATION BOUNDARY:** Do NOT define shared state variables in the top-level file scope. You MUST use the Two-Phase Currying pattern in `client.context` and define shared state (like the active calls registry) inside Phase 1 (`globalContext`).
+> 3. If any DOM elements or alerts need to be rendered dynamically based on WebRTC connection states, utilize modern Bootstrap utility classes for styling.
 > 
 > **1. task: Plugin Initialization & Dependency Injection**
-> - In the global closure, create a `Map` to hold active calls: `const activeCalls = new Map();`.
-> - Return the instance injector mapping to `client.context.$webrtc`.
-> - Ensure the plugin has access to `$bus` (to listen for incoming decrypted signals) and `$localDb` (to fetch room keys for outgoing signals).
+> - Inside the `client.context` object, define `$webrtc` as a curried function: `(globalContext) => { ... }`.
+> - In Phase 1 (`globalContext`), create a `Map` to hold active calls: `const activeCalls = new Map();`. This ensures the state persists across all component instances in the browser.
+> - Return Phase 2: `(instanceContext) => { ... }`.
 > 
 > **2. task: The Connection Factory**
-> - Expose a method `initiateCall(roomId, mediaStream)`.
-> - Inside, instantiate a `new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })`.
+> - Inside Phase 2 (`instanceContext`), return an object exposing the method `initiateCall(roomId, mediaStream)`.
+> - Inside `initiateCall`, instantiate a `new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] })`.
 > - Add the local `mediaStream` tracks to the connection.
 > - Store the connection in `activeCalls.set(roomId, peerConnection)`.
 > 
@@ -1085,13 +1097,13 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > - Attach an `onicecandidate` listener to the `peerConnection`.
 > - When an ICE candidate is generated (`event.candidate`), construct a JSON payload: 
 >   `{ type: 'ice_candidate', candidate: event.candidate, timestamp: Date.now() }`.
-> - **CRITICAL:** You must pass this JSON payload through the exact same Libsodium encryption and PocketBase upload pipeline used in `<chat-input>` (Track 4.3.2) to ensure the ICE data is symmetrically encrypted with the Room Key and signed with Ed25519.
+> - **CRITICAL:** You must pass this JSON payload through the exact same Libsodium encryption and PocketBase upload pipeline used in `<chat-input>` to ensure the ICE data is symmetrically encrypted with the Room Key and signed with Ed25519.
 > 
 > **4. task: Intercepting Incoming Signals via `$bus`**
-> - In the plugin's global closure, listen for new local data: `$bus.on('new_local_data', async (payload) => { ... })`.
+> - Inside Phase 1 (`globalContext`), set up a single global listener for new local data: `globalContext.$bus.on('new_local_data', async (payload) => { ... })`. *(Do not put this in Phase 2, or you will create duplicate memory-leaking listeners every time a component mounts)*.
 > - Query the `$localDb.local_messages` for the new message.
 > - If `message.type === 'call_offer'`, instantiate a `RTCPeerConnection`, set the remote description, generate an answer, and send the `call_answer` back through the E2EE pipeline.
-> - If `message.type === 'call_answer'`, apply the remote description to the existing `peerConnection`.
+> - If `message.type === 'call_answer'`, apply the remote description to the existing `peerConnection` found in `activeCalls`.
 > - If `message.type === 'ice_candidate'`, apply the candidate using `peerConnection.addIceCandidate()`.
 > - If the message type is standard (`text`, `media`), ignore it (the `<chat-view>` timeline will handle it).
 

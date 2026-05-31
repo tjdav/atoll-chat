@@ -222,7 +222,7 @@ async function processIncomingMessage (rpcId, payload) {
   const decryptedPayload = JSON.parse(decryptedString)
   const { type, content, timestamp } = decryptedPayload
 
-  // 4. Storage & Causal Chain Resolution
+  // Storage and causal chain resolution.
   const decryptedMessage = {
     id,
     room_id: roomId,
@@ -236,7 +236,21 @@ async function processIncomingMessage (rpcId, payload) {
 
   await db.local_messages.put(decryptedMessage)
 
-  // 5. Notify UI & Resolve RPC
+  // If media, also store in local_assets for the global archive
+  if (type === 'media') {
+    const { media_id, file_key, file_nonce, mime_type } = decryptedPayload
+    await db.local_assets.put({
+      id: media_id,
+      media_id,
+      room_id: roomId,
+      mime_type,
+      file_key,
+      file_nonce,
+      created_at: created
+    })
+  }
+
+  // Notify UI and resolve RPC.
   self.postMessage({
     type: 'NEW_LOCAL_DATA',
     payload: { room_id: roomId }
