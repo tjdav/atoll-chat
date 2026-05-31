@@ -35,7 +35,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, pb, $bus }) => {
+    script: ({ refs, pb, $bus, $sync }) => {
       const loginForm = refs('loginForm')
       const usernameInput = refs('username')
       const pinInput = refs('pin')
@@ -89,6 +89,9 @@
 
           // Perform PocketBase authentication
           await pbInstance.collection('users').authWithPassword(username, pin)
+
+          // Start real-time subscriptions
+          await $sync.startSubscriptions()
 
           // Emit successful login event
           $bus.emit('auth:unlocked', {

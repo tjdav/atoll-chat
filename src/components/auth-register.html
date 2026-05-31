@@ -35,7 +35,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, pb, $bus }) => {
+    script: ({ refs, pb, $bus, $sync }) => {
       const registerForm = refs('registerForm')
       const usernameInput = refs('username')
       const pinInput = refs('pin')
@@ -97,6 +97,9 @@
   
           updateStatus('Registration successful!')
   
+          // Start real-time subscriptions
+          await $sync.startSubscriptions()
+
           // Notify the application
           $bus.emit('auth:registered', {
             user,

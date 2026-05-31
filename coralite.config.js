@@ -4,6 +4,7 @@ import eventBus from './src/plugins/event-bus.js'
 import statePlugin from './src/plugins/state-plugin.js'
 import localDbPlugin from './src/plugins/localDbPlugin.js'
 import workerPlugin from './src/plugins/workerPlugin.js'
+import syncPlugin from './src/plugins/syncPlugin.js'
 
 export default defineConfig({
   public: 'public',
@@ -12,7 +13,8 @@ export default defineConfig({
     eventBus,
     statePlugin({ initialState: { currentAppView: 'chats' } }),
     localDbPlugin(),
-    workerPlugin()
+    workerPlugin(),
+    syncPlugin()
   ],
   output: 'dist',
   pages: 'src/pages',
