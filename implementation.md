@@ -39,7 +39,7 @@ Objective: Establish the secure environment, build the plugin ecosystem, and imp
 
 * Install the `pocketbase` JavaScript SDK.
 * Create a Coralite plugin to instantiate a single PocketBase client.
-* Expose the initialized `pb` instance to all component `script` setups to prevent multiple Server-Sent Events (SSE) connections and synchronize auth state globally.
+* Expose the initialized `pb` instance to all component `script` setups to prevent multiple Server-Sent Events (SSE) connections and synchronize auth $state globally.
 
 ##### Jules prompt
 
@@ -47,7 +47,7 @@ Objective: Establish the secure environment, build the plugin ecosystem, and imp
 > **Instructions:**
 > You are building a custom plugin for the Coralite framework to integrate PocketBase.
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `definePlugin` from `coralite/plugins` to construct the plugin.
+> 1. Use `definePlugin` from `coralite` to construct the plugin.
 > 2. The plugin must initialize the PocketBase instance ONCE in the global setup phase of the plugin closure.
 > 3. The plugin must inject that single instance into the `client.context` so components can access it directly in their setup block via `({ pb }) => {}`.
 > 
@@ -66,19 +66,19 @@ Objective: Establish the secure environment, build the plugin ecosystem, and imp
 > **3. task: Registration instructions**
 > * Provide a brief instruction on how to register this new plugin inside the `coralite.config.js`
 
-#### task 1.1.3: Implement the `statePlugin` and `eventBusPlugin`
+#### task 1.1.3: Implement the `$statePlugin` and `eventBusPlugin`
 - Create the global event bus (`$bus`) using the auto-cleaning `EventTarget` and `AbortSignal` pattern to prevent memory leaks.
-- Create the `statePlugin` to provide a reactive primitive tied to the component lifecycle.
+- Create the `$statePlugin` to provide a reactive primitive tied to the component lifecycle.
 - Register both plugins in the Coralite configuration.
 
 ##### Jules prompt
-> **Goal:** Build the core state management and communication layer by implementing the `eventBusPlugin` and `statePlugin`.
+> **Goal:** Build the core $state management and communication layer by implementing the `eventBusPlugin` and `$statePlugin`.
 > 
 > **Instructions:**
 > You are building application-level plugins for `atoll chat` using the Coralite framework.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `definePlugin` from `coralite/plugins`.
+> 1. Use `definePlugin` from `coralite`.
 > 2. Plugins run their outer scope globally (once) and their returned inner function per-component instance, receiving the `instanceContext`.
 > 
 > **1. task: The Event Bus Plugin (`src/plugins/eventBusPlugin.js`)**
@@ -90,14 +90,14 @@ Objective: Establish the secure environment, build the plugin ecosystem, and imp
 >   - `on: (eventName, callback) => { ... }` 
 > - **CRITICAL:** Inside the `on` method, wrap the callback and attach it to the `hub` using `addEventListener`, explicitly passing `{ signal: instanceContext.signal }` to guarantee automatic garbage collection when the Coralite component unmounts.
 > 
-> **2. task: The State Plugin (`src/plugins/statePlugin.js`)**
+> **2. task: The $state Plugin (`src/plugins/statePlugin.js`)**
 > - Create a plugin named `app-state`.
 > - In the global closure, define a shared reactive store object. (Use a standard JavaScript `Proxy` or a lightweight signal pattern to track changes).
 > - Return the instance injector function mapping to `client.context.state`.
-> - Ensure the returned state object allows components to read and write shared data (like `currentUser`, `activeRoomId`, or `connectionStatus`).
+> - Ensure the returned $state object allows components to read and write shared data (like `currentUser`, `activeRoomId`, or `connectionStatus`).
 > 
 > **3. task: Registration**
-> - Provide the updated `coralite.config.js` code demonstrating how to import and register `eventBusPlugin` and `statePlugin` alongside the existing plugins.
+> - Provide the updated `coralite.config.js` code demonstrating how to import and register `eventBusPlugin` and `$statePlugin` alongside the existing plugins.
 
 ### track 1.2: Identity & Vaulting
 
@@ -228,7 +228,7 @@ Objective: Establish the secure environment, build the plugin ecosystem, and imp
 > **4. task: Payload Construction & Dispatch**
 > - Construct the payload object matching the PocketBase `users` collection schema: `{ username, public_box_key, public_sign_key, pin_salt, encrypted_master_keys }`.
 > - (Mock the actual PocketBase `create` call for now, or just log the payload to the console).
-> - Emit a successful registration event using `$bus.emit('auth:registered', payload)` to notify the parent application state to transition views.
+> - Emit a successful registration event using `$bus.emit('auth:registered', payload)` to notify the parent application $state to transition views.
 
 #### task 1.3.2: Build the Login view (fetching salt, deriving KEK, unlocking vault into RAM)
 - Create a Coralite component for user login.
@@ -268,7 +268,7 @@ Objective: Establish the secure environment, build the plugin ecosystem, and imp
 > - Call `decryptVault(encrypted_master_keys.vault_ciphertext, encrypted_master_keys.vault_nonce, KEK, sodium)`.
 > - **Error Handling:** Wrap the decryption in a `try/catch`. If it fails, catch the error, update the status message to "Invalid PIN or Corrupt Vault", and abort the login.
 > 
-> **5. task: State Injection & Dispatch**
+> **5. task: $state Injection & Dispatch**
 > - If decryption is successful, you now have the plaintext `private_box_key` and `private_sign_key` in local RAM.
 > - Emit a successful login event using `$bus.emit('auth:unlocked', { keys: decryptedKeys, userRecord: record })`. 
 > - Update the status text to "Vault unlocked. Entering chat..."
@@ -399,27 +399,27 @@ Objective: Build the local offline-first database and the background decryption 
 
 ### track 3.1: IndexedDB Architecture
 
-#### task 3.1.1 & 3.1.2: Implement the `localDbPlugin` and Define Schemas
+#### task 3.1.1 & 3.1.2: Implement the `$localDbPlugin` and Define Schemas
 - Install `dexie` to interact with IndexedDB elegantly.
 - Create a Coralite plugin to instantiate a single local database connection.
 - Define the client-side schemas for `local_rooms`, `local_messages`, and `local_assets` to support complex relational querying without hitting the server.
 - Request persistent storage from the browser to prevent eviction.
 
 ##### Jules prompt
-> **Goal:** Build the `localDbPlugin` using Dexie.js to serve as the zero-knowledge local cache and define the indexing schemas.
+> **Goal:** Build the `$localDbPlugin` using Dexie.js to serve as the zero-knowledge local cache and define the indexing schemas.
 > 
 > **Instructions:**
 > You are building the local database plugin for `atoll chat` using the Coralite framework. Because the PocketBase server holds only encrypted blobs, this local IndexedDB is the *only* place where plaintext metadata is queried.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `definePlugin` from `coralite/plugins`.
+> 1. Use `definePlugin` from `coralite`.
 > 2. The Dexie database instance must be created ONCE in the global closure of the plugin.
 > 3. Inject the `db` instance into the `client.context` so components can access it natively.
 > 
 > **1. task: Dependency**
 > - Instruct the user to install Dexie: `pnpm add dexie`.
 > 
-> **2. task: Plugin Initialization & Persistence (`src/plugins/localDbPlugin.js`)**
+> **2. task: Plugin Initialization & Persistence (`src/plugins/$localDbPlugin.js`)**
 > - Write the plugin code using `definePlugin`. Name it `local-db`.
 > - Import `Dexie` from `dexie`.
 > - In the global closure, declare `const db = new Dexie('AtollChatDB');`.
@@ -433,7 +433,7 @@ Objective: Build the local offline-first database and the background decryption 
 > - **`local_assets`:** `"id, room_id, mime_type, created_at"` (We must index `mime_type` so the UI can instantly filter the Global Media Archive by 'image/', 'video/', or 'audio/').
 > 
 > **4. task: Context Injection**
-> - Return the instance injector function: `return (instanceContext) => db;` mapped to the `localDb` key in the `client.context`.
+> - Return the instance injector function: `return (instanceContext) => db;` mapped to the `$localDb` key in the `client.context`.
 > - Provide the updated `coralite.config.js` registration instruction for this new plugin.
 
 ### track 3.2: The Web Worker
@@ -457,7 +457,7 @@ Objective: Build the local offline-first database and the background decryption 
 > - Once `sodium.ready` resolves, send a message back to the main thread: `self.postMessage({ type: 'WORKER_READY' });`.
 > 
 > **2. task: The Coralite Worker Plugin (`src/plugins/workerPlugin.js`)**
-> - Use `definePlugin` from `coralite/plugins`. Name it `crypto-worker`.
+> - Use `definePlugin` from `coralite`. Name it `crypto-worker`.
 > - In the global closure, instantiate the worker: `const worker = new Worker('/worker.js');`.
 > - Listen for the `WORKER_READY` event from the worker.
 > - Return the instance injector function mapping to `client.context.$worker`.
@@ -486,7 +486,7 @@ Objective: Build the local offline-first database and the background decryption 
 > **1. task: Worker Initialization & Caching**
 > - At the top of `worker.js`, import standard `dexie` (via `importScripts` or your bundler's worker syntax) and define the schema for `local_rooms` and `local_messages`.
 > - Create an in-memory `Map` called `publicKeyCache` to store fetched sender keys and minimize network requests.
-> - Inside your `self.onmessage` switch statement, add a case for `PROCESS_INCOMING_MESSAGE`.
+> - Inside your `self.onmessage` switch $statement, add a case for `PROCESS_INCOMING_MESSAGE`.
 > 
 > **2. task: Identity Verification (Ed25519)**
 > - Extract the hostile payload from the event: `{ id, room_id, epoch_id, sender_id, ciphertext, nonce, signature, previous_msg_uuid, created }`.
@@ -554,26 +554,26 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 
 #### task 4.1.1: Build `<app-layout>` and the fixed left-hand `<nav-sidebar>`
 - Create the master grid container for the strict 3-column layout.
-- Implement the global state switch that controls the application mode (Chats, Music, Pictures, Videos).
-- Build the persistent navigation sidebar (Column 1) to dispatch state changes.
+- Implement the global $state switch that controls the application mode (Chats, Music, Pictures, Videos).
+- Build the persistent navigation sidebar (Column 1) to dispatch $state changes.
 
 ##### Jules prompt
 > **Goal:** Build the foundational SPA layout component (`<app-layout>`) and its persistent navigation sidebar (`<nav-sidebar>`) to establish the 3-column architecture.
 > 
 > **Instructions:**
-> You are building the core UI skeleton for `atoll chat` using the Coralite framework. These components orchestrate the main view state of the application.
+> You are building the core UI skeleton for `atoll chat` using the Coralite framework. These components orchestrate the main view $state of the application.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite/plugins` for all component scripts.
+> 1. Use `defineComponent` exported from `coralite` for all component scripts.
 > 2. Ensure CSS provides a strict, non-scrolling full-height layout (`100vh`, `overflow: hidden` on the body/app-layout) to mimic a native app.
-> 3. Use the `statePlugin` (injected as `state`) to track the `currentAppView`.
+> 3. Use the `$statePlugin` (injected as `$state`) to track the `currentAppView`.
 > 
 > **1. task: The Navigation Sidebar (`src/components/nav-sidebar.html`)**
 > - Define the component template. It should be a narrow vertical column.
 > - Include four distinct buttons or icon wrappers: "Chats", "Music", "Pictures", and "Videos", plus a "Settings" button at the bottom.
-> - In the `script: ({ refs, state }) => {}` block, attach click listeners to these buttons.
-> - When clicked, update the global state: `state.currentAppView = 'chats'` (or 'music', etc.).
-> - Add a CSS class (e.g., `active`) to the currently selected button by reactively listening to `state.currentAppView`.
+> - In the `script: ({ refs, $state }) => {}` block, attach click listeners to these buttons.
+> - When clicked, update the global $state: `$state.currentAppView = 'chats'` (or 'music', etc.).
+> - Add a CSS class (e.g., `active`) to the currently selected button by reactively listening to `$state.currentAppView`.
 > 
 > **2. task: The App Layout Master (`src/components/app-layout.html`)**
 > - Define the component template using a CSS Grid or Flexbox layout that strictly defines three columns:
@@ -583,48 +583,48 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 > - Inside Column 1 of the template, explicitly place the `<nav-sidebar></nav-sidebar>` tag.
 > 
 > **3. task: View Routing Logic**
-> - In the `script: ({ refs, state }) => {}` block of `<app-layout>`, set up a reactive observer or getter on `state.currentAppView`.
-> - (For now) Just write a standard `console.log` or update a basic text node inside `refs('columnTwo')` outputting the current state (e.g., "Rendering list for: chats"). We will build the actual dynamic list mounting in the next task.
+> - In the `script: ({ refs, $state }) => {}` block of `<app-layout>`, set up a reactive observer or getter on `$state.currentAppView`.
+> - (For now) Just write a standard `console.log` or update a basic text node inside `refs('columnTwo')` outputting the current $state (e.g., "Rendering list for: chats"). We will build the actual dynamic list mounting in the next task.
 
-#### task 4.1.2: Build `<list-pane>` (Column 2) and bind it to `localDbPlugin` queries
-- Create the dynamic middle column component that reacts to the navigation state.
-- Implement live Dexie queries using the injected `localDbPlugin` based on whether the user is viewing Chats or a specific Media archive.
+#### task 4.1.2: Build `<list-pane>` (Column 2) and bind it to `$localDbPlugin` queries
+- Create the dynamic middle column component that reacts to the navigation $state.
+- Implement live Dexie queries using the injected `$localDbPlugin` based on whether the user is viewing Chats or a specific Media archive.
 - Render the resulting local database records into clickable list items.
 
 ##### Jules prompt
 > **Goal:** Build the `<list-pane>` component that dynamically queries the local zero-knowledge database and renders the contextual list for Column 2.
 > 
 > **Instructions:**
-> You are building the contextual navigation column for `atoll chat` using the Coralite framework. This component bridges the global state and the local Dexie database.
+> You are building the contextual navigation column for `atoll chat` using the Coralite framework. This component bridges the global $state and the local Dexie database.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite/plugins`.
-> 2. Ensure smooth reactive updates. When the global `state` changes, the local database query must re-run, and the DOM must update.
+> 1. Use `defineComponent` exported from `coralite`.
+> 2. Ensure smooth reactive updates. When the global `$state` changes, the local database query must re-run, and the DOM must update.
 > 
 > **1. task: Component Setup (`src/components/list-pane.html`)**
 > - Define the HTML template. Create a wrapper `div` with `ref="listContainer"` to hold the dynamic list items.
 > - Include a `<header>` element with a dynamic title `ref="paneTitle"` (e.g., "Chats", "Pictures").
-> - In the `script: ({ refs, state, localDb, $bus }) => {}` block, set up a reactive observer or effect watching `state.currentAppView`.
+> - In the `script: ({ refs, $state, $localDb, $bus }) => {}` block, set up a reactive observer or effect watching `$state.currentAppView`.
 > 
 > **2. task: The Dexie Query Switcher**
-> - Inside your reactive effect, write a `switch` or `if/else` block based on `state.currentAppView`.
+> - Inside your reactive effect, write a `switch` or `if/else` block based on `$state.currentAppView`.
 > - **If 'chats':** >   - Update `refs('paneTitle')` to "Chats".
->   - Query: `await localDb.local_rooms.toArray()` (For a production app, this would be an `orderBy` or a liveQuery, but a standard fetch is fine for this foundation).
+>   - Query: `await $localDb.local_rooms.toArray()` (For a production app, this would be an `orderBy` or a liveQuery, but a standard fetch is fine for this foundation).
 > - **If 'music':**
 >   - Update `refs('paneTitle')` to "Music".
->   - Query: `await localDb.local_assets.filter(asset => asset.mime_type.startsWith('audio/')).toArray()`.
+>   - Query: `await $localDb.local_assets.filter(asset => asset.mime_type.startsWith('audio/')).toArray()`.
 > - **If 'pictures':**
 >   - Update `refs('paneTitle')` to "Pictures".
->   - Query: `await localDb.local_assets.filter(asset => asset.mime_type.startsWith('image/')).toArray()`.
+>   - Query: `await $localDb.local_assets.filter(asset => asset.mime_type.startsWith('image/')).toArray()`.
 > - **If 'videos':**
 >   - Update `refs('paneTitle')` to "Videos".
->   - Query: `await localDb.local_assets.filter(asset => asset.mime_type.startsWith('video/')).toArray()`.
+>   - Query: `await $localDb.local_assets.filter(asset => asset.mime_type.startsWith('video/')).toArray()`.
 > 
 > **3. task: Rendering the List**
 > - Take the array of results from the query and map over them to create DOM elements.
 > - Clear the existing contents of `refs('listContainer')`.
 > - For each item, append a basic HTML string or manually construct elements (e.g., `<div class="list-item">...</div>`) displaying the room name or asset metadata.
-> - Add a click event listener to each rendered item. When an item is clicked, update the state to reflect the active selection: `state.activeSelectionId = item.id`, and `state.activeSelectionType = state.currentAppView`.
+> - Add a click event listener to each rendered item. When an item is clicked, update the $state to reflect the active selection: `$state.activeSelectionId = item.id`, and `$state.activeSelectionType = $state.currentAppView`.
 > 
 > **4. task: Reactivity to New Background Messages**
 > - Use the injected event bus to listen for new data: `$bus.on('new_local_data', () => { /* re-run the current query */ })`. This ensures the list updates instantly when the Web Worker decrypts a new message or asset in the background.
@@ -643,8 +643,8 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 > You are building the room creation UI for `atoll chat` using the Coralite framework. This component allows users to find friends and initiate the End-to-End Encrypted room setup.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite/plugins`.
-> 2. Maintain an internal component state to track the `searchQuery`, `searchResults`, and `selectedParticipants`.
+> 1. Use `defineComponent` exported from `coralite`.
+> 2. Maintain an internal component $state to track the `searchQuery`, `searchResults`, and `selectedParticipants`.
 > 
 > **1. task: Template Construction**
 > - Define the HTML template as an absolute positioned modal overlay (`<div class="modal-backdrop">...</div>`).
@@ -682,7 +682,7 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
 > 1. Keep all cryptographic operations locally within the `script` setup block before hitting the network.
-> 2. Assume the current user's unencrypted private keys and profile data are available via the injected `state` plugin (e.g., `state.currentUser.private_box_key`).
+> 2. Assume the current user's unencrypted private keys and profile data are available via the injected `$state` plugin (e.g., `$state.currentUser.private_box_key`).
 > 
 > **1. task: Prepare the Participants Array**
 > - Ensure the `selectedParticipants` array includes the creator (the current user) as well. The creator must also get a wrapped copy of the key stored on the server so they can recover the chat if they log in from a new device.
@@ -695,7 +695,7 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 > - Encrypt the `roomKey` buffer using `sodium.crypto_box_easy(roomKey, nonce, participantPublicKeyBuffer, currentUserPrivateKeyBuffer)`.
 > - Push an object into `wrappedMemberRecords` containing:
 >   - `user_id`: participant.id
->   - `wrapped_by`: state.currentUser.id
+>   - `wrapped_by`: $state.currentUser.id
 >   - `encrypted_room_key`: sodium.to_base64(encryptedKey)
 >   - `key_nonce`: sodium.to_base64(nonce)
 >   - `role`: (Assign 'admin' to the creator, 'member' to others).
@@ -708,9 +708,9 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 > 
 > **4. task: Update Local Cache & Cleanup**
 > - Save the plaintext `roomKey` to the local database to avoid needing to download and unwrap it immediately: 
->   `await localDb.local_rooms.put({ id: newRoom.id, is_group: true, key_history: [{ epoch_id: 1, key: sodium.to_base64(roomKey) }] })`.
+>   `await $localDb.local_rooms.put({ id: newRoom.id, is_group: true, key_history: [{ epoch_id: 1, key: sodium.to_base64(roomKey) }] })`.
 > - Use `$bus.emit('modal:close')` to hide the modal.
-> - Update the global state to navigate to the newly created chat: `state.activeSelectionId = newRoom.id`.
+> - Update the global $state to navigate to the newly created chat: `$state.activeSelectionId = newRoom.id`.
 
 #### task 4.2.3: Implement the "Kick User" flow (Key Epochs)
 - Handle the removal of a participant from a group chat.
@@ -725,8 +725,8 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 > You are building the "Kick User" action for `atoll chat`. This logic will likely reside inside the `<room-details-sidebar>` component when an admin clicks "Remove" next to a member's name.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite/plugins`.
-> 2. Ensure the local Dexie database (`localDb`) correctly appends to the `key_history` array rather than overwriting it.
+> 1. Use `defineComponent` exported from `coralite`.
+> 2. Ensure the local Dexie database (`$localDb`) correctly appends to the `key_history` array rather than overwriting it.
 > 
 > **1. task: Identify Survivors & Generate New Key**
 > - When the "Remove User" action is triggered, determine the `kickedUserId` and the `roomId`.
@@ -747,10 +747,10 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 > - Send a system message to the `messages` collection (e.g., `{ type: 'system', content: 'Bob was removed' }`). **CRITICAL:** Encrypt this message using the *newEpochKey* and set `epoch_id: 2` in the payload.
 > 
 > **4. task: Update the Local Cache (Key History)**
-> - Fetch the current room from local Dexie: `const room = await localDb.local_rooms.get(roomId);`.
+> - Fetch the current room from local Dexie: `const room = await $localDb.local_rooms.get(roomId);`.
 > - Determine the next epoch ID: `const nextEpochId = room.key_history.length + 1;`.
 > - Push the new plaintext key to the array: `room.key_history.push({ epoch_id: nextEpochId, key: sodium.to_base64(newEpochKey) });`.
-> - Save it back: `await localDb.local_rooms.put(room);`.
+> - Save it back: `await $localDb.local_rooms.put(room);`.
 > - The local client is now ready to decrypt future messages with the new key while retaining the old key for history.
 
 ### track 4.3: The Active Chat
@@ -762,38 +762,41 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 - Differentiate styling between "sent" and "received" message bubbles.
 
 ##### Jules prompt
-> **Goal:** Build the `<chat-view>` and `<message-timeline>` Coralite components to render the decrypted history of the currently active room.
+> **Goal:** Build the `<chat-view>` and `<message-timeline>` Coralite components to render the decrypted history of the currently active room, utilizing Bootstrap for layout and styling.
 > 
 > **Instructions:**
 > You are building the main conversation view for `atoll chat` using the Coralite framework. This interface only reads plaintext from the local database; it never queries PocketBase directly for message contents.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite/plugins`.
-> 2. Ensure reactivity: when `state.activeSelectionId` changes, the timeline must instantly re-query the local database for the new room's messages.
+> 1. Use `defineComponent` exported from `coralite`. Never use vanilla Web Component boilerplate.
+> 2. Ensure reactivity: when the mutable `$state.activeSelectionId` changes, the script must instantly re-query the local database and update the timeline.
+> 3. Use standard Bootstrap 5 classes for all layout and styling (no inline CSS unless strictly necessary).
 > 
 > **1. task: The Chat View Wrapper (`src/components/chat-view.html`)**
-> - Define the HTML template as a CSS Flexbox column layout (`display: flex; flex-direction: column; height: 100%`).
-> - Create a `<header>` element (`ref="chatHeader"`) containing the active Room Name, an Avatar placeholder, and placeholder buttons for "Audio Call" and "Video Call".
-> - Include a `<div ref="timelineContainer" style="flex: 1; overflow-y: auto;"></div>` to house the message bubbles.
-> - Include an un-implemented `<chat-input></chat-input>` component at the bottom.
+> - Define the HTML `<template id="chat-view">` utilizing Bootstrap flex utility classes to create a full-height column: `<div class="d-flex flex-column h-100">`.
+> - Create a `<header>` element (`ref="chatHeader"`) with classes like `d-flex align-items-center p-3 border-bottom`. Include placeholders for the active Room Name (using `{{ roomName }}`), an Avatar, and "Audio Call" / "Video Call" icon buttons.
+> - Include the timeline container: `<div ref="timelineContainer" class="flex-grow-1 overflow-auto p-3 d-flex flex-column"></div>` to house the message bubbles.
+> - Include an un-implemented `<chat-input></chat-input>` component at the bottom, wrapped in a `p-3 border-top` container.
 > 
 > **2. task: Timeline Data Querying**
-> - In the `script: ({ refs, state, localDb, $bus }) => {}` block, set up a reactive observer for `state.activeSelectionId`.
-> - When `activeSelectionId` is present and `state.activeSelectionType === 'chats'`, query the room metadata from `localDb.local_rooms` to populate the `chatHeader`.
-> - Then, query the message history: `await localDb.local_messages.where('room_id').equals(state.activeSelectionId).sortBy('created_at')`. *(Note: For production, we will use the `previous_msg_uuid` causal chain, but sorting by time is acceptable for this foundational step).*
+> - In your `script: ({ $state, signal, refs, $localDb, $bus }) => { ... }` block, set up a reactive observer/watcher for `$state.activeSelectionId`.
+> - When `activeSelectionId` is present and `$state.activeSelectionType === 'chats'`, query the room metadata from `$localDb.local_rooms` to populate the header (e.g., updating `$state.roomName`).
+> - Next, query the message history: `await $localDb.local_messages.where('room_id').equals(state.activeSelectionId).sortBy('created_at')`. *(Note: For production, we will use the `previous_msg_uuid` causal chain, but sorting by time is acceptable for this foundational step).*
 > 
-> **3. task: Rendering the Timeline**
-> - Clear `refs('timelineContainer')`.
+> **3. task: Rendering the Timeline (Imperative DOM)**
+> - Clear the container: `refs('timelineContainer').innerHTML = ''`.
 > - Iterate over the queried messages. 
-> - For each message, dynamically construct a DOM node (e.g., `<div class="message-bubble">...</div>`). 
-> - **Alignment Logic:** If `message.sender_id === state.currentUser.id`, apply a CSS class to align the bubble to the right (e.g., `sent`). Otherwise, align it to the left (e.g., `received`).
-> - Insert the `message.content` text into the bubble.
-> - Append the node to the `timelineContainer`.
+> - For each message, dynamically construct DOM nodes using standard `document.createElement('div')`. Do **not** use `innerHTML` to stamp out string literals for security and Coralite compatibility.
+> - **Alignment Logic (Bootstrap):** >   - If `message.sender_id === $state.currentUser.id` (Sent): Apply classes `align-self-end bg-primary text-white rounded p-2 mb-2 max-w-75`.
+>   - Otherwise (Received): Apply classes `align-self-start bg-light text-dark rounded p-2 mb-2 max-w-75`.
+> - Set the `textContent` of the bubble to `message.content` and append it to `refs('timelineContainer')`.
 > 
 > **4. task: Auto-Scroll & Real-Time Updates**
-> - After the loop finishes rendering, write a helper to scroll to the bottom: `refs('timelineContainer').scrollTop = refs('timelineContainer').scrollHeight`.
-> - Use the event bus to listen for new background messages: `$bus.on('new_local_data', (payload) => { ... })`. 
-> - If `payload.room_id === state.activeSelectionId`, re-run the query and
+> - After the loop finishes rendering, write a helper to automatically scroll to the newest message: `refs('timelineContainer').scrollTop = refs('timelineContainer').scrollHeight`.
+> - Use the injected event bus to listen for new background messages: `const onNewData = (payload) => { ... }`. Register it with `$bus.on('new_local_data', onNewData)`.
+> - If `payload.room_id === $state.activeSelectionId`, re-run the local database query, clear the container, re-render the timeline, and trigger the auto-scroll helper so the user sees the newest message.
+> - **CRITICAL CLEANUP:** Bind the bus listener removal to the Coralite component lifecycle to prevent memory leaks: `signal.addEventListener('abort', () => $bus.off('new_local_data', onNewData))`.
+
 
 #### task 4.3.2: Build `<chat-input>`, capturing text, encrypting the inner JSON payload, and uploading to PocketBase
 - Create the text input interface for the active chat view.
@@ -802,43 +805,46 @@ Objective: Build the primary user interface and implement End-to-End Encrypted m
 - Construct the JSON message payload, symmetrically encrypt it, cryptographically sign it to prevent forgery, and push to the server.
 
 ##### Jules prompt
-> **Goal:** Build the `<chat-input>` Coralite component that handles the complex End-to-End Encryption payload construction and server dispatch.
+> **Goal:** Build the `<chat-input>` Coralite component—utilizing Bootstrap for a clean, responsive UI—to handle the complex End-to-End Encryption payload construction and server dispatch.
 > 
 > **Instructions:**
 > You are building the message composition UI for `atoll chat`. This component sits at the bottom of the `<chat-view>` and acts as the entry point for data entering the hostile server environment.
 > 
-> **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite/plugins`.
-> 2. Assume all required keys (User's private keys, Room's symmetric keys) are available in the local cache or `state`. DO NOT fetch keys from PocketBase during the send loop.
+> **CRITICAL CORALITE & UI DIRECTIVES:**
+> 1. Use `defineComponent` exported from `coralite`.
+> 2. Ensure the template is wrapped in a `<template id="chat-input">` tag.
+> 3. Use standard Bootstrap 5 classes (e.g., `input-group`, `form-control`) for the layout and styling.
+> 4. Assume all required keys (User's private keys, Room's symmetric keys) are available in the local cache or `$state`. DO NOT fetch keys from PocketBase during the send loop.
 > 
-> **1. task: Template Construction**
-> - Define the HTML template. Create a wrapper `div`.
-> - Include a textarea for the message body (`ref="messageInput"`).
-> - Include an attachment button (placeholder for now, `ref="attachButton"`).
-> - Include a submit button (`ref="sendButton"`).
+> **1. task: Template Construction (`<template id="chat-input">`)**
+> - Define the declarative HTML structure. Create a wrapper `div` with spacing utility classes (e.g., `p-3 border-top`).
+> - Use a Bootstrap `input-group` to align the controls horizontally.
+> - Include an attachment button (`ref="attachButton"`) styled as a `btn btn-outline-secondary` (use an icon like a paperclip).
+> - Include a textarea (`ref="messageInput"`) styled with `form-control` (ensure it allows multi-line text but doesn't break the layout).
+> - Include a submit button (`ref="sendButton"`) styled as `btn btn-primary`.
 > 
-> **2. task: Component Setup & Data Retrieval**
-> - In the `script: ({ refs, state, pb, localDb }) => {}` block, attach a click listener to the send button.
-> - When clicked, read the text from `messageInput`. If empty, return.
-> - **Fetch Room Key:** Query `localDb.local_rooms` for the `state.activeSelectionId`. Extract the *latest* key from the `key_history` array. Record its `epoch_id`.
-> - **Fetch Causal Link:** Query `localDb.local_messages` for the most recent message in this room. Extract its `id` to use as the `previous_msg_uuid` (or null if it's the first message).
+> **2. task: Component Setup & Data Retrieval (`script` block)**
+> - In the `script: ({ refs, $state, pb, $localDb }) => { ... }` block, attach a `click` event listener to `refs('sendButton')`.
+> - When clicked, read the text from `refs('messageInput').value`. If empty or only whitespace, return early.
+> - **Fetch Room Key:** Query `$localDb.local_rooms` for `$state.activeSelectionId`. Extract the *latest* key from the `key_history` array. Record its `epoch_id`.
+> - **Fetch Causal Link:** Query `$localDb.local_messages` for the most recent message in this room. Extract its `id` to use as the `previous_msg_uuid` (or null if it's the first message).
 > 
 > **3. task: Encryption Pipeline**
-> - Dynamically import `libsodium-wrappers` and await `sodium.ready`.
+> - Dynamically import `libsodium-wrappers` inside the script block using standard `await import`  and await `sodium.ready`.
 > - Construct the plaintext JSON: `const plaintextObj = { type: 'text', content: messageText, timestamp: Date.now() };`. Stringify it.
-> - Generate a 24-byte nonce.
+> - Generate a 24-byte nonce using `sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)`.
 > - Symmetrically encrypt the string using `sodium.crypto_secretbox_easy` with the extracted Room Epoch Key.
 > 
 > **4. task: Signature Pipeline (Identity Verification)**
 > - Take the resulting ciphertext buffer.
-> - Fetch the user's `private_sign_key` (Ed25519) from `state.currentUser.private_sign_key`. Convert the base64 string to a buffer.
+> - Fetch the user's `private_sign_key` (Ed25519) from `$state.currentUser.private_sign_key`. Convert the base64 string to a `Uint8Array` buffer.
 > - Create a detached signature using `sodium.crypto_sign_detached(ciphertextBuffer, privateSignKeyBuffer)`.
 > 
 > **5. task: Server Upload**
 > - Construct the final hostile-server payload:
->   `{ room_id: state.activeSelectionId, epoch_id: latestEpochId, ciphertext: sodium.to_base64(ciphertextBuffer), nonce: sodium.to_base64(nonce), signature: sodium.to_base64(signatureBuffer), previous_msg_uuid: previousMsgId }`
+>   `{ room_id: $state.activeSelectionId, epoch_id: latestEpochId, ciphertext: sodium.to_base64(ciphertextBuffer), nonce: sodium.to_base64(nonce), signature: sodium.to_base64(signatureBuffer), previous_msg_uuid: previousMsgId }`
 > - Send a `create` request to the PocketBase `messages` collection.
-> - Clear the `messageInput`.
+> - Clear the `messageInput` value.
 > - *(Note: Do not manually update the timeline here. The PocketBase SSE connection will detect the new record, send it to the Web Worker for signature verification/decryption, and the worker will emit an event to automatically render the local echo.)*
 
 ## phase 5: Real-Time Sync & Background Decryption
@@ -858,7 +864,7 @@ Objective: Establish the Server-Sent Events (SSE) connection and handle off-thre
 > You are building the real-time synchronization layer for `atoll chat` using the Coralite framework.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `definePlugin` from `coralite/plugins`. Name it `realtime-sync`.
+> 1. Use `definePlugin` from `coralite`. Name it `realtime-sync`.
 > 2. Ensure subscriptions are initialized only once the user is authenticated and the vault is unlocked.
 > 
 > **1. task: Plugin Setup & Dependencies**
@@ -899,12 +905,12 @@ Objective: Establish the Server-Sent Events (SSE) connection and handle off-thre
 > You are expanding the `src/plugins/syncPlugin.js` for `atoll chat`. Real-time Server-Sent Events (SSE) are great, but they only capture data while the app is open. We need a recovery loop that runs right before the subscriptions start.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Keep this logic inside the `syncPlugin` so it shares the injected context (`pb`, `$worker`, `localDb`).
+> 1. Keep this logic inside the `syncPlugin` so it shares the injected context (`pb`, `$worker`, `$localDb`).
 > 2. Ensure the catch-up loop completes (or at least starts processing) before binding the live SSE listeners to prevent race conditions.
 > 
 > **1. task: Determine the Last Sync Timestamp**
 > - Create an async function `performCatchUpSync()`.
-> - Query the local Dexie database to find the most recent message: `const latestMsg = await localDb.local_messages.orderBy('created_at').last()`.
+> - Query the local Dexie database to find the most recent message: `const latestMsg = await $localDb.local_messages.orderBy('created_at').last()`.
 > - Determine the `lastSyncTime`. If `latestMsg` exists, use its `created_at` timestamp (ensure it's formatted to match PocketBase's `YYYY-MM-DD HH:mm:ss.SSSZ` format). If local DB is empty, use a default past date (e.g., `'2000-01-01 00:00:00.000Z'`).
 > 
 > **2. task: Fetch Missed Messages**
@@ -969,7 +975,7 @@ Objective: Establish the Server-Sent Events (SSE) connection and handle off-thre
 - Create dedicated Coralite components for each media type to dynamically render inside the `<list-pane>`.
 - Query the `local_assets` IndexedDB table using the `mime_type` index to separate media types.
 - Render contextual list items (e.g., visual grids for images/videos, standard list rows for audio).
-- Wire click events to update the global state, paving the way for the dedicated media viewers in Column 3.
+- Wire click events to update the global $state, paving the way for the dedicated media viewers in Column 3.
 
 ##### Jules prompt
 > **Goal:** Build specialized media list components (`<picture-list>`, `<video-list>`, `<music-list>`) to display contextual file archives in Column 2.
@@ -978,30 +984,30 @@ Objective: Establish the Server-Sent Events (SSE) connection and handle off-thre
 > You are building the specific media navigation components for `atoll chat`. These will replace the generic list-rendering logic we temporarily placed in the `<list-pane>` component during Phase 4.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite/plugins`.
-> 2. Ensure these components are strictly offline-first. They must only read from the injected `localDb`.
+> 1. Use `defineComponent` exported from `coralite`.
+> 2. Ensure these components are strictly offline-first. They must only read from the injected `$localDb`.
 > 
 > **1. task: Refactor `<list-pane>` Mounting**
-> - Update the `switch` statement or reactive block in your existing `<list-pane>` component. 
-> - Instead of manually constructing DOM nodes for every query, delegate the rendering. Mount or toggle the visibility of `<picture-list>`, `<video-list>`, or `<music-list>` based on `state.currentAppView`.
+> - Update the `switch` $statement or reactive block in your existing `<list-pane>` component. 
+> - Instead of manually constructing DOM nodes for every query, delegate the rendering. Mount or toggle the visibility of `<picture-list>`, `<video-list>`, or `<music-list>` based on `$state.currentAppView`.
 > 
 > **2. task: Data Querying per Component**
-> - Inside the `script: ({ localDb, $bus }) => {}` block for each respective component, fetch the sorted data:
-> - **`<picture-list>`:** `await localDb.local_assets.where('mime_type').startsWith('image/').reverse().sortBy('created_at')`.
-> - **`<video-list>`:** `await localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at')`.
-> - **`<music-list>`:** `await localDb.local_assets.where('mime_type').startsWith('audio/').reverse().sortBy('created_at')`.
+> - Inside the `script: ({ $localDb, $bus }) => {}` block for each respective component, fetch the sorted data:
+> - **`<picture-list>`:** `await $localDb.local_assets.where('mime_type').startsWith('image/').reverse().sortBy('created_at')`.
+> - **`<video-list>`:** `await $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at')`.
+> - **`<music-list>`:** `await $localDb.local_assets.where('mime_type').startsWith('audio/').reverse().sortBy('created_at')`.
 > - *Note: Ensure you set up an event listener on `$bus` to re-run these queries when `NEW_LOCAL_DATA` arrives from the Web Worker.*
 > 
 > **3. task: Contextual UI Rendering**
 > - **Pictures & Videos:** Iterate over the queried arrays and render a CSS Grid (`display: grid; grid-template-columns: 1fr 1fr;`) of thumbnails. Because the actual image/video files are encrypted blobs, rendering the true thumbnail requires an asynchronous decryption pass. For this task, render a stylish placeholder `div` displaying the date, time, and a generic media icon.
-> - **Music:** Iterate over the audio array and render a vertical list. Include a play icon, the timestamp, and perform a quick secondary query to `localDb.local_rooms.get(item.room_id)` to display the name of the chat where the track originated.
+> - **Music:** Iterate over the audio array and render a vertical list. Include a play icon, the timestamp, and perform a quick secondary query to `$localDb.local_rooms.get(item.room_id)` to display the name of the chat where the track originated.
 > 
-> **4. task: State Dispatch & Selection**
+> **4. task: $state Dispatch & Selection**
 > - Attach a click event listener to every rendered media item.
-> - When clicked, update the global state to notify the rest of the application:
->   `state.activeSelectionId = item.id;`
->   `state.activeSelectionType = state.currentAppView;`
-> - This crucial state change will tell Column 3 to unmount the standard `<chat-view>` and mount the secure media players.
+> - When clicked, update the global $state to notify the rest of the application:
+>   `$state.activeSelectionId = item.id;`
+>   `$state.activeSelectionType = $state.currentAppView;`
+> - This crucial $state change will tell Column 3 to unmount the standard `<chat-view>` and mount the secure media players.
 
 #### task 5.3.2: Build `<image-viewer>` and `<video-player-view>` for Column 3, implementing on-the-fly RAM decryption of the binary streams
 - Create the dedicated display components that mount in Column 3 when a media item is selected from the list pane.
@@ -1016,7 +1022,7 @@ Objective: Establish the Server-Sent Events (SSE) connection and handle off-thre
 > You are building the secure media players for `atoll chat` to be mounted in Column 3. These components replace the standard `<chat-view>` when a user selects a picture or video from the global archive.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite/plugins`.
+> 1. Use `defineComponent` exported from `coralite`.
 > 2. **MEMORY LEAK PREVENTION:** You must tie the `URL.revokeObjectURL` cleanup function to the component's unmount lifecycle using `instanceContext.signal.addEventListener('abort', ...)` to ensure the browser garbage collects the decrypted blobs when the user navigates away.
 > 
 > **1. task: Template Construction**
@@ -1024,9 +1030,9 @@ Objective: Establish the Server-Sent Events (SSE) connection and handle off-thre
 > - **`<video-player-view>` (`src/components/video-player-view.html`):** Similar layout, but use a `<video controls autoplay>` tag (`ref="mediaDisplay"`).
 > 
 > **2. task: Data Retrieval & The Network Fetch**
-> - In the `script: ({ refs, state, pb, localDb }, instanceContext) => {}` block, set up a reactive effect watching `state.activeSelectionId`.
+> - In the `script: ({ refs, $state, pb, $localDb }, instanceContext) => {}` block, set up a reactive effect watching `$state.activeSelectionId`.
 > - When triggered, show the `loader`.
-> - Query the local database for the necessary keys: `const asset = await localDb.local_assets.get(state.activeSelectionId)`.
+> - Query the local database for the necessary keys: `const asset = await $localDb.local_assets.get(state.activeSelectionId)`.
 > - Fetch the encrypted binary blob from PocketBase using the `asset.media_id` (e.g., via `pb.getFileUrl()` combined with a standard `fetch()` request that returns an `.arrayBuffer()`).
 > 
 > **3. task: On-the-Fly RAM Decryption**
@@ -1061,13 +1067,13 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > You are building the WebRTC signaling foundation for `atoll chat`. Standard WebRTC requires a signaling server. Instead of building a dedicated WebSocket server, we will use our existing, highly secure PocketBase message routing. The server will just see standard encrypted blobs, completely unaware that a call is being negotiated.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `definePlugin` from `coralite/plugins`. Name it `webrtc-manager`.
+> 1. Use `definePlugin` from `coralite`. Name it `webrtc-manager`.
 > 2. The plugin must maintain a global registry of active `RTCPeerConnection` instances mapped by `room_id`.
 > 
 > **1. task: Plugin Initialization & Dependency Injection**
 > - In the global closure, create a `Map` to hold active calls: `const activeCalls = new Map();`.
 > - Return the instance injector mapping to `client.context.$webrtc`.
-> - Ensure the plugin has access to `$bus` (to listen for incoming decrypted signals) and `localDb` (to fetch room keys for outgoing signals).
+> - Ensure the plugin has access to `$bus` (to listen for incoming decrypted signals) and `$localDb` (to fetch room keys for outgoing signals).
 > 
 > **2. task: The Connection Factory**
 > - Expose a method `initiateCall(roomId, mediaStream)`.
@@ -1083,7 +1089,7 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > 
 > **4. task: Intercepting Incoming Signals via `$bus`**
 > - In the plugin's global closure, listen for new local data: `$bus.on('new_local_data', async (payload) => { ... })`.
-> - Query the `localDb.local_messages` for the new message.
+> - Query the `$localDb.local_messages` for the new message.
 > - If `message.type === 'call_offer'`, instantiate a `RTCPeerConnection`, set the remote description, generate an answer, and send the `call_answer` back through the E2EE pipeline.
 > - If `message.type === 'call_answer'`, apply the remote description to the existing `peerConnection`.
 > - If `message.type === 'ice_candidate'`, apply the candidate using `peerConnection.addIceCandidate()`.
@@ -1114,7 +1120,7 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > **2. task: The Candidate Gathering Lifecycle**
 > - Inside your connection setup, ensure the `peerConnection.onicecandidate` event listener is robust.
 > - Add a check: `if (event.candidate) { ... }`. (When the ICE gathering process finishes, the browser fires one final event where `event.candidate` is `null`. You must ignore this null candidate to prevent crashing the signaling pipeline).
-> - Set up a listener for `peerConnection.onicegatheringstatechange`. Log the state (`peerConnection.iceGatheringState`) to the console so we can visually debug the transition from "new" to "gathering" to "complete" during development.
+> - Set up a listener for `peerConnection.onicegatheringstatechange`. Log the $state (`peerConnection.iceGatheringState`) to the console so we can visually debug the transition from "new" to "gathering" to "complete" during development.
 > 
 > **3. task: Dispatching to the Secure Pipeline**
 > - When a valid `event.candidate` is caught, construct the signaling object: 
@@ -1125,7 +1131,7 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 ### track 6.2: The Call Interface
 
 #### task 6.2.1: Build `<call-overlay>` with `<video-grid>` to display the P2P DTLS-SRTP encrypted streams
-- Create a global, full-screen overlay component to handle incoming rings and active call states.
+- Create a global, full-screen overlay component to handle incoming rings and active call $states.
 - Build the `<video-grid>` component to securely bind the raw `MediaStream` objects from the `webrtcPlugin` to HTML5 `<video>` tags.
 - Implement the call controls (Mute, Disable Camera, Hang Up) and ensure proper cleanup of hardware resources when the call terminates.
 
@@ -1136,14 +1142,14 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > You are building the visual interface for active WebRTC calls in `atoll chat`. These components will mount over the main application layout when a call is initiated or received.
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
-> 1. Use `defineComponent` exported from `coralite/plugins`.
-> 2. You cannot serialize a `MediaStream` object into state or the local database. You must request it from the `$webrtc` plugin dynamically and bind it directly to the DOM element using `HTMLMediaElement.srcObject`.
+> 1. Use `defineComponent` exported from `coralite`.
+> 2. You cannot serialize a `MediaStream` object into $state or the local database. You must request it from the `$webrtc` plugin dynamically and bind it directly to the DOM element using `HTMLMediaElement.srcObject`.
 > 
 > **1. task: The Call Overlay Wrapper (`src/components/call-overlay.html`)**
 > - Define the component template as a full-screen absolute or fixed overlay with a high z-index.
-> - Create a UI state for "Incoming Call" (showing caller's name, "Accept" button, "Reject" button).
-> - Create a UI state for "Active Call" containing the un-implemented `<video-grid></video-grid>` and a control bar (Mute Audio, Disable Video, End Call).
-> - In the `script: ({ refs, state, $bus, $webrtc }) => {}` block, listen for an incoming call event via `$bus` (e.g., `$bus.on('call_incoming', ...)` triggered when Track 6.1 intercepts a `call_offer`). Update local reactive state to show the "Incoming" UI.
+> - Create a UI $state for "Incoming Call" (showing caller's name, "Accept" button, "Reject" button).
+> - Create a UI $state for "Active Call" containing the un-implemented `<video-grid></video-grid>` and a control bar (Mute Audio, Disable Video, End Call).
+> - In the `script: ({ refs, $state, $bus, $webrtc }) => {}` block, listen for an incoming call event via `$bus` (e.g., `$bus.on('call_incoming', ...)` triggered when Track 6.1 intercepts a `call_offer`). Update local reactive $state to show the "Incoming" UI.
 > 
 > **2. task: The Video Grid (`src/components/video-grid.html`)**
 > - Define the template with two `<video>` elements: `<video ref="remoteVideo" autoplay playsinline></video>` and a smaller Picture-in-Picture `<video ref="localVideo" autoplay playsinline muted></video>`.
@@ -1161,7 +1167,7 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > - **Mute/Video toggle:** Iterate over `localStream.getTracks()` and set `track.enabled = false` based on the user's toggle.
 > - **End Call:** When the user hangs up, you MUST stop the hardware tracks to turn off the webcam light: `localStream.getTracks().forEach(track => track.stop())`.
 > - Call `$webrtc.endCall(roomId)` to close the `RTCPeerConnection` and emit a hang-up message through the secure signaling pipeline.
-> - Unmount the overlay or reset its visibility state.
+> - Unmount the overlay or reset its visibility $state.
 
 #### task 6.2.2: Implement call controls (Mute, Camera off, End Call)
 - Expand the `<call-overlay>` component to handle active manipulation of the local hardware streams.
@@ -1176,21 +1182,21 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > 
 > **CRITICAL CORALITE DIRECTIVES:**
 > 1. Continue using the `defineComponent` scope of `<call-overlay>`.
-> 2. Maintain a reactive internal state for `isMuted` and `isVideoOff` to accurately reflect the button UI.
+> 2. Maintain a reactive internal $state for `isMuted` and `isVideoOff` to accurately reflect the button UI.
 > 
 > **1. task: Toggle Media Tracks (Mute / Camera Off)**
 > - In your control bar UI, attach click listeners to the "Mute" and "Camera" buttons.
 > - Ensure you have access to the `localStream` (this might require storing the stream reference in the component's internal scope when it was created in Task 6.2.1).
 > - **Mute Logic:** `localStream.getAudioTracks().forEach(track => { track.enabled = !track.enabled; });`
-> - Toggle the `isMuted` state variable to update the UI (e.g., show a strike-through microphone icon).
+> - Toggle the `isMuted` $state variable to update the UI (e.g., show a strike-through microphone icon).
 > - **Video Logic:** `localStream.getVideoTracks().forEach(track => { track.enabled = !track.enabled; });`
-> - Toggle the `isVideoOff` state variable.
+> - Toggle the `isVideoOff` $state variable.
 > 
 > **2. task: Ending the Call (Local Teardown)**
 > - Attach a click listener to the "End Call" button.
 > - **Hardware Release:** This is critical. You must stop the tracks to release the hardware: `localStream.getTracks().forEach(track => track.stop());`.
 > - Call the WebRTC plugin to close the connection: `$webrtc.endCall(state.activeSelectionId)`.
-> - Reset the component's UI state (e.g., hide the overlay entirely or return to a "Call Ended" summary screen).
+> - Reset the component's UI $state (e.g., hide the overlay entirely or return to a "Call Ended" summary screen).
 > 
 > **3. task: The `call_end` Signal (Remote Teardown)**
 > - Update the `$webrtc.endCall(roomId)` method inside your `webrtcPlugin.js`.
@@ -1234,7 +1240,7 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > 
 > **3. task: The Fetch Interceptor (Stale-While-Revalidate or Cache-First)**
 > - Add the `self.addEventListener('fetch', (event) => { ... })` block.
-> - Exclude API and SSE calls to PocketBase from the Service Worker cache (e.g., `if (event.request.url.includes('/api/')) return;`). The `localDb` and `syncPlugin` already handle data caching.
+> - Exclude API and SSE calls to PocketBase from the Service Worker cache (e.g., `if (event.request.url.includes('/api/')) return;`). The `$localDb` and `syncPlugin` already handle data caching.
 > - For static assets, implement a Cache-First or Stale-While-Revalidate strategy: `event.respondWith(caches.match(event.request).then(cachedResponse => cachedResponse || fetch(event.request)))`.
 > 
 > **4. task: Service Worker Registration**
@@ -1302,7 +1308,7 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > 
 > **CRITICAL PWA DIRECTIVES:**
 > 1. A Service Worker operates on a strict lifecycle. You **must** wrap all asynchronous fetching and decryption logic inside `event.waitUntil()` or the browser will terminate the worker before decryption finishes.
-> 2. The Service Worker has no access to the DOM or the `coralite` state. It must instantiate its own independent connection to `Dexie` and `libsodium-wrappers`.
+> 2. The Service Worker has no access to the DOM or the `coralite` $state. It must instantiate its own independent connection to `Dexie` and `libsodium-wrappers`.
 > 
 > **1. task: Intercept and Extend the Push Event**
 > - Open `public/sw.js`. Locate the `self.addEventListener('push', (event) => { ... })` block from the previous task.
