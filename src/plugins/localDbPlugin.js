@@ -26,10 +26,11 @@ export default function localDbPlugin () {
 
           // Define the database schema.
           // Primary key is the first field, following fields are indexes for searching and sorting.
-          db.version(2).stores({
+          db.version(3).stores({
             local_rooms: 'id, is_group, updated_at',
             local_messages: 'id, room_id, created_at, [room_id+created_at], type',
-            local_assets: 'id, room_id, mime_type, created_at'
+            local_assets: 'id, room_id, mime_type, created_at',
+            local_config: 'key'
           })
 
           // Request persistent storage from the browser to prevent data loss.

@@ -21,10 +21,11 @@ async function init () {
     await sodium.ready
 
     db = new Dexie('AtollChatDB')
-    db.version(2).stores({
+    db.version(3).stores({
       local_rooms: 'id, is_group, updated_at',
       local_messages: 'id, room_id, created_at, [room_id+created_at], type',
-      local_assets: 'id, room_id, mime_type, created_at'
+      local_assets: 'id, room_id, mime_type, created_at',
+      local_config: 'key'
     })
 
     self.postMessage({ type: 'WORKER_READY' })

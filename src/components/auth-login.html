@@ -90,6 +90,19 @@
           // Perform PocketBase authentication
           await pbInstance.collection('users').authWithPassword(username, pin)
 
+          // Persist PB config for Service Worker access
+          const db = await $localDb()
+          await db.local_config.bulkPut([
+            {
+              key: 'pb_url',
+              value: pbInstance.baseUrl
+            },
+            {
+              key: 'pb_token',
+              value: pbInstance.authStore.token
+            }
+          ])
+
           // Start real-time subscriptions
           await $sync.startSubscriptions()
 

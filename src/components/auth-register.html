@@ -94,6 +94,22 @@
           // Create the user record in PocketBase
           const pbInstance = await pb()
           const user = await pbInstance.collection('users').create(payload)
+
+          // Perform PocketBase authentication after registration
+          await pbInstance.collection('users').authWithPassword(username, pin)
+
+          // Persist PB config for Service Worker access
+          const db = await $localDb()
+          await db.local_config.bulkPut([
+            {
+              key: 'pb_url',
+              value: pbInstance.baseUrl
+            },
+            {
+              key: 'pb_token',
+              value: pbInstance.authStore.token
+            }
+          ])
   
           updateStatus('Registration successful!')
   
