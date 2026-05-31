@@ -1,0 +1,89 @@
+<template id="message-timeline">
+  <div ref="timelineContainer" class="flex-grow-1 overflow-auto p-3 d-flex flex-column h-100">
+    <div class="mt-auto text-center text-muted p-5" ref="emptyState">
+      <i class="bi bi-shield-lock fs-1 mb-3 d-block"></i>
+      <p>Messages are end-to-end encrypted. No one outside of this chat, not even Atoll, can read them.</p>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    script: ({ refs, $state, $localDb, $bus, signal }) => {
+      const container = refs('timelineContainer')
+      const emptyState = refs('emptyState')
+
+      const scrollToBottom = () => {
+        if (container) {
+          container.scrollTop = container.scrollHeight
+        }
+      }
+
+      const renderTimeline = async () => {
+        const roomId = $state.activeSelectionId
+        if (!roomId || $state.activeSelectionType !== 'chats') {
+          return
+        }
+
+        try {
+          const messages = await $localDb.local_messages
+            .where('room_id')
+            .equals(roomId)
+            .sortBy('created_at')
+
+          container.innerHTML = ''
+  
+          if (messages.length === 0) {
+            container.appendChild(emptyState)
+            return
+          }
+
+          messages.forEach(message => {
+            const isSent = message.sender_id === $state.currentUser?.id
+  
+            const bubble = document.createElement('div')
+            // Alignment Logic (Bootstrap)
+            if (isSent) {
+              bubble.className = 'align-self-end bg-primary text-white rounded p-2 mb-2 max-w-75 text-break'
+            } else {
+              bubble.className = 'align-self-start bg-light text-dark rounded p-2 mb-2 max-w-75 text-break border'
+            }
+  
+            bubble.textContent = message.content
+            container.appendChild(bubble)
+          })
+
+          scrollToBottom()
+        } catch (err) {
+          console.error('[message-timeline] Failed to render timeline:', err)
+        }
+      }
+
+      // Initial render
+      renderTimeline()
+
+      // Watch for room changes
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('activeSelectionId', () => {
+          renderTimeline()
+        })
+      }
+
+      // Listen for new background messages
+      const onNewData = (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId) {
+          renderTimeline()
+        }
+      }
+  
+      $bus.on('new_local_data', onNewData)
+
+      // Cleanup
+      signal.addEventListener('abort', () => {
+        $bus.off('new_local_data', onNewData)
+      })
+    }
+  })
+</script>

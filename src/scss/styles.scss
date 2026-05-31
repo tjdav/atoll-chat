@@ -13,6 +13,13 @@ $utilities: map-merge($utilities,
         (values: map-merge(map-get(map-get($utilities, "max-width"), "values"),
             (600: 600px,
               300: 300px)))),
+      "max-w": (
+        property: max-width,
+        class: max-w,
+        values: (
+          75: 75%
+        )
+      ),
       "height": map-merge(map-get($utilities, "height"),
         (values: map-merge(map-get(map-get($utilities, "height"), "values"),
             (400: 400px)))),
