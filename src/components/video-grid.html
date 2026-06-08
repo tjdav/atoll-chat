@@ -20,7 +20,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, $bus, signal }) => {
+    script: ({ refs, eventBus, signal }) => {
+      const { $bus } = eventBus
       const remoteVideo = refs('remoteVideo')
       const localVideo = refs('localVideo')
       const remotePlaceholder = refs('remotePlaceholder')

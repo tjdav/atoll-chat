@@ -29,7 +29,9 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, state, $state, $bus }) => {
+    script: ({ refs, state, globalStore, eventBus }) => {
+      const { $state } = globalStore
+      const { $bus } = eventBus
       state.currentAppView = $state.currentAppView || 'chats'
 
       const updateView = () => {
@@ -38,7 +40,9 @@
         const titleRef = refs('paneTitle')
         const btnCreateRoom = refs('btnCreateRoom')
 
-        if (!container) return
+        if (!container) {
+          return
+        }
 
         // Update Title
         if (titleRef) {

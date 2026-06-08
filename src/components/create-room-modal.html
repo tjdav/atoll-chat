@@ -84,7 +84,11 @@
       },
       roomNameDisplay: (state) => (((state.selectedParticipants || []).length > 1) ? 'block' : 'none')
     },
-    script: ({ refs, state, pb, $bus, $state, $localDb }) => {
+    script: ({ refs, state, pocketbase, eventBus, globalStore, localDb }) => {
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const { $localDb } = localDb
       const modal = refs('roomModal')
       const searchInput = refs('searchInput')
       const roomNameInput = refs('roomNameInput')

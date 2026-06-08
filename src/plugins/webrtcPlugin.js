@@ -13,6 +13,7 @@ export default function webrtcPlugin ({
   return definePlugin({
     name: 'webrtc-manager',
     client: {
+      name: 'webrtc',
       config: {
         iceServers
       },
@@ -22,7 +23,10 @@ export default function webrtcPlugin ({
 
           // Phase 1: Global Setup
           const activeCalls = new Map()
-          const { $bus, $localDb, pb, $state } = globalContext
+          const $bus = globalContext.eventBus.$bus
+          const $localDb = globalContext.localDb.$localDb
+          const pb = globalContext.pocketbase.pb
+          const $state = globalContext.globalStore.$state
 
           const rtcConfig = {
             iceServers: globalContext.config.iceServers

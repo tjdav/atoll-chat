@@ -10,15 +10,20 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ state, signal, $localDb, $bus, $state, refs }) => {
+    script: ({ state, signal, localDb, eventBus, globalStore, refs }) => {
+      const { $localDb } = localDb
+      const { $bus } = eventBus
+      const { $state } = globalStore
       const listGroup = refs('listGroup')
 
       const render = async () => {
-        if (!listGroup) return
+        if (!listGroup) {
+          return
+        }
 
         try {
           const assets = await $localDb.local_assets.where('mime_type').startsWith('audio/').reverse().sortBy('created_at')
-          
+  
           // Enrich assets with room names
           const items = await Promise.all(assets.map(async (asset) => {
             const room = await $localDb.local_rooms.get(asset.room_id)
@@ -53,11 +58,11 @@
 
             const contentWrapper = document.createElement('div')
             contentWrapper.className = 'text-truncate'
-    
+  
             const nameDiv = document.createElement('div')
             nameDiv.className = 'fw-bold text-truncate'
             nameDiv.textContent = item.roomName
-    
+  
             const subTextSmall = document.createElement('small')
             subTextSmall.className = 'opacity-75 d-block text-truncate'
             subTextSmall.textContent = item.timestamp

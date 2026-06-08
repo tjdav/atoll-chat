@@ -9,9 +9,12 @@ export default function syncPlugin () {
   return definePlugin({
     name: 'realtime-sync',
     client: {
+      name: 'realtimeSync',
       context: {
         $sync: (globalContext) => {
-          const { pb, $worker, $localDb } = globalContext
+          const pb = globalContext.pocketbase.pb
+          const $worker = globalContext.cryptoWorker.$worker
+          const $localDb = globalContext.localDb.$localDb
           /**
            * Historical catch-up routine to recover missed messages and room keys.
            */

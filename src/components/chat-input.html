@@ -79,7 +79,10 @@
       iconClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : ''),
       spinnerClasses: (state) => (state.isSending || state.isUploading ? '' : 'd-none')
     },
-    script: ({ refs, state, $state, pb, $localDb, signal }) => {
+    script: ({ refs, state, globalStore, pocketbase, localDb, signal }) => {
+      const { $state } = globalStore
+      const { pb } = pocketbase
+      const { $localDb } = localDb
       const messageInput = refs('messageInput')
       const sendButton = refs('sendButton')
       const attachButton = refs('attachButton')
@@ -105,7 +108,11 @@
 
       const dispatchMessage = async (plaintextObj) => {
         const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
-        return await sendEncryptedMessage($state.activeSelectionId, plaintextObj, { pb, $localDb, $state })
+        return await sendEncryptedMessage($state.activeSelectionId, plaintextObj, {
+          pb,
+          $localDb,
+          $state
+        })
       }
 
       const sendMessage = async () => {

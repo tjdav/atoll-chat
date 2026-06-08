@@ -8,6 +8,7 @@ export default function localDbPlugin () {
   return definePlugin({
     name: 'local-db',
     client: {
+      name: 'localDb',
       context: {
         /**
          * $localDb context provider.

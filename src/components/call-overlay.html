@@ -61,7 +61,11 @@
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
       videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill')
     },
-    script: async ({ state, $state, $bus, $webrtc, $localDb, refs, signal }) => {
+    script: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, localDb, refs, signal }) => {
+      const { $state } = globalStore
+      const { $bus } = eventBus
+      const { $webrtc } = webrtcPluginContext
+      const { $localDb } = localDb
       const webrtc = await $webrtc()
       const db = await $localDb()
 

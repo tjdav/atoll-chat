@@ -9,6 +9,7 @@ import { definePlugin } from 'coralite'
 export default definePlugin({
   name: 'event-bus',
   client: {
+    name: 'eventBus',
     context: {
       /**
          * $bus context provider
@@ -20,8 +21,8 @@ export default definePlugin({
           return {
             /**
              * Emit a native CustomEvent
-             * @param {string} eventName
-             * @param {any} payload
+             * @param {string} eventName The name of the event
+             * @param {any} payload The event payload data
              */
             emit: (eventName, payload) => {
               hub.dispatchEvent(new CustomEvent(eventName, { detail: payload }))
@@ -29,8 +30,8 @@ export default definePlugin({
 
             /**
              * Listen for an event with auto-binding to the component's signal
-             * @param {string} eventName
-             * @param {Function} callback
+             * @param {string} eventName The name of the event
+             * @param {Function} callback The callback function to invoke
              */
             on: (eventName, callback) => {
               const handler = (event) => callback(event.detail)

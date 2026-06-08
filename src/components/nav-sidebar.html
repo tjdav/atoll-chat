@@ -52,7 +52,8 @@
       isVideosActive: (state) => (state.currentAppView === 'videos' ? 'active' : ''),
       isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : '')
     },
-    script: ({ refs, state, $state }) => {
+    script: ({ refs, state, globalStore }) => {
+      const { $state } = globalStore
       // Sync global state to component local state for reactivity in getters/template
       state.currentAppView = $state.currentAppView || 'chats'
 

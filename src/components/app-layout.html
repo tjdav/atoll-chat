@@ -46,7 +46,8 @@
       imageViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'pictures') ? 'block' : 'none'),
       videoPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'videos') ? 'block' : 'none')
     },
-    script: ({ state, $state }) => {
+    script: ({ state, globalStore }) => {
+      const { $state } = globalStore
       state.currentAppView = $state.currentAppView
       state.activeSelectionId = $state.activeSelectionId
       state.activeSelectionType = $state.activeSelectionType

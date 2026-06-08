@@ -4,8 +4,8 @@ import { definePlugin } from 'coralite'
  * Ultimate State Plugin for Coralite (Hardened Version)
  * Provides an optimized, granular key-based pub/sub system for global state.
  *
- * @param {Object} options
- * @param {Object} [options.initialState={}] Initial global state
+ * @param {Object} options Plugin configuration options.
+ * @param {Object} [options.initialState={}] Initial global state.
  */
 export default function statePlugin (options = {}) {
   const initialState = options.initialState || {}
@@ -13,6 +13,7 @@ export default function statePlugin (options = {}) {
   return definePlugin({
     name: 'global-store',
     client: {
+      name: 'globalStore',
       config: { initialState },
       context: {
         $state: (globalContext) => {

@@ -31,7 +31,10 @@
       isErrorHidden: true,
       errorMessage: ''
     }),
-    script: async ({ state, signal, refs, pb, $localDb, $state }) => {
+    script: async ({ state, signal, refs, pocketbase, localDb, globalStore }) => {
+      const { pb } = pocketbase
+      const { $localDb } = localDb
+      const { $state } = globalStore
       const loader = refs('loader')
       const mediaDisplay = refs('mediaDisplay')
       let currentObjectUrl = null
@@ -47,7 +50,9 @@
       signal.addEventListener('abort', cleanup)
 
       const loadMedia = async (id) => {
-        if (!id) return
+        if (!id) {
+          return
+        }
 
         // Reset UI
         state.isErrorHidden = true
@@ -88,13 +93,13 @@
           }
 
           if (!decryptedFileBuffer) {
-             throw new Error('Media Corrupted or Key Invalid')
+            throw new Error('Media Corrupted or Key Invalid')
           }
 
           // Create Blob and local object URL.
           const mediaBlob = new Blob([decryptedFileBuffer], { type: asset.mime_type })
           currentObjectUrl = URL.createObjectURL(mediaBlob)
-          
+  
           // Reveal the media and hide the loader.
           if (!signal.aborted) {
             mediaDisplay.src = currentObjectUrl
@@ -105,7 +110,9 @@
           }
 
         } catch (err) {
-          if (err.name === 'AbortError') return
+          if (err.name === 'AbortError') {
+            return
+          }
           console.error('[video-player-view] Error:', err)
           state.errorMessage = err.message || 'Media Corrupted or Key Invalid'
           state.isErrorHidden = false

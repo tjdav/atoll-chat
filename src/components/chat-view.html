@@ -71,7 +71,11 @@
     getters: {
       sidebarDisplay: (state) => (state.isRoomDetailsOpen ? 'block' : 'none')
     },
-    script: async ({ refs, state, $state, $localDb, $bus, $webrtc }) => {
+    script: async ({ refs, state, globalStore, localDb, eventBus, webrtc: webrtcPluginContext }) => {
+      const { $state } = globalStore
+      const { $localDb } = localDb
+      const { $bus } = eventBus
+      const { $webrtc } = webrtcPluginContext
       state.isRoomDetailsOpen = $state.isRoomDetailsOpen || false
 
       const webrtc = await $webrtc()

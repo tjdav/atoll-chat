@@ -106,7 +106,7 @@ self.addEventListener('push', (event) => {
 
       // 3. Fetch Latest Message from PocketBase
       const response = await fetch(`${pbUrl}/api/collections/messages/records?sort=-created&limit=1`, {
-        headers: { 'Authorization': pbToken }
+        headers: { Authorization: pbToken }
       })
 
       if (!response.ok) {

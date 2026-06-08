@@ -11,7 +11,10 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, $state, $localDb, $bus, signal }) => {
+    script: ({ refs, globalStore, localDb, eventBus, signal }) => {
+      const { $state } = globalStore
+      const { $localDb } = localDb
+      const { $bus } = eventBus
       const container = refs('timelineContainer')
       const emptyState = refs('emptyState')
 
@@ -54,21 +57,21 @@
             if (message.type === 'media') {
               const mediaContent = document.createElement('div')
               mediaContent.className = 'd-flex align-items-center'
-              
+  
               const icon = document.createElement('i')
               icon.className = 'bi bi-file-earmark-lock2 fs-4 me-2'
-              
+  
               const text = document.createElement('span')
               text.className = 'small fw-bold'
               text.textContent = 'Encrypted Attachment'
-              
+  
               mediaContent.appendChild(icon)
               mediaContent.appendChild(text)
               bubble.appendChild(mediaContent)
             } else {
               bubble.textContent = message.content || ''
             }
-            
+  
             container.appendChild(bubble)
           })
 

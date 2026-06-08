@@ -10,11 +10,16 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ state, signal, $localDb, $bus, $state, refs }) => {
+    script: ({ state, signal, localDb, eventBus, globalStore, refs }) => {
+      const { $localDb } = localDb
+      const { $bus } = eventBus
+      const { $state } = globalStore
       const gridContainer = refs('gridContainer')
 
       const render = async () => {
-        if (!gridContainer) return
+        if (!gridContainer) {
+          return
+        }
 
         try {
           const rawItems = await $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at')
@@ -31,7 +36,10 @@
           rawItems.forEach(item => {
             const dt = new Date(item.created_at)
             const dateStr = dt.toLocaleDateString()
-            const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            const timeStr = dt.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            })
 
             const col = document.createElement('div')
             col.className = 'col'
@@ -39,20 +47,20 @@
             const card = document.createElement('div')
             const isActive = item.id === $state.activeSelectionId
             card.className = `card h-100 border-0 shadow-sm overflow-hidden clickable-card ${isActive ? 'border border-primary border-2' : ''}`
-            
+  
             const imgPlaceholder = document.createElement('div')
             imgPlaceholder.className = 'ratio ratio-16x9 d-flex align-items-center justify-content-center bg-dark bg-opacity-75'
             const icon = document.createElement('i')
             icon.className = 'bi bi-camera-video fs-1 text-white opacity-50'
             imgPlaceholder.appendChild(icon)
-            
+  
             const cardBody = document.createElement('div')
             cardBody.className = 'card-body p-2'
-            
+  
             const dateText = document.createElement('small')
             dateText.className = 'd-block text-truncate text-muted'
             dateText.textContent = dateStr
-            
+  
             const timeText = document.createElement('small')
             timeText.className = 'd-block text-truncate text-muted opacity-75'
             timeText.style.fontSize = '0.75rem'
@@ -60,7 +68,7 @@
 
             cardBody.appendChild(dateText)
             cardBody.appendChild(timeText)
-            
+  
             card.appendChild(imgPlaceholder)
             card.appendChild(cardBody)
             col.appendChild(card)

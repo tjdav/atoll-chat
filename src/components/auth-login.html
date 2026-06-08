@@ -35,7 +35,10 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, pb, $bus, $sync }) => {
+    script: ({ refs, pocketbase, eventBus, realtimeSync }) => {
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $sync } = realtimeSync
       const loginForm = refs('loginForm')
       const usernameInput = refs('username')
       const pinInput = refs('pin')

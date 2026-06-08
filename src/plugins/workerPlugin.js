@@ -7,6 +7,7 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
   return definePlugin({
     name: 'crypto-worker',
     client: {
+      name: 'cryptoWorker',
       config: {
         url
       },
@@ -48,7 +49,7 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
 
             // Background broadcasts (e.g., from decryption pipeline)
             if (!id && type === 'NEW_LOCAL_DATA') {
-              globalContext.$bus.emit('NEW_LOCAL_DATA', payload)
+              globalContext.eventBus.$bus.emit('NEW_LOCAL_DATA', payload)
               return
             }
 

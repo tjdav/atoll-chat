@@ -58,7 +58,11 @@
     getters: {
       memberCount: (state) => (state.members || []).length
     },
-    script: ({ refs, state, pb, $bus, $state, $localDb }) => {
+    script: ({ refs, state, pocketbase, eventBus, globalStore, localDb }) => {
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const { $localDb } = localDb
       const memberListContainer = refs('memberList')
       const loadingOverlay = refs('loadingOverlay')
       const loadingText = refs('loadingText')
