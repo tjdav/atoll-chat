@@ -19,8 +19,8 @@
     "lint:types": "pnpm exec tsc --noEmit",
     "lint:format": "eslint --cache --fix .",
     "test:server": "sirv dist --dev --port 3000",
-    "test:unit": "pnpm --test",
-    "test:unit:coverage": "pnpm --experimental-test-coverage --test",
+    "test:unit": "node --experimental-vm-modules --test",
+    "test:unit:coverage": "node --experimental-vm-modules --experimental-test-coverage --test",
     "test:e2e": "pnpm run build && pnpm exec playwright test",
     "test:e2e:ui": "pnpm run build && pnpm exec playwright test --ui"
   },
