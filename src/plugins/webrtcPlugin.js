@@ -23,10 +23,10 @@ export default function webrtcPlugin ({
 
           // Phase 1: Global Setup
           const activeCalls = new Map()
-          const $bus = globalContext.eventBus.$bus
-          const $localDb = globalContext.localDb.$localDb
-          const pb = globalContext.pocketbase.pb
-          const $state = globalContext.globalStore.$state
+          const { $bus } = globalContext.eventBus(globalContext)
+          const { $localDb } = globalContext.localDb(globalContext)
+          const { pb } = globalContext.pocketbase(globalContext)
+          const { $state } = globalContext.globalStore(globalContext)
 
           const rtcConfig = {
             iceServers: globalContext.config.iceServers

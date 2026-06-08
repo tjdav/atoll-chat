@@ -49,7 +49,8 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
 
             // Background broadcasts (e.g., from decryption pipeline)
             if (!id && type === 'NEW_LOCAL_DATA') {
-              globalContext.eventBus.$bus.emit('NEW_LOCAL_DATA', payload)
+              const { $bus } = globalContext.eventBus(globalContext)
+              $bus.emit('NEW_LOCAL_DATA', payload)
               return
             }
 
