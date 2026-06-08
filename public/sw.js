@@ -20,8 +20,18 @@ importScripts('https://unpkg.com/dexie@4.0.10/dist/dexie.js')
 // Note: Libsodium WASM is embedded as a Base64 string within the JS files
 // in this build, so no separate .wasm file is needed in the cache.
 
+const isDev = self.location.hostname === 'localhost' ||
+              self.location.hostname === '127.0.0.1' ||
+              self.location.hostname.startsWith('192.168.') ||
+              self.location.hostname.startsWith('10.') ||
+              self.location.hostname.startsWith('172.')
+
 // The Install Event: Caching the UI shell and cryptographic dependencies
 self.addEventListener('install', (event) => {
+  if (isDev) {
+    self.skipWaiting()
+    return
+  }
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('Opened cache and adding assets')
@@ -36,12 +46,16 @@ self.addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting old cache:', cacheName)
+          if (isDev || cacheName !== CACHE_NAME) {
+            console.log('Deleting cache:', cacheName)
             return caches.delete(cacheName)
           }
         })
-      )
+      ).then(() => {
+        if (isDev) {
+          return self.clients.claim()
+        }
+      })
     })
   )
 })
@@ -51,7 +65,7 @@ self.addEventListener('fetch', (event) => {
   const { request } = event
 
   // Exclude API and SSE calls to PocketBase and only handle GET requests
-  if (request.url.includes('/api/') || request.method !== 'GET') {
+  if (isDev || request.url.includes('/api/') || request.method !== 'GET') {
     return
   }
 
