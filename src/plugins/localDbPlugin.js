@@ -13,11 +13,8 @@ export default function localDbPlugin () {
          * $localDb context provider.
          * Dynamically imports Dexie, initializes the database, and requests persistence.
          * This "first currying function" runs once during application bootstrap.
-         *
-         * @param {Object} globalContext - The global application context.
-         * @returns {Promise<Function>} A promise that resolves to the instance injector.
          */
-        $localDb: async (globalContext) => {
+        $localDb: async () => {
           // Dynamically import Dexie inside the initialization hook as requested.
           const { default: Dexie } = await import('dexie')
 
@@ -47,7 +44,7 @@ export default function localDbPlugin () {
 
           // Return the instance injector function (the "second currying function").
           // Components can access the database instance natively via this.$localDb.
-          return (instanceContext) => db
+          return () => db
         }
       }
     }

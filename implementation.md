@@ -1402,3 +1402,254 @@ Objective: Establish secure audio/video channels using the existing End-to-End E
 > **4. task: Re-bind the Functionality**
 > - Ensure the "Enable Push Notifications" and "Logout" buttons still have their respective `ref` attributes.
 > - Re-attach their click event listeners in the `script` block of this new third-column component so the cryptographic and session logic remains fully functional.
+
+### track 8.1: Playwright E2E Testing - Authentication & Identity
+
+#### task 8.1.1: Scaffolding and Registration Flow
+- Set up the primary `auth.spec.js` test file and configure a sequential test block.
+- Write the test to navigate to the application, wait for Coralite hydration, and complete the cryptographic registration form.
+- Assert that the Key Derivation Function (KDF) successfully executes and transitions the user state.
+
+##### Jules prompt
+> **Goal:** Write the Playwright E2E test for the End-to-End Encrypted registration flow, verifying the KDF and PocketBase network calls.
+> 
+> **Instructions:**
+> You are building the foundational E2E test suite for `atoll chat`. Because this application relies heavily on Web Workers and WebAssembly (Libsodium) for cryptography, testing timing is critical.
+> 
+> **CRITICAL CORALITE TESTING DIRECTIVES:**
+> 1. You **must** await `window.__coralite_ready__` immediately after `page.goto('/')` before attempting to interact with the DOM.
+> 2. You **must** use Playwright's `getByTestId` locator. Because of the Coralite Testing Plugin, all elements with a `ref="myName"` attribute are automatically assigned a `data-testid` in the format: `[component-name]-0__[ref-name]`.
+> 
+> **1. task: Test Suite Setup**
+> - Create a new file: `tests/auth.spec.js`.
+> - Import `test` and `expect` from `@playwright/test`.
+> - Create a serial describe block: `test.describe.serial('Authentication & Identity Pipeline', () => { ... })`.
+> - Define a constant `TEST_USER` with a random username (e.g., `test_user_${Date.now()}`) and a standard PIN (e.g., `123456`) to use across this suite.
+> 
+> **2. task: The Registration Test**
+> - Create the first test: `test('should register a new E2EE user', async ({ page }) => { ... })`.
+> - Navigate to the app: `await page.goto('/');`
+> - **CRITICAL:** Wait for hydration: `await page.waitForFunction(() => window.__coralite_ready__);`
+> 
+> **3. task: Form Interaction & Assertion**
+> - Use `page.getByTestId('auth-register-0__inputUsername')` (adjust the ref name to match your actual `<auth-register>` template) to fill in the `TEST_USER` username.
+> - Fill in the PIN and Confirm PIN fields.
+> - Click the submit button: `await page.getByTestId('auth-register-0__submitBtn').click();`
+> - **Assertion:** Wait for the UI to transition. Expect the login component to become visible or the success state to render (e.g., `await expect(page.getByTestId('auth-login-0__form')).toBeVisible({ timeout: 15000 });`). We use a 15-second timeout here to account for the heavy Argon2id WebAssembly hashing in CI environments.
+
+#### task 8.1.2: Login Flow & Vault Decryption
+- Write the test to log the newly created user in.
+- Verify that the app successfully fetches the salt, derives the local KEK, decrypts the Vault, and mounts the main application layout.
+
+##### Jules prompt
+> **Goal:** Write the E2E test for the cryptographic login flow, ensuring the user can unlock their vault and enter the main application.
+> 
+> **Instructions:**
+> Continuing in `tests/auth.spec.js` inside your serial describe block, you will now test the `<auth-login>` component using the user created in the previous test.
+> 
+> **1. task: The Login Test Setup**
+> - Create the second test: `test('should decrypt vault and log in', async ({ page }) => { ... })`.
+> - Navigate to `/` and wait for `window.__coralite_ready__`.
+> - If your app defaults to the register view, click the toggle to switch to the `<auth-login>` component.
+> 
+> **2. task: Form Interaction**
+> - Fill the username input with your `TEST_USER` username.
+> - Fill the PIN input.
+> - Click the login submit button.
+> 
+> **3. task: Application Mount Assertion**
+> - The login process fetches the salt, runs Argon2id, decrypts the vault, and sets `state.isAuthenticated = true`.
+> - **Assertion:** Verify that the root `<app-layout>` component mounts. Use a reliable locator from the main layout, such as the global sidebar: `await expect(page.getByTestId('app-layout-0__sidebar')).toBeVisible({ timeout: 10000 });`.
+
+#### task 8.1.3: Logout & State Teardown
+- Write the test to navigate to the Settings view and trigger the logout flow.
+- Assert that the application unmounts the secure workspace, routes back to the login screen, and clears the session.
+
+##### Jules prompt
+> **Goal:** Verify the application correctly tears down the session and routes the user out of the secure workspace when logging out.
+> 
+> **Instructions:**
+> Continuing in `tests/auth.spec.js`, you will test the Settings navigation and the logout teardown sequence you built in Task 7.1.
+> 
+> **1. task: The Logout Test Setup**
+> - Create the third test: `test('should wipe worker keys and log out', async ({ page }) => { ... })`.
+> - Note: Because this is a serial block and Playwright preserves the page state between steps (if configured to do so) or you can re-run the login steps quickly at the start of this test if using isolated contexts. Assuming isolated contexts, repeat the login steps quickly.
+> 
+> **2. task: Navigate to Settings**
+> - Locate and click the Settings gear icon in the main sidebar: `await page.getByTestId('app-layout-0__navSettings').click();`
+> - Assert that the Settings third-column component mounts by checking for the Notifications pane: `await expect(page.getByTestId('settings-view-0__paneNotifications')).toBeVisible();`
+> 
+> **3. task: Trigger Logout**
+> - Locate the "Account" list item in the second column and click it: `await page.getByTestId('list-pane-0__navAccount').click();`
+> - Click the Logout button inside the Account pane: `await page.getByTestId('settings-view-0__btnLogout').click();`
+> 
+> **4. task: Teardown Assertion**
+> - The application should emit the wipe event to the worker, clear PocketBase auth, and toggle the global state.
+> - **Assertion:** Verify that the main layout is destroyed and the user is back at the login screen: `await expect(page.getByTestId('auth-login-0__form')).toBeVisible();`
+> - **Assertion:** Verify the main app layout is no longer in the DOM: `await expect(page.getByTestId('app-layout-0__sidebar')).not.toBeVisible();`
+
+### track 8.2: Playwright E2E Testing - Core Messaging & Cryptography
+
+#### task 8.2.1: Multi-Context Setup & Peer Discovery
+- Create a new test file dedicated to the E2EE messaging loop.
+- Implement Playwright's `BrowserContext` to spin up two completely isolated browser sessions (Alice and Bob) to prevent IndexedDB state bleeding.
+- Write the flow for Alice to search for Bob's public keys and initiate a secure room.
+
+##### Jules prompt
+> **Goal:** Set up an isolated, two-player Playwright test to verify peer discovery and the creation of an E2EE room.
+> 
+> **Instructions:**
+> You are building the complex E2EE messaging tests for `atoll chat`. Because we rely on IndexedDB for local key storage and Web Workers for derivation, Alice and Bob must operate in completely separate browser contexts.
+> 
+> **CRITICAL PLAYWRIGHT DIRECTIVES:**
+> 1. Do not use the default `page` fixture for two-player tests. Instead, use the `browser` fixture to explicitly create `aliceContext = await browser.newContext()` and `bobContext = await browser.newContext()`.
+> 2. Continue strictly using `window.__coralite_ready__` and `getByTestId` for all Coralite element interactions.
+> 
+> **1. task: Test Suite & Context Setup**
+> - Create a new file: `tests/messaging.spec.js`.
+> - Define a single, long-running test: `test('E2EE Messaging Pipeline (Alice to Bob)', async ({ browser }) => { ... })`.
+> - Inside the test, initialize two contexts and two pages:
+>   `const aliceContext = await browser.newContext(); const alicePage = await aliceContext.newPage();`
+>   `const bobContext = await browser.newContext(); const bobPage = await bobContext.newPage();`
+> - Generate random usernames for this run (e.g., `alice_${Date.now()}` and `bob_${Date.now()}`).
+> 
+> **2. task: Registration & Bootstrapping**
+> - Navigate both `alicePage` and `bobPage` to `/`. Wait for Coralite hydration on both.
+> - Automate the registration flow (filling in username and PIN) for both users simultaneously using `Promise.all([ ... ])` to speed up the test.
+> - Assert that both users successfully reach the main `<app-layout>`.
+> 
+> **3. task: Peer Discovery (Alice finds Bob)**
+> - On `alicePage`, interact with the search/new chat input (e.g., `await alicePage.getByTestId('sidebar-0__searchInput').fill(bobUsername)`).
+> - Click the resulting user card to initiate the room creation.
+> - **Assertion:** Wait for the chat view to mount on Alice's screen. The background worker will have generated a Room Key, wrapped it with Bob's public key, and saved it to the DB. `await expect(alicePage.getByTestId('chat-view-0__container')).toBeVisible({ timeout: 10000 });`
+
+#### task 8.2.2: The Encryption Pipeline (Alice Sends)
+- Write the test logic for Alice composing and sending a text message.
+- Verify that the UI state updates correctly to reflect the dispatched message.
+
+##### Jules prompt
+> **Goal:** Test the outbound encryption pipeline by having Alice send a message to the newly created room.
+> 
+> **Instructions:**
+> Continuing directly in the same test inside `tests/messaging.spec.js`.
+> 
+> **1. task: Composing the Message**
+> - On `alicePage`, locate the chat input component.
+> - Fill the input: `await alicePage.getByTestId('chat-input-0__textarea').fill('Hello Bob, this is a secure message.');`
+> - Click the send button: `await alicePage.getByTestId('chat-input-0__submitBtn').click();`
+> 
+> **2. task: Verifying the Outbound UI**
+> - The component script will construct the payload, pass it to the worker/crypto util for Room Key encryption and Ed25519 signing, and push it to PocketBase.
+> - **Assertion:** Verify that the message appears in Alice's local chat history. Use the Coralite `data-testid` for the message bubble (e.g., `await expect(alicePage.getByTestId('message-bubble-0__text').filter({ hasText: 'Hello Bob' })).toBeVisible();`).
+
+#### task 8.2.3: The Decryption Pipeline (Bob Receives)
+- Switch focus to Bob's browser context.
+- Verify that the Server-Sent Events (SSE) pipeline successfully triggers the background worker decryption.
+- Assert that the decrypted plaintext securely renders on Bob's screen.
+
+##### Jules prompt
+> **Goal:** Verify the inbound decryption pipeline by ensuring Bob receives, decrypts, and displays Alice's message in real-time.
+> 
+> **Instructions:**
+> Continuing directly in the same test inside `tests/messaging.spec.js`. We are now switching our testing focus entirely to `bobPage`.
+> 
+> **1. task: Receiving the Room Invite via SSE**
+> - Because Alice created the room and sent a message, Bob's SSE listener should detect the new `room_members` and `rooms` records.
+> - **Assertion:** Wait for the new room to appear in Bob's sidebar. `await expect(bobPage.getByTestId('sidebar-0__roomItem').filter({ hasText: aliceUsername })).toBeVisible({ timeout: 15000 });` (Use a generous timeout to account for network latency and SSE propagation).
+> - Click the room in Bob's sidebar to open the `<chat-view>`.
+> 
+> **2. task: Verifying the Inbound Decryption**
+> - Opening the room should trigger Bob's local database and background worker to fetch the encrypted message, unwrap his Room Key, decrypt the payload, and verify Alice's signature.
+> - **Assertion:** Verify the decrypted plaintext successfully renders in Bob's chat view. `await expect(bobPage.getByTestId('message-bubble-0__text').filter({ hasText: 'Hello Bob, this is a secure message.' })).toBeVisible({ timeout: 10000 });`
+> 
+> **3. task: Teardown**
+> - Close both contexts gracefully at the end of the test block.
+>   `await aliceContext.close();`
+>   `await bobContext.close();`
+
+### track 8.3: Playwright E2E Testing - WebRTC & Hardware Lifecycles
+
+#### task 8.3.1: Hardware Mocking & Call Initiation
+- Configure the Playwright project to launch Chromium with fake media devices to bypass OS-level permission prompts and hardware locks.
+- Write the test for Alice to initiate a call and for Bob to receive the secure `call_offer` payload.
+- Verify that the `<call-overlay>` component mounts successfully for both users.
+
+##### Jules prompt
+> **Goal:** Set up a two-player WebRTC test using fake hardware streams, verifying that the call initiation and signaling loop works.
+> 
+> **Instructions:**
+> You are building the WebRTC E2E tests for `atoll chat`. WebRTC requires camera/microphone access, which will hang the CI pipeline if the browser waits for a user to click "Allow". We must mock this.
+> 
+> **CRITICAL PLAYWRIGHT DIRECTIVES:**
+> 1. You must override the browser launch arguments for this specific test file to use fake media.
+> 2. Continue strictly using `window.__coralite_ready__` and `getByTestId`.
+> 
+> **1. task: Test Suite & Fake Media Setup**
+> - Create a new file: `tests/webrtc.spec.js`.
+> - At the top of the file, use `test.use` to inject the Chromium hardware flags:
+>   `test.use({ launchOptions: { args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'] } });`
+> - Create a long-running test: `test('WebRTC Call Lifecycle', async ({ browser }) => { ... })`.
+> - Initialize `aliceContext` and `bobContext` (just like in the messaging tests) and automate their registration and room creation so they are both viewing the same chat room.
+> 
+> **2. task: Initiating the Call (Alice)**
+> - On `alicePage`, locate and click the "Start Call" button in the chat header: 
+>   `await alicePage.getByTestId('chat-view-0__startCallBtn').click();`
+> - **Assertion:** Wait for Alice's `<call-overlay>` to mount. 
+>   `await expect(alicePage.getByTestId('call-overlay-0__container')).toBeVisible();`
+> 
+> **3. task: Receiving the Call (Bob)**
+> - Alice's local WebRTC plugin will generate an offer, encrypt it, and send it via PocketBase. Bob's SSE listener will pick it up and emit it to his WebRTC plugin.
+> - **Assertion:** Switch to `bobPage` and wait for his `<call-overlay>` to mount automatically.
+>   `await expect(bobPage.getByTestId('call-overlay-0__container')).toBeVisible({ timeout: 15000 });`
+
+#### task 8.3.2: Media Control Interactions
+- Test the interactive hardware controls (Mute, Camera Off) within the `<call-overlay>`.
+- Assert that the Coralite state updates trigger the correct UI/CSS changes.
+
+##### Jules prompt
+> **Goal:** Verify that the user can interact with the local media stream controls without severing the peer connection.
+> 
+> **Instructions:**
+> Continuing directly in the same test inside `tests/webrtc.spec.js`.
+> 
+> **1. task: Toggling the Microphone**
+> - On `alicePage`, locate the Mute button inside the overlay:
+>   `const muteBtn = alicePage.getByTestId('call-overlay-0__muteBtn');`
+> - Click the button: `await muteBtn.click();`
+> - **Assertion:** Because Coralite updates the Bootstrap classes based on `state.isMuted`, verify the button now has the danger/active class (adjust the exact class to match your template):
+>   `await expect(muteBtn).toHaveClass(/btn-danger/);`
+> 
+> **2. task: Toggling the Camera**
+> - On `alicePage`, click the Camera Off button:
+>   `const videoBtn = alicePage.getByTestId('call-overlay-0__videoBtn');`
+> - **Assertion:** Verify the UI updates to reflect the camera being off.
+>   `await expect(videoBtn).toHaveClass(/btn-danger/);`
+> - Click both buttons again to toggle them back on, verifying the classes are removed.
+
+#### task 8.3.3: The Teardown Sequence
+- Write the test logic for hanging up the call.
+- Verify that clicking "End Call" destroys the local hardware tracks and sends the `call_end` signal.
+- Assert that Bob's UI accurately receives the teardown signal and closes his overlay.
+
+##### Jules prompt
+> **Goal:** Test the critical hardware release and remote teardown pipeline when a call ends.
+> 
+> **Instructions:**
+> Continuing directly in the same test inside `tests/webrtc.spec.js`.
+> 
+> **1. task: Local Hang-up (Alice)**
+> - On `alicePage`, locate and click the End Call button:
+>   `await alicePage.getByTestId('call-overlay-0__endCallBtn').click();`
+> - **Assertion:** Verify that Alice's call overlay is completely removed from the DOM.
+>   `await expect(alicePage.getByTestId('call-overlay-0__container')).not.toBeVisible();`
+> 
+> **2. task: Remote Hang-up (Bob)**
+> - Alice's client should have dispatched a `call_end` payload through the E2EE pipeline.
+> - Switch to `bobPage`.
+> - **Assertion:** Without any interaction from Bob, his call overlay should disappear as his client processes the teardown signal.
+>   `await expect(bobPage.getByTestId('call-overlay-0__container')).not.toBeVisible({ timeout: 10000 });`
+> 
+> **3. task: Teardown**
+> - Gracefully close both browser contexts.
+>   `await aliceContext.close();`
+>   `await bobContext.close();`

@@ -39,18 +39,6 @@ const run = async () => {
     // 1. Run the Docker Compose setup and provisioning
     await globalSetup()
 
-    console.log('\n--- Starting Tracker Server ---')
-    // 2. Spawn the tracker process
-    trackerProcess = spawn('pnpm', ['run', 'start:tracker'], {
-      stdio: 'inherit',
-      shell: true
-    })
-
-    trackerProcess.on('close', async (code) => {
-      console.log(`\nTracker process exited with code ${code}`)
-      await cleanupAndExit(code)
-    })
-
     console.log('\n--- Starting Application ---')
     // 3. Spawn the app process using pnpm
     appProcess = spawn('pnpm', ['run', 'start:app'], {

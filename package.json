@@ -14,7 +14,7 @@
   "scripts": {
     "start": "node scripts/start-dev.js",
     "start:app": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
-    "start:services": "docker compose up -d",
+    "start:services": "docker-compose up -d",
     "build": "coralite-scripts build",
     "lint:types": "pnpm exec tsc --noEmit",
     "lint:format": "eslint --cache --fix .",
@@ -27,8 +27,8 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@stylistic/eslint-plugin": "^5.9.0",
-    "coralite": "^0.36.3",
-    "coralite-scripts": "^0.36.3",
+    "coralite": "^0.37.0",
+    "coralite-scripts": "^0.37.0",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^10.0.2",

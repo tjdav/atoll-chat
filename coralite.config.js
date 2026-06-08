@@ -7,10 +7,12 @@ import workerPlugin from './src/plugins/workerPlugin.js'
 import syncPlugin from './src/plugins/syncPlugin.js'
 import webrtcPlugin from './src/plugins/webrtcPlugin.js'
 
+const pocketbaseBaseUrl = process.env.DATABASE_URL || 'http://localhost:8090'
+
 export default defineConfig({
   public: 'public',
   plugins: [
-    pocketbasePlugin({ baseUrl: process.env.DATABASE_URL || 'http://localhost:8090' }),
+    pocketbasePlugin({ baseUrl: pocketbaseBaseUrl }),
     eventBus,
     statePlugin({
       initialState: {
@@ -20,7 +22,7 @@ export default defineConfig({
       }
     }),
     localDbPlugin(),
-    workerPlugin(),
+    workerPlugin({ url: pocketbaseBaseUrl }),
     syncPlugin(),
     webrtcPlugin()
   ],

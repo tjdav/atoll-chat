@@ -13,7 +13,10 @@ export default function pocketbase (options = {}) {
     name: 'pocketbase',
     server: {
       exports: {
-        pb: () => () => new PocketBase(url)
+        pb () {
+          const pb = new PocketBase(url)
+          return () => pb
+        }
       }
     },
     client: {

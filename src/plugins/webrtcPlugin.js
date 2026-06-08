@@ -4,10 +4,18 @@ import { definePlugin } from 'coralite'
  * WebRTC Manager Plugin for Atoll Chat.
  * Orchestrates P2P connections using the E2EE message pipeline for signaling.
  */
-export default function webrtcPlugin () {
+export default function webrtcPlugin ({
+  iceServers = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' }
+  ]
+} = {}) {
   return definePlugin({
     name: 'webrtc-manager',
     client: {
+      config: {
+        iceServers
+      },
       context: {
         $webrtc: async (globalContext) => {
           const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
@@ -17,10 +25,7 @@ export default function webrtcPlugin () {
           const { $bus, $localDb, pb, $state } = globalContext
 
           const rtcConfig = {
-            iceServers: [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:global.stun.twilio.com:3478' }
-            ]
+            iceServers: globalContext.config.iceServers
           }
 
           /**
@@ -99,8 +104,7 @@ export default function webrtcPlugin () {
             }
           })
 
-          // Phase 2: Instance Context
-          return async (instanceContext) => {
+          return async () => {
             /**
              * Helper to send an E2EE signaling message through the standard pipeline.
              */

@@ -3,10 +3,13 @@ import { definePlugin } from 'coralite'
 /**
  *
  */
-export default function workerPlugin () {
+export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
   return definePlugin({
     name: 'crypto-worker',
     client: {
+      config: {
+        url
+      },
       context: {
         $worker: (globalContext) => {
           // Phase 1: Global Setup
@@ -70,8 +73,7 @@ export default function workerPlugin () {
             }
           }
 
-          // Phase 2: Local Instance
-          return (instanceContext) => {
+          return () => {
             return {
               execute: (type, payload) => {
                 return new Promise((resolve, reject) => {
