@@ -43,11 +43,11 @@ importers:
         specifier: ^5.9.0
         version: 5.9.0(eslint@10.0.2)
       coralite:
-        specifier: ^0.37.0
-        version: 0.37.0
+        specifier: ^0.37.1
+        version: 0.37.1
       coralite-scripts:
-        specifier: ^0.37.0
-        version: 0.37.0
+        specifier: ^0.37.1
+        version: 0.37.1
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -637,13 +637,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.37.0:
-    resolution: {integrity: sha512-iveUVMQFymtZayfq89HvPozum2fpn9hMzwi5Njc7cZs0h0slI0m7xYdMiYq2p+VgB6yTYL2prQ5KIEYQ46mjlg==}
+  coralite-scripts@0.37.1:
+    resolution: {integrity: sha512-A4YkoLAeo8A8TTvO+RzNX2Gm0HI9LL+LXjzRj86Ap8kT/uwU8JwKOOxSMPKS+s8iILnwrHY/43UA03FYU4wmJg==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  coralite@0.37.0:
-    resolution: {integrity: sha512-GKIQ2w45YOSpbMM4WjwDYvUoXV5wIVs0qpC4HeRRh7ICTV4fwHP9T5WtGMOmNwLdDidZEM4g1mwjSTpqArka3A==}
+  coralite@0.37.1:
+    resolution: {integrity: sha512-UreL/NbmfZUQzcQKYsh0jRKDjDQg6Q6K9dqrPlqqBAdwc6XM94970q67+MVU/VuPD59rPV9y3gvMy1F71fst1g==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -1245,8 +1245,8 @@ packages:
     resolution: {integrity: sha512-rEwq/ZHlJIKw++XtLAO8PPuOQA/zaPJOZJ37BVuN97nLpMJeuDVLVGRwbFoBgLudgdTMP2hdRJP++H+8QOA3vg==}
     engines: {node: '>= 10.12'}
 
-  postcss-selector-parser@7.1.1:
-    resolution: {integrity: sha512-orRsuYpJVw8LdAwqqLykBj9ecS5/cRHlI5+nvTo8LcCKmzDmqVORXtOIYEEQuL9D4BxtA1lm5isAqzQZCoQ6Eg==}
+  postcss-selector-parser@7.1.2:
+    resolution: {integrity: sha512-Wjvt4scRFouioIInHf51IFNP4ltJ2EngJM+cZPGiqbKetBfmP3vpdPV8ID2S6JS6/jdo74N8+aEYH9lQr2C6sA==}
     engines: {node: '>=4'}
 
   postcss@8.5.15:
@@ -1962,11 +1962,11 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.37.0:
+  coralite-scripts@0.37.1:
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.37.0
+      coralite: 0.37.1
       cross-env: 10.1.0
       express: 5.2.1
       kleur: 4.1.5
@@ -1980,7 +1980,7 @@ snapshots:
       - canvas
       - supports-color
 
-  coralite@0.37.0:
+  coralite@0.37.1:
     dependencies:
       acorn: 8.16.0
       acorn-walk: 8.3.5
@@ -1993,7 +1993,7 @@ snapshots:
       kleur: 4.1.5
       p-limit: 7.3.0
       postcss: 8.5.15
-      postcss-selector-parser: 7.1.1
+      postcss-selector-parser: 7.1.2
       serialize-javascript: 7.0.5
       xxhash-wasm: 1.1.0
     transitivePeerDependencies:
@@ -2686,7 +2686,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  postcss-selector-parser@7.1.1:
+  postcss-selector-parser@7.1.2:
     dependencies:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
