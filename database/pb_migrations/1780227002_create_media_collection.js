@@ -10,11 +10,22 @@ migrate((app) => {
     deleteRule: null
   })
 
-  media.fields.add(new core.FileField({
+  media.fields.add(new FileField({
     name: 'file',
     required: true,
     maxSelect: 1,
     maxSize: 31457280
+  }))
+
+  media.fields.add(new AutodateField({
+    name: 'created',
+    onCreate: true
+  }))
+
+  media.fields.add(new AutodateField({
+    name: 'updated',
+    onCreate: true,
+    onUpdate: true
   }))
 
   app.save(media)

@@ -11,29 +11,29 @@ migrate((app) => {
   }
 
   // 1. task: Public Key Fields
-  collection.fields.add(new core.TextField({
+  collection.fields.add(new TextField({
     name: 'public_box_key',
     required: true
   }))
 
-  collection.fields.add(new core.TextField({
+  collection.fields.add(new TextField({
     name: 'public_sign_key',
     required: true
   }))
 
   // 2. task: The Zero-Knowledge Vault
-  collection.fields.add(new core.JSONField({
+  collection.fields.add(new JSONField({
     name: 'encrypted_master_keys',
     required: true
   }))
 
   // 3. task: Key Derivation & Auth Fields
-  collection.fields.add(new core.TextField({
+  collection.fields.add(new TextField({
     name: 'pin_salt',
     required: true
   }))
 
-  collection.fields.add(new core.TextField({
+  collection.fields.add(new TextField({
     name: 'passkey_credential_id'
   }))
 

@@ -10,16 +10,27 @@ migrate((app) => {
     deleteRule: '@request.auth.id != ""'
   })
 
-  rooms.fields.add(new core.BoolField({
+  rooms.fields.add(new BoolField({
     name: 'is_group',
     required: true,
     help: 'True if it\'s a multi-user group chat, false for a standard 1-to-1 conversation.'
   }))
 
-  rooms.fields.add(new core.JSONField({
+  rooms.fields.add(new JSONField({
     name: 'encrypted_metadata',
     required: true,
     help: 'Stores the symmetrically encrypted JSON containing the group\'s name and avatar URL.'
+  }))
+
+  rooms.fields.add(new AutodateField({
+    name: 'created',
+    onCreate: true
+  }))
+
+  rooms.fields.add(new AutodateField({
+    name: 'updated',
+    onCreate: true,
+    onUpdate: true
   }))
 
   app.save(rooms)
@@ -39,7 +50,7 @@ migrate((app) => {
     ]
   })
 
-  roomMembers.fields.add(new core.RelationField({
+  roomMembers.fields.add(new RelationField({
     name: 'room_id',
     required: true,
     maxSelect: 1,
@@ -47,7 +58,7 @@ migrate((app) => {
     cascadeDelete: true
   }))
 
-  roomMembers.fields.add(new core.RelationField({
+  roomMembers.fields.add(new RelationField({
     name: 'user_id',
     required: true,
     maxSelect: 1,
@@ -56,7 +67,7 @@ migrate((app) => {
     help: 'The member receiving the access key.'
   }))
 
-  roomMembers.fields.add(new core.RelationField({
+  roomMembers.fields.add(new RelationField({
     name: 'wrapped_by',
     required: true,
     maxSelect: 1,
@@ -65,22 +76,33 @@ migrate((app) => {
     help: 'The ID of the user who invited this member and wrapped the key. The client uses this to know whose public key to verify against.'
   }))
 
-  roomMembers.fields.add(new core.TextField({
+  roomMembers.fields.add(new TextField({
     name: 'encrypted_room_key',
     required: true,
     help: 'The base64-encoded 32-byte shared Room Key, encrypted specifically for the user_id using Libsodium.'
   }))
 
-  roomMembers.fields.add(new core.TextField({
+  roomMembers.fields.add(new TextField({
     name: 'key_nonce',
     required: true
   }))
 
-  roomMembers.fields.add(new core.SelectField({
+  roomMembers.fields.add(new SelectField({
     name: 'role',
     required: true,
     maxSelect: 1,
     values: ['member', 'admin', 'kicked']
+  }))
+
+  roomMembers.fields.add(new AutodateField({
+    name: 'created',
+    onCreate: true
+  }))
+
+  roomMembers.fields.add(new AutodateField({
+    name: 'updated',
+    onCreate: true,
+    onUpdate: true
   }))
 
   app.save(roomMembers)
