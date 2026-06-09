@@ -11,7 +11,11 @@
         <label for="pinConfirm">Confirm PIN</label>
         <input ref="pinConfirm" id="pinConfirm" type="password" class="form-control" placeholder="Confirm PIN" minlength="6" required>
       </div>
-      <button type="submit" class="btn btn-success w-100">Initialize Vault</button>
+      <button type="submit" class="btn btn-success w-100">Initialize Vault with PIN</button>
+      <hr>
+      <div class="d-grid gap-2">
+        <button type="button" class="btn btn-outline-primary" ref="btnPasskey">Setup with Passkey</button>
+      </div>
     </form>
     <div ref="statusMsg" class="status-message mt-3 text-muted text-center"></div>
     <div class="mt-3 text-center">
@@ -49,6 +53,7 @@
       const pinConfirmInput = refs('pinConfirm')
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout')
+      const btnPasskey = refs('btnPasskey')
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
@@ -60,9 +65,40 @@
         $state.isVaultUnlocked = false
       })
 
+      const initializeVault = async (masterKeys, encryptionPayload) => {
+        try {
+          updateStatus('Saving vault to server...')
+          await pb.collection('users').update(pb.authStore.model.id, encryptionPayload)
+          
+          // Refresh auth record to ensure local authStore has the new vault fields (e.g. for unlock button logic)
+          await pb.collection('users').authRefresh()
+
+          updateStatus('Vault initialized! Starting session...')
+          const { $worker } = await import('coralite').then(m => m.getContext().cryptoWorker())
+          await $worker.execute('INIT_KEYS', {
+            private_box_key: masterKeys.private_box_key,
+            private_sign_key: masterKeys.private_sign_key
+          })
+
+          await $sync.startSubscriptions()
+
+          $bus.emit('auth:unlocked', {
+            keys: {
+              private_box_key: masterKeys.private_box_key,
+              private_sign_key: masterKeys.private_sign_key
+            },
+            userRecord: pb.authStore.model
+          })
+
+          $state.isVaultUnlocked = true
+        } catch (error) {
+          console.error('Vault initialization error:', error)
+          updateStatus(`Error: ${error.message || 'Vault initialization failed'}`)
+        }
+      }
+
       setupForm.addEventListener('submit', async (event) => {
         event.preventDefault()
-
         const pin = pinInput.value
         const pinConfirm = pinConfirmInput.value
 
@@ -73,70 +109,74 @@
 
         try {
           updateStatus('Initializing cryptographic modules...')
-  
-          // Dynamically import dependencies
-          const [{ default: sodium }, {
-            generateMasterKeys,
-            generateSalt,
-            deriveKeyFromPin,
-            encryptVault
-          }] = await Promise.all([
+          const [{ default: sodium }, { generateMasterKeys, generateSalt, deriveKeyFromPin, encryptVault }] = await Promise.all([
             import('libsodium-wrappers-sumo'),
             import('../utils/cryptoUtils.js')
           ])
-
           await sodium.ready
 
           updateStatus('Generating cryptographic keys...')
           const masterKeys = await generateMasterKeys(sodium)
           const pinSalt = generateSalt(sodium)
 
-          updateStatus('Securing vault...')
+          updateStatus('Securing vault with PIN...')
           const KEK = await deriveKeyFromPin(pin, pinSalt, sodium)
-  
-          const encryptedVault = encryptVault({
-            private_box_key: masterKeys.private_box_key,
-            private_sign_key: masterKeys.private_sign_key
-          }, KEK, sodium)
+          const encryptedVault = encryptVault(masterKeys, KEK, sodium)
 
-          const payload = {
+          await initializeVault(masterKeys, {
             public_box_key: masterKeys.public_box_key,
             public_sign_key: masterKeys.public_sign_key,
             pin_salt: sodium.to_base64(pinSalt, sodium.base64_variants.ORIGINAL),
             encrypted_master_keys: encryptedVault
-          }
-
-          updateStatus('Saving vault to server...')
-  
-          // Update the user record in PocketBase with the vault data
-          await pb.collection('users').update(pb.authStore.model.id, payload)
-
-          updateStatus('Vault initialized! Starting session...')
-  
-          // Initialize worker with decrypted keys
-          const { $worker } = await import('coralite').then(m => m.getContext().cryptoWorker())
-          await $worker.execute('INIT_KEYS', {
-            private_box_key: masterKeys.private_box_key,
-            private_sign_key: masterKeys.private_sign_key
           })
-
-          // Start real-time subscriptions
-          await $sync.startSubscriptions()
-
-          // Notify the application
-          $bus.emit('auth:unlocked', {
-            keys: {
-              private_box_key: masterKeys.private_box_key,
-              private_sign_key: masterKeys.private_sign_key
-            },
-            userRecord: pb.authStore.model
-          })
-
-          $state.isVaultUnlocked = true
-
         } catch (error) {
           console.error('Vault setup error:', error)
           updateStatus(`Error: ${error.message || 'Vault setup failed'}`)
+        }
+      })
+
+      btnPasskey.addEventListener('click', async () => {
+        try {
+          updateStatus('Initializing cryptographic modules...')
+          const [{ default: sodium }, { generateMasterKeys, createPasskey, deriveKeyFromPasskey, encryptVault }] = await Promise.all([
+            import('libsodium-wrappers-sumo'),
+            import('../utils/cryptoUtils.js')
+          ])
+          await sodium.ready
+
+          updateStatus('Generating cryptographic keys...')
+          const masterKeys = await generateMasterKeys(sodium)
+
+          updateStatus('Waiting for Passkey registration...')
+          const challenge = crypto.getRandomValues(new Uint8Array(32))
+          const passkeyPrfSalt = crypto.getRandomValues(new Uint8Array(32))
+          
+          let { credentialId, prfAvailable, prfResult: KEK } = await createPasskey(pb.authStore.model.username, challenge, passkeyPrfSalt)
+
+          if (!prfAvailable) {
+            throw new Error('This authenticator does not support the PRF extension required for vault encryption.')
+          }
+
+          // If the browser didn't return a PRF result during creation, fallback to assertion
+          if (!KEK) {
+            updateStatus('Securing vault with Passkey (verification step)...')
+            KEK = await deriveKeyFromPasskey(credentialId, challenge, passkeyPrfSalt)
+          } else {
+            updateStatus('Securing vault with Passkey...')
+          }
+
+          const encryptedVault = encryptVault(masterKeys, KEK, sodium)
+
+          await initializeVault(masterKeys, {
+            public_box_key: masterKeys.public_box_key,
+            public_sign_key: masterKeys.public_sign_key,
+            passkey_credential_id: sodium.to_base64(credentialId, sodium.base64_variants.ORIGINAL),
+            passkey_prf_salt: sodium.to_base64(passkeyPrfSalt, sodium.base64_variants.ORIGINAL),
+            encrypted_master_keys_passkey: encryptedVault
+          })
+        } catch (error) {
+          console.error('Passkey setup error:', error)
+          updateStatus(`Error: ${error.message || 'Passkey setup failed'}`)
         }
       })
     }
