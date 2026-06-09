@@ -158,8 +158,7 @@
         clearTimeout(state._searchTimeout)
         state._searchTimeout = setTimeout(async () => {
           try {
-            const pbInstance = await pb()
-            const res = await pbInstance.collection('users').getList(1, 5, {
+            const res = await pb.collection('users').getList(1, 5, {
               filter: `username ~ "${state.searchQuery}"`
             })
             state.searchResults = res.items
@@ -246,14 +245,13 @@
           })
 
           // Batch server transaction
-          const pbInstance = await pb()
-          const newRoom = await pbInstance.collection('rooms').create({
+          const newRoom = await pb.collection('rooms').create({
             is_group: isGroup,
             encrypted_metadata: metadataPayload
           })
 
           await Promise.all(wrappedMemberRecords.map(record => {
-            return pbInstance.collection('room_members').create({
+            return pb.collection('room_members').create({
               ...record,
               room_id: newRoom.id
             })

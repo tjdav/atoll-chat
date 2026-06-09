@@ -84,8 +84,7 @@
 
         showLoading('Fetching members...')
         try {
-          const pbInstance = await pb()
-          const members = await pbInstance.collection('room_members').getFullList({
+          const members = await pb.collection('room_members').getFullList({
             filter: `room_id="${roomId}"`,
             expand: 'user_id'
           })
@@ -184,11 +183,10 @@
           ])
           await sodium.ready
 
-          const pbInstance = await pb()
           const currentUser = $state.currentUser
 
           // 1. Identify Survivors & Generate New Key
-          const allMembers = await pbInstance.collection('room_members').getFullList({
+          const allMembers = await pb.collection('room_members').getFullList({
             filter: `room_id="${roomId}"`,
             expand: 'user_id'
           })
@@ -205,7 +203,7 @@
             const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES)
             const encryptedKey = sodium.crypto_box_easy(newEpochKey, nonce, participantPublicKey, adminPrivateKey)
 
-            return pbInstance.collection('room_members').update(survivor.id, {
+            return pb.collection('room_members').update(survivor.id, {
               wrapped_by: currentUser.id,
               encrypted_room_key: sodium.to_base64(encryptedKey, sodium.base64_variants.ORIGINAL),
               key_nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
@@ -216,7 +214,7 @@
           // Update all survivors and delete the kicked user
           await Promise.all([
             ...wrapPromises,
-            pbInstance.collection('room_members').delete(kickedMemberId)
+            pb.collection('room_members').delete(kickedMemberId)
           ])
 
           // 4. Update the Local Cache (Key History)
@@ -251,7 +249,7 @@
           const validationBuffer = new TextEncoder().encode(validationString)
           const signature = sodium.crypto_sign_detached(validationBuffer, adminSignKey)
 
-          await pbInstance.collection('messages').create({
+          await pb.collection('messages').create({
             room_id: roomId,
             sender_id: currentUser.id,
             epoch_id: nextEpochId,

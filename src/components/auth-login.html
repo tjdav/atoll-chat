@@ -56,11 +56,9 @@
 
         try {
           updateStatus('Locating account...')
-
-          const pbInstance = await pb()
   
           // Query user record by username
-          const record = await pbInstance.collection('users').getFirstListItem(`username="${username}"`)
+          const record = await pb.collection('users').getFirstListItem(`username="${username}"`)
   
           const { pin_salt: pinSaltBase64, encrypted_master_keys: encryptedMasterKeys } = record
 
@@ -91,18 +89,18 @@
           updateStatus('Vault unlocked. Entering chat...')
 
           // Perform PocketBase authentication
-          await pbInstance.collection('users').authWithPassword(username, pin)
+          await pb.collection('users').authWithPassword(username, pin)
 
           // Persist PB config for Service Worker access
           const db = await $localDb()
           await db.local_config.bulkPut([
             {
               key: 'pb_url',
-              value: pbInstance.baseUrl
+              value: pb.baseUrl
             },
             {
               key: 'pb_token',
-              value: pbInstance.authStore.token
+              value: pb.authStore.token
             }
           ])
 
