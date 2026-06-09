@@ -17,6 +17,7 @@ export default defineConfig({
     statePlugin({
       initialState: {
         isAuthenticated: false,
+        isVaultUnlocked: false,
         authView: 'login',
         currentAppView: 'chats',
         callStatus: 'idle',

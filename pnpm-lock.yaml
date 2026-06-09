@@ -23,6 +23,9 @@ importers:
       isomorphic-dompurify:
         specifier: ^3.0.0
         version: 3.0.0
+      libsodium-sumo:
+        specifier: ^0.8.4
+        version: 0.8.4
       libsodium-wrappers-sumo:
         specifier: 0.8.3
         version: 0.8.3

@@ -25,10 +25,24 @@
         }
 
         if ($state.isAuthenticated) {
-          // Add app components
           container.className = 'app-root-container'
-          container.appendChild(document.createElement('app-layout'))
-          container.appendChild(document.createElement('create-room-modal'))
+  
+          if ($state.isVaultUnlocked) {
+            // Full application view
+            container.appendChild(document.createElement('app-layout'))
+            container.appendChild(document.createElement('create-room-modal'))
+          } else {
+            // Check if vault needs setup or just unlocking
+            const user = pb.authStore.model
+            if (user && user.public_box_key) {
+              // Vault exists, needs unlocking
+              container.appendChild(document.createElement('vault-unlock'))
+            } else {
+              // No vault, needs setup
+              container.className = 'app-root-container d-flex align-items-center justify-content-center bg-body-tertiary'
+              container.appendChild(document.createElement('vault-setup'))
+            }
+          }
         } else {
           // Center auth components
           container.className = 'app-root-container d-flex align-items-center justify-content-center bg-body-tertiary'
@@ -47,6 +61,7 @@
 
       if (typeof $state.subscribe === 'function') {
         $state.subscribe('isAuthenticated', updateUI)
+        $state.subscribe('isVaultUnlocked', updateUI)
         $state.subscribe('authView', updateUI)
       }
     }
