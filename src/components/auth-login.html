@@ -12,6 +12,9 @@
       </div>
       <button type="submit" class="btn btn-primary w-100">Unlock Vault & Login</button>
     </form>
+    <div class="mt-3 text-center">
+      <small>Don't have an account? <a href="#" ref="linkRegister">Register here</a></small>
+    </div>
     <div ref="statusMsg" class="status-message mt-3 text-muted text-center"></div>
   </div>
 </template>
@@ -35,11 +38,13 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, pocketbase, eventBus, realtimeSync }) => {
+    script: ({ refs, pocketbase, eventBus, realtimeSync, globalStore }) => {
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $sync } = realtimeSync
+      const { $state } = globalStore
       const loginForm = refs('loginForm')
+      const linkRegister = refs('linkRegister')
       const usernameInput = refs('username')
       const pinInput = refs('pin')
       const statusMsg = refs('statusMsg')
@@ -47,6 +52,11 @@
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
+
+      linkRegister.addEventListener('click', (e) => {
+        e.preventDefault()
+        $state.authView = 'register'
+      })
 
       loginForm.addEventListener('submit', async (event) => {
         event.preventDefault()
@@ -112,6 +122,8 @@
             keys: decryptedKeys,
             userRecord: record
           })
+
+          $state.isAuthenticated = true
 
         } catch (error) {
           console.error('Login error:', error)

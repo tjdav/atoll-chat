@@ -16,6 +16,8 @@ export default defineConfig({
     eventBus,
     statePlugin({
       initialState: {
+        isAuthenticated: false,
+        authView: 'login',
         currentAppView: 'chats',
         callStatus: 'idle',
         activeCallRoomId: null

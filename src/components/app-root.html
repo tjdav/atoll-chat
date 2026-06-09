@@ -1,0 +1,54 @@
+<template id="app-root">
+  <div ref="container" class="app-root-container"></div>
+</template>
+
+<style>
+  .app-root-container {
+    height: 100vh;
+    width: 100vw;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    script: ({ globalStore, pocketbase, refs }) => {
+      const { $state } = globalStore
+      const { pb } = pocketbase
+      const container = refs('container')
+
+      const updateUI = () => {
+        // Clear previous content
+        while (container.firstChild) {
+          container.removeChild(container.firstChild)
+        }
+
+        if ($state.isAuthenticated) {
+          // Add app components
+          container.className = 'app-root-container'
+          container.appendChild(document.createElement('app-layout'))
+          container.appendChild(document.createElement('create-room-modal'))
+        } else {
+          // Center auth components
+          container.className = 'app-root-container d-flex align-items-center justify-content-center bg-body-tertiary'
+          const tagName = $state.authView === 'register' ? 'auth-register' : 'auth-login'
+          container.appendChild(document.createElement(tagName))
+        }
+      }
+
+      // Authoritative initialization from PocketBase
+      $state.isAuthenticated = pb.authStore.isValid
+      if (!$state.authView) {
+        $state.authView = 'login'
+      }
+
+      updateUI()
+
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('isAuthenticated', updateUI)
+        $state.subscribe('authView', updateUI)
+      }
+    }
+  })
+</script>

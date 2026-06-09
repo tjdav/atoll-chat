@@ -14,7 +14,10 @@
         <i class="bi bi-camera-video fs-4"></i>
       </button>
     </div>
-    <div class="mt-auto w-100 px-2">
+    <div class="mt-auto w-100 px-2 d-flex flex-column gap-3">
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 w-100" ref="btnLogout" title="Logout">
+        <i class="bi bi-box-arrow-right fs-4"></i>
+      </button>
       <button class="nav-link d-flex align-items-center justify-content-center p-3 w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings">
         <i class="bi bi-gear-fill fs-4"></i>
       </button>
@@ -52,8 +55,9 @@
       isVideosActive: (state) => (state.currentAppView === 'videos' ? 'active' : ''),
       isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : '')
     },
-    script: ({ refs, state, globalStore }) => {
+    script: ({ refs, state, globalStore, pocketbase }) => {
       const { $state } = globalStore
+      const { pb } = pocketbase
       // Sync global state to component local state for reactivity in getters/template
       state.currentAppView = $state.currentAppView || 'chats'
 
@@ -80,6 +84,15 @@
           })
         }
       })
+
+      const btnLogout = refs('btnLogout')
+      if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+          pb.authStore.clear()
+          $state.isAuthenticated = false
+          $state.authView = 'login'
+        })
+      }
     }
   })
 </script>
