@@ -66,8 +66,6 @@
       const { $bus } = eventBus
       const { $webrtc } = webrtcPluginContext
       const { $localDb } = localDb
-      const webrtc = await $webrtc()
-      const db = await $localDb()
 
       // Sync local state with global state
       state.callStatus = $state.callStatus
@@ -86,7 +84,7 @@
 
       const endCall = async () => {
         if ($state.activeCallRoomId) {
-          await webrtc.endCall($state.activeCallRoomId)
+          await $webrtc.endCall($state.activeCallRoomId)
         }
         stopTracks()
         $state.callStatus = 'idle'
@@ -101,7 +99,7 @@
           return
         }
 
-        const room = await db.local_rooms.get(roomId)
+        const room = await $localDb.local_rooms.get(roomId)
         state.callerName = room?.name || 'Unknown Caller'
         state.callerInitial = state.callerName.charAt(0).toUpperCase()
         state.remoteOffer = offer
@@ -139,7 +137,7 @@
           })
           $bus.emit('local_stream_available', { stream: state.localStream })
   
-          await webrtc.answerCall($state.activeCallRoomId, state.localStream, state.remoteOffer)
+          await $webrtc.answerCall($state.activeCallRoomId, state.localStream, state.remoteOffer)
           $state.callStatus = 'active'
         } catch (err) {
           console.error('[call-overlay] Failed to accept call:', err)

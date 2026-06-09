@@ -108,7 +108,7 @@ export default function webrtcPlugin ({
             }
           })
 
-          return async () => {
+          return () => {
             /**
              * Helper to send an E2EE signaling message through the standard pipeline.
              */

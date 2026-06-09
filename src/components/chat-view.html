@@ -76,9 +76,8 @@
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $webrtc } = webrtcPluginContext
+  
       state.isRoomDetailsOpen = $state.isRoomDetailsOpen || false
-
-      const webrtc = await $webrtc()
 
       const updateRoomInfo = async (roomId) => {
         if (!roomId) {
@@ -86,8 +85,8 @@
         }
   
         try {
-          const db = await $localDb()
-          const room = await db.local_rooms.get(roomId)
+          const room = await $localDb.local_rooms.get(roomId)
+
           if (room) {
             state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
             state.roomInitial = state.roomName.charAt(0).toUpperCase()
@@ -151,7 +150,7 @@
           // Emit event so call-overlay can pick up the localStream we just created
           $bus.emit('call_initiated_locally', { localStream })
   
-          await webrtc.initiateCall($state.activeCallRoomId, localStream)
+          await $webrtc.initiateCall($state.activeCallRoomId, localStream)
         } catch (err) {
           console.error('[chat-view] Failed to initiate call:', err)
         }
