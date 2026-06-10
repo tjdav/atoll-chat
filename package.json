@@ -27,8 +27,8 @@
   "devDependencies": {
     "@playwright/test": "^1.58.2",
     "@stylistic/eslint-plugin": "^5.9.0",
-    "coralite": "^0.37.1",
-    "coralite-scripts": "^0.37.1",
+    "coralite": "^0.37.2",
+    "coralite-scripts": "^0.37.2",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^10.0.2",
