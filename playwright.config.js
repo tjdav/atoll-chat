@@ -39,16 +39,9 @@ export default defineConfig({
     }
   ],
 
-  webServer: [
-    {
-      command: 'pnpm run test:server',
-      url: 'http://localhost:3000',
-      reuseExistingServer: !process.env.CI
-    },
-    {
-      command: 'pnpm run start:tracker',
-      url: 'http://localhost:8000/stats',
-      reuseExistingServer: !process.env.CI
-    }
-  ]
+  webServer: {
+    command: 'pnpm run test:server',
+    url: 'http://localhost:3000',
+    reuseExistingServer: !process.env.CI
+  }
 })
