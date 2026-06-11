@@ -1,7 +1,7 @@
 <template id="auth-login">
   <div class="auth-login-container">
     <form ref="loginForm" class="auth-form">
-      <h3>Login</h3>
+      <h3 class="mb-4 text-center">Login</h3>
       <div class="form-group mb-3">
         <label for="username">Username</label>
         <input ref="username" id="username" type="text" class="form-control" placeholder="Enter username" required>
@@ -23,10 +23,11 @@
   .auth-login-container {
     max-width: 400px;
     margin: 2rem auto;
-    padding: 2rem;
+    padding: 2.5rem;
     border: 1px solid #dee2e6;
-    border-radius: 0.5rem;
-    background-color: #f8f9fa;
+    border-radius: 0.75rem;
+    background-color: #ffffff;
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.05);
   }
   .status-message {
     font-size: 0.875rem;
@@ -38,9 +39,11 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, pocketbase, globalStore }) => {
+    script: ({ refs, pocketbase, globalStore, eventBus, realtimeSync }) => {
       const { pb } = pocketbase
       const { $state } = globalStore
+      const { $bus } = eventBus
+      const { $sync } = realtimeSync
       const loginForm = refs('loginForm')
       const linkRegister = refs('linkRegister')
       const usernameInput = refs('username')
@@ -81,10 +84,50 @@
             }
           ])
 
-          updateStatus('Login successful!')
+          updateStatus('Login successful! Unlocking vault...')
 
-          // Notify the application that authentication was successful.
-          // app-root will handle showing vault-unlock or vault-setup.
+          // Attempt to unlock the vault automatically with the password
+          try {
+            const record = pb.authStore.model
+            const { pin_salt: pinSaltBase64, encrypted_master_keys: encryptedMasterKeys } = record
+
+            if (encryptedMasterKeys && pinSaltBase64) {
+              const [{ default: sodium }, { deriveKeyFromPin, decryptVault }] = await Promise.all([
+                import('libsodium-wrappers-sumo'),
+                import('../utils/cryptoUtils.js')
+              ])
+              await sodium.ready
+
+              const pinSalt = sodium.from_base64(pinSaltBase64, sodium.base64_variants.ORIGINAL)
+              const KEK = await deriveKeyFromPin(password, pinSalt, sodium)
+
+              const decryptedKeys = decryptVault(
+                encryptedMasterKeys.ciphertext,
+                encryptedMasterKeys.nonce,
+                KEK,
+                sodium
+              )
+
+              // Initialize worker with decrypted keys
+              const { $worker } = await import('coralite').then(m => m.getContext().cryptoWorker())
+              await $worker.execute('INIT_KEYS', decryptedKeys)
+
+              // Start real-time subscriptions
+              await $sync.startSubscriptions()
+
+              // Emit successful unlock event
+              $bus.emit('auth:unlocked', {
+                keys: decryptedKeys,
+                userRecord: record
+              })
+
+              $state.isVaultUnlocked = true
+            }
+          } catch (unlockErr) {
+            console.warn('Auto-unlock failed (might be a legacy PIN-based vault):', unlockErr)
+            // We don't block login if auto-unlock fails, app-root will show the manual unlock screen
+          }
+
           $state.isAuthenticated = true
 
         } catch (error) {

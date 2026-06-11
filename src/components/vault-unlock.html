@@ -5,14 +5,14 @@
         <h5 class="modal-title">Unlock Your Vault</h5>
       </div>
       <div class="modal-body">
-        <p>Your session is active, but your cryptographic keys are locked.</p>
+        <p>Your session is active, but your cryptographic keys are locked. Please enter your password to unlock them.</p>
         <form ref="unlockForm">
           <div class="form-group mb-3">
-            <label for="pin">Vault PIN</label>
-            <input ref="pin" id="pin" type="password" class="form-control" placeholder="Enter PIN" required>
+            <label for="password">Vault Password</label>
+            <input ref="pin" id="password" type="password" class="form-control" placeholder="Enter Password" required>
           </div>
           <div class="d-grid gap-2">
-            <button type="submit" class="btn btn-primary">Unlock with PIN</button>
+            <button type="submit" class="btn btn-primary">Unlock with Password</button>
             <button type="button" class="btn btn-outline-primary d-none" ref="btnPasskey">Unlock with Passkey</button>
           </div>
         </form>
@@ -62,7 +62,7 @@
       const { $sync } = realtimeSync
       const { $state } = globalStore
       const unlockForm = refs('unlockForm')
-      const pinInput = refs('pin')
+      const pinInput = refs('pin') // Kept ref name 'pin' for internal compatibility or changed if preferred, but label is 'Password'
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout')
       const btnPasskey = refs('btnPasskey')
@@ -115,7 +115,7 @@
           const { pin_salt: pinSaltBase64, encrypted_master_keys: encryptedMasterKeys } = record
 
           if (!encryptedMasterKeys) {
-            updateStatus('Error: PIN vault not found on server.')
+            updateStatus('Error: Secure vault not found on server.')
             return
           }
 
@@ -142,7 +142,7 @@
           let errorMessage = 'Unlock failed'
   
           if (error.message && error.message.includes('decrypt')) {
-            errorMessage = 'Invalid PIN or Corrupt Vault'
+            errorMessage = 'Invalid Password or Corrupt Vault'
           } else if (error.message) {
             errorMessage = error.message
           }
