@@ -10,10 +10,10 @@
       <p class="text-light mb-5">Incoming Video Call...</p>
       
       <div class="d-flex gap-4">
-        <button ref="btnAccept" class="btn btn-success btn-lg rounded-circle p-3 shadow" title="Accept Call">
+        <button id="{{ ref_btnAccept }}" ref="btnAccept" class="btn btn-success btn-lg rounded-circle p-3 shadow" title="Accept Call">
           <i class="bi bi-telephone-fill fs-3"></i>
         </button>
-        <button ref="btnReject" class="btn btn-danger btn-lg rounded-circle p-3 shadow" title="Reject Call">
+        <button id="{{ ref_btnReject }}" ref="btnReject" class="btn btn-danger btn-lg rounded-circle p-3 shadow" title="Reject Call">
           <i class="bi bi-telephone-x-fill fs-3"></i>
         </button>
       </div>
@@ -25,13 +25,13 @@
       
       <!-- Control Bar -->
       <div class="control-bar position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-3 p-3 rounded-pill bg-dark bg-opacity-75 shadow-lg border border-secondary">
-        <button ref="btnToggleAudio" class="btn {{ audioBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+        <button id="{{ ref_btnToggleAudio }}" ref="btnToggleAudio" class="btn {{ audioBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
           <i class="bi {{ audioIconClass }} fs-4"></i>
         </button>
-        <button ref="btnToggleVideo" class="btn {{ videoBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+        <button id="{{ ref_btnToggleVideo }}" ref="btnToggleVideo" class="btn {{ videoBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
           <i class="bi {{ videoIconClass }} fs-4"></i>
         </button>
-        <button ref="btnEndCall" class="btn btn-danger rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+        <button id="{{ ref_btnEndCall }}" ref="btnEndCall" class="btn btn-danger rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
           <i class="bi bi-telephone-x-fill fs-4"></i>
         </button>
       </div>
@@ -43,7 +43,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    data: () => ({
+    server: () => ({
       callStatus: 'idle',
       callerName: 'Unknown Caller',
       callerInitial: '?',
@@ -61,7 +61,7 @@
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
       videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill')
     },
-    script: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, localDb, refs, signal }) => {
+    client: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, localDb, refs, signal }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $webrtc } = webrtcPluginContext

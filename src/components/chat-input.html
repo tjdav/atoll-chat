@@ -1,7 +1,7 @@
 <template id="chat-input">
-  <div ref="chatInputContainer" class="chat-input-container p-3 border-top bg-body">
+  <div id="{{ ref_chatInputContainer }}" ref="chatInputContainer" class="chat-input-container p-3 border-top bg-body">
     <!-- Attachment Preview Bar -->
-    <div v-if="hasFile" class="attachment-preview p-2 mb-2 bg-light rounded d-flex align-items-center justify-content-between border">
+    <div id="{{ ref_attachmentPreview }}" class="attachment-preview p-2 mb-2 bg-light rounded d-flex align-items-center justify-content-between border" style="display: {{ attachmentPreviewDisplay }};">
       <div class="d-flex align-items-center">
         <i class="bi bi-file-earmark-arrow-up text-primary fs-4 me-2"></i>
         <div>
@@ -9,17 +9,18 @@
           <div class="x-small text-muted">{{ uploadStatus }}</div>
         </div>
       </div>
-      <button class="btn btn-sm btn-link text-danger" ref="cancelFileButton" title="Cancel" {{ isDisabled }}>
+      <button id="{{ ref_cancelFileButton }}" class="btn btn-sm btn-link text-danger" ref="cancelFileButton" title="Cancel" {{ isDisabled }}>
         <i class="bi bi-x-circle"></i>
       </button>
     </div>
 
     <div class="input-group">
-      <input type="file" ref="fileInput" class="d-none" accept="image/*, video/*, audio/*">
-      <button class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" {{ isDisabled }}>
+      <input id="{{ ref_fileInput }}" type="file" ref="fileInput" class="d-none" accept="image/*, video/*, audio/*">
+      <button id="{{ ref_attachButton }}" class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" {{ isDisabled }}>
         <i class="bi bi-paperclip"></i>
       </button>
       <textarea
+        id="{{ ref_messageInput }}"
         ref="messageInput"
         class="form-control"
         placeholder="Type a message..."
@@ -27,7 +28,7 @@
         style="resize: none; max-height: 200px;"
         {{ isDisabled }}
       ></textarea>
-      <button class="btn btn-primary d-flex align-items-center" type="button" ref="sendButton" {{ isDisabled }}>
+      <button id="{{ ref_sendButton }}" class="btn btn-primary d-flex align-items-center" type="button" ref="sendButton" {{ isDisabled }}>
         <span class="me-1 {{ sendTextClasses }}">Send</span>
         <i class="bi bi-send {{ iconClasses }}"></i>
         <div class="spinner-border spinner-border-sm {{ spinnerClasses }}" role="status">
@@ -66,7 +67,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    data: () => ({
+    server: () => ({
       isSending: false,
       isUploading: false,
       uploadStatus: '',
@@ -74,12 +75,13 @@
       hasFile: false
     }),
     getters: {
+      attachmentPreviewDisplay: (state) => (state.hasFile ? 'flex' : 'none'),
       isDisabled: (state) => (state.isSending || state.isUploading ? 'disabled' : ''),
       sendTextClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : 'd-none d-sm-inline'),
       iconClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : ''),
       spinnerClasses: (state) => (state.isSending || state.isUploading ? '' : 'd-none')
     },
-    script: ({ refs, state, globalStore, pocketbase, localDb, signal }) => {
+    client: ({ refs, state, globalStore, pocketbase, localDb, signal }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $localDb } = localDb

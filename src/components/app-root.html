@@ -1,5 +1,5 @@
 <template id="app-root">
-  <div ref="container" class="app-root-container"></div>
+  <div id="{{ ref_container }}" ref="container" class="app-root-container"></div>
 </template>
 
 <style>
@@ -13,7 +13,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ globalStore, pocketbase, refs }) => {
+    client: ({ globalStore, pocketbase, refs }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const container = refs('container')

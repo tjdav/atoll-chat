@@ -9,43 +9,41 @@ export default function localDbPlugin () {
     name: 'local-db',
     client: {
       name: 'localDb',
-      context: {
-        /**
-         * $localDb context provider.
-         * Dynamically imports Dexie, initializes the database, and requests persistence.
-         * This "first currying function" runs once during application bootstrap.
-         */
-        $localDb: async () => {
-          // Dynamically import Dexie inside the initialization hook as requested.
-          const { default: Dexie } = await import('dexie')
+      context: (pluginContext) => {
+        let dbInstance = null
+        return async (instanceContext) => {
+          if (!dbInstance) {
+            // Dynamically import Dexie inside the initialization hook as requested.
+            const { default: Dexie } = await import('dexie')
 
-          // Create the Dexie database instance once in this scope.
-          const db = new Dexie('AtollChatDB')
+            // Create the Dexie database instance once in this scope.
+            dbInstance = new Dexie('AtollChatDB')
 
-          // Define the database schema.
-          // Primary key is the first field, following fields are indexes for searching and sorting.
-          db.version(3).stores({
-            local_rooms: 'id, is_group, updated_at',
-            local_messages: 'id, room_id, created_at, [room_id+created_at], type',
-            local_assets: 'id, room_id, mime_type, created_at',
-            local_config: 'key'
-          })
+            // Define the database schema.
+            // Primary key is the first field, following fields are indexes for searching and sorting.
+            dbInstance.version(3).stores({
+              local_rooms: 'id, is_group, updated_at',
+              local_messages: 'id, room_id, created_at, [room_id+created_at], type',
+              local_assets: 'id, room_id, mime_type, created_at',
+              local_config: 'key'
+            })
 
-          // Request persistent storage from the browser to prevent data loss.
-          if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
-            try {
-              const isPersisted = await navigator.storage.persist()
-              if (!isPersisted) {
-                console.warn('Persistent storage was not granted by the browser.')
+            // Request persistent storage from the browser to prevent data loss.
+            if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
+              try {
+                const isPersisted = await navigator.storage.persist()
+                if (!isPersisted) {
+                  console.warn('Persistent storage was not granted by the browser.')
+                }
+              } catch (storageError) {
+                console.error('Error requesting persistent storage:', storageError)
               }
-            } catch (storageError) {
-              console.error('Error requesting persistent storage:', storageError)
             }
           }
 
-          // Return the instance injector function (the "second currying function").
-          // Components can access the database instance natively via this.$localDb.
-          return () => db
+          return {
+            $localDb: dbInstance
+          }
         }
       }
     }

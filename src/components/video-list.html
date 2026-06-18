@@ -1,6 +1,6 @@
 <template id="video-list">
   <div class="video-list h-100 overflow-y-auto p-3">
-    <div class="row row-cols-2 g-3" ref="gridContainer">
+    <div id="{{ ref_gridContainer }}" class="row row-cols-2 g-3" ref="gridContainer">
       <!-- Videos will be rendered here -->
     </div>
   </div>
@@ -10,7 +10,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ state, signal, localDb, eventBus, globalStore, refs }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore

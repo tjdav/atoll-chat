@@ -1,12 +1,12 @@
 <template id="list-pane">
   <div class="list-pane d-flex flex-column h-100">
     <header class="p-3 border-bottom bg-body d-flex justify-content-between align-items-center">
-      <h5 class="mb-0 text-capitalize" ref="paneTitle">Chats</h5>
-      <button class="btn btn-sm btn-primary rounded-circle" ref="btnCreateRoom" title="Create Room" style="display: none;">
+      <h5 id="{{ ref_paneTitle }}" class="mb-0 text-capitalize" ref="paneTitle">Chats</h5>
+      <button id="{{ ref_btnCreateRoom }}" class="btn btn-sm btn-primary rounded-circle" ref="btnCreateRoom" title="Create Room" style="display: none;">
         <i class="bi bi-plus-lg"></i>
       </button>
     </header>
-    <div class="flex-grow-1 overflow-hidden" ref="listContainer">
+    <div id="{{ ref_listContainer }}" class="flex-grow-1 overflow-hidden" ref="listContainer">
       <!-- Specialized list components will be mounted here -->
     </div>
     <!-- Pre-register components for the bundler -->
@@ -29,7 +29,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, state, globalStore, eventBus }) => {
+    client: ({ refs, state, globalStore, eventBus }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       state.currentAppView = $state.currentAppView || 'chats'

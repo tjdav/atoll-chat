@@ -10,15 +10,12 @@ export default definePlugin({
   name: 'event-bus',
   client: {
     name: 'eventBus',
-    context: {
-      /**
-         * $bus context provider
-         */
-      $bus: () => {
-        const hub = new EventTarget()
+    context: (pluginContext) => {
+      const hub = new EventTarget()
 
-        return (instanceContext) => {
-          return {
+      return (instanceContext) => {
+        return {
+          $bus: {
             /**
              * Emit a native CustomEvent
              * @param {string} eventName The name of the event

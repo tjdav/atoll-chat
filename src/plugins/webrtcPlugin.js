@@ -17,152 +17,155 @@ export default function webrtcPlugin ({
       config: {
         iceServers
       },
-      context: {
-        $webrtc: async (globalContext) => {
-          const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
+      context: (pluginContext) => {
+        // Phase 1: Global Setup
+        const activeCalls = new Map()
+        const { $bus } = pluginContext.app.plugins['event-bus'].client.context(pluginContext)({ signal: null })
 
-          // Phase 1: Global Setup
-          const activeCalls = new Map()
-          const { $bus } = globalContext.eventBus(globalContext)
-          const { $localDb } = globalContext.localDb(globalContext)
-          const { pb } = globalContext.pocketbase(globalContext)
-          const { $state } = globalContext.globalStore(globalContext)
+        const rtcConfig = {
+          iceServers: pluginContext.config.iceServers
+        }
 
-          const rtcConfig = {
-            iceServers: globalContext.config.iceServers
+        /**
+         * Helper to close a connection and stop all tracks.
+         */
+        const teardownCall = (roomId) => {
+          const pc = activeCalls.get(roomId)
+          if (pc) {
+            // Stop local tracks being sent
+            pc.getSenders().forEach(sender => {
+              if (sender.track) {
+                sender.track.stop()
+              }
+            })
+            // Stop remote tracks being received
+            pc.getReceivers().forEach(receiver => {
+              if (receiver.track) {
+                receiver.track.stop()
+              }
+            })
+            pc.close()
+            activeCalls.delete(roomId)
+          }
+        }
+
+        // Cleanup on unload or logout
+        window.addEventListener('beforeunload', () => {
+          for (const roomId of activeCalls.keys()) {
+            teardownCall(roomId)
+          }
+        })
+
+        $bus.on('auth:logout', () => {
+          for (const roomId of activeCalls.keys()) {
+            teardownCall(roomId)
+          }
+        })
+
+        /**
+         * Global listener for incoming signaling messages.
+         */
+        $bus.on('NEW_LOCAL_DATA', async (payload) => {
+          const { room_id: roomId } = payload
+
+          // Need localDb context
+          const { $localDb } = await pluginContext.app.plugins['local-db'].client.context(pluginContext)({ signal: null })
+          const db = $localDb
+
+          // Fetch the latest message in this room
+          const { default: Dexie } = await import('dexie')
+          const message = await db.local_messages
+            .where('[room_id+created_at]')
+            .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
+            .last()
+
+          if (!message) {
+            return
           }
 
-          /**
-           * Helper to close a connection and stop all tracks.
-           */
-          const teardownCall = (roomId) => {
+          // Standard chat messages are handled by the timeline; we only care about signaling
+          if (message.type === 'call_offer') {
+            $bus.emit('call_incoming', {
+              roomId,
+              offer: message.content
+            })
+          } else if (message.type === 'call_answer') {
             const pc = activeCalls.get(roomId)
             if (pc) {
-              // Stop local tracks being sent
-              pc.getSenders().forEach(sender => {
-                if (sender.track) {
-                  sender.track.stop()
-                }
-              })
-              // Stop remote tracks being received
-              pc.getReceivers().forEach(receiver => {
-                if (receiver.track) {
-                  receiver.track.stop()
-                }
-              })
-              pc.close()
-              activeCalls.delete(roomId)
+              await pc.setRemoteDescription(new RTCSessionDescription(message.content))
             }
+          } else if (message.type === 'ice_candidate') {
+            const pc = activeCalls.get(roomId)
+            if (pc && message.candidate) {
+              await pc.addIceCandidate(new RTCIceCandidate(message.candidate))
+            }
+          } else if (message.type === 'call_end') {
+            teardownCall(roomId)
+            $bus.emit('call_ended', { roomId })
           }
+        })
 
-          // Cleanup on unload or logout
-          window.addEventListener('beforeunload', () => {
-            for (const roomId of activeCalls.keys()) {
-              teardownCall(roomId)
-            }
-          })
-
-          $bus.on('auth:logout', () => {
-            for (const roomId of activeCalls.keys()) {
-              teardownCall(roomId)
-            }
-          })
+        return async (instanceContext) => {
+          const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
+          const { pb } = await pluginContext.app.plugins.pocketbase.client.context(pluginContext)(instanceContext)
+          const { $localDb } = await pluginContext.app.plugins['local-db'].client.context(pluginContext)(instanceContext)
+          const { $state } = await pluginContext.app.plugins['global-store'].client.context(pluginContext)(instanceContext)
 
           /**
-           * Global listener for incoming signaling messages.
+           * Helper to send an E2EE signaling message through the standard pipeline.
            */
-          $bus.on('NEW_LOCAL_DATA', async (payload) => {
-            const { room_id: roomId } = payload
-            const db = $localDb
+          const sendSignalingMessage = async (roomId, type, payload = {}) => {
+            await sendEncryptedMessage(roomId, {
+              type,
+              ...payload,
+              timestamp: Date.now()
+            }, {
+              pb,
+              $localDb,
+              $state
+            })
+          }
 
-            // Fetch the latest message in this room
-            const { default: Dexie } = await import('dexie')
-            const message = await db.local_messages
-              .where('[room_id+created_at]')
-              .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
-              .last()
+          const setupPeerConnection = (roomId, mediaStream) => {
+            const pc = new RTCPeerConnection(rtcConfig)
 
-            if (!message) {
-              return
+            if (mediaStream) {
+              mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
             }
 
-            // Standard chat messages are handled by the timeline; we only care about signaling
-            if (message.type === 'call_offer') {
-              $bus.emit('call_incoming', {
-                roomId,
-                offer: message.content
-              })
-            } else if (message.type === 'call_answer') {
-              const pc = activeCalls.get(roomId)
-              if (pc) {
-                await pc.setRemoteDescription(new RTCSessionDescription(message.content))
-              }
-            } else if (message.type === 'ice_candidate') {
-              const pc = activeCalls.get(roomId)
-              if (pc && message.candidate) {
-                await pc.addIceCandidate(new RTCIceCandidate(message.candidate))
-              }
-            } else if (message.type === 'call_end') {
-              teardownCall(roomId)
-              $bus.emit('call_ended', { roomId })
-            }
-          })
-
-          return () => {
-            /**
-             * Helper to send an E2EE signaling message through the standard pipeline.
-             */
-            const sendSignalingMessage = async (roomId, type, payload = {}) => {
-              await sendEncryptedMessage(roomId, {
-                type,
-                ...payload,
-                timestamp: Date.now()
-              }, {
-                pb,
-                $localDb,
-                $state
-              })
-            }
-
-            const setupPeerConnection = (roomId, mediaStream) => {
-              const pc = new RTCPeerConnection(rtcConfig)
-
-              if (mediaStream) {
-                mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
-              }
-
-              pc.onicecandidate = async (event) => {
-                if (event.candidate) {
-                  await sendSignalingMessage(roomId, 'ice_candidate', {
-                    candidate: event.candidate
-                  })
-                }
-              }
-
-              pc.ontrack = (event) => {
-                $bus.emit('remote_track_arrival', {
-                  roomId,
-                  stream: event.streams[0]
+            pc.onicecandidate = async (event) => {
+              if (event.candidate) {
+                await sendSignalingMessage(roomId, 'ice_candidate', {
+                  candidate: event.candidate
                 })
               }
-
-              pc.onicegatheringstatechange = () => {
-                console.log(`[WebRTC] ICE Gathering State for ${roomId}: ${pc.iceGatheringState}`)
-              }
-
-              pc.onconnectionstatechange = () => {
-                console.log(`[WebRTC] Connection State for ${roomId}: ${pc.connectionState}`)
-                if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-                  teardownCall(roomId)
-                  $bus.emit('call_ended', { roomId })
-                }
-              }
-
-              activeCalls.set(roomId, pc)
-              return pc
             }
 
-            return {
+            pc.ontrack = (event) => {
+              $bus.emit('remote_track_arrival', {
+                roomId,
+                stream: event.streams[0]
+              })
+            }
+
+            pc.onicegatheringstatechange = () => {
+              console.log(`[WebRTC] ICE Gathering State for ${roomId}: ${pc.iceGatheringState}`)
+            }
+
+            pc.onconnectionstatechange = () => {
+              console.log(`[WebRTC] Connection State for ${roomId}: ${pc.connectionState}`)
+              if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+                teardownCall(roomId)
+                $bus.emit('call_ended', { roomId })
+              }
+            }
+
+            activeCalls.set(roomId, pc)
+            return pc
+          }
+
+          return {
+            $webrtc: {
               initiateCall: async (roomId, mediaStream) => {
                 const pc = setupPeerConnection(roomId, mediaStream)
                 const offer = await pc.createOffer()

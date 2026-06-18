@@ -1,6 +1,6 @@
 <template id="image-viewer">
   <div class="image-viewer-container d-flex justify-content-center align-items-center h-100 bg-black position-relative">
-    <div class="spinner-border text-primary" ref="loader" role="status">
+    <div id="{{ ref_loader }}" class="spinner-border text-primary" ref="loader" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
     
@@ -8,7 +8,7 @@
       {{ errorMessage }}
     </div>
 
-    <img ref="mediaDisplay" class="d-none img-fluid h-100 object-fit-contain" alt="Decrypted image">
+    <img id="{{ ref_mediaDisplay }}" ref="mediaDisplay" class="d-none img-fluid h-100 object-fit-contain" alt="Decrypted image">
   </div>
 </template>
 
@@ -27,11 +27,11 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    data: () => ({
+    server: () => ({
       isErrorHidden: true,
       errorMessage: ''
     }),
-    script: async ({ state, signal, refs, pocketbase, localDb, globalStore }) => {
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore }) => {
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore

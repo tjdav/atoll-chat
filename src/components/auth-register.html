@@ -1,60 +1,60 @@
 <template id="auth-register">
   <div class="auth-register-container">
-    <form ref="registerForm" class="auth-form">
-      <div ref="step1">
+    <form id="{{ ref_registerForm }}" ref="registerForm" class="auth-form">
+      <div id="{{ ref_step1 }}" ref="step1">
         <h3>Create Account</h3>
         <div class="form-group mb-3">
-          <label for="username">Username</label>
-          <input ref="username" id="username" type="text" class="form-control" placeholder="Choose a username" required>
+          <label for="{{ ref_username }}">Username</label>
+          <input id="{{ ref_username }}" ref="username" type="text" class="form-control" placeholder="Choose a username" required>
         </div>
         <div class="form-group mb-3">
-          <label for="email">Email</label>
-          <input ref="email" id="email" type="email" class="form-control" placeholder="Enter your email" required>
+          <label for="{{ ref_email }}">Email</label>
+          <input id="{{ ref_email }}" ref="email" type="email" class="form-control" placeholder="Enter your email" required>
         </div>
         <div class="form-group mb-3">
-          <label for="password">Password (min 8 characters)</label>
-          <input ref="password" id="password" type="password" class="form-control" placeholder="Enter Password" minlength="8" required>
+          <label for="{{ ref_password }}">Password (min 8 characters)</label>
+          <input id="{{ ref_password }}" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="8" required>
         </div>
         <div class="form-group mb-3">
-          <label for="passwordConfirm">Confirm Password</label>
-          <input ref="passwordConfirm" id="passwordConfirm" type="password" class="form-control" placeholder="Confirm Password" minlength="8" required>
+          <label for="{{ ref_passwordConfirm }}">Confirm Password</label>
+          <input id="{{ ref_passwordConfirm }}" ref="passwordConfirm" type="password" class="form-control" placeholder="Confirm Password" minlength="8" required>
         </div>
-        <button type="button" class="btn btn-primary w-100" ref="btnNext">Next</button>
+        <button id="{{ ref_btnNext }}" type="button" class="btn btn-primary w-100" ref="btnNext">Next</button>
       </div>
 
-      <div ref="step2" class="d-none">
+      <div id="{{ ref_step2 }}" ref="step2" class="d-none">
         <h5>Secure Your Vault</h5>
         <p class="text-muted small">Choose how to encrypt your local cryptographic keys. These keys never leave your device unencrypted.</p>
         
-        <div ref="pinSection">
+        <div id="{{ ref_pinSection }}" ref="pinSection">
           <div class="form-group mb-3">
-            <label for="pin">Vault PIN (6 characters)</label>
-            <input ref="pin" id="pin" type="password" class="form-control" placeholder="Enter 6-digit PIN" minlength="6" maxlength="6">
+            <label for="{{ ref_pin }}">Vault PIN (6 characters)</label>
+            <input id="{{ ref_pin }}" ref="pin" type="password" class="form-control" placeholder="Enter 6-digit PIN" minlength="6" maxlength="6">
           </div>
           <div class="form-group mb-3">
-            <label for="pinConfirm">Confirm PIN</label>
-            <input ref="pinConfirm" id="pinConfirm" type="password" class="form-control" placeholder="Confirm PIN" minlength="6" maxlength="6">
+            <label for="{{ ref_pinConfirm }}">Confirm PIN</label>
+            <input id="{{ ref_pinConfirm }}" ref="pinConfirm" type="password" class="form-control" placeholder="Confirm PIN" minlength="6" maxlength="6">
           </div>
-          <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-3" ref="btnTogglePasskey">Use Passkey instead</button>
+          <button id="{{ ref_btnTogglePasskey }}" type="button" class="btn btn-outline-secondary btn-sm w-100 mb-3" ref="btnTogglePasskey">Use Passkey instead</button>
         </div>
 
-        <div ref="passkeySection" class="d-none">
+        <div id="{{ ref_passkeySection }}" ref="passkeySection" class="d-none">
           <div class="alert alert-info small">
             You will be prompted to create a Passkey when you click "Create Account".
           </div>
-          <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-3" ref="btnTogglePin">Use PIN instead</button>
+          <button id="{{ ref_btnTogglePin }}" type="button" class="btn btn-outline-secondary btn-sm w-100 mb-3" ref="btnTogglePin">Use PIN instead</button>
         </div>
         
         <div class="d-flex gap-2">
-          <button type="button" class="btn btn-outline-secondary w-50" ref="btnBack">Back</button>
+          <button id="{{ ref_btnBack }}" type="button" class="btn btn-outline-secondary w-50" ref="btnBack">Back</button>
           <button type="submit" class="btn btn-primary w-50">Create Account</button>
         </div>
       </div>
     </form>
     <div class="mt-3 text-center">
-      <small>Already have an account? <a href="#" ref="linkLogin">Login here</a></small>
+      <small>Already have an account? <a id="{{ ref_linkLogin }}" href="#" ref="linkLogin">Login here</a></small>
     </div>
-    <div ref="statusMsg" class="status-message mt-3 text-muted text-center"></div>
+    <div id="{{ ref_statusMsg }}" ref="statusMsg" class="status-message mt-3 text-muted text-center"></div>
   </div>
 </template>
 
@@ -77,8 +77,9 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, pocketbase, globalStore, eventBus, realtimeSync }) => {
+    client: ({ refs, pocketbase, globalStore, eventBus, realtimeSync, localDb, cryptoWorker }) => {
       const { pb } = pocketbase
+      const { $localDb } = localDb
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $sync } = realtimeSync
@@ -300,7 +301,7 @@
           await pb.collection('users').authWithPassword(username, password)
 
           // Persist PB config for Service Worker access
-          const db = await $localDb()
+          const db = $localDb
           await db.local_config.bulkPut([
             {
               key: 'pb_url',
@@ -315,7 +316,7 @@
           updateStatus('Login successful! Initializing session...')
 
           // Initialize the crypto worker with the new private keys
-          const { $worker } = await import('coralite').then(m => m.getContext().cryptoWorker())
+          const { $worker } = cryptoWorker
           await $worker.execute('INIT_KEYS', {
             private_box_key: masterKeys.private_box_key,
             private_sign_key: masterKeys.private_sign_key

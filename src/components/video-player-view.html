@@ -1,6 +1,6 @@
 <template id="video-player-view">
   <div class="video-player-container d-flex justify-content-center align-items-center h-100 bg-black position-relative">
-    <div class="spinner-border text-primary" ref="loader" role="status">
+    <div id="{{ ref_loader }}" class="spinner-border text-primary" ref="loader" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
     
@@ -8,7 +8,7 @@
       {{ errorMessage }}
     </div>
 
-    <video ref="mediaDisplay" controls autoplay playsinline muted class="d-none w-100 h-100 object-fit-contain"></video>
+    <video id="{{ ref_mediaDisplay }}" ref="mediaDisplay" controls autoplay playsinline muted class="d-none w-100 h-100 object-fit-contain"></video>
   </div>
 </template>
 
@@ -27,11 +27,11 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    data: () => ({
+    server: () => ({
       isErrorHidden: true,
       errorMessage: ''
     }),
-    script: async ({ state, signal, refs, pocketbase, localDb, globalStore }) => {
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore }) => {
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore

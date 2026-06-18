@@ -1,25 +1,25 @@
 <template id="vault-unlock">
-  <div class="vault-unlock-overlay" ref="overlay">
+  <div id="{{ ref_overlay }}" class="vault-unlock-overlay" ref="overlay">
     <div class="vault-unlock-modal">
       <div class="modal-header">
         <h5 class="modal-title">Unlock Your Vault</h5>
       </div>
       <div class="modal-body">
         <p>Your session is active, but your cryptographic keys are locked. Please enter your password to unlock them.</p>
-        <form ref="unlockForm">
+        <form id="{{ ref_unlockForm }}" ref="unlockForm">
           <div class="form-group mb-3">
-            <label for="password">Vault Password</label>
-            <input ref="pin" id="password" type="password" class="form-control" placeholder="Enter Password" required>
+            <label for="{{ ref_pin }}">Vault Password</label>
+            <input id="{{ ref_pin }}" ref="pin" type="password" class="form-control" placeholder="Enter Password" required>
           </div>
           <div class="d-grid gap-2">
             <button type="submit" class="btn btn-primary">Unlock with Password</button>
-            <button type="button" class="btn btn-outline-primary d-none" ref="btnPasskey">Unlock with Passkey</button>
+            <button id="{{ ref_btnPasskey }}" type="button" class="btn btn-outline-primary d-none" ref="btnPasskey">Unlock with Passkey</button>
           </div>
         </form>
-        <div ref="statusMsg" class="status-message mt-3 text-muted text-center"></div>
+        <div id="{{ ref_statusMsg }}" ref="statusMsg" class="status-message mt-3 text-muted text-center"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-link btn-sm" ref="btnLogout">Logout</button>
+        <button id="{{ ref_btnLogout }}" type="button" class="btn btn-link btn-sm" ref="btnLogout">Logout</button>
       </div>
     </div>
   </div>
@@ -56,7 +56,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, pocketbase, eventBus, realtimeSync, globalStore }) => {
+    client: ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker }) => {
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $sync } = realtimeSync
@@ -90,7 +90,7 @@
         updateStatus('Vault unlocked!')
 
         // Initialize worker with decrypted keys
-        const { $worker } = await import('coralite').then(m => m.getContext().cryptoWorker())
+        const { $worker } = cryptoWorker
         await $worker.execute('INIT_KEYS', decryptedKeys)
 
         // Start real-time subscriptions

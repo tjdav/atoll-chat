@@ -2,20 +2,20 @@
   <div class="room-details d-flex flex-column h-100 bg-body">
     <div class="sidebar-header p-3 border-bottom d-flex justify-content-between align-items-center bg-body">
       <h6 class="mb-0 fw-bold">Room Details</h6>
-      <button type="button" class="btn-close" ref="btnClose" aria-label="Close"></button>
+      <button id="{{ ref_btnClose }}" type="button" class="btn-close" ref="btnClose" aria-label="Close"></button>
     </div>
 
     <div class="sidebar-content flex-grow-1 overflow-y-auto p-3">
       <div class="section-title text-uppercase text-muted small fw-bold mb-3">Members ({{ memberCount }})</div>
-      <div class="member-list list-group list-group-flush" ref="memberList">
+      <div id="{{ ref_memberList }}" class="member-list list-group list-group-flush" ref="memberList">
         <!-- Members will be rendered here -->
       </div>
     </div>
 
-    <div ref="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-75 d-flex align-items-center justify-content-center" style="display: none; z-index: 1060;">
+    <div id="{{ ref_loadingOverlay }}" ref="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-75 d-flex align-items-center justify-content-center" style="display: none; z-index: 1060;">
       <div class="text-center">
         <div class="spinner-border text-primary mb-2" role="status"></div>
-        <div class="small fw-bold" ref="loadingText">Loading members...</div>
+        <div id="{{ ref_loadingText }}" class="small fw-bold" ref="loadingText">Loading members...</div>
       </div>
     </div>
   </div>
@@ -50,7 +50,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    data: () => ({
+    server: () => ({
       members: [],
       isAdmin: false,
       isKicking: false
@@ -58,7 +58,7 @@
     getters: {
       memberCount: (state) => (state.members || []).length
     },
-    script: ({ refs, state, pocketbase, eventBus, globalStore, localDb }) => {
+    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb }) => {
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $state } = globalStore

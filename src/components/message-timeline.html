@@ -1,6 +1,6 @@
 <template id="message-timeline">
-  <div ref="timelineContainer" class="flex-grow-1 overflow-auto p-3 d-flex flex-column h-100">
-    <div class="mt-auto text-center text-muted p-5" ref="emptyState">
+  <div id="{{ ref_timelineContainer }}" ref="timelineContainer" class="flex-grow-1 overflow-auto p-3 d-flex flex-column h-100">
+    <div id="{{ ref_emptyState }}" class="mt-auto text-center text-muted p-5" ref="emptyState">
       <i class="bi bi-shield-lock fs-1 mb-3 d-block"></i>
       <p>Messages are end-to-end encrypted. No one outside of this chat, not even Atoll, can read them.</p>
     </div>
@@ -11,7 +11,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ refs, globalStore, localDb, eventBus, signal }) => {
+    client: ({ refs, globalStore, localDb, eventBus, signal }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus
@@ -92,17 +92,10 @@
       }
 
       // Listen for new background messages
-      const onNewData = (payload) => {
+      $bus.on('new_local_data', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           renderTimeline()
         }
-      }
-  
-      $bus.on('new_local_data', onNewData)
-
-      // Cleanup
-      signal.addEventListener('abort', () => {
-        $bus.off('new_local_data', onNewData)
       })
     }
   })

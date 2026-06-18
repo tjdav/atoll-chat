@@ -1,5 +1,4 @@
 import { definePlugin } from 'coralite'
-import PocketBase from 'pocketbase'
 
 /**
  * PocketBase plugin loader.
@@ -12,22 +11,27 @@ export default function pocketbase (options = {}) {
   return definePlugin({
     name: 'pocketbase',
     server: {
-      exports: {
-        pb () {
-          const pb = new PocketBase(url)
-          return () => pb
+      context: (pluginContext) => async (instanceContext) => {
+        const { default: PocketBase } = await import('pocketbase')
+        const pb = new PocketBase(url)
+        return {
+          pb
         }
       }
     },
     client: {
       name: 'pocketbase',
       config: { url },
-      context: {
-        pb: async (globalContext) => {
-          const { default: PocketBase } = await import('pocketbase')
-          const pb = new PocketBase(globalContext.config.url)
-
-          return () => pb
+      context: (pluginContext) => {
+        let pbInstance = null
+        return async (instanceContext) => {
+          if (!pbInstance) {
+            const { default: PocketBase } = await import('pocketbase')
+            pbInstance = new PocketBase(pluginContext.config.url)
+          }
+          return {
+            pb: pbInstance
+          }
         }
       }
     }

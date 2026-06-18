@@ -10,11 +10,12 @@ export default function syncPlugin () {
     name: 'realtime-sync',
     client: {
       name: 'realtimeSync',
-      context: {
-        $sync: (globalContext) => {
-          const { pb } = globalContext.pocketbase(globalContext)
-          const { $worker } = globalContext.cryptoWorker(globalContext)
-          const { $localDb } = globalContext.localDb(globalContext)
+      context: (pluginContext) => {
+        return async (instanceContext) => {
+          const { pb } = await pluginContext.app.plugins.pocketbase.client.context(pluginContext)(instanceContext)
+          const { $worker } = await pluginContext.app.plugins['crypto-worker'].client.context(pluginContext)(instanceContext)
+          const { $localDb } = await pluginContext.app.plugins['local-db'].client.context(pluginContext)(instanceContext)
+
           /**
            * Historical catch-up routine to recover missed messages and room keys.
            */
@@ -110,8 +111,9 @@ export default function syncPlugin () {
               console.error('Failed to establish real-time subscriptions:', err)
             }
           }
-          return () => {
-            return {
+
+          return {
+            $sync: {
               startSubscriptions
             }
           }

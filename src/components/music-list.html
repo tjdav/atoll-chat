@@ -1,6 +1,6 @@
 <template id="music-list">
   <div class="music-list h-100 overflow-y-auto">
-    <div class="list-group list-group-flush" ref="listGroup">
+    <div id="{{ ref_listGroup }}" class="list-group list-group-flush" ref="listGroup">
       <!-- Music will be rendered here -->
     </div>
   </div>
@@ -10,7 +10,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ state, signal, localDb, eventBus, globalStore, refs }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore

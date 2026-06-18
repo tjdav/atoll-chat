@@ -1,7 +1,7 @@
 <template id="chat-view">
   <div class="chat-view d-flex flex-column h-100 bg-body">
     <!-- Chat Header -->
-    <header class="p-3 border-bottom d-flex justify-content-between align-items-center bg-body shadow-sm" ref="chatHeader">
+    <header id="{{ ref_chatHeader }}" class="p-3 border-bottom d-flex justify-content-between align-items-center bg-body shadow-sm" ref="chatHeader">
       <div class="d-flex align-items-center">
         <div class="avatar-placeholder me-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
           {{ roomInitial }}
@@ -12,13 +12,13 @@
         </div>
       </div>
       <div class="d-flex gap-2">
-        <button ref="btnAudioCall" class="btn btn-light btn-sm rounded-circle" title="Audio Call">
+        <button id="{{ ref_btnAudioCall }}" ref="btnAudioCall" class="btn btn-light btn-sm rounded-circle" title="Audio Call">
           <i class="bi bi-telephone"></i>
         </button>
-        <button ref="btnVideoCall" class="btn btn-light btn-sm rounded-circle" title="Video Call">
+        <button id="{{ ref_btnVideoCall }}" ref="btnVideoCall" class="btn btn-light btn-sm rounded-circle" title="Video Call">
           <i class="bi bi-camera-video"></i>
         </button>
-        <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" ref="btnDetails">
+        <button id="{{ ref_btnDetails }}" class="btn btn-outline-secondary btn-sm rounded-pill px-3" ref="btnDetails">
           <i class="bi bi-info-circle me-1"></i> Details
         </button>
       </div>
@@ -30,7 +30,7 @@
       <message-timeline></message-timeline>
 
       <!-- Room Details Sidebar (Slide-over) -->
-      <div ref="sidebarContainer" class="sidebar-slide-over shadow-lg border-start bg-body" style="display: {{ sidebarDisplay }};">
+      <div id="{{ ref_sidebarContainer }}" ref="sidebarContainer" class="sidebar-slide-over shadow-lg border-start bg-body" style="display: {{ sidebarDisplay }};">
         <room-details-sidebar></room-details-sidebar>
       </div>
     </div>
@@ -62,7 +62,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    data: () => ({
+    server: () => ({
       roomName: 'Loading...',
       roomInitial: '?',
       roomStatus: 'Encrypted',
@@ -71,7 +71,7 @@
     getters: {
       sidebarDisplay: (state) => (state.isRoomDetailsOpen ? 'block' : 'none')
     },
-    script: async ({ refs, state, globalStore, localDb, eventBus, webrtc: webrtcPluginContext }) => {
+    client: async ({ refs, state, globalStore, localDb, eventBus, webrtc: webrtcPluginContext }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus

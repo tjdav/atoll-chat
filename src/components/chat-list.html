@@ -1,6 +1,6 @@
 <template id="chat-list">
   <div class="chat-list h-100 overflow-y-auto">
-    <div class="list-group list-group-flush" ref="listGroup">
+    <div id="{{ ref_listGroup }}" class="list-group list-group-flush" ref="listGroup">
       <!-- Chat items will be rendered here via script -->
     </div>
   </div>
@@ -10,7 +10,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    script: ({ state, signal, localDb, eventBus, globalStore, refs }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
