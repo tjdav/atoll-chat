@@ -13,8 +13,8 @@ export default function syncPlugin () {
       context: (pluginContext) => {
         return async (instanceContext) => {
           const { pb } = await instanceContext.pocketbase
-          const { $worker } = await instanceContext['crypto-worker']
-          const { $localDb } = await instanceContext['local-db']
+          const { $worker } = await instanceContext.cryptoWorker
+          const { $localDb } = await instanceContext.localDb
 
           /**
            * Historical catch-up routine to recover missed messages and room keys.
