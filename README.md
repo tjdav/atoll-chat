@@ -87,4 +87,4 @@ We're building Atoll Chat in the open and would love your help! Whether you're a
 
 ## Licence
 
-This project is licensed under the **Mozilla Public License 2.0 (MPL-2.0)**. See the `LICENSE` file (if available) for details.
+This project is licensed under the **[Mozilla Public License 2.0 (MPL-2.0)](./LICENSE)**.
