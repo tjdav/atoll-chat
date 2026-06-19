@@ -20,7 +20,7 @@ export default function webrtcPlugin ({
       context: (pluginContext) => {
         // Phase 1: Global Setup
         const activeCalls = new Map()
-        const { $bus } = pluginContext.app.plugins['event-bus'].client.context(pluginContext)({ signal: null })
+        const $bus = pluginContext.$bus
 
         const rtcConfig = {
           iceServers: pluginContext.config.iceServers
@@ -68,9 +68,8 @@ export default function webrtcPlugin ({
         $bus.on('NEW_LOCAL_DATA', async (payload) => {
           const { room_id: roomId } = payload
 
-          // Need localDb context
-          const { $localDb } = await pluginContext.app.plugins['local-db'].client.context(pluginContext)({ signal: null })
-          const db = $localDb
+          // Access injected localDb from Phase 1
+          const db = await pluginContext.$localDb()
 
           // Fetch the latest message in this room
           const { default: Dexie } = await import('dexie')
@@ -107,9 +106,9 @@ export default function webrtcPlugin ({
 
         return async (instanceContext) => {
           const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
-          const { pb } = await pluginContext.app.plugins.pocketbase.client.context(pluginContext)(instanceContext)
-          const { $localDb } = await pluginContext.app.plugins['local-db'].client.context(pluginContext)(instanceContext)
-          const { $state } = await pluginContext.app.plugins['global-store'].client.context(pluginContext)(instanceContext)
+          const { pb } = await instanceContext.pocketbase
+          const { $localDb } = await instanceContext['local-db']
+          const { $state } = await instanceContext['global-store']
 
           /**
            * Helper to send an E2EE signaling message through the standard pipeline.

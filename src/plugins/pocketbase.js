@@ -22,13 +22,11 @@ export default function pocketbase (options = {}) {
     client: {
       name: 'pocketbase',
       config: { url },
-      context: (pluginContext) => {
-        let pbInstance = null
-        return async (instanceContext) => {
-          if (!pbInstance) {
-            const { default: PocketBase } = await import('pocketbase')
-            pbInstance = new PocketBase(pluginContext.config.url)
-          }
+      context: async (pluginContext) => {
+        const { default: PocketBase } = await import('pocketbase')
+        const pbInstance = new PocketBase(pluginContext.config.url)
+
+        return () => {
           return {
             pb: pbInstance
           }

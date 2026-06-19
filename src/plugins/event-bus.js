@@ -13,27 +13,29 @@ export default definePlugin({
     context: (pluginContext) => {
       const hub = new EventTarget()
 
+      /**
+       * Internal bus implementation.
+       */
+      const $bus = {
+        emit: (eventName, payload) => {
+          hub.dispatchEvent(new CustomEvent(eventName, { detail: payload }))
+        },
+        on: (eventName, callback, options = {}) => {
+          const handler = (event) => callback(event.detail)
+          hub.addEventListener(eventName, handler, options)
+          return () => hub.removeEventListener(eventName, handler)
+        }
+      }
+
+      // Inject into pluginContext for Phase 1 access by downstream plugins
+      pluginContext.$bus = $bus
+
       return (instanceContext) => {
         return {
           $bus: {
-            /**
-             * Emit a native CustomEvent
-             * @param {string} eventName The name of the event
-             * @param {any} payload The event payload data
-             */
-            emit: (eventName, payload) => {
-              hub.dispatchEvent(new CustomEvent(eventName, { detail: payload }))
-            },
-
-            /**
-             * Listen for an event with auto-binding to the component's signal
-             * @param {string} eventName The name of the event
-             * @param {Function} callback The callback function to invoke
-             */
+            emit: $bus.emit,
             on: (eventName, callback) => {
-              const handler = (event) => callback(event.detail)
-
-              hub.addEventListener(eventName, handler, {
+              return $bus.on(eventName, callback, {
                 signal: instanceContext.signal
               })
             }

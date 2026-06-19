@@ -12,9 +12,9 @@ export default function syncPlugin () {
       name: 'realtimeSync',
       context: (pluginContext) => {
         return async (instanceContext) => {
-          const { pb } = await pluginContext.app.plugins.pocketbase.client.context(pluginContext)(instanceContext)
-          const { $worker } = await pluginContext.app.plugins['crypto-worker'].client.context(pluginContext)(instanceContext)
-          const { $localDb } = await pluginContext.app.plugins['local-db'].client.context(pluginContext)(instanceContext)
+          const { pb } = await instanceContext.pocketbase
+          const { $worker } = await instanceContext['crypto-worker']
+          const { $localDb } = await instanceContext['local-db']
 
           /**
            * Historical catch-up routine to recover missed messages and room keys.

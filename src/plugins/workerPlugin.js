@@ -48,9 +48,10 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
 
           // Background broadcasts (e.g., from decryption pipeline)
           if (!id && type === 'NEW_LOCAL_DATA') {
-            // Lazy access event bus
-            const { $bus } = pluginContext.app.plugins['event-bus'].client.context(pluginContext)({ signal: null })
-            $bus.emit('NEW_LOCAL_DATA', payload)
+            // Access injected event bus from Phase 1
+            if (pluginContext.$bus) {
+              pluginContext.$bus.emit('NEW_LOCAL_DATA', payload)
+            }
             return
           }
 
