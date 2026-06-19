@@ -1,5 +1,5 @@
 <template id="app-root">
-  <div id="{{ ref_container }}" ref="container" class="app-root-container"></div>
+  <div ref="container" class="app-root-container"></div>
 </template>
 
 <style>
@@ -46,8 +46,12 @@
         } else {
           // Center auth components
           container.className = 'app-root-container d-flex align-items-center justify-content-center bg-body-tertiary'
-          const tagName = $state.authView === 'register' ? 'auth-register' : 'auth-login'
-          container.appendChild(document.createElement(tagName))
+  
+          if ($state.authView === 'register') {
+            container.appendChild(document.createElement('auth-register'))
+          } else {
+            container.appendChild(document.createElement('auth-login'))
+          }
         }
       }
 
