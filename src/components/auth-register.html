@@ -77,7 +77,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, pocketbase, globalStore, eventBus, realtimeSync, localDb, cryptoWorker }) => {
+    client: (context) => {
+      const { refs, pocketbase, globalStore, eventBus, realtimeSync, localDb, cryptoWorker } = context
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore
@@ -293,12 +294,12 @@
           }
 
           // Create the user record in PocketBase
-          await pb.collection('users').create(payload)
+          const record = await pb.collection('users').create(payload)
 
           updateStatus('Account created! Logging in...')
 
-          // Perform PocketBase authentication after registration
-          await pb.collection('users').authWithPassword(username, password)
+          // Perform PocketBase authentication after registration using email for better reliability
+          await pb.collection('users').authWithPassword(email, password)
 
           // Persist PB config for Service Worker access
           const db = $localDb

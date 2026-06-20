@@ -3,8 +3,8 @@
     <form id="{{ ref_loginForm }}" ref="loginForm" class="auth-form">
       <h3 class="mb-4 text-center">Login</h3>
       <div class="form-group mb-3">
-        <label for="{{ ref_username }}">Username</label>
-        <input id="{{ ref_username }}" ref="username" type="text" class="form-control" placeholder="Enter username" required>
+        <label for="{{ ref_username }}">Username or Email</label>
+        <input id="{{ ref_username }}" ref="username" type="text" class="form-control" placeholder="Enter username or email" required>
       </div>
       <div class="form-group mb-3">
         <label for="{{ ref_password }}">Password</label>
@@ -63,14 +63,14 @@
       loginForm.addEventListener('submit', async (event) => {
         event.preventDefault()
 
-        const username = usernameInput.value
+        const identity = usernameInput.value
         const password = passwordInput.value
 
         try {
           updateStatus('Logging in...')
 
           // Perform PocketBase authentication
-          await pb.collection('users').authWithPassword(username, password)
+          await pb.collection('users').authWithPassword(identity, password)
 
           // Persist PB config for Service Worker access
           const db = $localDb

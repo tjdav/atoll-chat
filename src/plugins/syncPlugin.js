@@ -4,17 +4,17 @@ import { definePlugin } from 'coralite'
  * Real-time synchronization plugin for Atoll Chat.
  */
 export default function syncPlugin () {
-  let isSubscribed = false
-
   return definePlugin({
     name: 'realtime-sync',
     client: {
       name: 'realtimeSync',
-      context: (pluginContext) => {
-        return async (instanceContext) => {
-          const { pb } = await instanceContext.pocketbase
-          const { $worker } = await instanceContext.cryptoWorker
-          const { $localDb } = await instanceContext.localDb
+      context: () => {
+        let isSubscribed = false
+
+        return (instanceContext) => {
+          const { pb } = instanceContext.pocketbase
+          const { $worker } = instanceContext.cryptoWorker
+          const { $localDb } = instanceContext.localDb
 
           /**
            * Historical catch-up routine to recover missed messages and room keys.
