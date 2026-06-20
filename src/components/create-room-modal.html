@@ -66,8 +66,7 @@
       roomName: '',
       searchQuery: '',
       searchResults: [],
-      selectedParticipants: [],
-      _searchTimeout: null
+      selectedParticipants: []
     }),
     getters: {
       isGroup: (state) => (state.selectedParticipants || []).length > 1,
@@ -96,6 +95,7 @@
       const roomNameContainer = refs('roomNameContainer')
       const selectedUsersContainer = refs('selectedUsers')
       const searchResultsContainer = refs('searchResults')
+      let searchTimeout = null
 
       const render = () => {
         // UI logic utilizing state (getters are available on proxy in script)
@@ -155,8 +155,8 @@
           render()
           return
         }
-        clearTimeout(state._searchTimeout)
-        state._searchTimeout = setTimeout(async () => {
+        clearTimeout(searchTimeout)
+        searchTimeout = setTimeout(async () => {
           try {
             const res = await pb.collection('users').getList(1, 5, {
               filter: `username ~ "${state.searchQuery}"`
