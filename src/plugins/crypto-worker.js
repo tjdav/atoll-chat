@@ -45,6 +45,13 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
             return
           }
 
+          if (!id && type === 'NEW_LOCAL_ROOM') {
+            if (pluginContext.$bus) {
+              pluginContext.$bus.emit('NEW_LOCAL_ROOM', payload)
+            }
+            return
+          }
+
           // Background broadcasts (e.g., from decryption pipeline)
           if (!id && type === 'NEW_LOCAL_DATA') {
             // Access injected event bus from Phase 1

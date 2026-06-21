@@ -92,7 +92,7 @@
       }
 
       // Listen for new background messages
-      $bus.on('new_local_data', (payload) => {
+      $bus.on('NEW_LOCAL_DATA', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           renderTimeline()
         }

@@ -359,19 +359,47 @@ async function processNewRoomKey (rpcId, payload) {
     throw new Error('Failed to unwrap room key: Null result')
   }
 
+  // Fetch Room metadata from server
+  let roomMetadata = null
+  let isGroup = true
+  const headers = {}
+  if (authToken) {
+    headers.Authorization = authToken
+  }
+  const roomResponse = await fetch(`${baseUrl}/api/collections/rooms/records/${room_id}`, { headers })
+  if (roomResponse.ok) {
+    const roomRecord = await roomResponse.json()
+    isGroup = roomRecord.is_group
+
+    if (roomRecord.encrypted_metadata && roomRecord.encrypted_metadata.ciphertext) {
+      const metadataCiphertext = sodium.from_base64(roomRecord.encrypted_metadata.ciphertext, sodium.base64_variants.ORIGINAL)
+      const metadataNonce = sodium.from_base64(roomRecord.encrypted_metadata.nonce, sodium.base64_variants.ORIGINAL)
+      try {
+        const decryptedMetadataBuffer = sodium.crypto_secretbox_open_easy(metadataCiphertext, metadataNonce, unwrappedKeyBuffer)
+        if (decryptedMetadataBuffer) {
+          roomMetadata = JSON.parse(new TextDecoder().decode(decryptedMetadataBuffer))
+        }
+      } catch (err) {
+        console.error('Failed to decrypt room metadata:', err)
+      }
+    }
+  }
+
   // Epoch Management & Local Storage
   let room = await db.local_rooms.get(room_id)
   if (!room) {
-    // For brand new invites, we might not know if it's a group yet from the key alone,
-    // but typically metadata follows. Defaulting to true as most chats are technically groups or 1-on-1s.
     room = {
       id: room_id,
-      is_group: true,
+      is_group: isGroup,
+      name: roomMetadata?.name || '',
       key_history: [],
       updated_at: updated
     }
   } else {
     room.updated_at = updated
+    if (roomMetadata?.name) {
+      room.name = roomMetadata.name
+    }
   }
 
   if (!room.key_history) {
