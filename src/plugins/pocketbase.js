@@ -11,11 +11,12 @@ export default function pocketbase (options = {}) {
   return definePlugin({
     name: 'pocketbase',
     server: {
-      context: (pluginContext) => async (instanceContext) => {
+      context: async () => {
         const { default: PocketBase } = await import('pocketbase')
         const pb = new PocketBase(url)
-        return {
-          pb
+
+        return () => {
+          return { pb }
         }
       }
     },
@@ -23,12 +24,10 @@ export default function pocketbase (options = {}) {
       config: { url },
       context: async (pluginContext) => {
         const { default: PocketBase } = await import('pocketbase')
-        const pbInstance = new PocketBase(pluginContext.config.url)
+        const pb = new PocketBase(pluginContext.config.url)
 
         return () => {
-          return {
-            pb: pbInstance
-          }
+          return { pb }
         }
       }
     }
