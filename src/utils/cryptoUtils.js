@@ -56,7 +56,13 @@ export async function createPasskey (username, challengeBuffer, saltBuffer) {
       name: username,
       displayName: username
     },
-    pubKeyCredParams: [{ alg: -7, type: 'public-key' }, { alg: -257, type: 'public-key' }],
+    pubKeyCredParams: [{
+      alg: -7,
+      type: 'public-key'
+    }, {
+      alg: -257,
+      type: 'public-key'
+    }],
     authenticatorSelection: {
       userVerification: 'required',
       residentKey: 'required',
@@ -73,7 +79,7 @@ export async function createPasskey (username, challengeBuffer, saltBuffer) {
 
   const extensionResults = credential.getClientExtensionResults()
   const prfEnabled = !!(extensionResults.prf && extensionResults.prf.enabled)
-  
+
   let prfResult = null
   if (extensionResults.prf && extensionResults.prf.results && extensionResults.prf.results.first) {
     prfResult = new Uint8Array(extensionResults.prf.results.first)

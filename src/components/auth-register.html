@@ -5,7 +5,7 @@
         <h3>Create Account</h3>
         <div class="form-group mb-3">
           <label for="{{ ref_username }}">Username</label>
-          <input id="{{ ref_username }}" ref="username" type="text" class="form-control" placeholder="Choose a username" minlength="3" required>
+          <input id="{{ ref_username }}" ref="username" type="text" class="form-control" placeholder="Choose a username" minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" required>
         </div>
         <div class="form-group mb-3">
           <label for="{{ ref_email }}">Email</label>
@@ -125,6 +125,16 @@
 
         if (username.length < 3) {
           updateStatus('Error: Username must be at least 3 characters')
+          return
+        }
+
+        if (username.length > 20) {
+          updateStatus('Error: Username must be at most 20 characters')
+          return
+        }
+
+        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+          updateStatus('Error: Username can only contain alphanumeric characters and underscores')
           return
         }
 
@@ -292,6 +302,8 @@
 
           const payload = {
             username,
+            // Default name to username
+            name: username,
             email,
             password,
             passwordConfirm,

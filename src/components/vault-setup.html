@@ -69,7 +69,7 @@
         try {
           updateStatus('Saving vault to server...')
           await pb.collection('users').update(pb.authStore.model.id, encryptionPayload)
-          
+  
           // Refresh auth record to ensure local authStore has the new vault fields (e.g. for unlock button logic)
           await pb.collection('users').authRefresh()
 
@@ -150,7 +150,7 @@
           updateStatus('Waiting for Passkey registration...')
           const challenge = crypto.getRandomValues(new Uint8Array(32))
           const passkeyPrfSalt = crypto.getRandomValues(new Uint8Array(32))
-          
+  
           let { credentialId, prfAvailable, prfResult: KEK } = await createPasskey(pb.authStore.model.username, challenge, passkeyPrfSalt)
 
           if (!prfAvailable) {
