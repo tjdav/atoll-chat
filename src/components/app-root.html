@@ -13,9 +13,10 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
+      const { $bus } = eventBus
       const container = refs('container')
 
       const updateUI = () => {
@@ -55,8 +56,26 @@
         }
       }
 
+      // Auth lifecycle management
+      $bus.on('auth:unlocked', ({ keys, userRecord }) => {
+        $state.currentUser = {
+          ...userRecord,
+          ...keys
+        }
+      })
+
+      $bus.on('auth:logout', () => {
+        $state.currentUser = null
+        $state.isAuthenticated = false
+        $state.isVaultUnlocked = false
+      })
+
       // Authoritative initialization from PocketBase
       $state.isAuthenticated = pb.authStore.isValid
+      if ($state.isAuthenticated) {
+        $state.currentUser = pb.authStore.model
+      }
+
       if (!$state.authView) {
         $state.authView = 'login'
       }

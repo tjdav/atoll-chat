@@ -84,6 +84,17 @@ async function handleEvent (event) {
       return
     }
 
+    if (type === 'WIPE_KEYS') {
+      currentUserKeys = null
+      publicKeyCache.clear()
+      self.postMessage({
+        id,
+        type,
+        result: 'ACK'
+      })
+      return
+    }
+
     if (type === 'test-rpc') {
       self.postMessage({
         id,

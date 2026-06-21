@@ -20,6 +20,7 @@ export default defineConfig({
       initialState: {
         isAuthenticated: false,
         isVaultUnlocked: false,
+        currentUser: null,
         authView: 'login',
         currentAppView: 'chats',
         callStatus: 'idle',
