@@ -63,7 +63,8 @@
       roomName: '',
       searchQuery: '',
       searchResults: [],
-      selectedParticipants: []
+      selectedParticipants: [],
+      searchError: null
     }),
     getters: {
       isGroup: (state) => (state.selectedParticipants || []).length > 1,
@@ -80,8 +81,9 @@
       },
       roomNameClass: (state) => (((state.selectedParticipants || []).length > 1) ? 'd-block' : 'd-none')
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb, bootstrap, signal }) => {
+    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb, bootstrap, utils, signal }) => {
       const { pb } = pocketbase
+      const { $utils } = utils
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $localDb } = localDb
@@ -94,7 +96,6 @@
       const roomNameContainer = refs('roomNameContainer')
       const selectedUsersContainer = refs('selectedUsers')
       const searchResultsContainer = refs('searchResults')
-      let searchTimeout = null
 
       const render = () => {
         // UI logic utilizing state (getters are available on proxy in script)
@@ -118,10 +119,21 @@
         })
 
         searchResultsContainer.innerHTML = ''
-        if (state.searchResults.length === 0) {
+        if (state.searchError) {
+          const msg = document.createElement('div')
+          msg.className = 'p-3 text-center text-danger'
+          msg.textContent = state.searchError
+          searchResultsContainer.appendChild(msg)
+        } else if (state.searchResults.length === 0) {
           const msg = document.createElement('div')
           msg.className = 'p-3 text-center text-muted'
-          msg.textContent = state.searchQuery ? 'No users found' : 'Type to search users...'
+          if (state.searchQuery && state.searchQuery.length >= 3) {
+            msg.textContent = 'No users found'
+          } else if (state.searchQuery) {
+            msg.textContent = 'Type at least 3 characters...'
+          } else {
+            msg.textContent = 'Type to search users...'
+          }
           searchResultsContainer.appendChild(msg)
         } else {
           state.searchResults.forEach(user => {
@@ -146,25 +158,40 @@
       // Initial render
       render()
 
-      searchInput.oninput = (e) => {
-        state.searchQuery = e.target.value
-        if (state.searchQuery.length < 2) {
+      const performSearch = $utils.debounce(async (query) => {
+        if (!query || query.length < 3) {
           state.searchResults = []
+          state.searchError = null
           render()
           return
         }
-        clearTimeout(searchTimeout)
-        searchTimeout = setTimeout(async () => {
-          try {
-            const res = await pb.collection('users').getList(1, 5, {
-              filter: `username ~ "${state.searchQuery}"`
-            })
-            state.searchResults = res.items
-            render()
-          } catch (err) {
-            console.error('[create-room-modal] Search failed:', err)
+
+        try {
+          const res = await pb.collection('users').getList(1, 5, {
+            filter: pb.filter('username ~ {:query}', { query })
+          })
+          state.searchResults = res.items
+          state.searchError = null
+          render()
+        } catch (err) {
+          if (err.isAbort) {
+            return
           }
-        }, 300)
+          console.error('[create-room-modal] Search failed:', err)
+          state.searchError = 'Search failed. Please try again.'
+          state.searchResults = []
+          render()
+        }
+      }, 300)
+
+      searchInput.oninput = (e) => {
+        state.searchQuery = e.target.value
+        state.searchError = null
+        if (state.searchQuery.length < 3) {
+          state.searchResults = []
+          render()
+        }
+        performSearch(state.searchQuery)
       }
 
       roomNameInput.oninput = (e) => {
@@ -177,6 +204,7 @@
         state.searchQuery = ''
         state.searchResults = []
         state.selectedParticipants = []
+        state.searchError = null
         searchInput.value = ''
         roomNameInput.value = ''
         render()
@@ -192,8 +220,13 @@
         state.searchQuery = ''
         state.searchResults = []
         state.selectedParticipants = []
-        if (searchInput) searchInput.value = ''
-        if (roomNameInput) roomNameInput.value = ''
+        state.searchError = null
+        if (searchInput) {
+          searchInput.value = ''
+        }
+        if (roomNameInput) {
+          roomNameInput.value = ''
+        }
         render()
       })
 
