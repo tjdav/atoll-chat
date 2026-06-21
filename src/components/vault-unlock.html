@@ -56,7 +56,11 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker }) => {
+    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker }) => {
+      const [{ default: sodium }, { deriveKeyFromPin, decryptVault }] = await Promise.all([
+        import('libsodium-wrappers-sumo'),
+        import('../utils/cryptoUtils.js')
+      ])
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $sync } = realtimeSync
@@ -120,10 +124,7 @@
           }
 
           updateStatus('Unlocking secure vault...')
-          const [{ default: sodium }, { deriveKeyFromPin, decryptVault }] = await Promise.all([
-            import('libsodium-wrappers-sumo'),
-            import('../utils/cryptoUtils.js')
-          ])
+  
           await sodium.ready
 
           const pinSalt = sodium.from_base64(pinSaltBase64, sodium.base64_variants.ORIGINAL)
