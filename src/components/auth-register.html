@@ -333,8 +333,9 @@
 
           updateStatus('Login successful! Initializing session...')
 
-          // Initialize the crypto worker with the new private keys
+          // Initialize the crypto worker with the new private keys and token
           const { $worker } = cryptoWorker
+          await $worker.execute('SET_TOKEN', { token: pb.authStore.token })
           await $worker.execute('INIT_KEYS', {
             private_box_key: masterKeys.private_box_key,
             private_sign_key: masterKeys.private_sign_key

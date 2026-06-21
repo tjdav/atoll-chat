@@ -305,7 +305,8 @@
           for (const record of wrappedMemberRecords) {
             await pb.collection('room_members').create({
               ...record,
-              room_id: newRoom.id
+              room_id: newRoom.id,
+              epoch_id: 1
             }, {
               // Disable auto-cancellation for these requests
               requestKey: null
@@ -328,6 +329,7 @@
           // Navigation & cleanup
           $state.currentAppView = 'chats'
           $state.activeSelectionId = newRoom.id
+          $state.activeSelectionType = 'chats'
           modal.hide()
 
         } catch (err) {

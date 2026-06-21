@@ -83,12 +83,13 @@
       const completeUnlock = async (decryptedKeys, record) => {
         updateStatus('Vault unlocked!')
 
-        // Initialize worker with decrypted keys
+        // Initialize worker with decrypted keys and token
         const { $worker } = cryptoWorker
+        await $worker.execute('SET_TOKEN', { token: pb.authStore.token })
         await $worker.execute('INIT_KEYS', decryptedKeys)
 
-        // Start real-time subscriptions
-        await $sync.startSubscriptions()
+        // Set global state immediately to transition UI
+        $state.isVaultUnlocked = true
 
         // Emit successful unlock event
         $bus.emit('auth:unlocked', {
@@ -97,7 +98,11 @@
         })
 
         modal.hide()
-        $state.isVaultUnlocked = true
+
+        // Start real-time subscriptions in background
+        $sync.startSubscriptions().catch(err => {
+          console.error('[vault-unlock] Background sync failed:', err)
+        })
       }
 
       signal.addEventListener('abort', () => {

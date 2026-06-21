@@ -10,6 +10,7 @@ importScripts('https://unpkg.com/dexie@4.0.10/dist/dexie.js')
 
 let db
 let baseUrl
+let authToken
 const publicKeyCache = new Map()
 let currentUserKeys = null
 
@@ -70,6 +71,16 @@ async function handleEvent (event) {
 
   if (type === 'INIT') {
     baseUrl = payload.baseUrl
+    return
+  }
+
+  if (type === 'SET_TOKEN') {
+    authToken = payload.token
+    self.postMessage({
+      id,
+      type,
+      result: 'ACK'
+    })
     return
   }
 
@@ -177,9 +188,13 @@ async function processIncomingMessage (rpcId, payload) {
     if (!baseUrl) {
       throw new Error('Base URL not initialized')
     }
-    const response = await fetch(`${baseUrl}/api/collections/users/records/${senderId}`)
+    const headers = {}
+    if (authToken) {
+      headers.Authorization = authToken
+    }
+    const response = await fetch(`${baseUrl}/api/collections/users/records/${senderId}`, { headers })
     if (!response.ok) {
-      throw new Error(`Failed to fetch sender public key: ${response.statusText}`)
+      throw new Error(`Failed to fetch sender public key (${senderId}): ${response.status} ${response.statusText}`)
     }
     const userRecord = await response.json()
     senderKeys = {
@@ -191,10 +206,13 @@ async function processIncomingMessage (rpcId, payload) {
   }
 
   const publicSignKey = senderKeys.public_sign_key
+  if (!publicSignKey) {
+    throw new Error('Sender public sign key is missing')
+  }
 
   // 2. Identity Verification (Ed25519)
-  const signatureBuffer = sodium.from_base64(signature)
-  const publicSignKeyBuffer = sodium.from_base64(publicSignKey)
+  const signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
+  const publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
 
   const validationString = `${roomId}|${epochId}|${previousMsgUuid}|${ciphertext}`
   const validationBuffer = new TextEncoder().encode(validationString)
@@ -215,9 +233,9 @@ async function processIncomingMessage (rpcId, payload) {
     throw new Error('Missing cryptographic key for this epoch.')
   }
 
-  const ciphertextBuffer = sodium.from_base64(ciphertext)
-  const nonceBuffer = sodium.from_base64(nonce)
-  const epochKeyBuffer = sodium.from_base64(activeEpoch.key)
+  const ciphertextBuffer = sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL)
+  const nonceBuffer = sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL)
+  const epochKeyBuffer = sodium.from_base64(activeEpoch.key, sodium.base64_variants.ORIGINAL)
 
   let decryptedBuffer
   try {
@@ -276,21 +294,34 @@ async function processIncomingMessage (rpcId, payload) {
 }
 
 async function processNewRoomKey (rpcId, payload) {
-  const { room_id, wrapped_by, encrypted_room_key, key_nonce, epoch_id, updated } = payload
+  const {
+    room_id,
+    wrapped_by,
+    encrypted_room_key,
+    key_nonce,
+    epoch_id,
+    updated
+  } = payload
+
+  const effectiveEpochId = epoch_id || 1
 
   if (!currentUserKeys || !currentUserKeys.private_box_key) {
     throw new Error('User keys not initialized in worker')
   }
 
-  // 1. Fetch Inviter's Public Key
+  // Fetch Inviter's Public Key
   let inviterKeys = publicKeyCache.get(wrapped_by)
   if (!inviterKeys || !inviterKeys.public_box_key) {
     if (!baseUrl) {
       throw new Error('Base URL not initialized')
     }
-    const response = await fetch(`${baseUrl}/api/collections/users/records/${wrapped_by}`)
+    const headers = {}
+    if (authToken) {
+      headers.Authorization = authToken
+    }
+    const response = await fetch(`${baseUrl}/api/collections/users/records/${wrapped_by}`, { headers })
     if (!response.ok) {
-      throw new Error(`Failed to fetch inviter public key: ${response.statusText}`)
+      throw new Error(`Failed to fetch inviter public key (${wrapped_by}): ${response.status} ${response.statusText}`)
     }
     const userRecord = await response.json()
     inviterKeys = {
@@ -302,12 +333,15 @@ async function processNewRoomKey (rpcId, payload) {
   }
 
   const inviterPublicKey = inviterKeys.public_box_key
+  if (!inviterPublicKey) {
+    throw new Error('Inviter public box key is missing')
+  }
 
-  // 2. Decrypt (Unwrap)
-  const encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key)
-  const nonceBuffer = sodium.from_base64(key_nonce)
-  const inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey)
-  const userPrivateKeyBuffer = sodium.from_base64(currentUserKeys.private_box_key)
+  // Decrypt (Unwrap)
+  const encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key, sodium.base64_variants.ORIGINAL)
+  const nonceBuffer = sodium.from_base64(key_nonce, sodium.base64_variants.ORIGINAL)
+  const inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey, sodium.base64_variants.ORIGINAL)
+  const userPrivateKeyBuffer = sodium.from_base64(currentUserKeys.private_box_key, sodium.base64_variants.ORIGINAL)
 
   let unwrappedKeyBuffer
   try {
@@ -325,7 +359,7 @@ async function processNewRoomKey (rpcId, payload) {
     throw new Error('Failed to unwrap room key: Null result')
   }
 
-  // 3. Epoch Management & Local Storage
+  // Epoch Management & Local Storage
   let room = await db.local_rooms.get(room_id)
   if (!room) {
     // For brand new invites, we might not know if it's a group yet from the key alone,
@@ -345,19 +379,19 @@ async function processNewRoomKey (rpcId, payload) {
   }
 
   // Use authoritative epoch_id from payload
-  const existingEpochIndex = room.key_history.findIndex(h => h.epoch_id === epoch_id)
+  const existingEpochIndex = room.key_history.findIndex(h => h.epoch_id === effectiveEpochId)
   if (existingEpochIndex !== -1) {
-    room.key_history[existingEpochIndex].key = sodium.to_base64(unwrappedKeyBuffer)
+    room.key_history[existingEpochIndex].key = sodium.to_base64(unwrappedKeyBuffer, sodium.base64_variants.ORIGINAL)
   } else {
     room.key_history.push({
-      epoch_id,
-      key: sodium.to_base64(unwrappedKeyBuffer)
+      epoch_id: effectiveEpochId,
+      key: sodium.to_base64(unwrappedKeyBuffer, sodium.base64_variants.ORIGINAL)
     })
   }
 
   await db.local_rooms.put(room)
 
-  // 4. UI Notification
+  // UI Notification
   self.postMessage({
     type: 'NEW_LOCAL_ROOM',
     payload: { room_id }

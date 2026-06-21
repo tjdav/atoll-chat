@@ -23,6 +23,8 @@ export default defineConfig({
         currentUser: null,
         authView: 'login',
         currentAppView: 'chats',
+        activeSelectionId: null,
+        activeSelectionType: null,
         callStatus: 'idle',
         activeCallRoomId: null
       }
