@@ -64,7 +64,8 @@
       searchQuery: '',
       searchResults: [],
       selectedParticipants: [],
-      searchError: null
+      searchError: null,
+      isCreating: false
     }),
     getters: {
       isGroup: (state) => (state.selectedParticipants || []).length > 1,
@@ -99,7 +100,10 @@
 
       const render = () => {
         // UI logic utilizing state (getters are available on proxy in script)
-        btnCreate.disabled = !state.canCreate
+        btnCreate.disabled = !state.canCreate || state.isCreating
+        btnCreate.innerHTML = state.isCreating
+          ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Creating...'
+          : 'Create Room'
 
         // Render lists
         selectedUsersContainer.innerHTML = ''
@@ -235,7 +239,14 @@
       })
 
       btnCreate.onclick = async () => {
+        if (state.isCreating) {
+          return
+        }
+
         try {
+          state.isCreating = true
+          render()
+
           const { default: sodium } = await import('libsodium-wrappers-sumo')
           await sodium.ready
 
@@ -290,16 +301,19 @@
             encrypted_metadata: metadataPayload
           })
 
-          await Promise.all(wrappedMemberRecords.map(record => {
-            return pb.collection('room_members').create({
+          // Create room members sequentially to avoid PocketBase auto-cancellation
+          for (const record of wrappedMemberRecords) {
+            await pb.collection('room_members').create({
               ...record,
               room_id: newRoom.id
+            }, {
+              // Disable auto-cancellation for these requests
+              requestKey: null
             })
-          }))
+          }
 
           // Update local cache
-          const db = await $localDb()
-          await db.local_rooms.put({
+          await $localDb.local_rooms.put({
             id: newRoom.id,
             is_group: isGroup,
             name: roomName,
@@ -307,16 +321,21 @@
               epoch_id: 1,
               key: sodium.to_base64(roomKey, sodium.base64_variants.ORIGINAL)
             }],
-            created_at: newRoom.created
+            created_at: newRoom.created,
+            updated_at: newRoom.updated
           })
 
           // Navigation & cleanup
-          $bus.emit('modal:close')
+          $state.currentAppView = 'chats'
           $state.activeSelectionId = newRoom.id
           modal.hide()
 
         } catch (err) {
           console.error('[create-room-modal] Room creation failed:', err)
+          alert('Room creation failed: ' + err.message)
+        } finally {
+          state.isCreating = false
+          render()
         }
       }
     }

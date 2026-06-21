@@ -40,7 +40,7 @@ export default function localDbPlugin () {
         // Inject into pluginContext for Phase 1 access by downstream plugins
         pluginContext.$localDb = () => dbInstance
 
-        return (instanceContext) => {
+        return () => {
           return {
             $localDb: dbInstance
           }
