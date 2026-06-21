@@ -35,7 +35,7 @@ export async function sendEncryptedMessage (roomId, plaintextObj, { pb, $localDb
     .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
     .last()
 
-  const previousMsgId = lastMsg ? lastMsg.id : ''
+  const previousMsgId = lastMsg ? lastMsg.id : 'START'
 
   // Construct Plaintext
   const plaintextStr = JSON.stringify(plaintextObj)
@@ -44,13 +44,14 @@ export async function sendEncryptedMessage (roomId, plaintextObj, { pb, $localDb
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
   const ciphertextBuffer = sodium.crypto_secretbox_easy(plaintextStr, nonce, roomKey)
   const ciphertextBase64 = sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL)
+  const nonceBase64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
 
   // Signature (Ed25519)
   if (!$state.currentUser || !$state.currentUser.private_sign_key) {
     throw new Error('User identity keys not found')
   }
 
-  const validationString = `${roomId}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}`
+  const validationString = `${roomId}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
   const validationBuffer = new TextEncoder().encode(validationString)
 
   const privateSignKeyBuffer = sodium.from_base64($state.currentUser.private_sign_key, sodium.base64_variants.ORIGINAL)
@@ -61,8 +62,10 @@ export async function sendEncryptedMessage (roomId, plaintextObj, { pb, $localDb
     room_id: roomId,
     sender_id: $state.currentUser.id,
     epoch_id: latestEpochId,
-    ciphertext: ciphertextBase64,
-    nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL),
+    payload: {
+      ciphertext: ciphertextBase64,
+      nonce: nonceBase64
+    },
     signature: sodium.to_base64(signatureBuffer, sodium.base64_variants.ORIGINAL),
     previous_msg_uuid: previousMsgId
   }

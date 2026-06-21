@@ -169,18 +169,19 @@ async function handleEvent (event) {
   }
 }
 
-async function processIncomingMessage (rpcId, payload) {
+async function processIncomingMessage (rpcId, record) {
   const {
     id,
     room_id: roomId,
     epoch_id: epochId,
     sender_id: senderId,
-    ciphertext,
-    nonce,
+    payload,
     signature,
     previous_msg_uuid: previousMsgUuid,
     created
-  } = payload
+  } = record
+
+  const { ciphertext, nonce } = payload
 
   // 1. Fetch Sender Key
   let senderKeys = publicKeyCache.get(senderId)
@@ -214,7 +215,7 @@ async function processIncomingMessage (rpcId, payload) {
   const signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
   const publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
 
-  const validationString = `${roomId}|${epochId}|${previousMsgUuid}|${ciphertext}`
+  const validationString = `${roomId}|${epochId}|${previousMsgUuid}|${ciphertext}|${nonce}`
   const validationBuffer = new TextEncoder().encode(validationString)
 
   const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
