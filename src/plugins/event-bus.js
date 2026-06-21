@@ -7,9 +7,8 @@ import { definePlugin } from 'coralite'
  */
 
 export default definePlugin({
-  name: 'event-bus',
+  name: 'eventBus',
   client: {
-    name: 'eventBus',
     context: (pluginContext) => {
       const hub = new EventTarget()
 

@@ -11,9 +11,8 @@ export default function statePlugin (options = {}) {
   const initialState = options.initialState || {}
 
   return definePlugin({
-    name: 'global-store',
+    name: 'globalStore',
     client: {
-      name: 'globalStore',
       config: { initialState },
       context: (pluginContext) => {
         const storeState = { ...pluginContext.config.initialState }

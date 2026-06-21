@@ -11,7 +11,7 @@ export default function webrtcPlugin ({
   ]
 } = {}) {
   return definePlugin({
-    name: 'webrtc-manager',
+    name: 'webrtc',
     client: {
       name: 'webrtc',
       config: {

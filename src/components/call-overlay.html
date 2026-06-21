@@ -1,39 +1,48 @@
 <template id="call-overlay">
-  <div class="call-overlay position-fixed top-0 start-0 w-100 h-100 bg-dark z-3" style="display: {{ overlayDisplay }}; z-index: 9999;">
-    
-    <!-- Incoming Call View -->
-    <div class="incoming-view h-100 d-flex flex-column align-items-center justify-content-center text-white" style="display: {{ incomingDisplay }};">
-      <div class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-4 shadow" style="width: 120px; height: 120px; font-size: 3rem;">
-        {{ callerInitial }}
-      </div>
-      <h2 class="mb-2">{{ callerName }}</h2>
-      <p class="text-light mb-5">Incoming Video Call...</p>
-      
-      <div class="d-flex gap-4">
-        <button id="{{ ref_btnAccept }}" ref="btnAccept" class="btn btn-success btn-lg rounded-circle p-3 shadow" title="Accept Call">
-          <i class="bi bi-telephone-fill fs-3"></i>
-        </button>
-        <button id="{{ ref_btnReject }}" ref="btnReject" class="btn btn-danger btn-lg rounded-circle p-3 shadow" title="Reject Call">
-          <i class="bi bi-telephone-x-fill fs-3"></i>
-        </button>
-      </div>
-    </div>
+  <div ref="modal" class="modal fade" tabindex="-1" aria-labelledby="{{ ref_modalTitle }}" aria-hidden="true" style="z-index: 9999;">
+    <div class="modal-dialog modal-fullscreen">
+      <div class="modal-content bg-dark text-white border-0">
+        <div class="modal-body p-0 overflow-hidden position-relative">
+          
+          <h1 id="{{ ref_modalTitle }}" class="visually-hidden" ref="modalTitle">Call Overlay</h1>
 
-    <!-- Active Call View -->
-    <div class="active-view h-100 position-relative" style="display: {{ activeDisplay }};">
-      <video-grid></video-grid>
-      
-      <!-- Control Bar -->
-      <div class="control-bar position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-3 p-3 rounded-pill bg-dark bg-opacity-75 shadow-lg border border-secondary">
-        <button id="{{ ref_btnToggleAudio }}" ref="btnToggleAudio" class="btn {{ audioBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-          <i class="bi {{ audioIconClass }} fs-4"></i>
-        </button>
-        <button id="{{ ref_btnToggleVideo }}" ref="btnToggleVideo" class="btn {{ videoBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-          <i class="bi {{ videoIconClass }} fs-4"></i>
-        </button>
-        <button id="{{ ref_btnEndCall }}" ref="btnEndCall" class="btn btn-danger rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-          <i class="bi bi-telephone-x-fill fs-4"></i>
-        </button>
+          <!-- Incoming Call View -->
+          <div class="incoming-view h-100 {{ incomingClass }} flex-column align-items-center justify-content-center">
+            <div class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-4 shadow" style="width: 120px; height: 120px; font-size: 3rem;">
+              {{ callerInitial }}
+            </div>
+            <h2 class="mb-2">{{ callerName }}</h2>
+            <p class="text-light mb-5">Incoming Video Call...</p>
+            
+            <div class="d-flex gap-4">
+              <button ref="btnAccept" class="btn btn-success btn-lg rounded-circle p-3 shadow" title="Accept Call">
+                <i class="bi bi-telephone-fill fs-3"></i>
+              </button>
+              <button ref="btnReject" class="btn btn-danger btn-lg rounded-circle p-3 shadow" title="Reject Call">
+                <i class="bi bi-telephone-x-fill fs-3"></i>
+              </button>
+            </div>
+          </div>
+
+          <!-- Active Call View -->
+          <div class="active-view h-100 position-relative {{ activeClass }}">
+            <video-grid></video-grid>
+            
+            <!-- Control Bar -->
+            <div class="control-bar position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-3 p-3 rounded-pill bg-dark bg-opacity-75 shadow-lg border border-secondary">
+              <button ref="btnToggleAudio" class="btn {{ audioBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="bi {{ audioIconClass }} fs-4"></i>
+              </button>
+              <button ref="btnToggleVideo" class="btn {{ videoBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="bi {{ videoIconClass }} fs-4"></i>
+              </button>
+              <button ref="btnEndCall" class="btn btn-danger rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+                <i class="bi bi-telephone-x-fill fs-4"></i>
+              </button>
+            </div>
+          </div>
+
+        </div>
       </div>
     </div>
   </div>
@@ -53,25 +62,41 @@
       remoteOffer: null
     }),
     getters: {
-      overlayDisplay: (state) => (state.callStatus !== 'idle' ? 'block' : 'none'),
-      incomingDisplay: (state) => (state.callStatus === 'incoming' ? 'flex' : 'none'),
-      activeDisplay: (state) => (state.callStatus === 'active' ? 'block' : 'none'),
+      incomingClass: (state) => (state.callStatus === 'incoming' ? 'd-flex' : 'd-none'),
+      activeClass: (state) => (state.callStatus === 'active' ? 'd-block' : 'd-none'),
       audioBtnClass: (state) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
       audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
       videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill')
     },
-    client: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, localDb, refs, signal }) => {
+    client: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, localDb, refs, signal, bootstrap }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $webrtc } = webrtcPluginContext
       const { $localDb } = localDb
+      const { Modal } = bootstrap
+      const modalEl = refs('modal')
+      const modal = new Modal(modalEl, {
+        backdrop: 'static',
+        keyboard: false
+      })
+
+      const updateModalVisibility = (status) => {
+        if (status !== 'idle') {
+          modal.show()
+        } else {
+          modal.hide()
+        }
+      }
 
       // Sync local state with global state
       state.callStatus = $state.callStatus
+      updateModalVisibility(state.callStatus)
+
       if (typeof $state.subscribe === 'function') {
         $state.subscribe('callStatus', (val) => {
           state.callStatus = val
+          updateModalVisibility(val)
         })
       }
 
@@ -186,6 +211,7 @@
       // Cleanup on unmount
       signal.addEventListener('abort', () => {
         stopTracks()
+        modal.dispose()
       })
     }
   })

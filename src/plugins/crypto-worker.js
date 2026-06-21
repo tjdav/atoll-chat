@@ -5,9 +5,8 @@ import { definePlugin } from 'coralite'
  */
 export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
   return definePlugin({
-    name: 'crypto-worker',
+    name: 'cryptoWorker',
     client: {
-      name: 'cryptoWorker',
       config: {
         url
       },

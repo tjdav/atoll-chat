@@ -1,41 +1,38 @@
 <template id="create-room-modal">
-  <dialog id="{{ ref_roomModal }}" ref="roomModal" class="modal-dialog-centered border-0 rounded-3 shadow" style="width: 500px; padding: 0; background: transparent;">
-    <div class="modal-content border">
-      <div class="modal-header px-4 py-3 border-bottom">
-        <h5 class="modal-title">Create New Room</h5>
-        <button id="{{ ref_btnCloseTop }}" type="button" class="btn-close" ref="btnCloseTop" aria-label="Close"></button>
-      </div>
-      <div class="modal-body p-4">
-        <div id="{{ ref_roomNameContainer }}" class="mb-3" ref="roomNameContainer" style="display: {{ roomNameDisplay }};">
-          <label class="form-label fw-bold">Room Name</label>
-          <input id="{{ ref_roomNameInput }}" type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput">
+  <div ref="roomModal" class="modal fade" tabindex="-1" aria-labelledby="{{ ref_modalTitle }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="{{ ref_modalTitle }}" class="modal-title" ref="modalTitle">Create New Room</h5>
+          <button type="button" class="btn-close" ref="btnCloseTop" aria-label="Close"></button>
         </div>
-
-        <div class="mb-3">
-          <label class="form-label fw-bold">Participants</label>
-          <div id="{{ ref_selectedUsers }}" class="d-flex flex-wrap gap-2 mb-2" ref="selectedUsers"></div>
-          <div class="input-group">
-            <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
-            <input id="{{ ref_searchInput }}" type="text" class="form-control border-start-0 ps-0" placeholder="Search by username..." ref="searchInput">
+        <div class="modal-body">
+          <div class="mb-3 {{ roomNameClass }}" ref="roomNameContainer">
+            <label class="form-label fw-bold">Room Name</label>
+            <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput">
           </div>
-        </div>
 
-        <div id="{{ ref_searchResults }}" class="search-results-container border rounded overflow-hidden" style="max-height: 200px; overflow-y: auto;" ref="searchResults"></div>
-      </div>
-      <div class="modal-footer px-4 py-3 border-top">
-        <button id="{{ ref_btnCancel }}" type="button" class="btn btn-secondary" ref="btnCancel">Cancel</button>
-        <button id="{{ ref_btnCreate }}" type="button" class="btn btn-primary" ref="btnCreate" disabled>Create Room</button>
+          <div class="mb-3">
+            <label class="form-label fw-bold">Participants</label>
+            <div class="d-flex flex-wrap gap-2 mb-2" ref="selectedUsers"></div>
+            <div class="input-group">
+              <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
+              <input type="text" class="form-control border-start-0 ps-0" placeholder="Search by username..." ref="searchInput">
+            </div>
+          </div>
+
+          <div class="search-results-container border rounded overflow-hidden" style="max-height: 200px; overflow-y: auto;" ref="searchResults"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" ref="btnCancel">Cancel</button>
+          <button type="button" class="btn btn-primary" ref="btnCreate" disabled>Create Room</button>
+        </div>
       </div>
     </div>
-  </dialog>
+  </div>
 </template>
 
 <style>
-  dialog::backdrop {
-    background-color: rgba(0, 0, 0, 0.5);
-    backdrop-filter: blur(2px);
-  }
-  .modal-content { background-color: var(--bs-body-bg); }
   .user-chip {
     padding: 4px 12px;
     background-color: var(--bs-primary-bg-subtle);
@@ -81,14 +78,16 @@
         }
         return true
       },
-      roomNameDisplay: (state) => (((state.selectedParticipants || []).length > 1) ? 'block' : 'none')
+      roomNameClass: (state) => (((state.selectedParticipants || []).length > 1) ? 'd-block' : 'd-none')
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb }) => {
+    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb, bootstrap, signal }) => {
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $localDb } = localDb
-      const modal = refs('roomModal')
+      const { Modal } = bootstrap
+      const modalEl = refs('roomModal')
+      const modal = new Modal(modalEl)
       const searchInput = refs('searchInput')
       const roomNameInput = refs('roomNameInput')
       const btnCreate = refs('btnCreate')
@@ -99,7 +98,6 @@
 
       const render = () => {
         // UI logic utilizing state (getters are available on proxy in script)
-        roomNameContainer.style.display = state.roomNameDisplay
         btnCreate.disabled = !state.canCreate
 
         // Render lists
@@ -182,17 +180,26 @@
         searchInput.value = ''
         roomNameInput.value = ''
         render()
-        modal.showModal()
+        modal.show()
       })
 
-      const close = () => modal.close()
+      const close = () => modal.hide()
       refs('btnCloseTop').onclick = close
       refs('btnCancel').onclick = close
-      modal.onclick = (e) => {
-        if (e.target === modal) {
-          close()
-        }
-      }
+
+      modalEl.addEventListener('hidden.bs.modal', () => {
+        state.roomName = ''
+        state.searchQuery = ''
+        state.searchResults = []
+        state.selectedParticipants = []
+        if (searchInput) searchInput.value = ''
+        if (roomNameInput) roomNameInput.value = ''
+        render()
+      })
+
+      signal.addEventListener('abort', () => {
+        modal.dispose()
+      })
 
       btnCreate.onclick = async () => {
         try {
@@ -273,7 +280,7 @@
           // Navigation & cleanup
           $bus.emit('modal:close')
           $state.activeSelectionId = newRoom.id
-          modal.close()
+          modal.hide()
 
         } catch (err) {
           console.error('[create-room-modal] Room creation failed:', err)

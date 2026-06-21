@@ -20,7 +20,6 @@ export default function pocketbase (options = {}) {
       }
     },
     client: {
-      name: 'pocketbase',
       config: { url },
       context: async (pluginContext) => {
         const { default: PocketBase } = await import('pocketbase')

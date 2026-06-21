@@ -6,9 +6,8 @@ import { definePlugin } from 'coralite'
  */
 export default function localDbPlugin () {
   return definePlugin({
-    name: 'local-db',
+    name: 'localDb',
     client: {
-      name: 'localDb',
       context: async (pluginContext) => {
         // Dynamically import Dexie inside the initialization hook as requested.
         const { default: Dexie } = await import('dexie')
