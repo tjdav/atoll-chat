@@ -224,12 +224,13 @@
         })
       }
 
-      const sendMessage = async (recordedBlob = null) => {
+      const sendMessage = async (blob = null) => {
         if (state.isSending || state.isUploading) {
           return
         }
 
         const text = messageInput.value.trim()
+        const recordedBlob = (blob instanceof Blob) ? blob : null
         const file = recordedBlob || fileInput.files[0]
 
         if (!text && !file) {
