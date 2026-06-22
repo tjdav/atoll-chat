@@ -29,6 +29,7 @@ public/assets/models/
 *.sln
 *.sw?
 
+bin/
 database/pb_data
 .env
 .coralite
