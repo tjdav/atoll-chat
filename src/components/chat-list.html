@@ -36,7 +36,7 @@
           rawItems.forEach(item => {
             const btn = document.createElement('button')
             btn.type = 'button'
-            const isActive = item.id === $state.activeSelectionId
+            const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'chats'
             btn.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 ${isActive ? 'active' : ''}`
 
             const iconWrapper = document.createElement('div')
@@ -80,6 +80,9 @@
       // Handle selection change
       if (typeof $state.subscribe === 'function') {
         $state.subscribe('activeSelectionId', () => {
+          render()
+        })
+        $state.subscribe('activeSelectionType', () => {
           render()
         })
       }

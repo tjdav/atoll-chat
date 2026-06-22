@@ -45,7 +45,7 @@
             col.className = 'col'
 
             const card = document.createElement('div')
-            const isActive = item.id === $state.activeSelectionId
+            const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos'
             card.className = `card h-100 border-0 shadow-sm overflow-hidden clickable-card ${isActive ? 'border border-primary border-2' : ''}`
   
             const imgPlaceholder = document.createElement('div')
@@ -91,6 +91,9 @@
       // Handle selection change
       if (typeof $state.subscribe === 'function') {
         $state.subscribe('activeSelectionId', () => {
+          render()
+        })
+        $state.subscribe('activeSelectionType', () => {
           render()
         })
       }

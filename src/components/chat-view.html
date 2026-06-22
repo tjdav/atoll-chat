@@ -80,7 +80,7 @@
       state.isRoomDetailsOpen = $state.isRoomDetailsOpen || false
 
       const updateRoomInfo = async (roomId) => {
-        if (!roomId) {
+        if (!roomId || $state.activeSelectionType !== 'chats') {
           return
         }
   
@@ -107,6 +107,10 @@
           // Close details when switching rooms
           state.isRoomDetailsOpen = false
           $state.isRoomDetailsOpen = false
+        })
+
+        $state.subscribe('activeSelectionType', () => {
+          updateRoomInfo($state.activeSelectionId)
         })
 
         $state.subscribe('isRoomDetailsOpen', (val) => {
