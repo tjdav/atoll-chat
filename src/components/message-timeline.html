@@ -7,17 +7,55 @@
   </div>
 </template>
 
+<style>
+  .media-preview-container {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+    max-width: 300px;
+    min-width: 150px;
+    min-height: 100px;
+    background-color: rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+  }
+  .media-preview-container:hover {
+    transform: scale(1.02);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  }
+  .media-preview-container img, .media-preview-container video {
+    max-width: 100%;
+    max-height: 400px;
+    display: block;
+  }
+  .x-small {
+    font-size: 0.7rem;
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, globalStore, localDb, eventBus, signal, utils }) => {
+    client: ({ refs, globalStore, localDb, eventBus, signal, utils, pocketbase }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $utils } = utils
+      const { pb } = pocketbase
       const container = refs('timelineContainer')
       const emptyState = refs('emptyState')
+
+      const objectUrls = new Map()
+      let lastRoomId = null
+
+      const cleanupUrls = () => {
+        objectUrls.forEach(url => URL.revokeObjectURL(url))
+        objectUrls.clear()
+      }
+
+      signal.addEventListener('abort', cleanupUrls)
 
       const scrollToBottom = () => {
         if (container) {
@@ -31,6 +69,11 @@
 
         if (!roomId || type !== 'chats') {
           return
+        }
+
+        if (roomId !== lastRoomId) {
+          cleanupUrls()
+          lastRoomId = roomId
         }
 
         try {
@@ -57,7 +100,73 @@
               bubble.className = 'align-self-start bg-light text-dark rounded p-2 mb-2 max-w-75 text-break border'
             }
   
-            if (message.type === 'media') {
+            if (message.type === 'media' && message.file_key) {
+              const mediaContainer = document.createElement('div')
+              mediaContainer.className = 'media-preview-container rounded overflow-hidden mt-1'
+              
+              const placeholder = document.createElement('div')
+              placeholder.className = 'd-flex flex-column align-items-center justify-content-center p-3 text-center'
+              placeholder.innerHTML = `
+                <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
+                <div class="x-small">Decrypting...</div>
+              `
+              mediaContainer.appendChild(placeholder)
+              bubble.appendChild(mediaContainer);
+
+              (async () => {
+                try {
+                  const { default: sodium } = await import('libsodium-wrappers-sumo')
+                  await sodium.ready
+
+                  // Fetch the media record to get the actual filename
+                  const mediaRecord = await pb.collection('media').getOne(message.media_id)
+                  const fileUrl = pb.files.getUrl(mediaRecord, mediaRecord.file)
+
+                  const response = await fetch(fileUrl)
+                  if (!response.ok) throw new Error('Failed to fetch file')
+                  const encryptedData = new Uint8Array(await response.arrayBuffer())
+
+                  const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
+                  const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
+
+                  const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
+                  if (!decryptedData) throw new Error('Decryption failed')
+
+                  const blob = new Blob([decryptedData], { type: message.mime_type })
+                  const url = URL.createObjectURL(blob)
+                  objectUrls.set(message.id, url)
+
+                  mediaContainer.innerHTML = ''
+                  if (message.mime_type.startsWith('image/')) {
+                    const img = document.createElement('img')
+                    img.src = url
+                    mediaContainer.appendChild(img)
+                  } else if (message.mime_type.startsWith('video/')) {
+                    const video = document.createElement('video')
+                    video.src = url
+                    video.muted = true
+                    video.loop = true
+                    video.addEventListener('mouseenter', () => video.play())
+                    video.addEventListener('mouseleave', () => video.pause())
+                    mediaContainer.appendChild(video)
+                  }
+
+                  mediaContainer.addEventListener('click', () => {
+                    $state.activeSelectionId = message.media_id
+                    $state.activeSelectionType = message.mime_type.startsWith('image/') ? 'pictures' : 'videos'
+                    $state.currentAppView = $state.activeSelectionType
+                  })
+
+                } catch (err) {
+                  console.error('Timeline media preview error:', err)
+                  placeholder.innerHTML = `
+                    <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+                    <div class="x-small mt-1">Failed to load</div>
+                  `
+                }
+              })()
+
+            } else if (message.type === 'media') {
               const mediaContent = document.createElement('div')
               mediaContent.className = 'd-flex align-items-center'
   

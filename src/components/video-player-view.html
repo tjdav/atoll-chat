@@ -73,8 +73,10 @@
             throw new Error('Media asset not found in local database')
           }
 
-          // Fetch from PocketBase using the deterministic path.
-          const url = `${pb.baseUrl}/api/files/media/${asset.media_id}/encrypted.bin`
+          // Fetch the media record to get the actual filename (e.g. encrypted_XYZ.bin)
+          const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+          const url = pb.files.getUrl(mediaRecord, mediaRecord.file)
+
           const response = await fetch(url, { signal })
           if (!response.ok) {
             throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)

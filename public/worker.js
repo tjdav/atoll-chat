@@ -266,11 +266,15 @@ async function processIncomingMessage (rpcId, record) {
     created_at: created
   }
 
-  await db.local_messages.put(decryptedMessage)
-
-  // If media, also store in local_assets for the global archive
+  // If media, extend the message with media metadata for easier rendering in the timeline
   if (type === 'media') {
     const { media_id, file_key, file_nonce, mime_type } = decryptedPayload
+    decryptedMessage.media_id = media_id
+    decryptedMessage.file_key = file_key
+    decryptedMessage.file_nonce = file_nonce
+    decryptedMessage.mime_type = mime_type
+
+    // Also store in local_assets for the global archive
     await db.local_assets.put({
       id: media_id,
       media_id,
@@ -281,6 +285,8 @@ async function processIncomingMessage (rpcId, record) {
       created_at: created
     })
   }
+
+  await db.local_messages.put(decryptedMessage)
 
   // Notify UI and resolve RPC.
   self.postMessage({
