@@ -12,6 +12,20 @@
             <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput">
           </div>
 
+          <div class="mb-3 {{ roomNameClass }}">
+            <label class="form-label fw-bold">Room Avatar (Optional)</label>
+            <div class="d-flex align-items-center gap-3">
+              <div class="room-avatar-preview bg-light border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
+                <i class="bi bi-camera fs-3 text-muted"></i>
+              </div>
+              <div>
+                <input type="file" class="d-none" ref="avatarInput" accept="image/*">
+                <button type="button" class="btn btn-sm btn-outline-secondary" ref="btnSelectAvatar">Select Image</button>
+                <button type="button" class="btn btn-sm btn-link text-danger d-none" ref="btnClearAvatar">Clear</button>
+              </div>
+            </div>
+          </div>
+
           <div class="mb-3">
             <label class="form-label fw-bold">Participants</label>
             <div class="d-flex flex-wrap gap-2 mb-2" ref="selectedUsers"></div>
@@ -65,7 +79,8 @@
       searchResults: [],
       selectedParticipants: [],
       searchError: null,
-      isCreating: false
+      isCreating: false,
+      roomAvatar: null
     }),
     getters: {
       isGroup: (state) => (state.selectedParticipants || []).length > 1,
@@ -97,6 +112,10 @@
       const roomNameContainer = refs('roomNameContainer')
       const selectedUsersContainer = refs('selectedUsers')
       const searchResultsContainer = refs('searchResults')
+      const avatarInput = refs('avatarInput')
+      const avatarPreview = refs('avatarPreview')
+      const btnSelectAvatar = refs('btnSelectAvatar')
+      const btnClearAvatar = refs('btnClearAvatar')
 
       const render = () => {
         // UI logic utilizing state (getters are available on proxy in script)
@@ -209,11 +228,35 @@
         state.searchResults = []
         state.selectedParticipants = []
         state.searchError = null
+        state.roomAvatar = null
         searchInput.value = ''
         roomNameInput.value = ''
+        avatarInput.value = ''
+        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+        btnClearAvatar.classList.add('d-none')
         render()
         modal.show()
       })
+
+      btnSelectAvatar.onclick = () => avatarInput.click()
+      avatarInput.onchange = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          state.roomAvatar = file
+          const reader = new FileReader()
+          reader.onload = (re) => {
+            avatarPreview.innerHTML = `<img src="${re.target.result}" style="width: 100%; height: 100%; object-fit: cover;">`
+            btnClearAvatar.classList.remove('d-none')
+          }
+          reader.readAsDataURL(file)
+        }
+      }
+      btnClearAvatar.onclick = () => {
+        state.roomAvatar = null
+        avatarInput.value = ''
+        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+        btnClearAvatar.classList.add('d-none')
+      }
 
       const close = () => modal.hide()
       refs('btnCloseTop').onclick = close
@@ -225,12 +268,18 @@
         state.searchResults = []
         state.selectedParticipants = []
         state.searchError = null
+        state.roomAvatar = null
         if (searchInput) {
           searchInput.value = ''
         }
         if (roomNameInput) {
           roomNameInput.value = ''
         }
+        if (avatarInput) {
+          avatarInput.value = ''
+        }
+        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+        btnClearAvatar.classList.add('d-none')
         render()
       })
 
@@ -267,9 +316,29 @@
           const isGroup = state.isGroup
           const roomName = isGroup ? state.roomName : (state.selectedParticipants[0]?.username || 'Direct Message')
 
+          let roomAvatarBase64 = ''
+          if (state.roomAvatar) {
+            const fileBuffer = new Uint8Array(await state.roomAvatar.arrayBuffer())
+            const avatarKey = sodium.randombytes_buf(32)
+            const avatarNonce = sodium.randombytes_buf(24)
+            const encryptedAvatar = sodium.crypto_secretbox_easy(fileBuffer, avatarNonce, avatarKey)
+
+            // Upload encrypted avatar to media collection
+            const blob = new Blob([encryptedAvatar], { type: 'application/octet-stream' })
+            const formData = new FormData()
+            formData.append('file', blob, 'avatar.bin')
+            const mediaRecord = await pb.collection('media').create(formData)
+
+            roomAvatarBase64 = JSON.stringify({
+              media_id: mediaRecord.id,
+              key: sodium.to_base64(avatarKey, sodium.base64_variants.ORIGINAL),
+              nonce: sodium.to_base64(avatarNonce, sodium.base64_variants.ORIGINAL)
+            })
+          }
+
           const metadata = JSON.stringify({
             name: roomName,
-            avatar: ''
+            avatar: roomAvatarBase64
           })
           const metadataNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
           const encryptedMetadata = sodium.crypto_secretbox_easy(metadata, metadataNonce, roomKey)

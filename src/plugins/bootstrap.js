@@ -10,11 +10,12 @@ export default definePlugin({
   client: {
     name: 'bootstrap',
     context: async () => {
-      const { Modal } = await import('bootstrap')
+      const { Modal, Dropdown } = await import('bootstrap')
 
       return () => {
         return {
-          Modal
+          Modal,
+          Dropdown
         }
       }
     }

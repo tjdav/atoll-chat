@@ -1,0 +1,219 @@
+<template id="edit-room-modal">
+  <div ref="editModal" class="modal fade" tabindex="-1" aria-labelledby="{{ ref_modalTitle }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 id="{{ ref_modalTitle }}" class="modal-title" ref="modalTitle">Edit Room Details</h5>
+          <button type="button" class="btn-close" ref="btnCloseTop" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label fw-bold">Room Name</label>
+            <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput">
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label fw-bold">Room Avatar</label>
+            <div class="d-flex align-items-center gap-3">
+              <div class="room-avatar-preview bg-light border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
+                <i class="bi bi-camera fs-3 text-muted"></i>
+              </div>
+              <div>
+                <input type="file" class="d-none" ref="avatarInput" accept="image/*">
+                <button type="button" class="btn btn-sm btn-outline-secondary" ref="btnSelectAvatar">Change Image</button>
+                <button type="button" class="btn btn-sm btn-link text-danger d-none" ref="btnClearAvatar">Clear</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" ref="btnCancel">Cancel</button>
+          <button type="button" class="btn btn-primary" ref="btnSave" disabled>Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      roomName: '',
+      roomAvatar: null,
+      isSaving: false,
+      activeRoom: null
+    }),
+    getters: {
+      canSave: (state) => {
+        if (state.isSaving || !state.activeRoom) return false
+        return (state.roomName || '').trim().length > 0
+      }
+    },
+    client: ({ refs, state, pocketbase, eventBus, localDb, bootstrap, signal }) => {
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $localDb } = localDb
+      const { Modal } = bootstrap
+      const modalEl = refs('editModal')
+      const modal = new Modal(modalEl)
+      
+      const roomNameInput = refs('roomNameInput')
+      const btnSave = refs('btnSave')
+      const avatarInput = refs('avatarInput')
+      const avatarPreview = refs('avatarPreview')
+      const btnSelectAvatar = refs('btnSelectAvatar')
+      const btnClearAvatar = refs('btnClearAvatar')
+
+      const render = () => {
+        btnSave.disabled = !state.canSave
+        btnSave.innerHTML = state.isSaving
+          ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...'
+          : 'Save Changes'
+      }
+
+      $bus.on('open-edit-room', async (room) => {
+        state.activeRoom = room
+        state.roomName = room.name || ''
+        state.roomAvatar = null
+        roomNameInput.value = state.roomName
+        
+        // Initial Avatar Preview
+        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+        btnClearAvatar.classList.add('d-none')
+        
+        if (room.avatar) {
+          try {
+             const avatarData = JSON.parse(room.avatar)
+             const { default: sodium } = await import('libsodium-wrappers-sumo')
+             await sodium.ready
+             const record = await pb.collection('media').getOne(avatarData.media_id)
+             const encryptedUrl = pb.files.getUrl(record, record.file)
+             const resp = await fetch(encryptedUrl)
+             const buffer = await resp.arrayBuffer()
+             const key = sodium.from_base64(avatarData.key, sodium.base64_variants.ORIGINAL)
+             const nonce = sodium.from_base64(avatarData.nonce, sodium.base64_variants.ORIGINAL)
+             const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(buffer), nonce, key)
+             if (decrypted) {
+               const blob = new Blob([decrypted], { type: 'image/jpeg' })
+               const url = URL.createObjectURL(blob)
+               avatarPreview.innerHTML = `<img src="${url}" style="width: 100%; height: 100%; object-fit: cover;">`
+               btnClearAvatar.classList.remove('d-none')
+               signal.addEventListener('abort', () => URL.revokeObjectURL(url))
+             }
+          } catch (e) {
+            console.error('Failed to load existing avatar in edit modal:', e)
+          }
+        }
+
+        render()
+        modal.show()
+      })
+
+      roomNameInput.oninput = (e) => {
+        state.roomName = e.target.value
+        render()
+      }
+
+      btnSelectAvatar.onclick = () => avatarInput.click()
+      avatarInput.onchange = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          state.roomAvatar = file
+          const reader = new FileReader()
+          reader.onload = (re) => {
+            avatarPreview.innerHTML = `<img src="${re.target.result}" style="width: 100%; height: 100%; object-fit: cover;">`
+            btnClearAvatar.classList.remove('d-none')
+          }
+          reader.readAsDataURL(file)
+          render()
+        }
+      }
+      btnClearAvatar.onclick = () => {
+        state.roomAvatar = 'CLEAR' // Sentinel for clearing
+        avatarInput.value = ''
+        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+        btnClearAvatar.classList.add('d-none')
+        render()
+      }
+
+      const close = () => modal.hide()
+      refs('btnCloseTop').onclick = close
+      refs('btnCancel').onclick = close
+
+      btnSave.onclick = async () => {
+        if (!state.canSave) return
+        state.isSaving = true
+        render()
+
+        try {
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+
+          const room = state.activeRoom
+          const roomKeyB64 = room.key_history?.find(h => h.epoch_id === 1)?.key
+          if (!roomKeyB64) throw new Error('Room secret key not found locally')
+          const roomKey = sodium.from_base64(roomKeyB64, sodium.base64_variants.ORIGINAL)
+
+          let avatarPayload = room.avatar || ''
+          if (state.roomAvatar === 'CLEAR') {
+            avatarPayload = ''
+          } else if (state.roomAvatar instanceof File) {
+            const fileBuffer = new Uint8Array(await state.roomAvatar.arrayBuffer())
+            const avatarKey = sodium.randombytes_buf(32)
+            const avatarNonce = sodium.randombytes_buf(24)
+            const encryptedAvatar = sodium.crypto_secretbox_easy(fileBuffer, avatarNonce, avatarKey)
+
+            const blob = new Blob([encryptedAvatar], { type: 'application/octet-stream' })
+            const formData = new FormData()
+            formData.append('file', blob, 'avatar.bin')
+            const mediaRecord = await pb.collection('media').create(formData)
+
+            avatarPayload = JSON.stringify({
+              media_id: mediaRecord.id,
+              key: sodium.to_base64(avatarKey, sodium.base64_variants.ORIGINAL),
+              nonce: sodium.to_base64(avatarNonce, sodium.base64_variants.ORIGINAL)
+            })
+          }
+
+          const metadata = JSON.stringify({
+            name: state.roomName,
+            avatar: avatarPayload
+          })
+          const metadataNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+          const encryptedMetadata = sodium.crypto_secretbox_easy(metadata, metadataNonce, roomKey)
+
+          const metadataPayload = {
+            ciphertext: sodium.to_base64(encryptedMetadata, sodium.base64_variants.ORIGINAL),
+            nonce: sodium.to_base64(metadataNonce, sodium.base64_variants.ORIGINAL)
+          }
+
+          await pb.collection('rooms').update(room.id, {
+            encrypted_metadata: metadataPayload
+          })
+
+          // Update local cache
+          await $localDb.local_rooms.update(room.id, {
+            name: state.roomName,
+            avatar: avatarPayload,
+            updated_at: new Date().toISOString()
+          })
+
+          $bus.emit('NEW_LOCAL_ROOM', { room_id: room.id })
+          modal.hide()
+        } catch (err) {
+          console.error('[edit-room-modal] Save failed:', err)
+          alert('Save failed: ' + err.message)
+        } finally {
+          state.isSaving = false
+          render()
+        }
+      }
+
+      signal.addEventListener('abort', () => {
+        modal.dispose()
+      })
+    }
+  })
+</script>

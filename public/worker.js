@@ -307,6 +307,7 @@ async function processNewRoomKey (rpcId, payload) {
     encrypted_room_key,
     key_nonce,
     epoch_id,
+    role,
     updated
   } = payload
 
@@ -366,13 +367,16 @@ async function processNewRoomKey (rpcId, payload) {
     throw new Error('Failed to unwrap room key: Null result')
   }
 
-  // Fetch Room metadata from server
+  // Fetch Room metadata and members from server
   let roomMetadata = null
   let isGroup = true
+  let participants = []
   const headers = {}
   if (authToken) {
     headers.Authorization = authToken
   }
+
+  // 1. Fetch Room record
   const roomResponse = await fetch(`${baseUrl}/api/collections/rooms/records/${room_id}`, { headers })
   if (roomResponse.ok) {
     const roomRecord = await roomResponse.json()
@@ -392,6 +396,25 @@ async function processNewRoomKey (rpcId, payload) {
     }
   }
 
+  // 2. Fetch Room members with user details
+  const membersUrl = `${baseUrl}/api/collections/room_members/records?filter=(room_id='${room_id}')&expand=user_id`
+  const membersResponse = await fetch(membersUrl, { headers })
+  if (membersResponse.ok) {
+    const membersData = await membersResponse.json()
+    participants = membersData.items.map(m => {
+      const u = m.expand?.user_id
+      return u
+        ? {
+            id: u.id,
+            username: u.username,
+            avatar: u.avatar,
+            collectionId: u.collectionId,
+            collectionName: u.collectionName
+          }
+        : null
+    }).filter(p => p !== null)
+  }
+
   // Epoch Management & Local Storage
   let room = await db.local_rooms.get(room_id)
   if (!room) {
@@ -399,14 +422,22 @@ async function processNewRoomKey (rpcId, payload) {
       id: room_id,
       is_group: isGroup,
       name: roomMetadata?.name || '',
+      avatar: roomMetadata?.avatar || '',
+      participants,
+      user_role: role,
       key_history: [],
       updated_at: updated
     }
   } else {
     room.updated_at = updated
+    room.user_role = role || room.user_role
     if (roomMetadata?.name) {
       room.name = roomMetadata.name
     }
+    if (roomMetadata?.avatar) {
+      room.avatar = roomMetadata.avatar
+    }
+    room.participants = participants
   }
 
   if (!room.key_history) {
