@@ -30,6 +30,7 @@ public/assets/models/
 *.sw?
 
 bin/
+.pocketbase.pid
 database/pb_data
 .env
 .coralite
