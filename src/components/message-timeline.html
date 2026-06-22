@@ -34,8 +34,66 @@
   }
   .voice-message-container {
     background-color: transparent;
-    width: 250px;
+    width: 300px;
     max-width: 70vw;
+  }
+  .waveform-player {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    height: 48px;
+    background: var(--bs-tertiary-bg, #f8f9fa);
+    border: 1px solid var(--bs-border-color, #dee2e6);
+    border-radius: 24px;
+    padding: 0 12px;
+  }
+  .waveform-container {
+    position: relative;
+    flex-grow: 1;
+    height: 32px;
+    cursor: pointer;
+  }
+  .waveform-image {
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    opacity: 0.5;
+  }
+  .waveform-progress {
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: 0;
+    overflow: hidden;
+  }
+  .waveform-progress .waveform-image {
+    width: 300px; /* Should match parent width approximately */
+    max-width: none;
+    opacity: 1;
+  }
+  .waveform-seeker {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 2px;
+    height: 100%;
+    background-color: #007bff;
+    pointer-events: none;
+  }
+  .play-pause-btn {
+    border: none;
+    background: #007bff;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
   }
   .x-small {
     font-size: 0.7rem;
@@ -127,7 +185,7 @@
 
                   // Fetch the media record to get the actual filename
                   const mediaRecord = await pb.collection('media').getOne(message.media_id)
-                  const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
+                  const fileUrl = pb.files.getUrl(mediaRecord, mediaRecord.file)
 
                   const response = await fetch(fileUrl)
                   if (!response.ok) {
@@ -162,11 +220,105 @@
                     mediaContainer.appendChild(video)
                   } else if (message.mime_type.startsWith('audio/')) {
                     mediaContainer.className = 'voice-message-container p-2'
-                    const audio = document.createElement('audio')
-                    audio.src = url
-                    audio.controls = true
-                    audio.className = 'w-100'
-                    mediaContainer.appendChild(audio)
+  
+                    if (message.waveform_data) {
+                      // Custom Waveform Player
+                      const player = document.createElement('div')
+                      player.className = 'waveform-player'
+  
+                      const playBtn = document.createElement('button')
+                      playBtn.className = 'play-pause-btn'
+                      playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
+  
+                      const waveContainer = document.createElement('div')
+                      waveContainer.className = 'waveform-container'
+  
+                      const waveImg = document.createElement('img')
+                      waveImg.src = message.waveform_data
+                      waveImg.className = 'waveform-image'
+  
+                      const progressContainer = document.createElement('div')
+                      progressContainer.className = 'waveform-progress'
+  
+                      const progressImg = document.createElement('img')
+                      progressImg.src = message.waveform_data
+                      progressImg.className = 'waveform-image'
+  
+                      const seeker = document.createElement('div')
+                      seeker.className = 'waveform-seeker'
+  
+                      const timeDisplay = document.createElement('div')
+                      timeDisplay.className = 'x-small text-muted font-monospace'
+                      timeDisplay.textContent = '0:00'
+  
+                      progressContainer.appendChild(progressImg)
+                      waveContainer.appendChild(waveImg)
+                      waveContainer.appendChild(progressContainer)
+                      waveContainer.appendChild(seeker)
+  
+                      player.appendChild(playBtn)
+                      player.appendChild(waveContainer)
+                      player.appendChild(timeDisplay)
+                      mediaContainer.appendChild(player)
+  
+                      const audio = new Audio(url)
+  
+                      const updateProgress = () => {
+                        const percent = (audio.currentTime / audio.duration) * 100
+                        progressContainer.style.width = `${percent}%`
+                        seeker.style.left = `${percent}%`
+  
+                        const mins = Math.floor(audio.currentTime / 60)
+                        const secs = Math.floor(audio.currentTime % 60)
+                        timeDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
+                      }
+  
+                      audio.ontimeupdate = updateProgress
+                      audio.onended = () => {
+                        playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
+                        progressContainer.style.width = '0'
+                        seeker.style.left = '0'
+                        timeDisplay.textContent = '0:00'
+                      }
+  
+                      playBtn.onclick = (e) => {
+                        e.stopPropagation()
+                        if (audio.paused) {
+                          audio.play()
+                          playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>'
+                        } else {
+                          audio.pause()
+                          playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
+                        }
+                      }
+  
+                      waveContainer.onclick = (e) => {
+                        e.stopPropagation()
+                        if (isNaN(audio.duration)) {
+                          return
+                        }
+                        const rect = waveContainer.getBoundingClientRect()
+                        const x = e.clientX - rect.left
+                        const percent = x / rect.width
+                        audio.currentTime = percent * audio.duration
+                        updateProgress()
+                      }
+
+                      // Adjust progress image width to match container width for proper clipping
+                      const resizeObserver = new ResizeObserver(entries => {
+                        for (let entry of entries) {
+                          progressImg.style.width = `${entry.contentRect.width}px`
+                        }
+                      })
+                      resizeObserver.observe(waveContainer)
+  
+                    } else {
+                      const audio = document.createElement('audio')
+                      audio.src = url
+                      audio.controls = true
+                      audio.className = 'w-100'
+                      mediaContainer.appendChild(audio)
+                    }
                   }
 
                   mediaContainer.addEventListener('click', (e) => {

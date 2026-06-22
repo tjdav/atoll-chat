@@ -55,13 +55,8 @@
           <i class="bi bi-arrow-counterclockwise fs-5"></i>
         </button>
 
-        <div class="recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 24px;">
-          <div class="recording-dots d-flex gap-1">
-            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
-          </div>
+        <div class="recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 32px;">
+          <canvas id="{{ ref_visualizerCanvas }}" ref="visualizerCanvas" width="400" height="32" class="w-100 h-100"></canvas>
         </div>
 
         <span class="recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
@@ -168,6 +163,17 @@
       let timerInterval = null
       let shouldSendVoice = false
 
+      // Web Audio API variables
+      let audioContext = null
+      let analyser = null
+      let dataArray = null
+      let animationFrameId = null
+      let recordedAmplitudes = []
+      let lastSampleTime = 0
+      const SAMPLE_INTERVAL = 100
+      const barWidth = 3
+      const gap = 1
+
       const autoExpand = () => {
         messageInput.style.height = 'auto'
         messageInput.style.height = messageInput.scrollHeight + 'px'
@@ -188,6 +194,7 @@
         messageInput.value = ''
         stopTimer()
         cleanupRecorder()
+        cleanupAudioContext()
         autoExpand()
       }
 
@@ -197,6 +204,18 @@
         }
         mediaRecorder = null
         audioChunks = []
+      }
+
+      const cleanupAudioContext = () => {
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId)
+          animationFrameId = null
+        }
+        if (audioContext) {
+          audioContext.close()
+          audioContext = null
+        }
+        recordedAmplitudes = []
       }
 
       const startTimer = () => {
@@ -224,13 +243,35 @@
         })
       }
 
-      const sendMessage = async (blob = null) => {
+      const generateWaveformImage = () => {
+        if (recordedAmplitudes.length === 0) {
+          return null
+        }
+
+        const canvas = document.createElement('canvas')
+        const height = 40
+        const width = recordedAmplitudes.length * (barWidth + gap)
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+
+        ctx.fillStyle = '#007bff'
+        recordedAmplitudes.forEach((amp, i) => {
+          const barHeight = amp * height
+          const x = i * (barWidth + gap)
+          const y = (height - barHeight) / 2
+          ctx.fillRect(x, y, barWidth, barHeight)
+        })
+
+        return canvas.toDataURL('image/png')
+      }
+
+      const sendMessage = async (recordedBlob = null) => {
         if (state.isSending || state.isUploading) {
           return
         }
 
         const text = messageInput.value.trim()
-        const recordedBlob = (blob instanceof Blob) ? blob : null
         const file = recordedBlob || fileInput.files[0]
 
         if (!text && !file) {
@@ -262,7 +303,13 @@
   
             const mediaRecord = await pb.collection('media').create(formData)
   
-            // 3. Dispatch media message
+            // Generate waveform if it's a voice message
+            let waveformData = null
+            if (recordedBlob) {
+              waveformData = generateWaveformImage()
+            }
+
+            // Dispatch media message
             const mediaPlaintext = {
               type: 'media',
               content: recordedBlob ? '' : text,
@@ -270,6 +317,7 @@
               media_id: mediaRecord.id,
               file_key: sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL),
               file_nonce: sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL),
+              waveform_data: waveformData,
               timestamp: Date.now()
             }
   
@@ -295,6 +343,84 @@
       const startRecording = async () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  
+          // Audio Visualizer Setup
+          audioContext = new (window.AudioContext || window.webkitAudioContext)()
+          await audioContext.resume()
+  
+          analyser = audioContext.createAnalyser()
+          const source = audioContext.createMediaStreamSource(stream)
+          source.connect(analyser)
+          analyser.fftSize = 256
+          const bufferLength = analyser.frequencyBinCount
+          dataArray = new Uint8Array(bufferLength)
+          recordedAmplitudes = []
+
+          let canvasEl = null
+          let ctx2d = null
+
+          const draw = (timestamp) => {
+            if (!canvasEl) {
+              canvasEl = refs('visualizerCanvas')
+              if (canvasEl) {
+                ctx2d = canvasEl.getContext('2d')
+              }
+            }
+
+            if (!state.isRecording) {
+              return
+            }
+            animationFrameId = requestAnimationFrame(draw)
+
+            if (state.isPaused) {
+              return
+            }
+
+            const now = timestamp || performance.now()
+            if (now - lastSampleTime >= SAMPLE_INTERVAL) {
+              analyser.getByteFrequencyData(dataArray)
+  
+              let sum = 0
+              for (let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i]
+              }
+              const average = sum / bufferLength
+              const normalizedAmp = Math.min(1, average / 100)
+              recordedAmplitudes.push(normalizedAmp)
+              lastSampleTime = now
+            }
+
+            if (!canvasEl || !ctx2d) {
+              return
+            }
+  
+            // Sync internal width with displayed width
+            if (canvasEl.width !== canvasEl.clientWidth && canvasEl.clientWidth > 0) {
+              canvasEl.width = canvasEl.clientWidth
+            }
+
+            const w = canvasEl.width
+            const h = canvasEl.height
+  
+            ctx2d.clearRect(0, 0, w, h)
+  
+            // Draw faint baseline
+            ctx2d.fillStyle = 'rgba(0, 123, 255, 0.15)'
+            ctx2d.fillRect(0, h/2 - 1, w, 2)
+
+            ctx2d.fillStyle = '#007bff'
+            const maxVisibleBars = Math.floor(w / (barWidth + gap))
+            const startIdx = Math.max(0, recordedAmplitudes.length - maxVisibleBars)
+  
+            for (let i = startIdx; i < recordedAmplitudes.length; i++) {
+              const amp = recordedAmplitudes[i]
+              const barHeight = Math.max(2, amp * h)
+              const x = (i - startIdx) * (barWidth + gap)
+              const y = (h - barHeight) / 2
+              ctx2d.fillRect(x, y, barWidth, barHeight)
+            }
+          }
+
           mediaRecorder = new MediaRecorder(stream)
           audioChunks = []
 
@@ -311,13 +437,17 @@
             if (shouldSendVoice && audioChunks.length > 0) {
               const blob = new Blob(audioChunks, { type: 'audio/webm' })
               sendMessage(blob)
+            } else {
+              cleanupAudioContext()
             }
             shouldSendVoice = false
           }
 
-          mediaRecorder.start()
-          shouldSendVoice = false
           state.isRecording = true
+          mediaRecorder.start()
+          lastSampleTime = 0
+          requestAnimationFrame(draw)
+          shouldSendVoice = false
           state.isPaused = false
           state.recordingDuration = 0
           startTimer()
