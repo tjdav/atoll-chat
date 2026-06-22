@@ -127,7 +127,7 @@
 
                   // Fetch the media record to get the actual filename
                   const mediaRecord = await pb.collection('media').getOne(message.media_id)
-                  const fileUrl = pb.files.getUrl(mediaRecord, mediaRecord.file)
+                  const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
 
                   const response = await fetch(fileUrl)
                   if (!response.ok) {

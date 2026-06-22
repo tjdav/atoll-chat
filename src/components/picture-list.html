@@ -58,7 +58,7 @@
   
             const imgContainer = document.createElement('div')
             imgContainer.className = 'ratio ratio-1x1 d-flex align-items-center justify-content-center bg-secondary bg-opacity-25 overflow-hidden'
-            
+  
             const icon = document.createElement('i')
             icon.className = 'bi bi-image fs-1 text-secondary opacity-50'
             imgContainer.appendChild(icon);
@@ -69,17 +69,21 @@
                 await sodium.ready
 
                 const mediaRecord = await pb.collection('media').getOne(item.media_id)
-                const url = pb.files.getUrl(mediaRecord, mediaRecord.file)
+                const url = pb.files.getURL(mediaRecord, mediaRecord.file)
 
                 const response = await fetch(url)
-                if (!response.ok) throw new Error('Fetch failed')
+                if (!response.ok) {
+                  throw new Error('Fetch failed')
+                }
                 const encryptedData = new Uint8Array(await response.arrayBuffer())
 
                 const key = sodium.from_base64(item.file_key, sodium.base64_variants.ORIGINAL)
                 const nonce = sodium.from_base64(item.file_nonce, sodium.base64_variants.ORIGINAL)
 
                 const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-                if (!decryptedData) throw new Error('Decryption failed')
+                if (!decryptedData) {
+                  throw new Error('Decryption failed')
+                }
 
                 const blob = new Blob([decryptedData], { type: item.mime_type })
                 const objectUrl = URL.createObjectURL(blob)

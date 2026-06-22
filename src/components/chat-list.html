@@ -22,7 +22,9 @@
       let sodiumInstance = null
 
       const getInitials = (name) => {
-        if (!name) return '?'
+        if (!name) {
+          return '?'
+        }
         return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
       }
 
@@ -34,7 +36,7 @@
         div.style.fontSize = `${size * 0.4}px`
 
         if (user.avatar) {
-          const avatarUrl = pb.files.getUrl(user, user.avatar, { thumb: `${size}x${size}` })
+          const avatarUrl = pb.files.getURL(user, user.avatar, { thumb: `${size}x${size}` })
           const img = document.createElement('img')
           img.src = avatarUrl
           img.style.width = '100%'
@@ -71,7 +73,7 @@
             const sodium = sodiumInstance
 
             const record = await pb.collection('media').getOne(avatarData.media_id)
-            const encryptedUrl = pb.files.getUrl(record, record.file)
+            const encryptedUrl = pb.files.getURL(record, record.file)
             const resp = await fetch(encryptedUrl)
             const buffer = await resp.arrayBuffer()
 
@@ -97,7 +99,7 @@
 
         // 2. Fallback to Participants
         const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
-        
+  
         if (!item.is_group && participants.length > 0) {
           // One-on-one
           const otherUser = participants[0]
@@ -141,7 +143,7 @@
             const container = document.createElement('div')
             const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'chats'
             container.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 position-relative ${isActive ? 'active' : ''}`
-            
+  
             const iconWrapper = document.createElement('div')
             renderRoomAvatar(item, iconWrapper)
 
@@ -165,7 +167,7 @@
             // Dropdown Menu
             const dropdownDiv = document.createElement('div')
             dropdownDiv.className = 'dropdown ms-2'
-            
+  
             const dropdownBtn = document.createElement('button')
             dropdownBtn.className = 'btn btn-link text-muted p-0 opacity-0 group-hover-visible'
             dropdownBtn.innerHTML = '<i class="bi bi-three-dots"></i>'
@@ -174,14 +176,28 @@
 
             const dropdownMenu = document.createElement('ul')
             dropdownMenu.className = 'dropdown-menu dropdown-menu-end shadow-sm'
-            
+  
             const isAdmin = item.user_role === 'admin'
             const menuItems = [
-              isAdmin ? { label: 'Edit Room', icon: 'bi-pencil', action: () => $bus.emit('open-edit-room', item) } : null,
-              { label: 'Mark as unread', icon: 'bi-envelope' },
-              { label: 'Mute notifications', icon: 'bi-bell-slash' },
+              isAdmin ? {
+                label: 'Edit Room',
+                icon: 'bi-pencil',
+                action: () => $bus.emit('open-edit-room', item)
+              } : null,
+              {
+                label: 'Mark as unread',
+                icon: 'bi-envelope'
+              },
+              {
+                label: 'Mute notifications',
+                icon: 'bi-bell-slash'
+              },
               { type: 'divider' },
-              { label: 'Delete chat', icon: 'bi-trash', class: 'text-danger' }
+              {
+                label: 'Delete chat',
+                icon: 'bi-trash',
+                class: 'text-danger'
+              }
             ].filter(Boolean)
 
             menuItems.forEach(m => {
@@ -199,7 +215,9 @@
               a.onclick = (e) => {
                 e.preventDefault()
                 e.stopPropagation()
-                if (m.action) m.action()
+                if (m.action) {
+                  m.action()
+                }
               }
               li.appendChild(a)
               dropdownMenu.appendChild(li)
@@ -210,7 +228,9 @@
             container.appendChild(dropdownDiv)
 
             container.addEventListener('click', (e) => {
-              if (e.target.closest('.dropdown')) return
+              if (e.target.closest('.dropdown')) {
+                return
+              }
               $state.activeSelectionId = item.id
               $state.activeSelectionType = 'chats'
             })

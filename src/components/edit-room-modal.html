@@ -47,7 +47,9 @@
     }),
     getters: {
       canSave: (state) => {
-        if (state.isSaving || !state.activeRoom) return false
+        if (state.isSaving || !state.activeRoom) {
+          return false
+        }
         return (state.roomName || '').trim().length > 0
       }
     },
@@ -58,7 +60,7 @@
       const { Modal } = bootstrap
       const modalEl = refs('editModal')
       const modal = new Modal(modalEl)
-      
+  
       const roomNameInput = refs('roomNameInput')
       const btnSave = refs('btnSave')
       const avatarInput = refs('avatarInput')
@@ -78,30 +80,30 @@
         state.roomName = room.name || ''
         state.roomAvatar = null
         roomNameInput.value = state.roomName
-        
+  
         // Initial Avatar Preview
         avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
         btnClearAvatar.classList.add('d-none')
-        
+  
         if (room.avatar) {
           try {
-             const avatarData = JSON.parse(room.avatar)
-             const { default: sodium } = await import('libsodium-wrappers-sumo')
-             await sodium.ready
-             const record = await pb.collection('media').getOne(avatarData.media_id)
-             const encryptedUrl = pb.files.getUrl(record, record.file)
-             const resp = await fetch(encryptedUrl)
-             const buffer = await resp.arrayBuffer()
-             const key = sodium.from_base64(avatarData.key, sodium.base64_variants.ORIGINAL)
-             const nonce = sodium.from_base64(avatarData.nonce, sodium.base64_variants.ORIGINAL)
-             const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(buffer), nonce, key)
-             if (decrypted) {
-               const blob = new Blob([decrypted], { type: 'image/jpeg' })
-               const url = URL.createObjectURL(blob)
-               avatarPreview.innerHTML = `<img src="${url}" style="width: 100%; height: 100%; object-fit: cover;">`
-               btnClearAvatar.classList.remove('d-none')
-               signal.addEventListener('abort', () => URL.revokeObjectURL(url))
-             }
+            const avatarData = JSON.parse(room.avatar)
+            const { default: sodium } = await import('libsodium-wrappers-sumo')
+            await sodium.ready
+            const record = await pb.collection('media').getOne(avatarData.media_id)
+            const encryptedUrl = pb.files.getURL(record, record.file)
+            const resp = await fetch(encryptedUrl)
+            const buffer = await resp.arrayBuffer()
+            const key = sodium.from_base64(avatarData.key, sodium.base64_variants.ORIGINAL)
+            const nonce = sodium.from_base64(avatarData.nonce, sodium.base64_variants.ORIGINAL)
+            const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(buffer), nonce, key)
+            if (decrypted) {
+              const blob = new Blob([decrypted], { type: 'image/jpeg' })
+              const url = URL.createObjectURL(blob)
+              avatarPreview.innerHTML = `<img src="${url}" style="width: 100%; height: 100%; object-fit: cover;">`
+              btnClearAvatar.classList.remove('d-none')
+              signal.addEventListener('abort', () => URL.revokeObjectURL(url))
+            }
           } catch (e) {
             console.error('Failed to load existing avatar in edit modal:', e)
           }
@@ -143,7 +145,9 @@
       refs('btnCancel').onclick = close
 
       btnSave.onclick = async () => {
-        if (!state.canSave) return
+        if (!state.canSave) {
+          return
+        }
         state.isSaving = true
         render()
 
@@ -153,7 +157,9 @@
 
           const room = state.activeRoom
           const roomKeyB64 = room.key_history?.find(h => h.epoch_id === 1)?.key
-          if (!roomKeyB64) throw new Error('Room secret key not found locally')
+          if (!roomKeyB64) {
+            throw new Error('Room secret key not found locally')
+          }
           const roomKey = sodium.from_base64(roomKeyB64, sodium.base64_variants.ORIGINAL)
 
           let avatarPayload = room.avatar || ''

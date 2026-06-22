@@ -75,7 +75,7 @@
 
           // Fetch the media record to get the actual filename (e.g. encrypted_XYZ.bin)
           const mediaRecord = await pb.collection('media').getOne(asset.media_id)
-          const url = pb.files.getUrl(mediaRecord, mediaRecord.file)
+          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
 
           const response = await fetch(url, { signal })
           if (!response.ok) {
