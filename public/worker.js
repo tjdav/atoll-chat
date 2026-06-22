@@ -268,11 +268,12 @@ async function processIncomingMessage (rpcId, record) {
 
   // If media, extend the message with media metadata for easier rendering in the timeline
   if (type === 'media') {
-    const { media_id, file_key, file_nonce, mime_type } = decryptedPayload
+    const { media_id, file_key, file_nonce, mime_type, waveform_data } = decryptedPayload
     decryptedMessage.media_id = media_id
     decryptedMessage.file_key = file_key
     decryptedMessage.file_nonce = file_nonce
     decryptedMessage.mime_type = mime_type
+    decryptedMessage.waveform_data = waveform_data
 
     // Also store in local_assets for the global archive
     await db.local_assets.put({
@@ -405,12 +406,12 @@ async function processNewRoomKey (rpcId, payload) {
       const u = m.expand?.user_id
       return u
         ? {
-            id: u.id,
-            username: u.username,
-            avatar: u.avatar,
-            collectionId: u.collectionId,
-            collectionName: u.collectionName
-          }
+          id: u.id,
+          username: u.username,
+          avatar: u.avatar,
+          collectionId: u.collectionId,
+          collectionName: u.collectionName
+        }
         : null
     }).filter(p => p !== null)
   }
