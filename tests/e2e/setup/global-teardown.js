@@ -1,27 +1,42 @@
 import { exec } from 'child_process'
 import { promisify } from 'util'
 import fs from 'fs'
+import path from 'path'
 
 const execAsync = promisify(exec)
+const PID_FILE = path.join(process.cwd(), '.pocketbase.pid')
 
 /**
- *
+ * Stops the native PocketBase server and clears data.
  */
 async function globalTeardown () {
-  console.log('Stopping Pocketbase server via Docker Compose...')
-  try {
-    await execAsync('docker compose down -v')
-    // Also manually clear the bind-mounted data directory to ensure a fresh state
-    if (fs.existsSync('./database/pb_data')) {
-      fs.rmSync('./database/pb_data', {
-        recursive: true,
-        force: true
-      })
+  console.log('--- PocketBase Teardown ---')
+
+  if (fs.existsSync(PID_FILE)) {
+    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8'), 10)
+    console.log(`Stopping PocketBase process with PID: ${pid}`)
+    try {
+      process.kill(pid, 'SIGTERM')
+      // Wait a bit for it to shut down
+      await new Promise(resolve => setTimeout(resolve, 1000))
+    } catch (error) {
+      console.error(`Failed to kill PocketBase (PID ${pid}):`, error.message)
     }
-    console.log('Pocketbase server stopped and data cleared.')
-  } catch (error) {
-    console.error('Error in global teardown:', error)
+    fs.unlinkSync(PID_FILE)
+  } else {
+    console.log('No PocketBase PID file found.')
   }
+
+  // Also manually clear the bind-mounted data directory to ensure a fresh state
+  if (fs.existsSync('./database/pb_data')) {
+    console.log('Clearing PocketBase data directory...')
+    fs.rmSync('./database/pb_data', {
+      recursive: true,
+      force: true
+    })
+  }
+
+  console.log('PocketBase server stopped and data cleared.')
 }
 
 export default globalTeardown
