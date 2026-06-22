@@ -32,6 +32,11 @@
     height: auto;
     object-fit: contain;
   }
+  .voice-message-container {
+    background-color: transparent;
+    width: 250px;
+    max-width: 70vw;
+  }
   .x-small {
     font-size: 0.7rem;
   }
@@ -97,7 +102,7 @@
 
           messages.forEach(message => {
             const isSent = message.sender_id === $state.currentUser?.id
-            
+  
             // Outer container for the whole message block (alignment container)
             const messageBlock = document.createElement('div')
             messageBlock.className = `d-flex flex-column mb-3 max-w-75 ${isSent ? 'align-self-end align-items-end' : 'align-self-start align-items-start'}`
@@ -105,7 +110,7 @@
             if (message.type === 'media' && message.file_key) {
               const mediaContainer = document.createElement('div')
               mediaContainer.className = 'media-preview-container rounded overflow-hidden mb-1'
-              
+  
               const placeholder = document.createElement('div')
               placeholder.className = 'd-flex flex-column align-items-center justify-content-center p-3 text-center'
               placeholder.innerHTML = `
@@ -125,14 +130,18 @@
                   const fileUrl = pb.files.getUrl(mediaRecord, mediaRecord.file)
 
                   const response = await fetch(fileUrl)
-                  if (!response.ok) throw new Error('Failed to fetch file')
+                  if (!response.ok) {
+                    throw new Error('Failed to fetch file')
+                  }
                   const encryptedData = new Uint8Array(await response.arrayBuffer())
 
                   const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
                   const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
 
                   const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-                  if (!decryptedData) throw new Error('Decryption failed')
+                  if (!decryptedData) {
+                    throw new Error('Decryption failed')
+                  }
 
                   const blob = new Blob([decryptedData], { type: message.mime_type })
                   const url = URL.createObjectURL(blob)
@@ -151,9 +160,20 @@
                     video.addEventListener('mouseenter', () => video.play())
                     video.addEventListener('mouseleave', () => video.pause())
                     mediaContainer.appendChild(video)
+                  } else if (message.mime_type.startsWith('audio/')) {
+                    mediaContainer.className = 'voice-message-container p-2'
+                    const audio = document.createElement('audio')
+                    audio.src = url
+                    audio.controls = true
+                    audio.className = 'w-100'
+                    mediaContainer.appendChild(audio)
                   }
 
-                  mediaContainer.addEventListener('click', () => {
+                  mediaContainer.addEventListener('click', (e) => {
+                    if (message.mime_type.startsWith('audio/')) {
+                      e.stopPropagation()
+                      return
+                    }
                     $state.activeSelectionId = message.media_id
                     $state.activeSelectionType = message.mime_type.startsWith('image/') ? 'pictures' : 'videos'
                     $state.currentAppView = $state.activeSelectionType

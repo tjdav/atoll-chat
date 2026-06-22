@@ -14,10 +14,13 @@
       </button>
     </div>
 
-    <div class="input-group">
+    <div class="input-group {{ inputGroupClass }}">
       <input id="{{ ref_fileInput }}" type="file" ref="fileInput" class="d-none" accept="image/*, video/*, audio/*">
       <button id="{{ ref_attachButton }}" class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" {{ isDisabled }}>
         <i class="bi bi-paperclip"></i>
+      </button>
+      <button id="{{ ref_micButton }}" class="btn btn-outline-secondary" type="button" ref="micButton" title="Voice message" {{ isDisabled }}>
+        <i class="bi bi-mic"></i>
       </button>
       <textarea
         id="{{ ref_messageInput }}"
@@ -34,6 +37,42 @@
         <div class="spinner-border spinner-border-sm {{ spinnerClasses }}" role="status">
           <span class="visually-hidden">Loading...</span>
         </div>
+      </button>
+    </div>
+
+    <!-- Recording UI -->
+    <div class="recording-ui {{ recordingUIClass }} align-items-center gap-2">
+      <button id="{{ ref_discardButton }}" class="btn btn-link text-danger p-1" ref="discardButton" title="Discard">
+        <i class="bi bi-trash fs-4"></i>
+      </button>
+      
+      <div class="recording-controls flex-grow-1 d-flex align-items-center bg-light rounded-pill px-3 py-1 border">
+        <button id="{{ ref_pauseResumeButton }}" class="btn btn-sm btn-light rounded-circle me-2" ref="pauseResumeButton">
+          <i class="bi {{ pauseResumeIcon }}"></i>
+        </button>
+
+        <button id="{{ ref_redoButton }}" class="btn btn-sm btn-link text-primary me-2 {{ redoClass }}" ref="redoButton" title="Restart">
+          <i class="bi bi-arrow-counterclockwise fs-5"></i>
+        </button>
+
+        <div class="recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 24px;">
+          <div class="recording-dots d-flex gap-1">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span><span class="dot"></span>
+          </div>
+        </div>
+
+        <span class="recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
+
+        <button id="{{ ref_resumeMicButton }}" class="btn btn-sm btn-link text-secondary ms-2 {{ redoClass }}" ref="resumeMicButton" title="Add more">
+          <i class="bi bi-mic-fill"></i>
+        </button>
+      </div>
+
+      <button id="{{ ref_sendVoiceButton }}" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" ref="sendVoiceButton" {{ isDisabled }}>
+        <i class="bi bi-send-fill" style="transform: rotate(-45deg); margin-left: 3px;"></i>
       </button>
     </div>
   </div>
@@ -54,11 +93,27 @@
   .attachment-preview {
     animation: fadeIn 0.3s ease;
   }
+  .recording-ui {
+    animation: slideUp 0.3s ease;
+  }
   .x-small {
     font-size: 0.75rem;
   }
+  .dot {
+    width: 3px;
+    height: 3px;
+    background-color: #ccc;
+    border-radius: 50%;
+  }
+  .recording-ui .dot {
+    background-color: var(--bs-primary);
+  }
   @keyframes fadeIn {
     from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
     to { opacity: 1; transform: translateY(0); }
   }
 </style>
@@ -72,14 +127,26 @@
       isUploading: false,
       uploadStatus: '',
       fileName: '',
-      hasFile: false
+      hasFile: false,
+      isRecording: false,
+      isPaused: false,
+      recordingDuration: 0
     }),
     getters: {
       attachmentPreviewClass: (state) => (state.hasFile ? 'd-flex' : 'd-none'),
       isDisabled: (state) => (state.isSending || state.isUploading ? 'disabled' : ''),
       sendTextClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : 'd-none d-sm-inline'),
       iconClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : ''),
-      spinnerClasses: (state) => (state.isSending || state.isUploading ? '' : 'd-none')
+      spinnerClasses: (state) => (state.isSending || state.isUploading ? '' : 'd-none'),
+      inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-flex'),
+      recordingUIClass: (state) => (state.isRecording ? 'd-flex' : 'd-none'),
+      pauseResumeIcon: (state) => (state.isPaused ? 'bi-play-fill' : 'bi-pause-fill'),
+      redoClass: (state) => (state.isPaused ? '' : 'd-none'),
+      formattedDuration: (state) => {
+        const mins = Math.floor(state.recordingDuration / 60)
+        const secs = state.recordingDuration % 60
+        return `${mins}:${secs.toString().padStart(2, '0')}`
+      }
     },
     client: ({ refs, state, globalStore, pocketbase, localDb, signal }) => {
       const { $state } = globalStore
@@ -89,6 +156,17 @@
       const sendButton = refs('sendButton')
       const attachButton = refs('attachButton')
       const fileInput = refs('fileInput')
+      const micButton = refs('micButton')
+      const discardButton = refs('discardButton')
+      const pauseResumeButton = refs('pauseResumeButton')
+      const redoButton = refs('redoButton')
+      const sendVoiceButton = refs('sendVoiceButton')
+      const resumeMicButton = refs('resumeMicButton')
+
+      let mediaRecorder = null
+      let audioChunks = []
+      let timerInterval = null
+      let shouldSendVoice = false
 
       const autoExpand = () => {
         messageInput.style.height = 'auto'
@@ -103,9 +181,38 @@
         state.uploadStatus = ''
         state.fileName = ''
         state.hasFile = false
+        state.isRecording = false
+        state.isPaused = false
+        state.recordingDuration = 0
         fileInput.value = ''
         messageInput.value = ''
+        stopTimer()
+        cleanupRecorder()
         autoExpand()
+      }
+
+      const cleanupRecorder = () => {
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop()
+        }
+        mediaRecorder = null
+        audioChunks = []
+      }
+
+      const startTimer = () => {
+        stopTimer()
+        timerInterval = setInterval(() => {
+          if (!state.isPaused) {
+            state.recordingDuration++
+          }
+        }, 1000)
+      }
+
+      const stopTimer = () => {
+        if (timerInterval) {
+          clearInterval(timerInterval)
+          timerInterval = null
+        }
       }
 
       const dispatchMessage = async (plaintextObj) => {
@@ -117,13 +224,13 @@
         })
       }
 
-      const sendMessage = async () => {
+      const sendMessage = async (recordedBlob = null) => {
         if (state.isSending || state.isUploading) {
           return
         }
 
         const text = messageInput.value.trim()
-        const file = fileInput.files[0]
+        const file = recordedBlob || fileInput.files[0]
 
         if (!text && !file) {
           return
@@ -157,7 +264,7 @@
             // 3. Dispatch media message
             const mediaPlaintext = {
               type: 'media',
-              content: text,
+              content: recordedBlob ? '' : text,
               mime_type: file.type,
               media_id: mediaRecord.id,
               file_key: sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL),
@@ -183,6 +290,82 @@
           state.isUploading = false
         }
       }
+
+      const startRecording = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          mediaRecorder = new MediaRecorder(stream)
+          audioChunks = []
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              audioChunks.push(e.data)
+            }
+          }
+
+          mediaRecorder.onstop = () => {
+            const tracks = stream.getTracks()
+            tracks.forEach(track => track.stop())
+  
+            if (shouldSendVoice && audioChunks.length > 0) {
+              const blob = new Blob(audioChunks, { type: 'audio/webm' })
+              sendMessage(blob)
+            }
+            shouldSendVoice = false
+          }
+
+          mediaRecorder.start()
+          shouldSendVoice = false
+          state.isRecording = true
+          state.isPaused = false
+          state.recordingDuration = 0
+          startTimer()
+        } catch (err) {
+          console.error('[chat-input] Failed to start recording:', err)
+          alert('Microphone access denied or unavailable.')
+        }
+      }
+
+      micButton.addEventListener('click', startRecording, { signal })
+
+      discardButton.addEventListener('click', () => {
+        resetUI()
+      }, { signal })
+
+      pauseResumeButton.addEventListener('click', () => {
+        if (!mediaRecorder) {
+          return
+        }
+
+        if (state.isPaused) {
+          mediaRecorder.resume()
+          state.isPaused = false
+        } else {
+          mediaRecorder.pause()
+          state.isPaused = true
+        }
+      }, { signal })
+
+      resumeMicButton.addEventListener('click', () => {
+        if (!mediaRecorder || !state.isPaused) {
+          return
+        }
+        mediaRecorder.resume()
+        state.isPaused = false
+      }, { signal })
+
+      redoButton.addEventListener('click', () => {
+        cleanupRecorder()
+        startRecording()
+      }, { signal })
+
+      sendVoiceButton.addEventListener('click', () => {
+        if (!mediaRecorder) {
+          return
+        }
+        shouldSendVoice = true
+        mediaRecorder.stop()
+      }, { signal })
 
       attachButton.addEventListener('click', () => {
         fileInput.click()
