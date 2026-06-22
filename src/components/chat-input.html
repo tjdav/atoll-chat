@@ -157,6 +157,7 @@
             // 3. Dispatch media message
             const mediaPlaintext = {
               type: 'media',
+              content: text,
               mime_type: file.type,
               media_id: mediaRecord.id,
               file_key: sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL),
