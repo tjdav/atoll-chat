@@ -96,13 +96,16 @@ export default function syncPlugin () {
               })
 
               // Subscribe to the room members collection
-              await pb.collection('room_members').subscribe('*', (e) => {
+              await pb.collection('room_members').subscribe('*', async (e) => {
                 if (e.action === 'create' || e.action === 'update') {
-                  // Fire-and-forget dispatch to the background worker
-                  $worker.execute('PROCESS_NEW_ROOM_KEY', e.record).catch(console.error)
+                  if (e.record.user_id === pb.authStore.model.id) {
+                    // Own key update/invite
+                    $worker.execute('PROCESS_NEW_ROOM_KEY', e.record).catch(console.error)
+                  } else {
+                    // Other member update (likely seen status)
+                    $worker.execute('UPDATE_ROOM_MEMBER', e.record).catch(console.error)
+                  }
                 }
-              }, {
-                filter: `user_id = "${pb.authStore.model.id}"`
               })
 
               isSubscribed = true

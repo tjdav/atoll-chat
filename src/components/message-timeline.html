@@ -101,6 +101,69 @@
   .max-w-75 {
     max-width: 75%;
   }
+  .date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    margin: 20px 0;
+    font-weight: 500;
+  }
+  .message-row {
+    display: flex;
+    margin-bottom: 2px;
+    width: 100%;
+  }
+  .message-row.sent {
+    justify-content: flex-end;
+  }
+  .message-row.received {
+    justify-content: flex-start;
+  }
+  .avatar-col {
+    width: 32px;
+    margin-right: 8px;
+    display: flex;
+    align-items: flex-end;
+    flex-shrink: 0;
+  }
+  .message-bubble-column {
+    display: flex;
+    flex-direction: column;
+    max-width: 70%;
+  }
+  .sent .message-bubble-column {
+    align-items: flex-end;
+  }
+  .received .message-bubble-column {
+    align-items: flex-start;
+  }
+  .timeline-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: var(--bs-secondary-bg);
+  }
+  .seen-indicators {
+    display: flex;
+    justify-content: flex-end;
+    gap: 2px;
+    margin-top: 2px;
+    height: 16px;
+  }
+  .seen-avatar {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--bs-body-bg);
+  }
+  /* Consecutive message spacing */
+  .message-row.block-end {
+    margin-bottom: 12px;
+  }
 </style>
 
 <script type="module">
@@ -118,6 +181,7 @@
 
       const objectUrls = new Map()
       let lastRoomId = null
+      let seenTimeout = null
 
       const cleanupUrls = () => {
         objectUrls.forEach(url => URL.revokeObjectURL(url))
@@ -130,6 +194,63 @@
         if (container) {
           container.scrollTop = container.scrollHeight
         }
+      }
+
+      const updateSeenStatus = (messageId) => {
+        const roomId = $state.activeSelectionId
+        if (!roomId || !messageId) {
+          return
+        }
+
+        if (seenTimeout) {
+          clearTimeout(seenTimeout)
+        }
+        seenTimeout = setTimeout(async () => {
+          try {
+            // Find our room member record
+            const members = await pb.collection('room_members').getList(1, 1, {
+              filter: `room_id = "${roomId}" && user_id = "${$state.currentUser.id}"`
+            })
+            if (members.items.length > 0) {
+              const member = members.items[0]
+              if (member.last_read_message_id !== messageId) {
+                await pb.collection('room_members').update(member.id, {
+                  last_read_message_id: messageId
+                })
+              }
+            }
+          } catch (err) {
+            console.error('Failed to update seen status:', err)
+          }
+        }, 1000)
+      }
+
+      const intersectionObserver = new IntersectionObserver((entries) => {
+        entries.forEach(entry => {
+          if (entry.isIntersecting) {
+            const messageId = entry.target.dataset.messageId
+            const isSent = entry.target.dataset.isSent === 'true'
+            if (!isSent) {
+              updateSeenStatus(messageId)
+            }
+          }
+        })
+      }, {
+        root: container,
+        threshold: 0.7
+      })
+
+      const formatSeparatorDate = (date) => {
+        const now = new Date()
+        const d = new Date(date)
+        const isToday = now.toDateString() === d.toDateString()
+        const options = {
+          weekday: 'short',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }
+        return d.toLocaleDateString('en-US', options)
       }
 
       const renderTimeline = async () => {
@@ -151,19 +272,76 @@
             .equals(roomId)
             .sortBy('created_at')
 
+          const room = await $localDb.local_rooms.get(roomId)
+          const participants = room?.participants || []
+
           container.innerHTML = ''
+          intersectionObserver.disconnect()
   
           if (messages.length === 0) {
             container.appendChild(emptyState)
             return
           }
 
-          messages.forEach(message => {
+          messages.forEach((message, index) => {
             const isSent = message.sender_id === $state.currentUser?.id
+            const nextMessage = messages[index + 1]
+            const prevMessage = messages[index - 1]
   
-            // Outer container for the whole message block (alignment container)
+            // 1. Date Separator logic (> 1 hour)
+            if (prevMessage) {
+              const prevTime = new Date(prevMessage.created_at).getTime()
+              const currTime = new Date(message.created_at).getTime()
+              if (currTime - prevTime > 3600000) {
+                const sep = document.createElement('div')
+                sep.className = 'date-separator'
+                sep.textContent = formatSeparatorDate(message.created_at)
+                container.appendChild(sep)
+              }
+            } else {
+              // First message always has a separator
+              const sep = document.createElement('div')
+              sep.className = 'date-separator'
+              sep.textContent = formatSeparatorDate(message.created_at)
+              container.appendChild(sep)
+            }
+
+            const isLastInBlock = !nextMessage || nextMessage.sender_id !== message.sender_id
+  
+            const row = document.createElement('div')
+            row.className = `message-row ${isSent ? 'sent' : 'received'} ${isLastInBlock ? 'block-end' : ''}`
+            row.dataset.messageId = message.id
+            row.dataset.isSent = isSent
+            intersectionObserver.observe(row)
+
+            // Avatar Column (Received only)
+            if (!isSent) {
+              const avatarCol = document.createElement('div')
+              avatarCol.className = 'avatar-col'
+              if (isLastInBlock) {
+                const sender = participants.find(p => p.id === message.sender_id)
+                if (sender) {
+                  if (sender.avatar) {
+                    const img = document.createElement('img')
+                    img.src = pb.files.getURL(sender, sender.avatar, { thumb: '32x32' })
+                    img.className = 'timeline-avatar'
+                    avatarCol.appendChild(img)
+                  } else {
+                    const initials = document.createElement('div')
+                    initials.className = 'timeline-avatar d-flex align-items-center justify-content-center bg-secondary text-white x-small'
+                    initials.textContent = (sender.username || '?').substring(0, 2).toUpperCase()
+                    avatarCol.appendChild(initials)
+                  }
+                }
+              }
+              row.appendChild(avatarCol)
+            }
+
+            const bubbleCol = document.createElement('div')
+            bubbleCol.className = 'message-bubble-column'
+
             const messageBlock = document.createElement('div')
-            messageBlock.className = `d-flex flex-column mb-3 max-w-75 ${isSent ? 'align-self-end align-items-end' : 'align-self-start align-items-start'}`
+            messageBlock.className = `d-flex flex-column ${isSent ? 'align-items-end' : 'align-items-start'}`
 
             if (message.type === 'media' && message.file_key) {
               const mediaContainer = document.createElement('div')
@@ -386,7 +564,32 @@
               messageBlock.appendChild(textBubble)
             }
   
-            container.appendChild(messageBlock)
+            bubbleCol.appendChild(messageBlock)
+
+            // Seen Indicators
+            const seenBy = participants.filter(p => p.id !== $state.currentUser?.id && p.last_read_message_id === message.id)
+            if (seenBy.length > 0) {
+              const seenContainer = document.createElement('div')
+              seenContainer.className = 'seen-indicators'
+              seenBy.forEach(p => {
+                if (p.avatar) {
+                  const img = document.createElement('img')
+                  img.src = pb.files.getURL(p, p.avatar, { thumb: '16x16' })
+                  img.className = 'seen-avatar'
+                  seenContainer.appendChild(img)
+                } else {
+                  const initials = document.createElement('div')
+                  initials.className = 'seen-avatar d-flex align-items-center justify-content-center bg-secondary text-white'
+                  initials.style.fontSize = '8px'
+                  initials.textContent = (p.username || '?').substring(0, 1).toUpperCase()
+                  seenContainer.appendChild(initials)
+                }
+              })
+              bubbleCol.appendChild(seenContainer)
+            }
+
+            row.appendChild(bubbleCol)
+            container.appendChild(row)
           })
 
           scrollToBottom()
@@ -409,7 +612,7 @@
       // Listen for new background messages
       $bus.on('NEW_LOCAL_DATA', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
-          renderTimeline()
+          debouncedRender()
         }
       })
     }

@@ -155,6 +155,11 @@ async function handleEvent (event) {
       return
     }
 
+    if (type === 'UPDATE_ROOM_MEMBER') {
+      await updateRoomMember(id, payload)
+      return
+    }
+
     self.postMessage({
       id,
       type,
@@ -301,6 +306,30 @@ async function processIncomingMessage (rpcId, record) {
   })
 }
 
+async function updateRoomMember (rpcId, record) {
+  const { room_id, user_id, last_read_message_id } = record
+
+  const room = await db.local_rooms.get(room_id)
+  if (room && room.participants) {
+    const pIndex = room.participants.findIndex(p => p.id === user_id)
+    if (pIndex !== -1) {
+      room.participants[pIndex].last_read_message_id = last_read_message_id
+      await db.local_rooms.put(room)
+
+      self.postMessage({
+        type: 'NEW_LOCAL_DATA',
+        payload: { room_id }
+      })
+    }
+  }
+
+  self.postMessage({
+    id: rpcId,
+    type: 'UPDATE_ROOM_MEMBER',
+    result: { success: true }
+  })
+}
+
 async function processNewRoomKey (rpcId, payload) {
   const {
     room_id,
@@ -410,7 +439,8 @@ async function processNewRoomKey (rpcId, payload) {
           username: u.username,
           avatar: u.avatar,
           collectionId: u.collectionId,
-          collectionName: u.collectionName
+          collectionName: u.collectionName,
+          last_read_message_id: m.last_read_message_id
         }
         : null
     }).filter(p => p !== null)
