@@ -7,7 +7,7 @@
     <video id="{{ ref_localVideo }}" ref="localVideo" class="position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
 
     <!-- Overlay if no remote video yet -->
-    <div id="{{ ref_remotePlaceholder }}" ref="remotePlaceholder" class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
+    <div id="{{ ref_remotePlaceholder }}" ref="remotePlaceholder" class="position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
       <div class="spinner-border text-primary mb-3" role="status">
         <span class="visually-hidden">Connecting...</span>
       </div>
@@ -20,7 +20,13 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, eventBus, signal }) => {
+    server: () => ({
+      hasRemoteTrack: false
+    }),
+    getters: {
+      placeholderClass: (state) => (state.hasRemoteTrack ? 'd-none' : 'd-flex')
+    },
+    client: ({ refs, state, eventBus, signal }) => {
       const { $bus } = eventBus
       const remoteVideo = refs('remoteVideo')
       const localVideo = refs('localVideo')
@@ -37,9 +43,7 @@
       $bus.on('remote_track_arrival', ({ stream }) => {
         if (remoteVideo) {
           remoteVideo.srcObject = stream
-          if (remotePlaceholder) {
-            remotePlaceholder.style.display = 'none'
-          }
+          state.hasRemoteTrack = true
         }
       }, { signal })
 
@@ -51,9 +55,7 @@
         if (localVideo) {
           localVideo.srcObject = null
         }
-        if (remotePlaceholder) {
-          remotePlaceholder.style.display = 'flex'
-        }
+        state.hasRemoteTrack = false
       }, { signal })
 
       // Handle video element cleanup

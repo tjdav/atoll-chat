@@ -1,7 +1,7 @@
 <template id="chat-input">
   <div id="{{ ref_chatInputContainer }}" ref="chatInputContainer" class="chat-input-container p-3 border-top bg-body">
     <!-- Attachment Preview Bar -->
-    <div id="{{ ref_attachmentPreview }}" class="attachment-preview p-2 mb-2 bg-light rounded d-flex align-items-center justify-content-between border" style="display: {{ attachmentPreviewDisplay }};">
+    <div id="{{ ref_attachmentPreview }}" class="attachment-preview p-2 mb-2 bg-light rounded {{ attachmentPreviewClass }} align-items-center justify-content-between border">
       <div class="d-flex align-items-center">
         <i class="bi bi-file-earmark-arrow-up text-primary fs-4 me-2"></i>
         <div>
@@ -75,7 +75,7 @@
       hasFile: false
     }),
     getters: {
-      attachmentPreviewDisplay: (state) => (state.hasFile ? 'flex' : 'none'),
+      attachmentPreviewClass: (state) => (state.hasFile ? 'd-flex' : 'd-none'),
       isDisabled: (state) => (state.isSending || state.isUploading ? 'disabled' : ''),
       sendTextClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : 'd-none d-sm-inline'),
       iconClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : ''),

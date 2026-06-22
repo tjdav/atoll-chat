@@ -12,10 +12,10 @@
       </div>
     </div>
 
-    <div id="{{ ref_loadingOverlay }}" ref="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-75 d-flex align-items-center justify-content-center" style="display: none; z-index: 1060;">
+    <div id="{{ ref_loadingOverlay }}" ref="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-75 {{ loadingClass }} align-items-center justify-content-center" style="z-index: 1060;">
       <div class="text-center">
         <div class="spinner-border text-primary mb-2" role="status"></div>
-        <div id="{{ ref_loadingText }}" class="small fw-bold" ref="loadingText">Loading members...</div>
+        <div id="{{ ref_loadingText }}" class="small fw-bold" ref="loadingText">{{ loadingMessage }}</div>
       </div>
     </div>
   </div>
@@ -53,10 +53,13 @@
     server: () => ({
       members: [],
       isAdmin: false,
-      isKicking: false
+      isKicking: false,
+      isLoading: false,
+      loadingMessage: 'Loading...'
     }),
     getters: {
-      memberCount: (state) => (state.members || []).length
+      memberCount: (state) => (state.members || []).length,
+      loadingClass: (state) => (state.isLoading ? 'd-flex' : 'd-none')
     },
     client: ({ refs, state, pocketbase, eventBus, globalStore, localDb }) => {
       const { pb } = pocketbase
@@ -64,16 +67,14 @@
       const { $state } = globalStore
       const { $localDb } = localDb
       const memberListContainer = refs('memberList')
-      const loadingOverlay = refs('loadingOverlay')
-      const loadingText = refs('loadingText')
 
       const showLoading = (text) => {
-        loadingText.textContent = text || 'Loading...'
-        loadingOverlay.style.display = 'flex'
+        state.loadingMessage = text || 'Loading...'
+        state.isLoading = true
       }
 
       const hideLoading = () => {
-        loadingOverlay.style.display = 'none'
+        state.isLoading = false
       }
 
       const fetchMembers = async () => {
@@ -85,7 +86,7 @@
         showLoading('Fetching members...')
         try {
           const members = await pb.collection('room_members').getFullList({
-            filter: `room_id="${roomId}"`,
+            filter: pb.filter('room_id = {:roomId}', { roomId }),
             expand: 'user_id'
           })
 
@@ -187,7 +188,7 @@
 
           // 1. Identify Survivors & Generate New Key
           const allMembers = await pb.collection('room_members').getFullList({
-            filter: `room_id="${roomId}"`,
+            filter: pb.filter('room_id = {:roomId}', { roomId }),
             expand: 'user_id'
           })
 
