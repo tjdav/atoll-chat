@@ -25,6 +25,9 @@
       <div class="h-100" style="display: {{ videoPlayerDisplay }};">
         <video-player-view></video-player-view>
       </div>
+      <div class="h-100" style="display: {{ audioPlayerDisplay }};">
+        <audio-player-view></audio-player-view>
+      </div>
     </div>
   </div>
   <call-overlay></call-overlay>
@@ -41,10 +44,11 @@
     }),
     getters: {
       currentViewTitle: (state) => state.currentAppView || 'Chats',
-      emptyStateDisplay: (state) => ((!state.activeSelectionId || (state.activeSelectionType !== 'chats' && state.activeSelectionType !== 'pictures' && state.activeSelectionType !== 'videos')) ? 'flex' : 'none'),
+      emptyStateDisplay: (state) => ((!state.activeSelectionId || (state.activeSelectionType !== 'chats' && state.activeSelectionType !== 'pictures' && state.activeSelectionType !== 'videos' && state.activeSelectionType !== 'music')) ? 'flex' : 'none'),
       chatViewDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'chats') ? 'block' : 'none'),
       imageViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'pictures') ? 'block' : 'none'),
-      videoPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'videos') ? 'block' : 'none')
+      videoPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'videos') ? 'block' : 'none'),
+      audioPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'music') ? 'block' : 'none')
     },
     client: ({ state, globalStore }) => {
       const { $state } = globalStore

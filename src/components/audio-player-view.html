@@ -1,0 +1,171 @@
+<template id="audio-player-view">
+  <div class="audio-player-container d-flex flex-column justify-content-center align-items-center h-100 bg-body-secondary p-4">
+    <div id="{{ ref_loader }}" class="spinner-border text-primary mb-3" ref="loader" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+    
+    <div class="alert alert-danger m-3" hidden="{{ isErrorHidden }}">
+      {{ errorMessage }}
+    </div>
+
+    <div id="{{ ref_playerContent }}" ref="playerContent" class="d-none text-center w-100" style="max-width: 500px;">
+      <div class="mb-4">
+        <i class="bi bi-music-note-beamed text-primary" style="font-size: 5rem;"></i>
+      </div>
+      
+      <div class="mb-4">
+        <h4 class="mb-1 text-truncate">{{ fileName }}</h4>
+        <div class="text-muted">From: <span class="fw-bold">{{ roomName }}</span></div>
+      </div>
+
+      <audio id="{{ ref_mediaDisplay }}" ref="mediaDisplay" controls class="w-100"></audio>
+    </div>
+  </div>
+</template>
+
+<style>
+  .audio-player-container {
+    width: 100%;
+    height: 100%;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      isErrorHidden: true,
+      errorMessage: '',
+      fileName: 'Untitled Audio',
+      roomName: 'Unknown Chat'
+    }),
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils }) => {
+      const { pb } = pocketbase
+      const { $localDb } = localDb
+      const { $state } = globalStore
+      const { $utils } = utils
+      const loader = refs('loader')
+      const playerContent = refs('playerContent')
+      const mediaDisplay = refs('mediaDisplay')
+      let currentObjectUrl = null
+
+      const cleanup = () => {
+        if (currentObjectUrl) {
+          URL.revokeObjectURL(currentObjectUrl)
+          currentObjectUrl = null
+        }
+        if (mediaDisplay) {
+          mediaDisplay.pause()
+          mediaDisplay.src = ''
+        }
+      }
+
+      // Cleanup on component unmount
+      signal.addEventListener('abort', cleanup)
+
+      const loadMedia = async () => {
+        const id = $state.activeSelectionId
+        const type = $state.activeSelectionType
+
+        if (!id || type !== 'music') {
+          return
+        }
+
+        // Reset UI
+        state.isErrorHidden = true
+        state.errorMessage = ''
+        loader.classList.remove('d-none')
+        playerContent.classList.add('d-none')
+        cleanup()
+
+        try {
+          // Get asset from local DB.
+          const asset = await $localDb.local_assets.get(id)
+          if (!asset) {
+            throw new Error('Audio asset not found in local database')
+          }
+
+          // Fetch room info
+          const room = await $localDb.local_rooms.get(asset.room_id)
+          if (room) {
+            state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
+          } else {
+            state.roomName = 'Unknown Chat'
+          }
+
+          // Fetch the media record to get the actual filename
+          const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+          
+          // Set file name from metadata if available, otherwise use collection record info
+          if (mediaRecord.encrypted_metadata) {
+             // In a real app, we might need to decrypt metadata too, 
+             // but for now let's see what's in the record.
+             // Usually filenames are part of the encrypted payload in this app.
+             state.fileName = mediaRecord.name || 'Audio File'
+          } else {
+             state.fileName = 'Audio File'
+          }
+
+          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+          const response = await fetch(url, { signal })
+          if (!response.ok) {
+            throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+          }
+          const arrayBuffer = await response.arrayBuffer()
+          const encryptedFileBuffer = new Uint8Array(arrayBuffer)
+
+          // Load sodium and prepare for decryption.
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+
+          const fileKeyBuffer = sodium.from_base64(asset.file_key, sodium.base64_variants.ORIGINAL)
+          const nonceBuffer = sodium.from_base64(asset.file_nonce, sodium.base64_variants.ORIGINAL)
+
+          let decryptedFileBuffer
+          try {
+            decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)
+          } catch (e) {
+            throw new Error('Media Corrupted or Key Invalid')
+          }
+
+          if (!decryptedFileBuffer) {
+            throw new Error('Media Corrupted or Key Invalid')
+          }
+
+          // Create Blob and local object URL.
+          const mediaBlob = new Blob([decryptedFileBuffer], { type: asset.mime_type })
+          currentObjectUrl = URL.createObjectURL(mediaBlob)
+  
+          // Reveal the media and hide the loader.
+          if (!signal.aborted) {
+            mediaDisplay.src = currentObjectUrl
+            playerContent.classList.remove('d-none')
+            loader.classList.add('d-none')
+          } else {
+            cleanup()
+          }
+
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
+          console.error('[audio-player-view] Error:', err)
+          state.errorMessage = err.message || 'Media Corrupted or Key Invalid'
+          state.isErrorHidden = false
+          loader.classList.add('d-none')
+        }
+      }
+
+      const debouncedLoad = $utils.debounce(loadMedia, 50)
+
+      // Initial load
+      debouncedLoad()
+
+      // Watch for selection changes.
+      $state.subscribe('activeSelectionId', debouncedLoad)
+      $state.subscribe('activeSelectionType', debouncedLoad)
+    }
+  })
+</script>
