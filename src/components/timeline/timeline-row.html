@@ -1,84 +1,29 @@
 <template id="timeline-row">
-  <div class="{{ rowClass }}">
-    <!-- Avatar Column (Received only) -->
-    <div class="avatar-col">
-      <div id="{{ ref_avatarContainer }}" ref="avatarContainer">
-        <!-- Rendered in client block if showAvatar is true -->
+  <div class="w-100 {{ marginClass }}">
+    <!-- Sender Name (Received First in Block only) -->
+    <div class="sender-name {{ senderNameDisplayClass }}">
+      {{ senderName }}
+    </div>
+
+    <div class="timeline-row-container {{ rowClass }}">
+      <!-- Avatar Column (Received only) -->
+      <div class="avatar-col d-flex align-items-end {{ avatarColDisplayClass }}">
+        <div id="{{ ref_avatarContainer }}" ref="avatarContainer">
+          <!-- Rendered in client block if showAvatar is true -->
+        </div>
+      </div>
+
+      <div class="message-bubble-column d-flex flex-column {{ alignmentClass }}">
+        <slot></slot>
       </div>
     </div>
 
-    <div class="message-bubble-column">
-      <div class="d-flex flex-column {{ alignmentClass }}">
-        <slot></slot>
-      </div>
-
-      <!-- Seen Indicators -->
-      <div id="{{ ref_seenContainer }}" ref="seenContainer" class="seen-indicators">
-        <!-- Rendered in client block -->
-      </div>
+    <!-- Seen Indicators -->
+    <div id="{{ ref_seenContainer }}" ref="seenContainer" class="seen-indicators px-2">
+      <!-- Rendered in client block -->
     </div>
   </div>
 </template>
-
-<style>
-  .message-row {
-    display: flex;
-    margin-bottom: 2px;
-    width: 100%;
-  }
-  .message-row.sent {
-    justify-content: flex-end;
-  }
-  .message-row.received {
-    justify-content: flex-start;
-  }
-  .avatar-col {
-    width: 32px;
-    margin-right: 8px;
-    display: flex;
-    align-items: flex-end;
-    flex-shrink: 0;
-    min-height: 28px;
-  }
-  .message-bubble-column {
-    display: flex;
-    flex-direction: column;
-    max-width: 70%;
-  }
-  .sent .message-bubble-column {
-    align-items: flex-end;
-  }
-  .received .message-bubble-column {
-    align-items: flex-start;
-  }
-  .timeline-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
-    background-color: var(--bs-secondary-bg);
-  }
-  .seen-indicators {
-    display: flex;
-    justify-content: flex-end;
-    gap: 2px;
-    margin-top: 2px;
-    height: 16px;
-  }
-  .seen-avatar {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid var(--bs-body-bg);
-  }
-  .message-row.block-end {
-    margin-bottom: 12px;
-  }
-  .x-small {
-    font-size: 0.7rem;
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -86,7 +31,9 @@
   export default defineComponent({
     attributes: {
       isSent: String,
+      isFirstInBlock: String,
       isLastInBlock: String,
+      senderName: String,
       avatarUrl: String,
       avatarInitials: String,
       seenAvatars: String
@@ -94,12 +41,22 @@
     getters: {
       rowClass: (state) => {
         const isSent = state.isSent === 'true' || state.isSent === true
-        const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
-        return `message-row ${isSent ? 'sent' : 'received'} ${isLastInBlock ? 'block-end' : ''}`
+        return isSent ? 'sent' : 'received'
       },
       alignmentClass: (state) => {
         const isSent = state.isSent === 'true' || state.isSent === true
         return isSent ? 'align-items-end' : 'align-items-start'
+      },
+      senderNameDisplayClass: (state) => {
+        return state.senderName ? 'd-block' : 'd-none'
+      },
+      avatarColDisplayClass: (state) => {
+        const isSent = state.isSent === 'true' || state.isSent === true
+        return isSent ? 'd-none' : 'd-flex'
+      },
+      marginClass: (state) => {
+        const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
+        return isLastInBlock ? 'mb-3' : 'mb-1'
       }
     },
     client: ({ refs, state, globalStore }) => {
@@ -111,6 +68,8 @@
         avatarContainer.innerHTML = ''
         const isSent = state.isSent === 'true' || state.isSent === true
         const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
+        
+        // In received blocks, we only show the avatar for the last message in the block
         if (isLastInBlock && !isSent) {
           if (state.avatarUrl) {
             const img = document.createElement('img')
@@ -135,7 +94,6 @@
         const parts = state.seenAvatars.split(',').filter(p => p.trim() !== '')
         parts.forEach(p => {
           const trimmed = p.trim()
-          // Heuristic: if it looks like a URL/path
           if (trimmed.includes('.') || trimmed.includes('/') || trimmed.startsWith('data:')) {
             const img = document.createElement('img')
             img.src = trimmed

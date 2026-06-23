@@ -1,40 +1,11 @@
 <template id="media-preview">
-  <div ref="container" class="media-preview-container rounded overflow-hidden mb-1">
+  <div ref="container" class="media-preview-container rounded-3 overflow-hidden mb-1">
     <div ref="loading" class="d-flex flex-column align-items-center justify-content-center p-3 text-center">
       <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
       <div><small>Decrypting...</small></div>
     </div>
   </div>
 </template>
-
-<style>
-  .media-preview-container {
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    max-width: 70vw;
-    max-height: 60vh;
-    background-color: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-    min-width: 100px;
-    min-height: 100px;
-  }
-  .media-preview-container:hover {
-    transform: scale(1.01);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  }
-  .media-preview-container img, .media-preview-container video {
-    display: block;
-    max-width: 100%;
-    max-height: 60vh;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -62,6 +33,9 @@
       signal.addEventListener('abort', cleanup)
 
       try {
+        if (!state.messageId) {
+          return
+        }
         const message = await $localDb.local_messages.get(state.messageId)
         if (!message || !message.file_key) {
           throw new Error('Message or key missing')
@@ -95,12 +69,16 @@
         if (message.mime_type.startsWith('image/')) {
           const img = document.createElement('img')
           img.src = objectUrl
+          img.className = 'img-fluid rounded-3 shadow-sm'
+          img.style.maxHeight = '300px'
           container.appendChild(img)
         } else if (message.mime_type.startsWith('video/')) {
           const video = document.createElement('video')
           video.src = objectUrl
           video.muted = true
           video.loop = true
+          video.className = 'img-fluid rounded-3 shadow-sm'
+          video.style.maxHeight = '300px'
           video.addEventListener('mouseenter', () => video.play())
           video.addEventListener('mouseleave', () => video.pause())
           container.appendChild(video)

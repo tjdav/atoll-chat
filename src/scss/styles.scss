@@ -17,7 +17,9 @@ $utilities: map-merge($utilities,
         property: max-width,
         class: max-w,
         values: (
-          75: 75%
+          75: 75%,
+          85: 85%,
+          100: 100%
         )
       ),
       "height": map-merge(map-get($utilities, "height"),
@@ -64,6 +66,8 @@ $utilities: map-merge($utilities,
 
 @import "display";
 @import "layout";
+@import "timeline";
+@import "waveform";
 
 html,
 body {

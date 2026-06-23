@@ -1,5 +1,5 @@
 <template id="text-message">
-  <div class="{{ bubbleClass }}">
+  <div class="message-bubble {{ bubbleClass }}">
     {{ content }}
   </div>
 </template>
@@ -9,16 +9,26 @@
 
   export default defineComponent({
     attributes: {
-      content: String,
-      isSent: String
+      content: {
+        type: String,
+        default: ''
+      },
+      isSent: {
+        type: Boolean,
+        default: false
+      },
+      position: {
+        type: String,
+        default: 'start'
+      }
     },
     getters: {
       bubbleClass: (state) => {
-        const base = 'rounded p-2 text-break'
-        const isSent = state.isSent === 'true' || state.isSent === true
-        return isSent
-          ? `bg-primary text-white ${base}`
-          : `bg-light text-dark border ${base}`
+        const typeClass = state.isSent ? 'bubble-sent' : 'bubble-received'
+        const pos = state.position || 'single'
+        const posClass = `bubble-${pos}`
+  
+        return `${typeClass} ${posClass}`
       }
     }
   })

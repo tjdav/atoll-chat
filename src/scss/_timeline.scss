@@ -1,0 +1,69 @@
+@use "variables" as *;
+
+.timeline-avatar {
+  width: $timeline-avatar-size;
+  height: $timeline-avatar-size;
+  border-radius: 50%;
+  object-fit: cover;
+  background-color: var(--bs-secondary-bg);
+}
+
+.seen-avatar {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid var(--bs-body-bg);
+}
+
+.message-bubble {
+  padding: 0.5rem 0.75rem;
+  word-wrap: break-word;
+  max-width: $timeline-bubble-max-width;
+  font-size: 0.9375rem;
+}
+
+// Messenger-style rounded corners
+.bubble-sent {
+  background-color: $messenger-blue;
+  color: white;
+  border-radius: 1.25rem;
+  align-self: flex-end;
+
+  &.bubble-start { border-bottom-right-radius: 0.25rem; }
+  &.bubble-middle { border-top-right-radius: 0.25rem; border-bottom-right-radius: 0.25rem; }
+  &.bubble-end { border-top-right-radius: 0.25rem; }
+}
+
+.bubble-received {
+  background-color: var(--bs-secondary-bg);
+  color: var(--bs-body-color);
+  border-radius: 1.25rem;
+  align-self: flex-start;
+
+  &.bubble-start { border-bottom-left-radius: 0.25rem; }
+  &.bubble-middle { border-top-left-radius: 0.25rem; border-bottom-left-radius: 0.25rem; }
+  &.bubble-end { border-top-left-radius: 0.25rem; }
+}
+
+.sender-name {
+  font-size: 0.75rem;
+  color: var(--bs-secondary-color);
+  margin-left: calc($timeline-avatar-size + $timeline-avatar-margin);
+  margin-bottom: 2px;
+}
+
+.timeline-row-container {
+  display: grid;
+  grid-template-columns: $timeline-avatar-size 1fr;
+  column-gap: $timeline-avatar-margin;
+  margin-bottom: 2px;
+
+  &.sent {
+    grid-template-columns: 1fr;
+  }
+}
+
+.x-small {
+  font-size: 0.7rem;
+}

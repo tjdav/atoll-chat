@@ -125,21 +125,25 @@
             }
 
             const isLastInBlock = !nextMessage || nextMessage.sender_id !== message.sender_id
+            const isFirstInBlock = !prevMessage || prevMessage.sender_id !== message.sender_id || showSeparator
   
             const row = document.createElement('timeline-row')
             row.setAttribute('is-sent', isSent)
+            row.setAttribute('is-first-in-block', isFirstInBlock)
             row.setAttribute('is-last-in-block', isLastInBlock)
             row.dataset.messageId = message.id
             row.dataset.isSent = isSent
 
-            if (!isSent && isLastInBlock) {
-              const sender = participants.find(p => p.id === message.sender_id)
-              if (sender) {
-                if (sender.avatar) {
-                  row.setAttribute('avatar-url', pb.files.getURL(sender, sender.avatar, { thumb: '32x32' }))
-                } else {
-                  row.setAttribute('avatar-initials', (sender.username || '?').substring(0, 2).toUpperCase())
-                }
+            const sender = participants.find(p => p.id === message.sender_id)
+            if (!isSent && isFirstInBlock && sender) {
+              row.setAttribute('sender-name', sender.username || sender.name || 'Unknown')
+            }
+
+            if (!isSent && isLastInBlock && sender) {
+              if (sender.avatar) {
+                row.setAttribute('avatar-url', pb.files.getURL(sender, sender.avatar, { thumb: '32x32' }))
+              } else {
+                row.setAttribute('avatar-initials', (sender.username || '?').substring(0, 2).toUpperCase())
               }
             }
 
@@ -153,6 +157,18 @@
                 return (p.username || '?').substring(0, 1).toUpperCase()
               }).join(',')
               row.setAttribute('seen-avatars', seenAvatars)
+            }
+
+            // Determine bubble position for Messenger-style corners
+            let position = 'single'
+            if (isFirstInBlock && isLastInBlock) {
+              position = 'single'
+            } else if (isFirstInBlock) {
+              position = 'start'
+            } else if (isLastInBlock) {
+              position = 'end'
+            } else {
+              position = 'middle'
             }
 
             // Project content into slot
@@ -170,6 +186,7 @@
                   const text = document.createElement('text-message')
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
+                  text.setAttribute('position', position)
                   row.appendChild(text)
                 }
               }
@@ -178,11 +195,13 @@
               const text = document.createElement('text-message')
               text.setAttribute('content', '🔒 Encrypted Attachment')
               text.setAttribute('is-sent', isSent)
+              text.setAttribute('position', position)
               row.appendChild(text)
             } else {
               const text = document.createElement('text-message')
               text.setAttribute('content', message.content || '')
               text.setAttribute('is-sent', isSent)
+              text.setAttribute('position', position)
               row.appendChild(text)
             }
 
