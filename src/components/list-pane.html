@@ -94,12 +94,10 @@
       }
 
       // Reactivity to global state
-      if (typeof $state.subscribe === 'function') {
-        $state.subscribe('currentAppView', (val) => {
-          state.currentAppView = val
-          updateView()
-        })
-      }
+      $state.subscribe('currentAppView', (val) => {
+        state.currentAppView = val
+        updateView()
+      })
     }
   })
 </script>

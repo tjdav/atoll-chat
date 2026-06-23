@@ -82,11 +82,9 @@
 
       updateUI()
 
-      if (typeof $state.subscribe === 'function') {
-        $state.subscribe('isAuthenticated', updateUI)
-        $state.subscribe('isVaultUnlocked', updateUI)
-        $state.subscribe('authView', updateUI)
-      }
+      $state.subscribe('isAuthenticated', updateUI)
+      $state.subscribe('isVaultUnlocked', updateUI)
+      $state.subscribe('authView', updateUI)
     }
   })
 </script>

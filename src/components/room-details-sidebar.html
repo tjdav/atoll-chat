@@ -279,11 +279,9 @@
       }
 
       // Re-fetch when room changes
-      if (typeof $state.subscribe === 'function') {
-        $state.subscribe('activeSelectionId', () => {
-          fetchMembers()
-        })
-      }
+      $state.subscribe('activeSelectionId', () => {
+        fetchMembers()
+      })
     }
   })
 </script>

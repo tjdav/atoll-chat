@@ -135,14 +135,12 @@
       render()
 
       // Handle selection change
-      if (typeof $state.subscribe === 'function') {
-        $state.subscribe('activeSelectionId', () => {
-          render()
-        })
-        $state.subscribe('activeSelectionType', () => {
-          render()
-        })
-      }
+      $state.subscribe('activeSelectionId', () => {
+        render()
+      })
+      $state.subscribe('activeSelectionType', () => {
+        render()
+      })
 
       const handleNewData = () => {
         render()

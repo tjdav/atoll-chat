@@ -132,10 +132,8 @@
       debouncedLoad()
 
       // Watch for selection changes.
-      if (typeof $state.subscribe === 'function') {
-        $state.subscribe('activeSelectionId', debouncedLoad)
-        $state.subscribe('activeSelectionType', debouncedLoad)
-      }
+      $state.subscribe('activeSelectionId', debouncedLoad)
+      $state.subscribe('activeSelectionType', debouncedLoad)
     }
   })
 </script>

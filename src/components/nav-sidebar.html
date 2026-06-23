@@ -67,11 +67,9 @@
       state.currentAppView = $state.currentAppView || 'chats'
 
       // Subscribe to global state changes if the state plugin supports it
-      if (typeof $state.subscribe === 'function') {
-        $state.subscribe('currentAppView', (value) => {
-          state.currentAppView = value
-        })
-      }
+      $state.subscribe('currentAppView', (value) => {
+        state.currentAppView = value
+      })
 
       const views = {
         btnChats: 'chats',

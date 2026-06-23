@@ -93,12 +93,10 @@
       state.callStatus = $state.callStatus
       updateModalVisibility(state.callStatus)
 
-      if (typeof $state.subscribe === 'function') {
-        $state.subscribe('callStatus', (val) => {
-          state.callStatus = val
-          updateModalVisibility(val)
-        })
-      }
+      $state.subscribe('callStatus', (val) => {
+        state.callStatus = val
+        updateModalVisibility(val)
+      })
 
       const stopTracks = () => {
         if (state.localStream) {

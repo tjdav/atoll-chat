@@ -199,10 +199,8 @@
       const debouncedRender = $utils.debounce(renderTimeline, 50)
       debouncedRender()
 
-      if (typeof $state.subscribe === 'function') {
-        $state.subscribe('activeSelectionId', debouncedRender)
-        $state.subscribe('activeSelectionType', debouncedRender)
-      }
+      $state.subscribe('activeSelectionId', debouncedRender)
+      $state.subscribe('activeSelectionType', debouncedRender)
 
       $bus.on('NEW_LOCAL_DATA', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {

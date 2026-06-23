@@ -101,22 +101,20 @@
       updateRoomInfo($state.activeSelectionId)
 
       // Watch for room changes
-      if (typeof $state.subscribe === 'function') {
-        $state.subscribe('activeSelectionId', (val) => {
-          updateRoomInfo(val)
-          // Close details when switching rooms
-          state.isRoomDetailsOpen = false
-          $state.isRoomDetailsOpen = false
-        })
+      $state.subscribe('activeSelectionId', (val) => {
+        updateRoomInfo(val)
+        // Close details when switching rooms
+        state.isRoomDetailsOpen = false
+        $state.isRoomDetailsOpen = false
+      })
 
-        $state.subscribe('activeSelectionType', () => {
-          updateRoomInfo($state.activeSelectionId)
-        })
+      $state.subscribe('activeSelectionType', () => {
+        updateRoomInfo($state.activeSelectionId)
+      })
 
-        $state.subscribe('isRoomDetailsOpen', (val) => {
-          state.isRoomDetailsOpen = val
-        })
-      }
+      $state.subscribe('isRoomDetailsOpen', (val) => {
+        state.isRoomDetailsOpen = val
+      })
 
       const btnDetails = refs('btnDetails')
       if (btnDetails) {
