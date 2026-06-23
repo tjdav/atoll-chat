@@ -102,7 +102,8 @@
         return isSent ? 'align-items-end' : 'align-items-start'
       }
     },
-    client: ({ refs, state }) => {
+    client: ({ refs, state, globalState }) => {
+      const { $state } = globalState
       const avatarContainer = refs('avatarContainer')
       const seenContainer = refs('seenContainer')
 
@@ -150,11 +151,11 @@
         })
       }
 
-      state.subscribe('isSent', updateAvatar)
-      state.subscribe('isLastInBlock', updateAvatar)
-      state.subscribe('avatarUrl', updateAvatar)
-      state.subscribe('avatarInitials', updateAvatar)
-      state.subscribe('seenAvatars', updateSeen)
+      $state.subscribe('isSent', updateAvatar)
+      $state.subscribe('isLastInBlock', updateAvatar)
+      $state.subscribe('avatarUrl', updateAvatar)
+      $state.subscribe('avatarInitials', updateAvatar)
+      $state.subscribe('seenAvatars', updateSeen)
 
       updateAvatar()
       updateSeen()

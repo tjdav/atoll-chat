@@ -49,6 +49,11 @@ export default function statePlugin (options = {}) {
                   return unsubscribe
                 }
               }
+              if (key === 'set') {
+                return (prop, value) => {
+                  $state[prop] = value
+                }
+              }
               return target[key]
             },
             set (target, key, value) {

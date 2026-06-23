@@ -52,10 +52,11 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'recording-mode-active' : 'd-none')
     },
-    client: ({ state, globalStore, pocketbase, localDb, refs, signal }) => {
+    client: ({ state, globalStore, pocketbase, localDb, eventBus, refs, signal }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $localDb } = localDb
+      const { $bus } = eventBus
 
       const resetUI = () => {
         state.isSending = false
@@ -80,7 +81,7 @@
           $state
         })
   
-        window.dispatchEvent(new CustomEvent('message-sent', { detail: result }))
+        $bus.emit('message-sent', result)
         return result
       }
 
@@ -152,51 +153,48 @@
         }
       }
 
-      // Manual event binding
-      const attachmentPreview = refs('attachmentPreview')
-      if (attachmentPreview) {
-        attachmentPreview.addEventListener('cancel', () => {
-          state.hasFile = false
-          state.fileName = ''
-          state.selectedFile = null
-        }, { signal })
-      }
+      // Event Bus Subscriptions
+      $bus.on('cancel', () => {
+        state.hasFile = false
+        state.fileName = ''
+        state.selectedFile = null
+      })
 
-      const inputText = refs('inputText')
-      if (inputText) {
-        inputText.addEventListener('file-selected', (e) => {
-          const { file } = e.detail
-          if (file.size > 25 * 1024 * 1024) {
-            alert('File is too large. Maximum size is 25MB.')
-            return
-          }
-          state.selectedFile = file
-          state.fileName = file.name
-          state.hasFile = true
-          state.uploadStatus = 'Ready to send'
-        }, { signal })
+      $bus.on('file-selected', (payload) => {
+        const file = payload.file
+        if (file.size > 25 * 1024 * 1024) {
+          alert('File is too large. Maximum size is 25MB.')
+          return
+        }
+        state.selectedFile = file
+        state.fileName = file.name
+        state.hasFile = true
+        state.uploadStatus = 'Ready to send'
+      })
 
-        inputText.addEventListener('mic-clicked', () => {
-          state.isRecording = true
-          const container = refs('voiceRecorderContainer')
-          if (container) {
-            container.innerHTML = ''
-            const el = document.createElement('chat-voice-recorder')
-            el.addEventListener('voice-ready', (e) => {
-              sendMessage(e.detail.blob, e.detail.waveformData)
-            }, { signal })
-            el.addEventListener('voice-discarded', () => {
-              state.isRecording = false
-              container.innerHTML = ''
-            }, { signal })
-            container.appendChild(el)
-          }
-        }, { signal })
+      $bus.on('mic-clicked', () => {
+        state.isRecording = true
+        const container = refs('voiceRecorderContainer')
 
-        inputText.addEventListener('send-clicked', () => {
-          sendMessage()
-        }, { signal })
-      }
+        container.innerHTML = ''
+        const el = document.createElement('chat-voice-recorder')
+        container.appendChild(el)
+      })
+
+      $bus.on('send-clicked', () => {
+        sendMessage()
+      })
+
+      $bus.on('voice-ready', (payload) => {
+        sendMessage(payload.blob, payload.waveformData)
+      })
+
+      $bus.on('voice-discarded', () => {
+        state.isRecording = false
+  
+        const container = refs('voiceRecorderContainer')
+        container.innerHTML = ''
+      })
     }
   })
 </script>

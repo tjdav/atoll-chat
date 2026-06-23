@@ -57,7 +57,8 @@
         return `${mins}:${secs.toString().padStart(2, '0')}`
       }
     },
-    client: ({ refs, state, signal, instance }) => {
+    client: ({ refs, state, eventBus, signal }) => {
+      const { $bus } = eventBus
       let mediaRecorder = null
       let audioChunks = []
       let timerInterval = null
@@ -219,12 +220,10 @@
             if (shouldSendVoice && audioChunks.length > 0) {
               const blob = new Blob(audioChunks, { type: 'audio/webm' })
               const waveformData = generateWaveformImage()
-              instance.dispatchEvent(new CustomEvent('voice-ready', {
-                detail: {
-                  blob,
-                  waveformData
-                }
-              }))
+              $bus.emit('voice-ready', {
+                blob,
+                waveformData
+              })
             } else {
               cleanupAudioContext()
             }
@@ -242,7 +241,7 @@
         } catch (err) {
           console.error('[chat-voice-recorder] Failed to start recording:', err)
           alert('Microphone access denied or unavailable.')
-          instance.dispatchEvent(new CustomEvent('voice-discarded'))
+          $bus.emit('voice-discarded')
         }
       }
 
@@ -254,7 +253,7 @@
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
           mediaRecorder.stop()
         }
-        instance.dispatchEvent(new CustomEvent('voice-discarded'))
+        $bus.emit('voice-discarded')
       }, { signal })
 
       refs('pauseResumeButton').addEventListener('click', () => {

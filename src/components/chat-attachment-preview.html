@@ -34,10 +34,12 @@
       fileName: String,
       uploadStatus: String
     },
-    client: ({ refs, signal, instance }) => {
+    client: ({ refs, eventBus, signal }) => {
+      const { $bus } = eventBus
       const cancelBtn = refs('cancelFileButton')
+  
       cancelBtn.addEventListener('click', () => {
-        instance.dispatchEvent(new CustomEvent('cancel'))
+        $bus.emit('cancel')
       }, { signal })
     }
   })

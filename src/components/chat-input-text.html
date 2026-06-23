@@ -54,8 +54,9 @@
       iconClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : ''),
       spinnerClasses: (state) => (state.isSending || state.isUploading ? '' : 'd-none')
     },
-    client: ({ refs, state, globalStore, signal, instance }) => {
+    client: ({ refs, state, globalStore, eventBus, signal }) => {
       const { $state } = globalStore
+      const { $bus } = eventBus
       const messageInput = refs('messageInput')
       const fileInput = refs('fileInput')
 
@@ -97,23 +98,23 @@
       fileInput.addEventListener('change', () => {
         const file = fileInput.files[0]
         if (file) {
-          instance.dispatchEvent(new CustomEvent('file-selected', { detail: { file } }))
+          $bus.emit('file-selected', { file })
           fileInput.value = ''
         }
       }, { signal })
 
       refs('micButton').addEventListener('click', () => {
-        instance.dispatchEvent(new CustomEvent('mic-clicked'))
+        $bus.emit('mic-clicked')
       }, { signal })
 
       refs('sendButton').addEventListener('click', () => {
-        instance.dispatchEvent(new CustomEvent('send-clicked'))
+        $bus.emit('send-clicked')
       }, { signal })
 
       messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault()
-          instance.dispatchEvent(new CustomEvent('send-clicked'))
+          $bus.emit('send-clicked')
         }
       }, { signal })
     }
