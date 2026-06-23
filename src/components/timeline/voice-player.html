@@ -129,7 +129,7 @@
         const blob = new Blob([decryptedData], { type: message.mime_type })
         objectUrl = URL.createObjectURL(blob)
 
-        loading.style.display = 'none'
+        loading.classList.add('d-none')
 
         if (message.waveform_data) {
           const player = document.createElement('div')

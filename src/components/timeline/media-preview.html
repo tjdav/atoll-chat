@@ -1,8 +1,8 @@
 <template id="media-preview">
-  <div id="{{ ref_container }}" ref="container" class="media-preview-container rounded overflow-hidden mb-1">
-    <div id="{{ ref_loading }}" ref="loading" class="d-flex flex-column align-items-center justify-content-center p-3 text-center">
+  <div ref="container" class="media-preview-container rounded overflow-hidden mb-1">
+    <div ref="loading" class="d-flex flex-column align-items-center justify-content-center p-3 text-center">
       <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
-      <div class="x-small">Decrypting...</div>
+      <div><small>Decrypting...</small></div>
     </div>
   </div>
 </template>
@@ -33,9 +33,6 @@
     width: auto;
     height: auto;
     object-fit: contain;
-  }
-  .x-small {
-    font-size: 0.7rem;
   }
 </style>
 
@@ -93,7 +90,7 @@
         const blob = new Blob([decryptedData], { type: message.mime_type })
         objectUrl = URL.createObjectURL(blob)
 
-        loading.style.display = 'none'
+        loading.classList.add('d-none')
 
         if (message.mime_type.startsWith('image/')) {
           const img = document.createElement('img')
