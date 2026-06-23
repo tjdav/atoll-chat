@@ -102,8 +102,8 @@
         return isSent ? 'align-items-end' : 'align-items-start'
       }
     },
-    client: ({ refs, state, globalState }) => {
-      const { $state } = globalState
+    client: ({ refs, state, globalStore }) => {
+      const { $state } = globalStore
       const avatarContainer = refs('avatarContainer')
       const seenContainer = refs('seenContainer')
 
