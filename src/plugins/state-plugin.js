@@ -8,14 +8,15 @@ import { definePlugin } from 'coralite'
  * @param {Object} [options.initialState={}] Initial global state.
  */
 export default function statePlugin (options = {}) {
-  const initialState = options.initialState || {}
-
   return definePlugin({
     name: 'globalStore',
     client: {
-      config: { initialState },
+      config: { initialState: options.initialState || {} },
       context: (pluginContext) => {
-        const storeState = { ...pluginContext.config.initialState }
+        const storeState = {
+          ...pluginContext.config.initialState,
+          decryptionCache: new Map()
+        }
         const listeners = new Map()
 
         const notify = (key, value) => {

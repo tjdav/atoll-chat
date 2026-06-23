@@ -1,8 +1,8 @@
 <template id="media-preview">
-  <div ref="container" class="media-preview-container rounded-3 overflow-hidden mb-1">
-    <div ref="loading" class="d-flex flex-column align-items-center justify-content-center p-3 text-center">
-      <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
-      <div><small>Decrypting...</small></div>
+  <div ref="container" class="media-preview-container rounded-3 overflow-hidden mb-1" style="min-height: 200px; min-width: 250px;">
+    <div ref="loading" class="placeholder-wave w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center" style="background: var(--bs-tertiary-bg);">
+      <div class="placeholder col-8 mb-2" style="height: 24px;"></div>
+      <div class="placeholder col-4" style="height: 16px;"></div>
     </div>
   </div>
 </template>
@@ -14,23 +14,15 @@
     attributes: {
       messageId: String
     },
-    client: async ({ refs, state, localDb, globalStore, pocketbase, signal }) => {
+    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus }) => {
       const { $localDb } = localDb
       const { pb } = pocketbase
       const { $state } = globalStore
+      const { $bus } = eventBus
       const container = refs('container')
       const loading = refs('loading')
 
       let objectUrl = null
-
-      const cleanup = () => {
-        if (objectUrl) {
-          URL.revokeObjectURL(objectUrl)
-          objectUrl = null
-        }
-      }
-
-      signal.addEventListener('abort', cleanup)
 
       try {
         if (!state.messageId) {
@@ -41,48 +33,61 @@
           throw new Error('Message or key missing')
         }
 
-        const { default: sodium } = await import('libsodium-wrappers-sumo')
-        await sodium.ready
+        // Check Cache first
+        if ($state.decryptionCache.has(state.messageId)) {
+          objectUrl = $state.decryptionCache.get(state.messageId)
+        } else {
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
 
-        const mediaRecord = await pb.collection('media').getOne(message.media_id)
-        const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
+          const mediaRecord = await pb.collection('media').getOne(message.media_id)
+          const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
 
-        const response = await fetch(fileUrl)
-        if (!response.ok) {
-          throw new Error('Fetch failed')
+          const response = await fetch(fileUrl)
+          if (!response.ok) {
+            throw new Error('Fetch failed')
+          }
+          const encryptedData = new Uint8Array(await response.arrayBuffer())
+
+          const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
+          const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
+
+          const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
+          if (!decryptedData) {
+            throw new Error('Decryption failed')
+          }
+
+          const blob = new Blob([decryptedData], { type: message.mime_type })
+          objectUrl = URL.createObjectURL(blob)
+          $state.decryptionCache.set(state.messageId, objectUrl)
         }
-        const encryptedData = new Uint8Array(await response.arrayBuffer())
-
-        const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
-        const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
-
-        const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-        if (!decryptedData) {
-          throw new Error('Decryption failed')
-        }
-
-        const blob = new Blob([decryptedData], { type: message.mime_type })
-        objectUrl = URL.createObjectURL(blob)
 
         loading.classList.add('d-none')
+        container.style.minHeight = 'auto'
 
-        if (message.mime_type.startsWith('image/')) {
-          const img = document.createElement('img')
-          img.src = objectUrl
-          img.className = 'img-fluid rounded-3 shadow-sm'
-          img.style.maxHeight = '300px'
-          container.appendChild(img)
-        } else if (message.mime_type.startsWith('video/')) {
-          const video = document.createElement('video')
-          video.src = objectUrl
-          video.muted = true
-          video.loop = true
-          video.className = 'img-fluid rounded-3 shadow-sm'
-          video.style.maxHeight = '300px'
-          video.addEventListener('mouseenter', () => video.play())
-          video.addEventListener('mouseleave', () => video.pause())
-          container.appendChild(video)
+        const renderMedia = () => {
+          if (message.mime_type.startsWith('image/')) {
+            const img = document.createElement('img')
+            img.src = objectUrl
+            img.className = 'img-fluid rounded-3 shadow-sm'
+            img.style.maxHeight = '300px'
+            img.onload = () => $bus.emit('MEDIA_LOADED')
+            container.appendChild(img)
+          } else if (message.mime_type.startsWith('video/')) {
+            const video = document.createElement('video')
+            video.src = objectUrl
+            video.muted = true
+            video.loop = true
+            video.className = 'img-fluid rounded-3 shadow-sm'
+            video.style.maxHeight = '300px'
+            video.onloadeddata = () => $bus.emit('MEDIA_LOADED')
+            video.addEventListener('mouseenter', () => video.play())
+            video.addEventListener('mouseleave', () => video.pause())
+            container.appendChild(video)
+          }
         }
+
+        renderMedia()
 
         container.onclick = () => {
           $state.activeSelectionId = message.media_id
