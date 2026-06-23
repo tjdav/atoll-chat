@@ -7,165 +7,6 @@
   </div>
 </template>
 
-<style>
-  .media-preview-container {
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    max-width: 70vw;
-    max-height: 60vh;
-    background-color: transparent;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    overflow: hidden;
-  }
-  .media-preview-container:hover {
-    transform: scale(1.01);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-  }
-  .media-preview-container img, .media-preview-container video {
-    display: block;
-    max-width: 100%;
-    max-height: 60vh;
-    width: auto;
-    height: auto;
-    object-fit: contain;
-  }
-  .voice-message-container {
-    background-color: transparent;
-    width: 300px;
-    max-width: 70vw;
-  }
-  .waveform-player {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    width: 100%;
-    height: 48px;
-    background: var(--bs-tertiary-bg, #f8f9fa);
-    border: 1px solid var(--bs-border-color, #dee2e6);
-    border-radius: 24px;
-    padding: 0 12px;
-  }
-  .waveform-container {
-    position: relative;
-    flex-grow: 1;
-    height: 32px;
-    cursor: pointer;
-  }
-  .waveform-image {
-    width: 100%;
-    height: 100%;
-    object-fit: fill;
-    opacity: 0.5;
-  }
-  .waveform-progress {
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: 0;
-    overflow: hidden;
-  }
-  .waveform-progress .waveform-image {
-    width: 300px; /* Should match parent width approximately */
-    max-width: none;
-    opacity: 1;
-  }
-  .waveform-seeker {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 2px;
-    height: 100%;
-    background-color: #007bff;
-    pointer-events: none;
-  }
-  .play-pause-btn {
-    border: none;
-    background: #007bff;
-    color: white;
-    width: 32px;
-    height: 32px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    flex-shrink: 0;
-  }
-  .x-small {
-    font-size: 0.7rem;
-  }
-  .max-w-75 {
-    max-width: 75%;
-  }
-  .date-separator {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 0.75rem;
-    color: var(--bs-secondary-color);
-    margin: 20px 0;
-    font-weight: 500;
-  }
-  .message-row {
-    display: flex;
-    margin-bottom: 2px;
-    width: 100%;
-  }
-  .message-row.sent {
-    justify-content: flex-end;
-  }
-  .message-row.received {
-    justify-content: flex-start;
-  }
-  .avatar-col {
-    width: 32px;
-    margin-right: 8px;
-    display: flex;
-    align-items: flex-end;
-    flex-shrink: 0;
-  }
-  .message-bubble-column {
-    display: flex;
-    flex-direction: column;
-    max-width: 70%;
-  }
-  .sent .message-bubble-column {
-    align-items: flex-end;
-  }
-  .received .message-bubble-column {
-    align-items: flex-start;
-  }
-  .timeline-avatar {
-    width: 28px;
-    height: 28px;
-    border-radius: 50%;
-    object-fit: cover;
-    background-color: var(--bs-secondary-bg);
-  }
-  .seen-indicators {
-    display: flex;
-    justify-content: flex-end;
-    gap: 2px;
-    margin-top: 2px;
-    height: 16px;
-  }
-  .seen-avatar {
-    width: 14px;
-    height: 14px;
-    border-radius: 50%;
-    object-fit: cover;
-    border: 1px solid var(--bs-body-bg);
-  }
-  /* Consecutive message spacing */
-  .message-row.block-end {
-    margin-bottom: 12px;
-  }
-</style>
-
 <script type="module">
   import { defineComponent } from 'coralite'
 
@@ -179,16 +20,8 @@
       const container = refs('timelineContainer')
       const emptyState = refs('emptyState')
 
-      const objectUrls = new Map()
       let lastRoomId = null
       let seenTimeout = null
-
-      const cleanupUrls = () => {
-        objectUrls.forEach(url => URL.revokeObjectURL(url))
-        objectUrls.clear()
-      }
-
-      signal.addEventListener('abort', cleanupUrls)
 
       const scrollToBottom = () => {
         if (container) {
@@ -207,7 +40,6 @@
         }
         seenTimeout = setTimeout(async () => {
           try {
-            // Find our room member record
             const members = await pb.collection('room_members').getList(1, 1, {
               filter: `room_id = "${roomId}" && user_id = "${$state.currentUser.id}"`
             })
@@ -240,19 +72,6 @@
         threshold: 0.7
       })
 
-      const formatSeparatorDate = (date) => {
-        const now = new Date()
-        const d = new Date(date)
-        const isToday = now.toDateString() === d.toDateString()
-        const options = {
-          weekday: 'short',
-          hour: '2-digit',
-          minute: '2-digit',
-          hour12: false
-        }
-        return d.toLocaleDateString('en-US', options)
-      }
-
       const renderTimeline = async () => {
         const roomId = $state.activeSelectionId
         const type = $state.activeSelectionType
@@ -262,7 +81,6 @@
         }
 
         if (roomId !== lastRoomId) {
-          cleanupUrls()
           lastRoomId = roomId
         }
 
@@ -289,307 +107,87 @@
             const prevMessage = messages[index - 1]
   
             // 1. Date Separator logic (> 1 hour)
+            let showSeparator = false
             if (prevMessage) {
               const prevTime = new Date(prevMessage.created_at).getTime()
               const currTime = new Date(message.created_at).getTime()
               if (currTime - prevTime > 3600000) {
-                const sep = document.createElement('div')
-                sep.className = 'date-separator'
-                sep.textContent = formatSeparatorDate(message.created_at)
-                container.appendChild(sep)
+                showSeparator = true
               }
             } else {
-              // First message always has a separator
-              const sep = document.createElement('div')
-              sep.className = 'date-separator'
-              sep.textContent = formatSeparatorDate(message.created_at)
+              showSeparator = true
+            }
+
+            if (showSeparator) {
+              const sep = document.createElement('timeline-date-separator')
+              sep.setAttribute('timestamp', message.created_at)
               container.appendChild(sep)
             }
 
             const isLastInBlock = !nextMessage || nextMessage.sender_id !== message.sender_id
   
-            const row = document.createElement('div')
-            row.className = `message-row ${isSent ? 'sent' : 'received'} ${isLastInBlock ? 'block-end' : ''}`
+            const row = document.createElement('timeline-row')
+            row.setAttribute('is-sent', isSent)
+            row.setAttribute('is-last-in-block', isLastInBlock)
             row.dataset.messageId = message.id
             row.dataset.isSent = isSent
-            intersectionObserver.observe(row)
 
-            // Avatar Column (Received only)
-            if (!isSent) {
-              const avatarCol = document.createElement('div')
-              avatarCol.className = 'avatar-col'
-              if (isLastInBlock) {
-                const sender = participants.find(p => p.id === message.sender_id)
-                if (sender) {
-                  if (sender.avatar) {
-                    const img = document.createElement('img')
-                    img.src = pb.files.getURL(sender, sender.avatar, { thumb: '32x32' })
-                    img.className = 'timeline-avatar'
-                    avatarCol.appendChild(img)
-                  } else {
-                    const initials = document.createElement('div')
-                    initials.className = 'timeline-avatar d-flex align-items-center justify-content-center bg-secondary text-white x-small'
-                    initials.textContent = (sender.username || '?').substring(0, 2).toUpperCase()
-                    avatarCol.appendChild(initials)
-                  }
-                }
-              }
-              row.appendChild(avatarCol)
-            }
-
-            const bubbleCol = document.createElement('div')
-            bubbleCol.className = 'message-bubble-column'
-
-            const messageBlock = document.createElement('div')
-            messageBlock.className = `d-flex flex-column ${isSent ? 'align-items-end' : 'align-items-start'}`
-
-            if (message.type === 'media' && message.file_key) {
-              const mediaContainer = document.createElement('div')
-              mediaContainer.className = 'media-preview-container rounded overflow-hidden mb-1'
-  
-              const placeholder = document.createElement('div')
-              placeholder.className = 'd-flex flex-column align-items-center justify-content-center p-3 text-center'
-              placeholder.innerHTML = `
-                <div class="spinner-border spinner-border-sm mb-2" role="status"></div>
-                <div class="x-small">Decrypting...</div>
-              `
-              mediaContainer.appendChild(placeholder)
-              messageBlock.appendChild(mediaContainer);
-
-              (async () => {
-                try {
-                  const { default: sodium } = await import('libsodium-wrappers-sumo')
-                  await sodium.ready
-
-                  // Fetch the media record to get the actual filename
-                  const mediaRecord = await pb.collection('media').getOne(message.media_id)
-                  const fileUrl = pb.files.getUrl(mediaRecord, mediaRecord.file)
-
-                  const response = await fetch(fileUrl)
-                  if (!response.ok) {
-                    throw new Error('Failed to fetch file')
-                  }
-                  const encryptedData = new Uint8Array(await response.arrayBuffer())
-
-                  const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
-                  const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
-
-                  const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-                  if (!decryptedData) {
-                    throw new Error('Decryption failed')
-                  }
-
-                  const blob = new Blob([decryptedData], { type: message.mime_type })
-                  const url = URL.createObjectURL(blob)
-                  objectUrls.set(message.id, url)
-
-                  mediaContainer.innerHTML = ''
-                  if (message.mime_type.startsWith('image/')) {
-                    const img = document.createElement('img')
-                    img.src = url
-                    mediaContainer.appendChild(img)
-                  } else if (message.mime_type.startsWith('video/')) {
-                    const video = document.createElement('video')
-                    video.src = url
-                    video.muted = true
-                    video.loop = true
-                    video.addEventListener('mouseenter', () => video.play())
-                    video.addEventListener('mouseleave', () => video.pause())
-                    mediaContainer.appendChild(video)
-                  } else if (message.mime_type.startsWith('audio/')) {
-                    mediaContainer.className = 'voice-message-container p-2'
-  
-                    if (message.waveform_data) {
-                      // Custom Waveform Player
-                      const player = document.createElement('div')
-                      player.className = 'waveform-player'
-  
-                      const playBtn = document.createElement('button')
-                      playBtn.className = 'play-pause-btn'
-                      playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
-  
-                      const waveContainer = document.createElement('div')
-                      waveContainer.className = 'waveform-container'
-  
-                      const waveImg = document.createElement('img')
-                      waveImg.src = message.waveform_data
-                      waveImg.className = 'waveform-image'
-  
-                      const progressContainer = document.createElement('div')
-                      progressContainer.className = 'waveform-progress'
-  
-                      const progressImg = document.createElement('img')
-                      progressImg.src = message.waveform_data
-                      progressImg.className = 'waveform-image'
-  
-                      const seeker = document.createElement('div')
-                      seeker.className = 'waveform-seeker'
-  
-                      const timeDisplay = document.createElement('div')
-                      timeDisplay.className = 'x-small text-muted font-monospace'
-                      timeDisplay.textContent = '0:00'
-  
-                      progressContainer.appendChild(progressImg)
-                      waveContainer.appendChild(waveImg)
-                      waveContainer.appendChild(progressContainer)
-                      waveContainer.appendChild(seeker)
-  
-                      player.appendChild(playBtn)
-                      player.appendChild(waveContainer)
-                      player.appendChild(timeDisplay)
-                      mediaContainer.appendChild(player)
-  
-                      const audio = new Audio(url)
-  
-                      const updateProgress = () => {
-                        const percent = (audio.currentTime / audio.duration) * 100
-                        progressContainer.style.width = `${percent}%`
-                        seeker.style.left = `${percent}%`
-  
-                        const mins = Math.floor(audio.currentTime / 60)
-                        const secs = Math.floor(audio.currentTime % 60)
-                        timeDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
-                      }
-  
-                      audio.ontimeupdate = updateProgress
-                      audio.onended = () => {
-                        playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
-                        progressContainer.style.width = '0'
-                        seeker.style.left = '0'
-                        timeDisplay.textContent = '0:00'
-                      }
-  
-                      playBtn.onclick = (e) => {
-                        e.stopPropagation()
-                        if (audio.paused) {
-                          audio.play()
-                          playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>'
-                        } else {
-                          audio.pause()
-                          playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
-                        }
-                      }
-  
-                      waveContainer.onclick = (e) => {
-                        e.stopPropagation()
-                        if (isNaN(audio.duration)) {
-                          return
-                        }
-                        const rect = waveContainer.getBoundingClientRect()
-                        const x = e.clientX - rect.left
-                        const percent = x / rect.width
-                        audio.currentTime = percent * audio.duration
-                        updateProgress()
-                      }
-
-                      // Adjust progress image width to match container width for proper clipping
-                      const resizeObserver = new ResizeObserver(entries => {
-                        for (let entry of entries) {
-                          progressImg.style.width = `${entry.contentRect.width}px`
-                        }
-                      })
-                      resizeObserver.observe(waveContainer)
-  
-                    } else {
-                      const audio = document.createElement('audio')
-                      audio.src = url
-                      audio.controls = true
-                      audio.className = 'w-100'
-                      mediaContainer.appendChild(audio)
-                    }
-                  }
-
-                  mediaContainer.addEventListener('click', (e) => {
-                    if (message.mime_type.startsWith('audio/')) {
-                      e.stopPropagation()
-                      return
-                    }
-                    $state.activeSelectionId = message.media_id
-                    $state.activeSelectionType = message.mime_type.startsWith('image/') ? 'pictures' : 'videos'
-                    $state.currentAppView = $state.activeSelectionType
-                  })
-
-                } catch (err) {
-                  console.error('Timeline media preview error:', err)
-                  placeholder.innerHTML = `
-                    <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
-                    <div class="x-small mt-1">Failed to load</div>
-                  `
-                }
-              })()
-
-              // Text content under media if it exists
-              if (message.content) {
-                const textBubble = document.createElement('div')
-                if (isSent) {
-                  textBubble.className = 'bg-primary text-white rounded p-2 text-break'
+            if (!isSent && isLastInBlock) {
+              const sender = participants.find(p => p.id === message.sender_id)
+              if (sender) {
+                if (sender.avatar) {
+                  row.setAttribute('avatar-url', pb.files.getURL(sender, sender.avatar, { thumb: '32x32' }))
                 } else {
-                  textBubble.className = 'bg-light text-dark rounded p-2 text-break border'
+                  row.setAttribute('avatar-initials', (sender.username || '?').substring(0, 2).toUpperCase())
                 }
-                textBubble.textContent = message.content
-                messageBlock.appendChild(textBubble)
               }
-
-            } else if (message.type === 'media') {
-              const textBubble = document.createElement('div')
-              if (isSent) {
-                textBubble.className = 'bg-primary text-white rounded p-2 text-break'
-              } else {
-                textBubble.className = 'bg-light text-dark rounded p-2 text-break border'
-              }
-
-              const mediaContent = document.createElement('div')
-              mediaContent.className = 'd-flex align-items-center'
-  
-              const icon = document.createElement('i')
-              icon.className = 'bi bi-file-earmark-lock2 fs-4 me-2'
-  
-              const text = document.createElement('span')
-              text.className = 'small fw-bold'
-              text.textContent = 'Encrypted Attachment'
-  
-              mediaContent.appendChild(icon)
-              mediaContent.appendChild(text)
-              textBubble.appendChild(mediaContent)
-
-              messageBlock.appendChild(textBubble)
-            } else {
-              const textBubble = document.createElement('div')
-              if (isSent) {
-                textBubble.className = 'bg-primary text-white rounded p-2 text-break'
-              } else {
-                textBubble.className = 'bg-light text-dark rounded p-2 text-break border'
-              }
-              textBubble.textContent = message.content || ''
-              messageBlock.appendChild(textBubble)
             }
-  
-            bubbleCol.appendChild(messageBlock)
 
             // Seen Indicators
             const seenBy = participants.filter(p => p.id !== $state.currentUser?.id && p.last_read_message_id === message.id)
             if (seenBy.length > 0) {
-              const seenContainer = document.createElement('div')
-              seenContainer.className = 'seen-indicators'
-              seenBy.forEach(p => {
+              const seenAvatars = seenBy.map(p => {
                 if (p.avatar) {
-                  const img = document.createElement('img')
-                  img.src = pb.files.getURL(p, p.avatar, { thumb: '16x16' })
-                  img.className = 'seen-avatar'
-                  seenContainer.appendChild(img)
-                } else {
-                  const initials = document.createElement('div')
-                  initials.className = 'seen-avatar d-flex align-items-center justify-content-center bg-secondary text-white'
-                  initials.style.fontSize = '8px'
-                  initials.textContent = (p.username || '?').substring(0, 1).toUpperCase()
-                  seenContainer.appendChild(initials)
+                  return pb.files.getURL(p, p.avatar, { thumb: '16x16' })
                 }
-              })
-              bubbleCol.appendChild(seenContainer)
+                return (p.username || '?').substring(0, 1).toUpperCase()
+              }).join(',')
+              row.setAttribute('seen-avatars', seenAvatars)
             }
 
-            row.appendChild(bubbleCol)
+            // Project content into slot
+            if (message.type === 'media' && message.file_key) {
+              if (message.mime_type.startsWith('audio/')) {
+                const player = document.createElement('voice-player')
+                player.setAttribute('message-id', message.id)
+                row.appendChild(player)
+              } else {
+                const preview = document.createElement('media-preview')
+                preview.setAttribute('message-id', message.id)
+                row.appendChild(preview)
+  
+                if (message.content) {
+                  const text = document.createElement('text-message')
+                  text.setAttribute('content', message.content)
+                  text.setAttribute('is-sent', isSent)
+                  row.appendChild(text)
+                }
+              }
+            } else if (message.type === 'media') {
+              // Encrypted but key missing placeholder
+              const text = document.createElement('text-message')
+              text.setAttribute('content', '🔒 Encrypted Attachment')
+              text.setAttribute('is-sent', isSent)
+              row.appendChild(text)
+            } else {
+              const text = document.createElement('text-message')
+              text.setAttribute('content', message.content || '')
+              text.setAttribute('is-sent', isSent)
+              row.appendChild(text)
+            }
+
             container.appendChild(row)
+            intersectionObserver.observe(row)
           })
 
           scrollToBottom()
@@ -599,18 +197,21 @@
       }
 
       const debouncedRender = $utils.debounce(renderTimeline, 50)
-
-      // Initial render
       debouncedRender()
 
-      // Watch for room changes
       if (typeof $state.subscribe === 'function') {
         $state.subscribe('activeSelectionId', debouncedRender)
         $state.subscribe('activeSelectionType', debouncedRender)
       }
 
-      // Listen for new background messages
       $bus.on('NEW_LOCAL_DATA', (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId) {
+          debouncedRender()
+        }
+      })
+  
+      // Update participants seen status in real-time
+      $bus.on('UPDATE_ROOM_MEMBER', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           debouncedRender()
         }

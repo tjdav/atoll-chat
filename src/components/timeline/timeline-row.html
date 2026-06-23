@@ -1,0 +1,163 @@
+<template id="timeline-row">
+  <div class="{{ rowClass }}">
+    <!-- Avatar Column (Received only) -->
+    <div class="avatar-col">
+      <div id="{{ ref_avatarContainer }}" ref="avatarContainer">
+        <!-- Rendered in client block if showAvatar is true -->
+      </div>
+    </div>
+
+    <div class="message-bubble-column">
+      <div class="d-flex flex-column {{ alignmentClass }}">
+        <slot></slot>
+      </div>
+
+      <!-- Seen Indicators -->
+      <div id="{{ ref_seenContainer }}" ref="seenContainer" class="seen-indicators">
+        <!-- Rendered in client block -->
+      </div>
+    </div>
+  </div>
+</template>
+
+<style>
+  .message-row {
+    display: flex;
+    margin-bottom: 2px;
+    width: 100%;
+  }
+  .message-row.sent {
+    justify-content: flex-end;
+  }
+  .message-row.received {
+    justify-content: flex-start;
+  }
+  .avatar-col {
+    width: 32px;
+    margin-right: 8px;
+    display: flex;
+    align-items: flex-end;
+    flex-shrink: 0;
+    min-height: 28px;
+  }
+  .message-bubble-column {
+    display: flex;
+    flex-direction: column;
+    max-width: 70%;
+  }
+  .sent .message-bubble-column {
+    align-items: flex-end;
+  }
+  .received .message-bubble-column {
+    align-items: flex-start;
+  }
+  .timeline-avatar {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: var(--bs-secondary-bg);
+  }
+  .seen-indicators {
+    display: flex;
+    justify-content: flex-end;
+    gap: 2px;
+    margin-top: 2px;
+    height: 16px;
+  }
+  .seen-avatar {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--bs-body-bg);
+  }
+  .message-row.block-end {
+    margin-bottom: 12px;
+  }
+  .x-small {
+    font-size: 0.7rem;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      isSent: String,
+      isLastInBlock: String,
+      avatarUrl: String,
+      avatarInitials: String,
+      seenAvatars: String
+    },
+    getters: {
+      rowClass: (state) => {
+        const isSent = state.isSent === 'true' || state.isSent === true
+        const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
+        return `message-row ${isSent ? 'sent' : 'received'} ${isLastInBlock ? 'block-end' : ''}`
+      },
+      alignmentClass: (state) => {
+        const isSent = state.isSent === 'true' || state.isSent === true
+        return isSent ? 'align-items-end' : 'align-items-start'
+      }
+    },
+    client: ({ refs, state }) => {
+      const avatarContainer = refs('avatarContainer')
+      const seenContainer = refs('seenContainer')
+
+      const updateAvatar = () => {
+        avatarContainer.innerHTML = ''
+        const isSent = state.isSent === 'true' || state.isSent === true
+        const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
+        if (isLastInBlock && !isSent) {
+          if (state.avatarUrl) {
+            const img = document.createElement('img')
+            img.src = state.avatarUrl
+            img.className = 'timeline-avatar'
+            avatarContainer.appendChild(img)
+          } else if (state.avatarInitials) {
+            const initials = document.createElement('div')
+            initials.className = 'timeline-avatar d-flex align-items-center justify-content-center bg-secondary text-white x-small'
+            initials.textContent = state.avatarInitials
+            avatarContainer.appendChild(initials)
+          }
+        }
+      }
+
+      const updateSeen = () => {
+        seenContainer.innerHTML = ''
+        if (!state.seenAvatars) {
+          return
+        }
+  
+        const parts = state.seenAvatars.split(',').filter(p => p.trim() !== '')
+        parts.forEach(p => {
+          const trimmed = p.trim()
+          // Heuristic: if it looks like a URL/path
+          if (trimmed.includes('.') || trimmed.includes('/') || trimmed.startsWith('data:')) {
+            const img = document.createElement('img')
+            img.src = trimmed
+            img.className = 'seen-avatar'
+            seenContainer.appendChild(img)
+          } else {
+            const initials = document.createElement('div')
+            initials.className = 'seen-avatar d-flex align-items-center justify-content-center bg-secondary text-white'
+            initials.style.fontSize = '8px'
+            initials.textContent = trimmed.substring(0, 1).toUpperCase()
+            seenContainer.appendChild(initials)
+          }
+        })
+      }
+
+      state.subscribe('isSent', updateAvatar)
+      state.subscribe('isLastInBlock', updateAvatar)
+      state.subscribe('avatarUrl', updateAvatar)
+      state.subscribe('avatarInitials', updateAvatar)
+      state.subscribe('seenAvatars', updateSeen)
+
+      updateAvatar()
+      updateSeen()
+    }
+  })
+</script>

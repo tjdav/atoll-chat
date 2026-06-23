@@ -1,0 +1,25 @@
+<template id="text-message">
+  <div class="{{ bubbleClass }}">
+    {{ content }}
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      content: String,
+      isSent: String
+    },
+    getters: {
+      bubbleClass: (state) => {
+        const base = 'rounded p-2 text-break'
+        const isSent = state.isSent === 'true' || state.isSent === true
+        return isSent
+          ? `bg-primary text-white ${base}`
+          : `bg-light text-dark border ${base}`
+      }
+    }
+  })
+</script>

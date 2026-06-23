@@ -1,0 +1,46 @@
+<template id="timeline-date-separator">
+  <div class="date-separator">
+    {{ formattedDate }}
+  </div>
+</template>
+
+<style>
+  .date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--bs-secondary-color);
+    margin: 20px 0;
+    font-weight: 500;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      timestamp: String
+    },
+    getters: {
+      formattedDate: (state) => {
+        if (!state.timestamp) {
+          return ''
+        }
+        try {
+          const d = new Date(state.timestamp)
+          const options = {
+            weekday: 'short',
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          }
+          return d.toLocaleDateString('en-AU', options)
+        } catch (e) {
+          return state.timestamp
+        }
+      }
+    }
+  })
+</script>
