@@ -25,6 +25,7 @@ export default defineConfig({
         currentAppView: 'chats',
         activeSelectionId: null,
         activeSelectionType: null,
+        currentMessageText: '',
         callStatus: 'idle',
         activeCallRoomId: null
       }

@@ -1,0 +1,298 @@
+<template id="chat-voice-recorder">
+  <div class="recording-ui d-flex align-items-center gap-2">
+    <button id="{{ ref_discardButton }}" class="btn btn-link text-danger p-1" ref="discardButton" title="Discard">
+      <i class="bi bi-trash fs-4"></i>
+    </button>
+    
+    <div class="recording-controls flex-grow-1 d-flex align-items-center bg-light rounded-pill px-3 py-1 border">
+      <button id="{{ ref_pauseResumeButton }}" class="btn btn-sm btn-light rounded-circle me-2" ref="pauseResumeButton">
+        <i class="bi {{ pauseResumeIcon }}"></i>
+      </button>
+
+      <button id="{{ ref_redoButton }}" class="btn btn-sm btn-link text-primary me-2 {{ redoClass }}" ref="redoButton" title="Restart">
+        <i class="bi bi-arrow-counterclockwise fs-5"></i>
+      </button>
+
+      <div class="recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 32px;">
+        <canvas id="{{ ref_visualizerCanvas }}" ref="visualizerCanvas" width="400" height="32" class="w-100 h-100"></canvas>
+      </div>
+
+      <span class="recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
+
+      <button id="{{ ref_resumeMicButton }}" class="btn btn-sm btn-link text-secondary ms-2 {{ redoClass }}" ref="resumeMicButton" title="Add more">
+        <i class="bi bi-mic-fill"></i>
+      </button>
+    </div>
+
+    <button id="{{ ref_sendVoiceButton }}" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" ref="sendVoiceButton">
+      <i class="bi bi-send-fill" style="transform: rotate(-45deg); margin-left: 3px;"></i>
+    </button>
+  </div>
+</template>
+
+<style>
+  .recording-ui {
+    animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      isPaused: false,
+      recordingDuration: 0
+    }),
+    getters: {
+      pauseResumeIcon: (state) => (state.isPaused ? 'bi-play-fill' : 'bi-pause-fill'),
+      redoClass: (state) => (state.isPaused ? '' : 'd-none'),
+      formattedDuration: (state) => {
+        const mins = Math.floor(state.recordingDuration / 60)
+        const secs = state.recordingDuration % 60
+        return `${mins}:${secs.toString().padStart(2, '0')}`
+      }
+    },
+    client: ({ refs, state, signal, instance }) => {
+      let mediaRecorder = null
+      let audioChunks = []
+      let timerInterval = null
+      let shouldSendVoice = false
+
+      // Web Audio API variables
+      let audioContext = null
+      let analyser = null
+      let dataArray = null
+      let animationFrameId = null
+      let recordedAmplitudes = []
+      let lastSampleTime = 0
+      const SAMPLE_INTERVAL = 100
+      const barWidth = 3
+      const gap = 1
+
+      const startTimer = () => {
+        stopTimer()
+        timerInterval = setInterval(() => {
+          if (!state.isPaused) {
+            state.recordingDuration++
+          }
+        }, 1000)
+      }
+
+      const stopTimer = () => {
+        if (timerInterval) {
+          clearInterval(timerInterval)
+          timerInterval = null
+        }
+      }
+
+      const cleanupAudioContext = () => {
+        if (animationFrameId) {
+          cancelAnimationFrame(animationFrameId)
+          animationFrameId = null
+        }
+        if (audioContext) {
+          audioContext.close()
+          audioContext = null
+        }
+        recordedAmplitudes = []
+      }
+
+      const generateWaveformImage = () => {
+        if (recordedAmplitudes.length === 0) {
+          return null
+        }
+
+        const canvas = document.createElement('canvas')
+        const height = 40
+        const width = recordedAmplitudes.length * (barWidth + gap)
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+
+        ctx.fillStyle = '#007bff'
+        recordedAmplitudes.forEach((amp, i) => {
+          const barHeight = amp * height
+          const x = i * (barWidth + gap)
+          const y = (height - barHeight) / 2
+          ctx.fillRect(x, y, barWidth, barHeight)
+        })
+
+        return canvas.toDataURL('image/png')
+      }
+
+      const startRecording = async () => {
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+  
+          // Audio Visualizer Setup
+          audioContext = new (window.AudioContext || window.webkitAudioContext)()
+          await audioContext.resume()
+  
+          analyser = audioContext.createAnalyser()
+          const source = audioContext.createMediaStreamSource(stream)
+          source.connect(analyser)
+          analyser.fftSize = 256
+          const bufferLength = analyser.frequencyBinCount
+          dataArray = new Uint8Array(bufferLength)
+          recordedAmplitudes = []
+
+          let canvasEl = null
+          let ctx2d = null
+
+          const draw = (timestamp) => {
+            if (!canvasEl) {
+              canvasEl = refs('visualizerCanvas')
+              if (canvasEl) {
+                ctx2d = canvasEl.getContext('2d')
+              }
+            }
+
+            animationFrameId = requestAnimationFrame(draw)
+
+            if (state.isPaused) {
+              return
+            }
+
+            const now = timestamp || performance.now()
+            if (now - lastSampleTime >= SAMPLE_INTERVAL) {
+              analyser.getByteFrequencyData(dataArray)
+  
+              let sum = 0
+              for (let i = 0; i < bufferLength; i++) {
+                sum += dataArray[i]
+              }
+              const average = sum / bufferLength
+              const normalizedAmp = Math.min(1, average / 100)
+              recordedAmplitudes.push(normalizedAmp)
+              lastSampleTime = now
+            }
+
+            if (!canvasEl || !ctx2d) {
+              return
+            }
+  
+            // Sync internal width with displayed width
+            if (canvasEl.width !== canvasEl.clientWidth && canvasEl.clientWidth > 0) {
+              canvasEl.width = canvasEl.clientWidth
+            }
+
+            const w = canvasEl.width
+            const h = canvasEl.height
+  
+            ctx2d.clearRect(0, 0, w, h)
+  
+            // Draw faint baseline
+            ctx2d.fillStyle = 'rgba(0, 123, 255, 0.15)'
+            ctx2d.fillRect(0, (h/2) - 1, w, 2)
+
+            ctx2d.fillStyle = '#007bff'
+            const maxVisibleBars = Math.floor(w / (barWidth + gap))
+            const startIdx = Math.max(0, recordedAmplitudes.length - maxVisibleBars)
+  
+            for (let i = startIdx; i < recordedAmplitudes.length; i++) {
+              const amp = recordedAmplitudes[i]
+              const barHeight = Math.max(2, amp * h)
+              const x = (i - startIdx) * (barWidth + gap)
+              const y = (h - barHeight) / 2
+              ctx2d.fillRect(x, y, barWidth, barHeight)
+            }
+          }
+
+          mediaRecorder = new MediaRecorder(stream)
+          audioChunks = []
+
+          mediaRecorder.ondataavailable = (e) => {
+            if (e.data.size > 0) {
+              audioChunks.push(e.data)
+            }
+          }
+
+          mediaRecorder.onstop = () => {
+            const tracks = stream.getTracks()
+            tracks.forEach(track => track.stop())
+  
+            if (shouldSendVoice && audioChunks.length > 0) {
+              const blob = new Blob(audioChunks, { type: 'audio/webm' })
+              const waveformData = generateWaveformImage()
+              instance.dispatchEvent(new CustomEvent('voice-ready', {
+                detail: {
+                  blob,
+                  waveformData
+                }
+              }))
+            } else {
+              cleanupAudioContext()
+            }
+            shouldSendVoice = false
+            stopTimer()
+          }
+
+          mediaRecorder.start()
+          lastSampleTime = 0
+          requestAnimationFrame(draw)
+          shouldSendVoice = false
+          state.isPaused = false
+          state.recordingDuration = 0
+          startTimer()
+        } catch (err) {
+          console.error('[chat-voice-recorder] Failed to start recording:', err)
+          alert('Microphone access denied or unavailable.')
+          instance.dispatchEvent(new CustomEvent('voice-discarded'))
+        }
+      }
+
+      // Initial start
+      startRecording()
+
+      refs('discardButton').addEventListener('click', () => {
+        shouldSendVoice = false
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop()
+        }
+        instance.dispatchEvent(new CustomEvent('voice-discarded'))
+      }, { signal })
+
+      refs('pauseResumeButton').addEventListener('click', () => {
+        if (!mediaRecorder) {
+          return
+        }
+        if (state.isPaused) {
+          mediaRecorder.resume()
+          state.isPaused = false
+        } else {
+          mediaRecorder.pause()
+          state.isPaused = true
+        }
+      }, { signal })
+
+      refs('resumeMicButton').addEventListener('click', () => {
+        if (mediaRecorder && state.isPaused) {
+          mediaRecorder.resume()
+          state.isPaused = false
+        }
+      }, { signal })
+
+      refs('redoButton').addEventListener('click', () => {
+        shouldSendVoice = false
+        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+          mediaRecorder.stop()
+        }
+        cleanupAudioContext()
+        startRecording()
+      }, { signal })
+
+      refs('sendVoiceButton').addEventListener('click', () => {
+        if (!mediaRecorder) {
+          return
+        }
+        shouldSendVoice = true
+        mediaRecorder.stop()
+      }, { signal })
+    }
+  })
+</script>

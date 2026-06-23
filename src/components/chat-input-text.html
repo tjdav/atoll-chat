@@ -1,0 +1,121 @@
+<template id="chat-input-text">
+  <div class="input-group d-flex">
+    <input id="{{ ref_fileInput }}" type="file" ref="fileInput" class="d-none" accept="image/*, video/*, audio/*">
+    <button id="{{ ref_attachButton }}" class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" disabled="{{ isDisabled }}">
+      <i class="bi bi-paperclip"></i>
+    </button>
+    <button id="{{ ref_micButton }}" class="btn btn-outline-secondary" type="button" ref="micButton" title="Voice message" disabled="{{ isDisabled }}">
+      <i class="bi bi-mic"></i>
+    </button>
+    <textarea
+      id="{{ ref_messageInput }}"
+      ref="messageInput"
+      class="form-control"
+      placeholder="Type a message..."
+      rows="1"
+      style="resize: none; max-height: 200px;"
+      disabled="{{ isDisabled }}"
+    >{{ currentMessageText }}</textarea>
+    <button id="{{ ref_sendButton }}" class="btn btn-primary d-flex align-items-center" type="button" ref="sendButton" disabled="{{ isDisabled }}">
+      <span class="me-1 {{ sendTextClasses }}">Send</span>
+      <i class="bi bi-send {{ iconClasses }}"></i>
+      <div class="spinner-border spinner-border-sm {{ spinnerClasses }}" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
+    </button>
+  </div>
+</template>
+
+<style>
+  textarea {
+    overflow-y: auto;
+    scrollbar-width: thin;
+  }
+  .btn {
+    align-self: flex-end;
+    height: 38px;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      isSending: Boolean,
+      isUploading: Boolean
+    },
+    server: ({ state }) => ({
+      currentMessageText: ''
+    }),
+    getters: {
+      isDisabled: (state) => (state.isSending || state.isUploading ? true : false),
+      sendTextClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : 'd-none d-sm-inline'),
+      iconClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : ''),
+      spinnerClasses: (state) => (state.isSending || state.isUploading ? '' : 'd-none')
+    },
+    client: ({ refs, state, globalStore, signal, instance }) => {
+      const { $state } = globalStore
+      const messageInput = refs('messageInput')
+      const fileInput = refs('fileInput')
+
+      // Sync initial global state
+      state.currentMessageText = $state.currentMessageText || ''
+      if (messageInput) {
+        messageInput.value = state.currentMessageText
+      }
+
+      const autoExpand = () => {
+        messageInput.style.height = 'auto'
+        messageInput.style.height = messageInput.scrollHeight + 'px'
+      }
+
+      messageInput.addEventListener('input', () => {
+        $state.currentMessageText = messageInput.value
+        state.currentMessageText = messageInput.value
+        autoExpand()
+      }, { signal })
+
+      // Watch for programmatic changes to currentMessageText
+      if (typeof $state.subscribe === 'function') {
+        $state.subscribe('currentMessageText', (val) => {
+          if (messageInput.value !== val) {
+            messageInput.value = val || ''
+            state.currentMessageText = val || ''
+            autoExpand()
+          }
+        })
+      }
+
+      // Initial expand
+      autoExpand()
+
+      refs('attachButton').addEventListener('click', () => {
+        fileInput.click()
+      }, { signal })
+
+      fileInput.addEventListener('change', () => {
+        const file = fileInput.files[0]
+        if (file) {
+          instance.dispatchEvent(new CustomEvent('file-selected', { detail: { file } }))
+          fileInput.value = ''
+        }
+      }, { signal })
+
+      refs('micButton').addEventListener('click', () => {
+        instance.dispatchEvent(new CustomEvent('mic-clicked'))
+      }, { signal })
+
+      refs('sendButton').addEventListener('click', () => {
+        instance.dispatchEvent(new CustomEvent('send-clicked'))
+      }, { signal })
+
+      messageInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+          e.preventDefault()
+          instance.dispatchEvent(new CustomEvent('send-clicked'))
+        }
+      }, { signal })
+    }
+  })
+</script>

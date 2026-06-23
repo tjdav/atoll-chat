@@ -1,74 +1,26 @@
 <template id="chat-input">
-  <div id="{{ ref_chatInputContainer }}" ref="chatInputContainer" class="chat-input-container p-3 border-top bg-body">
+  <div class="chat-input-container p-3 border-top bg-body">
     <!-- Attachment Preview Bar -->
-    <div id="{{ ref_attachmentPreview }}" class="attachment-preview p-2 mb-2 bg-light rounded {{ attachmentPreviewClass }} align-items-center justify-content-between border">
-      <div class="d-flex align-items-center">
-        <i class="bi bi-file-earmark-arrow-up text-primary fs-4 me-2"></i>
-        <div>
-          <div class="small fw-bold text-truncate" style="max-width: 200px;">{{ fileName }}</div>
-          <div class="x-small text-muted">{{ uploadStatus }}</div>
-        </div>
-      </div>
-      <button id="{{ ref_cancelFileButton }}" class="btn btn-sm btn-link text-danger" ref="cancelFileButton" title="Cancel" {{ isDisabled }}>
-        <i class="bi bi-x-circle"></i>
-      </button>
+    <div class="{{ attachmentPreviewClass }}">
+      <chat-attachment-preview 
+        ref="attachmentPreview"
+        file-name="{{ fileName }}" 
+        upload-status="{{ uploadStatus }}"
+      ></chat-attachment-preview>
     </div>
 
-    <div class="input-group {{ inputGroupClass }}">
-      <input id="{{ ref_fileInput }}" type="file" ref="fileInput" class="d-none" accept="image/*, video/*, audio/*">
-      <button id="{{ ref_attachButton }}" class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" {{ isDisabled }}>
-        <i class="bi bi-paperclip"></i>
-      </button>
-      <button id="{{ ref_micButton }}" class="btn btn-outline-secondary" type="button" ref="micButton" title="Voice message" {{ isDisabled }}>
-        <i class="bi bi-mic"></i>
-      </button>
-      <textarea
-        id="{{ ref_messageInput }}"
-        ref="messageInput"
-        class="form-control"
-        placeholder="Type a message..."
-        rows="1"
-        style="resize: none; max-height: 200px;"
-        {{ isDisabled }}
-      ></textarea>
-      <button id="{{ ref_sendButton }}" class="btn btn-primary d-flex align-items-center" type="button" ref="sendButton" {{ isDisabled }}>
-        <span class="me-1 {{ sendTextClasses }}">Send</span>
-        <i class="bi bi-send {{ iconClasses }}"></i>
-        <div class="spinner-border spinner-border-sm {{ spinnerClasses }}" role="status">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-      </button>
+    <!-- Normal Input Mode -->
+    <div class="{{ inputGroupClass }}">
+      <chat-input-text
+        ref="inputText"
+        is-sending="{{ isSending }}"
+        is-uploading="{{ isUploading }}"
+      ></chat-input-text>
     </div>
 
-    <!-- Recording UI -->
-    <div class="recording-ui {{ recordingUIClass }} align-items-center gap-2">
-      <button id="{{ ref_discardButton }}" class="btn btn-link text-danger p-1" ref="discardButton" title="Discard">
-        <i class="bi bi-trash fs-4"></i>
-      </button>
-      
-      <div class="recording-controls flex-grow-1 d-flex align-items-center bg-light rounded-pill px-3 py-1 border">
-        <button id="{{ ref_pauseResumeButton }}" class="btn btn-sm btn-light rounded-circle me-2" ref="pauseResumeButton">
-          <i class="bi {{ pauseResumeIcon }}"></i>
-        </button>
-
-        <button id="{{ ref_redoButton }}" class="btn btn-sm btn-link text-primary me-2 {{ redoClass }}" ref="redoButton" title="Restart">
-          <i class="bi bi-arrow-counterclockwise fs-5"></i>
-        </button>
-
-        <div class="recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 32px;">
-          <canvas id="{{ ref_visualizerCanvas }}" ref="visualizerCanvas" width="400" height="32" class="w-100 h-100"></canvas>
-        </div>
-
-        <span class="recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
-
-        <button id="{{ ref_resumeMicButton }}" class="btn btn-sm btn-link text-secondary ms-2 {{ redoClass }}" ref="resumeMicButton" title="Add more">
-          <i class="bi bi-mic-fill"></i>
-        </button>
-      </div>
-
-      <button id="{{ ref_sendVoiceButton }}" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" ref="sendVoiceButton" {{ isDisabled }}>
-        <i class="bi bi-send-fill" style="transform: rotate(-45deg); margin-left: 3px;"></i>
-      </button>
+    <!-- Recording Mode -->
+    <div ref="voiceRecorderContainer" class="{{ recordingUIClass }}">
+      <!-- chat-voice-recorder will be mounted here -->
     </div>
   </div>
 </template>
@@ -77,39 +29,8 @@
   .chat-input-container {
     transition: background-color 0.2s ease;
   }
-  .chat-input-container textarea {
-    overflow-y: auto;
-    scrollbar-width: thin;
-  }
-  .chat-input-container .btn {
-    align-self: flex-end;
-    height: 38px; /* Match single line bootstrap input height */
-  }
-  .attachment-preview {
-    animation: fadeIn 0.3s ease;
-  }
-  .recording-ui {
-    animation: slideUp 0.3s ease;
-  }
-  .x-small {
-    font-size: 0.75rem;
-  }
-  .dot {
-    width: 3px;
-    height: 3px;
-    background-color: #ccc;
-    border-radius: 50%;
-  }
-  .recording-ui .dot {
-    background-color: var(--bs-primary);
-  }
-  @keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-  }
-  @keyframes slideUp {
-    from { opacity: 0; transform: translateY(20px); }
-    to { opacity: 1; transform: translateY(0); }
+  .recording-mode-active {
+    display: flex !important;
   }
 </style>
 
@@ -124,62 +45,17 @@
       fileName: '',
       hasFile: false,
       isRecording: false,
-      isPaused: false,
-      recordingDuration: 0
+      selectedFile: null
     }),
     getters: {
-      attachmentPreviewClass: (state) => (state.hasFile ? 'd-flex' : 'd-none'),
-      isDisabled: (state) => (state.isSending || state.isUploading ? 'disabled' : ''),
-      sendTextClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : 'd-none d-sm-inline'),
-      iconClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : ''),
-      spinnerClasses: (state) => (state.isSending || state.isUploading ? '' : 'd-none'),
-      inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-flex'),
-      recordingUIClass: (state) => (state.isRecording ? 'd-flex' : 'd-none'),
-      pauseResumeIcon: (state) => (state.isPaused ? 'bi-play-fill' : 'bi-pause-fill'),
-      redoClass: (state) => (state.isPaused ? '' : 'd-none'),
-      formattedDuration: (state) => {
-        const mins = Math.floor(state.recordingDuration / 60)
-        const secs = state.recordingDuration % 60
-        return `${mins}:${secs.toString().padStart(2, '0')}`
-      }
+      attachmentPreviewClass: (state) => (state.hasFile ? 'd-block' : 'd-none'),
+      inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
+      recordingUIClass: (state) => (state.isRecording ? 'recording-mode-active' : 'd-none')
     },
-    client: ({ refs, state, globalStore, pocketbase, localDb, signal }) => {
+    client: ({ state, globalStore, pocketbase, localDb, refs, signal }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $localDb } = localDb
-      const messageInput = refs('messageInput')
-      const sendButton = refs('sendButton')
-      const attachButton = refs('attachButton')
-      const fileInput = refs('fileInput')
-      const micButton = refs('micButton')
-      const discardButton = refs('discardButton')
-      const pauseResumeButton = refs('pauseResumeButton')
-      const redoButton = refs('redoButton')
-      const sendVoiceButton = refs('sendVoiceButton')
-      const resumeMicButton = refs('resumeMicButton')
-
-      let mediaRecorder = null
-      let audioChunks = []
-      let timerInterval = null
-      let shouldSendVoice = false
-
-      // Web Audio API variables
-      let audioContext = null
-      let analyser = null
-      let dataArray = null
-      let animationFrameId = null
-      let recordedAmplitudes = []
-      let lastSampleTime = 0
-      const SAMPLE_INTERVAL = 100
-      const barWidth = 3
-      const gap = 1
-
-      const autoExpand = () => {
-        messageInput.style.height = 'auto'
-        messageInput.style.height = messageInput.scrollHeight + 'px'
-      }
-
-      messageInput.addEventListener('input', autoExpand, { signal })
 
       const resetUI = () => {
         state.isSending = false
@@ -188,91 +64,33 @@
         state.fileName = ''
         state.hasFile = false
         state.isRecording = false
-        state.isPaused = false
-        state.recordingDuration = 0
-        fileInput.value = ''
-        messageInput.value = ''
-        stopTimer()
-        cleanupRecorder()
-        cleanupAudioContext()
-        autoExpand()
-      }
-
-      const cleanupRecorder = () => {
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          mediaRecorder.stop()
-        }
-        mediaRecorder = null
-        audioChunks = []
-      }
-
-      const cleanupAudioContext = () => {
-        if (animationFrameId) {
-          cancelAnimationFrame(animationFrameId)
-          animationFrameId = null
-        }
-        if (audioContext) {
-          audioContext.close()
-          audioContext = null
-        }
-        recordedAmplitudes = []
-      }
-
-      const startTimer = () => {
-        stopTimer()
-        timerInterval = setInterval(() => {
-          if (!state.isPaused) {
-            state.recordingDuration++
-          }
-        }, 1000)
-      }
-
-      const stopTimer = () => {
-        if (timerInterval) {
-          clearInterval(timerInterval)
-          timerInterval = null
+        state.selectedFile = null
+        $state.currentMessageText = ''
+        const container = refs('voiceRecorderContainer')
+        if (container) {
+          container.innerHTML = ''
         }
       }
 
       const dispatchMessage = async (plaintextObj) => {
         const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
-        return await sendEncryptedMessage($state.activeSelectionId, plaintextObj, {
+        const result = await sendEncryptedMessage($state.activeSelectionId, plaintextObj, {
           pb,
           $localDb,
           $state
         })
+  
+        window.dispatchEvent(new CustomEvent('message-sent', { detail: result }))
+        return result
       }
 
-      const generateWaveformImage = () => {
-        if (recordedAmplitudes.length === 0) {
-          return null
-        }
-
-        const canvas = document.createElement('canvas')
-        const height = 40
-        const width = recordedAmplitudes.length * (barWidth + gap)
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-
-        ctx.fillStyle = '#007bff'
-        recordedAmplitudes.forEach((amp, i) => {
-          const barHeight = amp * height
-          const x = i * (barWidth + gap)
-          const y = (height - barHeight) / 2
-          ctx.fillRect(x, y, barWidth, barHeight)
-        })
-
-        return canvas.toDataURL('image/png')
-      }
-
-      const sendMessage = async (recordedBlob = null) => {
+      const sendMessage = async (recordedBlob = null, waveformData = null) => {
         if (state.isSending || state.isUploading) {
           return
         }
 
-        const text = messageInput.value.trim()
-        const file = recordedBlob || fileInput.files[0]
+        const text = ($state.currentMessageText || '').trim()
+        const file = recordedBlob || state.selectedFile
 
         if (!text && !file) {
           return
@@ -302,12 +120,6 @@
             formData.append('file', blob, 'encrypted.bin')
   
             const mediaRecord = await pb.collection('media').create(formData)
-  
-            // Generate waveform if it's a voice message
-            let waveformData = null
-            if (recordedBlob) {
-              waveformData = generateWaveformImage()
-            }
 
             // Dispatch media message
             const mediaPlaintext = {
@@ -340,204 +152,51 @@
         }
       }
 
-      const startRecording = async () => {
-        try {
-          const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-  
-          // Audio Visualizer Setup
-          audioContext = new (window.AudioContext || window.webkitAudioContext)()
-          await audioContext.resume()
-  
-          analyser = audioContext.createAnalyser()
-          const source = audioContext.createMediaStreamSource(stream)
-          source.connect(analyser)
-          analyser.fftSize = 256
-          const bufferLength = analyser.frequencyBinCount
-          dataArray = new Uint8Array(bufferLength)
-          recordedAmplitudes = []
-
-          let canvasEl = null
-          let ctx2d = null
-
-          const draw = (timestamp) => {
-            if (!canvasEl) {
-              canvasEl = refs('visualizerCanvas')
-              if (canvasEl) {
-                ctx2d = canvasEl.getContext('2d')
-              }
-            }
-
-            if (!state.isRecording) {
-              return
-            }
-            animationFrameId = requestAnimationFrame(draw)
-
-            if (state.isPaused) {
-              return
-            }
-
-            const now = timestamp || performance.now()
-            if (now - lastSampleTime >= SAMPLE_INTERVAL) {
-              analyser.getByteFrequencyData(dataArray)
-  
-              let sum = 0
-              for (let i = 0; i < bufferLength; i++) {
-                sum += dataArray[i]
-              }
-              const average = sum / bufferLength
-              const normalizedAmp = Math.min(1, average / 100)
-              recordedAmplitudes.push(normalizedAmp)
-              lastSampleTime = now
-            }
-
-            if (!canvasEl || !ctx2d) {
-              return
-            }
-  
-            // Sync internal width with displayed width
-            if (canvasEl.width !== canvasEl.clientWidth && canvasEl.clientWidth > 0) {
-              canvasEl.width = canvasEl.clientWidth
-            }
-
-            const w = canvasEl.width
-            const h = canvasEl.height
-  
-            ctx2d.clearRect(0, 0, w, h)
-  
-            // Draw faint baseline
-            ctx2d.fillStyle = 'rgba(0, 123, 255, 0.15)'
-            ctx2d.fillRect(0, h/2 - 1, w, 2)
-
-            ctx2d.fillStyle = '#007bff'
-            const maxVisibleBars = Math.floor(w / (barWidth + gap))
-            const startIdx = Math.max(0, recordedAmplitudes.length - maxVisibleBars)
-  
-            for (let i = startIdx; i < recordedAmplitudes.length; i++) {
-              const amp = recordedAmplitudes[i]
-              const barHeight = Math.max(2, amp * h)
-              const x = (i - startIdx) * (barWidth + gap)
-              const y = (h - barHeight) / 2
-              ctx2d.fillRect(x, y, barWidth, barHeight)
-            }
-          }
-
-          mediaRecorder = new MediaRecorder(stream)
-          audioChunks = []
-
-          mediaRecorder.ondataavailable = (e) => {
-            if (e.data.size > 0) {
-              audioChunks.push(e.data)
-            }
-          }
-
-          mediaRecorder.onstop = () => {
-            const tracks = stream.getTracks()
-            tracks.forEach(track => track.stop())
-  
-            if (shouldSendVoice && audioChunks.length > 0) {
-              const blob = new Blob(audioChunks, { type: 'audio/webm' })
-              sendMessage(blob)
-            } else {
-              cleanupAudioContext()
-            }
-            shouldSendVoice = false
-          }
-
-          state.isRecording = true
-          mediaRecorder.start()
-          lastSampleTime = 0
-          requestAnimationFrame(draw)
-          shouldSendVoice = false
-          state.isPaused = false
-          state.recordingDuration = 0
-          startTimer()
-        } catch (err) {
-          console.error('[chat-input] Failed to start recording:', err)
-          alert('Microphone access denied or unavailable.')
-        }
-      }
-
-      micButton.addEventListener('click', startRecording, { signal })
-
-      discardButton.addEventListener('click', () => {
-        resetUI()
-      }, { signal })
-
-      pauseResumeButton.addEventListener('click', () => {
-        if (!mediaRecorder) {
-          return
-        }
-
-        if (state.isPaused) {
-          mediaRecorder.resume()
-          state.isPaused = false
-        } else {
-          mediaRecorder.pause()
-          state.isPaused = true
-        }
-      }, { signal })
-
-      resumeMicButton.addEventListener('click', () => {
-        if (!mediaRecorder || !state.isPaused) {
-          return
-        }
-        mediaRecorder.resume()
-        state.isPaused = false
-      }, { signal })
-
-      redoButton.addEventListener('click', () => {
-        cleanupRecorder()
-        startRecording()
-      }, { signal })
-
-      sendVoiceButton.addEventListener('click', () => {
-        if (!mediaRecorder) {
-          return
-        }
-        shouldSendVoice = true
-        mediaRecorder.stop()
-      }, { signal })
-
-      attachButton.addEventListener('click', () => {
-        fileInput.click()
-      }, { signal })
-
-      fileInput.addEventListener('change', () => {
-        const file = fileInput.files[0]
-        if (!file) {
-          return
-        }
-
-        if (file.size > 25 * 1024 * 1024) {
-          alert('File is too large. Maximum size is 25MB.')
-          fileInput.value = ''
-          return
-        }
-
-        state.fileName = file.name
-        state.hasFile = true
-        state.uploadStatus = 'Ready to send'
-      }, { signal })
-
-      // Handle Cancel button via delegation
-      const container = refs('chatInputContainer')
-      container.addEventListener('click', (e) => {
-        const cancelBtn = e.target.closest('[ref="cancelFileButton"]')
-        if (cancelBtn) {
-          fileInput.value = ''
+      // Manual event binding
+      const attachmentPreview = refs('attachmentPreview')
+      if (attachmentPreview) {
+        attachmentPreview.addEventListener('cancel', () => {
           state.hasFile = false
           state.fileName = ''
-        }
-      }, { signal })
+          state.selectedFile = null
+        }, { signal })
+      }
 
-      sendButton.addEventListener('click', sendMessage, { signal })
+      const inputText = refs('inputText')
+      if (inputText) {
+        inputText.addEventListener('file-selected', (e) => {
+          const { file } = e.detail
+          if (file.size > 25 * 1024 * 1024) {
+            alert('File is too large. Maximum size is 25MB.')
+            return
+          }
+          state.selectedFile = file
+          state.fileName = file.name
+          state.hasFile = true
+          state.uploadStatus = 'Ready to send'
+        }, { signal })
 
-      messageInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
-          e.preventDefault()
+        inputText.addEventListener('mic-clicked', () => {
+          state.isRecording = true
+          const container = refs('voiceRecorderContainer')
+          if (container) {
+            container.innerHTML = ''
+            const el = document.createElement('chat-voice-recorder')
+            el.addEventListener('voice-ready', (e) => {
+              sendMessage(e.detail.blob, e.detail.waveformData)
+            }, { signal })
+            el.addEventListener('voice-discarded', () => {
+              state.isRecording = false
+              container.innerHTML = ''
+            }, { signal })
+            container.appendChild(el)
+          }
+        }, { signal })
+
+        inputText.addEventListener('send-clicked', () => {
           sendMessage()
-        }
-      }, { signal })
+        }, { signal })
+      }
     }
   })
 </script>

@@ -1,0 +1,44 @@
+<template id="chat-attachment-preview">
+  <div class="attachment-preview p-2 mb-2 bg-light rounded d-flex align-items-center justify-content-between border">
+    <div class="d-flex align-items-center">
+      <i class="bi bi-file-earmark-arrow-up text-primary fs-4 me-2"></i>
+      <div>
+        <div class="small fw-bold text-truncate" style="max-width: 200px;">{{ fileName }}</div>
+        <div class="x-small text-muted">{{ uploadStatus }}</div>
+      </div>
+    </div>
+    <button id="{{ ref_cancelFileButton }}" class="btn btn-sm btn-link text-danger" ref="cancelFileButton" title="Cancel">
+      <i class="bi bi-x-circle"></i>
+    </button>
+  </div>
+</template>
+
+<style>
+  .attachment-preview {
+    animation: fadeIn 0.3s ease;
+  }
+  .x-small {
+    font-size: 0.75rem;
+  }
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      fileName: String,
+      uploadStatus: String
+    },
+    client: ({ refs, signal, instance }) => {
+      const cancelBtn = refs('cancelFileButton')
+      cancelBtn.addEventListener('click', () => {
+        instance.dispatchEvent(new CustomEvent('cancel'))
+      }, { signal })
+    }
+  })
+</script>
