@@ -7,8 +7,10 @@ import http from 'http'
 const execAsync = promisify(exec)
 
 const PB_VERSION = '0.39.4'
-const PB_BINARY = path.join(process.cwd(), 'bin', 'pocketbase')
-const PID_FILE = path.join(process.cwd(), '.pocketbase.pid')
+const CWD = CWD
+const PB_BINARY = path.join(CWD, 'bin', 'pocketbase')
+const PID_FILE = path.join(CWD, '.pocketbase.pid')
+const PB_DATA = path.join(CWD, 'pb_data')
 
 /**
  * Ensures PocketBase is running natively and fully initialized.
@@ -16,7 +18,7 @@ const PID_FILE = path.join(process.cwd(), '.pocketbase.pid')
 async function globalSetup () {
   console.log('--- PocketBase Native Setup ---')
 
-  const binDir = path.join(process.cwd(), 'bin')
+  const binDir = path.join(CWD, 'bin')
   if (!fs.existsSync(binDir)) {
     fs.mkdirSync(binDir)
   }
@@ -40,15 +42,15 @@ async function globalSetup () {
   }
 
   // Ensure data directory exists
-  if (!fs.existsSync('./pb_data')) {
-    fs.mkdirSync('./pb_data', { recursive: true })
+  if (!fs.existsSync(PB_DATA)) {
+    fs.mkdirSync(PB_DATA, { recursive: true })
   }
 
   console.log('Starting PocketBase natively...')
-  const pbLog = fs.openSync(path.join(process.cwd(), 'pocketbase.log'), 'a')
+  const pbLog = fs.openSync(path.join(CWD, 'pocketbase.log'), 'a')
   const pbProcess = spawn(PB_BINARY, [
     'serve',
-    '--dir=./pb_data',
+    `--dir=${PB_DATA}`,
     '--migrationsDir=./database/pb_migrations',
     '--hooksDir=./pb_hooks',
     '--http=127.0.0.1:8090'
@@ -94,7 +96,7 @@ async function globalSetup () {
   try {
     // PocketBase v0.39.x uses 'superuser upsert' for idempotency
     // We use the same credentials as in docker-compose and provision-users.js
-    await execAsync(`${PB_BINARY} superuser upsert admin@example.com password123 --dir=./pb_data`)
+    await execAsync(`${PB_BINARY} superuser upsert admin@example.com password123 --dir=${PB_DATA}`)
     console.log('Superuser ensured (upserted).')
   } catch (error) {
     console.error('Superuser creation failed:', error.stdout, error.stderr)
