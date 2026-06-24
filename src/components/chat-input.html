@@ -103,10 +103,58 @@
           if (file) {
             // Media Flow
             state.isUploading = true
-            state.uploadStatus = 'Encrypting file...'
-  
+            state.uploadStatus = 'Processing file...'
+
             const { default: sodium } = await import('libsodium-wrappers-sumo')
             await sodium.ready
+
+            let musicMetadata = null
+            let albumArtMediaId = null
+            let albumArtFileKey = null
+            let albumArtFileNonce = null
+
+            // Extract metadata if it's an audio file and not a voice recording
+            if (file.type.startsWith('audio/') && !recordedBlob) {
+              state.uploadStatus = 'Extracting metadata...'
+              try {
+                const mm = await import('music-metadata')
+                const metadata = await mm.parseBlob(file)
+                if (metadata && metadata.common) {
+                  const { title, artist, album, genre, year, track, picture } = metadata.common
+                  musicMetadata = {
+                    title,
+                    artist,
+                    album,
+                    genre,
+                    year,
+                    track: track?.no
+                  }
+
+                  // Handle Album Art (Option B: Upload as separate media)
+                  if (picture && picture.length > 0) {
+                    state.uploadStatus = 'Processing album art...'
+                    const art = picture[0]
+                    const artBuffer = art.data
+                    const artKey = sodium.randombytes_buf(32)
+                    const artNonce = sodium.randombytes_buf(24)
+                    const encryptedArt = sodium.crypto_secretbox_easy(artBuffer, artNonce, artKey)
+
+                    const artBlob = new Blob([encryptedArt], { type: 'application/octet-stream' })
+                    const artFormData = new FormData()
+                    artFormData.append('file', artBlob, 'album-art.bin')
+
+                    const artRecord = await pb.collection('media').create(artFormData)
+                    albumArtMediaId = artRecord.id
+                    albumArtFileKey = sodium.to_base64(artKey, sodium.base64_variants.ORIGINAL)
+                    albumArtFileNonce = sodium.to_base64(artNonce, sodium.base64_variants.ORIGINAL)
+                  }
+                }
+              } catch (metaErr) {
+                console.warn('[chat-input] Failed to extract metadata:', metaErr)
+              }
+            }
+
+            state.uploadStatus = 'Encrypting file...'
 
             // 1. Encrypt File
             const fileBuffer = new Uint8Array(await file.arrayBuffer())
@@ -131,7 +179,13 @@
               file_key: sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL),
               file_nonce: sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL),
               waveform_data: waveformData,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              music_metadata: musicMetadata,
+              album_art: albumArtMediaId ? {
+                media_id: albumArtMediaId,
+                file_key: albumArtFileKey,
+                file_nonce: albumArtFileNonce
+              } : null
             }
   
             await dispatchMessage(mediaPlaintext)

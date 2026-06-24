@@ -22,7 +22,7 @@ async function init () {
     await sodium.ready
 
     db = new Dexie('AtollChatDB')
-    db.version(3).stores({
+    db.version(4).stores({
       local_rooms: 'id, is_group, updated_at',
       local_messages: 'id, room_id, created_at, [room_id+created_at], type',
       local_assets: 'id, room_id, mime_type, created_at',
@@ -273,12 +273,14 @@ async function processIncomingMessage (rpcId, record) {
 
   // If media, extend the message with media metadata for easier rendering in the timeline
   if (type === 'media') {
-    const { media_id, file_key, file_nonce, mime_type, waveform_data } = decryptedPayload
+    const { media_id, file_key, file_nonce, mime_type, waveform_data, music_metadata, album_art } = decryptedPayload
     decryptedMessage.media_id = media_id
     decryptedMessage.file_key = file_key
     decryptedMessage.file_nonce = file_nonce
     decryptedMessage.mime_type = mime_type
     decryptedMessage.waveform_data = waveform_data
+    decryptedMessage.music_metadata = music_metadata
+    decryptedMessage.album_art = album_art
 
     // Also store in local_assets for the global archive
     await db.local_assets.put({
@@ -288,7 +290,9 @@ async function processIncomingMessage (rpcId, record) {
       mime_type,
       file_key,
       file_nonce,
-      created_at: created
+      created_at: created,
+      music_metadata,
+      album_art
     })
   }
 
