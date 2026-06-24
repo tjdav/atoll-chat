@@ -25,6 +25,11 @@ export default defineConfig({
         currentAppView: 'chats',
         activeSelectionId: null,
         activeSelectionType: null,
+        playbackStatus: 'idle',
+        currentMedia: null,
+        mediaQueue: [],
+        mediaVolume: 1.0,
+        autoHideMediaBar: true,
         currentMessageText: '',
         callStatus: 'idle',
         activeCallRoomId: null

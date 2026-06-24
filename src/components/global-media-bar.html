@@ -1,0 +1,343 @@
+<template id="global-media-bar">
+  <div id="{{ ref_container }}" ref="container" class="global-media-bar border-top bg-body shadow-lg {{ visibilityClass }}" style="height: 90px;">
+    <div class="container-fluid h-100 px-4">
+      <div class="row h-100 align-items-center">
+        <!-- Left: Controls -->
+        <div class="col-3 d-flex align-items-center gap-3">
+          <button id="{{ ref_btnPrev }}" ref="btnPrev" class="btn btn-link text-body p-0" title="Previous">
+            <i class="bi bi-skip-start-fill fs-3"></i>
+          </button>
+          <button id="{{ ref_btnTogglePlay }}" ref="btnTogglePlay" class="btn btn-link text-body p-0" title="Play/Pause">
+            <i class="bi {{ playPauseIcon }} fs-1"></i>
+          </button>
+          <button id="{{ ref_btnNext }}" ref="btnNext" class="btn btn-link text-body p-0" title="Next">
+            <i class="bi bi-skip-end-fill fs-3"></i>
+          </button>
+          <div class="ms-2 text-muted small d-none d-md-block">
+            <span id="{{ ref_currentTime }}" ref="currentTime">0:00</span> / <span id="{{ ref_duration }}" ref="duration">0:00</span>
+          </div>
+        </div>
+
+        <!-- Center: Metadata -->
+        <div class="col-6 d-flex align-items-center justify-content-center">
+          <div id="{{ ref_mediaInfo }}" ref="mediaInfo" class="d-flex align-items-center text-center gap-3 overflow-hidden" style="max-width: 100%;">
+             <div class="media-thumbnail bg-secondary-subtle rounded overflow-hidden flex-shrink-0" style="width: 56px; height: 56px;">
+                <img id="{{ ref_thumbnail }}" ref="thumbnail" src="" class="w-100 h-100 object-fit-cover {{ thumbnailClass }}" alt="">
+                <div id="{{ ref_videoPlaceholder }}" ref="videoPlaceholder" class="w-100 h-100 d-flex align-items-center justify-content-center {{ placeholderClass }}">
+                  <i class="bi {{ placeholderIcon }} fs-3 text-secondary"></i>
+                </div>
+             </div>
+             <div class="text-start text-truncate">
+                <a href="#" id="{{ ref_linkTitle }}" ref="linkTitle" class="d-block fw-bold text-body text-decoration-none text-truncate mb-0">{{ mediaTitle }}</a>
+                <div class="text-muted small text-truncate">{{ mediaSubtext }}</div>
+             </div>
+          </div>
+        </div>
+
+        <!-- Right: Volume & Extra -->
+        <div class="col-3 d-flex align-items-center justify-content-end gap-3">
+          <i class="bi {{ volumeIcon }} fs-5 text-muted"></i>
+          <input type="range" id="{{ ref_volumeSlider }}" ref="volumeSlider" class="form-range" style="width: 100px;" min="0" max="1" step="0.01" value="{{ volumeValue }}">
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden Master Players -->
+    <div class="visually-hidden">
+      <audio id="{{ ref_audioPlayer }}" ref="audioPlayer"></audio>
+      <video id="{{ ref_videoPlayer }}" ref="videoPlayer"></video>
+    </div>
+    
+    <!-- Progress Bar (Top) -->
+    <div class="progress position-absolute top-0 start-0 end-0" style="height: 3px; cursor: pointer;" id="{{ ref_progressContainer }}" ref="progressContainer">
+      <div id="{{ ref_progressBar }}" ref="progressBar" class="progress-bar" role="progressbar" style="width: 0%;"></div>
+    </div>
+  </div>
+</template>
+
+<style>
+  .global-media-bar {
+    position: fixed;
+    bottom: 0;
+    left: 80px; /* Width of nav-sidebar */
+    right: 0;
+    z-index: 1050;
+    transition: transform 0.3s ease-in-out;
+  }
+  .global-media-bar.hidden {
+    transform: translateY(100%);
+  }
+  .media-thumbnail {
+    border: 1px solid var(--bs-border-color);
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      visibilityClass: 'hidden',
+      playPauseIcon: 'bi-play-fill',
+      mediaTitle: 'Not Playing',
+      mediaSubtext: '',
+      volumeValue: 1.0,
+      volumeIcon: 'bi-volume-up-fill',
+      thumbnailClass: 'd-none',
+      placeholderClass: 'd-flex',
+      placeholderIcon: 'bi-music-note'
+    }),
+    client: async ({ state, refs, globalStore, localDb, pocketbase, signal, utils }) => {
+      const { $state } = globalStore
+      const { $localDb } = localDb
+      const { pb } = pocketbase
+      const { $utils } = utils
+
+      const audio = refs('audioPlayer')
+      const video = refs('videoPlayer')
+      const volumeSlider = refs('volumeSlider')
+      const btnTogglePlay = refs('btnTogglePlay')
+      const btnNext = refs('btnNext')
+      const btnPrev = refs('btnPrev')
+      const progressBar = refs('progressBar')
+      const progressContainer = refs('progressContainer')
+      const currentTimeText = refs('currentTime')
+      const durationText = refs('duration')
+      const linkTitle = refs('linkTitle')
+      const thumbnailImg = refs('thumbnail')
+
+      let currentObjectUrl = null
+      let activePlayer = null
+      let abortController = null
+
+      const formatTime = (seconds) => {
+        if (!seconds || isNaN(seconds)) return '0:00'
+        const mins = Math.floor(seconds / 60)
+        const secs = Math.floor(seconds % 60)
+        return `${mins}:${secs.toString().padStart(2, '0')}`
+      }
+
+      const updateProgress = () => {
+        if (!activePlayer) return
+        const percent = (activePlayer.currentTime / activePlayer.duration) * 100 || 0
+        progressBar.style.width = `${percent}%`
+        currentTimeText.textContent = formatTime(activePlayer.currentTime)
+        durationText.textContent = formatTime(activePlayer.duration)
+      }
+
+      const cleanup = () => {
+        if (currentObjectUrl) {
+          URL.revokeObjectURL(currentObjectUrl)
+          currentObjectUrl = null
+        }
+        if (audio) {
+          audio.pause()
+          audio.src = ''
+        }
+        if (video) {
+          video.pause()
+          video.src = ''
+        }
+        activePlayer = null
+      }
+
+      const updateVisibility = () => {
+        state.visibilityClass = ($state.playbackStatus === 'idle' && $state.autoHideMediaBar) ? 'hidden' : ''
+      }
+
+      const loadMedia = async (mediaId, mediaType) => {
+        if (!mediaId) {
+          cleanup()
+          $state.playbackStatus = 'idle'
+          return
+        }
+
+        if (abortController) {
+          abortController.abort()
+        }
+        abortController = new AbortController()
+        const { signal: fetchSignal } = abortController
+
+        try {
+          const asset = await $localDb.local_assets.get(mediaId)
+          if (!asset) return
+
+          // Fetch media record
+          const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+          const response = await fetch(url, { signal: fetchSignal })
+          const arrayBuffer = await response.arrayBuffer()
+          const encryptedFileBuffer = new Uint8Array(arrayBuffer)
+
+          if (fetchSignal.aborted) return
+
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+
+          const fileKeyBuffer = sodium.from_base64(asset.file_key, sodium.base64_variants.ORIGINAL)
+          const nonceBuffer = sodium.from_base64(asset.file_nonce, sodium.base64_variants.ORIGINAL)
+
+          const decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)
+          if (!decryptedFileBuffer) throw new Error('Decryption failed')
+
+          if (fetchSignal.aborted) return
+
+          cleanup()
+
+          const mediaBlob = new Blob([decryptedFileBuffer], { type: asset.mime_type })
+          currentObjectUrl = URL.createObjectURL(mediaBlob)
+
+          if (mediaType === 'music') {
+            activePlayer = audio
+            state.placeholderIcon = 'bi-music-note'
+          } else {
+            activePlayer = video
+            state.placeholderIcon = 'bi-camera-video'
+          }
+
+          activePlayer.src = currentObjectUrl
+          activePlayer.volume = $state.mediaVolume
+          activePlayer.play()
+
+          $state.playbackStatus = 'playing'
+          
+          // Update Metadata
+          state.mediaTitle = asset.name || 'Untitled'
+          if (mediaType === 'music' && asset.artist) {
+            state.mediaSubtext = `${asset.artist}${asset.album ? ' • ' + asset.album : ''}`
+          } else {
+            state.mediaSubtext = mediaType === 'music' ? 'Audio Track' : 'Video'
+          }
+
+          // Handle thumbnail for video
+          state.thumbnailClass = 'd-none'
+          state.placeholderClass = 'd-flex'
+          
+          if (mediaType === 'videos') {
+            // Capture frame from video after it loads
+            video.onloadeddata = () => {
+              if (fetchSignal.aborted) return
+              const canvas = document.createElement('canvas')
+              canvas.width = video.videoWidth
+              canvas.height = video.videoHeight
+              const ctx = canvas.getContext('2d')
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+              thumbnailImg.src = canvas.toDataURL('image/jpeg')
+              state.thumbnailClass = 'd-block'
+              state.placeholderClass = 'd-none'
+            }
+          }
+
+        } catch (err) {
+          if (err.name === 'AbortError') return
+          console.error('[global-media-bar] Error loading media:', err)
+          $state.playbackStatus = 'idle'
+        }
+      }
+
+      // Sync playback status to UI and Hardware
+      $state.subscribe('playbackStatus', (status) => {
+        state.playPauseIcon = status === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
+        updateVisibility()
+        
+        if (activePlayer) {
+          if (status === 'playing' && activePlayer.paused) {
+            activePlayer.play().catch(e => console.warn('[global-media-bar] Autoplay blocked:', e))
+          } else if (status === 'paused' && !activePlayer.paused) {
+            activePlayer.pause()
+          }
+        }
+      })
+
+      $state.subscribe('autoHideMediaBar', updateVisibility)
+
+      $state.subscribe('currentMedia', (media) => {
+        if (media) {
+          loadMedia(media.id, media.type)
+        } else {
+          cleanup()
+          $state.playbackStatus = 'idle'
+        }
+      })
+
+      $state.subscribe('mediaVolume', (vol) => {
+        if (audio) audio.volume = vol
+        if (video) video.volume = vol
+        state.volumeValue = vol
+        state.volumeIcon = vol === 0 ? 'bi-volume-mute-fill' : (vol < 0.5 ? 'bi-volume-down-fill' : 'bi-volume-up-fill')
+      })
+
+      btnTogglePlay.addEventListener('click', () => {
+        if (!activePlayer) return
+        if (activePlayer.paused) {
+          activePlayer.play()
+          $state.playbackStatus = 'playing'
+        } else {
+          activePlayer.pause()
+          $state.playbackStatus = 'paused'
+        }
+      })
+
+      volumeSlider.addEventListener('input', (e) => {
+        $state.mediaVolume = parseFloat(e.target.value)
+      })
+
+      progressContainer.addEventListener('click', (e) => {
+        if (!activePlayer || !activePlayer.duration) return
+        const rect = progressContainer.getBoundingClientRect()
+        const pos = (e.clientX - rect.left) / rect.width
+        activePlayer.currentTime = pos * activePlayer.duration
+      })
+
+      audio.addEventListener('timeupdate', updateProgress)
+      video.addEventListener('timeupdate', updateProgress)
+
+      audio.addEventListener('ended', () => {
+        $state.playbackStatus = 'idle'
+      })
+      video.addEventListener('ended', () => {
+        $state.playbackStatus = 'idle'
+      })
+
+      linkTitle.addEventListener('click', (e) => {
+        e.preventDefault()
+        if (!$state.currentMedia) return
+        $state.currentAppView = $state.currentMedia.type
+        $state.activeSelectionId = $state.currentMedia.id
+        $state.activeSelectionType = $state.currentMedia.type
+      })
+
+      // Navigation Logic (Next/Prev)
+      const navigateQueue = async (direction) => {
+        const queue = $state.mediaQueue
+        const currentId = $state.currentMedia?.id
+        if (!queue || queue.length === 0) return
+
+        let index = queue.indexOf(currentId)
+        if (direction === 'next') {
+          index = (index + 1) % queue.length
+        } else {
+          index = (index - 1 + queue.length) % queue.length
+        }
+
+        const nextId = queue[index]
+        const asset = await $localDb.local_assets.get(nextId)
+        if (asset) {
+           $state.currentMedia = {
+             id: asset.id,
+             type: asset.mime_type.startsWith('audio/') ? 'music' : 'videos'
+           }
+        }
+      }
+
+      btnNext.addEventListener('click', () => navigateQueue('next'))
+      btnPrev.addEventListener('click', () => navigateQueue('prev'))
+
+      // Expose video element for moving
+      $state.set('getMasterVideoElement', () => video)
+
+      signal.addEventListener('abort', cleanup)
+    }
+  })
+</script>

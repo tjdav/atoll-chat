@@ -122,6 +122,15 @@
             card.addEventListener('click', () => {
               $state.activeSelectionId = item.id
               $state.activeSelectionType = 'videos'
+
+              // Set queue
+              $state.mediaQueue = rawItems.map(i => i.id)
+
+              // Auto play
+              if (!$state.currentMedia || $state.currentMedia.id !== item.id) {
+                $state.currentMedia = { id: item.id, type: 'videos' }
+                $state.playbackStatus = 'playing'
+              }
             })
 
             gridContainer.appendChild(col)

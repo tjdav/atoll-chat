@@ -14,6 +14,7 @@ export default function pocketbase (options = {}) {
       context: async () => {
         const { default: PocketBase } = await import('pocketbase')
         const pb = new PocketBase(url)
+        pb.autoCancellation(false)
 
         return () => {
           return { pb }
@@ -25,6 +26,7 @@ export default function pocketbase (options = {}) {
       context: async (pluginContext) => {
         const { default: PocketBase } = await import('pocketbase')
         const pb = new PocketBase(pluginContext.config.url)
+        pb.autoCancellation(false)
 
         return () => {
           return { pb }

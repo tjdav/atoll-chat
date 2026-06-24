@@ -69,6 +69,10 @@ $utilities: map-merge($utilities,
 @import "timeline";
 @import "waveform";
 
+.app-layout {
+  padding-bottom: 90px;
+}
+
 html,
 body {
   height: 100%;
