@@ -7,7 +7,7 @@ import http from 'http'
 const execAsync = promisify(exec)
 
 const PB_VERSION = '0.39.4'
-const CWD = CWD
+const CWD = process.cwd()
 const PB_BINARY = path.join(CWD, 'bin', 'pocketbase')
 const PID_FILE = path.join(CWD, '.pocketbase.pid')
 const PB_DATA = path.join(CWD, 'pb_data')
