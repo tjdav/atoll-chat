@@ -28,9 +28,9 @@ async function globalTeardown () {
   }
 
   // Also manually clear the bind-mounted data directory to ensure a fresh state
-  if (fs.existsSync('./database/pb_data')) {
+  if (fs.existsSync('./pb_data')) {
     console.log('Clearing PocketBase data directory...')
-    fs.rmSync('./database/pb_data', {
+    fs.rmSync('./pb_data', {
       recursive: true,
       force: true
     })

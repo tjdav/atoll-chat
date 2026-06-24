@@ -40,15 +40,15 @@ async function globalSetup () {
   }
 
   // Ensure data directory exists
-  if (!fs.existsSync('./database/pb_data')) {
-    fs.mkdirSync('./database/pb_data', { recursive: true })
+  if (!fs.existsSync('./pb_data')) {
+    fs.mkdirSync('./pb_data', { recursive: true })
   }
 
   console.log('Starting PocketBase natively...')
   const pbLog = fs.openSync(path.join(process.cwd(), 'pocketbase.log'), 'a')
   const pbProcess = spawn(PB_BINARY, [
     'serve',
-    '--dir=./database/pb_data',
+    '--dir=./pb_data',
     '--migrationsDir=./database/pb_migrations',
     '--hooksDir=./pb_hooks',
     '--http=127.0.0.1:8090'
@@ -80,7 +80,7 @@ async function globalSetup () {
         healthy = true
         break
       }
-    } catch (e) {
+    } catch {
       // Still starting up
     }
     await new Promise(resolve => setTimeout(resolve, 1000))
@@ -94,7 +94,7 @@ async function globalSetup () {
   try {
     // PocketBase v0.39.x uses 'superuser upsert' for idempotency
     // We use the same credentials as in docker-compose and provision-users.js
-    await execAsync(`${PB_BINARY} superuser upsert admin@example.com password123 --dir=./database/pb_data`)
+    await execAsync(`${PB_BINARY} superuser upsert admin@example.com password123 --dir=./pb_data`)
     console.log('Superuser ensured (upserted).')
   } catch (error) {
     console.error('Superuser creation failed:', error.stdout, error.stderr)
