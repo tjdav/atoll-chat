@@ -152,7 +152,13 @@
   
             const nameDiv = document.createElement('div')
             nameDiv.className = 'fw-bold text-truncate'
-            nameDiv.textContent = item.name || (item.is_group ? 'Unnamed Group' : 'Direct Message')
+
+            const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
+            if (!item.is_group && participants.length > 0) {
+              nameDiv.textContent = participants[0].username
+            } else {
+              nameDiv.textContent = item.name || (item.is_group ? 'Unnamed Group' : 'Direct Message')
+            }
   
             const subTextSmall = document.createElement('small')
             subTextSmall.className = 'opacity-75 d-block text-truncate'

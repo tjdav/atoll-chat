@@ -314,7 +314,7 @@
           // Generate room key and encrypt metadata
           const roomKey = sodium.randombytes_buf(32)
           const isGroup = state.isGroup
-          const roomName = isGroup ? state.roomName : (state.selectedParticipants[0]?.username || 'Direct Message')
+          const roomName = isGroup ? state.roomName : ''
 
           let roomAvatarBase64 = ''
           if (state.roomAvatar) {
@@ -387,6 +387,15 @@
             id: newRoom.id,
             is_group: isGroup,
             name: roomName,
+            avatar: roomAvatarBase64,
+            participants: participants.map(u => ({
+              id: u.id,
+              username: u.username,
+              avatar: u.avatar,
+              collectionId: u.collectionId,
+              collectionName: u.collectionName
+            })),
+            user_role: 'admin',
             key_history: [{
               epoch_id: 1,
               key: sodium.to_base64(roomKey, sodium.base64_variants.ORIGINAL)

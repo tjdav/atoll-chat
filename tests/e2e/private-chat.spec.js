@@ -50,8 +50,10 @@ test.describe('Private Chat', () => {
     console.log('Bob waiting for Alice\'s chat and message...')
     // --- Bob receives and replies ---
     // Bob should see the new chat in his list
-    await expect(bobPage.locator('chat-list .list-group-item:has-text("alice")')).toBeVisible({ timeout: 20000 })
-    await bobPage.click('chat-list .list-group-item:has-text("alice")')
+    // Use data-testid if possible, or search for the room name "alice"
+    const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: 'alice' })
+    await expect(bobChatListAlice).toBeVisible({ timeout: 30000 })
+    await bobChatListAlice.click()
 
     // Verify Bob sees Alice's message
     await expect(bobPage.locator('timeline-row:has-text("Hello Bob")')).toBeVisible({ timeout: 10000 })

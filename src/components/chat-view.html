@@ -88,7 +88,12 @@
           const room = await $localDb.local_rooms.get(roomId)
 
           if (room) {
-            state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
+            const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
+            if (!room.is_group && participants.length > 0) {
+              state.roomName = participants[0].username
+            } else {
+              state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
+            }
             state.roomInitial = state.roomName.charAt(0).toUpperCase()
             state.roomStatus = room.is_group ? 'Group Chat' : 'Private'
           }
