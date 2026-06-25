@@ -1,4 +1,4 @@
-import { test as base } from '@playwright/test'
+import { test as base, expect } from '@playwright/test'
 
 export const test = base.extend({
   // Define a new fixture called 'loginApp'
@@ -16,7 +16,7 @@ export const test = base.extend({
       await page.fill('input[placeholder="Enter Password"]', appPassword)
       await page.click('button:has-text("Login")')
 
-      await expect(page.locator('h5:has-text("Unlock Your Vault")')).toBeVisible()
+      await expect(page.locator('h3:has-text("Unlock Your Vault")')).toBeVisible()
 
       await page.fill('input[placeholder="Enter Password"]', vaultPassword)
       await page.click('button:has-text("Unlock with Password")')

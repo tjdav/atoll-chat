@@ -1,13 +1,6 @@
 <template id="app-root">
-  <div ref="container" class="app-root-container"></div>
+  <div ref="container"></div>
 </template>
-
-<style>
-  .app-root-container {
-    height: 100vh;
-    width: 100vw;
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -25,33 +18,44 @@
           container.removeChild(container.firstChild)
         }
 
-        if ($state.isAuthenticated) {
-          container.className = 'app-root-container'
+        if ($state.isAuthenticated && $state.isVaultUnlocked) {
+          // Full application view
+          container.className = 'vh-100 vw-100 overflow-hidden'
+          container.appendChild(document.createElement('app-layout'))
+          container.appendChild(document.createElement('create-room-modal'))
+        } else {
+          // Auth or Vault setup/unlock view
+          container.className = 'vh-100 vw-100 d-flex align-items-center justify-content-center bg-body-tertiary'
   
-          if ($state.isVaultUnlocked) {
-            // Full application view
-            container.appendChild(document.createElement('app-layout'))
-            container.appendChild(document.createElement('create-room-modal'))
+          const contentWrapper = document.createElement('div')
+          contentWrapper.className = 'container'
+  
+          const row = document.createElement('div')
+          row.className = 'row justify-content-center'
+  
+          const col = document.createElement('div')
+          col.className = 'col-12 col-sm-10 col-md-8 col-lg-6 col-xl-4'
+  
+          row.appendChild(col)
+          contentWrapper.appendChild(row)
+          container.appendChild(contentWrapper)
+
+          if (!$state.isAuthenticated) {
+            if ($state.authView === 'register') {
+              col.appendChild(document.createElement('auth-register'))
+            } else {
+              col.appendChild(document.createElement('auth-login'))
+            }
           } else {
             // Check if vault needs setup or just unlocking
             const user = pb.authStore.model
             if (user && user.public_box_key) {
               // Vault exists, needs unlocking
-              container.appendChild(document.createElement('vault-unlock'))
+              col.appendChild(document.createElement('vault-unlock'))
             } else {
               // No vault, needs setup
-              container.className = 'app-root-container d-flex align-items-center justify-content-center bg-body-tertiary'
-              container.appendChild(document.createElement('vault-setup'))
+              col.appendChild(document.createElement('vault-setup'))
             }
-          }
-        } else {
-          // Center auth components
-          container.className = 'app-root-container d-flex align-items-center justify-content-center bg-body-tertiary'
-  
-          if ($state.authView === 'register') {
-            container.appendChild(document.createElement('auth-register'))
-          } else {
-            container.appendChild(document.createElement('auth-login'))
           }
         }
       }

@@ -1,44 +1,31 @@
 <template id="vault-unlock">
-  <div ref="modal" class="modal fade" tabindex="-1" aria-labelledby="{{ ref_modalTitle }}" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 id="{{ ref_modalTitle }}" class="modal-title" ref="modalTitle">Unlock Your Vault</h5>
+  <div class="card shadow">
+    <div class="card-body p-4 text-center">
+      <h3 class="card-title mb-3">Unlock Your Vault</h3>
+      <p class="text-muted small mb-4">Your session is active, but your cryptographic keys are locked. Please enter your password to unlock them.</p>
+      <form ref="unlockForm" class="text-start">
+        <div class="mb-3">
+          <label for="{{ ref_pin }}" class="form-label">Vault Password</label>
+          <input id="{{ ref_pin }}" name="pin" ref="pin" type="password" class="form-control" placeholder="Enter Password" required>
         </div>
-        <div class="modal-body">
-          <p>Your session is active, but your cryptographic keys are locked. Please enter your password to unlock them.</p>
-          <form ref="unlockForm">
-            <div class="form-group mb-3">
-              <label for="{{ ref_pin }}">Vault Password</label>
-              <input id="{{ ref_pin }}" ref="pin" type="password" class="form-control" placeholder="Enter Password" required>
-            </div>
-            <div class="d-grid gap-2">
-              <button type="submit" class="btn btn-primary">Unlock with Password</button>
-              <button type="button" class="btn btn-outline-primary d-none" ref="btnPasskey">Unlock with Passkey</button>
-            </div>
-          </form>
-          <div ref="statusMsg" class="status-message mt-3 text-muted text-center"></div>
+        <div class="d-grid gap-2">
+          <button type="submit" class="btn btn-primary">Unlock with Password</button>
+          <button type="button" class="btn btn-outline-primary d-none" ref="btnPasskey">Unlock with Passkey</button>
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-link btn-sm" ref="btnLogout">Logout</button>
-        </div>
+      </form>
+      <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
+      <div class="mt-3">
+        <button id="{{ ref_btnLogout }}" type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
       </div>
     </div>
   </div>
 </template>
 
-<style>
-  .status-message {
-    font-size: 0.875rem;
-    min-height: 1.25rem;
-  }
-</style>
-
 <script type="module">
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, bootstrap, signal }) => {
+    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, signal }) => {
       const [{ default: sodium }, { deriveKeyFromPin, decryptVault }] = await Promise.all([
         import('libsodium-wrappers-sumo'),
         import('../utils/cryptoUtils.js')
@@ -47,13 +34,6 @@
       const { $bus } = eventBus
       const { $sync } = realtimeSync
       const { $state } = globalStore
-      const { Modal } = bootstrap
-      const modalEl = refs('modal')
-      const modal = new Modal(modalEl, {
-        backdrop: 'static',
-        keyboard: false
-      })
-      modal.show()
 
       const unlockForm = refs('unlockForm')
       const pinInput = refs('pin')
@@ -97,17 +77,11 @@
           userRecord: record
         })
 
-        modal.hide()
-
         // Start real-time subscriptions in background
         $sync.startSubscriptions().catch(err => {
           console.error('[vault-unlock] Background sync failed:', err)
         })
       }
-
-      signal.addEventListener('abort', () => {
-        modal.dispose()
-      })
 
       unlockForm.addEventListener('submit', async (event) => {
         event.preventDefault()
