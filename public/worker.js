@@ -1,7 +1,7 @@
 /* global sodium, importScripts, Dexie */
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
-importScripts('https://unpkg.com/dexie@4.0.10/dist/dexie.js')
+importScripts('/assets/dexie.js')
 
 /**
  * The Worker Script for Atoll Chat

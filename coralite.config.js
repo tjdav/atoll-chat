@@ -58,6 +58,11 @@ export default defineConfig({
       pkg: 'libsodium-sumo',
       path: 'dist/modules-sumo/libsodium-sumo.js',
       dest: 'assets/libsodium-sumo.js'
+    },
+    {
+      pkg: 'dexie',
+      path: 'dist/dexie.js',
+      dest: 'assets/dexie.js'
     }
   ]
 })

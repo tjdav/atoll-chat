@@ -1,6 +1,16 @@
 import { test as base, expect } from '@playwright/test'
 
 export const test = base.extend({
+  page: async ({ page }, use) => {
+    page.on('console', msg => {
+      console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`)
+    })
+    page.on('pageerror', err => {
+      console.log(`[BROWSER ERROR] ${err.message}`)
+    })
+    await use(page)
+  },
+
   loginApp: async ({ page }, use) => {
     const doLogin = async (username, appPassword, vaultPassword) => {
       await page.goto('/')
