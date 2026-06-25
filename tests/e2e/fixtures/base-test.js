@@ -1,30 +1,48 @@
 import { test as base, expect } from '@playwright/test'
 
 export const test = base.extend({
-  // Define a new fixture called 'loginApp'
   loginApp: async ({ page }, use) => {
-    // This is the function the test will receive
     const doLogin = async (username, appPassword, vaultPassword) => {
       await page.goto('/')
-
-      // Wait for Coralite to be ready
       await page.waitForFunction(() => window.__coralite_ready__ !== undefined)
       await page.evaluate(() => window.__coralite_ready__)
 
-      // Login
       await page.fill('input[placeholder="Enter username or email"]', username)
       await page.fill('input[placeholder="Enter Password"]', appPassword)
       await page.click('button:has-text("Login")')
 
-      await expect(page.locator('h3:has-text("Unlock Your Vault")')).toBeVisible()
+      await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
       await page.fill('input[placeholder="Enter Password"]', vaultPassword)
       await page.click('button:has-text("Unlock with Password")')
 
       await expect(page.locator('app-layout')).toBeVisible({ timeout: 10000 })
     }
+    await use(doLogin)
+  },
 
-    // Pass the function to the tests
+  loginCustomPage: async ({ baseURL }, use) => {
+    const doLogin = async (targetPage, username, appPassword, vaultPassword) => {
+      // Use the global baseURL if available
+      await targetPage.goto(baseURL || '/')
+
+      // Wait for Coralite to be ready on this specific page
+      await targetPage.waitForFunction(() => window.__coralite_ready__ !== undefined)
+      await targetPage.evaluate(() => window.__coralite_ready__)
+
+      // Login Flow
+      await targetPage.fill('input[placeholder="Enter username or email"]', username)
+      await targetPage.fill('input[placeholder="Enter Password"]', appPassword)
+      await targetPage.click('button:has-text("Login")')
+
+      await expect(targetPage.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
+
+      await targetPage.fill('input[placeholder="Enter Password"]', vaultPassword)
+      await targetPage.click('button:has-text("Unlock with Password")')
+
+      await expect(targetPage.locator('app-layout')).toBeVisible({ timeout: 15000 })
+    }
+
     await use(doLogin)
   }
 })
