@@ -19,7 +19,6 @@ export default defineConfig({
       args: [
         '--use-fake-ui-for-media-stream',
         '--use-fake-device-for-media-stream',
-        '--use-fake-device-for-media-stream',
         '--allow-loopback-in-peer-connection',
         '--enforce-webrtc-ip-permission-check=false',
         '--unlimited-storage'
