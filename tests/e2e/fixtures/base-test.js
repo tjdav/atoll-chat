@@ -14,8 +14,8 @@ export const test = base.extend({
   loginApp: async ({ page }, use) => {
     const doLogin = async (username, appPassword, vaultPassword) => {
       await page.goto('/')
-      await page.waitForFunction(() => window.__coralite_ready__ !== undefined)
-      await page.evaluate(() => window.__coralite_ready__)
+      await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
+      await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
       await page.fill('input[placeholder="Enter username or email"]', username)
       await page.fill('input[placeholder="Enter Password"]', appPassword)
@@ -37,8 +37,8 @@ export const test = base.extend({
       await targetPage.goto(baseURL || '/')
 
       // Wait for Coralite to be ready on this specific page
-      await targetPage.waitForFunction(() => window.__coralite_ready__ !== undefined)
-      await targetPage.evaluate(() => window.__coralite_ready__)
+      await targetPage.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
+      await targetPage.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
       // Login Flow
       await targetPage.fill('input[placeholder="Enter username or email"]', username)
