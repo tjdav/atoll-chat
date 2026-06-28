@@ -58,16 +58,16 @@
 
         if ($state.currentMedia && $state.currentMedia.id === id) {
           state.bigPlayIcon = $state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
-          
+  
           // Adopt video element
           const getMasterVideo = $state.getMasterVideoElement
           if (getMasterVideo) {
-             const video = getMasterVideo()
-             if (video) {
-                video.className = 'w-100 h-100 object-fit-contain'
-                videoContainer.appendChild(video)
-                videoPlaceholder.classList.add('d-none')
-             }
+            const video = getMasterVideo()
+            if (video) {
+              video.className = 'w-100 h-100 object-fit-contain'
+              videoContainer.appendChild(video)
+              videoPlaceholder.classList.add('d-none')
+            }
           }
         } else {
           state.bigPlayIcon = 'bi-play-fill'
@@ -76,27 +76,29 @@
       }
 
       const returnVideo = () => {
-         const getMasterVideo = $state.getMasterVideoElement
-         if (getMasterVideo) {
-            const video = getMasterVideo()
-            if (video && video.parentElement === videoContainer) {
-               // Move it back to its original hidden container in global bar if we had a ref
-               // But usually just removing it is enough if global-media-bar keeps its own ref
-               video.className = ''
-               // To be safe, we can move it back to the hidden div in global-media-bar
-               const barHiddenDiv = document.querySelector('global-media-bar .visually-hidden')
-               if (barHiddenDiv) {
-                  barHiddenDiv.appendChild(video)
-               }
+        const getMasterVideo = $state.getMasterVideoElement
+        if (getMasterVideo) {
+          const video = getMasterVideo()
+          if (video && video.parentElement === videoContainer) {
+            // Move it back to its original hidden container in global bar if we had a ref
+            // But usually just removing it is enough if global-media-bar keeps its own ref
+            video.className = ''
+            // To be safe, we can move it back to the hidden div in global-media-bar
+            const barHiddenDiv = document.querySelector('global-media-bar .visually-hidden')
+            if (barHiddenDiv) {
+              barHiddenDiv.appendChild(video)
             }
-         }
+          }
+        }
       }
 
       signal.addEventListener('abort', returnVideo)
 
       btnBigPlay.addEventListener('click', () => {
         const id = $state.activeSelectionId
-        if (!id) return
+        if (!id) {
+          return
+        }
 
         if ($state.currentMedia && $state.currentMedia.id === id) {
           if ($state.playbackStatus === 'playing') {
@@ -105,7 +107,10 @@
             $state.playbackStatus = 'playing'
           }
         } else {
-          $state.currentMedia = { id, type: 'videos' }
+          $state.currentMedia = {
+            id,
+            type: 'videos'
+          }
           $state.playbackStatus = 'playing'
         }
       })
@@ -116,11 +121,11 @@
       $state.subscribe('activeSelectionId', debouncedSync)
       $state.subscribe('activeSelectionType', debouncedSync)
       $state.subscribe('playbackStatus', () => {
-         if ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId) {
-            state.bigPlayIcon = $state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
-            // Trigger sync again to adopt the video element if it was just started
-            debouncedSync()
-         }
+        if ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId) {
+          state.bigPlayIcon = $state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
+          // Trigger sync again to adopt the video element if it was just started
+          debouncedSync()
+        }
       })
     }
   })

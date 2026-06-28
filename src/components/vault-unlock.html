@@ -66,7 +66,10 @@
         // Initialize worker with decrypted keys and token
         const { $worker } = cryptoWorker
         await $worker.execute('SET_TOKEN', { token: pb.authStore.token })
-        await $worker.execute('INIT_KEYS', decryptedKeys)
+        await $worker.execute('INIT_KEYS', {
+          ...decryptedKeys,
+          id: record.id
+        })
 
         // Set global state immediately to transition UI
         $state.isVaultUnlocked = true

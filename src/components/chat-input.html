@@ -10,7 +10,7 @@
     </div>
 
     <!-- Normal Input Mode -->
-    <div class="{{ inputGroupClass }}">
+    <div class="{{ inputGroupClass }}" data-testid="chat-input-wrapper">
       <chat-input-text
         ref="inputText"
         is-sending="{{ isSending }}"
@@ -52,11 +52,12 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'recording-mode-active' : 'd-none')
     },
-    client: ({ state, globalStore, pocketbase, localDb, eventBus, refs, signal }) => {
+    client: ({ state, globalStore, pocketbase, localDb, eventBus, refs, signal, cryptoWorker }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $bus } = eventBus
+      const { $worker } = cryptoWorker
 
       const resetUI = () => {
         state.isSending = false
@@ -74,11 +75,31 @@
       }
 
       const dispatchMessage = async (plaintextObj) => {
-        const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
-        const result = await sendEncryptedMessage($state.activeSelectionId, plaintextObj, {
-          pb,
-          $localDb,
-          $state
+        const localUuid = crypto.randomUUID()
+        const roomId = $state.activeSelectionId
+
+        // Optimistic Write
+        const optimisticMessage = {
+          local_uuid: localUuid,
+          id: null,
+          room_id: roomId,
+          sender_id: $state.currentUser.id,
+          type: plaintextObj.type,
+          content: plaintextObj.content,
+          status: 'pending',
+          created_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
+          ...plaintextObj
+        }
+
+        await $localDb.local_messages.put(optimisticMessage)
+        $bus.emit('NEW_LOCAL_DATA', { room_id: roomId })
+
+        // Dispatch to worker
+        console.log('[chat-input] Dispatching SEND_MESSAGE to worker', { localUuid })
+        const result = await $worker.execute('SEND_MESSAGE', {
+          roomId,
+          plaintextObj,
+          localUuid
         })
   
         $bus.emit('message-sent', result)
@@ -89,6 +110,11 @@
         if (state.isSending || state.isUploading) {
           return
         }
+
+        console.log('[chat-input] sendMessage triggered', {
+          hasText: !!$state.currentMessageText,
+          hasBlob: !!recordedBlob
+        })
 
         const text = ($state.currentMessageText || '').trim()
         const file = recordedBlob || state.selectedFile
@@ -101,6 +127,7 @@
 
         try {
           if (file) {
+            console.log('[chat-input] Processing file message')
             // Media Flow
             state.isUploading = true
             state.uploadStatus = 'Processing file...'
@@ -180,6 +207,7 @@
               file_nonce: sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL),
               waveform_data: waveformData,
               timestamp: Date.now(),
+              created_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
               music_metadata: musicMetadata,
               album_art: albumArtMediaId ? {
                 media_id: albumArtMediaId,
@@ -191,10 +219,12 @@
             await dispatchMessage(mediaPlaintext)
           } else {
             // Standard Text Flow
+            console.log('[chat-input] Processing text message')
             await dispatchMessage({
               type: 'text',
               content: text,
-              timestamp: Date.now()
+              timestamp: Date.now(),
+              created_at: new Date().toISOString().replace('T', ' ').replace('Z', '')
             })
           }
 

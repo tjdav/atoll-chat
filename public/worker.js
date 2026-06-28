@@ -22,9 +22,9 @@ async function init () {
     await sodium.ready
 
     db = new Dexie('AtollChatDB')
-    db.version(4).stores({
+    db.version(6).stores({
       local_rooms: 'id, is_group, updated_at',
-      local_messages: 'id, room_id, created_at, [room_id+created_at], type',
+      local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, content',
       local_assets: 'id, room_id, mime_type, created_at',
       local_config: 'key'
     })
@@ -87,6 +87,7 @@ async function handleEvent (event) {
   try {
     if (type === 'INIT_KEYS') {
       currentUserKeys = payload
+      console.log('[worker] Keys initialized for user:', currentUserKeys.id)
       self.postMessage({
         id,
         type,
@@ -144,7 +145,12 @@ async function handleEvent (event) {
       return
     }
 
-    // New task: PROCESS_INCOMING_MESSAGE
+    // New tasks: SEND_MESSAGE and PROCESS_INCOMING_MESSAGE
+    if (type === 'SEND_MESSAGE') {
+      await sendMessage(id, payload)
+      return
+    }
+
     if (type === 'PROCESS_INCOMING_MESSAGE') {
       await processIncomingMessage(id, payload)
       return
@@ -174,6 +180,106 @@ async function handleEvent (event) {
   }
 }
 
+async function sendMessage (rpcId, payload) {
+  const { roomId, plaintextObj, localUuid } = payload
+
+  if (!currentUserKeys || !currentUserKeys.private_sign_key) {
+    throw new Error('User identity keys not found in worker')
+  }
+
+  const room = await db.local_rooms.get(roomId)
+  if (!room || !room.key_history || room.key_history.length === 0) {
+    throw new Error('Encryption keys not found for this room')
+  }
+
+  const latestKeyObj = room.key_history.reduce((prev, current) => {
+    const prevEpoch = parseInt(prev.epoch_id, 10)
+    const currEpoch = parseInt(current.epoch_id, 10)
+    return (prevEpoch > currEpoch) ? prev : current
+  })
+  const latestEpochId = latestKeyObj.epoch_id
+  const roomKey = sodium.from_base64(latestKeyObj.key, sodium.base64_variants.ORIGINAL)
+
+  // Fetch causal link (previous_msg_uuid)
+  const lastMsg = await db.local_messages
+    .where('[room_id+created_at]')
+    .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
+    .last()
+
+  const previousMsgId = lastMsg ? (lastMsg.id || lastMsg.local_uuid) : 'START'
+
+  // Construct Plaintext (inject local_uuid into plaintext so others can use it for deduplication too)
+  plaintextObj.local_uuid = localUuid
+  const plaintextStr = JSON.stringify(plaintextObj)
+
+  // Encryption (X25519)
+  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+  const ciphertextBuffer = sodium.crypto_secretbox_easy(plaintextStr, nonce, roomKey)
+  const ciphertextBase64 = sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL)
+  const nonceBase64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+
+  const validationString = `${roomId}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
+  const validationBuffer = new TextEncoder().encode(validationString)
+
+  const privateSignKeyBuffer = sodium.from_base64(currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
+  const signatureBuffer = sodium.crypto_sign_detached(validationBuffer, privateSignKeyBuffer)
+
+  // Server upload
+  const uploadPayload = {
+    room_id: roomId,
+    sender_id: currentUserKeys.id,
+    epoch_id: latestEpochId,
+    payload: {
+      ciphertext: ciphertextBase64,
+      nonce: nonceBase64
+    },
+    signature: sodium.to_base64(signatureBuffer, sodium.base64_variants.ORIGINAL),
+    previous_msg_uuid: previousMsgId,
+    local_uuid: localUuid
+  }
+
+  const headers = {
+    'Content-Type': 'application/json'
+  }
+  if (authToken) {
+    headers.Authorization = authToken
+  }
+
+  const response = await fetch(`${baseUrl}/api/collections/messages/records`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(uploadPayload)
+  })
+
+  if (!response.ok) {
+    const errorData = await response.json()
+    throw new Error(`Failed to send message: ${response.status} ${JSON.stringify(errorData)}`)
+  }
+
+  const pbRecord = await response.json()
+
+  // Update IndexedDB
+  await db.local_messages.update(localUuid, {
+    id: pbRecord.id,
+    status: 'sent'
+  })
+
+  // Notify UI
+  self.postMessage({
+    type: 'NEW_LOCAL_DATA',
+    payload: { room_id: roomId }
+  })
+
+  self.postMessage({
+    id: rpcId,
+    type: 'SEND_MESSAGE',
+    result: {
+      success: true,
+      id: pbRecord.id
+    }
+  })
+}
+
 async function processIncomingMessage (rpcId, record) {
   const {
     id,
@@ -183,8 +289,37 @@ async function processIncomingMessage (rpcId, record) {
     payload,
     signature,
     previous_msg_uuid: previousMsgUuid,
+    local_uuid: localUuid,
     created
   } = record
+
+  // Anti-duplication: check if local_uuid already exists
+  if (localUuid) {
+    const exists = await db.local_messages.get(localUuid)
+    if (exists) {
+      // If it exists and status is pending, update it to sent/delivered
+      if (exists.status === 'pending') {
+        await db.local_messages.update(localUuid, {
+          id: id,
+          status: 'sent'
+        })
+        self.postMessage({
+          type: 'NEW_LOCAL_DATA',
+          payload: { room_id: roomId }
+        })
+      }
+
+      self.postMessage({
+        id: rpcId,
+        type: 'PROCESS_INCOMING_MESSAGE',
+        result: {
+          success: true,
+          duplicated: true
+        }
+      })
+      return
+    }
+  }
 
   const { ciphertext, nonce } = payload
 
@@ -261,12 +396,14 @@ async function processIncomingMessage (rpcId, record) {
   // Storage and causal chain resolution.
   const decryptedMessage = {
     id,
+    local_uuid: decryptedPayload.local_uuid || id,
     room_id: roomId,
     sender_id: senderId,
     type,
     content,
     candidate,
     timestamp,
+    status: 'sent',
     previous_msg_uuid: previousMsgUuid,
     created_at: created
   }

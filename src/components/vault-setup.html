@@ -63,6 +63,7 @@
           updateStatus('Vault initialized! Starting session...')
           const { $worker } = cryptoWorker
           await $worker.execute('INIT_KEYS', {
+            id: pb.authStore.model.id,
             private_box_key: masterKeys.private_box_key,
             private_sign_key: masterKeys.private_sign_key
           })

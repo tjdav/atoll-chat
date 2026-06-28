@@ -68,7 +68,7 @@
         avatarContainer.innerHTML = ''
         const isSent = state.isSent === 'true' || state.isSent === true
         const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
-        
+  
         // In received blocks, we only show the avatar for the last message in the block
         if (isLastInBlock && !isSent) {
           if (state.avatarUrl) {

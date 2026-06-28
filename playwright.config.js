@@ -16,6 +16,7 @@ export default defineConfig({
     baseURL: 'http://localhost:3000',
     trace: 'on-first-retry',
     launchOptions: {
+      executablePath: getExecutablePath('/usr/bin/google-chrome') || getExecutablePath('/usr/bin/chromium'),
       args: [
         '--use-fake-ui-for-media-stream',
         '--use-fake-device-for-media-stream',

@@ -8,6 +8,10 @@ export const test = base.extend({
     page.on('pageerror', err => {
       console.log(`[BROWSER ERROR] ${err.message}`)
     })
+
+    page.on('console', (msg) => {
+      console.log(`[Browser Console] ${msg.type()}: ${msg.text()}`)
+    })
     await use(page)
   },
 

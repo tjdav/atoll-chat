@@ -80,13 +80,16 @@
             btn.addEventListener('click', () => {
               $state.activeSelectionId = item.id
               $state.activeSelectionType = 'music'
-              
+  
               // Set queue
               $state.mediaQueue = items.map(i => i.id)
-              
+  
               // Auto play if not already playing this item
               if (!$state.currentMedia || $state.currentMedia.id !== item.id) {
-                $state.currentMedia = { id: item.id, type: 'music' }
+                $state.currentMedia = {
+                  id: item.id,
+                  type: 'music'
+                }
                 $state.playbackStatus = 'playing'
               }
             })

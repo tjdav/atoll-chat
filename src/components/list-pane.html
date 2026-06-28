@@ -63,7 +63,7 @@
         } else if (view === 'settings') {
           const settingsDiv = document.createElement('div')
           settingsDiv.className = 'p-4'
-          
+  
           const title = document.createElement('h6')
           title.className = 'mb-3'
           title.textContent = 'Media Settings'
@@ -71,19 +71,19 @@
 
           const autoHideCheck = document.createElement('div')
           autoHideCheck.className = 'form-check form-switch'
-          
+  
           const input = document.createElement('input')
           input.className = 'form-check-input'
           input.type = 'checkbox'
           input.role = 'switch'
           input.id = 'autoHideMediaBar'
           input.checked = $state.autoHideMediaBar
-          
+  
           const label = document.createElement('label')
           label.className = 'form-check-label'
           label.htmlFor = 'autoHideMediaBar'
           label.textContent = 'Auto-hide Media Bar when idle'
-          
+  
           autoHideCheck.appendChild(input)
           autoHideCheck.appendChild(label)
           settingsDiv.appendChild(autoHideCheck)
@@ -92,7 +92,7 @@
             $state.autoHideMediaBar = e.target.checked
             // Trigger visibility update in the bar
             if ($state.playbackStatus === 'idle') {
-               $state.playbackStatus = 'idle' // Force re-notification
+              $state.playbackStatus = 'idle'
             }
           })
 

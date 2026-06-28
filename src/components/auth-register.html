@@ -324,6 +324,7 @@
           const { $worker } = cryptoWorker
           await $worker.execute('SET_TOKEN', { token: pb.authStore.token })
           await $worker.execute('INIT_KEYS', {
+            id: pb.authStore.model.id,
             private_box_key: masterKeys.private_box_key,
             private_sign_key: masterKeys.private_sign_key
           })

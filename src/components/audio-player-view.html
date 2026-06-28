@@ -106,20 +106,25 @@
 
       btnBigPlay.addEventListener('click', () => {
         const id = $state.activeSelectionId
-        if (!id) return
+        if (!id) {
+          return
+        }
 
         if ($state.currentMedia && $state.currentMedia.id === id) {
           // Toggle play/pause
           if ($state.playbackStatus === 'playing') {
             $state.playbackStatus = 'paused'
-            // We need a way to tell the master player to pause. 
+            // We need a way to tell the master player to pause.
             // In global-media-bar, we should subscribe to playbackStatus.
           } else {
             $state.playbackStatus = 'playing'
           }
         } else {
           // Start playing this one
-          $state.currentMedia = { id, type: 'music' }
+          $state.currentMedia = {
+            id,
+            type: 'music'
+          }
           $state.playbackStatus = 'playing'
         }
       })
@@ -130,9 +135,9 @@
       $state.subscribe('activeSelectionId', debouncedSync)
       $state.subscribe('activeSelectionType', debouncedSync)
       $state.subscribe('playbackStatus', () => {
-         if ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId) {
-            state.bigPlayIcon = $state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
-         }
+        if ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId) {
+          state.bigPlayIcon = $state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
+        }
       })
     }
   })

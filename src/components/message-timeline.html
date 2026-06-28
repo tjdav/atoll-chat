@@ -121,7 +121,7 @@
 
           let messagesToRender = messages
           if (lastRenderedMessageId) {
-            const lastIdx = messages.findIndex(m => m.id === lastRenderedMessageId)
+            const lastIdx = messages.findIndex(m => (m.id || m.local_uuid) === lastRenderedMessageId)
             if (lastIdx !== -1) {
               messagesToRender = messages.slice(lastIdx + 1)
             }
@@ -132,8 +132,27 @@
           }
 
           // Double check to prevent duplicate appending if multiple calls overlapping
-          const existingIds = new Set(Array.from(container.querySelectorAll('timeline-row')).map(el => el.dataset.messageId))
-          messagesToRender = messagesToRender.filter(m => !existingIds.has(m.id))
+          const existingRows = Array.from(container.querySelectorAll('timeline-row'))
+          const existingIds = new Set(existingRows.map(el => el.dataset.messageId || el.dataset.localUuid))
+
+          // Update status of existing rows (e.g. pending -> sent)
+          messages.forEach(m => {
+            const row = container.querySelector(`timeline-row[data-local-uuid="${m.local_uuid}"]`)
+            if (row) {
+              if (m.id && !row.dataset.messageId) {
+                row.dataset.messageId = m.id
+              }
+              if (m.status !== 'pending' && row.classList.contains('placeholder-wave')) {
+                row.classList.remove('placeholder-wave')
+              }
+            }
+          })
+
+          messagesToRender = messagesToRender.filter(m => {
+            const hasId = m.id && existingIds.has(m.id)
+            const hasUuid = m.local_uuid && existingIds.has(m.local_uuid)
+            return !hasId && !hasUuid
+          })
 
           if (messagesToRender.length === 0) {
             return
@@ -141,12 +160,12 @@
 
           // Before appending, update the previously last message's styling
           if (lastRenderedMessageId) {
-            const prevLastRow = container.querySelector(`timeline-row[data-message-id="${lastRenderedMessageId}"]`)
+            const prevLastRow = container.querySelector(`timeline-row[data-message-id="${lastRenderedMessageId}"]`) || container.querySelector(`timeline-row[data-local-uuid="${lastRenderedMessageId}"]`)
             if (prevLastRow) {
               const firstNew = messagesToRender[0]
-              
+  
               // 1. Date Separator logic (> 1 hour)
-              const prevTime = new Date(messages.find(m => m.id === lastRenderedMessageId).created_at).getTime()
+              const prevTime = new Date(messages.find(m => (m.id || m.local_uuid) === lastRenderedMessageId).created_at).getTime()
               const currTime = new Date(firstNew.created_at).getTime()
               const showSeparator = currTime - prevTime > 3600000
 
@@ -161,7 +180,7 @@
           }
 
           messagesToRender.forEach((message) => {
-            const index = messages.findIndex(m => m.id === message.id)
+            const index = messages.findIndex(m => m.local_uuid === message.local_uuid)
             const isSent = message.sender_id === $state.currentUser?.id
             const nextMessage = messages[index + 1]
             const prevMessage = messages[index - 1]
@@ -191,9 +210,16 @@
             row.setAttribute('is-sent', isSent)
             row.setAttribute('is-first-in-block', isFirstInBlock)
             row.setAttribute('is-last-in-block', isLastInBlock)
-            row.dataset.messageId = message.id
+            if (message.id) {
+              row.dataset.messageId = message.id
+            }
+            row.dataset.localUuid = message.local_uuid
             row.dataset.isSent = isSent
             row.dataset.senderId = message.sender_id
+
+            if (message.status === 'pending') {
+              row.classList.add('placeholder-wave')
+            }
 
             const sender = participants.find(p => p.id === message.sender_id)
             if (!isSent && isFirstInBlock && sender) {
@@ -268,7 +294,7 @@
 
             container.appendChild(row)
             intersectionObserver.observe(row)
-            lastRenderedMessageId = message.id
+            lastRenderedMessageId = message.id || message.local_uuid
           })
 
           if (isNewRoom) {

@@ -128,7 +128,10 @@
 
               // Auto play
               if (!$state.currentMedia || $state.currentMedia.id !== item.id) {
-                $state.currentMedia = { id: item.id, type: 'videos' }
+                $state.currentMedia = {
+                  id: item.id,
+                  type: 'videos'
+                }
                 $state.playbackStatus = 'playing'
               }
             })

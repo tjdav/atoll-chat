@@ -111,14 +111,18 @@
       let abortController = null
 
       const formatTime = (seconds) => {
-        if (!seconds || isNaN(seconds)) return '0:00'
+        if (!seconds || isNaN(seconds)) {
+          return '0:00'
+        }
         const mins = Math.floor(seconds / 60)
         const secs = Math.floor(seconds % 60)
         return `${mins}:${secs.toString().padStart(2, '0')}`
       }
 
       const updateProgress = () => {
-        if (!activePlayer) return
+        if (!activePlayer) {
+          return
+        }
         const percent = (activePlayer.currentTime / activePlayer.duration) * 100 || 0
         progressBar.style.width = `${percent}%`
         currentTimeText.textContent = formatTime(activePlayer.currentTime)
@@ -160,7 +164,9 @@
 
         try {
           const asset = await $localDb.local_assets.get(mediaId)
-          if (!asset) return
+          if (!asset) {
+            return
+          }
 
           // Fetch media record
           const mediaRecord = await pb.collection('media').getOne(asset.media_id)
@@ -170,7 +176,9 @@
           const arrayBuffer = await response.arrayBuffer()
           const encryptedFileBuffer = new Uint8Array(arrayBuffer)
 
-          if (fetchSignal.aborted) return
+          if (fetchSignal.aborted) {
+            return
+          }
 
           const { default: sodium } = await import('libsodium-wrappers-sumo')
           await sodium.ready
@@ -179,9 +187,13 @@
           const nonceBuffer = sodium.from_base64(asset.file_nonce, sodium.base64_variants.ORIGINAL)
 
           const decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)
-          if (!decryptedFileBuffer) throw new Error('Decryption failed')
+          if (!decryptedFileBuffer) {
+            throw new Error('Decryption failed')
+          }
 
-          if (fetchSignal.aborted) return
+          if (fetchSignal.aborted) {
+            return
+          }
 
           cleanup()
 
@@ -201,7 +213,7 @@
           activePlayer.play()
 
           $state.playbackStatus = 'playing'
-          
+  
           // Update Metadata
           state.mediaTitle = asset.name || 'Untitled'
           if (mediaType === 'music' && asset.artist) {
@@ -213,11 +225,13 @@
           // Handle thumbnail for video
           state.thumbnailClass = 'd-none'
           state.placeholderClass = 'd-flex'
-          
+  
           if (mediaType === 'videos') {
             // Capture frame from video after it loads
             video.onloadeddata = () => {
-              if (fetchSignal.aborted) return
+              if (fetchSignal.aborted) {
+                return
+              }
               const canvas = document.createElement('canvas')
               canvas.width = video.videoWidth
               canvas.height = video.videoHeight
@@ -230,7 +244,9 @@
           }
 
         } catch (err) {
-          if (err.name === 'AbortError') return
+          if (err.name === 'AbortError') {
+            return
+          }
           console.error('[global-media-bar] Error loading media:', err)
           $state.playbackStatus = 'idle'
         }
@@ -240,7 +256,7 @@
       $state.subscribe('playbackStatus', (status) => {
         state.playPauseIcon = status === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
         updateVisibility()
-        
+  
         if (activePlayer) {
           if (status === 'playing' && activePlayer.paused) {
             activePlayer.play().catch(e => console.warn('[global-media-bar] Autoplay blocked:', e))
@@ -262,14 +278,20 @@
       })
 
       $state.subscribe('mediaVolume', (vol) => {
-        if (audio) audio.volume = vol
-        if (video) video.volume = vol
+        if (audio) {
+          audio.volume = vol
+        }
+        if (video) {
+          video.volume = vol
+        }
         state.volumeValue = vol
         state.volumeIcon = vol === 0 ? 'bi-volume-mute-fill' : (vol < 0.5 ? 'bi-volume-down-fill' : 'bi-volume-up-fill')
       })
 
       btnTogglePlay.addEventListener('click', () => {
-        if (!activePlayer) return
+        if (!activePlayer) {
+          return
+        }
         if (activePlayer.paused) {
           activePlayer.play()
           $state.playbackStatus = 'playing'
@@ -284,7 +306,9 @@
       })
 
       progressContainer.addEventListener('click', (e) => {
-        if (!activePlayer || !activePlayer.duration) return
+        if (!activePlayer || !activePlayer.duration) {
+          return
+        }
         const rect = progressContainer.getBoundingClientRect()
         const pos = (e.clientX - rect.left) / rect.width
         activePlayer.currentTime = pos * activePlayer.duration
@@ -302,7 +326,9 @@
 
       linkTitle.addEventListener('click', (e) => {
         e.preventDefault()
-        if (!$state.currentMedia) return
+        if (!$state.currentMedia) {
+          return
+        }
         $state.currentAppView = $state.currentMedia.type
         $state.activeSelectionId = $state.currentMedia.id
         $state.activeSelectionType = $state.currentMedia.type
@@ -312,22 +338,24 @@
       const navigateQueue = async (direction) => {
         const queue = $state.mediaQueue
         const currentId = $state.currentMedia?.id
-        if (!queue || queue.length === 0) return
+        if (!queue || queue.length === 0) {
+          return
+        }
 
         let index = queue.indexOf(currentId)
         if (direction === 'next') {
           index = (index + 1) % queue.length
         } else {
-          index = (index - 1 + queue.length) % queue.length
+          index = (index - (1 + queue.length)) % queue.length
         }
 
         const nextId = queue[index]
         const asset = await $localDb.local_assets.get(nextId)
         if (asset) {
-           $state.currentMedia = {
-             id: asset.id,
-             type: asset.mime_type.startsWith('audio/') ? 'music' : 'videos'
-           }
+          $state.currentMedia = {
+            id: asset.id,
+            type: asset.mime_type.startsWith('audio/') ? 'music' : 'videos'
+          }
         }
       }
 
