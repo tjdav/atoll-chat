@@ -105,23 +105,21 @@ export default function webrtcPlugin ({
         })
 
         return async (instanceContext) => {
-          const { sendEncryptedMessage } = await import('../utils/messageUtils.js')
-          const { pb } = await instanceContext.pocketbase
-          const { $localDb } = await instanceContext.localDb
-          const { $state } = await instanceContext.globalStore
+          const { $worker } = await instanceContext.cryptoWorker
 
           /**
            * Helper to send an E2EE signaling message through the standard pipeline.
            */
           const sendSignalingMessage = async (roomId, type, payload = {}) => {
-            await sendEncryptedMessage(roomId, {
-              type,
-              ...payload,
-              timestamp: Date.now()
-            }, {
-              pb,
-              $localDb,
-              $state
+            const localUuid = crypto.randomUUID()
+            await $worker.execute('SEND_MESSAGE', {
+              roomId,
+              plaintextObj: {
+                type,
+                ...payload,
+                timestamp: Date.now()
+              },
+              localUuid
             })
           }
 
