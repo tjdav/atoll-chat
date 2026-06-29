@@ -22,7 +22,7 @@ test.describe('Anti-Duplication & Optimistic UI', () => {
     // Since the worker might be fast, we'll click and immediately look for the placeholder.
     await page.click('button:has-text("Send")')
 
-    const messageBubble = page.locator('[data-cid="text-message-0"]')
+    const messageBubble = page.locator('text-message').first()
     // Check if it's there (optimistic UI)
     await expect(messageBubble).toBeVisible()
 
@@ -32,8 +32,12 @@ test.describe('Anti-Duplication & Optimistic UI', () => {
     const count = await messageBubble.count()
     expect(count).toBe(1)
 
+    // Get the local_uuid from the timeline-row
+    const localUuid = await page.locator('timeline-row').filter({ hasText: messageText }).getAttribute('data-local-uuid')
+    expect(localUuid).toBeDefined()
+
     // 5. Verify IndexedDB state (optional but good)
-    const dbState = await page.evaluate(async (text) => {
+    const dbState = await page.evaluate(async (uuid) => {
       // 1. Safely get the native database instance
       let nativeDB
 
@@ -61,19 +65,9 @@ test.describe('Anti-Duplication & Optimistic UI', () => {
         const transaction = nativeDB.transaction('local_messages', 'readonly')
         const store = transaction.objectStore('local_messages')
 
-        // Iterate through all messages to find the one with matching content
-        const request = store.openCursor()
+        const request = store.get(uuid)
         request.onsuccess = (event) => {
-          const cursor = event.target.result
-          if (cursor) {
-            if (cursor.value.content === text) {
-              resolve(cursor.value)
-              return
-            }
-            cursor.continue()
-          } else {
-            resolve(null)
-          }
+          resolve(event.target.result)
         }
 
         request.onerror = (event) => {
@@ -82,7 +76,7 @@ test.describe('Anti-Duplication & Optimistic UI', () => {
       })
 
       return result
-    }, messageText)
+    }, localUuid)
 
     expect(dbState).toBeDefined()
     expect(dbState.status).toBe('sent')

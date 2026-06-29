@@ -12,7 +12,7 @@
 
   export default defineComponent({
     attributes: {
-      messageId: String,
+      localUuid: String,
       status: String
     },
     getters: {
@@ -29,17 +29,17 @@
       let objectUrl = null
 
       try {
-        if (!state.messageId) {
+        if (!state.localUuid) {
           return
         }
-        const message = await $localDb.local_messages.get(state.messageId)
+        const message = await $localDb.local_messages.get(state.localUuid)
         if (!message || !message.file_key) {
           throw new Error('Message or key missing')
         }
 
         // Check Cache first
-        if ($state.decryptionCache.has(state.messageId)) {
-          objectUrl = $state.decryptionCache.get(state.messageId)
+        if ($state.decryptionCache.has(state.localUuid)) {
+          objectUrl = $state.decryptionCache.get(state.localUuid)
         } else {
           const { default: sodium } = await import('libsodium-wrappers-sumo')
           await sodium.ready
@@ -63,7 +63,7 @@
 
           const blob = new Blob([decryptedData], { type: message.mime_type })
           objectUrl = URL.createObjectURL(blob)
-          $state.decryptionCache.set(state.messageId, objectUrl)
+          $state.decryptionCache.set(state.localUuid, objectUrl)
         }
 
         loading.classList.add('d-none')

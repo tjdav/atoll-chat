@@ -213,6 +213,7 @@
             if (message.id) {
               row.dataset.messageId = message.id
             }
+            row.setAttribute('data-local-uuid', message.local_uuid)
             row.dataset.localUuid = message.local_uuid
             row.dataset.isSent = isSent
             row.dataset.senderId = message.sender_id
@@ -258,21 +259,18 @@
             if (message.type === 'media' && (message.file_key || message.status === 'pending')) {
               if (message.mime_type?.startsWith('audio/')) {
                 const player = document.createElement('voice-player')
-                if (message.id) {
-                  player.setAttribute('message-id', message.id)
-                }
+                player.setAttribute('local-uuid', message.local_uuid)
                 player.setAttribute('status', message.status)
                 row.appendChild(player)
               } else {
                 const preview = document.createElement('media-preview')
-                if (message.id) {
-                  preview.setAttribute('message-id', message.id)
-                }
+                preview.setAttribute('local-uuid', message.local_uuid)
                 preview.setAttribute('status', message.status)
                 row.appendChild(preview)
   
                 if (message.content) {
                   const text = document.createElement('text-message')
+                  text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
                   text.setAttribute('position', position)
@@ -283,12 +281,14 @@
             } else if (message.type === 'media') {
               // Encrypted but key missing placeholder
               const text = document.createElement('text-message')
+              text.setAttribute('local-uuid', message.local_uuid)
               text.setAttribute('content', '🔒 Encrypted Attachment')
               text.setAttribute('is-sent', isSent)
               text.setAttribute('position', position)
               row.appendChild(text)
             } else {
               const text = document.createElement('text-message')
+              text.setAttribute('local-uuid', message.local_uuid)
               text.setAttribute('content', message.content || '')
               text.setAttribute('is-sent', isSent)
               text.setAttribute('position', position)
