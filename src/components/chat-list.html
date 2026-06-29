@@ -250,11 +250,11 @@
             previewContainer.className = 'd-flex align-items-center'
 
             const previewDiv = document.createElement('small')
-            previewDiv.className = `text-truncate flex-grow-1 ${isUnread ? 'fw-bold text-body' : 'text-muted'}`
+              previewDiv.className = `text-truncate flex-grow-1 opacity-75 ${isUnread ? 'fw-bold' : ''}`
             previewDiv.textContent = getPreviewText(latestMsg, item.participants || [], item.is_group)
 
             const timeSmall = document.createElement('small')
-            timeSmall.className = 'text-muted ms-1 flex-shrink-0'
+              timeSmall.className = 'opacity-75 ms-1 flex-shrink-0'
             const relativeTime = latestMsg ? $utils.formatRelativeTime(latestMsg.created_at) : ''
             timeSmall.textContent = relativeTime ? ` · ${relativeTime}` : ''
 
