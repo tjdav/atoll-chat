@@ -29,7 +29,15 @@ export default defineConfig({
         currentMedia: null,
         mediaQueue: [],
         mediaVolume: 1.0,
-        autoHideMediaBar: true,
+        mediaProgress: 0,
+        mediaDuration: 0,
+        mediaCurrentTime: 0,
+        mediaMetadata: {
+          title: 'Not Playing',
+          subtext: '',
+          thumbnail: null,
+          placeholderIcon: 'bi-music-note'
+        },
         currentMessageText: '',
         callStatus: 'idle',
         activeCallRoomId: null

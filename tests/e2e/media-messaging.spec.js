@@ -28,7 +28,7 @@ test.describe('Media Messaging', () => {
     console.log('Alice selecting image and adding caption...')
     const filePath = path.resolve('tests/e2e/fixtures/test-files/test.png')
     await alicePage.locator('chat-input-text input[type="file"]').setInputFiles(filePath)
-    
+
     // Verify attachment preview shows up
     await expect(alicePage.locator('chat-attachment-preview')).toBeVisible()
     await expect(alicePage.locator('chat-attachment-preview')).toContainText('test.png')
@@ -66,7 +66,7 @@ test.describe('Media Messaging', () => {
     // Bob's Inbound UI: Verify the message bubble and caption
     const bobMessageRow = bobPage.locator('timeline-row').filter({ hasText: caption })
     await expect(bobMessageRow).toBeVisible({ timeout: 10000 })
-    
+
     // Verify no duplicates for Bob
     await expect(bobMessageRow).toHaveCount(1)
     await expect(bobMessageRow.locator('media-preview')).toHaveCount(1)
@@ -77,7 +77,7 @@ test.describe('Media Messaging', () => {
     console.log('Verifying Bob decrypted the image...')
     const bobImage = bobMessageRow.locator('media-preview img').first()
     await expect(bobImage).toBeVisible({ timeout: 20000 })
-    
+
     const imageSrc = await bobImage.getAttribute('src')
     expect(imageSrc).toMatch(/^blob:/)
 

@@ -13,7 +13,7 @@
           <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center mb-3" id="{{ ref_btnBigPlay }}" ref="btnBigPlay" style="width: 120px; height: 120px;">
              <i class="bi {{ bigPlayIcon }}" style="font-size: 4rem;"></i>
           </button>
-          <div class="text-white opacity-50">Playing on Global Media Bar</div>
+          <div class="text-white opacity-50">Playing on Global Media Manager</div>
        </div>
     </div>
   </div>
@@ -33,12 +33,21 @@
   export default defineComponent({
     server: () => ({
       isErrorHidden: true,
-      errorMessage: '',
-      bigPlayIcon: 'bi-play-fill'
+      errorMessage: ''
     }),
-    client: async ({ state, signal, refs, globalStore, utils }) => {
+    getters: {
+      bigPlayIcon: (state) => {
+        if (state.isPlayingThis && state.playbackStatus === 'playing') {
+          return 'bi-pause-fill'
+        }
+  
+        return 'bi-play-fill'
+      }
+    },
+    client: async ({ state, signal, refs, globalStore, utils, eventBus }) => {
       const { $state } = globalStore
       const { $utils } = utils
+      const { $bus } = eventBus
       const loader = refs('loader')
       const btnBigPlay = refs('btnBigPlay')
       const videoContainer = refs('videoContainer')
@@ -56,9 +65,9 @@
         state.errorMessage = ''
         loader.classList.add('d-none')
 
-        if ($state.currentMedia && $state.currentMedia.id === id) {
-          state.bigPlayIcon = $state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
-  
+        state.isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id)
+
+        if (state.isPlayingThis) {
           // Adopt video element
           const getMasterVideo = $state.getMasterVideoElement
           if (getMasterVideo) {
@@ -70,7 +79,6 @@
             }
           }
         } else {
-          state.bigPlayIcon = 'bi-play-fill'
           videoPlaceholder.classList.remove('d-none')
         }
       }
@@ -80,13 +88,11 @@
         if (getMasterVideo) {
           const video = getMasterVideo()
           if (video && video.parentElement === videoContainer) {
-            // Move it back to its original hidden container in global bar if we had a ref
-            // But usually just removing it is enough if global-media-bar keeps its own ref
             video.className = ''
-            // To be safe, we can move it back to the hidden div in global-media-bar
-            const barHiddenDiv = document.querySelector('global-media-bar .visually-hidden')
-            if (barHiddenDiv) {
-              barHiddenDiv.appendChild(video)
+            // Return to media-engine
+            const engineContainer = document.querySelector('media-engine .d-none')
+            if (engineContainer) {
+              engineContainer.appendChild(video)
             }
           }
         }
@@ -101,17 +107,12 @@
         }
 
         if ($state.currentMedia && $state.currentMedia.id === id) {
-          if ($state.playbackStatus === 'playing') {
-            $state.playbackStatus = 'paused'
-          } else {
-            $state.playbackStatus = 'playing'
-          }
+          $bus.emit('MEDIA:TOGGLE')
         } else {
-          $state.currentMedia = {
-            id,
+          $bus.emit('MEDIA:PLAY', {
+            mediaId: id,
             type: 'videos'
-          }
-          $state.playbackStatus = 'playing'
+          })
         }
       })
 
@@ -120,12 +121,11 @@
 
       $state.subscribe('activeSelectionId', debouncedSync)
       $state.subscribe('activeSelectionType', debouncedSync)
-      $state.subscribe('playbackStatus', () => {
-        if ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId) {
-          state.bigPlayIcon = $state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
-          // Trigger sync again to adopt the video element if it was just started
-          debouncedSync()
-        }
+      $state.subscribe('playbackStatus', (val) => {
+        state.playbackStatus = val
+        state.isPlayingThis = ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId)
+        // Trigger sync again to adopt the video element if it was just started
+        debouncedSync()
       })
     }
   })

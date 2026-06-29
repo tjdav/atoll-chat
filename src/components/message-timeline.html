@@ -323,9 +323,9 @@
           if (lastMessage && lastMessage.sender_id === $state.currentUser?.id) {
             statusContainer.classList.remove('d-none')
             statusText.textContent = lastMessage.status === 'pending' ? 'Sending...' : 'Sent'
-            
+  
             statusIcon.className = lastMessage.status === 'pending' ? 'bi bi-circle text-muted' : 'bi bi-check text-muted'
-            
+  
             container.appendChild(statusContainer)
           } else {
             statusContainer.classList.add('d-none')

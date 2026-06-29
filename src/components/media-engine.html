@@ -1,0 +1,274 @@
+<template id="media-engine">
+  <div class="d-none">
+    <audio id="{{ ref_audioPlayer }}" ref="audioPlayer"></audio>
+    <video id="{{ ref_videoPlayer }}" ref="videoPlayer"></video>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: async ({ refs, globalStore, localDb, pocketbase, signal, eventBus, utils }) => {
+      const { $state } = globalStore
+      const { $localDb } = localDb
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $utils } = utils
+
+      const audio = refs('audioPlayer')
+      const video = refs('videoPlayer')
+
+      let currentObjectUrl = null
+      let activePlayer = null
+      let abortController = null
+
+      const cleanup = () => {
+        if (currentObjectUrl) {
+          URL.revokeObjectURL(currentObjectUrl)
+          currentObjectUrl = null
+        }
+        if (audio) {
+          audio.pause()
+          audio.src = ''
+        }
+        if (video) {
+          video.pause()
+          video.src = ''
+        }
+        activePlayer = null
+        $state.mediaProgress = 0
+        $state.mediaDuration = 0
+        $state.mediaCurrentTime = 0
+      }
+
+      const updateProgress = () => {
+        if (!activePlayer || !activePlayer.duration) {
+          return
+        }
+        $state.mediaCurrentTime = activePlayer.currentTime
+        $state.mediaDuration = activePlayer.duration
+        $state.mediaProgress = (activePlayer.currentTime / activePlayer.duration) * 100
+      }
+
+      const loadMedia = async (mediaId, mediaType) => {
+        if (!mediaId) {
+          cleanup()
+          $state.playbackStatus = 'idle'
+          return
+        }
+
+        if (abortController) {
+          abortController.abort()
+        }
+        abortController = new AbortController()
+        const { signal: fetchSignal } = abortController
+
+        try {
+          const asset = await $localDb.local_assets.get(mediaId)
+          if (!asset) {
+            return
+          }
+
+          const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+          const response = await fetch(url, { signal: fetchSignal })
+          const arrayBuffer = await response.arrayBuffer()
+          const encryptedFileBuffer = new Uint8Array(arrayBuffer)
+
+          if (fetchSignal.aborted) {
+            return
+          }
+
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+
+          const fileKeyBuffer = sodium.from_base64(asset.file_key, sodium.base64_variants.ORIGINAL)
+          const nonceBuffer = sodium.from_base64(asset.file_nonce, sodium.base64_variants.ORIGINAL)
+
+          const decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)
+          if (!decryptedFileBuffer) {
+            throw new Error('Decryption failed')
+          }
+
+          if (fetchSignal.aborted) {
+            return
+          }
+
+          cleanup()
+
+          const mediaBlob = new Blob([decryptedFileBuffer], { type: asset.mime_type })
+          currentObjectUrl = URL.createObjectURL(mediaBlob)
+
+          let placeholderIcon = 'bi-music-note'
+          if (mediaType === 'music') {
+            activePlayer = audio
+            placeholderIcon = 'bi-music-note'
+          } else {
+            activePlayer = video
+            placeholderIcon = 'bi-camera-video'
+          }
+
+          // Update Metadata
+          let subtext = 'Video'
+
+          if (mediaType === 'music') {
+            if (asset.artist && asset.album) {
+              subtext = `${asset.artist} • ${asset.album}`
+            } else if (asset.artist) {
+              subtext = asset.artist
+            } else {
+              subtext = 'Audio Track'
+            }
+          }
+
+          const metadata = {
+            title: asset.name || 'Untitled',
+            subtext,
+            thumbnail: null,
+            placeholderIcon
+          }
+  
+          if (mediaType === 'videos') {
+            video.onloadeddata = () => {
+              if (fetchSignal.aborted) {
+                return
+              }
+              const canvas = document.createElement('canvas')
+              canvas.width = video.videoWidth
+              canvas.height = video.videoHeight
+              const ctx = canvas.getContext('2d')
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+              metadata.thumbnail = canvas.toDataURL('image/jpeg')
+              $state.mediaMetadata = { ...metadata }
+            }
+          }
+          $state.mediaMetadata = { ...metadata }
+
+          $state.playbackStatus = 'playing'
+          activePlayer.src = currentObjectUrl
+          activePlayer.volume = $state.mediaVolume
+          activePlayer.play().catch(e => console.warn('[media-engine] Play failed:', e))
+
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
+          console.error('[media-engine] Error loading media:', err)
+          $state.playbackStatus = 'idle'
+        }
+      }
+
+      // Event listeners
+      $bus.on('MEDIA:PLAY', ({ mediaId, type }) => {
+        if (mediaId) {
+          $state.currentMedia = {
+            id: mediaId,
+            type
+          }
+        } else if (activePlayer) {
+          activePlayer.play()
+          $state.playbackStatus = 'playing'
+        }
+      })
+
+      $bus.on('MEDIA:PAUSE', () => {
+        if (activePlayer) {
+          activePlayer.pause()
+          $state.playbackStatus = 'paused'
+        }
+      })
+
+      $bus.on('MEDIA:TOGGLE', () => {
+        if (!activePlayer) {
+          return
+        }
+        if (activePlayer.paused) {
+          activePlayer.play()
+          $state.playbackStatus = 'playing'
+        } else {
+          activePlayer.pause()
+          $state.playbackStatus = 'paused'
+        }
+      })
+
+      $bus.on('MEDIA:SEEK', ({ time, percent }) => {
+        if (!activePlayer || !activePlayer.duration) {
+          return
+        }
+        if (percent !== undefined) {
+          activePlayer.currentTime = (percent / 100) * activePlayer.duration
+        } else if (time !== undefined) {
+          activePlayer.currentTime = time
+        }
+      })
+
+      const navigateQueue = async (direction) => {
+        const queue = $state.mediaQueue
+        const currentId = $state.currentMedia?.id
+        if (!queue || queue.length === 0) {
+          return
+        }
+
+        let index = queue.indexOf(currentId)
+        if (direction === 'next') {
+          index = (index + 1) % queue.length
+        } else {
+          index = (index - (1 + queue.length)) % queue.length
+        }
+
+        const nextId = queue[index]
+        const asset = await $localDb.local_assets.get(nextId)
+        if (asset) {
+          $state.currentMedia = {
+            id: asset.id,
+            type: asset.mime_type.startsWith('audio/') ? 'music' : 'videos'
+          }
+          $state.playbackStatus = 'playing'
+        }
+      }
+
+      $bus.on('MEDIA:NEXT', () => navigateQueue('next'))
+      $bus.on('MEDIA:PREV', () => navigateQueue('prev'))
+
+      // Subscriptions
+      $state.subscribe('currentMedia', (media) => {
+        if (media) {
+          loadMedia(media.id, media.type)
+        } else {
+          cleanup()
+          $state.playbackStatus = 'idle'
+        }
+      })
+
+      $state.subscribe('playbackStatus', (status) => {
+        if (activePlayer) {
+          if (status === 'playing' && activePlayer.paused) {
+            activePlayer.play().catch(e => console.warn('[media-engine] Play failed:', e))
+          } else if (status === 'paused' && !activePlayer.paused) {
+            activePlayer.pause()
+          }
+        }
+      })
+
+      $state.subscribe('mediaVolume', (vol) => {
+        if (audio) {
+          audio.volume = vol
+        }
+        if (video) {
+          video.volume = vol
+        }
+      })
+
+      audio.addEventListener('timeupdate', updateProgress)
+      video.addEventListener('timeupdate', updateProgress)
+      audio.addEventListener('ended', () => $state.playbackStatus = 'idle')
+      video.addEventListener('ended', () => $state.playbackStatus = 'idle')
+
+      $state.set('getMasterVideoElement', () => video)
+
+      signal.addEventListener('abort', cleanup)
+    }
+  })
+</script>

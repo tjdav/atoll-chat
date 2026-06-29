@@ -285,7 +285,14 @@
           video.volume = vol
         }
         state.volumeValue = vol
-        state.volumeIcon = vol === 0 ? 'bi-volume-mute-fill' : (vol < 0.5 ? 'bi-volume-down-fill' : 'bi-volume-up-fill')
+  
+        if (vol === 0) {
+          state.volumeIcon = 'bi-volume-mute-fill'
+        } else if (vol < 0.5) {
+          state.volumeIcon = 'bi-volume-down-fill'
+        } else {
+          state.volumeIcon = 'bi-volume-up-fill'
+        }
       })
 
       btnTogglePlay.addEventListener('click', () => {

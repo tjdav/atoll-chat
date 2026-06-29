@@ -25,8 +25,19 @@
             <i class="bi {{ bigPlayIcon }}" style="font-size: 4rem;"></i>
           </button>
         </div>
+
+        <div class="w-100 mt-2">
+           <div class="d-flex justify-content-between text-muted small mb-1">
+              <span>{{ currentTimeFormatted }}</span>
+              <span>{{ durationFormatted }}</span>
+           </div>
+           <div class="progress" style="height: 8px; cursor: pointer;" id="{{ ref_progressContainer }}" ref="progressContainer">
+              <div class="progress-bar" role="progressbar" style="width: {{ mediaProgress }}%;"></div>
+           </div>
+        </div>
+
         <div class="text-muted small">
-           Playing on Global Media Bar
+           Playing on Global Media Manager
         </div>
       </div>
     </div>
@@ -49,17 +60,45 @@
       errorMessage: '',
       fileName: 'Untitled Audio',
       artistAlbum: '',
-      roomName: 'Unknown Chat',
-      bigPlayIcon: 'bi-play-fill'
+      roomName: 'Unknown Chat'
     }),
-    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils }) => {
+    getters: {
+      bigPlayIcon: (state) => {
+        if (state.isPlayingThis && state.playbackStatus === 'playing') {
+          return 'bi-pause-fill'
+        }
+  
+        return 'bi-play-fill'
+      },
+      currentTimeFormatted: (state) => {
+        const seconds = state.mediaCurrentTime || 0
+        const mins = Math.floor(seconds / 60)
+        const secs = Math.floor(seconds % 60)
+        return `${mins}:${secs.toString().padStart(2, '0')}`
+      },
+      durationFormatted: (state) => {
+        const seconds = state.mediaDuration || 0
+        const mins = Math.floor(seconds / 60)
+        const secs = Math.floor(seconds % 60)
+        return `${mins}:${secs.toString().padStart(2, '0')}`
+      }
+    },
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, eventBus }) => {
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore
       const { $utils } = utils
+      const { $bus } = eventBus
       const loader = refs('loader')
       const playerContent = refs('playerContent')
       const btnBigPlay = refs('btnBigPlay')
+      const progressContainer = refs('progressContainer')
+
+      state.playbackStatus = $state.playbackStatus
+      state.mediaProgress = $state.mediaProgress
+      state.mediaCurrentTime = $state.mediaCurrentTime
+      state.mediaDuration = $state.mediaDuration
+      state.isPlayingThis = false
 
       const syncUI = async () => {
         const id = $state.activeSelectionId
@@ -87,11 +126,7 @@
           state.artistAlbum = asset.artist ? `${asset.artist}${asset.album ? ' • ' + asset.album : ''}` : ''
 
           // If this is the current media, update big play icon
-          if ($state.currentMedia && $state.currentMedia.id === id) {
-            state.bigPlayIcon = $state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
-          } else {
-            state.bigPlayIcon = 'bi-play-fill'
-          }
+          state.isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id)
 
           loader.classList.add('d-none')
           playerContent.classList.remove('d-none')
@@ -111,22 +146,19 @@
         }
 
         if ($state.currentMedia && $state.currentMedia.id === id) {
-          // Toggle play/pause
-          if ($state.playbackStatus === 'playing') {
-            $state.playbackStatus = 'paused'
-            // We need a way to tell the master player to pause.
-            // In global-media-bar, we should subscribe to playbackStatus.
-          } else {
-            $state.playbackStatus = 'playing'
-          }
+          $bus.emit('MEDIA:TOGGLE')
         } else {
-          // Start playing this one
-          $state.currentMedia = {
-            id,
+          $bus.emit('MEDIA:PLAY', {
+            mediaId: id,
             type: 'music'
-          }
-          $state.playbackStatus = 'playing'
+          })
         }
+      })
+
+      progressContainer.addEventListener('click', (e) => {
+        const rect = progressContainer.getBoundingClientRect()
+        const percent = ((e.clientX - rect.left) / rect.width) * 100
+        $bus.emit('MEDIA:SEEK', { percent })
       })
 
       const debouncedSync = $utils.debounce(syncUI, 50)
@@ -134,11 +166,13 @@
 
       $state.subscribe('activeSelectionId', debouncedSync)
       $state.subscribe('activeSelectionType', debouncedSync)
-      $state.subscribe('playbackStatus', () => {
-        if ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId) {
-          state.bigPlayIcon = $state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'
-        }
+      $state.subscribe('playbackStatus', (val) => {
+        state.playbackStatus = val
+        state.isPlayingThis = ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId)
       })
+      $state.subscribe('mediaProgress', (val) => state.mediaProgress = val)
+      $state.subscribe('mediaCurrentTime', (val) => state.mediaCurrentTime = val)
+      $state.subscribe('mediaDuration', (val) => state.mediaDuration = val)
     }
   })
 </script>
