@@ -1,6 +1,6 @@
 <template id="voice-player">
   <div id="{{ ref_container }}" ref="container" class="voice-message-container p-1" style="min-width: 250px;">
-    <div id="{{ ref_loading }}" ref="loading" class="placeholder-wave d-flex align-items-center p-3 w-100">
+    <div id="{{ ref_loading }}" ref="loading" class="{{ loadingClass }} d-flex align-items-center p-3 w-100">
         <div class="placeholder rounded-circle me-3" style="width: 32px; height: 32px;"></div>
         <div class="placeholder col-8" style="height: 24px;"></div>
     </div>
@@ -12,7 +12,11 @@
 
   export default defineComponent({
     attributes: {
-      messageId: String
+      messageId: String,
+      status: String
+    },
+    getters: {
+      loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
     client: async ({ refs, state, localDb, pocketbase, globalStore, signal, eventBus }) => {
       const { $localDb } = localDb

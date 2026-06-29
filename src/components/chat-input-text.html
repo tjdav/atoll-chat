@@ -1,10 +1,10 @@
 <template id="chat-input-text">
   <div class="input-group d-flex">
-    <input id="{{ ref_fileInput }}" type="file" ref="fileInput" class="d-none" accept="image/*, video/*, audio/*">
-    <button id="{{ ref_attachButton }}" class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" disabled="{{ isDisabled }}">
+    <input type="file" ref="fileInput" class="d-none" accept="image/*, video/*, audio/*">
+    <button class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" disabled="{{ isDisabled }}">
       <i class="bi bi-paperclip"></i>
     </button>
-    <button id="{{ ref_micButton }}" class="btn btn-outline-secondary" type="button" ref="micButton" title="Voice message" disabled="{{ isDisabled }}">
+    <button class="btn btn-outline-secondary" type="button" ref="micButton" title="Voice message" disabled="{{ isDisabled }}">
       <i class="bi bi-mic"></i>
     </button>
     <textarea
@@ -16,10 +16,10 @@
       style="resize: none; max-height: 200px;"
       disabled="{{ isDisabled }}"
     >{{ currentMessageText }}</textarea>
-    <button id="{{ ref_sendButton }}" class="btn btn-primary d-flex align-items-center" type="button" ref="sendButton" disabled="{{ isDisabled }}">
-      <span class="me-1 {{ sendTextClasses }}">Send</span>
-      <i class="bi bi-send {{ iconClasses }}"></i>
-      <div class="spinner-border spinner-border-sm {{ spinnerClasses }}" role="status">
+    <button class="btn btn-primary d-flex align-items-center" type="button" ref="sendButton" disabled="{{ isDisabled }}">
+      <span class="me-1 d-none d-sm-inline">Send</span>
+      <i class="bi bi-send"></i>
+      <div class="spinner-border spinner-border-sm d-none" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
     </button>
@@ -49,10 +49,7 @@
       currentMessageText: ''
     }),
     getters: {
-      isDisabled: (state) => (state.isSending || state.isUploading ? true : false),
-      sendTextClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : 'd-none d-sm-inline'),
-      iconClasses: (state) => (state.isSending || state.isUploading ? 'd-none' : ''),
-      spinnerClasses: (state) => (state.isSending || state.isUploading ? '' : 'd-none')
+      isDisabled: (state) => (state.isSending || state.isUploading ? true : false)
     },
     client: ({ refs, state, globalStore, eventBus, signal }) => {
       const { $state } = globalStore

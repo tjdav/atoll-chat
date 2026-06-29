@@ -217,10 +217,6 @@
             row.dataset.isSent = isSent
             row.dataset.senderId = message.sender_id
 
-            if (message.status === 'pending') {
-              row.classList.add('placeholder-wave')
-            }
-
             const sender = participants.find(p => p.id === message.sender_id)
             if (!isSent && isFirstInBlock && sender) {
               row.setAttribute('sender-name', sender.username || sender.name || 'Unknown')
@@ -259,14 +255,20 @@
             }
 
             // Project content into slot
-            if (message.type === 'media' && message.file_key) {
-              if (message.mime_type.startsWith('audio/')) {
+            if (message.type === 'media' && (message.file_key || message.status === 'pending')) {
+              if (message.mime_type?.startsWith('audio/')) {
                 const player = document.createElement('voice-player')
-                player.setAttribute('message-id', message.id)
+                if (message.id) {
+                  player.setAttribute('message-id', message.id)
+                }
+                player.setAttribute('status', message.status)
                 row.appendChild(player)
               } else {
                 const preview = document.createElement('media-preview')
-                preview.setAttribute('message-id', message.id)
+                if (message.id) {
+                  preview.setAttribute('message-id', message.id)
+                }
+                preview.setAttribute('status', message.status)
                 row.appendChild(preview)
   
                 if (message.content) {
@@ -274,6 +276,7 @@
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
                   text.setAttribute('position', position)
+                  text.setAttribute('status', message.status)
                   row.appendChild(text)
                 }
               }
@@ -289,6 +292,7 @@
               text.setAttribute('content', message.content || '')
               text.setAttribute('is-sent', isSent)
               text.setAttribute('position', position)
+              text.setAttribute('status', message.status)
               row.appendChild(text)
             }
 

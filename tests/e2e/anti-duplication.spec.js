@@ -61,14 +61,22 @@ test.describe('Anti-Duplication & Optimistic UI', () => {
         const transaction = nativeDB.transaction('local_messages', 'readonly')
         const store = transaction.objectStore('local_messages')
 
-        const index = store.index('content')
-        const getRequest = index.get(text)
-
-        getRequest.onsuccess = (event) => {
-          resolve(event.target.result)
+        // Iterate through all messages to find the one with matching content
+        const request = store.openCursor()
+        request.onsuccess = (event) => {
+          const cursor = event.target.result
+          if (cursor) {
+            if (cursor.value.content === text) {
+              resolve(cursor.value)
+              return
+            }
+            cursor.continue()
+          } else {
+            resolve(null)
+          }
         }
 
-        getRequest.onerror = (event) => {
+        request.onerror = (event) => {
           reject(event.target.error)
         }
       })

@@ -1,6 +1,8 @@
 <template id="text-message">
   <div class="message-bubble {{ bubbleClass }}">
-    {{ content }}
+    <span class="{{ glowClass }}">
+      <span class="{{ placeholderClass }}">{{ content }}</span>
+    </span>
   </div>
 </template>
 
@@ -20,6 +22,10 @@
       position: {
         type: String,
         default: 'start'
+      },
+      status: {
+        type: String,
+        default: 'sent'
       }
     },
     getters: {
@@ -29,7 +35,9 @@
         const posClass = `bubble-${pos}`
   
         return `${typeClass} ${posClass}`
-      }
+      },
+      glowClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : ''),
+      placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : '')
     }
   })
 </script>

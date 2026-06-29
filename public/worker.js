@@ -22,9 +22,9 @@ async function init () {
     await sodium.ready
 
     db = new Dexie('AtollChatDB')
-    db.version(6).stores({
+    db.version(7).stores({
       local_rooms: 'id, is_group, updated_at',
-      local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, content',
+      local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type',
       local_assets: 'id, room_id, mime_type, created_at',
       local_config: 'key'
     })
@@ -181,7 +181,18 @@ async function handleEvent (event) {
 }
 
 async function sendMessage (rpcId, payload) {
-  const { roomId, plaintextObj, localUuid } = payload
+  const {
+    roomId,
+    localUuid,
+    type,
+    content,
+    file,
+    mime_type,
+    waveform_data,
+    music_metadata,
+    album_art_blob,
+    timestamp
+  } = payload
 
   if (!currentUserKeys || !currentUserKeys.private_sign_key) {
     throw new Error('User identity keys not found in worker')
@@ -200,31 +211,108 @@ async function sendMessage (rpcId, payload) {
   const latestEpochId = latestKeyObj.epoch_id
   const roomKey = sodium.from_base64(latestKeyObj.key, sodium.base64_variants.ORIGINAL)
 
-  // Fetch causal link (previous_msg_uuid)
-  const lastMsg = await db.local_messages
-    .where('[room_id+created_at]')
-    .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
-    .last()
+  // 1. Handle Media Encryption & Upload
+  let mediaId = null
+  let fileKeyBase64 = null
+  let fileNonceBase64 = null
+  let albumArtInfo = null
 
-  const previousMsgId = lastMsg ? (lastMsg.id || lastMsg.local_uuid) : 'START'
+  const headers = {}
+  if (authToken) {
+    headers.Authorization = authToken
+  }
 
-  // Construct Plaintext (inject local_uuid into plaintext so others can use it for deduplication too)
-  plaintextObj.local_uuid = localUuid
+  if (type === 'media' && file) {
+    // Encrypt and upload album art if present
+    if (album_art_blob) {
+      const artBuffer = new Uint8Array(await album_art_blob.arrayBuffer())
+      const artKey = sodium.randombytes_buf(32)
+      const artNonce = sodium.randombytes_buf(24)
+      const encryptedArt = sodium.crypto_secretbox_easy(artBuffer, artNonce, artKey)
+
+      const artBlob = new Blob([encryptedArt], { type: 'application/octet-stream' })
+      const artFormData = new FormData()
+      artFormData.append('file', artBlob, 'album-art.bin')
+
+      const artResponse = await fetch(`${baseUrl}/api/collections/media/records`, {
+        method: 'POST',
+        headers,
+        body: artFormData
+      })
+      if (artResponse.ok) {
+        const artRecord = await artResponse.json()
+        albumArtInfo = {
+          media_id: artRecord.id,
+          file_key: sodium.to_base64(artKey, sodium.base64_variants.ORIGINAL),
+          file_nonce: sodium.to_base64(artNonce, sodium.base64_variants.ORIGINAL)
+        }
+      }
+    }
+
+    // Encrypt and upload main file
+    const fileBuffer = new Uint8Array(await file.arrayBuffer())
+    const fileKey = sodium.randombytes_buf(32)
+    const fileNonce = sodium.randombytes_buf(24)
+    const encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, fileNonce, fileKey)
+
+    const mainBlob = new Blob([encryptedFile], { type: 'application/octet-stream' })
+    const mainFormData = new FormData()
+    mainFormData.append('file', mainBlob, 'encrypted.bin')
+
+    const mainResponse = await fetch(`${baseUrl}/api/collections/media/records`, {
+      method: 'POST',
+      headers,
+      body: mainFormData
+    })
+    if (!mainResponse.ok) {
+      throw new Error(`Failed to upload media: ${mainResponse.status}`)
+    }
+    const mainRecord = await mainResponse.json()
+    mediaId = mainRecord.id
+    fileKeyBase64 = sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL)
+    fileNonceBase64 = sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL)
+  }
+
+  // 2. Construct Plaintext
+  const plaintextObj = {
+    local_uuid: localUuid,
+    type,
+    content,
+    timestamp: timestamp || Date.now()
+  }
+
+  if (type === 'media') {
+    plaintextObj.media_id = mediaId
+    plaintextObj.file_key = fileKeyBase64
+    plaintextObj.file_nonce = fileNonceBase64
+    plaintextObj.mime_type = mime_type
+    plaintextObj.waveform_data = waveform_data
+    plaintextObj.music_metadata = music_metadata
+    plaintextObj.album_art = albumArtInfo
+  }
+
   const plaintextStr = JSON.stringify(plaintextObj)
 
-  // Encryption (X25519)
+  // 3. Encrypt Message
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
   const ciphertextBuffer = sodium.crypto_secretbox_easy(plaintextStr, nonce, roomKey)
   const ciphertextBase64 = sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL)
   const nonceBase64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
 
+  // 4. Fetch causal link (previous_msg_uuid)
+  const lastMsg = await db.local_messages
+    .where('[room_id+created_at]')
+    .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
+    .last()
+  const previousMsgId = lastMsg ? (lastMsg.id || lastMsg.local_uuid) : 'START'
+
+  // 5. Sign Message
   const validationString = `${roomId}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
   const validationBuffer = new TextEncoder().encode(validationString)
-
   const privateSignKeyBuffer = sodium.from_base64(currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
   const signatureBuffer = sodium.crypto_sign_detached(validationBuffer, privateSignKeyBuffer)
 
-  // Server upload
+  // 6. Server upload
   const uploadPayload = {
     room_id: roomId,
     sender_id: currentUserKeys.id,
@@ -238,33 +326,50 @@ async function sendMessage (rpcId, payload) {
     local_uuid: localUuid
   }
 
-  const headers = {
-    'Content-Type': 'application/json'
-  }
-  if (authToken) {
-    headers.Authorization = authToken
-  }
-
-  const response = await fetch(`${baseUrl}/api/collections/messages/records`, {
+  const messageResponse = await fetch(`${baseUrl}/api/collections/messages/records`, {
     method: 'POST',
-    headers,
+    headers: {
+      ...headers,
+      'Content-Type': 'application/json'
+    },
     body: JSON.stringify(uploadPayload)
   })
 
-  if (!response.ok) {
-    const errorData = await response.json()
-    throw new Error(`Failed to send message: ${response.status} ${JSON.stringify(errorData)}`)
+  if (!messageResponse.ok) {
+    const errorData = await messageResponse.json()
+    throw new Error(`Failed to send message: ${messageResponse.status} ${JSON.stringify(errorData)}`)
   }
 
-  const pbRecord = await response.json()
+  const pbRecord = await messageResponse.json()
 
-  // Update IndexedDB
-  await db.local_messages.update(localUuid, {
+  // 7. Update IndexedDB & Notify UI
+  const updateData = {
     id: pbRecord.id,
-    status: 'sent'
-  })
+    status: 'sent',
+    created_at: pbRecord.created
+  }
 
-  // Notify UI
+  if (type === 'media') {
+    updateData.media_id = mediaId
+    updateData.file_key = fileKeyBase64
+    updateData.file_nonce = fileNonceBase64
+    updateData.album_art = albumArtInfo
+
+    await db.local_assets.put({
+      id: mediaId,
+      media_id: mediaId,
+      room_id: roomId,
+      mime_type: mime_type,
+      file_key: fileKeyBase64,
+      file_nonce: fileNonceBase64,
+      created_at: pbRecord.created,
+      music_metadata: music_metadata,
+      album_art: albumArtInfo
+    })
+  }
+
+  await db.local_messages.update(localUuid, updateData)
+
   self.postMessage({
     type: 'NEW_LOCAL_DATA',
     payload: { room_id: roomId }

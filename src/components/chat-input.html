@@ -52,9 +52,8 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'recording-mode-active' : 'd-none')
     },
-    client: ({ state, globalStore, pocketbase, localDb, eventBus, refs, signal, cryptoWorker }) => {
+    client: ({ state, globalStore, localDb, eventBus, refs, signal, cryptoWorker }) => {
       const { $state } = globalStore
-      const { pb } = pocketbase
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
@@ -74,7 +73,7 @@
         }
       }
 
-      const dispatchMessage = async (plaintextObj) => {
+      const dispatchMessage = async (params) => {
         const localUuid = crypto.randomUUID()
         const roomId = $state.activeSelectionId
 
@@ -84,11 +83,14 @@
           id: null,
           room_id: roomId,
           sender_id: $state.currentUser.id,
-          type: plaintextObj.type,
-          content: plaintextObj.content,
+          type: params.type,
+          content: params.content,
           status: 'pending',
           created_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
-          ...plaintextObj
+          // Include any specific metadata for UI rendering while pending
+          mime_type: params.mime_type,
+          waveform_data: params.waveform_data,
+          music_metadata: params.music_metadata
         }
 
         await $localDb.local_messages.put(optimisticMessage)
@@ -98,8 +100,8 @@
         console.log('[chat-input] Dispatching SEND_MESSAGE to worker', { localUuid })
         const result = await $worker.execute('SEND_MESSAGE', {
           roomId,
-          plaintextObj,
-          localUuid
+          localUuid,
+          ...params
         })
   
         $bus.emit('message-sent', result)
@@ -128,17 +130,11 @@
         try {
           if (file) {
             console.log('[chat-input] Processing file message')
-            // Media Flow
             state.isUploading = true
             state.uploadStatus = 'Processing file...'
 
-            const { default: sodium } = await import('libsodium-wrappers-sumo')
-            await sodium.ready
-
             let musicMetadata = null
-            let albumArtMediaId = null
-            let albumArtFileKey = null
-            let albumArtFileNonce = null
+            let albumArtBlob = null
 
             // Extract metadata if it's an audio file and not a voice recording
             if (file.type.startsWith('audio/') && !recordedBlob) {
@@ -157,23 +153,9 @@
                     track: track?.no
                   }
 
-                  // Handle Album Art (Option B: Upload as separate media)
                   if (picture && picture.length > 0) {
-                    state.uploadStatus = 'Processing album art...'
                     const art = picture[0]
-                    const artBuffer = art.data
-                    const artKey = sodium.randombytes_buf(32)
-                    const artNonce = sodium.randombytes_buf(24)
-                    const encryptedArt = sodium.crypto_secretbox_easy(artBuffer, artNonce, artKey)
-
-                    const artBlob = new Blob([encryptedArt], { type: 'application/octet-stream' })
-                    const artFormData = new FormData()
-                    artFormData.append('file', artBlob, 'album-art.bin')
-
-                    const artRecord = await pb.collection('media').create(artFormData)
-                    albumArtMediaId = artRecord.id
-                    albumArtFileKey = sodium.to_base64(artKey, sodium.base64_variants.ORIGINAL)
-                    albumArtFileNonce = sodium.to_base64(artNonce, sodium.base64_variants.ORIGINAL)
+                    albumArtBlob = new Blob([art.data], { type: art.format || 'image/jpeg' })
                   }
                 }
               } catch (metaErr) {
@@ -181,50 +163,24 @@
               }
             }
 
-            state.uploadStatus = 'Encrypting file...'
-
-            // 1. Encrypt File
-            const fileBuffer = new Uint8Array(await file.arrayBuffer())
-            const fileKey = sodium.randombytes_buf(32)
-            const fileNonce = sodium.randombytes_buf(24)
-            const encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, fileNonce, fileKey)
-  
-            // 2. Upload to media collection
-            state.uploadStatus = 'Uploading...'
-            const blob = new Blob([encryptedFile], { type: 'application/octet-stream' })
-            const formData = new FormData()
-            formData.append('file', blob, 'encrypted.bin')
-  
-            const mediaRecord = await pb.collection('media').create(formData)
-
-            // Dispatch media message
-            const mediaPlaintext = {
+            // Dispatch media message - worker handles encryption and upload
+            await dispatchMessage({
               type: 'media',
               content: recordedBlob ? '' : text,
+              file: file,
               mime_type: file.type,
-              media_id: mediaRecord.id,
-              file_key: sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL),
-              file_nonce: sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL),
               waveform_data: waveformData,
-              timestamp: Date.now(),
-              created_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
               music_metadata: musicMetadata,
-              album_art: albumArtMediaId ? {
-                media_id: albumArtMediaId,
-                file_key: albumArtFileKey,
-                file_nonce: albumArtFileNonce
-              } : null
-            }
-  
-            await dispatchMessage(mediaPlaintext)
+              album_art_blob: albumArtBlob,
+              timestamp: Date.now()
+            })
           } else {
             // Standard Text Flow
             console.log('[chat-input] Processing text message')
             await dispatchMessage({
               type: 'text',
               content: text,
-              timestamp: Date.now(),
-              created_at: new Date().toISOString().replace('T', ' ').replace('Z', '')
+              timestamp: Date.now()
             })
           }
 
