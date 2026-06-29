@@ -1,8 +1,13 @@
 <template id="media-preview">
-  <div ref="container" class="media-preview-container rounded-3 overflow-hidden mb-1" style="min-height: 200px; min-width: 250px;">
+  <div ref="container" class="media-preview-container rounded-3 overflow-hidden mb-1 position-relative" style="min-height: 200px; min-width: 250px;">
     <div ref="loading" class="{{ loadingClass }} w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center" style="background: var(--bs-tertiary-bg);">
       <div class="placeholder col-8 mb-2" style="height: 24px;"></div>
       <div class="placeholder col-4" style="height: 16px;"></div>
+    </div>
+    <div class="position-absolute bottom-0 end-0 p-2 {{ checkmarkClass }}" style="z-index: 2;">
+      <div class="bg-dark bg-opacity-50 rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
+        <i class="bi bi-check text-white" style="font-size: 1.2rem; line-height: 1;" data-testid="sent-checkmark"></i>
+      </div>
     </div>
   </div>
 </template>
@@ -13,10 +18,15 @@
   export default defineComponent({
     attributes: {
       localUuid: String,
-      status: String
+      status: String,
+      isSent: {
+        type: Boolean,
+        default: false
+      }
     },
     getters: {
-      loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
+      loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave'),
+      checkmarkClass: (state) => (state.isSent && state.status === 'sent' ? 'd-block' : 'd-none')
     },
     client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus }) => {
       const { $localDb } = localDb
