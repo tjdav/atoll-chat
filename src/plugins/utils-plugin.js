@@ -23,8 +23,53 @@ export default definePlugin({
         }
       }
 
+      /**
+       * Formats a timestamp into a relative time string.
+       * Rules:
+       * < 1 hour: 39m
+       * < 24 hours: 10h
+       * < 7 days: 1d, 5d
+       * > 7 days: 5w or 1y
+       */
+      const formatRelativeTime = (timestamp) => {
+        if (!timestamp) {
+          return ''
+        }
+        const date = new Date(timestamp)
+        const now = new Date()
+        const diffInSeconds = Math.floor((now - date) / 1000)
+
+        if (diffInSeconds < 60) {
+          return 'now'
+        }
+
+        const diffInMinutes = Math.floor(diffInSeconds / 60)
+        if (diffInMinutes < 60) {
+          return `${diffInMinutes}m`
+        }
+
+        const diffInHours = Math.floor(diffInMinutes / 60)
+        if (diffInHours < 24) {
+          return `${diffInHours}h`
+        }
+
+        const diffInDays = Math.floor(diffInHours / 24)
+        if (diffInDays < 7) {
+          return `${diffInDays}d`
+        }
+
+        const diffInWeeks = Math.floor(diffInDays / 7)
+        if (diffInWeeks < 52) {
+          return `${diffInWeeks}w`
+        }
+
+        const diffInYears = Math.floor(diffInDays / 365)
+        return `${diffInYears}y`
+      }
+
       const $utils = {
-        debounce
+        debounce,
+        formatRelativeTime
       }
 
       // Inject into pluginContext for Phase 1 access if needed

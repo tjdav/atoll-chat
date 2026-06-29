@@ -10,12 +10,13 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, pocketbase, bootstrap }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, pocketbase, bootstrap, utils }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
       const { pb } = pocketbase
       const { Dropdown } = bootstrap
+      const { $utils } = utils
       const listGroup = refs('listGroup')
 
       const avatarCache = new Map()
@@ -122,6 +123,85 @@
         }
       }
 
+      const getLatestMessage = async (roomId) => {
+        return await $localDb.local_messages
+          .where('[room_id+created_at]')
+          .between([roomId, ''], [roomId, '\uffff'])
+          .last()
+      }
+
+      const getPreviewText = (msg, participants, isGroup) => {
+        if (!msg) {
+          return ''
+        }
+
+        let prefix = ''
+        if (msg.sender_id === $state.currentUser?.id) {
+          prefix = 'You: '
+        } else if (isGroup) {
+          const sender = participants.find(p => p.id === msg.sender_id)
+          if (sender) {
+            prefix = `${sender.username.split(' ')[0]}: `
+          }
+        }
+
+        if (msg.type === 'text') {
+          return `${prefix}${msg.content}`
+        }
+
+        const fallbacks = {
+          image: 'Sent a photo.',
+          video: 'Sent a video.',
+          voice: 'Sent a voice message.',
+          audio: 'Sent an audio file.',
+          file: 'Sent an attachment.'
+        }
+
+        if (msg.type === 'media') {
+          const mime = msg.mime_type || ''
+          if (mime.startsWith('image/')) {
+            return `${prefix}${fallbacks.image}`
+          }
+          if (mime.startsWith('video/')) {
+            return `${prefix}${fallbacks.video}`
+          }
+          if (mime.startsWith('audio/')) {
+            return msg.waveform_data ? `${prefix}${fallbacks.voice}` : `${prefix}${fallbacks.audio}`
+          }
+          return `${prefix}${fallbacks.file}`
+        }
+
+        return `${prefix}${msg.content || ''}`
+      }
+
+      const markAsRead = async (room, latestMsgId) => {
+        if (!latestMsgId) {
+          return
+        }
+
+        const me = room.participants.find(p => p.id === $state.currentUser?.id)
+        if (me && me.last_read_message_id !== latestMsgId) {
+          // 1. Update Dexie
+          me.last_read_message_id = latestMsgId
+          await $localDb.local_rooms.put(room)
+
+          // 2. Update Server (Fire and forget)
+          try {
+            const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room.id}" && user_id="${$state.currentUser.id}"`)
+            if (memberRecord) {
+              pb.collection('room_members').update(memberRecord.id, {
+                last_read_message_id: latestMsgId
+              }).catch(err => console.error('[chat-list] Failed to update read status on server:', err))
+            }
+          } catch (err) {
+            console.error('[chat-list] Failed to find room member record:', err)
+          }
+
+          // 3. Notify
+          $bus.emit('ROOM_READ_STATE_CHANGED', room.id)
+        }
+      }
+
       const render = async () => {
         if (!listGroup) {
           return
@@ -139,7 +219,13 @@
             return
           }
 
-          rawItems.forEach(item => {
+          for (const item of rawItems) {
+            const latestMsg = await getLatestMessage(item.id)
+            const me = item.participants?.find(p => p.id === $state.currentUser?.id)
+            const isUnread = latestMsg &&
+                             latestMsg.sender_id !== $state.currentUser?.id &&
+                             latestMsg.id !== me?.last_read_message_id
+
             const container = document.createElement('div')
             const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'chats'
             container.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 position-relative ${isActive ? 'active' : ''}`
@@ -151,7 +237,7 @@
             contentWrapper.className = 'text-truncate flex-grow-1'
   
             const nameDiv = document.createElement('div')
-            nameDiv.className = 'fw-bold text-truncate'
+            nameDiv.className = `text-truncate ${isUnread ? 'fw-bold' : ''}`
 
             const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
             if (!item.is_group && participants.length > 0) {
@@ -159,16 +245,36 @@
             } else {
               nameDiv.textContent = item.name || (item.is_group ? 'Unnamed Group' : 'Direct Message')
             }
-  
-            const subTextSmall = document.createElement('small')
-            subTextSmall.className = 'opacity-75 d-block text-truncate'
-            subTextSmall.textContent = item.is_group ? 'Group Chat' : 'Private'
+
+            const previewContainer = document.createElement('div')
+            previewContainer.className = 'd-flex align-items-center'
+
+            const previewDiv = document.createElement('small')
+            previewDiv.className = `text-truncate flex-grow-1 ${isUnread ? 'fw-bold text-body' : 'text-muted'}`
+            previewDiv.textContent = getPreviewText(latestMsg, item.participants || [], item.is_group)
+
+            const timeSmall = document.createElement('small')
+            timeSmall.className = 'text-muted ms-1 flex-shrink-0'
+            const relativeTime = latestMsg ? $utils.formatRelativeTime(latestMsg.created_at) : ''
+            timeSmall.textContent = relativeTime ? ` · ${relativeTime}` : ''
+
+            previewContainer.appendChild(previewDiv)
+            previewContainer.appendChild(timeSmall)
 
             contentWrapper.appendChild(nameDiv)
-            contentWrapper.appendChild(subTextSmall)
+            contentWrapper.appendChild(previewContainer)
 
             container.appendChild(iconWrapper)
             container.appendChild(contentWrapper)
+
+            if (isUnread) {
+              const dot = document.createElement('span')
+              dot.className = 'position-absolute top-50 translate-middle-y bg-primary rounded-circle'
+              dot.style.right = '12px'
+              dot.style.width = '10px'
+              dot.style.height = '10px'
+              container.appendChild(dot)
+            }
 
             // Dropdown Menu
             const dropdownDiv = document.createElement('div')
@@ -233,16 +339,20 @@
             dropdownDiv.appendChild(dropdownMenu)
             container.appendChild(dropdownDiv)
 
-            container.addEventListener('click', (e) => {
+            container.addEventListener('click', async (e) => {
               if (e.target.closest('.dropdown')) {
                 return
               }
               $state.activeSelectionId = item.id
               $state.activeSelectionType = 'chats'
+
+              if (isUnread && latestMsg) {
+                await markAsRead(item, latestMsg.id)
+              }
             })
 
             listGroup.appendChild(container)
-          })
+          }
         } catch (error) {
           console.error('[chat-list] Error fetching chats:', error)
         }
@@ -265,6 +375,7 @@
 
       $bus.on('NEW_LOCAL_DATA', handleNewData)
       $bus.on('NEW_LOCAL_ROOM', handleNewData)
+      $bus.on('ROOM_READ_STATE_CHANGED', handleNewData)
     }
   })
 </script>
