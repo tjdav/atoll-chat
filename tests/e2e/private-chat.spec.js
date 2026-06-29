@@ -39,13 +39,58 @@ test.describe('Private Chat', () => {
 
     console.log('Alice sending message...')
     // --- Alice sends message ---
-    await alicePage.fill('textarea[placeholder="Type a message..."]', 'Hello Bob')
+    const aliceMessageText = 'Hello Bob ' + Date.now()
+    await alicePage.fill('textarea[placeholder="Type a message..."]', aliceMessageText)
     // Wait for button to be enabled (some components might have a brief loading/disabled state)
     await expect(alicePage.locator('button:has-text("Send")')).toBeEnabled()
     await alicePage.click('button:has-text("Send")')
 
-    // Verify Alice sees her message
-    await expect(alicePage.locator('timeline-row:has-text("Hello Bob")')).toBeVisible()
+    // Verify Alice sees her message (Optimistic UI)
+    const aliceMessageRow = alicePage.locator('timeline-row').filter({ hasText: aliceMessageText })
+    await expect(aliceMessageRow).toBeVisible()
+
+    // Check for optimistic state
+    const isOptimisticVisible = await aliceMessageRow.locator('.placeholder-glow').isVisible()
+    console.log('Alice message optimistic UI visible:', isOptimisticVisible)
+
+    // Wait for worker to finish (Sent status)
+    const aliceStatusContainer = alicePage.locator('chat-view .message-status-container')
+    await expect(aliceStatusContainer).toBeVisible({ timeout: 20000 })
+    await expect(aliceStatusContainer.locator('span')).toHaveText('Sent')
+    await expect(aliceMessageRow.locator('.placeholder-glow')).not.toBeVisible()
+
+    // Verify no duplicates for Alice
+    await expect(aliceMessageRow).toHaveCount(1)
+    await expect(aliceMessageRow.locator('text-message')).toHaveCount(1)
+
+    // Verify IndexedDB state (One-time check to prove the pipeline)
+    const localUuid = await aliceMessageRow.getAttribute('data-local-uuid')
+    const dbState = await alicePage.evaluate(async (uuid) => {
+      let nativeDB
+      if (window.AtollChatDB) {
+        nativeDB = typeof window.AtollChatDB.backendDB === 'function'
+          ? window.AtollChatDB.backendDB()
+          : window.AtollChatDB
+      } else {
+        nativeDB = await new Promise((resolve, reject) => {
+          const request = indexedDB.open('AtollChatDB')
+          request.onsuccess = (event) => resolve(event.target.result)
+          request.onerror = (event) => reject(event.target.error)
+        })
+        window.AtollChatDB = nativeDB
+      }
+      return await new Promise((resolve, reject) => {
+        const transaction = nativeDB.transaction('local_messages', 'readonly')
+        const store = transaction.objectStore('local_messages')
+        const request = store.get(uuid)
+        request.onsuccess = (event) => resolve(event.target.result)
+        request.onerror = (event) => reject(event.target.error)
+      })
+    }, localUuid)
+
+    expect(dbState).toBeDefined()
+    expect(dbState.status).toBe('sent')
+    expect(dbState.id).not.toBeNull()
 
     console.log('Bob waiting for Alice\'s chat and message...')
     // --- Bob receives and replies ---
@@ -56,19 +101,44 @@ test.describe('Private Chat', () => {
     await bobChatListAlice.click()
 
     // Verify Bob sees Alice's message
-    await expect(bobPage.locator('timeline-row:has-text("Hello Bob")')).toBeVisible({ timeout: 10000 })
+    const bobReceivedRow = bobPage.locator('timeline-row').filter({ hasText: aliceMessageText })
+    await expect(bobReceivedRow).toBeVisible({ timeout: 10000 })
+    await expect(bobReceivedRow).toHaveCount(1)
+    await expect(bobReceivedRow.locator('text-message')).toHaveCount(1)
+
+    // Wait for Bob's client to stabilize (avoid missing optimistic UI)
+    await bobPage.waitForTimeout(500)
 
     console.log('Bob replying to Alice...')
     // Bob replies
-    await bobPage.fill('textarea[placeholder="Type a message..."]', 'Hello Alice')
+    const bobReplyText = 'Hello Alice ' + Date.now()
+    await bobPage.fill('textarea[placeholder="Type a message..."]', bobReplyText)
     await bobPage.click('button:has-text("Send")')
 
     // Verify Bob sees his message
-    await expect(bobPage.locator('timeline-row:has-text("Hello Alice")')).toBeVisible()
+    const bobMessageRow = bobPage.locator('timeline-row').filter({ hasText: bobReplyText })
+    await expect(bobMessageRow).toBeVisible()
+
+    // Check for optimistic state (don't fail if it's too fast, just log)
+    const isBobOptimisticVisible = await bobMessageRow.locator('.placeholder-glow').isVisible()
+    console.log('Bob reply optimistic UI visible:', isBobOptimisticVisible)
+
+    // Wait for worker to finish (Sent status)
+    const bobStatusContainer = bobPage.locator('chat-view .message-status-container')
+    await expect(bobStatusContainer).toBeVisible({ timeout: 20000 })
+    await expect(bobStatusContainer.locator('span')).toHaveText('Sent')
+    await expect(bobMessageRow.locator('.placeholder-glow')).not.toBeVisible()
+
+    // Verify no duplicates for Bob
+    await expect(bobMessageRow).toHaveCount(1)
+    await expect(bobMessageRow.locator('text-message')).toHaveCount(1)
 
     console.log('Alice waiting for Bob\'s reply...')
     // --- Alice receives reply ---
-    await expect(alicePage.locator('timeline-row:has-text("Hello Alice")')).toBeVisible({ timeout: 20000 })
+    const aliceReceivedRow = alicePage.locator('timeline-row').filter({ hasText: bobReplyText })
+    await expect(aliceReceivedRow).toBeVisible({ timeout: 20000 })
+    await expect(aliceReceivedRow).toHaveCount(1)
+    await expect(aliceReceivedRow.locator('text-message')).toHaveCount(1)
 
     console.log('Test completed successfully!')
 

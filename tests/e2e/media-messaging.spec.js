@@ -47,10 +47,16 @@ test.describe('Media Messaging', () => {
 
     // Alice's Worker Confirmation: Wait for global sent status to appear
     console.log('Waiting for Alice\'s worker to finish encryption and upload...')
-    const statusContainer = alicePage.locator('.message-status-container')
+    const statusContainer = alicePage.locator('chat-view .message-status-container')
     await expect(statusContainer).toBeVisible({ timeout: 20000 })
     await expect(statusContainer.locator('span')).toHaveText('Sent')
     await expect(aliceMessageRow.locator('.placeholder-glow')).not.toBeVisible()
+
+    // Verify no duplicates for Alice
+    await expect(alicePage.locator('timeline-row').filter({ hasText: caption })).toHaveCount(1)
+    await expect(aliceMessageRow.locator('media-preview')).toHaveCount(1)
+    await expect(aliceMessageRow.locator('media-preview img')).toHaveCount(1)
+    await expect(aliceMessageRow.locator('text-message')).toHaveCount(1)
 
     console.log('Bob waiting for Alice\'s chat and message...')
     const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: 'alice' }).first()
@@ -58,8 +64,14 @@ test.describe('Media Messaging', () => {
     await bobChatListAlice.click()
 
     // Bob's Inbound UI: Verify the message bubble and caption
-    const bobMessageRow = bobPage.locator('timeline-row').last()
-    await expect(bobMessageRow).toContainText(caption)
+    const bobMessageRow = bobPage.locator('timeline-row').filter({ hasText: caption })
+    await expect(bobMessageRow).toBeVisible({ timeout: 10000 })
+    
+    // Verify no duplicates for Bob
+    await expect(bobMessageRow).toHaveCount(1)
+    await expect(bobMessageRow.locator('media-preview')).toHaveCount(1)
+    await expect(bobMessageRow.locator('media-preview img')).toHaveCount(1)
+    await expect(bobMessageRow.locator('text-message')).toHaveCount(1)
 
     // Bob's Decryption: Verify image is decrypted and rendered as a blob URL
     console.log('Verifying Bob decrypted the image...')

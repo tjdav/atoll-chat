@@ -47,7 +47,7 @@ test.describe('Chat List Latest Message and Unread Indicators', () => {
     console.log('Verifying Bob clicks and marks as read...')
     await bobChatListAlice.click()
     await expect(bobPage.locator('timeline-row:has-text("' + aliceMsg + '")')).toBeVisible()
-    
+
     // Check list again - bolding and dot should be gone
     await expect(bobPreviewText).not.toHaveClass(/fw-bold/)
     await expect(bobChatListAlice.locator('.bg-primary.rounded-circle')).not.toBeVisible()
@@ -62,10 +62,10 @@ test.describe('Chat List Latest Message and Unread Indicators', () => {
     })
     await alicePage.fill('textarea[placeholder="Type a message..."]', 'Cool image')
     await alicePage.click('button:has-text("Send")')
-    
+
     // Wait for upload (worker status check)
     await expect(alicePage.locator('timeline-row:has-text("Cool image")')).toBeVisible()
-    
+
     // Alice sees "You: Sent a photo."
     await expect(alicePreviewText).toContainText('You: Sent a photo.')
 
