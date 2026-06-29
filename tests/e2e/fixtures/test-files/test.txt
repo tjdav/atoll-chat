@@ -1,1 +1,2 @@
-This is a valid test text file used for E2E testing.
+this is a sample txt file
+it has two lines
