@@ -2,21 +2,21 @@
   <div class="card shadow">
     <div class="card-body p-4">
       <h3 class="card-title mb-4 text-center">Login</h3>
-      <form id="{{ ref_loginForm }}" ref="loginForm">
+      <form ref="loginForm">
         <div class="mb-3">
           <label for="{{ ref_username }}" class="form-label">Username or Email</label>
-          <input id="{{ ref_username }}" ref="username" name="username" type="text" class="form-control" placeholder="Enter username or email" required>
+          <input ref="username" name="username" type="text" class="form-control" placeholder="Enter username or email" required>
         </div>
         <div class="mb-3">
           <label for="{{ ref_password }}" class="form-label">Password</label>
-          <input id="{{ ref_password }}" ref="password" name="password" type="password" class="form-control" placeholder="Enter Password" required>
+          <input ref="password" name="password" type="password" class="form-control" placeholder="Enter Password" required>
         </div>
         <button type="submit" class="btn btn-primary w-100">Login</button>
       </form>
       <div class="mt-3 text-center">
-        <small class="text-muted">Don't have an account? <a id="{{ ref_linkRegister }}" href="#" ref="linkRegister" class="text-decoration-none">Register here</a></small>
+        <small class="text-muted">Don't have an account? <a href="#" ref="linkRegister" class="text-decoration-none">Register here</a></small>
       </div>
-      <div id="{{ ref_statusMsg }}" ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
+      <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
     </div>
   </div>
 </template>

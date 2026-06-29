@@ -1,15 +1,15 @@
 <template id="app-layout">
-  <div class="app-layout d-flex vh-100 vw-100 overflow-hidden bg-body">
+  <div class="d-flex vh-100 vw-100 overflow-hidden bg-body">
     <!-- Column 1: Navigation Sidebar (Fixed 80px) -->
     <nav-sidebar></nav-sidebar>
 
     <!-- Column 2: Contextual List (Fixed 350px) -->
-    <div id="{{ ref_columnTwo }}" ref="columnTwo" class="contextual-list border-end bg-body-tertiary d-flex flex-column" style="width: 350px; min-width: 350px;">
+    <div ref="columnTwo" class="contextual-list border-end bg-body-tertiary d-flex flex-column" style="width: 350px; min-width: 350px;">
       <list-pane></list-pane>
     </div>
 
     <!-- Column 3: Main Detail View (Fluid) -->
-    <div id="{{ ref_columnThree }}" ref="columnThree" class="detail-view flex-grow-1 bg-body-secondary">
+    <div ref="columnThree" class="detail-view flex-grow-1 bg-body-secondary">
       <div class="h-100 align-items-center justify-content-center" style="display: {{ emptyStateDisplay }};">
         <div class="text-center">
           <i class="bi bi-chat-dots fs-1 text-secondary mb-3 d-block"></i>

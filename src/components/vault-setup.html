@@ -3,24 +3,24 @@
     <div class="card-body p-4">
       <h3 class="card-title mb-3 text-center">Secure Your Vault</h3>
       <p class="text-muted small text-center mb-4">Set a PIN to encrypt your local cryptographic keys. This PIN is never sent to the server.</p>
-      <form id="{{ ref_setupForm }}" ref="setupForm">
+      <form ref="setupForm">
         <div class="mb-3">
           <label for="{{ ref_pin }}" class="form-label">Vault PIN (min 6 characters)</label>
-          <input id="{{ ref_pin }}" name="pin" ref="pin" type="password" class="form-control" placeholder="Enter PIN" minlength="6" required>
+          <input name="pin" ref="pin" type="password" class="form-control" placeholder="Enter PIN" minlength="6" required>
         </div>
         <div class="mb-3">
           <label for="{{ ref_pinConfirm }}" class="form-label">Confirm PIN</label>
-          <input id="{{ ref_pinConfirm }}" name="pinConfirm" ref="pinConfirm" type="password" class="form-control" placeholder="Confirm PIN" minlength="6" required>
+          <input name="pinConfirm" ref="pinConfirm" type="password" class="form-control" placeholder="Confirm PIN" minlength="6" required>
         </div>
         <button type="submit" class="btn btn-primary w-100">Initialize Vault with PIN</button>
         <hr>
         <div class="d-grid gap-2">
-          <button id="{{ ref_btnPasskey }}" type="button" class="btn btn-outline-primary" ref="btnPasskey">Setup with Passkey</button>
+          <button type="button" class="btn btn-outline-primary" ref="btnPasskey">Setup with Passkey</button>
         </div>
       </form>
-      <div id="{{ ref_statusMsg }}" ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
+      <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
       <div class="mt-3 text-center">
-        <button id="{{ ref_btnLogout }}" type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
+        <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
       </div>
     </div>
   </div>

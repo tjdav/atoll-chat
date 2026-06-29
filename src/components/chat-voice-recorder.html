@@ -1,30 +1,30 @@
 <template id="chat-voice-recorder">
   <div class="recording-ui d-flex align-items-center gap-2">
-    <button id="{{ ref_discardButton }}" class="btn btn-link text-danger p-1" ref="discardButton" title="Discard">
+    <button class="btn btn-link text-danger p-1" ref="discardButton" title="Discard">
       <i class="bi bi-trash fs-4"></i>
     </button>
     
     <div class="recording-controls flex-grow-1 d-flex align-items-center bg-light rounded-pill px-3 py-1 border">
-      <button id="{{ ref_pauseResumeButton }}" class="btn btn-sm btn-light rounded-circle me-2" ref="pauseResumeButton">
+      <button class="btn btn-sm btn-light rounded-circle me-2" ref="pauseResumeButton">
         <i class="bi {{ pauseResumeIcon }}"></i>
       </button>
 
-      <button id="{{ ref_redoButton }}" class="btn btn-sm btn-link text-primary me-2 {{ redoClass }}" ref="redoButton" title="Restart">
+      <button class="btn btn-sm btn-link text-primary me-2 {{ redoClass }}" ref="redoButton" title="Restart">
         <i class="bi bi-arrow-counterclockwise fs-5"></i>
       </button>
 
       <div class="recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 32px;">
-        <canvas id="{{ ref_visualizerCanvas }}" ref="visualizerCanvas" width="400" height="32" class="w-100 h-100"></canvas>
+        <canvas ref="visualizerCanvas" width="400" height="32" class="w-100 h-100"></canvas>
       </div>
 
       <span class="recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
 
-      <button id="{{ ref_resumeMicButton }}" class="btn btn-sm btn-link text-secondary ms-2 {{ redoClass }}" ref="resumeMicButton" title="Add more">
+      <button class="btn btn-sm btn-link text-secondary ms-2 {{ redoClass }}" ref="resumeMicButton" title="Add more">
         <i class="bi bi-mic-fill"></i>
       </button>
     </div>
 
-    <button id="{{ ref_sendVoiceButton }}" class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" ref="sendVoiceButton">
+    <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;" ref="sendVoiceButton">
       <i class="bi bi-send-fill" style="transform: rotate(-45deg); margin-left: 3px;"></i>
     </button>
   </div>

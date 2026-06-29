@@ -1,23 +1,23 @@
 <template id="nav-sidebar">
   <div class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100">
     <div class="nav flex-column nav-pills w-100 px-2 gap-3">
-      <button id="{{ ref_btnChats }}" class="nav-link d-flex align-items-center justify-content-center p-3 {{ isChatsActive }}" ref="btnChats" title="Chats">
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isChatsActive }}" ref="btnChats" title="Chats">
         <i class="bi bi-chat-left-text fs-4"></i>
       </button>
-      <button id="{{ ref_btnMusic }}" class="nav-link d-flex align-items-center justify-content-center p-3 {{ isMusicActive }}" ref="btnMusic" title="Music">
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isMusicActive }}" ref="btnMusic" title="Music">
         <i class="bi bi-music-note-list fs-4"></i>
       </button>
-      <button id="{{ ref_btnPictures }}" class="nav-link d-flex align-items-center justify-content-center p-3 {{ isPicturesActive }}" ref="btnPictures" title="Pictures">
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isPicturesActive }}" ref="btnPictures" title="Pictures">
         <i class="bi bi-image fs-4"></i>
       </button>
-      <button id="{{ ref_btnVideos }}" class="nav-link d-flex align-items-center justify-content-center p-3 {{ isVideosActive }}" ref="btnVideos" title="Videos">
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isVideosActive }}" ref="btnVideos" title="Videos">
         <i class="bi bi-camera-video fs-4"></i>
       </button>
     </div>
     <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative">
       <!-- Global Media Manager -->
       <div class="dropend">
-        <button id="{{ ref_btnMediaManager }}" ref="btnMediaManager" class="nav-link d-flex align-items-center justify-content-center p-0 w-100 position-relative" style="height: 64px;" data-bs-toggle="dropdown" aria-expanded="false" title="Now Playing">
+        <button ref="btnMediaManager" class="nav-link d-flex align-items-center justify-content-center p-0 w-100 position-relative" style="height: 64px;" data-bs-toggle="dropdown" aria-expanded="false" title="Now Playing">
           <svg width="48" height="48" viewBox="0 0 48 48" class="position-absolute">
             <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="2" class="opacity-10"></circle>
             <circle cx="24" cy="24" r="20" fill="none" stroke="var(--bs-primary)" stroke-width="2" stroke-dasharray="125.6" stroke-dashoffset="{{ progressOffset }}" transform="rotate(-90 24 24)" style="transition: stroke-dashoffset 0.3s ease;"></circle>
@@ -28,7 +28,7 @@
            <div class="bg-body p-3">
               <div class="d-flex align-items-center gap-3 mb-3">
                  <div class="rounded bg-secondary-subtle overflow-hidden flex-shrink-0" style="width: 48px; height: 48px;">
-                    <img id="{{ ref_dropdownThumbnail }}" ref="dropdownThumbnail" src="{{ mediaMetadataThumbnail }}" class="w-100 h-100 object-fit-cover {{ thumbnailClass }}" alt="">
+                    <img ref="dropdownThumbnail" src="{{ mediaMetadataThumbnail }}" class="w-100 h-100 object-fit-cover {{ thumbnailClass }}" alt="">
                     <div class="w-100 h-100 d-flex align-items-center justify-content-center {{ placeholderClass }}">
                        <i class="bi {{ mediaMetadataPlaceholderIcon }} fs-4 text-secondary"></i>
                     </div>
@@ -40,30 +40,30 @@
               </div>
               
               <!-- Progress Bar -->
-              <div class="progress mb-3" style="height: 4px; cursor: pointer;" id="{{ ref_dropdownProgress }}" ref="dropdownProgress">
+              <div class="progress mb-3" style="height: 4px; cursor: pointer;" ref="dropdownProgress">
                 <div class="progress-bar" role="progressbar" style="width: {{ mediaProgress }}%;"></div>
               </div>
 
               <!-- Controls -->
               <div class="d-flex align-items-center justify-content-between mb-3">
-                 <button id="{{ ref_btnPrev }}" ref="btnPrev" class="btn btn-link text-body p-0"><i class="bi bi-skip-start-fill fs-3"></i></button>
-                 <button id="{{ ref_btnTogglePlay }}" ref="btnTogglePlay" class="btn btn-link text-body p-0"><i class="bi {{ playPauseIconLarge }} fs-1"></i></button>
-                 <button id="{{ ref_btnNext }}" ref="btnNext" class="btn btn-link text-body p-0"><i class="bi bi-skip-end-fill fs-3"></i></button>
+                 <button ref="btnPrev" class="btn btn-link text-body p-0"><i class="bi bi-skip-start-fill fs-3"></i></button>
+                 <button ref="btnTogglePlay" class="btn btn-link text-body p-0"><i class="bi {{ playPauseIconLarge }} fs-1"></i></button>
+                 <button ref="btnNext" class="btn btn-link text-body p-0"><i class="bi bi-skip-end-fill fs-3"></i></button>
               </div>
 
               <!-- Volume -->
               <div class="d-flex align-items-center gap-2">
                  <i class="bi {{ volumeIcon }} text-muted"></i>
-                 <input type="range" id="{{ ref_volumeSlider }}" ref="volumeSlider" class="form-range" min="0" max="1" step="0.01" value="{{ mediaVolume }}">
+                 <input type="range" ref="volumeSlider" class="form-range" min="0" max="1" step="0.01" value="{{ mediaVolume }}">
               </div>
            </div>
         </div>
       </div>
 
-      <button id="{{ ref_btnSettings }}" class="nav-link d-flex align-items-center justify-content-center p-3 w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings">
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings">
         <i class="bi bi-gear-fill fs-4"></i>
       </button>
-      <button id="{{ ref_btnLogout }}" class="nav-link d-flex align-items-center justify-content-center p-3 w-100" ref="btnLogout" title="Logout">
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 w-100" ref="btnLogout" title="Logout">
         <i class="bi bi-box-arrow-right fs-4"></i>
       </button>
     </div>

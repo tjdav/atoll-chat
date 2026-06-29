@@ -1,10 +1,10 @@
 <template id="message-timeline">
-  <div id="{{ ref_timelineContainer }}" ref="timelineContainer" class="flex-grow-1 overflow-auto p-3 d-flex flex-column h-100">
-    <div id="{{ ref_emptyState }}" class="mt-auto text-center text-muted p-5" ref="emptyState">
+  <div ref="timelineContainer" class="flex-grow-1 overflow-auto p-3 d-flex flex-column h-100">
+    <div class="mt-auto text-center text-muted p-5" ref="emptyState">
       <i class="bi bi-shield-lock fs-1 mb-3 d-block"></i>
       <p>Messages are end-to-end encrypted. No one outside of this chat, not even Atoll, can read them.</p>
     </div>
-    <div id="{{ ref_statusContainer }}" ref="statusContainer" class="message-status-container d-none text-end px-2 py-1">
+    <div ref="statusContainer" class="message-status-container d-none text-end px-2 py-1">
       <span ref="statusText" class="x-small text-muted me-1"></span>
       <i ref="statusIcon" class="bi bi-check text-muted" style="font-size: 1rem; line-height: 1;"></i>
     </div>

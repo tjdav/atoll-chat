@@ -8,7 +8,7 @@
     <div class="timeline-row-container {{ rowClass }}">
       <!-- Avatar Column (Received only) -->
       <div class="avatar-col d-flex align-items-end {{ avatarColDisplayClass }}">
-        <div id="{{ ref_avatarContainer }}" ref="avatarContainer">
+        <div ref="avatarContainer">
           <!-- Rendered in client block if showAvatar is true -->
         </div>
       </div>
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Seen Indicators -->
-    <div id="{{ ref_seenContainer }}" ref="seenContainer" class="seen-indicators px-2">
+    <div ref="seenContainer" class="seen-indicators px-2">
       <!-- Rendered in client block -->
     </div>
   </div>

@@ -1,34 +1,34 @@
 <template id="global-media-bar">
-  <div id="{{ ref_container }}" ref="container" class="global-media-bar border-top bg-body shadow-lg {{ visibilityClass }}" style="height: 90px;">
+  <div ref="container" class="global-media-bar border-top bg-body shadow-lg {{ visibilityClass }}" style="height: 90px;">
     <div class="container-fluid h-100 px-4">
       <div class="row h-100 align-items-center">
         <!-- Left: Controls -->
         <div class="col-3 d-flex align-items-center gap-3">
-          <button id="{{ ref_btnPrev }}" ref="btnPrev" class="btn btn-link text-body p-0" title="Previous">
+          <button ref="btnPrev" class="btn btn-link text-body p-0" title="Previous">
             <i class="bi bi-skip-start-fill fs-3"></i>
           </button>
-          <button id="{{ ref_btnTogglePlay }}" ref="btnTogglePlay" class="btn btn-link text-body p-0" title="Play/Pause">
+          <button ref="btnTogglePlay" class="btn btn-link text-body p-0" title="Play/Pause">
             <i class="bi {{ playPauseIcon }} fs-1"></i>
           </button>
-          <button id="{{ ref_btnNext }}" ref="btnNext" class="btn btn-link text-body p-0" title="Next">
+          <button ref="btnNext" class="btn btn-link text-body p-0" title="Next">
             <i class="bi bi-skip-end-fill fs-3"></i>
           </button>
           <div class="ms-2 text-muted small d-none d-md-block">
-            <span id="{{ ref_currentTime }}" ref="currentTime">0:00</span> / <span id="{{ ref_duration }}" ref="duration">0:00</span>
+            <span ref="currentTime">0:00</span> / <span ref="duration">0:00</span>
           </div>
         </div>
 
         <!-- Center: Metadata -->
         <div class="col-6 d-flex align-items-center justify-content-center">
-          <div id="{{ ref_mediaInfo }}" ref="mediaInfo" class="d-flex align-items-center text-center gap-3 overflow-hidden" style="max-width: 100%;">
+          <div ref="mediaInfo" class="d-flex align-items-center text-center gap-3 overflow-hidden" style="max-width: 100%;">
              <div class="media-thumbnail bg-secondary-subtle rounded overflow-hidden flex-shrink-0" style="width: 56px; height: 56px;">
-                <img id="{{ ref_thumbnail }}" ref="thumbnail" src="" class="w-100 h-100 object-fit-cover {{ thumbnailClass }}" alt="">
-                <div id="{{ ref_videoPlaceholder }}" ref="videoPlaceholder" class="w-100 h-100 d-flex align-items-center justify-content-center {{ placeholderClass }}">
+                <img ref="thumbnail" src="" class="w-100 h-100 object-fit-cover {{ thumbnailClass }}" alt="">
+                <div ref="videoPlaceholder" class="w-100 h-100 d-flex align-items-center justify-content-center {{ placeholderClass }}">
                   <i class="bi {{ placeholderIcon }} fs-3 text-secondary"></i>
                 </div>
              </div>
              <div class="text-start text-truncate">
-                <a href="#" id="{{ ref_linkTitle }}" ref="linkTitle" class="d-block fw-bold text-body text-decoration-none text-truncate mb-0">{{ mediaTitle }}</a>
+                <a href="#" ref="linkTitle" class="d-block fw-bold text-body text-decoration-none text-truncate mb-0">{{ mediaTitle }}</a>
                 <div class="text-muted small text-truncate">{{ mediaSubtext }}</div>
              </div>
           </div>
@@ -37,20 +37,20 @@
         <!-- Right: Volume & Extra -->
         <div class="col-3 d-flex align-items-center justify-content-end gap-3">
           <i class="bi {{ volumeIcon }} fs-5 text-muted"></i>
-          <input type="range" id="{{ ref_volumeSlider }}" ref="volumeSlider" class="form-range" style="width: 100px;" min="0" max="1" step="0.01" value="{{ volumeValue }}">
+          <input type="range" ref="volumeSlider" class="form-range" style="width: 100px;" min="0" max="1" step="0.01" value="{{ volumeValue }}">
         </div>
       </div>
     </div>
 
     <!-- Hidden Master Players -->
     <div class="visually-hidden">
-      <audio id="{{ ref_audioPlayer }}" ref="audioPlayer"></audio>
-      <video id="{{ ref_videoPlayer }}" ref="videoPlayer"></video>
+      <audio ref="audioPlayer"></audio>
+      <video ref="videoPlayer"></video>
     </div>
     
     <!-- Progress Bar (Top) -->
-    <div class="progress position-absolute top-0 start-0 end-0" style="height: 3px; cursor: pointer;" id="{{ ref_progressContainer }}" ref="progressContainer">
-      <div id="{{ ref_progressBar }}" ref="progressBar" class="progress-bar" role="progressbar" style="width: 0%;"></div>
+    <div class="progress position-absolute top-0 start-0 end-0" style="height: 3px; cursor: pointer;" ref="progressContainer">
+      <div ref="progressBar" class="progress-bar" role="progressbar" style="width: 0%;"></div>
     </div>
   </div>
 </template>

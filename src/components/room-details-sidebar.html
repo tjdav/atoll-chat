@@ -2,20 +2,20 @@
   <div class="room-details d-flex flex-column h-100 bg-body">
     <div class="sidebar-header p-3 border-bottom d-flex justify-content-between align-items-center bg-body">
       <h6 class="mb-0 fw-bold">Room Details</h6>
-      <button id="{{ ref_btnClose }}" type="button" class="btn-close" ref="btnClose" aria-label="Close"></button>
+      <button type="button" class="btn-close" ref="btnClose" aria-label="Close"></button>
     </div>
 
     <div class="sidebar-content flex-grow-1 overflow-y-auto p-3">
       <div class="section-title text-uppercase text-muted small fw-bold mb-3">Members ({{ memberCount }})</div>
-      <div id="{{ ref_memberList }}" class="member-list list-group list-group-flush" ref="memberList">
+      <div class="member-list list-group list-group-flush" ref="memberList">
         <!-- Members will be rendered here -->
       </div>
     </div>
 
-    <div id="{{ ref_loadingOverlay }}" ref="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-75 {{ loadingClass }} align-items-center justify-content-center" style="z-index: 1060;">
+    <div ref="loadingOverlay" class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-75 {{ loadingClass }} align-items-center justify-content-center" style="z-index: 1060;">
       <div class="text-center">
         <div class="spinner-border text-primary mb-2" role="status"></div>
-        <div id="{{ ref_loadingText }}" class="small fw-bold" ref="loadingText">{{ loadingMessage }}</div>
+        <div class="small fw-bold" ref="loadingText">{{ loadingMessage }}</div>
       </div>
     </div>
   </div>
