@@ -10,10 +10,11 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
+      const { $utils } = utils
       const listGroup = refs('listGroup')
 
       let currentRenderId = 0

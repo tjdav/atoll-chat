@@ -10,11 +10,12 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, pocketbase }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, pocketbase, utils }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
       const { pb } = pocketbase
+      const { $utils } = utils
       const gridContainer = refs('gridContainer')
 
       const objectUrls = new Map()
