@@ -72,6 +72,9 @@
 
         loading.classList.add('d-none')
 
+        // Clear existing media to prevent duplicates
+        container.querySelectorAll('.waveform-player, audio').forEach(el => el.remove())
+
         if (message.waveform_data) {
           const player = document.createElement('div')
           player.className = 'waveform-player'

@@ -74,6 +74,9 @@
         container.style.minHeight = 'auto'
 
         const renderMedia = () => {
+          // Clear existing media to prevent duplicates
+          container.querySelectorAll('img, video').forEach(el => el.remove())
+
           if (message.mime_type.startsWith('image/')) {
             const img = document.createElement('img')
             img.src = objectUrl
