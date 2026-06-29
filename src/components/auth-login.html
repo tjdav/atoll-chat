@@ -115,8 +115,9 @@
               $state.isVaultUnlocked = true
             }
           } catch (unlockErr) {
-            console.warn('Auto-unlock failed (might be a legacy PIN-based vault):', unlockErr)
-            // We don't block login if auto-unlock fails, app-root will show the manual unlock screen
+            if (!unlockErr.message?.includes('wrong secret key')) {
+              console.warn('Auto-unlock failed:', unlockErr)
+            }
           }
 
           $state.isAuthenticated = true
