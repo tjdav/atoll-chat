@@ -35,21 +35,8 @@ export default function syncPlugin () {
               : defaultDate
 
             try {
-              // Fetch missed messages
-              const missedMessages = await pb.collection('messages').getFullList({
-                filter: `created > "${lastMsgSyncTime}"`,
-                sort: 'created'
-              })
-
-              for (const record of missedMessages) {
-                try {
-                  await $worker.execute('PROCESS_INCOMING_MESSAGE', record)
-                } catch (err) {
-                  console.error(`Failed to process caught-up message ${record.id}:`, err)
-                }
-              }
-
-              // Fetch missed room keys (invites/epochs)
+              // Fetch missed room keys (invites/epochs) first
+              // This ensures we have the keys to decrypt messages from any newly joined rooms
               const missedKeys = await pb.collection('room_members').getFullList({
                 filter: `user_id = "${pb.authStore.model.id}" && updated > "${lastRoomSyncTime}"`,
                 sort: 'updated'
@@ -60,6 +47,20 @@ export default function syncPlugin () {
                   await $worker.execute('PROCESS_NEW_ROOM_KEY', record)
                 } catch (err) {
                   console.error(`Failed to process caught-up room key ${record.id}:`, err)
+                }
+              }
+
+              // Fetch missed messages SECOND
+              const missedMessages = await pb.collection('messages').getFullList({
+                filter: `created > "${lastMsgSyncTime}"`,
+                sort: 'created'
+              })
+
+              for (const record of missedMessages) {
+                try {
+                  await $worker.execute('PROCESS_INCOMING_MESSAGE', record)
+                } catch (err) {
+                  console.error(`Failed to process caught-up message ${record.id}:`, err)
                 }
               }
 
