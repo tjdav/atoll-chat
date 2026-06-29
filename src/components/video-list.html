@@ -24,120 +24,130 @@
       }
       signal.addEventListener('abort', cleanupUrls)
 
+      let currentRenderId = 0
       const render = async () => {
         if (!gridContainer) {
           return
         }
 
+        const renderId = ++currentRenderId
         try {
           const rawItems = await $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at')
-          gridContainer.innerHTML = ''
+          if (renderId !== currentRenderId) {
+            return
+          }
+
+          const fragment = document.createDocumentFragment()
 
           if (rawItems.length === 0) {
             const emptyMsg = document.createElement('div')
             emptyMsg.className = 'col-12 p-4 text-center text-muted'
             emptyMsg.textContent = 'No videos found'
-            gridContainer.appendChild(emptyMsg)
-            return
+            fragment.appendChild(emptyMsg)
+          } else {
+            rawItems.forEach(item => {
+              const dt = new Date(item.created_at)
+              const dateStr = dt.toLocaleDateString()
+              const timeStr = dt.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+              })
+
+              const col = document.createElement('div')
+              col.className = 'col'
+
+              const card = document.createElement('div')
+              const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos'
+              card.className = `card h-100 border-0 shadow-sm overflow-hidden clickable-card ${isActive ? 'border border-primary border-2' : ''}`
+  
+              const videoContainer = document.createElement('div')
+              videoContainer.className = 'ratio ratio-16x9 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 overflow-hidden'
+  
+              const icon = document.createElement('i')
+              icon.className = 'bi bi-camera-video fs-1 text-white opacity-50'
+              videoContainer.appendChild(icon);
+
+              (async () => {
+                try {
+                  const { default: sodium } = await import('libsodium-wrappers-sumo')
+                  await sodium.ready
+
+                  const mediaRecord = await pb.collection('media').getOne(item.media_id)
+                  const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+                  const response = await fetch(url)
+                  if (!response.ok) {
+                    throw new Error('Fetch failed')
+                  }
+                  const encryptedData = new Uint8Array(await response.arrayBuffer())
+
+                  const key = sodium.from_base64(item.file_key, sodium.base64_variants.ORIGINAL)
+                  const nonce = sodium.from_base64(item.file_nonce, sodium.base64_variants.ORIGINAL)
+
+                  const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
+                  if (!decryptedData) {
+                    throw new Error('Decryption failed')
+                  }
+
+                  const blob = new Blob([decryptedData], { type: item.mime_type })
+                  const objectUrl = URL.createObjectURL(blob)
+                  objectUrls.set(item.id, objectUrl)
+
+                  const video = document.createElement('video')
+                  video.src = objectUrl
+                  video.muted = true
+                  video.className = 'object-fit-cover w-100 h-100'
+                  videoContainer.innerHTML = ''
+                  videoContainer.appendChild(video)
+                } catch (err) {
+                  console.error('[video-list] Preview error:', err)
+                }
+              })()
+  
+              const cardBody = document.createElement('div')
+              cardBody.className = 'card-body p-2'
+  
+              const dateText = document.createElement('small')
+              dateText.className = 'd-block text-truncate text-muted'
+              dateText.textContent = dateStr
+  
+              const timeText = document.createElement('small')
+              timeText.className = 'd-block text-truncate text-muted opacity-75'
+              timeText.style.fontSize = '0.75rem'
+              timeText.textContent = timeStr
+
+              cardBody.appendChild(dateText)
+              cardBody.appendChild(timeText)
+  
+              card.appendChild(videoContainer)
+              card.appendChild(cardBody)
+              col.appendChild(card)
+
+              card.addEventListener('click', () => {
+                $state.activeSelectionId = item.id
+                $state.activeSelectionType = 'videos'
+
+                // Set queue
+                $state.mediaQueue = rawItems.map(i => i.id)
+
+                // Auto play
+                if (!$state.currentMedia || $state.currentMedia.id !== item.id) {
+                  $state.currentMedia = {
+                    id: item.id,
+                    type: 'videos'
+                  }
+                  $state.playbackStatus = 'playing'
+                }
+              })
+
+              fragment.appendChild(col)
+            })
           }
 
-          rawItems.forEach(item => {
-            const dt = new Date(item.created_at)
-            const dateStr = dt.toLocaleDateString()
-            const timeStr = dt.toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            })
-
-            const col = document.createElement('div')
-            col.className = 'col'
-
-            const card = document.createElement('div')
-            const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos'
-            card.className = `card h-100 border-0 shadow-sm overflow-hidden clickable-card ${isActive ? 'border border-primary border-2' : ''}`
-  
-            const videoContainer = document.createElement('div')
-            videoContainer.className = 'ratio ratio-16x9 d-flex align-items-center justify-content-center bg-dark bg-opacity-75 overflow-hidden'
-  
-            const icon = document.createElement('i')
-            icon.className = 'bi bi-camera-video fs-1 text-white opacity-50'
-            videoContainer.appendChild(icon);
-
-            (async () => {
-              try {
-                const { default: sodium } = await import('libsodium-wrappers-sumo')
-                await sodium.ready
-
-                const mediaRecord = await pb.collection('media').getOne(item.media_id)
-                const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-
-                const response = await fetch(url)
-                if (!response.ok) {
-                  throw new Error('Fetch failed')
-                }
-                const encryptedData = new Uint8Array(await response.arrayBuffer())
-
-                const key = sodium.from_base64(item.file_key, sodium.base64_variants.ORIGINAL)
-                const nonce = sodium.from_base64(item.file_nonce, sodium.base64_variants.ORIGINAL)
-
-                const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-                if (!decryptedData) {
-                  throw new Error('Decryption failed')
-                }
-
-                const blob = new Blob([decryptedData], { type: item.mime_type })
-                const objectUrl = URL.createObjectURL(blob)
-                objectUrls.set(item.id, objectUrl)
-
-                const video = document.createElement('video')
-                video.src = objectUrl
-                video.muted = true
-                video.className = 'object-fit-cover w-100 h-100'
-                videoContainer.innerHTML = ''
-                videoContainer.appendChild(video)
-              } catch (err) {
-                console.error('[video-list] Preview error:', err)
-              }
-            })()
-  
-            const cardBody = document.createElement('div')
-            cardBody.className = 'card-body p-2'
-  
-            const dateText = document.createElement('small')
-            dateText.className = 'd-block text-truncate text-muted'
-            dateText.textContent = dateStr
-  
-            const timeText = document.createElement('small')
-            timeText.className = 'd-block text-truncate text-muted opacity-75'
-            timeText.style.fontSize = '0.75rem'
-            timeText.textContent = timeStr
-
-            cardBody.appendChild(dateText)
-            cardBody.appendChild(timeText)
-  
-            card.appendChild(videoContainer)
-            card.appendChild(cardBody)
-            col.appendChild(card)
-
-            card.addEventListener('click', () => {
-              $state.activeSelectionId = item.id
-              $state.activeSelectionType = 'videos'
-
-              // Set queue
-              $state.mediaQueue = rawItems.map(i => i.id)
-
-              // Auto play
-              if (!$state.currentMedia || $state.currentMedia.id !== item.id) {
-                $state.currentMedia = {
-                  id: item.id,
-                  type: 'videos'
-                }
-                $state.playbackStatus = 'playing'
-              }
-            })
-
-            gridContainer.appendChild(col)
-          })
+          if (renderId === currentRenderId) {
+            gridContainer.innerHTML = ''
+            gridContainer.appendChild(fragment)
+          }
         } catch (error) {
           console.error('[video-list] Error fetching videos:', error)
         }
@@ -146,16 +156,20 @@
       // Initial render
       render()
 
+      const debouncedRender = $utils.debounce(render, 10)
+
       // Handle selection change
       $state.subscribe('activeSelectionId', () => {
-        render()
+        if ($state.activeSelectionType === 'videos') {
+          debouncedRender()
+        }
       })
       $state.subscribe('activeSelectionType', () => {
-        render()
+        debouncedRender()
       })
 
       const handleNewData = () => {
-        render()
+        debouncedRender()
       }
 
       $bus.on('NEW_LOCAL_DATA', handleNewData)

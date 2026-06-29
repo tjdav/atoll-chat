@@ -202,25 +202,40 @@
         }
       }
 
+      let currentRenderId = 0
       const render = async () => {
         if (!listGroup) {
           return
         }
 
+        const renderId = ++currentRenderId
         try {
           const rawItems = await $localDb.local_rooms.reverse().sortBy('updated_at')
-          listGroup.innerHTML = ''
-
-          if (rawItems.length === 0) {
-            const emptyMsg = document.createElement('div')
-            emptyMsg.className = 'p-4 text-center text-muted'
-            emptyMsg.textContent = 'No chats found'
-            listGroup.appendChild(emptyMsg)
+          if (renderId !== currentRenderId) {
             return
           }
 
-          for (const item of rawItems) {
+          // Fast-path for empty state
+          if (rawItems.length === 0) {
+            listGroup.innerHTML = '<div class="p-4 text-center text-muted">No chats found</div>'
+            return
+          }
+
+          // Pre-fetch latest messages in parallel to minimize async window during loop
+          const enriched = await Promise.all(rawItems.map(async (item) => {
             const latestMsg = await getLatestMessage(item.id)
+            return {
+              item,
+              latestMsg
+            }
+          }))
+          if (renderId !== currentRenderId) {
+            return
+          }
+
+          const fragment = document.createDocumentFragment()
+
+          for (const { item, latestMsg } of enriched) {
             const me = item.participants?.find(p => p.id === $state.currentUser?.id)
             const isUnread = latestMsg &&
                              latestMsg.sender_id !== $state.currentUser?.id &&
@@ -250,11 +265,11 @@
             previewContainer.className = 'd-flex align-items-center'
 
             const previewDiv = document.createElement('small')
-              previewDiv.className = `text-truncate flex-grow-1 opacity-75 ${isUnread ? 'fw-bold' : ''}`
+            previewDiv.className = `text-truncate flex-grow-1 opacity-75 ${isUnread ? 'fw-bold' : ''}`
             previewDiv.textContent = getPreviewText(latestMsg, item.participants || [], item.is_group)
 
             const timeSmall = document.createElement('small')
-              timeSmall.className = 'opacity-75 ms-1 flex-shrink-0'
+            timeSmall.className = 'opacity-75 ms-1 flex-shrink-0'
             const relativeTime = latestMsg ? $utils.formatRelativeTime(latestMsg.created_at) : ''
             timeSmall.textContent = relativeTime ? ` · ${relativeTime}` : ''
 
@@ -351,7 +366,12 @@
               }
             })
 
-            listGroup.appendChild(container)
+            fragment.appendChild(container)
+          }
+
+          if (renderId === currentRenderId) {
+            listGroup.innerHTML = ''
+            listGroup.appendChild(fragment)
           }
         } catch (error) {
           console.error('[chat-list] Error fetching chats:', error)
@@ -361,16 +381,20 @@
       // Initial render
       render()
 
+      const debouncedRender = $utils.debounce(render, 50)
+
       // Handle selection change
       $state.subscribe('activeSelectionId', () => {
-        render()
+        if ($state.activeSelectionType === 'chats') {
+          debouncedRender()
+        }
       })
       $state.subscribe('activeSelectionType', () => {
-        render()
+        debouncedRender()
       })
 
       const handleNewData = () => {
-        render()
+        debouncedRender()
       }
 
       $bus.on('NEW_LOCAL_DATA', handleNewData)
