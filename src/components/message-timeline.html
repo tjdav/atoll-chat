@@ -4,6 +4,10 @@
       <i class="bi bi-shield-lock fs-1 mb-3 d-block"></i>
       <p>Messages are end-to-end encrypted. No one outside of this chat, not even Atoll, can read them.</p>
     </div>
+    <div id="{{ ref_statusContainer }}" ref="statusContainer" class="message-status-container d-none text-end px-2 py-1">
+      <span ref="statusText" class="x-small text-muted me-1"></span>
+      <i ref="statusIcon" class="bi bi-check text-muted" style="font-size: 1rem; line-height: 1;"></i>
+    </div>
   </div>
 </template>
 
@@ -19,6 +23,9 @@
       const { pb } = pocketbase
       const container = refs('timelineContainer')
       const emptyState = refs('emptyState')
+      const statusContainer = refs('statusContainer')
+      const statusText = refs('statusText')
+      const statusIcon = refs('statusIcon')
 
       let lastRoomId = null
       let seenTimeout = null
@@ -310,6 +317,19 @@
             intersectionObserver.observe(row)
             lastRenderedMessageId = message.id || message.local_uuid
           })
+
+          // Update and append status container
+          const lastMessage = messages[messages.length - 1]
+          if (lastMessage && lastMessage.sender_id === $state.currentUser?.id) {
+            statusContainer.classList.remove('d-none')
+            statusText.textContent = lastMessage.status === 'pending' ? 'Sending...' : 'Sent'
+            
+            statusIcon.className = lastMessage.status === 'pending' ? 'bi bi-circle text-muted' : 'bi bi-check text-muted'
+            
+            container.appendChild(statusContainer)
+          } else {
+            statusContainer.classList.add('d-none')
+          }
 
           if (isNewRoom) {
             requestAnimationFrame(() => scrollToBottom())

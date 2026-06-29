@@ -45,12 +45,11 @@ test.describe('Media Messaging', () => {
     const isOptimisticVisible = await aliceMessageRow.locator('.placeholder-glow').isVisible()
     console.log('Optimistic UI visible:', isOptimisticVisible)
 
-    // Alice's Worker Confirmation: Wait for checkmark to appear
+    // Alice's Worker Confirmation: Wait for global sent status to appear
     console.log('Waiting for Alice\'s worker to finish encryption and upload...')
-    // Since we have both image and text, there will be two checkmarks.
-    // We check that at least one is visible (or verify both).
-    await expect(aliceMessageRow.locator('media-preview [data-testid="sent-checkmark"]')).toBeVisible({ timeout: 20000 })
-    await expect(aliceMessageRow.locator('text-message [data-testid="sent-checkmark"]')).toBeVisible({ timeout: 20000 })
+    const statusContainer = alicePage.locator('.message-status-container')
+    await expect(statusContainer).toBeVisible({ timeout: 20000 })
+    await expect(statusContainer.locator('span')).toHaveText('Sent')
     await expect(aliceMessageRow.locator('.placeholder-glow')).not.toBeVisible()
 
     console.log('Bob waiting for Alice\'s chat and message...')

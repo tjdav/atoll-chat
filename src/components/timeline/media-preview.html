@@ -4,11 +4,6 @@
       <div class="placeholder col-8 mb-2" style="height: 24px;"></div>
       <div class="placeholder col-4" style="height: 16px;"></div>
     </div>
-    <div class="position-absolute bottom-0 end-0 p-2 {{ checkmarkClass }}" style="z-index: 2;">
-      <div class="bg-dark bg-opacity-50 rounded-circle d-flex align-items-center justify-content-center" style="width: 24px; height: 24px;">
-        <i class="bi bi-check text-white" style="font-size: 1.2rem; line-height: 1;" data-testid="sent-checkmark"></i>
-      </div>
-    </div>
   </div>
 </template>
 
@@ -25,8 +20,7 @@
       }
     },
     getters: {
-      loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave'),
-      checkmarkClass: (state) => (state.isSent && state.status === 'sent' ? 'd-block' : 'd-none')
+      loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
     client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus }) => {
       const { $localDb } = localDb

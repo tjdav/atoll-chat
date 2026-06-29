@@ -3,7 +3,6 @@
     <span class="{{ glowClass }} flex-grow-1">
       <span class="{{ placeholderClass }}">{{ content }}</span>
     </span>
-    <i class="bi bi-check ms-1 {{ checkmarkClass }}" style="font-size: 1rem; line-height: 1;" data-testid="sent-checkmark"></i>
   </div>
 </template>
 
@@ -39,8 +38,7 @@
         return `${typeClass} ${posClass}`
       },
       glowClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : ''),
-      placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : ''),
-      checkmarkClass: (state) => (state.isSent && state.status === 'sent' ? 'd-inline-block' : 'd-none')
+      placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : '')
     }
   })
 </script>
