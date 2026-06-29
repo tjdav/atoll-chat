@@ -46,7 +46,12 @@ export default defineConfig({
   pages: 'src/pages',
   components: 'src/components',
   styles: {
-    input: ['src/scss/styles.scss']
+    input: ['src/scss/styles.scss'],
+    processors: {
+      scss: {
+        silenceDeprecations: ['if-function', 'color-functions', 'global-builtin', 'import']
+      }
+    }
   },
   assets: [
     {
