@@ -64,7 +64,9 @@
       let sodiumInstance = null
 
       const getInitials = (name) => {
-        if (!name) return '?'
+        if (!name) {
+          return '?'
+        }
         return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
       }
 
@@ -90,7 +92,9 @@
       }
 
       const renderAvatar = async () => {
-        if (!avatarContainer) return
+        if (!avatarContainer) {
+          return
+        }
         avatarContainer.innerHTML = ''
         avatarContainer.className = 'list-item-icon'
 
@@ -160,23 +164,37 @@
       }
 
       const renderDropdown = () => {
-        if (!dropdownMenu) return
+        if (!dropdownMenu) {
+          return
+        }
         dropdownMenu.innerHTML = ''
         const isAdmin = state.userRole === 'admin'
-        
+  
         const menuItems = [
           isAdmin ? {
             label: 'Edit Room',
             icon: 'bi-pencil',
             action: async () => {
-               const room = await $localDb.local_rooms.get(state.roomId)
-               if (room) $bus.emit('open-edit-room', room)
+              const room = await $localDb.local_rooms.get(state.roomId)
+              if (room) {
+                $bus.emit('open-edit-room', room)
+              }
             }
           } : null,
-          { label: 'Mark as unread', icon: 'bi-envelope' },
-          { label: 'Mute notifications', icon: 'bi-bell-slash' },
+          {
+            label: 'Mark as unread',
+            icon: 'bi-envelope'
+          },
+          {
+            label: 'Mute notifications',
+            icon: 'bi-bell-slash'
+          },
           { type: 'divider' },
-          { label: 'Delete chat', icon: 'bi-trash', class: 'text-danger' }
+          {
+            label: 'Delete chat',
+            icon: 'bi-trash',
+            class: 'text-danger'
+          }
         ].filter(Boolean)
 
         menuItems.forEach(m => {
@@ -191,7 +209,9 @@
             a.onclick = (e) => {
               e.preventDefault()
               e.stopPropagation()
-              if (m.action) m.action()
+              if (m.action) {
+                m.action()
+              }
             }
             li.appendChild(a)
           }
@@ -201,14 +221,18 @@
 
       const markAsRead = async () => {
         const room = await $localDb.local_rooms.get(state.roomId)
-        if (!room) return
+        if (!room) {
+          return
+        }
 
         const latestMsg = await $localDb.local_messages
           .where('[room_id+created_at]')
           .between([state.roomId, ''], [state.roomId, '\uffff'])
           .last()
 
-        if (!latestMsg) return
+        if (!latestMsg) {
+          return
+        }
 
         const me = room.participants.find(p => p.id === $state.currentUser?.id)
         if (me && me.last_read_message_id !== latestMsg.id) {
@@ -229,7 +253,9 @@
       }
 
       container.onclick = async (e) => {
-        if (e.target.closest('.dropdown')) return
+        if (e.target.closest('.dropdown')) {
+          return
+        }
         $state.activeSelectionId = state.roomId
         $state.activeSelectionType = 'chats'
         if (state.isUnread === 'true') {

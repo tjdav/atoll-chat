@@ -19,12 +19,16 @@
 
       let currentRenderId = 0
       const render = async () => {
-        if (!gridContainer) return
+        if (!gridContainer) {
+          return
+        }
 
         const renderId = ++currentRenderId
         try {
           const rawItems = await $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at')
-          if (renderId !== currentRenderId) return
+          if (renderId !== currentRenderId) {
+            return
+          }
 
           if (rawItems.length === 0) {
             gridContainer.innerHTML = '<div class="col-12 p-4 text-center text-muted">No videos found</div>'
@@ -35,7 +39,10 @@
           rawItems.forEach(item => {
             const dt = new Date(item.created_at)
             const dateStr = dt.toLocaleDateString()
-            const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            const timeStr = dt.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            })
             const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos'
 
             const card = document.createElement('media-grid-card')

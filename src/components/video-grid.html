@@ -4,7 +4,7 @@
     <video ref="remoteVideo" class="remote-video w-100 h-100 object-fit-cover" autoplay playsinline></video>
     
     <!-- Picture-in-Picture local video -->
-    <video ref="localVideo" class="position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
+    <video ref="localVideo" class="local-video position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
 
     <!-- Overlay if no remote video yet -->
     <div ref="remotePlaceholder" class="position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
@@ -114,3 +114,21 @@
     }
   })
 </script>
+
+<style>
+  /* Shrink local video when in a small container (like PiP) */
+  :host-context(.pip-window) .local-video {
+    width: 80px !important;
+    margin: 0.5rem !important;
+    border-width: 1px !important;
+  }
+
+  :host-context(.pip-window) .remote-placeholder p {
+    font-size: 0.8rem !important;
+  }
+
+  :host-context(.pip-window) .spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+</style>

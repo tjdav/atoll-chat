@@ -53,21 +53,26 @@
         $state.activeSelectionType = state.type
 
         if (isVideo) {
-           // Set queue and play for video
-           $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at').then(rawItems => {
-              $state.mediaQueue = rawItems.map(i => i.id)
-              if (!$state.currentMedia || $state.currentMedia.id !== state.assetId) {
-                $state.currentMedia = { id: state.assetId, type: 'videos' }
-                $state.playbackStatus = 'playing'
+          // Set queue and play for video
+          $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at').then(rawItems => {
+            $state.mediaQueue = rawItems.map(i => i.id)
+            if (!$state.currentMedia || $state.currentMedia.id !== state.assetId) {
+              $state.currentMedia = {
+                id: state.assetId,
+                type: 'videos'
               }
-           })
+              $state.playbackStatus = 'playing'
+            }
+          })
         }
       }
 
       // Decrypt and render preview (This stays in client block as it requires libsodium and fetching)
       const renderPreview = async () => {
-        if (!state.mediaId || !state.fileKey || !state.fileNonce) return
-        
+        if (!state.mediaId || !state.fileKey || !state.fileNonce) {
+          return
+        }
+  
         try {
           const { default: sodium } = await import('libsodium-wrappers-sumo')
           await sodium.ready
@@ -76,14 +81,18 @@
           const url = pb.files.getURL(mediaRecord, mediaRecord.file)
 
           const response = await fetch(url)
-          if (!response.ok) throw new Error('Fetch failed')
+          if (!response.ok) {
+            throw new Error('Fetch failed')
+          }
           const encryptedData = new Uint8Array(await response.arrayBuffer())
 
           const key = sodium.from_base64(state.fileKey, sodium.base64_variants.ORIGINAL)
           const nonce = sodium.from_base64(state.fileNonce, sodium.base64_variants.ORIGINAL)
 
           const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-          if (!decryptedData) throw new Error('Decryption failed')
+          if (!decryptedData) {
+            throw new Error('Decryption failed')
+          }
 
           const blob = new Blob([decryptedData], { type: state.mimeType })
           const objectUrl = URL.createObjectURL(blob)

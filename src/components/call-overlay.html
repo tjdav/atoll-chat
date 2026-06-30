@@ -26,7 +26,9 @@
 
           <!-- Active Call View -->
           <div class="active-view h-100 position-relative {{ activeClass }}">
-            <video-grid></video-grid>
+            <div ref="fullScreenVideoContainer" class="h-100 w-100">
+              <video-grid ref="videoGrid"></video-grid>
+            </div>
             
             <!-- Control Bar -->
             <div class="control-bar position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-3 p-3 rounded-pill bg-dark bg-opacity-75 shadow-lg border border-secondary">
@@ -35,6 +37,9 @@
               </button>
               <button ref="btnToggleVideo" class="btn {{ videoBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
                 <i class="bi {{ videoIconClass }} fs-4"></i>
+              </button>
+              <button ref="btnPip" class="btn btn-light rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;" title="Picture-in-Picture">
+                <i class="bi bi-pip fs-4"></i>
               </button>
               <button ref="btnEndCall" class="btn btn-danger rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
                 <i class="bi bi-telephone-x-fill fs-4"></i>
@@ -45,6 +50,11 @@
         </div>
       </div>
     </div>
+  </div>
+
+  <!-- PiP Window -->
+  <div class="{{ pipClass }}">
+    <pip-video ref="pipVideo"></pip-video>
   </div>
 </template>
 
@@ -59,11 +69,13 @@
       isAudioEnabled: true,
       isVideoEnabled: true,
       localStream: null,
-      remoteOffer: null
+      remoteOffer: null,
+      isPipMode: false
     }),
     getters: {
       incomingClass: (state) => (state.callStatus === 'incoming' ? 'd-flex' : 'd-none'),
-      activeClass: (state) => (state.callStatus === 'active' ? 'd-block' : 'd-none'),
+      activeClass: (state) => (state.callStatus === 'active' && !state.isPipMode ? 'd-block' : 'd-none'),
+      pipClass: (state) => (state.callStatus === 'active' && state.isPipMode ? 'd-block' : 'd-none'),
       audioBtnClass: (state) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
       audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
@@ -81,22 +93,37 @@
         keyboard: false
       })
 
-      const updateModalVisibility = (status) => {
-        if (status !== 'idle') {
+      const updateModalVisibility = (status, isPip) => {
+        if (status !== 'idle' && !isPip) {
           modal.show()
         } else {
           modal.hide()
         }
       }
 
+      const syncVideoGrid = () => {
+        const videoGrid = refs('videoGrid')
+        const pipVideo = refs('pipVideo')
+        if (!videoGrid) {
+          return
+        }
+
+        if (state.isPipMode && pipVideo) {
+          const container = pipVideo.shadowRoot ? pipVideo.shadowRoot.querySelector('[ref$="container"]') : pipVideo.querySelector('[ref$="container"]')
+          if (container) {
+            container.appendChild(videoGrid)
+          }
+        } else {
+          refs('fullScreenVideoContainer').appendChild(videoGrid)
+        }
+      }
+
       // Sync local state with global state
       state.callStatus = $state.callStatus
-      updateModalVisibility(state.callStatus)
+      $state.isAudioEnabled = state.isAudioEnabled
+      $state.isVideoEnabled = state.isVideoEnabled
 
-      $state.subscribe('callStatus', (val) => {
-        state.callStatus = val
-        updateModalVisibility(val)
-      })
+      updateModalVisibility(state.callStatus, state.isPipMode)
 
       const stopTracks = () => {
         if (state.localStream) {
@@ -114,6 +141,45 @@
         $state.activeCallRoomId = null
         state.remoteOffer = null
       }
+
+      const toggleAudio = () => {
+        if (state.localStream) {
+          const tracks = state.localStream.getAudioTracks()
+          if (tracks.length > 0) {
+            const nextState = !tracks[0].enabled
+            tracks.forEach(track => {
+              track.enabled = nextState
+            })
+            state.isAudioEnabled = nextState
+            $state.isAudioEnabled = nextState
+          }
+        }
+      }
+
+      const toggleVideo = () => {
+        if (state.localStream) {
+          const tracks = state.localStream.getVideoTracks()
+          if (tracks.length > 0) {
+            const nextState = !tracks[0].enabled
+            tracks.forEach(track => {
+              track.enabled = nextState
+            })
+            state.isVideoEnabled = nextState
+            $state.isVideoEnabled = nextState
+          }
+        }
+      }
+
+      $state.subscribe('callStatus', (val) => {
+        state.callStatus = val
+        if (val === 'idle') {
+          state.isPipMode = false
+          // Reset PiP position
+          $bus.emit('PIP:RESET_POSITION')
+        }
+        updateModalVisibility(val, state.isPipMode)
+        syncVideoGrid()
+      })
 
       // Listen for incoming calls
       $bus.on('call_incoming', async ({ roomId, offer, senderId }) => {
@@ -166,6 +232,23 @@
         }
       }, { signal })
 
+      // PiP Toggle
+      refs('btnPip').addEventListener('click', () => {
+        state.isPipMode = true
+        updateModalVisibility(state.callStatus, true)
+        syncVideoGrid()
+      })
+
+      $bus.on('PIP:EXPAND', () => {
+        state.isPipMode = false
+        updateModalVisibility(state.callStatus, false)
+        syncVideoGrid()
+      }, { signal })
+
+      $bus.on('PIP:TOGGLE_AUDIO', () => toggleAudio(), { signal })
+      $bus.on('PIP:TOGGLE_VIDEO', () => toggleVideo(), { signal })
+      $bus.on('PIP:END_CALL', () => endCall(), { signal })
+
       // Accept Call
       refs('btnAccept').addEventListener('click', async () => {
         try {
@@ -188,33 +271,8 @@
         endCall()
       })
 
-      // Toggle Audio
-      refs('btnToggleAudio').addEventListener('click', () => {
-        if (state.localStream) {
-          const tracks = state.localStream.getAudioTracks()
-          if (tracks.length > 0) {
-            const nextState = !tracks[0].enabled
-            tracks.forEach(track => {
-              track.enabled = nextState
-            })
-            state.isAudioEnabled = nextState
-          }
-        }
-      })
-
-      // Toggle Video
-      refs('btnToggleVideo').addEventListener('click', () => {
-        if (state.localStream) {
-          const tracks = state.localStream.getVideoTracks()
-          if (tracks.length > 0) {
-            const nextState = !tracks[0].enabled
-            tracks.forEach(track => {
-              track.enabled = nextState
-            })
-            state.isVideoEnabled = nextState
-          }
-        }
-      })
+      refs('btnToggleAudio').addEventListener('click', toggleAudio)
+      refs('btnToggleVideo').addEventListener('click', toggleVideo)
 
       // End Call
       refs('btnEndCall').addEventListener('click', () => {

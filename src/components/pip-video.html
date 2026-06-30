@@ -1,0 +1,160 @@
+<template id="pip-video">
+  <div ref="pipWindow" class="pip-window position-fixed rounded shadow-lg overflow-hidden" style="width: 300px; aspect-ratio: 16/9; z-index: 10000; bottom: 20px; right: 20px; background: #000; cursor: grab; border: 1px solid rgba(255,255,255,0.2);">
+    <div ref="container" class="h-100 w-100"></div>
+    
+    <!-- PiP Controls Overlay (visible on hover) -->
+    <div class="pip-controls position-absolute bottom-0 start-0 w-100 d-flex justify-content-center gap-2 p-2 bg-dark bg-opacity-50 opacity-0 transition-opacity">
+      <button ref="btnToggleAudio" class="btn btn-sm {{ audioBtnClass }} rounded-circle p-1" style="width: 32px; height: 32px;">
+        <i class="bi {{ audioIconClass }} fs-6"></i>
+      </button>
+      <button ref="btnToggleVideo" class="btn btn-sm {{ videoBtnClass }} rounded-circle p-1" style="width: 32px; height: 32px;">
+        <i class="bi {{ videoIconClass }} fs-6"></i>
+      </button>
+      <button ref="btnExpand" class="btn btn-sm btn-light rounded-circle p-1" style="width: 32px; height: 32px;" title="Expand">
+        <i class="bi bi-fullscreen fs-6"></i>
+      </button>
+      <button ref="btnEndCall" class="btn btn-sm btn-danger rounded-circle p-1" style="width: 32px; height: 32px;">
+        <i class="bi bi-telephone-x-fill fs-6"></i>
+      </button>
+    </div>
+  </div>
+
+  <style>
+    .pip-window .pip-controls {
+      transition: opacity 0.2s;
+      pointer-events: auto;
+    }
+    .pip-window:hover .pip-controls {
+      opacity: 1 !important;
+    }
+    .pip-window.dragging {
+      cursor: grabbing !important;
+      opacity: 0.8;
+    }
+  </style>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      isAudioEnabled: true,
+      isVideoEnabled: true
+    }),
+    getters: {
+      audioBtnClass: (state) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
+      audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
+      videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
+      videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill')
+    },
+    client: ({ state, refs, signal, eventBus, globalStore }) => {
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const pipWindow = refs('pipWindow')
+
+      const syncFromGlobal = () => {
+        state.isAudioEnabled = !!$state.isAudioEnabled
+        state.isVideoEnabled = !!$state.isVideoEnabled
+      }
+
+      syncFromGlobal()
+      $state.subscribe('isAudioEnabled', syncFromGlobal)
+      $state.subscribe('isVideoEnabled', syncFromGlobal)
+  
+      // Draggable logic
+      let isDragging = false
+      let currentX
+      let currentY
+      let initialX
+      let initialY
+      let xOffset = 0
+      let yOffset = 0
+
+      const dragStart = (e) => {
+        if (e.type === 'touchstart') {
+          initialX = e.touches[0].clientX - xOffset
+          initialY = e.touches[0].clientY - yOffset
+        } else {
+          initialX = e.clientX - xOffset
+          initialY = e.clientY - yOffset
+        }
+
+        if (e.target === pipWindow || pipWindow.contains(e.target)) {
+          if (e.target.closest('button')) {
+            return
+          }
+          isDragging = true
+          pipWindow.classList.add('dragging')
+        }
+      }
+
+      const dragEnd = () => {
+        initialX = currentX
+        initialY = currentY
+        isDragging = false
+        pipWindow.classList.remove('dragging')
+      }
+
+      const drag = (e) => {
+        if (isDragging) {
+          e.preventDefault()
+          if (e.type === 'touchmove') {
+            currentX = e.touches[0].clientX - initialX
+            currentY = e.touches[0].clientY - initialY
+          } else {
+            currentX = e.clientX - initialX
+            currentY = e.clientY - initialY
+          }
+          xOffset = currentX
+          yOffset = currentY
+          setTranslate(currentX, currentY, pipWindow)
+        }
+      }
+
+      const setTranslate = (xPos, yPos, el) => {
+        el.style.transform = `translate3d(${xPos}px, ${yPos}px, 0)`
+      }
+
+      document.addEventListener('touchstart', dragStart, {
+        passive: false,
+        signal
+      })
+      document.addEventListener('touchend', dragEnd, {
+        passive: false,
+        signal
+      })
+      document.addEventListener('touchmove', drag, {
+        passive: false,
+        signal
+      })
+      document.addEventListener('mousedown', dragStart, {
+        passive: false,
+        signal
+      })
+      document.addEventListener('mouseup', dragEnd, {
+        passive: false,
+        signal
+      })
+      document.addEventListener('mousemove', drag, {
+        passive: false,
+        signal
+      })
+
+      // Controls
+      refs('btnToggleAudio').addEventListener('click', () => $bus.emit('PIP:TOGGLE_AUDIO'))
+      refs('btnToggleVideo').addEventListener('click', () => $bus.emit('PIP:TOGGLE_VIDEO'))
+      refs('btnExpand').addEventListener('click', () => $bus.emit('PIP:EXPAND'))
+      refs('btnEndCall').addEventListener('click', () => $bus.emit('PIP:END_CALL'))
+
+      // Support for programmatic reset
+      $bus.on('PIP:RESET_POSITION', () => {
+        pipWindow.style.transform = ''
+        xOffset = 0
+        yOffset = 0
+        currentX = 0
+        currentY = 0
+      }, { signal })
+    }
+  })
+</script>

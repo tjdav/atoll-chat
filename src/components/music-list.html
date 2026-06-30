@@ -19,12 +19,16 @@
 
       let currentRenderId = 0
       const render = async () => {
-        if (!listGroup) return
+        if (!listGroup) {
+          return
+        }
 
         const renderId = ++currentRenderId
         try {
           const assets = await $localDb.local_assets.where('mime_type').startsWith('audio/').reverse().sortBy('created_at')
-          if (renderId !== currentRenderId) return
+          if (renderId !== currentRenderId) {
+            return
+          }
 
           if (assets.length === 0) {
             listGroup.innerHTML = '<div class="p-4 text-center text-muted">No music found</div>'
@@ -33,17 +37,17 @@
 
           const fragment = document.createDocumentFragment()
           for (const asset of assets) {
-             const room = await $localDb.local_rooms.get(asset.room_id)
-             const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
-             const timestamp = new Date(asset.created_at).toLocaleString()
-             const isActive = asset.id === $state.activeSelectionId && $state.activeSelectionType === 'music'
+            const room = await $localDb.local_rooms.get(asset.room_id)
+            const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
+            const timestamp = new Date(asset.created_at).toLocaleString()
+            const isActive = asset.id === $state.activeSelectionId && $state.activeSelectionType === 'music'
 
-             const listItem = document.createElement('music-list-item')
-             listItem.setAttribute('asset-id', asset.id)
-             listItem.setAttribute('room-name', roomName)
-             listItem.setAttribute('timestamp', timestamp)
-             listItem.setAttribute('is-active', isActive)
-             fragment.appendChild(listItem)
+            const listItem = document.createElement('music-list-item')
+            listItem.setAttribute('asset-id', asset.id)
+            listItem.setAttribute('room-name', roomName)
+            listItem.setAttribute('timestamp', timestamp)
+            listItem.setAttribute('is-active', isActive)
+            fragment.appendChild(listItem)
           }
 
           if (renderId === currentRenderId) {

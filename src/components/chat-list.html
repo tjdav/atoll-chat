@@ -18,13 +18,9 @@
       const listGroup = refs('listGroup')
 
       const getLatestMessage = async (roomId) => {
-        // Find latest message that is NOT an ice_candidate
-        // Although ice_candidates aren't saved to localDb, real-time sync might pass them
-        // This function queries the DB which already excludes them, so it's safe.
         return await $localDb.local_messages
           .where('[room_id+created_at]')
           .between([roomId, ''], [roomId, '\uffff'])
-          .filter(m => m.type !== 'ice_candidate')
           .last()
       }
 
@@ -44,16 +40,6 @@
 
         if (msg.type === 'text') {
           return `${prefix}${msg.content}`
-        }
-
-        if (msg.type === 'call_offer') {
-          return `${prefix}Started a call.`
-        }
-        if (msg.type === 'call_answer') {
-          return `${prefix}Joined the call.`
-        }
-        if (msg.type === 'call_end') {
-          return `${prefix}Ended the call.`
         }
 
         const fallbacks = {
@@ -118,15 +104,34 @@
                              latestMsg.sender_id !== $state.currentUser?.id &&
                              latestMsg.id !== me?.last_read_message_id
 
-            const roomName = !item.is_group && (item.participants || []).filter(p => p.id !== $state.currentUser?.id).length > 0
-              ? item.participants.filter(p => p.id !== $state.currentUser?.id)[0].username
-              : (item.name || (item.is_group ? 'Unnamed Group' : 'Direct Message'))
+            let roomName = ''
+
+            if (!item.is_group) {
+              // Handle direct messages
+              const otherParticipants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
+
+              if (otherParticipants.length > 0) {
+                roomName = otherParticipants[0].username
+              } else {
+                roomName = item.name || 'Direct Message'
+              }
+            } else {
+              // Handle groups
+              roomName = item.name || 'Unnamed Group'
+            }
 
             const previewText = getPreviewText(latestMsg, item.participants || [], item.is_group)
-            const relativeTime = latestMsg ? ($utils.formatRelativeTime(latestMsg.created_at) ? ` · ${$utils.formatRelativeTime(latestMsg.created_at)}` : '') : ''
-            const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'chats'
+            let relativeTime = ''
+
+            if (latestMsg) {
+              const time = $utils.formatRelativeTime(latestMsg.created_at)
+              if (time) {
+                relativeTime = ` · ${time}`
+              }
+            } const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'chats'
 
             const listItem = document.createElement('chat-list-item')
+  
             listItem.setAttribute('room-id', item.id)
             listItem.setAttribute('room-name', roomName)
             listItem.setAttribute('preview-text', previewText)
@@ -136,7 +141,7 @@
             listItem.setAttribute('is-group', item.is_group)
             listItem.setAttribute('user-role', item.user_role)
             listItem.setAttribute('participants-json', JSON.stringify(item.participants || []))
-  
+
             if (item.avatar) {
               listItem.setAttribute('room-avatar', item.avatar)
             }
