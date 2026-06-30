@@ -245,10 +245,6 @@
         syncVideoGrid()
       }, { signal })
 
-      $bus.on('PIP:TOGGLE_AUDIO', () => toggleAudio(), { signal })
-      $bus.on('PIP:TOGGLE_VIDEO', () => toggleVideo(), { signal })
-      $bus.on('PIP:END_CALL', () => endCall(), { signal })
-
       // Accept Call
       refs('btnAccept').addEventListener('click', async () => {
         try {

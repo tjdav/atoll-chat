@@ -1,10 +1,10 @@
 <template id="video-grid">
-  <div class="video-grid position-relative w-100 h-100 bg-dark overflow-hidden">
+  <div class="video-grid position-relative w-100 h-100 bg-dark overflow-hidden {{ pipClass }}">
     <!-- Main background video (Remote) -->
     <video ref="remoteVideo" class="remote-video w-100 h-100 object-fit-cover" autoplay playsinline></video>
     
     <!-- Picture-in-Picture local video -->
-    <video ref="localVideo" class="local-video position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
+    <video ref="localVideo" class="local-video position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light {{ localVideoClass }}" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
 
     <!-- Overlay if no remote video yet -->
     <div ref="remotePlaceholder" class="position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
@@ -21,15 +21,40 @@
 
   export default defineComponent({
     server: () => ({
-      hasRemoteTrack: false
+      hasRemoteTrack: false,
+      isPipMode: false
     }),
     getters: {
-      placeholderClass: (state) => (state.hasRemoteTrack ? 'd-none' : 'd-flex')
+      placeholderClass: (state) => (state.hasRemoteTrack ? 'd-none' : 'd-flex'),
+      pipClass: (state) => (state.isPipMode ? 'is-pip' : ''),
+      localVideoClass: (state) => (state.isPipMode ? 'd-none' : 'd-block')
     },
     client: ({ refs, state, eventBus, signal, globalStore }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
       const remoteVideo = refs('remoteVideo')
+
+      const checkPip = () => {
+        let el = remoteVideo
+        let isPip = false
+        while (el) {
+          if (el.tagName === 'PIP-VIDEO' || (el.classList && el.classList.contains('pip-window'))) {
+            isPip = true
+            break
+          }
+          el = el.parentElement || el.getRootNode()?.host
+        }
+        state.isPipMode = isPip
+      }
+
+      checkPip()
+  
+      const observer = new MutationObserver(checkPip)
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      })
+      signal.addEventListener('abort', () => observer.disconnect())
       const localVideo = refs('localVideo')
       const remotePlaceholder = refs('remotePlaceholder')
 
@@ -116,18 +141,16 @@
 </script>
 
 <style>
-  /* Shrink local video when in a small container (like PiP) */
-  :host-context(.pip-window) .local-video {
-    width: 80px !important;
-    margin: 0.5rem !important;
-    border-width: 1px !important;
+  /* Hide local video when in PiP mode */
+   .local-video {
+    display: none !important;
   }
 
-  :host-context(.pip-window) .remote-placeholder p {
+  .remote-placeholder p {
     font-size: 0.8rem !important;
   }
 
-  :host-context(.pip-window) .spinner-border {
+  .spinner-border {
     width: 1.5rem;
     height: 1.5rem;
   }

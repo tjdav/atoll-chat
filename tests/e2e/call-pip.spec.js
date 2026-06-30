@@ -57,16 +57,14 @@ test.describe.serial('Call PiP', () => {
 
     // Verify modal is hidden but PiP is visible
     await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
-    // TestID for pipWindow inside pip-video component
     const pipWindow = alicePage.locator('[data-testid="pip-video-0__pipWindow"]')
     await expect(pipWindow).toBeVisible()
 
-    await alicePage.screenshot({ path: '/home/jules/verification/screenshots/pip_active.png' })
+    // Assert local video is hidden in PiP
+    const localVideo = alicePage.locator('[data-testid="video-grid-0__localVideo"]')
+    await expect(localVideo).not.toBeVisible()
 
-    // Hover to show controls
-    await pipWindow.hover()
-    await alicePage.waitForTimeout(500)
-    await alicePage.screenshot({ path: '/home/jules/verification/screenshots/pip_controls.png' })
+    await alicePage.screenshot({ path: '/home/jules/verification/screenshots/pip_active.png' })
 
     console.log('Alice sending a message while in PiP...')
     const messageText = 'Still here in PiP!'
@@ -77,35 +75,21 @@ test.describe.serial('Call PiP', () => {
     await expect(alicePage.locator('message-timeline')).toContainText(messageText)
     await expect(bobPage.locator('message-timeline')).toContainText(messageText)
 
-    console.log('Alice toggling audio in PiP...')
-    const pipAudioBtn = alicePage.locator('[data-testid="pip-video-0__btnToggleAudio"]')
-    await pipAudioBtn.click()
-    await expect(pipAudioBtn).toHaveClass(/btn-danger/)
-
     console.log('Alice expanding back to full screen...')
+    // Hover to show expand button
+    await pipWindow.hover()
+    await alicePage.waitForTimeout(500)
     await alicePage.click('[data-testid="pip-video-0__btnExpand"]')
+
     await expect(alicePage.locator('call-overlay .modal')).toBeVisible()
     await expect(pipWindow).not.toBeVisible()
+
+    // Assert local video is visible again in full screen
+    await expect(localVideo).toBeVisible()
 
     console.log('Alice ending call from full screen...')
     await alicePage.click('[data-testid="call-overlay-0__btnEndCall"]')
     await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
     await expect(pipWindow).not.toBeVisible()
-  })
-
-  test('Alice can end call directly from PiP', async () => {
-    await createRoom(alicePage, bobPage, 'bob', 'alice')
-    await alicePage.click('button[title="Video Call"]')
-    await bobPage.click('call-overlay button[title="Accept Call"]')
-
-    await alicePage.click('[data-testid="call-overlay-0__btnPip"]')
-    const pipWindow = alicePage.locator('[data-testid="pip-video-0__pipWindow"]')
-    await expect(pipWindow).toBeVisible()
-
-    console.log('Alice ending call from PiP...')
-    await alicePage.click('[data-testid="pip-video-0__btnEndCall"]')
-
-    await expect(pipWindow).not.toBeVisible()
-    await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
   })
 })

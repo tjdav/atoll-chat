@@ -3,18 +3,9 @@
     <div ref="container" class="h-100 w-100"></div>
     
     <!-- PiP Controls Overlay (visible on hover) -->
-    <div class="pip-controls position-absolute bottom-0 start-0 w-100 d-flex justify-content-center gap-2 p-2 bg-dark bg-opacity-50 opacity-0 transition-opacity">
-      <button ref="btnToggleAudio" class="btn btn-sm {{ audioBtnClass }} rounded-circle p-1" style="width: 32px; height: 32px;">
-        <i class="bi {{ audioIconClass }} fs-6"></i>
-      </button>
-      <button ref="btnToggleVideo" class="btn btn-sm {{ videoBtnClass }} rounded-circle p-1" style="width: 32px; height: 32px;">
-        <i class="bi {{ videoIconClass }} fs-6"></i>
-      </button>
-      <button ref="btnExpand" class="btn btn-sm btn-light rounded-circle p-1" style="width: 32px; height: 32px;" title="Expand">
-        <i class="bi bi-fullscreen fs-6"></i>
-      </button>
-      <button ref="btnEndCall" class="btn btn-sm btn-danger rounded-circle p-1" style="width: 32px; height: 32px;">
-        <i class="bi bi-telephone-x-fill fs-6"></i>
+    <div class="pip-controls position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-50 opacity-0 transition-opacity">
+      <button ref="btnExpand" class="btn btn-light rounded-circle p-3 d-flex align-items-center justify-content-center shadow-lg" style="width: 60px; height: 60px;" title="Expand to full screen">
+        <i class="bi bi-fullscreen fs-3"></i>
       </button>
     </div>
   </div>
@@ -23,6 +14,7 @@
     .pip-window .pip-controls {
       transition: opacity 0.2s;
       pointer-events: auto;
+      z-index: 100;
     }
     .pip-window:hover .pip-controls {
       opacity: 1 !important;
@@ -38,29 +30,9 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    server: () => ({
-      isAudioEnabled: true,
-      isVideoEnabled: true
-    }),
-    getters: {
-      audioBtnClass: (state) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
-      audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
-      videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
-      videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill')
-    },
-    client: ({ state, refs, signal, eventBus, globalStore }) => {
+    client: ({ refs, signal, eventBus }) => {
       const { $bus } = eventBus
-      const { $state } = globalStore
       const pipWindow = refs('pipWindow')
-
-      const syncFromGlobal = () => {
-        state.isAudioEnabled = !!$state.isAudioEnabled
-        state.isVideoEnabled = !!$state.isVideoEnabled
-      }
-
-      syncFromGlobal()
-      $state.subscribe('isAudioEnabled', syncFromGlobal)
-      $state.subscribe('isVideoEnabled', syncFromGlobal)
   
       // Draggable logic
       let isDragging = false
@@ -142,10 +114,7 @@
       })
 
       // Controls
-      refs('btnToggleAudio').addEventListener('click', () => $bus.emit('PIP:TOGGLE_AUDIO'))
-      refs('btnToggleVideo').addEventListener('click', () => $bus.emit('PIP:TOGGLE_VIDEO'))
       refs('btnExpand').addEventListener('click', () => $bus.emit('PIP:EXPAND'))
-      refs('btnEndCall').addEventListener('click', () => $bus.emit('PIP:END_CALL'))
 
       // Support for programmatic reset
       $bus.on('PIP:RESET_POSITION', () => {
