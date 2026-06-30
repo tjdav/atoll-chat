@@ -164,6 +164,9 @@
           })
 
           messagesToRender = messagesToRender.filter(m => {
+            if (m.type === 'ice_candidate') {
+              return false
+            }
             const hasId = m.id && existingIds.has(m.id)
             const hasUuid = m.local_uuid && existingIds.has(m.local_uuid)
             return !hasId && !hasUuid
@@ -333,6 +336,13 @@
               text.setAttribute('is-sent', isSent)
               text.setAttribute('position', position)
               row.appendChild(text)
+            } else if (['call_offer', 'call_answer', 'call_end'].includes(message.type)) {
+              const systemMsg = document.createElement('timeline-system-message')
+              systemMsg.setAttribute('type', message.type)
+              // Don't append to row, signaling messages are centered
+              container.appendChild(systemMsg)
+              lastRenderedMessageId = message.id || message.local_uuid
+              return
             } else {
               const text = document.createElement('text-message')
               text.setAttribute('local-uuid', message.local_uuid)

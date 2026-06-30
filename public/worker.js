@@ -376,12 +376,25 @@ async function sendMessage (rpcId, payload) {
     })
   }
 
-  await db.local_messages.update(localUuid, updateData)
-  const fullMessage = await db.local_messages.get(localUuid)
+  if (type !== 'ice_candidate') {
+    await db.local_messages.update(localUuid, updateData)
+  }
+
+  const fullMessage = (type === 'ice_candidate' || !await db.local_messages.get(localUuid))
+    ? {
+      ...plaintextObj,
+      ...updateData,
+      room_id: roomId,
+      sender_id: currentUserKeys.id
+    }
+    : await db.local_messages.get(localUuid)
 
   self.postMessage({
     type: 'NEW_LOCAL_DATA',
-    payload: { room_id: roomId, message: fullMessage }
+    payload: {
+      room_id: roomId,
+      message: fullMessage
+    }
   })
 
   self.postMessage({
@@ -420,7 +433,10 @@ async function processIncomingMessage (rpcId, record) {
         const fullMessage = await db.local_messages.get(localUuid)
         self.postMessage({
           type: 'NEW_LOCAL_DATA',
-          payload: { room_id: roomId, message: fullMessage }
+          payload: {
+            room_id: roomId,
+            message: fullMessage
+          }
         })
       }
 
@@ -551,12 +567,17 @@ async function processIncomingMessage (rpcId, record) {
     })
   }
 
-  await db.local_messages.put(decryptedMessage)
+  if (type !== 'ice_candidate') {
+    await db.local_messages.put(decryptedMessage)
+  }
 
   // Notify UI and resolve RPC.
   self.postMessage({
     type: 'NEW_LOCAL_DATA',
-    payload: { room_id: roomId, message: decryptedMessage }
+    payload: {
+      room_id: roomId,
+      message: decryptedMessage
+    }
   })
   self.postMessage({
     id: rpcId,

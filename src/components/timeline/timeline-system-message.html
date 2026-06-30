@@ -1,0 +1,37 @@
+<template id="timeline-system-message">
+  <div class="w-100 text-center my-3 clearfix">
+    <span class="d-inline-block max-w-80 text-break px-3 py-1 rounded-pill bg-body-tertiary text-muted x-small border shadow-sm">
+      <i class="bi {{ iconClass }} me-1"></i>
+      {{ message }}
+    </span>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      type: String,
+      content: String
+    },
+    getters: {
+      iconClass: (state) => {
+        switch (state.type) {
+          case 'call_offer': return 'bi-telephone-plus-fill text-success'
+          case 'call_answer': return 'bi-telephone-forward-fill text-primary'
+          case 'call_end': return 'bi-telephone-x-fill text-danger'
+          default: return 'bi-info-circle-fill'
+        }
+      },
+      message: (state) => {
+        switch (state.type) {
+          case 'call_offer': return 'Call started'
+          case 'call_answer': return 'Call joined'
+          case 'call_end': return 'Call ended'
+          default: return state.content || 'System notification'
+        }
+      }
+    }
+  })
+</script>

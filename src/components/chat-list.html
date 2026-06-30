@@ -18,14 +18,20 @@
       const listGroup = refs('listGroup')
 
       const getLatestMessage = async (roomId) => {
+        // Find latest message that is NOT an ice_candidate
+        // Although ice_candidates aren't saved to localDb, real-time sync might pass them
+        // This function queries the DB which already excludes them, so it's safe.
         return await $localDb.local_messages
           .where('[room_id+created_at]')
           .between([roomId, ''], [roomId, '\uffff'])
+          .filter(m => m.type !== 'ice_candidate')
           .last()
       }
 
       const getPreviewText = (msg, participants, isGroup) => {
-        if (!msg) return ''
+        if (!msg) {
+          return ''
+        }
         let prefix = ''
         if (msg.sender_id === $state.currentUser?.id) {
           prefix = 'You: '
@@ -36,7 +42,19 @@
           }
         }
 
-        if (msg.type === 'text') return `${prefix}${msg.content}`
+        if (msg.type === 'text') {
+          return `${prefix}${msg.content}`
+        }
+
+        if (msg.type === 'call_offer') {
+          return `${prefix}Started a call.`
+        }
+        if (msg.type === 'call_answer') {
+          return `${prefix}Joined the call.`
+        }
+        if (msg.type === 'call_end') {
+          return `${prefix}Ended the call.`
+        }
 
         const fallbacks = {
           image: 'Sent a photo.',
@@ -48,9 +66,15 @@
 
         if (msg.type === 'media') {
           const mime = msg.mime_type || ''
-          if (mime.startsWith('image/')) return `${prefix}${fallbacks.image}`
-          if (mime.startsWith('video/')) return `${prefix}${fallbacks.video}`
-          if (mime.startsWith('audio/')) return msg.waveform_data ? `${prefix}${fallbacks.voice}` : `${prefix}${fallbacks.audio}`
+          if (mime.startsWith('image/')) {
+            return `${prefix}${fallbacks.image}`
+          }
+          if (mime.startsWith('video/')) {
+            return `${prefix}${fallbacks.video}`
+          }
+          if (mime.startsWith('audio/')) {
+            return msg.waveform_data ? `${prefix}${fallbacks.voice}` : `${prefix}${fallbacks.audio}`
+          }
           return `${prefix}${fallbacks.file}`
         }
 
@@ -59,12 +83,16 @@
 
       let currentRenderId = 0
       const render = async () => {
-        if (!listGroup) return
+        if (!listGroup) {
+          return
+        }
 
         const renderId = ++currentRenderId
         try {
           const rawItems = await $localDb.local_rooms.reverse().sortBy('updated_at')
-          if (renderId !== currentRenderId) return
+          if (renderId !== currentRenderId) {
+            return
+          }
 
           if (rawItems.length === 0) {
             listGroup.innerHTML = '<div class="p-4 text-center text-muted">No chats found</div>'
@@ -73,9 +101,14 @@
 
           const enriched = await Promise.all(rawItems.map(async (item) => {
             const latestMsg = await getLatestMessage(item.id)
-            return { item, latestMsg }
+            return {
+              item,
+              latestMsg
+            }
           }))
-          if (renderId !== currentRenderId) return
+          if (renderId !== currentRenderId) {
+            return
+          }
 
           const fragment = document.createDocumentFragment()
 
@@ -85,8 +118,8 @@
                              latestMsg.sender_id !== $state.currentUser?.id &&
                              latestMsg.id !== me?.last_read_message_id
 
-            const roomName = !item.is_group && (item.participants || []).filter(p => p.id !== $state.currentUser?.id).length > 0 
-              ? item.participants.filter(p => p.id !== $state.currentUser?.id)[0].username 
+            const roomName = !item.is_group && (item.participants || []).filter(p => p.id !== $state.currentUser?.id).length > 0
+              ? item.participants.filter(p => p.id !== $state.currentUser?.id)[0].username
               : (item.name || (item.is_group ? 'Unnamed Group' : 'Direct Message'))
 
             const previewText = getPreviewText(latestMsg, item.participants || [], item.is_group)
@@ -103,7 +136,10 @@
             listItem.setAttribute('is-group', item.is_group)
             listItem.setAttribute('user-role', item.user_role)
             listItem.setAttribute('participants-json', JSON.stringify(item.participants || []))
-            if (item.avatar) listItem.setAttribute('room-avatar', item.avatar)
+  
+            if (item.avatar) {
+              listItem.setAttribute('room-avatar', item.avatar)
+            }
 
             fragment.appendChild(listItem)
           }
