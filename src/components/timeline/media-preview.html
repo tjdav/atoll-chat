@@ -101,9 +101,12 @@
         renderMedia()
 
         container.onclick = () => {
+          // Rule: Order matters for pushState logic in router-plugin.
+          // Updating currentAppView first ensures a Major Context Switch is detected.
+          const targetView = message.mime_type.startsWith('image/') ? 'pictures' : 'videos'
+          $state.currentAppView = targetView
+          $state.activeSelectionType = targetView
           $state.activeSelectionId = message.media_id
-          $state.activeSelectionType = message.mime_type.startsWith('image/') ? 'pictures' : 'videos'
-          $state.currentAppView = $state.activeSelectionType
         }
 
       } catch (err) {

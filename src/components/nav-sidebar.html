@@ -166,7 +166,12 @@
         const btn = refs(refName)
         if (btn) {
           btn.addEventListener('click', () => {
+            // Rule: Switching root views from a deep view should be a 'pushState'.
+            // By changing the view first, the router sees the major context switch
+            // from the current deep selection before we nullify it.
             $state.currentAppView = viewName
+            $state.activeSelectionId = null
+            $state.activeSelectionType = null
           })
         }
       })

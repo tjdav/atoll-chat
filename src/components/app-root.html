@@ -6,7 +6,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, router }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $bus } = eventBus
