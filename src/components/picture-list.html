@@ -10,127 +10,46 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, pocketbase, utils }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { pb } = pocketbase
       const { $utils } = utils
       const gridContainer = refs('gridContainer')
 
-      const objectUrls = new Map()
-      const cleanupUrls = () => {
-        objectUrls.forEach(url => URL.revokeObjectURL(url))
-        objectUrls.clear()
-      }
-      signal.addEventListener('abort', cleanupUrls)
-
       let currentRenderId = 0
       const render = async () => {
-        if (!gridContainer) {
-          return
-        }
+        if (!gridContainer) return
 
         const renderId = ++currentRenderId
         try {
           const rawItems = await $localDb.local_assets.where('mime_type').startsWith('image/').reverse().sortBy('created_at')
-          if (renderId !== currentRenderId) {
+          if (renderId !== currentRenderId) return
+
+          if (rawItems.length === 0) {
+            gridContainer.innerHTML = '<div class="col-12 p-4 text-center text-muted">No pictures found</div>'
             return
           }
 
           const fragment = document.createDocumentFragment()
+          rawItems.forEach(item => {
+            const dt = new Date(item.created_at)
+            const dateStr = dt.toLocaleDateString()
+            const timeStr = dt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+            const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'pictures'
 
-          if (rawItems.length === 0) {
-            const emptyMsg = document.createElement('div')
-            emptyMsg.className = 'col-12 p-4 text-center text-muted'
-            emptyMsg.textContent = 'No pictures found'
-            fragment.appendChild(emptyMsg)
-          } else {
-            rawItems.forEach(item => {
-              const dt = new Date(item.created_at)
-              const dateStr = dt.toLocaleDateString()
-              const timeStr = dt.toLocaleTimeString([], {
-                hour: '2-digit',
-                minute: '2-digit'
-              })
-
-              const col = document.createElement('div')
-              col.className = 'col'
-
-              const card = document.createElement('div')
-              const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'pictures'
-              card.className = `card h-100 border-0 shadow-sm overflow-hidden clickable-card ${isActive ? 'border border-primary border-2' : ''}`
-  
-              const imgContainer = document.createElement('div')
-              imgContainer.className = 'ratio ratio-1x1 d-flex align-items-center justify-content-center bg-secondary bg-opacity-25 overflow-hidden'
-  
-              const icon = document.createElement('i')
-              icon.className = 'bi bi-image fs-1 text-secondary opacity-50'
-              imgContainer.appendChild(icon);
-
-              (async () => {
-                try {
-                  const { default: sodium } = await import('libsodium-wrappers-sumo')
-                  await sodium.ready
-
-                  const mediaRecord = await pb.collection('media').getOne(item.media_id)
-                  const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-
-                  const response = await fetch(url)
-                  if (!response.ok) {
-                    throw new Error('Fetch failed')
-                  }
-                  const encryptedData = new Uint8Array(await response.arrayBuffer())
-
-                  const key = sodium.from_base64(item.file_key, sodium.base64_variants.ORIGINAL)
-                  const nonce = sodium.from_base64(item.file_nonce, sodium.base64_variants.ORIGINAL)
-
-                  const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-                  if (!decryptedData) {
-                    throw new Error('Decryption failed')
-                  }
-
-                  const blob = new Blob([decryptedData], { type: item.mime_type })
-                  const objectUrl = URL.createObjectURL(blob)
-                  objectUrls.set(item.id, objectUrl)
-
-                  const img = document.createElement('img')
-                  img.src = objectUrl
-                  img.className = 'object-fit-cover w-100 h-100'
-                  imgContainer.innerHTML = ''
-                  imgContainer.appendChild(img)
-                } catch (err) {
-                  console.error('[picture-list] Preview error:', err)
-                }
-              })()
-  
-              const cardBody = document.createElement('div')
-              cardBody.className = 'card-body p-2'
-  
-              const dateText = document.createElement('small')
-              dateText.className = 'd-block text-truncate text-muted'
-              dateText.textContent = dateStr
-  
-              const timeText = document.createElement('small')
-              timeText.className = 'd-block text-truncate text-muted opacity-75'
-              timeText.style.fontSize = '0.75rem'
-              timeText.textContent = timeStr
-
-              cardBody.appendChild(dateText)
-              cardBody.appendChild(timeText)
-  
-              card.appendChild(imgContainer)
-              card.appendChild(cardBody)
-              col.appendChild(card)
-
-              card.addEventListener('click', () => {
-                $state.activeSelectionId = item.id
-                $state.activeSelectionType = 'pictures'
-              })
-
-              fragment.appendChild(col)
-            })
-          }
+            const card = document.createElement('media-grid-card')
+            card.setAttribute('asset-id', item.id)
+            card.setAttribute('media-id', item.media_id)
+            card.setAttribute('mime-type', item.mime_type)
+            card.setAttribute('is-active', isActive)
+            card.setAttribute('type', 'pictures')
+            card.setAttribute('date-str', dateStr)
+            card.setAttribute('time-str', timeStr)
+            card.setAttribute('file-key', item.file_key)
+            card.setAttribute('file-nonce', item.file_nonce)
+            fragment.appendChild(card)
+          })
 
           if (renderId === currentRenderId) {
             gridContainer.innerHTML = ''
@@ -165,12 +84,3 @@
   })
 </script>
 
-<style>
-  .clickable-card {
-    cursor: pointer;
-    transition: transform 0.2s;
-  }
-  .clickable-card:hover {
-    transform: translateY(-2px);
-  }
-</style>

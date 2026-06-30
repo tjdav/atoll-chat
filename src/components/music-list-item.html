@@ -1,0 +1,65 @@
+<template id="music-list-item">
+  <button type="button" ref="btn" class="list-group-item list-group-item-action d-flex align-items-center border-0 py-3 {{ activeClass }}">
+    <div class="list-item-icon">
+      <i class="bi bi-music-note fs-5"></i>
+    </div>
+    <div class="text-truncate">
+      <div class="fw-bold text-truncate">{{ roomName }}</div>
+      <small class="opacity-75 d-block text-truncate">{{ timestamp }}</small>
+    </div>
+    <i class="bi bi-play-circle fs-4 ms-auto opacity-50"></i>
+  </button>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      assetId: String,
+      roomName: String,
+      timestamp: String,
+      isActive: String
+    },
+    getters: {
+      activeClass: (state) => (state.isActive === 'true' ? 'active' : '')
+    },
+    client: ({ refs, state, localDb, globalStore }) => {
+      const { $state } = globalStore
+      const { $localDb } = localDb
+      const btn = refs('btn')
+
+      btn.onclick = async () => {
+        $state.activeSelectionId = state.assetId
+        $state.activeSelectionType = 'music'
+
+        const assets = await $localDb.local_assets.where('mime_type').startsWith('audio/').reverse().sortBy('created_at')
+        $state.mediaQueue = assets.map(i => i.id)
+
+        if (!$state.currentMedia || $state.currentMedia.id !== state.assetId) {
+          $state.currentMedia = {
+            id: state.assetId,
+            type: 'music'
+          }
+          $state.playbackStatus = 'playing'
+        }
+      }
+    }
+  })
+</script>
+
+<style>
+  .music-list-item .list-item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: var(--bs-secondary-bg);
+    margin-right: 12px;
+  }
+  .music-list-item.active .list-item-icon {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+</style>

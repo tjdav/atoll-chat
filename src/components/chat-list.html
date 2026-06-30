@@ -10,118 +10,12 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, pocketbase, bootstrap, utils }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { pb } = pocketbase
-      const { Dropdown } = bootstrap
       const { $utils } = utils
       const listGroup = refs('listGroup')
-
-      const avatarCache = new Map()
-      let sodiumInstance = null
-
-      const getInitials = (name) => {
-        if (!name) {
-          return '?'
-        }
-        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-      }
-
-      const createAvatarEl = async (user, size = 40) => {
-        const div = document.createElement('div')
-        div.className = 'avatar-circle'
-        div.style.width = `${size}px`
-        div.style.height = `${size}px`
-        div.style.fontSize = `${size * 0.4}px`
-
-        if (user.avatar) {
-          const avatarUrl = pb.files.getURL(user, user.avatar, { thumb: `${size}x${size}` })
-          const img = document.createElement('img')
-          img.src = avatarUrl
-          img.style.width = '100%'
-          img.style.height = '100%'
-          img.style.objectFit = 'cover'
-          div.appendChild(img)
-        } else {
-          div.textContent = getInitials(user.username || user.name)
-        }
-        return div
-      }
-
-      const renderRoomAvatar = async (item, container) => {
-        container.innerHTML = ''
-        container.className = 'list-item-icon'
-
-        // 1. Custom Room Avatar
-        if (item.avatar) {
-          try {
-            const avatarData = JSON.parse(item.avatar)
-            if (avatarCache.has(avatarData.media_id)) {
-              const img = document.createElement('img')
-              img.src = avatarCache.get(avatarData.media_id)
-              img.className = 'room-avatar-img'
-              container.appendChild(img)
-              return
-            }
-
-            if (!sodiumInstance) {
-              const { default: sodium } = await import('libsodium-wrappers-sumo')
-              await sodium.ready
-              sodiumInstance = sodium
-            }
-            const sodium = sodiumInstance
-
-            const record = await pb.collection('media').getOne(avatarData.media_id)
-            const encryptedUrl = pb.files.getURL(record, record.file)
-            const resp = await fetch(encryptedUrl)
-            const buffer = await resp.arrayBuffer()
-
-            const key = sodium.from_base64(avatarData.key, sodium.base64_variants.ORIGINAL)
-            const nonce = sodium.from_base64(avatarData.nonce, sodium.base64_variants.ORIGINAL)
-            const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(buffer), nonce, key)
-
-            if (decrypted) {
-              const blob = new Blob([decrypted], { type: 'image/jpeg' })
-              const url = URL.createObjectURL(blob)
-              avatarCache.set(avatarData.media_id, url)
-              const img = document.createElement('img')
-              img.src = url
-              img.className = 'room-avatar-img'
-              container.appendChild(img)
-              signal.addEventListener('abort', () => URL.revokeObjectURL(url))
-              return
-            }
-          } catch (err) {
-            console.error('Failed to render custom avatar:', err)
-          }
-        }
-
-        // 2. Fallback to Participants
-        const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
-  
-        if (!item.is_group && participants.length > 0) {
-          // One-on-one
-          const otherUser = participants[0]
-          const avatar = await createAvatarEl(otherUser)
-          container.appendChild(avatar)
-        } else if (item.is_group && participants.length > 0) {
-          // Group stacked avatars
-          container.className = 'list-item-icon group-avatar-container'
-          const displayCount = Math.min(participants.length, 3)
-          for (let i = 0; i < displayCount; i++) {
-            const avatar = await createAvatarEl(participants[i], 28)
-            avatar.classList.add(`stacked-avatar-${i + 1}`)
-            container.appendChild(avatar)
-          }
-        } else {
-          // Default icon
-          const icon = document.createElement('i')
-          icon.className = 'bi bi-chat-left-text fs-5'
-          container.appendChild(icon)
-        }
-      }
 
       const getLatestMessage = async (roomId) => {
         return await $localDb.local_messages
@@ -131,10 +25,7 @@
       }
 
       const getPreviewText = (msg, participants, isGroup) => {
-        if (!msg) {
-          return ''
-        }
-
+        if (!msg) return ''
         let prefix = ''
         if (msg.sender_id === $state.currentUser?.id) {
           prefix = 'You: '
@@ -145,9 +36,7 @@
           }
         }
 
-        if (msg.type === 'text') {
-          return `${prefix}${msg.content}`
-        }
+        if (msg.type === 'text') return `${prefix}${msg.content}`
 
         const fallbacks = {
           image: 'Sent a photo.',
@@ -159,79 +48,34 @@
 
         if (msg.type === 'media') {
           const mime = msg.mime_type || ''
-          if (mime.startsWith('image/')) {
-            return `${prefix}${fallbacks.image}`
-          }
-          if (mime.startsWith('video/')) {
-            return `${prefix}${fallbacks.video}`
-          }
-          if (mime.startsWith('audio/')) {
-            return msg.waveform_data ? `${prefix}${fallbacks.voice}` : `${prefix}${fallbacks.audio}`
-          }
+          if (mime.startsWith('image/')) return `${prefix}${fallbacks.image}`
+          if (mime.startsWith('video/')) return `${prefix}${fallbacks.video}`
+          if (mime.startsWith('audio/')) return msg.waveform_data ? `${prefix}${fallbacks.voice}` : `${prefix}${fallbacks.audio}`
           return `${prefix}${fallbacks.file}`
         }
 
         return `${prefix}${msg.content || ''}`
       }
 
-      const markAsRead = async (room, latestMsgId) => {
-        if (!latestMsgId) {
-          return
-        }
-
-        const me = room.participants.find(p => p.id === $state.currentUser?.id)
-        if (me && me.last_read_message_id !== latestMsgId) {
-          // 1. Update Dexie
-          me.last_read_message_id = latestMsgId
-          await $localDb.local_rooms.put(room)
-
-          // 2. Update Server (Fire and forget)
-          try {
-            const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room.id}" && user_id="${$state.currentUser.id}"`)
-            if (memberRecord) {
-              pb.collection('room_members').update(memberRecord.id, {
-                last_read_message_id: latestMsgId
-              }).catch(err => console.error('[chat-list] Failed to update read status on server:', err))
-            }
-          } catch (err) {
-            console.error('[chat-list] Failed to find room member record:', err)
-          }
-
-          // 3. Notify
-          $bus.emit('ROOM_READ_STATE_CHANGED', room.id)
-        }
-      }
-
       let currentRenderId = 0
       const render = async () => {
-        if (!listGroup) {
-          return
-        }
+        if (!listGroup) return
 
         const renderId = ++currentRenderId
         try {
           const rawItems = await $localDb.local_rooms.reverse().sortBy('updated_at')
-          if (renderId !== currentRenderId) {
-            return
-          }
+          if (renderId !== currentRenderId) return
 
-          // Fast-path for empty state
           if (rawItems.length === 0) {
             listGroup.innerHTML = '<div class="p-4 text-center text-muted">No chats found</div>'
             return
           }
 
-          // Pre-fetch latest messages in parallel to minimize async window during loop
           const enriched = await Promise.all(rawItems.map(async (item) => {
             const latestMsg = await getLatestMessage(item.id)
-            return {
-              item,
-              latestMsg
-            }
+            return { item, latestMsg }
           }))
-          if (renderId !== currentRenderId) {
-            return
-          }
+          if (renderId !== currentRenderId) return
 
           const fragment = document.createDocumentFragment()
 
@@ -241,132 +85,27 @@
                              latestMsg.sender_id !== $state.currentUser?.id &&
                              latestMsg.id !== me?.last_read_message_id
 
-            const container = document.createElement('div')
+            const roomName = !item.is_group && (item.participants || []).filter(p => p.id !== $state.currentUser?.id).length > 0 
+              ? item.participants.filter(p => p.id !== $state.currentUser?.id)[0].username 
+              : (item.name || (item.is_group ? 'Unnamed Group' : 'Direct Message'))
+
+            const previewText = getPreviewText(latestMsg, item.participants || [], item.is_group)
+            const relativeTime = latestMsg ? ($utils.formatRelativeTime(latestMsg.created_at) ? ` · ${$utils.formatRelativeTime(latestMsg.created_at)}` : '') : ''
             const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'chats'
-            container.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 position-relative ${isActive ? 'active' : ''}`
-  
-            const iconWrapper = document.createElement('div')
-            renderRoomAvatar(item, iconWrapper)
 
-            const contentWrapper = document.createElement('div')
-            contentWrapper.className = 'text-truncate flex-grow-1'
-  
-            const nameDiv = document.createElement('div')
-            nameDiv.className = `text-truncate ${isUnread ? 'fw-bold' : ''}`
+            const listItem = document.createElement('chat-list-item')
+            listItem.setAttribute('room-id', item.id)
+            listItem.setAttribute('room-name', roomName)
+            listItem.setAttribute('preview-text', previewText)
+            listItem.setAttribute('relative-time', relativeTime)
+            listItem.setAttribute('is-unread', isUnread)
+            listItem.setAttribute('is-active', isActive)
+            listItem.setAttribute('is-group', item.is_group)
+            listItem.setAttribute('user-role', item.user_role)
+            listItem.setAttribute('participants-json', JSON.stringify(item.participants || []))
+            if (item.avatar) listItem.setAttribute('room-avatar', item.avatar)
 
-            const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
-            if (!item.is_group && participants.length > 0) {
-              nameDiv.textContent = participants[0].username
-            } else {
-              nameDiv.textContent = item.name || (item.is_group ? 'Unnamed Group' : 'Direct Message')
-            }
-
-            const previewContainer = document.createElement('div')
-            previewContainer.className = 'd-flex align-items-center'
-
-            const previewDiv = document.createElement('small')
-            previewDiv.className = `text-truncate flex-grow-1 opacity-75 ${isUnread ? 'fw-bold' : ''}`
-            previewDiv.textContent = getPreviewText(latestMsg, item.participants || [], item.is_group)
-
-            const timeSmall = document.createElement('small')
-            timeSmall.className = 'opacity-75 ms-1 flex-shrink-0'
-            const relativeTime = latestMsg ? $utils.formatRelativeTime(latestMsg.created_at) : ''
-            timeSmall.textContent = relativeTime ? ` · ${relativeTime}` : ''
-
-            previewContainer.appendChild(previewDiv)
-            previewContainer.appendChild(timeSmall)
-
-            contentWrapper.appendChild(nameDiv)
-            contentWrapper.appendChild(previewContainer)
-
-            container.appendChild(iconWrapper)
-            container.appendChild(contentWrapper)
-
-            if (isUnread) {
-              const dot = document.createElement('span')
-              dot.className = 'position-absolute top-50 translate-middle-y bg-primary rounded-circle'
-              dot.style.right = '12px'
-              dot.style.width = '10px'
-              dot.style.height = '10px'
-              container.appendChild(dot)
-            }
-
-            // Dropdown Menu
-            const dropdownDiv = document.createElement('div')
-            dropdownDiv.className = 'dropdown ms-2'
-  
-            const dropdownBtn = document.createElement('button')
-            dropdownBtn.className = 'btn btn-link text-muted p-0 opacity-0 group-hover-visible'
-            dropdownBtn.innerHTML = '<i class="bi bi-three-dots"></i>'
-            dropdownBtn.setAttribute('data-bs-toggle', 'dropdown')
-            dropdownBtn.setAttribute('aria-expanded', 'false')
-
-            const dropdownMenu = document.createElement('ul')
-            dropdownMenu.className = 'dropdown-menu dropdown-menu-end shadow-sm'
-  
-            const isAdmin = item.user_role === 'admin'
-            const menuItems = [
-              isAdmin ? {
-                label: 'Edit Room',
-                icon: 'bi-pencil',
-                action: () => $bus.emit('open-edit-room', item)
-              } : null,
-              {
-                label: 'Mark as unread',
-                icon: 'bi-envelope'
-              },
-              {
-                label: 'Mute notifications',
-                icon: 'bi-bell-slash'
-              },
-              { type: 'divider' },
-              {
-                label: 'Delete chat',
-                icon: 'bi-trash',
-                class: 'text-danger'
-              }
-            ].filter(Boolean)
-
-            menuItems.forEach(m => {
-              if (m.type === 'divider') {
-                const li = document.createElement('li')
-                li.innerHTML = '<hr class="dropdown-divider">'
-                dropdownMenu.appendChild(li)
-                return
-              }
-              const li = document.createElement('li')
-              const a = document.createElement('a')
-              a.className = `dropdown-item d-flex align-items-center gap-2 ${m.class || ''}`
-              a.href = '#'
-              a.innerHTML = `<i class="bi ${m.icon}"></i> ${m.label}`
-              a.onclick = (e) => {
-                e.preventDefault()
-                e.stopPropagation()
-                if (m.action) {
-                  m.action()
-                }
-              }
-              li.appendChild(a)
-              dropdownMenu.appendChild(li)
-            })
-
-            dropdownDiv.appendChild(dropdownBtn)
-            dropdownDiv.appendChild(dropdownMenu)
-            container.appendChild(dropdownDiv)
-
-            container.addEventListener('click', async (e) => {
-              if (e.target.closest('.dropdown')) {
-                return
-              }
-              $state.activeSelectionId = item.id
-              $state.activeSelectionType = 'chats'
-
-              if (isUnread && latestMsg) {
-                await markAsRead(item, latestMsg.id)
-              }
-            })
-
-            fragment.appendChild(container)
+            fragment.appendChild(listItem)
           }
 
           if (renderId === currentRenderId) {
@@ -404,56 +143,3 @@
   })
 </script>
 
-<style>
-  .list-item-icon {
-    width: 48px;
-    height: 48px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    background-color: var(--bs-secondary-bg);
-    margin-right: 12px;
-    flex-shrink: 0;
-    overflow: hidden;
-  }
-  .list-group-item.active .list-item-icon {
-    background-color: rgba(255, 255, 255, 0.2);
-  }
-  .avatar-circle {
-    border-radius: 50%;
-    background-color: var(--bs-primary);
-    color: white;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-weight: bold;
-  }
-  .group-avatar-container {
-    position: relative;
-    background-color: transparent !important;
-    overflow: visible;
-  }
-  .stacked-avatar-1, .stacked-avatar-2, .stacked-avatar-3 {
-    position: absolute;
-    border: 2px solid var(--bs-body-bg);
-    box-shadow: 0 0 0 1px rgba(0,0,0,0.05);
-  }
-  /* 2 participants layout */
-  .group-avatar-container:has(.stacked-avatar-2):not(:has(.stacked-avatar-3)) .stacked-avatar-1 { top: 0; right: 0; z-index: 2; }
-  .group-avatar-container:has(.stacked-avatar-2):not(:has(.stacked-avatar-3)) .stacked-avatar-2 { bottom: 0; left: 0; z-index: 1; }
-
-  /* 3 participants layout */
-  .group-avatar-container:has(.stacked-avatar-3) .stacked-avatar-1 { top: 0; left: 10px; z-index: 3; }
-  .group-avatar-container:has(.stacked-avatar-3) .stacked-avatar-2 { bottom: 0; left: 0; z-index: 2; }
-  .group-avatar-container:has(.stacked-avatar-3) .stacked-avatar-3 { bottom: 0; right: 0; z-index: 1; }
-
-  .list-group-item:hover .group-hover-visible {
-    opacity: 1 !important;
-  }
-  .room-avatar-img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-</style>

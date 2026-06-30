@@ -1,0 +1,123 @@
+<template id="media-grid-card">
+  <div class="col">
+    <div ref="card" class="card h-100 border-0 shadow-sm overflow-hidden clickable-card {{ activeClass }}">
+      <div ref="mediaContainer" class="ratio {{ ratioClass }} d-flex align-items-center justify-content-center bg-secondary bg-opacity-25 overflow-hidden">
+        <i class="bi {{ iconClass }} fs-1 text-secondary opacity-50"></i>
+      </div>
+      <div class="card-body p-2">
+        <small class="d-block text-truncate text-muted">{{ dateStr }}</small>
+        <small class="d-block text-truncate text-muted opacity-75" style="font-size: 0.75rem;">{{ timeStr }}</small>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      assetId: String,
+      mediaId: String,
+      mimeType: String,
+      isActive: String,
+      type: String,
+      dateStr: String,
+      timeStr: String,
+      fileKey: String,
+      fileNonce: String
+    },
+    getters: {
+      activeClass: (state) => (state.isActive === 'true' ? 'border border-primary border-2' : ''),
+      ratioClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'ratio-16x9' : 'ratio-1x1'),
+      iconClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'bi-camera-video' : 'bi-image')
+    },
+    client: ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal }) => {
+      const { $localDb } = localDb
+      const { $state } = globalStore
+      const { pb } = pocketbase
+      const card = refs('card')
+      const mediaContainer = refs('mediaContainer')
+
+      const objectUrls = new Map()
+      const cleanupUrls = () => {
+        objectUrls.forEach(url => URL.revokeObjectURL(url))
+        objectUrls.clear()
+      }
+      signal.addEventListener('abort', cleanupUrls)
+
+      const isVideo = (state.mimeType || '').startsWith('video/')
+
+      card.onclick = () => {
+        $state.activeSelectionId = state.assetId
+        $state.activeSelectionType = state.type
+
+        if (isVideo) {
+           // Set queue and play for video
+           $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at').then(rawItems => {
+              $state.mediaQueue = rawItems.map(i => i.id)
+              if (!$state.currentMedia || $state.currentMedia.id !== state.assetId) {
+                $state.currentMedia = { id: state.assetId, type: 'videos' }
+                $state.playbackStatus = 'playing'
+              }
+           })
+        }
+      }
+
+      // Decrypt and render preview (This stays in client block as it requires libsodium and fetching)
+      const renderPreview = async () => {
+        if (!state.mediaId || !state.fileKey || !state.fileNonce) return
+        
+        try {
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+
+          const mediaRecord = await pb.collection('media').getOne(state.mediaId)
+          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+          const response = await fetch(url)
+          if (!response.ok) throw new Error('Fetch failed')
+          const encryptedData = new Uint8Array(await response.arrayBuffer())
+
+          const key = sodium.from_base64(state.fileKey, sodium.base64_variants.ORIGINAL)
+          const nonce = sodium.from_base64(state.fileNonce, sodium.base64_variants.ORIGINAL)
+
+          const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
+          if (!decryptedData) throw new Error('Decryption failed')
+
+          const blob = new Blob([decryptedData], { type: state.mimeType })
+          const objectUrl = URL.createObjectURL(blob)
+          objectUrls.set(state.assetId, objectUrl)
+
+          mediaContainer.innerHTML = ''
+          if (isVideo) {
+            const video = document.createElement('video')
+            video.src = objectUrl
+            video.muted = true
+            video.className = 'object-fit-cover w-100 h-100'
+            mediaContainer.appendChild(video)
+          } else {
+            const img = document.createElement('img')
+            img.src = objectUrl
+            img.className = 'object-fit-cover w-100 h-100'
+            mediaContainer.appendChild(img)
+          }
+        } catch (err) {
+          console.error('[media-grid-card] Preview error:', err)
+        }
+      }
+
+      renderPreview()
+    }
+  })
+</script>
+
+<style>
+  .clickable-card {
+    cursor: pointer;
+    transition: transform 0.2s;
+  }
+  .clickable-card:hover {
+    transform: translateY(-2px);
+  }
+</style>
