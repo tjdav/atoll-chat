@@ -89,6 +89,7 @@
           created_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
           // Include any specific metadata for UI rendering while pending
           mime_type: params.mime_type,
+          filename: params.filename,
           waveform_data: params.waveform_data,
           music_metadata: params.music_metadata
         }
@@ -168,6 +169,7 @@
               type: 'media',
               content: recordedBlob ? '' : text,
               file: file,
+              filename: file.name,
               mime_type: file.type,
               waveform_data: waveformData,
               music_metadata: musicMetadata,

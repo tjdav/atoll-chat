@@ -151,7 +151,7 @@
               }
 
               // Propagate status to children
-              row.querySelectorAll('text-message, media-preview, voice-player').forEach(child => {
+              row.querySelectorAll('text-message, media-preview, voice-player, file-attachment').forEach(child => {
                 if (child.getAttribute('status') !== m.status) {
                   child.setAttribute('status', m.status)
                 }
@@ -278,13 +278,40 @@
                 player.setAttribute('status', message.status)
                 player.setAttribute('is-sent', isSent)
                 row.appendChild(player)
-              } else {
+
+                if (message.content) {
+                  const text = document.createElement('text-message')
+                  text.setAttribute('local-uuid', message.local_uuid)
+                  text.setAttribute('content', message.content)
+                  text.setAttribute('is-sent', isSent)
+                  text.setAttribute('position', position)
+                  text.setAttribute('status', message.status)
+                  row.appendChild(text)
+                }
+              } else if (message.mime_type?.startsWith('image/') || message.mime_type?.startsWith('video/')) {
                 const preview = document.createElement('media-preview')
                 preview.setAttribute('local-uuid', message.local_uuid)
                 preview.setAttribute('status', message.status)
                 preview.setAttribute('is-sent', isSent)
                 row.appendChild(preview)
   
+                if (message.content) {
+                  const text = document.createElement('text-message')
+                  text.setAttribute('local-uuid', message.local_uuid)
+                  text.setAttribute('content', message.content)
+                  text.setAttribute('is-sent', isSent)
+                  text.setAttribute('position', position)
+                  text.setAttribute('status', message.status)
+                  row.appendChild(text)
+                }
+              } else {
+                // Generic file
+                const fileComp = document.createElement('file-attachment')
+                fileComp.setAttribute('local-uuid', message.local_uuid)
+                fileComp.setAttribute('status', message.status)
+                fileComp.setAttribute('is-sent', isSent)
+                row.appendChild(fileComp)
+
                 if (message.content) {
                   const text = document.createElement('text-message')
                   text.setAttribute('local-uuid', message.local_uuid)

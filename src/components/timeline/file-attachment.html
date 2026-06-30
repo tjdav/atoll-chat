@@ -1,0 +1,135 @@
+<template id="file-attachment">
+  <div ref="container" class="file-attachment-container p-2 mb-1 border rounded bg-light d-flex align-items-center" style="min-width: 250px; max-width: 350px;">
+    <div ref="loading" class="{{ loadingClass }} d-flex align-items-center w-100">
+      <div class="placeholder rounded me-2" style="width: 40px; height: 40px;"></div>
+      <div class="flex-grow-1">
+        <div class="placeholder col-8 mb-1" style="height: 14px;"></div>
+        <div class="placeholder col-4" style="height: 12px;"></div>
+      </div>
+    </div>
+    
+    <div ref="content" class="d-none w-100 d-flex align-items-center">
+      <div class="file-icon-wrapper me-3 fs-2 text-primary">
+        <i ref="fileIcon" class="bi bi-file-earmark"></i>
+      </div>
+      <div class="flex-grow-1 overflow-hidden">
+        <div ref="fileName" class="fw-bold small text-truncate mb-0"></div>
+        <div ref="fileSize" class="x-small text-muted"></div>
+      </div>
+      <a ref="downloadLink" href="#" class="btn btn-sm btn-outline-primary ms-2" title="Download">
+        <i class="bi bi-download"></i>
+      </a>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      localUuid: String,
+      status: String,
+      isSent: {
+        type: Boolean,
+        default: false
+      }
+    },
+    getters: {
+      loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
+    },
+    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus }) => {
+      const { $localDb } = localDb
+      const { pb } = pocketbase
+      const { $state } = globalStore
+      const { $bus } = eventBus
+      
+      const loading = refs('loading')
+      const content = refs('content')
+      const fileNameEl = refs('fileName')
+      const fileSizeEl = refs('fileSize')
+      const downloadLink = refs('downloadLink')
+      const fileIcon = refs('fileIcon')
+
+      let objectUrl = null
+
+      const getFileIcon = (mimeType) => {
+        if (!mimeType) return 'bi-file-earmark'
+        if (mimeType.includes('pdf')) return 'bi-file-earmark-pdf'
+        if (mimeType.includes('word') || mimeType.includes('officedocument.wordprocessingml')) return 'bi-file-earmark-word'
+        if (mimeType.includes('excel') || mimeType.includes('officedocument.spreadsheetml')) return 'bi-file-earmark-excel'
+        if (mimeType.includes('powerpoint') || mimeType.includes('officedocument.presentationml')) return 'bi-file-earmark-ppt'
+        if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('compressed')) return 'bi-file-earmark-zip'
+        if (mimeType.includes('text')) return 'bi-file-earmark-text'
+        if (mimeType.includes('image')) return 'bi-file-earmark-image'
+        if (mimeType.includes('video')) return 'bi-file-earmark-play'
+        if (mimeType.includes('audio')) return 'bi-file-earmark-music'
+        return 'bi-file-earmark'
+      }
+
+      const formatBytes = (bytes, decimals = 2) => {
+        if (!bytes || bytes === 0) return '0 Bytes'
+        const k = 1024
+        const dm = decimals < 0 ? 0 : decimals
+        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
+        const i = Math.floor(Math.log(bytes) / Math.log(k))
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+      }
+
+      try {
+        if (!state.localUuid) return
+
+        const message = await $localDb.local_messages.get(state.localUuid)
+        if (!message || !message.file_key) {
+          throw new Error('Message or key missing')
+        }
+
+        // Check Cache first
+        if ($state.decryptionCache.has(state.localUuid)) {
+          objectUrl = $state.decryptionCache.get(state.localUuid)
+        } else {
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+
+          const mediaRecord = await pb.collection('media').getOne(message.media_id)
+          const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+          const response = await fetch(fileUrl)
+          if (!response.ok) throw new Error('Fetch failed')
+          
+          const encryptedData = new Uint8Array(await response.arrayBuffer())
+          const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
+          const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
+
+          const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
+          if (!decryptedData) throw new Error('Decryption failed')
+
+          const blob = new Blob([decryptedData], { type: message.mime_type })
+          objectUrl = URL.createObjectURL(blob)
+          $state.decryptionCache.set(state.localUuid, objectUrl)
+        }
+
+        loading.classList.add('d-none')
+        content.classList.remove('d-none')
+        content.classList.add('d-flex')
+
+        fileNameEl.textContent = message.filename || message.content || 'Attachment'
+        fileSizeEl.textContent = message.mime_type || 'Unknown Type'
+        
+        fileIcon.className = `bi ${getFileIcon(message.mime_type)}`
+        
+        downloadLink.href = objectUrl
+        downloadLink.download = message.filename || message.content || 'attachment'
+        
+        $bus.emit('MEDIA_LOADED')
+
+      } catch (err) {
+        console.error('[file-attachment] Error:', err)
+        loading.innerHTML = `
+          <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+          <div class="x-small ms-2">Failed to load file</div>
+        `
+      }
+    }
+  })
+</script>

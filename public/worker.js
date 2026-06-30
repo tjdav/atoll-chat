@@ -187,6 +187,7 @@ async function sendMessage (rpcId, payload) {
     type,
     content,
     file,
+    filename,
     mime_type,
     waveform_data,
     music_metadata,
@@ -285,6 +286,7 @@ async function sendMessage (rpcId, payload) {
     plaintextObj.media_id = mediaId
     plaintextObj.file_key = fileKeyBase64
     plaintextObj.file_nonce = fileNonceBase64
+    plaintextObj.filename = filename
     plaintextObj.mime_type = mime_type
     plaintextObj.waveform_data = waveform_data
     plaintextObj.music_metadata = music_metadata
@@ -353,6 +355,7 @@ async function sendMessage (rpcId, payload) {
     updateData.media_id = mediaId
     updateData.file_key = fileKeyBase64
     updateData.file_nonce = fileNonceBase64
+    updateData.filename = filename
     updateData.album_art = albumArtInfo
 
     await db.local_assets.put({
@@ -360,6 +363,7 @@ async function sendMessage (rpcId, payload) {
       media_id: mediaId,
       room_id: roomId,
       mime_type: mime_type,
+      filename: filename,
       file_key: fileKeyBase64,
       file_nonce: fileNonceBase64,
       created_at: pbRecord.created,
@@ -515,10 +519,11 @@ async function processIncomingMessage (rpcId, record) {
 
   // If media, extend the message with media metadata for easier rendering in the timeline
   if (type === 'media') {
-    const { media_id, file_key, file_nonce, mime_type, waveform_data, music_metadata, album_art } = decryptedPayload
+    const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art } = decryptedPayload
     decryptedMessage.media_id = media_id
     decryptedMessage.file_key = file_key
     decryptedMessage.file_nonce = file_nonce
+    decryptedMessage.filename = filename
     decryptedMessage.mime_type = mime_type
     decryptedMessage.waveform_data = waveform_data
     decryptedMessage.music_metadata = music_metadata
@@ -530,6 +535,7 @@ async function processIncomingMessage (rpcId, record) {
       media_id,
       room_id: roomId,
       mime_type,
+      filename,
       file_key,
       file_nonce,
       created_at: created,
