@@ -3,11 +3,31 @@ import path from 'path'
 
 test.describe('File Attachments', () => {
   const testFiles = [
-    { name: 'test.png', type: 'image', selector: 'media-preview img' },
-    { name: 'test.mp4', type: 'video', selector: 'media-preview video' },
-    { name: 'test.docx', type: 'document', selector: 'file-attachment' },
-    { name: 'test.tar', type: 'archive', selector: 'file-attachment' },
-    { name: 'test.txt', type: 'text', selector: 'file-attachment' }
+    {
+      name: 'test.png',
+      type: 'image',
+      selector: 'media-preview img'
+    },
+    {
+      name: 'test.mp4',
+      type: 'video',
+      selector: 'media-preview video'
+    },
+    {
+      name: 'test.docx',
+      type: 'document',
+      selector: 'file-attachment'
+    },
+    {
+      name: 'test.tar',
+      type: 'archive',
+      selector: 'file-attachment'
+    },
+    {
+      name: 'test.txt',
+      type: 'text',
+      selector: 'file-attachment'
+    }
   ]
 
   test('should allow Alice to send various file types to Bob and verify reception', async ({ browser, loginCustomPage }) => {
@@ -41,7 +61,7 @@ test.describe('File Attachments', () => {
 
     for (const file of testFiles) {
       console.log(`Testing file: ${file.name} (${file.type})`)
-      
+
       const filePath = path.resolve(`tests/e2e/fixtures/test-files/${file.name}`)
       await alicePage.locator('chat-input-text input[type="file"]').setInputFiles(filePath)
 

@@ -20,6 +20,8 @@
       <room-details-sidebar></room-details-sidebar>
       <media-engine></media-engine>
       <timeline-date-separator></timeline-date-separator>
+      <document-list></document-list>
+      <document-viewer></document-viewer>
     </div>
   </div>
 </template>
@@ -72,6 +74,8 @@
           componentName = 'video-list'
         } else if (view === 'music') {
           componentName = 'music-list'
+        } else if (view === 'documents') {
+          componentName = 'document-list'
         } else if (view === 'media-engine') {
           componentName = 'media-engine'
         } else if (view === 'settings') {

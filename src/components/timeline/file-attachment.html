@@ -43,7 +43,7 @@
       const { pb } = pocketbase
       const { $state } = globalStore
       const { $bus } = eventBus
-      
+  
       const loading = refs('loading')
       const content = refs('content')
       const fileNameEl = refs('fileName')
@@ -54,21 +54,43 @@
       let objectUrl = null
 
       const getFileIcon = (mimeType) => {
-        if (!mimeType) return 'bi-file-earmark'
-        if (mimeType.includes('pdf')) return 'bi-file-earmark-pdf'
-        if (mimeType.includes('word') || mimeType.includes('officedocument.wordprocessingml')) return 'bi-file-earmark-word'
-        if (mimeType.includes('excel') || mimeType.includes('officedocument.spreadsheetml')) return 'bi-file-earmark-excel'
-        if (mimeType.includes('powerpoint') || mimeType.includes('officedocument.presentationml')) return 'bi-file-earmark-ppt'
-        if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('compressed')) return 'bi-file-earmark-zip'
-        if (mimeType.includes('text')) return 'bi-file-earmark-text'
-        if (mimeType.includes('image')) return 'bi-file-earmark-image'
-        if (mimeType.includes('video')) return 'bi-file-earmark-play'
-        if (mimeType.includes('audio')) return 'bi-file-earmark-music'
+        if (!mimeType) {
+          return 'bi-file-earmark'
+        }
+        if (mimeType.includes('pdf')) {
+          return 'bi-file-earmark-pdf'
+        }
+        if (mimeType.includes('word') || mimeType.includes('officedocument.wordprocessingml')) {
+          return 'bi-file-earmark-word'
+        }
+        if (mimeType.includes('excel') || mimeType.includes('officedocument.spreadsheetml')) {
+          return 'bi-file-earmark-excel'
+        }
+        if (mimeType.includes('powerpoint') || mimeType.includes('officedocument.presentationml')) {
+          return 'bi-file-earmark-ppt'
+        }
+        if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('compressed')) {
+          return 'bi-file-earmark-zip'
+        }
+        if (mimeType.includes('text')) {
+          return 'bi-file-earmark-text'
+        }
+        if (mimeType.includes('image')) {
+          return 'bi-file-earmark-image'
+        }
+        if (mimeType.includes('video')) {
+          return 'bi-file-earmark-play'
+        }
+        if (mimeType.includes('audio')) {
+          return 'bi-file-earmark-music'
+        }
         return 'bi-file-earmark'
       }
 
       const formatBytes = (bytes, decimals = 2) => {
-        if (!bytes || bytes === 0) return '0 Bytes'
+        if (!bytes || bytes === 0) {
+          return '0 Bytes'
+        }
         const k = 1024
         const dm = decimals < 0 ? 0 : decimals
         const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
@@ -77,7 +99,9 @@
       }
 
       try {
-        if (!state.localUuid) return
+        if (!state.localUuid) {
+          return
+        }
 
         const message = await $localDb.local_messages.get(state.localUuid)
         if (!message || !message.file_key) {
@@ -95,14 +119,18 @@
           const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
 
           const response = await fetch(fileUrl)
-          if (!response.ok) throw new Error('Fetch failed')
-          
+          if (!response.ok) {
+            throw new Error('Fetch failed')
+          }
+  
           const encryptedData = new Uint8Array(await response.arrayBuffer())
           const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
           const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
 
           const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-          if (!decryptedData) throw new Error('Decryption failed')
+          if (!decryptedData) {
+            throw new Error('Decryption failed')
+          }
 
           const blob = new Blob([decryptedData], { type: message.mime_type })
           objectUrl = URL.createObjectURL(blob)
@@ -115,12 +143,12 @@
 
         fileNameEl.textContent = message.filename || message.content || 'Attachment'
         fileSizeEl.textContent = message.mime_type || 'Unknown Type'
-        
+  
         fileIcon.className = `bi ${getFileIcon(message.mime_type)}`
-        
+  
         downloadLink.href = objectUrl
         downloadLink.download = message.filename || message.content || 'attachment'
-        
+  
         $bus.emit('MEDIA_LOADED')
 
       } catch (err) {

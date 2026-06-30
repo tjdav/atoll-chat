@@ -28,6 +28,9 @@
       <div class="h-100" style="display: {{ audioPlayerDisplay }};">
         <audio-player-view></audio-player-view>
       </div>
+      <div class="h-100" style="display: {{ documentViewerDisplay }};">
+        <document-viewer></document-viewer>
+      </div>
     </div>
   </div>
   <media-engine></media-engine>
@@ -45,11 +48,12 @@
     }),
     getters: {
       currentViewTitle: (state) => state.currentAppView || 'Chats',
-      emptyStateDisplay: (state) => ((!state.activeSelectionId || (state.activeSelectionType !== 'chats' && state.activeSelectionType !== 'pictures' && state.activeSelectionType !== 'videos' && state.activeSelectionType !== 'music')) ? 'flex' : 'none'),
+      emptyStateDisplay: (state) => ((!state.activeSelectionId || (state.activeSelectionType !== 'chats' && state.activeSelectionType !== 'pictures' && state.activeSelectionType !== 'videos' && state.activeSelectionType !== 'music' && state.activeSelectionType !== 'documents')) ? 'flex' : 'none'),
       chatViewDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'chats') ? 'block' : 'none'),
       imageViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'pictures') ? 'block' : 'none'),
       videoPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'videos') ? 'block' : 'none'),
-      audioPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'music') ? 'block' : 'none')
+      audioPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'music') ? 'block' : 'none'),
+      documentViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'documents') ? 'block' : 'none')
     },
     client: ({ state, globalStore }) => {
       const { $state } = globalStore

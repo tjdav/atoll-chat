@@ -1,0 +1,161 @@
+<template id="document-viewer">
+  <div class="document-viewer-container d-flex justify-content-center align-items-center h-100 bg-body-secondary">
+    <div ref="loader" class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading...</span>
+    </div>
+
+    <div ref="errorAlert" class="alert alert-danger m-3 d-none">
+      {{ errorMessage }}
+    </div>
+
+    <div ref="content" class="d-none card shadow-sm p-4 text-center" style="max-width: 400px;">
+      <div class="mb-4">
+        <i ref="fileIcon" class="bi bi-file-earmark-fill text-primary" style="font-size: 5rem;"></i>
+      </div>
+      <h4 ref="fileName" class="mb-2 text-truncate"></h4>
+      <p ref="fileType" class="text-muted small mb-4"></p>
+      
+      <div class="d-grid gap-2">
+        <a ref="downloadBtn" href="#" class="btn btn-primary btn-lg">
+          <i class="bi bi-download me-2"></i> Download Document
+        </a>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      errorMessage: ''
+    }),
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils }) => {
+      const { pb } = pocketbase
+      const { $localDb } = localDb
+      const { $state } = globalStore
+      const { $utils } = utils
+  
+      const loader = refs('loader')
+      const content = refs('content')
+      const errorAlert = refs('errorAlert')
+      const fileNameEl = refs('fileName')
+      const fileTypeEl = refs('fileType')
+      const fileIcon = refs('fileIcon')
+      const downloadBtn = refs('downloadBtn')
+  
+      let currentObjectUrl = null
+
+      const cleanup = () => {
+        if (currentObjectUrl) {
+          URL.revokeObjectURL(currentObjectUrl)
+          currentObjectUrl = null
+        }
+      }
+
+      signal.addEventListener('abort', cleanup)
+
+      const getFileIcon = (mimeType) => {
+        if (!mimeType) {
+          return 'bi-file-earmark-fill'
+        }
+        if (mimeType.includes('pdf')) {
+          return 'bi-file-earmark-pdf-fill'
+        }
+        if (mimeType.includes('word') || mimeType.includes('officedocument.wordprocessingml')) {
+          return 'bi-file-earmark-word-fill'
+        }
+        if (mimeType.includes('excel') || mimeType.includes('officedocument.spreadsheetml')) {
+          return 'bi-file-earmark-excel-fill'
+        }
+        if (mimeType.includes('powerpoint') || mimeType.includes('officedocument.presentationml')) {
+          return 'bi-file-earmark-ppt-fill'
+        }
+        if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('compressed')) {
+          return 'bi-file-earmark-zip-fill'
+        }
+        if (mimeType.includes('text')) {
+          return 'bi-file-earmark-text-fill'
+        }
+        return 'bi-file-earmark-fill'
+      }
+
+      const loadDocument = async () => {
+        const id = $state.activeSelectionId
+        const type = $state.activeSelectionType
+
+        if (!id || type !== 'documents') {
+          return
+        }
+
+        // Reset UI
+        state.errorMessage = ''
+        errorAlert.classList.add('d-none')
+        loader.classList.remove('d-none')
+        content.classList.add('d-none')
+        cleanup()
+
+        try {
+          const asset = await $localDb.local_assets.get(id)
+          if (!asset) {
+            throw new Error('Document asset not found in local database')
+          }
+
+          const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+          const response = await fetch(url, { signal })
+          if (!response.ok) {
+            throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`)
+          }
+          const arrayBuffer = await response.arrayBuffer()
+          const encryptedData = new Uint8Array(arrayBuffer)
+
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+
+          const key = sodium.from_base64(asset.file_key, sodium.base64_variants.ORIGINAL)
+          const nonce = sodium.from_base64(asset.file_nonce, sodium.base64_variants.ORIGINAL)
+
+          const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
+          if (!decryptedData) {
+            throw new Error('Decryption failed')
+          }
+
+          const blob = new Blob([decryptedData], { type: asset.mime_type })
+          currentObjectUrl = URL.createObjectURL(blob)
+
+          if (!signal.aborted) {
+            fileNameEl.textContent = asset.filename || 'Unnamed Document'
+            fileTypeEl.textContent = asset.mime_type || 'Unknown Type'
+            fileIcon.className = `bi ${getFileIcon(asset.mime_type)} text-primary`
+  
+            downloadBtn.href = currentObjectUrl
+            downloadBtn.download = asset.filename || 'document'
+  
+            content.classList.remove('d-none')
+            loader.classList.add('d-none')
+          } else {
+            cleanup()
+          }
+
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
+          console.error('[document-viewer] Error:', err)
+          state.errorMessage = err.message || 'Failed to load document'
+          errorAlert.classList.remove('d-none')
+          loader.classList.add('d-none')
+        }
+      }
+
+      const debouncedLoad = $utils.debounce(loadDocument, 50)
+      debouncedLoad()
+
+      $state.subscribe('activeSelectionId', debouncedLoad)
+      $state.subscribe('activeSelectionType', debouncedLoad)
+    }
+  })
+</script>

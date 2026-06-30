@@ -1,0 +1,149 @@
+<template id="document-list">
+  <div class="document-list h-100 overflow-y-auto">
+    <div class="list-group list-group-flush" ref="listGroup">
+      <!-- Documents will be rendered here -->
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils }) => {
+      const { $localDb } = localDb
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const { $utils } = utils
+      const listGroup = refs('listGroup')
+
+      let currentRenderId = 0
+      const render = async () => {
+        if (!listGroup) {
+          return
+        }
+
+        const renderId = ++currentRenderId
+        try {
+          // Fetch all assets and filter for non-media types
+          const allAssets = await $localDb.local_assets.reverse().sortBy('created_at')
+          if (renderId !== currentRenderId) {
+            return
+          }
+
+          const assets = allAssets.filter(asset => {
+            const mt = asset.mime_type || ''
+            return !mt.startsWith('image/') && !mt.startsWith('audio/') && !mt.startsWith('video/')
+          })
+
+          // Enrich assets with room names
+          const items = await Promise.all(assets.map(async (asset) => {
+            const room = await $localDb.local_rooms.get(asset.room_id)
+            return {
+              ...asset,
+              roomName: room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat',
+              timestamp: new Date(asset.created_at).toLocaleString()
+            }
+          }))
+          if (renderId !== currentRenderId) {
+            return
+          }
+
+          const fragment = document.createDocumentFragment()
+
+          if (items.length === 0) {
+            const emptyMsg = document.createElement('div')
+            emptyMsg.className = 'p-4 text-center text-muted'
+            emptyMsg.textContent = 'No documents found'
+            fragment.appendChild(emptyMsg)
+          } else {
+            items.forEach(item => {
+              const btn = document.createElement('button')
+              btn.type = 'button'
+              const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'documents'
+              btn.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 ${isActive ? 'active' : ''}`
+
+              const iconWrapper = document.createElement('div')
+              iconWrapper.className = 'list-item-icon'
+              const icon = document.createElement('i')
+              icon.className = 'bi bi-file-earmark-fill fs-5'
+              iconWrapper.appendChild(icon)
+
+              const contentWrapper = document.createElement('div')
+              contentWrapper.className = 'text-truncate'
+  
+              const fileNameDiv = document.createElement('div')
+              fileNameDiv.className = 'fw-bold text-truncate'
+              fileNameDiv.textContent = item.filename || 'Unnamed File'
+  
+              const subTextSmall = document.createElement('small')
+              subTextSmall.className = 'opacity-75 d-block text-truncate'
+              subTextSmall.textContent = `${item.roomName} • ${item.timestamp}`
+
+              contentWrapper.appendChild(fileNameDiv)
+              contentWrapper.appendChild(subTextSmall)
+
+              btn.appendChild(iconWrapper)
+              btn.appendChild(contentWrapper)
+
+              const arrowIcon = document.createElement('i')
+              arrowIcon.className = 'bi bi-chevron-right ms-auto opacity-50'
+              btn.appendChild(arrowIcon)
+
+              btn.addEventListener('click', () => {
+                $state.activeSelectionId = item.id
+                $state.activeSelectionType = 'documents'
+              })
+
+              fragment.appendChild(btn)
+            })
+          }
+
+          if (renderId === currentRenderId) {
+            listGroup.innerHTML = ''
+            listGroup.appendChild(fragment)
+          }
+        } catch (error) {
+          console.error('[document-list] Error fetching documents:', error)
+        }
+      }
+
+      // Initial render
+      render()
+
+      const debouncedRender = $utils.debounce(render, 10)
+
+      // Handle selection change
+      $state.subscribe('activeSelectionId', () => {
+        if ($state.activeSelectionType === 'documents') {
+          debouncedRender()
+        }
+      })
+      $state.subscribe('activeSelectionType', () => {
+        debouncedRender()
+      })
+
+      const handleNewData = () => {
+        debouncedRender()
+      }
+
+      $bus.on('NEW_LOCAL_DATA', handleNewData)
+    }
+  })
+</script>
+
+<style>
+  .list-item-icon {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    background-color: var(--bs-secondary-bg);
+    margin-right: 12px;
+  }
+  .list-group-item.active .list-item-icon {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+</style>
