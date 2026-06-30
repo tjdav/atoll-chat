@@ -146,10 +146,17 @@
           }
           $state.mediaMetadata = { ...metadata }
 
-          $state.playbackStatus = 'playing'
           activePlayer.src = currentObjectUrl
           activePlayer.volume = $state.mediaVolume
-          activePlayer.play().catch(e => console.warn('[media-engine] Play failed:', e))
+          $state.playbackStatus = 'playing'
+          try {
+            await activePlayer.play()
+          } catch (e) {
+            if (e.name !== 'AbortError') {
+              console.warn('[media-engine] Play failed:', e)
+              $state.playbackStatus = 'paused'
+            }
+          }
 
         } catch (err) {
           if (err.name === 'AbortError') {
@@ -168,14 +175,12 @@
             type
           }
         } else if (activePlayer) {
-          activePlayer.play()
           $state.playbackStatus = 'playing'
         }
       })
 
       $bus.on('MEDIA:PAUSE', () => {
         if (activePlayer) {
-          activePlayer.pause()
           $state.playbackStatus = 'paused'
         }
       })
@@ -184,12 +189,10 @@
         if (!activePlayer) {
           return
         }
-        if (activePlayer.paused) {
-          activePlayer.play()
-          $state.playbackStatus = 'playing'
-        } else {
-          activePlayer.pause()
+        if ($state.playbackStatus === 'playing') {
           $state.playbackStatus = 'paused'
+        } else {
+          $state.playbackStatus = 'playing'
         }
       })
 
@@ -242,12 +245,22 @@
         }
       })
 
-      $state.subscribe('playbackStatus', (status) => {
+      $state.subscribe('playbackStatus', async (status) => {
         if (activePlayer) {
-          if (status === 'playing' && activePlayer.paused) {
-            activePlayer.play().catch(e => console.warn('[media-engine] Play failed:', e))
-          } else if (status === 'paused' && !activePlayer.paused) {
-            activePlayer.pause()
+          if (status === 'playing') {
+            if (activePlayer.paused) {
+              try {
+                await activePlayer.play()
+              } catch (e) {
+                if (e.name !== 'AbortError') {
+                  console.warn('[media-engine] Play failed:', e)
+                }
+              }
+            }
+          } else if (status === 'paused') {
+            if (!activePlayer.paused) {
+              activePlayer.pause()
+            }
           }
         }
       })

@@ -9,21 +9,6 @@
     <div class="flex-grow-1 overflow-hidden" ref="listContainer">
       <!-- Specialized list components will be mounted here -->
     </div>
-
-    <!-- Hidden registration for bundling -->
-    <div class="d-none">
-      <timeline-row></timeline-row>
-      <text-message></text-message>
-      <media-preview></media-preview>
-      <voice-player></voice-player>
-      <file-attachment></file-attachment>
-      <room-details-sidebar></room-details-sidebar>
-      <media-engine></media-engine>
-      <timeline-date-separator></timeline-date-separator>
-      <chat-list-item></chat-list-item>
-      <music-list-item></music-list-item>
-      <media-grid-card></media-grid-card>
-    </div>
   </div>
 </template>
 
@@ -37,10 +22,16 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, state, globalStore, eventBus }) => {
+    client: ({ refs, state, globalStore, eventBus, signal }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       state.currentAppView = $state.currentAppView || 'chats'
+
+      // Clear registration div on client mount to avoid duplicate elements in DOM
+      const regDiv = refs('registrationDiv')
+      if (regDiv) {
+        regDiv.innerHTML = ''
+      }
 
       const updateView = () => {
         const view = state.currentAppView
@@ -75,6 +66,8 @@
           componentName = 'video-list'
         } else if (view === 'music') {
           componentName = 'music-list'
+        } else if (view === 'documents') {
+          componentName = 'document-list'
         } else if (view === 'media-engine') {
           componentName = 'media-engine'
         } else if (view === 'settings') {

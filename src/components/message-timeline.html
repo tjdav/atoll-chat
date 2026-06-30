@@ -178,18 +178,21 @@
             const prevLastRow = container.querySelector(`timeline-row[data-message-id="${lastRenderedMessageId}"]`) || container.querySelector(`timeline-row[data-local-uuid="${lastRenderedMessageId}"]`)
             if (prevLastRow) {
               const firstNew = messagesToRender[0]
+              const prevMsg = messages.find(m => (m.id || m.local_uuid) === lastRenderedMessageId)
   
-              // 1. Date Separator logic (> 1 hour)
-              const prevTime = new Date(messages.find(m => (m.id || m.local_uuid) === lastRenderedMessageId).created_at).getTime()
-              const currTime = new Date(firstNew.created_at).getTime()
-              const showSeparator = currTime - prevTime > 3600000
+              if (prevMsg && prevMsg.created_at && firstNew.created_at) {
+                // 1. Date Separator logic (> 1 hour)
+                const prevTime = new Date(prevMsg.created_at).getTime()
+                const currTime = new Date(firstNew.created_at).getTime()
+                const showSeparator = currTime - prevTime > 3600000
 
-              if (!showSeparator && firstNew.sender_id === prevLastRow.dataset.senderId) {
-                // It's no longer the last in block
-                prevLastRow.setAttribute('is-last-in-block', 'false')
-                // Remove avatar if it had one
-                prevLastRow.removeAttribute('avatar-url')
-                prevLastRow.removeAttribute('avatar-initials')
+                if (!showSeparator && firstNew.sender_id === prevLastRow.dataset.senderId) {
+                  // It's no longer the last in block
+                  prevLastRow.setAttribute('is-last-in-block', 'false')
+                  // Remove avatar if it had one
+                  prevLastRow.removeAttribute('avatar-url')
+                  prevLastRow.removeAttribute('avatar-initials')
+                }
               }
             }
           }

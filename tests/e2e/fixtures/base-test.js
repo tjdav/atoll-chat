@@ -8,10 +8,6 @@ export const test = base.extend({
     page.on('pageerror', err => {
       console.log(`[BROWSER ERROR] ${err.message}`)
     })
-
-    page.on('console', (msg) => {
-      console.log(`[Browser Console] ${msg.type()}: ${msg.text()}`)
-    })
     await use(page)
   },
 
@@ -37,6 +33,13 @@ export const test = base.extend({
 
   loginCustomPage: async ({ baseURL }, use) => {
     const doLogin = async (targetPage, username, appPassword, vaultPassword) => {
+      targetPage.on('console', msg => {
+        console.log(`[BROWSER][${username}] ${msg.type()}: ${msg.text()}`)
+      })
+      targetPage.on('pageerror', err => {
+        console.log(`[BROWSER ERROR][${username}] ${err.message}`)
+      })
+
       // Use the global baseURL if available
       await targetPage.goto(baseURL || '/')
 

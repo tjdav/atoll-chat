@@ -63,18 +63,20 @@ test.describe('File Attachments', () => {
       console.log(`Testing file: ${file.name} (${file.type})`)
 
       const filePath = path.resolve(`tests/e2e/fixtures/test-files/${file.name}`)
-      await alicePage.locator('chat-input-text input[type="file"]').setInputFiles(filePath)
+      await alicePage.locator('chat-view chat-input-text input[type="file"]').setInputFiles(filePath)
 
       // Verify attachment preview shows up
-      await expect(alicePage.locator('chat-attachment-preview')).toBeVisible()
-      await expect(alicePage.locator('chat-attachment-preview')).toContainText(file.name)
+      await expect(alicePage.locator('chat-view chat-attachment-preview')).toBeVisible()
+      await expect(alicePage.locator('chat-view chat-attachment-preview')).toContainText(file.name)
 
       const caption = `Sending ${file.name}`
       // Clear and fill caption
-      await alicePage.locator('textarea[placeholder="Type a message..."]').fill(caption)
+      const textarea = alicePage.locator('chat-view textarea[placeholder="Type a message..."]')
+      await textarea.clear()
+      await textarea.fill(caption)
 
       console.log(`Alice sending ${file.name}...`)
-      await alicePage.click('button:has-text("Send")')
+      await alicePage.locator('chat-view button:has-text("Send")').click()
 
       // Alice's Worker Confirmation: Wait for global sent status to appear
       const statusContainer = alicePage.locator('chat-view .message-status-container')

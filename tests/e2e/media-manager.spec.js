@@ -18,8 +18,8 @@ test.describe('Media Manager Sidebar', () => {
     await page.click('button:has-text("Create Room")')
 
     const audioPath = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
-    await page.locator('chat-input-text input[type="file"]').setInputFiles(audioPath)
-    await page.click('button:has-text("Send")')
+    await page.locator('chat-view chat-input-text input[type="file"]').setInputFiles(audioPath)
+    await page.locator('chat-view button:has-text("Send")').click()
 
     // Wait for upload and sent status
     await expect(page.locator('chat-view .message-status-container')).toBeVisible({ timeout: 20000 })

@@ -94,7 +94,8 @@
       const btnBigPlay = refs('btnBigPlay')
       const progressContainer = refs('progressContainer')
 
-      state.playbackStatus = $state.playbackStatus
+      state.playbackStatus = $state.playbackStatus || 'idle'
+      state.currentMediaId = $state.currentMedia?.id
       state.mediaProgress = $state.mediaProgress
       state.mediaCurrentTime = $state.mediaCurrentTime
       state.mediaDuration = $state.mediaDuration
@@ -166,9 +167,13 @@
 
       $state.subscribe('activeSelectionId', debouncedSync)
       $state.subscribe('activeSelectionType', debouncedSync)
+      $state.subscribe('currentMedia', (val) => {
+        state.currentMediaId = val?.id
+        state.isPlayingThis = (state.currentMediaId === $state.activeSelectionId)
+      })
       $state.subscribe('playbackStatus', (val) => {
-        state.playbackStatus = val
-        state.isPlayingThis = ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId)
+        state.playbackStatus = val || 'idle'
+        state.isPlayingThis = (state.currentMediaId === $state.activeSelectionId)
       })
       $state.subscribe('mediaProgress', (val) => state.mediaProgress = val)
       $state.subscribe('mediaCurrentTime', (val) => state.mediaCurrentTime = val)
