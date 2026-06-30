@@ -187,11 +187,12 @@ async function sendMessage (rpcId, payload) {
     type,
     content,
     file,
-    filename,
     mime_type,
     waveform_data,
     music_metadata,
     album_art_blob,
+    candidate,
+    media_types,
     timestamp
   } = payload
 
@@ -279,6 +280,8 @@ async function sendMessage (rpcId, payload) {
     local_uuid: localUuid,
     type,
     content,
+    candidate,
+    media_types,
     timestamp: timestamp || Date.now()
   }
 
@@ -286,7 +289,6 @@ async function sendMessage (rpcId, payload) {
     plaintextObj.media_id = mediaId
     plaintextObj.file_key = fileKeyBase64
     plaintextObj.file_nonce = fileNonceBase64
-    plaintextObj.filename = filename
     plaintextObj.mime_type = mime_type
     plaintextObj.waveform_data = waveform_data
     plaintextObj.music_metadata = music_metadata
@@ -355,7 +357,6 @@ async function sendMessage (rpcId, payload) {
     updateData.media_id = mediaId
     updateData.file_key = fileKeyBase64
     updateData.file_nonce = fileNonceBase64
-    updateData.filename = filename
     updateData.album_art = albumArtInfo
 
     await db.local_assets.put({
@@ -363,7 +364,6 @@ async function sendMessage (rpcId, payload) {
       media_id: mediaId,
       room_id: roomId,
       mime_type: mime_type,
-      filename: filename,
       file_key: fileKeyBase64,
       file_nonce: fileNonceBase64,
       created_at: pbRecord.created,
@@ -373,10 +373,11 @@ async function sendMessage (rpcId, payload) {
   }
 
   await db.local_messages.update(localUuid, updateData)
+  const fullMessage = await db.local_messages.get(localUuid)
 
   self.postMessage({
     type: 'NEW_LOCAL_DATA',
-    payload: { room_id: roomId }
+    payload: { room_id: roomId, message: fullMessage }
   })
 
   self.postMessage({
@@ -412,9 +413,10 @@ async function processIncomingMessage (rpcId, record) {
           id: id,
           status: 'sent'
         })
+        const fullMessage = await db.local_messages.get(localUuid)
         self.postMessage({
           type: 'NEW_LOCAL_DATA',
-          payload: { room_id: roomId }
+          payload: { room_id: roomId, message: fullMessage }
         })
       }
 
@@ -500,7 +502,7 @@ async function processIncomingMessage (rpcId, record) {
 
   const decryptedString = new TextDecoder().decode(decryptedBuffer)
   const decryptedPayload = JSON.parse(decryptedString)
-  const { type, content, candidate, timestamp } = decryptedPayload
+  const { type, content, candidate, media_types, timestamp } = decryptedPayload
 
   // Storage and causal chain resolution.
   const decryptedMessage = {
@@ -511,6 +513,7 @@ async function processIncomingMessage (rpcId, record) {
     type,
     content,
     candidate,
+    media_types,
     timestamp,
     status: 'sent',
     previous_msg_uuid: previousMsgUuid,
@@ -519,11 +522,10 @@ async function processIncomingMessage (rpcId, record) {
 
   // If media, extend the message with media metadata for easier rendering in the timeline
   if (type === 'media') {
-    const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art } = decryptedPayload
+    const { media_id, file_key, file_nonce, mime_type, waveform_data, music_metadata, album_art } = decryptedPayload
     decryptedMessage.media_id = media_id
     decryptedMessage.file_key = file_key
     decryptedMessage.file_nonce = file_nonce
-    decryptedMessage.filename = filename
     decryptedMessage.mime_type = mime_type
     decryptedMessage.waveform_data = waveform_data
     decryptedMessage.music_metadata = music_metadata
@@ -535,7 +537,6 @@ async function processIncomingMessage (rpcId, record) {
       media_id,
       room_id: roomId,
       mime_type,
-      filename,
       file_key,
       file_nonce,
       created_at: created,
@@ -549,7 +550,7 @@ async function processIncomingMessage (rpcId, record) {
   // Notify UI and resolve RPC.
   self.postMessage({
     type: 'NEW_LOCAL_DATA',
-    payload: { room_id: roomId }
+    payload: { room_id: roomId, message: decryptedMessage }
   })
   self.postMessage({
     id: rpcId,

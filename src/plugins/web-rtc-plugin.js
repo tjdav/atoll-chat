@@ -20,25 +20,21 @@ export default function webrtcPlugin ({
       context: (pluginContext) => {
         // Phase 1: Global Setup
         const activeCalls = new Map()
+        const processedMessages = new Set()
         const $bus = pluginContext.$bus
 
         const rtcConfig = {
           iceServers: pluginContext.config.iceServers
         }
 
-        /**
-         * Helper to close a connection and stop all tracks.
-         */
         const teardownCall = (roomId) => {
           const pc = activeCalls.get(roomId)
           if (pc) {
-            // Stop local tracks being sent
             pc.getSenders().forEach(sender => {
               if (sender.track) {
                 sender.track.stop()
               }
             })
-            // Stop remote tracks being received
             pc.getReceivers().forEach(receiver => {
               if (receiver.track) {
                 receiver.track.stop()
@@ -49,7 +45,6 @@ export default function webrtcPlugin ({
           }
         }
 
-        // Cleanup on unload or logout
         window.addEventListener('beforeunload', () => {
           for (const roomId of activeCalls.keys()) {
             teardownCall(roomId)
@@ -62,101 +57,113 @@ export default function webrtcPlugin ({
           }
         })
 
-        /**
-         * Global listener for incoming signaling messages.
-         */
-        $bus.on('NEW_LOCAL_DATA', async (payload) => {
-          const { room_id: roomId } = payload
+        return (instanceContext) => {
+          const { $worker } = instanceContext.cryptoWorker
+          const { $state } = instanceContext.globalStore
 
-          // Access injected localDb from Phase 1
-          const db = await pluginContext.$localDb()
-
-          // Fetch the latest message in this room
-          const { default: Dexie } = await import('dexie')
-          const message = await db.local_messages
-            .where('[room_id+created_at]')
-            .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
-            .last()
-
-          if (!message) {
-            return
-          }
-
-          // Standard chat messages are handled by the timeline; we only care about signaling
-          if (message.type === 'call_offer') {
-            $bus.emit('call_incoming', {
-              roomId,
-              offer: message.content
-            })
-          } else if (message.type === 'call_answer') {
-            const pc = activeCalls.get(roomId)
-            if (pc) {
-              await pc.setRemoteDescription(new RTCSessionDescription(message.content))
+          $bus.on('NEW_LOCAL_DATA', async (payload) => {
+            const { room_id: roomId, message: message } = payload
+            if (!message) {
+              return
             }
-          } else if (message.type === 'ice_candidate') {
-            const pc = activeCalls.get(roomId)
-            if (pc && message.candidate) {
-              await pc.addIceCandidate(new RTCIceCandidate(message.candidate))
+
+            // Sender filtering (except for call_end which should tear down state for everyone)
+            if (message.type !== 'call_end' && message.sender_id === $state.currentUser?.id) {
+              return
             }
-          } else if (message.type === 'call_end') {
-            teardownCall(roomId)
-            $bus.emit('call_ended', { roomId })
-          }
-        })
 
-        return async (instanceContext) => {
-          const { $worker } = await instanceContext.cryptoWorker
+            // Stale message filtering (ignore messages older than 30 seconds)
+            // Increased for robustness during local testing/CI where clocks might drift or DB lag occurs.
+            if (message.created_at) {
+              let dateStr = message.created_at
+              // PocketBase dates might be "YYYY-MM-DD HH:mm:ss.SSSZ" or "YYYY-MM-DD HH:mm:ss.SSS"
+              // Ensure T separator and Z suffix for cross-browser reliability
+              const isoStr = dateStr.replace(' ', 'T')
+              const finalStr = isoStr.endsWith('Z') ? isoStr : isoStr + 'Z'
+              const msgTime = new Date(finalStr).getTime()
 
-          /**
-           * Helper to send an E2EE signaling message through the standard pipeline.
-           */
+              if (isNaN(msgTime) || Math.abs(Date.now() - msgTime) > 30000) {
+                return
+              }
+            }
+
+            if (message.id && processedMessages.has(message.id)) {
+              return
+            }
+            if (message.id) {
+              processedMessages.add(message.id)
+            }
+
+            if (message.type === 'call_offer') {
+              $bus.emit('call_incoming', {
+                roomId,
+                offer: message.content,
+                senderId: message.sender_id
+              })
+            } else if (message.type === 'call_answer') {
+              const pc = activeCalls.get(roomId)
+              if (pc) {
+                if (pc.signalingState === 'have-local-offer') {
+                  await pc.setRemoteDescription(new RTCSessionDescription(message.content))
+                } else {
+                  console.warn(`[WebRTC] PC in state ${pc.signalingState}, skipping setRemoteDescription`)
+                }
+              }
+            } else if (message.type === 'ice_candidate') {
+              const pc = activeCalls.get(roomId)
+              if (pc && message.candidate) {
+                if (pc.remoteDescription) {
+                  await pc.addIceCandidate(new RTCIceCandidate(message.candidate))
+                } else {
+                  const checkInterval = setInterval(async () => {
+                    if (pc.remoteDescription) {
+                      clearInterval(checkInterval)
+                      await pc.addIceCandidate(new RTCIceCandidate(message.candidate))
+                    }
+                  }, 100)
+                  setTimeout(() => clearInterval(checkInterval), 5000)
+                }
+              }
+            } else if (message.type === 'call_end') {
+              teardownCall(roomId)
+              $bus.emit('call_ended', { roomId })
+            }
+          }, { signal: instanceContext.signal })
+
           const sendSignalingMessage = async (roomId, type, payload = {}) => {
             const localUuid = crypto.randomUUID()
             await $worker.execute('SEND_MESSAGE', {
               roomId,
-              plaintextObj: {
-                type,
-                ...payload,
-                timestamp: Date.now()
-              },
-              localUuid
+              localUuid,
+              type,
+              ...payload,
+              timestamp: Date.now()
             })
           }
 
           const setupPeerConnection = (roomId, mediaStream) => {
             const pc = new RTCPeerConnection(rtcConfig)
-
             if (mediaStream) {
               mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
             }
-
             pc.onicecandidate = async (event) => {
               if (event.candidate) {
-                await sendSignalingMessage(roomId, 'ice_candidate', {
-                  candidate: event.candidate
-                })
+                await sendSignalingMessage(roomId, 'ice_candidate', { candidate: event.candidate.toJSON() })
               }
             }
-
             pc.ontrack = (event) => {
               $bus.emit('remote_track_arrival', {
                 roomId,
-                stream: event.streams[0]
+                stream: event.streams[0],
+                track: event.track
               })
             }
-
-            pc.onicegatheringstatechange = () => {
-              console.log(`[WebRTC] ICE Gathering State for ${roomId}: ${pc.iceGatheringState}`)
-            }
-
             pc.onconnectionstatechange = () => {
-              console.log(`[WebRTC] Connection State for ${roomId}: ${pc.connectionState}`)
-              if (pc.connectionState === 'disconnected' || pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+              if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
                 teardownCall(roomId)
                 $bus.emit('call_ended', { roomId })
               }
             }
-
             activeCalls.set(roomId, pc)
             return pc
           }
@@ -167,24 +174,19 @@ export default function webrtcPlugin ({
                 const pc = setupPeerConnection(roomId, mediaStream)
                 const offer = await pc.createOffer()
                 await pc.setLocalDescription(offer)
-
+                const hasVideo = mediaStream.getVideoTracks().length > 0
                 await sendSignalingMessage(roomId, 'call_offer', {
                   content: offer,
-                  media_types: ['audio', 'video']
+                  media_types: hasVideo ? ['audio', 'video'] : ['audio']
                 })
               },
-
               answerCall: async (roomId, mediaStream, remoteOffer) => {
                 const pc = setupPeerConnection(roomId, mediaStream)
                 await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer))
                 const answer = await pc.createAnswer()
                 await pc.setLocalDescription(answer)
-
-                await sendSignalingMessage(roomId, 'call_answer', {
-                  content: answer
-                })
+                await sendSignalingMessage(roomId, 'call_answer', { content: answer })
               },
-
               endCall: async (roomId) => {
                 teardownCall(roomId)
                 await sendSignalingMessage(roomId, 'call_end')

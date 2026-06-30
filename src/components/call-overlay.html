@@ -110,25 +110,40 @@
           await $webrtc.endCall($state.activeCallRoomId)
         }
         stopTracks()
-        $state.callStatus = 'idle'
+        $state.set('callStatus', 'idle')
         $state.activeCallRoomId = null
         state.remoteOffer = null
       }
 
       // Listen for incoming calls
-      $bus.on('call_incoming', async ({ roomId, offer }) => {
+      $bus.on('call_incoming', async ({ roomId, offer, senderId }) => {
+        if (senderId === $state.currentUser?.id) {
+          return
+        }
+
         if ($state.callStatus !== 'idle') {
           console.warn('[call-overlay] Ignoring incoming call, already in a call.')
           return
         }
 
-        const room = await $localDb.local_rooms.get(roomId)
-        state.callerName = room?.name || 'Unknown Caller'
-        state.callerInitial = state.callerName.charAt(0).toUpperCase()
-        state.remoteOffer = offer
-  
+        // Set room ID and status IMMEDIATELY to prevent race conditions during catch-up sync
         $state.activeCallRoomId = roomId
-        $state.callStatus = 'incoming'
+        $state.set('callStatus', 'incoming')
+
+        state.remoteOffer = offer
+
+        const room = await $localDb.local_rooms.get(roomId)
+        if (room) {
+          const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
+          if (!room.is_group && participants.length > 0) {
+            state.callerName = participants[0].username
+          } else {
+            state.callerName = room.name || 'Unknown Caller'
+          }
+        } else {
+          state.callerName = 'Unknown Caller'
+        }
+        state.callerInitial = state.callerName.charAt(0).toUpperCase()
       }, { signal })
 
       // Listen for locally initiated calls to grab the stream
@@ -145,7 +160,7 @@
       $bus.on('call_ended', ({ roomId }) => {
         if ($state.activeCallRoomId === roomId) {
           stopTracks()
-          $state.callStatus = 'idle'
+          $state.set('callStatus', 'idle')
           $state.activeCallRoomId = null
           state.remoteOffer = null
         }
@@ -161,7 +176,7 @@
           $bus.emit('local_stream_available', { stream: state.localStream })
   
           await $webrtc.answerCall($state.activeCallRoomId, state.localStream, state.remoteOffer)
-          $state.callStatus = 'active'
+          $state.set('callStatus', 'active')
         } catch (err) {
           console.error('[call-overlay] Failed to accept call:', err)
           endCall()

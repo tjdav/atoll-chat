@@ -152,7 +152,7 @@
            */
   
           $state.activeCallRoomId = $state.activeSelectionId
-          $state.callStatus = 'active'
+          $state.set('callStatus', 'active')
   
           // Emit event so call-overlay can pick up the localStream we just created
           $bus.emit('call_initiated_locally', { localStream })

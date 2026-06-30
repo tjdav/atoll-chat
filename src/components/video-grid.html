@@ -1,7 +1,7 @@
 <template id="video-grid">
   <div class="video-grid position-relative w-100 h-100 bg-dark overflow-hidden">
     <!-- Main background video (Remote) -->
-    <video ref="remoteVideo" class="w-100 h-100 object-fit-cover" autoplay playsinline></video>
+    <video ref="remoteVideo" class="remote-video w-100 h-100 object-fit-cover" autoplay playsinline></video>
     
     <!-- Picture-in-Picture local video -->
     <video ref="localVideo" class="position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
@@ -26,8 +26,9 @@
     getters: {
       placeholderClass: (state) => (state.hasRemoteTrack ? 'd-none' : 'd-flex')
     },
-    client: ({ refs, state, eventBus, signal }) => {
+    client: ({ refs, state, eventBus, signal, globalStore }) => {
       const { $bus } = eventBus
+      const { $state } = globalStore
       const remoteVideo = refs('remoteVideo')
       const localVideo = refs('localVideo')
       const remotePlaceholder = refs('remotePlaceholder')
@@ -40,17 +41,60 @@
       }, { signal })
 
       // Listen for remote track arrival
-      $bus.on('remote_track_arrival', ({ stream }) => {
-        if (remoteVideo) {
+      $bus.on('remote_track_arrival', ({ roomId, stream, track }) => {
+        if (roomId && roomId !== $state.activeCallRoomId) {
+          return
+        }
+
+        if (track.kind === 'video' && remoteVideo) {
           remoteVideo.srcObject = stream
           state.hasRemoteTrack = true
+
+          const playVideo = () => {
+            if (!remoteVideo.srcObject) {
+              return
+            }
+            if (remoteVideo.paused || remoteVideo.readyState < 2) {
+              remoteVideo.play().catch(err => {
+                if (err.name === 'AbortError') {
+                  setTimeout(playVideo, 100)
+                } else if (err.name === 'NotAllowedError') {
+                  remoteVideo.muted = true
+                  remoteVideo.play().catch(e => console.error('[video-grid] Play failed even when muted:', e))
+                }
+              })
+            }
+          }
+          playVideo()
+        } else if (track.kind === 'audio') {
+          const audio = new Audio()
+          audio.srcObject = stream
+          audio.play().catch(err => console.error('[video-grid] Failed to play remote audio:', err))
+
+          // Cleanup audio on call end or unmount
+          const cleanup = (e) => {
+            if (e?.roomId && e.roomId !== roomId) {
+              return
+            }
+            audio.pause()
+            audio.srcObject = null
+            audio.remove()
+            signal.removeEventListener('abort', cleanup)
+          }
+          $bus.on('call_ended', cleanup)
+          signal.addEventListener('abort', cleanup)
         }
       }, { signal })
 
       // Listen for call ended to release UI resources immediately
-      $bus.on('call_ended', () => {
+      $bus.on('call_ended', ({ roomId }) => {
+        if (roomId && roomId !== $state.activeCallRoomId) {
+          return
+        }
         if (remoteVideo) {
+          remoteVideo.pause()
           remoteVideo.srcObject = null
+          remoteVideo.load()
         }
         if (localVideo) {
           localVideo.srcObject = null
