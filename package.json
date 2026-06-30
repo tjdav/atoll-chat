@@ -19,11 +19,10 @@
     "build": "coralite-scripts build",
     "lint:types": "pnpm exec tsc --noEmit",
     "lint:format": "eslint --cache --fix .",
-    "test:server": "sirv dist --port 3000 --single",
     "test:unit": "node --experimental-vm-modules --test",
     "test:unit:coverage": "node --experimental-vm-modules --experimental-test-coverage --test",
-    "test:e2e": "pnpm run build && pnpm exec playwright test",
-    "test:e2e:ui": "pnpm run build && pnpm exec playwright test --ui"
+    "test:e2e": "pnpm exec playwright test",
+    "test:e2e:ui": "pnpm exec playwright test --ui"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
