@@ -4,67 +4,6 @@
   </div>
 </template>
 
-<style>
-  .message-reactions-wrapper {
-    display: flex;
-    margin-top: -14px;
-    position: relative;
-    z-index: 10;
-    pointer-events: none;
-    min-height: 24px;
-    width: 100%;
-  }
-  
-  .reaction-consolidated-pill {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    gap: 4px;
-    padding: 2px 8px;
-    background-color: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 20px;
-    box-shadow: var(--bs-box-shadow-sm);
-    cursor: pointer;
-    user-select: none;
-    pointer-events: auto;
-    transition: transform 0.1s ease;
-    height: 24px;
-    margin: 0 4px;
-  }
-  
-  .reaction-consolidated-pill:hover {
-    transform: scale(1.1);
-    background-color: var(--bs-tertiary-bg);
-  }
-  
-  .reaction-emoji-list {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    line-height: 1;
-  }
-  
-  .reaction-emoji-item {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 16px;
-    height: 16px;
-    font-size: 0.9rem;
-    margin-right: -2px;
-  }
-  
-  .reaction-count {
-    color: var(--bs-secondary-color);
-    font-weight: 600;
-    font-size: 0.75rem;
-    margin-left: 2px;
-    line-height: 1;
-    display: flex;
-    align-items: center;
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -151,7 +90,7 @@
         }
   
         const pill = document.createElement('div')
-        pill.className = 'reaction-consolidated-pill bg-body border shadow-sm rounded-pill'
+        pill.className = 'reaction-consolidated-pill'
   
         const emojiList = document.createElement('div')
         emojiList.className = 'reaction-emoji-list'
@@ -167,7 +106,7 @@
   
         if (totalCount > 1) {
           const countSpan = document.createElement('span')
-          countSpan.className = 'reaction-count ms-1 small text-secondary fw-bold'
+          countSpan.className = 'reaction-count'
           countSpan.textContent = totalCount
           pill.appendChild(countSpan)
         }

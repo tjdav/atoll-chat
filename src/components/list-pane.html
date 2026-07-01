@@ -1,5 +1,5 @@
 <template id="list-pane">
-  <div class="list-pane d-flex flex-column h-100">
+  <div class="list-pane-custom d-flex flex-column h-100">
     <header class="p-3 border-bottom bg-body d-flex justify-content-between align-items-center">
       <h5 class="mb-0 text-capitalize" ref="paneTitle">Chats</h5>
       <button class="btn btn-sm btn-primary rounded-circle" ref="btnCreateRoom" title="Create Room" style="display: none;">
@@ -16,11 +16,6 @@
   </div>
 </template>
 
-<style>
-  .list-pane {
-    background-color: var(--bs-tertiary-bg);
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

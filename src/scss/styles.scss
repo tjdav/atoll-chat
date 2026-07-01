@@ -27,12 +27,26 @@ $utilities: map-merge($utilities,
           100: 100%
         )
       ),
-      "height": map-merge(map-get($utilities, "height"),
-        (values: map-merge(map-get(map-get($utilities, "height"), "values"),
-            (400: 400px)))),
       "width": map-merge(map-get($utilities, "width"),
         (values: map-merge(map-get(map-get($utilities, "width"), "values"),
-            ("250px": 250px))))));
+            ("250px": 250px,
+              "300px": 300px,
+              "350px": 350px,
+              "120px": 120px,
+              "80px": 80px,
+              "64px": 64px,
+              "48px": 48px,
+              "40px": 40px,
+              "32px": 32px)))),
+      "height": map-merge(map-get($utilities, "height"),
+        (values: map-merge(map-get(map-get($utilities, "height"), "values"),
+            (400: 400px,
+              "90px": 90px,
+              "64px": 64px,
+              "48px": 48px,
+              "40px": 40px,
+              "38px": 38px,
+              "32px": 32px))))));
 
 @import "bootstrap/scss/root";
 @import "bootstrap/scss/reboot";
@@ -74,6 +88,17 @@ $utilities: map-merge($utilities,
 @import "timeline";
 @import "waveform";
 @import "link-preview";
+
+// New component-level partials
+@import "nav-sidebar";
+@import "chat-list";
+@import "pip-video";
+@import "player-chat";
+@import "chat-input";
+@import "timeline-custom";
+@import "media-components";
+@import "ui-panes";
+@import "video-docs";
 
 html,
 body {

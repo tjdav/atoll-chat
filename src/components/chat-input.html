@@ -30,14 +30,6 @@
   </div>
 </template>
 
-<style>
-  .chat-input-container {
-    transition: background-color 0.2s ease;
-  }
-  .recording-mode-active {
-    display: flex !important;
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -58,7 +50,7 @@
       attachmentPreviewClass: (state) => (state.hasFile ? 'd-block' : 'd-none'),
       linkPreviewClass: (state) => (state.pendingLinkData && !state.ignoreLinkPreview ? 'd-block' : 'd-none'),
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
-      recordingUIClass: (state) => (state.isRecording ? 'recording-mode-active' : 'd-none')
+      recordingUIClass: (state) => (state.isRecording ? 'd-flex' : 'd-none')
     },
     client: ({ state, globalStore, localDb, eventBus, refs, signal, cryptoWorker, pocketbase, utils }) => {
       const { $state } = globalStore

@@ -1,10 +1,10 @@
 <template id="chat-input-text">
-  <div class="input-group d-flex">
+  <div class="input-group d-flex chat-input-text">
     <input type="file" ref="fileInput" class="d-none">
-    <button class="btn btn-outline-secondary" type="button" ref="attachButton" title="Attach file" disabled="{{ isDisabled }}">
+    <button class="btn btn-outline-secondary align-self-end h-38px" type="button" ref="attachButton" title="Attach file" disabled="{{ isDisabled }}">
       <i class="bi bi-paperclip"></i>
     </button>
-    <button class="btn btn-outline-secondary" type="button" ref="micButton" title="Voice message" disabled="{{ isDisabled }}">
+    <button class="btn btn-outline-secondary align-self-end h-38px" type="button" ref="micButton" title="Voice message" disabled="{{ isDisabled }}">
       <i class="bi bi-mic"></i>
     </button>
     <textarea
@@ -13,10 +13,9 @@
       class="form-control"
       placeholder="Type a message..."
       rows="1"
-      style="resize: none; max-height: 200px;"
       disabled="{{ isDisabled }}"
     >{{ currentMessageText }}</textarea>
-    <button class="btn btn-primary d-flex align-items-center" type="button" ref="sendButton" disabled="{{ isDisabled }}">
+    <button class="btn btn-primary d-flex align-items-center align-self-end h-38px" type="button" ref="sendButton" disabled="{{ isDisabled }}">
       <span class="me-1 d-none d-sm-inline">Send</span>
       <i class="bi bi-send"></i>
       <div class="spinner-border spinner-border-sm d-none" role="status">
@@ -26,16 +25,6 @@
   </div>
 </template>
 
-<style>
-  textarea {
-    overflow-y: auto;
-    scrollbar-width: thin;
-  }
-  .btn {
-    align-self: flex-end;
-    height: 38px;
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

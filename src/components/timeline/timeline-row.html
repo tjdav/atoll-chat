@@ -31,33 +31,6 @@
   </div>
 </template>
 
-<style>
-  .reaction-trigger-icon {
-    top: 50%;
-    transform: translateY(-50%);
-    background: var(--bs-body-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    box-shadow: var(--bs-box-shadow-sm);
-  }
-  
-  .timeline-row-container.sent .reaction-trigger-icon {
-    left: -32px;
-  }
-  
-  .timeline-row-container.received .reaction-trigger-icon {
-    right: -32px;
-  }
-
-  .timeline-row-container:hover .reaction-trigger-icon {
-    display: flex !important;
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

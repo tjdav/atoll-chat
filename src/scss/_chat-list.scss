@@ -1,0 +1,54 @@
+.chat-list-item {
+  .list-item-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background-color: var(--#{$prefix}secondary-bg);
+    margin-right: .75rem;
+  }
+
+  &.active .list-item-icon {
+    background-color: rgba(var(--#{$prefix}white-rgb), 0.2);
+  }
+
+  .avatar-circle {
+    border-radius: 50%;
+    background-color: var(--#{$prefix}primary);
+    color: var(--#{$prefix}white);
+    font-weight: var(--#{$prefix}font-weight-bold);
+  }
+
+  .group-avatar-container {
+    background-color: transparent !important;
+    overflow: visible;
+  }
+
+  .stacked-avatar-1,
+  .stacked-avatar-2,
+  .stacked-avatar-3 {
+    position: absolute;
+    border: 2px solid var(--#{$prefix}body-bg);
+    box-shadow: 0 0 0 1px rgba(var(--#{$prefix}black-rgb), 0.05);
+  }
+
+  .group-avatar-container:has(.stacked-avatar-2):not(:has(.stacked-avatar-3)) {
+    .stacked-avatar-1 { top: 0; right: 0; z-index: 2; }
+    .stacked-avatar-2 { bottom: 0; left: 0; z-index: 1; }
+  }
+
+  .group-avatar-container:has(.stacked-avatar-3) {
+    .stacked-avatar-1 { top: 0; left: 10px; z-index: 3; }
+    .stacked-avatar-2 { bottom: 0; left: 0; z-index: 2; }
+    .stacked-avatar-3 { bottom: 0; right: 0; z-index: 1; }
+  }
+
+  &:hover .group-hover-visible {
+    opacity: 1 !important;
+  }
+
+  .unread-dot {
+    right: .75rem;
+    width: 10px;
+    height: 10px;
+  }
+}

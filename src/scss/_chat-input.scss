@@ -1,0 +1,21 @@
+.chat-input-container {
+  @include transition(background-color 0.2s ease);
+}
+
+.chat-input-text {
+  textarea {
+    overflow-y: auto;
+    scrollbar-width: thin;
+    resize: none;
+    max-height: 200px;
+  }
+}
+
+.recording-ui {
+  animation: chatInputSlideUp 0.3s ease;
+}
+
+@keyframes chatInputSlideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}

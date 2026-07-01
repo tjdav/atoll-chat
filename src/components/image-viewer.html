@@ -1,5 +1,5 @@
 <template id="image-viewer">
-  <div class="image-viewer-container d-flex justify-content-center align-items-center h-100 bg-black position-relative">
+  <div class="image-viewer-container d-flex justify-content-center align-items-center h-100 bg-black position-relative w-100">
     <div class="spinner-border text-primary" ref="loader" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
@@ -12,16 +12,6 @@
   </div>
 </template>
 
-<style>
-  .image-viewer-container {
-    background-color: #000;
-    width: 100%;
-    height: 100%;
-  }
-  .object-fit-contain {
-    object-fit: contain;
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

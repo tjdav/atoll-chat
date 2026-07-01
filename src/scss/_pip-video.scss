@@ -1,0 +1,16 @@
+.pip-window {
+  .pip-controls {
+    @include transition(opacity 0.2s);
+    pointer-events: auto;
+    z-index: 100;
+  }
+
+  &:hover .pip-controls {
+    opacity: 1 !important;
+  }
+
+  &.dragging {
+    cursor: grabbing !important;
+    opacity: 0.8;
+  }
+}

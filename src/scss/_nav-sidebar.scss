@@ -1,0 +1,19 @@
+.nav-sidebar {
+  width: 80px;
+
+  .nav-link {
+    cursor: pointer;
+    @include transition(all 0.2s ease-in-out);
+    border-radius: 12px;
+    color: var(--#{$prefix}secondary-color);
+
+    &:hover {
+      background-color: var(--#{$prefix}tertiary-bg);
+    }
+
+    &.active {
+      background-color: var(--#{$prefix}primary-bg-subtle) !important;
+      color: var(--#{$prefix}primary) !important;
+    }
+  }
+}

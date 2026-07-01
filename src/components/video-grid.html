@@ -7,8 +7,8 @@
     <video ref="localVideo" class="local-video position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light {{ localVideoClass }}" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
 
     <!-- Overlay if no remote video yet -->
-    <div ref="remotePlaceholder" class="position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
-      <div class="spinner-border text-primary mb-3" role="status">
+    <div ref="remotePlaceholder" class="remote-placeholder position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
+      <div class="spinner-border video-spinner text-primary mb-3" role="status">
         <span class="visually-hidden">Connecting...</span>
       </div>
       <p class="h5">Waiting for remote participant...</p>
@@ -140,18 +140,3 @@
   })
 </script>
 
-<style>
-  /* Hide local video when in PiP mode */
-   .local-video {
-    display: none !important;
-  }
-
-  .remote-placeholder p {
-    font-size: 0.8rem !important;
-  }
-
-  .spinner-border {
-    width: 1.5rem;
-    height: 1.5rem;
-  }
-</style>

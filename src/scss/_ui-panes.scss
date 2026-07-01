@@ -1,0 +1,55 @@
+.room-details {
+  height: 100%;
+}
+
+.member-item {
+  padding: 12px 0;
+  border-bottom: 1px solid var(--#{$prefix}border-color-translucent);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.member-avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: var(--#{$prefix}secondary-bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8rem;
+  font-weight: var(--#{$prefix}font-weight-bold);
+  margin-right: 10px;
+}
+
+.list-pane-custom {
+  background-color: var(--#{$prefix}tertiary-bg);
+}
+
+.user-chip {
+  padding: 4px 12px;
+  background-color: var(--#{$prefix}primary-bg-subtle);
+  color: var(--#{$prefix}primary);
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  font-size: 0.9rem;
+
+  .btn-close {
+    font-size: 0.6rem;
+    margin-left: 8px;
+    padding: 4px;
+  }
+}
+
+.search-result-item {
+  cursor: pointer;
+  padding: 10px 15px;
+  border-bottom: 1px solid var(--#{$prefix}border-color-translucent);
+
+  &:hover {
+    background-color: var(--#{$prefix}tertiary-bg);
+  }
+}
