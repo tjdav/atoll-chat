@@ -103,7 +103,7 @@
           state.ignoreLinkPreview = false
 
           try {
-            const data = await pb.send('/api/proxy-opengraph', {
+            const data = await pb.send('/api/link-extraction', {
               query: { url }
             })
   
