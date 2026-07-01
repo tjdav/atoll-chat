@@ -1,11 +1,11 @@
 <template id="timeline-row">
-  <div class="w-100 {{ marginClass }}">
+  <div class="w-100 {{ marginClass }}" ref="container">
     <!-- Sender Name (Received First in Block only) -->
     <div class="sender-name {{ senderNameDisplayClass }}">
       {{ senderName }}
     </div>
 
-    <div class="timeline-row-container {{ rowClass }}">
+    <div class="timeline-row-container {{ rowClass }}" ref="rowContainer">
       <!-- Avatar Column (Received only) -->
       <div class="avatar-col d-flex align-items-end {{ avatarColDisplayClass }}">
         <div ref="avatarContainer">
@@ -13,8 +13,14 @@
         </div>
       </div>
 
-      <div class="message-bubble-column d-flex flex-column {{ alignmentClass }}">
-        <slot></slot>
+      <div class="message-bubble-column d-flex flex-column {{ alignmentClass }}" ref="bubbleColumn">
+        <div class="position-relative d-flex flex-column {{ alignmentClass }}" ref="bubbleWrapper">
+          <slot></slot>
+          <div ref="reactionIcon" class="reaction-trigger-icon position-absolute d-none" style="cursor: pointer; z-index: 10;">
+            <i class="bi bi-emoji-smile text-muted"></i>
+          </div>
+        </div>
+        <div ref="reactionsContainer"></div>
       </div>
     </div>
 
@@ -24,6 +30,34 @@
     </div>
   </div>
 </template>
+
+<style>
+  .reaction-trigger-icon {
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: var(--bs-box-shadow-sm);
+  }
+  
+  .timeline-row-container.sent .reaction-trigger-icon {
+    left: -32px;
+  }
+  
+  .timeline-row-container.received .reaction-trigger-icon {
+    right: -32px;
+  }
+
+  .timeline-row-container:hover .reaction-trigger-icon {
+    display: flex !important;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -36,7 +70,9 @@
       senderName: String,
       avatarUrl: String,
       avatarInitials: String,
-      seenAvatars: String
+      seenAvatars: String,
+      messageId: String,
+      localUuid: String
     },
     getters: {
       rowClass: (state) => {
@@ -59,10 +95,15 @@
         return isLastInBlock ? 'mb-3' : 'mb-1'
       }
     },
-    client: ({ refs, state, globalStore }) => {
+    client: ({ refs, state, globalStore, eventBus, signal }) => {
       const { $state } = globalStore
+      const { $bus } = eventBus
+      const container = refs('container')
       const avatarContainer = refs('avatarContainer')
       const seenContainer = refs('seenContainer')
+      const bubbleWrapper = refs('bubbleWrapper')
+      const reactionIcon = refs('reactionIcon')
+      const reactionsContainer = refs('reactionsContainer')
 
       const updateAvatar = () => {
         avatarContainer.innerHTML = ''
@@ -117,6 +158,76 @@
 
       updateAvatar()
       updateSeen()
+
+      // Reactions Integration
+      const updateReactions = () => {
+        const msgId = state.messageId
+        const localUuid = state.localUuid
+  
+        // Update data-local-uuid for E2E
+        if (localUuid) {
+          container.setAttribute('data-local-uuid', localUuid)
+        }
+  
+        if (msgId || localUuid) {
+          reactionsContainer.innerHTML = ''
+          const reactions = document.createElement('message-reactions')
+          if (msgId) {
+            reactions.setAttribute('message-id', msgId)
+          }
+          if (localUuid) {
+            reactions.setAttribute('local-uuid', localUuid)
+          }
+          reactionsContainer.appendChild(reactions)
+        }
+      }
+
+      $state.subscribe('messageId', updateReactions)
+      $state.subscribe('localUuid', updateReactions)
+      updateReactions()
+
+      const getMsgId = () => state.messageId || state.localUuid
+
+      // Hover is handled by CSS, but we need click for picker
+      reactionIcon.onclick = (e) => {
+        e.stopPropagation()
+        const rect = reactionIcon.getBoundingClientRect()
+        $bus.emit('SHOW_REACTION_PICKER', {
+          x: rect.left,
+          y: rect.bottom + 5,
+          targetId: getMsgId()
+        })
+      }
+
+      // Long-press for mobile
+      let pressTimer
+      const startPress = (e) => {
+        pressTimer = setTimeout(() => {
+          const touch = e.touches ? (e.touches[0] || e.changedTouches[0]) : e
+          $bus.emit('SHOW_REACTION_PICKER', {
+            x: touch.clientX,
+            y: touch.clientY,
+            targetId: getMsgId()
+          })
+        }, 600)
+      }
+      const cancelPress = () => clearTimeout(pressTimer)
+
+      bubbleWrapper.addEventListener('touchstart', startPress, { passive: true })
+      bubbleWrapper.addEventListener('touchend', cancelPress)
+      bubbleWrapper.addEventListener('touchmove', cancelPress)
+      bubbleWrapper.addEventListener('mousedown', startPress)
+      bubbleWrapper.addEventListener('mouseup', cancelPress)
+      bubbleWrapper.addEventListener('mouseleave', cancelPress)
+
+      signal.addEventListener('abort', () => {
+        bubbleWrapper.removeEventListener('touchstart', startPress)
+        bubbleWrapper.removeEventListener('touchend', cancelPress)
+        bubbleWrapper.removeEventListener('touchmove', cancelPress)
+        bubbleWrapper.removeEventListener('mousedown', startPress)
+        bubbleWrapper.removeEventListener('mouseup', cancelPress)
+        bubbleWrapper.removeEventListener('mouseleave', cancelPress)
+      })
     }
   })
 </script>

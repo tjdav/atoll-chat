@@ -2,7 +2,7 @@ import { definePlugin } from 'coralite'
 
 /**
  * Event Bus Plugin for Coralite
- * Provides a global singleton EventTarget for component communication.
+ * Provides a global singleton EventTarget for communication.
  * Auto-binds the component's AbortSignal for native listener cleanup.
  */
 

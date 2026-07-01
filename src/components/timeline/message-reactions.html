@@ -1,0 +1,265 @@
+<template id="message-reactions">
+  <div ref="container" class="message-reactions-wrapper">
+    <!-- Messenger style consolidated pill -->
+  </div>
+</template>
+
+<style>
+  .message-reactions-wrapper {
+    display: flex;
+    margin-top: -14px;
+    position: relative;
+    z-index: 10;
+    pointer-events: none;
+    min-height: 24px;
+    width: 100%;
+  }
+  
+  .reaction-consolidated-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background-color: var(--bs-body-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 20px;
+    box-shadow: var(--bs-box-shadow-sm);
+    cursor: pointer;
+    user-select: none;
+    pointer-events: auto;
+    transition: transform 0.1s ease;
+    height: 24px;
+    margin: 0 4px;
+  }
+  
+  .reaction-consolidated-pill:hover {
+    transform: scale(1.1);
+    background-color: var(--bs-tertiary-bg);
+  }
+  
+  .reaction-emoji-list {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+  
+  .reaction-emoji-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 0.9rem;
+    margin-right: -2px;
+  }
+  
+  .reaction-count {
+    color: var(--bs-secondary-color);
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin-left: 2px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      messageId: String,
+      localUuid: String
+    },
+    client: (ctx) => {
+      const { refs, state, globalStore, localDb, eventBus, signal, utils } = ctx
+      const { $state } = globalStore
+      const { $localDb } = localDb
+      const { $bus } = eventBus
+      const { $utils } = utils
+      const container = refs('container')
+  
+      const tooltips = new Map()
+      const cleanupTooltips = () => {
+        tooltips.forEach(t => t?.dispose?.())
+        tooltips.clear()
+      }
+      signal.addEventListener('abort', cleanupTooltips)
+
+      const loadReactions = async () => {
+        const host = container.getRootNode().host || container.closest('message-reactions')
+        const msgId = state.messageId || host?.getAttribute('message-id')
+        const localUuid = state.localUuid || host?.getAttribute('local-uuid')
+  
+        if (!msgId && !localUuid) {
+          container.innerHTML = ''
+          return
+        }
+  
+        const ids = [msgId, localUuid].filter(Boolean)
+        const reactions = await $localDb.local_messages
+          .where('target_id').anyOf(ids)
+          .toArray()
+  
+        const userReactions = {}
+        reactions.sort((a, b) => {
+          const timeA = new Date(a.created_at || a.timestamp || 0).getTime()
+          const timeB = new Date(b.created_at || b.timestamp || 0).getTime()
+          if (timeA !== timeB) {
+            return timeA - timeB
+          }
+          return (a.local_uuid || '').localeCompare(b.local_uuid || '')
+        }).forEach(r => {
+          if (!userReactions[r.sender_id]) {
+            userReactions[r.sender_id] = {}
+          }
+          const emoji = r.content
+          if (!userReactions[r.sender_id][emoji]) {
+            userReactions[r.sender_id][emoji] = { isSet: true }
+          } else {
+            userReactions[r.sender_id][emoji].isSet = !userReactions[r.sender_id][emoji].isSet
+          }
+        })
+  
+        const aggregated = {} // emoji -> [userIds]
+        let totalCount = 0
+        Object.entries(userReactions).forEach(([userId, emojis]) => {
+          Object.entries(emojis).forEach(([emoji, data]) => {
+            if (data.isSet) {
+              if (!aggregated[emoji]) {
+                aggregated[emoji] = []
+              }
+              aggregated[emoji].push(userId)
+              totalCount++
+            }
+          })
+        })
+  
+        renderReactions(aggregated, totalCount)
+      }
+  
+      const renderReactions = async (aggregated, totalCount) => {
+        cleanupTooltips()
+        container.innerHTML = ''
+  
+        const emojiEntries = Object.entries(aggregated).filter(([_, ids]) => ids.length > 0)
+        if (emojiEntries.length === 0) {
+          return
+        }
+  
+        const pill = document.createElement('div')
+        pill.className = 'reaction-consolidated-pill bg-body border shadow-sm rounded-pill'
+  
+        const emojiList = document.createElement('div')
+        emojiList.className = 'reaction-emoji-list'
+  
+        emojiEntries.forEach(([emoji]) => {
+          const span = document.createElement('span')
+          span.className = 'reaction-emoji-item'
+          span.textContent = emoji
+          emojiList.appendChild(span)
+        })
+  
+        pill.appendChild(emojiList)
+  
+        if (totalCount > 1) {
+          const countSpan = document.createElement('span')
+          countSpan.className = 'reaction-count ms-1 small text-secondary fw-bold'
+          countSpan.textContent = totalCount
+          pill.appendChild(countSpan)
+        }
+  
+        const roomId = $state.activeSelectionId
+        const room = await $localDb.local_rooms.get(roomId)
+        const participants = room?.participants || []
+  
+        const attributionLines = emojiEntries.map(([emoji, userIds]) => {
+          const names = userIds.map(uid => {
+            if (uid === $state.currentUser?.id) {
+              return 'You'
+            }
+            const p = participants.find(part => part.id === uid)
+            return p ? (p.username || p.name) : 'Unknown'
+          }).join(', ')
+          return `${emoji} ${names}`
+        })
+  
+        pill.title = attributionLines.join('\n')
+        pill.dataset.bsToggle = 'tooltip'
+  
+        if (window.bootstrap?.Tooltip) {
+          const t = new window.bootstrap.Tooltip(pill, {
+            trigger: 'hover focus',
+            placement: 'bottom'
+          })
+          tooltips.set(pill, t)
+        }
+
+        pill.onclick = (e) => {
+          e.stopPropagation()
+          const host = container.getRootNode().host || container.closest('message-reactions')
+          const currentId = state.messageId || host?.getAttribute('message-id') || state.localUuid || host?.getAttribute('local-uuid')
+  
+          if (emojiEntries.length === 1) {
+            $bus.emit('SEND_REACTION', {
+              emoji: emojiEntries[0][0],
+              targetId: currentId
+            })
+          } else {
+            const rect = pill.getBoundingClientRect()
+            $bus.emit('SHOW_REACTION_PICKER', {
+              x: rect.left,
+              y: rect.bottom + 5,
+              targetId: currentId
+            })
+          }
+        }
+
+        // Mobile long-press
+        let pressTimer
+        const startPress = (e) => {
+          pressTimer = setTimeout(() => tooltips.get(pill)?.show(), 600)
+        }
+        const cancelPress = () => clearTimeout(pressTimer)
+        pill.addEventListener('touchstart', startPress, { passive: true })
+        pill.addEventListener('touchend', cancelPress)
+        pill.addEventListener('touchmove', cancelPress)
+  
+        container.appendChild(pill)
+      }
+  
+      const debouncedLoad = $utils.debounce(loadReactions, 100)
+  
+      $bus.on('NEW_LOCAL_DATA', (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId) {
+          const host = container.getRootNode().host || container.closest('message-reactions')
+          const currentMsgId = state.messageId || host?.getAttribute('message-id')
+          const currentLocalUuid = state.localUuid || host?.getAttribute('local-uuid')
+  
+          if (payload.message && payload.message.type === 'reaction') {
+            const targetId = payload.message.target_id
+            if (targetId === currentMsgId || targetId === currentLocalUuid) {
+              debouncedLoad()
+            }
+          } else if (!payload.message) {
+            debouncedLoad()
+          } else if (payload.message.local_uuid === currentLocalUuid || payload.message.id === currentMsgId) {
+            debouncedLoad()
+          }
+        }
+      })
+  
+      const host = container.getRootNode().host || container.closest('message-reactions')
+      if (host instanceof Node) {
+        const observer = new MutationObserver(() => debouncedLoad())
+        observer.observe(host, { attributes: true })
+        signal.addEventListener('abort', () => observer.disconnect())
+      }
+
+      debouncedLoad()
+    }
+  })
+</script>

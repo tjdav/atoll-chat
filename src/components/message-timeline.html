@@ -15,12 +15,13 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, globalStore, localDb, eventBus, signal, utils, pocketbase }) => {
+    client: ({ refs, globalStore, localDb, eventBus, signal, utils, pocketbase, cryptoWorker }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $utils } = utils
       const { pb } = pocketbase
+      const { $worker } = cryptoWorker
       const container = refs('timelineContainer')
       const emptyState = refs('emptyState')
       const statusContainer = refs('statusContainer')
@@ -148,6 +149,7 @@
             if (row) {
               if (m.id && !row.dataset.messageId) {
                 row.dataset.messageId = m.id
+                row.setAttribute('message-id', m.id)
               }
 
               // Propagate status to children
@@ -164,7 +166,7 @@
           })
 
           messagesToRender = messagesToRender.filter(m => {
-            if (m.type === 'ice_candidate') {
+            if (m.type === 'ice_candidate' || m.type === 'reaction') {
               return false
             }
             const hasId = m.id && existingIds.has(m.id)
@@ -233,7 +235,9 @@
             row.setAttribute('is-last-in-block', isLastInBlock)
             if (message.id) {
               row.dataset.messageId = message.id
+              row.setAttribute('message-id', message.id)
             }
+            row.setAttribute('local-uuid', message.local_uuid)
             row.setAttribute('data-local-uuid', message.local_uuid)
             row.dataset.localUuid = message.local_uuid
             row.dataset.isSent = isSent
@@ -402,8 +406,38 @@
 
       $bus.on('NEW_LOCAL_DATA', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
+          // If it's a reaction, we don't need to re-render the whole timeline
+          // but we might need to update the reactions component.
+          // message-reactions already listens for NEW_LOCAL_DATA.
+          // However, if a new message arrives, we DO need to re-render.
+          if (payload.message && payload.message.type === 'reaction') {
+            return
+          }
           debouncedRender()
         }
+      })
+
+      $bus.on('SEND_REACTION', async (payload) => {
+        const roomId = $state.activeSelectionId
+        if (!roomId) {
+          return
+        }
+
+        const localUuid = crypto.randomUUID()
+        const params = {
+          type: 'reaction',
+          content: payload.emoji,
+          target_id: payload.targetId,
+          timestamp: Date.now()
+        }
+
+        // We don't do an optimistic write for reactions in the timeline,
+        // but we do send it to the worker which will save it and emit NEW_LOCAL_DATA
+        await $worker.execute('SEND_MESSAGE', {
+          roomId,
+          localUuid,
+          ...params
+        })
       })
   
       // Update participants seen status in real-time

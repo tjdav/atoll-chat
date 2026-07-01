@@ -1,0 +1,104 @@
+<template id="reaction-picker">
+  <div ref="container" class="reaction-picker shadow border rounded bg-body d-none" style="position: fixed; z-index: 2000; width: 350px; height: 400px; max-width: 90vw;">
+    <div ref="pickerContainer" style="width: 100%; height: 100%;"></div>
+  </div>
+</template>
+
+<style>
+  .reaction-picker {
+    overflow: hidden;
+  }
+  
+  emoji-picker {
+    width: 100%;
+    height: 100%;
+    --num-columns: 8;
+    --category-emoji-size: 1.25rem;
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: (ctx) => {
+      const { refs, eventBus, signal, globalStore, emojiPicker } = ctx
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const { $emojiPicker } = emojiPicker
+      const container = refs('container')
+      const pickerContainer = refs('pickerContainer')
+  
+      let currentTargetId = null
+      let picker = null
+
+      const initPicker = async () => {
+        if (picker || !$emojiPicker) {
+          return
+        }
+  
+        console.log('[reaction-picker] Initializing picker')
+        picker = await $emojiPicker.createPicker({})
+        picker.classList.add('light')
+        pickerContainer.appendChild(picker)
+  
+        picker.addEventListener('emoji-click', (event) => {
+          console.log('[reaction-picker] Emoji clicked:', event.detail.unicode)
+          if (currentTargetId) {
+            $bus.emit('SEND_REACTION', {
+              emoji: event.detail.unicode,
+              targetId: currentTargetId
+            })
+          }
+          hide()
+        })
+      }
+
+      const show = async (payload) => {
+        const { x, y, targetId } = payload
+        console.log('[reaction-picker] show called', payload)
+        currentTargetId = targetId
+  
+        await initPicker()
+  
+        container.style.left = `${x}px`
+        container.style.top = `${y}px`
+        container.classList.remove('d-none')
+  
+        // Adjust position if it goes off screen
+        const rect = container.getBoundingClientRect()
+        if (rect.right > window.innerWidth) {
+          container.style.left = `${window.innerWidth - rect.width - 10}px`
+        }
+        if (rect.bottom > window.innerHeight) {
+          container.style.top = `${window.innerHeight - rect.height - 10}px`
+        }
+        if (rect.left < 0) {
+          container.style.left = '10px'
+        }
+        if (rect.top < 0) {
+          container.style.top = '10px'
+        }
+        console.log('[reaction-picker] Picker visible at', container.style.left, container.style.top)
+      }
+
+      const hide = () => {
+        container.classList.add('d-none')
+        currentTargetId = null
+      }
+
+      // Hide on click outside
+      const handleClickOutside = (e) => {
+        if (!container.contains(e.target) && !container.classList.contains('d-none')) {
+          hide()
+        }
+      }
+
+      document.addEventListener('mousedown', handleClickOutside)
+      signal.addEventListener('abort', () => document.removeEventListener('mousedown', handleClickOutside))
+
+      $bus.on('SHOW_REACTION_PICKER', show)
+      $bus.on('HIDE_REACTION_PICKER', hide)
+    }
+  })
+</script>

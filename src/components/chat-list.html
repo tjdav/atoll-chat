@@ -18,10 +18,13 @@
       const listGroup = refs('listGroup')
 
       const getLatestMessage = async (roomId) => {
-        return await $localDb.local_messages
+        const messages = await $localDb.local_messages
           .where('[room_id+created_at]')
           .between([roomId, ''], [roomId, '\uffff'])
-          .last()
+          .reverse()
+          .toArray()
+  
+        return messages.find(m => m.type !== 'reaction')
       }
 
       const getPreviewText = (msg, participants, isGroup) => {

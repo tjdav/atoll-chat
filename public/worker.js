@@ -22,9 +22,9 @@ async function init () {
     await sodium.ready
 
     db = new Dexie('AtollChatDB')
-    db.version(7).stores({
+    db.version(8).stores({
       local_rooms: 'id, is_group, updated_at',
-      local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type',
+      local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, target_id',
       local_assets: 'id, room_id, mime_type, created_at',
       local_config: 'key'
     })
@@ -194,6 +194,7 @@ async function sendMessage (rpcId, payload) {
     album_art_blob,
     candidate,
     media_types,
+    target_id,
     timestamp
   } = payload
 
@@ -283,6 +284,7 @@ async function sendMessage (rpcId, payload) {
     content,
     candidate,
     media_types,
+    target_id,
     timestamp: timestamp || Date.now()
   }
 
@@ -377,7 +379,21 @@ async function sendMessage (rpcId, payload) {
   }
 
   if (type !== 'ice_candidate') {
-    await db.local_messages.update(localUuid, updateData)
+    const existing = await db.local_messages.get(localUuid)
+    if (existing) {
+      await db.local_messages.update(localUuid, updateData)
+    } else {
+      // For reactions or other types that might not have been optimistically written yet
+      await db.local_messages.put({
+        local_uuid: localUuid,
+        room_id: roomId,
+        sender_id: currentUserKeys.id,
+        type,
+        content,
+        target_id,
+        ...updateData
+      })
+    }
   }
 
   const fullMessage = (type === 'ice_candidate' || !await db.local_messages.get(localUuid))
@@ -522,7 +538,7 @@ async function processIncomingMessage (rpcId, record) {
 
   const decryptedString = new TextDecoder().decode(decryptedBuffer)
   const decryptedPayload = JSON.parse(decryptedString)
-  const { type, content, candidate, media_types, timestamp } = decryptedPayload
+  const { type, content, candidate, media_types, target_id, timestamp } = decryptedPayload
 
   // Storage and causal chain resolution.
   const decryptedMessage = {
@@ -534,6 +550,7 @@ async function processIncomingMessage (rpcId, record) {
     content,
     candidate,
     media_types,
+    target_id,
     timestamp,
     status: 'sent',
     previous_msg_uuid: previousMsgUuid,
