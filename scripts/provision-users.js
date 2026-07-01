@@ -68,7 +68,7 @@ async function provision () {
         emailVisibility: true,
         public_box_key: masterKeys.public_box_key,
         public_sign_key: masterKeys.public_sign_key,
-        pin_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
+        vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
         encrypted_master_keys: encryptedVault
       }
 

@@ -112,7 +112,7 @@ test.describe('Routing Plugin - Deep Linking', () => {
     // 3. Perform Vault Unlock
     const vaultInput = page.locator('vault-unlock input[placeholder*="Password"]')
     await expect(vaultInput).toBeVisible({ timeout: 15000 })
-    await vaultInput.fill('123456')
+    await vaultInput.fill('VaultPassword123!')
     await page.click('vault-unlock button:has-text("Unlock with Password")')
 
     // 4. Verify Restoration

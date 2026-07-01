@@ -95,7 +95,7 @@ routerAdd('GET', '/api/link-extraction', (e) => {
     }
 
     return e.json(200, {
-      title: title || domain || url, // Fallback to domain/URL if title specifically is missing
+      title: title || domain || url,
       description: description,
       image: image,
       domain: domain,

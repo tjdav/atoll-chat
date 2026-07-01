@@ -39,6 +39,7 @@
       const { $bus } = eventBus
       const { $sync } = realtimeSync
       const { $state } = globalStore
+      const { $worker } = cryptoWorker
       const setupForm = refs('setupForm')
       const passwordInput = refs('password')
       const passwordConfirmInput = refs('passwordConfirm')
@@ -98,7 +99,6 @@
           await pb.collection('users').authRefresh()
 
           updateStatus('Vault initialized! Starting session...')
-          const { $worker } = cryptoWorker
           await $worker.execute('INIT_KEYS', {
             id: pb.authStore.model.id,
             private_box_key: masterKeys.private_box_key,
@@ -134,7 +134,7 @@
 
         try {
           updateStatus('Initializing cryptographic modules...')
-          const [{ default: sodium }, { generateMasterKeys, generateSalt, deriveKeyFromPassword, encryptVault }] = await Promise.all([
+          const [{ default: sodium }, { generateMasterKeys, generateSalt, encryptVault }] = await Promise.all([
             import('libsodium-wrappers-sumo'),
             import('../utils/cryptoUtils.js')
           ])
@@ -144,14 +144,17 @@
           const masterKeys = await generateMasterKeys(sodium)
           const salt = generateSalt(sodium)
 
-          updateStatus('Securing vault with Password...')
-          const KEK = await deriveKeyFromPassword(password, salt, sodium)
+          updateStatus('Securing vault with Password (deriving keys)...')
+          const KEK = await $worker.execute('deriveKeyFromPassword', {
+            password,
+            salt
+          })
           const encryptedVault = encryptVault(masterKeys, KEK, sodium)
 
           await initializeVault(masterKeys, {
             public_box_key: masterKeys.public_box_key,
             public_sign_key: masterKeys.public_sign_key,
-            pin_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
+            vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
             encrypted_master_keys: encryptedVault
           })
         } catch (error) {
