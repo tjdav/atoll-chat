@@ -4,7 +4,7 @@ test.describe.serial('Call Messaging', () => {
   let aliceContext, alicePage
   let bobContext, bobPage
 
-  test.beforeAll(async ({ browser }) => {
+  test.beforeEach(async ({ browser }) => {
     aliceContext = await browser.newContext()
     alicePage = await aliceContext.newPage()
     bobContext = await browser.newContext()
@@ -17,7 +17,7 @@ test.describe.serial('Call Messaging', () => {
     bobPage.on('pageerror', err => console.log(`[BOB ERROR] ${err.message}`))
   })
 
-  test.afterAll(async () => {
+  test.afterEach(async () => {
     await aliceContext?.close()
     await bobContext?.close()
   })
@@ -106,8 +106,8 @@ test.describe.serial('Call Messaging', () => {
     await expect(bobPage.locator('call-overlay .modal')).not.toBeVisible()
   })
 
-  test('Video Call between Alice and Bob', async () => {
-    // We reuse the session but create a NEW room for isolation
+  test('Video Call between Alice and Bob', async ({ loginCustomPage }) => {
+    await loginAndSetup(loginCustomPage)
     await createRoom(alicePage, bobPage, 'bob', 'alice')
 
     console.log('Alice initiating video call...')

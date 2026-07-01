@@ -111,6 +111,48 @@ async function globalSetup () {
     console.error('Provisioning failed:', error)
     throw error
   }
+
+  // Create a template for fast resets between tests
+  console.log('Creating PocketBase data template...')
+  const PB_DATA_TEMPLATE = path.join(CWD, 'pb_data_template')
+
+  // We need to stop PB to safely copy the data directory
+  if (fs.existsSync(PID_FILE)) {
+    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8'), 10)
+    try {
+      process.kill(pid, 'SIGTERM')
+      // Wait for shutdown
+      await new Promise(resolve => setTimeout(resolve, 2000))
+    } catch (e) {
+      console.warn('Failed to stop PB for template creation:', e.message)
+    }
+  }
+
+  if (fs.existsSync(PB_DATA_TEMPLATE)) {
+    fs.rmSync(PB_DATA_TEMPLATE, { recursive: true, force: true })
+  }
+  fs.cpSync(PB_DATA, PB_DATA_TEMPLATE, { recursive: true })
+  console.log('PocketBase data template created.')
+
+  // Restart PB for the tests
+  console.log('Restarting PocketBase...')
+  const pbLogRestart = fs.openSync(path.join(CWD, 'pocketbase.log'), 'a')
+  const pbProcessRestart = spawn(PB_BINARY, [
+    'serve',
+    `--dir=${PB_DATA}`,
+    '--migrationsDir=./database/pb_migrations',
+    '--hooksDir=./pb_hooks',
+    '--http=127.0.0.1:8090'
+  ], {
+    detached: true,
+    stdio: ['ignore', pbLogRestart, pbLogRestart]
+  })
+
+  pbProcessRestart.unref()
+  if (!pbProcessRestart.pid) {
+    throw new Error('Failed to restart PocketBase process')
+  }
+  fs.writeFileSync(PID_FILE, pbProcessRestart.pid.toString())
 }
 
 export default globalSetup

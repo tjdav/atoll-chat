@@ -6,6 +6,7 @@ import path from 'path'
 const execAsync = promisify(exec)
 const PID_FILE = path.join(process.cwd(), '.pocketbase.pid')
 const PB_DATA = path.join(process.cwd(), 'pb_data')
+const PB_DATA_TEMPLATE = path.join(process.cwd(), 'pb_data_template')
 
 /**
  * Stops the native PocketBase server and clears data.
@@ -23,7 +24,9 @@ async function globalTeardown () {
     } catch (error) {
       console.error(`Failed to kill PocketBase (PID ${pid}):`, error.message)
     }
-    fs.unlinkSync(PID_FILE)
+    if (fs.existsSync(PID_FILE)) {
+      fs.unlinkSync(PID_FILE)
+    }
   } else {
     console.log('No PocketBase PID file found.')
   }
@@ -32,6 +35,14 @@ async function globalTeardown () {
   if (fs.existsSync(PB_DATA)) {
     console.log('Clearing PocketBase data directory...')
     fs.rmSync(PB_DATA, {
+      recursive: true,
+      force: true
+    })
+  }
+
+  if (fs.existsSync(PB_DATA_TEMPLATE)) {
+    console.log('Clearing PocketBase data template...')
+    fs.rmSync(PB_DATA_TEMPLATE, {
       recursive: true,
       force: true
     })
