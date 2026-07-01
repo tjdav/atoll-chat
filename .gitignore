@@ -33,6 +33,7 @@ bin/
 .pocketbase.pid
 database/pb_data
 pb_data/
+pb_data_template/
 .env
 .coralite
 
