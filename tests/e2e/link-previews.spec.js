@@ -9,8 +9,8 @@ test.describe('Link Previews', () => {
     const bobPage = await bobContext.newPage()
 
     // 1. Login Alice and Bob
-    await loginCustomPage(alicePage, 'alice', 'Password123!', '123456')
-    await loginCustomPage(bobPage, 'bob', 'Password123!', '123456')
+    await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
+    await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
     // 2. Alice creates chat with Bob
     await alicePage.click('button[title="Create Room"]')
@@ -52,7 +52,7 @@ test.describe('Link Previews', () => {
   })
 
   test('should allow dismissing a link preview', async ({ page, loginCustomPage }) => {
-    await loginCustomPage(page, 'alice', 'Password123!', '123456')
+    await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
 
     // Open any chat
     await page.click('button[title="Create Room"]')
@@ -70,7 +70,7 @@ test.describe('Link Previews', () => {
     await expect(page.locator('link-preview-input')).not.toBeVisible()
 
     // Send
-    await page.click('[data-testid$="__sendButton"]')
+    await page.click('button:has-text("Send")')
 
     // Verify no link preview in timeline, only text
     await expect(page.locator('timeline-row').filter({ hasText: 'example.com' })).toBeVisible()

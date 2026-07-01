@@ -2,17 +2,21 @@
   <div class="card shadow">
     <div class="card-body p-4">
       <h3 class="card-title mb-3 text-center">Secure Your Vault</h3>
-      <p class="text-muted small text-center mb-4">Set a PIN to encrypt your local cryptographic keys. This PIN is never sent to the server.</p>
+      <p class="text-muted small text-center mb-4">Set a strong password to encrypt your local cryptographic keys. This password is never sent to the server.</p>
       <form ref="setupForm">
         <div class="mb-3">
-          <label for="{{ ref_pin }}" class="form-label">Vault PIN (min 6 characters)</label>
-          <input name="pin" ref="pin" type="password" class="form-control" placeholder="Enter PIN" minlength="6" required>
+          <label for="{{ ref_password }}" class="form-label">Vault Password</label>
+          <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="12" required>
+          <div class="progress mt-2" style="height: 5px;">
+            <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div ref="strengthText" class="form-text small mt-1">Minimum 12 characters.</div>
         </div>
         <div class="mb-3">
-          <label for="{{ ref_pinConfirm }}" class="form-label">Confirm PIN</label>
-          <input name="pinConfirm" ref="pinConfirm" type="password" class="form-control" placeholder="Confirm PIN" minlength="6" required>
+          <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
+          <input name="passwordConfirm" ref="passwordConfirm" type="password" class="form-control" placeholder="Confirm Password" minlength="12" required>
         </div>
-        <button type="submit" class="btn btn-primary w-100">Initialize Vault with PIN</button>
+        <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" disabled>Initialize Vault with Password</button>
         <hr>
         <div class="d-grid gap-2">
           <button type="button" class="btn btn-outline-primary" ref="btnPasskey">Setup with Passkey</button>
@@ -36,8 +40,11 @@
       const { $sync } = realtimeSync
       const { $state } = globalStore
       const setupForm = refs('setupForm')
-      const pinInput = refs('pin')
-      const pinConfirmInput = refs('pinConfirm')
+      const passwordInput = refs('password')
+      const passwordConfirmInput = refs('passwordConfirm')
+      const strengthBar = refs('strengthBar')
+      const strengthText = refs('strengthText')
+      const btnSubmit = refs('btnSubmit')
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout')
       const btnPasskey = refs('btnPasskey')
@@ -45,6 +52,36 @@
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
+
+      const updateStrength = async () => {
+        const password = passwordInput.value
+        if (!password) {
+          strengthBar.style.width = '0%'
+          strengthBar.className = 'progress-bar'
+          strengthText.textContent = 'Minimum 12 characters.'
+          btnSubmit.disabled = true
+          return
+        }
+
+        try {
+          const { default: zxcvbn } = await import('zxcvbn')
+          const result = zxcvbn(password)
+          const score = result.score
+          const colors = ['bg-danger', 'bg-danger', 'bg-warning', 'bg-info', 'bg-success']
+          const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']
+
+          strengthBar.style.width = `${(score + 1) * 20}%`
+          strengthBar.className = `progress-bar ${colors[score]}`
+          strengthText.textContent = `Strength: ${labels[score]}. ${result.feedback.warning || ''}`
+
+          btnSubmit.disabled = password.length < 12 || score < 3
+        } catch (err) {
+          console.error('[vault-setup] zxcvbn error:', err)
+          btnSubmit.disabled = password.length < 12
+        }
+      }
+
+      passwordInput.addEventListener('input', updateStrength)
 
       btnLogout.addEventListener('click', () => {
         pb.authStore.clear()
@@ -87,17 +124,17 @@
 
       setupForm.addEventListener('submit', async (event) => {
         event.preventDefault()
-        const pin = pinInput.value
-        const pinConfirm = pinConfirmInput.value
+        const password = passwordInput.value
+        const passwordConfirm = passwordConfirmInput.value
 
-        if (pin !== pinConfirm) {
-          updateStatus('Error: PINs do not match')
+        if (password !== passwordConfirm) {
+          updateStatus('Error: Passwords do not match')
           return
         }
 
         try {
           updateStatus('Initializing cryptographic modules...')
-          const [{ default: sodium }, { generateMasterKeys, generateSalt, deriveKeyFromPin, encryptVault }] = await Promise.all([
+          const [{ default: sodium }, { generateMasterKeys, generateSalt, deriveKeyFromPassword, encryptVault }] = await Promise.all([
             import('libsodium-wrappers-sumo'),
             import('../utils/cryptoUtils.js')
           ])
@@ -105,16 +142,16 @@
 
           updateStatus('Generating cryptographic keys...')
           const masterKeys = await generateMasterKeys(sodium)
-          const pinSalt = generateSalt(sodium)
+          const salt = generateSalt(sodium)
 
-          updateStatus('Securing vault with PIN...')
-          const KEK = await deriveKeyFromPin(pin, pinSalt, sodium)
+          updateStatus('Securing vault with Password...')
+          const KEK = await deriveKeyFromPassword(password, salt, sodium)
           const encryptedVault = encryptVault(masterKeys, KEK, sodium)
 
           await initializeVault(masterKeys, {
             public_box_key: masterKeys.public_box_key,
             public_sign_key: masterKeys.public_sign_key,
-            pin_salt: sodium.to_base64(pinSalt, sodium.base64_variants.ORIGINAL),
+            pin_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
             encrypted_master_keys: encryptedVault
           })
         } catch (error) {

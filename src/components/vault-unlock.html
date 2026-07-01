@@ -2,11 +2,11 @@
   <div class="card shadow">
     <div class="card-body p-4 text-center">
       <h3 class="card-title mb-3">Unlock Your Vault</h3>
-      <p class="text-muted small mb-4">Your session is active, but your cryptographic keys are locked. Please enter your password to unlock them.</p>
+      <p class="text-muted small mb-4">Your session is active, but your cryptographic keys are locked. Please enter your vault password to unlock them.</p>
       <form ref="unlockForm" class="text-start">
         <div class="mb-3">
-          <label for="{{ ref_pin }}" class="form-label">Vault Password</label>
-          <input name="pin" ref="pin" type="password" class="form-control" placeholder="Enter Password" required>
+          <label for="{{ ref_password }}" class="form-label">Vault Password</label>
+          <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Vault Password" required>
         </div>
         <div class="d-grid gap-2">
           <button type="submit" class="btn btn-primary">Unlock with Password</button>
@@ -26,7 +26,7 @@
 
   export default defineComponent({
     client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, signal }) => {
-      const [{ default: sodium }, { deriveKeyFromPin, decryptVault }] = await Promise.all([
+      const [{ default: sodium }, { deriveKeyFromPassword, decryptVault }] = await Promise.all([
         import('libsodium-wrappers-sumo'),
         import('../utils/cryptoUtils.js')
       ])
@@ -36,7 +36,7 @@
       const { $state } = globalStore
 
       const unlockForm = refs('unlockForm')
-      const pinInput = refs('pin')
+      const passwordInput = refs('password')
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout')
       const btnPasskey = refs('btnPasskey')
@@ -88,12 +88,12 @@
 
       unlockForm.addEventListener('submit', async (event) => {
         event.preventDefault()
-        const pin = pinInput.value
+        const password = passwordInput.value
 
         try {
           updateStatus('Locating vault...')
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
-          const { pin_salt: pinSaltBase64, encrypted_master_keys: encryptedMasterKeys } = record
+          const { pin_salt: saltBase64, encrypted_master_keys: encryptedMasterKeys } = record
 
           if (!encryptedMasterKeys) {
             updateStatus('Error: Secure vault not found on server.')
@@ -104,8 +104,8 @@
   
           await sodium.ready
 
-          const pinSalt = sodium.from_base64(pinSaltBase64, sodium.base64_variants.ORIGINAL)
-          const KEK = await deriveKeyFromPin(pin, pinSalt, sodium)
+          const salt = sodium.from_base64(saltBase64, sodium.base64_variants.ORIGINAL)
+          const KEK = await deriveKeyFromPassword(password, salt, sodium)
 
           const decryptedKeys = decryptVault(
             encryptedMasterKeys.ciphertext,

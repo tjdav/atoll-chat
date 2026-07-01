@@ -9,17 +9,17 @@ export function generateSalt (sodium) {
 }
 
 /**
- * Derives a 32-byte Key Encryption Key (KEK) from a PIN and salt using Argon2id.
+ * Derives a 32-byte Key Encryption Key (KEK) from a password and salt using Argon2id.
  *
- * @param {string} pin - The user's PIN.
+ * @param {string} password - The user's password.
  * @param {Uint8Array} saltUint8Array - The 16-byte salt.
  * @param {Object} sodium - The initialized libsodium-wrappers instance.
  * @returns {Promise<Uint8Array>} A promise that resolves to the 32-byte derived KEK.
  */
-export async function deriveKeyFromPin (pin, saltUint8Array, sodium) {
+export async function deriveKeyFromPassword (password, saltUint8Array, sodium) {
   return sodium.crypto_pwhash(
     32,
-    pin,
+    password,
     saltUint8Array,
     sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
     sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
@@ -240,7 +240,7 @@ export function decryptVault (ciphertextBase64, nonceBase64, KEK, sodium) {
   const decrypted = sodium.crypto_secretbox_open_easy(ciphertext, nonce, KEK)
 
   if (!decrypted) {
-    throw new Error('Failed to decrypt vault. Invalid PIN or corrupt data.')
+    throw new Error('Failed to decrypt vault. Invalid Password or corrupt data.')
   }
 
   const vaultPlaintext = sodium.to_string(decrypted)

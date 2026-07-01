@@ -12,10 +12,10 @@ test.describe('Message Reactions', () => {
     bobPage.setDefaultTimeout(30000)
 
     console.log('Logging in Alice...')
-    await loginCustomPage(alicePage, 'alice', 'Password123!', '123456')
+    await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
 
     console.log('Logging in Bob...')
-    await loginCustomPage(bobPage, 'bob', 'Password123!', '123456')
+    await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
     console.log('Alice creating room with Bob...')
     await alicePage.click('button[title="Create Room"]')

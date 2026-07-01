@@ -14,11 +14,11 @@ test.describe('Private Chat', () => {
 
     console.log('Logging in Alice...')
     // --- Alice Login & Unlock ---
-    await loginCustomPage(alicePage, 'alice', 'Password123!', '123456')
+    await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
 
     console.log('Logging in Bob...')
     // --- Bob Login & Unlock ---
-    await loginCustomPage(bobPage, 'bob', 'Password123!', '123456')
+    await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
     console.log('Alice creating room with Bob...')
     // --- Alice creates chat with Bob ---

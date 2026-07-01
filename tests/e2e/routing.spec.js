@@ -2,7 +2,7 @@ import { test, expect } from './fixtures/base-test.js'
 
 test.describe('Routing Plugin - Authenticated', () => {
   test.beforeEach(async ({ page, loginCustomPage }) => {
-    await loginCustomPage(page, 'alice', 'Password123!', '123456')
+    await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
     await expect(page).toHaveURL(/\/\?view=chats$/)
   })
 

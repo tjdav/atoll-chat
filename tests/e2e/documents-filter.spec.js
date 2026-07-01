@@ -5,7 +5,7 @@ import fs from 'fs'
 test.describe('Documents Filter', () => {
   test('should show sent document in the documents list and viewer', async ({ page, loginApp }) => {
     // 1. Login as alice
-    await loginApp('alice', 'Password123!', '123456')
+    await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
     // 2. Create room with bob
     await page.click('button[title="Create Room"]')

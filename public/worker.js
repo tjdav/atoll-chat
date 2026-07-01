@@ -127,11 +127,11 @@ async function handleEvent (event) {
       return
     }
 
-    if (type === 'deriveKeyFromPin') {
-      const { pin, salt } = payload
+    if (type === 'deriveKeyFromPassword') {
+      const { password, salt } = payload
       const KEK = await sodium.crypto_pwhash(
         32,
-        pin,
+        password,
         salt,
         sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
         sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,

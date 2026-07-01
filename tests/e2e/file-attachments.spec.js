@@ -42,8 +42,8 @@ test.describe('File Attachments', () => {
 
     console.log('Logging in Alice and Bob...')
     await Promise.all([
-      loginCustomPage(alicePage, 'alice', 'Password123!', '123456'),
-      loginCustomPage(bobPage, 'bob', 'Password123!', '123456')
+      loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!'),
+      loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
     ])
 
     console.log('Alice creating room with Bob...')

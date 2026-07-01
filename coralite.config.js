@@ -22,6 +22,10 @@ export default defineConfig({
       initialState: {
         isAuthenticated: false,
         isVaultUnlocked: false,
+        vault: {
+          isLocked: true,
+          supportedStrategies: ['password']
+        },
         currentUser: null,
         authView: 'login',
         currentAppView: 'chats',

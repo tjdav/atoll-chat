@@ -9,8 +9,8 @@ test.describe('Chat List Latest Message and Unread Indicators', () => {
     const bobPage = await bobContext.newPage()
 
     console.log('Logging in Alice and Bob...')
-    await loginCustomPage(alicePage, 'alice', 'Password123!', '123456')
-    await loginCustomPage(bobPage, 'bob', 'Password123!', '123456')
+    await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
+    await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
     console.log('Alice creating room and sending text message...')
     // Alice creates room and sends message

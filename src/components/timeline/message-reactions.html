@@ -63,7 +63,7 @@
           }
         })
   
-        const aggregated = {} // emoji -> [userIds]
+        const aggregated = {}
         let totalCount = 0
         Object.entries(userReactions).forEach(([userId, emojis]) => {
           Object.entries(emojis).forEach(([emoji, data]) => {

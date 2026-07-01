@@ -23,7 +23,7 @@ export const test = base.extend({
 
       await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
-      await page.fill('input[placeholder="Enter Password"]', vaultPassword)
+      await page.fill('input[placeholder="Enter Vault Password"]', vaultPassword)
       await page.click('button:has-text("Unlock with Password")')
 
       await expect(page.locator('app-layout')).toBeVisible({ timeout: 10000 })
@@ -54,7 +54,7 @@ export const test = base.extend({
 
       await expect(targetPage.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
-      await targetPage.fill('input[placeholder="Enter Password"]', vaultPassword)
+      await targetPage.fill('input[placeholder="Enter Vault Password"]', vaultPassword)
       await targetPage.click('button:has-text("Unlock with Password")')
 
       await expect(targetPage.locator('app-layout')).toBeVisible({ timeout: 15000 })

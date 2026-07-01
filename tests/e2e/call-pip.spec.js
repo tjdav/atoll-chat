@@ -21,8 +21,8 @@ test.describe.serial('Call PiP', () => {
   })
 
   async function loginAndSetup (loginCustomPage) {
-    await loginCustomPage(alicePage, 'alice', 'Password123!', '123456')
-    await loginCustomPage(bobPage, 'bob', 'Password123!', '123456')
+    await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
+    await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
   }
 
   async function createRoom (callerPage, receiverPage, receiverName, callerName) {

@@ -24,10 +24,10 @@ test.describe.serial('Call Messaging', () => {
 
   async function loginAndSetup (loginCustomPage) {
     console.log('Logging in Alice...')
-    await loginCustomPage(alicePage, 'alice', 'Password123!', '123456')
+    await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
 
     console.log('Logging in Bob...')
-    await loginCustomPage(bobPage, 'bob', 'Password123!', '123456')
+    await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
   }
 
   async function createRoom (callerPage, receiverPage, receiverName, callerName) {

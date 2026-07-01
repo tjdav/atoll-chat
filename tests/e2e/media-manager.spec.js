@@ -4,7 +4,7 @@ import path from 'path'
 test.describe('Media Manager Sidebar', () => {
   test('should handle media playback and takeover via sidebar manager', async ({ page, loginCustomPage }) => {
     console.log('Logging in...')
-    await loginCustomPage(page, 'alice', 'Password123!', '123456')
+    await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
 
     // 1. Verify Media Manager button exists in sidebar
     const mediaBtn = page.locator("button[title='Now Playing']")

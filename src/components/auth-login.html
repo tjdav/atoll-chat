@@ -76,17 +76,17 @@
           // Attempt to unlock the vault automatically with the password
           try {
             const record = pb.authStore.model
-            const { pin_salt: pinSaltBase64, encrypted_master_keys: encryptedMasterKeys } = record
+            const { pin_salt: saltBase64, encrypted_master_keys: encryptedMasterKeys } = record
 
-            if (encryptedMasterKeys && pinSaltBase64) {
-              const [{ default: sodium }, { deriveKeyFromPin, decryptVault }] = await Promise.all([
+            if (encryptedMasterKeys && saltBase64) {
+              const [{ default: sodium }, { deriveKeyFromPassword, decryptVault }] = await Promise.all([
                 import('libsodium-wrappers-sumo'),
                 import('../utils/cryptoUtils.js')
               ])
               await sodium.ready
 
-              const pinSalt = sodium.from_base64(pinSaltBase64, sodium.base64_variants.ORIGINAL)
-              const KEK = await deriveKeyFromPin(password, pinSalt, sodium)
+              const salt = sodium.from_base64(saltBase64, sodium.base64_variants.ORIGINAL)
+              const KEK = await deriveKeyFromPassword(password, salt, sodium)
 
               const decryptedKeys = decryptVault(
                 encryptedMasterKeys.ciphertext,
@@ -115,7 +115,7 @@
               $state.isVaultUnlocked = true
             }
           } catch (unlockErr) {
-            if (!unlockErr.message?.includes('wrong secret key')) {
+            if (!unlockErr.message?.includes('wrong secret key') && !unlockErr.message?.includes('decrypt')) {
               console.warn('Auto-unlock failed:', unlockErr)
             }
           }

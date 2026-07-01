@@ -1,6 +1,6 @@
 import sodium from 'libsodium-wrappers-sumo'
 import PocketBase from 'pocketbase'
-import { generateMasterKeys, generateSalt, deriveKeyFromPin, encryptVault } from '../src/utils/cryptoUtils.js'
+import { generateMasterKeys, generateSalt, deriveKeyFromPassword, encryptVault } from '../src/utils/cryptoUtils.js'
 
 const PB_URL = process.env.PB_URL || 'http://127.0.0.1:8090'
 const ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL || 'admin@example.com'
@@ -22,7 +22,7 @@ const USERS = [
 ]
 
 const SHARED_PASSWORD = 'Password123!'
-const SHARED_PIN = '123456'
+const SHARED_VAULT_PASSWORD = 'VaultPassword123!'
 
 async function provision () {
   await sodium.ready
@@ -55,8 +55,8 @@ async function provision () {
       }
 
       const masterKeys = await generateMasterKeys(sodium)
-      const pinSalt = generateSalt(sodium)
-      const KEK = await deriveKeyFromPin(SHARED_PIN, pinSalt, sodium)
+      const salt = generateSalt(sodium)
+      const KEK = await deriveKeyFromPassword(SHARED_VAULT_PASSWORD, salt, sodium)
       const encryptedVault = encryptVault(masterKeys, KEK, sodium)
 
       const payload = {
@@ -68,7 +68,7 @@ async function provision () {
         emailVisibility: true,
         public_box_key: masterKeys.public_box_key,
         public_sign_key: masterKeys.public_sign_key,
-        pin_salt: sodium.to_base64(pinSalt, sodium.base64_variants.ORIGINAL),
+        pin_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
         encrypted_master_keys: encryptedVault
       }
 
