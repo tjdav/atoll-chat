@@ -1,0 +1,174 @@
+<template id="link-viewer">
+  <div class="link-viewer d-flex flex-column h-100 bg-body">
+    <header class="p-3 border-bottom d-flex justify-content-between align-items-center bg-body shadow-sm">
+      <div class="d-flex align-items-center">
+        <div class="bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold me-3" style="width: 40px; height: 40px;">
+          <i class="bi bi-link-45deg fs-4"></i>
+        </div>
+        <div>
+          <h6 class="mb-0 fw-bold">Link Details</h6>
+          <small class="text-muted">{{ domain }}</small>
+        </div>
+      </div>
+      <button ref="btnJump" class="btn btn-outline-primary btn-sm rounded-pill px-3">
+        <i class="bi bi-chat-left-text me-1"></i> Jump to Chat
+      </button>
+    </header>
+
+    <div class="flex-grow-1 overflow-y-auto p-4">
+      <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+        <div ref="imageContainer" class="bg-light d-flex align-items-center justify-content-center" style="min-height: 200px; max-height: 400px;">
+          <!-- Decrypted preview image -->
+        </div>
+        <div class="card-body">
+          <h4 class="card-title fw-bold mb-2">{{ title }}</h4>
+          <p class="text-muted mb-4">{{ summary }}</p>
+          
+          <div class="d-grid">
+            <a href="{{ url }}" target="_blank" class="btn btn-primary">
+              <i class="bi bi-box-arrow-up-right me-2"></i> Visit Website
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <h6 class="text-uppercase text-muted small fw-bold mb-3">Information</h6>
+          <div class="d-flex flex-column gap-3">
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Shared by</span>
+              <span class="fw-bold">{{ senderName }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Chat</span>
+              <span class="fw-bold">{{ roomName }}</span>
+            </div>
+            <div class="d-flex justify-content-between">
+              <span class="text-muted">Date</span>
+              <span class="fw-bold">{{ timestamp }}</span>
+            </div>
+            <div class="d-flex justify-content-between overflow-hidden">
+              <span class="text-muted flex-shrink-0 me-3">URL</span>
+              <span class="text-primary text-truncate">{{ url }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      title: '',
+      summary: '',
+      url: '',
+      domain: '',
+      senderName: '',
+      roomName: '',
+      timestamp: ''
+    }),
+    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase }) => {
+      const { $localDb } = localDb
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const { pb } = pocketbase
+      const imageContainer = refs('imageContainer')
+      let currentLinkId = null
+
+      const loadLink = async (linkId) => {
+        if (!linkId || $state.activeSelectionType !== 'links') return
+        currentLinkId = linkId
+
+        try {
+          const msg = await $localDb.local_messages.get(linkId)
+          if (!msg) return
+
+          state.title = msg.link_title || 'Untitled Link'
+          state.summary = msg.link_summary || ''
+          state.url = msg.content
+          state.domain = msg.link_domain || ''
+          state.timestamp = new Date(msg.created_at).toLocaleString()
+
+          const room = await $localDb.local_rooms.get(msg.room_id)
+          state.roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
+          
+          if (room && room.participants) {
+            const sender = room.participants.find(p => p.id === msg.sender_id)
+            state.senderName = sender ? (sender.username || sender.name || 'Unknown') : 'Unknown'
+          }
+
+          // Load Image
+          imageContainer.innerHTML = ''
+          if (msg.media_id && msg.file_key && msg.file_nonce) {
+            try {
+              if ($state.decryptionCache.has(linkId)) {
+                renderImage($state.decryptionCache.get(linkId))
+              } else {
+                const record = await pb.collection('media').getOne(msg.media_id)
+                const fileUrl = pb.files.getURL(record, record.file)
+                const response = await fetch(fileUrl)
+                const encryptedBuffer = await response.arrayBuffer()
+
+                const key = sodium.from_base64(msg.file_key, sodium.base64_variants.ORIGINAL)
+                const nonce = sodium.from_base64(msg.file_nonce, sodium.base64_variants.ORIGINAL)
+                const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(encryptedBuffer), nonce, key)
+                const blob = new Blob([decrypted], { type: 'image/jpeg' })
+                const blobUrl = URL.createObjectURL(blob)
+
+                $state.decryptionCache.set(linkId, blobUrl)
+                renderImage(blobUrl)
+              }
+            } catch (err) {
+              console.error('[link-viewer] Image decrypt error:', err)
+              renderPlaceholder()
+            }
+          } else {
+            renderPlaceholder()
+          }
+        } catch (err) {
+          console.error('[link-viewer] Failed to load link:', err)
+        }
+      }
+
+      const renderImage = (src) => {
+        imageContainer.innerHTML = `<img src="${src}" class="w-100 h-100 object-fit-cover" alt="Preview">`
+      }
+
+      const renderPlaceholder = () => {
+        imageContainer.innerHTML = '<i class="bi bi-link-45deg fs-1 text-secondary opacity-25"></i>'
+      }
+
+      const btnJump = refs('btnJump')
+      if (btnJump) {
+        btnJump.onclick = async () => {
+          const linkId = $state.activeSelectionId
+          if (!linkId) return
+          const msg = await $localDb.local_messages.get(linkId)
+          if (msg) {
+            $state.currentAppView = 'chats'
+            $state.activeSelectionId = msg.room_id
+            $state.activeSelectionType = 'chats'
+            
+            // Wait for timeline to mount and then emit scroll
+            setTimeout(() => {
+              $bus.emit('SCROLL_TO_MESSAGE', { messageId: linkId })
+            }, 100)
+          }
+        }
+      }
+
+      $state.subscribe('activeSelectionId', (val) => {
+        if ($state.activeSelectionType === 'links') {
+          loadLink(val)
+        }
+      })
+
+      loadLink($state.activeSelectionId)
+    }
+  })
+</script>

@@ -13,7 +13,7 @@
       <div class="h-100 align-items-center justify-content-center" style="display: {{ emptyStateDisplay }};">
         <div class="text-center">
           <i class="bi bi-chat-dots fs-1 text-secondary mb-3 d-block"></i>
-          <p class="text-muted mb-0">Select a conversation or media item</p>
+          <p class="text-muted mb-0">Select a conversation or item</p>
         </div>
       </div>
       <div class="h-100" style="display: {{ chatViewDisplay }};">
@@ -30,6 +30,9 @@
       </div>
       <div class="h-100" style="display: {{ documentViewerDisplay }};">
         <document-viewer></document-viewer>
+      </div>
+      <div class="h-100" style="display: {{ linkViewerDisplay }};">
+        <link-viewer></link-viewer>
       </div>
     </div>
   </div>
@@ -49,12 +52,13 @@
     }),
     getters: {
       currentViewTitle: (state) => state.currentAppView || 'Chats',
-      emptyStateDisplay: (state) => ((!state.activeSelectionId || (state.activeSelectionType !== 'chats' && state.activeSelectionType !== 'pictures' && state.activeSelectionType !== 'videos' && state.activeSelectionType !== 'music' && state.activeSelectionType !== 'documents')) ? 'flex' : 'none'),
+      emptyStateDisplay: (state) => ((!state.activeSelectionId || (state.activeSelectionType !== 'chats' && state.activeSelectionType !== 'pictures' && state.activeSelectionType !== 'videos' && state.activeSelectionType !== 'music' && state.activeSelectionType !== 'documents' && state.activeSelectionType !== 'links')) ? 'flex' : 'none'),
       chatViewDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'chats') ? 'block' : 'none'),
       imageViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'pictures') ? 'block' : 'none'),
       videoPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'videos') ? 'block' : 'none'),
       audioPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'music') ? 'block' : 'none'),
-      documentViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'documents') ? 'block' : 'none')
+      documentViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'documents') ? 'block' : 'none'),
+      linkViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'links') ? 'block' : 'none')
     },
     client: ({ state, globalStore }) => {
       const { $state } = globalStore

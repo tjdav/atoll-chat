@@ -195,7 +195,11 @@ async function sendMessage (rpcId, payload) {
     candidate,
     media_types,
     target_id,
-    timestamp
+    timestamp,
+    link_title,
+    link_summary,
+    link_image_url,
+    link_domain
   } = payload
 
   if (!currentUserKeys || !currentUserKeys.private_sign_key) {
@@ -286,6 +290,13 @@ async function sendMessage (rpcId, payload) {
     media_types,
     target_id,
     timestamp: timestamp || Date.now()
+  }
+
+  if (type === 'link') {
+    plaintextObj.link_title = link_title
+    plaintextObj.link_summary = link_summary
+    plaintextObj.link_image_url = link_image_url
+    plaintextObj.link_domain = link_domain
   }
 
   if (type === 'media') {
@@ -582,6 +593,13 @@ async function processIncomingMessage (rpcId, record) {
       music_metadata,
       album_art
     })
+  }
+
+  if (type === 'link') {
+    decryptedMessage.link_title = decryptedPayload.link_title
+    decryptedMessage.link_summary = decryptedPayload.link_summary
+    decryptedMessage.link_image_url = decryptedPayload.link_image_url
+    decryptedMessage.link_domain = decryptedPayload.link_domain
   }
 
   if (type !== 'ice_candidate') {

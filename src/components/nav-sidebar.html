@@ -16,6 +16,9 @@
       <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isDocumentsActive }}" ref="btnDocuments" title="Documents">
         <i class="bi bi-file-earmark-fill fs-4"></i>
       </button>
+      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isLinksActive }}" ref="btnLinks" title="Links">
+        <i class="bi bi-link-45deg fs-4"></i>
+      </button>
     </div>
     <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative">
       <!-- Global Media Manager -->
@@ -87,6 +90,7 @@
       isPicturesActive: (state) => (state.currentAppView === 'pictures' ? 'active' : ''),
       isVideosActive: (state) => (state.currentAppView === 'videos' ? 'active' : ''),
       isDocumentsActive: (state) => (state.currentAppView === 'documents' ? 'active' : ''),
+      isLinksActive: (state) => (state.currentAppView === 'links' ? 'active' : ''),
       isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : ''),
       progressOffset: (state) => {
         const radius = 20
@@ -141,6 +145,7 @@
         btnPictures: 'pictures',
         btnVideos: 'videos',
         btnDocuments: 'documents',
+        btnLinks: 'links',
         btnSettings: 'settings'
       }
 

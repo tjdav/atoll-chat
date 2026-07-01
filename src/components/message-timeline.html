@@ -153,7 +153,7 @@
               }
 
               // Propagate status to children
-              row.querySelectorAll('text-message, media-preview, voice-player, file-attachment').forEach(child => {
+              row.querySelectorAll('text-message, media-preview, voice-player, file-attachment, link-preview').forEach(child => {
                 if (child.getAttribute('status') !== m.status) {
                   child.setAttribute('status', m.status)
                 }
@@ -347,6 +347,25 @@
               container.appendChild(systemMsg)
               lastRenderedMessageId = message.id || message.local_uuid
               return
+            } else if (message.type === 'link') {
+              const preview = document.createElement('link-preview')
+              preview.setAttribute('local-uuid', message.local_uuid)
+              preview.setAttribute('url', message.content)
+              preview.setAttribute('title', message.link_title || '')
+              preview.setAttribute('summary', message.link_summary || '')
+              preview.setAttribute('domain', message.link_domain || '')
+              preview.setAttribute('status', message.status)
+              row.appendChild(preview)
+
+              if (message.content) {
+                const text = document.createElement('text-message')
+                text.setAttribute('local-uuid', message.local_uuid)
+                text.setAttribute('content', message.content)
+                text.setAttribute('is-sent', isSent)
+                text.setAttribute('position', position)
+                text.setAttribute('status', message.status)
+                row.appendChild(text)
+              }
             } else {
               const text = document.createElement('text-message')
               text.setAttribute('local-uuid', message.local_uuid)
@@ -444,6 +463,26 @@
       $bus.on('UPDATE_ROOM_MEMBER', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           debouncedRender()
+        }
+      })
+
+      $bus.on('SCROLL_TO_MESSAGE', async (payload) => {
+        const { messageId } = payload
+        if (!messageId) return
+
+        // 1. Check if it's already rendered
+        let row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) || 
+                  container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
+        
+        if (!row) {
+          // If not rendered, we might need to wait for renderTimeline
+          await renderTimeline()
+          row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) || 
+                container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
+        }
+
+        if (row) {
+          row.scrollIntoView({ behavior: 'smooth', block: 'center' })
         }
       })
     }
