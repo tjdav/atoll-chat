@@ -8,6 +8,8 @@ import cryptoPlugin from './src/plugins/crypto-worker.js'
 import syncPlugin from './src/plugins/sync-plugin.js'
 import webrtcPlugin from './src/plugins/web-rtc-plugin.js'
 import bootstrapPlugin from './src/plugins/bootstrap.js'
+import emojiPlugin from './src/plugins/emoji-picker-plugin.js'
+import routerPlugin from './src/plugins/router-plugin.js'
 
 const pocketbaseBaseUrl = process.env.DATABASE_URL || 'http://localhost:8090'
 
@@ -47,6 +49,8 @@ export default defineConfig({
     utilsPlugin,
     cryptoPlugin({ url: pocketbaseBaseUrl }),
     syncPlugin(),
+    routerPlugin(),
+    emojiPlugin,
     bootstrapPlugin,
     webrtcPlugin()
   ],
