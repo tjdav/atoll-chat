@@ -138,10 +138,11 @@ test.describe.serial('Call Messaging', () => {
     await expect(bobAudioBtn).toHaveClass(/btn-light/)
     await expect(bobVideoBtn).toHaveClass(/btn-light/)
 
-    // Assert media connection (remote video readyState 4 for video call)
-    console.log('Verifying remote video stream readyState...')
+    // Assert media connection (remote and local video readyState 4 for video call)
     await expect(alicePage.locator('video-grid video.remote-video')).toHaveJSProperty('readyState', 4, { timeout: 20000 })
     await expect(bobPage.locator('video-grid video.remote-video')).toHaveJSProperty('readyState', 4, { timeout: 20000 })
+    await expect(alicePage.locator('video-grid video.local-video')).toHaveJSProperty('readyState', 4, { timeout: 20000 })
+    await expect(bobPage.locator('video-grid video.local-video')).toHaveJSProperty('readyState', 4, { timeout: 20000 })
 
     // Toggle Camera (Bob)
     console.log('Bob toggling camera...')

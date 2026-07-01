@@ -139,6 +139,7 @@
         stopTracks()
         $state.set('callStatus', 'idle')
         $state.activeCallRoomId = null
+        $state.localStream = null
         state.remoteOffer = null
       }
 
@@ -214,6 +215,7 @@
 
       // Listen for locally initiated calls to grab the stream
       $bus.on('call_initiated_locally', ({ localStream }) => {
+        $state.localStream = localStream
         state.localStream = localStream
         state.isAudioEnabled = localStream.getAudioTracks().some(t => t.enabled)
         state.isVideoEnabled = localStream.getVideoTracks().some(t => t.enabled)
@@ -248,15 +250,18 @@
       // Accept Call
       refs('btnAccept').addEventListener('click', async () => {
         try {
-          state.localStream = await navigator.mediaDevices.getUserMedia({
+          const localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
             video: true
           })
-          $bus.emit('local_stream_available', { stream: state.localStream })
+          state.localStream = localStream
+          $state.localStream = localStream
   
-          // Set status to active BEFORE answering to ensure UI is ready for tracks
+          // Set status to active before answering to ensure UI is ready for tracks
           $state.set('callStatus', 'active')
-          await $webrtc.answerCall($state.activeCallRoomId, state.localStream, state.remoteOffer)
+          $bus.emit('local_stream_available', { stream: localStream })
+  
+          await $webrtc.answerCall($state.activeCallRoomId, localStream, state.remoteOffer)
         } catch (err) {
           console.error('[call-overlay] Failed to accept call:', err)
           endCall()

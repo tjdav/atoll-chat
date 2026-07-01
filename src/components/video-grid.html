@@ -22,7 +22,8 @@
   export default defineComponent({
     server: () => ({
       hasRemoteTrack: false,
-      isPipMode: false
+      isPipMode: false,
+      localStream: null
     }),
     getters: {
       placeholderClass: (state) => (state.hasRemoteTrack ? 'd-none' : 'd-flex'),
@@ -58,12 +59,47 @@
       const localVideo = refs('localVideo')
       const remotePlaceholder = refs('remotePlaceholder')
 
+      const attachLocalStream = (stream) => {
+        if (localVideo) {
+          if (localVideo.srcObject !== stream) {
+            localVideo.srcObject = stream
+          }
+  
+          const playLocal = () => {
+            if (localVideo.paused && localVideo.srcObject) {
+              localVideo.play().catch(err => {
+                if (err.name !== 'AbortError') {
+                  console.error('[video-grid] Failed to play local video:', err)
+                }
+              })
+            }
+          }
+
+          playLocal()
+          localVideo.onloadedmetadata = playLocal
+        }
+      }
+
       // Listen for local stream
       $bus.on('local_stream_available', ({ stream }) => {
-        if (localVideo) {
-          localVideo.srcObject = stream
-        }
+        state.localStream = stream
+        attachLocalStream(stream)
       }, { signal })
+
+      // If localStream is already available in global state, attach it
+      if ($state.localStream) {
+        attachLocalStream($state.localStream)
+      }
+
+      $state.subscribe('localStream', (stream) => {
+        if (stream) {
+          attachLocalStream(stream)
+        } else {
+          if (localVideo) {
+            localVideo.srcObject = null
+          }
+        }
+      })
 
       // Listen for remote track arrival
       $bus.on('remote_track_arrival', ({ roomId, stream, track }) => {
