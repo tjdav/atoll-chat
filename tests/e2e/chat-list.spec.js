@@ -22,7 +22,7 @@ test.describe('Chat List Latest Message and Unread Indicators', () => {
 
     const aliceMsg = 'Hello Bob, check this unread indicator!'
     await alicePage.fill('textarea[placeholder="Type a message..."]', aliceMsg)
-    await alicePage.click('button:has-text("Send")')
+    await alicePage.click('[data-testid$="__sendButton"]')
     await expect(alicePage.locator('timeline-row:has-text("' + aliceMsg + '")')).toBeVisible()
 
     // 1. Verify Alice sees her own message as 'read' (not bold)
@@ -61,7 +61,7 @@ test.describe('Chat List Latest Message and Unread Indicators', () => {
       buffer: Buffer.from('fake-image-content')
     })
     await alicePage.fill('textarea[placeholder="Type a message..."]', 'Cool image')
-    await alicePage.click('button:has-text("Send")')
+    await alicePage.click('[data-testid$="__sendButton"]')
 
     // Wait for upload (worker status check)
     await expect(alicePage.locator('timeline-row:has-text("Cool image")')).toBeVisible()

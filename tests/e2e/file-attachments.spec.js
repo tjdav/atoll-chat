@@ -76,7 +76,7 @@ test.describe('File Attachments', () => {
       await textarea.fill(caption)
 
       console.log(`Alice sending ${file.name}...`)
-      await alicePage.locator('chat-view button:has-text("Send")').click()
+      await alicePage.locator('chat-view [data-testid$="__sendButton"]').click()
 
       // Alice's Worker Confirmation: Wait for global sent status to appear
       const statusContainer = alicePage.locator('chat-view .message-status-container')

@@ -1,23 +1,32 @@
 <template id="chat-input-text">
-  <div class="input-group d-flex chat-input-text">
+  <div class="d-flex align-items-end chat-input-text">
     <input type="file" ref="fileInput" class="d-none">
-    <button class="btn btn-outline-secondary align-self-end h-38px" type="button" ref="attachButton" title="Attach file" disabled="{{ isDisabled }}">
-      <i class="bi bi-paperclip"></i>
+    
+    <button class="btn btn-ghost btn-circle" type="button" ref="attachButton" title="Attach file" disabled="{{ isDisabled }}">
+      <i class="bi bi-paperclip fs-5"></i>
     </button>
-    <button class="btn btn-outline-secondary align-self-end h-38px" type="button" ref="micButton" title="Voice message" disabled="{{ isDisabled }}">
-      <i class="bi bi-mic"></i>
+    
+    <button class="btn btn-ghost btn-circle" type="button" ref="micButton" title="Voice message" disabled="{{ isDisabled }}">
+      <i class="bi bi-mic fs-5"></i>
     </button>
-    <textarea
-      id="{{ ref_messageInput }}"
-      ref="messageInput"
-      class="form-control"
-      placeholder="Type a message..."
-      rows="1"
-      disabled="{{ isDisabled }}"
-    >{{ currentMessageText }}</textarea>
-    <button class="btn btn-primary d-flex align-items-center align-self-end h-38px" type="button" ref="sendButton" disabled="{{ isDisabled }}">
-      <span class="me-1 d-none d-sm-inline">Send</span>
-      <i class="bi bi-send"></i>
+
+    <div class="input-wrapper">
+      <textarea
+        id="{{ ref_messageInput }}"
+        ref="messageInput"
+        class="form-control"
+        placeholder="Type a message..."
+        rows="1"
+        disabled="{{ isDisabled }}"
+      >{{ currentMessageText }}</textarea>
+      
+      <button class="btn btn-ghost emoji-button" type="button" ref="emojiButton" title="Emojis" disabled="{{ isDisabled }}">
+        <i class="bi bi-emoji-smile fs-5"></i>
+      </button>
+    </div>
+
+    <button class="btn btn-primary btn-circle" type="button" ref="sendButton" disabled="{{ isDisabled }}">
+      <i class="bi bi-send-fill"></i>
       <div class="spinner-border spinner-border-sm d-none" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
@@ -44,6 +53,7 @@
       const { $state } = globalStore
       const { $bus } = eventBus
       const messageInput = refs('messageInput')
+      const emojiButton = refs('emojiButton')
       const fileInput = refs('fileInput')
 
       // Sync initial global state
@@ -96,6 +106,36 @@
       refs('sendButton').addEventListener('click', () => {
         $bus.emit('send-clicked')
       }, { signal })
+
+      emojiButton.addEventListener('click', (e) => {
+        const rect = emojiButton.getBoundingClientRect()
+        $bus.emit('SHOW_REACTION_PICKER', {
+          x: rect.left - 300,
+          y: rect.top - 410,
+          targetId: 'CHAT_INPUT'
+        })
+      }, { signal })
+
+      $bus.on('EMOJI_SELECTED', (payload) => {
+        const emoji = payload.emoji
+        const start = messageInput.selectionStart
+        const end = messageInput.selectionEnd
+        const text = messageInput.value
+        const before = text.substring(0, start)
+        const after = text.substring(end)
+  
+        const newValue = before + emoji + after
+        messageInput.value = newValue
+        $state.currentMessageText = newValue
+        state.currentMessageText = newValue
+  
+        // Restore focus and set caret position
+        messageInput.focus()
+        const newPos = start + emoji.length
+        messageInput.setSelectionRange(newPos, newPos)
+  
+        autoExpand()
+      })
 
       messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {

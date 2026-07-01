@@ -29,7 +29,7 @@ test.describe('Link Previews', () => {
     await expect(livePreview).toBeVisible({ timeout: 15000 })
 
     // 5. Alice sends the message
-    await alicePage.click('button:has-text("Send")')
+    await alicePage.click('[data-testid$="__sendButton"]')
 
     // 6. Verify link preview in Alice's timeline
     const aliceLinkPreview = alicePage.locator('link-preview')
@@ -70,7 +70,7 @@ test.describe('Link Previews', () => {
     await expect(page.locator('link-preview-input')).not.toBeVisible()
 
     // Send
-    await page.click('button:has-text("Send")')
+    await page.click('[data-testid$="__sendButton"]')
 
     // Verify no link preview in timeline, only text
     await expect(page.locator('timeline-row').filter({ hasText: 'example.com' })).toBeVisible()

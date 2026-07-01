@@ -32,7 +32,11 @@
   
         picker.addEventListener('emoji-click', (event) => {
           console.log('[reaction-picker] Emoji clicked:', event.detail.unicode)
-          if (currentTargetId) {
+          if (currentTargetId === 'CHAT_INPUT') {
+            $bus.emit('EMOJI_SELECTED', {
+              emoji: event.detail.unicode
+            })
+          } else if (currentTargetId) {
             $bus.emit('SEND_REACTION', {
               emoji: event.detail.unicode,
               targetId: currentTargetId

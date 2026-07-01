@@ -32,7 +32,7 @@ test.describe('Message Reactions', () => {
     const aliceMessageText = 'Reaction test message ' + Date.now()
     const textarea = alicePage.locator('textarea[placeholder="Type a message..."]')
     await textarea.fill(aliceMessageText)
-    await alicePage.click('button:has-text("Send")')
+    await alicePage.click('[data-testid$="__sendButton"]')
 
     const aliceMessageRow = alicePage.locator('timeline-row').filter({ hasText: aliceMessageText })
     await expect(aliceMessageRow).toBeVisible()

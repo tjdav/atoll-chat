@@ -24,7 +24,7 @@ test.describe('Documents Filter', () => {
     await page.click('button[title="Attach file"]')
     const fileChooser = await fileChooserPromise
     await fileChooser.setFiles(docPath)
-    await page.click('button:has-text("Send")')
+    await page.click('[data-testid$="__sendButton"]')
 
     // 5. Wait for message to be sent
     console.log('Waiting for message to be sent...')

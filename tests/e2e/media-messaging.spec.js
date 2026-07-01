@@ -37,7 +37,7 @@ test.describe('Media Messaging', () => {
     await alicePage.fill('textarea[placeholder="Type a message..."]', caption)
 
     console.log('Alice sending image...')
-    await alicePage.click('button:has-text("Send")')
+    await alicePage.click('[data-testid$="__sendButton"]')
 
     // Alice's Optimistic UI: Verify placeholder-glow is visible
     const aliceMessageRow = alicePage.locator('timeline-row').last()

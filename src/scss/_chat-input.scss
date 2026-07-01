@@ -3,11 +3,28 @@
 }
 
 .chat-input-text {
-  textarea {
-    overflow-y: auto;
-    scrollbar-width: thin;
-    resize: none;
-    max-height: 200px;
+  gap: 0.5rem;
+
+  .input-wrapper {
+    position: relative;
+    flex-grow: 1;
+
+    textarea {
+      overflow-y: auto;
+      scrollbar-width: thin;
+      resize: none;
+      max-height: 200px;
+      padding-right: 40px; // Space for emoji button
+      border-radius: 20px;
+    }
+
+    .emoji-button {
+      position: absolute;
+      right: 8px;
+      bottom: 4px;
+      padding: 4px;
+      line-height: 1;
+    }
   }
 }
 

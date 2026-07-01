@@ -1,0 +1,27 @@
+
+.btn-circle {
+  width: 38px;
+  height: 38px;
+  padding: 0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-ghost {
+  background: transparent;
+  border: none;
+  color: var(--#{$prefix}primary);
+
+  &:hover {
+    background-color: var(--#{$prefix}secondary-bg);
+    color: var(--#{$prefix}primary);
+  }
+
+  &:disabled {
+    background: transparent;
+    opacity: 0.5;
+  }
+}

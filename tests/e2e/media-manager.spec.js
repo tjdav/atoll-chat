@@ -19,7 +19,7 @@ test.describe('Media Manager Sidebar', () => {
 
     const audioPath = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
     await page.locator('chat-view chat-input-text input[type="file"]').setInputFiles(audioPath)
-    await page.locator('chat-view button:has-text("Send")').click()
+    await page.locator('chat-view [data-testid$="__sendButton"]').click()
 
     // Wait for upload and sent status
     await expect(page.locator('chat-view .message-status-container')).toBeVisible({ timeout: 20000 })

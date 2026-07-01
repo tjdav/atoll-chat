@@ -42,8 +42,8 @@ test.describe('Private Chat', () => {
     const aliceMessageText = 'Hello Bob ' + Date.now()
     await alicePage.fill('textarea[placeholder="Type a message..."]', aliceMessageText)
     // Wait for button to be enabled (some components might have a brief loading/disabled state)
-    await expect(alicePage.locator('button:has-text("Send")')).toBeEnabled()
-    await alicePage.click('button:has-text("Send")')
+    await expect(alicePage.locator('[data-testid$="__sendButton"]')).toBeEnabled()
+    await alicePage.click('[data-testid$="__sendButton"]')
 
     // Verify Alice sees her message (Optimistic UI)
     const aliceMessageRow = alicePage.locator('timeline-row').filter({ hasText: aliceMessageText })
@@ -113,7 +113,7 @@ test.describe('Private Chat', () => {
     // Bob replies
     const bobReplyText = 'Hello Alice ' + Date.now()
     await bobPage.fill('textarea[placeholder="Type a message..."]', bobReplyText)
-    await bobPage.click('button:has-text("Send")')
+    await bobPage.click('[data-testid$="__sendButton"]')
 
     // Verify Bob sees his message
     const bobMessageRow = bobPage.locator('timeline-row').filter({ hasText: bobReplyText })
