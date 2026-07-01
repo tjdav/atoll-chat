@@ -129,7 +129,10 @@ async function globalSetup () {
   }
 
   if (fs.existsSync(PB_DATA_TEMPLATE)) {
-    fs.rmSync(PB_DATA_TEMPLATE, { recursive: true, force: true })
+    fs.rmSync(PB_DATA_TEMPLATE, {
+      recursive: true,
+      force: true
+    })
   }
   fs.cpSync(PB_DATA, PB_DATA_TEMPLATE, { recursive: true })
   console.log('PocketBase data template created.')

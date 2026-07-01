@@ -31,7 +31,10 @@ async function resetPocketBase () {
   // 2. Restore from template
   if (fs.existsSync(PB_DATA_TEMPLATE)) {
     if (fs.existsSync(PB_DATA)) {
-      fs.rmSync(PB_DATA, { recursive: true, force: true })
+      fs.rmSync(PB_DATA, {
+        recursive: true,
+        force: true
+      })
     }
     fs.cpSync(PB_DATA_TEMPLATE, PB_DATA, { recursive: true })
   } else {
@@ -72,7 +75,9 @@ async function resetPocketBase () {
         healthy = true
         break
       }
-    } catch { }
+    } catch {
+
+    }
     await new Promise(resolve => setTimeout(resolve, 500))
   }
 

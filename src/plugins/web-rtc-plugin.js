@@ -20,6 +20,7 @@ export default function webrtcPlugin ({
       context: (pluginContext) => {
         // Phase 1: Global Setup
         const activeCalls = new Map()
+        const pendingCandidates = new Map()
         const processedMessages = new Set()
         const $bus = pluginContext.$bus
 
@@ -43,6 +44,7 @@ export default function webrtcPlugin ({
             pc.close()
             activeCalls.delete(roomId)
           }
+          pendingCandidates.delete(roomId)
         }
 
         window.addEventListener('beforeunload', () => {
@@ -105,23 +107,21 @@ export default function webrtcPlugin ({
               if (pc) {
                 if (pc.signalingState === 'have-local-offer') {
                   await pc.setRemoteDescription(new RTCSessionDescription(message.content))
+                  await applyPendingCandidates(roomId, pc)
                 } else {
                   console.warn(`[WebRTC] PC in state ${pc.signalingState}, skipping setRemoteDescription`)
                 }
               }
             } else if (message.type === 'ice_candidate') {
               const pc = activeCalls.get(roomId)
-              if (pc && message.candidate) {
-                if (pc.remoteDescription) {
+              if (message.candidate) {
+                if (pc && pc.remoteDescription) {
                   await pc.addIceCandidate(new RTCIceCandidate(message.candidate))
                 } else {
-                  const checkInterval = setInterval(async () => {
-                    if (pc.remoteDescription) {
-                      clearInterval(checkInterval)
-                      await pc.addIceCandidate(new RTCIceCandidate(message.candidate))
-                    }
-                  }, 100)
-                  setTimeout(() => clearInterval(checkInterval), 5000)
+                  if (!pendingCandidates.has(roomId)) {
+                    pendingCandidates.set(roomId, [])
+                  }
+                  pendingCandidates.get(roomId).push(message.candidate)
                 }
               }
             } else if (message.type === 'call_end') {
@@ -168,6 +168,24 @@ export default function webrtcPlugin ({
             return pc
           }
 
+          const applyPendingCandidates = async (roomId, pc) => {
+            const candidates = pendingCandidates.get(roomId)
+            if (!candidates || candidates.length === 0) {
+              return
+            }
+
+            console.log(`[WebRTC] Replaying ${candidates.length} pending candidates for room ${roomId}`)
+            while (candidates.length > 0) {
+              const candidate = candidates.shift()
+              try {
+                await pc.addIceCandidate(new RTCIceCandidate(candidate))
+              } catch (err) {
+                console.error(`[WebRTC] Failed to add replayed ICE candidate:`, err)
+              }
+            }
+            pendingCandidates.delete(roomId)
+          }
+
           return {
             $webrtc: {
               initiateCall: async (roomId, mediaStream) => {
@@ -183,6 +201,7 @@ export default function webrtcPlugin ({
               answerCall: async (roomId, mediaStream, remoteOffer) => {
                 const pc = setupPeerConnection(roomId, mediaStream)
                 await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer))
+                await applyPendingCandidates(roomId, pc)
                 const answer = await pc.createAnswer()
                 await pc.setLocalDescription(answer)
                 await sendSignalingMessage(roomId, 'call_answer', { content: answer })

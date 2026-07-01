@@ -254,8 +254,9 @@
           })
           $bus.emit('local_stream_available', { stream: state.localStream })
   
-          await $webrtc.answerCall($state.activeCallRoomId, state.localStream, state.remoteOffer)
+          // Set status to active BEFORE answering to ensure UI is ready for tracks
           $state.set('callStatus', 'active')
+          await $webrtc.answerCall($state.activeCallRoomId, state.localStream, state.remoteOffer)
         } catch (err) {
           console.error('[call-overlay] Failed to accept call:', err)
           endCall()
