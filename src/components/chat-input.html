@@ -9,6 +9,11 @@
       ></chat-attachment-preview>
     </div>
 
+    <!-- Link Preview Bar -->
+    <div class="{{ linkPreviewClass }}" ref="linkPreviewContainer">
+      <!-- link-preview-input will be mounted here -->
+    </div>
+
     <!-- Normal Input Mode -->
     <div class="{{ inputGroupClass }}" data-testid="chat-input-wrapper">
       <chat-input-text
@@ -45,18 +50,23 @@
       fileName: '',
       hasFile: false,
       isRecording: false,
-      selectedFile: null
+      selectedFile: null,
+      pendingLinkData: null,
+      ignoreLinkPreview: false
     }),
     getters: {
       attachmentPreviewClass: (state) => (state.hasFile ? 'd-block' : 'd-none'),
+      linkPreviewClass: (state) => (state.pendingLinkData && !state.ignoreLinkPreview ? 'd-block' : 'd-none'),
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'recording-mode-active' : 'd-none')
     },
-    client: ({ state, globalStore, localDb, eventBus, refs, signal, cryptoWorker }) => {
+    client: ({ state, globalStore, localDb, eventBus, refs, signal, cryptoWorker, pocketbase, utils }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
+      const { pb } = pocketbase
+      const { $utils } = utils
 
       const resetUI = () => {
         state.isSending = false
@@ -66,12 +76,77 @@
         state.hasFile = false
         state.isRecording = false
         state.selectedFile = null
+        state.pendingLinkData = null
+        state.ignoreLinkPreview = false
         $state.currentMessageText = ''
         const container = refs('voiceRecorderContainer')
         if (container) {
           container.innerHTML = ''
         }
+        const linkContainer = refs('linkPreviewContainer')
+        if (linkContainer) {
+          linkContainer.innerHTML = ''
+        }
       }
+
+      const URL_REGEX = /(https?:\/\/[^\s]+)(?=\s|$)/i
+      let lastDetectedUrl = null
+
+      const checkUrl = $utils.debounce(async (text) => {
+        if (state.hasFile || state.isRecording) {
+          return
+        }
+
+        const match = text.match(URL_REGEX)
+        if (match) {
+          const url = match[0]
+          if (url === lastDetectedUrl && state.pendingLinkData) {
+            return
+          }
+          if (state.ignoreLinkPreview && url === lastDetectedUrl) {
+            return
+          }
+
+          lastDetectedUrl = url
+          state.ignoreLinkPreview = false
+
+          try {
+            const data = await pb.send('/api/proxy-opengraph', {
+              query: { url }
+            })
+  
+            if (data && data.title) {
+              state.pendingLinkData = data
+              const container = refs('linkPreviewContainer')
+              if (container) {
+                container.innerHTML = ''
+                const el = document.createElement('link-preview-input')
+                el.setAttribute('title', data.title || '')
+                el.setAttribute('description', data.description || '')
+                el.setAttribute('image', data.image || '')
+                el.setAttribute('domain', data.domain || '')
+                container.appendChild(el)
+              }
+            } else {
+              state.pendingLinkData = null
+            }
+          } catch (err) {
+            console.warn('[chat-input] Failed to fetch link preview:', err)
+            state.pendingLinkData = null
+          }
+        } else {
+          state.pendingLinkData = null
+          lastDetectedUrl = null
+          const container = refs('linkPreviewContainer')
+          if (container) {
+            container.innerHTML = ''
+          }
+        }
+      }, 500)
+
+      $state.subscribe('currentMessageText', (val) => {
+        checkUrl(val || '')
+      })
 
       const dispatchMessage = async (params) => {
         const localUuid = crypto.randomUUID()
@@ -91,7 +166,9 @@
           mime_type: params.mime_type,
           filename: params.filename,
           waveform_data: params.waveform_data,
-          music_metadata: params.music_metadata
+          music_metadata: params.music_metadata,
+          link_title: params.link_title,
+          link_summary: params.link_summary
         }
 
         await $localDb.local_messages.put(optimisticMessage)
@@ -176,6 +253,17 @@
               album_art_blob: albumArtBlob,
               timestamp: Date.now()
             })
+          } else if (state.pendingLinkData && !state.ignoreLinkPreview) {
+            // Link Preview Flow
+            console.log('[chat-input] Processing link message')
+            await dispatchMessage({
+              type: 'link',
+              content: text,
+              link_title: state.pendingLinkData.title,
+              link_summary: state.pendingLinkData.description,
+              link_image_url: state.pendingLinkData.image,
+              timestamp: Date.now()
+            })
           } else {
             // Standard Text Flow
             console.log('[chat-input] Processing text message')
@@ -236,6 +324,15 @@
   
         const container = refs('voiceRecorderContainer')
         container.innerHTML = ''
+      })
+
+      $bus.on('dismiss-link-preview', () => {
+        state.ignoreLinkPreview = true
+        state.pendingLinkData = null
+        const container = refs('linkPreviewContainer')
+        if (container) {
+          container.innerHTML = ''
+        }
       })
     }
   })

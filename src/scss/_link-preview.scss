@@ -1,0 +1,51 @@
+// src/scss/_link-preview.scss
+
+.link-preview-card {
+  height: 80px;
+  transition: box-shadow $transition-base, transform $transition-base;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  overflow: hidden;
+  border: $card-border-width solid $card-border-color;
+  border-radius: $card-border-radius;
+  background-color: $card-bg;
+
+  &:hover {
+    transform: translateY(-1px);
+    background-color: rgba($black, 0.02) !important;
+    box-shadow: $box-shadow-sm;
+  }
+}
+
+.preview-image-col {
+  width: 80px;
+  background-color: $gray-200;
+  flex-shrink: 0;
+
+  img {
+    width: 80px;
+    height: 80px;
+    object-fit: cover;
+  }
+}
+
+.text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  line-height: $line-height-base;
+  max-height: calc(1em * #{$line-height-base} * 2);
+}
+
+.link-preview-input-container {
+  animation: fadeIn 0.3s ease;
+  height: 76px;
+  @extend .link-preview-card;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}

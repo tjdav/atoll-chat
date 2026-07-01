@@ -1,0 +1,41 @@
+<template id="link-preview-input">
+  <div class="link-preview-input-container p-2 mb-2 position-relative">
+    <div class="d-flex align-items-center flex-grow-1 overflow-hidden">
+      <div class="preview-image-col me-2 {{ imageDisplayClass }}">
+        <img src="{{ image }}" class="rounded" style="width: 60px; height: 60px;" alt="Preview">
+      </div>
+      <div class="preview-text-container overflow-hidden">
+        <div class="small fw-bold text-truncate">{{ title }}</div>
+        <div class="fs-7 text-muted text-truncate">{{ description }}</div>
+        <div class="fs-7 text-primary text-truncate">{{ domain }}</div>
+      </div>
+    </div>
+    <button class="btn btn-sm btn-link text-danger position-absolute top-0 end-0" ref="cancelPreviewButton" title="Dismiss preview">
+      <i class="bi bi-x-circle"></i>
+    </button>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      title: String,
+      description: String,
+      image: String,
+      domain: String
+    },
+    getters: {
+      imageDisplayClass: (state) => (state.image ? 'd-block' : 'd-none')
+    },
+    client: ({ refs, eventBus, signal }) => {
+      const { $bus } = eventBus
+      const cancelBtn = refs('cancelPreviewButton')
+  
+      cancelBtn.addEventListener('click', () => {
+        $bus.emit('dismiss-link-preview')
+      }, { signal })
+    }
+  })
+</script>

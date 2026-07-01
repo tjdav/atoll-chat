@@ -1,0 +1,94 @@
+<template id="link-preview">
+  <a href="{{ url }}" target="_blank" class="link-preview-card mw-450 shadow-sm mb-1">
+    <div class="preview-image-col {{ imageDisplayClass }}">
+      <div ref="imageContainer" class="h-100">
+        <!-- Decrypted image will be appended here -->
+      </div>
+    </div>
+    <div class="p-2 flex-grow-1 overflow-hidden d-flex flex-column justify-content-center">
+      <div class="small fw-bold text-truncate mb-0">{{ title }}</div>
+      <div class="fs-7 text-muted text-truncate-2 mb-1">{{ summary }}</div>
+      <div class="fs-7 text-primary text-truncate mt-auto">
+        <i class="bi bi-link-45deg me-1"></i>{{ domain }}
+      </div>
+    </div>
+  </a>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      localUuid: String,
+      url: String,
+      title: String,
+      summary: String,
+      domain: String,
+      status: String
+    },
+    getters: {
+      imageDisplayClass: (state) => (state.title ? '' : 'd-none')
+    },
+    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase }) => {
+      const { $localDb } = localDb
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const { pb } = pocketbase
+      const decryptionCache = $state.decryptionCache
+      const imageContainer = refs('imageContainer')
+
+      const loadPreviewImage = async () => {
+        const uuid = state.localUuid
+        if (!uuid || !decryptionCache) {
+          return
+        }
+
+        // 1. Check Cache
+        if (decryptionCache.has(uuid)) {
+          const cachedUrl = decryptionCache.get(uuid)
+          renderImage(cachedUrl)
+          return
+        }
+
+        // 2. Query DB
+        const msg = await $localDb.local_messages.get(uuid)
+        if (!msg || !msg.media_id || !msg.file_key || !msg.file_nonce) {
+          return
+        }
+
+        try {
+          // Use PocketBase plugin to get record and file URL
+          const record = await pb.collection('media').getOne(msg.media_id)
+          const fileUrl = pb.files.getURL(record, record.file)
+  
+          const response = await fetch(fileUrl)
+          const encryptedBuffer = await response.arrayBuffer()
+
+          const key = sodium.from_base64(msg.file_key, sodium.base64_variants.ORIGINAL)
+          const nonce = sodium.from_base64(msg.file_nonce, sodium.base64_variants.ORIGINAL)
+  
+          const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(encryptedBuffer), nonce, key)
+          const blob = new Blob([decrypted], { type: 'image/jpeg' })
+          const blobUrl = URL.createObjectURL(blob)
+
+          decryptionCache.set(uuid, blobUrl)
+          renderImage(blobUrl)
+          $bus.emit('MEDIA_LOADED')
+        } catch (err) {
+          console.error('[link-preview] Failed to decrypt preview image:', err)
+        }
+      }
+
+      const renderImage = (src) => {
+        imageContainer.innerHTML = ''
+        const img = document.createElement('img')
+        img.src = src
+        img.className = 'rounded-start'
+        imageContainer.appendChild(img)
+      }
+
+      loadPreviewImage()
+    }
+  })
+</script>

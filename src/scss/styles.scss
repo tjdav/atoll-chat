@@ -9,9 +9,13 @@
 @import "bootstrap/scss/utilities";
 
 $utilities: map-merge($utilities,
-    ("max-width": map-merge(map-get($utilities, "max-width"),
+    ("font-size": map-merge(map-get($utilities, "font-size"),
+        (values: map-merge(map-get(map-get($utilities, "font-size"), "values"),
+            (7: $font-size-base * .75)))),
+      "max-width": map-merge(map-get($utilities, "max-width"),
         (values: map-merge(map-get(map-get($utilities, "max-width"), "values"),
             (600: 600px,
+              450: 450px,
               300: 300px)))),
       "max-w": (
         property: max-width,
@@ -69,6 +73,7 @@ $utilities: map-merge($utilities,
 @import "layout";
 @import "timeline";
 @import "waveform";
+@import "link-preview";
 
 html,
 body {
