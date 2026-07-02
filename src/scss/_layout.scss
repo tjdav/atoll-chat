@@ -1,25 +1,49 @@
+.layout-container {
+  display: flex;
+  height: 100vh;
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--#{$prefix}body-bg);
+}
+
+.contextual-list {
+  width: 350px;
+  min-width: 350px;
+  border-right: 1px solid var(--#{$prefix}border-color);
+  background-color: var(--#{$prefix}tertiary-bg);
+  display: flex;
+  flex-direction: column;
+
+  // More pronounced gutter
+  box-shadow: 1px 0 0 0 var(--#{$prefix}border-color);
+}
+
+.detail-view {
+  flex-grow: 1;
+  background-color: var(--#{$prefix}secondary-bg);
+}
+
 // Mobile Responsive Layout Overrides
 @include media-breakpoint-down(sm) {
 
-  // Hide Chat List when a chat is active
-  .layout-container.chat-active .app-chat-list-col {
+  // Hide Column 2 when Column 3 is active
+  .layout-container.chat-active .contextual-list {
     display: none !important;
   }
 
-  // Show Chat Window when a chat is active (overriding default hidden states)
-  .layout-container.chat-active .app-chat-window-col {
-    display: flex !important;
+  // Show Column 3 when active
+  .layout-container.chat-active .detail-view {
+    display: block !important;
     width: 100% !important;
-    max-width: 100% !important;
   }
 
-  // Hide Chat Window when no chat is active
-  .layout-container:not(.chat-active) .app-chat-window-col {
+  // Hide Column 3 when not active
+  .layout-container:not(.chat-active) .detail-view {
     display: none !important;
   }
 
-  // Make Chat List full width when no chat is active
-  .layout-container:not(.chat-active) .app-chat-list-col {
+  // Column 2 full width when active
+  .layout-container:not(.chat-active) .contextual-list {
     display: flex !important;
     width: 100% !important;
     max-width: 100% !important;

@@ -1,6 +1,13 @@
 // Enable Bootstrap CSS Grid
 $enable-cssgrid: true;
 
+// Custom variables for Layout
+$app-header-height: 72px;
+$app-sidebar-width: 80px;
+$app-sidebar-width-mobile: 60px;
+$app-item-padding-y: 0.75rem;
+$app-item-padding-x: 1rem;
+
 // Custom variables for Timeline
 $timeline-avatar-size: 28px;
 $timeline-avatar-margin: 8px;

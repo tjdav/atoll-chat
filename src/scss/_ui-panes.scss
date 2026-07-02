@@ -1,3 +1,24 @@
+.app-header {
+  height: $app-header-height;
+  min-height: $app-header-height;
+  display: flex;
+  align-items: center;
+  padding: 0 $app-item-padding-x;
+  background-color: var(--#{$prefix}body-bg);
+  z-index: 10;
+}
+
+.list-pane-header {
+  // Border removed as per requirement
+  border-bottom: none !important;
+  background-color: var(--#{$prefix}tertiary-bg);
+}
+
+.chat-view-header {
+  border-bottom: 1px solid var(--#{$prefix}border-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
 .room-details {
   height: 100%;
 }
@@ -51,5 +72,29 @@
 
   &:hover {
     background-color: var(--#{$prefix}tertiary-bg);
+  }
+}
+
+// Search bar refinements
+.search-container-pill {
+  padding: 0 $app-item-padding-x 1rem $app-item-padding-x;
+  
+  .input-group {
+    background-color: var(--#{$prefix}secondary-bg);
+    border-radius: 50rem;
+    padding: 2px;
+    border: 1px solid transparent;
+    transition: all 0.2s;
+
+    &:focus-within {
+      border-color: var(--#{$prefix}primary-border-subtle);
+      background-color: var(--#{$prefix}body-bg);
+      box-shadow: 0 0 0 0.25rem rgba(var(--#{$prefix}primary-rgb), 0.1);
+    }
+  }
+
+  .input-group-text, .form-control {
+    background-color: transparent !important;
+    border: none !important;
   }
 }

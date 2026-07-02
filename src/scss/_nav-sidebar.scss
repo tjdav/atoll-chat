@@ -1,11 +1,25 @@
 .nav-sidebar {
-  width: 80px;
+  width: $app-sidebar-width;
+  transition: width 0.2s ease-in-out;
+
+  @include media-breakpoint-down(md) {
+    width: $app-sidebar-width-mobile;
+  }
 
   .nav-link {
     cursor: pointer;
     @include transition(all 0.2s ease-in-out);
     border-radius: 12px;
     color: var(--#{$prefix}secondary-color);
+    padding: 0.75rem !important;
+
+    @include media-breakpoint-down(md) {
+      padding: 0.5rem !important;
+      
+      i {
+        font-size: 1.25rem !important; // Shrink icon size
+      }
+    }
 
     &:hover {
       background-color: var(--#{$prefix}tertiary-bg);
@@ -14,6 +28,18 @@
     &.active {
       background-color: var(--#{$prefix}primary-bg-subtle) !important;
       color: var(--#{$prefix}primary) !important;
+    }
+  }
+
+  // Adjust the media manager circle for mobile
+  .dropend button[ref="btnMediaManager"] {
+    height: 64px;
+    @include media-breakpoint-down(md) {
+      height: 48px;
+      svg {
+        width: 36px;
+        height: 36px;
+      }
     }
   }
 }

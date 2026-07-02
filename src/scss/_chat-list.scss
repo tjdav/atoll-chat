@@ -1,23 +1,44 @@
 .chat-list-item {
-  .list-item-icon {
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
+  padding: $app-item-padding-y $app-item-padding-x;
+  border-radius: 12px;
+  margin: 0 0.5rem 0.25rem 0.5rem;
+  transition: background-color 0.15s ease-in-out;
+  cursor: pointer;
+
+  &:hover {
     background-color: var(--#{$prefix}secondary-bg);
-    margin-right: .75rem;
   }
 
   &.active {
-    .list-item-icon {
-      background-color: rgba(var(--#{$prefix}white-rgb), 0.2);
+    background-color: var(--#{$prefix}primary-bg-subtle) !important;
+    
+    .fw-bold {
+      color: var(--#{$prefix}primary) !important;
     }
 
     .text-muted,
     .opacity-75,
     small {
-      color: var(--#{$prefix}list-group-active-color) !important;
-      opacity: 0.85 !important;
+      color: var(--#{$prefix}primary) !important;
+      opacity: 0.7 !important;
     }
+  }
+
+  .list-item-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%; // Circular avatars as per screenshots
+    background-color: var(--#{$prefix}secondary-bg);
+    margin-right: 1rem;
+    flex-shrink: 0;
+  }
+
+  .fw-bold {
+    color: var(--#{$prefix}emphasis-color); // Higher contrast
+  }
+
+  .text-muted, .opacity-75 {
+    opacity: 0.6 !important; // Lower opacity for snippets
   }
 
   .avatar-circle {
@@ -56,7 +77,7 @@
   }
 
   .unread-dot {
-    right: .75rem;
+    right: $app-item-padding-x;
     width: 10px;
     height: 10px;
   }

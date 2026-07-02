@@ -1,15 +1,15 @@
 <template id="app-layout">
-  <div class="d-flex vh-100 vw-100 overflow-hidden bg-body">
-    <!-- Column 1: Navigation Sidebar (Fixed 80px) -->
+  <div class="layout-container {{ layoutClasses }}">
+    <!-- Column 1: Navigation Sidebar -->
     <nav-sidebar></nav-sidebar>
 
-    <!-- Column 2: Contextual List (Fixed 350px) -->
-    <div ref="columnTwo" class="contextual-list border-end bg-body-tertiary d-flex flex-column" style="width: 350px; min-width: 350px;">
+    <!-- Column 2: Contextual List -->
+    <div ref="columnTwo" class="contextual-list">
       <list-pane></list-pane>
     </div>
 
-    <!-- Column 3: Main Detail View (Fluid) -->
-    <div ref="columnThree" class="detail-view flex-grow-1 bg-body-secondary">
+    <!-- Column 3: Main Detail View -->
+    <div ref="columnThree" class="detail-view">
       <div class="h-100 align-items-center justify-content-center" style="display: {{ emptyStateDisplay }};">
         <div class="text-center">
           <i class="bi bi-chat-dots fs-1 text-secondary mb-3 d-block"></i>
@@ -52,6 +52,7 @@
     }),
     getters: {
       currentViewTitle: (state) => state.currentAppView || 'Chats',
+      layoutClasses: (state) => (state.activeSelectionId ? 'chat-active' : ''),
       emptyStateDisplay: (state) => ((!state.activeSelectionId || (state.activeSelectionType !== 'chats' && state.activeSelectionType !== 'pictures' && state.activeSelectionType !== 'videos' && state.activeSelectionType !== 'music' && state.activeSelectionType !== 'documents' && state.activeSelectionType !== 'links')) ? 'flex' : 'none'),
       chatViewDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'chats') ? 'block' : 'none'),
       imageViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'pictures') ? 'block' : 'none'),

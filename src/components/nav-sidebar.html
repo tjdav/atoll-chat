@@ -1,30 +1,30 @@
 <template id="nav-sidebar">
   <div class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100">
     <div class="nav flex-column nav-pills w-100 px-2 gap-3">
-      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isChatsActive }}" ref="btnChats" title="Chats">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isChatsActive }}" ref="btnChats" title="Chats">
         <i class="bi bi-chat-left-text fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isMusicActive }}" ref="btnMusic" title="Music">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isMusicActive }}" ref="btnMusic" title="Music">
         <i class="bi bi-music-note-list fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isPicturesActive }}" ref="btnPictures" title="Pictures">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isPicturesActive }}" ref="btnPictures" title="Pictures">
         <i class="bi bi-image fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isVideosActive }}" ref="btnVideos" title="Videos">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isVideosActive }}" ref="btnVideos" title="Videos">
         <i class="bi bi-camera-video fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isDocumentsActive }}" ref="btnDocuments" title="Documents">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isDocumentsActive }}" ref="btnDocuments" title="Documents">
         <i class="bi bi-file-earmark-fill fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center p-3 {{ isLinksActive }}" ref="btnLinks" title="Links">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isLinksActive }}" ref="btnLinks" title="Links">
         <i class="bi bi-link-45deg fs-4"></i>
       </button>
     </div>
     <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative">
       <!-- Global Media Manager -->
       <div class="dropend">
-        <button ref="btnMediaManager" class="nav-link d-flex align-items-center justify-content-center p-0 w-100 position-relative" style="height: 64px;" data-bs-toggle="dropdown" aria-expanded="false" title="Now Playing">
-          <svg width="48" height="48" viewBox="0 0 48 48" class="position-absolute">
+        <button ref="btnMediaManager" class="nav-link d-flex align-items-center justify-content-center p-0 w-100 position-relative media-manager-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Now Playing">
+          <svg width="48" height="48" viewBox="0 0 48 48" class="position-absolute media-progress-svg">
             <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="2" class="opacity-10"></circle>
             <circle cx="24" cy="24" r="20" fill="none" stroke="var(--bs-primary)" stroke-width="2" stroke-dasharray="125.6" stroke-dashoffset="{{ progressOffset }}" transform="rotate(-90 24 24)" style="transition: stroke-dashoffset 0.3s ease;"></circle>
           </svg>
@@ -66,10 +66,10 @@
         </div>
       </div>
 
-      <button class="nav-link d-flex align-items-center justify-content-center p-3 w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings">
+      <button class="nav-link d-flex align-items-center justify-content-center w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings">
         <i class="bi bi-gear-fill fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center p-3 w-100" ref="btnLogout" title="Logout">
+      <button class="nav-link d-flex align-items-center justify-content-center w-100" ref="btnLogout" title="Logout">
         <i class="bi bi-box-arrow-right fs-4"></i>
       </button>
     </div>

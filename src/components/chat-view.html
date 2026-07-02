@@ -1,21 +1,21 @@
 <template id="chat-view">
   <div class="chat-view d-flex flex-column h-100 bg-body">
     <!-- Chat Header -->
-    <header class="p-3 border-bottom d-flex justify-content-between align-items-center bg-body shadow-sm" ref="chatHeader">
+    <header class="app-header chat-view-header d-flex justify-content-between align-items-center" ref="chatHeader">
       <div class="d-flex align-items-center">
         <div class="avatar-placeholder me-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
           {{ roomInitial }}
         </div>
         <div>
           <h6 class="mb-0 fw-bold">{{ roomName }}</h6>
-          <small class="text-muted">{{ roomStatus }}</small>
+          <small class="text-muted opacity-75">{{ roomStatus }}</small>
         </div>
       </div>
       <div class="d-flex gap-2">
-        <button ref="btnAudioCall" class="btn btn-light btn-sm rounded-circle" title="Audio Call">
+        <button ref="btnAudioCall" class="btn btn-light btn-sm rounded-circle" title="Audio Call" style="width: 36px; height: 36px;">
           <i class="bi bi-telephone"></i>
         </button>
-        <button ref="btnVideoCall" class="btn btn-light btn-sm rounded-circle" title="Video Call">
+        <button ref="btnVideoCall" class="btn btn-light btn-sm rounded-circle" title="Video Call" style="width: 36px; height: 36px;">
           <i class="bi bi-camera-video"></i>
         </button>
         <button class="btn btn-outline-secondary btn-sm rounded-pill px-3" ref="btnDetails">
