@@ -1,7 +1,8 @@
 .chat-list-item {
   padding: $app-item-padding-y $app-item-padding-x;
-  border-radius: 12px;
-  margin: 0 0.5rem 0.25rem 0.5rem;
+  border-radius: 0;
+  margin: 0;
+  background-color: transparent;
   transition: background-color 0.15s ease-in-out;
   cursor: pointer;
 
@@ -10,17 +11,22 @@
   }
 
   &.active {
-    background-color: var(--#{$prefix}primary-bg-subtle) !important;
+    background-color: var(--#{$prefix}primary) !important;
+    color: var(--#{$prefix}white) !important;
     
     .fw-bold {
-      color: var(--#{$prefix}primary) !important;
+      color: var(--#{$prefix}white) !important;
     }
 
     .text-muted,
     .opacity-75,
     small {
-      color: var(--#{$prefix}primary) !important;
-      opacity: 0.7 !important;
+      color: var(--#{$prefix}white) !important;
+      opacity: 0.85 !important;
+    }
+
+    .list-item-icon {
+      background-color: rgba(var(--#{$prefix}white-rgb), 0.2);
     }
   }
 
@@ -31,6 +37,7 @@
     background-color: var(--#{$prefix}secondary-bg);
     margin-right: 1rem;
     flex-shrink: 0;
+    transition: background-color 0.15s ease-in-out;
   }
 
   .fw-bold {
