@@ -3,6 +3,35 @@
     <h4 class="mb-4">Settings</h4>
 
     <section class="mb-5">
+      <h6 class="text-uppercase text-muted fw-bold small mb-3">Profile</h6>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-4 mb-4">
+            <div class="position-relative cursor-pointer flex-shrink-0" ref="avatarContainer" style="width: 80px; height: 80px;">
+              <div ref="avatarPreview" class="avatar-circle w-100 h-100 d-flex align-items-center justify-content-center bg-primary-subtle text-primary fw-bold fs-3 overflow-hidden rounded-circle">
+                {{ userInitial }}
+              </div>
+              <div class="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; border: 2px solid white;">
+                <i class="bi bi-camera-fill small"></i>
+              </div>
+              <input type="file" class="d-none" ref="avatarInput" accept="image/*">
+            </div>
+            <div class="flex-grow-1">
+              <label class="form-label small text-muted text-uppercase fw-bold">Display Name</label>
+              <input type="text" class="form-control" ref="nameInput" value="{{ displayName }}" placeholder="Enter your display name">
+              <p class="text-muted small mb-0 mt-1">This name will be visible to your contacts.</p>
+            </div>
+          </div>
+          <div class="d-flex justify-content-end">
+            <button class="btn btn-primary" ref="btnSave" {{ saveBtnDisabled }}>
+              {{ saveBtnText }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="mb-5">
       <h6 class="text-uppercase text-muted fw-bold small mb-3">Notifications</h6>
       <div class="card border-0 shadow-sm">
         <div class="card-body">
@@ -94,17 +123,16 @@
     </section>
 
     <section>
-      <h6 class="text-uppercase text-muted fw-bold small mb-3">Account</h6>
+      <h6 class="text-uppercase text-muted fw-bold small mb-3">Account Information</h6>
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <div class="d-flex align-items-center gap-3">
-            <div class="avatar-placeholder bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 48px; height: 48px;">
-              {{ userInitial }}
-            </div>
-            <div>
-              <h6 class="mb-0">{{ username }}</h6>
-              <p class="text-muted small mb-0">{{ userEmail }}</p>
-            </div>
+          <div class="mb-3">
+            <label class="form-label small text-muted text-uppercase fw-bold">Username</label>
+            <div class="form-control bg-light">{{ username }}</div>
+          </div>
+          <div>
+            <label class="form-label small text-muted text-uppercase fw-bold">Email Address</label>
+            <div class="form-control bg-light">{{ userEmail }}</div>
           </div>
         </div>
       </div>
@@ -147,6 +175,7 @@
   export default defineComponent({
     server: () => ({
       username: 'User',
+      displayName: '',
       userEmail: '',
       userInitial: 'U',
       notificationsEnabled: true,
@@ -159,7 +188,9 @@
       hasCustomCallSound: false,
       hasPasskey: false,
       passkeyActionLabel: 'Add Passkey',
-      passkeyActionVerb: 'add'
+      passkeyActionVerb: 'add',
+      isSaving: false,
+      hasChanges: false
     }),
     getters: {
       notifChecked: (state) => (state.notificationsEnabled && state.permissionStatus === 'granted' ? 'checked' : ''),
@@ -170,7 +201,9 @@
       callSoundControlsClass: (state) => (state.callSoundsEnabled ? 'd-block' : 'd-none'),
       resetMessageSoundClass: (state) => (state.hasCustomMessageSound ? 'd-inline-block' : 'd-none'),
       resetCallSoundClass: (state) => (state.hasCustomCallSound ? 'd-inline-block' : 'd-none'),
-      passkeyStatus: (state) => (state.hasPasskey ? 'Configured' : 'Not configured')
+      passkeyStatus: (state) => (state.hasPasskey ? 'Configured' : 'Not configured'),
+      saveBtnDisabled: (state) => (!state.hasChanges || state.isSaving ? 'disabled' : ''),
+      saveBtnText: (state) => (state.isSaving ? 'Saving...' : 'Save Changes')
     },
     client: async ({ refs, state, globalStore, notifications, bootstrap, pocketbase, cryptoWorker, eventBus, localDb }) => {
       const { $state } = globalStore
@@ -181,9 +214,37 @@
       const { $bus } = eventBus
       const { $localDb } = localDb
 
-      state.username = $state.currentUser?.username || 'User'
-      state.userEmail = $state.currentUser?.email || ''
-      state.userInitial = state.username.charAt(0).toUpperCase()
+      const nameInput = refs('nameInput')
+      const avatarInput = refs('avatarInput')
+      const avatarContainer = refs('avatarContainer')
+      const avatarPreview = refs('avatarPreview')
+      const btnSave = refs('btnSave')
+
+      let pendingAvatarBlob = null
+
+      const loadUserData = () => {
+        const user = $state.currentUser
+        state.username = user?.username || 'User'
+        state.displayName = user?.name || user?.username || ''
+        state.userEmail = user?.email || ''
+        state.userInitial = (state.displayName || state.username).charAt(0).toUpperCase()
+  
+        if (nameInput) {
+          nameInput.value = state.displayName
+        }
+  
+        if (avatarPreview) {
+          if (user?.avatar) {
+            const avatarUrl = pb.files.getURL(user, user.avatar, { thumb: '100x100' })
+            avatarPreview.innerHTML = `<img src="${avatarUrl}" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+          } else {
+            avatarPreview.textContent = state.userInitial
+          }
+        }
+      }
+
+      loadUserData()
+
       state.notificationsEnabled = $state.notificationsEnabled ?? true
       state.messageSoundsEnabled = $state.messageSoundsEnabled ?? true
       state.callSoundsEnabled = $state.callSoundsEnabled ?? true
@@ -293,6 +354,70 @@
         await refreshSoundInfo()
       })
 
+      const updateBtnState = () => {
+        const currentName = nameInput.value.trim()
+        const originalName = $state.currentUser?.name || $state.currentUser?.username || ''
+        state.hasChanges = (currentName !== originalName) || !!pendingAvatarBlob
+      }
+
+      nameInput.addEventListener('input', updateBtnState)
+      nameInput.addEventListener('change', updateBtnState)
+
+      avatarContainer.onclick = () => avatarInput.click()
+  
+      avatarInput.onchange = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          $bus.emit('open-avatar-editor', file)
+        }
+        avatarInput.value = ''
+      }
+
+      $bus.on('avatar-editor:applied', (blob) => {
+        pendingAvatarBlob = blob
+        const url = URL.createObjectURL(blob)
+        avatarPreview.innerHTML = `<img src="${url}" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+        updateBtnState()
+      })
+
+      btnSave.onclick = async () => {
+        if (state.isSaving || !state.hasChanges) {
+          return
+        }
+  
+        state.isSaving = true
+
+        try {
+          const formData = new FormData()
+          formData.append('name', nameInput.value.trim())
+          if (pendingAvatarBlob) {
+            formData.append('avatar', pendingAvatarBlob, 'avatar.webp')
+          }
+
+          const updatedUser = await pb.collection('users').update($state.currentUser.id, formData)
+  
+          $state.currentUser = {
+            ...$state.currentUser,
+            ...updatedUser
+          }
+
+          pendingAvatarBlob = null
+          state.isSaving = false
+          loadUserData()
+          updateBtnState()
+  
+          $bus.emit('SHOW_TOAST', {
+            message: 'Profile updated successfully!',
+            type: 'success'
+          })
+        } catch (err) {
+          console.error('[settings-view] Save failed:', err)
+          alert('Failed to save profile: ' + (err.message || 'Unknown error'))
+          state.isSaving = false
+          updateBtnState()
+        }
+      }
+
       // Passkey management
       const btnManagePasskey = refs('btnManagePasskey')
       const verifyModalEl = refs('verifyModal')
@@ -321,7 +446,6 @@
 
         try {
           const wasConfigured = state.hasPasskey
-          // 1. Verify password by deriving KEK and checking against existing vault
           const [{ default: sodium }, { createPasskey, encryptVault, decryptVault }] = await Promise.all([
             import('libsodium-wrappers-sumo'),
             import('../utils/cryptoUtils.js')
@@ -336,7 +460,6 @@
             salt
           })
 
-          // Attempt decryption to verify password
           try {
             decryptVault(
               record.encrypted_master_keys.ciphertext,
@@ -348,7 +471,6 @@
             throw new Error('Invalid Vault Password')
           }
 
-          // 2. Setup Passkey
           const challenge = crypto.getRandomValues(new Uint8Array(32))
           const passkeyPrfSalt = crypto.getRandomValues(new Uint8Array(32))
   
@@ -362,8 +484,6 @@
             throw new Error('Failed to retrieve PRF key from passkey.')
           }
 
-          // 3. Encrypt master keys with new passkey KEK
-          // Note: master keys are already available in $state.currentUser (as base64)
           const masterKeys = {
             private_box_key: $state.currentUser.private_box_key,
             private_sign_key: $state.currentUser.private_sign_key
@@ -371,7 +491,6 @@
 
           const encryptedVaultPasskey = encryptVault(masterKeys, KEK_Passkey, sodium)
 
-          // 4. Update user record
           await pb.collection('users').update(record.id, {
             passkey_credential_id: sodium.to_base64(credentialId, sodium.base64_variants.ORIGINAL),
             passkey_prf_salt: sodium.to_base64(passkeyPrfSalt, sodium.base64_variants.ORIGINAL),
