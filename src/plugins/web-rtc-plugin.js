@@ -28,7 +28,13 @@ export default function webrtcPlugin ({
           iceServers: pluginContext.config.iceServers
         }
 
+        let globalState = null
+
         const teardownCall = (roomId) => {
+          if (globalState && globalState.activeCallRoomId === roomId) {
+            globalState.remoteStream = null
+            globalState.hasRemoteVideo = false
+          }
           const pc = activeCalls.get(roomId)
           if (pc) {
             pc.getSenders().forEach(sender => {
@@ -62,6 +68,7 @@ export default function webrtcPlugin ({
         return (instanceContext) => {
           const { $worker } = instanceContext.cryptoWorker
           const { $state } = instanceContext.globalStore
+          globalState = $state
 
           $bus.on('NEW_LOCAL_DATA', async (payload) => {
             const { room_id: roomId, message: message } = payload
@@ -152,9 +159,14 @@ export default function webrtcPlugin ({
               }
             }
             pc.ontrack = (event) => {
+              const stream = event.streams[0]
+              if (event.track.kind === 'video') {
+                $state.remoteStream = stream
+                $state.hasRemoteVideo = true
+              }
               $bus.emit('remote_track_arrival', {
                 roomId,
-                stream: event.streams[0],
+                stream,
                 track: event.track
               })
             }

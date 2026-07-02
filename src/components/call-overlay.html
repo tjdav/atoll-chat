@@ -27,7 +27,7 @@
           <!-- Active Call View -->
           <div class="active-view h-100 position-relative {{ activeClass }}">
             <div ref="fullScreenVideoContainer" class="h-100 w-100">
-              <video-grid ref="videoGrid"></video-grid>
+              <!-- video-grid will be moved here by syncVideoGrid -->
             </div>
             
             <!-- Control Bar -->
@@ -55,6 +55,11 @@
   <!-- PiP Window -->
   <div class="{{ pipClass }}">
     <pip-video ref="pipVideo"></pip-video>
+  </div>
+
+  <!-- Persistent Video Grid Source (to prevent re-mounting) -->
+  <div class="d-none" ref="videoGridSource">
+    <video-grid ref="videoGrid"></video-grid>
   </div>
 </template>
 
@@ -113,8 +118,16 @@
           if (container) {
             container.appendChild(videoGrid)
           }
+        } else if (state.callStatus === 'active') {
+          const container = refs('fullScreenVideoContainer')
+          if (container) {
+            container.appendChild(videoGrid)
+          }
         } else {
-          refs('fullScreenVideoContainer').appendChild(videoGrid)
+          const source = refs('videoGridSource')
+          if (source) {
+            source.appendChild(videoGrid)
+          }
         }
       }
 
@@ -140,6 +153,8 @@
         $state.set('callStatus', 'idle')
         $state.activeCallRoomId = null
         $state.localStream = null
+        $state.remoteStream = null
+        $state.hasRemoteVideo = false
         state.remoteOffer = null
       }
 
@@ -270,6 +285,8 @@
 
       // Reject Call
       refs('btnReject').addEventListener('click', () => {
+        $state.remoteStream = null
+        $state.hasRemoteVideo = false
         endCall()
       })
 

@@ -60,6 +60,14 @@ test.describe.serial('Call PiP', () => {
     const pipWindow = alicePage.locator('[data-testid="pip-video-0__pipWindow"]')
     await expect(pipWindow).toBeVisible()
 
+    // Verify remote video is visible in PiP
+    const remoteVideo = alicePage.locator('[data-testid="video-grid-0__remoteVideo"]')
+    await expect(remoteVideo).toBeVisible({ timeout: 10000 })
+
+    // Ensure placeholder is hidden (this was the reported issue)
+    // Wait for it to disappear
+    await expect(alicePage.locator('[data-testid="video-grid-0__remotePlaceholder"]')).not.toBeVisible({ timeout: 10000 })
+
     // Assert local video is hidden in PiP
     const localVideo = alicePage.locator('[data-testid="video-grid-0__localVideo"]')
     await expect(localVideo).not.toBeVisible()
@@ -83,6 +91,10 @@ test.describe.serial('Call PiP', () => {
 
     await expect(alicePage.locator('call-overlay .modal')).toBeVisible()
     await expect(pipWindow).not.toBeVisible()
+
+    // Verify remote video is still visible in full screen
+    await expect(remoteVideo).toBeVisible({ timeout: 10000 })
+    await expect(alicePage.locator('[data-testid="video-grid-0__remotePlaceholder"]')).not.toBeVisible({ timeout: 10000 })
 
     // Assert local video is visible again in full screen
     await expect(localVideo).toBeVisible()

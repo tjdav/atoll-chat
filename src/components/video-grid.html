@@ -21,12 +21,11 @@
 
   export default defineComponent({
     server: () => ({
-      hasRemoteTrack: false,
       isPipMode: false,
-      localStream: null
+      hasRemoteVideo: false
     }),
     getters: {
-      placeholderClass: (state) => (state.hasRemoteTrack ? 'd-none' : 'd-flex'),
+      placeholderClass: (state) => (state.hasRemoteVideo ? 'd-none' : 'd-flex'),
       pipClass: (state) => (state.isPipMode ? 'is-pip' : ''),
       localVideoClass: (state) => (state.isPipMode ? 'd-none' : 'd-block')
     },
@@ -34,6 +33,31 @@
       const { $bus } = eventBus
       const { $state } = globalStore
       const remoteVideo = refs('remoteVideo')
+      const localVideo = refs('localVideo')
+
+      // Sync global track state to local state for reactivity in getters
+      state.hasRemoteVideo = $state.hasRemoteVideo
+      $state.subscribe('hasRemoteVideo', (val) => {
+        state.hasRemoteVideo = val
+      })
+
+      const playVideo = (videoEl) => {
+        if (!videoEl || !videoEl.srcObject) {
+          return
+        }
+  
+        videoEl.play().catch(err => {
+          if (err.name === 'AbortError') {
+            setTimeout(() => playVideo(videoEl), 100)
+          } else if (err.name === 'NotAllowedError') {
+            console.warn('[video-grid] Play not allowed, muting and retrying...', videoEl.className)
+            videoEl.muted = true
+            videoEl.play().catch(e => console.error('[video-grid] Play failed even when muted:', e))
+          } else {
+            console.error('[video-grid] Play failed:', err)
+          }
+        })
+      }
 
       const checkPip = () => {
         let el = remoteVideo
@@ -43,9 +67,27 @@
             isPip = true
             break
           }
-          el = el.parentElement || el.getRootNode()?.host
+          el = el.parentElement || (el.getRootNode && el.getRootNode()?.host)
         }
-        state.isPipMode = isPip
+
+        if (state.isPipMode !== isPip) {
+          state.isPipMode = isPip
+        }
+
+        const resumeAll = () => {
+          if (remoteVideo && remoteVideo.srcObject && remoteVideo.paused) {
+            playVideo(remoteVideo)
+          }
+          if (localVideo && localVideo.srcObject && localVideo.paused) {
+            playVideo(localVideo)
+          }
+        }
+
+        resumeAll()
+        // Ensure we resume after DOM re-parenting completes and settles
+        setTimeout(resumeAll, 100)
+        setTimeout(resumeAll, 500)
+        setTimeout(resumeAll, 1000)
       }
 
       checkPip()
@@ -56,8 +98,6 @@
         subtree: true
       })
       signal.addEventListener('abort', () => observer.disconnect())
-      const localVideo = refs('localVideo')
-      const remotePlaceholder = refs('remotePlaceholder')
 
       const attachLocalStream = (stream) => {
         if (localVideo) {
@@ -65,30 +105,29 @@
             localVideo.srcObject = stream
           }
   
-          const playLocal = () => {
-            if (localVideo.paused && localVideo.srcObject) {
-              localVideo.play().catch(err => {
-                if (err.name !== 'AbortError') {
-                  console.error('[video-grid] Failed to play local video:', err)
-                }
-              })
-            }
-          }
-
-          playLocal()
-          localVideo.onloadedmetadata = playLocal
+          playVideo(localVideo)
+          localVideo.onloadedmetadata = () => playVideo(localVideo)
         }
       }
 
-      // Listen for local stream
-      $bus.on('local_stream_available', ({ stream }) => {
-        state.localStream = stream
-        attachLocalStream(stream)
-      }, { signal })
+      const attachRemoteStream = (stream) => {
+        if (remoteVideo && stream) {
+          if (remoteVideo.srcObject !== stream) {
+            remoteVideo.srcObject = stream
+          }
+          if ($state.hasRemoteVideo) {
+            playVideo(remoteVideo)
+            remoteVideo.onloadedmetadata = () => playVideo(remoteVideo)
+          }
+        }
+      }
 
-      // If localStream is already available in global state, attach it
+      // If streams are already available in global state, attach them
       if ($state.localStream) {
         attachLocalStream($state.localStream)
+      }
+      if ($state.remoteStream) {
+        attachRemoteStream($state.remoteStream)
       }
 
       $state.subscribe('localStream', (stream) => {
@@ -101,6 +140,16 @@
         }
       })
 
+      $state.subscribe('remoteStream', (stream) => {
+        if (stream) {
+          attachRemoteStream(stream)
+        } else {
+          if (remoteVideo) {
+            remoteVideo.srcObject = null
+          }
+        }
+      })
+
       // Listen for remote track arrival
       $bus.on('remote_track_arrival', ({ roomId, stream, track }) => {
         if (roomId && roomId !== $state.activeCallRoomId) {
@@ -108,25 +157,7 @@
         }
 
         if (track.kind === 'video' && remoteVideo) {
-          remoteVideo.srcObject = stream
-          state.hasRemoteTrack = true
-
-          const playVideo = () => {
-            if (!remoteVideo.srcObject) {
-              return
-            }
-            if (remoteVideo.paused || remoteVideo.readyState < 2) {
-              remoteVideo.play().catch(err => {
-                if (err.name === 'AbortError') {
-                  setTimeout(playVideo, 100)
-                } else if (err.name === 'NotAllowedError') {
-                  remoteVideo.muted = true
-                  remoteVideo.play().catch(e => console.error('[video-grid] Play failed even when muted:', e))
-                }
-              })
-            }
-          }
-          playVideo()
+          attachRemoteStream(stream)
         } else if (track.kind === 'audio') {
           const audio = new Audio()
           audio.srcObject = stream
@@ -160,7 +191,6 @@
         if (localVideo) {
           localVideo.srcObject = null
         }
-        state.hasRemoteTrack = false
       }, { signal })
 
       // Handle video element cleanup
