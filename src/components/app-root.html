@@ -6,10 +6,11 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, router }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, router, notifications }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $bus } = eventBus
+      const { $notifications } = notifications
       const container = refs('container')
 
       const updateUI = () => {
@@ -65,6 +66,11 @@
         $state.currentUser = {
           ...userRecord,
           ...keys
+        }
+
+        // Request notification permission upon vault unlocking
+        if ($state.notificationsEnabled) {
+          $notifications.requestPermission().catch(console.error)
         }
       })
 

@@ -11,6 +11,7 @@ import bootstrapPlugin from './src/plugins/bootstrap.js'
 import emojiPlugin from './src/plugins/emoji-picker-plugin.js'
 import routerPlugin from './src/plugins/router-plugin.js'
 import fusePlugin from './src/plugins/fuse-plugin.js'
+import notificationPlugin from './src/plugins/notification-plugin.js'
 
 const pocketbaseBaseUrl = process.env.DATABASE_URL || 'http://localhost:8090'
 
@@ -47,7 +48,8 @@ export default defineConfig({
         },
         currentMessageText: '',
         callStatus: 'idle',
-        activeCallRoomId: null
+        activeCallRoomId: null,
+        notificationsEnabled: true
       }
     }),
     localDbPlugin(),
@@ -56,9 +58,10 @@ export default defineConfig({
     syncPlugin(),
     routerPlugin(),
     emojiPlugin,
-    fusePlugin(),
+    fusePlugin,
     bootstrapPlugin,
-    webrtcPlugin()
+    webrtcPlugin(),
+    notificationPlugin
   ],
   output: 'dist',
   pages: 'src/pages',

@@ -1,0 +1,96 @@
+<template id="settings-view">
+  <div class="settings-view p-4">
+    <h4 class="mb-4">Settings</h4>
+
+    <section class="mb-5">
+      <h6 class="text-uppercase text-muted fw-bold small mb-3">Notifications</h6>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center justify-content-between mb-3">
+            <div>
+              <h6 class="mb-0">Browser Notifications</h6>
+              <p class="text-muted small mb-0">Get alerted when new messages arrive.</p>
+            </div>
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" role="switch" id="notifSwitch" ref="notifSwitch" {{ notifChecked }}>
+            </div>
+          </div>
+          <div class="alert alert-warning align-items-center {{ permissionAlertClass }}" role="alert">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+            <div class="small">
+              Notifications are blocked by your browser. Please enable them in your browser settings to use this feature.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section>
+      <h6 class="text-uppercase text-muted fw-bold small mb-3">Account</h6>
+      <div class="card border-0 shadow-sm">
+        <div class="card-body">
+          <div class="d-flex align-items-center gap-3">
+            <div class="avatar-placeholder bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 48px; height: 48px;">
+              {{ userInitial }}
+            </div>
+            <div>
+              <h6 class="mb-0">{{ username }}</h6>
+              <p class="text-muted small mb-0">{{ userEmail }}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      username: 'User',
+      userEmail: '',
+      userInitial: 'U',
+      notificationsEnabled: true,
+      permissionStatus: 'default'
+    }),
+    getters: {
+      notifChecked: (state) => (state.notificationsEnabled && state.permissionStatus === 'granted' ? 'checked' : ''),
+      permissionAlertClass: (state) => (state.permissionStatus === 'denied' ? 'd-flex' : 'd-none')
+    },
+    client: async ({ refs, state, globalStore, notifications }) => {
+      const { $state } = globalStore
+      const { $notifications } = notifications
+
+      state.username = $state.currentUser?.username || 'User'
+      state.userEmail = $state.currentUser?.email || ''
+      state.userInitial = state.username.charAt(0).toUpperCase()
+      state.notificationsEnabled = $state.notificationsEnabled ?? true
+      state.permissionStatus = Notification.permission
+
+      const notifSwitch = refs('notifSwitch')
+      if (notifSwitch) {
+        notifSwitch.checked = state.notificationsEnabled && state.permissionStatus === 'granted'
+  
+        notifSwitch.addEventListener('change', async () => {
+          if (notifSwitch.checked) {
+            const granted = await $notifications.requestPermission()
+            if (granted) {
+              $state.notificationsEnabled = true
+              state.notificationsEnabled = true
+            } else {
+              notifSwitch.checked = false
+              $state.notificationsEnabled = false
+              state.notificationsEnabled = false
+            }
+          } else {
+            $state.notificationsEnabled = false
+            state.notificationsEnabled = false
+          }
+          state.permissionStatus = Notification.permission
+        })
+      }
+    }
+  })
+</script>

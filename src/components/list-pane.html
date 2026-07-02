@@ -98,20 +98,7 @@
         } else if (view === 'media-engine') {
           componentName = 'media-engine'
         } else if (view === 'settings') {
-          const settingsDiv = document.createElement('div')
-          settingsDiv.className = 'p-4 text-center mt-5'
-  
-          const icon = document.createElement('i')
-          icon.className = 'bi bi-gear-wide-connected fs-1 text-secondary mb-3 d-block'
-          settingsDiv.appendChild(icon)
-
-          const msg = document.createElement('p')
-          msg.className = 'text-muted'
-          msg.textContent = 'Settings view under construction.'
-          settingsDiv.appendChild(msg)
-
-          container.appendChild(settingsDiv)
-          return
+          componentName = 'settings-view'
         }
 
         if (componentName) {
