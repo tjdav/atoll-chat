@@ -73,6 +73,36 @@
         autoExpand()
       }, { signal })
 
+      // Handle paste: convert HTML to Markdown
+      messageInput.addEventListener('paste', async (e) => {
+        const html = e.clipboardData.getData('text/html')
+        if (html) {
+          e.preventDefault()
+  
+          const { default: TurndownService } = await import('turndown')
+          const turndownService = new TurndownService({
+            headingStyle: 'atx',
+            codeBlockStyle: 'fenced'
+          })
+  
+          const markdown = turndownService.turndown(html)
+  
+          const start = messageInput.selectionStart
+          const end = messageInput.selectionEnd
+          const text = messageInput.value
+          const newValue = text.substring(0, start) + markdown + text.substring(end)
+  
+          messageInput.value = newValue
+          $state.currentMessageText = newValue
+          state.currentMessageText = newValue
+  
+          const newPos = start + markdown.length
+          messageInput.setSelectionRange(newPos, newPos)
+  
+          autoExpand()
+        }
+      }, { signal })
+
       // Watch for programmatic changes to currentMessageText
       if (typeof $state.subscribe === 'function') {
         $state.subscribe('currentMessageText', (val) => {

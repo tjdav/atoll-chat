@@ -88,6 +88,7 @@ $utilities: map-merge($utilities,
 @import "timeline";
 @import "waveform";
 @import "link-preview";
+@import "markdown";
 
 // New component-level partials
 @import "nav-sidebar";

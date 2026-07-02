@@ -81,7 +81,7 @@
         }
       }
 
-      const URL_REGEX = /(https?:\/\/[^\s]+)(?=\s|$)/i
+      const URL_REGEX = /(?:\[[^\]]+\]\((https?:\/\/[^\s)]+)\))|(?:^|\s)(https?:\/\/[^\s]+)(?=\s|$)/i
       let lastDetectedUrl = null
 
       const checkUrl = $utils.debounce(async (text) => {
@@ -91,7 +91,7 @@
 
         const match = text.match(URL_REGEX)
         if (match) {
-          const url = match[0]
+          const url = match[1] || match[2]
           if (url === lastDetectedUrl && state.pendingLinkData) {
             return
           }

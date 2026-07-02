@@ -1,7 +1,7 @@
 <template id="text-message">
   <div class="message-bubble {{ bubbleClass }} d-flex align-items-center">
     <span class="{{ glowClass }} flex-grow-1">
-      <span class="{{ placeholderClass }}">{{ content }}</span>
+      <div ref="markdownBody" class="markdown-body {{ placeholderClass }}"></div>
     </span>
   </div>
 </template>
@@ -39,6 +39,62 @@
       },
       glowClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : ''),
       placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : '')
+    },
+    client: ({ refs, state, eventBus }) => {
+      const markdownBody = refs('markdownBody')
+      const { $bus } = eventBus
+
+      const getLibs = () => {
+        if (!window.__markdownLibsPromise) {
+          window.__markdownLibsPromise = Promise.all([
+            import('marked'),
+            import('isomorphic-dompurify')
+          ]).then(([m, d]) => {
+            const marked = m.marked || m
+            const DOMPurify = d.default || d
+            if (marked.setOptions) {
+              marked.setOptions({
+                breaks: true,
+                gfm: true
+              })
+            }
+            return {
+              marked,
+              DOMPurify
+            }
+          })
+        }
+        return window.__markdownLibsPromise
+      }
+
+      const render = async () => {
+        if (!state.content) {
+          markdownBody.innerHTML = ''
+          return
+        }
+
+        try {
+          const { marked, DOMPurify } = await getLibs()
+          const rawHtml = await marked.parse(state.content)
+          const cleanHtml = DOMPurify.sanitize(rawHtml)
+  
+          if (markdownBody.innerHTML !== cleanHtml) {
+            markdownBody.innerHTML = cleanHtml
+            $bus.emit('MEDIA_LOADED')
+          }
+        } catch (err) {
+          console.error('[text-message] Render error:', err)
+          markdownBody.textContent = state.content
+        }
+      }
+
+      // Initial render
+      render()
+
+      // Watch for content changes
+      if (typeof state.subscribe === 'function') {
+        state.subscribe('content', render)
+      }
     }
   })
 </script>
