@@ -82,7 +82,7 @@ export default definePlugin({
             } else if (message.type === 'call_offer') {
               body = 'Incoming call...'
             } else {
-              return // Ignore other types like ice_candidates or reactions (as per preview logic)
+              return
             }
 
             // Truncate body
@@ -93,7 +93,7 @@ export default definePlugin({
             const options = {
               body,
               icon: '/images/icon-coralite.avif',
-              tag: roomId, // Collapse notifications from the same room
+              tag: roomId,
               renotify: true,
               data: {
                 roomId,

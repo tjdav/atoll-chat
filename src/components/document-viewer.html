@@ -1,5 +1,5 @@
 <template id="document-viewer">
-  <div class="document-viewer-container d-flex flex-column h-100 bg-body-secondary">
+  <div class="document-viewer-container d-flex flex-column h-100 bg-body-secondary position-relative">
     <viewer-header 
       title="Document Details" 
       subtitle="{{ fileName }}" 
@@ -7,28 +7,23 @@
       theme="light">
     </viewer-header>
 
-    <div class="flex-grow-1 d-flex justify-content-center align-items-center overflow-hidden position-relative">
-    <div ref="loader" class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-
-    <div ref="errorAlert" class="alert alert-danger m-3 d-none">
-      {{ errorMessage }}
-    </div>
-
-    <div ref="content" class="d-none card shadow-sm p-4 text-center" style="max-width: 400px;">
-      <div class="mb-4">
-        <i ref="fileIcon" class="bi bi-file-earmark-fill text-primary" style="font-size: 5rem;"></i>
+    <div ref="carousel" class="carousel slide flex-grow-1 overflow-hidden" data-bs-interval="false">
+      <div class="carousel-inner h-100" ref="carouselInner">
+        <!-- Carousel items will be rendered here -->
       </div>
-      <h4 ref="fileName" class="mb-2 text-truncate"></h4>
-      <p ref="fileType" class="text-muted small mb-4"></p>
       
-      <div class="d-grid gap-2">
-        <a ref="downloadBtn" href="#" class="btn btn-primary btn-lg">
-          <i class="bi bi-download me-2"></i> Download Document
-        </a>
-      </div>
+      <button class="carousel-control-prev carousel-control-dark" type="button" ref="btnPrev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+      </button>
+      <button class="carousel-control-next carousel-control-dark" type="button" ref="btnNext">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+      </button>
     </div>
+
+    <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}" style="z-index: 1050;">
+      {{ errorMessage }}
     </div>
   </div>
 </template>
@@ -38,32 +33,37 @@
 
   export default defineComponent({
     server: () => ({
+      isErrorHidden: true,
       errorMessage: '',
-      fileName: ''
+      fileName: 'Untitled Document'
     }),
-    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils }) => {
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, bootstrap }) => {
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore
       const { $utils } = utils
-  
-      const loader = refs('loader')
-      const content = refs('content')
-      const errorAlert = refs('errorAlert')
-      const fileNameEl = refs('fileName')
-      const fileTypeEl = refs('fileType')
-      const fileIcon = refs('fileIcon')
-      const downloadBtn = refs('downloadBtn')
-  
-      let currentObjectUrl = null
+      const { Carousel } = bootstrap
+      const carouselEl = refs('carousel')
+      const carouselInner = refs('carouselInner')
+      const btnPrev = refs('btnPrev')
+      const btnNext = refs('btnNext')
+
+      let carouselInstance = null
+      let loadedItems = []
+      let hasMore = true
+      let lastTimestamp = null
+      const BATCH_SIZE = 24
+      let isInternalChange = false
+      const objectUrls = new Map()
 
       const cleanup = () => {
-        if (currentObjectUrl) {
-          URL.revokeObjectURL(currentObjectUrl)
-          currentObjectUrl = null
+        objectUrls.forEach(url => URL.revokeObjectURL(url))
+        objectUrls.clear()
+        if (carouselInstance) {
+          carouselInstance.dispose()
+          carouselInstance = null
         }
       }
-
       signal.addEventListener('abort', cleanup)
 
       const getFileIcon = (mimeType) => {
@@ -73,16 +73,16 @@
         if (mimeType.includes('pdf')) {
           return 'bi-file-earmark-pdf-fill'
         }
-        if (mimeType.includes('word') || mimeType.includes('officedocument.wordprocessingml')) {
+        if (mimeType.includes('word')) {
           return 'bi-file-earmark-word-fill'
         }
-        if (mimeType.includes('excel') || mimeType.includes('officedocument.spreadsheetml')) {
+        if (mimeType.includes('excel')) {
           return 'bi-file-earmark-excel-fill'
         }
-        if (mimeType.includes('powerpoint') || mimeType.includes('officedocument.presentationml')) {
+        if (mimeType.includes('powerpoint')) {
           return 'bi-file-earmark-ppt-fill'
         }
-        if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('compressed')) {
+        if (mimeType.includes('zip') || mimeType.includes('compressed')) {
           return 'bi-file-earmark-zip-fill'
         }
         if (mimeType.includes('text')) {
@@ -91,82 +91,196 @@
         return 'bi-file-earmark-fill'
       }
 
-      const loadDocument = async () => {
-        const id = $state.activeSelectionId
-        const type = $state.activeSelectionType
-
-        if (!id || type !== 'documents') {
+      const decryptAndLoad = async (item, container) => {
+        if (objectUrls.has(item.id)) {
+          container.querySelector('.download-btn').href = objectUrls.get(item.id)
           return
         }
 
-        // Reset UI
-        state.errorMessage = ''
-        errorAlert.classList.add('d-none')
-        loader.classList.remove('d-none')
-        content.classList.add('d-none')
-        cleanup()
+        const loader = container.querySelector('.spinner-border')
+        const content = container.querySelector('.doc-content')
+        if (loader) {
+          loader.classList.remove('d-none')
+        }
 
         try {
-          const asset = await $localDb.local_assets.get(id)
-          if (!asset) {
-            throw new Error('Document asset not found in local database')
-          }
-          state.fileName = asset.filename || 'Untitled Document'
-
-          const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+          const mediaRecord = await pb.collection('media').getOne(item.media_id)
           const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-
           const response = await fetch(url, { signal })
-          if (!response.ok) {
-            throw new Error(`Failed to fetch document: ${response.status} ${response.statusText}`)
-          }
           const arrayBuffer = await response.arrayBuffer()
           const encryptedData = new Uint8Array(arrayBuffer)
 
           const { default: sodium } = await import('libsodium-wrappers-sumo')
           await sodium.ready
-
-          const key = sodium.from_base64(asset.file_key, sodium.base64_variants.ORIGINAL)
-          const nonce = sodium.from_base64(asset.file_nonce, sodium.base64_variants.ORIGINAL)
+          const key = sodium.from_base64(item.file_key, sodium.base64_variants.ORIGINAL)
+          const nonce = sodium.from_base64(item.file_nonce, sodium.base64_variants.ORIGINAL)
 
           const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
           if (!decryptedData) {
             throw new Error('Decryption failed')
           }
 
-          const blob = new Blob([decryptedData], { type: asset.mime_type })
-          currentObjectUrl = URL.createObjectURL(blob)
+          const blob = new Blob([decryptedData], { type: item.mime_type })
+          const url_ = URL.createObjectURL(blob)
+          objectUrls.set(item.id, url_)
 
           if (!signal.aborted) {
-            fileNameEl.textContent = asset.filename || 'Unnamed Document'
-            fileTypeEl.textContent = asset.mime_type || 'Unknown Type'
-            fileIcon.className = `bi ${getFileIcon(asset.mime_type)} text-primary`
-  
-            downloadBtn.href = currentObjectUrl
-            downloadBtn.download = asset.filename || 'document'
-  
-            content.classList.remove('d-none')
-            loader.classList.add('d-none')
-          } else {
-            cleanup()
+            const downloadBtn = container.querySelector('.download-btn')
+            downloadBtn.href = url_
+            downloadBtn.download = item.filename || 'document'
+            if (loader) {
+              loader.classList.add('d-none')
+            }
+            if (content) {
+              content.classList.remove('d-none')
+            }
           }
-
         } catch (err) {
-          if (err.name === 'AbortError') {
-            return
-          }
           console.error('[document-viewer] Error:', err)
-          state.errorMessage = err.message || 'Failed to load document'
-          errorAlert.classList.remove('d-none')
-          loader.classList.add('d-none')
+          if (loader) {
+            loader.classList.add('d-none')
+          }
         }
       }
 
-      const debouncedLoad = $utils.debounce(loadDocument, 50)
-      debouncedLoad()
+      const createCarouselItem = (item, isActive) => {
+        const div = document.createElement('div')
+        div.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        div.dataset.id = item.id
+        div.innerHTML = `
+          <div class="d-flex justify-content-center align-items-center h-100 overflow-hidden position-relative">
+            <div class="spinner-border text-primary d-none" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="doc-content d-none card shadow-sm p-4 text-center" style="max-width: 400px;">
+              <div class="mb-4">
+                <i class="bi ${getFileIcon(item.mime_type)} text-primary" style="font-size: 5rem;"></i>
+              </div>
+              <h4 class="mb-2 text-truncate">${item.filename || 'Unnamed Document'}</h4>
+              <p class="text-muted small mb-4">${item.mime_type || 'Unknown Type'}</p>
+              <div class="d-grid gap-2">
+                <a href="#" class="btn btn-primary btn-lg download-btn">
+                  <i class="bi bi-download me-2"></i> Download Document
+                </a>
+              </div>
+            </div>
+          </div>
+        `
+        return div
+      }
 
-      $state.subscribe('activeSelectionId', debouncedLoad)
-      $state.subscribe('activeSelectionType', debouncedLoad)
+      const fetchNextBatch = async () => {
+        if (!hasMore) {
+          return []
+        }
+        let query = $localDb.local_assets.where('mime_type').notEqual('image/').and(a => !a.mime_type.startsWith('video/') && !a.mime_type.startsWith('audio/')).reverse()
+        const allMatching = await query.toArray()
+        let startIndex = 0
+        if (lastTimestamp) {
+          startIndex = allMatching.findIndex(a => a.created_at === lastTimestamp) + 1
+        }
+        const rawItems = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+        if (rawItems.length < BATCH_SIZE) {
+          hasMore = false
+        }
+        if (rawItems.length > 0) {
+          lastTimestamp = rawItems[rawItems.length - 1].created_at
+          loadedItems = [...loadedItems, ...rawItems]
+        }
+        return rawItems
+      }
+
+      const renderBatch = (items, activeId) => {
+        items.forEach(item => {
+          const isActive = item.id === activeId
+          const el = createCarouselItem(item, isActive)
+          carouselInner.appendChild(el)
+          if (isActive) {
+            state.fileName = item.filename || 'Untitled Document'
+            decryptAndLoad(item, el)
+          }
+        })
+      }
+
+      const initCarousel = async () => {
+        cleanup()
+        carouselInner.innerHTML = ''
+        loadedItems = []
+        lastTimestamp = null
+        hasMore = true
+
+        const activeId = $state.activeSelectionId
+        while (!loadedItems.find(i => i.id === activeId) && hasMore) {
+          await fetchNextBatch()
+        }
+
+        renderBatch(loadedItems, activeId)
+  
+        carouselInstance = new Carousel(carouselEl, {
+          interval: false,
+          touch: true,
+          wrap: false
+        })
+
+        carouselEl.addEventListener('slid.bs.carousel', (e) => {
+          const activeItem = e.relatedTarget
+          const id = activeItem.dataset.id
+          const item = loadedItems.find(i => i.id === id)
+          if (item) {
+            isInternalChange = true
+            $state.activeSelectionId = id
+            state.fileName = item.filename || 'Untitled Document'
+            decryptAndLoad(item, activeItem)
+            isInternalChange = false
+          }
+          const index = loadedItems.findIndex(i => i.id === id)
+          if (index >= loadedItems.length - 3 && hasMore) {
+            fetchNextBatch().then(batch => renderBatch(batch, null))
+          }
+        })
+      }
+
+      btnPrev.onclick = () => carouselInstance?.prev()
+      btnNext.onclick = async () => {
+        const activeItem = carouselInner.querySelector('.carousel-item.active')
+        if (!activeItem) {
+          return
+        }
+        const id = activeItem.dataset.id
+        const index = loadedItems.findIndex(i => i.id === id)
+  
+        if (index === loadedItems.length - 1 && hasMore) {
+          const nextBatch = await fetchNextBatch()
+          if (nextBatch.length > 0) {
+            renderBatch(nextBatch, null)
+            setTimeout(() => carouselInstance?.next(), 0)
+          }
+        } else {
+          carouselInstance?.next()
+        }
+      }
+
+      $state.subscribe('activeSelectionId', (id) => {
+        if (isInternalChange || $state.activeSelectionType !== 'documents') {
+          return
+        }
+        const index = loadedItems.findIndex(i => i.id === id)
+        if (index !== -1) {
+          carouselInstance?.to(index)
+        } else {
+          initCarousel()
+        }
+      })
+
+      $state.subscribe('activeSelectionType', (type) => {
+        if (type === 'documents') {
+          initCarousel()
+        }
+      })
+
+      if ($state.activeSelectionType === 'documents') {
+        initCarousel()
+      }
     }
   })
 </script>

@@ -23,7 +23,7 @@
       title: String,
       subtitle: String,
       icon: String,
-      theme: String // 'light' (default) or 'dark'
+      theme: String
     },
     getters: {
       headerClass: (state) => (state.theme === 'dark' ? 'bg-dark border-secondary text-white' : 'bg-body text-body'),

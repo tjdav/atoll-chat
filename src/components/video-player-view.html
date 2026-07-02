@@ -7,27 +7,26 @@
       theme="dark">
     </viewer-header>
 
-    <div class="flex-grow-1 d-flex justify-content-center align-items-center overflow-hidden position-relative">
-      <div class="spinner-border text-primary" ref="loader" role="status">
-        <span class="visually-hidden">Loading...</span>
+    <div ref="carousel" class="carousel slide flex-grow-1 overflow-hidden" data-bs-interval="false">
+      <div class="carousel-inner h-100" ref="carouselInner">
+        <!-- Carousel items will be rendered here -->
       </div>
-    
-    <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}">
-      {{ errorMessage }}
+      
+      <button class="carousel-control-prev" type="button" ref="btnPrev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+      </button>
+      <button class="carousel-control-next" type="button" ref="btnNext">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+      </button>
     </div>
 
-    <div ref="videoContainer" class="flex-grow-1 w-100 h-100 d-flex align-items-center justify-content-center">
-       <div ref="videoPlaceholder" class="flex-grow-1 w-100 h-100 d-flex flex-column align-items-center justify-content-center">
-          <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center mb-3" ref="btnBigPlay" style="width: 120px; height: 120px;">
-             <i class="bi {{ bigPlayIcon }}" style="font-size: 4rem;"></i>
-          </button>
-          <div class="text-white opacity-50">Playing on Global Media Manager</div>
-       </div>
-    </div>
+    <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}" style="z-index: 1050;">
+      {{ errorMessage }}
     </div>
   </div>
 </template>
-
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -38,67 +37,41 @@
       errorMessage: '',
       fileName: ''
     }),
-    getters: {
-      bigPlayIcon: (state) => {
-        if (state.isPlayingThis && state.playbackStatus === 'playing') {
-          return 'bi-pause-fill'
-        }
-  
-        return 'bi-play-fill'
-      }
-    },
-    client: async ({ state, signal, refs, globalStore, utils, eventBus, localDb }) => {
+    client: async ({ state, signal, refs, globalStore, utils, eventBus, localDb, bootstrap }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $utils } = utils
       const { $bus } = eventBus
-      const loader = refs('loader')
-      const btnBigPlay = refs('btnBigPlay')
-      const videoContainer = refs('videoContainer')
-      const videoPlaceholder = refs('videoPlaceholder')
+      const { Carousel } = bootstrap
+      const carouselEl = refs('carousel')
+      const carouselInner = refs('carouselInner')
+      const btnPrev = refs('btnPrev')
+      const btnNext = refs('btnNext')
 
-      const syncUI = async () => {
-        const id = $state.activeSelectionId
-        const type = $state.activeSelectionType
+      let carouselInstance = null
+      let loadedItems = []
+      let hasMore = true
+      let lastTimestamp = null
+      const BATCH_SIZE = 24
+      let isInternalChange = false
 
-        if (!id || type !== 'videos') {
-          return
-        }
-
-        const asset = await $localDb.local_assets.get(id)
-        if (asset) {
-          state.fileName = asset.filename || 'Untitled Video'
-        }
-
-        state.isErrorHidden = true
-        state.errorMessage = ''
-        loader.classList.add('d-none')
-
-        state.isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id)
-
-        if (state.isPlayingThis) {
-          // Adopt video element
-          const getMasterVideo = $state.getMasterVideoElement
-          if (getMasterVideo) {
-            const video = getMasterVideo()
-            if (video) {
-              video.className = 'w-100 h-100 object-fit-contain'
-              videoContainer.appendChild(video)
-              videoPlaceholder.classList.add('d-none')
-            }
-          }
-        } else {
-          videoPlaceholder.classList.remove('d-none')
+      const cleanup = () => {
+        returnVideo()
+        if (carouselInstance) {
+          carouselInstance.dispose()
+          carouselInstance = null
         }
       }
+
+      signal.addEventListener('abort', cleanup)
 
       const returnVideo = () => {
         const getMasterVideo = $state.getMasterVideoElement
         if (getMasterVideo) {
           const video = getMasterVideo()
-          if (video && video.parentElement === videoContainer) {
+          const currentContainer = carouselInner.querySelector('.video-container:not(.d-none)')
+          if (video && currentContainer && video.parentElement === currentContainer) {
             video.className = ''
-            // Return to media-engine
             const engineContainer = document.querySelector('media-engine .d-none')
             if (engineContainer) {
               engineContainer.appendChild(video)
@@ -107,35 +80,185 @@
         }
       }
 
-      signal.addEventListener('abort', returnVideo)
+      const syncActiveVideo = (id, container) => {
+        const isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id)
+        const videoPlaceholder = container.querySelector('.video-placeholder')
+        const videoContainer = container.querySelector('.video-container')
 
-      btnBigPlay.addEventListener('click', () => {
-        const id = $state.activeSelectionId
-        if (!id) {
+        if (isPlayingThis) {
+          const getMasterVideo = $state.getMasterVideoElement
+          if (getMasterVideo) {
+            const video = getMasterVideo()
+            if (video) {
+              video.className = 'w-100 h-100 object-fit-contain'
+              videoContainer.appendChild(video)
+              videoContainer.classList.remove('d-none')
+              videoPlaceholder.classList.add('d-none')
+            }
+          }
+        } else {
+          videoContainer.classList.add('d-none')
+          videoPlaceholder.classList.remove('d-none')
+        }
+      }
+
+      const createCarouselItem = (item, isActive) => {
+        const div = document.createElement('div')
+        div.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        div.dataset.id = item.id
+        div.innerHTML = `
+          <div class="d-flex justify-content-center align-items-center h-100 overflow-hidden">
+            <div class="video-placeholder flex-grow-1 w-100 h-100 d-flex flex-column align-items-center justify-content-center">
+              <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center mb-3 btn-big-play" style="width: 120px; height: 120px;">
+                <i class="bi bi-play-fill" style="font-size: 4rem;"></i>
+              </button>
+              <div class="text-white opacity-50">Playing on Global Media Manager</div>
+            </div>
+            <div class="video-container flex-grow-1 w-100 h-100 d-flex align-items-center justify-content-center d-none"></div>
+          </div>
+        `
+        const btnPlay = div.querySelector('.btn-big-play')
+        btnPlay.onclick = () => {
+          if ($state.currentMedia && $state.currentMedia.id === item.id) {
+            $bus.emit('MEDIA:TOGGLE')
+          } else {
+            $bus.emit('MEDIA:PLAY', {
+              mediaId: item.id,
+              type: 'videos'
+            })
+          }
+        }
+        return div
+      }
+
+      const fetchNextBatch = async () => {
+        if (!hasMore) {
+          return []
+        }
+        let query = $localDb.local_assets.where('mime_type').startsWith('video/').reverse()
+        const allMatching = await query.toArray()
+        let startIndex = 0
+        if (lastTimestamp) {
+          startIndex = allMatching.findIndex(a => a.created_at === lastTimestamp) + 1
+        }
+        const rawItems = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+        if (rawItems.length < BATCH_SIZE) {
+          hasMore = false
+        }
+        if (rawItems.length > 0) {
+          lastTimestamp = rawItems[rawItems.length - 1].created_at
+          loadedItems = [...loadedItems, ...rawItems]
+        }
+        return rawItems
+      }
+
+      const renderBatch = (items, activeId) => {
+        items.forEach(item => {
+          const isActive = item.id === activeId
+          const el = createCarouselItem(item, isActive)
+          carouselInner.appendChild(el)
+          if (isActive) {
+            state.fileName = item.filename || 'Untitled Video'
+            syncActiveVideo(item.id, el)
+          }
+        })
+      }
+
+      const initCarousel = async () => {
+        cleanup()
+        carouselInner.innerHTML = ''
+        loadedItems = []
+        lastTimestamp = null
+        hasMore = true
+
+        const activeId = $state.activeSelectionId
+        while (!loadedItems.find(i => i.id === activeId) && hasMore) {
+          await fetchNextBatch()
+        }
+
+        renderBatch(loadedItems, activeId)
+  
+        carouselInstance = new Carousel(carouselEl, {
+          interval: false,
+          touch: true,
+          wrap: false
+        })
+
+        carouselEl.addEventListener('slid.bs.carousel', async (e) => {
+          const activeItem = e.relatedTarget
+          const id = activeItem.dataset.id
+          const item = loadedItems.find(i => i.id === id)
+  
+          if (item) {
+            isInternalChange = true
+            $state.activeSelectionId = id
+            state.fileName = item.filename || 'Untitled Video'
+            syncActiveVideo(id, activeItem)
+            isInternalChange = false
+          }
+
+          const index = loadedItems.findIndex(i => i.id === id)
+          if (index >= loadedItems.length - 3 && hasMore) {
+            const nextBatch = await fetchNextBatch()
+            renderBatch(nextBatch, null)
+          }
+        })
+      }
+
+      btnPrev.onclick = () => carouselInstance?.prev()
+      btnNext.onclick = async () => {
+        const activeItem = carouselInner.querySelector('.carousel-item.active')
+        if (!activeItem) {
           return
         }
-
-        if ($state.currentMedia && $state.currentMedia.id === id) {
-          $bus.emit('MEDIA:TOGGLE')
+        const id = activeItem.dataset.id
+        const index = loadedItems.findIndex(i => i.id === id)
+  
+        if (index === loadedItems.length - 1 && hasMore) {
+          const nextBatch = await fetchNextBatch()
+          if (nextBatch.length > 0) {
+            renderBatch(nextBatch, null)
+            setTimeout(() => carouselInstance?.next(), 0)
+          }
         } else {
-          $bus.emit('MEDIA:PLAY', {
-            mediaId: id,
-            type: 'videos'
-          })
+          carouselInstance?.next()
+        }
+      }
+
+      $state.subscribe('activeSelectionId', (id) => {
+        if (isInternalChange || $state.activeSelectionType !== 'videos') {
+          return
+        }
+        const index = loadedItems.findIndex(i => i.id === id)
+        if (index !== -1) {
+          carouselInstance?.to(index)
+        } else {
+          initCarousel()
         }
       })
 
-      const debouncedSync = $utils.debounce(syncUI, 50)
-      debouncedSync()
-
-      $state.subscribe('activeSelectionId', debouncedSync)
-      $state.subscribe('activeSelectionType', debouncedSync)
-      $state.subscribe('playbackStatus', (val) => {
-        state.playbackStatus = val
-        state.isPlayingThis = ($state.currentMedia && $state.currentMedia.id === $state.activeSelectionId)
-        // Trigger sync again to adopt the video element if it was just started
-        debouncedSync()
+      $state.subscribe('activeSelectionType', (type) => {
+        if (type === 'videos') {
+          initCarousel()
+        }
       })
+
+      $state.subscribe('playbackStatus', () => {
+        const activeItem = carouselInner.querySelector('.carousel-item.active')
+        if (activeItem) {
+          const id = activeItem.dataset.id
+          syncActiveVideo(id, activeItem)
+          const icon = activeItem.querySelector('.btn-big-play i')
+          if (icon) {
+            const isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id && $state.playbackStatus === 'playing')
+            icon.className = `bi ${isPlayingThis ? 'bi-pause-fill' : 'bi-play-fill'}`
+          }
+        }
+      })
+
+      if ($state.activeSelectionType === 'videos') {
+        initCarousel()
+      }
     }
   })
 </script>

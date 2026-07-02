@@ -18,7 +18,7 @@
         btnJump.onclick = async () => {
           const id = $state.activeSelectionId
           const type = $state.activeSelectionType
-          
+  
           if (!id || !type) {
             return
           }
@@ -57,13 +57,16 @@
               $state.currentAppView = 'chats'
               $state.activeSelectionId = roomId
               $state.activeSelectionType = 'chats'
-    
+  
               // Wait for timeline to mount and then emit scroll
               setTimeout(() => {
                 $bus.emit('SCROLL_TO_MESSAGE', { messageId })
               }, 100)
             } else {
-              console.warn('[jump-to-chat] Could not resolve room or message for', { id, type })
+              console.warn('[jump-to-chat] Could not resolve room or message for', {
+                id,
+                type
+              })
             }
           } catch (err) {
             console.error('[jump-to-chat] Error jumping to chat:', err)

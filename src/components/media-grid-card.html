@@ -28,7 +28,7 @@
       fileNonce: String
     },
     getters: {
-      activeClass: (state) => (state.isActive === 'true' ? 'border border-primary border-2' : ''),
+      activeClass: (state) => (state.isActive === 'true' ? 'is-active-card' : ''),
       ratioClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'ratio-16x9' : 'ratio-1x1'),
       iconClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'bi-camera-video' : 'bi-image')
     },

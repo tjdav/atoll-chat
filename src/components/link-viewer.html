@@ -1,5 +1,5 @@
 <template id="link-viewer">
-  <div class="link-viewer d-flex flex-column h-100 bg-body">
+  <div class="link-viewer-container d-flex flex-column h-100 bg-body position-relative">
     <viewer-header 
       title="Link Details" 
       subtitle="{{ domain }}" 
@@ -7,46 +7,19 @@
       theme="light">
     </viewer-header>
 
-    <div class="flex-grow-1 overflow-y-auto p-4">
-      <div class="card shadow-sm border-0 mb-4 overflow-hidden">
-        <div ref="imageContainer" class="bg-light d-flex align-items-center justify-content-center" style="min-height: 200px; max-height: 400px;">
-          <!-- Decrypted preview image -->
-        </div>
-        <div class="card-body">
-          <h4 class="card-title fw-bold mb-2">{{ title }}</h4>
-          <p class="text-muted mb-4">{{ summary }}</p>
-          
-          <div class="d-grid">
-            <a href="{{ url }}" target="_blank" class="btn btn-primary">
-              <i class="bi bi-box-arrow-up-right me-2"></i> Visit Website
-            </a>
-          </div>
-        </div>
+    <div ref="carousel" class="carousel slide flex-grow-1 overflow-hidden" data-bs-interval="false">
+      <div class="carousel-inner h-100" ref="carouselInner">
+        <!-- Carousel items will be rendered here -->
       </div>
-
-      <div class="card shadow-sm border-0">
-        <div class="card-body">
-          <h6 class="text-uppercase text-muted small fw-bold mb-3">Information</h6>
-          <div class="d-flex flex-column gap-3">
-            <div class="d-flex justify-content-between">
-              <span class="text-muted">Shared by</span>
-              <span class="fw-bold">{{ senderName }}</span>
-            </div>
-            <div class="d-flex justify-content-between">
-              <span class="text-muted">Chat</span>
-              <span class="fw-bold">{{ roomName }}</span>
-            </div>
-            <div class="d-flex justify-content-between">
-              <span class="text-muted">Date</span>
-              <span class="fw-bold">{{ timestamp }}</span>
-            </div>
-            <div class="d-flex justify-content-between overflow-hidden">
-              <span class="text-muted flex-shrink-0 me-3">URL</span>
-              <span class="text-primary text-truncate">{{ url }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      
+      <button class="carousel-control-prev carousel-control-dark" type="button" ref="btnPrev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+      </button>
+      <button class="carousel-control-next carousel-control-dark" type="button" ref="btnNext">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+      </button>
     </div>
   </div>
 </template>
@@ -56,97 +29,237 @@
 
   export default defineComponent({
     server: () => ({
-      title: '',
-      summary: '',
-      url: '',
-      domain: '',
-      senderName: '',
-      roomName: '',
-      timestamp: ''
+      domain: ''
     }),
-    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase }) => {
+    client: async ({ state, signal, refs, localDb, globalStore, pocketbase, bootstrap }) => {
       const { $localDb } = localDb
-      const { $bus } = eventBus
       const { $state } = globalStore
       const { pb } = pocketbase
-      const imageContainer = refs('imageContainer')
-      let currentLinkId = null
+      const { Carousel } = bootstrap
+      const carouselEl = refs('carousel')
+      const carouselInner = refs('carouselInner')
+      const btnPrev = refs('btnPrev')
+      const btnNext = refs('btnNext')
 
-      const loadLink = async (linkId) => {
-        if (!linkId || $state.activeSelectionType !== 'links') {
+      let carouselInstance = null
+      let loadedItems = []
+      let hasMore = true
+      let lastTimestamp = null
+      const BATCH_SIZE = 24
+      let isInternalChange = false
+
+      const cleanup = () => {
+        if (carouselInstance) {
+          carouselInstance.dispose()
+          carouselInstance = null
+        }
+      }
+      signal.addEventListener('abort', cleanup)
+
+      const updateItemUI = async (msg, container) => {
+        const room = await $localDb.local_rooms.get(msg.room_id)
+        const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
+        let senderName = 'Unknown'
+        if (room && room.participants) {
+          const sender = room.participants.find(p => p.id === msg.sender_id)
+          if (sender) {
+            senderName = sender.username || sender.name || 'Unknown'
+          }
+        }
+
+        container.querySelector('.link-title').textContent = msg.link_title || 'Untitled Link'
+        container.querySelector('.link-summary').textContent = msg.link_summary || ''
+        container.querySelector('.link-url-text').textContent = msg.content
+        container.querySelector('.link-visit-btn').href = msg.content
+        container.querySelector('.link-sender').textContent = senderName
+        container.querySelector('.link-room').textContent = roomName
+        container.querySelector('.link-date').textContent = new Date(msg.created_at).toLocaleString()
+
+        const imgContainer = container.querySelector('.link-image-container')
+        imgContainer.innerHTML = ''
+        if (msg.media_id && msg.file_key && msg.file_nonce) {
+          try {
+            let blobUrl = $state.decryptionCache.get(msg.local_uuid)
+            if (!blobUrl) {
+              const record = await pb.collection('media').getOne(msg.media_id)
+              const fileUrl = pb.files.getURL(record, record.file)
+              const response = await fetch(fileUrl)
+              const encryptedBuffer = await response.arrayBuffer()
+              const { default: sodium } = await import('libsodium-wrappers-sumo')
+              await sodium.ready
+              const key = sodium.from_base64(msg.file_key, sodium.base64_variants.ORIGINAL)
+              const nonce = sodium.from_base64(msg.file_nonce, sodium.base64_variants.ORIGINAL)
+              const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(encryptedBuffer), nonce, key)
+              const blob = new Blob([decrypted], { type: 'image/jpeg' })
+              blobUrl = URL.createObjectURL(blob)
+              $state.decryptionCache.set(msg.local_uuid, blobUrl)
+            }
+            imgContainer.innerHTML = `<img src="${blobUrl}" class="w-100 h-100 object-fit-cover" alt="Preview">`
+          } catch (err) {
+            imgContainer.innerHTML = '<i class="bi bi-link-45deg fs-1 text-secondary opacity-25"></i>'
+          }
+        } else {
+          imgContainer.innerHTML = '<i class="bi bi-link-45deg fs-1 text-secondary opacity-25"></i>'
+        }
+      }
+
+      const createCarouselItem = (item, isActive) => {
+        const div = document.createElement('div')
+        div.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        div.dataset.id = item.local_uuid
+        div.innerHTML = `
+          <div class="link-viewer h-100 overflow-y-auto p-4">
+            <div class="card shadow-sm border-0 mb-4 overflow-hidden">
+              <div class="link-image-container bg-light d-flex align-items-center justify-content-center" style="min-height: 200px; max-height: 400px;"></div>
+              <div class="card-body">
+                <h4 class="card-title fw-bold mb-2 link-title"></h4>
+                <p class="text-muted mb-4 link-summary"></p>
+                <div class="d-grid">
+                  <a href="#" target="_blank" class="btn btn-primary link-visit-btn">
+                    <i class="bi bi-box-arrow-up-right me-2"></i> Visit Website
+                  </a>
+                </div>
+              </div>
+            </div>
+            <div class="card shadow-sm border-0">
+              <div class="card-body">
+                <h6 class="text-uppercase text-muted small fw-bold mb-3">Information</h6>
+                <div class="d-flex flex-column gap-3">
+                  <div class="d-flex justify-content-between">
+                    <span class="text-muted">Shared by</span>
+                    <span class="fw-bold link-sender"></span>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span class="text-muted">Chat</span>
+                    <span class="fw-bold link-room"></span>
+                  </div>
+                  <div class="d-flex justify-content-between">
+                    <span class="text-muted">Date</span>
+                    <span class="fw-bold link-date"></span>
+                  </div>
+                  <div class="d-flex justify-content-between overflow-hidden">
+                    <span class="text-muted flex-shrink-0 me-3">URL</span>
+                    <span class="text-primary text-truncate link-url-text"></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        `
+        return div
+      }
+
+      const fetchNextBatch = async () => {
+        if (!hasMore) {
+          return []
+        }
+        const allLinks = await $localDb.local_messages.where('type').equals('link').reverse().sortBy('created_at')
+        let startIndex = 0
+        if (lastTimestamp) {
+          startIndex = allLinks.findIndex(a => a.created_at === lastTimestamp) + 1
+        }
+        const rawItems = allLinks.slice(startIndex, startIndex + BATCH_SIZE)
+        if (rawItems.length < BATCH_SIZE) {
+          hasMore = false
+        }
+        if (rawItems.length > 0) {
+          lastTimestamp = rawItems[rawItems.length - 1].created_at
+          loadedItems = [...loadedItems, ...rawItems]
+        }
+        return rawItems
+      }
+
+      const renderBatch = (items, activeId) => {
+        items.forEach(item => {
+          const isActive = item.local_uuid === activeId
+          const el = createCarouselItem(item, isActive)
+          carouselInner.appendChild(el)
+          if (isActive) {
+            state.domain = item.link_domain || ''
+            updateItemUI(item, el)
+          }
+        })
+      }
+
+      const initCarousel = async () => {
+        cleanup()
+        carouselInner.innerHTML = ''
+        loadedItems = []
+        lastTimestamp = null
+        hasMore = true
+
+        const activeId = $state.activeSelectionId
+        while (!loadedItems.find(i => i.local_uuid === activeId) && hasMore) {
+          await fetchNextBatch()
+        }
+
+        renderBatch(loadedItems, activeId)
+  
+        carouselInstance = new Carousel(carouselEl, {
+          interval: false,
+          touch: true,
+          wrap: false
+        })
+
+        carouselEl.addEventListener('slid.bs.carousel', (e) => {
+          const activeItem = e.relatedTarget
+          const id = activeItem.dataset.id
+          const item = loadedItems.find(i => i.local_uuid === id)
+          if (item) {
+            isInternalChange = true
+            $state.activeSelectionId = id
+            state.domain = item.link_domain || ''
+            updateItemUI(item, activeItem)
+            isInternalChange = false
+          }
+          const index = loadedItems.findIndex(i => i.local_uuid === id)
+          if (index >= loadedItems.length - 3 && hasMore) {
+            fetchNextBatch().then(batch => renderBatch(batch, null))
+          }
+        })
+      }
+
+      btnPrev.onclick = () => carouselInstance?.prev()
+      btnNext.onclick = async () => {
+        const activeItem = carouselInner.querySelector('.carousel-item.active')
+        if (!activeItem) {
           return
         }
-        currentLinkId = linkId
-
-        try {
-          const msg = await $localDb.local_messages.get(linkId)
-          if (!msg) {
-            return
-          }
-
-          state.title = msg.link_title || 'Untitled Link'
-          state.summary = msg.link_summary || ''
-          state.url = msg.content
-          state.domain = msg.link_domain || ''
-          state.timestamp = new Date(msg.created_at).toLocaleString()
-
-          const room = await $localDb.local_rooms.get(msg.room_id)
-          state.roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
+        const id = activeItem.dataset.id
+        const index = loadedItems.findIndex(i => i.local_uuid === id)
   
-          if (room && room.participants) {
-            const sender = room.participants.find(p => p.id === msg.sender_id)
-            state.senderName = sender ? (sender.username || sender.name || 'Unknown') : 'Unknown'
+        if (index === loadedItems.length - 1 && hasMore) {
+          const nextBatch = await fetchNextBatch()
+          if (nextBatch.length > 0) {
+            renderBatch(nextBatch, null)
+            setTimeout(() => carouselInstance?.next(), 0)
           }
-
-          // Load Image
-          imageContainer.innerHTML = ''
-          if (msg.media_id && msg.file_key && msg.file_nonce) {
-            try {
-              if ($state.decryptionCache.has(linkId)) {
-                renderImage($state.decryptionCache.get(linkId))
-              } else {
-                const record = await pb.collection('media').getOne(msg.media_id)
-                const fileUrl = pb.files.getURL(record, record.file)
-                const response = await fetch(fileUrl)
-                const encryptedBuffer = await response.arrayBuffer()
-
-                const key = sodium.from_base64(msg.file_key, sodium.base64_variants.ORIGINAL)
-                const nonce = sodium.from_base64(msg.file_nonce, sodium.base64_variants.ORIGINAL)
-                const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(encryptedBuffer), nonce, key)
-                const blob = new Blob([decrypted], { type: 'image/jpeg' })
-                const blobUrl = URL.createObjectURL(blob)
-
-                $state.decryptionCache.set(linkId, blobUrl)
-                renderImage(blobUrl)
-              }
-            } catch (err) {
-              console.error('[link-viewer] Image decrypt error:', err)
-              renderPlaceholder()
-            }
-          } else {
-            renderPlaceholder()
-          }
-        } catch (err) {
-          console.error('[link-viewer] Failed to load link:', err)
+        } else {
+          carouselInstance?.next()
         }
       }
 
-      const renderImage = (src) => {
-        imageContainer.innerHTML = `<img src="${src}" class="w-100 h-100 object-fit-cover" alt="Preview">`
-      }
-
-      const renderPlaceholder = () => {
-        imageContainer.innerHTML = '<i class="bi bi-link-45deg fs-1 text-secondary opacity-25"></i>'
-      }
-
-
-      $state.subscribe('activeSelectionId', (val) => {
-        if ($state.activeSelectionType === 'links') {
-          loadLink(val)
+      $state.subscribe('activeSelectionId', (id) => {
+        if (isInternalChange || $state.activeSelectionType !== 'links') {
+          return
+        }
+        const index = loadedItems.findIndex(i => i.local_uuid === id)
+        if (index !== -1) {
+          carouselInstance?.to(index)
+        } else {
+          initCarousel()
         }
       })
 
-      loadLink($state.activeSelectionId)
+      $state.subscribe('activeSelectionType', (type) => {
+        if (type === 'links') {
+          initCarousel()
+        }
+      })
+
+      if ($state.activeSelectionType === 'links') {
+        initCarousel()
+      }
     }
   })
 </script>

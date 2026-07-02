@@ -3,24 +3,30 @@
     <viewer-header 
       title="Image Details" 
       subtitle="{{ fileName }}" 
-      icon="bi-image"
+      icon="bi-image" 
       theme="dark">
     </viewer-header>
 
-    <div class="flex-grow-1 d-flex justify-content-center align-items-center overflow-hidden position-relative">
-      <div class="spinner-border text-primary" ref="loader" role="status">
-        <span class="visually-hidden">Loading...</span>
+    <div ref="carousel" class="carousel slide flex-grow-1 overflow-hidden" data-bs-interval="false">
+      <div class="carousel-inner h-100" ref="carouselInner">
+        <!-- Carousel items will be rendered here -->
       </div>
-    
-    <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}">
-      {{ errorMessage }}
+      
+      <button class="carousel-control-prev" type="button" ref="btnPrev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+      </button>
+      <button class="carousel-control-next" type="button" ref="btnNext">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+      </button>
     </div>
 
-      <img ref="mediaDisplay" class="d-none img-fluid h-100 object-fit-contain" alt="Decrypted image">
+    <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}" style="z-index: 1050;">
+      {{ errorMessage }}
     </div>
   </div>
 </template>
-
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -31,110 +37,222 @@
       errorMessage: '',
       fileName: ''
     }),
-    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils }) => {
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, bootstrap }) => {
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore
       const { $utils } = utils
-      const loader = refs('loader')
-      const mediaDisplay = refs('mediaDisplay')
-      let currentObjectUrl = null
+      const { Carousel } = bootstrap
+      const carouselEl = refs('carousel')
+      const carouselInner = refs('carouselInner')
+      const btnPrev = refs('btnPrev')
+      const btnNext = refs('btnNext')
+
+      let carouselInstance = null
+      let loadedItems = []
+      let hasMore = true
+      let lastTimestamp = null
+      const BATCH_SIZE = 24
+      const objectUrls = new Map()
+      let isInternalChange = false
 
       const cleanup = () => {
-        if (currentObjectUrl) {
-          URL.revokeObjectURL(currentObjectUrl)
-          currentObjectUrl = null
+        objectUrls.forEach(url => URL.revokeObjectURL(url))
+        objectUrls.clear()
+        if (carouselInstance) {
+          carouselInstance.dispose()
+          carouselInstance = null
         }
       }
 
-      // Cleanup on component unmount
       signal.addEventListener('abort', cleanup)
 
-      const loadMedia = async () => {
-        const id = $state.activeSelectionId
-        const type = $state.activeSelectionType
-
-        if (!id || type !== 'pictures') {
+      const decryptImage = async (item, container) => {
+        if (objectUrls.has(item.id)) {
+          const img = container.querySelector('img')
+          if (img) {
+            img.src = objectUrls.get(item.id)
+          }
           return
         }
 
-        // Reset UI
-        state.isErrorHidden = true
-        state.errorMessage = ''
-        loader.classList.remove('d-none')
-        mediaDisplay.classList.add('d-none')
-        mediaDisplay.src = ''
-        cleanup()
+        const loader = container.querySelector('.spinner-border')
+        if (loader) {
+          loader.classList.remove('d-none')
+        }
 
         try {
-          // Get asset from local DB.
-          const asset = await $localDb.local_assets.get(id)
-          if (!asset) {
-            throw new Error('Media asset not found in local database')
-          }
-          state.fileName = asset.filename || 'Untitled Image'
-
-          // Fetch the media record to get the actual filename (e.g. encrypted_XYZ.bin)
-          const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+          const mediaRecord = await pb.collection('media').getOne(item.media_id)
           const url = pb.files.getURL(mediaRecord, mediaRecord.file)
 
           const response = await fetch(url, { signal })
-          if (!response.ok) {
-            throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
-          }
           const arrayBuffer = await response.arrayBuffer()
           const encryptedFileBuffer = new Uint8Array(arrayBuffer)
 
-          // Load sodium and prepare for decryption.
           const { default: sodium } = await import('libsodium-wrappers-sumo')
           await sodium.ready
 
-          const fileKeyBuffer = sodium.from_base64(asset.file_key, sodium.base64_variants.ORIGINAL)
-          const nonceBuffer = sodium.from_base64(asset.file_nonce, sodium.base64_variants.ORIGINAL)
+          const fileKeyBuffer = sodium.from_base64(item.file_key, sodium.base64_variants.ORIGINAL)
+          const nonceBuffer = sodium.from_base64(item.file_nonce, sodium.base64_variants.ORIGINAL)
 
-          let decryptedFileBuffer
-          try {
-            decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)
-          } catch (e) {
-            throw new Error('Media Corrupted or Key Invalid')
-          }
-
+          const decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)
           if (!decryptedFileBuffer) {
-            throw new Error('Media Corrupted or Key Invalid')
+            throw new Error('Decryption failed')
           }
 
-          // Create Blob and local object URL.
-          const mediaBlob = new Blob([decryptedFileBuffer], { type: asset.mime_type })
-          currentObjectUrl = URL.createObjectURL(mediaBlob)
-  
-          // Reveal the media and hide the loader.
+          const mediaBlob = new Blob([decryptedFileBuffer], { type: item.mime_type })
+          const objectUrl = URL.createObjectURL(mediaBlob)
+          objectUrls.set(item.id, objectUrl)
+
           if (!signal.aborted) {
-            mediaDisplay.src = currentObjectUrl
-            mediaDisplay.classList.remove('d-none')
-            loader.classList.add('d-none')
-          } else {
-            cleanup()
+            const img = container.querySelector('img')
+            if (img) {
+              img.src = objectUrl
+              img.classList.remove('d-none')
+            }
+            if (loader) {
+              loader.classList.add('d-none')
+            }
           }
-
         } catch (err) {
-          if (err.name === 'AbortError') {
-            return
+          console.error('[image-viewer] Decryption error:', err)
+          if (loader) {
+            loader.classList.add('d-none')
           }
-          console.error('[image-viewer] Error:', err)
-          state.errorMessage = err.message || 'Media Corrupted or Key Invalid'
-          state.isErrorHidden = false
-          loader.classList.add('d-none')
         }
       }
 
-      const debouncedLoad = $utils.debounce(loadMedia, 50)
+      const createCarouselItem = (item, isActive) => {
+        const div = document.createElement('div')
+        div.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        div.dataset.id = item.id
+        div.innerHTML = `
+          <div class="d-flex justify-content-center align-items-center h-100 overflow-hidden">
+            <div class="spinner-border text-primary d-none" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+            <img class="img-fluid h-100 object-fit-contain d-none" alt="${item.filename}">
+          </div>
+        `
+        return div
+      }
 
-      // Initial load
-      debouncedLoad()
+      const fetchNextBatch = async () => {
+        if (!hasMore) {
+          return []
+        }
+        let query = $localDb.local_assets.where('mime_type').startsWith('image/').reverse()
+        const allMatching = await query.toArray()
+        let startIndex = 0
+        if (lastTimestamp) {
+          startIndex = allMatching.findIndex(a => a.created_at === lastTimestamp) + 1
+        }
+        const rawItems = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+        if (rawItems.length < BATCH_SIZE) {
+          hasMore = false
+        }
+        if (rawItems.length > 0) {
+          lastTimestamp = rawItems[rawItems.length - 1].created_at
+          loadedItems = [...loadedItems, ...rawItems]
+        }
+        return rawItems
+      }
 
-      // Watch for selection changes.
-      $state.subscribe('activeSelectionId', debouncedLoad)
-      $state.subscribe('activeSelectionType', debouncedLoad)
+      const renderBatch = (items, activeId) => {
+        items.forEach(item => {
+          const isActive = item.id === activeId
+          const el = createCarouselItem(item, isActive)
+          carouselInner.appendChild(el)
+          if (isActive) {
+            state.fileName = item.filename || 'Untitled Image'
+            decryptImage(item, el)
+          }
+        })
+      }
+
+      const initCarousel = async () => {
+        cleanup()
+        carouselInner.innerHTML = ''
+        loadedItems = []
+        lastTimestamp = null
+        hasMore = true
+
+        const activeId = $state.activeSelectionId
+        while (!loadedItems.find(i => i.id === activeId) && hasMore) {
+          await fetchNextBatch()
+        }
+
+        renderBatch(loadedItems, activeId)
+  
+        carouselInstance = new Carousel(carouselEl, {
+          interval: false,
+          touch: true,
+          wrap: false
+        })
+
+        carouselEl.addEventListener('slid.bs.carousel', async (e) => {
+          const activeItem = e.relatedTarget
+          const id = activeItem.dataset.id
+          const item = loadedItems.find(i => i.id === id)
+  
+          if (item) {
+            isInternalChange = true
+            $state.activeSelectionId = id
+            state.fileName = item.filename || 'Untitled Image'
+            decryptImage(item, activeItem)
+            isInternalChange = false
+          }
+
+          // Pre-load next batch if near end
+          const index = loadedItems.findIndex(i => i.id === id)
+          if (index >= loadedItems.length - 3 && hasMore) {
+            const nextBatch = await fetchNextBatch()
+            renderBatch(nextBatch, null)
+          }
+        })
+      }
+
+      btnPrev.onclick = () => carouselInstance?.prev()
+      btnNext.onclick = async () => {
+        const activeItem = carouselInner.querySelector('.carousel-item.active')
+        if (!activeItem) {
+          return
+        }
+        const id = activeItem.dataset.id
+        const index = loadedItems.findIndex(i => i.id === id)
+  
+        if (index === loadedItems.length - 1 && hasMore) {
+          const nextBatch = await fetchNextBatch()
+          if (nextBatch.length > 0) {
+            renderBatch(nextBatch, null)
+            setTimeout(() => carouselInstance?.next(), 0)
+          }
+        } else {
+          carouselInstance?.next()
+        }
+      }
+
+      $state.subscribe('activeSelectionId', (id) => {
+        if (isInternalChange || $state.activeSelectionType !== 'pictures') {
+          return
+        }
+        const index = loadedItems.findIndex(i => i.id === id)
+        if (index !== -1) {
+          carouselInstance?.to(index)
+        } else {
+          initCarousel()
+        }
+      })
+
+      $state.subscribe('activeSelectionType', (type) => {
+        if (type === 'pictures') {
+          initCarousel()
+        }
+      })
+
+      if ($state.activeSelectionType === 'pictures') {
+        initCarousel()
+      }
     }
   })
 </script>

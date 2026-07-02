@@ -1,5 +1,5 @@
 <template id="audio-player-view">
-  <div class="audio-player-container d-flex flex-column h-100 bg-body-secondary">
+  <div class="audio-player-container d-flex flex-column h-100 bg-body-secondary position-relative">
     <viewer-header 
       title="Audio Details" 
       subtitle="{{ fileName }}" 
@@ -7,52 +7,26 @@
       theme="light">
     </viewer-header>
 
-    <div class="flex-grow-1 d-flex flex-column justify-content-center align-items-center p-4 overflow-hidden position-relative">
-    <div class="spinner-border text-primary mb-3" ref="loader" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
-    
-    <div class="alert alert-danger m-3" hidden="{{ isErrorHidden }}">
-      {{ errorMessage }}
-    </div>
-
-    <div ref="playerContent" class="d-none text-center w-100" style="max-width: 500px;">
-      <div class="mb-4">
-        <i class="bi bi-music-note-beamed text-primary" style="font-size: 5rem;"></i>
+    <div ref="carousel" class="carousel slide flex-grow-1 overflow-hidden" data-bs-interval="false">
+      <div class="carousel-inner h-100" ref="carouselInner">
+        <!-- Carousel items will be rendered here -->
       </div>
       
-      <div class="mb-4">
-        <h4 class="mb-1 text-truncate">{{ fileName }}</h4>
-        <div class="text-muted mb-1">{{ artistAlbum }}</div>
-        <div class="text-muted small">From: <span class="fw-bold">{{ roomName }}</span></div>
-      </div>
-
-      <div class="d-flex flex-column align-items-center gap-4 w-100">
-        <div ref="playButtonContainer">
-          <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center" ref="btnBigPlay" style="width: 120px; height: 120px;">
-            <i class="bi {{ bigPlayIcon }}" style="font-size: 4rem;"></i>
-          </button>
-        </div>
-
-        <div class="w-100 mt-2">
-           <div class="d-flex justify-content-between text-muted small mb-1">
-              <span>{{ currentTimeFormatted }}</span>
-              <span>{{ durationFormatted }}</span>
-           </div>
-           <div class="progress" style="height: 8px; cursor: pointer;" ref="progressContainer">
-              <div class="progress-bar" role="progressbar" style="width: {{ mediaProgress }}%;"></div>
-           </div>
-        </div>
-
-        <div class="text-muted small">
-           Playing on Global Media Manager
-        </div>
-      </div>
+      <button class="carousel-control-prev carousel-control-dark" type="button" ref="btnPrev">
+        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Previous</span>
+      </button>
+      <button class="carousel-control-next carousel-control-dark" type="button" ref="btnNext">
+        <span class="carousel-control-next-icon" aria-hidden="true"></span>
+        <span class="visually-hidden">Next</span>
+      </button>
     </div>
+
+    <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}" style="z-index: 1050;">
+      {{ errorMessage }}
     </div>
   </div>
 </template>
-
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -61,126 +35,259 @@
     server: () => ({
       isErrorHidden: true,
       errorMessage: '',
-      fileName: 'Untitled Audio',
-      artistAlbum: '',
-      roomName: 'Unknown Chat'
+      fileName: 'Untitled Audio'
     }),
-    getters: {
-      bigPlayIcon: (state) => {
-        if (state.isPlayingThis && state.playbackStatus === 'playing') {
-          return 'bi-pause-fill'
-        }
-  
-        return 'bi-play-fill'
-      },
-      currentTimeFormatted: (state) => {
-        const seconds = state.mediaCurrentTime || 0
-        const mins = Math.floor(seconds / 60)
-        const secs = Math.floor(seconds % 60)
-        return `${mins}:${secs.toString().padStart(2, '0')}`
-      },
-      durationFormatted: (state) => {
-        const seconds = state.mediaDuration || 0
-        const mins = Math.floor(seconds / 60)
-        const secs = Math.floor(seconds % 60)
-        return `${mins}:${secs.toString().padStart(2, '0')}`
-      }
-    },
-    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, eventBus }) => {
-      const { pb } = pocketbase
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, eventBus, bootstrap }) => {
       const { $localDb } = localDb
       const { $state } = globalStore
       const { $utils } = utils
       const { $bus } = eventBus
-      const loader = refs('loader')
-      const playerContent = refs('playerContent')
-      const btnBigPlay = refs('btnBigPlay')
-      const progressContainer = refs('progressContainer')
+      const { Carousel } = bootstrap
+      const carouselEl = refs('carousel')
+      const carouselInner = refs('carouselInner')
+      const btnPrev = refs('btnPrev')
+      const btnNext = refs('btnNext')
 
-      state.playbackStatus = $state.playbackStatus || 'idle'
-      state.currentMediaId = $state.currentMedia?.id
-      state.mediaProgress = $state.mediaProgress
-      state.mediaCurrentTime = $state.mediaCurrentTime
-      state.mediaDuration = $state.mediaDuration
-      state.isPlayingThis = false
+      let carouselInstance = null
+      let loadedItems = []
+      let hasMore = true
+      let lastTimestamp = null
+      const BATCH_SIZE = 24
+      let isInternalChange = false
 
-      const syncUI = async () => {
-        const id = $state.activeSelectionId
-        const type = $state.activeSelectionType
+      const cleanup = () => {
+        if (carouselInstance) {
+          carouselInstance.dispose()
+          carouselInstance = null
+        }
+      }
+      signal.addEventListener('abort', cleanup)
 
-        if (!id || type !== 'music') {
-          return
+      const updateItemUI = async (item, container) => {
+        const room = await $localDb.local_rooms.get(item.room_id)
+        const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
+        const artistAlbum = item.artist ? `${item.artist}${item.album ? ' • ' + item.album : ''}` : ''
+
+        container.querySelector('.audio-filename').textContent = item.filename || item.name || 'Audio File'
+        container.querySelector('.audio-artist').textContent = artistAlbum
+        container.querySelector('.audio-room').textContent = roomName
+  
+        syncPlaybackState(item.id, container)
+      }
+
+      const syncPlaybackState = (id, container) => {
+        const isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id)
+        const icon = container.querySelector('.btn-big-play i')
+        if (icon) {
+          const isActuallyPlaying = isPlayingThis && $state.playbackStatus === 'playing'
+          icon.className = `bi ${isActuallyPlaying ? 'bi-pause-fill' : 'bi-play-fill'}`
         }
 
-        // Reset UI
-        state.isErrorHidden = true
-        state.errorMessage = ''
-        loader.classList.remove('d-none')
-        playerContent.classList.add('d-none')
+        const progressContainer = container.querySelector('.audio-progress-container')
+        const progressBar = container.querySelector('.progress-bar')
+        const currentTimeEl = container.querySelector('.current-time')
+        const durationEl = container.querySelector('.duration')
 
-        try {
-          const asset = await $localDb.local_assets.get(id)
-          if (!asset) {
-            throw new Error('Audio asset not found in local database')
-          }
-
-          const room = await $localDb.local_rooms.get(asset.room_id)
-          state.roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
-          state.fileName = asset.filename || asset.name || 'Audio File'
-          state.artistAlbum = asset.artist ? `${asset.artist}${asset.album ? ' • ' + asset.album : ''}` : ''
-
-          // If this is the current media, update big play icon
-          state.isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id)
-
-          loader.classList.add('d-none')
-          playerContent.classList.remove('d-none')
-
-        } catch (err) {
-          console.error('[audio-player-view] Error:', err)
-          state.errorMessage = err.message || 'Error loading media'
-          state.isErrorHidden = false
-          loader.classList.add('d-none')
+        if (isPlayingThis) {
+          progressContainer.classList.remove('opacity-25')
+          const progress = $state.mediaProgress || 0
+          progressBar.style.width = `${progress}%`
+  
+          const cur = $state.mediaCurrentTime || 0
+          currentTimeEl.textContent = `${Math.floor(cur / 60)}:${Math.floor(cur % 60).toString().padStart(2, '0')}`
+  
+          const dur = $state.mediaDuration || 0
+          durationEl.textContent = `${Math.floor(dur / 60)}:${Math.floor(dur % 60).toString().padStart(2, '0')}`
+        } else {
+          progressContainer.classList.add('opacity-25')
+          progressBar.style.width = '0%'
+          currentTimeEl.textContent = '0:00'
+          durationEl.textContent = '0:00'
         }
       }
 
-      btnBigPlay.addEventListener('click', () => {
-        const id = $state.activeSelectionId
-        if (!id) {
+      const createCarouselItem = (item, isActive) => {
+        const div = document.createElement('div')
+        div.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        div.dataset.id = item.id
+        div.innerHTML = `
+          <div class="d-flex flex-column justify-content-center align-items-center p-4 h-100 overflow-hidden">
+            <div class="text-center w-100" style="max-width: 500px;">
+              <div class="mb-4">
+                <i class="bi bi-music-note-beamed text-primary" style="font-size: 5rem;"></i>
+              </div>
+              <div class="mb-4">
+                <h4 class="mb-1 text-truncate audio-filename">Loading...</h4>
+                <div class="text-muted mb-1 audio-artist"></div>
+                <div class="text-muted small">From: <span class="fw-bold audio-room"></span></div>
+              </div>
+              <div class="d-flex flex-column align-items-center gap-4 w-100">
+                <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center btn-big-play" style="width: 120px; height: 120px;">
+                  <i class="bi bi-play-fill" style="font-size: 4rem;"></i>
+                </button>
+                <div class="w-100 mt-2 audio-progress-container opacity-25">
+                   <div class="d-flex justify-content-between text-muted small mb-1">
+                      <span class="current-time">0:00</span>
+                      <span class="duration">0:00</span>
+                   </div>
+                   <div class="progress" style="height: 8px; cursor: pointer;">
+                      <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
+                   </div>
+                </div>
+                <div class="text-muted small">Playing on Global Media Manager</div>
+              </div>
+            </div>
+          </div>
+        `
+        const btnPlay = div.querySelector('.btn-big-play')
+        btnPlay.onclick = () => {
+          if ($state.currentMedia && $state.currentMedia.id === item.id) {
+            $bus.emit('MEDIA:TOGGLE')
+          } else {
+            $bus.emit('MEDIA:PLAY', {
+              mediaId: item.id,
+              type: 'music'
+            })
+          }
+        }
+
+        const progress = div.querySelector('.progress')
+        progress.onclick = (e) => {
+          if ($state.currentMedia && $state.currentMedia.id === item.id) {
+            const rect = progress.getBoundingClientRect()
+            const percent = ((e.clientX - rect.left) / rect.width) * 100
+            $bus.emit('MEDIA:SEEK', { percent })
+          }
+        }
+
+        return div
+      }
+
+      const fetchNextBatch = async () => {
+        if (!hasMore) {
+          return []
+        }
+        let query = $localDb.local_assets.where('mime_type').startsWith('audio/').reverse()
+        const allMatching = await query.toArray()
+        let startIndex = 0
+        if (lastTimestamp) {
+          startIndex = allMatching.findIndex(a => a.created_at === lastTimestamp) + 1
+        }
+        const rawItems = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+        if (rawItems.length < BATCH_SIZE) {
+          hasMore = false
+        }
+        if (rawItems.length > 0) {
+          lastTimestamp = rawItems[rawItems.length - 1].created_at
+          loadedItems = [...loadedItems, ...rawItems]
+        }
+        return rawItems
+      }
+
+      const renderBatch = (items, activeId) => {
+        items.forEach(item => {
+          const isActive = item.id === activeId
+          const el = createCarouselItem(item, isActive)
+          carouselInner.appendChild(el)
+          if (isActive) {
+            state.fileName = item.filename || item.name || 'Audio File'
+            updateItemUI(item, el)
+          }
+        })
+      }
+
+      const initCarousel = async () => {
+        cleanup()
+        carouselInner.innerHTML = ''
+        loadedItems = []
+        lastTimestamp = null
+        hasMore = true
+
+        const activeId = $state.activeSelectionId
+        while (!loadedItems.find(i => i.id === activeId) && hasMore) {
+          await fetchNextBatch()
+        }
+
+        renderBatch(loadedItems, activeId)
+  
+        carouselInstance = new Carousel(carouselEl, {
+          interval: false,
+          touch: true,
+          wrap: false
+        })
+
+        carouselEl.addEventListener('slid.bs.carousel', (e) => {
+          const activeItem = e.relatedTarget
+          const id = activeItem.dataset.id
+          const item = loadedItems.find(i => i.id === id)
+          if (item) {
+            isInternalChange = true
+            $state.activeSelectionId = id
+            state.fileName = item.filename || item.name || 'Audio File'
+            updateItemUI(item, activeItem)
+            isInternalChange = false
+          }
+          const index = loadedItems.findIndex(i => i.id === id)
+          if (index >= loadedItems.length - 3 && hasMore) {
+            fetchNextBatch().then(batch => renderBatch(batch, null))
+          }
+        })
+      }
+
+      btnPrev.onclick = () => carouselInstance?.prev()
+      btnNext.onclick = async () => {
+        const activeItem = carouselInner.querySelector('.carousel-item.active')
+        if (!activeItem) {
           return
         }
-
-        if ($state.currentMedia && $state.currentMedia.id === id) {
-          $bus.emit('MEDIA:TOGGLE')
+        const id = activeItem.dataset.id
+        const index = loadedItems.findIndex(i => i.id === id)
+  
+        if (index === loadedItems.length - 1 && hasMore) {
+          const nextBatch = await fetchNextBatch()
+          if (nextBatch.length > 0) {
+            renderBatch(nextBatch, null)
+            setTimeout(() => carouselInstance?.next(), 0)
+          }
         } else {
-          $bus.emit('MEDIA:PLAY', {
-            mediaId: id,
-            type: 'music'
-          })
+          carouselInstance?.next()
+        }
+      }
+
+      $state.subscribe('activeSelectionId', (id) => {
+        if (isInternalChange || $state.activeSelectionType !== 'music') {
+          return
+        }
+        const index = loadedItems.findIndex(i => i.id === id)
+        if (index !== -1) {
+          carouselInstance?.to(index)
+        } else {
+          initCarousel()
         }
       })
 
-      progressContainer.addEventListener('click', (e) => {
-        const rect = progressContainer.getBoundingClientRect()
-        const percent = ((e.clientX - rect.left) / rect.width) * 100
-        $bus.emit('MEDIA:SEEK', { percent })
+      $state.subscribe('activeSelectionType', (type) => {
+        if (type === 'music') {
+          initCarousel()
+        }
       })
 
-      const debouncedSync = $utils.debounce(syncUI, 50)
-      debouncedSync()
+      const syncAll = () => {
+        const activeItem = carouselInner.querySelector('.carousel-item.active')
+        if (activeItem) {
+          syncPlaybackState(activeItem.dataset.id, activeItem)
+        }
+      }
 
-      $state.subscribe('activeSelectionId', debouncedSync)
-      $state.subscribe('activeSelectionType', debouncedSync)
-      $state.subscribe('currentMedia', (val) => {
-        state.currentMediaId = val?.id
-        state.isPlayingThis = (state.currentMediaId === $state.activeSelectionId)
-      })
-      $state.subscribe('playbackStatus', (val) => {
-        state.playbackStatus = val || 'idle'
-        state.isPlayingThis = (state.currentMediaId === $state.activeSelectionId)
-      })
-      $state.subscribe('mediaProgress', (val) => state.mediaProgress = val)
-      $state.subscribe('mediaCurrentTime', (val) => state.mediaCurrentTime = val)
-      $state.subscribe('mediaDuration', (val) => state.mediaDuration = val)
+      $state.subscribe('playbackStatus', syncAll)
+      $state.subscribe('currentMedia', syncAll)
+      $state.subscribe('mediaProgress', syncAll)
+      $state.subscribe('mediaCurrentTime', syncAll)
+      $state.subscribe('mediaDuration', syncAll)
+
+      if ($state.activeSelectionType === 'music') {
+        initCarousel()
+      }
     }
   })
 </script>
