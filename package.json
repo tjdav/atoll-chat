@@ -41,6 +41,7 @@
     "bootstrap": "^5.3.8",
     "dexie": "^4.4.3",
     "emoji-picker-element": "^1.29.1",
+    "fuse.js": "^7.4.2",
     "idb": "^8.0.3",
     "isomorphic-dompurify": "^3.0.0",
     "libsodium-sumo": "^0.8.4",

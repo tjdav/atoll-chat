@@ -6,6 +6,17 @@
         <i class="bi bi-plus-lg"></i>
       </button>
     </header>
+    <div class="p-2 border-bottom bg-body" ref="searchContainer" style="display: none;">
+      <div class="input-group input-group-sm">
+        <span class="input-group-text bg-body border-end-0 border-radius-start-pill ps-3">
+          <i class="bi bi-search text-muted"></i>
+        </span>
+        <input type="text" 
+               class="form-control bg-body border-start-0 border-radius-end-pill pe-3" 
+               placeholder="Search..." 
+               ref="searchInput">
+      </div>
+    </div>
     <div class="flex-grow-1 overflow-hidden" ref="listContainer">
       <!-- Specialized list components will be mounted here -->
     </div>
@@ -25,6 +36,7 @@
       const { $state } = globalStore
       const { $bus } = eventBus
       state.currentAppView = $state.currentAppView || 'chats'
+      $state.listSearchQuery = ''
 
       // Clear registration div on client mount to avoid duplicate elements in DOM
       const regDiv = refs('registrationDiv')
@@ -37,6 +49,8 @@
         const container = refs('listContainer')
         const titleRef = refs('paneTitle')
         const btnCreateRoom = refs('btnCreateRoom')
+        const searchContainer = refs('searchContainer')
+        const searchInput = refs('searchInput')
 
         if (!container) {
           return
@@ -50,6 +64,18 @@
         // Update Create Room Button visibility
         if (btnCreateRoom) {
           btnCreateRoom.style.display = (view === 'chats') ? 'block' : 'none'
+        }
+
+        // Update Search visibility
+        const searchableViews = ['chats', 'pictures', 'videos', 'music', 'documents']
+        if (searchContainer) {
+          searchContainer.style.display = searchableViews.includes(view) ? 'block' : 'none'
+        }
+
+        // Reset search on view change
+        $state.listSearchQuery = ''
+        if (searchInput) {
+          searchInput.value = ''
         }
 
         // Clear container
@@ -67,8 +93,6 @@
           componentName = 'music-list'
         } else if (view === 'documents') {
           componentName = 'document-list'
-        } else if (view === 'links') {
-          componentName = 'link-list'
         } else if (view === 'media-engine') {
           componentName = 'media-engine'
         } else if (view === 'settings') {
@@ -96,6 +120,14 @@
 
       // Initial render
       updateView()
+
+      // Handle Search Input
+      const searchInput = refs('searchInput')
+      if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+          $state.listSearchQuery = e.target.value.toLowerCase()
+        })
+      }
 
       // Handle Create Room button click
       const btnCreateRoom = refs('btnCreateRoom')

@@ -25,3 +25,13 @@
     max-width: 100% !important;
   }
 }
+
+.border-radius-start-pill {
+  border-top-left-radius: 50rem !important;
+  border-bottom-left-radius: 50rem !important;
+}
+
+.border-radius-end-pill {
+  border-top-right-radius: 50rem !important;
+  border-bottom-right-radius: 50rem !important;
+}

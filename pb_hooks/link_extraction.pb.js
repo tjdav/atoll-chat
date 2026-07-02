@@ -23,10 +23,10 @@ routerAdd('GET', '/api/link-extraction', (e) => {
 
     // Truncate HTML to 100KB to prevent memory exhaustion and limit regex processing
     let html = (res.text || '').substring(0, 100000)
-    
+
     if (!html && res.raw) {
-       // Fallback for some PocketBase versions where res.text might be empty but res.raw exists
-       html = res.raw.substring(0, 100000)
+      // Fallback for some PocketBase versions where res.text might be empty but res.raw exists
+      html = res.raw.substring(0, 100000)
     }
 
     let title = ''

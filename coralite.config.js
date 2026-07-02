@@ -10,6 +10,7 @@ import webrtcPlugin from './src/plugins/web-rtc-plugin.js'
 import bootstrapPlugin from './src/plugins/bootstrap.js'
 import emojiPlugin from './src/plugins/emoji-picker-plugin.js'
 import routerPlugin from './src/plugins/router-plugin.js'
+import fusePlugin from './src/plugins/fuse-plugin.js'
 
 const pocketbaseBaseUrl = process.env.DATABASE_URL || 'http://localhost:8090'
 
@@ -55,6 +56,7 @@ export default defineConfig({
     syncPlugin(),
     routerPlugin(),
     emojiPlugin,
+    fusePlugin(),
     bootstrapPlugin,
     webrtcPlugin()
   ],

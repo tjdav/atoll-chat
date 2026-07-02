@@ -81,12 +81,16 @@
       let currentLinkId = null
 
       const loadLink = async (linkId) => {
-        if (!linkId || $state.activeSelectionType !== 'links') return
+        if (!linkId || $state.activeSelectionType !== 'links') {
+          return
+        }
         currentLinkId = linkId
 
         try {
           const msg = await $localDb.local_messages.get(linkId)
-          if (!msg) return
+          if (!msg) {
+            return
+          }
 
           state.title = msg.link_title || 'Untitled Link'
           state.summary = msg.link_summary || ''
@@ -96,7 +100,7 @@
 
           const room = await $localDb.local_rooms.get(msg.room_id)
           state.roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
-          
+  
           if (room && room.participants) {
             const sender = room.participants.find(p => p.id === msg.sender_id)
             state.senderName = sender ? (sender.username || sender.name || 'Unknown') : 'Unknown'
@@ -147,13 +151,15 @@
       if (btnJump) {
         btnJump.onclick = async () => {
           const linkId = $state.activeSelectionId
-          if (!linkId) return
+          if (!linkId) {
+            return
+          }
           const msg = await $localDb.local_messages.get(linkId)
           if (msg) {
             $state.currentAppView = 'chats'
             $state.activeSelectionId = msg.room_id
             $state.activeSelectionType = 'chats'
-            
+  
             // Wait for timeline to mount and then emit scroll
             setTimeout(() => {
               $bus.emit('SCROLL_TO_MESSAGE', { messageId: linkId })

@@ -468,21 +468,26 @@
 
       $bus.on('SCROLL_TO_MESSAGE', async (payload) => {
         const { messageId } = payload
-        if (!messageId) return
+        if (!messageId) {
+          return
+        }
 
         // 1. Check if it's already rendered
-        let row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) || 
+        let row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
                   container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
-        
+  
         if (!row) {
           // If not rendered, we might need to wait for renderTimeline
           await renderTimeline()
-          row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) || 
+          row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
                 container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
         }
 
         if (row) {
-          row.scrollIntoView({ behavior: 'smooth', block: 'center' })
+          row.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center'
+          })
         }
       })
     }

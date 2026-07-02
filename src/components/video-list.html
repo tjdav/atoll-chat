@@ -1,5 +1,5 @@
 <template id="video-list">
-  <div class="video-list h-100 overflow-y-auto p-3">
+  <div class="video-list h-100 overflow-y-auto p-3" ref="root">
     <div class="row row-cols-2 g-3" ref="gridContainer">
       <!-- Videos will be rendered here -->
     </div>
@@ -10,84 +10,154 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils, fuse }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $utils } = utils
+      const { $Fuse } = fuse
       const gridContainer = refs('gridContainer')
+      const rootEl = refs('root')
+
+      let loadedItems = []
+      let lastTimestamp = null
+      let hasMore = true
+      let fuseInstance = null
+      let lastIndexedCount = 0
+      const BATCH_SIZE = 24
 
       let currentRenderId = 0
+
+      const fetchNextBatch = async () => {
+        if (!hasMore) {
+          return
+        }
+
+        let query = $localDb.local_assets.where('mime_type').startsWith('video/').reverse()
+        const allMatching = await query.toArray()
+        let startIndex = 0
+        if (lastTimestamp) {
+          startIndex = allMatching.findIndex(a => a.created_at === lastTimestamp) + 1
+        }
+
+        const rawItems = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+  
+        if (rawItems.length < BATCH_SIZE) {
+          hasMore = false
+        }
+
+        if (rawItems.length > 0) {
+          lastTimestamp = rawItems[rawItems.length - 1].created_at
+          loadedItems = [...loadedItems, ...rawItems]
+        }
+      }
+
       const render = async () => {
         if (!gridContainer) {
           return
         }
 
         const renderId = ++currentRenderId
-        try {
-          const rawItems = await $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at')
-          if (renderId !== currentRenderId) {
-            return
-          }
 
-          if (rawItems.length === 0) {
-            gridContainer.innerHTML = '<div class="col-12 p-4 text-center text-muted">No videos found</div>'
-            return
-          }
-
-          const fragment = document.createDocumentFragment()
-          rawItems.forEach(item => {
-            const dt = new Date(item.created_at)
-            const dateStr = dt.toLocaleDateString()
-            const timeStr = dt.toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            })
-            const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos'
-
-            const card = document.createElement('media-grid-card')
-            card.setAttribute('asset-id', item.id)
-            card.setAttribute('media-id', item.media_id)
-            card.setAttribute('mime-type', item.mime_type)
-            card.setAttribute('is-active', isActive)
-            card.setAttribute('type', 'videos')
-            card.setAttribute('date-str', dateStr)
-            card.setAttribute('time-str', timeStr)
-            card.setAttribute('file-key', item.file_key)
-            card.setAttribute('file-nonce', item.file_nonce)
-            fragment.appendChild(card)
-          })
-
-          if (renderId === currentRenderId) {
-            gridContainer.innerHTML = ''
-            gridContainer.appendChild(fragment)
-          }
-        } catch (error) {
-          console.error('[video-list] Error fetching videos:', error)
+        if (loadedItems.length === 0) {
+          await fetchNextBatch()
         }
+
+        if (renderId !== currentRenderId) {
+          return
+        }
+
+        let itemsToDisplay = loadedItems
+        const query = $state.listSearchQuery
+
+        if (query) {
+          if (!fuseInstance || lastIndexedCount !== loadedItems.length) {
+            fuseInstance = new $Fuse(loadedItems, {
+              keys: ['filename'],
+              threshold: 0.3
+            })
+          }
+          itemsToDisplay = fuseInstance.search(query).map(r => r.item)
+        }
+
+        if (itemsToDisplay.length === 0) {
+          gridContainer.innerHTML = `<div class="col-12 p-4 text-center text-muted">${query ? 'No matches found in loaded videos' : 'No videos found'}</div>`
+          return
+        }
+
+        const fragment = document.createDocumentFragment()
+        itemsToDisplay.forEach(item => {
+          const dt = new Date(item.created_at)
+          const dateStr = dt.toLocaleDateString()
+          const timeStr = dt.toLocaleTimeString([], {
+            hour: '2-digit',
+            minute: '2-digit'
+          })
+          const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos'
+
+          const card = document.createElement('media-grid-card')
+          card.setAttribute('asset-id', item.id)
+          card.setAttribute('media-id', item.media_id)
+          card.setAttribute('mime-type', item.mime_type)
+          card.setAttribute('is-active', isActive)
+          card.setAttribute('type', 'videos')
+          card.setAttribute('date-str', dateStr)
+          card.setAttribute('time-str', timeStr)
+          card.setAttribute('file-key', item.file_key)
+          card.setAttribute('file-nonce', item.file_nonce)
+          fragment.appendChild(card)
+        })
+
+        if (renderId === currentRenderId) {
+          gridContainer.innerHTML = ''
+          gridContainer.appendChild(fragment)
+        }
+      }
+
+      const resetAndRender = async () => {
+        loadedItems = []
+        lastTimestamp = null
+        hasMore = true
+        await render()
+      }
+
+      // Infinite Scroll Logic
+      if (rootEl) {
+        rootEl.addEventListener('scroll', async () => {
+          if (rootEl.scrollTop + rootEl.clientHeight >= rootEl.scrollHeight - 50) {
+            if (hasMore) {
+              await fetchNextBatch()
+              render()
+            }
+          }
+        })
       }
 
       // Initial render
       render()
 
-      const debouncedRender = $utils.debounce(render, 10)
+      const debouncedRender = $utils.debounce(render, 50)
+      const debouncedFullRender = $utils.debounce(resetAndRender, 50)
 
       // Handle selection change
       $state.subscribe('activeSelectionId', () => {
         if ($state.activeSelectionType === 'videos') {
-          debouncedRender()
+          render()
         }
       })
       $state.subscribe('activeSelectionType', () => {
+        render()
+      })
+
+      $state.subscribe('listSearchQuery', () => {
         debouncedRender()
       })
 
       const handleNewData = () => {
-        debouncedRender()
+        debouncedFullRender()
       }
 
       $bus.on('NEW_LOCAL_DATA', handleNewData)
     }
   })
 </script>
-

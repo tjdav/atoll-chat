@@ -14,8 +14,8 @@ test.describe('Link List', () => {
           domain: 'github.com',
           url: 'https://github.com/pocketbase/pocketbase'
         })
-      });
-    });
+      })
+    })
 
     // 2. Login Alice
     await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
@@ -27,7 +27,7 @@ test.describe('Link List', () => {
     const bobResult = page.locator('.search-result-item').filter({ hasText: 'bob' })
     await expect(bobResult).toBeVisible()
     await bobResult.click()
-    
+
     const btnCreate = page.locator('button:has-text("Create Room")')
     await expect(btnCreate).toBeEnabled()
     await btnCreate.click()
@@ -37,7 +37,7 @@ test.describe('Link List', () => {
     // 4. Alice sends a link
     const url = 'https://github.com/pocketbase/pocketbase'
     await page.fill('textarea[placeholder="Type a message..."]', `${url} `)
-    
+
     // Wait for preview to appear (mocked)
     await expect(page.locator('link-preview-input')).toBeVisible({ timeout: 10000 })
 
@@ -62,7 +62,7 @@ test.describe('Link List', () => {
 
     // 9. Click Jump to Chat
     await page.click('button:has-text("Jump to Chat")')
-    
+
     // 10. Verify we are back in chat and message is visible
     await expect(page.locator('chat-view')).toBeVisible()
     await expect(page.locator('link-preview')).toBeVisible()

@@ -1,5 +1,5 @@
 <template id="chat-list">
-  <div class="chat-list h-100 overflow-y-auto">
+  <div class="chat-list h-100 overflow-y-auto" ref="root">
     <div class="list-group list-group-flush" ref="listGroup">
       <!-- Chat items will be rendered here via script -->
     </div>
@@ -10,12 +10,21 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils, fuse }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $utils } = utils
+      const { $Fuse } = fuse
       const listGroup = refs('listGroup')
+      const rootEl = refs('root')
+
+      let loadedEnrichedItems = []
+      let lastItem = null
+      let hasMore = true
+      let fuseInstance = null
+      let lastIndexedCount = 0
+      const BATCH_SIZE = 24
 
       const getLatestMessage = async (roomId) => {
         const messages = await $localDb.local_messages
@@ -23,7 +32,6 @@
           .between([roomId, ''], [roomId, '\uffff'])
           .reverse()
           .toArray()
-  
         return messages.find(m => m.type !== 'reaction')
       }
 
@@ -40,11 +48,9 @@
             prefix = `${sender.username.split(' ')[0]}: `
           }
         }
-
         if (msg.type === 'text') {
           return `${prefix}${msg.content}`
         }
-
         const fallbacks = {
           image: 'Sent a photo.',
           video: 'Sent a video.',
@@ -52,7 +58,6 @@
           audio: 'Sent an audio file.',
           file: 'Sent an attachment.'
         }
-
         if (msg.type === 'media') {
           const mime = msg.mime_type || ''
           if (mime.startsWith('image/')) {
@@ -66,124 +71,128 @@
           }
           return `${prefix}${fallbacks.file}`
         }
-
         return `${prefix}${msg.content || ''}`
       }
 
       let currentRenderId = 0
+      const fetchNextBatch = async () => {
+        if (!hasMore) {
+          return
+        }
+        let query = $localDb.local_rooms.reverse()
+        if (lastItem) {
+          query = query.filter(item => item.updated_at < lastItem.updated_at)
+        }
+        const rawItems = await query.limit(BATCH_SIZE).toArray()
+        if (rawItems.length < BATCH_SIZE) {
+          hasMore = false
+        }
+        if (rawItems.length > 0) {
+          lastItem = rawItems[rawItems.length - 1]
+          const enriched = await Promise.all(rawItems.map(async (item) => {
+            const latestMsg = await getLatestMessage(item.id)
+            let roomName = ''
+            if (!item.is_group) {
+              const otherParticipants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
+              roomName = otherParticipants.length > 0 ? otherParticipants[0].username : (item.name || 'Direct Message')
+            } else {
+              roomName = item.name || 'Unnamed Group'
+            }
+            const previewText = getPreviewText(latestMsg, item.participants || [], item.is_group)
+            return {
+              item,
+              latestMsg,
+              roomName,
+              previewText,
+              searchContent: `${roomName} ${item.participants?.map(p => p.username).join(' ') || ''} ${previewText}`.toLowerCase()
+            }
+          }))
+          loadedEnrichedItems = [...loadedEnrichedItems, ...enriched]
+        }
+      }
+
       const render = async () => {
         if (!listGroup) {
           return
         }
-
         const renderId = ++currentRenderId
-        try {
-          const rawItems = await $localDb.local_rooms.reverse().sortBy('updated_at')
-          if (renderId !== currentRenderId) {
-            return
-          }
+        if (loadedEnrichedItems.length === 0) {
+          await fetchNextBatch()
+        }
+        if (renderId !== currentRenderId) {
+          return
+        }
 
-          if (rawItems.length === 0) {
-            listGroup.innerHTML = '<div class="p-4 text-center text-muted">No chats found</div>'
-            return
-          }
+        let itemsToDisplay = loadedEnrichedItems
+        const query = ($state.listSearchQuery || '').trim().toLowerCase()
 
-          const enriched = await Promise.all(rawItems.map(async (item) => {
-            const latestMsg = await getLatestMessage(item.id)
-            return {
-              item,
-              latestMsg
+        if (query && $Fuse) {
+          if (!fuseInstance || lastIndexedCount !== loadedEnrichedItems.length) {
+            fuseInstance = new $Fuse(loadedEnrichedItems, {
+              keys: ['searchContent'],
+              threshold: 0.4
+            })
+            lastIndexedCount = loadedEnrichedItems.length
+          }
+          itemsToDisplay = fuseInstance.search(query).map(r => r.item)
+        }
+
+        if (itemsToDisplay.length === 0) {
+          listGroup.innerHTML = `<div class="p-4 text-center text-muted">${query ? 'No matches found in loaded chats' : 'No chats found'}</div>`
+          return
+        }
+
+        const fragment = document.createDocumentFragment()
+        for (const { item, latestMsg, roomName, previewText } of itemsToDisplay) {
+          const me = item.participants?.find(p => p.id === $state.currentUser?.id)
+          const isUnread = latestMsg && latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id
+          let relativeTime = ''
+          if (latestMsg) {
+            const time = $utils.formatRelativeTime(latestMsg.created_at)
+            if (time) {
+              relativeTime = ` · ${time}`
             }
-          }))
-          if (renderId !== currentRenderId) {
-            return
           }
-
-          const fragment = document.createDocumentFragment()
-
-          for (const { item, latestMsg } of enriched) {
-            const me = item.participants?.find(p => p.id === $state.currentUser?.id)
-            const isUnread = latestMsg &&
-                             latestMsg.sender_id !== $state.currentUser?.id &&
-                             latestMsg.id !== me?.last_read_message_id
-
-            let roomName = ''
-
-            if (!item.is_group) {
-              // Handle direct messages
-              const otherParticipants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
-
-              if (otherParticipants.length > 0) {
-                roomName = otherParticipants[0].username
-              } else {
-                roomName = item.name || 'Direct Message'
-              }
-            } else {
-              // Handle groups
-              roomName = item.name || 'Unnamed Group'
-            }
-
-            const previewText = getPreviewText(latestMsg, item.participants || [], item.is_group)
-            let relativeTime = ''
-
-            if (latestMsg) {
-              const time = $utils.formatRelativeTime(latestMsg.created_at)
-              if (time) {
-                relativeTime = ` · ${time}`
-              }
-            } const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'chats'
-
-            const listItem = document.createElement('chat-list-item')
-  
-            listItem.setAttribute('room-id', item.id)
-            listItem.setAttribute('room-name', roomName)
-            listItem.setAttribute('preview-text', previewText)
-            listItem.setAttribute('relative-time', relativeTime)
-            listItem.setAttribute('is-unread', isUnread)
-            listItem.setAttribute('is-active', isActive)
-            listItem.setAttribute('is-group', item.is_group)
-            listItem.setAttribute('user-role', item.user_role)
-            listItem.setAttribute('participants-json', JSON.stringify(item.participants || []))
-
-            if (item.avatar) {
-              listItem.setAttribute('room-avatar', item.avatar)
-            }
-
-            fragment.appendChild(listItem)
+          const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'chats'
+          const listItem = document.createElement('chat-list-item')
+          listItem.setAttribute('room-id', item.id); listItem.setAttribute('room-name', roomName); listItem.setAttribute('preview-text', previewText)
+          listItem.setAttribute('relative-time', relativeTime); listItem.setAttribute('is-unread', isUnread); listItem.setAttribute('is-active', isActive)
+          listItem.setAttribute('is-group', item.is_group); listItem.setAttribute('user-role', item.user_role)
+          listItem.setAttribute('participants-json', JSON.stringify(item.participants || []))
+          if (item.avatar) {
+            listItem.setAttribute('room-avatar', item.avatar)
           }
-
-          if (renderId === currentRenderId) {
-            listGroup.innerHTML = ''
-            listGroup.appendChild(fragment)
-          }
-        } catch (error) {
-          console.error('[chat-list] Error fetching chats:', error)
+          fragment.appendChild(listItem)
+        }
+        if (renderId === currentRenderId) {
+          listGroup.innerHTML = ''; listGroup.appendChild(fragment)
         }
       }
 
-      // Initial render
+      const resetAndRender = async () => {
+        loadedEnrichedItems = []; lastItem = null; hasMore = true; fuseInstance = null; lastIndexedCount = 0; await render()
+      }
+
+      if (rootEl) {
+        rootEl.onscroll = async () => {
+          if (rootEl.scrollTop + rootEl.clientHeight >= rootEl.scrollHeight - 50 && hasMore) {
+            await fetchNextBatch(); render()
+          }
+        }
+      }
       render()
-
       const debouncedRender = $utils.debounce(render, 50)
-
-      // Handle selection change
+      const debouncedFullRender = $utils.debounce(resetAndRender, 50)
       $state.subscribe('activeSelectionId', () => {
         if ($state.activeSelectionType === 'chats') {
-          debouncedRender()
+          render()
         }
       })
-      $state.subscribe('activeSelectionType', () => {
-        debouncedRender()
-      })
-
-      const handleNewData = () => {
-        debouncedRender()
-      }
-
-      $bus.on('NEW_LOCAL_DATA', handleNewData)
-      $bus.on('NEW_LOCAL_ROOM', handleNewData)
-      $bus.on('ROOM_READ_STATE_CHANGED', handleNewData)
+      $state.subscribe('activeSelectionType', () => render())
+      $state.subscribe('listSearchQuery', () => debouncedRender())
+      $bus.on('NEW_LOCAL_DATA', () => debouncedFullRender())
+      $bus.on('NEW_LOCAL_ROOM', () => debouncedFullRender())
+      $bus.on('ROOM_READ_STATE_CHANGED', () => debouncedFullRender())
     }
   })
 </script>
-
