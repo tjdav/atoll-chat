@@ -22,10 +22,10 @@ async function init () {
     await sodium.ready
 
     db = new Dexie('AtollChatDB')
-    db.version(8).stores({
+    db.version(9).stores({
       local_rooms: 'id, is_group, updated_at',
       local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, target_id',
-      local_assets: 'id, room_id, mime_type, created_at',
+      local_assets: 'id, room_id, message_id, mime_type, created_at',
       local_config: 'key'
     })
 
@@ -379,6 +379,7 @@ async function sendMessage (rpcId, payload) {
       id: mediaId,
       media_id: mediaId,
       room_id: roomId,
+      message_id: localUuid,
       filename: filename,
       mime_type: mime_type,
       file_key: fileKeyBase64,
@@ -585,6 +586,7 @@ async function processIncomingMessage (rpcId, record) {
       id: media_id,
       media_id,
       room_id: roomId,
+      message_id: decryptedMessage.local_uuid,
       filename,
       mime_type,
       file_key,

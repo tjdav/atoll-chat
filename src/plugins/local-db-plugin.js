@@ -16,10 +16,10 @@ export default function localDbPlugin () {
         const dbInstance = new Dexie('AtollChatDB')
 
         // Define the database schema.
-        dbInstance.version(8).stores({
+        dbInstance.version(9).stores({
           local_rooms: 'id, is_group, updated_at',
           local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, target_id',
-          local_assets: 'id, room_id, mime_type, created_at',
+          local_assets: 'id, room_id, message_id, mime_type, created_at',
           local_config: 'key'
         })
 

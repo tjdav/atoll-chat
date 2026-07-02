@@ -1,5 +1,13 @@
 <template id="document-viewer">
-  <div class="document-viewer-container d-flex justify-content-center align-items-center h-100 bg-body-secondary">
+  <div class="document-viewer-container d-flex flex-column h-100 bg-body-secondary">
+    <viewer-header 
+      title="Document Details" 
+      subtitle="{{ fileName }}" 
+      icon="bi-file-earmark-fill"
+      theme="light">
+    </viewer-header>
+
+    <div class="flex-grow-1 d-flex justify-content-center align-items-center overflow-hidden position-relative">
     <div ref="loader" class="spinner-border text-primary" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
@@ -21,6 +29,7 @@
         </a>
       </div>
     </div>
+    </div>
   </div>
 </template>
 
@@ -29,7 +38,8 @@
 
   export default defineComponent({
     server: () => ({
-      errorMessage: ''
+      errorMessage: '',
+      fileName: ''
     }),
     client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils }) => {
       const { pb } = pocketbase
@@ -101,6 +111,7 @@
           if (!asset) {
             throw new Error('Document asset not found in local database')
           }
+          state.fileName = asset.filename || 'Untitled Document'
 
           const mediaRecord = await pb.collection('media').getOne(asset.media_id)
           const url = pb.files.getURL(mediaRecord, mediaRecord.file)

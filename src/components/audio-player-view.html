@@ -1,5 +1,13 @@
 <template id="audio-player-view">
-  <div class="audio-player-container d-flex flex-column justify-content-center align-items-center h-100 bg-body-secondary p-4">
+  <div class="audio-player-container d-flex flex-column h-100 bg-body-secondary">
+    <viewer-header 
+      title="Audio Details" 
+      subtitle="{{ fileName }}" 
+      icon="bi-music-note-beamed"
+      theme="light">
+    </viewer-header>
+
+    <div class="flex-grow-1 d-flex flex-column justify-content-center align-items-center p-4 overflow-hidden position-relative">
     <div class="spinner-border text-primary mb-3" ref="loader" role="status">
       <span class="visually-hidden">Loading...</span>
     </div>
@@ -40,6 +48,7 @@
            Playing on Global Media Manager
         </div>
       </div>
+    </div>
     </div>
   </div>
 </template>
@@ -117,7 +126,7 @@
 
           const room = await $localDb.local_rooms.get(asset.room_id)
           state.roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
-          state.fileName = asset.name || 'Audio File'
+          state.fileName = asset.filename || asset.name || 'Audio File'
           state.artistAlbum = asset.artist ? `${asset.artist}${asset.album ? ' • ' + asset.album : ''}` : ''
 
           // If this is the current media, update big play icon

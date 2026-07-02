@@ -98,10 +98,10 @@ self.addEventListener('push', (event) => {
     try {
       // 1. Initialize Database
       const db = new Dexie('AtollChatDB')
-      db.version(3).stores({
+      db.version(9).stores({
         local_rooms: 'id, is_group, updated_at',
-        local_messages: 'id, room_id, created_at, [room_id+created_at], type',
-        local_assets: 'id, room_id, mime_type, created_at',
+        local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, target_id',
+        local_assets: 'id, room_id, message_id, mime_type, created_at',
         local_config: 'key'
       })
 

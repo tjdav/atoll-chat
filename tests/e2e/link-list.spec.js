@@ -61,7 +61,7 @@ test.describe('Link List', () => {
     await expect(page.locator('link-viewer .card-title')).toContainText('PocketBase')
 
     // 9. Click Jump to Chat
-    await page.click('button:has-text("Jump to Chat")')
+    await page.click('link-viewer jump-to-chat button')
 
     // 10. Verify we are back in chat and message is visible
     await expect(page.locator('chat-view')).toBeVisible()

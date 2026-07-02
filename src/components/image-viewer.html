@@ -1,14 +1,23 @@
 <template id="image-viewer">
-  <div class="image-viewer-container d-flex justify-content-center align-items-center h-100 bg-black position-relative w-100">
-    <div class="spinner-border text-primary" ref="loader" role="status">
-      <span class="visually-hidden">Loading...</span>
-    </div>
+  <div class="image-viewer-container d-flex flex-column h-100 bg-black position-relative w-100">
+    <viewer-header 
+      title="Image Details" 
+      subtitle="{{ fileName }}" 
+      icon="bi-image"
+      theme="dark">
+    </viewer-header>
+
+    <div class="flex-grow-1 d-flex justify-content-center align-items-center overflow-hidden position-relative">
+      <div class="spinner-border text-primary" ref="loader" role="status">
+        <span class="visually-hidden">Loading...</span>
+      </div>
     
     <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}">
       {{ errorMessage }}
     </div>
 
-    <img ref="mediaDisplay" class="d-none img-fluid h-100 object-fit-contain" alt="Decrypted image">
+      <img ref="mediaDisplay" class="d-none img-fluid h-100 object-fit-contain" alt="Decrypted image">
+    </div>
   </div>
 </template>
 
@@ -19,7 +28,8 @@
   export default defineComponent({
     server: () => ({
       isErrorHidden: true,
-      errorMessage: ''
+      errorMessage: '',
+      fileName: ''
     }),
     client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils }) => {
       const { pb } = pocketbase
@@ -62,6 +72,7 @@
           if (!asset) {
             throw new Error('Media asset not found in local database')
           }
+          state.fileName = asset.filename || 'Untitled Image'
 
           // Fetch the media record to get the actual filename (e.g. encrypted_XYZ.bin)
           const mediaRecord = await pb.collection('media').getOne(asset.media_id)
