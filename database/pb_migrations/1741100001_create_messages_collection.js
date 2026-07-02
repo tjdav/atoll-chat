@@ -3,6 +3,7 @@ migrate((app) => {
   const users = app.findCollectionByNameOrId('users')
 
   const collection = new Collection({
+    id: 'pbc_2605467279',
     name: 'messages',
     type: 'base',
     listRule: "@request.auth.id != ''",

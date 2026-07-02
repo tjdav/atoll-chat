@@ -1,6 +1,7 @@
 /// <reference path="../pb_data/types.d.ts" />
 migrate((app) => {
   const rooms = new Collection({
+    id: 'pbc_3085411453',
     name: 'rooms',
     type: 'base',
     listRule: '@request.auth.id != ""',
@@ -38,6 +39,7 @@ migrate((app) => {
   const users = app.findCollectionByNameOrId('users')
 
   const roomMembers = new Collection({
+    id: 'pbc_4263127577',
     name: 'room_members',
     type: 'base',
     listRule: '@request.auth.id != ""',

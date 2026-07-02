@@ -1,6 +1,7 @@
 /// <reference path="../pb_data/types.d.ts" />
 migrate((app) => {
   const media = new Collection({
+    id: 'pbc_2708086759',
     name: 'media',
     type: 'base',
     listRule: '@request.auth.id != ""',
