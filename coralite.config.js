@@ -49,7 +49,9 @@ export default defineConfig({
         currentMessageText: '',
         callStatus: 'idle',
         activeCallRoomId: null,
-        notificationsEnabled: true
+        notificationsEnabled: true,
+        messageSoundsEnabled: true,
+        callSoundsEnabled: true
       }
     }),
     localDbPlugin(),

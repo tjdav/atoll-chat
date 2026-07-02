@@ -14,6 +14,30 @@ export default definePlugin({
         const { $localDb } = instanceContext.localDb
         const { pb } = instanceContext.pocketbase
 
+        const playMessageSound = async () => {
+          if (!$state.messageSoundsEnabled) {
+            return
+          }
+
+          try {
+            let audioSource = '/sounds/notification.mp3'
+            const customSound = await $localDb.local_config.get('custom_message_sound')
+            if (customSound && customSound.value instanceof Blob) {
+              audioSource = URL.createObjectURL(customSound.value)
+            }
+
+            const audio = new Audio(audioSource)
+            audio.volume = $state.mediaVolume || 1.0
+            await audio.play()
+
+            if (audioSource.startsWith('blob:')) {
+              audio.onended = () => URL.revokeObjectURL(audioSource)
+            }
+          } catch (err) {
+            console.error('[notification-plugin] Failed to play message sound:', err)
+          }
+        }
+
         const requestPermission = async () => {
           if (!('Notification' in window)) {
             console.warn('This browser does not support notifications.')
@@ -129,6 +153,17 @@ export default definePlugin({
 
         $bus.on('NEW_LOCAL_DATA', (payload) => {
           showNotification(payload)
+          // Play sound if not suppressed by notification logic
+          if ($state.messageSoundsEnabled && payload.message?.sender_id !== $state.currentUser?.id) {
+            // Logic similar to showNotification for suppression
+            const isSuppressed = document.visibilityState === 'visible' &&
+              $state.currentAppView === 'chats' &&
+              $state.activeSelectionId === payload.room_id
+
+            if (!isSuppressed) {
+              playMessageSound()
+            }
+          }
         })
 
         return {

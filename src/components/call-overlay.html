@@ -132,9 +132,43 @@
       }
 
       // Sync local state with global state
+      let ringtoneAudio = null
+
       state.callStatus = $state.callStatus
       $state.isAudioEnabled = state.isAudioEnabled
       $state.isVideoEnabled = state.isVideoEnabled
+
+      const stopRingtone = () => {
+        if (ringtoneAudio) {
+          ringtoneAudio.pause()
+          ringtoneAudio.currentTime = 0
+          if (ringtoneAudio.src.startsWith('blob:')) {
+            URL.revokeObjectURL(ringtoneAudio.src)
+          }
+          ringtoneAudio = null
+        }
+      }
+
+      const playRingtone = async () => {
+        if (!$state.callSoundsEnabled || ringtoneAudio) {
+          return
+        }
+
+        try {
+          let audioSource = '/sounds/ringtone.mp3'
+          const customSound = await $localDb.local_config.get('custom_call_sound')
+          if (customSound && customSound.value instanceof Blob) {
+            audioSource = URL.createObjectURL(customSound.value)
+          }
+
+          ringtoneAudio = new Audio(audioSource)
+          ringtoneAudio.loop = true
+          ringtoneAudio.volume = $state.mediaVolume || 1.0
+          await ringtoneAudio.play()
+        } catch (err) {
+          console.error('[call-overlay] Failed to play ringtone:', err)
+        }
+      }
 
       updateModalVisibility(state.callStatus, state.isPipMode)
 
@@ -188,10 +222,16 @@
 
       $state.subscribe('callStatus', (val) => {
         state.callStatus = val
+        if (val === 'idle' || val === 'active') {
+          stopRingtone()
+        }
         if (val === 'idle') {
           state.isPipMode = false
           // Reset PiP position
           $bus.emit('PIP:RESET_POSITION')
+        }
+        if (val === 'incoming') {
+          playRingtone()
         }
         updateModalVisibility(val, state.isPipMode)
         syncVideoGrid()
@@ -301,6 +341,7 @@
       // Cleanup on unmount
       signal.addEventListener('abort', () => {
         stopTracks()
+        stopRingtone()
         modal.dispose()
       })
     }
