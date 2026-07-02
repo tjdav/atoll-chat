@@ -9,7 +9,7 @@ routerAdd('GET', '/api/link-extraction', (e) => {
       url: url,
       method: 'GET',
       headers: {
-        'User-Agent': 'AtollChat-Proxy/1.0'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
       },
       timeout: 10
     })
@@ -23,6 +23,11 @@ routerAdd('GET', '/api/link-extraction', (e) => {
 
     // Truncate HTML to 100KB to prevent memory exhaustion and limit regex processing
     let html = (res.text || '').substring(0, 100000)
+    
+    if (!html && res.raw) {
+       // Fallback for some PocketBase versions where res.text might be empty but res.raw exists
+       html = res.raw.substring(0, 100000)
+    }
 
     let title = ''
     let description = ''
@@ -31,9 +36,11 @@ routerAdd('GET', '/api/link-extraction', (e) => {
     // Helper to extract attribute value from a tag string
     const getAttr = (tag, attr) => {
       // Robust match that handles specific quote types to allow mixed quotes in content
-      const match = tag.match(new RegExp(`${attr}\\s*=\\s*(?:"([^"]{0,2048}?)"|'([^']{0,2048}?)')`, 'i'))
+      const match = tag.match(new RegExp(`${attr}\\s*=\\s*(?:"([^"]{0,2048}?)"|'([^']{0,2048}?)'|([^\\s>]{1,2048}))`, 'i'))
       if (match) {
-        return match[1] || match[2] || ''
+        let val = match[1] || match[2] || match[3] || ''
+        // Unescape common HTML entities that might be in attribute values
+        return val.replace(/&quot;/g, '"').replace(/&apos;/g, "'").replace(/&amp;/g, '&')
       }
       return null
     }

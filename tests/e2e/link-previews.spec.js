@@ -70,7 +70,7 @@ test.describe('Link Previews', () => {
     await expect(page.locator('link-preview-input')).not.toBeVisible()
 
     // Send
-    await page.click('button:has-text("Send")')
+    await page.click('[data-testid$="__sendButton"]')
 
     // Verify no link preview in timeline, only text
     await expect(page.locator('timeline-row').filter({ hasText: 'example.com' })).toBeVisible()
