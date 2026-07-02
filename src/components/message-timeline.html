@@ -127,23 +127,7 @@
             container.removeChild(emptyState)
           }
 
-          let messagesToRender = messages
-          if (lastRenderedMessageId) {
-            const lastIdx = messages.findIndex(m => (m.id || m.local_uuid) === lastRenderedMessageId)
-            if (lastIdx !== -1) {
-              messagesToRender = messages.slice(lastIdx + 1)
-            }
-          }
-
-          if (messagesToRender.length === 0) {
-            return
-          }
-
-          // Double check to prevent duplicate appending if multiple calls overlapping
-          const existingRows = Array.from(container.querySelectorAll('timeline-row'))
-          const existingIds = new Set(existingRows.map(el => el.dataset.messageId || el.dataset.localUuid))
-
-          // Update status of existing rows (e.g. pending -> sent)
+          // Update status of already rendered messages
           messages.forEach(m => {
             const row = container.querySelector(`timeline-row[data-local-uuid="${m.local_uuid}"]`)
             if (row) {
@@ -165,6 +149,19 @@
             }
           })
 
+          // Identify new messages to render
+          let messagesToRender = messages
+          if (lastRenderedMessageId) {
+            const lastIdx = messages.findIndex(m => (m.id || m.local_uuid) === lastRenderedMessageId)
+            if (lastIdx !== -1) {
+              messagesToRender = messages.slice(lastIdx + 1)
+            }
+          }
+
+          // Double check to prevent duplicate appending if multiple calls overlapping
+          const existingRows = Array.from(container.querySelectorAll('timeline-row'))
+          const existingIds = new Set(existingRows.map(el => el.dataset.messageId || el.dataset.localUuid))
+
           messagesToRender = messagesToRender.filter(m => {
             if (m.type === 'ice_candidate' || m.type === 'reaction') {
               return false
@@ -174,12 +171,8 @@
             return !hasId && !hasUuid
           })
 
-          if (messagesToRender.length === 0) {
-            return
-          }
-
           // Before appending, update the previously last message's styling
-          if (lastRenderedMessageId) {
+          if (lastRenderedMessageId && messagesToRender.length > 0) {
             const prevLastRow = container.querySelector(`timeline-row[data-message-id="${lastRenderedMessageId}"]`) || container.querySelector(`timeline-row[data-local-uuid="${lastRenderedMessageId}"]`)
             if (prevLastRow) {
               const firstNew = messagesToRender[0]
@@ -381,14 +374,14 @@
             lastRenderedMessageId = message.id || message.local_uuid
           })
 
-          // Update and append status container
+          // Update and re-append global status indicator
           const lastMessage = messages[messages.length - 1]
           if (lastMessage && lastMessage.sender_id === $state.currentUser?.id) {
             statusContainer.classList.remove('d-none')
             statusText.textContent = lastMessage.status === 'pending' ? 'Sending...' : 'Sent'
-  
             statusIcon.className = lastMessage.status === 'pending' ? 'bi bi-circle text-muted' : 'bi bi-check text-muted'
   
+            // Always move to end
             container.appendChild(statusContainer)
           } else {
             statusContainer.classList.add('d-none')
