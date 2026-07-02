@@ -4,9 +4,15 @@
       <h3 class="card-title mb-3">Unlock Your Vault</h3>
       <p class="text-muted small mb-4">Your session is active, but your cryptographic keys are locked. Please enter your vault password to unlock them.</p>
       <form ref="unlockForm" class="text-start">
+        <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username">
         <div class="mb-3">
           <label for="{{ ref_password }}" class="form-label">Vault Password</label>
-          <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Vault Password" required>
+          <div class="password-field-container">
+            <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Vault Password" required autocomplete="current-password">
+            <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
         </div>
         <div class="d-grid gap-2">
           <button type="submit" class="btn btn-primary">Unlock with Password</button>
@@ -38,6 +44,8 @@
 
       const unlockForm = refs('unlockForm')
       const passwordInput = refs('password')
+      const vaultUsernameHidden = refs('vaultUsernameHidden')
+      const passwordToggle = refs('passwordToggle')
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout')
       const btnPasskey = refs('btnPasskey')
@@ -45,6 +53,13 @@
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
+
+      passwordToggle.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password'
+        passwordInput.setAttribute('type', type)
+        const icon = passwordToggle.querySelector('i')
+        icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
+      })
 
       btnLogout.addEventListener('click', () => {
         pb.authStore.clear()
@@ -60,6 +75,10 @@
       }
 
       checkPasskeySupport()
+
+      if (pb.authStore.model) {
+        vaultUsernameHidden.value = `${pb.authStore.model.username} - Vault`
+      }
 
       const completeUnlock = async (decryptedKeys, record) => {
         updateStatus('Vault unlocked!')

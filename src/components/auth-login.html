@@ -5,11 +5,16 @@
       <form ref="loginForm">
         <div class="mb-3">
           <label for="{{ ref_username }}" class="form-label">Username or Email</label>
-          <input ref="username" name="username" type="text" class="form-control" placeholder="Enter username or email" required>
+          <input ref="username" name="username" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username">
         </div>
         <div class="mb-3">
           <label for="{{ ref_password }}" class="form-label">Password</label>
-          <input ref="password" name="password" type="password" class="form-control" placeholder="Enter Password" required>
+          <div class="password-field-container">
+            <input ref="password" name="password" type="password" class="form-control" placeholder="Enter Password" required autocomplete="current-password">
+            <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
+              <i class="bi bi-eye"></i>
+            </button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary w-100">Login</button>
       </form>
@@ -36,6 +41,7 @@
       const linkRegister = refs('linkRegister')
       const usernameInput = refs('username')
       const passwordInput = refs('password')
+      const passwordToggle = refs('passwordToggle')
       const statusMsg = refs('statusMsg')
 
       const updateStatus = (message) => {
@@ -45,6 +51,13 @@
       linkRegister.addEventListener('click', (e) => {
         e.preventDefault()
         $state.authView = 'register'
+      })
+
+      passwordToggle.addEventListener('click', () => {
+        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password'
+        passwordInput.setAttribute('type', type)
+        const icon = passwordToggle.querySelector('i')
+        icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
       })
 
       loginForm.addEventListener('submit', async (event) => {

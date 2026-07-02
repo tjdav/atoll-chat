@@ -6,19 +6,29 @@
           <h3 class="card-title mb-4 text-center">Create Account</h3>
           <div class="mb-3">
             <label for="{{ ref_username }}" class="form-label">Username</label>
-            <input name="username" ref="username" type="text" class="form-control" placeholder="Choose a username" minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" required>
+            <input name="username" ref="username" type="text" class="form-control" placeholder="Choose a username" minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" required autocomplete="username">
           </div>
           <div class="mb-3">
             <label for="{{ ref_email }}" class="form-label">Email</label>
-            <input name="email" ref="email" type="email" class="form-control" placeholder="Enter your email" required>
+            <input name="email" ref="email" type="email" class="form-control" placeholder="Enter your email" required autocomplete="email">
           </div>
           <div class="mb-3">
             <label for="{{ ref_password }}" class="form-label">Password (min 8 characters)</label>
-            <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="8" required>
+            <div class="password-field-container">
+              <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="8" required autocomplete="new-password">
+              <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
           </div>
           <div class="mb-3">
             <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
-            <input name="passwordConfirm" ref="passwordConfirm" type="password" class="form-control" placeholder="Confirm Password" minlength="8" required>
+            <div class="password-field-container">
+              <input name="passwordConfirm" ref="passwordConfirm" type="password" class="form-control" placeholder="Confirm Password" minlength="8" required autocomplete="new-password">
+              <button type="button" class="password-toggle" ref="passwordConfirmToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
           </div>
           <button type="button" class="btn btn-primary w-100" ref="btnNext">Next</button>
         </div>
@@ -28,9 +38,15 @@
           <p class="text-muted small text-center mb-4">Choose how to encrypt your local cryptographic keys. These keys never leave your device unencrypted.</p>
           
           <div ref="passwordSection">
+            <input type="text" ref="vaultUsernameHidden" name="vaultUsername" class="visually-hidden" autocomplete="username">
             <div class="mb-3">
               <label for="{{ ref_vaultPassword }}" class="form-label">Vault Password</label>
-              <input ref="vaultPassword" name="vaultPassword" type="password" class="form-control" placeholder="Enter Vault Password" minlength="12">
+              <div class="password-field-container">
+                <input ref="vaultPassword" name="vaultPassword" type="password" class="form-control" placeholder="Enter Vault Password" minlength="12" autocomplete="new-password">
+                <button type="button" class="password-toggle" ref="vaultPasswordToggle" aria-label="Toggle password visibility">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
               <div class="progress mt-2" style="height: 5px;">
                 <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
               </div>
@@ -38,7 +54,12 @@
             </div>
             <div class="mb-3">
               <label for="{{ ref_vaultPasswordConfirm }}" class="form-label">Confirm Vault Password</label>
-              <input name="vaultPasswordConfirm" ref="vaultPasswordConfirm" type="password" class="form-control" placeholder="Confirm Vault Password" minlength="12">
+              <div class="password-field-container">
+                <input name="vaultPasswordConfirm" ref="vaultPasswordConfirm" type="password" class="form-control" placeholder="Confirm Vault Password" minlength="12" autocomplete="new-password">
+                <button type="button" class="password-toggle" ref="vaultPasswordConfirmToggle" aria-label="Toggle password visibility">
+                  <i class="bi bi-eye"></i>
+                </button>
+              </div>
             </div>
             <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-3" ref="btnTogglePasskey">Use Passkey instead</button>
           </div>
@@ -87,6 +108,8 @@
       const emailInput = refs('email')
       const passwordInput = refs('password')
       const passwordConfirmInput = refs('passwordConfirm')
+      const passwordToggle = refs('passwordToggle')
+      const passwordConfirmToggle = refs('passwordConfirmToggle')
       const statusMsg = refs('statusMsg')
       const btnSubmit = refs('btnSubmit')
 
@@ -94,7 +117,10 @@
       const passwordSection = refs('passwordSection')
       const passkeySection = refs('passkeySection')
       const vaultPasswordInput = refs('vaultPassword')
+      const vaultUsernameHidden = refs('vaultUsernameHidden')
       const vaultPasswordConfirmInput = refs('vaultPasswordConfirm')
+      const vaultPasswordToggle = refs('vaultPasswordToggle')
+      const vaultPasswordConfirmToggle = refs('vaultPasswordConfirmToggle')
       const strengthBar = refs('strengthBar')
       const strengthText = refs('strengthText')
       const btnTogglePasskey = refs('btnTogglePasskey')
@@ -139,6 +165,7 @@
 
       const goToStep2 = async () => {
         const username = usernameInput.value
+        vaultUsernameHidden.value = `${username} - Vault`
         const email = emailInput.value
         const password = passwordInput.value
         const passwordConfirm = passwordConfirmInput.value
@@ -239,6 +266,20 @@
       // Ensure required attributes are correct on mount
       vaultPasswordInput.setAttribute('required', '')
       vaultPasswordConfirmInput.setAttribute('required', '')
+
+      const setupToggle = (input, toggle) => {
+        toggle.addEventListener('click', () => {
+          const type = input.getAttribute('type') === 'password' ? 'text' : 'password'
+          input.setAttribute('type', type)
+          const icon = toggle.querySelector('i')
+          icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
+        })
+      }
+
+      setupToggle(passwordInput, passwordToggle)
+      setupToggle(passwordConfirmInput, passwordConfirmToggle)
+      setupToggle(vaultPasswordInput, vaultPasswordToggle)
+      setupToggle(vaultPasswordConfirmInput, vaultPasswordConfirmToggle)
 
       linkLogin.addEventListener('click', (e) => {
         e.preventDefault()
