@@ -32,155 +32,168 @@
 
       let objectUrl = null
 
-      try {
-        if (!state.localUuid) {
-          return
-        }
-        const message = await $localDb.local_messages.get(state.localUuid)
-        if (!message || !message.file_key) {
-          throw new Error('Message or key missing')
-        }
-
-        // Check Cache first
-        if ($state.decryptionCache.has(state.localUuid)) {
-          objectUrl = $state.decryptionCache.get(state.localUuid)
-        } else {
-          const { default: sodium } = await import('libsodium-wrappers-sumo')
-          await sodium.ready
-
-          const mediaRecord = await pb.collection('media').getOne(message.media_id)
-          const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
-
-          const response = await fetch(fileUrl)
-          if (!response.ok) {
-            throw new Error('Fetch failed')
+      const loadAudio = async () => {
+        try {
+          if (!state.localUuid) {
+            return
           }
-          const encryptedData = new Uint8Array(await response.arrayBuffer())
-
-          const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
-          const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
-
-          const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-          if (!decryptedData) {
-            throw new Error('Decryption failed')
-          }
-
-          const blob = new Blob([decryptedData], { type: message.mime_type })
-          objectUrl = URL.createObjectURL(blob)
-          $state.decryptionCache.set(state.localUuid, objectUrl)
-        }
-
-        loading.classList.add('d-none')
-
-        // Clear existing media to prevent duplicates
-        container.querySelectorAll('.waveform-player, audio').forEach(el => el.remove())
-
-        if (message.waveform_data) {
-          const player = document.createElement('div')
-          player.className = 'waveform-player'
-
-          const playBtn = document.createElement('button')
-          playBtn.className = 'play-pause-btn'
-          playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
-
-          const waveContainer = document.createElement('div')
-          waveContainer.className = 'waveform-container'
-
-          const waveImg = document.createElement('img')
-          waveImg.src = message.waveform_data
-          waveImg.className = 'waveform-image'
-
-          const progressContainer = document.createElement('div')
-          progressContainer.className = 'waveform-progress'
-
-          const progressImg = document.createElement('img')
-          progressImg.src = message.waveform_data
-          progressImg.className = 'waveform-image'
-
-          const seeker = document.createElement('div')
-          seeker.className = 'waveform-seeker'
-
-          const timeDisplay = document.createElement('div')
-          timeDisplay.className = 'x-small text-muted font-monospace'
-          timeDisplay.textContent = '0:00'
-
-          progressContainer.appendChild(progressImg)
-          waveContainer.appendChild(waveImg)
-          waveContainer.appendChild(progressContainer)
-          waveContainer.appendChild(seeker)
-
-          player.appendChild(playBtn)
-          player.appendChild(waveContainer)
-          player.appendChild(timeDisplay)
-          container.appendChild(player)
-
-          const audio = new Audio(objectUrl)
-
-          const updateProgress = () => {
-            const percent = (audio.currentTime / audio.duration) * 100
-            progressContainer.style.width = `${percent}%`
-            seeker.style.left = `${percent}%`
-
-            const mins = Math.floor(audio.currentTime / 60)
-            const secs = Math.floor(audio.currentTime % 60)
-            timeDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
-          }
-
-          audio.oncanplaythrough = () => $bus.emit('MEDIA_LOADED')
-          audio.ontimeupdate = updateProgress
-          audio.onended = () => {
-            playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
-            progressContainer.style.width = '0'
-            seeker.style.left = '0'
-            timeDisplay.textContent = '0:00'
-          }
-
-          playBtn.onclick = (e) => {
-            e.stopPropagation()
-            if (audio.paused) {
-              audio.play()
-              playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>'
-            } else {
-              audio.pause()
-              playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
-            }
-          }
-
-          waveContainer.onclick = (e) => {
-            e.stopPropagation()
-            if (isNaN(audio.duration)) {
+          const message = await $localDb.local_messages.get(state.localUuid)
+          if (!message || !message.file_key) {
+            // Silently wait if we're pending or if key hasn't arrived yet
+            if (state.status === 'pending') {
               return
             }
-            const rect = waveContainer.getBoundingClientRect()
-            const x = e.clientX - rect.left
-            const percent = x / rect.width
-            audio.currentTime = percent * audio.duration
-            updateProgress()
+            throw new Error('Message or key missing')
           }
 
-          const resizeObserver = new ResizeObserver(entries => {
-            for (let entry of entries) {
-              progressImg.style.width = `${entry.contentRect.width}px`
+          // Check Cache first
+          if ($state.decryptionCache.has(state.localUuid)) {
+            objectUrl = $state.decryptionCache.get(state.localUuid)
+          } else {
+            const { default: sodium } = await import('libsodium-wrappers-sumo')
+            await sodium.ready
+
+            const mediaRecord = await pb.collection('media').getOne(message.media_id)
+            const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+            const response = await fetch(fileUrl)
+            if (!response.ok) {
+              throw new Error('Fetch failed')
             }
-          })
-          resizeObserver.observe(waveContainer)
-          signal.addEventListener('abort', () => resizeObserver.disconnect())
+            const encryptedData = new Uint8Array(await response.arrayBuffer())
 
-        } else {
-          const audio = document.createElement('audio')
-          audio.src = objectUrl
-          audio.controls = true
-          audio.className = 'w-100'
-          audio.oncanplaythrough = () => $bus.emit('MEDIA_LOADED')
-          container.appendChild(audio)
+            const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
+            const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
+
+            const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
+            if (!decryptedData) {
+              throw new Error('Decryption failed')
+            }
+
+            const blob = new Blob([decryptedData], { type: message.mime_type })
+            objectUrl = URL.createObjectURL(blob)
+            $state.decryptionCache.set(state.localUuid, objectUrl)
+          }
+
+          loading.classList.add('d-none')
+
+          // Clear existing media to prevent duplicates
+          container.querySelectorAll('.waveform-player, audio').forEach(el => el.remove())
+
+          if (message.waveform_data) {
+            const player = document.createElement('div')
+            player.className = 'waveform-player'
+
+            const playBtn = document.createElement('button')
+            playBtn.className = 'play-pause-btn'
+            playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
+
+            const waveContainer = document.createElement('div')
+            waveContainer.className = 'waveform-container'
+
+            const waveImg = document.createElement('img')
+            waveImg.src = message.waveform_data
+            waveImg.className = 'waveform-image'
+
+            const progressContainer = document.createElement('div')
+            progressContainer.className = 'waveform-progress'
+
+            const progressImg = document.createElement('img')
+            progressImg.src = message.waveform_data
+            progressImg.className = 'waveform-image'
+
+            const seeker = document.createElement('div')
+            seeker.className = 'waveform-seeker'
+
+            const timeDisplay = document.createElement('div')
+            timeDisplay.className = 'x-small text-muted font-monospace'
+            timeDisplay.textContent = '0:00'
+
+            progressContainer.appendChild(progressImg)
+            waveContainer.appendChild(waveImg)
+            waveContainer.appendChild(progressContainer)
+            waveContainer.appendChild(seeker)
+
+            player.appendChild(playBtn)
+            player.appendChild(waveContainer)
+            player.appendChild(timeDisplay)
+            container.appendChild(player)
+
+            const audio = new Audio(objectUrl)
+
+            const updateProgress = () => {
+              const percent = (audio.currentTime / audio.duration) * 100
+              progressContainer.style.width = `${percent}%`
+              seeker.style.left = `${percent}%`
+
+              const mins = Math.floor(audio.currentTime / 60)
+              const secs = Math.floor(audio.currentTime % 60)
+              timeDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
+            }
+
+            audio.oncanplaythrough = () => $bus.emit('MEDIA_LOADED')
+            audio.ontimeupdate = updateProgress
+            audio.onended = () => {
+              playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
+              progressContainer.style.width = '0'
+              seeker.style.left = '0'
+              timeDisplay.textContent = '0:00'
+            }
+
+            playBtn.onclick = (e) => {
+              e.stopPropagation()
+              if (audio.paused) {
+                audio.play()
+                playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>'
+              } else {
+                audio.pause()
+                playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
+              }
+            }
+
+            waveContainer.onclick = (e) => {
+              e.stopPropagation()
+              if (isNaN(audio.duration)) {
+                return
+              }
+              const rect = waveContainer.getBoundingClientRect()
+              const x = e.clientX - rect.left
+              const percent = x / rect.width
+              audio.currentTime = percent * audio.duration
+              updateProgress()
+            }
+
+            const resizeObserver = new ResizeObserver(entries => {
+              for (let entry of entries) {
+                progressImg.style.width = `${entry.contentRect.width}px`
+              }
+            })
+            resizeObserver.observe(waveContainer)
+            signal.addEventListener('abort', () => resizeObserver.disconnect())
+
+          } else {
+            const audio = document.createElement('audio')
+            audio.src = objectUrl
+            audio.controls = true
+            audio.className = 'w-100'
+            audio.oncanplaythrough = () => $bus.emit('MEDIA_LOADED')
+            container.appendChild(audio)
+          }
+
+        } catch (err) {
+          console.error('[voice-player] Error:', err)
+          loading.innerHTML = `
+            <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+            <div class="x-small ms-2">Failed to load audio</div>
+          `
         }
+      }
 
-      } catch (err) {
-        console.error('[voice-player] Error:', err)
-        loading.innerHTML = `
-          <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
-          <div class="x-small ms-2">Failed to load audio</div>
-        `
+      loadAudio()
+
+      if (typeof state.subscribe === 'function') {
+        state.subscribe('status', loadAudio)
+        state.subscribe('localUuid', loadAudio)
       }
     }
   })

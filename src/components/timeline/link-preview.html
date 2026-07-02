@@ -94,6 +94,11 @@
       }
 
       loadPreviewImage()
+
+      if (typeof state.subscribe === 'function') {
+        state.subscribe('status', loadPreviewImage)
+        state.subscribe('localUuid', loadPreviewImage)
+      }
     }
   })
 </script>
