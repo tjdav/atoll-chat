@@ -268,6 +268,7 @@
           }
 
           resetUI()
+          $bus.emit('ui:focus_input')
         } catch (err) {
           console.error('[chat-input] Failed to send:', err)
           alert('Failed to send: ' + err.message)
@@ -317,6 +318,7 @@
   
         const container = refs('voiceRecorderContainer')
         container.innerHTML = ''
+        $bus.emit('ui:focus_input')
       })
 
       $bus.on('ui:dismiss_link_preview', () => {

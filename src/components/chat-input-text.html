@@ -173,6 +173,13 @@
           $bus.emit('ui:send_clicked')
         }
       }, { signal })
+
+
+      $bus.on('ui:focus_input', () => {
+        requestAnimationFrame(() => {
+          messageInput.focus()
+        })
+      })
     }
   })
 </script>
