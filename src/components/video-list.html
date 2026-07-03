@@ -25,6 +25,7 @@
       let fuseInstance = null
       let lastIndexedCount = 0
       const BATCH_SIZE = 24
+      const existingCards = new Map()
 
       let currentRenderId = 0
 
@@ -76,42 +77,66 @@
               keys: ['filename'],
               threshold: 0.3
             })
+            lastIndexedCount = loadedItems.length
           }
           itemsToDisplay = fuseInstance.search(query).map(r => r.item)
         }
 
         if (itemsToDisplay.length === 0) {
           gridContainer.innerHTML = `<div class="col-12 p-4 text-center text-muted">${query ? 'No matches found in loaded videos' : 'No videos found'}</div>`
+          existingCards.clear()
           return
         }
 
-        const fragment = document.createDocumentFragment()
-        itemsToDisplay.forEach(item => {
-          const dt = new Date(item.created_at)
-          const dateStr = dt.toLocaleDateString()
-          const timeStr = dt.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit'
-          })
-          const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos'
-
-          const card = document.createElement('media-grid-card')
-          card.setAttribute('asset-id', item.id)
-          card.setAttribute('media-id', item.media_id)
-          card.setAttribute('mime-type', item.mime_type)
-          card.setAttribute('is-active', isActive)
-          card.setAttribute('type', 'videos')
-          card.setAttribute('date-str', dateStr)
-          card.setAttribute('time-str', timeStr)
-          card.setAttribute('file-key', item.file_key)
-          card.setAttribute('file-nonce', item.file_nonce)
-          fragment.appendChild(card)
-        })
-
-        if (renderId === currentRenderId) {
-          gridContainer.innerHTML = ''
-          gridContainer.appendChild(fragment)
+        // Remove empty state message if present
+        const emptyMsg = gridContainer.querySelector('.col-12')
+        if (emptyMsg) {
+          emptyMsg.remove()
         }
+
+        const currentIds = new Set(itemsToDisplay.map(i => i.id))
+  
+        // Remove cards that are no longer in the list
+        for (const [id, card] of existingCards.entries()) {
+          if (!currentIds.has(id)) {
+            card.remove()
+            existingCards.delete(id)
+          }
+        }
+
+        // Add or update cards
+        itemsToDisplay.forEach((item, index) => {
+          const isActive = (item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos').toString()
+
+          let card = existingCards.get(item.id)
+          if (!card) {
+            const dt = new Date(item.created_at)
+            card = document.createElement('media-grid-card')
+            card.setAttribute('asset-id', item.id)
+            card.setAttribute('media-id', item.media_id)
+            card.setAttribute('mime-type', item.mime_type)
+            card.setAttribute('is-active', isActive)
+            card.setAttribute('type', 'videos')
+            card.setAttribute('date-str', dt.toLocaleDateString())
+            card.setAttribute('time-str', dt.toLocaleTimeString([], {
+              hour: '2-digit',
+              minute: '2-digit'
+            }))
+            card.setAttribute('file-key', item.file_key)
+            card.setAttribute('file-nonce', item.file_nonce)
+            existingCards.set(item.id, card)
+          } else {
+            if (card.getAttribute('is-active') !== isActive) {
+              card.setAttribute('is-active', isActive)
+            }
+          }
+
+          // Ensure correct order in DOM
+          const currentChild = gridContainer.children[index]
+          if (currentChild !== card) {
+            gridContainer.insertBefore(card, currentChild || null)
+          }
+        })
       }
 
       const resetAndRender = async () => {
@@ -140,14 +165,17 @@
       const debouncedFullRender = $utils.debounce(resetAndRender, 50)
 
       // Handle selection change
-      $state.subscribe('activeSelectionId', () => {
-        if ($state.activeSelectionType === 'videos') {
-          render()
-        }
-      })
-      $state.subscribe('activeSelectionType', () => {
-        render()
-      })
+      const updateActiveStates = () => {
+        existingCards.forEach((card, id) => {
+          const isActive = (id === $state.activeSelectionId && $state.activeSelectionType === 'videos').toString()
+          if (card.getAttribute('is-active') !== isActive) {
+            card.setAttribute('is-active', isActive)
+          }
+        })
+      }
+
+      $state.subscribe('activeSelectionId', updateActiveStates)
+      $state.subscribe('activeSelectionType', updateActiveStates)
 
       $state.subscribe('listSearchQuery', () => {
         debouncedRender()
