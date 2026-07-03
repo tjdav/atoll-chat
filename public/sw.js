@@ -1,4 +1,4 @@
-const CACHE_NAME = 'atoll-chat-v1'
+const CACHE_NAME = 'atoll-chat-v2'
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -9,13 +9,13 @@ const ASSETS_TO_CACHE = [
   '/assets/libsodium-sumo.js',
   '/images/icon-coralite.avif',
   '/images/static_rays.avif',
-  'https://unpkg.com/dexie@4.0.10/dist/dexie.js'
+  '/assets/dexie.js'
 ]
 
 /* global sodium, Dexie */
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
-importScripts('https://unpkg.com/dexie@4.0.10/dist/dexie.js')
+importScripts('/assets/dexie.js')
 
 // Note: Libsodium WASM is embedded as a Base64 string within the JS files
 // in this build, so no separate .wasm file is needed in the cache.
