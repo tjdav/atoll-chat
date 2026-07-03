@@ -27,21 +27,23 @@
         } else {
           // Auth or Vault setup/unlock view
           container.className = 'vh-100 vw-100 d-flex align-items-center justify-content-center bg-body-tertiary'
-  
+
           const contentWrapper = document.createElement('div')
           contentWrapper.className = 'container'
-  
+
           const row = document.createElement('div')
           row.className = 'row justify-content-center'
-  
+
           const col = document.createElement('div')
           col.className = 'col-12 col-sm-10 col-md-8 col-lg-6 col-xl-4'
-  
+
           row.appendChild(col)
           contentWrapper.appendChild(row)
           container.appendChild(contentWrapper)
 
-          if (!$state.isAuthenticated) {
+          if ($state.isFirstRun) {
+            col.appendChild(document.createElement('welcome-setup'))
+          } else if (!$state.isAuthenticated) {
             if ($state.authView === 'register') {
               col.appendChild(document.createElement('auth-register'))
             } else {
@@ -90,11 +92,26 @@
         $state.authView = 'login'
       }
 
-      updateUI()
+      // Check for first-run status
+      const checkStatus = async () => {
+        try {
+          const res = await fetch(`${pb.baseUrl}/api/status`)
+          const data = await res.json()
+          $state.isFirstRun = data.isFirstRun
+        } catch (e) {
+          console.error('Failed to check setup status:', e)
+          $state.isFirstRun = false
+        }
+      }
+
+      checkStatus().finally(() => {
+        updateUI()
+      })
 
       $state.subscribe('isAuthenticated', updateUI)
       $state.subscribe('isVaultUnlocked', updateUI)
       $state.subscribe('authView', updateUI)
+      $state.subscribe('isFirstRun', updateUI)
     }
   })
 </script>

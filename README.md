@@ -57,7 +57,7 @@ The backend is powered by PocketBase and runs in Docker.
 pnpm run start:services
 ```
 
-This will spin up a PocketBase instance at `http://localhost:8090`. The custom logic for rate-limiting and generic push notifications is located in the `pb_hooks/` directory.
+This will spin up a PocketBase instance at `http://localhost:8090`. The custom logic for rate-limiting and generic push notifications is located in the `database/pb_hooks/` directory.
 
 #### 2. Frontend (Coralite)
 Install the dependencies and start the development server.

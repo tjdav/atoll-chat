@@ -1,20 +1,14 @@
 services:
-  pocketbase:
-    image: ghcr.io/muchobien/pocketbase:latest
-    container_name: pocketbase-dev
-    environment:
-      PB_HOST: 0.0.0.0
-      PB_PORT: 8090
-      PB_ADMIN_EMAIL: admin@example.com
-      PB_ADMIN_PASSWORD: password123
+  atoll:
+    build: .
+    container_name: atoll-chat
     ports:
-      - "8090:8090"
+      - "8080:8080"
     volumes:
-      - ./database/pb_data:/pb_data
-      - ./database/pb_migrations:/pb_migrations
-      - ./pb_hooks:/pb_hooks
+      - ./pb_data:/pb/pb_data
+    restart: unless-stopped
     healthcheck:
-      test: [ "CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8090/api/health" ]
-      interval: 5s
-      timeout: 3s
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
+      interval: 10s
+      timeout: 5s
       retries: 5

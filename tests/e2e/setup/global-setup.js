@@ -52,7 +52,7 @@ async function globalSetup () {
     'serve',
     `--dir=${PB_DATA}`,
     '--migrationsDir=./database/pb_migrations',
-    '--hooksDir=./pb_hooks',
+    '--hooksDir=./database/pb_hooks',
     '--http=127.0.0.1:8090'
   ], {
     detached: true,
@@ -144,7 +144,7 @@ async function globalSetup () {
     'serve',
     `--dir=${PB_DATA}`,
     '--migrationsDir=./database/pb_migrations',
-    '--hooksDir=./pb_hooks',
+    '--hooksDir=./database/pb_hooks',
     '--http=127.0.0.1:8090'
   ], {
     detached: true,
