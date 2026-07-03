@@ -151,17 +151,23 @@
           })
 
           // Identify new messages to render
+          // To support robust chronological sorting and handle potential out-of-order arrivals,
+          // we no longer rely on lastRenderedMessageId for slicing.
+          // The deduplication logic below will ensure we don't append duplicates.
           let messagesToRender = messages
-          if (lastRenderedMessageId) {
-            const lastIdx = messages.findIndex(m => (m.id || m.local_uuid) === lastRenderedMessageId)
-            if (lastIdx !== -1) {
-              messagesToRender = messages.slice(lastIdx + 1)
-            }
-          }
 
           // Double check to prevent duplicate appending if multiple calls overlapping
-          const existingRows = Array.from(container.querySelectorAll('timeline-row'))
-          const existingIds = new Set(existingRows.map(el => el.dataset.messageId || el.dataset.localUuid))
+          // Check BOTH timeline-row and timeline-system-message
+          const existingElements = Array.from(container.querySelectorAll('timeline-row, timeline-system-message'))
+          const existingIds = new Set()
+          existingElements.forEach(el => {
+            if (el.dataset.messageId) {
+              existingIds.add(el.dataset.messageId)
+            }
+            if (el.dataset.localUuid) {
+              existingIds.add(el.dataset.localUuid)
+            }
+          })
 
           messagesToRender = messagesToRender.filter(m => {
             if (m.type === 'ice_candidate' || m.type === 'reaction') {
@@ -174,10 +180,10 @@
 
           // Before appending, update the previously last message's styling
           if (lastRenderedMessageId && messagesToRender.length > 0) {
-            const prevLastRow = container.querySelector(`timeline-row[data-message-id="${lastRenderedMessageId}"]`) || container.querySelector(`timeline-row[data-local-uuid="${lastRenderedMessageId}"]`)
+            const prevLastRow = container.querySelector(`timeline-row[data-message-id="${lastRenderedMessageId}"], timeline-row[data-local-uuid="${lastRenderedMessageId}"]`)
             if (prevLastRow) {
               const firstNew = messagesToRender[0]
-              const prevMsg = messages.find(m => (m.id || m.local_uuid) === lastRenderedMessageId)
+              const prevMsg = messages.find(m => (m.id && m.id === lastRenderedMessageId) || (m.local_uuid && m.local_uuid === lastRenderedMessageId))
   
               if (prevMsg && prevMsg.created_at && firstNew.created_at) {
                 // 1. Date Separator logic (> 1 hour)
@@ -337,6 +343,13 @@
             } else if (['call_offer', 'call_answer', 'call_end'].includes(message.type)) {
               const systemMsg = document.createElement('timeline-system-message')
               systemMsg.setAttribute('type', message.type)
+              if (message.id) {
+                systemMsg.setAttribute('message-id', message.id)
+                systemMsg.setAttribute('data-message-id', message.id)
+              }
+              systemMsg.setAttribute('local-uuid', message.local_uuid)
+              systemMsg.setAttribute('data-local-uuid', message.local_uuid)
+              systemMsg.dataset.localUuid = message.local_uuid
               // Don't append to row, signaling messages are centered
               container.appendChild(systemMsg)
               lastRenderedMessageId = message.id || message.local_uuid
@@ -382,10 +395,62 @@
             statusText.textContent = lastMessage.status === 'pending' ? 'Sending...' : 'Sent'
             statusIcon.className = lastMessage.status === 'pending' ? 'bi bi-circle text-muted' : 'bi bi-check text-muted'
   
-            // Always move to end
+            // Always move to end, making sure it is the absolute last element
             container.appendChild(statusContainer)
           } else {
             statusContainer.classList.add('d-none')
+          }
+
+          // FINAL SORT CHECK: In case messages arrived out of order, we ensure chronological order
+          // But only if we actually added something new.
+          if (messagesToRender.length > 0) {
+            const children = Array.from(container.children).filter(el => el.tagName === 'TIMELINE-ROW' ||
+              el.tagName === 'TIMELINE-SYSTEM-MESSAGE' ||
+              el.tagName === 'TIMELINE-DATE-SEPARATOR'
+            )
+  
+            // Create a lookup map for message timestamps to optimize sorting
+            const timestampMap = new Map()
+            messages.forEach(m => {
+              const ts = new Date(m.created_at).getTime()
+              if (m.local_uuid) {
+                timestampMap.set(m.local_uuid, ts)
+              }
+              if (m.id) {
+                timestampMap.set(m.id, ts)
+              }
+            })
+
+            // Map elements to their timestamps for sorting
+            const elementData = children.map(el => {
+              let timestamp = 0
+              if (el.tagName === 'TIMELINE-DATE-SEPARATOR') {
+                timestamp = new Date(el.getAttribute('timestamp')).getTime()
+              } else {
+                timestamp = timestampMap.get(el.dataset.localUuid) || timestampMap.get(el.dataset.messageId) || 0
+              }
+              return {
+                el,
+                timestamp
+              }
+            })
+
+            // Check if they are already sorted
+            let sorted = true
+            for (let i = 0; i < elementData.length - 1; i++) {
+              if (elementData[i].timestamp > elementData[i + 1].timestamp) {
+                sorted = false
+                break
+              }
+            }
+
+            if (!sorted) {
+              elementData.sort((a, b) => a.timestamp - b.timestamp)
+              elementData.forEach(item => {
+                // re-append in order
+                container.insertBefore(item.el, statusContainer.parentNode === container ? statusContainer : null)
+              })
+            }
           }
 
           if (isNewRoom) {

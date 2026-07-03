@@ -37,6 +37,10 @@ export default function localDbPlugin () {
 
         await dbInstance.open()
 
+        /** @todo remove when coralite has testing env */
+        // Expose to window for E2E testing
+        window.$localDb = dbInstance
+
         // Inject into pluginContext for Phase 1 access by downstream plugins
         pluginContext.$localDb = () => dbInstance
 
