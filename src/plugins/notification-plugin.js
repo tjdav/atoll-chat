@@ -14,10 +14,21 @@ export default definePlugin({
         const { $localDb } = instanceContext.localDb
         const { pb } = instanceContext.pocketbase
 
+        let lastSoundPlayTime = 0
+        const SOUND_DEBOUNCE_MS = 1000
+
         const playMessageSound = async () => {
           if (!$state.messageSoundsEnabled) {
             return
           }
+
+          const now = Date.now()
+
+          if (now - lastSoundPlayTime < SOUND_DEBOUNCE_MS) {
+            return
+          }
+
+          lastSoundPlayTime = now
 
           try {
             let audioSource = '/sounds/notification.mp3'
@@ -153,8 +164,9 @@ export default definePlugin({
 
         $bus.on('db:new_local_data', (payload) => {
           showNotification(payload)
-          // Play sound if not suppressed by notification logic
-          if ($state.messageSoundsEnabled && payload.message?.sender_id !== $state.currentUser?.id) {
+
+          // Play sound if not suppressed by notification logic or catch-up
+          if (!$state.isCatchingUp && $state.messageSoundsEnabled && payload.message?.sender_id !== $state.currentUser?.id) {
             // Logic similar to showNotification for suppression
             const isSuppressed = document.visibilityState === 'visible' &&
               $state.currentAppView === 'chats' &&

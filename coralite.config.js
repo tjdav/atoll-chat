@@ -52,7 +52,8 @@ export default defineConfig({
         activeCallRoomId: null,
         notificationsEnabled: true,
         messageSoundsEnabled: true,
-        callSoundsEnabled: true
+        callSoundsEnabled: true,
+        isCatchingUp: false
       }
     }),
     localDbPlugin(),

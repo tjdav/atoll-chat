@@ -36,7 +36,10 @@ export default function syncPlugin () {
            * Historical catch-up routine to recover missed messages and room keys.
            */
           const performCatchUpSync = async () => {
+            const { $state } = instanceContext.globalStore
             const db = $localDb
+
+            $state.isCatchingUp = true
 
             // Determine high-water marks
             const lastMsg = await db.local_messages.orderBy('created_at').last()
@@ -72,6 +75,8 @@ export default function syncPlugin () {
 
               // Notify UI that catch-up is done
               if (pluginContext.$bus) {
+                /** @todo use this hack until Coralite adds testing env */
+                window.__sync_complete__ = true
                 pluginContext.$bus.emit('sync:complete')
               }
 
@@ -80,6 +85,8 @@ export default function syncPlugin () {
               console.error('Critical failure during historical catch-up:', err)
               // Rethrow all errors to halt the sync process as requested
               throw err
+            } finally {
+              $state.isCatchingUp = false
             }
           }
 
