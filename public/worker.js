@@ -277,7 +277,11 @@ async function sendMessage (rpcId, payload) {
     media_types,
     target_id,
     timestamp,
-    links
+    links,
+    media_id: existingMediaId,
+    file_key: existingFileKey,
+    file_nonce: existingFileNonce,
+    album_art: existingAlbumArt
   } = payload
 
   if (!currentUserKeys || !currentUserKeys.private_sign_key) {
@@ -297,18 +301,18 @@ async function sendMessage (rpcId, payload) {
   const latestEpochId = latestKeyObj.epoch_id
   const roomKey = sodium.from_base64(latestKeyObj.key, sodium.base64_variants.ORIGINAL)
 
-  // 1. Handle Media Encryption & Upload
-  let mediaId = null
-  let fileKeyBase64 = null
-  let fileNonceBase64 = null
-  let albumArtInfo = null
+  // Handle Media Encryption & Upload
+  let mediaId = existingMediaId || null
+  let fileKeyBase64 = existingFileKey || null
+  let fileNonceBase64 = existingFileNonce || null
+  let albumArtInfo = existingAlbumArt || null
 
   const headers = {}
   if (authToken) {
     headers.Authorization = authToken
   }
 
-  if (type === 'media' && file) {
+  if (type === 'media' && file && !mediaId) {
     // Encrypt and upload album art if present
     if (album_art_blob) {
       const artBuffer = new Uint8Array(await album_art_blob.arrayBuffer())
@@ -359,7 +363,7 @@ async function sendMessage (rpcId, payload) {
     fileNonceBase64 = sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL)
   }
 
-  // 2. Construct Plaintext
+  // Construct Plaintext
   const plaintextObj = {
     local_uuid: localUuid,
     type,
@@ -387,26 +391,26 @@ async function sendMessage (rpcId, payload) {
 
   const plaintextStr = JSON.stringify(plaintextObj)
 
-  // 3. Encrypt Message
+  // Encrypt Message
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
   const ciphertextBuffer = sodium.crypto_secretbox_easy(plaintextStr, nonce, roomKey)
   const ciphertextBase64 = sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL)
   const nonceBase64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
 
-  // 4. Fetch causal link (previous_msg_uuid)
+  // Fetch causal link (previous_msg_uuid)
   const lastMsg = await db.local_messages
     .where('[room_id+created_at]')
     .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
     .last()
   const previousMsgId = lastMsg ? (lastMsg.id || lastMsg.local_uuid) : 'START'
 
-  // 5. Sign Message
+  // Sign Message
   const validationString = `${roomId}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
   const validationBuffer = new TextEncoder().encode(validationString)
   const privateSignKeyBuffer = sodium.from_base64(currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
   const signatureBuffer = sodium.crypto_sign_detached(validationBuffer, privateSignKeyBuffer)
 
-  // 6. Server upload
+  // Server upload
   const uploadPayload = {
     room_id: roomId,
     sender_id: currentUserKeys.id,
@@ -557,7 +561,7 @@ async function processIncomingMessage (rpcId, record) {
 
   const { ciphertext, nonce } = payload
 
-  // 1. Fetch Sender Key
+  // Fetch Sender Key
   let senderKeys = publicKeyCache.get(senderId)
   if (!senderKeys || !senderKeys.public_sign_key) {
     if (!baseUrl) {
@@ -585,7 +589,7 @@ async function processIncomingMessage (rpcId, record) {
     throw new Error('Sender public sign key is missing')
   }
 
-  // 2. Identity Verification (Ed25519)
+  // Identity Verification (Ed25519)
   const signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
   const publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
 
@@ -597,7 +601,7 @@ async function processIncomingMessage (rpcId, record) {
     throw new Error('Signature forged or invalid')
   }
 
-  // 3. Symmetric Decryption (X25519)
+  // Symmetric Decryption (X25519)
   const room = await db.local_rooms.get(roomId)
   if (!room) {
     throw new Error(`Local room ${roomId} not found`)
@@ -866,7 +870,7 @@ async function processNewRoomKey (rpcId, payload) {
     }
   }
 
-  // 2. Fetch Room members with user details
+  // Fetch Room members with user details
   const membersUrl = `${baseUrl}/api/collections/room_members/records?filter=(room_id='${room_id}')&expand=user_id`
   const membersResponse = await fetchWithTimeout(membersUrl, { headers })
   if (membersResponse.ok) {
