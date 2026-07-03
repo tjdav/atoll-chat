@@ -69,8 +69,8 @@ test.describe('Message Reactions', () => {
     const targetLocalUuid = await bobReceivedRow.getAttribute('data-local-uuid')
     await bobPage.evaluate(({ targetLocalUuid }) => {
       window.$bus.emit('message:send_reaction', {
-        targetId: targetLocalUuid,
-        emoji: '👍'
+        messageId: targetLocalUuid,
+        reaction: '👍'
       })
     }, { targetLocalUuid })
 
