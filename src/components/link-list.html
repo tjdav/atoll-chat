@@ -42,59 +42,68 @@
           }
 
           const fragment = document.createDocumentFragment()
-          for (const link of links) {
-            const room = await $localDb.local_rooms.get(link.room_id)
+          for (const message of links) {
+            const room = await $localDb.local_rooms.get(message.room_id)
             const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
-            const timestamp = new Date(link.created_at).toLocaleString()
-            const isActive = link.local_uuid === $state.activeSelectionId && $state.activeSelectionType === 'links'
-
+  
             // Extract sender name
             let senderName = 'Unknown'
             if (room && room.participants) {
-              const sender = room.participants.find(p => p.id === link.sender_id)
+              const sender = room.participants.find(p => p.id === message.sender_id)
               if (sender) {
                 senderName = sender.name || sender.username || 'Unknown'
               }
             }
 
-            const btn = document.createElement('button')
-            btn.type = 'button'
-            btn.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 ${isActive ? 'active' : ''}`
+            const messageLinks = message.links || [{
+              title: message.link_title,
+              domain: message.link_domain,
+              url: message.content
+            }]
+
+            messageLinks.forEach((link, idx) => {
+              const selectionId = messageLinks.length > 1 ? `${message.local_uuid}:${idx}` : message.local_uuid
+              const isActive = selectionId === $state.activeSelectionId && $state.activeSelectionType === 'links'
+
+              const btn = document.createElement('button')
+              btn.type = 'button'
+              btn.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 ${isActive ? 'active' : ''}`
   
-            const iconWrapper = document.createElement('div')
-            iconWrapper.className = 'list-item-icon'
-            const icon = document.createElement('i')
-            icon.className = 'bi bi-link-45deg fs-5'
-            iconWrapper.appendChild(icon)
+              const iconWrapper = document.createElement('div')
+              iconWrapper.className = 'list-item-icon'
+              const icon = document.createElement('i')
+              icon.className = 'bi bi-link-45deg fs-5'
+              iconWrapper.appendChild(icon)
 
-            const contentWrapper = document.createElement('div')
-            contentWrapper.className = 'text-truncate'
+              const contentWrapper = document.createElement('div')
+              contentWrapper.className = 'text-truncate'
 
-            const titleDiv = document.createElement('div')
-            titleDiv.className = 'fw-bold text-truncate'
-            titleDiv.textContent = link.link_title || link.content || 'Untitled Link'
+              const titleDiv = document.createElement('div')
+              titleDiv.className = 'fw-bold text-truncate'
+              titleDiv.textContent = link.title || link.url || 'Untitled Link'
 
-            const subTextSmall = document.createElement('small')
-            subTextSmall.className = 'opacity-75 d-block text-truncate'
-            const domain = link.link_domain ? `${link.link_domain} • ` : ''
-            subTextSmall.textContent = `${domain}${senderName} in ${roomName}`
+              const subTextSmall = document.createElement('small')
+              subTextSmall.className = 'opacity-75 d-block text-truncate'
+              const domain = link.domain ? `${link.domain} • ` : ''
+              subTextSmall.textContent = `${domain}${senderName} in ${roomName}`
 
-            contentWrapper.appendChild(titleDiv)
-            contentWrapper.appendChild(subTextSmall)
+              contentWrapper.appendChild(titleDiv)
+              contentWrapper.appendChild(subTextSmall)
 
-            btn.appendChild(iconWrapper)
-            btn.appendChild(contentWrapper)
+              btn.appendChild(iconWrapper)
+              btn.appendChild(contentWrapper)
 
-            const arrowIcon = document.createElement('i')
-            arrowIcon.className = 'bi bi-chevron-right ms-auto opacity-50'
-            btn.appendChild(arrowIcon)
+              const arrowIcon = document.createElement('i')
+              arrowIcon.className = 'bi bi-chevron-right ms-auto opacity-50'
+              btn.appendChild(arrowIcon)
 
-            btn.addEventListener('click', () => {
-              $state.activeSelectionType = 'links'
-              $state.activeSelectionId = link.local_uuid
+              btn.addEventListener('click', () => {
+                $state.activeSelectionType = 'links'
+                $state.activeSelectionId = selectionId
+              })
+
+              fragment.appendChild(btn)
             })
-
-            fragment.appendChild(btn)
           }
 
           if (renderId === currentRenderId) {

@@ -56,7 +56,8 @@
       }
       signal.addEventListener('abort', cleanup)
 
-      const updateItemUI = async (msg, container) => {
+      const updateItemUI = async (item, container) => {
+        const { message: msg, link, linkIndex } = item
         const room = await $localDb.local_rooms.get(msg.room_id)
         const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
         let senderName = 'Unknown'
@@ -67,19 +68,23 @@
           }
         }
 
-        container.querySelector('.link-title').textContent = msg.link_title || 'Untitled Link'
-        container.querySelector('.link-summary').textContent = msg.link_summary || ''
-        container.querySelector('.link-url-text').textContent = msg.content
-        container.querySelector('.link-visit-btn').href = msg.content
+        container.querySelector('.link-title').textContent = link.title || 'Untitled Link'
+        container.querySelector('.link-summary').textContent = link.description || ''
+        container.querySelector('.link-url-text').textContent = link.url
+        container.querySelector('.link-visit-btn').href = link.url
         container.querySelector('.link-sender').textContent = senderName
         container.querySelector('.link-room').textContent = roomName
         container.querySelector('.link-date').textContent = new Date(msg.created_at).toLocaleString()
 
         const imgContainer = container.querySelector('.link-image-container')
         imgContainer.innerHTML = ''
-        if (msg.media_id && msg.file_key && msg.file_nonce) {
+
+        const cacheKey = `${msg.local_uuid}:${linkIndex}`
+
+        if (msg.media_id && msg.file_key && msg.file_nonce && linkIndex === 0) {
+          // Decrypt if it's the primary (first) link which might have an encrypted image
           try {
-            let blobUrl = $state.decryptionCache.get(msg.local_uuid)
+            let blobUrl = $state.decryptionCache.get(cacheKey)
             if (!blobUrl) {
               const record = await pb.collection('media').getOne(msg.media_id)
               const fileUrl = pb.files.getURL(record, record.file)
@@ -92,12 +97,15 @@
               const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(encryptedBuffer), nonce, key)
               const blob = new Blob([decrypted], { type: 'image/jpeg' })
               blobUrl = URL.createObjectURL(blob)
-              $state.decryptionCache.set(msg.local_uuid, blobUrl)
+              $state.decryptionCache.set(cacheKey, blobUrl)
             }
             imgContainer.innerHTML = `<img src="${blobUrl}" class="w-100 h-100 object-fit-cover" alt="Preview">`
           } catch (err) {
             imgContainer.innerHTML = '<i class="bi bi-link-45deg fs-1 text-secondary opacity-25"></i>'
           }
+        } else if (link.image) {
+        // Use standard image URL if provided (for secondary links or non-encrypted previews)
+          imgContainer.innerHTML = `<img src="${link.image}" class="w-100 h-100 object-fit-cover" alt="Preview">`
         } else {
           imgContainer.innerHTML = '<i class="bi bi-link-45deg fs-1 text-secondary opacity-25"></i>'
         }
@@ -106,7 +114,7 @@
       const createCarouselItem = (item, isActive) => {
         const div = document.createElement('div')
         div.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
-        div.dataset.id = item.local_uuid
+        div.dataset.id = item.id
         div.innerHTML = `
           <div class="link-viewer h-100 overflow-y-auto p-4">
             <div class="card shadow-sm border-0 mb-4 overflow-hidden">
@@ -153,29 +161,48 @@
         if (!hasMore) {
           return []
         }
-        const allLinks = await $localDb.local_messages.where('type').equals('link').reverse().sortBy('created_at')
+        const allMessages = await $localDb.local_messages.where('type').equals('link').reverse().sortBy('created_at')
         let startIndex = 0
         if (lastTimestamp) {
-          startIndex = allLinks.findIndex(a => a.created_at === lastTimestamp) + 1
+          startIndex = allMessages.findIndex(a => a.created_at === lastTimestamp) + 1
         }
-        const rawItems = allLinks.slice(startIndex, startIndex + BATCH_SIZE)
-        if (rawItems.length < BATCH_SIZE) {
+        const rawMessages = allMessages.slice(startIndex, startIndex + BATCH_SIZE)
+        if (rawMessages.length < BATCH_SIZE) {
           hasMore = false
         }
-        if (rawItems.length > 0) {
-          lastTimestamp = rawItems[rawItems.length - 1].created_at
-          loadedItems = [...loadedItems, ...rawItems]
+  
+        const explodedItems = []
+        rawMessages.forEach(msg => {
+          const links = msg.links || [{
+            title: msg.link_title,
+            description: msg.link_summary,
+            domain: msg.link_domain,
+            url: msg.content
+          }]
+          links.forEach((link, idx) => {
+            explodedItems.push({
+              id: links.length > 1 ? `${msg.local_uuid}:${idx}` : msg.local_uuid,
+              message: msg,
+              link,
+              linkIndex: idx
+            })
+          })
+        })
+
+        if (rawMessages.length > 0) {
+          lastTimestamp = rawMessages[rawMessages.length - 1].created_at
+          loadedItems = [...loadedItems, ...explodedItems]
         }
-        return rawItems
+        return explodedItems
       }
 
       const renderBatch = (items, activeId) => {
         items.forEach(item => {
-          const isActive = item.local_uuid === activeId
+          const isActive = item.id === activeId
           const el = createCarouselItem(item, isActive)
           carouselInner.appendChild(el)
           if (isActive) {
-            state.domain = item.link_domain || ''
+            state.domain = item.link.domain || ''
             updateItemUI(item, el)
           }
         })
@@ -189,7 +216,7 @@
         hasMore = true
 
         const activeId = $state.activeSelectionId
-        while (!loadedItems.find(i => i.local_uuid === activeId) && hasMore) {
+        while (!loadedItems.find(i => i.id === activeId) && hasMore) {
           await fetchNextBatch()
         }
 
@@ -204,15 +231,15 @@
         carouselEl.addEventListener('slid.bs.carousel', (e) => {
           const activeItem = e.relatedTarget
           const id = activeItem.dataset.id
-          const item = loadedItems.find(i => i.local_uuid === id)
+          const item = loadedItems.find(i => i.id === id)
           if (item) {
             isInternalChange = true
             $state.activeSelectionId = id
-            state.domain = item.link_domain || ''
+            state.domain = item.link.domain || ''
             updateItemUI(item, activeItem)
             isInternalChange = false
           }
-          const index = loadedItems.findIndex(i => i.local_uuid === id)
+          const index = loadedItems.findIndex(i => i.id === id)
           if (index >= loadedItems.length - 3 && hasMore) {
             fetchNextBatch().then(batch => renderBatch(batch, null))
           }
@@ -226,7 +253,7 @@
           return
         }
         const id = activeItem.dataset.id
-        const index = loadedItems.findIndex(i => i.local_uuid === id)
+        const index = loadedItems.findIndex(i => i.id === id)
   
         if (index === loadedItems.length - 1 && hasMore) {
           const nextBatch = await fetchNextBatch()
@@ -243,7 +270,7 @@
         if (isInternalChange || $state.activeSelectionType !== 'links') {
           return
         }
-        const index = loadedItems.findIndex(i => i.local_uuid === id)
+        const index = loadedItems.findIndex(i => i.id === id)
         if (index !== -1) {
           carouselInstance?.to(index)
         } else {

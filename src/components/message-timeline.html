@@ -355,14 +355,31 @@
               lastRenderedMessageId = message.id || message.local_uuid
               return
             } else if (message.type === 'link') {
-              const preview = document.createElement('link-preview')
-              preview.setAttribute('local-uuid', message.local_uuid)
-              preview.setAttribute('url', message.content)
-              preview.setAttribute('title', message.link_title || '')
-              preview.setAttribute('summary', message.link_summary || '')
-              preview.setAttribute('domain', message.link_domain || '')
-              preview.setAttribute('status', message.status)
-              row.appendChild(preview)
+              if (message.links && Array.from(message.links).length > 0) {
+                message.links.forEach((link, idx) => {
+                  const preview = document.createElement('link-preview')
+                  // Use unique identifier if multiple links exist
+                  preview.setAttribute('local-uuid', message.local_uuid)
+                  preview.setAttribute('link-index', idx)
+                  preview.setAttribute('url', link.url)
+                  preview.setAttribute('title', link.title || '')
+                  preview.setAttribute('summary', link.description || '')
+                  preview.setAttribute('domain', link.domain || '')
+                  preview.setAttribute('image-url', link.image || '')
+                  preview.setAttribute('status', message.status)
+                  row.appendChild(preview)
+                })
+              } else if (message.link_title) {
+                // Fallback for old single-link messages
+                const preview = document.createElement('link-preview')
+                preview.setAttribute('local-uuid', message.local_uuid)
+                preview.setAttribute('url', message.content)
+                preview.setAttribute('title', message.link_title || '')
+                preview.setAttribute('summary', message.link_summary || '')
+                preview.setAttribute('domain', message.link_domain || '')
+                preview.setAttribute('status', message.status)
+                row.appendChild(preview)
+              }
 
               if (message.content) {
                 const text = document.createElement('text-message')

@@ -24,17 +24,18 @@
       title: String,
       description: String,
       image: String,
-      domain: String
+      domain: String,
+      url: String
     },
     getters: {
       imageDisplayClass: (state) => (state.image ? 'd-block' : 'd-none')
     },
-    client: ({ refs, eventBus, signal }) => {
+    client: ({ state, refs, eventBus, signal }) => {
       const { $bus } = eventBus
       const cancelBtn = refs('cancelPreviewButton')
   
       cancelBtn.addEventListener('click', () => {
-        $bus.emit('ui:dismiss_link_preview')
+        $bus.emit('ui:dismiss_link_preview', { url: state.url })
       }, { signal })
     }
   })

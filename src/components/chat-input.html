@@ -43,12 +43,12 @@
       hasFile: false,
       isRecording: false,
       selectedFile: null,
-      pendingLinkData: null,
-      ignoreLinkPreview: false
+      pendingLinkData: [],
+      ignoredUrls: {}
     }),
     getters: {
       attachmentPreviewClass: (state) => (state.hasFile ? 'd-block' : 'd-none'),
-      linkPreviewClass: (state) => (state.pendingLinkData && !state.ignoreLinkPreview ? 'd-block' : 'd-none'),
+      linkPreviewClass: (state) => (state.pendingLinkData.length > 0 ? 'd-block' : 'd-none'),
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'd-flex' : 'd-none')
     },
@@ -68,8 +68,8 @@
         state.hasFile = false
         state.isRecording = false
         state.selectedFile = null
-        state.pendingLinkData = null
-        state.ignoreLinkPreview = false
+        state.pendingLinkData = []
+        state.ignoredUrls = {}
         $state.currentMessageText = ''
         const container = refs('voiceRecorderContainer')
         if (container) {
@@ -81,54 +81,58 @@
         }
       }
 
-      const URL_REGEX = /(?:\[[^\]]+\]\((https?:\/\/[^\s)]+)\))|(?:^|\s)(https?:\/\/[^\s]+)(?=\s|$)/i
-      let lastDetectedUrl = null
+      const URL_REGEX = /(?:\[[^\]]+\]\((https?:\/\/[^\s)]+)\))|(?:^|\s)(https?:\/\/[^\s]+)(?=\s|$)/gi
 
       const checkUrl = $utils.debounce(async (text) => {
         if (state.hasFile || state.isRecording) {
           return
         }
 
-        const match = text.match(URL_REGEX)
-        if (match) {
-          const url = match[1] || match[2]
-          if (url === lastDetectedUrl && state.pendingLinkData) {
-            return
-          }
-          if (state.ignoreLinkPreview && url === lastDetectedUrl) {
-            return
-          }
-
-          lastDetectedUrl = url
-          state.ignoreLinkPreview = false
-
-          try {
-            const data = await pb.send('/api/link-extraction', {
-              query: { url }
-            })
+        const matches = Array.from(text.matchAll(URL_REGEX))
+        if (matches.length > 0) {
+          const urls = matches.map(m => m[1] || m[2]).filter(u => !state.ignoredUrls[u])
   
-            if (data && data.title) {
-              state.pendingLinkData = data
-              const container = refs('linkPreviewContainer')
-              if (container) {
-                container.innerHTML = ''
-                const el = document.createElement('link-preview-input')
-                el.setAttribute('title', data.title || '')
-                el.setAttribute('description', data.description || '')
-                el.setAttribute('image', data.image || '')
-                el.setAttribute('domain', data.domain || '')
-                container.appendChild(el)
+          // Remove previews for URLs that are no longer in the text
+          const currentUrlsInText = new Set(matches.map(m => m[1] || m[2]))
+          state.pendingLinkData = state.pendingLinkData.filter(d => currentUrlsInText.has(d.url))
+
+          // Fetch metadata for new URLs
+          const existingUrls = new Set(state.pendingLinkData.map(d => d.url))
+          const newUrls = urls.filter(u => !existingUrls.has(u))
+
+          for (const url of newUrls) {
+            try {
+              const data = await pb.send('/api/link-extraction', {
+                query: { url }
+              })
+  
+              if (data && (data.title || data.description || data.image)) {
+                state.pendingLinkData = [...state.pendingLinkData, {
+                  ...data,
+                  url
+                }]
               }
-            } else {
-              state.pendingLinkData = null
+            } catch (err) {
+              console.warn('[chat-input] Failed to fetch link preview for:', url, err)
             }
-          } catch (err) {
-            console.warn('[chat-input] Failed to fetch link preview:', err)
-            state.pendingLinkData = null
+          }
+
+          // Update UI
+          const container = refs('linkPreviewContainer')
+          if (container) {
+            container.innerHTML = ''
+            state.pendingLinkData.forEach(data => {
+              const el = document.createElement('link-preview-input')
+              el.setAttribute('title', data.title || '')
+              el.setAttribute('description', data.description || '')
+              el.setAttribute('image', data.image || '')
+              el.setAttribute('domain', data.domain || '')
+              el.setAttribute('url', data.url)
+              container.appendChild(el)
+            })
           }
         } else {
-          state.pendingLinkData = null
-          lastDetectedUrl = null
+          state.pendingLinkData = []
           const container = refs('linkPreviewContainer')
           if (container) {
             container.innerHTML = ''
@@ -159,8 +163,7 @@
           filename: params.filename,
           waveform_data: params.waveform_data,
           music_metadata: params.music_metadata,
-          link_title: params.link_title,
-          link_summary: params.link_summary
+          links: params.links
         }
 
         await $localDb.local_messages.put(optimisticMessage)
@@ -248,16 +251,13 @@
               album_art_blob: albumArtBlob,
               timestamp: Date.now()
             })
-          } else if (state.pendingLinkData && !state.ignoreLinkPreview) {
+          } else if (state.pendingLinkData.length > 0) {
             // Link Preview Flow
             console.log('[chat-input] Processing link message')
             await dispatchMessage({
               type: 'link',
               content: text,
-              link_title: state.pendingLinkData.title,
-              link_summary: state.pendingLinkData.description,
-              link_image_url: state.pendingLinkData.image,
-              link_domain: state.pendingLinkData.domain,
+              links: state.pendingLinkData,
               timestamp: Date.now()
             })
           } else {
@@ -324,12 +324,20 @@
         $bus.emit('ui:focus_input')
       })
 
-      $bus.on('ui:dismiss_link_preview', () => {
-        state.ignoreLinkPreview = true
-        state.pendingLinkData = null
+      $bus.on('ui:dismiss_link_preview', (payload) => {
+        const url = payload.url
+        state.ignoredUrls = {
+          ...state.ignoredUrls,
+          [url]: true
+        }
+        state.pendingLinkData = state.pendingLinkData.filter(d => d.url !== url)
+  
         const container = refs('linkPreviewContainer')
         if (container) {
-          container.innerHTML = ''
+          const el = container.querySelector(`link-preview-input[url="${url}"]`)
+          if (el) {
+            el.remove()
+          }
         }
       })
     }

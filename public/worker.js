@@ -277,10 +277,7 @@ async function sendMessage (rpcId, payload) {
     media_types,
     target_id,
     timestamp,
-    link_title,
-    link_summary,
-    link_image_url,
-    link_domain
+    links
   } = payload
 
   if (!currentUserKeys || !currentUserKeys.private_sign_key) {
@@ -374,10 +371,7 @@ async function sendMessage (rpcId, payload) {
   }
 
   if (type === 'link') {
-    plaintextObj.link_title = link_title
-    plaintextObj.link_summary = link_summary
-    plaintextObj.link_image_url = link_image_url
-    plaintextObj.link_domain = link_domain
+    plaintextObj.links = links
   }
 
   if (type === 'media') {
@@ -679,10 +673,7 @@ async function processIncomingMessage (rpcId, record) {
   }
 
   if (type === 'link') {
-    decryptedMessage.link_title = decryptedPayload.link_title
-    decryptedMessage.link_summary = decryptedPayload.link_summary
-    decryptedMessage.link_image_url = decryptedPayload.link_image_url
-    decryptedMessage.link_domain = decryptedPayload.link_domain
+    decryptedMessage.links = decryptedPayload.links
   }
 
   if (type !== 'ice_candidate') {
