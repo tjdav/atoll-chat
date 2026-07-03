@@ -122,7 +122,7 @@
       const btnCreateRoom = refs('btnCreateRoom')
       if (btnCreateRoom) {
         btnCreateRoom.addEventListener('click', () => {
-          $bus.emit('open-create-room')
+          $bus.emit('ui:open_create_room')
         })
       }
 

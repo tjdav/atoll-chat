@@ -34,7 +34,7 @@
       const cancelBtn = refs('cancelPreviewButton')
   
       cancelBtn.addEventListener('click', () => {
-        $bus.emit('dismiss-link-preview')
+        $bus.emit('ui:dismiss_link_preview')
       }, { signal })
     }
   })

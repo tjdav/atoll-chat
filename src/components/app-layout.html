@@ -85,7 +85,7 @@
       const toastEl = refs('globalToast')
       const toast = new Toast(toastEl)
 
-      $bus.on('SHOW_TOAST', ({ message, type = 'primary' }) => {
+      $bus.on('ui:show_toast', ({ message, type = 'primary' }) => {
         state.toastMessage = message
         toastEl.className = `toast align-items-center text-white bg-${type} border-0 shadow`
         toast.show()

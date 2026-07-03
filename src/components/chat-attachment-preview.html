@@ -27,7 +27,7 @@
       const cancelBtn = refs('cancelFileButton')
   
       cancelBtn.addEventListener('click', () => {
-        $bus.emit('cancel')
+        $bus.emit('ui:cancel')
       }, { signal })
     }
   })

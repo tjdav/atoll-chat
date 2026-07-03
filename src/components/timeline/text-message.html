@@ -80,7 +80,7 @@
   
           if (markdownBody.innerHTML !== cleanHtml) {
             markdownBody.innerHTML = cleanHtml
-            $bus.emit('MEDIA_LOADED')
+            $bus.emit('ui:media_loaded')
           }
         } catch (err) {
           console.error('[text-message] Render error:', err)

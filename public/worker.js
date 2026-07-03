@@ -34,7 +34,7 @@ async function init () {
       local_config: 'key'
     })
 
-    self.postMessage({ type: 'WORKER_READY' })
+    self.postMessage({ type: 'worker:ready' })
   } catch (err) {
     console.error('Worker Init Error:', err)
   }
@@ -45,13 +45,13 @@ self.onmessage = (event) => {
 
   // Certain tasks can be processed immediately and in parallel
   const parallelTasks = [
-    'CHECK_READY',
-    'test-rpc',
-    'generateSalt',
-    'deriveKeyFromPassword',
-    'PROCESS_INCOMING_MESSAGE',
-    'PROCESS_NEW_ROOM_KEY',
-    'UPDATE_ROOM_MEMBER'
+    'worker:check_ready',
+    'worker:test_rpc',
+    'worker:generate_salt',
+    'worker:derive_key_from_password',
+    'worker:process_incoming_message',
+    'worker:process_new_room_key',
+    'room:member_updated'
   ]
 
   if (parallelTasks.includes(type)) {
@@ -100,18 +100,18 @@ async function processQueue () {
 async function handleEvent (event) {
   const { id, type, payload } = event.data
 
-  // Handle WORKER_READY check if sent from main thread (optional)
-  if (type === 'CHECK_READY') {
-    self.postMessage({ type: 'WORKER_READY' })
+  // Handle worker:ready check if sent from main thread (optional)
+  if (type === 'worker:check_ready') {
+    self.postMessage({ type: 'worker:ready' })
     return
   }
 
-  if (type === 'INIT') {
+  if (type === 'worker:init') {
     baseUrl = payload.baseUrl
     return
   }
 
-  if (type === 'SET_TOKEN') {
+  if (type === 'worker:set_token') {
     authToken = payload.token
     self.postMessage({
       id,
@@ -122,7 +122,7 @@ async function handleEvent (event) {
   }
 
   try {
-    if (type === 'INIT_KEYS') {
+    if (type === 'worker:init_keys') {
       currentUserKeys = payload
       isInitialized = true
       console.log('[worker] Keys initialized for user:', currentUserKeys.id)
@@ -133,13 +133,13 @@ async function handleEvent (event) {
       })
       // Broadcast ready state
       self.postMessage({
-        type: 'WORKER_INITIALIZED',
+        type: 'worker:initialized',
         payload: { userId: currentUserKeys.id }
       })
       return
     }
 
-    if (type === 'WIPE_KEYS') {
+    if (type === 'worker:wipe_keys') {
       currentUserKeys = null
       isInitialized = false
       publicKeyCache.clear()
@@ -151,7 +151,7 @@ async function handleEvent (event) {
       return
     }
 
-    if (type === 'GET_INIT_STATE') {
+    if (type === 'worker:get_init_state') {
       self.postMessage({
         id,
         type,
@@ -163,7 +163,7 @@ async function handleEvent (event) {
       return
     }
 
-    if (type === 'test-rpc') {
+    if (type === 'worker:test_rpc') {
       self.postMessage({
         id,
         type,
@@ -173,7 +173,7 @@ async function handleEvent (event) {
       return
     }
 
-    if (type === 'generateSalt') {
+    if (type === 'worker:generate_salt') {
       const salt = sodium.randombytes_buf(16)
       self.postMessage({
         id,
@@ -183,7 +183,7 @@ async function handleEvent (event) {
       return
     }
 
-    if (type === 'deriveKeyFromPassword') {
+    if (type === 'worker:derive_key_from_password') {
       const { password, salt } = payload
       const KEK = await sodium.crypto_pwhash(
         32,
@@ -201,28 +201,28 @@ async function handleEvent (event) {
       return
     }
 
-    // New tasks: SEND_MESSAGE and PROCESS_INCOMING_MESSAGE
-    if (type === 'SEND_MESSAGE') {
+    // New tasks: worker:send_message and worker:process_incoming_message
+    if (type === 'worker:send_message') {
       await sendMessage(id, payload)
       return
     }
 
-    if (type === 'PROCESS_INCOMING_MESSAGE') {
+    if (type === 'worker:process_incoming_message') {
       await processIncomingMessage(id, payload)
       return
     }
 
-    if (type === 'PROCESS_NEW_ROOM_KEY') {
+    if (type === 'worker:process_new_room_key') {
       await processNewRoomKey(id, payload)
       return
     }
 
-    if (type === 'UPDATE_ROOM_MEMBER') {
+    if (type === 'room:member_updated') {
       await updateRoomMember(id, payload)
       return
     }
 
-    if (type === 'UPDATE_USER_DATA') {
+    if (type === 'worker:update_user_data') {
       await updateUserData(id, payload)
       return
     }
@@ -499,7 +499,7 @@ async function sendMessage (rpcId, payload) {
     : await db.local_messages.get(localUuid)
 
   self.postMessage({
-    type: 'NEW_LOCAL_DATA',
+    type: 'db:new_local_data',
     payload: {
       room_id: roomId,
       message: fullMessage
@@ -508,7 +508,7 @@ async function sendMessage (rpcId, payload) {
 
   self.postMessage({
     id: rpcId,
-    type: 'SEND_MESSAGE',
+    type: 'worker:send_message',
     result: {
       success: true,
       id: pbRecord.id
@@ -541,7 +541,7 @@ async function processIncomingMessage (rpcId, record) {
         })
         const fullMessage = await db.local_messages.get(localUuid)
         self.postMessage({
-          type: 'NEW_LOCAL_DATA',
+          type: 'db:new_local_data',
           payload: {
             room_id: roomId,
             message: fullMessage
@@ -551,7 +551,7 @@ async function processIncomingMessage (rpcId, record) {
 
       self.postMessage({
         id: rpcId,
-        type: 'PROCESS_INCOMING_MESSAGE',
+        type: 'worker:process_incoming_message',
         result: {
           success: true,
           duplicated: true
@@ -691,7 +691,7 @@ async function processIncomingMessage (rpcId, record) {
 
   // Notify UI and resolve RPC.
   self.postMessage({
-    type: 'NEW_LOCAL_DATA',
+    type: 'db:new_local_data',
     payload: {
       room_id: roomId,
       message: decryptedMessage
@@ -699,7 +699,7 @@ async function processIncomingMessage (rpcId, record) {
   })
   self.postMessage({
     id: rpcId,
-    type: 'PROCESS_INCOMING_MESSAGE',
+    type: 'worker:process_incoming_message',
     result: { success: true }
   })
 }
@@ -715,12 +715,12 @@ async function updateRoomMember (rpcId, record) {
       await db.local_rooms.put(room)
 
       self.postMessage({
-        type: 'NEW_LOCAL_DATA',
+        type: 'db:new_local_data',
         payload: { room_id }
       })
 
       self.postMessage({
-        type: 'UPDATE_ROOM_MEMBER',
+        type: 'room:member_updated',
         payload: { room_id }
       })
     }
@@ -728,7 +728,7 @@ async function updateRoomMember (rpcId, record) {
 
   self.postMessage({
     id: rpcId,
-    type: 'UPDATE_ROOM_MEMBER_RPC',
+    type: 'room:member_updated_RPC',
     result: { success: true }
   })
 }
@@ -760,12 +760,12 @@ async function updateUserData (rpcId, record) {
         await db.local_rooms.put(room)
 
         self.postMessage({
-          type: 'NEW_LOCAL_DATA',
+          type: 'db:new_local_data',
           payload: { room_id: room.id }
         })
 
         self.postMessage({
-          type: 'UPDATE_ROOM_MEMBER',
+          type: 'room:member_updated',
           payload: { room_id: room.id }
         })
       }
@@ -774,7 +774,7 @@ async function updateUserData (rpcId, record) {
 
   self.postMessage({
     id: rpcId,
-    type: 'UPDATE_USER_DATA',
+    type: 'worker:update_user_data',
     result: { success: true }
   })
 }
@@ -939,12 +939,12 @@ async function processNewRoomKey (rpcId, payload) {
 
   // UI Notification
   self.postMessage({
-    type: 'NEW_LOCAL_ROOM',
+    type: 'db:new_local_room',
     payload: { room_id }
   })
   self.postMessage({
     id: rpcId,
-    type: 'PROCESS_NEW_ROOM_KEY',
+    type: 'worker:process_new_room_key',
     result: { success: true }
   })
 }

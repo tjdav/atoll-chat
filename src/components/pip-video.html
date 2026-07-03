@@ -100,10 +100,10 @@
       })
 
       // Controls
-      refs('btnExpand').addEventListener('click', () => $bus.emit('PIP:EXPAND'))
+      refs('btnExpand').addEventListener('click', () => $bus.emit('pip:expand'))
 
       // Support for programmatic reset
-      $bus.on('PIP:RESET_POSITION', () => {
+      $bus.on('pip:reset_position', () => {
         pipWindow.style.transform = ''
         xOffset = 0
         yOffset = 0

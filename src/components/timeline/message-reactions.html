@@ -143,13 +143,13 @@
           const currentId = state.messageId || host?.getAttribute('message-id') || state.localUuid || host?.getAttribute('local-uuid')
   
           if (emojiEntries.length === 1) {
-            $bus.emit('SEND_REACTION', {
+            $bus.emit('message:send_reaction', {
               emoji: emojiEntries[0][0],
               targetId: currentId
             })
           } else {
             const rect = pill.getBoundingClientRect()
-            $bus.emit('SHOW_REACTION_PICKER', {
+            $bus.emit('ui:show_reaction_picker', {
               x: rect.left,
               y: rect.bottom + 5,
               targetId: currentId
@@ -172,7 +172,7 @@
   
       const debouncedLoad = $utils.debounce(loadReactions, 100)
   
-      $bus.on('NEW_LOCAL_DATA', (payload) => {
+      $bus.on('db:new_local_data', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           const host = container.getRootNode().host || container.closest('message-reactions')
           const currentMsgId = state.messageId || host?.getAttribute('message-id')

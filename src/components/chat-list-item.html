@@ -179,7 +179,7 @@
             action: async () => {
               const room = await $localDb.local_rooms.get(state.roomId)
               if (room) {
-                $bus.emit('open-edit-room', room)
+                $bus.emit('ui:open_edit_room', room)
               }
             }
           } : null,
@@ -250,7 +250,7 @@
           } catch (err) {
             console.error('[chat-list-item] Failed to find room member record:', err)
           }
-          $bus.emit('ROOM_READ_STATE_CHANGED', room.id)
+          $bus.emit('room:read_state_changed', room.id)
         }
       }
 

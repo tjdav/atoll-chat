@@ -60,7 +60,7 @@
         ctx.restore()
       }
 
-      $bus.on('open-avatar-editor', (file) => {
+      $bus.on('ui:open_avatar_editor', (file) => {
         const reader = new FileReader()
         reader.onload = (e) => {
           img = new Image()
@@ -123,7 +123,7 @@
         outCtx.restore()
   
         outputCanvas.toBlob((blob) => {
-          $bus.emit('avatar-editor:applied', blob)
+          $bus.emit('ui:avatar_editor_applied', blob)
           modal.hide()
         }, 'image/webp', 0.8)
       }

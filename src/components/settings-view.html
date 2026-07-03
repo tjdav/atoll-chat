@@ -338,7 +338,7 @@
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
           const salt = sodium.from_base64(record.vault_salt, sodium.base64_variants.ORIGINAL)
   
-          const KEK_Password = await $worker.execute('deriveKeyFromPassword', {
+          const KEK_Password = await $worker.execute('worker:derive_key_from_password', {
             password,
             salt
           })
@@ -387,7 +387,7 @@
           state.passkeyActionVerb = 'update'
   
           verifyModal.hide()
-          $bus.emit('SHOW_TOAST', {
+          $bus.emit('ui:show_toast', {
             message: `Passkey successfully ${wasConfigured ? 'updated' : 'added'}!`,
             type: 'success'
           })

@@ -20,13 +20,13 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
         worker.onmessage = (event) => {
           const { id, type, payload, result, error } = event.data
 
-          if (type === 'WORKER_READY') {
+          if (type === 'worker:ready') {
             isReady = true
 
-            // Send INIT message with baseUrl
+            // Send worker:init message with baseUrl
             const baseUrl = pluginContext.config?.url || 'http://localhost:8090'
             worker.postMessage({
-              type: 'INIT',
+              type: 'worker:init',
               payload: { baseUrl }
             })
 
@@ -45,25 +45,32 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
             return
           }
 
-          if (!id && type === 'NEW_LOCAL_ROOM') {
+          if (type === 'worker:initialized') {
             if (pluginContext.$bus) {
-              pluginContext.$bus.emit('NEW_LOCAL_ROOM', payload)
+              pluginContext.$bus.emit('worker:initialized', payload)
             }
             return
           }
 
-          if (!id && type === 'UPDATE_ROOM_MEMBER') {
+          if (!id && type === 'db:new_local_room') {
             if (pluginContext.$bus) {
-              pluginContext.$bus.emit('UPDATE_ROOM_MEMBER', payload)
+              pluginContext.$bus.emit('db:new_local_room', payload)
+            }
+            return
+          }
+
+          if (!id && type === 'room:member_updated') {
+            if (pluginContext.$bus) {
+              pluginContext.$bus.emit('room:member_updated', payload)
             }
             return
           }
 
           // Background broadcasts (e.g., from decryption pipeline)
-          if (!id && type === 'NEW_LOCAL_DATA') {
+          if (!id && type === 'db:new_local_data') {
             // Access injected event bus from Phase 1
             if (pluginContext.$bus) {
-              pluginContext.$bus.emit('NEW_LOCAL_DATA', payload)
+              pluginContext.$bus.emit('db:new_local_data', payload)
             }
             return
           }

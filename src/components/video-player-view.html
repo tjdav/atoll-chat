@@ -120,9 +120,9 @@
         const btnPlay = div.querySelector('.btn-big-play')
         btnPlay.onclick = () => {
           if ($state.currentMedia && $state.currentMedia.id === item.id) {
-            $bus.emit('MEDIA:TOGGLE')
+            $bus.emit('media:toggle')
           } else {
-            $bus.emit('MEDIA:PLAY', {
+            $bus.emit('media:play', {
               mediaId: item.id,
               type: 'videos'
             })

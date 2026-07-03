@@ -142,9 +142,9 @@
         const btnPlay = div.querySelector('.btn-big-play')
         btnPlay.onclick = () => {
           if ($state.currentMedia && $state.currentMedia.id === item.id) {
-            $bus.emit('MEDIA:TOGGLE')
+            $bus.emit('media:toggle')
           } else {
-            $bus.emit('MEDIA:PLAY', {
+            $bus.emit('media:play', {
               mediaId: item.id,
               type: 'music'
             })
@@ -156,7 +156,7 @@
           if ($state.currentMedia && $state.currentMedia.id === item.id) {
             const rect = progress.getBoundingClientRect()
             const percent = ((e.clientX - rect.left) / rect.width) * 100
-            $bus.emit('MEDIA:SEEK', { percent })
+            $bus.emit('media:seek', { percent })
           }
         }
 

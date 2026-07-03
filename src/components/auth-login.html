@@ -100,7 +100,7 @@
               await sodium.ready
 
               const salt = sodium.from_base64(saltBase64, sodium.base64_variants.ORIGINAL)
-              const KEK = await $worker.execute('deriveKeyFromPassword', {
+              const KEK = await $worker.execute('worker:derive_key_from_password', {
                 password,
                 salt
               })
@@ -113,8 +113,8 @@
               )
 
               // Initialize worker with decrypted keys and token
-              await $worker.execute('SET_TOKEN', { token: pb.authStore.token })
-              await $worker.execute('INIT_KEYS', {
+              await $worker.execute('worker:set_token', { token: pb.authStore.token })
+              await $worker.execute('worker:init_keys', {
                 ...decryptedKeys,
                 id: record.id
               })

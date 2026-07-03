@@ -164,17 +164,17 @@
         }
 
         await $localDb.local_messages.put(optimisticMessage)
-        $bus.emit('NEW_LOCAL_DATA', { room_id: roomId })
+        $bus.emit('db:new_local_data', { room_id: roomId })
 
         // Dispatch to worker
-        console.log('[chat-input] Dispatching SEND_MESSAGE to worker', { localUuid })
-        const result = await $worker.execute('SEND_MESSAGE', {
+        console.log('[chat-input] Dispatching worker:send_message to worker', { localUuid })
+        const result = await $worker.execute('worker:send_message', {
           roomId,
           localUuid,
           ...params
         })
   
-        $bus.emit('message-sent', result)
+        $bus.emit('message:sent', result)
         return result
       }
 
@@ -277,13 +277,13 @@
       }
 
       // Event Bus Subscriptions
-      $bus.on('cancel', () => {
+      $bus.on('ui:cancel', () => {
         state.hasFile = false
         state.fileName = ''
         state.selectedFile = null
       })
 
-      $bus.on('file-selected', (payload) => {
+      $bus.on('ui:file_selected', (payload) => {
         const file = payload.file
         if (file.size > 25 * 1024 * 1024) {
           alert('File is too large. Maximum size is 25MB.')
@@ -295,7 +295,7 @@
         state.uploadStatus = 'Ready to send'
       })
 
-      $bus.on('mic-clicked', () => {
+      $bus.on('ui:mic_clicked', () => {
         state.isRecording = true
         const container = refs('voiceRecorderContainer')
 
@@ -304,22 +304,22 @@
         container.appendChild(el)
       })
 
-      $bus.on('send-clicked', () => {
+      $bus.on('ui:send_clicked', () => {
         sendMessage()
       })
 
-      $bus.on('voice-ready', (payload) => {
+      $bus.on('ui:voice_ready', (payload) => {
         sendMessage(payload.blob, payload.waveformData)
       })
 
-      $bus.on('voice-discarded', () => {
+      $bus.on('ui:voice_discarded', () => {
         state.isRecording = false
   
         const container = refs('voiceRecorderContainer')
         container.innerHTML = ''
       })
 
-      $bus.on('dismiss-link-preview', () => {
+      $bus.on('ui:dismiss_link_preview', () => {
         state.ignoreLinkPreview = true
         state.pendingLinkData = null
         const container = refs('linkPreviewContainer')

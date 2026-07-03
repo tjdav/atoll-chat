@@ -338,7 +338,7 @@
           if (vaultMode === 'password') {
             updateStatus('Securing vault with Password (deriving keys)...')
             const salt = generateSalt(sodium)
-            const KEK = await $worker.execute('deriveKeyFromPassword', {
+            const KEK = await $worker.execute('worker:derive_key_from_password', {
               password: vaultPassword,
               salt
             })
@@ -405,8 +405,8 @@
           updateStatus('Login successful! Initializing session...')
 
           // Initialize the crypto worker with the new private keys and token
-          await $worker.execute('SET_TOKEN', { token: pb.authStore.token })
-          await $worker.execute('INIT_KEYS', {
+          await $worker.execute('worker:set_token', { token: pb.authStore.token })
+          await $worker.execute('worker:init_keys', {
             id: pb.authStore.model.id,
             private_box_key: masterKeys.private_box_key,
             private_sign_key: masterKeys.private_sign_key

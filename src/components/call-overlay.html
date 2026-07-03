@@ -228,7 +228,7 @@
         if (val === 'idle') {
           state.isPipMode = false
           // Reset PiP position
-          $bus.emit('PIP:RESET_POSITION')
+          $bus.emit('pip:reset_position')
         }
         if (val === 'incoming') {
           playRingtone()
@@ -238,7 +238,7 @@
       })
 
       // Listen for incoming calls
-      $bus.on('call_incoming', async ({ roomId, offer, senderId }) => {
+      $bus.on('call:incoming', async ({ roomId, offer, senderId }) => {
         if (senderId === $state.currentUser?.id) {
           return
         }
@@ -269,18 +269,18 @@
       }, { signal })
 
       // Listen for locally initiated calls to grab the stream
-      $bus.on('call_initiated_locally', ({ localStream }) => {
+      $bus.on('call:initiated_locally', ({ localStream }) => {
         $state.localStream = localStream
         state.localStream = localStream
         state.isAudioEnabled = localStream.getAudioTracks().some(t => t.enabled)
         state.isVideoEnabled = localStream.getVideoTracks().some(t => t.enabled)
   
         // Re-emit for video-grid
-        $bus.emit('local_stream_available', { stream: localStream })
+        $bus.emit('call:local_stream_available', { stream: localStream })
       }, { signal })
 
       // Listen for call ended from remote
-      $bus.on('call_ended', ({ roomId }) => {
+      $bus.on('call:ended', ({ roomId }) => {
         if ($state.activeCallRoomId === roomId) {
           stopTracks()
           $state.set('callStatus', 'idle')
@@ -296,7 +296,7 @@
         syncVideoGrid()
       })
 
-      $bus.on('PIP:EXPAND', () => {
+      $bus.on('pip:expand', () => {
         state.isPipMode = false
         updateModalVisibility(state.callStatus, false)
         syncVideoGrid()
@@ -314,7 +314,7 @@
   
           // Set status to active before answering to ensure UI is ready for tracks
           $state.set('callStatus', 'active')
-          $bus.emit('local_stream_available', { stream: localStream })
+          $bus.emit('call:local_stream_available', { stream: localStream })
   
           await $webrtc.answerCall($state.activeCallRoomId, localStream, state.remoteOffer)
         } catch (err) {

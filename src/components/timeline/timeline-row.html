@@ -165,7 +165,7 @@
       reactionIcon.onclick = (e) => {
         e.stopPropagation()
         const rect = reactionIcon.getBoundingClientRect()
-        $bus.emit('SHOW_REACTION_PICKER', {
+        $bus.emit('ui:show_reaction_picker', {
           x: rect.left,
           y: rect.bottom + 5,
           targetId: getMsgId()
@@ -177,7 +177,7 @@
       const startPress = (e) => {
         pressTimer = setTimeout(() => {
           const touch = e.touches ? (e.touches[0] || e.changedTouches[0]) : e
-          $bus.emit('SHOW_REACTION_PICKER', {
+          $bus.emit('ui:show_reaction_picker', {
             x: touch.clientX,
             y: touch.clientY,
             targetId: getMsgId()

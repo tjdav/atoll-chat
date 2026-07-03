@@ -87,7 +87,7 @@
               img.src = objectUrl
               img.className = 'img-fluid rounded-3 shadow-sm'
               img.style.maxHeight = '300px'
-              img.onload = () => $bus.emit('MEDIA_LOADED')
+              img.onload = () => $bus.emit('ui:media_loaded')
               container.appendChild(img)
             } else if (message.mime_type.startsWith('video/')) {
               const video = document.createElement('video')
@@ -96,7 +96,7 @@
               video.loop = true
               video.className = 'img-fluid rounded-3 shadow-sm'
               video.style.maxHeight = '300px'
-              video.onloadeddata = () => $bus.emit('MEDIA_LOADED')
+              video.onloadeddata = () => $bus.emit('ui:media_loaded')
               video.addEventListener('mouseenter', () => video.play())
               video.addEventListener('mouseleave', () => video.pause())
               container.appendChild(video)

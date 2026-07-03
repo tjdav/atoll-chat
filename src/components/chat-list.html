@@ -191,12 +191,12 @@
       })
       $state.subscribe('activeSelectionType', () => render())
       $state.subscribe('listSearchQuery', () => debouncedRender())
-      $bus.on('NEW_LOCAL_DATA', () => debouncedFullRender())
-      $bus.on('NEW_LOCAL_ROOM', () => debouncedFullRender())
-      $bus.on('ROOM_READ_STATE_CHANGED', () => debouncedFullRender())
-      $bus.on('SYNC_COMPLETE', () => debouncedFullRender())
+      $bus.on('db:new_local_data', () => debouncedFullRender())
+      $bus.on('db:new_local_room', () => debouncedFullRender())
+      $bus.on('room:read_state_changed', () => debouncedFullRender())
+      $bus.on('sync:complete', () => debouncedFullRender())
       $bus.on('auth:unlocked', () => debouncedFullRender())
-      $bus.on('UPDATE_ROOM_MEMBER', () => debouncedFullRender())
+      $bus.on('room:member_updated', () => debouncedFullRender())
     }
   })
 </script>

@@ -211,7 +211,7 @@
             if (shouldSendVoice && audioChunks.length > 0) {
               const blob = new Blob(audioChunks, { type: 'audio/webm' })
               const waveformData = generateWaveformImage()
-              $bus.emit('voice-ready', {
+              $bus.emit('ui:voice_ready', {
                 blob,
                 waveformData
               })
@@ -232,7 +232,7 @@
         } catch (err) {
           console.error('[chat-voice-recorder] Failed to start recording:', err)
           alert('Microphone access denied or unavailable.')
-          $bus.emit('voice-discarded')
+          $bus.emit('ui:voice_discarded')
         }
       }
 
@@ -244,7 +244,7 @@
         if (mediaRecorder && mediaRecorder.state !== 'inactive') {
           mediaRecorder.stop()
         }
-        $bus.emit('voice-discarded')
+        $bus.emit('ui:voice_discarded')
       }, { signal })
 
       refs('pauseResumeButton').addEventListener('click', () => {

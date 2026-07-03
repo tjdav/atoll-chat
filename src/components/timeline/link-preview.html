@@ -79,7 +79,7 @@
 
           decryptionCache.set(uuid, blobUrl)
           renderImage(blobUrl)
-          $bus.emit('MEDIA_LOADED')
+          $bus.emit('ui:media_loaded')
         } catch (err) {
           console.error('[link-preview] Failed to decrypt preview image:', err)
         }

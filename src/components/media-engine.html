@@ -168,7 +168,7 @@
       }
 
       // Event listeners
-      $bus.on('MEDIA:PLAY', ({ mediaId, type }) => {
+      $bus.on('media:play', ({ mediaId, type }) => {
         if (mediaId) {
           $state.currentMedia = {
             id: mediaId,
@@ -179,13 +179,13 @@
         }
       })
 
-      $bus.on('MEDIA:PAUSE', () => {
+      $bus.on('media:pause', () => {
         if (activePlayer) {
           $state.playbackStatus = 'paused'
         }
       })
 
-      $bus.on('MEDIA:TOGGLE', () => {
+      $bus.on('media:toggle', () => {
         if (!activePlayer) {
           return
         }
@@ -196,7 +196,7 @@
         }
       })
 
-      $bus.on('MEDIA:SEEK', ({ time, percent }) => {
+      $bus.on('media:seek', ({ time, percent }) => {
         if (!activePlayer || !activePlayer.duration) {
           return
         }
@@ -232,8 +232,8 @@
         }
       }
 
-      $bus.on('MEDIA:NEXT', () => navigateQueue('next'))
-      $bus.on('MEDIA:PREV', () => navigateQueue('prev'))
+      $bus.on('media:next', () => navigateQueue('next'))
+      $bus.on('media:prev', () => navigateQueue('prev'))
 
       // Subscriptions
       $state.subscribe('currentMedia', (media) => {

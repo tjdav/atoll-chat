@@ -142,8 +142,8 @@ export default definePlugin({
               $state.activeSelectionType = 'chats'
               $state.activeSelectionId = roomId
 
-              // Use the existing SCROLL_TO_MESSAGE mechanism
-              $bus.emit('SCROLL_TO_MESSAGE', { messageId: message.id || message.local_uuid })
+              // Use the existing message:scroll_to mechanism
+              $bus.emit('message:scroll_to', { messageId: message.id || message.local_uuid })
               notification.close()
             }
           } catch (err) {
@@ -151,7 +151,7 @@ export default definePlugin({
           }
         }
 
-        $bus.on('NEW_LOCAL_DATA', (payload) => {
+        $bus.on('db:new_local_data', (payload) => {
           showNotification(payload)
           // Play sound if not suppressed by notification logic
           if ($state.messageSoundsEnabled && payload.message?.sender_id !== $state.currentUser?.id) {

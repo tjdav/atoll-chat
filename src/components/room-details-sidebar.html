@@ -143,7 +143,7 @@
           return
         }
 
-        $bus.emit('trigger-kick-user', {
+        $bus.emit('ui:trigger_kick_user', {
           kickedMemberId: member.id,
           kickedUserId: user.id,
           kickedUsername: userName,
@@ -155,7 +155,7 @@
       fetchMembers()
 
       // Listen for global kick events (we'll handle the logic here)
-      $bus.on('trigger-kick-user', async (data) => {
+      $bus.on('ui:trigger_kick_user', async (data) => {
         const { kickedMemberId, kickedUserId, kickedUsername, roomId } = data
   
         try {
@@ -246,7 +246,7 @@
           await fetchMembers()
   
           // Notify the app of new local data to refresh timeline if needed
-          $bus.emit('new_local_data', { room_id: roomId })
+          $bus.emit('db:new_local_data', { room_id: roomId })
   
         } catch (err) {
           console.error('[room-details-sidebar] Kick flow failed:', err)
@@ -257,7 +257,7 @@
       })
 
       refs('btnClose').onclick = () => {
-        $bus.emit('close-room-details')
+        $bus.emit('ui:close_room_details')
       }
 
       // Re-fetch when room changes
@@ -266,7 +266,7 @@
       })
 
       // Listen for member updates
-      $bus.on('UPDATE_ROOM_MEMBER', (payload) => {
+      $bus.on('room:member_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           fetchMembers()
         }

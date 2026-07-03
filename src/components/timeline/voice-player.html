@@ -131,7 +131,7 @@
               timeDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
             }
 
-            audio.oncanplaythrough = () => $bus.emit('MEDIA_LOADED')
+            audio.oncanplaythrough = () => $bus.emit('ui:media_loaded')
             audio.ontimeupdate = updateProgress
             audio.onended = () => {
               playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
@@ -176,7 +176,7 @@
             audio.src = objectUrl
             audio.controls = true
             audio.className = 'w-100'
-            audio.oncanplaythrough = () => $bus.emit('MEDIA_LOADED')
+            audio.oncanplaythrough = () => $bus.emit('ui:media_loaded')
             container.appendChild(audio)
           }
 

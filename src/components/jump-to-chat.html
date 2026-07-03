@@ -60,7 +60,7 @@
   
               // Wait for timeline to mount and then emit scroll
               setTimeout(() => {
-                $bus.emit('SCROLL_TO_MESSAGE', { messageId })
+                $bus.emit('message:scroll_to', { messageId })
               }, 100)
             } else {
               console.warn('[jump-to-chat] Could not resolve room or message for', {

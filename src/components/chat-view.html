@@ -100,7 +100,7 @@
         updateRoomInfo($state.activeSelectionId)
       })
 
-      $bus.on('UPDATE_ROOM_MEMBER', (payload) => {
+      $bus.on('room:member_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           updateRoomInfo($state.activeSelectionId)
         }
@@ -118,7 +118,7 @@
         })
       }
 
-      $bus.on('close-room-details', () => {
+      $bus.on('ui:close_room_details', () => {
         state.isRoomDetailsOpen = false
         $state.isRoomDetailsOpen = false
       })
@@ -144,7 +144,7 @@
           $state.set('callStatus', 'active')
   
           // Emit event so call-overlay can pick up the localStream we just created
-          $bus.emit('call_initiated_locally', { localStream })
+          $bus.emit('call:initiated_locally', { localStream })
   
           await $webrtc.initiateCall($state.activeCallRoomId, localStream)
         } catch (err) {

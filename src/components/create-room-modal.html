@@ -200,7 +200,7 @@
         render()
       }
 
-      $bus.on('open-create-room', () => {
+      $bus.on('ui:open_create_room', () => {
         state.roomName = ''
         state.searchQuery = ''
         state.searchResults = []

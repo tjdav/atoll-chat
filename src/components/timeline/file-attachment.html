@@ -154,7 +154,7 @@
           downloadLink.href = objectUrl
           downloadLink.download = message.filename || message.content || 'attachment'
   
-          $bus.emit('MEDIA_LOADED')
+          $bus.emit('ui:media_loaded')
 
         } catch (err) {
           console.error('[file-attachment] Error:', err)

@@ -172,7 +172,7 @@
           $bus.emit('auth:logout')
 
           try {
-            await $worker.execute('WIPE_KEYS')
+            await $worker.execute('worker:wipe_keys')
           } catch (err) {
             console.warn('[nav-sidebar] Failed to wipe keys in worker:', err)
           }
@@ -184,7 +184,7 @@
       if (btnTogglePlay) {
         btnTogglePlay.addEventListener('click', (e) => {
           e.stopPropagation()
-          $bus.emit('MEDIA:TOGGLE')
+          $bus.emit('media:toggle')
         })
       }
 
@@ -192,7 +192,7 @@
       if (btnNext) {
         btnNext.addEventListener('click', (e) => {
           e.stopPropagation()
-          $bus.emit('MEDIA:NEXT')
+          $bus.emit('media:next')
         })
       }
 
@@ -200,7 +200,7 @@
       if (btnPrev) {
         btnPrev.addEventListener('click', (e) => {
           e.stopPropagation()
-          $bus.emit('MEDIA:PREV')
+          $bus.emit('media:prev')
         })
       }
 
@@ -217,7 +217,7 @@
           e.stopPropagation()
           const rect = dropdownProgress.getBoundingClientRect()
           const percent = ((e.clientX - rect.left) / rect.width) * 100
-          $bus.emit('MEDIA:SEEK', { percent })
+          $bus.emit('media:seek', { percent })
         })
       }
     }

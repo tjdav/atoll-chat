@@ -95,12 +95,12 @@
       avatarInput.onchange = (e) => {
         const file = e.target.files[0]
         if (file) {
-          $bus.emit('open-avatar-editor', file)
+          $bus.emit('ui:open_avatar_editor', file)
         }
         avatarInput.value = ''
       }
 
-      $bus.on('avatar-editor:applied', (blob) => {
+      $bus.on('ui:avatar_editor_applied', (blob) => {
         pendingAvatarBlob = blob
         const url = URL.createObjectURL(blob)
         avatarPreview.innerHTML = `<img src="${url}" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
@@ -133,13 +133,13 @@
           loadUserData()
           updateBtnState()
   
-          $bus.emit('SHOW_TOAST', {
+          $bus.emit('ui:show_toast', {
             message: 'Profile updated successfully!',
             type: 'success'
           })
         } catch (err) {
           console.error('[profile-settings] Save failed:', err)
-          $bus.emit('SHOW_TOAST', {
+          $bus.emit('ui:show_toast', {
             message: 'Failed to save profile: ' + (err.message || 'Unknown error'),
             type: 'danger'
           })

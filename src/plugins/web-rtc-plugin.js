@@ -70,7 +70,7 @@ export default function webrtcPlugin ({
           const { $state } = instanceContext.globalStore
           globalState = $state
 
-          $bus.on('NEW_LOCAL_DATA', async (payload) => {
+          $bus.on('db:new_local_data', async (payload) => {
             const { room_id: roomId, message: message } = payload
             if (!message) {
               return
@@ -104,7 +104,7 @@ export default function webrtcPlugin ({
             }
 
             if (message.type === 'call_offer') {
-              $bus.emit('call_incoming', {
+              $bus.emit('call:incoming', {
                 roomId,
                 offer: message.content,
                 senderId: message.sender_id
@@ -133,13 +133,13 @@ export default function webrtcPlugin ({
               }
             } else if (message.type === 'call_end') {
               teardownCall(roomId)
-              $bus.emit('call_ended', { roomId })
+              $bus.emit('call:ended', { roomId })
             }
           }, { signal: instanceContext.signal })
 
           const sendSignalingMessage = async (roomId, type, payload = {}) => {
             const localUuid = crypto.randomUUID()
-            await $worker.execute('SEND_MESSAGE', {
+            await $worker.execute('worker:send_message', {
               roomId,
               localUuid,
               type,
@@ -164,7 +164,7 @@ export default function webrtcPlugin ({
                 $state.remoteStream = stream
                 $state.hasRemoteVideo = true
               }
-              $bus.emit('remote_track_arrival', {
+              $bus.emit('call:remote_track_arrival', {
                 roomId,
                 stream,
                 track: event.track
@@ -173,7 +173,7 @@ export default function webrtcPlugin ({
             pc.onconnectionstatechange = () => {
               if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
                 teardownCall(roomId)
-                $bus.emit('call_ended', { roomId })
+                $bus.emit('call:ended', { roomId })
               }
             }
             activeCalls.set(roomId, pc)

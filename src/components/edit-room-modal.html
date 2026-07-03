@@ -75,7 +75,7 @@
           : 'Save Changes'
       }
 
-      $bus.on('open-edit-room', async (room) => {
+      $bus.on('ui:open_edit_room', async (room) => {
         state.activeRoom = room
         state.roomName = room.name || ''
         state.roomAvatar = null
@@ -206,7 +206,7 @@
             updated_at: new Date().toISOString()
           })
 
-          $bus.emit('NEW_LOCAL_ROOM', { room_id: room.id })
+          $bus.emit('db:new_local_room', { room_id: room.id })
           modal.hide()
         } catch (err) {
           console.error('[edit-room-modal] Save failed:', err)

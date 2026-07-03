@@ -406,7 +406,7 @@
       const debouncedRender = $utils.debounce(renderTimeline, 50)
       debouncedRender()
 
-      $bus.on('MEDIA_LOADED', () => {
+      $bus.on('ui:media_loaded', () => {
         const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 250
         if (isNearBottom) {
           requestAnimationFrame(() => scrollToBottom(true))
@@ -416,11 +416,11 @@
       $state.subscribe('activeSelectionId', debouncedRender)
       $state.subscribe('activeSelectionType', debouncedRender)
 
-      $bus.on('NEW_LOCAL_DATA', (payload) => {
+      $bus.on('db:new_local_data', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           // If it's a reaction, we don't need to re-render the whole timeline
           // but we might need to update the reactions component.
-          // message-reactions already listens for NEW_LOCAL_DATA.
+          // message-reactions already listens for db:new_local_data.
           // However, if a new message arrives, we DO need to re-render.
           if (payload.message && payload.message.type === 'reaction') {
             return
@@ -429,7 +429,7 @@
         }
       })
 
-      $bus.on('SEND_REACTION', async (payload) => {
+      $bus.on('message:send_reaction', async (payload) => {
         const roomId = $state.activeSelectionId
         if (!roomId) {
           return
@@ -444,8 +444,8 @@
         }
 
         // We don't do an optimistic write for reactions in the timeline,
-        // but we do send it to the worker which will save it and emit NEW_LOCAL_DATA
-        await $worker.execute('SEND_MESSAGE', {
+        // but we do send it to the worker which will save it and emit db:new_local_data
+        await $worker.execute('worker:send_message', {
           roomId,
           localUuid,
           ...params
@@ -453,13 +453,13 @@
       })
   
       // Update participants seen status in real-time
-      $bus.on('UPDATE_ROOM_MEMBER', (payload) => {
+      $bus.on('room:member_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           debouncedRender()
         }
       })
 
-      $bus.on('SCROLL_TO_MESSAGE', async (payload) => {
+      $bus.on('message:scroll_to', async (payload) => {
         const { messageId } = payload
         if (!messageId) {
           return

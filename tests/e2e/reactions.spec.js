@@ -65,8 +65,14 @@ test.describe('Message Reactions', () => {
     await expect(picker).toBeVisible()
 
     // Wait for the emoji picker internal element to be ready
-    console.log('Bob clicking an emoji via SEND_REACTION event (bypass UI picker flakiness)...')
+    console.log('Bob clicking an emoji via message:send_reaction event (bypass UI picker flakiness)...')
     const targetLocalUuid = await bobReceivedRow.getAttribute('data-local-uuid')
+    await bobPage.evaluate(({ targetLocalUuid }) => {
+      window.$bus.emit('message:send_reaction', {
+        targetId: targetLocalUuid,
+        emoji: '👍'
+      })
+    }, { targetLocalUuid })
 
     console.log('Verifying reaction appears for Bob...')
     const bobReactionPill = bobReceivedRow.locator('.reaction-consolidated-pill')

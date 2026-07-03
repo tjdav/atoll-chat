@@ -59,7 +59,7 @@ export default function syncPlugin () {
               })
 
               // Process room keys in parallel for maximum speed
-              await Promise.all(missedKeys.map(record => $worker.execute('PROCESS_NEW_ROOM_KEY', record)))
+              await Promise.all(missedKeys.map(record => $worker.execute('worker:process_new_room_key', record)))
 
               // Fetch missed messages SECOND
               const missedMessages = await pb.collection('messages').getFullList({
@@ -68,11 +68,11 @@ export default function syncPlugin () {
               })
 
               // Process messages in parallel for maximum speed
-              await Promise.all(missedMessages.map(record => $worker.execute('PROCESS_INCOMING_MESSAGE', record)))
+              await Promise.all(missedMessages.map(record => $worker.execute('worker:process_incoming_message', record)))
 
               // Notify UI that catch-up is done
               if (pluginContext.$bus) {
-                pluginContext.$bus.emit('SYNC_COMPLETE')
+                pluginContext.$bus.emit('sync:complete')
               }
 
               console.log('Historical catch-up synchronization complete.')
@@ -101,7 +101,7 @@ export default function syncPlugin () {
               await pb.collection('messages').subscribe('*', (e) => {
                 if (e.action === 'create') {
                   // Fire-and-forget dispatch to the background worker
-                  $worker.execute('PROCESS_INCOMING_MESSAGE', e.record).catch(console.error)
+                  $worker.execute('worker:process_incoming_message', e.record).catch(console.error)
                 }
               })
 
@@ -110,10 +110,10 @@ export default function syncPlugin () {
                 if (e.action === 'create' || e.action === 'update') {
                   if (e.record.user_id === pb.authStore.model.id) {
                     // Own key update/invite
-                    $worker.execute('PROCESS_NEW_ROOM_KEY', e.record).catch(console.error)
+                    $worker.execute('worker:process_new_room_key', e.record).catch(console.error)
                   } else {
                     // Other member update (likely seen status)
-                    $worker.execute('UPDATE_ROOM_MEMBER', e.record).catch(console.error)
+                    $worker.execute('room:member_updated', e.record).catch(console.error)
                   }
                 }
               })
@@ -121,7 +121,7 @@ export default function syncPlugin () {
               // Subscribe to the users collection (for profile updates)
               await pb.collection('users').subscribe('*', async (e) => {
                 if (e.action === 'update') {
-                  $worker.execute('UPDATE_USER_DATA', e.record).catch(console.error)
+                  $worker.execute('worker:update_user_data', e.record).catch(console.error)
                 }
               })
 

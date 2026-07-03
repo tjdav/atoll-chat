@@ -124,29 +124,29 @@
       fileInput.addEventListener('change', () => {
         const file = fileInput.files[0]
         if (file) {
-          $bus.emit('file-selected', { file })
+          $bus.emit('ui:file_selected', { file })
           fileInput.value = ''
         }
       }, { signal })
 
       refs('micButton').addEventListener('click', () => {
-        $bus.emit('mic-clicked')
+        $bus.emit('ui:mic_clicked')
       }, { signal })
 
       refs('sendButton').addEventListener('click', () => {
-        $bus.emit('send-clicked')
+        $bus.emit('ui:send_clicked')
       }, { signal })
 
       emojiButton.addEventListener('click', (e) => {
         const rect = emojiButton.getBoundingClientRect()
-        $bus.emit('SHOW_REACTION_PICKER', {
+        $bus.emit('ui:show_reaction_picker', {
           x: rect.left - 300,
           y: rect.top - 410,
           targetId: 'CHAT_INPUT'
         })
       }, { signal })
 
-      $bus.on('EMOJI_SELECTED', (payload) => {
+      $bus.on('ui:emoji_selected', (payload) => {
         const emoji = payload.emoji
         const start = messageInput.selectionStart
         const end = messageInput.selectionEnd
@@ -170,7 +170,7 @@
       messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault()
-          $bus.emit('send-clicked')
+          $bus.emit('ui:send_clicked')
         }
       }, { signal })
     }

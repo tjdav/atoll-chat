@@ -52,7 +52,7 @@ test.describe('Settings Profile', () => {
     // 1. Check Alice's own view (Sidebar/Room Details)
     await alicePage.click('button[title="Chats"]')
     await alicePage.click('chat-list .list-group-item:has-text("bob")')
-    await alicePage.click('button:has-text("Details")') // Open Room Details
+    await alicePage.click('button:has-text("Details")')
     await expect(alicePage.locator('room-details-sidebar .fw-bold').filter({ hasText: newName + ' (You)' })).toBeVisible({ timeout: 10000 })
 
     // 2. Check Bob's view (Chat List & Timeline)

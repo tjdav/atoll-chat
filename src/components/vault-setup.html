@@ -129,7 +129,7 @@
           await pb.collection('users').authRefresh()
 
           updateStatus('Vault initialized! Starting session...')
-          await $worker.execute('INIT_KEYS', {
+          await $worker.execute('worker:init_keys', {
             id: pb.authStore.model.id,
             private_box_key: masterKeys.private_box_key,
             private_sign_key: masterKeys.private_sign_key
@@ -175,7 +175,7 @@
           const salt = generateSalt(sodium)
 
           updateStatus('Securing vault with Password (deriving keys)...')
-          const KEK = await $worker.execute('deriveKeyFromPassword', {
+          const KEK = await $worker.execute('worker:derive_key_from_password', {
             password,
             salt
           })

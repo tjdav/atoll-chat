@@ -151,7 +151,7 @@
       })
 
       // Listen for remote track arrival
-      $bus.on('remote_track_arrival', ({ roomId, stream, track }) => {
+      $bus.on('call:remote_track_arrival', ({ roomId, stream, track }) => {
         if (roomId && roomId !== $state.activeCallRoomId) {
           return
         }
@@ -173,13 +173,13 @@
             audio.remove()
             signal.removeEventListener('abort', cleanup)
           }
-          $bus.on('call_ended', cleanup)
+          $bus.on('call:ended', cleanup)
           signal.addEventListener('abort', cleanup)
         }
       }, { signal })
 
       // Listen for call ended to release UI resources immediately
-      $bus.on('call_ended', ({ roomId }) => {
+      $bus.on('call:ended', ({ roomId }) => {
         if (roomId && roomId !== $state.activeCallRoomId) {
           return
         }

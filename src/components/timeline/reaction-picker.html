@@ -33,11 +33,11 @@
         picker.addEventListener('emoji-click', (event) => {
           console.log('[reaction-picker] Emoji clicked:', event.detail.unicode)
           if (currentTargetId === 'CHAT_INPUT') {
-            $bus.emit('EMOJI_SELECTED', {
+            $bus.emit('ui:emoji_selected', {
               emoji: event.detail.unicode
             })
           } else if (currentTargetId) {
-            $bus.emit('SEND_REACTION', {
+            $bus.emit('message:send_reaction', {
               emoji: event.detail.unicode,
               targetId: currentTargetId
             })
@@ -89,8 +89,8 @@
       document.addEventListener('mousedown', handleClickOutside)
       signal.addEventListener('abort', () => document.removeEventListener('mousedown', handleClickOutside))
 
-      $bus.on('SHOW_REACTION_PICKER', show)
-      $bus.on('HIDE_REACTION_PICKER', hide)
+      $bus.on('ui:show_reaction_picker', show)
+      $bus.on('ui:hide_reaction_picker', hide)
     }
   })
 </script>
