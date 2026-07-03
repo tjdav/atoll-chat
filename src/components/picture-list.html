@@ -1,5 +1,5 @@
 <template id="picture-list">
-  <div class="picture-list h-100 overflow-y-auto p-3" ref="root">
+  <div class="picture-list h-100 overflow-y-auto p-3">
     <div class="row row-cols-2 g-3" ref="gridContainer">
       <!-- Pictures will be rendered here -->
     </div>
@@ -10,14 +10,13 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils, fuse }) => {
+    client: ({ state, signal, root, localDb, eventBus, globalStore, refs, utils, fuse }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $utils } = utils
       const { $Fuse } = fuse
       const gridContainer = refs('gridContainer')
-      const rootEl = refs('root')
 
       let loadedItems = []
       let lastTimestamp = null
@@ -137,6 +136,32 @@
             gridContainer.insertBefore(card, currentChild || null)
           }
         })
+
+        // Restore scroll position after first render
+        if (!state.__scrollRestored && $state.listScrollPositions?.pictures !== undefined) {
+          setTimeout(() => {
+            if (root) {
+              root.scrollTop = $state.listScrollPositions.pictures
+            }
+          }, 50)
+          state.__scrollRestored = true
+        }
+      }
+
+      const saveListScroll = () => {
+        if (!root || (root.offsetWidth === 0 && root.offsetHeight === 0)) {
+          return
+        }
+        if (!$state.listScrollPositions) {
+          $state.listScrollPositions = {}
+        }
+        $state.listScrollPositions.pictures = root.scrollTop
+      }
+
+      const debouncedSave = $utils.debounce(saveListScroll, 100)
+
+      if (signal) {
+        signal.addEventListener('abort', saveListScroll)
       }
 
       const resetAndRender = async () => {
@@ -147,14 +172,15 @@
       }
 
       // Infinite Scroll Logic
-      if (rootEl) {
-        rootEl.addEventListener('scroll', async () => {
-          if (rootEl.scrollTop + rootEl.clientHeight >= rootEl.scrollHeight - 50) {
+      if (root) {
+        root.addEventListener('scroll', async () => {
+          if (root.scrollTop + root.clientHeight >= root.scrollHeight - 50) {
             if (hasMore) {
               await fetchNextBatch()
               render()
             }
           }
+          debouncedSave()
         })
       }
 

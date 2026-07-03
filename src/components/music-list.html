@@ -1,5 +1,5 @@
 <template id="music-list">
-  <div class="music-list h-100 overflow-y-auto" ref="root">
+  <div class="music-list h-100 overflow-y-auto">
     <div class="list-group list-group-flush" ref="listGroup">
       <!-- Music will be rendered here -->
     </div>
@@ -10,14 +10,13 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils, fuse }) => {
+    client: ({ state, signal, root, localDb, eventBus, globalStore, refs, utils, fuse }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $utils } = utils
       const { $Fuse } = fuse
       const listGroup = refs('listGroup')
-      const rootEl = refs('root')
 
       let loadedEnrichedItems = []
       let lastTimestamp = null
@@ -95,18 +94,45 @@
         }
         if (renderId === currentRenderId) {
           listGroup.innerHTML = ''; listGroup.appendChild(fragment)
+
+          // Restore scroll position after first render
+          if (!state.__scrollRestored && $state.listScrollPositions?.music !== undefined) {
+            setTimeout(() => {
+              if (root) {
+                root.scrollTop = $state.listScrollPositions.music
+              }
+            }, 50)
+            state.__scrollRestored = true
+          }
         }
+      }
+
+      const saveListScroll = () => {
+        if (!root || (root.offsetWidth === 0 && root.offsetHeight === 0)) {
+          return
+        }
+        if (!$state.listScrollPositions) {
+          $state.listScrollPositions = {}
+        }
+        $state.listScrollPositions.music = root.scrollTop
+      }
+
+      const debouncedSave = $utils.debounce(saveListScroll, 100)
+
+      if (signal) {
+        signal.addEventListener('abort', saveListScroll)
       }
 
       const resetAndRender = async () => {
         loadedEnrichedItems = []; lastTimestamp = null; hasMore = true; fuseInstance = null; lastIndexedCount = 0; await render()
       }
 
-      if (rootEl) {
-        rootEl.onscroll = async () => {
-          if (rootEl.scrollTop + rootEl.clientHeight >= rootEl.scrollHeight - 50 && hasMore) {
+      if (root) {
+        root.onscroll = async () => {
+          if (root.scrollTop + root.clientHeight >= root.scrollHeight - 50 && hasMore) {
             await fetchNextBatch(); render()
           }
+          debouncedSave()
         }
       }
       render()

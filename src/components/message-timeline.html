@@ -29,6 +29,7 @@
       const statusIcon = refs('statusIcon')
 
       let lastRoomId = null
+      let lastView = null
       let seenTimeout = null
       let lastRenderedMessageId = null
       let forceScrollToBottom = false
@@ -45,6 +46,24 @@
           }
         }
       }
+
+      const saveScrollPosition = (id) => {
+        const roomId = id || $state.activeSelectionId
+        if (!roomId || !container || container.scrollHeight === 0) {
+          return
+        }
+
+        if (!$state.scrollPositions) {
+          $state.scrollPositions = {}
+        }
+
+        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50
+        const pos = isNearBottom ? -1 : container.scrollTop
+  
+        $state.scrollPositions[roomId] = pos
+      }
+
+      container.addEventListener('scroll', $utils.debounce(saveScrollPosition, 150))
 
       const updateSeenStatus = (messageId) => {
         const roomId = $state.activeSelectionId
@@ -94,12 +113,14 @@
         const type = $state.activeSelectionType
 
         if (!roomId || type !== 'chats') {
+          lastView = type
           return
         }
 
-        const isNewRoom = roomId !== lastRoomId
+        const isNewRoom = roomId !== lastRoomId || lastView !== 'chats'
         if (isNewRoom) {
           lastRoomId = roomId
+          lastView = type
           lastRenderedMessageId = null
           container.innerHTML = ''
           intersectionObserver.disconnect()
@@ -471,9 +492,19 @@
           }
 
           if (isNewRoom) {
-            requestAnimationFrame(() => scrollToBottom())
-            // Extra safety for media that might load instantly from cache
-            setTimeout(() => scrollToBottom(), 100)
+            const savedPos = $state.scrollPositions?.[roomId]
+            if (savedPos !== undefined && savedPos !== -1) {
+              // Ensure content is rendered before restoring scroll
+              setTimeout(() => {
+                if (container) {
+                  container.scrollTop = savedPos
+                }
+              }, 50)
+            } else {
+              requestAnimationFrame(() => scrollToBottom())
+              // Extra safety for media that might load instantly from cache
+              setTimeout(() => scrollToBottom(), 100)
+            }
           } else if (forceScrollToBottom) {
             scrollToBottom(true)
             forceScrollToBottom = false
@@ -499,8 +530,22 @@
         }
       })
 
-      $state.subscribe('activeSelectionId', debouncedRender)
-      $state.subscribe('activeSelectionType', debouncedRender)
+      let prevSelectionId = $state.activeSelectionId
+      $state.subscribe('activeSelectionId', (val) => {
+        if (prevSelectionId && prevSelectionId !== val) {
+          saveScrollPosition(prevSelectionId)
+        }
+        prevSelectionId = val
+        debouncedRender()
+      })
+      $state.subscribe('activeSelectionType', (val) => {
+        saveScrollPosition()
+        debouncedRender()
+      })
+
+      if (signal) {
+        signal.addEventListener('abort', () => saveScrollPosition())
+      }
 
       $bus.on('db:new_local_data', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {

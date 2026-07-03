@@ -153,12 +153,38 @@
         const btn = refs(refName)
         if (btn) {
           btn.addEventListener('click', () => {
+            if ($state.currentAppView === viewName) {
+              return
+            }
+
+            // Save current selection for the outgoing view
+            if (!$state.lastSelections) {
+              $state.lastSelections = {}
+            }
+
+            if ($state.activeSelectionId) {
+              $state.lastSelections[$state.currentAppView] = {
+                id: $state.activeSelectionId,
+                type: $state.activeSelectionType
+              }
+            } else {
+              delete $state.lastSelections[$state.currentAppView]
+            }
+
             // Rule: Switching root views from a deep view should be a 'pushState'.
             // By changing the view first, the router sees the major context switch
             // from the current deep selection before we nullify it.
             $state.currentAppView = viewName
-            $state.activeSelectionId = null
-            $state.activeSelectionType = null
+
+            // Restore selection for the incoming view if it exists
+            const last = $state.lastSelections[viewName]
+            if (last) {
+              $state.activeSelectionId = last.id
+              $state.activeSelectionType = last.type
+            } else {
+              $state.activeSelectionId = null
+              $state.activeSelectionType = null
+            }
           })
         }
       })

@@ -102,7 +102,33 @@
         })
         if (renderId === currentRenderId) {
           listGroup.innerHTML = ''; listGroup.appendChild(fragment)
+
+          // Restore scroll position after first render
+          if (!state.__scrollRestored && $state.listScrollPositions?.documents !== undefined) {
+            setTimeout(() => {
+              if (rootEl) {
+                rootEl.scrollTop = $state.listScrollPositions.documents
+              }
+            }, 50)
+            state.__scrollRestored = true
+          }
         }
+      }
+
+      const saveListScroll = () => {
+        if (!rootEl || (rootEl.offsetWidth === 0 && rootEl.offsetHeight === 0)) {
+          return
+        }
+        if (!$state.listScrollPositions) {
+          $state.listScrollPositions = {}
+        }
+        $state.listScrollPositions.documents = rootEl.scrollTop
+      }
+
+      const debouncedSave = $utils.debounce(saveListScroll, 100)
+
+      if (signal) {
+        signal.addEventListener('abort', saveListScroll)
       }
 
       const resetAndRender = async () => {
@@ -114,6 +140,7 @@
           if (rootEl.scrollTop + rootEl.clientHeight >= rootEl.scrollHeight - 50 && hasMore) {
             await fetchNextBatch(); render()
           }
+          debouncedSave()
         }
       }
       render()

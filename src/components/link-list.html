@@ -10,7 +10,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils }) => {
+    client: ({ state, signal, root, localDb, eventBus, globalStore, refs, utils }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
@@ -109,10 +109,43 @@
           if (renderId === currentRenderId) {
             listGroup.innerHTML = ''
             listGroup.appendChild(fragment)
+
+            // Restore scroll position after first render
+            if (!state.__scrollRestored && $state.listScrollPositions?.links !== undefined) {
+              const root = refs('root')
+              setTimeout(() => {
+                if (root) {
+                  root.scrollTop = $state.listScrollPositions.links
+                }
+              }, 50)
+              state.__scrollRestored = true
+            }
           }
         } catch (error) {
           console.error('[link-list] Error fetching links:', error)
         }
+      }
+
+      const saveListScroll = () => {
+        const root = refs('root')
+        if (!root || (root.offsetWidth === 0 && root.offsetHeight === 0)) {
+          return
+        }
+        if (!$state.listScrollPositions) {
+          $state.listScrollPositions = {}
+        }
+        $state.listScrollPositions.links = root.scrollTop
+      }
+
+      const debouncedSave = $utils.debounce(saveListScroll, 100)
+
+      if (signal) {
+        signal.addEventListener('abort', saveListScroll)
+      }
+
+      const root = refs('root')
+      if (root) {
+        root.onscroll = () => debouncedSave()
       }
 
       // Initial render
