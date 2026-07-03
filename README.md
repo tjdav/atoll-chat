@@ -83,7 +83,7 @@ pnpm run test:e2e
 
 We're building Atoll Chat in the open and would love your help! Whether you're a designer, a crypto enthusiast, or a frontend whiz, there's a place for you here.
 
-- **Found a bug?** Open an [issue](https://github.com/atoll-chat/atoll-chat/issues).
+- **Found a bug?** Open an [issue](https://codeberg.org/tjdavid/atoll-chat/issues).
 
 ## Licence
 
