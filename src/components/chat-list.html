@@ -193,6 +193,8 @@
       $bus.on('NEW_LOCAL_DATA', () => debouncedFullRender())
       $bus.on('NEW_LOCAL_ROOM', () => debouncedFullRender())
       $bus.on('ROOM_READ_STATE_CHANGED', () => debouncedFullRender())
+      $bus.on('SYNC_COMPLETE', () => debouncedFullRender())
+      $bus.on('auth:unlocked', () => debouncedFullRender())
     }
   })
 </script>

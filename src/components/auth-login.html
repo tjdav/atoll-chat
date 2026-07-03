@@ -119,14 +119,14 @@
                 id: record.id
               })
 
-              // Start real-time subscriptions
-              await $sync.startSubscriptions()
-
               // Emit successful unlock event
               $bus.emit('auth:unlocked', {
                 keys: decryptedKeys,
                 userRecord: record
               })
+
+              // Start and AWAIT real-time subscriptions
+              await $sync.startSubscriptions()
 
               $state.isVaultUnlocked = true
             }

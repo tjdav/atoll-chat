@@ -45,6 +45,13 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
             return
           }
 
+          if (!id && type === 'WORKER_INITIALIZED') {
+            if (pluginContext.$bus) {
+              pluginContext.$bus.emit('WORKER_INITIALIZED', payload)
+            }
+            return
+          }
+
           if (!id && type === 'NEW_LOCAL_ROOM') {
             if (pluginContext.$bus) {
               pluginContext.$bus.emit('NEW_LOCAL_ROOM', payload)

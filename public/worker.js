@@ -17,6 +17,11 @@ let currentUserKeys = null
 let isProcessing = false
 const messageQueue = []
 
+/**
+ * Worker state tracking
+ */
+let isInitialized = false
+
 async function init () {
   try {
     await sodium.ready
@@ -36,11 +41,43 @@ async function init () {
 }
 
 self.onmessage = (event) => {
-  messageQueue.push(event)
-  processQueue()
+  const { type } = event.data
+
+  // Certain tasks can be processed immediately and in parallel
+  const parallelTasks = [
+    'CHECK_READY',
+    'test-rpc',
+    'generateSalt',
+    'deriveKeyFromPassword',
+    'PROCESS_INCOMING_MESSAGE',
+    'PROCESS_NEW_ROOM_KEY',
+    'UPDATE_ROOM_MEMBER'
+  ]
+
+  if (parallelTasks.includes(type)) {
+    handleParallelEvent(event)
+  } else {
+    messageQueue.push(event)
+    processQueue()
+  }
 }
 
 let readyPromise
+
+async function handleParallelEvent (event) {
+  try {
+    await readyPromise
+    await handleEvent(event)
+  } catch (err) {
+    console.error('Parallel task error:', err)
+    const { id, type } = event.data
+    self.postMessage({
+      id,
+      type,
+      error: err.message
+    })
+  }
+}
 
 async function processQueue () {
   if (isProcessing || messageQueue.length === 0) {
@@ -84,10 +121,26 @@ async function handleEvent (event) {
     return
   }
 
+
   try {
     if (type === 'INIT_KEYS') {
       currentUserKeys = payload
+      isInitialized = true
       console.log('[worker] Keys initialized for user:', currentUserKeys.id)
+      self.postMessage({
+        id,
+        type,
+        result: 'ACK'
+      })
+      // Broadcast ready state
+      self.postMessage({ type: 'WORKER_INITIALIZED', payload: { userId: currentUserKeys.id } })
+      return
+    }
+
+    if (type === 'WIPE_KEYS') {
+      currentUserKeys = null
+      isInitialized = false
+      publicKeyCache.clear()
       self.postMessage({
         id,
         type,
@@ -96,13 +149,11 @@ async function handleEvent (event) {
       return
     }
 
-    if (type === 'WIPE_KEYS') {
-      currentUserKeys = null
-      publicKeyCache.clear()
+    if (type === 'GET_INIT_STATE') {
       self.postMessage({
         id,
         type,
-        result: 'ACK'
+        result: { isInitialized, userId: currentUserKeys?.id }
       })
       return
     }
@@ -180,6 +231,26 @@ async function handleEvent (event) {
   }
 }
 
+/**
+ * Helper to perform fetch with a timeout
+ */
+async function fetchWithTimeout (resource, options = {}) {
+  const { timeout = 15000 } = options
+
+  const controller = new AbortController()
+  const id = setTimeout(() => controller.abort(), timeout)
+
+  try {
+    const response = await fetch(resource, {
+      ...options,
+      signal: controller.signal
+    })
+    return response
+  } finally {
+    clearTimeout(id)
+  }
+}
+
 async function sendMessage (rpcId, payload) {
   const {
     roomId,
@@ -242,7 +313,7 @@ async function sendMessage (rpcId, payload) {
       const artFormData = new FormData()
       artFormData.append('file', artBlob, 'album-art.bin')
 
-      const artResponse = await fetch(`${baseUrl}/api/collections/media/records`, {
+      const artResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
         method: 'POST',
         headers,
         body: artFormData
@@ -267,7 +338,7 @@ async function sendMessage (rpcId, payload) {
     const mainFormData = new FormData()
     mainFormData.append('file', mainBlob, 'encrypted.bin')
 
-    const mainResponse = await fetch(`${baseUrl}/api/collections/media/records`, {
+    const mainResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
       method: 'POST',
       headers,
       body: mainFormData
@@ -345,7 +416,7 @@ async function sendMessage (rpcId, payload) {
     local_uuid: localUuid
   }
 
-  const messageResponse = await fetch(`${baseUrl}/api/collections/messages/records`, {
+  const messageResponse = await fetchWithTimeout(`${baseUrl}/api/collections/messages/records`, {
     method: 'POST',
     headers: {
       ...headers,
@@ -492,7 +563,7 @@ async function processIncomingMessage (rpcId, record) {
     if (authToken) {
       headers.Authorization = authToken
     }
-    const response = await fetch(`${baseUrl}/api/collections/users/records/${senderId}`, { headers })
+    const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${senderId}`, { headers })
     if (!response.ok) {
       throw new Error(`Failed to fetch sender public key (${senderId}): ${response.status} ${response.statusText}`)
     }
@@ -674,7 +745,7 @@ async function processNewRoomKey (rpcId, payload) {
     if (authToken) {
       headers.Authorization = authToken
     }
-    const response = await fetch(`${baseUrl}/api/collections/users/records/${wrapped_by}`, { headers })
+    const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${wrapped_by}`, { headers })
     if (!response.ok) {
       throw new Error(`Failed to fetch inviter public key (${wrapped_by}): ${response.status} ${response.statusText}`)
     }
@@ -724,7 +795,7 @@ async function processNewRoomKey (rpcId, payload) {
   }
 
   // 1. Fetch Room record
-  const roomResponse = await fetch(`${baseUrl}/api/collections/rooms/records/${room_id}`, { headers })
+  const roomResponse = await fetchWithTimeout(`${baseUrl}/api/collections/rooms/records/${room_id}`, { headers })
   if (roomResponse.ok) {
     const roomRecord = await roomResponse.json()
     isGroup = roomRecord.is_group
@@ -745,7 +816,7 @@ async function processNewRoomKey (rpcId, payload) {
 
   // 2. Fetch Room members with user details
   const membersUrl = `${baseUrl}/api/collections/room_members/records?filter=(room_id='${room_id}')&expand=user_id`
-  const membersResponse = await fetch(membersUrl, { headers })
+  const membersResponse = await fetchWithTimeout(membersUrl, { headers })
   if (membersResponse.ok) {
     const membersData = await membersResponse.json()
     participants = membersData.items.map(m => {

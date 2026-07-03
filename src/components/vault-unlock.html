@@ -90,19 +90,23 @@
           id: record.id
         })
 
-        // Set global state immediately to transition UI
-        $state.isVaultUnlocked = true
-
         // Emit successful unlock event
         $bus.emit('auth:unlocked', {
           keys: decryptedKeys,
           userRecord: record
         })
 
-        // Start real-time subscriptions in background
-        $sync.startSubscriptions().catch(err => {
-          console.error('[vault-unlock] Background sync failed:', err)
-        })
+        try {
+          // Start and AWAIT real-time subscriptions (including catch-up sync)
+          // This ensures data is ready before the UI transitions
+          await $sync.startSubscriptions()
+          
+          // Set global state only AFTER subscriptions are ready
+          $state.isVaultUnlocked = true
+        } catch (err) {
+          console.error('[vault-unlock] Subscription/Sync failed:', err)
+          updateStatus('Error: Failed to synchronize data. Please try again.')
+        }
       }
 
       unlockForm.addEventListener('submit', async (event) => {

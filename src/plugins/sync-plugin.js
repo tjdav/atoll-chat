@@ -8,8 +8,22 @@ export default function syncPlugin () {
     name: 'realtime-sync',
     client: {
       name: 'realtimeSync',
-      context: () => {
+      context: (pluginContext) => {
         let isSubscribed = false
+
+        // Reset subscription state on logout to allow re-syncing on next login
+        if (pluginContext.$bus) {
+          pluginContext.$bus.on('auth:logout', () => {
+            isSubscribed = false
+            console.log('[sync-plugin] Resetting subscription state due to logout.')
+            // Also unsubscribe from PocketBase collections if possible
+            const { pb } = pluginContext.pocketbase || {}
+            if (pb) {
+              pb.collection('messages').unsubscribe('*').catch(() => {})
+              pb.collection('room_members').unsubscribe('*').catch(() => {})
+            }
+          })
+        }
 
         return (instanceContext) => {
           const { pb } = instanceContext.pocketbase
@@ -42,13 +56,8 @@ export default function syncPlugin () {
                 sort: 'updated'
               })
 
-              for (const record of missedKeys) {
-                try {
-                  await $worker.execute('PROCESS_NEW_ROOM_KEY', record)
-                } catch (err) {
-                  console.error(`Failed to process caught-up room key ${record.id}:`, err)
-                }
-              }
+              // Process room keys in parallel for maximum speed
+              await Promise.all(missedKeys.map(record => $worker.execute('PROCESS_NEW_ROOM_KEY', record)))
 
               // Fetch missed messages SECOND
               const missedMessages = await pb.collection('messages').getFullList({
@@ -56,21 +65,19 @@ export default function syncPlugin () {
                 sort: 'created'
               })
 
-              for (const record of missedMessages) {
-                try {
-                  await $worker.execute('PROCESS_INCOMING_MESSAGE', record)
-                } catch (err) {
-                  console.error(`Failed to process caught-up message ${record.id}:`, err)
-                }
+              // Process messages in parallel for maximum speed
+              await Promise.all(missedMessages.map(record => $worker.execute('PROCESS_INCOMING_MESSAGE', record)))
+
+              // Notify UI that catch-up is done
+              if (instanceContext.eventBus?.$bus) {
+                instanceContext.eventBus.$bus.emit('SYNC_COMPLETE')
               }
 
               console.log('Historical catch-up synchronization complete.')
             } catch (err) {
               console.error('Critical failure during historical catch-up:', err)
-              // If it's a network error, we re-throw to potentially halt subscription start
-              if (err.status === 0 || err.name === 'ClientResponseError') {
-                throw err
-              }
+              // Rethrow all errors to halt the sync process as requested
+              throw err
             }
           }
 
