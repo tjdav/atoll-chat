@@ -31,6 +31,7 @@
       let lastRoomId = null
       let seenTimeout = null
       let lastRenderedMessageId = null
+      let forceScrollToBottom = false
 
       const scrollToBottom = (smooth = false) => {
         if (container) {
@@ -391,6 +392,9 @@
             requestAnimationFrame(() => scrollToBottom())
             // Extra safety for media that might load instantly from cache
             setTimeout(() => scrollToBottom(), 100)
+          } else if (forceScrollToBottom) {
+            scrollToBottom(true)
+            forceScrollToBottom = false
           } else {
             // New messages arrived, smooth scroll if we are already near bottom
             const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
@@ -425,6 +429,11 @@
           if (payload.message && payload.message.type === 'reaction') {
             return
           }
+
+          if (payload.message && payload.message.sender_id === $state.currentUser?.id) {
+            forceScrollToBottom = true
+          }
+
           debouncedRender()
         }
       })

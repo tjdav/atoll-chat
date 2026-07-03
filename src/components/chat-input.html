@@ -164,7 +164,10 @@
         }
 
         await $localDb.local_messages.put(optimisticMessage)
-        $bus.emit('db:new_local_data', { room_id: roomId })
+        $bus.emit('db:new_local_data', {
+          room_id: roomId,
+          message: optimisticMessage
+        })
 
         // Dispatch to worker
         console.log('[chat-input] Dispatching worker:send_message to worker', { localUuid })
