@@ -45,7 +45,8 @@
         } else if (isGroup) {
           const sender = participants.find(p => p.id === msg.sender_id)
           if (sender) {
-            prefix = `${sender.username.split(' ')[0]}: `
+            const senderName = sender.name || sender.username
+            prefix = `${senderName.split(' ')[0]}: `
           }
         }
         if (msg.type === 'text') {
@@ -94,7 +95,7 @@
             let roomName = ''
             if (!item.is_group) {
               const otherParticipants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
-              roomName = otherParticipants.length > 0 ? otherParticipants[0].username : (item.name || 'Direct Message')
+              roomName = otherParticipants.length > 0 ? (otherParticipants[0].name || otherParticipants[0].username) : (item.name || 'Direct Message')
             } else {
               roomName = item.name || 'Unnamed Group'
             }
@@ -104,7 +105,7 @@
               latestMsg,
               roomName,
               previewText,
-              searchContent: `${roomName} ${item.participants?.map(p => p.username).join(' ') || ''} ${previewText}`.toLowerCase()
+              searchContent: `${roomName} ${item.participants?.map(p => p.name || p.username).join(' ') || ''} ${previewText}`.toLowerCase()
             }
           }))
           loadedEnrichedItems = [...loadedEnrichedItems, ...enriched]
@@ -195,6 +196,7 @@
       $bus.on('ROOM_READ_STATE_CHANGED', () => debouncedFullRender())
       $bus.on('SYNC_COMPLETE', () => debouncedFullRender())
       $bus.on('auth:unlocked', () => debouncedFullRender())
+      $bus.on('UPDATE_ROOM_MEMBER', () => debouncedFullRender())
     }
   })
 </script>

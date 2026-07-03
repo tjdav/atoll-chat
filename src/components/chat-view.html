@@ -73,7 +73,7 @@
           if (room) {
             const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
             if (!room.is_group && participants.length > 0) {
-              state.roomName = participants[0].username
+              state.roomName = participants[0].name || participants[0].username
             } else {
               state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
             }
@@ -98,6 +98,12 @@
 
       $state.subscribe('activeSelectionType', () => {
         updateRoomInfo($state.activeSelectionId)
+      })
+
+      $bus.on('UPDATE_ROOM_MEMBER', (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId) {
+          updateRoomInfo($state.activeSelectionId)
+        }
       })
 
       $state.subscribe('isRoomDetailsOpen', (val) => {

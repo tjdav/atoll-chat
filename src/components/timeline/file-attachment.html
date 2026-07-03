@@ -127,7 +127,7 @@
             if (!response.ok) {
               throw new Error('Fetch failed')
             }
-    
+  
             const encryptedData = new Uint8Array(await response.arrayBuffer())
             const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
             const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
@@ -148,12 +148,12 @@
 
           fileNameEl.textContent = message.filename || message.content || 'Attachment'
           fileSizeEl.textContent = message.mime_type || 'Unknown Type'
-    
+  
           fileIcon.className = `bi ${getFileIcon(message.mime_type)}`
-    
+  
           downloadLink.href = objectUrl
           downloadLink.download = message.filename || message.content || 'attachment'
-    
+  
           $bus.emit('MEDIA_LOADED')
 
         } catch (err) {

@@ -121,7 +121,7 @@
               return 'You'
             }
             const p = participants.find(part => part.id === uid)
-            return p ? (p.username || p.name) : 'Unknown'
+            return p ? (p.name || p.username) : 'Unknown'
           }).join(', ')
           return `${emoji} ${names}`
         })

@@ -100,7 +100,7 @@
           // Start and AWAIT real-time subscriptions (including catch-up sync)
           // This ensures data is ready before the UI transitions
           await $sync.startSubscriptions()
-          
+  
           // Set global state only AFTER subscriptions are ready
           $state.isVaultUnlocked = true
         } catch (err) {

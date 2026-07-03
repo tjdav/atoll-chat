@@ -1,0 +1,158 @@
+<template id="profile-settings">
+  <section class="mb-5">
+    <h6 class="text-uppercase text-muted fw-bold small mb-3">Profile</h6>
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-4 mb-4">
+          <div class="position-relative cursor-pointer flex-shrink-0" ref="avatarContainer" style="width: 80px; height: 80px;">
+            <div ref="avatarPreview" class="avatar-circle w-100 h-100 d-flex align-items-center justify-content-center bg-primary-subtle text-primary fw-bold fs-3 overflow-hidden rounded-circle border">
+              {{ userInitial }}
+            </div>
+            <div class="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; border: 2px solid white;">
+              <i class="bi bi-camera-fill small"></i>
+            </div>
+            <input type="file" class="d-none" ref="avatarInput" accept="image/*">
+          </div>
+          <div class="flex-grow-1">
+            <label class="form-label small text-muted text-uppercase fw-bold">Display Name</label>
+            <input type="text" class="form-control" ref="nameInput" value="{{ displayName }}" placeholder="Enter your display name">
+            <p class="text-muted small mb-0 mt-1">This name will be visible to your contacts.</p>
+          </div>
+        </div>
+        <div class="d-flex justify-content-end">
+          <button class="btn btn-primary" ref="btnSave" {{ saveBtnDisabled }}>
+            {{ saveBtnText }}
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      displayName: '',
+      userInitial: 'U',
+      isSaving: false,
+      hasChanges: false
+    }),
+    getters: {
+      saveBtnDisabled: (state) => (!state.hasChanges || state.isSaving ? 'disabled' : ''),
+      saveBtnText: (state) => (state.isSaving ? 'Saving...' : 'Save Changes')
+    },
+    client: async ({ refs, state, globalStore, pocketbase, eventBus }) => {
+      const { $state } = globalStore
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+
+      const nameInput = refs('nameInput')
+      const avatarInput = refs('avatarInput')
+      const avatarContainer = refs('avatarContainer')
+      const avatarPreview = refs('avatarPreview')
+      const btnSave = refs('btnSave')
+
+      let pendingAvatarBlob = null
+
+      const loadUserData = () => {
+        const user = $state.currentUser
+        const name = user?.name || user?.username || ''
+        state.displayName = name
+        state.userInitial = name.charAt(0).toUpperCase()
+  
+        if (nameInput) {
+          nameInput.value = state.displayName
+        }
+  
+        if (avatarPreview) {
+          if (user?.avatar && !pendingAvatarBlob) {
+            const avatarUrl = pb.files.getURL(user, user.avatar, { thumb: '100x100' })
+            avatarPreview.innerHTML = `<img src="${avatarUrl}" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+          } else if (pendingAvatarBlob) {
+            const url = URL.createObjectURL(pendingAvatarBlob)
+            avatarPreview.innerHTML = `<img src="${url}" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+          } else {
+            avatarPreview.textContent = state.userInitial
+          }
+        }
+      }
+
+      loadUserData()
+
+      const updateBtnState = () => {
+        const currentName = nameInput.value.trim()
+        const originalName = $state.currentUser?.name || $state.currentUser?.username || ''
+        state.hasChanges = (currentName !== originalName) || !!pendingAvatarBlob
+      }
+
+      nameInput.addEventListener('input', updateBtnState)
+      nameInput.addEventListener('change', updateBtnState)
+
+      avatarContainer.onclick = () => avatarInput.click()
+  
+      avatarInput.onchange = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          $bus.emit('open-avatar-editor', file)
+        }
+        avatarInput.value = ''
+      }
+
+      $bus.on('avatar-editor:applied', (blob) => {
+        pendingAvatarBlob = blob
+        const url = URL.createObjectURL(blob)
+        avatarPreview.innerHTML = `<img src="${url}" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+        updateBtnState()
+      })
+
+      btnSave.onclick = async () => {
+        if (state.isSaving || !state.hasChanges) {
+          return
+        }
+  
+        state.isSaving = true
+
+        try {
+          const formData = new FormData()
+          formData.append('name', nameInput.value.trim())
+          if (pendingAvatarBlob) {
+            formData.append('avatar', pendingAvatarBlob, 'avatar.webp')
+          }
+
+          const updatedUser = await pb.collection('users').update($state.currentUser.id, formData)
+  
+          $state.currentUser = {
+            ...$state.currentUser,
+            ...updatedUser
+          }
+
+          pendingAvatarBlob = null
+          state.isSaving = false
+          loadUserData()
+          updateBtnState()
+  
+          $bus.emit('SHOW_TOAST', {
+            message: 'Profile updated successfully!',
+            type: 'success'
+          })
+        } catch (err) {
+          console.error('[profile-settings] Save failed:', err)
+          $bus.emit('SHOW_TOAST', {
+            message: 'Failed to save profile: ' + (err.message || 'Unknown error'),
+            type: 'danger'
+          })
+          state.isSaving = false
+          updateBtnState()
+        }
+      }
+
+      $state.subscribe('currentUser', () => {
+        if (!state.isSaving) {
+          loadUserData()
+        }
+      })
+    }
+  })
+</script>

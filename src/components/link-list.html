@@ -53,7 +53,7 @@
             if (room && room.participants) {
               const sender = room.participants.find(p => p.id === link.sender_id)
               if (sender) {
-                senderName = sender.username || sender.name || 'Unknown'
+                senderName = sender.name || sender.username || 'Unknown'
               }
             }
 

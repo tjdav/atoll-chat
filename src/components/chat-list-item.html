@@ -88,7 +88,7 @@
           img.style.objectFit = 'cover'
           div.appendChild(img)
         } else {
-          div.textContent = getInitials(user.username || user.name)
+          div.textContent = getInitials(user.name || user.username)
         }
         return div
       }

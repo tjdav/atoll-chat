@@ -1,0 +1,132 @@
+<template id="avatar-editor">
+  <div class="modal fade" ref="editorModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Avatar</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-0 overflow-hidden bg-dark d-flex align-items-center justify-content-center" style="height: 400px; position: relative;">
+          <canvas ref="canvas" width="400" height="400" class="cursor-move" style="max-width: 100%; max-height: 100%;"></canvas>
+          <div class="position-absolute top-50 start-50 translate-middle border border-2 border-white rounded-circle shadow-lg" style="width: 300px; height: 300px; pointer-events: none; box-shadow: 0 0 0 9999px rgba(0,0,0,0.5) !important;"></div>
+        </div>
+        <div class="modal-footer flex-column">
+          <div class="w-100 px-3 mb-3">
+            <label class="form-label small text-muted text-uppercase fw-bold">Zoom</label>
+            <input type="range" class="form-range" ref="zoomRange" min="0.1" max="3" step="0.01" value="1">
+          </div>
+          <div class="d-flex justify-content-end w-100 gap-2">
+            <button type="button" class="btn btn-link text-decoration-none" data-bs-dismiss="modal">Cancel</button>
+            <button type="button" class="btn btn-primary" ref="btnApply">Apply Changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: async ({ refs, eventBus, bootstrap }) => {
+      const { $bus } = eventBus
+      const { Modal } = await bootstrap
+  
+      const modalEl = refs('editorModal')
+      const canvas = refs('canvas')
+      const zoomRange = refs('zoomRange')
+      const btnApply = refs('btnApply')
+      const modal = new Modal(modalEl)
+      const ctx = canvas.getContext('2d')
+
+      let img = null
+      let scale = 1
+      let offsetX = 0
+      let offsetY = 0
+      let isDragging = false
+      let startX, startY
+
+      const draw = () => {
+        if (!img) {
+          return
+        }
+  
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        ctx.save()
+        ctx.translate((canvas.width / 2) + offsetX, (canvas.height / 2) + offsetY)
+        ctx.scale(scale, scale)
+        ctx.drawImage(img, -img.width / 2, -img.height / 2)
+        ctx.restore()
+      }
+
+      $bus.on('open-avatar-editor', (file) => {
+        const reader = new FileReader()
+        reader.onload = (e) => {
+          img = new Image()
+          img.onload = () => {
+            const minScale = 300 / Math.min(img.width, img.height)
+            scale = minScale
+            zoomRange.min = minScale
+            zoomRange.max = minScale * 5
+            zoomRange.value = scale
+            offsetX = 0
+            offsetY = 0
+            draw()
+            modal.show()
+          }
+          img.src = e.target.result
+        }
+        reader.readAsDataURL(file)
+      })
+
+      zoomRange.oninput = (e) => {
+        scale = parseFloat(e.target.value)
+        draw()
+      }
+
+      canvas.onmousedown = (e) => {
+        isDragging = true
+        startX = e.clientX - offsetX
+        startY = e.clientY - offsetY
+      }
+
+      window.onmousemove = (e) => {
+        if (!isDragging) {
+          return
+        }
+        offsetX = e.clientX - startX
+        offsetY = e.clientY - startY
+        draw()
+      }
+
+      window.onmouseup = () => {
+        isDragging = false
+      }
+
+      btnApply.onclick = () => {
+        const outputCanvas = document.createElement('canvas')
+        outputCanvas.width = 400
+        outputCanvas.height = 400
+        const outCtx = outputCanvas.getContext('2d')
+  
+        // Circular clip for the final output as well (optional, but good for preview consistency)
+        // Actually, we should output a full square 400x400 and let the UI handle circularity.
+  
+        outCtx.fillStyle = 'white'
+        outCtx.fillRect(0, 0, 400, 400)
+  
+        outCtx.save()
+        outCtx.translate(200 + offsetX, 200 + offsetY)
+        outCtx.scale(scale, scale)
+        outCtx.drawImage(img, -img.width / 2, -img.height / 2)
+        outCtx.restore()
+  
+        outputCanvas.toBlob((blob) => {
+          $bus.emit('avatar-editor:applied', blob)
+          modal.hide()
+        }, 'image/webp', 0.8)
+      }
+    }
+  })
+</script>

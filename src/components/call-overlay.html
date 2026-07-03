@@ -258,7 +258,7 @@
         if (room) {
           const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
           if (!room.is_group && participants.length > 0) {
-            state.callerName = participants[0].username
+            state.callerName = participants[0].name || participants[0].username
           } else {
             state.callerName = room.name || 'Unknown Caller'
           }

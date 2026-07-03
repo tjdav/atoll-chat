@@ -238,14 +238,14 @@
 
             const sender = participants.find(p => p.id === message.sender_id)
             if (!isSent && isFirstInBlock && sender) {
-              row.setAttribute('sender-name', sender.username || sender.name || 'Unknown')
+              row.setAttribute('sender-name', sender.name || sender.username || 'Unknown')
             }
 
             if (!isSent && isLastInBlock && sender) {
               if (sender.avatar) {
                 row.setAttribute('avatar-url', pb.files.getURL(sender, sender.avatar, { thumb: '32x32' }))
               } else {
-                row.setAttribute('avatar-initials', (sender.username || '?').substring(0, 2).toUpperCase())
+                row.setAttribute('avatar-initials', (sender.name || sender.username || '?').substring(0, 2).toUpperCase())
               }
             }
 

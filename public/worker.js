@@ -121,7 +121,6 @@ async function handleEvent (event) {
     return
   }
 
-
   try {
     if (type === 'INIT_KEYS') {
       currentUserKeys = payload
@@ -133,7 +132,10 @@ async function handleEvent (event) {
         result: 'ACK'
       })
       // Broadcast ready state
-      self.postMessage({ type: 'WORKER_INITIALIZED', payload: { userId: currentUserKeys.id } })
+      self.postMessage({
+        type: 'WORKER_INITIALIZED',
+        payload: { userId: currentUserKeys.id }
+      })
       return
     }
 
@@ -153,7 +155,10 @@ async function handleEvent (event) {
       self.postMessage({
         id,
         type,
-        result: { isInitialized, userId: currentUserKeys?.id }
+        result: {
+          isInitialized,
+          userId: currentUserKeys?.id
+        }
       })
       return
     }
@@ -214,6 +219,11 @@ async function handleEvent (event) {
 
     if (type === 'UPDATE_ROOM_MEMBER') {
       await updateRoomMember(id, payload)
+      return
+    }
+
+    if (type === 'UPDATE_USER_DATA') {
+      await updateUserData(id, payload)
       return
     }
 
@@ -708,12 +718,63 @@ async function updateRoomMember (rpcId, record) {
         type: 'NEW_LOCAL_DATA',
         payload: { room_id }
       })
+
+      self.postMessage({
+        type: 'UPDATE_ROOM_MEMBER',
+        payload: { room_id }
+      })
     }
   }
 
   self.postMessage({
     id: rpcId,
-    type: 'UPDATE_ROOM_MEMBER',
+    type: 'UPDATE_ROOM_MEMBER_RPC',
+    result: { success: true }
+  })
+}
+
+async function updateUserData (rpcId, record) {
+  const userId = record.id
+  const { name, username, avatar } = record
+
+  // Update publicKeyCache
+  const existingKeys = publicKeyCache.get(userId)
+  if (existingKeys) {
+    publicKeyCache.set(userId, {
+      ...existingKeys,
+      name,
+      username,
+      avatar
+    })
+  }
+
+  // Update all rooms where this user is a participant
+  const rooms = await db.local_rooms.toArray()
+  for (const room of rooms) {
+    if (room.participants) {
+      const pIndex = room.participants.findIndex(p => p.id === userId)
+      if (pIndex !== -1) {
+        room.participants[pIndex].name = name
+        room.participants[pIndex].username = username
+        room.participants[pIndex].avatar = avatar
+        await db.local_rooms.put(room)
+
+        self.postMessage({
+          type: 'NEW_LOCAL_DATA',
+          payload: { room_id: room.id }
+        })
+
+        self.postMessage({
+          type: 'UPDATE_ROOM_MEMBER',
+          payload: { room_id: room.id }
+        })
+      }
+    }
+  }
+
+  self.postMessage({
+    id: rpcId,
+    type: 'UPDATE_USER_DATA',
     result: { success: true }
   })
 }

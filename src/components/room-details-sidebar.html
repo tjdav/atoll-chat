@@ -98,13 +98,18 @@
           info.className = 'd-flex align-items-center'
 
           const avatar = document.createElement('div')
-          avatar.className = 'member-avatar bg-primary-subtle text-primary'
-          avatar.textContent = user.username.charAt(0).toUpperCase()
+          avatar.className = 'member-avatar bg-primary-subtle text-primary overflow-hidden'
+          if (user.avatar) {
+            const url = pb.files.getURL(user, user.avatar, { thumb: '32x32' })
+            avatar.innerHTML = `<img src="${url}" class="w-100 h-100 object-fit-cover">`
+          } else {
+            avatar.textContent = (user.name || user.username).charAt(0).toUpperCase()
+          }
 
           const nameWrapper = document.createElement('div')
           const name = document.createElement('div')
           name.className = 'fw-bold'
-          name.textContent = user.username + (isCurrentUser ? ' (You)' : '')
+          name.textContent = (user.name || user.username) + (isCurrentUser ? ' (You)' : '')
 
           const role = document.createElement('span')
           role.className = 'badge bg-light text-dark border ms-2 small'
@@ -133,14 +138,15 @@
 
       const handleKickUser = async (member) => {
         const user = member.expand.user_id
-        if (!confirm(`Are you sure you want to remove ${user.username} from the room? This will rotate all cryptographic keys.`)) {
+        const userName = user.name || user.username
+        if (!confirm(`Are you sure you want to remove ${userName} from the room? This will rotate all cryptographic keys.`)) {
           return
         }
 
         $bus.emit('trigger-kick-user', {
           kickedMemberId: member.id,
           kickedUserId: user.id,
-          kickedUsername: user.username,
+          kickedUsername: userName,
           roomId: $state.activeSelectionId
         })
       }
@@ -257,6 +263,13 @@
       // Re-fetch when room changes
       $state.subscribe('activeSelectionId', () => {
         fetchMembers()
+      })
+
+      // Listen for member updates
+      $bus.on('UPDATE_ROOM_MEMBER', (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId) {
+          fetchMembers()
+        }
       })
     }
   })

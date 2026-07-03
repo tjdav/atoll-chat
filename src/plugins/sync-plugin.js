@@ -19,8 +19,10 @@ export default function syncPlugin () {
             // Also unsubscribe from PocketBase collections if possible
             const { pb } = pluginContext.pocketbase || {}
             if (pb) {
-              pb.collection('messages').unsubscribe('*').catch(() => {})
-              pb.collection('room_members').unsubscribe('*').catch(() => {})
+              pb.collection('messages').unsubscribe('*').catch(() => {
+              })
+              pb.collection('room_members').unsubscribe('*').catch(() => {
+              })
             }
           })
         }
@@ -69,8 +71,8 @@ export default function syncPlugin () {
               await Promise.all(missedMessages.map(record => $worker.execute('PROCESS_INCOMING_MESSAGE', record)))
 
               // Notify UI that catch-up is done
-              if (instanceContext.eventBus?.$bus) {
-                instanceContext.eventBus.$bus.emit('SYNC_COMPLETE')
+              if (pluginContext.$bus) {
+                pluginContext.$bus.emit('SYNC_COMPLETE')
               }
 
               console.log('Historical catch-up synchronization complete.')
@@ -113,6 +115,13 @@ export default function syncPlugin () {
                     // Other member update (likely seen status)
                     $worker.execute('UPDATE_ROOM_MEMBER', e.record).catch(console.error)
                   }
+                }
+              })
+
+              // Subscribe to the users collection (for profile updates)
+              await pb.collection('users').subscribe('*', async (e) => {
+                if (e.action === 'update') {
+                  $worker.execute('UPDATE_USER_DATA', e.record).catch(console.error)
                 }
               })
 
