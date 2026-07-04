@@ -20,6 +20,7 @@
         ref="inputText"
         is-sending="{{ isSending }}"
         is-uploading="{{ isUploading }}"
+        is-compressing="{{ isCompressing }}"
       ></chat-input-text>
     </div>
 
@@ -38,6 +39,7 @@
     server: () => ({
       isSending: false,
       isUploading: false,
+      isCompressing: false,
       uploadStatus: '',
       fileName: '',
       hasFile: false,
@@ -287,8 +289,29 @@
         state.selectedFile = null
       })
 
-      $bus.on('ui:file_selected', (payload) => {
-        const file = payload.file
+      $bus.on('ui:file_selected', async (payload) => {
+        let file = payload.file
+
+        if (file.type.startsWith('image/')) {
+          state.isCompressing = true
+          state.uploadStatus = 'Compressing image...'
+          try {
+            const compressedBlob = await $utils.compressImage(file, {
+              maxWidth: 1200,
+              maxHeight: 1200,
+              quality: 0.8,
+              format: 'image/webp'
+            })
+            // Create a new File from the Blob to keep the original name (with new extension)
+            const newName = file.name.substring(0, file.name.lastIndexOf('.')) + '.webp'
+            file = new File([compressedBlob], newName, { type: 'image/webp' })
+          } catch (err) {
+            console.warn('[chat-input] Compression failed, using original file:', err)
+          } finally {
+            state.isCompressing = false
+          }
+        }
+
         if (file.size > 25 * 1024 * 1024) {
           alert('File is too large. Maximum size is 25MB.')
           return

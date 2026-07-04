@@ -29,8 +29,9 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, eventBus, bootstrap }) => {
+    client: async ({ refs, eventBus, bootstrap, utils }) => {
       const { $bus } = eventBus
+      const { $utils } = utils
       const { Modal } = await bootstrap
   
       const modalEl = refs('editorModal')
@@ -104,7 +105,7 @@
         isDragging = false
       }
 
-      btnApply.onclick = () => {
+      btnApply.onclick = async () => {
         const outputCanvas = document.createElement('canvas')
         outputCanvas.width = 400
         outputCanvas.height = 400
@@ -122,10 +123,20 @@
         outCtx.drawImage(img, -img.width / 2, -img.height / 2)
         outCtx.restore()
   
-        outputCanvas.toBlob((blob) => {
+        try {
+          const blob = await $utils.compressImage(outputCanvas, {
+            maxWidth: 400,
+            maxHeight: 400,
+            quality: 0.8,
+            format: 'image/webp',
+            cropToSquare: false
+          })
           $bus.emit('ui:avatar_editor_applied', blob)
           modal.hide()
-        }, 'image/webp', 0.8)
+        } catch (err) {
+          console.error('[avatar-editor] Compression failed:', err)
+          alert('Failed to process image.')
+        }
       }
     }
   })

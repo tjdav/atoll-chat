@@ -54,8 +54,8 @@
     </button>
 
     <button class="btn btn-primary btn-circle" type="button" ref="sendButton" disabled="{{ isDisabled }}">
-      <i class="bi bi-send-fill"></i>
-      <div class="spinner-border spinner-border-sm d-none" role="status">
+      <i class="bi bi-send-fill {{ isCompressing ? 'd-none' : '' }}"></i>
+      <div class="spinner-border spinner-border-sm {{ isCompressing ? '' : 'd-none' }}" role="status">
         <span class="visually-hidden">Loading...</span>
       </div>
     </button>
@@ -69,13 +69,14 @@
   export default defineComponent({
     attributes: {
       isSending: Boolean,
-      isUploading: Boolean
+      isUploading: Boolean,
+      isCompressing: Boolean
     },
     server: ({ state }) => ({
       currentMessageText: ''
     }),
     getters: {
-      isDisabled: (state) => (state.isSending || state.isUploading ? true : false)
+      isDisabled: (state) => (state.isSending || state.isUploading || state.isCompressing ? true : false)
     },
     client: ({ refs, state, globalStore, eventBus, signal }) => {
       const { $state } = globalStore
