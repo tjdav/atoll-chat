@@ -19,6 +19,10 @@
       const audio = refs('audioPlayer')
       const video = refs('videoPlayer')
 
+      // Set initial states
+      $state.mediaLoading = false
+      $state.mediaError = null
+
       let currentObjectUrl = null
       let activePlayer = null
       let abortController = null
@@ -55,6 +59,8 @@
         if (!mediaId) {
           cleanup()
           $state.playbackStatus = 'idle'
+          $state.mediaLoading = false
+          $state.mediaError = null
           return
         }
 
@@ -64,9 +70,14 @@
         abortController = new AbortController()
         const { signal: fetchSignal } = abortController
 
+        $state.mediaLoading = true
+        $state.mediaError = null
+
         try {
           const asset = await $localDb.local_assets.get(mediaId)
           if (!asset) {
+            $state.mediaLoading = false
+            $state.mediaError = 'Asset not found locally'
             return
           }
 
@@ -74,6 +85,9 @@
           const url = pb.files.getURL(mediaRecord, mediaRecord.file)
 
           const response = await fetch(url, { signal: fetchSignal })
+          if (!response.ok) {
+            throw new Error(`Failed to fetch media: ${response.statusText}`)
+          }
           const arrayBuffer = await response.arrayBuffer()
           const encryptedFileBuffer = new Uint8Array(arrayBuffer)
 
@@ -108,6 +122,7 @@
           } else {
             activePlayer = video
             placeholderIcon = 'bi-camera-video'
+            video.controls = true
           }
 
           // Update Metadata
@@ -149,12 +164,15 @@
           activePlayer.src = currentObjectUrl
           activePlayer.volume = $state.mediaVolume
           $state.playbackStatus = 'playing'
+          $state.mediaLoading = false
+  
           try {
             await activePlayer.play()
           } catch (e) {
             if (e.name !== 'AbortError') {
               console.warn('[media-engine] Play failed:', e)
               $state.playbackStatus = 'paused'
+              // Don't set mediaError here because it might just be an autoplay block
             }
           }
 
@@ -163,6 +181,8 @@
             return
           }
           console.error('[media-engine] Error loading media:', err)
+          $state.mediaLoading = false
+          $state.mediaError = err.message || 'Error loading media'
           $state.playbackStatus = 'idle'
         }
       }
@@ -278,6 +298,20 @@
       video.addEventListener('timeupdate', updateProgress)
       audio.addEventListener('ended', () => $state.playbackStatus = 'idle')
       video.addEventListener('ended', () => $state.playbackStatus = 'idle')
+
+      const handlePlayerError = (e) => {
+        const target = e.target
+        const origin = window.location.origin
+        if (target.src && !target.src.startsWith(`${origin}/undefined`)) {
+          console.error('[media-engine] Player error:', target.error)
+          $state.mediaError = `Playback error: ${target.error?.message || 'Unknown error'}`
+          $state.mediaLoading = false
+          $state.playbackStatus = 'idle'
+        }
+      }
+
+      audio.addEventListener('error', handlePlayerError)
+      video.addEventListener('error', handlePlayerError)
 
       $state.set('getMasterVideoElement', () => video)
 

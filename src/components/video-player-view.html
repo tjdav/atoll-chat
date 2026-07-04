@@ -69,8 +69,8 @@
         const getMasterVideo = $state.getMasterVideoElement
         if (getMasterVideo) {
           const video = getMasterVideo()
-          const currentContainer = carouselInner.querySelector('.video-container:not(.d-none)')
-          if (video && currentContainer && video.parentElement === currentContainer) {
+          // Check if the video is inside ANY container within our carouselInner
+          if (video && carouselInner.contains(video)) {
             video.className = ''
             const engineContainer = document.querySelector('media-engine .d-none')
             if (engineContainer) {
@@ -81,24 +81,44 @@
       }
 
       const syncActiveVideo = (id, container) => {
-        const isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id)
+        const isSelectedThis = ($state.currentMedia && $state.currentMedia.id === id)
         const videoPlaceholder = container.querySelector('.video-placeholder')
         const videoContainer = container.querySelector('.video-container')
+        const loadingIndicator = container.querySelector('.video-loading')
+        const errorDisplay = container.querySelector('.video-error')
+        const errorMessage = container.querySelector('.error-text')
 
-        if (isPlayingThis) {
-          const getMasterVideo = $state.getMasterVideoElement
-          if (getMasterVideo) {
-            const video = getMasterVideo()
-            if (video) {
-              video.className = 'w-100 h-100 object-fit-contain'
-              videoContainer.appendChild(video)
-              videoContainer.classList.remove('d-none')
-              videoPlaceholder.classList.add('d-none')
+        if (isSelectedThis) {
+          if ($state.mediaLoading) {
+            loadingIndicator.classList.remove('d-none')
+            videoPlaceholder.classList.add('d-none')
+            videoContainer.classList.add('d-none')
+            errorDisplay.classList.add('d-none')
+          } else if ($state.mediaError) {
+            errorDisplay.classList.remove('d-none')
+            errorMessage.textContent = $state.mediaError
+            loadingIndicator.classList.add('d-none')
+            videoPlaceholder.classList.add('d-none')
+            videoContainer.classList.add('d-none')
+          } else {
+            const getMasterVideo = $state.getMasterVideoElement
+            if (getMasterVideo) {
+              const video = getMasterVideo()
+              if (video) {
+                video.className = 'w-100 h-100 object-fit-contain'
+                videoContainer.appendChild(video)
+                videoContainer.classList.remove('d-none')
+                videoPlaceholder.classList.add('d-none')
+                loadingIndicator.classList.add('d-none')
+                errorDisplay.classList.add('d-none')
+              }
             }
           }
         } else {
           videoContainer.classList.add('d-none')
           videoPlaceholder.classList.remove('d-none')
+          loadingIndicator.classList.add('d-none')
+          errorDisplay.classList.add('d-none')
         }
       }
 
@@ -112,22 +132,32 @@
               <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center mb-3 btn-big-play" style="width: 120px; height: 120px;">
                 <i class="bi bi-play-fill" style="font-size: 4rem;"></i>
               </button>
-              <div class="text-white opacity-50">Playing on Global Media Manager</div>
+              <div class="text-white opacity-50">Click to Play</div>
+            </div>
+            <div class="video-loading flex-grow-1 w-100 h-100 d-flex flex-column align-items-center justify-content-center d-none">
+              <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+              <div class="text-white opacity-75">Decrypting Video...</div>
+            </div>
+            <div class="video-error flex-grow-1 w-100 h-100 d-flex flex-column align-items-center justify-content-center d-none p-4 text-center">
+              <i class="bi bi-exclamation-triangle text-danger mb-3" style="font-size: 3rem;"></i>
+              <div class="text-white mb-3 error-text"></div>
+              <button class="btn btn-outline-light btn-retry">Retry</button>
             </div>
             <div class="video-container flex-grow-1 w-100 h-100 d-flex align-items-center justify-content-center d-none"></div>
           </div>
         `
-        const btnPlay = div.querySelector('.btn-big-play')
-        btnPlay.onclick = () => {
-          if ($state.currentMedia && $state.currentMedia.id === item.id) {
-            $bus.emit('media:toggle')
-          } else {
-            $bus.emit('media:play', {
-              mediaId: item.id,
-              type: 'videos'
-            })
-          }
+        const playMedia = () => {
+          $bus.emit('media:play', {
+            mediaId: item.id,
+            type: 'videos'
+          })
         }
+
+        div.querySelector('.btn-big-play').onclick = playMedia
+        div.querySelector('.btn-retry').onclick = playMedia
+  
         return div
       }
 
@@ -193,6 +223,12 @@
             isInternalChange = true
             $state.activeSelectionId = id
             state.fileName = item.filename || 'Untitled Video'
+  
+            // Stop current media when sliding to a new one
+            if ($state.currentMedia?.id !== id) {
+              $state.currentMedia = null
+            }
+
             syncActiveVideo(id, activeItem)
             isInternalChange = false
           }
@@ -243,18 +279,18 @@
         }
       })
 
-      $state.subscribe('playbackStatus', () => {
+      const syncAll = () => {
         const activeItem = carouselInner.querySelector('.carousel-item.active')
         if (activeItem) {
           const id = activeItem.dataset.id
           syncActiveVideo(id, activeItem)
-          const icon = activeItem.querySelector('.btn-big-play i')
-          if (icon) {
-            const isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id && $state.playbackStatus === 'playing')
-            icon.className = `bi ${isPlayingThis ? 'bi-pause-fill' : 'bi-play-fill'}`
-          }
         }
-      })
+      }
+
+      $state.subscribe('playbackStatus', syncAll)
+      $state.subscribe('mediaLoading', syncAll)
+      $state.subscribe('mediaError', syncAll)
+      $state.subscribe('currentMedia', syncAll)
 
       if ($state.activeSelectionType === 'videos') {
         initCarousel()
