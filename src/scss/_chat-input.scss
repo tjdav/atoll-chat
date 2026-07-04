@@ -1,5 +1,9 @@
 .chat-input-container {
   @include transition(background-color 0.2s ease);
+
+  @include media-breakpoint-down(sm) {
+    padding: 0.5rem !important;
+  }
 }
 
 .chat-input-text {

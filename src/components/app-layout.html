@@ -1,15 +1,20 @@
 <template id="app-layout">
   <div class="layout-container {{ layoutClasses }}">
-    <!-- Column 1: Navigation Sidebar -->
-    <nav-sidebar></nav-sidebar>
+    <!-- Mobile Nav Offcanvas -->
+    <div class="offcanvas-sm offcanvas-start mobile-nav-offcanvas h-100" tabindex="-1" ref="mobileNav">
+      <div class="d-flex h-100">
+        <!-- Column 1: Navigation Sidebar -->
+        <nav-sidebar></nav-sidebar>
 
-    <!-- Column 2: Contextual List -->
-    <div ref="columnTwo" class="contextual-list">
-      <list-pane></list-pane>
+        <!-- Column 2: Contextual List -->
+        <div ref="columnTwo" class="contextual-list">
+          <list-pane></list-pane>
+        </div>
+      </div>
     </div>
 
     <!-- Column 3: Main Detail View -->
-    <div ref="columnThree" class="detail-view">
+    <div ref="columnThree" class="detail-view {{ layoutClasses }}">
       <div class="h-100 align-items-center justify-content-center" style="display: {{ emptyStateDisplay }};">
         <div class="text-center">
           <i class="bi bi-chat-dots fs-1 text-secondary mb-3 d-block"></i>
@@ -64,26 +69,30 @@
       toastMessage: ''
     }),
     getters: {
-      currentViewTitle: (state) => state.currentAppView || 'Chats',
-      layoutClasses: (state) => (state.activeSelectionId ? 'chat-active' : ''),
-      emptyStateDisplay: (state) => ((!state.activeSelectionId || (state.activeSelectionType !== 'chats' && state.activeSelectionType !== 'pictures' && state.activeSelectionType !== 'videos' && state.activeSelectionType !== 'music' && state.activeSelectionType !== 'documents' && state.activeSelectionType !== 'links')) ? 'flex' : 'none'),
-      chatViewDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'chats') ? 'block' : 'none'),
-      imageViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'pictures') ? 'block' : 'none'),
-      videoPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'videos') ? 'block' : 'none'),
-      audioPlayerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'music') ? 'block' : 'none'),
-      documentViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'documents') ? 'block' : 'none'),
-      linkViewerDisplay: (state) => ((state.activeSelectionId && state.activeSelectionType === 'links') ? 'block' : 'none')
+      isDetailView: (state) => (state.activeSelectionId && ['chats', 'pictures', 'videos', 'music', 'documents', 'links'].includes(state.activeSelectionType)),
+      layoutClasses: (state) => (state.isDetailView ? 'chat-active' : ''),
+      emptyStateDisplay: (state) => (state.isDetailView ? 'none' : 'flex'),
+      chatViewDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'chats' ? 'block' : 'none'),
+      imageViewerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'pictures' ? 'block' : 'none'),
+      videoPlayerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'videos' ? 'block' : 'none'),
+      audioPlayerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'music' ? 'block' : 'none'),
+      documentViewerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'documents' ? 'block' : 'none'),
+      linkViewerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'links' ? 'block' : 'none')
     },
     client: async ({ state, globalStore, eventBus, bootstrap, refs }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
-      const { Toast } = await bootstrap
-      state.currentAppView = $state.currentAppView
+      const { Toast, Offcanvas } = await bootstrap
+
       state.activeSelectionId = $state.activeSelectionId
       state.activeSelectionType = $state.activeSelectionType
+      state.currentAppView = $state.currentAppView
 
       const toastEl = refs('globalToast')
       const toast = new Toast(toastEl)
+
+      const mobileNavEl = refs('mobileNav')
+      const mobileNav = new Offcanvas(mobileNavEl)
 
       $bus.on('ui:show_toast', ({ message, type = 'primary' }) => {
         state.toastMessage = message
@@ -91,14 +100,22 @@
         toast.show()
       })
 
-      $state.subscribe('currentAppView', (value) => {
-        state.currentAppView = value
+      $bus.on('ui:open_mobile_nav', () => {
+        mobileNav.show()
       })
-      $state.subscribe('activeSelectionId', (value) => {
-        state.activeSelectionId = value
+
+      $state.subscribe('currentAppView', (val) => {
+        state.currentAppView = val
       })
-      $state.subscribe('activeSelectionType', (value) => {
-        state.activeSelectionType = value
+      $state.subscribe('activeSelectionId', (val) => {
+        state.activeSelectionId = val
+        // Close offcanvas when selection changes on mobile
+        if (window.innerWidth < 576) {
+          mobileNav.hide()
+        }
+      })
+      $state.subscribe('activeSelectionType', (val) => {
+        state.activeSelectionType = val
       })
     }
   })

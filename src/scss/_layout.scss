@@ -25,28 +25,55 @@
 
 // Mobile Responsive Layout Overrides
 @include media-breakpoint-down(sm) {
+  .mobile-nav-offcanvas {
+    width: calc(100vw - 60px); // Sidebar width (60px) + some of list pane
+    max-width: 410px; // 60px + 350px
 
-  // Hide Column 2 when Column 3 is active
-  .layout-container.chat-active .contextual-list {
+    &.show {
+      display: block !important;
+    }
+  }
+
+  // Hide the offcanvas-sm behavior when not in chat-active mode
+  // This ensures the "List View" (nav + list) is always visible on the main screen
+  .layout-container:not(.chat-active) .mobile-nav-offcanvas {
+    transform: none !important;
+    visibility: visible !important;
+    position: relative !important;
+    z-index: 1 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .layout-container:not(.chat-active) .offcanvas-backdrop {
     display: none !important;
   }
 
+  // When chat is active, the offcanvas should behave as a normal offcanvas
+  .layout-container.chat-active .mobile-nav-offcanvas {
+    background-color: var(--#{$prefix}tertiary-bg);
+  }
+
+  // Hide Column 2 when Column 3 is active (handled by offcanvas usually, but for consistency)
+  .layout-container.chat-active .contextual-list {
+    // We don't need to hide it here because it's inside the offcanvas now
+  }
+
   // Show Column 3 when active
-  .layout-container.chat-active .detail-view {
+  .detail-view.chat-active {
     display: block !important;
     width: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100% !important;
+    z-index: 10 !important;
   }
 
   // Hide Column 3 when not active
   .layout-container:not(.chat-active) .detail-view {
     display: none !important;
-  }
-
-  // Column 2 full width when active
-  .layout-container:not(.chat-active) .contextual-list {
-    display: flex !important;
-    width: 100% !important;
-    max-width: 100% !important;
   }
 }
 
