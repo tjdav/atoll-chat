@@ -13,6 +13,14 @@
     "static-site",
     "javascript"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git@codeberg.org/tjdavid/atoll-chat.git"
+  },
+  "author": {
+    "name": "Thomas David",
+    "url": "https://thomasjackdavid.com"
+  },
   "scripts": {
     "start": "node scripts/start-dev.js",
     "start:app": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts dev",
