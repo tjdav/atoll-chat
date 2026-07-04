@@ -1,39 +1,37 @@
 # Stage 1: Build Coralite Frontend
-FROM node:22-alpine AS builder
+FROM node:24-alpine AS builder
+
+# Set CI=true to prevent interactive prompts
+ENV CI=true
 
 # Set working directory
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Enable corepack
+RUN corepack enable pnpm
 
-# Copy package files
-COPY package.json pnpm-lock.yaml ./
+# Cache dependency downloads based ONLY on the lockfile
+COPY pnpm-lock.yaml ./
+RUN pnpm fetch
 
-# Install dependencies
-RUN pnpm install --frozen-lockfile
-
-# Copy the rest of the application
+#  Copy the entire source code
 COPY . .
+
+# 3. Install dependencies offline (instant, uses the fetched cache)
+RUN pnpm install --frozen-lockfile --offline
 
 # Build the frontend
 RUN pnpm run build
 
 # Stage 2: Final Image
-FROM alpine:3.20
+FROM alpine:latest
 
 # Set PocketBase version
-ARG PB_VERSION=0.39.4
+ARG PB_VERSION=0.39.5
 
-# Install dependencies for PocketBase
-RUN apk add --no-cache \
-    ca-certificates \
-    unzip \
-    wget \
-    libc6-compat
-
-# Download and install PocketBase
-RUN wget https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip \
+# Combine apk add and wget/unzip into a single RUN to reduce image layers
+RUN apk add --no-cache ca-certificates unzip wget libc6-compat \
+    && wget https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip \
     && unzip pocketbase_${PB_VERSION}_linux_amd64.zip -d /usr/local/bin/ \
     && rm pocketbase_${PB_VERSION}_linux_amd64.zip \
     && chmod +x /usr/local/bin/pocketbase
