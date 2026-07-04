@@ -1,4 +1,3 @@
-const CACHE_NAME = 'atoll-chat-v2'
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -12,24 +11,26 @@ const ASSETS_TO_CACHE = [
   '/assets/dexie.js'
 ]
 
-/* global sodium, Dexie */
+importScripts('/assets/metadata.js')
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
 importScripts('/assets/dexie.js')
 
+const CACHE_NAME = self.metadata.name + '-' + self.metadata.version
+
 // Note: Libsodium WASM is embedded as a Base64 string within the JS files
 // in this build, so no separate .wasm file is needed in the cache.
-
-const isDev = self.location.hostname === 'localhost' ||
-              self.location.hostname === '127.0.0.1' ||
-              self.location.hostname.startsWith('192.168.') ||
-              self.location.hostname.startsWith('10.') ||
-              self.location.hostname.startsWith('172.')
+const hostname = location.hostname
+const isDev = hostname === 'localhost' ||
+              hostname === '127.0.0.1' ||
+              hostname.startsWith('192.168.') ||
+              hostname.startsWith('10.') ||
+              hostname.startsWith('172.')
 
 // The Install Event: Caching the UI shell and cryptographic dependencies
-self.addEventListener('install', (event) => {
+addEventListener('install', (event) => {
   if (isDev) {
-    self.skipWaiting()
+    skipWaiting()
     return
   }
   event.waitUntil(
@@ -41,7 +42,7 @@ self.addEventListener('install', (event) => {
 })
 
 // The Activate Event: Cleanup old caches
-self.addEventListener('activate', (event) => {
+addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -53,7 +54,7 @@ self.addEventListener('activate', (event) => {
         })
       ).then(() => {
         if (isDev) {
-          return self.clients.claim()
+          return clients.claim()
         }
       })
     })
@@ -61,7 +62,7 @@ self.addEventListener('activate', (event) => {
 })
 
 // The Fetch Interceptor: Stale-While-Revalidate strategy
-self.addEventListener('fetch', (event) => {
+addEventListener('fetch', (event) => {
   const { request } = event
 
   // Exclude API and SSE calls to PocketBase and only handle GET requests
@@ -93,10 +94,10 @@ self.addEventListener('fetch', (event) => {
  * Handle Rich Push Notifications
  * Wakes up the worker, fetches encrypted data, decrypts using IndexedDB keys.
  */
-self.addEventListener('push', (event) => {
+addEventListener('push', (event) => {
   event.waitUntil((async () => {
     try {
-      // 1. Initialize Database
+      // Initialize database
       const db = new Dexie('AtollChatDB')
       db.version(9).stores({
         local_rooms: 'id, is_group, updated_at',
@@ -105,7 +106,7 @@ self.addEventListener('push', (event) => {
         local_config: 'key'
       })
 
-      // 2. Fetch Configuration
+      // Fetch configuration
       const [urlConfig, tokenConfig] = await Promise.all([
         db.local_config.get('pb_url'),
         db.local_config.get('pb_token')
@@ -134,7 +135,7 @@ self.addEventListener('push', (event) => {
         throw new Error('No new messages found')
       }
 
-      // 4. Decryption Pipeline
+      // Decryption pipeline
       await sodium.ready
 
       const room = await db.local_rooms.get(record.room_id)
@@ -158,7 +159,7 @@ self.addEventListener('push', (event) => {
 
       const plaintextObj = JSON.parse(new TextDecoder().decode(decryptedBuffer))
 
-      // 5. Determine Notification Content
+      // Determine notification dontent
       let senderName = 'New Message'
       let notificationBody = ''
 
@@ -172,8 +173,8 @@ self.addEventListener('push', (event) => {
         notificationBody = 'You have a new secure message.'
       }
 
-      // 6. Show Rich Notification
-      return self.registration.showNotification(senderName, {
+      // Show rich notification
+      return registration.showNotification(senderName, {
         body: notificationBody,
         icon: '/images/icon-coralite.avif',
         tag: 'atoll-chat-msg'
@@ -182,7 +183,7 @@ self.addEventListener('push', (event) => {
     } catch (err) {
       console.error('Push Error:', err)
       // Fallback to generic notification
-      return self.registration.showNotification('atoll chat', {
+      return registration.showNotification('atoll chat', {
         body: 'You have a new secure message.',
         icon: '/images/icon-coralite.avif',
         tag: 'atoll-chat-msg'

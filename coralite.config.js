@@ -12,6 +12,8 @@ import emojiPlugin from './src/plugins/emoji-picker-plugin.js'
 import routerPlugin from './src/plugins/router-plugin.js'
 import fusePlugin from './src/plugins/fuse-plugin.js'
 import notificationPlugin from './src/plugins/notification-plugin.js'
+import serviceWorkerPlugin from './src/plugins/service-worker-plugin.js'
+import pkg from './package.json' with { type: 'json' }
 
 const pocketbaseBaseUrl = process.env.DATABASE_URL || 'http://localhost:8090'
 
@@ -65,7 +67,11 @@ export default defineConfig({
     fusePlugin,
     bootstrapPlugin,
     webrtcPlugin(),
-    notificationPlugin
+    notificationPlugin,
+    serviceWorkerPlugin({
+      name: pkg.name,
+      version: pkg.version
+    })
   ],
   output: 'dist',
   pages: 'src/pages',
