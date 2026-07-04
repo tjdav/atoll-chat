@@ -1,89 +1,106 @@
 import { test as base, expect } from '@playwright/test'
-import fs from 'fs'
-import path from 'path'
-import { spawn } from 'child_process'
-import http from 'http'
+import PocketBase from 'pocketbase'
+import sodium from 'libsodium-wrappers-sumo'
+import { generateMasterKeys, generateSalt, deriveKeyFromPassword, encryptVault } from '../../../src/utils/cryptoUtils.js'
 
-const CWD = process.cwd()
-const PID_FILE = path.join(CWD, '.pocketbase.pid')
-const PB_DATA = path.join(CWD, 'pb_data')
-const PB_DATA_TEMPLATE = path.join(CWD, 'pb_data_template')
-const PB_BINARY = path.join(CWD, 'bin', 'pocketbase')
+const PB_URL = process.env.PB_URL || 'http://127.0.0.1:8090'
+const ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL || 'admin@example.com'
+const ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD || 'password123'
+
+const USERS = [
+  {
+    username: 'alice',
+    email: 'alice@example.com'
+  },
+  {
+    username: 'bob',
+    email: 'bob@example.com'
+  },
+  {
+    username: 'charlie',
+    email: 'charlie@example.com'
+  }
+]
+
+const SHARED_PASSWORD = 'Password123!'
+const SHARED_VAULT_PASSWORD = 'VaultPassword123!'
 
 async function resetPocketBase () {
-  console.log('--- Resetting PocketBase ---')
+  console.log('--- Resetting PocketBase (SDK) ---')
+  await sodium.ready
+  const pb = new PocketBase(PB_URL)
 
-  // 1. Stop current PocketBase
-  if (fs.existsSync(PID_FILE)) {
-    const pid = parseInt(fs.readFileSync(PID_FILE, 'utf8'), 10)
-    try {
-      process.kill(pid, 'SIGTERM')
-      // Wait for it to shut down
-      await new Promise(resolve => setTimeout(resolve, 1000))
-    } catch (error) {
-      // Might already be dead
-    }
-    if (fs.existsSync(PID_FILE)) {
-      fs.unlinkSync(PID_FILE)
-    }
+  try {
+    await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD)
+  } catch (error) {
+    console.error('Failed to authenticate as superuser during reset. Is PocketBase running?')
+    throw error
   }
 
-  // 2. Restore from template
-  if (fs.existsSync(PB_DATA_TEMPLATE)) {
-    if (fs.existsSync(PB_DATA)) {
-      fs.rmSync(PB_DATA, {
-        recursive: true,
-        force: true
+  // 1. Clear transactional collections
+  const collectionsToClear = ['messages', 'rooms', 'room_members', 'media']
+  for (const collectionName of collectionsToClear) {
+    try {
+      const records = await pb.collection(collectionName).getFullList({
+        requestKey: null
       })
-    }
-    fs.cpSync(PB_DATA_TEMPLATE, PB_DATA, { recursive: true })
-  } else {
-    throw new Error('PocketBase template not found. Did global-setup.js run?')
-  }
-
-  // 3. Start PocketBase again
-  const pbLog = fs.openSync(path.join(CWD, 'pocketbase.log'), 'a')
-  const pbProcess = spawn(PB_BINARY, [
-    'serve',
-    `--dir=${PB_DATA}`,
-    '--migrationsDir=./database/pb_migrations',
-    '--hooksDir=./database/pb_hooks',
-    '--http=127.0.0.1:8090'
-  ], {
-    detached: true,
-    stdio: ['ignore', pbLog, pbLog]
-  })
-
-  pbProcess.unref()
-  if (!pbProcess.pid) {
-    throw new Error('Failed to restart PocketBase during reset')
-  }
-  fs.writeFileSync(PID_FILE, pbProcess.pid.toString())
-
-  // 4. Wait for health
-  let healthy = false
-  for (let i = 0; i < 10; i++) {
-    try {
-      const responseCode = await new Promise((resolve, reject) => {
-        const req = http.get('http://127.0.0.1:8090/api/health', (res) => {
-          resolve(res.statusCode)
+      for (const record of records) {
+        await pb.collection(collectionName).delete(record.id, {
+          requestKey: null
         })
-        req.on('error', reject)
-        req.end()
-      })
-      if (responseCode === 200) {
-        healthy = true
-        break
       }
-    } catch {
-
+    } catch (error) {
+      console.warn(`Failed to clear collection ${collectionName}:`, error.message)
     }
-    await new Promise(resolve => setTimeout(resolve, 500))
   }
 
-  if (!healthy) {
-    throw new Error('PocketBase failed to restart healthily during reset')
+  // 2. Restore test users to default state
+  for (const user of USERS) {
+    try {
+      let existingUser
+      try {
+        existingUser = await pb.collection('users').getFirstListItem(pb.filter('username = {:username}', { username: user.username }), {
+          requestKey: null
+        })
+      } catch (e) {
+        // User doesn't exist, we will create it below
+      }
+
+      const masterKeys = await generateMasterKeys(sodium)
+      const salt = generateSalt(sodium)
+      const KEK = await deriveKeyFromPassword(SHARED_VAULT_PASSWORD, salt, sodium)
+      const encryptedVault = encryptVault(masterKeys, KEK, sodium)
+
+      const payload = {
+        username: user.username,
+        name: user.username.charAt(0).toUpperCase() + user.username.slice(1),
+        email: user.email,
+        password: SHARED_PASSWORD,
+        passwordConfirm: SHARED_PASSWORD,
+        emailVisibility: true,
+        public_box_key: masterKeys.public_box_key,
+        public_sign_key: masterKeys.public_sign_key,
+        vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
+        encrypted_master_keys: encryptedVault,
+        passkey_credential_id: '',
+        passkey_prf_salt: '',
+        encrypted_master_keys_passkey: null
+      }
+
+      if (existingUser) {
+        await pb.collection('users').update(existingUser.id, payload, {
+          requestKey: null
+        })
+      } else {
+        await pb.collection('users').create(payload, {
+          requestKey: null
+        })
+      }
+    } catch (error) {
+      console.error(`Failed to restore user ${user.username}:`, error.data || error.message)
+    }
   }
+
   console.log('--- PocketBase Reset Complete ---')
 }
 
