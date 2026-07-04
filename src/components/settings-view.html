@@ -10,53 +10,7 @@
 
           <hr class="my-4">
 
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <div>
-              <h6 class="mb-0">Message Sounds</h6>
-              <p class="text-muted small mb-0">Play a sound when a new message arrives.</p>
-            </div>
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="messageSoundSwitch" ref="messageSoundSwitch" {{ messageSoundsChecked }}>
-            </div>
-          </div>
-          
-          <div class="mb-4 {{ messageSoundControlsClass }}">
-            <div class="d-flex gap-2 align-items-center mb-2">
-              <button class="btn btn-sm btn-outline-secondary" ref="btnPreviewMessage">
-                <i class="bi bi-play-fill"></i> Preview
-              </button>
-              <label class="btn btn-sm btn-outline-primary position-relative mb-0">
-                <i class="bi bi-upload"></i> Custom Sound
-                <input type="file" ref="fileMessageSound" class="position-absolute start-0 top-0 w-100 h-100 opacity-0" accept="audio/mpeg,audio/wav,audio/ogg">
-              </label>
-              <button class="btn btn-sm btn-link text-danger p-0 ms-2 {{ resetMessageSoundClass }}" ref="btnResetMessageSound">Reset to default</button>
-            </div>
-            <div class="small text-muted" ref="messageSoundName">{{ messageSoundName }}</div>
-          </div>
-
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <div>
-              <h6 class="mb-0">Call Sounds</h6>
-              <p class="text-muted small mb-0">Play a ringtone for incoming calls.</p>
-            </div>
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="callSoundSwitch" ref="callSoundSwitch" {{ callSoundsChecked }}>
-            </div>
-          </div>
-
-          <div class="{{ callSoundControlsClass }}">
-            <div class="d-flex gap-2 align-items-center mb-2">
-              <button class="btn btn-sm btn-outline-secondary" ref="btnPreviewCall">
-                <i class="bi bi-play-fill"></i> Preview
-              </button>
-              <label class="btn btn-sm btn-outline-primary position-relative mb-0">
-                <i class="bi bi-upload"></i> Custom Sound
-                <input type="file" ref="fileCallSound" class="position-absolute start-0 top-0 w-100 h-100 opacity-0" accept="audio/mpeg,audio/wav,audio/ogg">
-              </label>
-              <button class="btn btn-sm btn-link text-danger p-0 ms-2 {{ resetCallSoundClass }}" ref="btnResetCallSound">Reset to default</button>
-            </div>
-            <div class="small text-muted" ref="callSoundName">{{ callSoundName }}</div>
-          </div>
+          <sound-notifications></sound-notifications>
 
         </div>
       </div>
@@ -134,23 +88,11 @@
     server: () => ({
       username: 'User',
       userEmail: '',
-      messageSoundsEnabled: true,
-      callSoundsEnabled: true,
-      messageSoundName: 'Default',
-      callSoundName: 'Default',
-      hasCustomMessageSound: false,
-      hasCustomCallSound: false,
       hasPasskey: false,
       passkeyActionLabel: 'Add Passkey',
       passkeyActionVerb: 'add'
     }),
     getters: {
-      messageSoundsChecked: (state) => (state.messageSoundsEnabled ? 'checked' : ''),
-      callSoundsChecked: (state) => (state.callSoundsEnabled ? 'checked' : ''),
-      messageSoundControlsClass: (state) => (state.messageSoundsEnabled ? 'd-block' : 'd-none'),
-      callSoundControlsClass: (state) => (state.callSoundsEnabled ? 'd-block' : 'd-none'),
-      resetMessageSoundClass: (state) => (state.hasCustomMessageSound ? 'd-inline-block' : 'd-none'),
-      resetCallSoundClass: (state) => (state.hasCustomCallSound ? 'd-inline-block' : 'd-none'),
       passkeyStatus: (state) => (state.hasPasskey ? 'Configured' : 'Not configured')
     },
     client: async ({ refs, state, globalStore, notifications, bootstrap, pocketbase, cryptoWorker, eventBus, localDb }) => {
@@ -172,89 +114,9 @@
 
       $state.subscribe('currentUser', loadUserData)
 
-      state.messageSoundsEnabled = $state.messageSoundsEnabled ?? true
-      state.callSoundsEnabled = $state.callSoundsEnabled ?? true
-
-      const refreshSoundInfo = async () => {
-        const customMessage = await $localDb.local_config.get('custom_message_sound')
-        state.hasCustomMessageSound = !!customMessage
-        state.messageSoundName = customMessage ? (customMessage.fileName || 'Custom Sound') : 'Default (notification.mp3)'
-
-        const customCall = await $localDb.local_config.get('custom_call_sound')
-        state.hasCustomCallSound = !!customCall
-        state.callSoundName = customCall ? (customCall.fileName || 'Custom Sound') : 'Default (ringtone.mp3)'
-      }
-
-      await refreshSoundInfo()
       state.hasPasskey = !!pb.authStore.model?.passkey_credential_id
       state.passkeyActionLabel = state.hasPasskey ? 'Update Passkey' : 'Add Passkey'
       state.passkeyActionVerb = state.hasPasskey ? 'update' : 'add'
-
-      const messageSoundSwitch = refs('messageSoundSwitch')
-      if (messageSoundSwitch) {
-        messageSoundSwitch.addEventListener('change', () => {
-          $state.messageSoundsEnabled = messageSoundSwitch.checked
-          state.messageSoundsEnabled = messageSoundSwitch.checked
-        })
-      }
-
-      const callSoundSwitch = refs('callSoundSwitch')
-      if (callSoundSwitch) {
-        callSoundSwitch.addEventListener('change', () => {
-          $state.callSoundsEnabled = callSoundSwitch.checked
-          state.callSoundsEnabled = callSoundSwitch.checked
-        })
-      }
-
-      const playPreview = async (type) => {
-        let audioSource = type === 'message' ? '/sounds/notification.mp3' : '/sounds/ringtone.mp3'
-        const key = type === 'message' ? 'custom_message_sound' : 'custom_call_sound'
-        const customSound = await $localDb.local_config.get(key)
-  
-        if (customSound && customSound.value instanceof Blob) {
-          audioSource = URL.createObjectURL(customSound.value)
-        }
-
-        const audio = new Audio(audioSource)
-        audio.volume = $state.mediaVolume || 1.0
-        await audio.play()
-  
-        if (audioSource.startsWith('blob:')) {
-          audio.onended = () => URL.revokeObjectURL(audioSource)
-        }
-      }
-
-      refs('btnPreviewMessage').addEventListener('click', () => playPreview('message'))
-      refs('btnPreviewCall').addEventListener('click', () => playPreview('call'))
-
-      const handleFileUpload = async (e, type) => {
-        const file = e.target.files[0]
-        if (!file) {
-          return
-        }
-
-        const key = type === 'message' ? 'custom_message_sound' : 'custom_call_sound'
-        await $localDb.local_config.put({
-          key,
-          value: file,
-          fileName: file.name
-        })
-        await refreshSoundInfo()
-        e.target.value = ''
-      }
-
-      refs('fileMessageSound').addEventListener('change', (e) => handleFileUpload(e, 'message'))
-      refs('fileCallSound').addEventListener('change', (e) => handleFileUpload(e, 'call'))
-
-      refs('btnResetMessageSound').addEventListener('click', async () => {
-        await $localDb.local_config.delete('custom_message_sound')
-        await refreshSoundInfo()
-      })
-
-      refs('btnResetCallSound').addEventListener('click', async () => {
-        await $localDb.local_config.delete('custom_call_sound')
-        await refreshSoundInfo()
-      })
 
       // Passkey management
       const btnManagePasskey = refs('btnManagePasskey')
