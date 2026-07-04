@@ -37,19 +37,20 @@
           if (!state.localUuid) {
             return
           }
-          const message = await $localDb.local_messages.get(state.localUuid)
-          if (!message || !message.file_key) {
-            // Silently wait if we're pending or if key hasn't arrived yet
-            if (state.status === 'pending') {
-              return
-            }
-            throw new Error('Message or key missing')
-          }
 
-          // Check Cache first
+          // Check Cache first - this handles optimistic rendering for the sender
           if ($state.decryptionCache.has(state.localUuid)) {
             objectUrl = $state.decryptionCache.get(state.localUuid)
           } else {
+            const message = await $localDb.local_messages.get(state.localUuid)
+            if (!message || !message.file_key) {
+              // Silently wait if we're pending or if key hasn't arrived yet
+              if (state.status === 'pending') {
+                return
+              }
+              throw new Error('Message or key missing')
+            }
+
             const { default: sodium } = await import('libsodium-wrappers-sumo')
             await sodium.ready
 
@@ -78,18 +79,33 @@
           loading.classList.add('d-none')
           container.style.minHeight = 'auto'
 
-          const renderMedia = () => {
+          const renderMedia = async () => {
             // Clear existing media to prevent duplicates
             container.querySelectorAll('img, video').forEach(el => el.remove())
 
-            if (message.mime_type.startsWith('image/')) {
+            let mimeType = ''
+            let mediaId = null
+  
+            if ($state.decryptionCache.has(state.localUuid)) {
+              // For optimistic rendering, we might not have the full message yet
+              // but we need the mime type. If we have the message, use it.
+              const message = await $localDb.local_messages.get(state.localUuid)
+              mimeType = message?.mime_type || 'image/webp'
+              mediaId = message?.media_id
+            } else {
+              const message = await $localDb.local_messages.get(state.localUuid)
+              mimeType = message.mime_type
+              mediaId = message.media_id
+            }
+
+            if (mimeType.startsWith('image/')) {
               const img = document.createElement('img')
               img.src = objectUrl
               img.className = 'img-fluid rounded-3 shadow-sm'
               img.style.maxHeight = '300px'
               img.onload = () => $bus.emit('ui:media_loaded')
               container.appendChild(img)
-            } else if (message.mime_type.startsWith('video/')) {
+            } else if (mimeType.startsWith('video/')) {
               const video = document.createElement('video')
               video.src = objectUrl
               video.muted = true
@@ -105,13 +121,25 @@
 
           renderMedia()
 
-          container.onclick = () => {
+          container.onclick = async () => {
+            let mimeType = ''
+            let mediaId = null
+            const message = await $localDb.local_messages.get(state.localUuid)
+            if (message) {
+              mimeType = message.mime_type
+              mediaId = message.media_id
+            }
+  
+            if (!mediaId) {
+              return
+            }
+
             // Rule: Order matters for pushState logic in router-plugin.
             // Updating currentAppView first ensures a Major Context Switch is detected.
-            const targetView = message.mime_type.startsWith('image/') ? 'pictures' : 'videos'
+            const targetView = mimeType.startsWith('image/') ? 'pictures' : 'videos'
             $state.currentAppView = targetView
             $state.activeSelectionType = targetView
-            $state.activeSelectionId = message.media_id
+            $state.activeSelectionId = mediaId
           }
 
         } catch (err) {

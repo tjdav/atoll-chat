@@ -150,6 +150,12 @@
         const localUuid = crypto.randomUUID()
         const roomId = $state.activeSelectionId
 
+        // If we have a file (potentially compressed), cache its object URL for optimistic rendering
+        if (params.file && (params.file instanceof File || params.file instanceof Blob)) {
+          const objectUrl = URL.createObjectURL(params.file)
+          $state.decryptionCache.set(localUuid, objectUrl)
+        }
+
         // Optimistic Write
         const optimisticMessage = {
           local_uuid: localUuid,
@@ -187,7 +193,7 @@
       }
 
       const sendMessage = async (recordedBlob = null, waveformData = null) => {
-        if (state.isSending || state.isUploading) {
+        if (state.isSending || state.isUploading || state.isCompressing) {
           return
         }
 
