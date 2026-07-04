@@ -458,6 +458,7 @@ async function sendMessage (rpcId, payload) {
     updateData.file_key = fileKeyBase64
     updateData.file_nonce = fileNonceBase64
     updateData.filename = filename
+    updateData.mime_type = mime_type
     updateData.album_art = albumArtInfo
 
     await db.local_assets.put({

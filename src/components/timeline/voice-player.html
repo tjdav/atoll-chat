@@ -31,25 +31,37 @@
       const loading = refs('loading')
 
       let objectUrl = null
+      let audio = null
+
+      const cleanup = () => {
+        if (audio) {
+          audio.pause()
+          audio.src = ''
+          audio.load()
+          audio.remove()
+          audio = null
+        }
+      }
 
       const loadAudio = async () => {
         try {
           if (!state.localUuid) {
             return
           }
-          const message = await $localDb.local_messages.get(state.localUuid)
-          if (!message || !message.file_key) {
-            // Silently wait if we're pending or if key hasn't arrived yet
-            if (state.status === 'pending') {
-              return
-            }
-            throw new Error('Message or key missing')
-          }
 
           // Check Cache first
           if ($state.decryptionCache.has(state.localUuid)) {
             objectUrl = $state.decryptionCache.get(state.localUuid)
           } else {
+            const message = await $localDb.local_messages.get(state.localUuid)
+            if (!message || !message.file_key) {
+              // Silently wait if we're pending or if key hasn't arrived yet
+              if (state.status === 'pending') {
+                return
+              }
+              throw new Error('Message or key missing')
+            }
+
             const { default: sodium } = await import('libsodium-wrappers-sumo')
             await sodium.ready
 
@@ -70,17 +82,23 @@
               throw new Error('Decryption failed')
             }
 
-            const blob = new Blob([decryptedData], { type: message.mime_type })
+            const blob = new Blob([decryptedData], { type: message.mime_type || 'audio/webm' })
             objectUrl = URL.createObjectURL(blob)
             $state.decryptionCache.set(state.localUuid, objectUrl)
           }
 
+          // Re-fetch message for waveform data if needed
+          const message = await $localDb.local_messages.get(state.localUuid)
+
           loading.classList.add('d-none')
 
-          // Clear existing media to prevent duplicates
+          // Cleanup previous audio if any
+          cleanup()
+
+          // Clear existing UI to prevent duplicates
           container.querySelectorAll('.waveform-player, audio').forEach(el => el.remove())
 
-          if (message.waveform_data) {
+          if (message && message.waveform_data) {
             const player = document.createElement('div')
             player.className = 'waveform-player'
 
@@ -119,9 +137,14 @@
             player.appendChild(timeDisplay)
             container.appendChild(player)
 
-            const audio = new Audio(objectUrl)
+            audio = new Audio(objectUrl)
+            audio.style.display = 'none'
+            container.appendChild(audio)
 
             const updateProgress = () => {
+              if (!audio) {
+                return
+              }
               const percent = (audio.currentTime / audio.duration) * 100
               progressContainer.style.width = `${percent}%`
               seeker.style.left = `${percent}%`
@@ -133,27 +156,37 @@
 
             audio.oncanplaythrough = () => $bus.emit('ui:media_loaded')
             audio.ontimeupdate = updateProgress
-            audio.onended = () => {
+            audio.onplay = () => {
+              playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>'
+            }
+            audio.onpause = () => {
               playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
-              progressContainer.style.width = '0'
-              seeker.style.left = '0'
-              timeDisplay.textContent = '0:00'
+            }
+            audio.onended = () => {
+              audio.currentTime = 0
+              updateProgress()
+              playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
             }
 
             playBtn.onclick = (e) => {
               e.stopPropagation()
+              if (!audio) {
+                return
+              }
               if (audio.paused) {
-                audio.play()
-                playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>'
+                audio.play().catch(err => {
+                  if (err.name !== 'AbortError') {
+                    console.warn('[voice-player] Playback failed:', err)
+                  }
+                })
               } else {
                 audio.pause()
-                playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
               }
             }
 
             waveContainer.onclick = (e) => {
               e.stopPropagation()
-              if (isNaN(audio.duration)) {
+              if (!audio || isNaN(audio.duration)) {
                 return
               }
               const rect = waveContainer.getBoundingClientRect()
@@ -172,7 +205,7 @@
             signal.addEventListener('abort', () => resizeObserver.disconnect())
 
           } else {
-            const audio = document.createElement('audio')
+            audio = document.createElement('audio')
             audio.src = objectUrl
             audio.controls = true
             audio.className = 'w-100'
@@ -195,6 +228,8 @@
         state.subscribe('status', loadAudio)
         state.subscribe('localUuid', loadAudio)
       }
+
+      signal.addEventListener('abort', cleanup)
     }
   })
 </script>
