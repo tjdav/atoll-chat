@@ -122,6 +122,11 @@ export default function syncPlugin () {
                     // Other member update (likely seen status)
                     $worker.execute('room:member_updated', e.record).catch(console.error)
                   }
+                } else if (e.action === 'delete') {
+                  if (e.record.user_id === pb.authStore.model.id) {
+                    // User was removed from a room or deleted the chat
+                    $worker.execute('worker:delete_local_room', { roomId: e.record.room_id }).catch(console.error)
+                  }
                 }
               })
 

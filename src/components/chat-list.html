@@ -146,7 +146,8 @@
         const fragment = document.createDocumentFragment()
         for (const { item, latestMsg, roomName, previewText } of itemsToDisplay) {
           const me = item.participants?.find(p => p.id === $state.currentUser?.id)
-          const isUnread = latestMsg && latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id
+          const isUnread = latestMsg && (me?.last_read_message_id === null || (latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id)) ? 'true' : 'false'
+          const isMuted = me?.is_muted === true
           let relativeTime = ''
           if (latestMsg) {
             const time = $utils.formatRelativeTime(latestMsg.created_at)
@@ -158,7 +159,7 @@
           const listItem = document.createElement('chat-list-item')
           listItem.setAttribute('room-id', item.id); listItem.setAttribute('room-name', roomName); listItem.setAttribute('preview-text', previewText)
           listItem.setAttribute('relative-time', relativeTime); listItem.setAttribute('is-unread', isUnread); listItem.setAttribute('is-active', isActive)
-          listItem.setAttribute('is-group', item.is_group); listItem.setAttribute('user-role', item.user_role)
+          listItem.setAttribute('is-group', item.is_group); listItem.setAttribute('user-role', item.user_role); listItem.setAttribute('is-muted', isMuted)
           listItem.setAttribute('participants-json', JSON.stringify(item.participants || []))
           if (item.avatar) {
             listItem.setAttribute('room-avatar', item.avatar)
@@ -220,6 +221,8 @@
       $state.subscribe('listSearchQuery', () => debouncedRender())
       $bus.on('db:new_local_data', () => debouncedFullRender())
       $bus.on('db:new_local_room', () => debouncedFullRender())
+      $bus.on('db:room_deleted', () => debouncedFullRender())
+      $bus.on('room:member_updated', () => debouncedFullRender())
       $bus.on('room:read_state_changed', () => debouncedFullRender())
       $bus.on('sync:complete', () => debouncedFullRender())
       $bus.on('auth:unlocked', () => debouncedFullRender())

@@ -90,6 +90,11 @@ export default definePlugin({
               return
             }
 
+            const me = room.participants?.find(p => p.id === $state.currentUser?.id)
+            if (me?.is_muted) {
+              return
+            }
+
             const sender = room.participants?.find(p => p.id === message.sender_id)
             const senderName = sender?.username || 'Someone'
 
@@ -162,15 +167,26 @@ export default definePlugin({
           }
         }
 
-        $bus.on('db:new_local_data', (payload) => {
-          showNotification(payload)
+        $bus.on('db:new_local_data', async (payload) => {
+          const { room_id: roomId, message } = payload
+          if (!message || message.sender_id === $state.currentUser?.id) {
+            return
+          }
+
+          const room = await $localDb.local_rooms.get(roomId)
+          const me = room?.participants?.find(p => p.id === $state.currentUser?.id)
+          const isMuted = me?.is_muted
+
+          if (!isMuted) {
+            showNotification(payload)
+          }
 
           // Play sound if not suppressed by notification logic or catch-up
-          if (!$state.isCatchingUp && $state.messageSoundsEnabled && payload.message?.sender_id !== $state.currentUser?.id) {
+          if (!$state.isCatchingUp && $state.messageSoundsEnabled && !isMuted) {
             // Logic similar to showNotification for suppression
             const isSuppressed = document.visibilityState === 'visible' &&
               $state.currentAppView === 'chats' &&
-              $state.activeSelectionId === payload.room_id
+              $state.activeSelectionId === roomId
 
             if (!isSuppressed) {
               playMessageSound()

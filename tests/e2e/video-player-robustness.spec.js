@@ -16,7 +16,7 @@ test.describe('Video Player Robustness', () => {
     await page.setInputFiles('input[type="file"]', videoPath)
     await page.waitForTimeout(500)
     await page.click('[data-testid$="__sendButton"]')
-    
+
     // Wait for the message to be sent
     await expect(page.locator('chat-view .message-status-container').last()).toBeVisible({ timeout: 20000 })
     await expect(page.locator('chat-view .message-status-container span').last()).toHaveText('Sent', { timeout: 20000 })
@@ -41,28 +41,30 @@ test.describe('Video Player Robustness', () => {
 
     // 5. Click Play and verify loading state (spinner) then video element
     await placeholder.locator('button').click()
-    
+
     // Wait for either the video container to be visible OR the error display (since headless might fail playback)
     await page.waitForFunction(() => {
-        const active = document.querySelector('video-player-view .carousel-item.active');
-        if (!active) return false;
-        const container = active.querySelector('.video-container');
-        const error = active.querySelector('.video-error');
-        return (container && !container.classList.contains('d-none')) || 
-               (error && !error.classList.contains('d-none'));
-    }, { timeout: 15000 });
-    
+      const active = document.querySelector('video-player-view .carousel-item.active')
+      if (!active) {
+        return false
+      }
+      const container = active.querySelector('.video-container')
+      const error = active.querySelector('.video-error')
+      return (container && !container.classList.contains('d-none')) ||
+               (error && !error.classList.contains('d-none'))
+    }, { timeout: 15000 })
+
     const videoContainer = activeItem.locator('.video-container')
     const errorDisplay = activeItem.locator('.video-error')
-    
+
     if (await videoContainer.isVisible()) {
-        const videoEl = videoContainer.locator('video')
-        await expect(videoEl).toBeAttached()
-        await expect(videoEl).toHaveAttribute('controls', '')
+      const videoEl = videoContainer.locator('video')
+      await expect(videoEl).toBeAttached()
+      await expect(videoEl).toHaveAttribute('controls', '')
     } else {
-        console.log('Video playback failed in headless environment, verifying error display')
-        await expect(errorDisplay).toBeVisible()
-        await expect(errorDisplay.locator('.error-text')).not.toBeEmpty()
+      console.log('Video playback failed in headless environment, verifying error display')
+      await expect(errorDisplay).toBeVisible()
+      await expect(errorDisplay.locator('.error-text')).not.toBeEmpty()
     }
 
     // 6. Test "carousel slide" reset by uploading another video
@@ -81,23 +83,25 @@ test.describe('Video Player Robustness', () => {
     await cards.first().click()
     // It should show placeholder because currentMedia was nullified for the new selection
     await expect(page.locator('video-player-view .carousel-item.active .video-placeholder')).toBeVisible()
-    
+
     // Play it
     await page.locator('video-player-view .carousel-item.active .btn-big-play').click()
-    
+
     await page.waitForFunction(() => {
-        const active = document.querySelector('video-player-view .carousel-item.active');
-        if (!active) return false;
-        const container = active.querySelector('.video-container');
-        const error = active.querySelector('.video-error');
-        return (container && !container.classList.contains('d-none')) || 
-               (error && !error.classList.contains('d-none'));
-    }, { timeout: 15000 });
+      const active = document.querySelector('video-player-view .carousel-item.active')
+      if (!active) {
+        return false
+      }
+      const container = active.querySelector('.video-container')
+      const error = active.querySelector('.video-error')
+      return (container && !container.classList.contains('d-none')) ||
+               (error && !error.classList.contains('d-none'))
+    }, { timeout: 15000 })
 
     // Slide to next video
     await page.click('video-player-view .carousel-control-next')
     await page.waitForTimeout(1000)
-    
+
     // The now active item should show the placeholder, NOT the video
     await expect(page.locator('video-player-view .carousel-item.active .video-placeholder')).toBeVisible()
     await expect(page.locator('video-player-view .carousel-item.active .video-container')).toBeHidden()

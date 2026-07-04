@@ -65,7 +65,7 @@
       }
 
       updatePasskeyState()
-      
+  
       // Keep state in sync if currentUser changes
       $state.subscribe('currentUser', updatePasskeyState)
 
@@ -148,7 +148,7 @@
           })
 
           await pb.collection('users').authRefresh()
-          
+  
           updatePasskeyState()
   
           verifyModal.hide()

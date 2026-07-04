@@ -80,8 +80,12 @@
       const messageSoundSwitch = refs('messageSoundSwitch')
       const callSoundSwitch = refs('callSoundSwitch')
 
-      if (messageSoundSwitch) messageSoundSwitch.checked = state.messageSoundsEnabled
-      if (callSoundSwitch) callSoundSwitch.checked = state.callSoundsEnabled
+      if (messageSoundSwitch) {
+        messageSoundSwitch.checked = state.messageSoundsEnabled
+      }
+      if (callSoundSwitch) {
+        callSoundSwitch.checked = state.callSoundsEnabled
+      }
 
       const refreshSoundInfo = async () => {
         const customMessage = await $localDb.local_config.get('custom_message_sound')

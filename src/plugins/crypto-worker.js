@@ -66,6 +66,13 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
             return
           }
 
+          if (!id && type === 'db:room_deleted') {
+            if (pluginContext.$bus) {
+              pluginContext.$bus.emit('db:room_deleted', payload)
+            }
+            return
+          }
+
           // Background broadcasts (e.g., from decryption pipeline)
           if (!id && type === 'db:new_local_data') {
             // Access injected event bus from Phase 1

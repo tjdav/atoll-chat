@@ -51,7 +51,8 @@ self.onmessage = (event) => {
     'worker:derive_key_from_password',
     'worker:process_incoming_message',
     'worker:process_new_room_key',
-    'room:member_updated'
+    'room:member_updated',
+    'worker:delete_local_room'
   ]
 
   if (parallelTasks.includes(type)) {
@@ -219,6 +220,11 @@ async function handleEvent (event) {
 
     if (type === 'room:member_updated') {
       await updateRoomMember(id, payload)
+      return
+    }
+
+    if (type === 'worker:delete_local_room') {
+      await deleteLocalRoom(id, payload)
       return
     }
 
@@ -700,13 +706,18 @@ async function processIncomingMessage (rpcId, record) {
 }
 
 async function updateRoomMember (rpcId, record) {
-  const { room_id, user_id, last_read_message_id } = record
+  const { room_id, user_id, last_read_message_id, is_muted } = record
 
   const room = await db.local_rooms.get(room_id)
   if (room && room.participants) {
     const pIndex = room.participants.findIndex(p => p.id === user_id)
     if (pIndex !== -1) {
-      room.participants[pIndex].last_read_message_id = last_read_message_id
+      if (last_read_message_id !== undefined) {
+        room.participants[pIndex].last_read_message_id = last_read_message_id
+      }
+      if (is_muted !== undefined) {
+        room.participants[pIndex].is_muted = is_muted
+      }
       await db.local_rooms.put(room)
 
       self.postMessage({
@@ -724,6 +735,24 @@ async function updateRoomMember (rpcId, record) {
   self.postMessage({
     id: rpcId,
     type: 'room:member_updated_RPC',
+    result: { success: true }
+  })
+}
+
+async function deleteLocalRoom (rpcId, payload) {
+  const { roomId } = payload
+  await db.local_messages.where('room_id').equals(roomId).delete()
+  await db.local_assets.where('room_id').equals(roomId).delete()
+  await db.local_rooms.delete(roomId)
+
+  self.postMessage({
+    type: 'db:room_deleted',
+    payload: { room_id: roomId }
+  })
+
+  self.postMessage({
+    id: rpcId,
+    type: 'worker:delete_local_room',
     result: { success: true }
   })
 }
@@ -884,7 +913,8 @@ async function processNewRoomKey (rpcId, payload) {
           avatar: u.avatar,
           collectionId: u.collectionId,
           collectionName: u.collectionName,
-          last_read_message_id: m.last_read_message_id
+          last_read_message_id: m.last_read_message_id,
+          is_muted: m.is_muted
         }
         : null
     }).filter(p => p !== null)
