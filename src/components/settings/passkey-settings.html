@@ -1,0 +1,170 @@
+<template id="passkey-settings">
+  <div class="d-flex align-items-center justify-content-between">
+    <div>
+      <h6 class="mb-0">Vault Passkey</h6>
+      <p class="text-muted small mb-0">{{ passkeyStatus }}</p>
+    </div>
+    <button class="btn btn-outline-primary btn-sm" ref="btnManagePasskey">
+      {{ passkeyActionLabel }}
+    </button>
+  </div>
+
+  <!-- Password Verification Modal -->
+  <div class="modal fade" ref="verifyModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Verify Vault Password</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-4">To {{ passkeyActionVerb }} your vault passkey, please enter your current vault password to confirm your identity and access your cryptographic keys.</p>
+          <form ref="verifyForm">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Vault Password</label>
+              <input type="password" class="form-control" ref="vaultPasswordInput" required placeholder="Enter Vault Password">
+            </div>
+            <div ref="verifyError" class="alert alert-danger d-none small p-2 mb-0"></div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link text-decoration-none" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" ref="btnVerifyPassword">
+            <span class="spinner-border spinner-border-sm d-none" ref="verifySpinner" role="status" aria-hidden="true"></span>
+            Verify & Continue
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      hasPasskey: false,
+      passkeyActionLabel: 'Add Passkey',
+      passkeyActionVerb: 'add'
+    }),
+    getters: {
+      passkeyStatus: (state) => (state.hasPasskey ? 'Configured' : 'Not configured')
+    },
+    client: async ({ refs, state, globalStore, bootstrap, pocketbase, cryptoWorker, eventBus }) => {
+      const { $state } = globalStore
+      const { Modal } = await bootstrap
+      const { pb } = pocketbase
+      const { $worker } = cryptoWorker
+      const { $bus } = eventBus
+
+      const updatePasskeyState = () => {
+        state.hasPasskey = !!pb.authStore.model?.passkey_credential_id
+        state.passkeyActionLabel = state.hasPasskey ? 'Update Passkey' : 'Add Passkey'
+        state.passkeyActionVerb = state.hasPasskey ? 'update' : 'add'
+      }
+
+      updatePasskeyState()
+      
+      // Keep state in sync if currentUser changes
+      $state.subscribe('currentUser', updatePasskeyState)
+
+      const btnManagePasskey = refs('btnManagePasskey')
+      const verifyModalEl = refs('verifyModal')
+      const verifyModal = new Modal(verifyModalEl)
+      const verifyForm = refs('verifyForm')
+      const vaultPasswordInput = refs('vaultPasswordInput')
+      const verifyError = refs('verifyError')
+      const btnVerifyPassword = refs('btnVerifyPassword')
+      const verifySpinner = refs('verifySpinner')
+
+      btnManagePasskey.addEventListener('click', () => {
+        verifyError.classList.add('d-none')
+        vaultPasswordInput.value = ''
+        verifyModal.show()
+      })
+
+      btnVerifyPassword.addEventListener('click', () => verifyForm.requestSubmit())
+
+      verifyForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const password = vaultPasswordInput.value
+  
+        verifyError.classList.add('d-none')
+        btnVerifyPassword.disabled = true
+        verifySpinner.classList.remove('d-none')
+
+        try {
+          const wasConfigured = state.hasPasskey
+          const [{ default: sodium }, { createPasskey, encryptVault, decryptVault }] = await Promise.all([
+            import('libsodium-wrappers-sumo'),
+            import('../../utils/cryptoUtils.js')
+          ])
+          await sodium.ready
+
+          const record = await pb.collection('users').getOne(pb.authStore.model.id)
+          const salt = sodium.from_base64(record.vault_salt, sodium.base64_variants.ORIGINAL)
+  
+          const KEK_Password = await $worker.execute('worker:derive_key_from_password', {
+            password,
+            salt
+          })
+
+          try {
+            decryptVault(
+              record.encrypted_master_keys.ciphertext,
+              record.encrypted_master_keys.nonce,
+              KEK_Password,
+              sodium
+            )
+          } catch (err) {
+            throw new Error('Invalid Vault Password')
+          }
+
+          const challenge = crypto.getRandomValues(new Uint8Array(32))
+          const passkeyPrfSalt = crypto.getRandomValues(new Uint8Array(32))
+  
+          const { credentialId, prfAvailable, prfResult: KEK_Passkey } = await createPasskey(record.username, challenge, passkeyPrfSalt)
+
+          if (!prfAvailable) {
+            throw new Error('This authenticator does not support the PRF extension required for vault encryption.')
+          }
+
+          if (!KEK_Passkey) {
+            throw new Error('Failed to retrieve PRF key from passkey.')
+          }
+
+          const masterKeys = {
+            private_box_key: $state.currentUser.private_box_key,
+            private_sign_key: $state.currentUser.private_sign_key
+          }
+
+          const encryptedVaultPasskey = encryptVault(masterKeys, KEK_Passkey, sodium)
+
+          await pb.collection('users').update(record.id, {
+            passkey_credential_id: sodium.to_base64(credentialId, sodium.base64_variants.ORIGINAL),
+            passkey_prf_salt: sodium.to_base64(passkeyPrfSalt, sodium.base64_variants.ORIGINAL),
+            encrypted_master_keys_passkey: encryptedVaultPasskey
+          })
+
+          await pb.collection('users').authRefresh()
+          
+          updatePasskeyState()
+  
+          verifyModal.hide()
+          $bus.emit('ui:show_toast', {
+            message: `Passkey successfully ${wasConfigured ? 'updated' : 'added'}!`,
+            type: 'success'
+          })
+        } catch (error) {
+          console.error('Passkey management error:', error)
+          verifyError.textContent = error.message || 'Verification failed'
+          verifyError.classList.remove('d-none')
+        } finally {
+          btnVerifyPassword.disabled = false
+          verifySpinner.classList.add('d-none')
+        }
+      })
+    }
+  })
+</script>
