@@ -16,7 +16,7 @@ routerAdd('GET', '/api/status', (e) => {
 })
 
 routerAdd('POST', '/api/setup', (e) => {
-  // 1. Check if setup is already complete
+  // Check if setup is already complete
   const checkResult = new DynamicModel({ count: 0 })
   try {
     $app.db()
@@ -32,7 +32,7 @@ routerAdd('POST', '/api/setup', (e) => {
 
   const data = e.requestInfo().body
 
-  // 2. Create the Superuser
+  // Create the Superuser
   try {
     const collection = $app.findCollectionByNameOrId('_superusers')
     const superuser = new Record(collection)
@@ -44,7 +44,7 @@ routerAdd('POST', '/api/setup', (e) => {
     return e.json(500, { message: 'Failed to create superuser: ' + err.message })
   }
 
-  // 3. Create the first App User (with E2EE keys)
+  // Create the first App User (with E2EE keys)
   try {
     const collection = $app.findCollectionByNameOrId('users')
     const record = new Record(collection)
