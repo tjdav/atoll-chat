@@ -38,8 +38,11 @@
             })
           } else if (currentTargetId) {
             $bus.emit('message:send_reaction', {
-              emoji: event.detail.unicode,
-              targetId: currentTargetId
+              targetId: currentTargetId,
+              content: {
+                type: 'emoji',
+                value: event.detail.unicode
+              }
             })
           }
           hide()
@@ -55,8 +58,13 @@
   
         container.style.left = `${x}px`
         container.style.top = `${y}px`
+
+        // Use requestAnimationFrame to ensure the picker is rendered and display:none is removed
+        // before we calculate its dimensions for positioning.
         container.classList.remove('d-none')
-  
+
+        await new Promise(resolve => requestAnimationFrame(resolve))
+
         // Adjust position if it goes off screen
         const rect = container.getBoundingClientRect()
         if (rect.right > window.innerWidth) {

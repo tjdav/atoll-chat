@@ -55,7 +55,19 @@
           if (!userReactions[r.sender_id]) {
             userReactions[r.sender_id] = {}
           }
-          const emoji = r.content
+
+          // Handle both old (string) and new (object) content format
+          let emoji = null
+          if (typeof r.content === 'string') {
+            emoji = r.content
+          } else if (r.content && r.content.type === 'emoji') {
+            emoji = r.content.value
+          }
+
+          if (!emoji) {
+            return
+          }
+
           if (!userReactions[r.sender_id][emoji]) {
             userReactions[r.sender_id][emoji] = { isSet: true }
           } else {
@@ -144,8 +156,11 @@
   
           if (emojiEntries.length === 1) {
             $bus.emit('message:send_reaction', {
-              emoji: emojiEntries[0][0],
-              targetId: currentId
+              targetId: currentId,
+              content: {
+                type: 'emoji',
+                value: emojiEntries[0][0]
+              }
             })
           } else {
             const rect = pill.getBoundingClientRect()

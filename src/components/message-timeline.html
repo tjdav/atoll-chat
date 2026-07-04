@@ -571,11 +571,30 @@
           return
         }
 
+        // Normalize payload for backward compatibility
+        const targetId = payload.targetId || payload.messageId
+        let content = payload.content
+
+        if (!content) {
+          const emoji = payload.emoji || payload.reaction
+          if (emoji) {
+            content = {
+              type: 'emoji',
+              value: emoji
+            }
+          }
+        }
+
+        if (!targetId || !content) {
+          console.warn('[message-timeline] Invalid reaction payload:', payload)
+          return
+        }
+
         const localUuid = crypto.randomUUID()
         const params = {
           type: 'reaction',
-          content: payload.emoji,
-          target_id: payload.targetId,
+          content: content,
+          target_id: targetId,
           timestamp: Date.now()
         }
 
