@@ -90,7 +90,7 @@ test.describe('Timeline Ordering', () => {
     expect(isOrdered.ordered).toBe(true)
 
     // 5. Verify No Duplication
-    await page.fill('chat-input-text [contenteditable]', 'Another message')
+    await page.fill('chat-input-text textarea', 'Another message')
     await page.keyboard.press('Enter')
 
     await expect(page.locator('timeline-row:has-text("Another message")')).toBeVisible()
