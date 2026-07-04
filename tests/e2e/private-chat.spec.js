@@ -96,7 +96,7 @@ test.describe('Private Chat', () => {
     // --- Bob receives and replies ---
     // Bob should see the new chat in his list
     // Use data-testid if possible, or search for the room name "alice"
-    const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: 'alice' }).first()
+    const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChatListAlice).toBeVisible({ timeout: 30000 })
     await bobChatListAlice.click()
 

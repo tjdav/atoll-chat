@@ -36,7 +36,7 @@ test.describe('Documents Filter', () => {
 
     // 7. Verify document is in the list
     console.log('Verifying document in list...')
-    const docItem = page.locator('document-list .list-group-item').filter({ hasText: 'e2e-test-doc.txt' }).first()
+    const docItem = page.locator('document-list .app-list-item').filter({ hasText: 'e2e-test-doc.txt' }).first()
     await expect(docItem).toBeVisible()
 
     // 8. Click on document and verify viewer

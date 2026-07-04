@@ -28,7 +28,7 @@ test.describe('Media Manager Sidebar', () => {
     console.log('Navigating to Music view...')
     await page.click('button[title="Music"]')
 
-    const musicItem = page.locator('music-list .list-group-item').first()
+    const musicItem = page.locator('music-list .app-list-item').first()
     await expect(musicItem).toBeVisible()
     await musicItem.click()
 

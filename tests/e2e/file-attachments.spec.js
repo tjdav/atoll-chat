@@ -55,7 +55,7 @@ test.describe('File Attachments', () => {
     await expect(alicePage.locator('chat-view header h6')).toContainText('bob')
 
     console.log('Bob waiting for Alice\'s chat...')
-    const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: 'alice' }).first()
+    const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChatListAlice).toBeVisible({ timeout: 30000 })
     await bobChatListAlice.click()
 

@@ -17,19 +17,3 @@
   }
 }
 
-.document-list {
-  .list-item-icon {
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 8px;
-    background-color: var(--#{$prefix}secondary-bg);
-    margin-right: 12px;
-  }
-
-  .list-group-item.active .list-item-icon {
-    background-color: rgba(var(--#{$prefix}white-rgb), 0.2);
-  }
-}

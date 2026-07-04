@@ -40,7 +40,7 @@ test.describe.serial('Call Messaging', () => {
     await expect(callerPage.locator('chat-view header h6')).toContainText(receiverName)
 
     console.log(`${receiverName} selecting the chat...`)
-    const receiverChatListCaller = receiverPage.locator('chat-list .list-group-item').filter({ hasText: callerName }).first()
+    const receiverChatListCaller = receiverPage.locator('chat-list .app-list-item').filter({ hasText: callerName }).first()
     await expect(receiverChatListCaller).toBeVisible({ timeout: 30000 })
     await receiverChatListCaller.click()
     await expect(receiverPage.locator('chat-view header h6')).toContainText(callerName)

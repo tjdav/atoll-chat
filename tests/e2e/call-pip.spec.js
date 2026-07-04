@@ -32,7 +32,7 @@ test.describe.serial('Call PiP', () => {
     await callerPage.click('button:has-text("Create Room")')
     await expect(callerPage.locator('chat-view header h6')).toContainText(receiverName)
 
-    const receiverChatListCaller = receiverPage.locator('chat-list .list-group-item').filter({ hasText: callerName }).first()
+    const receiverChatListCaller = receiverPage.locator('chat-list .app-list-item').filter({ hasText: callerName }).first()
     await expect(receiverChatListCaller).toBeVisible({ timeout: 30000 })
     await receiverChatListCaller.click()
     await expect(receiverPage.locator('chat-view header h6')).toContainText(callerName)

@@ -10,7 +10,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, root, localDb, eventBus, globalStore, refs, utils }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
@@ -67,7 +67,7 @@
 
               const btn = document.createElement('button')
               btn.type = 'button'
-              btn.className = `list-group-item list-group-item-action d-flex align-items-center border-0 py-3 ${isActive ? 'active' : ''}`
+              btn.className = `app-list-item ${isActive ? 'active' : ''}`
   
               const iconWrapper = document.createElement('div')
               iconWrapper.className = 'list-item-icon'
@@ -112,10 +112,10 @@
 
             // Restore scroll position after first render
             if (!state.__scrollRestored && $state.listScrollPositions?.links !== undefined) {
-              const root = refs('root')
+              const rootEl = refs('root')
               setTimeout(() => {
-                if (root) {
-                  root.scrollTop = $state.listScrollPositions.links
+                if (rootEl) {
+                  rootEl.scrollTop = $state.listScrollPositions.links
                 }
               }, 50)
               state.__scrollRestored = true
@@ -127,14 +127,14 @@
       }
 
       const saveListScroll = () => {
-        const root = refs('root')
-        if (!root || (root.offsetWidth === 0 && root.offsetHeight === 0)) {
+        const rootEl = refs('root')
+        if (!rootEl || (rootEl.offsetWidth === 0 && rootEl.offsetHeight === 0)) {
           return
         }
         if (!$state.listScrollPositions) {
           $state.listScrollPositions = {}
         }
-        $state.listScrollPositions.links = root.scrollTop
+        $state.listScrollPositions.links = rootEl.scrollTop
       }
 
       const debouncedSave = $utils.debounce(saveListScroll, 100)
@@ -143,9 +143,9 @@
         signal.addEventListener('abort', saveListScroll)
       }
 
-      const root = refs('root')
-      if (root) {
-        root.onscroll = () => debouncedSave()
+      const rootEl = refs('root')
+      if (rootEl) {
+        rootEl.onscroll = () => debouncedSave()
       }
 
       // Initial render

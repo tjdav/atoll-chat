@@ -36,7 +36,7 @@ test.describe('Link Previews', () => {
     await expect(aliceLinkPreview).toBeVisible({ timeout: 15000 })
 
     // 7. Bob opens the chat and verifies preview
-    const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: 'alice' }).first()
+    const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChatListAlice).toBeVisible({ timeout: 20000 })
     await bobChatListAlice.click()
 

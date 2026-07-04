@@ -59,7 +59,7 @@ test.describe('Media Messaging', () => {
     await expect(aliceMessageRow.locator('text-message')).toHaveCount(1)
 
     console.log('Bob waiting for Alice\'s chat and message...')
-    const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: 'alice' }).first()
+    const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChatListAlice).toBeVisible({ timeout: 30000 })
     await bobChatListAlice.click()
 

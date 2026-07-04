@@ -49,7 +49,7 @@ test.describe('Multi-Link Previews', () => {
 
     // Open Link List (Sidebar)
     await alicePage.click('button[title="Links"]')
-    const listItems = alicePage.locator('.link-list .list-group-item')
+    const listItems = alicePage.locator('.link-list .app-list-item')
     // Should see 2 entries even though they came from 1 message
     await expect(listItems).toHaveCount(2, { timeout: 5000 })
 

@@ -38,7 +38,7 @@ test.describe('Settings Profile', () => {
     await alicePage.click('button:has-text("Create Room")')
 
     // Bob sends a message
-    await bobPage.click('chat-list .list-group-item:has-text("Alice")')
+    await bobPage.click('chat-list .app-list-item:has-text("Alice")')
     await bobPage.fill('textarea[placeholder="Type a message..."]', 'Hi Alice!')
     await bobPage.click('[data-testid$="__sendButton"]')
 
@@ -51,13 +51,13 @@ test.describe('Settings Profile', () => {
 
     // 1. Check Alice's own view (Sidebar/Room Details)
     await alicePage.click('button[title="Chats"]')
-    await alicePage.click('chat-list .list-group-item:has-text("bob")')
+    await alicePage.click('chat-list .app-list-item:has-text("bob")')
     await alicePage.click('button:has-text("Details")')
     await expect(alicePage.locator('room-details-sidebar .fw-bold').filter({ hasText: newName + ' (You)' })).toBeVisible({ timeout: 10000 })
 
     // 2. Check Bob's view (Chat List & Timeline)
     // Wait for real-time update on Bob's side
-    const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: newName }).first()
+    const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: newName }).first()
     await expect(bobChatListAlice).toBeVisible({ timeout: 15000 })
 
     await bobChatListAlice.click()

@@ -41,7 +41,7 @@ test.describe('Message Reactions', () => {
     await expect(alicePage.locator('chat-view .message-status-container span')).toHaveText('Sent', { timeout: 20000 })
 
     console.log('Bob waiting for Alice\'s message...')
-    const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: 'alice' }).first()
+    const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChatListAlice).toBeVisible({ timeout: 30000 })
     await bobChatListAlice.click()
 

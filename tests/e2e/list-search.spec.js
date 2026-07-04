@@ -26,24 +26,24 @@ test.describe('List Search', () => {
     await createBtn.click()
 
     // Wait for chat to appear in list
-    await expect(page.locator('chat-list .list-group-item:has-text("Project X")')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible({ timeout: 10000 })
 
     // 2. Test searching by group name
     const searchInput = page.locator('input[placeholder="Search..."]')
     await searchInput.fill('Project')
     await page.waitForTimeout(1000)
-    await expect(page.locator('chat-list .list-group-item:has-text("Project X")')).toBeVisible()
+    await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible()
 
     // Search for something non-existent
     await searchInput.fill('NonexistentXYZ')
     await page.waitForTimeout(1000)
     await expect(page.locator('text=No matches found in loaded chats')).toBeVisible()
-    await expect(page.locator('chat-list .list-group-item')).toHaveCount(0)
+    await expect(page.locator('chat-list .app-list-item')).toHaveCount(0)
 
     // 3. Test searching by participant username
     await searchInput.fill('bob')
     await page.waitForTimeout(1000)
-    await expect(page.locator('chat-list .list-group-item:has-text("Project X")')).toBeVisible()
+    await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible()
   })
 
   test('should filter music by metadata', async ({ page, loginCustomPage }) => {

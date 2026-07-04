@@ -51,14 +51,14 @@ test.describe('Link List', () => {
     await expect(page.locator('link-list')).toBeVisible()
 
     // 7. Verify link in list
-    const listItem = page.locator('.link-list .list-group-item').first()
+    const listItem = page.locator('.link-list .app-list-item').first()
     await expect(listItem).toBeVisible()
     await expect(listItem).toContainText('PocketBase', { ignoreCase: true })
 
     // 8. Click link to see details
     await listItem.click()
     await expect(page.locator('link-viewer')).toBeVisible()
-    await expect(page.locator('link-viewer .card-title')).toContainText('PocketBase')
+    await expect(page.locator('link-viewer .active .card-title')).toContainText('PocketBase')
 
     // 9. Click Jump to Chat
     await page.click('link-viewer jump-to-chat button')

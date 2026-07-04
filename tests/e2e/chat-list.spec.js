@@ -27,7 +27,7 @@ test.describe('Chat List Latest Message and Unread Indicators', () => {
 
     // 1. Verify Alice sees her own message as 'read' (not bold)
     console.log('Verifying Alice sees her message as read...')
-    const aliceChatListBob = alicePage.locator('chat-list .list-group-item').filter({ hasText: 'bob' }).first()
+    const aliceChatListBob = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'bob' }).first()
     await expect(aliceChatListBob).toBeVisible()
     const alicePreviewText = aliceChatListBob.locator('small.text-truncate').first()
     await expect(alicePreviewText).toHaveText('You: ' + aliceMsg)
@@ -36,7 +36,7 @@ test.describe('Chat List Latest Message and Unread Indicators', () => {
 
     // 2. Verify Bob sees Alice's message as 'unread' (bold + blue dot)
     console.log('Verifying Bob sees Alice\'s message as unread...')
-    const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: 'alice' }).first()
+    const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChatListAlice).toBeVisible({ timeout: 15000 })
     const bobPreviewText = bobChatListAlice.locator('small.text-truncate').first()
     await expect(bobPreviewText).toHaveText(aliceMsg)

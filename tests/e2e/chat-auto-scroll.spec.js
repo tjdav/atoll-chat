@@ -42,7 +42,7 @@ test.describe('Chat Auto-Scroll', () => {
 
     // Bob opens the same chat
     console.log('Bob opening chat with Alice...')
-    const bobChatListAlice = bobPage.locator('chat-list .list-group-item').filter({ hasText: 'alice' }).first()
+    const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChatListAlice).toBeVisible({ timeout: 40000 })
     await bobChatListAlice.click()
     await expect(bobPage.locator('chat-view')).toBeVisible({ timeout: 20000 })

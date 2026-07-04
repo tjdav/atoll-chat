@@ -92,6 +92,7 @@ $utilities: map-merge($utilities,
 
 // New component-level partials
 @import "nav-sidebar";
+@import "app-list";
 @import "chat-list";
 @import "pip-video";
 @import "player-chat";
