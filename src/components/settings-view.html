@@ -8,21 +8,7 @@
       <h6 class="text-uppercase text-muted fw-bold small mb-3">Notifications</h6>
       <div class="card border-0 shadow-sm">
         <div class="card-body">
-          <div class="d-flex align-items-center justify-content-between mb-3">
-            <div>
-              <h6 class="mb-0">Browser Notifications</h6>
-              <p class="text-muted small mb-0">Get alerted when new messages arrive.</p>
-            </div>
-            <div class="form-check form-switch">
-              <input class="form-check-input" type="checkbox" role="switch" id="notifSwitch" ref="notifSwitch" {{ notifChecked }}>
-            </div>
-          </div>
-          <div class="alert alert-warning align-items-center {{ permissionAlertClass }}" role="alert">
-            <i class="bi bi-exclamation-triangle-fill me-2"></i>
-            <div class="small">
-              Notifications are blocked by your browser. Please enable them in your browser settings to use this feature.
-            </div>
-          </div>
+          <browser-notifications></browser-notifications>
 
           <hr class="my-4">
 
@@ -150,10 +136,8 @@
     server: () => ({
       username: 'User',
       userEmail: '',
-      notificationsEnabled: true,
       messageSoundsEnabled: true,
       callSoundsEnabled: true,
-      permissionStatus: 'default',
       messageSoundName: 'Default',
       callSoundName: 'Default',
       hasCustomMessageSound: false,
@@ -163,10 +147,8 @@
       passkeyActionVerb: 'add'
     }),
     getters: {
-      notifChecked: (state) => (state.notificationsEnabled && state.permissionStatus === 'granted' ? 'checked' : ''),
       messageSoundsChecked: (state) => (state.messageSoundsEnabled ? 'checked' : ''),
       callSoundsChecked: (state) => (state.callSoundsEnabled ? 'checked' : ''),
-      permissionAlertClass: (state) => (state.permissionStatus === 'denied' ? 'd-flex' : 'd-none'),
       messageSoundControlsClass: (state) => (state.messageSoundsEnabled ? 'd-block' : 'd-none'),
       callSoundControlsClass: (state) => (state.callSoundsEnabled ? 'd-block' : 'd-none'),
       resetMessageSoundClass: (state) => (state.hasCustomMessageSound ? 'd-inline-block' : 'd-none'),
@@ -192,10 +174,8 @@
 
       $state.subscribe('currentUser', loadUserData)
 
-      state.notificationsEnabled = $state.notificationsEnabled ?? true
       state.messageSoundsEnabled = $state.messageSoundsEnabled ?? true
       state.callSoundsEnabled = $state.callSoundsEnabled ?? true
-      state.permissionStatus = Notification.permission
 
       const refreshSoundInfo = async () => {
         const customMessage = await $localDb.local_config.get('custom_message_sound')
@@ -211,29 +191,6 @@
       state.hasPasskey = !!pb.authStore.model?.passkey_credential_id
       state.passkeyActionLabel = state.hasPasskey ? 'Update Passkey' : 'Add Passkey'
       state.passkeyActionVerb = state.hasPasskey ? 'update' : 'add'
-
-      const notifSwitch = refs('notifSwitch')
-      if (notifSwitch) {
-        notifSwitch.checked = state.notificationsEnabled && state.permissionStatus === 'granted'
-  
-        notifSwitch.addEventListener('change', async () => {
-          if (notifSwitch.checked) {
-            const granted = await $notifications.requestPermission()
-            if (granted) {
-              $state.notificationsEnabled = true
-              state.notificationsEnabled = true
-            } else {
-              notifSwitch.checked = false
-              $state.notificationsEnabled = false
-              state.notificationsEnabled = false
-            }
-          } else {
-            $state.notificationsEnabled = false
-            state.notificationsEnabled = false
-          }
-          state.permissionStatus = Notification.permission
-        })
-      }
 
       const messageSoundSwitch = refs('messageSoundSwitch')
       if (messageSoundSwitch) {
