@@ -3,7 +3,11 @@
 }
 
 .chat-input-text {
-  gap: 0.5rem;
+  gap: 0.25rem;
+
+  @include media-breakpoint-up(md) {
+    gap: 0.5rem;
+  }
 
   .input-wrapper {
     position: relative;
