@@ -5,7 +5,7 @@ import path from 'path'
 
 const execAsync = promisify(exec)
 const PID_FILE = path.join(process.cwd(), '.pocketbase.pid')
-const PB_DATA = path.join(process.cwd(), 'pb_data')
+const PB_DATA = path.join(process.cwd(), 'pb_data_test')
 /**
  * Stops the native PocketBase server and clears data.
  */

@@ -6,11 +6,11 @@ import http from 'http'
 
 const execAsync = promisify(exec)
 
-const PB_VERSION = '0.39.4'
+const PB_VERSION = '0.39.5'
 const CWD = process.cwd()
 const PB_BINARY = path.join(CWD, 'bin', 'pocketbase')
 const PID_FILE = path.join(CWD, '.pocketbase.pid')
-const PB_DATA = path.join(CWD, 'pb_data')
+const PB_DATA = path.join(CWD, 'pb_data_test')
 
 /**
  * Ensures PocketBase is running natively and fully initialized.
