@@ -1,5 +1,5 @@
 <template id="video-list">
-  <div class="video-list h-100 overflow-y-auto p-3">
+  <div class="video-list h-100 overflow-y-auto p-3" ref="scrollRoot">
     <div class="row row-cols-2 g-3" ref="gridContainer">
       <!-- Videos will be rendered here -->
     </div>
@@ -10,17 +10,19 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, root, localDb, eventBus, globalStore, refs, utils, fuse }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils, fuse }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $utils } = utils
       const { $Fuse } = fuse
       const gridContainer = refs('gridContainer')
+      const scrollRoot = refs('scrollRoot')
 
       let loadedItems = []
       let lastTimestamp = null
       let hasMore = true
+      let isLoading = false
       let fuseInstance = null
       let lastIndexedCount = 0
       const BATCH_SIZE = 24
@@ -29,10 +31,11 @@
       let currentRenderId = 0
 
       const fetchNextBatch = async () => {
-        if (!hasMore) {
+        if (!hasMore || isLoading) {
           return
         }
 
+        isLoading = true
         let query = $localDb.local_assets.where('mime_type').startsWith('video/').reverse()
         const allMatching = await query.toArray()
         let startIndex = 0
@@ -50,6 +53,7 @@
           lastTimestamp = rawItems[rawItems.length - 1].created_at
           loadedItems = [...loadedItems, ...rawItems]
         }
+        isLoading = false
       }
 
       const render = async () => {
@@ -140,8 +144,8 @@
         // Restore scroll position after first render
         if (!state.__scrollRestored && $state.listScrollPositions?.videos !== undefined) {
           setTimeout(() => {
-            if (root) {
-              root.scrollTop = $state.listScrollPositions.videos
+            if (scrollRoot) {
+              scrollRoot.scrollTop = $state.listScrollPositions.videos
             }
           }, 50)
           state.__scrollRestored = true
@@ -149,13 +153,13 @@
       }
 
       const saveListScroll = () => {
-        if (!root || (root.offsetWidth === 0 && root.offsetHeight === 0)) {
+        if (!scrollRoot || (scrollRoot.offsetWidth === 0 && scrollRoot.offsetHeight === 0)) {
           return
         }
         if (!$state.listScrollPositions) {
           $state.listScrollPositions = {}
         }
-        $state.listScrollPositions.videos = root.scrollTop
+        $state.listScrollPositions.videos = scrollRoot.scrollTop
       }
 
       const debouncedSave = $utils.debounce(saveListScroll, 100)
@@ -172,9 +176,9 @@
       }
 
       // Infinite Scroll Logic
-      if (root) {
-        root.addEventListener('scroll', async () => {
-          if (root.scrollTop + root.clientHeight >= root.scrollHeight - 50) {
+      if (scrollRoot) {
+        scrollRoot.addEventListener('scroll', async () => {
+          if (scrollRoot.scrollTop + scrollRoot.clientHeight >= scrollRoot.scrollHeight - 50) {
             if (hasMore) {
               await fetchNextBatch()
               render()

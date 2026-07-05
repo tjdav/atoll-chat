@@ -1,5 +1,5 @@
 <template id="document-list">
-  <div class="document-list h-100 overflow-y-auto" ref="root">
+  <div class="document-list h-100 overflow-y-auto" ref="scrollRoot">
     <div class="list-group list-group-flush" ref="listGroup">
       <!-- Documents will be rendered here -->
     </div>
@@ -17,20 +17,22 @@
       const { $utils } = utils
       const { $Fuse } = fuse
       const listGroup = refs('listGroup')
-      const rootEl = refs('root')
+      const scrollRoot = refs('scrollRoot')
 
       let loadedEnrichedItems = []
       let lastTimestamp = null
       let hasMore = true
+      let isLoading = false
       let fuseInstance = null
       let lastIndexedCount = 0
       const BATCH_SIZE = 24
       let currentRenderId = 0
 
       const fetchNextBatch = async () => {
-        if (!hasMore) {
+        if (!hasMore || isLoading) {
           return
         }
+        isLoading = true
         const allAssets = await $localDb.local_assets.reverse().sortBy('created_at')
         const filteredAssets = allAssets.filter(a => {
           const mt = a.mime_type || ''
@@ -59,6 +61,7 @@
           }))
           loadedEnrichedItems = [...loadedEnrichedItems, ...enriched]
         }
+        isLoading = false
       }
 
       const render = async () => {
@@ -106,8 +109,8 @@
           // Restore scroll position after first render
           if (!state.__scrollRestored && $state.listScrollPositions?.documents !== undefined) {
             setTimeout(() => {
-              if (rootEl) {
-                rootEl.scrollTop = $state.listScrollPositions.documents
+              if (scrollRoot) {
+                scrollRoot.scrollTop = $state.listScrollPositions.documents
               }
             }, 50)
             state.__scrollRestored = true
@@ -116,13 +119,13 @@
       }
 
       const saveListScroll = () => {
-        if (!rootEl || (rootEl.offsetWidth === 0 && rootEl.offsetHeight === 0)) {
+        if (!scrollRoot || (scrollRoot.offsetWidth === 0 && scrollRoot.offsetHeight === 0)) {
           return
         }
         if (!$state.listScrollPositions) {
           $state.listScrollPositions = {}
         }
-        $state.listScrollPositions.documents = rootEl.scrollTop
+        $state.listScrollPositions.documents = scrollRoot.scrollTop
       }
 
       const debouncedSave = $utils.debounce(saveListScroll, 100)
@@ -135,9 +138,9 @@
         loadedEnrichedItems = []; lastTimestamp = null; hasMore = true; fuseInstance = null; lastIndexedCount = 0; await render()
       }
 
-      if (rootEl) {
-        rootEl.onscroll = async () => {
-          if (rootEl.scrollTop + rootEl.clientHeight >= rootEl.scrollHeight - 50 && hasMore) {
+      if (scrollRoot) {
+        scrollRoot.onscroll = async () => {
+          if (scrollRoot.scrollTop + scrollRoot.clientHeight >= scrollRoot.scrollHeight - 50 && hasMore) {
             await fetchNextBatch(); render()
           }
           debouncedSave()
