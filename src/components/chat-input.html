@@ -54,13 +54,14 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'd-flex' : 'd-none')
     },
-    client: ({ state, globalStore, localDb, eventBus, refs, signal, cryptoWorker, pocketbase, utils }) => {
+    client: ({ state, globalStore, localDb, eventBus, refs, signal, cryptoWorker, pocketbase, utils, videoWorker }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
       const { pb } = pocketbase
       const { $utils } = utils
+      const { $video } = videoWorker
 
       const resetUI = () => {
         state.isSending = false
@@ -298,6 +299,11 @@
         state.selectedFile = null
       })
 
+      // Listen for video compression progress
+      $bus.on('video:progress', (payload) => {
+        state.uploadStatus = `Compressing video... ${payload.progress}%`
+      })
+
       $bus.on('ui:file_selected', async (payload) => {
         let file = payload.file
 
@@ -315,7 +321,31 @@
             const newName = file.name.substring(0, file.name.lastIndexOf('.')) + '.webp'
             file = new File([compressedBlob], newName, { type: 'image/webp' })
           } catch (err) {
-            console.warn('[chat-input] Compression failed, using original file:', err)
+            console.warn('[chat-input] Image compression failed, using original file:', err)
+          } finally {
+            state.isCompressing = false
+          }
+        } else if (file.type.startsWith('video/') && $video.isSupported()) {
+          state.isCompressing = true
+          state.uploadStatus = 'Compressing video... 0%'
+          try {
+            const compressedBuffer = await $video.compress(file, {
+              maxWidth: 1280,
+              maxHeight: 720,
+              bitrate: 2_000_000
+            })
+            const compressedBlob = new Blob([compressedBuffer], { type: 'video/mp4' })
+            // Keep original name but change extension if needed
+            let newName = file.name
+            const lastDot = file.name.lastIndexOf('.')
+            if (lastDot !== -1) {
+              newName = file.name.substring(0, lastDot) + '.mp4'
+            } else {
+              newName = file.name + '.mp4'
+            }
+            file = new File([compressedBlob], newName, { type: 'video/mp4' })
+          } catch (err) {
+            console.warn('[chat-input] Video compression failed, using original file:', err)
           } finally {
             state.isCompressing = false
           }

@@ -5,6 +5,7 @@ import statePlugin from './src/plugins/state-plugin.js'
 import localDbPlugin from './src/plugins/local-db-plugin.js'
 import utilsPlugin from './src/plugins/utils-plugin.js'
 import cryptoPlugin from './src/plugins/crypto-worker.js'
+import videoWorkerPlugin from './src/plugins/video-worker-plugin.js'
 import syncPlugin from './src/plugins/sync-plugin.js'
 import webrtcPlugin from './src/plugins/web-rtc-plugin.js'
 import bootstrapPlugin from './src/plugins/bootstrap.js'
@@ -49,6 +50,7 @@ export default defineConfig({
     localDbPlugin(),
     utilsPlugin,
     cryptoPlugin({ url: pocketbaseBaseUrl }),
+    videoWorkerPlugin,
     syncPlugin(),
     routerPlugin(),
     emojiPlugin,
@@ -87,6 +89,11 @@ export default defineConfig({
       pkg: 'dexie',
       path: 'dist/dexie.js',
       dest: 'assets/dexie.js'
+    },
+    {
+      pkg: 'mediabunny',
+      path: 'dist/bundles/mediabunny.min.mjs',
+      dest: 'assets/mediabunny.mjs'
     }
   ]
 })

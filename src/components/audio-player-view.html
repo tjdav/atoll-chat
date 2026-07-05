@@ -62,7 +62,7 @@
       // Local Playback State
       let playbackState = {
         currentId: null,
-        status: 'idle', // 'idle', 'playing', 'paused', 'loading'
+        status: 'idle',
         progress: 0,
         duration: 0,
         currentTime: 0
@@ -178,7 +178,9 @@
           await audio.play()
           playbackState.status = 'playing'
         } catch (err) {
-          if (err.name === 'AbortError') return
+          if (err.name === 'AbortError') {
+            return
+          }
           console.error('[audio-player-view] Playback error:', err)
           state.errorMessage = `Playback error: ${err.message}`
           state.isErrorHidden = false

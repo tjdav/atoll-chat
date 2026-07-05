@@ -62,7 +62,7 @@
       // Local Playback State
       let playbackState = {
         currentId: null,
-        status: 'idle', // 'idle', 'playing', 'paused', 'loading'
+        status: 'idle',
         error: null
       }
 
@@ -156,7 +156,9 @@
           await video.play()
           playbackState.status = 'playing'
         } catch (err) {
-          if (err.name === 'AbortError') return
+          if (err.name === 'AbortError') {
+            return
+          }
           console.error('[video-player-view] Playback error:', err)
           playbackState.error = err.message
           playbackState.status = 'idle'
