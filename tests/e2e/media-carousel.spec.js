@@ -14,7 +14,7 @@ test.describe('Media Carousel and UI Improvements', () => {
 
     const imagePath = path.join(process.cwd(), 'tests/e2e/fixtures/test-files/test.png')
     for (let i = 0; i < 2; i++) {
-      await page.setInputFiles('input[type="file"]', imagePath)
+      await page.setInputFiles('[data-testid$="__imageInput"]', imagePath)
       await page.waitForTimeout(500)
       await page.click('[data-testid$="__sendButton"]')
       await expect(page.locator('chat-view .message-status-container').last()).toBeVisible({ timeout: 20000 })

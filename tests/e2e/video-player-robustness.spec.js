@@ -13,7 +13,7 @@ test.describe('Video Player Robustness', () => {
     await expect(page.locator('chat-view')).toBeVisible({ timeout: 10000 })
 
     const videoPath = path.join(process.cwd(), 'tests/e2e/fixtures/test-files/test.mp4')
-    await page.setInputFiles('input[type="file"]', videoPath)
+    await page.setInputFiles('[data-testid$="__videoInput"]', videoPath)
     await page.waitForTimeout(500)
     await page.click('[data-testid$="__sendButton"]')
 
@@ -69,7 +69,7 @@ test.describe('Video Player Robustness', () => {
 
     // 6. Test "carousel slide" reset by uploading another video
     await page.click('button[title="Chats"]')
-    await page.setInputFiles('input[type="file"]', videoPath)
+    await page.setInputFiles('[data-testid$="__videoInput"]', videoPath)
     await page.waitForTimeout(500)
     await page.click('[data-testid$="__sendButton"]')
     await expect(page.locator('chat-view .message-status-container').last()).toBeVisible({ timeout: 20000 })

@@ -55,7 +55,7 @@ test.describe('Chat List Latest Message and Unread Indicators', () => {
     // 4. Verify Media Message Preview
     console.log('Verifying Media Message Preview...')
     // Alice sends an image
-    await alicePage.setInputFiles('input[type="file"]', {
+    await alicePage.setInputFiles('[data-testid$="__imageInput"]', {
       name: 'test.png',
       mimeType: 'image/png',
       buffer: Buffer.from('fake-image-content')

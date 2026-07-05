@@ -27,11 +27,11 @@ test.describe('Media Messaging', () => {
 
     console.log('Alice selecting image and adding caption...')
     const filePath = path.resolve('tests/e2e/fixtures/test-files/test.png')
-    await alicePage.locator('chat-input-text input[type="file"]').setInputFiles(filePath)
+    await alicePage.locator('[data-testid$="__imageInput"]').setInputFiles(filePath)
 
     // Verify attachment preview shows up
     await expect(alicePage.locator('chat-attachment-preview')).toBeVisible()
-    await expect(alicePage.locator('chat-attachment-preview')).toContainText('test.png')
+    await expect(alicePage.locator('chat-attachment-preview')).toContainText('test.webp')
 
     const caption = 'Check out this cool image!'
     await alicePage.fill('textarea[placeholder="Type a message..."]', caption)

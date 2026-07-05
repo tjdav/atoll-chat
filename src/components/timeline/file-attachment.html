@@ -52,6 +52,7 @@
       const fileIcon = refs('fileIcon')
 
       let objectUrl = null
+      let lastCallId = 0
 
       const getFileIcon = (mimeType) => {
         if (!mimeType) {
@@ -99,12 +100,15 @@
       }
 
       const loadFile = async () => {
+        const callId = ++lastCallId
         try {
           if (!state.localUuid) {
             return
           }
 
           const message = await $localDb.local_messages.get(state.localUuid)
+          if (callId !== lastCallId) return
+
           if (!message || !message.file_key) {
             // Silently wait if we're pending or if key hasn't arrived yet
             if (state.status === 'pending') {
@@ -141,6 +145,8 @@
             objectUrl = URL.createObjectURL(blob)
             $state.decryptionCache.set(state.localUuid, objectUrl)
           }
+
+          if (callId !== lastCallId) return
 
           loading.classList.add('d-none')
           content.classList.remove('d-none')

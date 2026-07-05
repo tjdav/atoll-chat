@@ -17,7 +17,7 @@ test.describe('Media Jump to Chat', () => {
 
     // 3. Alice sends an image
     const imagePath = path.join(process.cwd(), 'tests/e2e/fixtures/test-files/test.png')
-    await page.setInputFiles('input[type="file"]', imagePath)
+    await page.setInputFiles('[data-testid$="__imageInput"]', imagePath)
     await page.click('[data-testid$="__sendButton"]')
 
     // 4. Verify image in timeline and click to open viewer
@@ -34,7 +34,7 @@ test.describe('Media Jump to Chat', () => {
 
     // 6. Alice sends a video
     const videoPath = path.join(process.cwd(), 'tests/e2e/fixtures/test-files/test.mp4')
-    await page.setInputFiles('input[type="file"]', videoPath)
+    await page.setInputFiles('[data-testid$="__videoInput"]', videoPath)
     await page.click('[data-testid$="__sendButton"]')
 
     // 7. Open video viewer

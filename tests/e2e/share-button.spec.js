@@ -27,7 +27,7 @@ test.describe('Share Button', () => {
 
     // 4. Send an image to Charlie
     const imagePath = path.join(process.cwd(), 'tests/e2e/fixtures/test-files/test.png')
-    await page.locator('input[type="file"]').first().setInputFiles(imagePath)
+    await page.locator('[data-testid$="__imageInput"]').setInputFiles(imagePath)
     await page.click('[data-testid$="__sendButton"]')
 
     // 5. Open image viewer
@@ -54,7 +54,7 @@ test.describe('Share Button', () => {
     await page.click('button[title="Chats"]')
     await page.locator('chat-list-item').filter({ hasText: 'bob' }).click()
     await expect(page.locator('chat-view header')).toContainText('bob')
-    await expect(page.locator('media-preview img')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('media-preview img').first()).toBeVisible({ timeout: 15000 })
   })
 
   test('should allow sharing a video to another room', async ({ page, loginCustomPage }) => {
@@ -75,7 +75,7 @@ test.describe('Share Button', () => {
 
     // 4. Send a video to Charlie
     const videoPath = path.join(process.cwd(), 'tests/e2e/fixtures/test-files/test.mp4')
-    await page.locator('input[type="file"]').first().setInputFiles(videoPath)
+    await page.locator('[data-testid$="__videoInput"]').setInputFiles(videoPath)
     await page.click('[data-testid$="__sendButton"]')
 
     // 5. Open video viewer
@@ -102,6 +102,6 @@ test.describe('Share Button', () => {
     await page.click('button[title="Chats"]')
     await page.locator('chat-list-item').filter({ hasText: 'bob' }).click()
     await expect(page.locator('chat-view header')).toContainText('bob')
-    await expect(page.locator('media-preview video')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('media-preview video').first()).toBeVisible({ timeout: 15000 })
   })
 })

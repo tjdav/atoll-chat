@@ -32,6 +32,7 @@
 
       let objectUrl = null
       let audio = null
+      let lastCallId = 0
 
       const cleanup = () => {
         if (audio) {
@@ -44,6 +45,7 @@
       }
 
       const loadAudio = async () => {
+        const callId = ++lastCallId
         try {
           if (!state.localUuid) {
             return
@@ -54,6 +56,8 @@
             objectUrl = $state.decryptionCache.get(state.localUuid)
           } else {
             const message = await $localDb.local_messages.get(state.localUuid)
+            if (callId !== lastCallId) return
+
             if (!message || !message.file_key) {
               // Silently wait if we're pending or if key hasn't arrived yet
               if (state.status === 'pending') {
@@ -89,14 +93,22 @@
 
           // Re-fetch message for waveform data if needed
           const message = await $localDb.local_messages.get(state.localUuid)
+          if (callId !== lastCallId) return
 
           loading.classList.add('d-none')
 
+          // Clear existing UI to prevent duplicates
+          const existing = container.querySelectorAll('.waveform-player, audio')
+          if (existing.length > 0) {
+             const existingAudio = container.querySelector('audio')
+             if (existingAudio && existingAudio.src === objectUrl) {
+               return
+             }
+          }
+
           // Cleanup previous audio if any
           cleanup()
-
-          // Clear existing UI to prevent duplicates
-          container.querySelectorAll('.waveform-player, audio').forEach(el => el.remove())
+          existing.forEach(el => el.remove())
 
           if (message && message.waveform_data) {
             const player = document.createElement('div')

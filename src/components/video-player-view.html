@@ -265,6 +265,11 @@
         if (isInternalChange || $state.activeSelectionType !== 'videos') {
           return
         }
+
+        if ($state.currentMedia?.id !== id) {
+          $state.currentMedia = null
+        }
+
         const index = loadedItems.findIndex(i => i.id === id)
         if (index !== -1) {
           carouselInstance?.to(index)

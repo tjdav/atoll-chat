@@ -18,7 +18,7 @@ test.describe('Media Manager Sidebar', () => {
     await page.click('button:has-text("Create Room")')
 
     const audioPath = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
-    await page.locator('chat-view chat-input-text input[type="file"]').setInputFiles(audioPath)
+    await page.locator('chat-view [data-testid$="__audioInput"]').setInputFiles(audioPath)
     await page.locator('chat-view [data-testid$="__sendButton"]').click()
 
     // Wait for upload and sent status

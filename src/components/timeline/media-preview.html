@@ -31,10 +31,15 @@
       const loading = refs('loading')
 
       let objectUrl = null
+      let isLoading = false
+      let lastCallId = 0
 
       const loadMedia = async () => {
+        const callId = ++lastCallId
+        isLoading = true
         try {
           if (!state.localUuid) {
+            isLoading = false
             return
           }
 
@@ -43,9 +48,12 @@
             objectUrl = $state.decryptionCache.get(state.localUuid)
           } else {
             const message = await $localDb.local_messages.get(state.localUuid)
+            if (callId !== lastCallId) return
+
             if (!message || !message.file_key) {
               // Silently wait if we're pending or if key hasn't arrived yet
               if (state.status === 'pending') {
+                isLoading = false
                 return
               }
               throw new Error('Message or key missing')
@@ -76,27 +84,40 @@
             $state.decryptionCache.set(state.localUuid, objectUrl)
           }
 
+          if (callId !== lastCallId) return
+
           loading.classList.add('d-none')
           container.style.minHeight = 'auto'
 
           const renderMedia = async () => {
+            if (callId !== lastCallId) return
+
             // Clear existing media to prevent duplicates
-            container.querySelectorAll('img, video').forEach(el => el.remove())
+            const existing = container.querySelectorAll('img, video')
+            if (existing.length > 0) {
+              if (existing[0].src === objectUrl) {
+                return
+              }
+              existing.forEach(el => el.remove())
+            }
 
             let mimeType = ''
             let mediaId = null
   
+            const message = await $localDb.local_messages.get(state.localUuid)
+            if (callId !== lastCallId) return
+
             if ($state.decryptionCache.has(state.localUuid)) {
               // For optimistic rendering, we might not have the full message yet
               // but we need the mime type. If we have the message, use it.
-              const message = await $localDb.local_messages.get(state.localUuid)
               mimeType = message?.mime_type || 'image/webp'
               mediaId = message?.media_id
-            } else {
-              const message = await $localDb.local_messages.get(state.localUuid)
+            } else if (message) {
               mimeType = message.mime_type
               mediaId = message.media_id
             }
+
+            if (!mimeType) return
 
             if (mimeType.startsWith('image/')) {
               const img = document.createElement('img')
@@ -119,7 +140,7 @@
             }
           }
 
-          renderMedia()
+          await renderMedia()
 
           container.onclick = async () => {
             let mimeType = ''
@@ -148,15 +169,17 @@
             <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
             <div class="x-small mt-1">Failed to load</div>
           `
+        } finally {
+          isLoading = false
         }
       }
-
-      loadMedia()
 
       if (typeof state.subscribe === 'function') {
         state.subscribe('status', loadMedia)
         state.subscribe('localUuid', loadMedia)
       }
+
+      loadMedia()
     }
   })
 </script>

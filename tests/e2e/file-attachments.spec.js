@@ -6,27 +6,32 @@ test.describe('File Attachments', () => {
     {
       name: 'test.png',
       type: 'image',
-      selector: 'media-preview img'
+      selector: 'media-preview img',
+      testIdSuffix: '__imageInput'
     },
     {
       name: 'test.mp4',
       type: 'video',
-      selector: 'media-preview video'
+      selector: 'media-preview video',
+      testIdSuffix: '__videoInput'
     },
     {
       name: 'test.docx',
       type: 'document',
-      selector: 'file-attachment'
+      selector: 'file-attachment',
+      testIdSuffix: '__docInput'
     },
     {
       name: 'test.tar',
       type: 'archive',
-      selector: 'file-attachment'
+      selector: 'file-attachment',
+      testIdSuffix: '__docInput'
     },
     {
       name: 'test.txt',
       type: 'text',
-      selector: 'file-attachment'
+      selector: 'file-attachment',
+      testIdSuffix: '__docInput'
     }
   ]
 
@@ -63,11 +68,12 @@ test.describe('File Attachments', () => {
       console.log(`Testing file: ${file.name} (${file.type})`)
 
       const filePath = path.resolve(`tests/e2e/fixtures/test-files/${file.name}`)
-      await alicePage.locator('chat-view chat-input-text input[type="file"]').setInputFiles(filePath)
+      await alicePage.locator(`chat-view [data-testid$="${file.testIdSuffix}"]`).setInputFiles(filePath)
 
       // Verify attachment preview shows up
       await expect(alicePage.locator('chat-view chat-attachment-preview')).toBeVisible()
-      await expect(alicePage.locator('chat-view chat-attachment-preview')).toContainText(file.name)
+      const expectedName = file.type === 'image' ? file.name.replace(/\.[^/.]+$/, '.webp') : file.name
+      await expect(alicePage.locator('chat-view chat-attachment-preview')).toContainText(expectedName)
 
       const caption = `Sending ${file.name}`
       // Clear and fill caption
@@ -90,7 +96,7 @@ test.describe('File Attachments', () => {
 
       // Verify component rendering
       console.log(`Verifying Bob rendered ${file.name} correctly...`)
-      await expect(bobMessageRow.locator(file.selector)).toBeVisible({ timeout: 30000 })
+      await expect(bobMessageRow.locator(file.selector).first()).toBeVisible({ timeout: 30000 })
 
       if (file.selector === 'file-attachment') {
         await expect(bobMessageRow.locator('file-attachment')).toContainText(file.name)

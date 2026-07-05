@@ -165,7 +165,7 @@
           type: params.type,
           content: params.content,
           status: 'pending',
-          created_at: new Date().toISOString().replace('T', ' ').replace('Z', ''),
+          created_at: new Date().toISOString(),
           // Include any specific metadata for UI rendering while pending
           mime_type: params.mime_type,
           filename: params.filename,
@@ -193,7 +193,7 @@
       }
 
       const sendMessage = async (recordedBlob = null, waveformData = null) => {
-        if (state.isSending || state.isUploading) {
+        if (state.isSending || state.isUploading || state.isCompressing) {
           return
         }
 
