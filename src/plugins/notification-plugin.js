@@ -168,8 +168,13 @@ export default definePlugin({
         }
 
         $bus.on('db:new_local_data', async (payload) => {
+          const isCatchingUp = $state.isCatchingUp
           const { room_id: roomId, message } = payload
           if (!message || message.sender_id === $state.currentUser?.id) {
+            return
+          }
+
+          if (isCatchingUp) {
             return
           }
 
@@ -181,8 +186,8 @@ export default definePlugin({
             showNotification(payload)
           }
 
-          // Play sound if not suppressed by notification logic or catch-up
-          if (!$state.isCatchingUp && $state.messageSoundsEnabled && !isMuted) {
+          // Play sound if not suppressed by notification logic
+          if ($state.messageSoundsEnabled && !isMuted) {
             // Logic similar to showNotification for suppression
             const isSuppressed = document.visibilityState === 'visible' &&
               $state.currentAppView === 'chats' &&
