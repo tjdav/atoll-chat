@@ -22,7 +22,7 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus }) => {
+    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal }) => {
       const { $localDb } = localDb
       const { pb } = pocketbase
       const { $state } = globalStore
@@ -30,30 +30,77 @@
       const container = refs('container')
       const loading = refs('loading')
 
-      let objectUrl = null
-      let isLoading = false
       let lastCallId = 0
+
+      const renderMedia = (objectUrl, mimeType) => {
+        if (!objectUrl) {
+          return
+        }
+
+        // Deduplication check
+        const existing = container.querySelectorAll('img, video')
+        if (existing.length > 0) {
+          const currentEl = existing[0]
+          if (currentEl.src === objectUrl || currentEl.src.endsWith(objectUrl)) {
+            loading.classList.add('d-none')
+            container.style.minHeight = 'auto'
+            return
+          }
+          existing.forEach(el => el.remove())
+        }
+
+        loading.classList.add('d-none')
+        container.style.minHeight = 'auto'
+
+        if (mimeType.startsWith('image/')) {
+          const img = document.createElement('img')
+          img.src = objectUrl
+          img.className = 'img-fluid rounded-3 shadow-sm'
+          img.style.maxHeight = '300px'
+          img.onload = () => $bus.emit('ui:media_loaded')
+          container.appendChild(img)
+        } else if (mimeType.startsWith('video/')) {
+          const video = document.createElement('video')
+          video.src = objectUrl
+          video.muted = true
+          video.loop = true
+          video.className = 'img-fluid rounded-3 shadow-sm'
+          video.style.maxHeight = '300px'
+          video.onloadeddata = () => $bus.emit('ui:media_loaded')
+          video.addEventListener('mouseenter', () => video.play())
+          video.addEventListener('mouseleave', () => video.pause())
+          container.appendChild(video)
+        }
+      }
 
       const loadMedia = async () => {
         const callId = ++lastCallId
-        isLoading = true
         try {
-          if (!state.localUuid) {
-            isLoading = false
+          if (!state.localUuid || signal.aborted) {
             return
           }
 
-          // Check Cache first - this handles optimistic rendering for the sender
-          if ($state.decryptionCache.has(state.localUuid)) {
-            objectUrl = $state.decryptionCache.get(state.localUuid)
-          } else {
-            const message = await $localDb.local_messages.get(state.localUuid)
-            if (callId !== lastCallId) return
+          // 1. Synchronous Cache Check
+          const cached = $state.decryptionCache.get(state.localUuid)
+          if (cached) {
+            const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
+            const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || 'image/webp'
+            renderMedia(objectUrl, mimeType)
+            // If we have both, we might be done, but Alice still needs to wait for DB to get the mediaId for clicks
+          }
 
+          // 2. Async Lifecycle: Fetch from DB and Decrypt
+          const message = await $localDb.local_messages.get(state.localUuid)
+          if (callId !== lastCallId || signal.aborted) {
+            return
+          }
+
+          let objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
+          let mimeType = message?.mime_type || (typeof cached === 'object' ? cached.mimeType : null) || 'image/webp'
+
+          if (!objectUrl) {
             if (!message || !message.file_key) {
-              // Silently wait if we're pending or if key hasn't arrived yet
               if (state.status === 'pending') {
-                isLoading = false
                 return
               }
               throw new Error('Message or key missing')
@@ -61,11 +108,14 @@
 
             const { default: sodium } = await import('libsodium-wrappers-sumo')
             await sodium.ready
+            if (callId !== lastCallId || signal.aborted) {
+              return
+            }
 
             const mediaRecord = await pb.collection('media').getOne(message.media_id)
             const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
 
-            const response = await fetch(fileUrl)
+            const response = await fetch(fileUrl, { signal })
             if (!response.ok) {
               throw new Error('Fetch failed')
             }
@@ -81,96 +131,38 @@
 
             const blob = new Blob([decryptedData], { type: message.mime_type })
             objectUrl = URL.createObjectURL(blob)
-            $state.decryptionCache.set(state.localUuid, objectUrl)
+            mimeType = message.mime_type
+            $state.decryptionCache.set(state.localUuid, {
+              blobUrl: objectUrl,
+              mimeType: mimeType
+            })
           }
 
-          if (callId !== lastCallId) return
-
-          loading.classList.add('d-none')
-          container.style.minHeight = 'auto'
-
-          const renderMedia = async () => {
-            if (callId !== lastCallId) return
-
-            // Clear existing media to prevent duplicates
-            const existing = container.querySelectorAll('img, video')
-            if (existing.length > 0) {
-              if (existing[0].src === objectUrl) {
-                return
-              }
-              existing.forEach(el => el.remove())
-            }
-
-            let mimeType = ''
-            let mediaId = null
-  
-            const message = await $localDb.local_messages.get(state.localUuid)
-            if (callId !== lastCallId) return
-
-            if ($state.decryptionCache.has(state.localUuid)) {
-              // For optimistic rendering, we might not have the full message yet
-              // but we need the mime type. If we have the message, use it.
-              mimeType = message?.mime_type || 'image/webp'
-              mediaId = message?.media_id
-            } else if (message) {
-              mimeType = message.mime_type
-              mediaId = message.media_id
-            }
-
-            if (!mimeType) return
-
-            if (mimeType.startsWith('image/')) {
-              const img = document.createElement('img')
-              img.src = objectUrl
-              img.className = 'img-fluid rounded-3 shadow-sm'
-              img.style.maxHeight = '300px'
-              img.onload = () => $bus.emit('ui:media_loaded')
-              container.appendChild(img)
-            } else if (mimeType.startsWith('video/')) {
-              const video = document.createElement('video')
-              video.src = objectUrl
-              video.muted = true
-              video.loop = true
-              video.className = 'img-fluid rounded-3 shadow-sm'
-              video.style.maxHeight = '300px'
-              video.onloadeddata = () => $bus.emit('ui:media_loaded')
-              video.addEventListener('mouseenter', () => video.play())
-              video.addEventListener('mouseleave', () => video.pause())
-              container.appendChild(video)
-            }
+          if (callId !== lastCallId || signal.aborted) {
+            return
           }
-
-          await renderMedia()
+          renderMedia(objectUrl, mimeType)
 
           container.onclick = async () => {
-            let mimeType = ''
-            let mediaId = null
-            const message = await $localDb.local_messages.get(state.localUuid)
-            if (message) {
-              mimeType = message.mime_type
-              mediaId = message.media_id
-            }
-  
-            if (!mediaId) {
+            const msg = await $localDb.local_messages.get(state.localUuid)
+            if (!msg?.media_id) {
               return
             }
-
-            // Rule: Order matters for pushState logic in router-plugin.
-            // Updating currentAppView first ensures a Major Context Switch is detected.
-            const targetView = mimeType.startsWith('image/') ? 'pictures' : 'videos'
+            const targetView = (msg.mime_type || '').startsWith('image/') ? 'pictures' : 'videos'
             $state.currentAppView = targetView
             $state.activeSelectionType = targetView
-            $state.activeSelectionId = mediaId
+            $state.activeSelectionId = msg.media_id
           }
 
         } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
           console.error('[media-preview] Error:', err)
           loading.innerHTML = `
             <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
             <div class="x-small mt-1">Failed to load</div>
           `
-        } finally {
-          isLoading = false
         }
       }
 

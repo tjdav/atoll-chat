@@ -33,7 +33,7 @@
       imageDisplayClass: (state) => (state.title ? '' : 'd-none'),
       urlHref: (state) => state.url
     },
-    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase }) => {
+    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase, signal }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
@@ -41,29 +41,54 @@
       const decryptionCache = $state.decryptionCache
       const imageContainer = refs('imageContainer')
 
+      let lastCallId = 0
+
+      const renderImage = (src) => {
+        // Deduplication check
+        const existing = imageContainer.querySelector('img')
+        if (existing) {
+          if (existing.src === src || existing.src.endsWith(src)) {
+            return
+          }
+          existing.remove()
+        }
+
+        const img = document.createElement('img')
+        img.src = src
+        img.className = 'rounded-start'
+        imageContainer.appendChild(img)
+      }
+
       const loadPreviewImage = async () => {
+        const callId = ++lastCallId
         const uuid = state.localUuid
         const linkIndex = state.linkIndex || 0
         const cacheKey = `${uuid}:${linkIndex}`
 
-        if (!uuid || !decryptionCache) {
+        if (!uuid || !decryptionCache || signal.aborted) {
           return
         }
 
         // 1. Check Cache
         if (decryptionCache.has(cacheKey)) {
-          const cachedUrl = decryptionCache.get(cacheKey)
-          renderImage(cachedUrl)
-          return
+          const cached = decryptionCache.get(cacheKey)
+          const cachedUrl = typeof cached === 'string' ? cached : cached.blobUrl
+          if (cachedUrl) {
+            renderImage(cachedUrl)
+            return
+          }
         }
 
         // 2. Query DB
         const msg = await $localDb.local_messages.get(uuid)
+        if (callId !== lastCallId || signal.aborted) {
+          return
+        }
         if (!msg) {
           return
         }
 
-        // If it's a newer message with image_url, we can use it as fallback if decryption fails or media_id is missing
+        // If it's a newer message with image_url, we can use it as fallback
         if (state.imageUrl) {
           renderImage(state.imageUrl)
         }
@@ -73,34 +98,44 @@
         }
 
         try {
-          // Use PocketBase plugin to get record and file URL
           const record = await pb.collection('media').getOne(msg.media_id)
           const fileUrl = pb.files.getURL(record, record.file)
   
-          const response = await fetch(fileUrl)
+          const response = await fetch(fileUrl, { signal })
           const encryptedBuffer = await response.arrayBuffer()
+          if (callId !== lastCallId || signal.aborted) {
+            return
+          }
+
+          const { default: sodium } = await import('libsodium-wrappers-sumo')
+          await sodium.ready
+          if (callId !== lastCallId || signal.aborted) {
+            return
+          }
 
           const key = sodium.from_base64(msg.file_key, sodium.base64_variants.ORIGINAL)
           const nonce = sodium.from_base64(msg.file_nonce, sodium.base64_variants.ORIGINAL)
   
           const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(encryptedBuffer), nonce, key)
+          if (!decrypted) {
+            throw new Error('Decryption failed')
+          }
+
           const blob = new Blob([decrypted], { type: 'image/jpeg' })
           const blobUrl = URL.createObjectURL(blob)
 
-          decryptionCache.set(cacheKey, blobUrl)
+          decryptionCache.set(cacheKey, {
+            blobUrl,
+            mimeType: 'image/jpeg'
+          })
           renderImage(blobUrl)
           $bus.emit('ui:media_loaded')
         } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
           console.error('[link-preview] Failed to decrypt preview image:', err)
         }
-      }
-
-      const renderImage = (src) => {
-        imageContainer.innerHTML = ''
-        const img = document.createElement('img')
-        img.src = src
-        img.className = 'rounded-start'
-        imageContainer.appendChild(img)
       }
 
       loadPreviewImage()

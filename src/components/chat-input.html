@@ -153,7 +153,10 @@
         // Optimistic Media Cache (Sender side)
         if (params.file) {
           const blobUrl = URL.createObjectURL(params.file)
-          $state.decryptionCache.set(localUuid, blobUrl)
+          $state.decryptionCache.set(localUuid, {
+            blobUrl,
+            mimeType: params.mime_type || params.file.type
+          })
         }
 
         // Optimistic Write

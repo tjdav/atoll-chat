@@ -53,7 +53,7 @@
 
         if (rawItems.length > 0) {
           lastTimestamp = rawItems[rawItems.length - 1].created_at
-          
+  
           const enriched = []
           for (const message of rawItems) {
             const room = await $localDb.local_rooms.get(message.room_id)
@@ -77,7 +77,7 @@
             messageLinks.forEach((link, idx) => {
               const selectionId = messageLinks.length > 1 ? `${message.local_uuid}:${idx}` : message.local_uuid
               const searchContent = `${link.title || ''} ${link.domain || ''} ${link.url || ''} ${senderName} ${roomName}`.toLowerCase()
-              
+  
               enriched.push({
                 message,
                 link,
@@ -133,9 +133,9 @@
           btn.type = 'button'
           const isActive = selectionId === $state.activeSelectionId && $state.activeSelectionType === 'links'
           btn.className = `app-list-item ${isActive ? 'active' : ''}`
-          
+  
           const domainStr = link.domain ? `${link.domain} • ` : ''
-          
+  
           const iconWrapper = document.createElement('div')
           iconWrapper.className = 'list-item-icon'
           const icon = document.createElement('i')

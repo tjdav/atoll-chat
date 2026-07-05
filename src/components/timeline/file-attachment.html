@@ -38,7 +38,7 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus }) => {
+    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal }) => {
       const { $localDb } = localDb
       const { pb } = pocketbase
       const { $state } = globalStore
@@ -51,7 +51,6 @@
       const downloadLink = refs('downloadLink')
       const fileIcon = refs('fileIcon')
 
-      let objectUrl = null
       let lastCallId = 0
 
       const getFileIcon = (mimeType) => {
@@ -88,46 +87,69 @@
         return 'bi-file-earmark'
       }
 
-      const formatBytes = (bytes, decimals = 2) => {
-        if (!bytes || bytes === 0) {
-          return '0 Bytes'
+      const renderFile = (objectUrl, mimeType, filename) => {
+        if (!objectUrl) {
+          return
         }
-        const k = 1024
-        const dm = decimals < 0 ? 0 : decimals
-        const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB']
-        const i = Math.floor(Math.log(bytes) / Math.log(k))
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i]
+
+        loading.classList.add('d-none')
+        content.classList.remove('d-none')
+        content.classList.add('d-flex')
+
+        fileNameEl.textContent = filename || 'Attachment'
+        fileSizeEl.textContent = mimeType || 'Unknown Type'
+        fileIcon.className = `bi ${getFileIcon(mimeType)}`
+        downloadLink.href = objectUrl
+        downloadLink.download = filename || 'attachment'
+  
+        $bus.emit('ui:media_loaded')
       }
 
       const loadFile = async () => {
         const callId = ++lastCallId
         try {
-          if (!state.localUuid) {
+          if (!state.localUuid || signal.aborted) {
             return
           }
 
-          const message = await $localDb.local_messages.get(state.localUuid)
-          if (callId !== lastCallId) return
-
-          if (!message || !message.file_key) {
-            // Silently wait if we're pending or if key hasn't arrived yet
-            if (state.status === 'pending') {
+          // 1. Sync Cache Check
+          const cached = $state.decryptionCache.get(state.localUuid)
+          if (cached) {
+            const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
+            const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || ''
+            // We still need message for filename
+            const message = await $localDb.local_messages.get(state.localUuid)
+            if (callId !== lastCallId || signal.aborted) {
               return
             }
-            throw new Error('Message or key missing')
+            renderFile(objectUrl, mimeType || message?.mime_type, message?.filename || message?.content)
           }
 
-          // Check Cache first
-          if ($state.decryptionCache.has(state.localUuid)) {
-            objectUrl = $state.decryptionCache.get(state.localUuid)
-          } else {
+          // 2. Async Lifecycle
+          const message = await $localDb.local_messages.get(state.localUuid)
+          if (callId !== lastCallId || signal.aborted) {
+            return
+          }
+
+          let objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
+          if (!objectUrl) {
+            if (!message || !message.file_key) {
+              if (state.status === 'pending') {
+                return
+              }
+              throw new Error('Message or key missing')
+            }
+
             const { default: sodium } = await import('libsodium-wrappers-sumo')
             await sodium.ready
+            if (callId !== lastCallId || signal.aborted) {
+              return
+            }
 
             const mediaRecord = await pb.collection('media').getOne(message.media_id)
             const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
 
-            const response = await fetch(fileUrl)
+            const response = await fetch(fileUrl, { signal })
             if (!response.ok) {
               throw new Error('Fetch failed')
             }
@@ -143,26 +165,21 @@
 
             const blob = new Blob([decryptedData], { type: message.mime_type })
             objectUrl = URL.createObjectURL(blob)
-            $state.decryptionCache.set(state.localUuid, objectUrl)
+            $state.decryptionCache.set(state.localUuid, {
+              blobUrl: objectUrl,
+              mimeType: message.mime_type
+            })
           }
 
-          if (callId !== lastCallId) return
-
-          loading.classList.add('d-none')
-          content.classList.remove('d-none')
-          content.classList.add('d-flex')
-
-          fileNameEl.textContent = message.filename || message.content || 'Attachment'
-          fileSizeEl.textContent = message.mime_type || 'Unknown Type'
-  
-          fileIcon.className = `bi ${getFileIcon(message.mime_type)}`
-  
-          downloadLink.href = objectUrl
-          downloadLink.download = message.filename || message.content || 'attachment'
-  
-          $bus.emit('ui:media_loaded')
+          if (callId !== lastCallId || signal.aborted) {
+            return
+          }
+          renderFile(objectUrl, message?.mime_type, message?.filename || message?.content)
 
         } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
           console.error('[file-attachment] Error:', err)
           loading.innerHTML = `
             <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
