@@ -51,13 +51,6 @@
       card.onclick = () => {
         $state.activeSelectionId = state.assetId
         $state.activeSelectionType = state.type
-
-        if (isVideo) {
-          // Set queue but wait for explicit play click in the viewer
-          $localDb.local_assets.where('mime_type').startsWith('video/').reverse().sortBy('created_at').then(rawItems => {
-            $state.mediaQueue = rawItems.map(i => i.id)
-          })
-        }
       }
 
       // Decrypt and render preview (This stays in client block as it requires libsodium and fetching)

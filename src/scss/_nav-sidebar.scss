@@ -30,16 +30,4 @@
       color: var(--#{$prefix}primary) !important;
     }
   }
-
-  // Adjust the media manager circle for mobile
-  .dropend button[ref="btnMediaManager"] {
-    height: 64px;
-    @include media-breakpoint-down(md) {
-      height: 48px;
-      svg {
-        width: 36px;
-        height: 36px;
-      }
-    }
-  }
 }

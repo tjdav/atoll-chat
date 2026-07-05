@@ -32,17 +32,6 @@
       btn.onclick = async () => {
         $state.activeSelectionId = state.assetId
         $state.activeSelectionType = 'music'
-
-        const assets = await $localDb.local_assets.where('mime_type').startsWith('audio/').reverse().sortBy('created_at')
-        $state.mediaQueue = assets.map(i => i.id)
-
-        if (!$state.currentMedia || $state.currentMedia.id !== state.assetId) {
-          $state.currentMedia = {
-            id: state.assetId,
-            type: 'music'
-          }
-          $state.playbackStatus = 'playing'
-        }
       }
     }
   })

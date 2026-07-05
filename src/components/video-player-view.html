@@ -25,6 +25,9 @@
     <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}" style="z-index: 1050;">
       {{ errorMessage }}
     </div>
+    <div class="d-none">
+      <video ref="videoPlayer"></video>
+    </div>
   </div>
 </template>
 
@@ -47,6 +50,7 @@
       const carouselInner = refs('carouselInner')
       const btnPrev = refs('btnPrev')
       const btnNext = refs('btnNext')
+      const video = refs('videoPlayer')
 
       let carouselInstance = null
       let loadedItems = []
@@ -55,8 +59,15 @@
       const BATCH_SIZE = 24
       let isInternalChange = false
 
+      // Local Playback State
+      let playbackState = {
+        currentId: null,
+        status: 'idle', // 'idle', 'playing', 'paused', 'loading'
+        error: null
+      }
+
       const cleanup = () => {
-        returnVideo()
+        stopLocalPlayback()
         if (carouselInstance) {
           carouselInstance.dispose()
           carouselInstance = null
@@ -65,23 +76,22 @@
 
       signal.addEventListener('abort', cleanup)
 
-      const returnVideo = () => {
-        const getMasterVideo = $state.getMasterVideoElement
-        if (getMasterVideo) {
-          const video = getMasterVideo()
-          // Check if the video is inside ANY container within our carouselInner
-          if (video && carouselInner.contains(video)) {
-            video.className = ''
-            const engineContainer = document.querySelector('media-engine .d-none')
-            if (engineContainer) {
-              engineContainer.appendChild(video)
-            }
-          }
+      const stopLocalPlayback = () => {
+        if (video) {
+          video.pause()
+          video.removeAttribute('src')
+          video.load()
         }
+        playbackState = {
+          currentId: null,
+          status: 'idle',
+          error: null
+        }
+        syncAll()
       }
 
       const syncActiveVideo = (id, container) => {
-        const isSelectedThis = ($state.currentMedia && $state.currentMedia.id === id)
+        const isSelectedThis = playbackState.currentId === id
         const videoPlaceholder = container.querySelector('.video-placeholder')
         const videoContainer = container.querySelector('.video-container')
         const loadingIndicator = container.querySelector('.video-loading')
@@ -89,30 +99,24 @@
         const errorMessage = container.querySelector('.error-text')
 
         if (isSelectedThis) {
-          if ($state.mediaLoading) {
+          if (playbackState.status === 'loading') {
             loadingIndicator.classList.remove('d-none')
             videoPlaceholder.classList.add('d-none')
             videoContainer.classList.add('d-none')
             errorDisplay.classList.add('d-none')
-          } else if ($state.mediaError) {
+          } else if (playbackState.error) {
             errorDisplay.classList.remove('d-none')
-            errorMessage.textContent = $state.mediaError
+            errorMessage.textContent = playbackState.error
             loadingIndicator.classList.add('d-none')
             videoPlaceholder.classList.add('d-none')
             videoContainer.classList.add('d-none')
           } else {
-            const getMasterVideo = $state.getMasterVideoElement
-            if (getMasterVideo) {
-              const video = getMasterVideo()
-              if (video) {
-                video.className = 'w-100 h-100 object-fit-contain'
-                videoContainer.appendChild(video)
-                videoContainer.classList.remove('d-none')
-                videoPlaceholder.classList.add('d-none')
-                loadingIndicator.classList.add('d-none')
-                errorDisplay.classList.add('d-none')
-              }
-            }
+            video.className = 'w-100 h-100 object-fit-contain'
+            videoContainer.appendChild(video)
+            videoContainer.classList.remove('d-none')
+            videoPlaceholder.classList.add('d-none')
+            loadingIndicator.classList.add('d-none')
+            errorDisplay.classList.add('d-none')
           }
         } else {
           videoContainer.classList.add('d-none')
@@ -120,6 +124,44 @@
           loadingIndicator.classList.add('d-none')
           errorDisplay.classList.add('d-none')
         }
+      }
+
+      const playLocalMedia = async (item) => {
+        if (playbackState.currentId === item.id) {
+          if (playbackState.status === 'playing') {
+            video.pause()
+            playbackState.status = 'paused'
+          } else {
+            try {
+              await video.play()
+              playbackState.status = 'playing'
+            } catch (e) {
+              console.warn('[video-player-view] Play failed:', e)
+            }
+          }
+          syncAll()
+          return
+        }
+
+        stopLocalPlayback()
+        playbackState.currentId = item.id
+        playbackState.status = 'loading'
+        syncAll()
+
+        try {
+          const objectUrl = await $utils.fetchAndDecrypt(item, signal)
+          video.src = objectUrl
+          video.volume = $state.mediaVolume
+          video.controls = true
+          await video.play()
+          playbackState.status = 'playing'
+        } catch (err) {
+          if (err.name === 'AbortError') return
+          console.error('[video-player-view] Playback error:', err)
+          playbackState.error = err.message
+          playbackState.status = 'idle'
+        }
+        syncAll()
       }
 
       const createCarouselItem = (item, isActive) => {
@@ -148,15 +190,8 @@
             <div class="video-container flex-grow-1 w-100 h-100 d-flex align-items-center justify-content-center d-none"></div>
           </div>
         `
-        const playMedia = () => {
-          $bus.emit('media:play', {
-            mediaId: item.id,
-            type: 'videos'
-          })
-        }
-
-        div.querySelector('.btn-big-play').onclick = playMedia
-        div.querySelector('.btn-retry').onclick = playMedia
+        div.querySelector('.btn-big-play').onclick = () => playLocalMedia(item)
+        div.querySelector('.btn-retry').onclick = () => playLocalMedia(item)
   
         return div
       }
@@ -224,11 +259,6 @@
             $state.activeSelectionId = id
             state.fileName = item.filename || 'Untitled Video'
   
-            // Stop current media when sliding to a new one
-            if ($state.currentMedia?.id !== id) {
-              $state.currentMedia = null
-            }
-
             syncActiveVideo(id, activeItem)
             isInternalChange = false
           }
@@ -266,8 +296,8 @@
           return
         }
 
-        if ($state.currentMedia?.id !== id) {
-          $state.currentMedia = null
+        if (playbackState.currentId !== id) {
+          stopLocalPlayback()
         }
 
         const index = loadedItems.findIndex(i => i.id === id)
@@ -292,10 +322,28 @@
         }
       }
 
-      $state.subscribe('playbackStatus', syncAll)
-      $state.subscribe('mediaLoading', syncAll)
-      $state.subscribe('mediaError', syncAll)
-      $state.subscribe('currentMedia', syncAll)
+      $state.subscribe('mediaVolume', (vol) => {
+        if (video) {
+          video.volume = vol
+        }
+      })
+
+      video.onplay = () => {
+        playbackState.status = 'playing'
+        syncAll()
+      }
+
+      video.onpause = () => {
+        if (playbackState.status === 'playing') {
+          playbackState.status = 'paused'
+          syncAll()
+        }
+      }
+
+      video.onended = () => {
+        playbackState.status = 'idle'
+        syncAll()
+      }
 
       if ($state.activeSelectionType === 'videos') {
         initCarousel()

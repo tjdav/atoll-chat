@@ -171,8 +171,74 @@ export default definePlugin({
       pluginContext.$utils = $utils
 
       return (instanceContext) => {
+        const { pocketbase, cryptoWorker, globalStore } = instanceContext
+
+        /**
+         * Fetches an encrypted asset from PocketBase, decrypts it using the crypto worker,
+         * and returns an Object URL. Manages the global decryption cache.
+         * @param {Object} asset - The asset metadata (must include media_id, file_key, file_nonce, mime_type).
+         * @param {AbortSignal} [signal] - Optional AbortSignal.
+         * @returns {Promise<string>} - Resolves to the decrypted Object URL.
+         */
+        const fetchAndDecrypt = async (asset, signal) => {
+          const { pb } = pocketbase
+          const { $worker } = cryptoWorker
+          const { $state } = globalStore
+
+          // Check cache first
+          if (asset.message_id && $state.decryptionCache.has(asset.message_id)) {
+            const cached = $state.decryptionCache.get(asset.message_id)
+            return typeof cached === 'string' ? cached : cached.blobUrl
+          }
+
+          if (asset.id && $state.decryptionCache.has(asset.id)) {
+            const cached = $state.decryptionCache.get(asset.id)
+            return typeof cached === 'string' ? cached : cached.blobUrl
+          }
+
+          const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+          const response = await fetch(url, { signal })
+          if (!response.ok) {
+            throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+          }
+          const encryptedBuffer = await response.arrayBuffer()
+
+          if (signal?.aborted) {
+            throw new DOMException('Aborted', 'AbortError')
+          }
+
+          const decryptedBuffer = await $worker.execute('worker:decrypt_file', {
+            encryptedBuffer,
+            nonce: asset.file_nonce,
+            key: asset.file_key
+          })
+
+          if (signal?.aborted) {
+            throw new DOMException('Aborted', 'AbortError')
+          }
+
+          const mediaBlob = new Blob([decryptedBuffer], { type: asset.mime_type })
+          const objectUrl = URL.createObjectURL(mediaBlob)
+
+          // Cache it
+          const cacheKey = asset.message_id || asset.id
+          if (cacheKey) {
+            $state.decryptionCache.set(cacheKey, {
+              blobUrl: objectUrl,
+              mimeType: asset.mime_type
+            })
+          }
+
+          return objectUrl
+        }
+
         return {
-          $utils
+          $utils: {
+            ...$utils,
+            fetchAndDecrypt
+          }
         }
       }
     }

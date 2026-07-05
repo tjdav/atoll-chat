@@ -21,51 +21,6 @@
       </button>
     </div>
     <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative">
-      <!-- Global Media Manager -->
-      <div class="dropend">
-        <button ref="btnMediaManager" class="nav-link d-flex align-items-center justify-content-center p-0 w-100 position-relative media-manager-btn" data-bs-toggle="dropdown" aria-expanded="false" title="Now Playing">
-          <svg width="48" height="48" viewBox="0 0 48 48" class="position-absolute media-progress-svg">
-            <circle cx="24" cy="24" r="20" fill="none" stroke="currentColor" stroke-width="2" class="opacity-10"></circle>
-            <circle cx="24" cy="24" r="20" fill="none" stroke="var(--bs-primary)" stroke-width="2" stroke-dasharray="125.6" stroke-dashoffset="{{ progressOffset }}" transform="rotate(-90 24 24)" style="transition: stroke-dashoffset 0.3s ease;"></circle>
-          </svg>
-          <i class="bi {{ playPauseIcon }} fs-4 z-1"></i>
-      </button>
-        <div class="dropdown-menu shadow-lg p-0 border-0 overflow-hidden" style="width: 300px; margin-left: 15px;">
-           <div class="bg-body p-3">
-              <div class="d-flex align-items-center gap-3 mb-3">
-                 <div class="rounded bg-secondary-subtle overflow-hidden flex-shrink-0" style="width: 48px; height: 48px;">
-                    <img ref="dropdownThumbnail" src="" class="w-100 h-100 object-fit-cover {{ thumbnailClass }}" alt="">
-                    <div class="w-100 h-100 d-flex align-items-center justify-content-center {{ placeholderClass }}">
-                       <i class="bi {{ mediaMetadataPlaceholderIcon }} fs-4 text-secondary"></i>
-                    </div>
-                 </div>
-                 <div class="overflow-hidden">
-                    <div class="fw-bold text-truncate">{{ mediaMetadataTitle }}</div>
-                    <div class="text-muted small text-truncate">{{ mediaMetadataSubtext }}</div>
-                 </div>
-              </div>
-              
-              <!-- Progress Bar -->
-              <div class="progress mb-3" style="height: 4px; cursor: pointer;" ref="dropdownProgress">
-                <div class="progress-bar" role="progressbar" style="width: {{ mediaProgress }}%;"></div>
-              </div>
-
-              <!-- Controls -->
-              <div class="d-flex align-items-center justify-content-between mb-3">
-                 <button ref="btnPrev" class="btn btn-link text-body p-0"><i class="bi bi-skip-start-fill fs-3"></i></button>
-                 <button ref="btnTogglePlay" class="btn btn-link text-body p-0"><i class="bi {{ playPauseIconLarge }} fs-1"></i></button>
-                 <button ref="btnNext" class="btn btn-link text-body p-0"><i class="bi bi-skip-end-fill fs-3"></i></button>
-              </div>
-
-              <!-- Volume -->
-              <div class="d-flex align-items-center gap-2">
-                 <i class="bi {{ volumeIcon }} text-muted"></i>
-                 <input type="range" ref="volumeSlider" class="form-range" min="0" max="1" step="0.01" value="{{ mediaVolume }}">
-              </div>
-           </div>
-        </div>
-      </div>
-
       <button class="nav-link d-flex align-items-center justify-content-center w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings">
         <i class="bi bi-gear-fill fs-4"></i>
       </button>
@@ -91,32 +46,7 @@
       isVideosActive: (state) => (state.currentAppView === 'videos' ? 'active' : ''),
       isDocumentsActive: (state) => (state.currentAppView === 'documents' ? 'active' : ''),
       isLinksActive: (state) => (state.currentAppView === 'links' ? 'active' : ''),
-      isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : ''),
-      progressOffset: (state) => {
-        const radius = 20
-        const circumference = 2 * Math.PI * radius
-        return (circumference - (state.mediaProgress / 100)) * circumference
-      },
-      playPauseIcon: (state) => (state.playbackStatus === 'playing' ? 'bi-pause-fill' : 'bi-play-fill'),
-      playPauseIconLarge: (state) => (state.playbackStatus === 'playing' ? 'bi-pause-circle-fill' : 'bi-play-circle-fill'),
-      mediaMetadataTitle: (state) => state.mediaMetadata?.title || 'Not Playing',
-      mediaMetadataSubtext: (state) => state.mediaMetadata?.subtext || '',
-      mediaMetadataPlaceholderIcon: (state) => state.mediaMetadata?.placeholderIcon || 'bi-music-note',
-      mediaMetadataThumbnail: (state) => state.mediaMetadata?.thumbnail || '',
-      thumbnailClass: (state) => (state.mediaMetadata?.thumbnail ? 'd-block' : 'd-none'),
-      placeholderClass: (state) => (state.mediaMetadata?.thumbnail ? 'd-none' : 'd-flex'),
-      volumeIcon: (state) => {
-        const vol = state.mediaVolume
-
-        if (vol === 0) {
-          return 'bi-volume-mute-fill'
-        }
-        if (vol < 0.5) {
-          return 'bi-volume-down-fill'
-        }
-  
-        return 'bi-volume-up-fill'
-      }
+      isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : '')
     },
     client: ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker }) => {
       const { $state } = globalStore
@@ -125,29 +55,9 @@
       const { $worker } = cryptoWorker
       // Sync global state to component local state for reactivity in getters/template
       state.currentAppView = $state.currentAppView || 'chats'
-      state.mediaProgress = $state.mediaProgress || 0
-      state.playbackStatus = $state.playbackStatus || 'idle'
-      state.mediaMetadata = { ...$state.mediaMetadata }
-      state.mediaVolume = $state.mediaVolume || 1.0
 
       // Subscribe to global state changes
       $state.subscribe('currentAppView', (value) => state.currentAppView = value)
-      $state.subscribe('mediaProgress', (value) => state.mediaProgress = value)
-      $state.subscribe('playbackStatus', (value) => state.playbackStatus = value)
-      $state.subscribe('mediaMetadata', (value) => {
-        state.mediaMetadata = { ...value }
-        const thumb = refs('dropdownThumbnail')
-        if (thumb) {
-          thumb.src = value?.thumbnail || ''
-        }
-      })
-      $state.subscribe('mediaVolume', (value) => state.mediaVolume = value)
-
-      // Initial thumbnail
-      const thumb = refs('dropdownThumbnail')
-      if (thumb && $state.mediaMetadata?.thumbnail) {
-        thumb.src = $state.mediaMetadata.thumbnail
-      }
 
       const views = {
         btnChats: 'chats',
@@ -215,47 +125,6 @@
         })
       }
 
-      // Media Manager Controls
-      const btnTogglePlay = refs('btnTogglePlay')
-      if (btnTogglePlay) {
-        btnTogglePlay.addEventListener('click', (e) => {
-          e.stopPropagation()
-          $bus.emit('media:toggle')
-        })
-      }
-
-      const btnNext = refs('btnNext')
-      if (btnNext) {
-        btnNext.addEventListener('click', (e) => {
-          e.stopPropagation()
-          $bus.emit('media:next')
-        })
-      }
-
-      const btnPrev = refs('btnPrev')
-      if (btnPrev) {
-        btnPrev.addEventListener('click', (e) => {
-          e.stopPropagation()
-          $bus.emit('media:prev')
-        })
-      }
-
-      const volumeSlider = refs('volumeSlider')
-      if (volumeSlider) {
-        volumeSlider.addEventListener('input', (e) => {
-          $state.mediaVolume = parseFloat(e.target.value)
-        })
-      }
-
-      const dropdownProgress = refs('dropdownProgress')
-      if (dropdownProgress) {
-        dropdownProgress.addEventListener('click', (e) => {
-          e.stopPropagation()
-          const rect = dropdownProgress.getBoundingClientRect()
-          const percent = ((e.clientX - rect.left) / rect.width) * 100
-          $bus.emit('media:seek', { percent })
-        })
-      }
     }
   })
 </script>

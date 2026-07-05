@@ -25,6 +25,9 @@
     <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}" style="z-index: 1050;">
       {{ errorMessage }}
     </div>
+    <div class="d-none">
+      <audio ref="audioPlayer"></audio>
+    </div>
   </div>
 </template>
 
@@ -47,6 +50,7 @@
       const carouselInner = refs('carouselInner')
       const btnPrev = refs('btnPrev')
       const btnNext = refs('btnNext')
+      const audio = refs('audioPlayer')
 
       let carouselInstance = null
       let loadedItems = []
@@ -55,13 +59,39 @@
       const BATCH_SIZE = 24
       let isInternalChange = false
 
+      // Local Playback State
+      let playbackState = {
+        currentId: null,
+        status: 'idle', // 'idle', 'playing', 'paused', 'loading'
+        progress: 0,
+        duration: 0,
+        currentTime: 0
+      }
+
       const cleanup = () => {
         if (carouselInstance) {
           carouselInstance.dispose()
           carouselInstance = null
         }
+        stopLocalPlayback()
       }
       signal.addEventListener('abort', cleanup)
+
+      const stopLocalPlayback = () => {
+        if (audio) {
+          audio.pause()
+          audio.removeAttribute('src')
+          audio.load()
+        }
+        playbackState = {
+          currentId: null,
+          status: 'idle',
+          progress: 0,
+          duration: 0,
+          currentTime: 0
+        }
+        syncAll()
+      }
 
       const updateItemUI = async (item, container) => {
         const room = await $localDb.local_rooms.get(item.room_id)
@@ -76,11 +106,24 @@
       }
 
       const syncPlaybackState = (id, container) => {
-        const isPlayingThis = ($state.currentMedia && $state.currentMedia.id === id)
+        const isSelectedThis = playbackState.currentId === id
         const icon = container.querySelector('.btn-big-play i')
+        const loadingSpinner = container.querySelector('.loading-spinner')
+        const playIcon = container.querySelector('.play-icon')
+
         if (icon) {
-          const isActuallyPlaying = isPlayingThis && $state.playbackStatus === 'playing'
+          const isActuallyPlaying = isSelectedThis && playbackState.status === 'playing'
           icon.className = `bi ${isActuallyPlaying ? 'bi-pause-fill' : 'bi-play-fill'}`
+        }
+
+        if (loadingSpinner && playIcon) {
+          if (isSelectedThis && playbackState.status === 'loading') {
+            loadingSpinner.classList.remove('d-none')
+            playIcon.classList.add('d-none')
+          } else {
+            loadingSpinner.classList.add('d-none')
+            playIcon.classList.remove('d-none')
+          }
         }
 
         const progressContainer = container.querySelector('.audio-progress-container')
@@ -88,15 +131,15 @@
         const currentTimeEl = container.querySelector('.current-time')
         const durationEl = container.querySelector('.duration')
 
-        if (isPlayingThis) {
+        if (isSelectedThis && playbackState.status !== 'loading') {
           progressContainer.classList.remove('opacity-25')
-          const progress = $state.mediaProgress || 0
+          const progress = playbackState.progress || 0
           progressBar.style.width = `${progress}%`
   
-          const cur = $state.mediaCurrentTime || 0
+          const cur = playbackState.currentTime || 0
           currentTimeEl.textContent = `${Math.floor(cur / 60)}:${Math.floor(cur % 60).toString().padStart(2, '0')}`
   
-          const dur = $state.mediaDuration || 0
+          const dur = playbackState.duration || 0
           durationEl.textContent = `${Math.floor(dur / 60)}:${Math.floor(dur % 60).toString().padStart(2, '0')}`
         } else {
           progressContainer.classList.add('opacity-25')
@@ -104,6 +147,44 @@
           currentTimeEl.textContent = '0:00'
           durationEl.textContent = '0:00'
         }
+      }
+
+      const playLocalMedia = async (item) => {
+        if (playbackState.currentId === item.id) {
+          if (playbackState.status === 'playing') {
+            audio.pause()
+            playbackState.status = 'paused'
+          } else {
+            try {
+              await audio.play()
+              playbackState.status = 'playing'
+            } catch (e) {
+              console.warn('[audio-player-view] Play failed:', e)
+            }
+          }
+          syncAll()
+          return
+        }
+
+        stopLocalPlayback()
+        playbackState.currentId = item.id
+        playbackState.status = 'loading'
+        syncAll()
+
+        try {
+          const objectUrl = await $utils.fetchAndDecrypt(item, signal)
+          audio.src = objectUrl
+          audio.volume = $state.mediaVolume
+          await audio.play()
+          playbackState.status = 'playing'
+        } catch (err) {
+          if (err.name === 'AbortError') return
+          console.error('[audio-player-view] Playback error:', err)
+          state.errorMessage = `Playback error: ${err.message}`
+          state.isErrorHidden = false
+          playbackState.status = 'idle'
+        }
+        syncAll()
       }
 
       const createCarouselItem = (item, isActive) => {
@@ -123,7 +204,10 @@
               </div>
               <div class="d-flex flex-column align-items-center gap-4 w-100">
                 <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center btn-big-play" style="width: 120px; height: 120px;">
-                  <i class="bi bi-play-fill" style="font-size: 4rem;"></i>
+                  <div class="spinner-border text-light d-none loading-spinner" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                  </div>
+                  <i class="bi bi-play-fill play-icon" style="font-size: 4rem;"></i>
                 </button>
                 <div class="w-100 mt-2 audio-progress-container opacity-25">
                    <div class="d-flex justify-content-between text-muted small mb-1">
@@ -134,29 +218,19 @@
                       <div class="progress-bar" role="progressbar" style="width: 0%;"></div>
                    </div>
                 </div>
-                <div class="text-muted small">Playing on Global Media Manager</div>
               </div>
             </div>
           </div>
         `
         const btnPlay = div.querySelector('.btn-big-play')
-        btnPlay.onclick = () => {
-          if ($state.currentMedia && $state.currentMedia.id === item.id) {
-            $bus.emit('media:toggle')
-          } else {
-            $bus.emit('media:play', {
-              mediaId: item.id,
-              type: 'music'
-            })
-          }
-        }
+        btnPlay.onclick = () => playLocalMedia(item)
 
         const progress = div.querySelector('.progress')
         progress.onclick = (e) => {
-          if ($state.currentMedia && $state.currentMedia.id === item.id) {
+          if (playbackState.currentId === item.id && audio.duration) {
             const rect = progress.getBoundingClientRect()
-            const percent = ((e.clientX - rect.left) / rect.width) * 100
-            $bus.emit('media:seek', { percent })
+            const percent = (e.clientX - rect.left) / rect.width
+            audio.currentTime = percent * audio.duration
           }
         }
 
@@ -258,6 +332,12 @@
         if (isInternalChange || $state.activeSelectionType !== 'music') {
           return
         }
+
+        // Stop playback when switching items
+        if (playbackState.currentId !== id) {
+          stopLocalPlayback()
+        }
+
         const index = loadedItems.findIndex(i => i.id === id)
         if (index !== -1) {
           carouselInstance?.to(index)
@@ -279,11 +359,37 @@
         }
       }
 
-      $state.subscribe('playbackStatus', syncAll)
-      $state.subscribe('currentMedia', syncAll)
-      $state.subscribe('mediaProgress', syncAll)
-      $state.subscribe('mediaCurrentTime', syncAll)
-      $state.subscribe('mediaDuration', syncAll)
+      $state.subscribe('mediaVolume', (vol) => {
+        if (audio) {
+          audio.volume = vol
+        }
+      })
+
+      audio.ontimeupdate = () => {
+        if (audio.duration) {
+          playbackState.currentTime = audio.currentTime
+          playbackState.duration = audio.duration
+          playbackState.progress = (audio.currentTime / audio.duration) * 100
+          syncAll()
+        }
+      }
+
+      audio.onended = () => {
+        playbackState.status = 'idle'
+        syncAll()
+      }
+
+      audio.onpause = () => {
+        if (playbackState.status === 'playing') {
+          playbackState.status = 'paused'
+          syncAll()
+        }
+      }
+
+      audio.onplay = () => {
+        playbackState.status = 'playing'
+        syncAll()
+      }
 
       if ($state.activeSelectionType === 'music') {
         initCarousel()
