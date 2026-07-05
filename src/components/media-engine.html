@@ -9,12 +9,13 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, globalStore, localDb, pocketbase, signal, eventBus, utils }) => {
+    client: async ({ refs, globalStore, localDb, pocketbase, signal, eventBus, utils, cryptoWorker }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $utils } = utils
+      const { $worker } = cryptoWorker
 
       const audio = refs('audioPlayer')
       const video = refs('videoPlayer')
@@ -29,16 +30,35 @@
 
       const cleanup = () => {
         if (currentObjectUrl) {
-          URL.revokeObjectURL(currentObjectUrl)
+          // Only revoke if it's NOT in the decryptionCache
+          let isFromCache = false
+          for (const url of $state.decryptionCache.values()) {
+            if (url === currentObjectUrl) {
+              isFromCache = true
+              break
+            }
+          }
+          if (!isFromCache) {
+            console.log('[media-engine] Revoking object URL:', currentObjectUrl)
+            URL.revokeObjectURL(currentObjectUrl)
+          } else {
+            console.log('[media-engine] Keeping cached object URL:', currentObjectUrl)
+          }
           currentObjectUrl = null
         }
         if (audio) {
           audio.pause()
-          audio.src = ''
+          if (audio.src) {
+            audio.removeAttribute('src')
+            audio.load()
+          }
         }
         if (video) {
           video.pause()
-          video.src = ''
+          if (video.src) {
+            video.removeAttribute('src')
+            video.load()
+          }
         }
         activePlayer = null
         $state.mediaProgress = 0
@@ -76,44 +96,50 @@
         try {
           const asset = await $localDb.local_assets.get(mediaId)
           if (!asset) {
+            console.warn('[media-engine] Asset not found locally:', mediaId)
             $state.mediaLoading = false
             $state.mediaError = 'Asset not found locally'
             return
           }
 
-          const mediaRecord = await pb.collection('media').getOne(asset.media_id)
-          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-
-          const response = await fetch(url, { signal: fetchSignal })
-          if (!response.ok) {
-            throw new Error(`Failed to fetch media: ${response.statusText}`)
-          }
-          const arrayBuffer = await response.arrayBuffer()
-          const encryptedFileBuffer = new Uint8Array(arrayBuffer)
-
-          if (fetchSignal.aborted) {
-            return
-          }
-
-          const { default: sodium } = await import('libsodium-wrappers-sumo')
-          await sodium.ready
-
-          const fileKeyBuffer = sodium.from_base64(asset.file_key, sodium.base64_variants.ORIGINAL)
-          const nonceBuffer = sodium.from_base64(asset.file_nonce, sodium.base64_variants.ORIGINAL)
-
-          const decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)
-          if (!decryptedFileBuffer) {
-            throw new Error('Decryption failed')
-          }
-
-          if (fetchSignal.aborted) {
-            return
-          }
+          console.log('[media-engine] Loading asset:', asset)
 
           cleanup()
 
-          const mediaBlob = new Blob([decryptedFileBuffer], { type: asset.mime_type })
-          currentObjectUrl = URL.createObjectURL(mediaBlob)
+          // Check decryptionCache first
+          if (asset.message_id && $state.decryptionCache.has(asset.message_id)) {
+            console.log('[media-engine] Cache hit for message:', asset.message_id)
+            currentObjectUrl = $state.decryptionCache.get(asset.message_id)
+          } else {
+            console.log('[media-engine] Cache miss, fetching from server')
+            const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+            const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+
+            const response = await fetch(url, { signal: fetchSignal })
+            if (!response.ok) {
+              throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+            }
+            const encryptedBuffer = await response.arrayBuffer()
+
+            if (fetchSignal.aborted) {
+              return
+            }
+
+            console.log('[media-engine] Decrypting file via worker...')
+            const decryptedBuffer = await $worker.execute('worker:decrypt_file', {
+              encryptedBuffer,
+              nonce: asset.file_nonce,
+              key: asset.file_key
+            })
+
+            if (fetchSignal.aborted) {
+              return
+            }
+
+            const mediaBlob = new Blob([decryptedBuffer], { type: asset.mime_type })
+            currentObjectUrl = URL.createObjectURL(mediaBlob)
+            console.log('[media-engine] Created new object URL:', currentObjectUrl)
+          }
 
           let placeholderIcon = 'bi-music-note'
           if (mediaType === 'music') {
@@ -303,8 +329,26 @@
         const target = e.target
         const origin = window.location.origin
         if (target.src && !target.src.startsWith(`${origin}/undefined`)) {
-          console.error('[media-engine] Player error:', target.error)
-          $state.mediaError = `Playback error: ${target.error?.message || 'Unknown error'}`
+          const error = target.error
+          console.error('[media-engine] Player error:', {
+            code: error?.code,
+            message: error?.message,
+            src: target.src,
+            tagName: target.tagName
+          })
+  
+          let errorMsg = 'Unknown error'
+          if (error) {
+            switch (error.code) {
+              case error.MEDIA_ERR_ABORTED: errorMsg = 'Playback aborted'; break
+              case error.MEDIA_ERR_NETWORK: errorMsg = 'Network error'; break
+              case error.MEDIA_ERR_DECODE: errorMsg = 'Decoding error'; break
+              case error.MEDIA_ERR_SRC_NOT_SUPPORTED: errorMsg = 'Format not supported'; break
+              default: errorMsg = error.message || 'Unknown error'
+            }
+          }
+
+          $state.mediaError = `Playback error: ${errorMsg}`
           $state.mediaLoading = false
           $state.playbackStatus = 'idle'
         }

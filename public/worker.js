@@ -50,6 +50,7 @@ self.onmessage = (event) => {
     'worker:generate_salt',
     'worker:derive_key_from_password',
     'worker:process_incoming_message',
+    'worker:decrypt_file',
     'worker:process_new_room_key',
     'room:member_updated',
     'worker:delete_local_room'
@@ -137,6 +138,24 @@ async function handleEvent (event) {
         type: 'worker:initialized',
         payload: { userId: currentUserKeys.id }
       })
+      return
+    }
+
+    if (type === 'worker:decrypt_file') {
+      const { encryptedBuffer, nonce, key } = payload
+      const decryptedBuffer = sodium.crypto_secretbox_open_easy(
+        new Uint8Array(encryptedBuffer),
+        sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL),
+        sodium.from_base64(key, sodium.base64_variants.ORIGINAL)
+      )
+      if (!decryptedBuffer) {
+        throw new Error('Decryption failed')
+      }
+      self.postMessage({
+        id,
+        type,
+        result: decryptedBuffer
+      }, [decryptedBuffer.buffer])
       return
     }
 

@@ -34,7 +34,7 @@
            <div class="bg-body p-3">
               <div class="d-flex align-items-center gap-3 mb-3">
                  <div class="rounded bg-secondary-subtle overflow-hidden flex-shrink-0" style="width: 48px; height: 48px;">
-                    <img ref="dropdownThumbnail" src="{{ mediaMetadataThumbnail }}" class="w-100 h-100 object-fit-cover {{ thumbnailClass }}" alt="">
+                    <img ref="dropdownThumbnail" src="" class="w-100 h-100 object-fit-cover {{ thumbnailClass }}" alt="">
                     <div class="w-100 h-100 d-flex align-items-center justify-content-center {{ placeholderClass }}">
                        <i class="bi {{ mediaMetadataPlaceholderIcon }} fs-4 text-secondary"></i>
                     </div>
@@ -136,8 +136,18 @@
       $state.subscribe('playbackStatus', (value) => state.playbackStatus = value)
       $state.subscribe('mediaMetadata', (value) => {
         state.mediaMetadata = { ...value }
+        const thumb = refs('dropdownThumbnail')
+        if (thumb) {
+          thumb.src = value?.thumbnail || ''
+        }
       })
       $state.subscribe('mediaVolume', (value) => state.mediaVolume = value)
+
+      // Initial thumbnail
+      const thumb = refs('dropdownThumbnail')
+      if (thumb && $state.mediaMetadata?.thumbnail) {
+        thumb.src = $state.mediaMetadata.thumbnail
+      }
 
       const views = {
         btnChats: 'chats',
