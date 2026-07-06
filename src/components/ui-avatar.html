@@ -1,15 +1,26 @@
 <template id="ui-avatar">
-  <div ref="container" class="avatar-circle d-flex align-items-center justify-content-center overflow-hidden rounded-circle" style="width: {{ size }}px; height: {{ size }}px; font-size: {{ fontSize }}px;">
-    <span hidden="{{ hasImage }}">{{ initials }}</span>
-    <img ref="img" hidden="{{ !hasImage }}" class="w-100 h-100 object-fit-cover" />
+  <div ref="container" class="avatar-container d-flex align-items-center justify-content-center overflow-hidden rounded-circle w-100 h-100">
+    <span class="avatar-initials" style="display: {{ initialsDisplay }}; font-size: {{ fontSize }}px;">{{ initials }}</span>
+    <img ref="img" class="avatar-img w-100 h-100 object-fit-cover" style="display: {{ imgDisplay }};" />
   </div>
 </template>
 
 <style>
-  .avatar-circle {
+  :host {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 40px;
+    height: 40px;
+  }
+
+  .avatar-container {
     background-color: var(--bs-primary);
     color: var(--bs-white);
     font-weight: var(--bs-font-weight-bold);
+    width: 100%;
+    height: 100%;
   }
 </style>
 
@@ -33,11 +44,22 @@
       initials: '?'
     },
     getters: {
-      fontSize: (state) => state.size * 0.4
+      fontSize: (state) => state.size * 0.4,
+      initialsDisplay: (state) => state.hasImage ? 'none' : 'block',
+      imgDisplay: (state) => state.hasImage ? 'block' : 'none'
     },
-    client: ({ state, refs, utils, signal }) => {
+    client: ({ state, refs, utils, signal, root }) => {
       const { $utils } = utils
       const img = refs('img')
+
+      const updateSize = () => {
+        root.style.setProperty('display', 'flex', 'important')
+        root.style.setProperty('width', `${state.size}px`, 'important')
+        root.style.setProperty('height', `${state.size}px`, 'important')
+        root.style.setProperty('min-width', `${state.size}px`, 'important')
+        root.style.setProperty('min-height', `${state.size}px`, 'important')
+        root.style.setProperty('flex-shrink', '0', 'important')
+      }
 
       const updateInitials = () => {
         if (!state.name) {
@@ -53,16 +75,19 @@
       }
 
       const loadAvatar = async () => {
+        state.hasImage = false
+        if (img) img.src = ''
+
         if (state.url) {
           if (img) {
+            img.onload = () => { state.hasImage = true }
+            img.onerror = () => { state.hasImage = false }
             img.src = state.url
-            state.hasImage = true
           }
           return
         }
 
         if (!state.mediaId || !state.mediaKey || !state.mediaNonce) {
-          state.hasImage = false
           return
         }
 
@@ -77,8 +102,9 @@
 
           const url = await $utils.fetchAndDecrypt(asset, signal)
           if (img) {
+            img.onload = () => { state.hasImage = true }
+            img.onerror = () => { state.hasImage = false }
             img.src = url
-            state.hasImage = true
           }
         } catch (err) {
           if (err.name !== 'AbortError') {
@@ -88,11 +114,15 @@
         }
       }
 
+      updateSize()
       updateInitials()
       loadAvatar()
 
       return {
         onAttributeChanged: (name) => {
+          if (name === 'size') {
+            updateSize()
+          }
           if (name === 'name') {
             updateInitials()
           }

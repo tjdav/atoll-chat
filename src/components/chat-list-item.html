@@ -50,6 +50,17 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+  }
+
+  .list-item-icon ::slotted(ui-avatar),
+  .list-item-icon ::slotted(ui-avatar-group) {
+    margin: 0 !important;
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

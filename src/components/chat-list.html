@@ -26,6 +26,7 @@
       let hasMore = true
       let fuseInstance = null
       let lastIndexedCount = 0
+      let isFetchingBatch = false
       const BATCH_SIZE = 24
 
       const getLatestMessage = async (roomId) => {
@@ -120,21 +121,28 @@
       }
 
       const fetchNextBatch = async () => {
-        if (!hasMore) {
+        if (!hasMore || isFetchingBatch) {
           return
         }
-        let query = $localDb.local_rooms.reverse()
-        if (lastItem) {
-          query = query.filter(item => item.updated_at < lastItem.updated_at)
-        }
-        const rawItems = await query.limit(BATCH_SIZE).toArray()
-        if (rawItems.length < BATCH_SIZE) {
-          hasMore = false
-        }
-        if (rawItems.length > 0) {
-          lastItem = rawItems[rawItems.length - 1]
-          const enriched = await Promise.all(rawItems.map(enrichItem))
-          loadedEnrichedItems = [...loadedEnrichedItems, ...enriched]
+        isFetchingBatch = true
+        try {
+          let query = $localDb.local_rooms.reverse()
+          if (lastItem) {
+            query = query.filter(item => item.updated_at < lastItem.updated_at)
+          }
+          const rawItems = await query.limit(BATCH_SIZE).toArray()
+          if (rawItems.length < BATCH_SIZE) {
+            hasMore = false
+          }
+          if (rawItems.length > 0) {
+            lastItem = rawItems[rawItems.length - 1]
+            const enriched = await Promise.all(rawItems.map(enrichItem))
+            // Re-verify they don't already exist in loadedEnrichedItems (anti-race)
+            const newItems = enriched.filter(e => !loadedEnrichedItems.some(existing => existing.item.id === e.item.id))
+            loadedEnrichedItems = [...loadedEnrichedItems, ...newItems]
+          }
+        } finally {
+          isFetchingBatch = false
         }
       }
 
@@ -197,6 +205,7 @@
       }
 
       const updateItemAttributes = (el, data) => {
+        el.setAttribute('room-id', data.item.id)
         el.setAttribute('room-name', data.roomName)
         el.setAttribute('preview-text', data.previewText)
         el.setAttribute('relative-time', data.relativeTime)
@@ -207,10 +216,19 @@
 
         // Update Avatar slot
         const existingAvatar = el.querySelector('[slot="avatar"]')
-        if (existingAvatar) {
-          existingAvatar.remove()
+        const newAvatar = createAvatarComponent(data.item, data.roomName)
+        
+        // Anti-flicker/race: Only update if changed or missing
+        if (!existingAvatar) {
+          el.appendChild(newAvatar)
+        } else {
+          // If it's a different kind of component (ui-avatar vs ui-avatar-group)
+          // or if the attributes changed significantly.
+          // For simplicity, we compare their serialized state or just replace if they are different tags.
+          if (existingAvatar.tagName !== newAvatar.tagName || existingAvatar.getAttribute('media-id') !== newAvatar.getAttribute('media-id') || existingAvatar.getAttribute('url') !== newAvatar.getAttribute('url')) {
+            existingAvatar.replaceWith(newAvatar)
+          }
         }
-        el.appendChild(createAvatarComponent(data.item, data.roomName))
       }
 
       let currentRenderId = 0
@@ -266,43 +284,63 @@
         }
       }
 
+      const updatingRooms = new Set()
       const handleUpdateInPlace = async (roomId) => {
-        if (!listGroup) {
+        if (!listGroup || updatingRooms.has(roomId)) {
           return
         }
-        const existingItem = listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)
-        const room = await $localDb.local_rooms.get(roomId)
+        updatingRooms.add(roomId)
+        try {
+          const room = await $localDb.local_rooms.get(roomId)
   
-        if (!room) {
-          if (existingItem) {
-            existingItem.remove()
+          if (!room) {
+            const existingItem = listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)
+            if (existingItem) {
+              existingItem.remove()
+            }
+            // Remove from state array
+            const idx = loadedEnrichedItems.findIndex(i => i.item.id === roomId)
+            if (idx !== -1) {
+              loadedEnrichedItems.splice(idx, 1)
+            }
+            return
           }
-          // Remove from state array
+
+          const data = await enrichItem(room)
+          
+          // Double check we still need to update after enrichment delay
+          if (!updatingRooms.has(roomId)) return 
+
+          // Update state array
           const idx = loadedEnrichedItems.findIndex(i => i.item.id === roomId)
           if (idx !== -1) {
             loadedEnrichedItems.splice(idx, 1)
           }
-          return
-        }
-
-        const data = await enrichItem(room)
-        // Update loadedEnrichedItems
-        const idx = loadedEnrichedItems.findIndex(i => i.item.id === roomId)
-        if (idx !== -1) {
-          loadedEnrichedItems.splice(idx, 1)
           loadedEnrichedItems.unshift(data)
-        } else {
-          loadedEnrichedItems.unshift(data)
-        }
 
-        if (existingItem) {
-          updateItemAttributes(existingItem, data)
-          listGroup.prepend(existingItem)
-        } else if (!$state.listSearchQuery) {
-          const newItem = document.createElement('chat-list-item')
-          newItem.setAttribute('room-id', roomId)
-          updateItemAttributes(newItem, data)
-          listGroup.prepend(newItem)
+          // Update DOM
+          const existingItem = listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)
+          if (existingItem) {
+            updateItemAttributes(existingItem, data)
+            if (listGroup.firstElementChild !== existingItem) {
+               listGroup.prepend(existingItem)
+            }
+          } else if (!$state.listSearchQuery) {
+            // Check if we need to clear "No chats found" message
+            const emptyState = listGroup.querySelector('.text-muted')
+            if (emptyState && emptyState.textContent.includes('No chats found')) {
+              emptyState.remove()
+            }
+
+            // Check again after async enrich
+            if (!listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)) {
+              const newItem = document.createElement('chat-list-item')
+              updateItemAttributes(newItem, data)
+              listGroup.prepend(newItem)
+            }
+          }
+        } finally {
+          updatingRooms.delete(roomId)
         }
       }
 
@@ -478,10 +516,10 @@
       $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('room:read_state_changed', (roomId) => handleUpdateInPlace(roomId))
       $bus.on('sync:complete', () => {
-        loadedEnrichedItems = []; lastItem = null; hasMore = true; render()
+        loadedEnrichedItems = []; lastItem = null; hasMore = true; debouncedRender()
       })
       $bus.on('auth:unlocked', () => {
-        loadedEnrichedItems = []; lastItem = null; hasMore = true; render()
+        loadedEnrichedItems = []; lastItem = null; hasMore = true; debouncedRender()
       })
     }
   })
