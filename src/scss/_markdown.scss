@@ -27,6 +27,7 @@
     font-size: 85%;
     font-family: var(--#{$prefix}font-monospace);
     background-color: var(--#{$prefix}tertiary-bg);
+    color: var(--#{$prefix}code-color, var(--#{$prefix}secondary-color));
     border-radius: var(--#{$prefix}border-radius-sm, 0.375rem);
   }
 
@@ -36,11 +37,13 @@
     overflow: auto;
     font-size: 85%;
     background-color: var(--#{$prefix}tertiary-bg);
+    border: 1px solid var(--#{$prefix}border-color);
     border-radius: var(--#{$prefix}border-radius-sm, 0.375rem);
 
     code {
       padding: 0;
       background-color: transparent;
+      color: inherit;
     }
   }
 
@@ -58,7 +61,7 @@
     }
 
     tr {
-      background-color: var(--#{$prefix}body-bg);
+      background-color: var(--#{$prefix}secondary-bg);
       
       &:nth-child(2n) {
         background-color: var(--#{$prefix}tertiary-bg);
@@ -71,12 +74,59 @@
   }
 }
 
-.bubble-sent .markdown-body {
-  color: #fff; 
+// When markdown is inside a text-bg-primary container (Sent Bubbles)
+.text-bg-primary .markdown-body {
+  // Inherit white color from parent utility, but enforce for children
+  color: inherit;
+
+  a {
+    color: inherit !important;
+    text-decoration: underline;
+    opacity: 0.9;
+    &:hover {
+      opacity: 1;
+    }
+  }
+
+  code {
+    background-color: rgba(0, 0, 0, 0.2);
+    color: inherit;
+  }
+
+  pre {
+    background-color: rgba(0, 0, 0, 0.2);
+    border-color: rgba(255, 255, 255, 0.1);
+    code {
+      background-color: transparent;
+      color: inherit;
+    }
+  }
+
+  blockquote {
+    border-left-color: rgba(255, 255, 255, 0.4);
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  table {
+    border-color: rgba(255, 255, 255, 0.3);
+    th, td {
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+    tr {
+      background-color: rgba(255, 255, 255, 0.1);
+      &:nth-child(2n) {
+        background-color: rgba(255, 255, 255, 0.05);
+      }
+    }
+  }
+}
+
+// When markdown is inside a bg-body-secondary container (Received Bubbles)
+.bg-body-secondary .markdown-body {
+  // Ensure links are visible enough on secondary background
+  --#{$prefix}link-color: var(--#{$prefix}primary);
   
-  --#{$prefix}body-bg: transparent;
-  --#{$prefix}link-color: #fff;
-  --#{$prefix}secondary-color: rgba(255, 255, 255, 0.8);
-  --#{$prefix}tertiary-bg: rgba(255, 255, 255, 0.15);
-  --#{$prefix}border-color: rgba(255, 255, 255, 0.3);
+  [data-bs-theme="dark"] & {
+    --#{$prefix}link-color: #6ea8fe; // Better contrast for dark mode
+  }
 }

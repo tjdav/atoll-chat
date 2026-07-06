@@ -31,7 +31,7 @@
     },
     getters: {
       bubbleClass: (state) => {
-        const typeClass = state.isSent ? 'bubble-sent' : 'bubble-received'
+        const typeClass = state.isSent ? 'bubble-sent text-bg-primary' : 'bubble-received bg-body-secondary'
         const pos = state.position || 'single'
         const posClass = `bubble-${pos}`
   
