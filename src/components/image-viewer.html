@@ -77,7 +77,9 @@
       signal.addEventListener('abort', cleanup)
 
       const manageBuffer = async (currentIndex) => {
-        if (currentIndex === -1) return
+        if (currentIndex === -1) {
+          return
+        }
 
         const start = Math.max(0, currentIndex - BUFFER_SIZE)
         const end = Math.min(loadedItems.length - 1, currentIndex + BUFFER_SIZE)
@@ -119,7 +121,9 @@
 
       const decryptImage = async (item, container, isImmediate = false) => {
         const img = container.querySelector('img')
-        if (img && img.src) return // Already loaded
+        if (img && img.src) {
+          return
+        } // Already loaded
 
         const loader = container.querySelector('.spinner-border')
         if (loader && isImmediate) {
@@ -158,7 +162,7 @@
             <div class="spinner-border text-primary d-none" role="status">
               <span class="visually-hidden">Loading...</span>
             </div>
-            <img class="img-fluid h-100 object-fit-contain d-none" alt="${item.filename}">
+            <img class="mw-100 mh-100 d-none" alt="${item.filename}">
           </div>
         `
         return div

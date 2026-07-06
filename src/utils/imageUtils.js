@@ -66,11 +66,9 @@ export async function compressImage (source, options = {}) {
 
       ctx.drawImage(img, sourceX, sourceY, sourceSize, sourceSize, 0, 0, finalSize, finalSize)
     } else {
-      if (targetWidth > maxWidth || targetHeight > maxHeight) {
-        const ratio = Math.min(maxWidth / targetWidth, maxHeight / targetHeight)
-        targetWidth *= ratio
-        targetHeight *= ratio
-      }
+      const ratio = Math.min(maxWidth / targetWidth, maxHeight / targetHeight, 1.0)
+      targetWidth *= ratio
+      targetHeight *= ratio
 
       canvas.width = targetWidth
       canvas.height = targetHeight

@@ -55,7 +55,7 @@
 
         const img = document.createElement('img')
         img.src = objectUrl
-        img.className = 'img-fluid rounded-3 shadow-sm w-100 h-100 object-fit-cover'
+        img.className = 'rounded-3 shadow-sm mw-100 mh-100'
         img.style.maxHeight = '300px'
         img.onload = () => $bus.emit('ui:media_loaded')
         container.appendChild(img)
