@@ -4,8 +4,8 @@
   background: var(--#{$prefix}body-bg);
   border: 1px solid var(--#{$prefix}border-color);
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
+  width: $timeline-reaction-size;
+  height: $timeline-reaction-size;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -13,12 +13,20 @@
 }
 
 .timeline-row-container {
-  &.sent .reaction-trigger-icon {
-    left: -32px;
+  &.sent {
+    padding-left: $timeline-reaction-gutter;
+
+    .reaction-trigger-icon {
+      left: calc(-1 * ($timeline-reaction-gutter + $timeline-reaction-size) / 2);
+    }
   }
 
-  &.received .reaction-trigger-icon {
-    right: -32px;
+  &.received {
+    padding-right: $timeline-reaction-gutter;
+
+    .reaction-trigger-icon {
+      right: calc(-1 * ($timeline-reaction-gutter + $timeline-reaction-size) / 2);
+    }
   }
 
   &:hover .reaction-trigger-icon {
@@ -34,6 +42,14 @@
   pointer-events: none;
   min-height: 24px;
   width: 100%;
+
+  .sent & {
+    justify-content: flex-end;
+  }
+
+  .received & {
+    justify-content: flex-start;
+  }
 }
 
 .reaction-consolidated-pill {
