@@ -41,7 +41,7 @@
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore
-      const { $utils } = utils
+      const { $media } = utils
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
       const carouselInner = refs('carouselInner')
@@ -63,7 +63,7 @@
           carouselInstance.dispose()
           carouselInstance = null
         }
-        // Final memory cleanup: revoke all currently loaded items
+  
         loadedItems.forEach(item => {
           const cacheKey = item.message_id || item.id || item.media_id
           const cached = $state.decryptionCache.get(cacheKey)
@@ -84,7 +84,7 @@
         const start = Math.max(0, currentIndex - BUFFER_SIZE)
         const end = Math.min(loadedItems.length - 1, currentIndex + BUFFER_SIZE)
 
-        // Pre-decrypt in range
+  
         for (let i = start; i <= end; i++) {
           const item = loadedItems[i]
           const container = carouselInner.children[i]
@@ -93,7 +93,7 @@
           }
         }
 
-        // Cleanup out of range
+  
         const cleanupThreshold = BUFFER_SIZE + CLEANUP_MARGIN
         for (let i = 0; i < loadedItems.length; i++) {
           if (i < currentIndex - cleanupThreshold || i > currentIndex + cleanupThreshold) {
@@ -123,7 +123,7 @@
         const img = container.querySelector('img')
         if (img && img.src) {
           return
-        } // Already loaded
+        }
 
         const loader = container.querySelector('.spinner-border')
         if (loader && isImmediate) {
@@ -131,7 +131,7 @@
         }
 
         try {
-          const objectUrl = await $utils.fetchAndDecrypt(item, signal)
+          const objectUrl = await $media.decrypt(item, signal)
 
           if (!signal.aborted) {
             if (img) {
@@ -237,7 +237,7 @@
             manageBuffer(index)
           }
 
-          // Pre-load next batch if near end
+  
           if (index >= loadedItems.length - 3 && hasMore) {
             const nextBatch = await fetchNextBatch()
             renderBatch(nextBatch, null)

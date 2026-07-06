@@ -1,15 +1,21 @@
 <template id="music-list-item">
-  <button type="button" ref="btn" class="app-list-item music-list-item-btn {{ activeClass }}">
-    <div class="list-item-icon">
+  <button type="button" ref="btn" class="app-list-item music-list-item-btn {{ activeClass }} border-0 w-100 text-start bg-transparent">
+    <div class="list-item-icon d-flex align-items-center justify-content-center">
       <i class="bi bi-music-note fs-5"></i>
     </div>
-    <div class="text-truncate">
+    <div class="text-truncate flex-grow-1">
       <div class="fw-bold text-truncate">{{ roomName }}</div>
-      <small class="opacity-75 d-block text-truncate">{{ timestamp }}</small>
+      <small class="text-body-secondary d-block text-truncate">{{ timestamp }}</small>
     </div>
-    <i class="bi bi-play-circle fs-4 ms-auto opacity-50"></i>
+    <i class="bi bi-play-circle fs-4 ms-auto text-body-secondary opacity-50"></i>
   </button>
 </template>
+
+<style>
+  :host {
+    display: block;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -24,16 +30,15 @@
     getters: {
       activeClass: (state) => (state.isActive === 'true' ? 'active' : '')
     },
-    client: ({ refs, state, localDb, globalStore }) => {
-      const { $state } = globalStore
-      const { $localDb } = localDb
+    client: ({ refs, state, eventBus }) => {
+      const { $bus } = eventBus
       const btn = refs('btn')
 
-      btn.onclick = async () => {
-        $state.activeSelectionId = state.assetId
-        $state.activeSelectionType = 'music'
+      if (btn) {
+        btn.onclick = () => {
+          $bus.emit('MUSIC:SELECT', { assetId: state.assetId })
+        }
       }
     }
   })
 </script>
-

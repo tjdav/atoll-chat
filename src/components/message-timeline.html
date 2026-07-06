@@ -19,7 +19,7 @@
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus
-      const { $utils } = utils
+      const { $func } = utils
       const { pb } = pocketbase
       const { $worker } = cryptoWorker
       const container = refs('timelineContainer')
@@ -63,7 +63,7 @@
         $state.scrollPositions[roomId] = pos
       }
 
-      container.addEventListener('scroll', $utils.debounce(saveScrollPosition, 150))
+      container.addEventListener('scroll', $func.debounce(saveScrollPosition, 150))
 
       const updateSeenStatus = (messageId) => {
         const roomId = $state.activeSelectionId
@@ -520,7 +520,7 @@
         }
       }
 
-      const debouncedRender = $utils.debounce(renderTimeline, 50)
+      const debouncedRender = $func.debounce(renderTimeline, 50)
       debouncedRender()
 
       $bus.on('ui:media_loaded', () => {

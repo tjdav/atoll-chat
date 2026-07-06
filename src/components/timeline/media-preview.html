@@ -27,7 +27,7 @@
       const { pb } = pocketbase
       const { $state } = globalStore
       const { $bus } = eventBus
-      const { $utils } = utils
+      const { $time, $media } = utils
       const container = refs('container')
       const loading = refs('loading')
 
@@ -71,7 +71,7 @@
           badge.style.fontSize = '0.75rem'
           badge.innerHTML = `
             <i class="bi bi-play-fill me-1"></i>
-            <span>${$utils.formatDuration(duration)}</span>
+            <span>${$time.formatDuration(duration)}</span>
           `
           overlay.appendChild(badge)
           container.appendChild(overlay)
@@ -109,7 +109,7 @@
           if (mimeType.startsWith('video/')) {
             objectUrl = cached?.thumbnailBlobUrl
             if (!objectUrl && message?.thumbnail) {
-              objectUrl = await $utils.fetchAndDecrypt(message.thumbnail, signal)
+              objectUrl = await $media.decrypt(message.thumbnail, signal)
             }
             if (!objectUrl) {
               throw new Error('Video thumbnail missing')
@@ -124,7 +124,7 @@
                 throw new Error('Message or key missing')
               }
 
-              objectUrl = await $utils.fetchAndDecrypt({
+              objectUrl = await $media.decrypt({
                 media_id: message.media_id,
                 file_key: message.file_key,
                 file_nonce: message.file_nonce,

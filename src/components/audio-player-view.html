@@ -43,7 +43,7 @@
     client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, eventBus, bootstrap }) => {
       const { $localDb } = localDb
       const { $state } = globalStore
-      const { $utils } = utils
+      const { $media } = utils
       const { $bus } = eventBus
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
@@ -172,7 +172,7 @@
         syncAll()
 
         try {
-          const objectUrl = await $utils.fetchAndDecrypt(item, signal)
+          const objectUrl = await $media.decrypt(item, signal)
           audio.src = objectUrl
           audio.volume = $state.mediaVolume
           await audio.play()

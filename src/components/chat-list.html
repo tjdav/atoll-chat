@@ -14,19 +14,13 @@
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { $utils } = utils
+      const { $time, $string, $list } = utils
       const { $Fuse } = fuse
       const { pb } = pocketbase
       const { $worker } = cryptoWorker
       const listGroup = refs('listGroup')
       const rootEl = refs('root')
 
-      let loadedEnrichedItems = []
-      let lastItem = null
-      let hasMore = true
-      let fuseInstance = null
-      let lastIndexedCount = 0
-      let isFetchingBatch = false
       const BATCH_SIZE = 24
 
       const getLatestMessage = async (roomId) => {
@@ -52,9 +46,6 @@
             prefix = `${senderName.split(' ')[0]}: `
           }
         }
-        if (msg.type === 'text') {
-          return `${prefix}${msg.content}`
-        }
         const fallbacks = {
           image: 'Sent a photo.',
           video: 'Sent a video.',
@@ -65,23 +56,27 @@
           call_answer: 'Call joined',
           call_end: 'Call ended'
         }
-        if (msg.type === 'call_offer' || msg.type === 'call_answer' || msg.type === 'call_end') {
-          return `${prefix}${fallbacks[msg.type]}`
-        }
-        if (msg.type === 'media') {
+        let content = ''
+        if (msg.type === 'text') {
+          content = msg.content
+        } else if (['call_offer', 'call_answer', 'call_end'].includes(msg.type)) {
+          content = fallbacks[msg.type]
+        } else if (msg.type === 'media') {
           const mime = msg.mime_type || ''
           if (mime.startsWith('image/')) {
-            return `${prefix}${fallbacks.image}`
+            content = fallbacks.image
+          } else if (mime.startsWith('video/')) {
+            content = fallbacks.video
+          } else if (mime.startsWith('audio/')) {
+            content = msg.waveform_data ? fallbacks.voice : fallbacks.audio
+          } else {
+            content = fallbacks.file
           }
-          if (mime.startsWith('video/')) {
-            return `${prefix}${fallbacks.video}`
-          }
-          if (mime.startsWith('audio/')) {
-            return msg.waveform_data ? `${prefix}${fallbacks.voice}` : `${prefix}${fallbacks.audio}`
-          }
-          return `${prefix}${fallbacks.file}`
+        } else {
+          content = msg.content || ''
         }
-        return `${prefix}${msg.content || ''}`
+  
+        return $string.truncate(`${prefix}${content}`)
       }
 
       const enrichItem = async (item) => {
@@ -96,23 +91,12 @@
         }
         const previewText = getPreviewText(latestMsg, participants, item.is_group)
         const me = participants.find(p => p.id === $state.currentUser?.id)
-  
-        // If explicitly marked as unread (null), it's unread.
-        // If someone else sent the message and it's not the last read, it's unread.
-        // If I sent the message, it's read (unless case 1 applies).
         const isUnread = latestMsg && (
           me?.last_read_message_id === null ||
           (latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id)
         )
-
         const isMuted = me?.is_muted === true
-        let relativeTime = ''
-        if (latestMsg) {
-          const time = $utils.formatRelativeTime(latestMsg.created_at)
-          if (time) {
-            relativeTime = ` · ${time}`
-          }
-        }
+        const relativeTime = latestMsg ? $time.getRelative(latestMsg.created_at) : ''
 
         return {
           item,
@@ -126,36 +110,8 @@
         }
       }
 
-      const fetchNextBatch = async () => {
-        if (!hasMore || isFetchingBatch) {
-          return
-        }
-        isFetchingBatch = true
-        try {
-          let query = $localDb.local_rooms.reverse()
-          if (lastItem) {
-            query = query.filter(item => item.updated_at < lastItem.updated_at)
-          }
-          const rawItems = await query.limit(BATCH_SIZE).toArray()
-          if (rawItems.length < BATCH_SIZE) {
-            hasMore = false
-          }
-          if (rawItems.length > 0) {
-            lastItem = rawItems[rawItems.length - 1]
-            const enriched = await Promise.all(rawItems.map(enrichItem))
-            // Re-verify they don't already exist in loadedEnrichedItems (anti-race)
-            const newItems = enriched.filter(e => !loadedEnrichedItems.some(existing => existing.item.id === e.item.id))
-            loadedEnrichedItems = [...loadedEnrichedItems, ...newItems]
-          }
-        } finally {
-          isFetchingBatch = false
-        }
-      }
-
       const createAvatarComponent = (item, roomName) => {
         const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
-
-        // Custom room avatar
         if (item.avatar) {
           try {
             const avatarData = typeof item.avatar === 'string' ? JSON.parse(item.avatar) : item.avatar
@@ -170,8 +126,6 @@
             console.error('[chat-list] Failed to parse room avatar:', err)
           }
         }
-
-        // Fallback to participants
         if (!item.is_group && participants.length > 0) {
           const otherUser = participants[0]
           const avatar = document.createElement('ui-avatar')
@@ -198,14 +152,10 @@
           }
           return group
         }
-
-        // Default icon
         const iconContainer = document.createElement('div')
         iconContainer.setAttribute('slot', 'avatar')
-        iconContainer.className = 'avatar-circle d-flex align-items-center justify-content-center rounded-circle'
+        iconContainer.className = 'avatar-circle d-flex align-items-center justify-content-center rounded-circle bg-primary text-white'
         iconContainer.style.width = '40px'; iconContainer.style.height = '40px'
-        iconContainer.style.backgroundColor = 'var(--bs-primary)'
-        iconContainer.style.color = 'var(--bs-white)'
         iconContainer.innerHTML = '<i class="bi bi-chat-left-text fs-5"></i>'
         return iconContainer
       }
@@ -220,75 +170,46 @@
         el.setAttribute('user-role', data.item.user_role)
         el.setAttribute('is-muted', data.isMuted ? 'true' : 'false')
 
-        // Update Avatar slot
         const existingAvatar = el.querySelector('[slot="avatar"]')
         const newAvatar = createAvatarComponent(data.item, data.roomName)
-        
-        // Anti-flicker/race: Only update if changed or missing
         if (!existingAvatar) {
           el.appendChild(newAvatar)
-        } else {
-          // If it's a different kind of component (ui-avatar vs ui-avatar-group)
-          // or if the attributes changed significantly.
-          // For simplicity, we compare their serialized state or just replace if they are different tags.
-          if (existingAvatar.tagName !== newAvatar.tagName || existingAvatar.getAttribute('media-id') !== newAvatar.getAttribute('media-id') || existingAvatar.getAttribute('url') !== newAvatar.getAttribute('url')) {
-            existingAvatar.replaceWith(newAvatar)
-          }
+        } else if (existingAvatar.tagName !== newAvatar.tagName || existingAvatar.getAttribute('media-id') !== newAvatar.getAttribute('media-id') || existingAvatar.getAttribute('url') !== newAvatar.getAttribute('url')) {
+          existingAvatar.replaceWith(newAvatar)
         }
       }
 
-      let currentRenderId = 0
-      const render = async () => {
-        if (!listGroup) {
-          return
-        }
-        const renderId = ++currentRenderId
-        if (loadedEnrichedItems.length === 0) {
-          await fetchNextBatch()
-        }
-        if (renderId !== currentRenderId) {
-          return
-        }
-
-        let itemsToDisplay = loadedEnrichedItems
-        const query = ($state.listSearchQuery || '').trim().toLowerCase()
-
-        if (query && $Fuse) {
-          if (!fuseInstance || lastIndexedCount !== loadedEnrichedItems.length) {
-            fuseInstance = new $Fuse(loadedEnrichedItems, {
-              keys: ['searchContent'],
-              threshold: 0.4
-            })
-            lastIndexedCount = loadedEnrichedItems.length
+      const { manager, debouncedRender } = $list.createManager({
+        listId: 'chats',
+        scrollRoot: rootEl,
+        state,
+        utils,
+        globalStore,
+        bus: eventBus,
+        Fuse: $Fuse,
+        fetchNextBatch: async (lastItem) => {
+          let query = $localDb.local_rooms.reverse()
+          if (lastItem) {
+            query = query.filter(item => item.updated_at < lastItem.item.updated_at)
           }
-          itemsToDisplay = fuseInstance.search(query).map(r => r.item)
-        }
-
-        if (itemsToDisplay.length === 0) {
-          listGroup.innerHTML = `<div class="p-4 text-center text-muted">${query ? 'No matches found' : 'No chats found'}</div>`
-          return
-        }
-
-        const fragment = document.createDocumentFragment()
-        for (const data of itemsToDisplay) {
-          const listItem = document.createElement('chat-list-item')
-          listItem.setAttribute('room-id', data.item.id)
-          updateItemAttributes(listItem, data)
-          fragment.appendChild(listItem)
-        }
-
-        if (renderId === currentRenderId) {
+          const rawItems = await query.limit(BATCH_SIZE).toArray()
+          const items = await Promise.all(rawItems.map(enrichItem))
+          return { items }
+        },
+        render: async (itemsToDisplay, query) => {
+          if (itemsToDisplay.length === 0) {
+            listGroup.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No chats found'}</div>`
+            return
+          }
+          const fragment = document.createDocumentFragment()
+          for (const data of itemsToDisplay) {
+            const listItem = document.createElement('chat-list-item')
+            updateItemAttributes(listItem, data)
+            fragment.appendChild(listItem)
+          }
           listGroup.innerHTML = ''; listGroup.appendChild(fragment)
-          if (!state.__scrollRestored && $state.listScrollPositions?.chats !== undefined) {
-            setTimeout(() => {
-              if (rootEl) {
-                rootEl.scrollTop = $state.listScrollPositions.chats
-              }
-            }, 50)
-            state.__scrollRestored = true
-          }
         }
-      }
+      })
 
       const updatingRooms = new Set()
       const handleUpdateInPlace = async (roomId) => {
@@ -298,47 +219,38 @@
         updatingRooms.add(roomId)
         try {
           const room = await $localDb.local_rooms.get(roomId)
-  
           if (!room) {
             const existingItem = listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)
             if (existingItem) {
               existingItem.remove()
             }
-            // Remove from state array
-            const idx = loadedEnrichedItems.findIndex(i => i.item.id === roomId)
+            const idx = manager.loadedItems.findIndex(i => i.item.id === roomId)
             if (idx !== -1) {
-              loadedEnrichedItems.splice(idx, 1)
+              manager.loadedItems.splice(idx, 1)
             }
             return
           }
-
           const data = await enrichItem(room)
-          
-          // Double check we still need to update after enrichment delay
-          if (!updatingRooms.has(roomId)) return 
-
-          // Update state array
-          const idx = loadedEnrichedItems.findIndex(i => i.item.id === roomId)
-          if (idx !== -1) {
-            loadedEnrichedItems.splice(idx, 1)
+          if (!updatingRooms.has(roomId)) {
+            return
           }
-          loadedEnrichedItems.unshift(data)
+          const idx = manager.loadedItems.findIndex(i => i.item.id === roomId)
+          if (idx !== -1) {
+            manager.loadedItems.splice(idx, 1)
+          }
+          manager.loadedItems.unshift(data)
 
-          // Update DOM
           const existingItem = listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)
           if (existingItem) {
             updateItemAttributes(existingItem, data)
             if (listGroup.firstElementChild !== existingItem) {
-               listGroup.prepend(existingItem)
+              listGroup.prepend(existingItem)
             }
           } else if (!$state.listSearchQuery) {
-            // Check if we need to clear "No chats found" message
-            const emptyState = listGroup.querySelector('.text-muted')
+            const emptyState = listGroup.querySelector('.text-body-secondary')
             if (emptyState && emptyState.textContent.includes('No chats found')) {
               emptyState.remove()
             }
-
-            // Check again after async enrich
             if (!listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)) {
               const newItem = document.createElement('chat-list-item')
               updateItemAttributes(newItem, data)
@@ -359,7 +271,6 @@
         if (!latestMsg) {
           return
         }
-
         const me = room.participants.find(p => p.id === $state.currentUser?.id)
         if (me && me.last_read_message_id !== latestMsg.id) {
           me.last_read_message_id = latestMsg.id
@@ -376,18 +287,16 @@
         }
       }
 
-      listGroup.addEventListener('action:select-chat', async (e) => {
-        const { roomId } = e.detail
+      $bus.on('CHAT:SELECT', async ({ roomId }) => {
         $state.activeSelectionId = roomId
         $state.activeSelectionType = 'chats'
-        const item = loadedEnrichedItems.find(i => i.item.id === roomId)
+        const item = manager.loadedItems.find(i => i.item.id === roomId)
         if (item?.isUnread) {
           await markAsRead(roomId)
         }
-      }, { signal })
+      })
 
-      listGroup.addEventListener('action:toggle-read', async (e) => {
-        const { roomId, isUnread } = e.detail
+      $bus.on('CHAT:TOGGLE_READ', async ({ roomId, isUnread }) => {
         const room = await $localDb.local_rooms.get(roomId)
         if (!room) {
           return
@@ -396,7 +305,6 @@
         if (!me) {
           return
         }
-
         let newLastReadId = null
         if (isUnread) {
           const latestMsg = await getLatestMessage(roomId)
@@ -404,7 +312,6 @@
             newLastReadId = latestMsg.id
           }
         }
-
         me.last_read_message_id = newLastReadId
         await $localDb.local_rooms.put(room)
         try {
@@ -415,16 +322,14 @@
         } catch (err) {
           console.error('[chat-list] Failed to toggle read status:', err)
         }
-
         $bus.emit('room:read_state_changed', roomId)
         $bus.emit('ui:show_toast', {
           message: newLastReadId === null ? 'Marked as unread' : 'Marked as read',
           type: 'success'
         })
-      }, { signal })
+      })
 
-      listGroup.addEventListener('action:toggle-mute', async (e) => {
-        const { roomId, isMuted } = e.detail
+      $bus.on('CHAT:TOGGLE_MUTE', async ({ roomId, isMuted }) => {
         const room = await $localDb.local_rooms.get(roomId)
         if (!room) {
           return
@@ -433,7 +338,6 @@
         if (!me) {
           return
         }
-
         const newMuteStatus = !isMuted
         me.is_muted = newMuteStatus
         await $localDb.local_rooms.put(room)
@@ -445,21 +349,18 @@
         } catch (err) {
           console.error('[chat-list] Failed to toggle mute status:', err)
         }
-
         $bus.emit('room:member_updated', { room_id: roomId })
         $bus.emit('ui:show_toast', {
           message: newMuteStatus ? 'Notifications muted' : 'Notifications unmuted',
           type: 'success'
         })
-      }, { signal })
+      })
 
-      listGroup.addEventListener('action:delete-chat', async (e) => {
-        const { roomId, isGroup } = e.detail
+      $bus.on('CHAT:DELETE', async ({ roomId, isGroup }) => {
         const confirmMessage = isGroup ? 'Are you sure you want to leave this group?' : 'Are you sure you want to delete this chat?'
         if (!confirm(confirmMessage)) {
           return
         }
-
         try {
           const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
           if (memberRecord) {
@@ -480,41 +381,16 @@
         } catch (err) {
           console.error('[chat-list] Failed to delete chat:', err)
         }
-      }, { signal })
+      })
 
-      listGroup.addEventListener('action:edit-room', async (e) => {
-        const { roomId } = e.detail
+      $bus.on('CHAT:EDIT_ROOM', async ({ roomId }) => {
         const room = await $localDb.local_rooms.get(roomId)
         if (room) {
           $bus.emit('ui:open_edit_room', room)
         }
-      }, { signal })
+      })
 
-      const saveListScroll = () => {
-        if (!rootEl || (rootEl.offsetWidth === 0 && rootEl.offsetHeight === 0)) {
-          return
-        }
-        if (!$state.listScrollPositions) {
-          $state.listScrollPositions = {}
-        }
-        $state.listScrollPositions.chats = rootEl.scrollTop
-      }
-
-      const debouncedSaveScroll = $utils.debounce(saveListScroll, 100)
-      const debouncedRender = $utils.debounce(render, 50)
-
-      if (rootEl) {
-        rootEl.onscroll = async () => {
-          if (rootEl.scrollTop + rootEl.clientHeight >= rootEl.scrollHeight - 50 && hasMore) {
-            await fetchNextBatch(); render()
-          }
-          debouncedSaveScroll()
-        }
-      }
-
-      signal.addEventListener('abort', saveListScroll)
-
-      render()
+      debouncedRender()
       $state.subscribe('listSearchQuery', () => debouncedRender())
       $bus.on('db:new_local_data', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('db:new_local_room', (payload) => handleUpdateInPlace(payload.room_id))
@@ -522,10 +398,10 @@
       $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('room:read_state_changed', (roomId) => handleUpdateInPlace(roomId))
       $bus.on('sync:complete', () => {
-        loadedEnrichedItems = []; lastItem = null; hasMore = true; debouncedRender()
+        manager.reset(); debouncedRender()
       })
       $bus.on('auth:unlocked', () => {
-        loadedEnrichedItems = []; lastItem = null; hasMore = true; debouncedRender()
+        manager.reset(); debouncedRender()
       })
     }
   })

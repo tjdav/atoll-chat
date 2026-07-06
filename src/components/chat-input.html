@@ -62,7 +62,7 @@
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
       const { pb } = pocketbase
-      const { $utils } = utils
+      const { $func, $image, $video: $videoUtil } = utils
       const { $video } = videoWorker
 
       const resetUI = () => {
@@ -90,7 +90,7 @@
 
       const URL_REGEX = /(?:\[[^\]]+\]\((https?:\/\/[^\s)]+)\))|(?:^|\s)(https?:\/\/[^\s]+)(?=\s|$)/gi
 
-      const checkUrl = $utils.debounce(async (text) => {
+      const checkUrl = $func.debounce(async (text) => {
         if (state.hasFile || state.isRecording) {
           return
         }
@@ -325,7 +325,7 @@
           state.isCompressing = true
           state.uploadStatus = 'Compressing image...'
           try {
-            const compressedBlob = await $utils.compressImage(file, {
+            const compressedBlob = await $image.compress(file, {
               maxWidth: 1200,
               maxHeight: 1200,
               quality: 0.8,
@@ -344,8 +344,8 @@
           state.uploadStatus = 'Processing video...'
           try {
             // Extract thumbnail and duration first
-            const { canvas, duration } = await $utils.getVideoMetadata(file)
-            const compressedThumbnail = await $utils.compressImage(canvas, {
+            const { canvas, duration } = await $videoUtil.getMetadata(file)
+            const compressedThumbnail = await $image.compress(canvas, {
               maxWidth: 1200,
               maxHeight: 1200,
               quality: 0.8,

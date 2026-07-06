@@ -14,107 +14,43 @@
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { $utils } = utils
+      const { $list } = utils
       const { $Fuse } = fuse
       const gridContainer = refs('gridContainer')
       const scrollRoot = refs('scrollRoot')
 
-      let loadedItems = []
-      let lastTimestamp = null
-      let hasMore = true
-      let isLoading = false
-      let fuseInstance = null
-      let lastIndexedCount = 0
       const BATCH_SIZE = 24
-      const existingCards = new Map()
 
-      let currentRenderId = 0
-
-      const fetchNextBatch = async () => {
-        if (!hasMore || isLoading) {
-          return
-        }
-
-        isLoading = true
-        let query = $localDb.local_assets.where('mime_type').startsWith('video/').reverse()
-        const allMatching = await query.toArray()
-        let startIndex = 0
-        if (lastTimestamp) {
-          startIndex = allMatching.findIndex(a => a.created_at === lastTimestamp) + 1
-        }
-
-        const rawItems = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
-  
-        if (rawItems.length < BATCH_SIZE) {
-          hasMore = false
-        }
-
-        if (rawItems.length > 0) {
-          lastTimestamp = rawItems[rawItems.length - 1].created_at
-          loadedItems = [...loadedItems, ...rawItems]
-        }
-        isLoading = false
-      }
-
-      const render = async () => {
-        if (!gridContainer) {
-          return
-        }
-
-        const renderId = ++currentRenderId
-
-        if (loadedItems.length === 0) {
-          await fetchNextBatch()
-        }
-
-        if (renderId !== currentRenderId) {
-          return
-        }
-
-        let itemsToDisplay = loadedItems
-        const query = $state.listSearchQuery
-
-        if (query) {
-          if (!fuseInstance || lastIndexedCount !== loadedItems.length) {
-            fuseInstance = new $Fuse(loadedItems, {
-              keys: ['filename'],
-              threshold: 0.3
-            })
-            lastIndexedCount = loadedItems.length
+      const { manager, debouncedRender } = $list.createManager({
+        listId: 'videos',
+        scrollRoot,
+        state,
+        utils,
+        globalStore,
+        bus: eventBus,
+        Fuse: $Fuse,
+        searchKeys: ['filename'],
+        fetchNextBatch: async (lastItem) => {
+          let query = $localDb.local_assets.where('mime_type').startsWith('video/').reverse()
+          const allMatching = await query.toArray()
+          let startIndex = 0
+          if (lastItem) {
+            startIndex = allMatching.findIndex(a => a.id === lastItem.id) + 1
           }
-          itemsToDisplay = fuseInstance.search(query).map(r => r.item)
-        }
-
-        if (itemsToDisplay.length === 0) {
-          gridContainer.innerHTML = `<div class="col-12 p-4 text-center text-muted">${query ? 'No matches found in loaded videos' : 'No videos found'}</div>`
-          existingCards.clear()
-          return
-        }
-
-        // Remove empty state message if present
-        const emptyMsg = gridContainer.querySelector('.col-12')
-        if (emptyMsg) {
-          emptyMsg.remove()
-        }
-
-        const currentIds = new Set(itemsToDisplay.map(i => i.id))
-  
-        // Remove cards that are no longer in the list
-        for (const [id, card] of existingCards.entries()) {
-          if (!currentIds.has(id)) {
-            card.remove()
-            existingCards.delete(id)
+          const items = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+          return { items }
+        },
+        render: async (itemsToDisplay, query) => {
+          if (itemsToDisplay.length === 0) {
+            gridContainer.innerHTML = `<div class="col-12 p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No videos found'}</div>`
+            return
           }
-        }
-
-        // Add or update cards
-        itemsToDisplay.forEach((item, index) => {
-          const isActive = (item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos').toString()
-
-          let card = existingCards.get(item.id)
-          if (!card) {
+  
+          const fragment = document.createDocumentFragment()
+          itemsToDisplay.forEach((item) => {
+            const isActive = (item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos').toString()
             const dt = new Date(item.created_at)
-            card = document.createElement('media-grid-card')
+            const card = document.createElement('media-grid-card')
             card.setAttribute('asset-id', item.id)
             card.setAttribute('media-id', item.media_id)
             card.setAttribute('mime-type', item.mime_type)
@@ -127,95 +63,32 @@
             }))
             card.setAttribute('file-key', item.file_key)
             card.setAttribute('file-nonce', item.file_nonce)
-            existingCards.set(item.id, card)
-          } else {
-            if (card.getAttribute('is-active') !== isActive) {
-              card.setAttribute('is-active', isActive)
-            }
-          }
-
-          // Ensure correct order in DOM
-          const currentChild = gridContainer.children[index]
-          if (currentChild !== card) {
-            gridContainer.insertBefore(card, currentChild || null)
-          }
-        })
-
-        // Restore scroll position after first render
-        if (!state.__scrollRestored && $state.listScrollPositions?.videos !== undefined) {
-          setTimeout(() => {
-            if (scrollRoot) {
-              scrollRoot.scrollTop = $state.listScrollPositions.videos
-            }
-          }, 50)
-          state.__scrollRestored = true
+            fragment.appendChild(card)
+          })
+          gridContainer.innerHTML = ''; gridContainer.appendChild(fragment)
         }
-      }
-
-      const saveListScroll = () => {
-        if (!scrollRoot || (scrollRoot.offsetWidth === 0 && scrollRoot.offsetHeight === 0)) {
-          return
-        }
-        if (!$state.listScrollPositions) {
-          $state.listScrollPositions = {}
-        }
-        $state.listScrollPositions.videos = scrollRoot.scrollTop
-      }
-
-      const debouncedSave = $utils.debounce(saveListScroll, 100)
-
-      if (signal) {
-        signal.addEventListener('abort', saveListScroll)
-      }
-
-      const resetAndRender = async () => {
-        loadedItems = []
-        lastTimestamp = null
-        hasMore = true
-        await render()
-      }
-
-      // Infinite Scroll Logic
-      if (scrollRoot) {
-        scrollRoot.addEventListener('scroll', async () => {
-          if (scrollRoot.scrollTop + scrollRoot.clientHeight >= scrollRoot.scrollHeight - 50) {
-            if (hasMore) {
-              await fetchNextBatch()
-              render()
-            }
-          }
-          debouncedSave()
-        })
-      }
-
-      // Initial render
-      render()
-
-      const debouncedRender = $utils.debounce(render, 50)
-      const debouncedFullRender = $utils.debounce(resetAndRender, 50)
-
-      // Handle selection change
-      const updateActiveStates = () => {
-        existingCards.forEach((card, id) => {
-          const isActive = (id === $state.activeSelectionId && $state.activeSelectionType === 'videos').toString()
-          if (card.getAttribute('is-active') !== isActive) {
-            card.setAttribute('is-active', isActive)
-          }
-        })
-      }
-
-      $state.subscribe('activeSelectionId', updateActiveStates)
-      $state.subscribe('activeSelectionType', updateActiveStates)
-
-      $state.subscribe('listSearchQuery', () => {
-        debouncedRender()
       })
 
-      const handleNewData = () => {
-        debouncedFullRender()
-      }
+      $bus.on('MEDIA:SELECT', ({ assetId, type }) => {
+        if (type === 'videos') {
+          $state.activeSelectionId = assetId
+          $state.activeSelectionType = 'videos'
+          debouncedRender()
+        }
+      })
 
-      $bus.on('db:new_local_data', handleNewData)
+      $state.subscribe('activeSelectionId', () => {
+        if ($state.activeSelectionType === 'videos') {
+          debouncedRender()
+        }
+      })
+      $state.subscribe('activeSelectionType', () => debouncedRender())
+      $state.subscribe('listSearchQuery', () => debouncedRender())
+      $bus.on('db:new_local_data', () => {
+        manager.reset(); debouncedRender()
+      })
+
+      debouncedRender()
     }
   })
 </script>

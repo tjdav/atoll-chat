@@ -14,52 +14,38 @@
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { $utils } = utils
+      const { $list } = utils
       const { $Fuse } = fuse
       const listGroup = refs('listGroup')
       const scrollRoot = refs('scrollRoot')
 
-      let loadedEnrichedItems = []
-      let lastTimestamp = null
-      let hasMore = true
-      let isLoading = false
-      let fuseInstance = null
-      let lastIndexedCount = 0
       const BATCH_SIZE = 24
-      let currentRenderId = 0
 
-      const fetchNextBatch = async () => {
-        if (!hasMore || isLoading) {
-          return
-        }
+      const { manager, debouncedRender } = $list.createManager({
+        listId: 'links',
+        scrollRoot,
+        state,
+        utils,
+        globalStore,
+        bus: eventBus,
+        Fuse: $Fuse,
+        fetchNextBatch: async (lastItem) => {
+          const allMessages = await $localDb.local_messages
+            .where('type')
+            .equals('link')
+            .reverse()
+            .sortBy('created_at')
 
-        isLoading = true
-        // Fetch messages of type 'link'
-        const allMessages = await $localDb.local_messages
-          .where('type')
-          .equals('link')
-          .reverse()
-          .sortBy('created_at')
+          let startIndex = 0
+          if (lastItem) {
+            startIndex = allMessages.findIndex(m => m.created_at === lastItem.message.created_at) + 1
+          }
 
-        let startIndex = 0
-        if (lastTimestamp) {
-          startIndex = allMessages.findIndex(m => m.created_at === lastTimestamp) + 1
-        }
-
-        const rawItems = allMessages.slice(startIndex, startIndex + BATCH_SIZE)
-        if (rawItems.length < BATCH_SIZE) {
-          hasMore = false
-        }
-
-        if (rawItems.length > 0) {
-          lastTimestamp = rawItems[rawItems.length - 1].created_at
-  
-          const enriched = []
+          const rawItems = allMessages.slice(startIndex, startIndex + BATCH_SIZE)
+          const items = []
           for (const message of rawItems) {
             const room = await $localDb.local_rooms.get(message.room_id)
             const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
-  
-            // Extract sender name
             let senderName = 'Unknown'
             if (room && room.participants) {
               const sender = room.participants.find(p => p.id === message.sender_id)
@@ -77,8 +63,7 @@
             messageLinks.forEach((link, idx) => {
               const selectionId = messageLinks.length > 1 ? `${message.local_uuid}:${idx}` : message.local_uuid
               const searchContent = `${link.title || ''} ${link.domain || ''} ${link.url || ''} ${senderName} ${roomName}`.toLowerCase()
-  
-              enriched.push({
+              items.push({
                 message,
                 link,
                 selectionId,
@@ -89,164 +74,46 @@
               })
             })
           }
-          loadedEnrichedItems = [...loadedEnrichedItems, ...enriched]
-        }
-        isLoading = false
-      }
-
-      const render = async () => {
-        if (!listGroup) {
-          return
-        }
-
-        const renderId = ++currentRenderId
-        if (loadedEnrichedItems.length === 0) {
-          await fetchNextBatch()
-        }
-
-        if (renderId !== currentRenderId) {
-          return
-        }
-
-        let itemsToDisplay = loadedEnrichedItems
-        const query = ($state.listSearchQuery || '').trim().toLowerCase()
-
-        if (query && $Fuse) {
-          if (!fuseInstance || lastIndexedCount !== loadedEnrichedItems.length) {
-            fuseInstance = new $Fuse(loadedEnrichedItems, {
-              keys: ['searchContent'],
-              threshold: 0.4
-            })
-            lastIndexedCount = loadedEnrichedItems.length
+          return { items }
+        },
+        render: async (itemsToDisplay, query) => {
+          if (itemsToDisplay.length === 0) {
+            listGroup.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No links found'}</div>`
+            return
           }
-          itemsToDisplay = fuseInstance.search(query).map(r => r.item)
+          const fragment = document.createDocumentFragment()
+          itemsToDisplay.forEach(({ link, selectionId, roomName, senderName }) => {
+            const btn = document.createElement('button')
+            btn.type = 'button'
+            const isActive = selectionId === $state.activeSelectionId && $state.activeSelectionType === 'links'
+            btn.className = `app-list-item border-0 w-100 text-start bg-transparent ${isActive ? 'active' : ''}`
+            const domainStr = link.domain ? `${link.domain} • ` : ''
+            btn.innerHTML = `<div class="list-item-icon d-flex align-items-center justify-content-center"><i class="bi bi-link-45deg fs-5"></i></div><div class="text-truncate flex-grow-1"><div class="fw-bold text-truncate"></div><small class="text-body-secondary d-block text-truncate"></small></div><i class="bi bi-chevron-right ms-auto text-body-secondary opacity-50"></i>`
+            btn.querySelector('.fw-bold').textContent = link.title || link.url || 'Untitled Link'
+            btn.querySelector('small').textContent = `${domainStr}${senderName} in ${roomName}`
+            btn.onclick = () => {
+              $state.activeSelectionType = 'links'
+              $state.activeSelectionId = selectionId
+              debouncedRender()
+            }
+            fragment.appendChild(btn)
+          })
+          listGroup.innerHTML = ''; listGroup.appendChild(fragment)
         }
+      })
 
-        if (itemsToDisplay.length === 0) {
-          listGroup.innerHTML = `<div class="p-4 text-center text-muted">${query ? 'No matches found in loaded links' : 'No links found'}</div>`
-          return
-        }
-
-        const fragment = document.createDocumentFragment()
-        itemsToDisplay.forEach(({ link, selectionId, roomName, senderName }) => {
-          const btn = document.createElement('button')
-          btn.type = 'button'
-          const isActive = selectionId === $state.activeSelectionId && $state.activeSelectionType === 'links'
-          btn.className = `app-list-item ${isActive ? 'active' : ''}`
-  
-          const domainStr = link.domain ? `${link.domain} • ` : ''
-  
-          const iconWrapper = document.createElement('div')
-          iconWrapper.className = 'list-item-icon'
-          const icon = document.createElement('i')
-          icon.className = 'bi bi-link-45deg fs-5'
-          iconWrapper.appendChild(icon)
-
-          const contentWrapper = document.createElement('div')
-          contentWrapper.className = 'text-truncate'
-
-          const titleDiv = document.createElement('div')
-          titleDiv.className = 'fw-bold text-truncate'
-          titleDiv.textContent = link.title || link.url || 'Untitled Link'
-
-          const subTextSmall = document.createElement('small')
-          subTextSmall.className = 'opacity-75 d-block text-truncate'
-          subTextSmall.textContent = `${domainStr}${senderName} in ${roomName}`
-
-          contentWrapper.appendChild(titleDiv)
-          contentWrapper.appendChild(subTextSmall)
-
-          const arrowIcon = document.createElement('i')
-          arrowIcon.className = 'bi bi-chevron-right ms-auto opacity-50'
-
-          btn.appendChild(iconWrapper)
-          btn.appendChild(contentWrapper)
-          btn.appendChild(arrowIcon)
-
-          btn.onclick = () => {
-            $state.activeSelectionType = 'links'
-            $state.activeSelectionId = selectionId
-          }
-
-          fragment.appendChild(btn)
-        })
-
-        if (renderId === currentRenderId) {
-          listGroup.innerHTML = ''
-          listGroup.appendChild(fragment)
-
-          // Restore scroll position after first render
-          if (!state.__scrollRestored && $state.listScrollPositions?.links !== undefined) {
-            setTimeout(() => {
-              if (scrollRoot) {
-                scrollRoot.scrollTop = $state.listScrollPositions.links
-              }
-            }, 50)
-            state.__scrollRestored = true
-          }
-        }
-      }
-
-      const saveListScroll = () => {
-        if (!scrollRoot || (scrollRoot.offsetWidth === 0 && scrollRoot.offsetHeight === 0)) {
-          return
-        }
-        if (!$state.listScrollPositions) {
-          $state.listScrollPositions = {}
-        }
-        $state.listScrollPositions.links = scrollRoot.scrollTop
-      }
-
-      const debouncedSave = $utils.debounce(saveListScroll, 100)
-
-      if (signal) {
-        signal.addEventListener('abort', saveListScroll)
-      }
-
-      const resetAndRender = async () => {
-        loadedEnrichedItems = []
-        lastTimestamp = null
-        hasMore = true
-        fuseInstance = null
-        lastIndexedCount = 0
-        await render()
-      }
-
-      if (scrollRoot) {
-        scrollRoot.onscroll = async () => {
-          if (scrollRoot.scrollTop + scrollRoot.clientHeight >= scrollRoot.scrollHeight - 50 && hasMore) {
-            await fetchNextBatch()
-            render()
-          }
-          debouncedSave()
-        }
-      }
-
-      // Initial render
-      render()
-
-      const debouncedRender = $utils.debounce(render, 50)
-      const debouncedFullRender = $utils.debounce(resetAndRender, 50)
-
-      // Handle selection change
       $state.subscribe('activeSelectionId', () => {
         if ($state.activeSelectionType === 'links') {
-          render()
+          debouncedRender()
         }
       })
-      $state.subscribe('activeSelectionType', () => {
-        render()
+      $state.subscribe('activeSelectionType', () => debouncedRender())
+      $state.subscribe('listSearchQuery', () => debouncedRender())
+      $bus.on('db:new_local_data', () => {
+        manager.reset(); debouncedRender()
       })
 
-      $state.subscribe('listSearchQuery', () => {
-        debouncedRender()
-      })
-
-      const handleNewData = () => {
-        debouncedFullRender()
-      }
-
-      $bus.on('db:new_local_data', handleNewData)
+      debouncedRender()
     }
   })
 </script>

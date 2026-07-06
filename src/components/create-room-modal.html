@@ -77,7 +77,7 @@
     },
     client: ({ refs, state, pocketbase, eventBus, globalStore, localDb, bootstrap, utils, signal }) => {
       const { pb } = pocketbase
-      const { $utils } = utils
+      const { $func } = utils
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $localDb } = localDb
@@ -159,7 +159,7 @@
       // Initial render
       render()
 
-      const performSearch = $utils.debounce(async (query) => {
+      const performSearch = $func.debounce(async (query) => {
         if (!query || query.length < 3) {
           state.searchResults = []
           state.searchError = null

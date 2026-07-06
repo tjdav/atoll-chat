@@ -45,11 +45,11 @@
     },
     getters: {
       fontSize: (state) => state.size * 0.4,
-      initialsDisplay: (state) => state.hasImage ? 'none' : 'block',
-      imgDisplay: (state) => state.hasImage ? 'block' : 'none'
+      initialsDisplay: (state) => (state.hasImage ? 'none' : 'block'),
+      imgDisplay: (state) => (state.hasImage ? 'block' : 'none')
     },
     client: ({ state, refs, utils, signal, root }) => {
-      const { $utils } = utils
+      const { $media } = utils
       const img = refs('img')
 
       const updateSize = () => {
@@ -76,12 +76,18 @@
 
       const loadAvatar = async () => {
         state.hasImage = false
-        if (img) img.src = ''
+        if (img) {
+          img.src = ''
+        }
 
         if (state.url) {
           if (img) {
-            img.onload = () => { state.hasImage = true }
-            img.onerror = () => { state.hasImage = false }
+            img.onload = () => {
+              state.hasImage = true
+            }
+            img.onerror = () => {
+              state.hasImage = false
+            }
             img.src = state.url
           }
           return
@@ -100,10 +106,14 @@
             id: state.mediaId
           }
 
-          const url = await $utils.fetchAndDecrypt(asset, signal)
+          const url = await $media.decrypt(asset, signal)
           if (img) {
-            img.onload = () => { state.hasImage = true }
-            img.onerror = () => { state.hasImage = false }
+            img.onload = () => {
+              state.hasImage = true
+            }
+            img.onerror = () => {
+              state.hasImage = false
+            }
             img.src = url
           }
         } catch (err) {

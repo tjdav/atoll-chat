@@ -31,7 +31,7 @@
   export default defineComponent({
     client: async ({ refs, eventBus, bootstrap, utils }) => {
       const { $bus } = eventBus
-      const { $utils } = utils
+      const { $image } = utils
       const { Modal } = await bootstrap
   
       const modalEl = refs('editorModal')
@@ -124,7 +124,7 @@
         outCtx.restore()
   
         try {
-          const blob = await $utils.compressImage(outputCanvas, {
+          const blob = await $image.compress(outputCanvas, {
             maxWidth: 400,
             maxHeight: 400,
             quality: 0.8,

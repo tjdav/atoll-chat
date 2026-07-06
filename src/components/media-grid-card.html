@@ -1,16 +1,33 @@
 <template id="media-grid-card">
   <div class="col">
-    <div ref="card" class="card h-100 border-0 shadow-sm overflow-hidden clickable-card {{ activeClass }}">
-      <div ref="mediaContainer" class="ratio {{ ratioClass }} d-flex align-items-center justify-content-center bg-secondary bg-opacity-25 overflow-hidden">
-        <i class="bi {{ iconClass }} fs-1 text-secondary opacity-50"></i>
+    <div ref="card" class="card h-100 border-0 shadow-sm overflow-hidden clickable-card {{ activeClass }} bg-body-tertiary">
+      <div ref="mediaContainer" class="ratio {{ ratioClass }} d-flex align-items-center justify-content-center bg-body-secondary overflow-hidden">
+        <i class="bi {{ iconClass }} fs-1 text-body-secondary opacity-50"></i>
       </div>
       <div class="card-body p-2">
-        <small class="d-block text-truncate text-muted">{{ dateStr }}</small>
-        <small class="d-block text-truncate text-muted opacity-75" style="font-size: 0.75rem;">{{ timeStr }}</small>
+        <small class="d-block text-truncate text-body-secondary">{{ dateStr }}</small>
+        <small class="d-block text-truncate text-body-secondary opacity-75" style="font-size: 0.75rem;">{{ timeStr }}</small>
       </div>
     </div>
   </div>
 </template>
+
+<style>
+  :host {
+    display: block;
+  }
+  .clickable-card {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .clickable-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--bs-box-shadow) !important;
+  }
+  .is-active-card {
+    outline: 2px solid var(--bs-primary);
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -32,11 +49,10 @@
       ratioClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'ratio-16x9' : 'ratio-1x1'),
       iconClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'bi-camera-video' : 'bi-image')
     },
-    client: ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal, utils }) => {
+    client: ({ refs, state, localDb, eventBus, signal, utils }) => {
       const { $localDb } = localDb
-      const { $state } = globalStore
-      const { pb } = pocketbase
-      const { $utils } = utils
+      const { $bus } = eventBus
+      const { $media } = utils
       const card = refs('card')
       const mediaContainer = refs('mediaContainer')
 
@@ -49,14 +65,17 @@
 
       const isVideo = (state.mimeType || '').startsWith('video/')
 
-      card.onclick = () => {
-        $state.activeSelectionId = state.assetId
-        $state.activeSelectionType = state.type
+      if (card) {
+        card.onclick = () => {
+          $bus.emit('MEDIA:SELECT', {
+            assetId: state.assetId,
+            type: state.type
+          })
+        }
       }
 
-      // Decrypt and render preview (This stays in client block as it requires libsodium and fetching)
       const renderPreview = async () => {
-        if (!state.mediaId || !state.fileKey || !state.fileNonce) {
+        if (!state.mediaId || !state.fileKey || !state.fileNonce || !mediaContainer) {
           return
         }
   
@@ -66,12 +85,12 @@
 
           if (isVideo) {
             if (asset?.thumbnail) {
-              objectUrl = await $utils.fetchAndDecrypt(asset.thumbnail, signal)
+              objectUrl = await $media.decrypt(asset.thumbnail, signal)
             } else {
               throw new Error('Video thumbnail missing')
             }
           } else {
-            objectUrl = await $utils.fetchAndDecrypt({
+            objectUrl = await $media.decrypt({
               media_id: state.mediaId,
               file_key: state.fileKey,
               file_nonce: state.fileNonce,
@@ -107,4 +126,3 @@
     }
   })
 </script>
-

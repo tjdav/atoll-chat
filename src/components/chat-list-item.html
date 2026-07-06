@@ -8,10 +8,10 @@
         {{ roomName }}
       </div>
       <div class="d-flex align-items-center">
-        <small class="text-truncate flex-grow-1 opacity-75 {{ unreadClass }}">
+        <small class="text-truncate flex-grow-1 text-body-secondary {{ unreadClass }}">
           {{ previewText }}
         </small>
-        <small class="opacity-75 ms-1 flex-shrink-0">
+        <small class="text-body-secondary ms-1 flex-shrink-0">
           {{ relativeTime }}
         </small>
       </div>
@@ -20,7 +20,7 @@
 
     <!-- Dropdown Menu -->
     <div class="dropdown ms-2">
-      <button class="btn btn-link text-muted p-0 opacity-0 group-hover-visible" data-bs-toggle="dropdown" aria-expanded="false" ref="dropdownBtn" aria-label="Chat actions">
+      <button class="btn btn-link text-body-secondary p-0 opacity-0 group-hover-visible" data-bs-toggle="dropdown" aria-expanded="false" ref="dropdownBtn" aria-label="Chat actions">
         <i class="bi bi-three-dots"></i>
       </button>
       <ul class="dropdown-menu dropdown-menu-end shadow-sm" ref="dropdownMenu">
@@ -59,6 +59,12 @@
   .list-item-icon ::slotted(ui-avatar-group) {
     margin: 0 !important;
   }
+
+  .unread-dot {
+    width: 8px;
+    height: 8px;
+    right: 12px;
+  }
 </style>
 
 <script type="module">
@@ -89,8 +95,9 @@
       deleteLabel: (state) => (state.isGroup === 'true' ? 'Leave group' : 'Delete chat'),
       editRoomClass: (state) => (state.userRole === 'admin' ? '' : 'd-none')
     },
-    client: ({ refs, state, globalStore, signal }) => {
+    client: ({ refs, state, globalStore, eventBus, signal }) => {
       const { $state } = globalStore
+      const { $bus } = eventBus
       const container = refs('container')
 
       const syncActiveState = () => {
@@ -101,24 +108,18 @@
       $state.subscribe('activeSelectionType', syncActiveState)
       syncActiveState()
 
-      const emitAction = (name, detail = {}) => {
-        if (!container) {
-          return
-        }
-        container.dispatchEvent(new CustomEvent(name, {
-          bubbles: true,
-          detail: {
-            roomId: state.roomId,
-            ...detail
-          }
-        }))
+      const emitBusAction = (name, detail = {}) => {
+        $bus.emit(name, {
+          roomId: state.roomId,
+          ...detail
+        })
       }
 
       const btnEditRoom = refs('btnEditRoom')
       if (btnEditRoom) {
         btnEditRoom.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitAction('action:edit-room')
+          emitBusAction('CHAT:EDIT_ROOM')
         }, { signal })
       }
 
@@ -126,7 +127,7 @@
       if (btnToggleRead) {
         btnToggleRead.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitAction('action:toggle-read', { isUnread: state.isUnread === 'true' })
+          emitBusAction('CHAT:TOGGLE_READ', { isUnread: state.isUnread === 'true' })
         }, { signal })
       }
 
@@ -134,7 +135,7 @@
       if (btnToggleMute) {
         btnToggleMute.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitAction('action:toggle-mute', { isMuted: state.isMuted === 'true' })
+          emitBusAction('CHAT:TOGGLE_MUTE', { isMuted: state.isMuted === 'true' })
         }, { signal })
       }
 
@@ -142,7 +143,7 @@
       if (btnDelete) {
         btnDelete.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitAction('action:delete-chat', { isGroup: state.isGroup === 'true' })
+          emitBusAction('CHAT:DELETE', { isGroup: state.isGroup === 'true' })
         }, { signal })
       }
 
@@ -151,7 +152,7 @@
           if (e.target.closest('.dropdown')) {
             return
           }
-          emitAction('action:select-chat')
+          emitBusAction('CHAT:SELECT')
         }, { signal })
       }
     }

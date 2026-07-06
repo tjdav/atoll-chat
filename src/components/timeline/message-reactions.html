@@ -18,7 +18,7 @@
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus
-      const { $utils } = utils
+      const { $func } = utils
       const container = refs('container')
   
       const tooltips = new Map()
@@ -185,7 +185,7 @@
         container.appendChild(pill)
       }
   
-      const debouncedLoad = $utils.debounce(loadReactions, 100)
+      const debouncedLoad = $func.debounce(loadReactions, 100)
   
       $bus.on('db:new_local_data', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {

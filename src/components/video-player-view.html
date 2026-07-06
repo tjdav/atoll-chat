@@ -43,7 +43,7 @@
     client: async ({ state, signal, refs, globalStore, utils, eventBus, localDb, bootstrap }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
-      const { $utils } = utils
+      const { $media } = utils
       const { $bus } = eventBus
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
@@ -62,7 +62,7 @@
       const BUFFER_SIZE = 3
       const CLEANUP_MARGIN = 2
 
-      // Local Playback State
+  
       let playbackState = {
         currentId: null,
         status: 'idle',
@@ -75,7 +75,7 @@
           carouselInstance.dispose()
           carouselInstance = null
         }
-        // Final memory cleanup: revoke all currently loaded thumbnails
+  
         loadedItems.forEach(item => {
           if (item.thumbnail) {
             const cacheKey = item.thumbnail.message_id || item.thumbnail.id || item.thumbnail.media_id
@@ -91,12 +91,14 @@
       signal.addEventListener('abort', cleanup)
 
       const manageBuffer = async (currentIndex) => {
-        if (currentIndex === -1) return
+        if (currentIndex === -1) {
+          return
+        }
 
         const start = Math.max(0, currentIndex - BUFFER_SIZE)
         const end = Math.min(loadedItems.length - 1, currentIndex + BUFFER_SIZE)
 
-        // Pre-decrypt thumbnails in range
+  
         for (let i = start; i <= end; i++) {
           const item = loadedItems[i]
           const container = carouselInner.children[i]
@@ -105,7 +107,7 @@
           }
         }
 
-        // Cleanup thumbnails out of range (Note: videos are only decrypted on click, so we only cleanup thumbnails)
+  
         const cleanupThreshold = BUFFER_SIZE + CLEANUP_MARGIN
         for (let i = 0; i < loadedItems.length; i++) {
           if (i < currentIndex - cleanupThreshold || i > currentIndex + cleanupThreshold) {
@@ -134,14 +136,16 @@
 
       const decryptThumbnail = async (item, container) => {
         const img = container.querySelector('.thumbnail-img')
-        if (img && img.src) return // Already loaded
+        if (img && img.src) {
+          return
+        }
 
         try {
           let objectUrl
           if (item.thumbnail) {
-            objectUrl = await $utils.fetchAndDecrypt(item.thumbnail, signal)
+            objectUrl = await $media.decrypt(item.thumbnail, signal)
           } else {
-            // Fallback if no thumbnail
+  
             const cached = $state.decryptionCache.get(item.message_id || item.id)
             if (cached?.thumbnailBlobUrl) {
               objectUrl = cached.thumbnailBlobUrl
@@ -246,7 +250,7 @@
         syncAll()
 
         try {
-          const objectUrl = await $utils.fetchAndDecrypt(item, signal)
+          const objectUrl = await $media.decrypt(item, signal)
           video.src = objectUrl
           video.volume = $state.mediaVolume
           video.controls = true
