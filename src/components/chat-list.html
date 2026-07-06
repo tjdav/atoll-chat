@@ -10,12 +10,14 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils, fuse }) => {
+    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils, fuse, pocketbase, cryptoWorker }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $utils } = utils
       const { $Fuse } = fuse
+      const { pb } = pocketbase
+      const { $worker } = cryptoWorker
       const listGroup = refs('listGroup')
       const rootEl = refs('root')
 
@@ -75,7 +77,48 @@
         return `${prefix}${msg.content || ''}`
       }
 
-      let currentRenderId = 0
+      const enrichItem = async (item) => {
+        const latestMsg = await getLatestMessage(item.id)
+        let roomName = ''
+        const participants = item.participants || []
+        if (!item.is_group) {
+          const otherParticipants = participants.filter(p => p.id !== $state.currentUser?.id)
+          roomName = otherParticipants.length > 0 ? (otherParticipants[0].name || otherParticipants[0].username) : (item.name || 'Direct Message')
+        } else {
+          roomName = item.name || 'Unnamed Group'
+        }
+        const previewText = getPreviewText(latestMsg, participants, item.is_group)
+        const me = participants.find(p => p.id === $state.currentUser?.id)
+  
+        // If explicitly marked as unread (null), it's unread.
+        // If someone else sent the message and it's not the last read, it's unread.
+        // If I sent the message, it's read (unless case 1 applies).
+        const isUnread = latestMsg && (
+          me?.last_read_message_id === null ||
+          (latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id)
+        )
+
+        const isMuted = me?.is_muted === true
+        let relativeTime = ''
+        if (latestMsg) {
+          const time = $utils.formatRelativeTime(latestMsg.created_at)
+          if (time) {
+            relativeTime = ` · ${time}`
+          }
+        }
+
+        return {
+          item,
+          latestMsg,
+          roomName,
+          previewText,
+          isUnread,
+          isMuted,
+          relativeTime,
+          searchContent: `${roomName} ${participants.map(p => p.name || p.username).join(' ') || ''} ${previewText}`.toLowerCase()
+        }
+      }
+
       const fetchNextBatch = async () => {
         if (!hasMore) {
           return
@@ -90,28 +133,87 @@
         }
         if (rawItems.length > 0) {
           lastItem = rawItems[rawItems.length - 1]
-          const enriched = await Promise.all(rawItems.map(async (item) => {
-            const latestMsg = await getLatestMessage(item.id)
-            let roomName = ''
-            if (!item.is_group) {
-              const otherParticipants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
-              roomName = otherParticipants.length > 0 ? (otherParticipants[0].name || otherParticipants[0].username) : (item.name || 'Direct Message')
-            } else {
-              roomName = item.name || 'Unnamed Group'
-            }
-            const previewText = getPreviewText(latestMsg, item.participants || [], item.is_group)
-            return {
-              item,
-              latestMsg,
-              roomName,
-              previewText,
-              searchContent: `${roomName} ${item.participants?.map(p => p.name || p.username).join(' ') || ''} ${previewText}`.toLowerCase()
-            }
-          }))
+          const enriched = await Promise.all(rawItems.map(enrichItem))
           loadedEnrichedItems = [...loadedEnrichedItems, ...enriched]
         }
       }
 
+      const createAvatarComponent = (item, roomName) => {
+        const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
+
+        // Custom room avatar
+        if (item.avatar) {
+          try {
+            const avatarData = typeof item.avatar === 'string' ? JSON.parse(item.avatar) : item.avatar
+            const avatar = document.createElement('ui-avatar')
+            avatar.setAttribute('slot', 'avatar')
+            avatar.setAttribute('name', roomName)
+            avatar.setAttribute('media-id', avatarData.media_id)
+            avatar.setAttribute('media-key', avatarData.key)
+            avatar.setAttribute('media-nonce', avatarData.nonce)
+            return avatar
+          } catch (err) {
+            console.error('[chat-list] Failed to parse room avatar:', err)
+          }
+        }
+
+        // Fallback to participants
+        if (!item.is_group && participants.length > 0) {
+          const otherUser = participants[0]
+          const avatar = document.createElement('ui-avatar')
+          avatar.setAttribute('slot', 'avatar')
+          avatar.setAttribute('name', otherUser.name || otherUser.username)
+          if (otherUser.avatar) {
+            avatar.setAttribute('url', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '40x40' }))
+          }
+          return avatar
+        } else if (item.is_group && participants.length > 0) {
+          const group = document.createElement('ui-avatar-group')
+          group.setAttribute('slot', 'avatar')
+          const displayCount = Math.min(participants.length, 3)
+          for (let i = 0; i < displayCount; i++) {
+            const p = participants[i]
+            const avatar = document.createElement('ui-avatar')
+            avatar.setAttribute('slot', 'avatar')
+            avatar.setAttribute('size', '28')
+            avatar.setAttribute('name', p.name || p.username)
+            if (p.avatar) {
+              avatar.setAttribute('url', pb.files.getURL(p, p.avatar, { thumb: '28x28' }))
+            }
+            group.appendChild(avatar)
+          }
+          return group
+        }
+
+        // Default icon
+        const iconContainer = document.createElement('div')
+        iconContainer.setAttribute('slot', 'avatar')
+        iconContainer.className = 'avatar-circle d-flex align-items-center justify-content-center rounded-circle'
+        iconContainer.style.width = '40px'; iconContainer.style.height = '40px'
+        iconContainer.style.backgroundColor = 'var(--bs-primary)'
+        iconContainer.style.color = 'var(--bs-white)'
+        iconContainer.innerHTML = '<i class="bi bi-chat-left-text fs-5"></i>'
+        return iconContainer
+      }
+
+      const updateItemAttributes = (el, data) => {
+        el.setAttribute('room-name', data.roomName)
+        el.setAttribute('preview-text', data.previewText)
+        el.setAttribute('relative-time', data.relativeTime)
+        el.setAttribute('is-unread', data.isUnread ? 'true' : 'false')
+        el.setAttribute('is-group', data.item.is_group ? 'true' : 'false')
+        el.setAttribute('user-role', data.item.user_role)
+        el.setAttribute('is-muted', data.isMuted ? 'true' : 'false')
+
+        // Update Avatar slot
+        const existingAvatar = el.querySelector('[slot="avatar"]')
+        if (existingAvatar) {
+          existingAvatar.remove()
+        }
+        el.appendChild(createAvatarComponent(data.item, data.roomName))
+      }
+
+      let currentRenderId = 0
       const render = async () => {
         if (!listGroup) {
           return
@@ -139,37 +241,20 @@
         }
 
         if (itemsToDisplay.length === 0) {
-          listGroup.innerHTML = `<div class="p-4 text-center text-muted">${query ? 'No matches found in loaded chats' : 'No chats found'}</div>`
+          listGroup.innerHTML = `<div class="p-4 text-center text-muted">${query ? 'No matches found' : 'No chats found'}</div>`
           return
         }
 
         const fragment = document.createDocumentFragment()
-        for (const { item, latestMsg, roomName, previewText } of itemsToDisplay) {
-          const me = item.participants?.find(p => p.id === $state.currentUser?.id)
-          const isUnread = latestMsg && (me?.last_read_message_id === null || (latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id)) ? 'true' : 'false'
-          const isMuted = me?.is_muted === true
-          let relativeTime = ''
-          if (latestMsg) {
-            const time = $utils.formatRelativeTime(latestMsg.created_at)
-            if (time) {
-              relativeTime = ` · ${time}`
-            }
-          }
-          const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'chats'
+        for (const data of itemsToDisplay) {
           const listItem = document.createElement('chat-list-item')
-          listItem.setAttribute('room-id', item.id); listItem.setAttribute('room-name', roomName); listItem.setAttribute('preview-text', previewText)
-          listItem.setAttribute('relative-time', relativeTime); listItem.setAttribute('is-unread', isUnread); listItem.setAttribute('is-active', isActive)
-          listItem.setAttribute('is-group', item.is_group); listItem.setAttribute('user-role', item.user_role); listItem.setAttribute('is-muted', isMuted)
-          listItem.setAttribute('participants-json', JSON.stringify(item.participants || []))
-          if (item.avatar) {
-            listItem.setAttribute('room-avatar', item.avatar)
-          }
+          listItem.setAttribute('room-id', data.item.id)
+          updateItemAttributes(listItem, data)
           fragment.appendChild(listItem)
         }
+
         if (renderId === currentRenderId) {
           listGroup.innerHTML = ''; listGroup.appendChild(fragment)
-
-          // Restore scroll position after first render
           if (!state.__scrollRestored && $state.listScrollPositions?.chats !== undefined) {
             setTimeout(() => {
               if (rootEl) {
@@ -181,6 +266,186 @@
         }
       }
 
+      const handleUpdateInPlace = async (roomId) => {
+        if (!listGroup) {
+          return
+        }
+        const existingItem = listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)
+        const room = await $localDb.local_rooms.get(roomId)
+  
+        if (!room) {
+          if (existingItem) {
+            existingItem.remove()
+          }
+          // Remove from state array
+          const idx = loadedEnrichedItems.findIndex(i => i.item.id === roomId)
+          if (idx !== -1) {
+            loadedEnrichedItems.splice(idx, 1)
+          }
+          return
+        }
+
+        const data = await enrichItem(room)
+        // Update loadedEnrichedItems
+        const idx = loadedEnrichedItems.findIndex(i => i.item.id === roomId)
+        if (idx !== -1) {
+          loadedEnrichedItems.splice(idx, 1)
+          loadedEnrichedItems.unshift(data)
+        } else {
+          loadedEnrichedItems.unshift(data)
+        }
+
+        if (existingItem) {
+          updateItemAttributes(existingItem, data)
+          listGroup.prepend(existingItem)
+        } else if (!$state.listSearchQuery) {
+          const newItem = document.createElement('chat-list-item')
+          newItem.setAttribute('room-id', roomId)
+          updateItemAttributes(newItem, data)
+          listGroup.prepend(newItem)
+        }
+      }
+
+      const markAsRead = async (roomId) => {
+        const room = await $localDb.local_rooms.get(roomId)
+        if (!room) {
+          return
+        }
+        const latestMsg = await getLatestMessage(roomId)
+        if (!latestMsg) {
+          return
+        }
+
+        const me = room.participants.find(p => p.id === $state.currentUser?.id)
+        if (me && me.last_read_message_id !== latestMsg.id) {
+          me.last_read_message_id = latestMsg.id
+          await $localDb.local_rooms.put(room)
+          try {
+            const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+            if (memberRecord) {
+              await pb.collection('room_members').update(memberRecord.id, { last_read_message_id: latestMsg.id }, { requestKey: null })
+            }
+          } catch (err) {
+            console.error('[chat-list] Failed to update read status:', err)
+          }
+          $bus.emit('room:read_state_changed', roomId)
+        }
+      }
+
+      listGroup.addEventListener('action:select-chat', async (e) => {
+        const { roomId } = e.detail
+        $state.activeSelectionId = roomId
+        $state.activeSelectionType = 'chats'
+        const item = loadedEnrichedItems.find(i => i.item.id === roomId)
+        if (item?.isUnread) {
+          await markAsRead(roomId)
+        }
+      }, { signal })
+
+      listGroup.addEventListener('action:toggle-read', async (e) => {
+        const { roomId, isUnread } = e.detail
+        const room = await $localDb.local_rooms.get(roomId)
+        if (!room) {
+          return
+        }
+        const me = room.participants.find(p => p.id === $state.currentUser?.id)
+        if (!me) {
+          return
+        }
+
+        let newLastReadId = null
+        if (isUnread) {
+          const latestMsg = await getLatestMessage(roomId)
+          if (latestMsg) {
+            newLastReadId = latestMsg.id
+          }
+        }
+
+        me.last_read_message_id = newLastReadId
+        await $localDb.local_rooms.put(room)
+        try {
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+          if (memberRecord) {
+            await pb.collection('room_members').update(memberRecord.id, { last_read_message_id: newLastReadId }, { requestKey: null })
+          }
+        } catch (err) {
+          console.error('[chat-list] Failed to toggle read status:', err)
+        }
+
+        $bus.emit('room:read_state_changed', roomId)
+        $bus.emit('ui:show_toast', {
+          message: newLastReadId === null ? 'Marked as unread' : 'Marked as read',
+          type: 'success'
+        })
+      }, { signal })
+
+      listGroup.addEventListener('action:toggle-mute', async (e) => {
+        const { roomId, isMuted } = e.detail
+        const room = await $localDb.local_rooms.get(roomId)
+        if (!room) {
+          return
+        }
+        const me = room.participants.find(p => p.id === $state.currentUser?.id)
+        if (!me) {
+          return
+        }
+
+        const newMuteStatus = !isMuted
+        me.is_muted = newMuteStatus
+        await $localDb.local_rooms.put(room)
+        try {
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+          if (memberRecord) {
+            await pb.collection('room_members').update(memberRecord.id, { is_muted: newMuteStatus }, { requestKey: null })
+          }
+        } catch (err) {
+          console.error('[chat-list] Failed to toggle mute status:', err)
+        }
+
+        $bus.emit('room:member_updated', { room_id: roomId })
+        $bus.emit('ui:show_toast', {
+          message: newMuteStatus ? 'Notifications muted' : 'Notifications unmuted',
+          type: 'success'
+        })
+      }, { signal })
+
+      listGroup.addEventListener('action:delete-chat', async (e) => {
+        const { roomId, isGroup } = e.detail
+        const confirmMessage = isGroup ? 'Are you sure you want to leave this group?' : 'Are you sure you want to delete this chat?'
+        if (!confirm(confirmMessage)) {
+          return
+        }
+
+        try {
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+          if (memberRecord) {
+            await pb.collection('room_members').delete(memberRecord.id, { requestKey: null })
+          }
+          const room = await $localDb.local_rooms.get(roomId)
+          if (!isGroup && room?.participants?.length <= 1) {
+            await pb.collection('rooms').delete(roomId, { requestKey: null })
+          }
+          await $worker.execute('worker:delete_local_room', { roomId })
+          $bus.emit('ui:show_toast', {
+            message: isGroup ? 'Left group' : 'Chat deleted',
+            type: 'success'
+          })
+          if ($state.activeSelectionId === roomId) {
+            $state.activeSelectionId = null
+          }
+        } catch (err) {
+          console.error('[chat-list] Failed to delete chat:', err)
+        }
+      }, { signal })
+
+      listGroup.addEventListener('action:edit-room', async (e) => {
+        const { roomId } = e.detail
+        const room = await $localDb.local_rooms.get(roomId)
+        if (room) {
+          $bus.emit('ui:open_edit_room', room)
+        }
+      }, { signal })
+
       const saveListScroll = () => {
         if (!rootEl || (rootEl.offsetWidth === 0 && rootEl.offsetHeight === 0)) {
           return
@@ -191,42 +456,33 @@
         $state.listScrollPositions.chats = rootEl.scrollTop
       }
 
-      const debouncedSave = $utils.debounce(saveListScroll, 100)
-
-      if (signal) {
-        signal.addEventListener('abort', saveListScroll)
-      }
-
-      const resetAndRender = async () => {
-        loadedEnrichedItems = []; lastItem = null; hasMore = true; fuseInstance = null; lastIndexedCount = 0; await render()
-      }
+      const debouncedSaveScroll = $utils.debounce(saveListScroll, 100)
+      const debouncedRender = $utils.debounce(render, 50)
 
       if (rootEl) {
         rootEl.onscroll = async () => {
           if (rootEl.scrollTop + rootEl.clientHeight >= rootEl.scrollHeight - 50 && hasMore) {
             await fetchNextBatch(); render()
           }
-          debouncedSave()
+          debouncedSaveScroll()
         }
       }
+
+      signal.addEventListener('abort', saveListScroll)
+
       render()
-      const debouncedRender = $utils.debounce(render, 50)
-      const debouncedFullRender = $utils.debounce(resetAndRender, 50)
-      $state.subscribe('activeSelectionId', () => {
-        if ($state.activeSelectionType === 'chats') {
-          render()
-        }
-      })
-      $state.subscribe('activeSelectionType', () => render())
       $state.subscribe('listSearchQuery', () => debouncedRender())
-      $bus.on('db:new_local_data', () => debouncedFullRender())
-      $bus.on('db:new_local_room', () => debouncedFullRender())
-      $bus.on('db:room_deleted', () => debouncedFullRender())
-      $bus.on('room:member_updated', () => debouncedFullRender())
-      $bus.on('room:read_state_changed', () => debouncedFullRender())
-      $bus.on('sync:complete', () => debouncedFullRender())
-      $bus.on('auth:unlocked', () => debouncedFullRender())
-      $bus.on('room:member_updated', () => debouncedFullRender())
+      $bus.on('db:new_local_data', (payload) => handleUpdateInPlace(payload.room_id))
+      $bus.on('db:new_local_room', (payload) => handleUpdateInPlace(payload.room_id))
+      $bus.on('db:room_deleted', (payload) => handleUpdateInPlace(payload.room_id))
+      $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id))
+      $bus.on('room:read_state_changed', (roomId) => handleUpdateInPlace(roomId))
+      $bus.on('sync:complete', () => {
+        loadedEnrichedItems = []; lastItem = null; hasMore = true; render()
+      })
+      $bus.on('auth:unlocked', () => {
+        loadedEnrichedItems = []; lastItem = null; hasMore = true; render()
+      })
     }
   })
 </script>

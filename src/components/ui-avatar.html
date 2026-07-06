@@ -1,0 +1,106 @@
+<template id="ui-avatar">
+  <div ref="container" class="avatar-circle d-flex align-items-center justify-content-center overflow-hidden rounded-circle" style="width: {{ size }}px; height: {{ size }}px; font-size: {{ fontSize }}px;">
+    <span hidden="{{ hasImage }}">{{ initials }}</span>
+    <img ref="img" hidden="{{ !hasImage }}" class="w-100 h-100 object-fit-cover" />
+  </div>
+</template>
+
+<style>
+  .avatar-circle {
+    background-color: var(--bs-primary);
+    color: var(--bs-white);
+    font-weight: var(--bs-font-weight-bold);
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      name: String,
+      url: String,
+      mediaId: String,
+      mediaKey: String,
+      mediaNonce: String,
+      size: {
+        type: Number,
+        default: 40
+      }
+    },
+    state: {
+      hasImage: false,
+      initials: '?'
+    },
+    getters: {
+      fontSize: (state) => state.size * 0.4
+    },
+    client: ({ state, refs, utils, signal }) => {
+      const { $utils } = utils
+      const img = refs('img')
+
+      const updateInitials = () => {
+        if (!state.name) {
+          state.initials = '?'
+          return
+        }
+        state.initials = state.name
+          .split(' ')
+          .map(n => n[0])
+          .join('')
+          .toUpperCase()
+          .slice(0, 2)
+      }
+
+      const loadAvatar = async () => {
+        if (state.url) {
+          if (img) {
+            img.src = state.url
+            state.hasImage = true
+          }
+          return
+        }
+
+        if (!state.mediaId || !state.mediaKey || !state.mediaNonce) {
+          state.hasImage = false
+          return
+        }
+
+        try {
+          const asset = {
+            media_id: state.mediaId,
+            file_key: state.mediaKey,
+            file_nonce: state.mediaNonce,
+            mime_type: 'image/jpeg',
+            id: state.mediaId
+          }
+
+          const url = await $utils.fetchAndDecrypt(asset, signal)
+          if (img) {
+            img.src = url
+            state.hasImage = true
+          }
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.error('[ui-avatar] Failed to load avatar:', err)
+          }
+          state.hasImage = false
+        }
+      }
+
+      updateInitials()
+      loadAvatar()
+
+      return {
+        onAttributeChanged: (name) => {
+          if (name === 'name') {
+            updateInitials()
+          }
+          if (name === 'url' || name === 'media-id' || name === 'media-key' || name === 'media-nonce') {
+            loadAvatar()
+          }
+        }
+      }
+    }
+  })
+</script>
