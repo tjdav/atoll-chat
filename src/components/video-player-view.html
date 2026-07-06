@@ -59,6 +59,9 @@
       const BATCH_SIZE = 24
       let isInternalChange = false
 
+      const BUFFER_SIZE = 3
+      const CLEANUP_MARGIN = 2
+
       // Local Playback State
       let playbackState = {
         currentId: null,
@@ -72,9 +75,86 @@
           carouselInstance.dispose()
           carouselInstance = null
         }
+        // Final memory cleanup: revoke all currently loaded thumbnails
+        loadedItems.forEach(item => {
+          if (item.thumbnail) {
+            const cacheKey = item.thumbnail.message_id || item.thumbnail.id || item.thumbnail.media_id
+            const cached = $state.decryptionCache.get(cacheKey)
+            if (cached && cached.blobUrl) {
+              URL.revokeObjectURL(cached.blobUrl)
+              $state.decryptionCache.delete(cacheKey)
+            }
+          }
+        })
       }
 
       signal.addEventListener('abort', cleanup)
+
+      const manageBuffer = async (currentIndex) => {
+        if (currentIndex === -1) return
+
+        const start = Math.max(0, currentIndex - BUFFER_SIZE)
+        const end = Math.min(loadedItems.length - 1, currentIndex + BUFFER_SIZE)
+
+        // Pre-decrypt thumbnails in range
+        for (let i = start; i <= end; i++) {
+          const item = loadedItems[i]
+          const container = carouselInner.children[i]
+          if (container) {
+            decryptThumbnail(item, container)
+          }
+        }
+
+        // Cleanup thumbnails out of range (Note: videos are only decrypted on click, so we only cleanup thumbnails)
+        const cleanupThreshold = BUFFER_SIZE + CLEANUP_MARGIN
+        for (let i = 0; i < loadedItems.length; i++) {
+          if (i < currentIndex - cleanupThreshold || i > currentIndex + cleanupThreshold) {
+            const item = loadedItems[i]
+            if (item.thumbnail) {
+              const cacheKey = item.thumbnail.message_id || item.thumbnail.id || item.thumbnail.media_id
+              if ($state.decryptionCache.has(cacheKey)) {
+                const cached = $state.decryptionCache.get(cacheKey)
+                if (cached && cached.blobUrl) {
+                  URL.revokeObjectURL(cached.blobUrl)
+                  $state.decryptionCache.delete(cacheKey)
+
+                  const container = carouselInner.children[i]
+                  if (container) {
+                    const img = container.querySelector('.thumbnail-img')
+                    if (img) {
+                      img.removeAttribute('src')
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const decryptThumbnail = async (item, container) => {
+        const img = container.querySelector('.thumbnail-img')
+        if (img && img.src) return // Already loaded
+
+        try {
+          let objectUrl
+          if (item.thumbnail) {
+            objectUrl = await $utils.fetchAndDecrypt(item.thumbnail, signal)
+          } else {
+            // Fallback if no thumbnail
+            const cached = $state.decryptionCache.get(item.message_id || item.id)
+            if (cached?.thumbnailBlobUrl) {
+              objectUrl = cached.thumbnailBlobUrl
+            }
+          }
+
+          if (objectUrl && !signal.aborted && img) {
+            img.src = objectUrl
+          }
+        } catch (err) {
+          console.warn('[video-player-view] Thumbnail load failed:', err)
+        }
+      }
 
       const stopLocalPlayback = () => {
         if (video) {
@@ -213,22 +293,6 @@
         div.querySelector('.btn-big-play').onclick = () => playLocalMedia(item)
         div.querySelector('.btn-retry').onclick = () => playLocalMedia(item)
 
-        // Load thumbnail
-        const img = div.querySelector('.thumbnail-img')
-        if (item.thumbnail) {
-          $utils.fetchAndDecrypt(item.thumbnail, signal).then(url => {
-            img.src = url
-          }).catch(err => {
-            console.warn('[video-player-view] Thumbnail load failed:', err)
-          })
-        } else {
-          // Fallback if no thumbnail (e.g. legacy or during upload)
-          const cached = $state.decryptionCache.get(item.message_id || item.id)
-          if (cached?.thumbnailBlobUrl) {
-            img.src = cached.thumbnailBlobUrl
-          }
-        }
-  
         return div
       }
 
@@ -278,6 +342,9 @@
         }
 
         renderBatch(loadedItems, activeId)
+
+        const activeIndex = loadedItems.findIndex(i => i.id === activeId)
+        manageBuffer(activeIndex)
   
         carouselInstance = new Carousel(carouselEl, {
           interval: false,
@@ -288,7 +355,8 @@
         carouselEl.addEventListener('slid.bs.carousel', async (e) => {
           const activeItem = e.relatedTarget
           const id = activeItem.dataset.id
-          const item = loadedItems.find(i => i.id === id)
+          const index = loadedItems.findIndex(i => i.id === id)
+          const item = loadedItems[index]
   
           if (item) {
             isInternalChange = true
@@ -297,9 +365,9 @@
   
             syncActiveVideo(id, activeItem)
             isInternalChange = false
+            manageBuffer(index)
           }
 
-          const index = loadedItems.findIndex(i => i.id === id)
           if (index >= loadedItems.length - 3 && hasMore) {
             const nextBatch = await fetchNextBatch()
             renderBatch(nextBatch, null)

@@ -53,31 +53,83 @@
       let hasMore = true
       let lastTimestamp = null
       const BATCH_SIZE = 24
-      const objectUrls = new Map()
       let isInternalChange = false
 
+      const BUFFER_SIZE = 3
+      const CLEANUP_MARGIN = 2
+
       const cleanup = () => {
-        objectUrls.forEach(url => URL.revokeObjectURL(url))
-        objectUrls.clear()
         if (carouselInstance) {
           carouselInstance.dispose()
           carouselInstance = null
         }
+        // Final memory cleanup: revoke all currently loaded items
+        loadedItems.forEach(item => {
+          const cacheKey = item.message_id || item.id || item.media_id
+          const cached = $state.decryptionCache.get(cacheKey)
+          if (cached && cached.blobUrl) {
+            URL.revokeObjectURL(cached.blobUrl)
+            $state.decryptionCache.delete(cacheKey)
+          }
+        })
       }
 
       signal.addEventListener('abort', cleanup)
 
-      const decryptImage = async (item, container) => {
+      const manageBuffer = async (currentIndex) => {
+        if (currentIndex === -1) return
+
+        const start = Math.max(0, currentIndex - BUFFER_SIZE)
+        const end = Math.min(loadedItems.length - 1, currentIndex + BUFFER_SIZE)
+
+        // Pre-decrypt in range
+        for (let i = start; i <= end; i++) {
+          const item = loadedItems[i]
+          const container = carouselInner.children[i]
+          if (container) {
+            decryptImage(item, container, i === currentIndex)
+          }
+        }
+
+        // Cleanup out of range
+        const cleanupThreshold = BUFFER_SIZE + CLEANUP_MARGIN
+        for (let i = 0; i < loadedItems.length; i++) {
+          if (i < currentIndex - cleanupThreshold || i > currentIndex + cleanupThreshold) {
+            const item = loadedItems[i]
+            const cacheKey = item.message_id || item.id || item.media_id
+            if ($state.decryptionCache.has(cacheKey)) {
+              const cached = $state.decryptionCache.get(cacheKey)
+              if (cached && cached.blobUrl) {
+                URL.revokeObjectURL(cached.blobUrl)
+                $state.decryptionCache.delete(cacheKey)
+
+                const container = carouselInner.children[i]
+                if (container) {
+                  const img = container.querySelector('img')
+                  if (img) {
+                    img.removeAttribute('src')
+                    img.classList.add('d-none')
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+
+      const decryptImage = async (item, container, isImmediate = false) => {
+        const img = container.querySelector('img')
+        if (img && img.src) return // Already loaded
+
         const loader = container.querySelector('.spinner-border')
-        if (loader) {
+        if (loader && isImmediate) {
           loader.classList.remove('d-none')
         }
 
         try {
           const objectUrl = await $utils.fetchAndDecrypt(item, signal)
-  
+
           if (!signal.aborted) {
-            const img = container.querySelector('img')
             if (img) {
               img.src = objectUrl
               img.classList.remove('d-none')
@@ -140,7 +192,6 @@
           carouselInner.appendChild(el)
           if (isActive) {
             state.fileName = item.filename || 'Untitled Image'
-            decryptImage(item, el)
           }
         })
       }
@@ -158,6 +209,9 @@
         }
 
         renderBatch(loadedItems, activeId)
+
+        const activeIndex = loadedItems.findIndex(i => i.id === activeId)
+        manageBuffer(activeIndex)
   
         carouselInstance = new Carousel(carouselEl, {
           interval: false,
@@ -168,18 +222,18 @@
         carouselEl.addEventListener('slid.bs.carousel', async (e) => {
           const activeItem = e.relatedTarget
           const id = activeItem.dataset.id
-          const item = loadedItems.find(i => i.id === id)
+          const index = loadedItems.findIndex(i => i.id === id)
+          const item = loadedItems[index]
   
           if (item) {
             isInternalChange = true
             $state.activeSelectionId = id
             state.fileName = item.filename || 'Untitled Image'
-            decryptImage(item, activeItem)
             isInternalChange = false
+            manageBuffer(index)
           }
 
           // Pre-load next batch if near end
-          const index = loadedItems.findIndex(i => i.id === id)
           if (index >= loadedItems.length - 3 && hasMore) {
             const nextBatch = await fetchNextBatch()
             renderBatch(nextBatch, null)
