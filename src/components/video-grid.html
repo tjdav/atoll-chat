@@ -112,12 +112,17 @@
 
       const attachRemoteStream = (stream) => {
         if (remoteVideo && stream) {
+          console.log('[video-grid] Attaching remote stream', { hasTracks: stream.getTracks().length > 0 })
           if (remoteVideo.srcObject !== stream) {
             remoteVideo.srcObject = stream
           }
           if ($state.hasRemoteVideo) {
+            console.log('[video-grid] Remote video detected, playing...')
             playVideo(remoteVideo)
-            remoteVideo.onloadedmetadata = () => playVideo(remoteVideo)
+            remoteVideo.onloadedmetadata = () => {
+              console.log('[video-grid] Remote video metadata loaded')
+              playVideo(remoteVideo)
+            }
           }
         }
       }
@@ -156,6 +161,7 @@
           return
         }
 
+        console.log(`[video-grid] Remote track arrival: ${track.kind} for room ${roomId}`)
         if (track.kind === 'video' && remoteVideo) {
           attachRemoteStream(stream)
         } else if (track.kind === 'audio') {

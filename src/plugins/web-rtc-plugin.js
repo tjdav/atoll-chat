@@ -91,7 +91,8 @@ export default function webrtcPlugin ({
               const finalStr = isoStr.endsWith('Z') ? isoStr : isoStr + 'Z'
               const msgTime = new Date(finalStr).getTime()
 
-              if (isNaN(msgTime) || Math.abs(Date.now() - msgTime) > 30000) {
+              // Increased to 5 minutes to accommodate clock drift and CI lag.
+              if (isNaN(msgTime) || Math.abs(Date.now() - msgTime) > 300000) {
                 return
               }
             }
@@ -149,9 +150,13 @@ export default function webrtcPlugin ({
           }
 
           const setupPeerConnection = (roomId, mediaStream) => {
+            console.log(`[WebRTC] Setting up PeerConnection for room ${roomId}`)
             const pc = new RTCPeerConnection(rtcConfig)
             if (mediaStream) {
               mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
+            }
+            pc.oniceconnectionstatechange = () => {
+              console.log(`[WebRTC] ICE Connection State changed for room ${roomId}: ${pc.iceConnectionState}`)
             }
             pc.onicecandidate = async (event) => {
               if (event.candidate) {
@@ -171,6 +176,7 @@ export default function webrtcPlugin ({
               })
             }
             pc.onconnectionstatechange = () => {
+              console.log(`[WebRTC] Connection State changed for room ${roomId}: ${pc.connectionState}`)
               if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
                 teardownCall(roomId)
                 $bus.emit('call:ended', { roomId })

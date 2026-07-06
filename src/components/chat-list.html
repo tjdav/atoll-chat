@@ -35,7 +35,7 @@
           .between([roomId, ''], [roomId, '\uffff'])
           .reverse()
           .toArray()
-        return messages.find(m => m.type !== 'reaction')
+        return messages.find(m => m.type !== 'reaction' && m.type !== 'ice_candidate')
       }
 
       const getPreviewText = (msg, participants, isGroup) => {
@@ -60,7 +60,13 @@
           video: 'Sent a video.',
           voice: 'Sent a voice message.',
           audio: 'Sent an audio file.',
-          file: 'Sent an attachment.'
+          file: 'Sent an attachment.',
+          call_offer: 'Video Call',
+          call_answer: 'Call joined',
+          call_end: 'Call ended'
+        }
+        if (msg.type === 'call_offer' || msg.type === 'call_answer' || msg.type === 'call_end') {
+          return `${prefix}${fallbacks[msg.type]}`
         }
         if (msg.type === 'media') {
           const mime = msg.mime_type || ''

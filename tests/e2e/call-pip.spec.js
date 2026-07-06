@@ -64,6 +64,20 @@ test.describe.serial('Call PiP', () => {
     const remoteVideo = alicePage.locator('[data-testid="video-grid-0__remoteVideo"]')
     await expect(remoteVideo).toBeVisible({ timeout: 10000 })
 
+    // Ensure video is playing
+    await expect.poll(async () => {
+      return alicePage.evaluate(() => {
+        const video = document.querySelector('[data-testid="video-grid-0__remoteVideo"]')
+        return {
+          readyState: video.readyState,
+          paused: video.paused
+        }
+      })
+    }, { timeout: 20000 }).toMatchObject({
+      readyState: 4,
+      paused: false
+    })
+
     // Ensure placeholder is hidden (this was the reported issue)
     // Wait for it to disappear
     await expect(alicePage.locator('[data-testid="video-grid-0__remotePlaceholder"]')).not.toBeVisible({ timeout: 10000 })
@@ -71,8 +85,6 @@ test.describe.serial('Call PiP', () => {
     // Assert local video is hidden in PiP
     const localVideo = alicePage.locator('[data-testid="video-grid-0__localVideo"]')
     await expect(localVideo).not.toBeVisible()
-
-    await alicePage.screenshot({ path: '/home/jules/verification/screenshots/pip_active.png' })
 
     console.log('Alice sending a message while in PiP...')
     const messageText = 'Still here in PiP!'
