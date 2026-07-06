@@ -29,10 +29,12 @@ const isDev = hostname === 'localhost' ||
 
 // The Install Event: Caching the UI shell and cryptographic dependencies
 addEventListener('install', (event) => {
+  skipWaiting()
+
   if (isDev) {
-    skipWaiting()
     return
   }
+
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       console.log('Opened cache and adding assets')
@@ -47,15 +49,13 @@ addEventListener('activate', (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (isDev || cacheName !== CACHE_NAME) {
+          if (cacheName !== CACHE_NAME) {
             console.log('Deleting cache:', cacheName)
             return caches.delete(cacheName)
           }
         })
       ).then(() => {
-        if (isDev) {
-          return clients.claim()
-        }
+        return clients.claim()
       })
     })
   )
@@ -71,7 +71,7 @@ addEventListener('fetch', (event) => {
   }
 
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
+    caches.match(request, { cacheName: CACHE_NAME }).then((cachedResponse) => {
       const fetchPromise = fetch(request).then((networkResponse) => {
         // Update the cache with the new response if it's a valid response
         if (networkResponse && networkResponse.status === 200) {
