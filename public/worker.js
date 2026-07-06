@@ -298,6 +298,8 @@ async function sendMessage (rpcId, payload) {
     waveform_data,
     music_metadata,
     album_art_blob,
+    thumbnail_blob,
+    duration,
     candidate,
     media_types,
     target_id,
@@ -306,7 +308,8 @@ async function sendMessage (rpcId, payload) {
     media_id: existingMediaId,
     file_key: existingFileKey,
     file_nonce: existingFileNonce,
-    album_art: existingAlbumArt
+    album_art: existingAlbumArt,
+    thumbnail: existingThumbnail
   } = payload
 
   if (!currentUserKeys || !currentUserKeys.private_sign_key) {
@@ -331,6 +334,7 @@ async function sendMessage (rpcId, payload) {
   let fileKeyBase64 = existingFileKey || null
   let fileNonceBase64 = existingFileNonce || null
   let albumArtInfo = existingAlbumArt || null
+  let thumbnailInfo = existingThumbnail || null
 
   const headers = {}
   if (authToken) {
@@ -360,6 +364,33 @@ async function sendMessage (rpcId, payload) {
           media_id: artRecord.id,
           file_key: sodium.to_base64(artKey, sodium.base64_variants.ORIGINAL),
           file_nonce: sodium.to_base64(artNonce, sodium.base64_variants.ORIGINAL)
+        }
+      }
+    }
+
+    // Encrypt and upload thumbnail if present
+    if (thumbnail_blob) {
+      const thumbBuffer = new Uint8Array(await thumbnail_blob.arrayBuffer())
+      const thumbKey = sodium.randombytes_buf(32)
+      const thumbNonce = sodium.randombytes_buf(24)
+      const encryptedThumb = sodium.crypto_secretbox_easy(thumbBuffer, thumbNonce, thumbKey)
+
+      const thumbBlob = new Blob([encryptedThumb], { type: 'application/octet-stream' })
+      const thumbFormData = new FormData()
+      thumbFormData.append('file', thumbBlob, 'thumbnail.bin')
+
+      const thumbResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
+        method: 'POST',
+        headers,
+        body: thumbFormData
+      })
+      if (thumbResponse.ok) {
+        const thumbRecord = await thumbResponse.json()
+        thumbnailInfo = {
+          media_id: thumbRecord.id,
+          file_key: sodium.to_base64(thumbKey, sodium.base64_variants.ORIGINAL),
+          file_nonce: sodium.to_base64(thumbNonce, sodium.base64_variants.ORIGINAL),
+          mime_type: 'image/webp'
         }
       }
     }
@@ -412,6 +443,8 @@ async function sendMessage (rpcId, payload) {
     plaintextObj.waveform_data = waveform_data
     plaintextObj.music_metadata = music_metadata
     plaintextObj.album_art = albumArtInfo
+    plaintextObj.thumbnail = thumbnailInfo
+    plaintextObj.duration = duration
   }
 
   const plaintextStr = JSON.stringify(plaintextObj)
@@ -479,6 +512,8 @@ async function sendMessage (rpcId, payload) {
     updateData.filename = filename
     updateData.mime_type = mime_type
     updateData.album_art = albumArtInfo
+    updateData.thumbnail = thumbnailInfo
+    updateData.duration = duration
 
     await db.local_assets.put({
       id: mediaId,
@@ -491,7 +526,9 @@ async function sendMessage (rpcId, payload) {
       file_nonce: fileNonceBase64,
       created_at: pbRecord.created,
       music_metadata: music_metadata,
-      album_art: albumArtInfo
+      album_art: albumArtInfo,
+      thumbnail: thumbnailInfo,
+      duration: duration
     })
   }
 
@@ -676,7 +713,7 @@ async function processIncomingMessage (rpcId, record) {
 
   // If media, extend the message with media metadata for easier rendering in the timeline
   if (type === 'media') {
-    const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art } = decryptedPayload
+    const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art, thumbnail, duration } = decryptedPayload
     decryptedMessage.media_id = media_id
     decryptedMessage.file_key = file_key
     decryptedMessage.file_nonce = file_nonce
@@ -685,6 +722,8 @@ async function processIncomingMessage (rpcId, record) {
     decryptedMessage.waveform_data = waveform_data
     decryptedMessage.music_metadata = music_metadata
     decryptedMessage.album_art = album_art
+    decryptedMessage.thumbnail = thumbnail
+    decryptedMessage.duration = duration
 
     // Also store in local_assets for the global archive
     await db.local_assets.put({
@@ -698,7 +737,9 @@ async function processIncomingMessage (rpcId, record) {
       file_nonce,
       created_at: created,
       music_metadata,
-      album_art
+      album_art,
+      thumbnail,
+      duration
     })
   }
 

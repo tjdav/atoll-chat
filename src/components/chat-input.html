@@ -45,6 +45,8 @@
       hasFile: false,
       isRecording: false,
       selectedFile: null,
+      thumbnailBlob: null,
+      duration: 0,
       pendingLinkData: [],
       ignoredUrls: {}
     }),
@@ -71,6 +73,8 @@
         state.hasFile = false
         state.isRecording = false
         state.selectedFile = null
+        state.thumbnailBlob = null
+        state.duration = 0
         state.pendingLinkData = []
         state.ignoredUrls = {}
         $state.currentMessageText = ''
@@ -154,9 +158,16 @@
         // Optimistic Media Cache (Sender side)
         if (params.file) {
           const blobUrl = URL.createObjectURL(params.file)
+          let thumbnailBlobUrl = null
+          if (params.thumbnail_blob) {
+            thumbnailBlobUrl = URL.createObjectURL(params.thumbnail_blob)
+          }
+
           $state.decryptionCache.set(localUuid, {
             blobUrl,
-            mimeType: params.mime_type || params.file.type
+            thumbnailBlobUrl,
+            mimeType: params.mime_type || params.file.type,
+            duration: params.duration
           })
         }
 
@@ -175,6 +186,7 @@
           filename: params.filename,
           waveform_data: params.waveform_data,
           music_metadata: params.music_metadata,
+          duration: params.duration,
           links: params.links
         }
 
@@ -261,6 +273,8 @@
               waveform_data: waveformData,
               music_metadata: musicMetadata,
               album_art_blob: albumArtBlob,
+              thumbnail_blob: state.thumbnailBlob,
+              duration: state.duration,
               timestamp: Date.now()
             })
           } else if (state.pendingLinkData.length > 0) {
@@ -325,27 +339,42 @@
           } finally {
             state.isCompressing = false
           }
-        } else if (file.type.startsWith('video/') && $video.isSupported()) {
+        } else if (file.type.startsWith('video/')) {
           state.isCompressing = true
-          state.uploadStatus = 'Compressing video... 0%'
+          state.uploadStatus = 'Processing video...'
           try {
-            const compressedBuffer = await $video.compress(file, {
-              maxWidth: 1280,
-              maxHeight: 720,
-              bitrate: 2_000_000
+            // Extract thumbnail and duration first
+            const { canvas, duration } = await $utils.getVideoMetadata(file)
+            const compressedThumbnail = await $utils.compressImage(canvas, {
+              maxWidth: 1200,
+              maxHeight: 1200,
+              quality: 0.8,
+              format: 'image/webp'
             })
-            const compressedBlob = new Blob([compressedBuffer], { type: 'video/mp4' })
-            // Keep original name but change extension if needed
-            let newName = file.name
-            const lastDot = file.name.lastIndexOf('.')
-            if (lastDot !== -1) {
-              newName = file.name.substring(0, lastDot) + '.mp4'
-            } else {
-              newName = file.name + '.mp4'
+            state.thumbnailBlob = compressedThumbnail
+            state.duration = duration
+
+            // Compress video if supported
+            if ($video.isSupported()) {
+              state.uploadStatus = 'Compressing video... 0%'
+              const compressedBuffer = await $video.compress(file, {
+                maxWidth: 1280,
+                maxHeight: 720,
+                bitrate: 2_000_000
+              })
+              const compressedBlob = new Blob([compressedBuffer], { type: 'video/mp4' })
+              // Keep original name but change extension if needed
+              let newName = file.name
+              const lastDot = file.name.lastIndexOf('.')
+              if (lastDot !== -1) {
+                newName = file.name.substring(0, lastDot) + '.mp4'
+              } else {
+                newName = file.name + '.mp4'
+              }
+              file = new File([compressedBlob], newName, { type: 'video/mp4' })
             }
-            file = new File([compressedBlob], newName, { type: 'video/mp4' })
           } catch (err) {
-            console.warn('[chat-input] Video compression failed, using original file:', err)
+            console.warn('[chat-input] Video processing failed, using original file:', err)
           } finally {
             state.isCompressing = false
           }

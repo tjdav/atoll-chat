@@ -60,42 +60,42 @@
         }
   
         try {
-          const { default: sodium } = await import('libsodium-wrappers-sumo')
-          await sodium.ready
+          const asset = await $localDb.local_assets.get(state.assetId)
+          let objectUrl = null
 
-          const mediaRecord = await pb.collection('media').getOne(state.mediaId)
-          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-
-          const response = await fetch(url)
-          if (!response.ok) {
-            throw new Error('Fetch failed')
+          if (isVideo) {
+            if (asset?.thumbnail) {
+              objectUrl = await $utils.fetchAndDecrypt(asset.thumbnail, signal)
+            } else {
+              throw new Error('Video thumbnail missing')
+            }
+          } else {
+            objectUrl = await $utils.fetchAndDecrypt({
+              media_id: state.mediaId,
+              file_key: state.fileKey,
+              file_nonce: state.fileNonce,
+              mime_type: state.mimeType,
+              id: state.assetId
+            }, signal)
           }
-          const encryptedData = new Uint8Array(await response.arrayBuffer())
 
-          const key = sodium.from_base64(state.fileKey, sodium.base64_variants.ORIGINAL)
-          const nonce = sodium.from_base64(state.fileNonce, sodium.base64_variants.ORIGINAL)
-
-          const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-          if (!decryptedData) {
-            throw new Error('Decryption failed')
+          if (signal.aborted) {
+            return
           }
 
-          const blob = new Blob([decryptedData], { type: state.mimeType })
-          const objectUrl = URL.createObjectURL(blob)
           objectUrls.set(state.assetId, objectUrl)
 
           mediaContainer.innerHTML = ''
+          const img = document.createElement('img')
+          img.src = objectUrl
+          img.className = 'object-fit-cover w-100 h-100'
+          mediaContainer.appendChild(img)
+
           if (isVideo) {
-            const video = document.createElement('video')
-            video.src = objectUrl
-            video.muted = true
-            video.className = 'object-fit-cover w-100 h-100'
-            mediaContainer.appendChild(video)
-          } else {
-            const img = document.createElement('img')
-            img.src = objectUrl
-            img.className = 'object-fit-cover w-100 h-100'
-            mediaContainer.appendChild(img)
+            const overlay = document.createElement('div')
+            overlay.className = 'position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center'
+            overlay.innerHTML = '<i class="bi bi-play-fill text-white fs-1 opacity-75"></i>'
+            mediaContainer.appendChild(overlay)
           }
         } catch (err) {
           console.error('[media-grid-card] Preview error:', err)

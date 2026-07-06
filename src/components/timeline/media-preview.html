@@ -22,54 +22,59 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal }) => {
+    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal, utils }) => {
       const { $localDb } = localDb
       const { pb } = pocketbase
       const { $state } = globalStore
       const { $bus } = eventBus
+      const { $utils } = utils
       const container = refs('container')
       const loading = refs('loading')
 
       let lastCallId = 0
 
-      const renderMedia = (objectUrl, mimeType) => {
+      const renderMedia = (objectUrl, mimeType, duration = 0) => {
         if (!objectUrl) {
           return
         }
 
         // Deduplication check
-        const existing = container.querySelectorAll('img, video')
-        if (existing.length > 0) {
-          const currentEl = existing[0]
-          if (currentEl.src === objectUrl || currentEl.src.endsWith(objectUrl)) {
+        const existing = container.querySelector('img')
+        if (existing) {
+          if (existing.src === objectUrl || existing.src.endsWith(objectUrl)) {
             loading.classList.add('d-none')
             container.style.minHeight = 'auto'
             return
           }
-          existing.forEach(el => el.remove())
         }
+        container.innerHTML = ''
+        container.appendChild(loading)
 
         loading.classList.add('d-none')
         container.style.minHeight = 'auto'
 
-        if (mimeType.startsWith('image/')) {
-          const img = document.createElement('img')
-          img.src = objectUrl
-          img.className = 'img-fluid rounded-3 shadow-sm'
-          img.style.maxHeight = '300px'
-          img.onload = () => $bus.emit('ui:media_loaded')
-          container.appendChild(img)
-        } else if (mimeType.startsWith('video/')) {
-          const video = document.createElement('video')
-          video.src = objectUrl
-          video.muted = true
-          video.loop = true
-          video.className = 'img-fluid rounded-3 shadow-sm'
-          video.style.maxHeight = '300px'
-          video.onloadeddata = () => $bus.emit('ui:media_loaded')
-          video.addEventListener('mouseenter', () => video.play())
-          video.addEventListener('mouseleave', () => video.pause())
-          container.appendChild(video)
+        const img = document.createElement('img')
+        img.src = objectUrl
+        img.className = 'img-fluid rounded-3 shadow-sm w-100 h-100 object-fit-cover'
+        img.style.maxHeight = '300px'
+        img.onload = () => $bus.emit('ui:media_loaded')
+        container.appendChild(img)
+
+        if (mimeType.startsWith('video/')) {
+          const overlay = document.createElement('div')
+          overlay.className = 'position-absolute bottom-0 start-0 p-2 d-flex align-items-center'
+          overlay.style.background = 'linear-gradient(transparent, rgba(0,0,0,0.5))'
+          overlay.style.width = '100%'
+
+          const badge = document.createElement('div')
+          badge.className = 'bg-black bg-opacity-75 text-white px-2 py-1 rounded-pill d-flex align-items-center'
+          badge.style.fontSize = '0.75rem'
+          badge.innerHTML = `
+            <i class="bi bi-play-fill me-1"></i>
+            <span>${$utils.formatDuration(duration)}</span>
+          `
+          overlay.appendChild(badge)
+          container.appendChild(overlay)
         }
       }
 
@@ -83,10 +88,12 @@
           // 1. Synchronous Cache Check
           const cached = $state.decryptionCache.get(state.localUuid)
           if (cached) {
-            const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
-            const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || 'image/webp'
-            renderMedia(objectUrl, mimeType)
-            // If we have both, we might be done, but Alice still needs to wait for DB to get the mediaId for clicks
+            const isVideo = (cached.mimeType || '').startsWith('video/')
+            const objectUrl = isVideo ? cached.thumbnailBlobUrl : (cached.blobUrl || cached)
+            if (objectUrl) {
+              const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || 'image/webp'
+              renderMedia(objectUrl, mimeType, cached.duration)
+            }
           }
 
           // 2. Async Lifecycle: Fetch from DB and Decrypt
@@ -95,53 +102,42 @@
             return
           }
 
-          let objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
-          let mimeType = message?.mime_type || (typeof cached === 'object' ? cached.mimeType : null) || 'image/webp'
+          let objectUrl = null
+          let mimeType = message?.mime_type || (typeof cached === 'object' ? cached?.mimeType : null) || 'image/webp'
+          let duration = message?.duration || cached?.duration || 0
 
-          if (!objectUrl) {
-            if (!message || !message.file_key) {
-              if (state.status === 'pending') {
-                return
+          if (mimeType.startsWith('video/')) {
+            objectUrl = cached?.thumbnailBlobUrl
+            if (!objectUrl && message?.thumbnail) {
+              objectUrl = await $utils.fetchAndDecrypt(message.thumbnail, signal)
+            }
+            if (!objectUrl) {
+              throw new Error('Video thumbnail missing')
+            }
+          } else {
+            objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
+            if (!objectUrl) {
+              if (!message || !message.file_key) {
+                if (state.status === 'pending') {
+                  return
+                }
+                throw new Error('Message or key missing')
               }
-              throw new Error('Message or key missing')
+
+              objectUrl = await $utils.fetchAndDecrypt({
+                media_id: message.media_id,
+                file_key: message.file_key,
+                file_nonce: message.file_nonce,
+                mime_type: message.mime_type,
+                message_id: state.localUuid
+              }, signal)
             }
-
-            const { default: sodium } = await import('libsodium-wrappers-sumo')
-            await sodium.ready
-            if (callId !== lastCallId || signal.aborted) {
-              return
-            }
-
-            const mediaRecord = await pb.collection('media').getOne(message.media_id)
-            const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
-
-            const response = await fetch(fileUrl, { signal })
-            if (!response.ok) {
-              throw new Error('Fetch failed')
-            }
-            const encryptedData = new Uint8Array(await response.arrayBuffer())
-
-            const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
-            const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
-
-            const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
-            if (!decryptedData) {
-              throw new Error('Decryption failed')
-            }
-
-            const blob = new Blob([decryptedData], { type: message.mime_type })
-            objectUrl = URL.createObjectURL(blob)
-            mimeType = message.mime_type
-            $state.decryptionCache.set(state.localUuid, {
-              blobUrl: objectUrl,
-              mimeType: mimeType
-            })
           }
 
           if (callId !== lastCallId || signal.aborted) {
             return
           }
-          renderMedia(objectUrl, mimeType)
+          renderMedia(objectUrl, mimeType, duration)
 
           container.onclick = async () => {
             const msg = await $localDb.local_messages.get(state.localUuid)

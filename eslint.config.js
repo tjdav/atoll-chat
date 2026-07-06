@@ -61,14 +61,18 @@ export default [
         'error',
         {
           definedTypes: [
+            'AbortSignal',
+            'Blob',
             'Buffer',
             'DOMHighResTimeStamp',
             'Element',
             'File',
             'FormData',
+            'HTMLCanvasElement',
             'HTMLCollection',
             'HTMLElement',
             'HTMLFormControlsCollection',
+            'HTMLImageElement',
             'Node',
             'NodeJS',
             'TestContext',

@@ -68,42 +68,14 @@
       signal.addEventListener('abort', cleanup)
 
       const decryptImage = async (item, container) => {
-        if (objectUrls.has(item.id)) {
-          const img = container.querySelector('img')
-          if (img) {
-            img.src = objectUrls.get(item.id)
-          }
-          return
-        }
-
         const loader = container.querySelector('.spinner-border')
         if (loader) {
           loader.classList.remove('d-none')
         }
 
         try {
-          const mediaRecord = await pb.collection('media').getOne(item.media_id)
-          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-
-          const response = await fetch(url, { signal })
-          const arrayBuffer = await response.arrayBuffer()
-          const encryptedFileBuffer = new Uint8Array(arrayBuffer)
-
-          const { default: sodium } = await import('libsodium-wrappers-sumo')
-          await sodium.ready
-
-          const fileKeyBuffer = sodium.from_base64(item.file_key, sodium.base64_variants.ORIGINAL)
-          const nonceBuffer = sodium.from_base64(item.file_nonce, sodium.base64_variants.ORIGINAL)
-
-          const decryptedFileBuffer = sodium.crypto_secretbox_open_easy(encryptedFileBuffer, nonceBuffer, fileKeyBuffer)
-          if (!decryptedFileBuffer) {
-            throw new Error('Decryption failed')
-          }
-
-          const mediaBlob = new Blob([decryptedFileBuffer], { type: item.mime_type })
-          const objectUrl = URL.createObjectURL(mediaBlob)
-          objectUrls.set(item.id, objectUrl)
-
+          const objectUrl = await $utils.fetchAndDecrypt(item, signal)
+  
           if (!signal.aborted) {
             const img = container.querySelector('img')
             if (img) {
@@ -115,6 +87,9 @@
             }
           }
         } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
           console.error('[image-viewer] Decryption error:', err)
           if (loader) {
             loader.classList.add('d-none')

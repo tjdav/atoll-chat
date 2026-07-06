@@ -91,10 +91,15 @@
       syncActiveState()
 
       const emitAction = (name, detail = {}) => {
-        if (!container) return
+        if (!container) {
+          return
+        }
         container.dispatchEvent(new CustomEvent(name, {
           bubbles: true,
-          detail: { roomId: state.roomId, ...detail }
+          detail: {
+            roomId: state.roomId,
+            ...detail
+          }
         }))
       }
 
@@ -132,7 +137,9 @@
 
       if (container) {
         container.addEventListener('click', (e) => {
-          if (e.target.closest('.dropdown')) return
+          if (e.target.closest('.dropdown')) {
+            return
+          }
           emitAction('action:select-chat')
         }, { signal })
       }
