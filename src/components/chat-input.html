@@ -357,21 +357,22 @@
             // Compress video if supported
             if ($video.isSupported()) {
               state.uploadStatus = 'Compressing video... 0%'
-              const compressedBuffer = await $video.compress(file, {
+              const { buffer, mimeType, extension } = await $video.compress(file, {
                 maxWidth: 1280,
                 maxHeight: 720,
                 bitrate: 2_000_000
               })
-              const compressedBlob = new Blob([compressedBuffer], { type: 'video/mp4' })
+              const compressedBlob = new Blob([buffer], { type: mimeType })
               // Keep original name but change extension if needed
               let newName = file.name
               const lastDot = file.name.lastIndexOf('.')
               if (lastDot !== -1) {
-                newName = file.name.substring(0, lastDot) + '.mp4'
+                newName = file.name.substring(0, lastDot) + extension
               } else {
-                newName = file.name + '.mp4'
+                newName = file.name + extension
               }
-              file = new File([compressedBlob], newName, { type: 'video/mp4' })
+  
+              file = new File([compressedBlob], newName, { type: mimeType })
             }
           } catch (err) {
             console.warn('[chat-input] Video processing failed, using original file:', err)
