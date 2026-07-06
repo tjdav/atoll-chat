@@ -32,10 +32,11 @@
       ratioClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'ratio-16x9' : 'ratio-1x1'),
       iconClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'bi-camera-video' : 'bi-image')
     },
-    client: ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal }) => {
+    client: ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal, utils }) => {
       const { $localDb } = localDb
       const { $state } = globalStore
       const { pb } = pocketbase
+      const { $utils } = utils
       const card = refs('card')
       const mediaContainer = refs('mediaContainer')
 
