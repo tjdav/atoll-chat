@@ -21,6 +21,8 @@ export default function webrtcPlugin ({
         // Phase 1: Global Setup
         const activeCalls = new Map()
         const pendingCandidates = new Map()
+        const candidateBuffers = new Map()
+        const candidateTimers = new Map()
         const processedMessages = new Set()
         const $bus = pluginContext.$bus
 
@@ -51,6 +53,13 @@ export default function webrtcPlugin ({
             activeCalls.delete(roomId)
           }
           pendingCandidates.delete(roomId)
+
+          // Clear candidate batching state
+          if (candidateTimers.has(roomId)) {
+            clearTimeout(candidateTimers.get(roomId))
+            candidateTimers.delete(roomId)
+          }
+          candidateBuffers.delete(roomId)
         }
 
         window.addEventListener('beforeunload', () => {
@@ -122,14 +131,16 @@ export default function webrtcPlugin ({
               }
             } else if (message.type === 'ice_candidate') {
               const pc = activeCalls.get(roomId)
-              if (message.candidate) {
+              const candidates = message.candidates || (message.candidate ? [message.candidate] : [])
+
+              for (const candidate of candidates) {
                 if (pc && pc.remoteDescription) {
-                  await pc.addIceCandidate(new RTCIceCandidate(message.candidate))
+                  await pc.addIceCandidate(new RTCIceCandidate(candidate))
                 } else {
                   if (!pendingCandidates.has(roomId)) {
                     pendingCandidates.set(roomId, [])
                   }
-                  pendingCandidates.get(roomId).push(message.candidate)
+                  pendingCandidates.get(roomId).push(candidate)
                 }
               }
             } else if (message.type === 'call_end') {
@@ -158,9 +169,26 @@ export default function webrtcPlugin ({
             pc.oniceconnectionstatechange = () => {
               console.log(`[WebRTC] ICE Connection State changed for room ${roomId}: ${pc.iceConnectionState}`)
             }
-            pc.onicecandidate = async (event) => {
+            pc.onicecandidate = (event) => {
               if (event.candidate) {
-                await sendSignalingMessage(roomId, 'ice_candidate', { candidate: event.candidate.toJSON() })
+                if (!candidateBuffers.has(roomId)) {
+                  candidateBuffers.set(roomId, [])
+                }
+                candidateBuffers.get(roomId).push(event.candidate.toJSON())
+
+                if (candidateTimers.has(roomId)) {
+                  return
+                }
+
+                const timer = setTimeout(async () => {
+                  candidateTimers.delete(roomId)
+                  const candidates = candidateBuffers.get(roomId)
+                  if (candidates && candidates.length > 0) {
+                    candidateBuffers.set(roomId, [])
+                    await sendSignalingMessage(roomId, 'ice_candidate', { candidates })
+                  }
+                }, 500)
+                candidateTimers.set(roomId, timer)
               }
             }
             pc.ontrack = (event) => {
