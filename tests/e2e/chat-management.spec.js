@@ -157,7 +157,7 @@ test.describe('Chat Management', () => {
       await page.goto('/?view=music')
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
-      
+
       // Wait for login form to be visible in case of initial run
       await expect(page.locator('input[placeholder*="username"]')).toBeVisible({ timeout: 15000 })
 
@@ -184,17 +184,17 @@ test.describe('Chat Management', () => {
         await input.press('Enter')
         await page.waitForTimeout(50)
       }
-      
+
       // Wait for all messages to be rendered
       await expect(page.locator('timeline-row').last()).toContainText('Persistence message 29', { timeout: 20000 })
 
       const timeline = page.locator('message-timeline .overflow-auto')
-      
+
       // Scroll to TOP
       await timeline.evaluate(el => el.scrollTop = 0)
       // Verify it is scrolled up
       await expect.poll(async () => await timeline.evaluate(el => el.scrollTop)).toBeLessThan(100)
-      
+
       await page.waitForTimeout(1000)
       await page.click('button[title="Music"]')
       await expect(page).toHaveURL(/\/\?view=music$/)
@@ -202,7 +202,7 @@ test.describe('Chat Management', () => {
       await page.click('button[title="Chats"]')
       // Wait for chat to reload and scroll to be restored
       await page.waitForTimeout(2000)
-      
+
       const scrollTop = await timeline.evaluate(el => el.scrollTop)
       console.log('Restored scroll top:', scrollTop)
       expect(scrollTop).toBeLessThan(400)

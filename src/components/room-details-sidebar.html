@@ -232,7 +232,7 @@
   
           const ciphertextB64 = $crypto.toBase64(ciphertext)
           const validationString = `${roomId}|${nextEpochId}|${localRoom.last_msg_id || ''}|${ciphertextB64}`
-          
+  
           const signature = await $worker.execute('worker:crypto_sign_detached', {
             message: validationString,
             privateKey: currentUser.private_sign_key

@@ -229,7 +229,11 @@ async function handleEvent (event) {
         typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
         typeof key === 'string' ? sodium.from_base64(key, sodium.base64_variants.ORIGINAL) : key
       )
-      self.postMessage({ id, type, result })
+      self.postMessage({
+        id,
+        type,
+        result
+      })
       return
     }
 
@@ -240,7 +244,11 @@ async function handleEvent (event) {
         typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
         typeof key === 'string' ? sodium.from_base64(key, sodium.base64_variants.ORIGINAL) : key
       )
-      self.postMessage({ id, type, result })
+      self.postMessage({
+        id,
+        type,
+        result
+      })
       return
     }
 
@@ -252,7 +260,11 @@ async function handleEvent (event) {
         typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey,
         typeof privateKey === 'string' ? sodium.from_base64(privateKey, sodium.base64_variants.ORIGINAL) : privateKey
       )
-      self.postMessage({ id, type, result })
+      self.postMessage({
+        id,
+        type,
+        result
+      })
       return
     }
 
@@ -264,7 +276,11 @@ async function handleEvent (event) {
         typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey,
         typeof privateKey === 'string' ? sodium.from_base64(privateKey, sodium.base64_variants.ORIGINAL) : privateKey
       )
-      self.postMessage({ id, type, result })
+      self.postMessage({
+        id,
+        type,
+        result
+      })
       return
     }
 
@@ -274,14 +290,22 @@ async function handleEvent (event) {
         typeof message === 'string' ? new TextEncoder().encode(message) : new Uint8Array(message),
         typeof privateKey === 'string' ? sodium.from_base64(privateKey, sodium.base64_variants.ORIGINAL) : privateKey
       )
-      self.postMessage({ id, type, result })
+      self.postMessage({
+        id,
+        type,
+        result
+      })
       return
     }
 
     if (type === 'worker:randombytes_buf') {
       const { length } = payload
       const result = sodium.randombytes_buf(length)
-      self.postMessage({ id, type, result })
+      self.postMessage({
+        id,
+        type,
+        result
+      })
       return
     }
 
@@ -295,7 +319,11 @@ async function handleEvent (event) {
         public_sign_key: sodium.to_base64(identityKeys.publicKey, sodium.base64_variants.ORIGINAL),
         private_sign_key: sodium.to_base64(identityKeys.privateKey, sodium.base64_variants.ORIGINAL)
       }
-      self.postMessage({ id, type, result })
+      self.postMessage({
+        id,
+        type,
+        result
+      })
       return
     }
 
@@ -315,7 +343,11 @@ async function handleEvent (event) {
         ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
         nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
       }
-      self.postMessage({ id, type, result })
+      self.postMessage({
+        id,
+        type,
+        result
+      })
       return
     }
 
@@ -330,7 +362,11 @@ async function handleEvent (event) {
         throw new Error('Failed to decrypt vault. Invalid Password or corrupt data.')
       }
       const result = JSON.parse(sodium.to_string(decrypted))
-      self.postMessage({ id, type, result })
+      self.postMessage({
+        id,
+        type,
+        result
+      })
       return
     }
 

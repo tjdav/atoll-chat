@@ -26,7 +26,11 @@ test.describe('User Settings & Profile', () => {
     test('update avatar', async ({ page }) => {
       await page.click('button[title="Settings"]')
       const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.locator('.position-relative.cursor-pointer').click()])
-      await fc.setFiles({ name: 'a.png', mimeType: 'image/png', buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64') })
+      await fc.setFiles({
+        name: 'a.png',
+        mimeType: 'image/png',
+        buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
+      })
       await page.click('button:has-text("Apply Changes")')
       await page.click('button:has-text("Save Changes")')
       await expect(page.locator('.avatar-circle img')).toBeVisible()

@@ -26,9 +26,21 @@ test.describe('Media & Attachments', () => {
       await bobChat.click()
 
       const files = [
-        { n: 'test.png', s: 'media-preview img', tid: '__imageInput' },
-        { n: 'test.mp4', s: 'media-preview video', tid: '__videoInput' },
-        { n: 'test.docx', s: 'file-attachment', tid: '__docInput' }
+        {
+          n: 'test.png',
+          s: 'media-preview img',
+          tid: '__imageInput'
+        },
+        {
+          n: 'test.mp4',
+          s: 'media-preview video',
+          tid: '__videoInput'
+        },
+        {
+          n: 'test.docx',
+          s: 'file-attachment',
+          tid: '__docInput'
+        }
       ]
       for (const f of files) {
         const fp = path.resolve(`tests/e2e/fixtures/test-files/${f.n}`)
@@ -102,7 +114,14 @@ test.describe('Media & Attachments', () => {
       await expect(page.locator('document-list .app-list-item').filter({ hasText: 'test.txt' })).toBeVisible()
 
       await page.route('**/api/link-extraction*', async r => {
-        await r.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ title: 'PB', url: 'https://g.com' }) })
+        await r.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({
+            title: 'PB',
+            url: 'https://g.com'
+          })
+        })
       })
       await page.click('button[title="Chats"]')
       await page.fill('textarea', 'https://g.com ')

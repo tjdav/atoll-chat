@@ -304,19 +304,25 @@
 
       // Accept Call
       refs('btnAccept').addEventListener('click', async () => {
+        console.log('[call-overlay] Accept button clicked')
         try {
+          console.log('[call-overlay] Requesting media permissions...')
           const localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
             video: true
           })
+          console.log('[call-overlay] Media permissions granted')
           state.localStream = localStream
           $state.localStream = localStream
   
           // Set status to active before answering to ensure UI is ready for tracks
+          console.log('[call-overlay] Setting call status to active')
           $state.set('callStatus', 'active')
           $bus.emit('call:local_stream_available', { stream: localStream })
   
+          console.log('[call-overlay] Answering call via WebRTC plugin...')
           await $webrtc.answerCall($state.activeCallRoomId, localStream, state.remoteOffer)
+          console.log('[call-overlay] answerCall initiated successfully')
         } catch (err) {
           console.error('[call-overlay] Failed to accept call:', err)
           endCall()

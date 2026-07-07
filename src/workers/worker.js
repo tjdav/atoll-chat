@@ -450,6 +450,7 @@ async function sendMessage (rpcId, payload) {
     thumbnail_blob,
     duration,
     candidate,
+    candidates,
     media_types,
     target_id,
     timestamp,
@@ -574,6 +575,7 @@ async function sendMessage (rpcId, payload) {
     type,
     content,
     candidate,
+    candidates,
     media_types,
     target_id,
     timestamp: timestamp || Date.now()
@@ -841,7 +843,7 @@ async function processIncomingMessage (rpcId, record) {
 
   const decryptedString = new TextDecoder().decode(decryptedBuffer)
   const decryptedPayload = JSON.parse(decryptedString)
-  const { type, content, candidate, media_types, target_id, timestamp } = decryptedPayload
+  const { type, content, candidate, candidates, media_types, target_id, timestamp } = decryptedPayload
 
   // Storage and causal chain resolution.
   const decryptedMessage = {
@@ -852,6 +854,7 @@ async function processIncomingMessage (rpcId, record) {
     type,
     content,
     candidate,
+    candidates,
     media_types,
     target_id,
     timestamp,

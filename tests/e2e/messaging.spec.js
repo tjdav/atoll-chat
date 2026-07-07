@@ -21,20 +21,20 @@ test.describe('Messaging Features', () => {
     test('mark as unread, mute, delete', async ({ page }) => {
       // Ensure sync is complete before interacting
       await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp, { timeout: 30000 })
-      
+
       const getBobChat = () => page.locator('chat-list-item').filter({ hasText: 'Bob' })
       await expect(getBobChat()).toBeVisible({ timeout: 30000 })
-      
+
       console.log('Toggling read status...')
       await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
       await getBobChat().getByTestId('btn-toggle-read').click()
-      
+
       // Wait for success toast to ensure operation finished
       await expect(page.locator('.toast')).toContainText(/Marked as unread|Marked as read/, { timeout: 20000 })
-      
+
       // Verification: Dropdown label should have flipped
       await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
-      await expect(getBobChat().getByTestId("btn-toggle-read")).toContainText(/Mark as read|Mark as unread/, { timeout: 15000 })
+      await expect(getBobChat().getByTestId('btn-toggle-read')).toContainText(/Mark as read|Mark as unread/, { timeout: 15000 })
 
       console.log('Toggling mute status...')
       await getBobChat().getByTestId('btn-toggle-mute').click()
@@ -81,7 +81,7 @@ test.describe('Messaging Features', () => {
       const clientHeight = await timeline.evaluate(el => el.clientHeight)
       expect(scrollTop).toBeGreaterThan(scrollHeight - clientHeight - 100)
       await expect(aliceInput).toBeFocused()
-      
+
       await aliceContext.close()
     })
 
@@ -98,12 +98,34 @@ test.describe('Messaging Features', () => {
       await page.evaluate(async () => {
         const roomId = window.$state.activeSelectionId
         const now = Date.now()
-        const msg1 = { local_uuid: 'm1', room_id: roomId, sender_id: window.$state.currentUser.id, type: 'text', content: 'New', created_at: new Date(now).toISOString(), status: 'sent' }
-        const msg2 = { local_uuid: 'm2', room_id: roomId, sender_id: window.$state.currentUser.id, type: 'text', content: 'Old', created_at: new Date(now - 10000).toISOString(), status: 'sent' }
+        const msg1 = {
+          local_uuid: 'm1',
+          room_id: roomId,
+          sender_id: window.$state.currentUser.id,
+          type: 'text',
+          content: 'New',
+          created_at: new Date(now).toISOString(),
+          status: 'sent'
+        }
+        const msg2 = {
+          local_uuid: 'm2',
+          room_id: roomId,
+          sender_id: window.$state.currentUser.id,
+          type: 'text',
+          content: 'Old',
+          created_at: new Date(now - 10000).toISOString(),
+          status: 'sent'
+        }
         await window.$localDb.local_messages.put(msg2)
-        window.$bus.emit('db:new_local_data', { room_id: roomId, message: msg2 })
+        window.$bus.emit('db:new_local_data', {
+          room_id: roomId,
+          message: msg2
+        })
         await window.$localDb.local_messages.put(msg1)
-        window.$bus.emit('db:new_local_data', { room_id: roomId, message: msg1 })
+        window.$bus.emit('db:new_local_data', {
+          room_id: roomId,
+          message: msg1
+        })
       })
       await expect(page.locator('timeline-row').first()).toContainText('Old')
       await expect(page.locator('timeline-row').last()).toContainText('New')
@@ -172,7 +194,13 @@ test.describe('Messaging Features', () => {
       await expect(row).toBeVisible({ timeout: 20000 })
       const uuid = await row.getAttribute('data-local-uuid')
       await bobPage.evaluate(({ uuid }) => {
-        window.$bus.emit('message:send_reaction', { targetId: uuid, content: { type: 'emoji', value: '👍' } })
+        window.$bus.emit('message:send_reaction', {
+          targetId: uuid,
+          content: {
+            type: 'emoji',
+            value: '👍'
+          }
+        })
       }, { uuid })
       await expect(row.locator('.reaction-consolidated-pill')).toBeVisible({ timeout: 15000 })
       const alicePill = alicePage.locator('timeline-row').filter({ hasText: msg }).locator('.reaction-consolidated-pill')
@@ -194,10 +222,10 @@ test.describe('Messaging Features', () => {
       await page.locator('.search-result-item:has-text("charlie")').click()
       await page.fill('input[placeholder="Enter group name"]', 'Project X')
       await page.click('button:has-text("Create Room")')
-      
+
       // Wait for room to appear in list
       await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible({ timeout: 15000 })
-      
+
       await page.locator('input[placeholder="Search..."]').fill('Project')
       await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible()
 
@@ -208,7 +236,11 @@ test.describe('Messaging Features', () => {
       const bobPage = await bobContext.newPage()
       await alicePage.addInitScript(() => {
         window.playCount = 0
-        window.Audio = class extends window.Audio { play() { window.playCount++; return Promise.resolve() } }
+        window.Audio = class extends window.Audio {
+          play () {
+            window.playCount++; return Promise.resolve()
+          }
+        }
       })
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
