@@ -25,7 +25,6 @@ export default defineConfig({
     eventBus,
     statePlugin({
       initialState: {
-        isFirstRun: false,
         isAuthenticated: false,
         isVaultUnlocked: false,
         vault: {

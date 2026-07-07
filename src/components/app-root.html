@@ -41,9 +41,7 @@
           contentWrapper.appendChild(row)
           container.appendChild(contentWrapper)
 
-          if ($state.isFirstRun) {
-            col.appendChild(document.createElement('welcome-setup'))
-          } else if (!$state.isAuthenticated) {
+          if (!$state.isAuthenticated) {
             if ($state.authView === 'register') {
               col.appendChild(document.createElement('auth-register'))
             } else {
@@ -92,26 +90,11 @@
         $state.authView = 'login'
       }
 
-      // Check for first-run status
-      const checkStatus = async () => {
-        try {
-          const res = await fetch(`${pb.baseUrl}/api/status`)
-          const data = await res.json()
-          $state.isFirstRun = data.isFirstRun
-        } catch (e) {
-          console.error('Failed to check setup status:', e)
-          $state.isFirstRun = false
-        }
-      }
-
-      checkStatus().finally(() => {
-        updateUI()
-      })
+      updateUI()
 
       $state.subscribe('isAuthenticated', updateUI)
       $state.subscribe('isVaultUnlocked', updateUI)
       $state.subscribe('authView', updateUI)
-      $state.subscribe('isFirstRun', updateUI)
     }
   })
 </script>
