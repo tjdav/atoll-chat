@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "license": "MPL-2.0",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "keywords": [
     "chat",
     "real-time",
@@ -37,6 +37,7 @@
   "devDependencies": {
     "@playwright/test": "^1.61.0",
     "@stylistic/eslint-plugin": "^5.9.0",
+    "@types/node": "^26.1.0",
     "coralite": "^0.41.0",
     "coralite-scripts": "^0.41.0",
     "cross-env": "^10.1.0",
