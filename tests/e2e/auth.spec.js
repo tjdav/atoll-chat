@@ -1,6 +1,14 @@
 import { test, expect } from './fixtures/base-test.js'
 
-test.describe('Authentication Lifecycle', () => {
+test.describe('Authentication and Vault', () => {
+  test('should login and unlock vault successfully', async ({ page, loginApp }) => {
+    await loginApp('alice', 'Password123!', 'VaultPassword123!')
+
+    // Check for some element inside app-layout to be sure, e.g., the sidebar or chat list
+    await expect(page.locator('nav-sidebar')).toBeVisible()
+    await expect(page.locator('list-pane')).toBeVisible()
+  })
+
   test('should login, logout, and login again successfully', async ({ page, loginApp }) => {
     test.setTimeout(60000)
 
@@ -32,6 +40,8 @@ test.describe('Authentication Lifecycle', () => {
     console.log('--- Creating Room ---')
     await page.click('button[title="Create Room"]')
     await page.fill('input[placeholder="Search by username..."]', 'bob')
+    // Give it a bit more time for search results to appear
+    await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
     await page.click('.search-result-item:has-text("bob")')
     await page.click('button:has-text("Create Room")')
 
