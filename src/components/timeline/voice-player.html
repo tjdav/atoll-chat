@@ -22,11 +22,13 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, pocketbase, globalStore, signal, eventBus }) => {
+    client: async ({ refs, state, localDb, pocketbase, globalStore, signal, eventBus, cryptoWorker }) => {
       const { $localDb } = localDb
       const { pb } = pocketbase
       const { $state } = globalStore
       const { $bus } = eventBus
+      const { $worker } = cryptoWorker
+
       const container = refs('container')
       const loading = refs('loading')
 

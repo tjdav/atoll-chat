@@ -33,11 +33,13 @@
       imageDisplayClass: (state) => (state.title ? '' : 'd-none'),
       urlHref: (state) => state.url
     },
-    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase, signal }) => {
+    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase, signal, cryptoWorker }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
       const { pb } = pocketbase
+      const { $worker } = cryptoWorker
+
       const decryptionCache = $state.decryptionCache
       const imageContainer = refs('imageContainer')
 
