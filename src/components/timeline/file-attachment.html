@@ -140,12 +140,6 @@
               throw new Error('Message or key missing')
             }
 
-            const { default: sodium } = await import('libsodium-wrappers-sumo')
-            await sodium.ready
-            if (callId !== lastCallId || signal.aborted) {
-              return
-            }
-
             const mediaRecord = await pb.collection('media').getOne(message.media_id)
             const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
 
@@ -154,11 +148,17 @@
               throw new Error('Fetch failed')
             }
   
-            const encryptedData = new Uint8Array(await response.arrayBuffer())
-            const key = sodium.from_base64(message.file_key, sodium.base64_variants.ORIGINAL)
-            const nonce = sodium.from_base64(message.file_nonce, sodium.base64_variants.ORIGINAL)
+            const encryptedData = await response.arrayBuffer()
+            if (callId !== lastCallId || signal.aborted) {
+              return
+            }
 
-            const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
+            const decryptedData = await $worker.execute('worker:crypto_secretbox_open_easy', {
+              ciphertext: encryptedData,
+              nonce: message.file_nonce,
+              key: message.file_key
+            })
+
             if (!decryptedData) {
               throw new Error('Decryption failed')
             }

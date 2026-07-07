@@ -75,9 +75,10 @@
       },
       roomNameClass: (state) => (((state.selectedParticipants || []).length > 1) ? 'd-block' : 'd-none')
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb, bootstrap, utils, signal }) => {
+    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb, bootstrap, utils, cryptoWorker, signal }) => {
       const { pb } = pocketbase
-      const { $func } = utils
+      const { $func, $crypto } = utils
+      const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $localDb } = localDb
@@ -274,9 +275,6 @@
           state.isCreating = true
           render()
 
-          const { default: sodium } = await import('libsodium-wrappers-sumo')
-          await sodium.ready
-
           // Prepare participants
           const creator = $state.currentUser
           if (!creator) {
@@ -290,16 +288,20 @@
           ]
 
           // Generate room key and encrypt metadata
-          const roomKey = sodium.randombytes_buf(32)
+          const roomKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
           const isGroup = state.isGroup
           const roomName = isGroup ? state.roomName : ''
 
           let roomAvatarBase64 = ''
           if (state.roomAvatar) {
-            const fileBuffer = new Uint8Array(await state.roomAvatar.arrayBuffer())
-            const avatarKey = sodium.randombytes_buf(32)
-            const avatarNonce = sodium.randombytes_buf(24)
-            const encryptedAvatar = sodium.crypto_secretbox_easy(fileBuffer, avatarNonce, avatarKey)
+            const fileBuffer = await state.roomAvatar.arrayBuffer()
+            const avatarKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
+            const avatarNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+            const encryptedAvatar = await $worker.execute('worker:crypto_secretbox_easy', {
+              message: fileBuffer,
+              nonce: avatarNonce,
+              key: avatarKey
+            })
 
             // Upload encrypted avatar to media collection
             const blob = new Blob([encryptedAvatar], { type: 'application/octet-stream' })
@@ -309,8 +311,8 @@
 
             roomAvatarBase64 = JSON.stringify({
               media_id: mediaRecord.id,
-              key: sodium.to_base64(avatarKey, sodium.base64_variants.ORIGINAL),
-              nonce: sodium.to_base64(avatarNonce, sodium.base64_variants.ORIGINAL)
+              key: $crypto.toBase64(avatarKey),
+              nonce: $crypto.toBase64(avatarNonce)
             })
           }
 
@@ -318,29 +320,37 @@
             name: roomName,
             avatar: roomAvatarBase64
           })
-          const metadataNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-          const encryptedMetadata = sodium.crypto_secretbox_easy(metadata, metadataNonce, roomKey)
+          const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+          const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
+            message: metadata,
+            nonce: metadataNonce,
+            key: roomKey
+          })
 
           const metadataPayload = {
-            ciphertext: sodium.to_base64(encryptedMetadata, sodium.base64_variants.ORIGINAL),
-            nonce: sodium.to_base64(metadataNonce, sodium.base64_variants.ORIGINAL)
+            ciphertext: $crypto.toBase64(encryptedMetadata),
+            nonce: $crypto.toBase64(metadataNonce)
           }
 
           // Key wrapping loop
-          const currentUserPrivateKey = sodium.from_base64(creator.private_box_key, sodium.base64_variants.ORIGINAL)
-          const wrappedMemberRecords = participants.map(participant => {
-            const participantPublicKey = sodium.from_base64(participant.public_box_key, sodium.base64_variants.ORIGINAL)
-            const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES)
-            const encryptedKey = sodium.crypto_box_easy(roomKey, nonce, participantPublicKey, currentUserPrivateKey)
+          const wrappedMemberRecords = []
+          for (const participant of participants) {
+            const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+            const encryptedKey = await $worker.execute('worker:crypto_box_easy', {
+              message: roomKey,
+              nonce,
+              publicKey: participant.public_box_key,
+              privateKey: creator.private_box_key
+            })
 
-            return {
+            wrappedMemberRecords.push({
               user_id: participant.id,
               wrapped_by: creator.id,
-              encrypted_room_key: sodium.to_base64(encryptedKey, sodium.base64_variants.ORIGINAL),
-              key_nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL),
+              encrypted_room_key: $crypto.toBase64(encryptedKey),
+              key_nonce: $crypto.toBase64(nonce),
               role: participant.id === creator.id ? 'admin' : 'member'
-            }
-          })
+            })
+          }
 
           // Batch server transaction
           const newRoom = await pb.collection('rooms').create({
@@ -376,7 +386,7 @@
             user_role: 'admin',
             key_history: [{
               epoch_id: 1,
-              key: sodium.to_base64(roomKey, sodium.base64_variants.ORIGINAL)
+              key: $crypto.toBase64(roomKey)
             }],
             created_at: newRoom.created,
             updated_at: newRoom.updated

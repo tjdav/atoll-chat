@@ -1,7 +1,60 @@
 import { test as base, expect } from '@playwright/test'
 import PocketBase from 'pocketbase'
 import sodium from 'libsodium-wrappers-sumo'
-import { generateMasterKeys, generateSalt, deriveKeyFromPassword, encryptVault } from '../../../src/utils/cryptoUtils.js'
+
+/**
+ * Generates a 16-byte cryptographically secure salt using libsodium.
+ */
+function generateSalt (sodium) {
+  return sodium.randombytes_buf(16)
+}
+
+/**
+ * Derives a 32-byte Key Encryption Key (KEK) from a password and salt using Argon2id.
+ */
+async function deriveKeyFromPassword (password, saltUint8Array, sodium) {
+  return sodium.crypto_pwhash(
+    32,
+    password,
+    saltUint8Array,
+    sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+    sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+    sodium.crypto_pwhash_ALG_ARGON2ID13
+  )
+}
+
+/**
+ * Unified helper to generate both encryption and identity keypairs.
+ */
+async function generateMasterKeys (sodium) {
+  const { publicKey: pubBox, privateKey: privBox } = sodium.crypto_box_keypair()
+  const { publicKey: pubSign, privateKey: privSign } = sodium.crypto_sign_keypair()
+
+  return {
+    public_box_key: sodium.to_base64(pubBox, sodium.base64_variants.ORIGINAL),
+    private_box_key: sodium.to_base64(privBox, sodium.base64_variants.ORIGINAL),
+    public_sign_key: sodium.to_base64(pubSign, sodium.base64_variants.ORIGINAL),
+    private_sign_key: sodium.to_base64(privSign, sodium.base64_variants.ORIGINAL)
+  }
+}
+
+/**
+ * Encrypts the private keys using the derived KEK.
+ */
+function encryptVault (privateKeys, KEK, sodium) {
+  const vaultPlaintext = JSON.stringify({
+    private_box_key: privateKeys.private_box_key,
+    private_sign_key: privateKeys.private_sign_key
+  })
+
+  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+  const ciphertext = sodium.crypto_secretbox_easy(vaultPlaintext, nonce, KEK)
+
+  return {
+    ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+    nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+  }
+}
 
 const PB_URL = process.env.PB_URL || 'http://127.0.0.1:8090'
 const ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL || 'admin@example.com'

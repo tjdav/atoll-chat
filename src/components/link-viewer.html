@@ -31,10 +31,11 @@
     server: () => ({
       domain: ''
     }),
-    client: async ({ state, signal, refs, localDb, globalStore, pocketbase, bootstrap }) => {
+    client: async ({ state, signal, refs, localDb, globalStore, pocketbase, cryptoWorker, bootstrap }) => {
       const { $localDb } = localDb
       const { $state } = globalStore
       const { pb } = pocketbase
+      const { $worker } = cryptoWorker
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
       const carouselInner = refs('carouselInner')
@@ -90,11 +91,13 @@
               const fileUrl = pb.files.getURL(record, record.file)
               const response = await fetch(fileUrl)
               const encryptedBuffer = await response.arrayBuffer()
-              const { default: sodium } = await import('libsodium-wrappers-sumo')
-              await sodium.ready
-              const key = sodium.from_base64(msg.file_key, sodium.base64_variants.ORIGINAL)
-              const nonce = sodium.from_base64(msg.file_nonce, sodium.base64_variants.ORIGINAL)
-              const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(encryptedBuffer), nonce, key)
+
+              const decrypted = await $worker.execute('worker:crypto_secretbox_open_easy', {
+                ciphertext: encryptedBuffer,
+                nonce: msg.file_nonce,
+                key: msg.file_key
+              })
+
               const blob = new Blob([decrypted], { type: 'image/jpeg' })
               blobUrl = URL.createObjectURL(blob)
               $state.decryptionCache.set(cacheKey, blobUrl)

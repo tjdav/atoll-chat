@@ -53,8 +53,10 @@
         return (state.roomName || '').trim().length > 0
       }
     },
-    client: ({ refs, state, pocketbase, eventBus, localDb, bootstrap, signal }) => {
+    client: ({ refs, state, pocketbase, eventBus, localDb, bootstrap, cryptoWorker, utils, signal }) => {
       const { pb } = pocketbase
+      const { $crypto } = utils
+      const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { $localDb } = localDb
       const { Modal } = bootstrap
@@ -88,15 +90,17 @@
         if (room.avatar) {
           try {
             const avatarData = JSON.parse(room.avatar)
-            const { default: sodium } = await import('libsodium-wrappers-sumo')
-            await sodium.ready
             const record = await pb.collection('media').getOne(avatarData.media_id)
             const encryptedUrl = pb.files.getURL(record, record.file)
             const resp = await fetch(encryptedUrl)
             const buffer = await resp.arrayBuffer()
-            const key = sodium.from_base64(avatarData.key, sodium.base64_variants.ORIGINAL)
-            const nonce = sodium.from_base64(avatarData.nonce, sodium.base64_variants.ORIGINAL)
-            const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(buffer), nonce, key)
+
+            const decrypted = await $worker.execute('worker:crypto_secretbox_open_easy', {
+              ciphertext: buffer,
+              nonce: avatarData.nonce,
+              key: avatarData.key
+            })
+
             if (decrypted) {
               const blob = new Blob([decrypted], { type: 'image/jpeg' })
               const url = URL.createObjectURL(blob)
@@ -152,24 +156,24 @@
         render()
 
         try {
-          const { default: sodium } = await import('libsodium-wrappers-sumo')
-          await sodium.ready
-
           const room = state.activeRoom
           const roomKeyB64 = room.key_history?.find(h => h.epoch_id === 1)?.key
           if (!roomKeyB64) {
             throw new Error('Room secret key not found locally')
           }
-          const roomKey = sodium.from_base64(roomKeyB64, sodium.base64_variants.ORIGINAL)
 
           let avatarPayload = room.avatar || ''
           if (state.roomAvatar === 'CLEAR') {
             avatarPayload = ''
           } else if (state.roomAvatar instanceof File) {
-            const fileBuffer = new Uint8Array(await state.roomAvatar.arrayBuffer())
-            const avatarKey = sodium.randombytes_buf(32)
-            const avatarNonce = sodium.randombytes_buf(24)
-            const encryptedAvatar = sodium.crypto_secretbox_easy(fileBuffer, avatarNonce, avatarKey)
+            const fileBuffer = await state.roomAvatar.arrayBuffer()
+            const avatarKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
+            const avatarNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+            const encryptedAvatar = await $worker.execute('worker:crypto_secretbox_easy', {
+              message: fileBuffer,
+              nonce: avatarNonce,
+              key: avatarKey
+            })
 
             const blob = new Blob([encryptedAvatar], { type: 'application/octet-stream' })
             const formData = new FormData()
@@ -178,8 +182,8 @@
 
             avatarPayload = JSON.stringify({
               media_id: mediaRecord.id,
-              key: sodium.to_base64(avatarKey, sodium.base64_variants.ORIGINAL),
-              nonce: sodium.to_base64(avatarNonce, sodium.base64_variants.ORIGINAL)
+              key: $crypto.toBase64(avatarKey),
+              nonce: $crypto.toBase64(avatarNonce)
             })
           }
 
@@ -187,12 +191,16 @@
             name: state.roomName,
             avatar: avatarPayload
           })
-          const metadataNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-          const encryptedMetadata = sodium.crypto_secretbox_easy(metadata, metadataNonce, roomKey)
+          const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+          const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
+            message: metadata,
+            nonce: metadataNonce,
+            key: roomKeyB64
+          })
 
           const metadataPayload = {
-            ciphertext: sodium.to_base64(encryptedMetadata, sodium.base64_variants.ORIGINAL),
-            nonce: sodium.to_base64(metadataNonce, sodium.base64_variants.ORIGINAL)
+            ciphertext: $crypto.toBase64(encryptedMetadata),
+            nonce: $crypto.toBase64(metadataNonce)
           }
 
           await pb.collection('rooms').update(room.id, {

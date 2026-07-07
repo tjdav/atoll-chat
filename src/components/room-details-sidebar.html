@@ -37,8 +37,10 @@
       memberCount: (state) => (state.members || []).length,
       loadingClass: (state) => (state.isLoading ? 'd-flex' : 'd-none')
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb }) => {
+    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb, cryptoWorker, utils }) => {
       const { pb } = pocketbase
+      const { $crypto } = utils
+      const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $localDb } = localDb
@@ -161,11 +163,6 @@
         try {
           showLoading(`Rotating keys and removing ${kickedUsername}...`)
   
-          const [{ default: sodium }] = await Promise.all([
-            import('libsodium-wrappers-sumo')
-          ])
-          await sodium.ready
-
           const currentUser = $state.currentUser
 
           // 1. Identify Survivors & Generate New Key
@@ -175,21 +172,23 @@
           })
 
           const survivors = allMembers.filter(m => m.id !== kickedMemberId)
-          const newEpochKey = sodium.randombytes_buf(32)
+          const newEpochKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
 
           // 2. Wrap the New Key for Survivors
-          const adminPrivateKey = sodium.from_base64(currentUser.private_box_key, sodium.base64_variants.ORIGINAL)
-  
           const wrapPromises = survivors.map(async (survivor) => {
             const user = survivor.expand.user_id
-            const participantPublicKey = sodium.from_base64(user.public_box_key, sodium.base64_variants.ORIGINAL)
-            const nonce = sodium.randombytes_buf(sodium.crypto_box_NONCEBYTES)
-            const encryptedKey = sodium.crypto_box_easy(newEpochKey, nonce, participantPublicKey, adminPrivateKey)
+            const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+            const encryptedKey = await $worker.execute('worker:crypto_box_easy', {
+              message: newEpochKey,
+              nonce,
+              publicKey: user.public_box_key,
+              privateKey: currentUser.private_box_key
+            })
 
             return pb.collection('room_members').update(survivor.id, {
               wrapped_by: currentUser.id,
-              encrypted_room_key: sodium.to_base64(encryptedKey, sodium.base64_variants.ORIGINAL),
-              key_nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+              encrypted_room_key: $crypto.toBase64(encryptedKey),
+              key_nonce: $crypto.toBase64(nonce)
             })
           })
 
@@ -211,7 +210,7 @@
   
           localRoom.key_history.push({
             epoch_id: nextEpochId,
-            key: sodium.to_base64(newEpochKey, sodium.base64_variants.ORIGINAL)
+            key: $crypto.toBase64(newEpochKey)
           })
   
           await db.local_rooms.put(localRoom)
@@ -224,22 +223,29 @@
             timestamp: Date.now()
           })
 
-          const msgNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-          const ciphertext = sodium.crypto_secretbox_easy(plaintextObj, msgNonce, newEpochKey)
+          const msgNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+          const ciphertext = await $worker.execute('worker:crypto_secretbox_easy', {
+            message: plaintextObj,
+            nonce: msgNonce,
+            key: newEpochKey
+          })
   
-          const adminSignKey = sodium.from_base64(currentUser.private_sign_key, sodium.base64_variants.ORIGINAL)
-          const validationString = `${roomId}|${nextEpochId}|${localRoom.last_msg_id || ''}|${sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL)}`
-          const validationBuffer = new TextEncoder().encode(validationString)
-          const signature = sodium.crypto_sign_detached(validationBuffer, adminSignKey)
+          const ciphertextB64 = $crypto.toBase64(ciphertext)
+          const validationString = `${roomId}|${nextEpochId}|${localRoom.last_msg_id || ''}|${ciphertextB64}`
+          
+          const signature = await $worker.execute('worker:crypto_sign_detached', {
+            message: validationString,
+            privateKey: currentUser.private_sign_key
+          })
 
           await pb.collection('messages').create({
             room_id: roomId,
             sender_id: currentUser.id,
             epoch_id: nextEpochId,
             previous_msg_uuid: localRoom.last_msg_id || '',
-            payload: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
-            nonce: sodium.to_base64(msgNonce, sodium.base64_variants.ORIGINAL),
-            signature: sodium.to_base64(signature, sodium.base64_variants.ORIGINAL)
+            payload: ciphertextB64,
+            nonce: $crypto.toBase64(msgNonce),
+            signature: $crypto.toBase64(signature)
           })
 
           // Refresh the member list UI

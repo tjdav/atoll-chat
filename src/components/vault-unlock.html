@@ -32,10 +32,6 @@
 
   export default defineComponent({
     client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, signal }) => {
-      const [{ default: sodium }, { decryptVault }] = await Promise.all([
-        import('libsodium-wrappers-sumo'),
-        import('../utils/cryptoUtils.js')
-      ])
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $sync } = realtimeSync
@@ -125,20 +121,16 @@
 
           updateStatus('Unlocking secure vault (deriving keys)...')
   
-          await sodium.ready
-
-          const salt = sodium.from_base64(saltBase64, sodium.base64_variants.ORIGINAL)
           const KEK = await $worker.execute('worker:derive_key_from_password', {
             password,
-            salt
+            salt: saltBase64
           })
 
-          const decryptedKeys = decryptVault(
-            encryptedMasterKeys.ciphertext,
-            encryptedMasterKeys.nonce,
-            KEK,
-            sodium
-          )
+          const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
+            ciphertext: encryptedMasterKeys.ciphertext,
+            nonce: encryptedMasterKeys.nonce,
+            KEK
+          })
 
           await completeUnlock(decryptedKeys, record)
         } catch (error) {
@@ -171,24 +163,21 @@
           }
 
           updateStatus('Waiting for Passkey...')
-          const [{ default: sodium }, { deriveKeyFromPasskey, decryptVault }] = await Promise.all([
-            import('libsodium-wrappers-sumo'),
-            import('../utils/cryptoUtils.js')
-          ])
-          await sodium.ready
+          const { deriveKeyFromPasskey } = await import('../utils/cryptoUtils.js')
 
-          const credentialId = sodium.from_base64(credentialIdBase64, sodium.base64_variants.ORIGINAL)
-          const prfSalt = sodium.from_base64(prfSaltBase64, sodium.base64_variants.ORIGINAL)
           const challenge = crypto.getRandomValues(new Uint8Array(32))
 
-          const KEK = await deriveKeyFromPasskey(credentialId, challenge, prfSalt)
-
-          const decryptedKeys = decryptVault(
-            encryptedMasterKeys.ciphertext,
-            encryptedMasterKeys.nonce,
-            KEK,
-            sodium
+          const KEK = await deriveKeyFromPasskey(
+            context.utils.$crypto.fromBase64(credentialIdBase64),
+            challenge,
+            context.utils.$crypto.fromBase64(prfSaltBase64)
           )
+
+          const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
+            ciphertext: encryptedMasterKeys.ciphertext,
+            nonce: encryptedMasterKeys.nonce,
+            KEK
+          })
 
           await completeUnlock(decryptedKeys, record)
         } catch (error) {

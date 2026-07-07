@@ -8,7 +8,7 @@ import { definePlugin } from 'coralite'
 export default definePlugin({
   name: 'utils',
   client: {
-    context: (pluginContext) => {
+    context: () => {
       /**
        * Namespace: $time
        */
@@ -387,13 +387,41 @@ export default definePlugin({
         }
       }
 
+      /**
+       * Namespace: $crypto
+       * Provides native browser-based encoding and decoding helpers.
+       * Does NOT include Libsodium.
+       */
+      const crypto = {
+        toBase64: (uint8Array) => {
+          let binary = ''
+          const len = uint8Array.byteLength
+          for (let i = 0; i < len; i++) {
+            binary += String.fromCharCode(uint8Array[i])
+          }
+          return btoa(binary)
+        },
+        fromBase64: (base64) => {
+          const binaryString = atob(base64)
+          const len = binaryString.length
+          const bytes = new Uint8Array(len)
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          return bytes
+        },
+        toUint8Array: (str) => new TextEncoder().encode(str),
+        toString: (uint8Array) => new TextDecoder().decode(uint8Array)
+      }
+
       const baseNamespaces = {
         $time: time,
         $string: string,
         $list: list,
         $func: func,
         $image: image,
-        $video: video
+        $video: video,
+        $crypto: crypto
       }
 
 

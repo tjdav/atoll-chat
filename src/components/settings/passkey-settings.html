@@ -51,10 +51,11 @@
     getters: {
       passkeyStatus: (state) => (state.hasPasskey ? 'Configured' : 'Not configured')
     },
-    client: async ({ refs, state, globalStore, bootstrap, pocketbase, cryptoWorker, eventBus }) => {
+    client: async ({ refs, state, globalStore, bootstrap, pocketbase, cryptoWorker, utils, eventBus }) => {
       const { $state } = globalStore
       const { Modal } = await bootstrap
       const { pb } = pocketbase
+      const { $crypto } = utils
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
 
@@ -96,27 +97,21 @@
 
         try {
           const wasConfigured = state.hasPasskey
-          const [{ default: sodium }, { createPasskey, encryptVault, decryptVault }] = await Promise.all([
-            import('libsodium-wrappers-sumo'),
-            import('../../utils/cryptoUtils.js')
-          ])
-          await sodium.ready
+          const { createPasskey } = await import('../../utils/cryptoUtils.js')
 
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
-          const salt = sodium.from_base64(record.vault_salt, sodium.base64_variants.ORIGINAL)
   
           const KEK_Password = await $worker.execute('worker:derive_key_from_password', {
             password,
-            salt
+            salt: record.vault_salt
           })
 
           try {
-            decryptVault(
-              record.encrypted_master_keys.ciphertext,
-              record.encrypted_master_keys.nonce,
-              KEK_Password,
-              sodium
-            )
+            await $worker.execute('worker:decrypt_vault', {
+              ciphertext: record.encrypted_master_keys.ciphertext,
+              nonce: record.encrypted_master_keys.nonce,
+              KEK: KEK_Password
+            })
           } catch (err) {
             throw new Error('Invalid Vault Password')
           }
@@ -139,11 +134,14 @@
             private_sign_key: $state.currentUser.private_sign_key
           }
 
-          const encryptedVaultPasskey = encryptVault(masterKeys, KEK_Passkey, sodium)
+          const encryptedVaultPasskey = await $worker.execute('worker:encrypt_vault', {
+            privateKeys: masterKeys,
+            KEK: KEK_Passkey
+          })
 
           await pb.collection('users').update(record.id, {
-            passkey_credential_id: sodium.to_base64(credentialId, sodium.base64_variants.ORIGINAL),
-            passkey_prf_salt: sodium.to_base64(passkeyPrfSalt, sodium.base64_variants.ORIGINAL),
+            passkey_credential_id: $crypto.toBase64(credentialId),
+            passkey_prf_salt: $crypto.toBase64(passkeyPrfSalt),
             encrypted_master_keys_passkey: encryptedVaultPasskey
           })
 

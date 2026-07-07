@@ -37,11 +37,12 @@
       errorMessage: '',
       fileName: 'Untitled Document'
     }),
-    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, bootstrap }) => {
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, cryptoWorker, bootstrap }) => {
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore
       const { $media } = utils
+      const { $worker } = cryptoWorker
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
       const carouselInner = refs('carouselInner')
@@ -108,14 +109,13 @@
           const url = pb.files.getURL(mediaRecord, mediaRecord.file)
           const response = await fetch(url, { signal })
           const arrayBuffer = await response.arrayBuffer()
-          const encryptedData = new Uint8Array(arrayBuffer)
 
-          const { default: sodium } = await import('libsodium-wrappers-sumo')
-          await sodium.ready
-          const key = sodium.from_base64(item.file_key, sodium.base64_variants.ORIGINAL)
-          const nonce = sodium.from_base64(item.file_nonce, sodium.base64_variants.ORIGINAL)
+          const decryptedData = await $worker.execute('worker:crypto_secretbox_open_easy', {
+            ciphertext: arrayBuffer,
+            nonce: item.file_nonce,
+            key: item.file_key
+          })
 
-          const decryptedData = sodium.crypto_secretbox_open_easy(encryptedData, nonce, key)
           if (!decryptedData) {
             throw new Error('Decryption failed')
           }

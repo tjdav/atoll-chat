@@ -193,14 +193,6 @@
         }
 
         try {
-          updateStatus('Loading cryptographic modules...')
-          if (!cryptoModules) {
-            cryptoModules = await Promise.all([
-              import('libsodium-wrappers-sumo'),
-              import('../utils/cryptoUtils.js')
-            ])
-          }
-
           updateStatus('')
           step1.classList.add('d-none')
           step2.classList.remove('d-none')
@@ -277,12 +269,8 @@
         }
 
         try {
-          updateStatus('Initializing cryptographic modules...')
-          const [{ default: sodium }, { generateMasterKeys, generateSalt, encryptVault, createPasskey, deriveKeyFromPasskey }] = cryptoModules
-          await sodium.ready
-
           updateStatus('Generating cryptographic keys...')
-          const masterKeys = await generateMasterKeys(sodium)
+          const masterKeys = await $worker.execute('worker:generate_master_keys')
   
           let encryptionPayload = {
             public_box_key: masterKeys.public_box_key,
@@ -291,17 +279,21 @@
 
           if (vaultMode === 'password') {
             updateStatus('Securing vault with Password (deriving keys)...')
-            const salt = generateSalt(sodium)
-            const KEK = await $worker.execute('deriveKeyFromPassword', {
+            const salt = await $worker.execute('worker:randombytes_buf', { length: 16 })
+            const KEK = await $worker.execute('worker:derive_key_from_password', {
               password: vaultPassword,
               salt
             })
-            const encryptedVault = encryptVault(masterKeys, KEK, sodium)
+            const encryptedVault = await $worker.execute('worker:encrypt_vault', {
+              privateKeys: masterKeys,
+              KEK
+            })
 
-            encryptionPayload.vault_salt = sodium.to_base64(salt, sodium.base64_variants.ORIGINAL)
+            encryptionPayload.vault_salt = context.utils.$crypto.toBase64(salt)
             encryptionPayload.encrypted_master_keys = encryptedVault
           } else {
             updateStatus('Waiting for Passkey registration...')
+            const { createPasskey, deriveKeyFromPasskey } = await import('../utils/cryptoUtils.js')
             const challenge = crypto.getRandomValues(new Uint8Array(32))
             const passkeyPrfSalt = crypto.getRandomValues(new Uint8Array(32))
   
@@ -316,10 +308,13 @@
               KEK = await deriveKeyFromPasskey(credentialId, challenge, passkeyPrfSalt)
             }
 
-            const encryptedVault = encryptVault(masterKeys, KEK, sodium)
+            const encryptedVault = await $worker.execute('worker:encrypt_vault', {
+              privateKeys: masterKeys,
+              KEK
+            })
 
-            encryptionPayload.passkey_credential_id = sodium.to_base64(credentialId, sodium.base64_variants.ORIGINAL)
-            encryptionPayload.passkey_prf_salt = sodium.to_base64(passkeyPrfSalt, sodium.base64_variants.ORIGINAL)
+            encryptionPayload.passkey_credential_id = context.utils.$crypto.toBase64(credentialId)
+            encryptionPayload.passkey_prf_salt = context.utils.$crypto.toBase64(passkeyPrfSalt)
             encryptionPayload.encrypted_master_keys_passkey = encryptedVault
           }
 
@@ -367,8 +362,8 @@
           updateStatus('Initializing session...')
 
           // Initialize the crypto worker
-          await $worker.execute('SET_TOKEN', { token: pb.authStore.token })
-          await $worker.execute('INIT_KEYS', {
+          await $worker.execute('worker:set_token', { token: pb.authStore.token })
+          await $worker.execute('worker:init_keys', {
             id: pb.authStore.model.id,
             private_box_key: masterKeys.private_box_key,
             private_sign_key: masterKeys.private_sign_key

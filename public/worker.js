@@ -208,7 +208,7 @@ async function handleEvent (event) {
       const KEK = await sodium.crypto_pwhash(
         32,
         password,
-        salt,
+        typeof salt === 'string' ? sodium.from_base64(salt, sodium.base64_variants.ORIGINAL) : salt,
         sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
         sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
         sodium.crypto_pwhash_ALG_ARGON2ID13
@@ -218,6 +218,119 @@ async function handleEvent (event) {
         type,
         result: KEK
       })
+      return
+    }
+
+    // Low-level Libsodium primitives
+    if (type === 'worker:crypto_secretbox_easy') {
+      const { message, nonce, key } = payload
+      const result = sodium.crypto_secretbox_easy(
+        typeof message === 'string' ? message : new Uint8Array(message),
+        typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
+        typeof key === 'string' ? sodium.from_base64(key, sodium.base64_variants.ORIGINAL) : key
+      )
+      self.postMessage({ id, type, result })
+      return
+    }
+
+    if (type === 'worker:crypto_secretbox_open_easy') {
+      const { ciphertext, nonce, key } = payload
+      const result = sodium.crypto_secretbox_open_easy(
+        typeof ciphertext === 'string' ? sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL) : new Uint8Array(ciphertext),
+        typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
+        typeof key === 'string' ? sodium.from_base64(key, sodium.base64_variants.ORIGINAL) : key
+      )
+      self.postMessage({ id, type, result })
+      return
+    }
+
+    if (type === 'worker:crypto_box_easy') {
+      const { message, nonce, publicKey, privateKey } = payload
+      const result = sodium.crypto_box_easy(
+        typeof message === 'string' ? message : new Uint8Array(message),
+        typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
+        typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey,
+        typeof privateKey === 'string' ? sodium.from_base64(privateKey, sodium.base64_variants.ORIGINAL) : privateKey
+      )
+      self.postMessage({ id, type, result })
+      return
+    }
+
+    if (type === 'worker:crypto_box_open_easy') {
+      const { ciphertext, nonce, publicKey, privateKey } = payload
+      const result = sodium.crypto_box_open_easy(
+        typeof ciphertext === 'string' ? sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL) : new Uint8Array(ciphertext),
+        typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
+        typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey,
+        typeof privateKey === 'string' ? sodium.from_base64(privateKey, sodium.base64_variants.ORIGINAL) : privateKey
+      )
+      self.postMessage({ id, type, result })
+      return
+    }
+
+    if (type === 'worker:crypto_sign_detached') {
+      const { message, privateKey } = payload
+      const result = sodium.crypto_sign_detached(
+        typeof message === 'string' ? new TextEncoder().encode(message) : new Uint8Array(message),
+        typeof privateKey === 'string' ? sodium.from_base64(privateKey, sodium.base64_variants.ORIGINAL) : privateKey
+      )
+      self.postMessage({ id, type, result })
+      return
+    }
+
+    if (type === 'worker:randombytes_buf') {
+      const { length } = payload
+      const result = sodium.randombytes_buf(length)
+      self.postMessage({ id, type, result })
+      return
+    }
+
+    // High-level tasks (replacing cryptoUtils.js)
+    if (type === 'worker:generate_master_keys') {
+      const encryptionKeys = sodium.crypto_box_keypair()
+      const identityKeys = sodium.crypto_sign_keypair()
+      const result = {
+        public_box_key: sodium.to_base64(encryptionKeys.publicKey, sodium.base64_variants.ORIGINAL),
+        private_box_key: sodium.to_base64(encryptionKeys.privateKey, sodium.base64_variants.ORIGINAL),
+        public_sign_key: sodium.to_base64(identityKeys.publicKey, sodium.base64_variants.ORIGINAL),
+        private_sign_key: sodium.to_base64(identityKeys.privateKey, sodium.base64_variants.ORIGINAL)
+      }
+      self.postMessage({ id, type, result })
+      return
+    }
+
+    if (type === 'worker:encrypt_vault') {
+      const { privateKeys, KEK } = payload
+      const vaultPlaintext = JSON.stringify({
+        private_box_key: privateKeys.private_box_key,
+        private_sign_key: privateKeys.private_sign_key
+      })
+      const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+      const ciphertext = sodium.crypto_secretbox_easy(
+        vaultPlaintext,
+        nonce,
+        typeof KEK === 'string' ? sodium.from_base64(KEK, sodium.base64_variants.ORIGINAL) : KEK
+      )
+      const result = {
+        ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+        nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+      }
+      self.postMessage({ id, type, result })
+      return
+    }
+
+    if (type === 'worker:decrypt_vault') {
+      const { ciphertext, nonce, KEK } = payload
+      const decrypted = sodium.crypto_secretbox_open_easy(
+        sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+        sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL),
+        typeof KEK === 'string' ? sodium.from_base64(KEK, sodium.base64_variants.ORIGINAL) : KEK
+      )
+      if (!decrypted) {
+        throw new Error('Failed to decrypt vault. Invalid Password or corrupt data.')
+      }
+      const result = JSON.parse(sodium.to_string(decrypted))
+      self.postMessage({ id, type, result })
       return
     }
 

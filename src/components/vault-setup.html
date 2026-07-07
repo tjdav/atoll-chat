@@ -45,8 +45,9 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker }) => {
+    client: ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, utils }) => {
       const { pb } = pocketbase
+      const { $crypto } = utils
       const { $bus } = eventBus
       const { $sync } = realtimeSync
       const { $state } = globalStore
@@ -163,28 +164,24 @@
         }
 
         try {
-          updateStatus('Initializing cryptographic modules...')
-          const [{ default: sodium }, { generateMasterKeys, generateSalt, encryptVault }] = await Promise.all([
-            import('libsodium-wrappers-sumo'),
-            import('../utils/cryptoUtils.js')
-          ])
-          await sodium.ready
-
           updateStatus('Generating cryptographic keys...')
-          const masterKeys = await generateMasterKeys(sodium)
-          const salt = generateSalt(sodium)
+          const masterKeys = await $worker.execute('worker:generate_master_keys')
+          const salt = await $worker.execute('worker:randombytes_buf', { length: 16 })
 
           updateStatus('Securing vault with Password (deriving keys)...')
           const KEK = await $worker.execute('worker:derive_key_from_password', {
             password,
             salt
           })
-          const encryptedVault = encryptVault(masterKeys, KEK, sodium)
+          const encryptedVault = await $worker.execute('worker:encrypt_vault', {
+            privateKeys: masterKeys,
+            KEK
+          })
 
           await initializeVault(masterKeys, {
             public_box_key: masterKeys.public_box_key,
             public_sign_key: masterKeys.public_sign_key,
-            vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
+            vault_salt: $crypto.toBase64(salt),
             encrypted_master_keys: encryptedVault
           })
         } catch (error) {
@@ -195,15 +192,10 @@
 
       btnPasskey.addEventListener('click', async () => {
         try {
-          updateStatus('Initializing cryptographic modules...')
-          const [{ default: sodium }, { generateMasterKeys, createPasskey, deriveKeyFromPasskey, encryptVault }] = await Promise.all([
-            import('libsodium-wrappers-sumo'),
-            import('../utils/cryptoUtils.js')
-          ])
-          await sodium.ready
+          const { createPasskey, deriveKeyFromPasskey } = await import('../utils/cryptoUtils.js')
 
           updateStatus('Generating cryptographic keys...')
-          const masterKeys = await generateMasterKeys(sodium)
+          const masterKeys = await $worker.execute('worker:generate_master_keys')
 
           updateStatus('Waiting for Passkey registration...')
           const challenge = crypto.getRandomValues(new Uint8Array(32))
@@ -223,13 +215,16 @@
             updateStatus('Securing vault with Passkey...')
           }
 
-          const encryptedVault = encryptVault(masterKeys, KEK, sodium)
+          const encryptedVault = await $worker.execute('worker:encrypt_vault', {
+            privateKeys: masterKeys,
+            KEK
+          })
 
           await initializeVault(masterKeys, {
             public_box_key: masterKeys.public_box_key,
             public_sign_key: masterKeys.public_sign_key,
-            passkey_credential_id: sodium.to_base64(credentialId, sodium.base64_variants.ORIGINAL),
-            passkey_prf_salt: sodium.to_base64(passkeyPrfSalt, sodium.base64_variants.ORIGINAL),
+            passkey_credential_id: $crypto.toBase64(credentialId),
+            passkey_prf_salt: $crypto.toBase64(passkeyPrfSalt),
             encrypted_master_keys_passkey: encryptedVault
           })
         } catch (error) {

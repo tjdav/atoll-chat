@@ -107,16 +107,16 @@
             return
           }
 
-          const { default: sodium } = await import('libsodium-wrappers-sumo')
-          await sodium.ready
+          const decrypted = await $worker.execute('worker:crypto_secretbox_open_easy', {
+            ciphertext: encryptedBuffer,
+            nonce: msg.file_nonce,
+            key: msg.file_key
+          })
+
           if (callId !== lastCallId || signal.aborted) {
             return
           }
 
-          const key = sodium.from_base64(msg.file_key, sodium.base64_variants.ORIGINAL)
-          const nonce = sodium.from_base64(msg.file_nonce, sodium.base64_variants.ORIGINAL)
-  
-          const decrypted = sodium.crypto_secretbox_open_easy(new Uint8Array(encryptedBuffer), nonce, key)
           if (!decrypted) {
             throw new Error('Decryption failed')
           }
