@@ -254,6 +254,10 @@
 
         state.remoteOffer = offer
 
+        if (!roomId) {
+          return
+        }
+
         const room = await $localDb.local_rooms.get(roomId)
         if (room) {
           const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)

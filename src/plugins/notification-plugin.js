@@ -85,6 +85,9 @@ export default definePlugin({
           }
 
           try {
+            if (!roomId) {
+              return
+            }
             const room = await $localDb.local_rooms.get(roomId)
             if (!room) {
               return
@@ -175,6 +178,10 @@ export default definePlugin({
           }
 
           if (isCatchingUp) {
+            return
+          }
+
+          if (!roomId) {
             return
           }
 

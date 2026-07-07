@@ -86,8 +86,8 @@
           }
 
           // 1. Synchronous Cache Check
-          const cached = $state.decryptionCache.get(state.localUuid)
-          if (cached) {
+          const cached = state.localUuid ? $state.decryptionCache.get(state.localUuid) : null
+          if (cached && state.localUuid) {
             const isVideo = (cached.mimeType || '').startsWith('video/')
             const objectUrl = isVideo ? cached.thumbnailBlobUrl : (cached.blobUrl || cached)
             if (objectUrl) {
@@ -97,6 +97,9 @@
           }
 
           // 2. Async Lifecycle: Fetch from DB and Decrypt
+          if (!state.localUuid) {
+            return
+          }
           const message = await $localDb.local_messages.get(state.localUuid)
           if (callId !== lastCallId || signal.aborted) {
             return

@@ -47,9 +47,9 @@
         }
       }
 
-      const saveScrollPosition = (id) => {
-        const roomId = id || $state.activeSelectionId
-        if (!roomId || !container || container.scrollHeight === 0) {
+      const saveScrollPosition = (idOrEvent) => {
+        const roomId = typeof idOrEvent === 'string' ? idOrEvent : $state.activeSelectionId
+        if (!roomId || typeof roomId !== 'string' || !container || container.scrollHeight === 0) {
           return
         }
 
@@ -57,13 +57,16 @@
           $state.scrollPositions = {}
         }
 
-        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50
+        const isNearBottom = container.clientHeight > 0 && (container.scrollHeight - container.scrollTop - container.clientHeight < 50)
         const pos = isNearBottom ? -1 : container.scrollTop
   
-        $state.scrollPositions[roomId] = pos
+        // Only save if it's the current room OR if we are explicitly told which room to save for
+        if (typeof idOrEvent === 'string' || roomId === $state.activeSelectionId) {
+          $state.scrollPositions[roomId] = pos
+        }
       }
 
-      container.addEventListener('scroll', $func.debounce(saveScrollPosition, 150))
+      container.addEventListener('scroll', $func.debounce(() => saveScrollPosition(), 150))
 
       const updateSeenStatus = (messageId) => {
         const roomId = $state.activeSelectionId
@@ -127,6 +130,9 @@
         }
 
         try {
+          if (!roomId) {
+            return
+          }
           let [messages, room] = await Promise.all([
             $localDb.local_messages.where('room_id').equals(roomId).sortBy('created_at'),
             $localDb.local_rooms.get(roomId)
@@ -496,10 +502,10 @@
             if (savedPos !== undefined && savedPos !== -1) {
               // Ensure content is rendered before restoring scroll
               setTimeout(() => {
-                if (container) {
+                if (container && roomId === $state.activeSelectionId) {
                   container.scrollTop = savedPos
                 }
-              }, 50)
+              }, 100)
             } else {
               requestAnimationFrame(() => scrollToBottom())
               // Extra safety for media that might load instantly from cache
@@ -510,7 +516,8 @@
             forceScrollToBottom = false
           } else {
             // New messages arrived, smooth scroll if we are already near bottom
-            const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100
+            const isNearBottom = container.scrollHeight > container.clientHeight &&
+                                 container.scrollHeight - container.scrollTop - container.clientHeight < 100
             if (isNearBottom) {
               scrollToBottom(true)
             }

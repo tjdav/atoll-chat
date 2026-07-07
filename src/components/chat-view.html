@@ -66,7 +66,7 @@
       state.isRoomDetailsOpen = $state.isRoomDetailsOpen || false
 
       const updateRoomInfo = async (roomId) => {
-        if (!roomId || $state.activeSelectionType !== 'chats') {
+        if (!roomId || typeof roomId !== 'string' || $state.activeSelectionType !== 'chats') {
           return
         }
   

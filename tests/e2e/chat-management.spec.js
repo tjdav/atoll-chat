@@ -111,6 +111,7 @@ test.describe('Chat Management', () => {
       await alicePage.fill('input[placeholder="Search by username..."]', 'bob')
       await alicePage.click('.search-result-item:has-text("bob")')
       await alicePage.click('button:has-text("Create Room")')
+      await expect(alicePage.locator('chat-view')).toBeVisible()
 
       const roomId = await alicePage.evaluate(() => window.$state.activeSelectionId)
       const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' })
@@ -154,11 +155,14 @@ test.describe('Chat Management', () => {
     })
 
     test('Deep Linking Restoration', async ({ page }) => {
+      // Logout first since beforeEach logs us in
+      await page.click('button[title="Logout"]')
+      await expect(page.locator('input[placeholder*="username"]')).toBeVisible()
+
       await page.goto('/?view=music')
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-      // Wait for login form to be visible in case of initial run
       await expect(page.locator('input[placeholder*="username"]')).toBeVisible({ timeout: 15000 })
 
       await page.fill('input[placeholder*="username"]', 'alice')
@@ -168,6 +172,7 @@ test.describe('Chat Management', () => {
       await page.fill('vault-unlock input[placeholder*="Password"]', 'VaultPassword123!')
       await page.click('vault-unlock button:has-text("Unlock with Password")')
       await expect(page).toHaveURL(/view=music/, { timeout: 20000 })
+      await expect(page.locator('music-list')).toBeVisible({ timeout: 15000 })
     })
 
     test('Timeline Scroll Restoration', async ({ page }) => {

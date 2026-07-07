@@ -213,7 +213,7 @@
 
       const updatingRooms = new Set()
       const handleUpdateInPlace = async (roomId) => {
-        if (!listGroup || updatingRooms.has(roomId)) {
+        if (!listGroup || updatingRooms.has(roomId) || !roomId) {
           return
         }
         updatingRooms.add(roomId)
