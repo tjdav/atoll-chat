@@ -103,6 +103,12 @@
         mobileNav.show()
       })
 
+      $bus.on('ui:selection_made', () => {
+        if (window.innerWidth < 576) {
+          mobileNav.hide()
+        }
+      })
+
       $state.subscribe('currentAppView', (val) => {
         state.currentAppView = val
       })

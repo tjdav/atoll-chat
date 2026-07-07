@@ -67,6 +67,7 @@
             btn.innerHTML = `<div class="list-item-icon d-flex align-items-center justify-content-center"><i class="bi bi-file-earmark-fill fs-5"></i></div><div class="text-truncate flex-grow-1"><div class="fw-bold text-truncate">${item.filename || 'Unnamed File'}</div><small class="text-body-secondary d-block text-truncate">${roomName} • ${timestamp}</small></div><i class="bi bi-chevron-right ms-auto text-body-secondary opacity-50"></i>`
             btn.onclick = () => {
               $state.activeSelectionId = item.id; $state.activeSelectionType = 'documents'
+              $bus.emit('ui:selection_made')
               debouncedRender()
             }
             fragment.appendChild(btn)

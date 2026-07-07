@@ -37,6 +37,7 @@
       if (btn) {
         btn.onclick = () => {
           $bus.emit('MUSIC:SELECT', { assetId: state.assetId })
+          $bus.emit('ui:selection_made')
         }
       }
     }

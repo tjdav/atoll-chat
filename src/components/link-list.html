@@ -94,6 +94,7 @@
             btn.onclick = () => {
               $state.activeSelectionType = 'links'
               $state.activeSelectionId = selectionId
+              $bus.emit('ui:selection_made')
               debouncedRender()
             }
             fragment.appendChild(btn)

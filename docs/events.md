@@ -40,6 +40,7 @@ Manage user interface states, modals, and notifications.
 | `ui:voice_discarded` | Emitted when a voice recording is cancelled. | None |
 | `ui:cancel` | Generic UI cancellation event. | None |
 | `ui:dismiss_link_preview` | Closes the link metadata preview in the chat input. | None |
+| `ui:selection_made` | Signals that a selection (chat, media, etc.) has been confirmed by the user. | None |
 
 ### Database & Sync (`db:`, `sync:`)
 Handle data persistence and server synchronization states.

@@ -71,6 +71,7 @@
             assetId: state.assetId,
             type: state.type
           })
+          $bus.emit('ui:selection_made')
         }
       }
 

@@ -153,6 +153,7 @@
             return
           }
           emitBusAction('CHAT:SELECT')
+          $bus.emit('ui:selection_made')
         }, { signal })
       }
     }
