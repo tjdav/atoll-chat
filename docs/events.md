@@ -33,7 +33,7 @@ Manage user interface states, modals, and notifications.
 | `ui:emoji_selected` | Emitted when an emoji is chosen from the picker. | `{ emoji }` |
 | `ui:open_edit_room` | Opens the room settings/management modal. | `Room` object |
 | `ui:open_create_room` | Opens the room creation modal. | None |
-| `ui:trigger_kick_user` | Triggers the flow to remove a user from a group. | `{ roomId, userId }` |
+| `ui:trigger_kick_user` | Triggers the flow to remove a user from a group. | `{ room_id, user_id }` |
 | `ui:close_room_details` | Closes the room information sidebar. | None |
 | `ui:media_loaded` | Notifies the timeline that an asset (image/video) has finished loading. | None |
 | `ui:voice_ready` | Emitted when a voice recording is captured and ready to send. | `{ blob, duration, waveform }` |
@@ -56,7 +56,7 @@ Events related to chat rooms and message delivery/interaction.
 
 | Event Name | Description | Payload |
 |------------|-------------|---------|
-| `room:read_state_changed` | Triggered when a room is marked as read or active selection changes. | `roomId` |
+| `room:read_state_changed` | Triggered when a room is marked as read or active selection changes. | `room_id` |
 | `room:member_updated` | Notifies that a participant's read status or metadata has changed. | `{ room_id }` |
 | `message:sent` | Emitted after a message is successfully encrypted and uploaded. | `Message` object |
 | `message:send_reaction` | Request to send a reaction to a specific message. | `{ targetId, emoji }` |
@@ -80,9 +80,9 @@ Events for real-time WebRTC audio and video communication.
 | Event Name | Description | Payload |
 |------------|-------------|---------|
 | `call:initiated_locally` | Triggered when the local user starts a new call. | `{ localStream }` |
-| `call:incoming` | Notifies the UI of a new incoming call offer. | `{ roomId, offer, senderId }` |
-| `call:ended` | Signals that a call session has terminated. | `{ roomId }` |
-| `call:remote_track_arrival` | Emitted when a remote media track is received and ready for display. | `{ roomId, stream, track }` |
+| `call:incoming` | Notifies the UI of a new incoming call offer. | `{ room_id, offer, senderId }` |
+| `call:ended` | Signals that a call session has terminated. | `{ room_id }` |
+| `call:remote_track_arrival` | Emitted when a remote media track is received and ready for display. | `{ room_id, stream, track }` |
 | `call:local_stream_available` | Emitted when the local camera/mic stream is initialized. | `{ stream }` |
 
 ### Picture-in-Picture (`pip:`)
@@ -107,4 +107,4 @@ Communication between the main thread and the cryptographic background worker.
 | Event Name | Description | Payload |
 |------------|-------------|---------|
 | `worker:ready` | Emitted when the worker script is fully loaded. | None |
-| `worker:initialized` | Emitted after the worker successfully loads identity keys. | `{ userId }` |
+| `worker:initialized` | Emitted after the worker successfully loads identity keys. | `{ user_id }` |
