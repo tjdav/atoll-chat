@@ -238,7 +238,7 @@
       })
 
       // Listen for incoming calls
-      $bus.on('call:incoming', async ({ roomId, offer, senderId }) => {
+      $bus.on('call:incoming', async ({ room_id, offer, senderId }) => {
         if (senderId === $state.currentUser?.id) {
           return
         }
@@ -249,16 +249,16 @@
         }
 
         // Set room ID and status IMMEDIATELY to prevent race conditions during catch-up sync
-        $state.activeCallRoomId = roomId
+        $state.activeCallRoomId = room_id
         $state.set('callStatus', 'incoming')
 
         state.remoteOffer = offer
 
-        if (!roomId) {
+        if (!room_id) {
           return
         }
 
-        const room = await $localDb.local_rooms.get(roomId)
+        const room = await $localDb.local_rooms.get(room_id)
         if (room) {
           const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
           if (!room.is_group && participants.length > 0) {
@@ -284,8 +284,8 @@
       }, { signal })
 
       // Listen for call ended from remote
-      $bus.on('call:ended', ({ roomId }) => {
-        if ($state.activeCallRoomId === roomId) {
+      $bus.on('call:ended', ({ room_id }) => {
+        if ($state.activeCallRoomId === room_id) {
           stopTracks()
           $state.set('callStatus', 'idle')
           $state.activeCallRoomId = null

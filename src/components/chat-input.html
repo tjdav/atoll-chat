@@ -153,7 +153,7 @@
 
       const dispatchMessage = async (params) => {
         const localUuid = crypto.randomUUID()
-        const roomId = $state.activeSelectionId
+        const room_id = $state.activeSelectionId
 
         // Optimistic Media Cache (Sender side)
         if (params.file) {
@@ -175,7 +175,7 @@
         const optimisticMessage = {
           local_uuid: localUuid,
           id: null,
-          room_id: roomId,
+          room_id: room_id,
           sender_id: $state.currentUser.id,
           type: params.type,
           content: params.content,
@@ -192,14 +192,14 @@
 
         await $localDb.local_messages.put(optimisticMessage)
         $bus.emit('db:new_local_data', {
-          room_id: roomId,
+          room_id: room_id,
           message: optimisticMessage
         })
 
         // Dispatch to worker
         console.log('[chat-input] Dispatching worker:send_message to worker', { localUuid })
         const result = await $worker.execute('worker:send_message', {
-          roomId,
+          room_id,
           localUuid,
           ...params
         })

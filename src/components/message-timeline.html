@@ -28,7 +28,7 @@
       const statusText = refs('statusText')
       const statusIcon = refs('statusIcon')
 
-      let lastRoomId = null
+      let last_room_id = null
       let lastView = null
       let seenTimeout = null
       let lastRenderedMessageId = null
@@ -48,8 +48,8 @@
       }
 
       const saveScrollPosition = (idOrEvent) => {
-        const roomId = typeof idOrEvent === 'string' ? idOrEvent : $state.activeSelectionId
-        if (!roomId || typeof roomId !== 'string' || !container || container.scrollHeight === 0) {
+        const room_id = typeof idOrEvent === 'string' ? idOrEvent : $state.activeSelectionId
+        if (!room_id || typeof room_id !== 'string' || !container || container.scrollHeight === 0) {
           return
         }
 
@@ -61,16 +61,16 @@
         const pos = isNearBottom ? -1 : container.scrollTop
   
         // Only save if it's the current room OR if we are explicitly told which room to save for
-        if (typeof idOrEvent === 'string' || roomId === $state.activeSelectionId) {
-          $state.scrollPositions[roomId] = pos
+        if (typeof idOrEvent === 'string' || room_id === $state.activeSelectionId) {
+          $state.scrollPositions[room_id] = pos
         }
       }
 
       container.addEventListener('scroll', $func.debounce(() => saveScrollPosition(), 150))
 
       const updateSeenStatus = (messageId) => {
-        const roomId = $state.activeSelectionId
-        if (!roomId || !messageId) {
+        const room_id = $state.activeSelectionId
+        if (!room_id || !messageId) {
           return
         }
 
@@ -80,7 +80,7 @@
         seenTimeout = setTimeout(async () => {
           try {
             const members = await pb.collection('room_members').getList(1, 1, {
-              filter: `room_id = "${roomId}" && user_id = "${$state.currentUser.id}"`
+              filter: `room_id = "${room_id}" && user_id = "${$state.currentUser.id}"`
             })
             if (members.items.length > 0) {
               const member = members.items[0]
@@ -112,17 +112,17 @@
       })
 
       const renderTimeline = async () => {
-        const roomId = $state.activeSelectionId
+        const room_id = $state.activeSelectionId
         const type = $state.activeSelectionType
 
-        if (!roomId || type !== 'chats') {
+        if (!room_id || type !== 'chats') {
           lastView = type
           return
         }
 
-        const isNewRoom = roomId !== lastRoomId || lastView !== 'chats'
+        const isNewRoom = room_id !== last_room_id || lastView !== 'chats'
         if (isNewRoom) {
-          lastRoomId = roomId
+          last_room_id = room_id
           lastView = type
           lastRenderedMessageId = null
           container.innerHTML = ''
@@ -130,15 +130,15 @@
         }
 
         try {
-          if (!roomId) {
+          if (!room_id) {
             return
           }
           let [messages, room] = await Promise.all([
-            $localDb.local_messages.where('room_id').equals(roomId).sortBy('created_at'),
-            $localDb.local_rooms.get(roomId)
+            $localDb.local_messages.where('room_id').equals(room_id).sortBy('created_at'),
+            $localDb.local_rooms.get(room_id)
           ])
 
-          if ($state.activeSelectionId !== roomId) {
+          if ($state.activeSelectionId !== room_id) {
             return
           }
           const participants = room?.participants || []
@@ -498,11 +498,11 @@
           }
 
           if (isNewRoom) {
-            const savedPos = $state.scrollPositions?.[roomId]
+            const savedPos = $state.scrollPositions?.[room_id]
             if (savedPos !== undefined && savedPos !== -1) {
               // Ensure content is rendered before restoring scroll
               setTimeout(() => {
-                if (container && roomId === $state.activeSelectionId) {
+                if (container && room_id === $state.activeSelectionId) {
                   container.scrollTop = savedPos
                 }
               }, 100)
@@ -573,8 +573,8 @@
       })
 
       $bus.on('message:send_reaction', async (payload) => {
-        const roomId = $state.activeSelectionId
-        if (!roomId) {
+        const room_id = $state.activeSelectionId
+        if (!room_id) {
           return
         }
 
@@ -608,7 +608,7 @@
         // We don't do an optimistic write for reactions in the timeline,
         // but we do send it to the worker which will save it and emit db:new_local_data
         await $worker.execute('worker:send_message', {
-          roomId,
+          room_id,
           localUuid,
           ...params
         })

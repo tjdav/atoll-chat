@@ -60,16 +60,6 @@
         const div = document.createElement('div')
         div.className = 'avatar-circle d-flex align-items-center justify-content-center w-40px h-40px flex-shrink-0'
   
-        // Handle decrypted room avatar if it exists
-        if (room.avatar) {
-          try {
-            const avatarData = JSON.parse(room.avatar)
-            // Note: In a real scenario we might want to decrypt this here,
-            // but for simplicity in the share modal we'll fall back to initials
-            // if not easily available. Or we could use the same logic as chat-list-item.
-          } catch (e) {
-          }
-        }
 
         // Simplified avatar logic for the modal
         if (!room.is_group) {
@@ -201,9 +191,9 @@
             }
           }
 
-          const sendPromises = Array.from(selectedRoomIds).map(roomId => {
+          const sendPromises = Array.from(selectedRoomIds).map(room_id => {
             return $worker.execute('worker:send_message', {
-              roomId,
+              room_id,
               localUuid: crypto.randomUUID(),
               ...shareParams,
               timestamp: Date.now()

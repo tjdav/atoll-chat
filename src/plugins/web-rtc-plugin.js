@@ -34,13 +34,13 @@ export default function webrtcPlugin ({
         let globalWorker = null
         let isSignalingSetup = false
 
-        const teardownCall = (roomId) => {
-          console.log(`[WebRTC] Tearing down call for room ${roomId}`)
-          if (globalState && globalState.activeCallRoomId === roomId) {
+        const teardownCall = (room_id) => {
+          console.log(`[WebRTC] Tearing down call for room ${room_id}`)
+          if (globalState && globalState.activeCallRoomId === room_id) {
             globalState.remoteStream = null
             globalState.hasRemoteVideo = false
           }
-          const pc = activeCalls.get(roomId)
+          const pc = activeCalls.get(room_id)
           if (pc) {
             // Stop all senders
             pc.getSenders().forEach(sender => {
@@ -62,38 +62,38 @@ export default function webrtcPlugin ({
             pc.ontrack = null
             pc.onconnectionstatechange = null
             pc.close()
-            activeCalls.delete(roomId)
-            console.log(`[WebRTC] PeerConnection closed and removed for room ${roomId}`)
+            activeCalls.delete(room_id)
+            console.log(`[WebRTC] PeerConnection closed and removed for room ${room_id}`)
           }
-          pendingCandidates.delete(roomId)
+          pendingCandidates.delete(room_id)
 
           // Clear candidate batching state
-          if (candidateTimers.has(roomId)) {
-            clearTimeout(candidateTimers.get(roomId))
-            candidateTimers.delete(roomId)
+          if (candidateTimers.has(room_id)) {
+            clearTimeout(candidateTimers.get(room_id))
+            candidateTimers.delete(room_id)
           }
-          candidateBuffers.delete(roomId)
+          candidateBuffers.delete(room_id)
         }
 
         window.addEventListener('beforeunload', () => {
-          for (const roomId of activeCalls.keys()) {
-            teardownCall(roomId)
+          for (const room_id of activeCalls.keys()) {
+            teardownCall(room_id)
           }
         })
 
         $bus.on('auth:logout', () => {
-          for (const roomId of activeCalls.keys()) {
-            teardownCall(roomId)
+          for (const room_id of activeCalls.keys()) {
+            teardownCall(room_id)
           }
         })
 
-        const applyPendingCandidates = async (roomId, pc) => {
-          const candidates = pendingCandidates.get(roomId)
+        const applyPendingCandidates = async (room_id, pc) => {
+          const candidates = pendingCandidates.get(room_id)
           if (!candidates || candidates.length === 0) {
             return
           }
 
-          console.log(`[WebRTC] Replaying ${candidates.length} pending candidates for room ${roomId}`)
+          console.log(`[WebRTC] Replaying ${candidates.length} pending candidates for room ${room_id}`)
           while (candidates.length > 0) {
             const candidate = candidates.shift()
             try {
@@ -102,18 +102,18 @@ export default function webrtcPlugin ({
               console.error(`[WebRTC] Failed to add replayed ICE candidate:`, err)
             }
           }
-          pendingCandidates.delete(roomId)
+          pendingCandidates.delete(room_id)
         }
 
-        const sendSignalingMessage = async (roomId, type, payload = {}) => {
+        const sendSignalingMessage = async (room_id, type, payload = {}) => {
           if (!globalWorker) {
             console.error('[WebRTC] Cannot send signaling message: worker not initialized')
             return
           }
           const localUuid = crypto.randomUUID()
-          console.log(`[WebRTC] Sending signaling message: ${type} for room ${roomId}`)
+          console.log(`[WebRTC] Sending signaling message: ${type} for room ${room_id}`)
           await globalWorker.execute('worker:send_message', {
-            roomId,
+            room_id,
             localUuid,
             type,
             ...payload,
@@ -121,40 +121,40 @@ export default function webrtcPlugin ({
           })
         }
 
-        const setupPeerConnection = (roomId, mediaStream, $state) => {
-          if (activeCalls.has(roomId)) {
-            console.warn(`[WebRTC] PeerConnection already exists for room ${roomId}, closing old one.`)
-            teardownCall(roomId)
+        const setupPeerConnection = (room_id, mediaStream, $state) => {
+          if (activeCalls.has(room_id)) {
+            console.warn(`[WebRTC] PeerConnection already exists for room ${room_id}, closing old one.`)
+            teardownCall(room_id)
           }
 
-          console.log(`[WebRTC] Setting up PeerConnection for room ${roomId}`)
+          console.log(`[WebRTC] Setting up PeerConnection for room ${room_id}`)
           const pc = new RTCPeerConnection(rtcConfig)
           if (mediaStream) {
             mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
           }
           pc.oniceconnectionstatechange = () => {
-            console.log(`[WebRTC] ICE Connection State changed for room ${roomId}: ${pc.iceConnectionState}`)
+            console.log(`[WebRTC] ICE Connection State changed for room ${room_id}: ${pc.iceConnectionState}`)
           }
           pc.onicecandidate = (event) => {
             if (event.candidate) {
-              if (!candidateBuffers.has(roomId)) {
-                candidateBuffers.set(roomId, [])
+              if (!candidateBuffers.has(room_id)) {
+                candidateBuffers.set(room_id, [])
               }
-              candidateBuffers.get(roomId).push(event.candidate.toJSON())
+              candidateBuffers.get(room_id).push(event.candidate.toJSON())
 
-              if (candidateTimers.has(roomId)) {
+              if (candidateTimers.has(room_id)) {
                 return
               }
 
               const timer = setTimeout(async () => {
-                candidateTimers.delete(roomId)
-                const candidates = candidateBuffers.get(roomId)
+                candidateTimers.delete(room_id)
+                const candidates = candidateBuffers.get(room_id)
                 if (candidates && candidates.length > 0) {
-                  candidateBuffers.set(roomId, [])
-                  await sendSignalingMessage(roomId, 'ice_candidate', { candidates })
+                  candidateBuffers.set(room_id, [])
+                  await sendSignalingMessage(room_id, 'ice_candidate', { candidates })
                 }
               }, 500)
-              candidateTimers.set(roomId, timer)
+              candidateTimers.set(room_id, timer)
             }
           }
           pc.ontrack = (event) => {
@@ -164,19 +164,19 @@ export default function webrtcPlugin ({
               $state.hasRemoteVideo = true
             }
             $bus.emit('call:remote_track_arrival', {
-              roomId,
+              room_id,
               stream,
               track: event.track
             })
           }
           pc.onconnectionstatechange = () => {
-            console.log(`[WebRTC] Connection State changed for room ${roomId}: ${pc.connectionState}`)
+            console.log(`[WebRTC] Connection State changed for room ${room_id}: ${pc.connectionState}`)
             if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
-              teardownCall(roomId)
-              $bus.emit('call:ended', { roomId })
+              teardownCall(room_id)
+              $bus.emit('call:ended', { room_id })
             }
           }
-          activeCalls.set(roomId, pc)
+          activeCalls.set(room_id, pc)
           return pc
         }
 
@@ -191,7 +191,7 @@ export default function webrtcPlugin ({
           console.log('[WebRTC] Initializing global signaling listener')
 
           $bus.on('db:new_local_data', async (payload) => {
-            const { room_id: roomId, message: message } = payload
+            const { room_id: room_id, message: message } = payload
             if (!message) {
               return
             }
@@ -220,43 +220,43 @@ export default function webrtcPlugin ({
 
             try {
               if (message.type === 'call_offer') {
-                console.log(`[WebRTC] Received call_offer for room ${roomId}`)
+                console.log(`[WebRTC] Received call_offer for room ${room_id}`)
                 $bus.emit('call:incoming', {
-                  roomId,
+                  room_id,
                   offer: message.content,
                   senderId: message.sender_id
                 })
               } else if (message.type === 'call_answer') {
-                console.log(`[WebRTC] Received call_answer for room ${roomId}`)
-                const pc = activeCalls.get(roomId)
+                console.log(`[WebRTC] Received call_answer for room ${room_id}`)
+                const pc = activeCalls.get(room_id)
                 if (pc) {
                   if (pc.signalingState === 'have-local-offer') {
                     await pc.setRemoteDescription(new RTCSessionDescription(message.content))
-                    console.log(`[WebRTC] Remote description set for room ${roomId}`)
-                    await applyPendingCandidates(roomId, pc)
+                    console.log(`[WebRTC] Remote description set for room ${room_id}`)
+                    await applyPendingCandidates(room_id, pc)
                   } else {
                     console.warn(`[WebRTC] PC in state ${pc.signalingState}, skipping setRemoteDescription`)
                   }
                 }
               } else if (message.type === 'ice_candidate') {
-                const pc = activeCalls.get(roomId)
+                const pc = activeCalls.get(room_id)
                 const candidates = message.candidates || (message.candidate ? [message.candidate] : [])
-                console.log(`[WebRTC] Received ${candidates.length} ICE candidates for room ${roomId}`)
+                console.log(`[WebRTC] Received ${candidates.length} ICE candidates for room ${room_id}`)
 
                 for (const candidate of candidates) {
                   if (pc && pc.remoteDescription && pc.remoteDescription.type) {
                     await pc.addIceCandidate(new RTCIceCandidate(candidate))
                   } else {
-                    if (!pendingCandidates.has(roomId)) {
-                      pendingCandidates.set(roomId, [])
+                    if (!pendingCandidates.has(room_id)) {
+                      pendingCandidates.set(room_id, [])
                     }
-                    pendingCandidates.get(roomId).push(candidate)
+                    pendingCandidates.get(room_id).push(candidate)
                   }
                 }
               } else if (message.type === 'call_end') {
-                console.log(`[WebRTC] Received call_end for room ${roomId}`)
-                teardownCall(roomId)
-                $bus.emit('call:ended', { roomId })
+                console.log(`[WebRTC] Received call_end for room ${room_id}`)
+                teardownCall(room_id)
+                $bus.emit('call:ended', { room_id })
               }
             } catch (err) {
               console.error(`[WebRTC] Error handling signaling message (${message.type}):`, err)
@@ -271,27 +271,27 @@ export default function webrtcPlugin ({
 
           return {
             $webrtc: {
-              initiateCall: async (roomId, mediaStream) => {
-                const pc = setupPeerConnection(roomId, mediaStream, $state)
+              initiateCall: async (room_id, mediaStream) => {
+                const pc = setupPeerConnection(room_id, mediaStream, $state)
                 const offer = await pc.createOffer()
                 await pc.setLocalDescription(offer)
                 const hasVideo = mediaStream.getVideoTracks().length > 0
-                await sendSignalingMessage(roomId, 'call_offer', {
+                await sendSignalingMessage(room_id, 'call_offer', {
                   content: offer,
                   media_types: hasVideo ? ['audio', 'video'] : ['audio']
                 })
               },
-              answerCall: async (roomId, mediaStream, remoteOffer) => {
-                const pc = setupPeerConnection(roomId, mediaStream, $state)
+              answerCall: async (room_id, mediaStream, remoteOffer) => {
+                const pc = setupPeerConnection(room_id, mediaStream, $state)
                 await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer))
-                await applyPendingCandidates(roomId, pc)
+                await applyPendingCandidates(room_id, pc)
                 const answer = await pc.createAnswer()
                 await pc.setLocalDescription(answer)
-                await sendSignalingMessage(roomId, 'call_answer', { content: answer })
+                await sendSignalingMessage(room_id, 'call_answer', { content: answer })
               },
-              endCall: async (roomId) => {
-                teardownCall(roomId)
-                await sendSignalingMessage(roomId, 'call_end')
+              endCall: async (room_id) => {
+                teardownCall(room_id)
+                await sendSignalingMessage(room_id, 'call_end')
               }
             }
           }

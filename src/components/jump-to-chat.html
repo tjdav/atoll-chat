@@ -23,28 +23,28 @@
             return
           }
 
-          let roomId = null
+          let room_id = null
           let messageId = null
 
           try {
             if (type === 'links') {
               const msg = await $localDb.local_messages.get(id)
               if (msg) {
-                roomId = msg.room_id
+                room_id = msg.room_id
                 messageId = id
               }
             } else {
               // For pictures, videos, music, documents
               const asset = await $localDb.local_assets.get(id)
               if (asset) {
-                roomId = asset.room_id
+                room_id = asset.room_id
                 messageId = asset.message_id
               }
 
               // Fallback for older assets without message_id
-              if (!messageId && roomId) {
+              if (!messageId && room_id) {
                 const msg = await $localDb.local_messages
-                  .where('room_id').equals(roomId)
+                  .where('room_id').equals(room_id)
                   .filter(m => m.media_id === id)
                   .first()
                 if (msg) {
@@ -53,9 +53,9 @@
               }
             }
 
-            if (roomId && messageId) {
+            if (room_id && messageId) {
               $state.currentAppView = 'chats'
-              $state.activeSelectionId = roomId
+              $state.activeSelectionId = room_id
               $state.activeSelectionType = 'chats'
   
               // Wait for timeline to mount and then emit scroll

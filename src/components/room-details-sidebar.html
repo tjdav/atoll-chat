@@ -56,15 +56,15 @@
       }
 
       const fetchMembers = async () => {
-        const roomId = $state.activeSelectionId
-        if (!roomId) {
+        const room_id = $state.activeSelectionId
+        if (!room_id) {
           return
         }
 
         showLoading('Fetching members...')
         try {
           const members = await pb.collection('room_members').getFullList({
-            filter: pb.filter('room_id = {:roomId}', { roomId }),
+            filter: pb.filter('room_id = {:room_id}', { room_id }),
             expand: 'user_id'
           })
 
@@ -149,7 +149,7 @@
           kickedMemberId: member.id,
           kickedUserId: user.id,
           kickedUsername: userName,
-          roomId: $state.activeSelectionId
+          room_id: $state.activeSelectionId
         })
       }
 
@@ -158,7 +158,7 @@
 
       // Listen for global kick events (we'll handle the logic here)
       $bus.on('ui:trigger_kick_user', async (data) => {
-        const { kickedMemberId, kickedUserId, kickedUsername, roomId } = data
+        const { kickedMemberId, kickedUserId, kickedUsername, room_id } = data
   
         try {
           showLoading(`Rotating keys and removing ${kickedUsername}...`)
@@ -167,7 +167,7 @@
 
           // 1. Identify Survivors & Generate New Key
           const allMembers = await pb.collection('room_members').getFullList({
-            filter: pb.filter('room_id = {:roomId}', { roomId }),
+            filter: pb.filter('room_id = {:room_id}', { room_id }),
             expand: 'user_id'
           })
 
@@ -201,7 +201,7 @@
 
           // 4. Update the Local Cache (Key History)
           const db = await $localDb()
-          const localRoom = await db.local_rooms.get(roomId)
+          const localRoom = await db.local_rooms.get(room_id)
           const nextEpochId = (localRoom.key_history || []).length + 1
   
           if (!localRoom.key_history) {
@@ -231,7 +231,7 @@
           })
   
           const ciphertextB64 = $crypto.toBase64(ciphertext)
-          const validationString = `${roomId}|${nextEpochId}|${localRoom.last_msg_id || ''}|${ciphertextB64}`
+          const validationString = `${room_id}|${nextEpochId}|${localRoom.last_msg_id || ''}|${ciphertextB64}`
   
           const signature = await $worker.execute('worker:crypto_sign_detached', {
             message: validationString,
@@ -239,7 +239,7 @@
           })
 
           await pb.collection('messages').create({
-            room_id: roomId,
+            room_id: room_id,
             sender_id: currentUser.id,
             epoch_id: nextEpochId,
             previous_msg_uuid: localRoom.last_msg_id || '',
@@ -252,7 +252,7 @@
           await fetchMembers()
   
           // Notify the app of new local data to refresh timeline if needed
-          $bus.emit('db:new_local_data', { room_id: roomId })
+          $bus.emit('db:new_local_data', { room_id: room_id })
   
         } catch (err) {
           console.error('[room-details-sidebar] Kick flow failed:', err)

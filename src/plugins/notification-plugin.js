@@ -72,7 +72,7 @@ export default definePlugin({
             return
           }
 
-          const { room_id: roomId, message } = payload
+          const { room_id: room_id, message } = payload
           if (!message || message.sender_id === $state.currentUser?.id) {
             return
           }
@@ -80,15 +80,15 @@ export default definePlugin({
           // Suppress if the user is already looking at this chat and the window is focused
           if (document.visibilityState === 'visible' &&
                 $state.currentAppView === 'chats' &&
-                $state.activeSelectionId === roomId) {
+                $state.activeSelectionId === room_id) {
             return
           }
 
           try {
-            if (!roomId) {
+            if (!room_id) {
               return
             }
-            const room = await $localDb.local_rooms.get(roomId)
+            const room = await $localDb.local_rooms.get(room_id)
             if (!room) {
               return
             }
@@ -136,10 +136,10 @@ export default definePlugin({
             const options = {
               body,
               icon: '/images/icon-coralite.avif',
-              tag: roomId,
+              tag: room_id,
               renotify: true,
               data: {
-                roomId,
+                room_id,
                 messageId: message.id || message.local_uuid
               }
             }
@@ -159,7 +159,7 @@ export default definePlugin({
 
               $state.currentAppView = 'chats'
               $state.activeSelectionType = 'chats'
-              $state.activeSelectionId = roomId
+              $state.activeSelectionId = room_id
 
               // Use the existing message:scroll_to mechanism
               $bus.emit('message:scroll_to', { messageId: message.id || message.local_uuid })
@@ -172,7 +172,7 @@ export default definePlugin({
 
         $bus.on('db:new_local_data', async (payload) => {
           const isCatchingUp = $state.isCatchingUp
-          const { room_id: roomId, message } = payload
+          const { room_id: room_id, message } = payload
           if (!message || message.sender_id === $state.currentUser?.id) {
             return
           }
@@ -181,11 +181,11 @@ export default definePlugin({
             return
           }
 
-          if (!roomId) {
+          if (!room_id) {
             return
           }
 
-          const room = await $localDb.local_rooms.get(roomId)
+          const room = await $localDb.local_rooms.get(room_id)
           const me = room?.participants?.find(p => p.id === $state.currentUser?.id)
           const isMuted = me?.is_muted
 
@@ -198,7 +198,7 @@ export default definePlugin({
             // Logic similar to showNotification for suppression
             const isSuppressed = document.visibilityState === 'visible' &&
               $state.currentAppView === 'chats' &&
-              $state.activeSelectionId === roomId
+              $state.activeSelectionId === room_id
 
             if (!isSuppressed) {
               playMessageSound()

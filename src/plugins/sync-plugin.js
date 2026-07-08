@@ -125,7 +125,7 @@ export default function syncPlugin () {
                 } else if (e.action === 'delete') {
                   if (e.record.user_id === pb.authStore.model.id) {
                     // User was removed from a room or deleted the chat
-                    $worker.execute('worker:delete_local_room', { roomId: e.record.room_id }).catch(console.error)
+                    $worker.execute('worker:delete_local_room', { room_id: e.record.room_id }).catch(console.error)
                   }
                 }
               })

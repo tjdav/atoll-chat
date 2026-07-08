@@ -110,7 +110,7 @@
 
       const emitBusAction = (name, detail = {}) => {
         $bus.emit(name, {
-          roomId: state.roomId,
+          room_id: state.roomId,
           ...detail
         })
       }

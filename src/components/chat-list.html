@@ -10,7 +10,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils, fuse, pocketbase, cryptoWorker }) => {
+    client: ({ state, localDb, eventBus, globalStore, refs, utils, fuse, pocketbase, cryptoWorker }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
@@ -23,10 +23,10 @@
 
       const BATCH_SIZE = 24
 
-      const getLatestMessage = async (roomId) => {
+      const getLatestMessage = async (room_id) => {
         const messages = await $localDb.local_messages
           .where('[room_id+created_at]')
-          .between([roomId, ''], [roomId, '\uffff'])
+          .between([room_id, ''], [room_id, '\uffff'])
           .reverse()
           .toArray()
         return messages.find(m => m.type !== 'reaction' && m.type !== 'ice_candidate')
@@ -161,7 +161,7 @@
       }
 
       const updateItemAttributes = (el, data) => {
-        el.setAttribute('room-id', data.item.id)
+        el.setAttribute('room_id', data.item.id)
         el.setAttribute('room-name', data.roomName)
         el.setAttribute('preview-text', data.previewText)
         el.setAttribute('relative-time', data.relativeTime)
@@ -212,35 +212,35 @@
       })
 
       const updatingRooms = new Set()
-      const handleUpdateInPlace = async (roomId) => {
-        if (!listGroup || updatingRooms.has(roomId) || !roomId) {
+      const handleUpdateInPlace = async (room_id) => {
+        if (!listGroup || updatingRooms.has(room_id) || !room_id) {
           return
         }
-        updatingRooms.add(roomId)
+        updatingRooms.add(room_id)
         try {
-          const room = await $localDb.local_rooms.get(roomId)
+          const room = await $localDb.local_rooms.get(room_id)
           if (!room) {
-            const existingItem = listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)
+            const existingItem = listGroup.querySelector(`chat-list-item[room_id="${room_id}"]`)
             if (existingItem) {
               existingItem.remove()
             }
-            const idx = manager.loadedItems.findIndex(i => i.item.id === roomId)
+            const idx = manager.loadedItems.findIndex(i => i.item.id === room_id)
             if (idx !== -1) {
               manager.loadedItems.splice(idx, 1)
             }
             return
           }
           const data = await enrichItem(room)
-          if (!updatingRooms.has(roomId)) {
+          if (!updatingRooms.has(room_id)) {
             return
           }
-          const idx = manager.loadedItems.findIndex(i => i.item.id === roomId)
+          const idx = manager.loadedItems.findIndex(i => i.item.id === room_id)
           if (idx !== -1) {
             manager.loadedItems.splice(idx, 1)
           }
           manager.loadedItems.unshift(data)
 
-          const existingItem = listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)
+          const existingItem = listGroup.querySelector(`chat-list-item[room_id="${room_id}"]`)
           if (existingItem) {
             updateItemAttributes(existingItem, data)
             if (listGroup.firstElementChild !== existingItem) {
@@ -251,23 +251,23 @@
             if (emptyState && emptyState.textContent.includes('No chats found')) {
               emptyState.remove()
             }
-            if (!listGroup.querySelector(`chat-list-item[room-id="${roomId}"]`)) {
+            if (!listGroup.querySelector(`chat-list-item[room_id="${room_id}"]`)) {
               const newItem = document.createElement('chat-list-item')
               updateItemAttributes(newItem, data)
               listGroup.prepend(newItem)
             }
           }
         } finally {
-          updatingRooms.delete(roomId)
+          updatingRooms.delete(room_id)
         }
       }
 
-      const markAsRead = async (roomId) => {
-        const room = await $localDb.local_rooms.get(roomId)
+      const markAsRead = async (room_id) => {
+        const room = await $localDb.local_rooms.get(room_id)
         if (!room) {
           return
         }
-        const latestMsg = await getLatestMessage(roomId)
+        const latestMsg = await getLatestMessage(room_id)
         if (!latestMsg) {
           return
         }
@@ -276,28 +276,28 @@
           me.last_read_message_id = latestMsg.id
           await $localDb.local_rooms.put(room)
           try {
-            const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+            const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
             if (memberRecord) {
               await pb.collection('room_members').update(memberRecord.id, { last_read_message_id: latestMsg.id }, { requestKey: null })
             }
           } catch (err) {
             console.error('[chat-list] Failed to update read status:', err)
           }
-          $bus.emit('room:read_state_changed', roomId)
+          $bus.emit('room:read_state_changed', room_id)
         }
       }
 
-      $bus.on('CHAT:SELECT', async ({ roomId }) => {
-        $state.activeSelectionId = roomId
+      $bus.on('CHAT:SELECT', async ({ room_id }) => {
+        $state.activeSelectionId = room_id
         $state.activeSelectionType = 'chats'
-        const item = manager.loadedItems.find(i => i.item.id === roomId)
+        const item = manager.loadedItems.find(i => i.item.id === room_id)
         if (item?.isUnread) {
-          await markAsRead(roomId)
+          await markAsRead(room_id)
         }
       })
 
-      $bus.on('CHAT:TOGGLE_READ', async ({ roomId, isUnread }) => {
-        const room = await $localDb.local_rooms.get(roomId)
+      $bus.on('CHAT:TOGGLE_READ', async ({ room_id, isUnread }) => {
+        const room = await $localDb.local_rooms.get(room_id)
         if (!room) {
           return
         }
@@ -307,7 +307,7 @@
         }
         let newLastReadId = null
         if (isUnread) {
-          const latestMsg = await getLatestMessage(roomId)
+          const latestMsg = await getLatestMessage(room_id)
           if (latestMsg) {
             newLastReadId = latestMsg.id
           }
@@ -315,22 +315,22 @@
         me.last_read_message_id = newLastReadId
         await $localDb.local_rooms.put(room)
         try {
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
           if (memberRecord) {
             await pb.collection('room_members').update(memberRecord.id, { last_read_message_id: newLastReadId }, { requestKey: null })
           }
         } catch (err) {
           console.error('[chat-list] Failed to toggle read status:', err)
         }
-        $bus.emit('room:read_state_changed', roomId)
+        $bus.emit('room:read_state_changed', room_id)
         $bus.emit('ui:show_toast', {
           message: newLastReadId === null ? 'Marked as unread' : 'Marked as read',
           type: 'success'
         })
       })
 
-      $bus.on('CHAT:TOGGLE_MUTE', async ({ roomId, isMuted }) => {
-        const room = await $localDb.local_rooms.get(roomId)
+      $bus.on('CHAT:TOGGLE_MUTE', async ({ room_id, isMuted }) => {
+        const room = await $localDb.local_rooms.get(room_id)
         if (!room) {
           return
         }
@@ -342,40 +342,40 @@
         me.is_muted = newMuteStatus
         await $localDb.local_rooms.put(room)
         try {
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
           if (memberRecord) {
             await pb.collection('room_members').update(memberRecord.id, { is_muted: newMuteStatus }, { requestKey: null })
           }
         } catch (err) {
           console.error('[chat-list] Failed to toggle mute status:', err)
         }
-        $bus.emit('room:member_updated', { room_id: roomId })
+        $bus.emit('room:member_updated', { room_id: room_id })
         $bus.emit('ui:show_toast', {
           message: newMuteStatus ? 'Notifications muted' : 'Notifications unmuted',
           type: 'success'
         })
       })
 
-      $bus.on('CHAT:DELETE', async ({ roomId, isGroup }) => {
+      $bus.on('CHAT:DELETE', async ({ room_id, isGroup }) => {
         const confirmMessage = isGroup ? 'Are you sure you want to leave this group?' : 'Are you sure you want to delete this chat?'
         if (!confirm(confirmMessage)) {
           return
         }
         try {
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
           if (memberRecord) {
             await pb.collection('room_members').delete(memberRecord.id, { requestKey: null })
           }
-          const room = await $localDb.local_rooms.get(roomId)
+          const room = await $localDb.local_rooms.get(room_id)
           if (!isGroup && room?.participants?.length <= 1) {
-            await pb.collection('rooms').delete(roomId, { requestKey: null })
+            await pb.collection('rooms').delete(room_id, { requestKey: null })
           }
-          await $worker.execute('worker:delete_local_room', { roomId })
+          await $worker.execute('worker:delete_local_room', { room_id })
           $bus.emit('ui:show_toast', {
             message: isGroup ? 'Left group' : 'Chat deleted',
             type: 'success'
           })
-          if ($state.activeSelectionId === roomId) {
+          if ($state.activeSelectionId === room_id) {
             $state.activeSelectionId = null
           }
         } catch (err) {
@@ -383,8 +383,8 @@
         }
       })
 
-      $bus.on('CHAT:EDIT_ROOM', async ({ roomId }) => {
-        const room = await $localDb.local_rooms.get(roomId)
+      $bus.on('CHAT:EDIT_ROOM', async ({ room_id }) => {
+        const room = await $localDb.local_rooms.get(room_id)
         if (room) {
           $bus.emit('ui:open_edit_room', room)
         }
@@ -396,7 +396,7 @@
       $bus.on('db:new_local_room', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('db:room_deleted', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id))
-      $bus.on('room:read_state_changed', (roomId) => handleUpdateInPlace(roomId))
+      $bus.on('room:read_state_changed', (room_id) => handleUpdateInPlace(room_id))
       $bus.on('sync:complete', () => {
         manager.reset(); debouncedRender()
       })

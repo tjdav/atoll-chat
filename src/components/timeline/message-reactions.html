@@ -123,8 +123,8 @@
           pill.appendChild(countSpan)
         }
   
-        const roomId = $state.activeSelectionId
-        const room = await $localDb.local_rooms.get(roomId)
+        const room_id = $state.activeSelectionId
+        const room = await $localDb.local_rooms.get(room_id)
         const participants = room?.participants || []
   
         const attributionLines = emojiEntries.map(([emoji, userIds]) => {

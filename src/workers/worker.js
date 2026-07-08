@@ -437,7 +437,7 @@ async function fetchWithTimeout (resource, options = {}) {
 
 async function sendMessage (rpcId, payload) {
   const {
-    roomId,
+    room_id,
     localUuid,
     type,
     content,
@@ -466,7 +466,7 @@ async function sendMessage (rpcId, payload) {
     throw new Error('User identity keys not found in worker')
   }
 
-  const room = await db.local_rooms.get(roomId)
+  const room = await db.local_rooms.get(room_id)
   if (!room || !room.key_history || room.key_history.length === 0) {
     throw new Error('Encryption keys not found for this room')
   }
@@ -609,19 +609,19 @@ async function sendMessage (rpcId, payload) {
   // Fetch causal link (previous_msg_uuid)
   const lastMsg = await db.local_messages
     .where('[room_id+created_at]')
-    .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
+    .between([room_id, Dexie.minKey], [room_id, Dexie.maxKey])
     .last()
   const previousMsgId = lastMsg ? (lastMsg.id || lastMsg.local_uuid) : 'START'
 
   // Sign Message
-  const validationString = `${roomId}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
+  const validationString = `${room_id}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
   const validationBuffer = new TextEncoder().encode(validationString)
   const privateSignKeyBuffer = sodium.from_base64(currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
   const signatureBuffer = sodium.crypto_sign_detached(validationBuffer, privateSignKeyBuffer)
 
   // Server upload
   const uploadPayload = {
-    room_id: roomId,
+    room_id: room_id,
     sender_id: currentUserKeys.id,
     epoch_id: latestEpochId,
     payload: {
@@ -669,17 +669,17 @@ async function sendMessage (rpcId, payload) {
     await db.local_assets.put({
       id: mediaId,
       media_id: mediaId,
-      room_id: roomId,
+      room_id,
       message_id: localUuid,
-      filename: filename,
-      mime_type: mime_type,
+      filename,
+      mime_type,
       file_key: fileKeyBase64,
       file_nonce: fileNonceBase64,
       created_at: pbRecord.created,
-      music_metadata: music_metadata,
+      music_metadata,
       album_art: albumArtInfo,
       thumbnail: thumbnailInfo,
-      duration: duration
+      duration
     })
   }
 
@@ -691,7 +691,7 @@ async function sendMessage (rpcId, payload) {
       // For reactions or other types that might not have been optimistically written yet
       await db.local_messages.put({
         local_uuid: localUuid,
-        room_id: roomId,
+        room_id: room_id,
         sender_id: currentUserKeys.id,
         type,
         content,
@@ -705,7 +705,7 @@ async function sendMessage (rpcId, payload) {
     ? {
       ...plaintextObj,
       ...updateData,
-      room_id: roomId,
+      room_id,
       sender_id: currentUserKeys.id
     }
     : await db.local_messages.get(localUuid)
@@ -713,7 +713,7 @@ async function sendMessage (rpcId, payload) {
   self.postMessage({
     type: 'db:new_local_data',
     payload: {
-      room_id: roomId,
+      room_id,
       message: fullMessage
     }
   })
@@ -731,7 +731,7 @@ async function sendMessage (rpcId, payload) {
 async function processIncomingMessage (rpcId, record) {
   const {
     id,
-    room_id: roomId,
+    room_id,
     epoch_id: epochId,
     sender_id: senderId,
     payload,
@@ -755,7 +755,7 @@ async function processIncomingMessage (rpcId, record) {
         self.postMessage({
           type: 'db:new_local_data',
           payload: {
-            room_id: roomId,
+            room_id,
             message: fullMessage
           }
         })
@@ -807,7 +807,7 @@ async function processIncomingMessage (rpcId, record) {
   const signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
   const publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
 
-  const validationString = `${roomId}|${epochId}|${previousMsgUuid}|${ciphertext}|${nonce}`
+  const validationString = `${room_id}|${epochId}|${previousMsgUuid}|${ciphertext}|${nonce}`
   const validationBuffer = new TextEncoder().encode(validationString)
 
   const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
@@ -816,9 +816,9 @@ async function processIncomingMessage (rpcId, record) {
   }
 
   // Symmetric Decryption (X25519)
-  const room = await db.local_rooms.get(roomId)
+  const room = await db.local_rooms.get(room_id)
   if (!room) {
-    throw new Error(`Local room ${roomId} not found`)
+    throw new Error(`Local room ${room_id} not found`)
   }
 
   const activeEpoch = room.key_history?.find(h => h.epoch_id === epochId)
@@ -849,7 +849,7 @@ async function processIncomingMessage (rpcId, record) {
   const decryptedMessage = {
     id,
     local_uuid: decryptedPayload.local_uuid || id,
-    room_id: roomId,
+    room_id: room_id,
     sender_id: senderId,
     type,
     content,
@@ -881,7 +881,7 @@ async function processIncomingMessage (rpcId, record) {
     await db.local_assets.put({
       id: media_id,
       media_id,
-      room_id: roomId,
+      room_id: room_id,
       message_id: decryptedMessage.local_uuid,
       filename,
       mime_type,
@@ -907,7 +907,7 @@ async function processIncomingMessage (rpcId, record) {
   self.postMessage({
     type: 'db:new_local_data',
     payload: {
-      room_id: roomId,
+      room_id: room_id,
       message: decryptedMessage
     }
   })
@@ -953,14 +953,14 @@ async function updateRoomMember (rpcId, record) {
 }
 
 async function deleteLocalRoom (rpcId, payload) {
-  const { roomId } = payload
-  await db.local_messages.where('room_id').equals(roomId).delete()
-  await db.local_assets.where('room_id').equals(roomId).delete()
-  await db.local_rooms.delete(roomId)
+  const { room_id } = payload
+  await db.local_messages.where('room_id').equals(room_id).delete()
+  await db.local_assets.where('room_id').equals(room_id).delete()
+  await db.local_rooms.delete(room_id)
 
   self.postMessage({
     type: 'db:room_deleted',
-    payload: { room_id: roomId }
+    payload: { room_id: room_id }
   })
 
   self.postMessage({

@@ -156,12 +156,12 @@
       })
 
       // Listen for remote track arrival
-      $bus.on('call:remote_track_arrival', ({ roomId, stream, track }) => {
-        if (roomId && roomId !== $state.activeCallRoomId) {
+      $bus.on('call:remote_track_arrival', ({ room_id, stream, track }) => {
+        if (room_id && room_id !== $state.activeCallRoomId) {
           return
         }
 
-        console.log(`[video-grid] Remote track arrival: ${track.kind} for room ${roomId}`)
+        console.log(`[video-grid] Remote track arrival: ${track.kind} for room ${room_id}`)
         if (track.kind === 'video' && remoteVideo) {
           attachRemoteStream(stream)
         } else if (track.kind === 'audio') {
@@ -171,7 +171,7 @@
 
           // Cleanup audio on call end or unmount
           const cleanup = (e) => {
-            if (e?.roomId && e.roomId !== roomId) {
+            if (e?.room_id && e.room_id !== room_id) {
               return
             }
             audio.pause()
@@ -185,8 +185,8 @@
       }, { signal })
 
       // Listen for call ended to release UI resources immediately
-      $bus.on('call:ended', ({ roomId }) => {
-        if (roomId && roomId !== $state.activeCallRoomId) {
+      $bus.on('call:ended', ({ room_id }) => {
+        if (room_id && room_id !== $state.activeCallRoomId) {
           return
         }
         if (remoteVideo) {
