@@ -55,7 +55,7 @@ test.describe('Messaging Features', () => {
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
 
       await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username..."]', 'bob')
+      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
       await alicePage.click('.search-result-item:has-text("bob")')
       await alicePage.click('button:has-text("Create Room")')
 
@@ -89,18 +89,18 @@ test.describe('Messaging Features', () => {
       test.slow()
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
       await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username..."]', 'bob')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
       await page.click('.search-result-item:has-text("bob")')
       await page.click('button:has-text("Create Room")')
       await expect(page.locator('chat-view')).toBeVisible()
 
       await page.evaluate(async () => {
-        const roomId = window.$state.activeSelectionId
+        const room_id = window.$state.activeSelectionId
         const now = Date.now()
         const msg1 = {
           local_uuid: 'm1',
-          room_id: roomId,
+          room_id,
           sender_id: window.$state.currentUser.id,
           type: 'text',
           content: 'New',
@@ -109,7 +109,7 @@ test.describe('Messaging Features', () => {
         }
         const msg2 = {
           local_uuid: 'm2',
-          room_id: roomId,
+          room_id,
           sender_id: window.$state.currentUser.id,
           type: 'text',
           content: 'Old',
@@ -118,12 +118,12 @@ test.describe('Messaging Features', () => {
         }
         await window.$localDb.local_messages.put(msg2)
         window.$bus.emit('db:new_local_data', {
-          room_id: roomId,
+          room_id,
           message: msg2
         })
         await window.$localDb.local_messages.put(msg1)
         window.$bus.emit('db:new_local_data', {
-          room_id: roomId,
+          room_id,
           message: msg1
         })
       })
@@ -137,7 +137,7 @@ test.describe('Messaging Features', () => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
       await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username..."]', 'bob')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.click('.search-result-item:has-text("bob")')
       await page.click('button:has-text("Create Room")')
       const md = '# H1\n## H2\n**B**\n*I*\n- L\n> Q\n`C`\n\n| T | H |\n|---|---|\n| R | V |\n\n[G](https://google.com)'
@@ -159,7 +159,7 @@ test.describe('Messaging Features', () => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
       await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username..."]', 'bob')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.click('.search-result-item:has-text("bob")')
       await page.click('button:has-text("Create Room")')
       await page.fill('textarea', 'https://google.com https://github.com ')
@@ -181,7 +181,7 @@ test.describe('Messaging Features', () => {
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
       await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username..."]', 'bob')
+      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
       await alicePage.click('.search-result-item:has-text("bob")')
       await alicePage.click('button:has-text("Create Room")')
       const msg = 'React ' + Date.now()
@@ -214,10 +214,10 @@ test.describe('Messaging Features', () => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
       await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username..."]', 'bob')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
       await page.locator('.search-result-item:has-text("bob")').click()
-      await page.fill('input[placeholder="Search by username..."]', 'charlie')
+      await page.fill('input[placeholder="Search by username or email..."]', 'charlie')
       await page.waitForSelector('.search-result-item:has-text("charlie")', { timeout: 10000 })
       await page.locator('.search-result-item:has-text("charlie")').click()
       await page.fill('input[placeholder="Enter group name"]', 'Project X')
@@ -245,7 +245,7 @@ test.describe('Messaging Features', () => {
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
       await bobPage.click('button[title="Create Room"]')
-      await bobPage.fill('input[placeholder="Search by username..."]', 'alice')
+      await bobPage.fill('input[placeholder="Search by username or email..."]', 'alice')
       await bobPage.click('.search-result-item:has-text("alice")')
       await bobPage.click('button:has-text("Create Room")')
       for (let i = 0; i < 3; i++) {

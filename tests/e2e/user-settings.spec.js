@@ -18,7 +18,7 @@ test.describe('User Settings & Profile', () => {
       const bp = await bc.newPage()
       await loginCustomPage(bp, 'bob', 'Password123!', 'VaultPassword123!')
       await bp.click('button[title="Create Room"]')
-      await bp.fill('input[placeholder="Search by username..."]', 'alice')
+      await bp.fill('input[placeholder="Search by username or email..."]', 'alice')
       await expect(bp.locator('.search-result-item:has-text("' + nn + '")')).toBeVisible({ timeout: 15000 })
       await bc.close()
     })
@@ -42,7 +42,7 @@ test.describe('User Settings & Profile', () => {
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
       for (const n of ['bob', 'charlie']) {
         await page.click('button[title="Create Room"]')
-        await page.fill('input[placeholder="Search by username..."]', n)
+        await page.fill('input[placeholder="Search by username or email..."]', n)
         await page.click(`.search-result-item:has-text("${n}")`)
         await page.click('button:has-text("Create Room")')
       }

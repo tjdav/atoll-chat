@@ -18,7 +18,7 @@ test.describe('Media & Attachments', () => {
         loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
       ])
       await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username..."]', 'bob')
+      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
       await alicePage.click('.search-result-item:has-text("bob")')
       await alicePage.click('button:has-text("Create Room")')
       const bobChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
@@ -60,7 +60,7 @@ test.describe('Media & Attachments', () => {
     test('video compression', async ({ page, loginCustomPage }) => {
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
       await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username..."]', 'bob')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.click('.search-result-item:has-text("bob")')
       await page.click('button:has-text("Create Room")')
       const vp = path.join(__dirname, 'fixtures', 'test-files', 'test.mp4')
@@ -75,7 +75,7 @@ test.describe('Media & Attachments', () => {
     test.beforeEach(async ({ page, loginApp }) => {
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
       await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username..."]', 'bob')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.click('.search-result-item:has-text("bob")')
       await page.click('button:has-text("Create Room")')
     })
@@ -135,7 +135,7 @@ test.describe('Media & Attachments', () => {
     test('takeover and playback', async ({ page, loginCustomPage }) => {
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
       await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username..."]', 'bob')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.click('.search-result-item:has-text("bob")')
       await page.click('button:has-text("Create Room")')
       const ap = path.resolve('tests/e2e/fixtures/test-files/test.mp3')

@@ -14,7 +14,7 @@ test.describe('Chat Management', () => {
 
       await alicePage.click('button[title="Create Room"]')
       await expect(alicePage.locator('.modal-title:has-text("Create New Room")')).toBeVisible()
-      await alicePage.fill('input[placeholder="Search by username..."]', 'bob')
+      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
       await alicePage.click('.search-result-item:has-text("bob")')
       await alicePage.click('button:has-text("Create Room")')
 
@@ -63,7 +63,7 @@ test.describe('Chat Management', () => {
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
       await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username..."]', 'bob')
+      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
       await alicePage.click('.search-result-item:has-text("bob")')
       await alicePage.click('button:has-text("Create Room")')
 
@@ -108,12 +108,12 @@ test.describe('Chat Management', () => {
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
       await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username..."]', 'bob')
+      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
       await alicePage.click('.search-result-item:has-text("bob")')
       await alicePage.click('button:has-text("Create Room")')
       await expect(alicePage.locator('chat-view')).toBeVisible()
 
-      const roomId = await alicePage.evaluate(() => window.$state.activeSelectionId)
+      const room_id = await alicePage.evaluate(() => window.$state.activeSelectionId)
       const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' })
       await expect(bobChatListAlice).toBeVisible({ timeout: 15000 })
 
@@ -121,7 +121,7 @@ test.describe('Chat Management', () => {
         for (let i = 0; i < 10; i++) {
           window.$bus.emit('db:new_local_data', { room_id: rid })
         }
-      }, roomId)
+      }, room_id)
 
       await bobPage.waitForTimeout(1000)
       expect(await bobChatListAlice.count()).toBe(1)
@@ -147,7 +147,7 @@ test.describe('Chat Management', () => {
     test('Drill-down: Root to Deep should use pushState', async ({ page }) => {
       const initialHistoryLength = await page.evaluate(() => window.history.length)
       await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username..."]', 'bob')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.click('.search-result-item:has-text("bob")')
       await page.click('button:has-text("Create Room")')
       await expect(page).toHaveURL(/view=chats&id=/)
@@ -177,7 +177,7 @@ test.describe('Chat Management', () => {
 
     test('Timeline Scroll Restoration', async ({ page }) => {
       await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username..."]', 'bob')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
       await page.click('.search-result-item:has-text("bob")')
       await page.click('button:has-text("Create Room")')

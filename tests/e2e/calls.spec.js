@@ -16,7 +16,7 @@ test.describe.serial('Calls', () => {
 
     // Setup room
     await alicePage.click('button[title="Create Room"]')
-    await alicePage.fill('input[placeholder="Search by username..."]', 'bob')
+    await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
     await alicePage.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
     await alicePage.click('.search-result-item:has-text("bob")')
     await alicePage.click('button:has-text("Create Room")')

@@ -39,7 +39,7 @@ test.describe('Authentication and Vault', () => {
     // Create a room to ensure there is something to sync
     console.log('--- Creating Room ---')
     await page.click('button[title="Create Room"]')
-    await page.fill('input[placeholder="Search by username..."]', 'bob')
+    await page.fill('input[placeholder="Search by username or email..."]', 'bob')
     // Give it a bit more time for search results to appear
     await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
     await page.click('.search-result-item:has-text("bob")')
