@@ -56,14 +56,14 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'd-flex' : 'd-none')
     },
-    client: ({ state, globalStore, localDb, eventBus, refs, signal, cryptoWorker, pocketbase, utils, videoWorker }) => {
+    client: ({ state, globalStore, localDb, eventBus, refs, _signal, cryptoWorker, pocketbase, utils, mediaWorker }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
       const { pb } = pocketbase
-      const { $func, $image, $video: $videoUtil } = utils
-      const { $video } = videoWorker
+      const { $func, $image } = utils
+      const { $mediaWorker: $media } = mediaWorker
 
       const resetUI = () => {
         state.isSending = false
@@ -240,22 +240,12 @@
             if (file.type.startsWith('audio/') && !recordedBlob) {
               state.uploadStatus = 'Extracting metadata...'
               try {
-                const mm = await import('music-metadata')
-                const metadata = await mm.parseBlob(file)
-                if (metadata && metadata.common) {
-                  const { title, artist, album, genre, year, track, picture } = metadata.common
-                  musicMetadata = {
-                    title,
-                    artist,
-                    album,
-                    genre,
-                    year,
-                    track: track?.no
-                  }
-
-                  if (picture && picture.length > 0) {
-                    const art = picture[0]
-                    albumArtBlob = new Blob([art.data], { type: art.format || 'image/jpeg' })
+                const result = await $media.getMetadata(file)
+                if (result) {
+                  musicMetadata = result.metadata
+                  state.duration = result.duration
+                  if (result.albumArt) {
+                    albumArtBlob = new Blob([result.albumArt], { type: result.albumArtMimeType || 'image/jpeg' })
                   }
                 }
               } catch (metaErr) {
@@ -344,20 +334,22 @@
           state.uploadStatus = 'Processing video...'
           try {
             // Extract thumbnail and duration first
-            const { canvas, duration } = await $videoUtil.getMetadata(file)
-            const compressedThumbnail = await $image.compress(canvas, {
-              maxWidth: 1200,
-              maxHeight: 1200,
-              quality: 0.8,
-              format: 'image/webp'
-            })
-            state.thumbnailBlob = compressedThumbnail
-            state.duration = duration
+            const result = await $media.getMetadata(file)
+            if (result.thumbnail) {
+              const compressedThumbnail = await $image.compress(result.thumbnail, {
+                maxWidth: 1200,
+                maxHeight: 1200,
+                quality: 0.8,
+                format: 'image/webp'
+              })
+              state.thumbnailBlob = compressedThumbnail
+            }
+            state.duration = result.duration
 
             // Compress video if supported
-            if ($video.isSupported()) {
+            if ($media.isSupported()) {
               state.uploadStatus = 'Compressing video... 0%'
-              const { buffer, mimeType, extension } = await $video.compress(file, {
+              const { buffer, mimeType, extension } = await $media.compress(file, {
                 maxWidth: 1280,
                 maxHeight: 720,
                 bitrate: 2_000_000

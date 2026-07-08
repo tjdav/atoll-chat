@@ -105,7 +105,7 @@ export default definePlugin({
           searchKeys = ['searchContent']
         }) => {
           const { $state } = globalStore
-          const { $bus } = bus
+          const { $bus: _ } = bus
           const { $func } = utils
 
           let loadedItems = []
@@ -264,7 +264,7 @@ export default definePlugin({
           let img
           let shouldRevoke = false
 
-          if (source instanceof HTMLImageElement || source instanceof HTMLCanvasElement) {
+          if (source instanceof HTMLImageElement || source instanceof HTMLCanvasElement || (typeof ImageBitmap !== 'undefined' && source instanceof ImageBitmap) || (typeof OffscreenCanvas !== 'undefined' && source instanceof OffscreenCanvas)) {
             img = source
           } else {
             img = new Image()
@@ -329,65 +329,6 @@ export default definePlugin({
       }
 
       /**
-       * Namespace: $video
-       */
-      const video = {
-        /**
-         * Extracts a thumbnail and duration from a video.
-         */
-        getMetadata: async (source) => {
-          return new Promise((resolve, reject) => {
-            const videoEl = document.createElement('video')
-            videoEl.preload = 'metadata'
-            videoEl.muted = true
-            videoEl.playsInline = true
-            let url
-            if (source instanceof Blob) {
-              url = URL.createObjectURL(source)
-            } else {
-              url = source
-            }
-
-            const cleanup = () => {
-              if (source instanceof Blob) {
-                URL.revokeObjectURL(url)
-              }
-              videoEl.remove()
-            }
-
-            videoEl.onloadedmetadata = () => {
-              videoEl.currentTime = 0
-            }
-            videoEl.onseeked = () => {
-              try {
-                const canvas = document.createElement('canvas')
-                canvas.width = videoEl.videoWidth
-                canvas.height = videoEl.videoHeight
-                const ctx = canvas.getContext('2d')
-                ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height)
-                resolve({
-                  canvas,
-                  duration: videoEl.duration
-                })
-                if (source instanceof Blob) {
-                  URL.revokeObjectURL(url)
-                }
-                videoEl.remove()
-              } catch (err) {
-                reject(err)
-                cleanup()
-              }
-            }
-            videoEl.onerror = () => {
-              reject(new Error('Failed to load video metadata')); cleanup()
-            }
-            videoEl.src = url
-            videoEl.load()
-          })
-        }
-      }
-
-      /**
        * Namespace: $crypto
        * Provides native browser-based encoding and decoding helpers.
        * Does NOT include Libsodium.
@@ -420,7 +361,6 @@ export default definePlugin({
         $list: list,
         $func: func,
         $image: image,
-        $video: video,
         $crypto: crypto
       }
 
