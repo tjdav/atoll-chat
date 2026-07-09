@@ -39,9 +39,6 @@ const rawSelf = self
 /** @type {ServiceWorkerScope} */
 const swSelf = rawSelf
 
-const metadata = swSelf.metadata
-const Dexie = swSelf.Dexie
-const sodium = swSelf.sodium
 const skipWaiting = swSelf.skipWaiting
 const clients = swSelf.clients
 const registration = swSelf.registration
@@ -61,6 +58,10 @@ importScripts('/assets/metadata.js')
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
 importScripts('/assets/dexie.js')
+
+const metadata = swSelf.metadata
+const Dexie = swSelf.Dexie
+const sodium = swSelf.sodium
 
 const CACHE_NAME = metadata.name + '-' + metadata.version
 

@@ -36,13 +36,14 @@
 const rawSelf = self
 /** @type {WorkerScope} */
 const workerSelf = rawSelf
-const sodium = workerSelf.sodium
-const Dexie = workerSelf.Dexie
 
 /* global importScripts */
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
 importScripts('/assets/dexie.js')
+
+const sodium = workerSelf.sodium
+const Dexie = workerSelf.Dexie
 
 /**
  * The Worker Script for Atoll Chat
