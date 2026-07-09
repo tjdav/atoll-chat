@@ -72,22 +72,65 @@
           playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
           const waveContainer = document.createElement('div')
           waveContainer.className = 'waveform-container'
-          const waveImg = document.createElement('img')
-          waveImg.src = waveformData
-          waveImg.className = 'waveform-image'
+
+          let waveEl = null
+          let progressEl = null
+
+          const isSvg = waveformData && (waveformData.startsWith('<svg') || waveformData.startsWith('data:image/svg+xml'))
+
+          if (isSvg) {
+            try {
+              let svgString = waveformData
+              if (waveformData.startsWith('data:image/svg+xml')) {
+                const headerIndex = waveformData.indexOf(',')
+                if (headerIndex !== -1) {
+                  const rawContent = waveformData.slice(headerIndex + 1)
+                  if (waveformData.includes('base64')) {
+                    svgString = atob(rawContent)
+                  } else {
+                    svgString = decodeURIComponent(rawContent)
+                  }
+                }
+              }
+
+              const parser = new DOMParser()
+              const doc = parser.parseFromString(svgString, 'image/svg+xml')
+              const parsedSvg = doc.querySelector('svg')
+              if (parsedSvg) {
+                parsedSvg.setAttribute('class', 'waveform-image text-primary')
+                parsedSvg.setAttribute('style', 'width: 100%; height: 100%; object-fit: fill;')
+                waveEl = parsedSvg.cloneNode(true)
+
+                progressEl = parsedSvg.cloneNode(true)
+                progressEl.setAttribute('class', 'waveform-image text-primary')
+                progressEl.setAttribute('style', 'height: 100%; object-fit: fill; max-width: none;')
+              }
+            } catch (err) {
+              console.warn('[voice-player] Failed to parse inline SVG waveform, falling back to img:', err)
+            }
+          }
+
+          if (!waveEl) {
+            waveEl = document.createElement('img')
+            waveEl.src = waveformData
+            waveEl.className = 'waveform-image'
+          }
+          if (!progressEl) {
+            progressEl = document.createElement('img')
+            progressEl.src = waveformData
+            progressEl.className = 'waveform-image'
+          }
+
           const progressContainer = document.createElement('div')
           progressContainer.className = 'waveform-progress'
-          const progressImg = document.createElement('img')
-          progressImg.src = waveformData
-          progressImg.className = 'waveform-image'
           const seeker = document.createElement('div')
           seeker.className = 'waveform-seeker'
           const timeDisplay = document.createElement('div')
           timeDisplay.className = 'x-small text-muted font-monospace'
           timeDisplay.textContent = '0:00'
 
-          progressContainer.appendChild(progressImg)
-          waveContainer.appendChild(waveImg)
+          progressContainer.appendChild(progressEl)
+          waveContainer.appendChild(waveEl)
           waveContainer.appendChild(progressContainer)
           waveContainer.appendChild(seeker)
           player.appendChild(playBtn)
@@ -152,7 +195,7 @@
 
           const resizeObserver = new ResizeObserver(entries => {
             for (const entry of entries) {
-              progressImg.style.width = `${entry.contentRect.width}px`
+              progressEl.style.width = `${entry.contentRect.width}px`
             }
           })
           resizeObserver.observe(waveContainer)

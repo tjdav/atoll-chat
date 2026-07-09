@@ -235,6 +235,7 @@
 
             let musicMetadata = null
             let albumArtBlob = null
+            let audioWaveformData = null
 
             // Extract metadata if it's an audio file and not a voice recording
             if (file.type.startsWith('audio/') && !recordedBlob) {
@@ -251,6 +252,14 @@
               } catch (metaErr) {
                 console.warn('[chat-input] Failed to extract metadata:', metaErr)
               }
+
+              // Generate waveform for regular audio files
+              state.uploadStatus = 'Generating waveform...'
+              try {
+                audioWaveformData = await utils.$media.generateWaveform(file)
+              } catch (waveErr) {
+                console.warn('[chat-input] Failed to generate waveform:', waveErr)
+              }
             }
 
             // Dispatch media message - worker handles encryption and upload
@@ -260,7 +269,7 @@
               file: file,
               filename: file.name,
               mime_type: file.type,
-              waveform_data: waveformData,
+              waveform_data: recordedBlob ? waveformData : audioWaveformData,
               music_metadata: musicMetadata,
               album_art_blob: albumArtBlob,
               thumbnail_blob: state.thumbnailBlob,

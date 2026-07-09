@@ -427,6 +427,84 @@ export default definePlugin({
               })
             }
             return objectUrl
+          },
+
+          /**
+           * Generates a theme-aware SVG waveform for any audio file.
+           */
+          generateWaveform: async (file) => {
+            if (!file || !file.type.startsWith('audio/')) {
+              return null
+            }
+            if (file.size > 20 * 1024 * 1024) {
+              console.warn('[utils-plugin] Audio file too large for waveform generation:', file.size)
+              return null
+            }
+
+            try {
+              // Read file as ArrayBuffer
+              const arrayBuffer = await new Promise((resolve, reject) => {
+                const reader = new FileReader()
+                reader.onload = () => resolve(reader.result)
+                reader.onerror = () => reject(reader.error)
+                reader.readAsArrayBuffer(file)
+              })
+
+              const AudioContextClass = window.AudioContext || window.webkitAudioContext
+              if (!AudioContextClass) {
+                throw new Error('Web Audio API not supported')
+              }
+
+              const audioContext = new AudioContextClass()
+              const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
+              const channelData = audioBuffer.getChannelData(0)
+
+              const barCount = 100
+              const chunkSize = Math.floor(channelData.length / barCount)
+              const peaks = []
+              let maxPeak = 0
+
+              for (let i = 0; i < barCount; i++) {
+                const start = i * chunkSize
+                const end = start + chunkSize
+                let peak = 0
+                for (let j = start; j < end; j++) {
+                  const val = Math.abs(channelData[j])
+                  if (val > peak) {
+                    peak = val
+                  }
+                }
+                peaks.push(peak)
+                if (peak > maxPeak) {
+                  maxPeak = peak
+                }
+              }
+
+              // Normalize peaks
+              const normalizedPeaks = peaks.map(p => {
+                const norm = maxPeak > 0 ? p / maxPeak : 0
+                return Math.max(0.05, norm)
+              })
+
+              // Build SVG
+              const height = 40
+              const barWidth = 3
+              const gap = 1
+              let rects = ''
+
+              normalizedPeaks.forEach((amp, i) => {
+                const barHeight = amp * height
+                const x = i * (barWidth + gap)
+                const y = (height - barHeight) / 2
+                rects += `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="1.5" ry="1.5" fill="currentColor" />`
+              })
+
+              const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 40">${rects}</svg>`
+              return 'data:image/svg+xml;utf8,' + encodeURIComponent(svgString)
+            } catch (err) {
+              console.warn('[utils-plugin] Waveform generation failed:', err)
+              return null
+            }
           }
         }
 

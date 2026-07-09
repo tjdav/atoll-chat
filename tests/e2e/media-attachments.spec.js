@@ -69,6 +69,33 @@ test.describe('Media & Attachments', () => {
       await page.click('.bi-send-fill')
       await expect(page.locator('timeline-row video').first()).toBeVisible({ timeout: 15000 })
     })
+
+    test('audio uploads generate interactive SVG waveforms', async ({ page, loginCustomPage }) => {
+      test.slow()
+      await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
+      await page.click('button[title="Create Room"]')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
+      await page.click('.search-result-item:has-text("bob")')
+      await page.click('button:has-text("Create Room")')
+      const ap = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
+      await page.setInputFiles('[data-testid$="__audioInput"]', ap)
+      await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
+      await page.click('.bi-send-fill')
+
+      // Wait for the message status to be 'Sent'
+      await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 60000 })
+
+      // Verify that voice-player is rendered
+      const voicePlayer = page.locator('voice-player')
+      await expect(voicePlayer).toBeVisible({ timeout: 15000 })
+
+      // Verify that the custom waveform player is visible (instead of standard <audio controls>)
+      await expect(voicePlayer.locator('.waveform-player')).toBeVisible({ timeout: 15000 })
+
+      // Verify that the waveform contains SVG elements (indicating successful SVG waveform generation)
+      // (one for background, one for progress)
+      await expect(voicePlayer.locator('.waveform-container svg')).toHaveCount(2, { timeout: 15000 })
+    })
   })
 
   test.describe('Viewers and Lists', () => {
@@ -141,11 +168,15 @@ test.describe('Media & Attachments', () => {
       const ap = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
       await page.setInputFiles('[data-testid$="__audioInput"]', ap)
       await page.click('[data-testid$="__sendButton"]')
+
+      // Wait for the message status to be 'Sent'
+      await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 60000 })
+
       await page.click('button[title="Music"]')
       await page.locator('music-list .app-list-item').first().click()
       await page.waitForTimeout(1000)
       await page.locator('button:has(i.bi-play-fill)').last().click()
-      await expect(page.locator("button[title='Now Playing']").locator('i.bi-pause-fill')).toBeVisible({ timeout: 10000 })
+      await expect(page.locator('audio-player-view .btn-big-play i')).toHaveClass(/bi-pause-fill/, { timeout: 15000 })
     })
   })
 })

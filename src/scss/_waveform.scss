@@ -30,7 +30,10 @@
   opacity: 0.5;
 
   [data-bs-theme="dark"] & {
-    filter: invert(1) hue-rotate(180deg);
+    // Apply inversion filter to legacy PNG/canvas images, but not inline SVGs
+    &:not(svg) {
+      filter: invert(1) hue-rotate(180deg);
+    }
   }
 }
 

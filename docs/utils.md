@@ -109,11 +109,12 @@ Provides native browser-based encoding, decoding, and byte conversion helpers. D
 | `toString(uint8Array)` | Converts a Uint8Array back to a UTF-8 string using native `TextDecoder`. | `uint8Array`: `Uint8Array` - The byte array. | `string` - Decoded UTF-8 string. |
 
 ### Media Helpers (`$media`)
-Provides decryption and caching wrapper for encrypted media assets stored in PocketBase.
+Provides decryption and caching wrapper for encrypted media assets stored in PocketBase, as well as audio waveform generation tools.
 
 | Function | Description | Arguments | Returns |
 |---|---|---|---|
 | `decrypt(asset, signal)` | Fetches an encrypted media asset from PocketBase, decrypts it using the cryptographic background worker, caches the result locally, and returns an Object URL. | `asset`: `object` - The asset metadata (see below).<br>`signal`: `AbortSignal` - Optional signal to cancel fetch or decryption. | `Promise<string>` - Resolves to a decrypted local Object URL. |
+| `generateWaveform(file)` | Generates a theme-aware SVG waveform for an audio file. Decodes the audio data using the Web Audio API to extract peaks and returns a SVG data URI. | `file`: `File` - The audio file to process (must be under 20MB). | `Promise<string \| null>` - Resolves to a theme-aware SVG data URI (`'data:image/svg+xml;utf8,...'`) with `fill="currentColor"`, or `null` if invalid, too large, or failed. |
 
 #### Asset Object Properties (`asset`):
 - `media_id` (`string`): Required. PocketBase media record ID.
