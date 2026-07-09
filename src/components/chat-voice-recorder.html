@@ -195,7 +195,19 @@
             }
           }
 
-          mediaRecorder = new MediaRecorder(stream)
+          const options = {
+            audioBitsPerSecond: 32000
+          }
+
+          if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+            options.mimeType = 'audio/webm;codecs=opus'
+          } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+            options.mimeType = 'audio/ogg;codecs=opus'
+          } else if (MediaRecorder.isTypeSupported('audio/mp4')) {
+            options.mimeType = 'audio/mp4'
+          }
+
+          mediaRecorder = new MediaRecorder(stream, options)
           audioChunks = []
 
           mediaRecorder.ondataavailable = (e) => {
@@ -209,10 +221,14 @@
             tracks.forEach(track => track.stop())
   
             if (shouldSendVoice && audioChunks.length > 0) {
-              const blob = new Blob(audioChunks, { type: 'audio/webm' })
+              const extension = mediaRecorder.mimeType.includes('webm') ? 'webm' :
+                mediaRecorder.mimeType.includes('ogg') ? 'ogg' :
+                mediaRecorder.mimeType.includes('mp4') ? 'm4a' : 'bin'
+              const filename = `voice-note-${Date.now()}.${extension}`
+              const file = new File(audioChunks, filename, { type: mediaRecorder.mimeType })
               const waveformData = generateWaveformImage()
               $bus.emit('ui:voice_ready', {
-                blob,
+                blob: file,
                 waveformData
               })
             } else {
