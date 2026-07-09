@@ -295,7 +295,7 @@ test.describe('Messaging Features', () => {
       await expect(textarea).toBeFocused()
 
       // Take screenshot of the focused state
-      await page.screenshot({ path: '/home/jules/verification/screenshots/focused.png' })
+      await page.screenshot({ path: './tests/e2e/screenshots/focused.png' })
 
       // Send a message
       await textarea.fill('Hello from emulated touch device!')
@@ -310,7 +310,7 @@ test.describe('Messaging Features', () => {
       await page.waitForTimeout(500)
 
       // Take screenshot of the blurred/collapsed state
-      await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+      await page.screenshot({ path: './tests/e2e/screenshots/verification.png' })
     })
   })
 })
