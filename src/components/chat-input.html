@@ -65,6 +65,10 @@
       const { $func, $image } = utils
       const { $mediaWorker: $media } = mediaWorker
 
+      let currentMusicMetadata = null
+      let currentAlbumArtBlob = null
+      let currentAudioWaveformData = null
+
       const resetUI = () => {
         state.isSending = false
         state.isUploading = false
@@ -77,6 +81,9 @@
         state.duration = 0
         state.pendingLinkData = []
         state.ignoredUrls = {}
+        currentMusicMetadata = null
+        currentAlbumArtBlob = null
+        currentAudioWaveformData = null
         $state.currentMessageText = ''
         const container = refs('voiceRecorderContainer')
         if (container) {
@@ -233,34 +240,9 @@
             state.isUploading = true
             state.uploadStatus = 'Processing file...'
 
-            let musicMetadata = null
-            let albumArtBlob = null
-            let audioWaveformData = null
-
-            // Extract metadata if it's an audio file and not a voice recording
-            if (file.type.startsWith('audio/') && !recordedBlob) {
-              state.uploadStatus = 'Extracting metadata...'
-              try {
-                const result = await $media.getMetadata(file)
-                if (result) {
-                  musicMetadata = result.metadata
-                  state.duration = result.duration
-                  if (result.albumArt) {
-                    albumArtBlob = new Blob([result.albumArt], { type: result.albumArtMimeType || 'image/jpeg' })
-                  }
-                }
-              } catch (metaErr) {
-                console.warn('[chat-input] Failed to extract metadata:', metaErr)
-              }
-
-              // Generate waveform for regular audio files
-              state.uploadStatus = 'Generating waveform...'
-              try {
-                audioWaveformData = await utils.$media.generateWaveform(file)
-              } catch (waveErr) {
-                console.warn('[chat-input] Failed to generate waveform:', waveErr)
-              }
-            }
+            let musicMetadata = currentMusicMetadata
+            let albumArtBlob = currentAlbumArtBlob
+            let audioWaveformData = currentAudioWaveformData
 
             // Dispatch media message - worker handles encryption and upload
             await dispatchMessage({
@@ -380,6 +362,29 @@
           } finally {
             state.isCompressing = false
           }
+        } else if (file.type.startsWith('audio/')) {
+          state.isCompressing = true
+          state.uploadStatus = 'Extracting metadata...'
+          try {
+            const result = await $media.getMetadata(file)
+            if (result) {
+              currentMusicMetadata = result.metadata
+              state.duration = result.duration
+              if (result.albumArt) {
+                currentAlbumArtBlob = new Blob([result.albumArt], { type: result.albumArtMimeType || 'image/jpeg' })
+              }
+            }
+          } catch (metaErr) {
+            console.warn('[chat-input] Failed to extract metadata:', metaErr)
+          }
+
+          state.uploadStatus = 'Generating waveform...'
+          try {
+            currentAudioWaveformData = await utils.$media.generateWaveform(file)
+          } catch (waveErr) {
+            console.warn('[chat-input] Failed to generate waveform:', waveErr)
+          }
+          state.isCompressing = false
         }
 
         if (file.size > 100 * 1024 * 1024) {

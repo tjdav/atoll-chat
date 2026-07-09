@@ -1,0 +1,406 @@
+<template id="waveform-player">
+  <div ref="container" class="w-100 position-relative">
+    <!-- Waveform layout -->
+    <div ref="waveformLayout" class="waveform-player w-100 {{ waveformDisplay }}">
+      <button ref="playBtn" class="play-pause-btn" type="button" style="z-index: 2;">
+        <div ref="spinner" class="spinner-border spinner-border-sm text-light d-none" role="status" style="width: 1rem; height: 1rem;">
+          <span class="visually-hidden">Loading...</span>
+        </div>
+        <i ref="playIcon" class="bi bi-play-fill"></i>
+      </button>
+      <div ref="waveContainer" class="waveform-container">
+        <!-- background waveform -->
+        <div ref="waveBg" class="position-relative w-100 h-100"></div>
+        <!-- progress waveform with clipping -->
+        <div ref="waveProgress" class="waveform-progress"></div>
+        <div ref="seeker" class="waveform-seeker"></div>
+      </div>
+      <div ref="timeDisplay" class="x-small text-muted font-monospace">0:00</div>
+    </div>
+
+    <!-- Fallback native audio controls layout -->
+    <div ref="fallbackLayout" class="w-100 {{ fallbackDisplay }}">
+      <audio ref="fallbackAudio" class="w-100" controls></audio>
+    </div>
+
+    <!-- Hidden audio element for the waveform player -->
+    <audio ref="internalAudio" class="d-none"></audio>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      audioId: String,
+      src: String,
+      waveformSrc: String,
+      duration: {
+        type: Number,
+        default: 0
+      }
+    },
+    state: {
+      hasWaveform: false,
+      playbackStatus: 'idle'
+    },
+    getters: {
+      waveformDisplay: (state) => (state.hasWaveform ? 'd-flex' : 'd-none'),
+      fallbackDisplay: (state) => (state.hasWaveform ? 'd-none' : 'd-block')
+    },
+    client: async ({ state, refs, utils, signal, localDb, globalStore, eventBus }) => {
+      const { $localDb } = localDb
+      const { $state } = globalStore
+      const { $media } = utils
+      const { $bus } = eventBus
+
+      const waveContainer = refs('waveContainer')
+      const waveBg = refs('waveBg')
+      const waveProgress = refs('waveProgress')
+      const seeker = refs('seeker')
+      const playBtn = refs('playBtn')
+      const playIcon = refs('playIcon')
+      const spinner = refs('spinner')
+      const timeDisplay = refs('timeDisplay')
+      const internalAudio = refs('internalAudio')
+      const fallbackAudio = refs('fallbackAudio')
+
+      let audio = internalAudio
+      let isLoaded = false
+      let waveEl = null
+      let progressEl = null
+      let resizeObserver = null
+
+      const cleanup = () => {
+        if (audio) {
+          audio.pause()
+          audio.removeAttribute('src')
+          audio.load()
+        }
+        if (fallbackAudio) {
+          fallbackAudio.pause()
+          fallbackAudio.removeAttribute('src')
+          fallbackAudio.load()
+        }
+        if (resizeObserver) {
+          resizeObserver.disconnect()
+        }
+      }
+      signal.addEventListener('abort', cleanup)
+
+      const formatTime = (seconds) => {
+        if (!seconds || isNaN(seconds)) {
+          return '0:00'
+        }
+        const mins = Math.floor(seconds / 60)
+        const secs = Math.floor(seconds % 60)
+        return `${mins}:${secs.toString().padStart(2, '0')}`
+      }
+
+      if (state.duration) {
+        timeDisplay.textContent = formatTime(state.duration)
+      }
+
+      const updateProgress = () => {
+        if (!audio || isNaN(audio.duration)) {
+          return
+        }
+        const percent = (audio.currentTime / audio.duration) * 100
+        waveProgress.style.width = `${percent}%`
+        seeker.style.left = `${percent}%`
+        timeDisplay.textContent = formatTime(audio.currentTime)
+      }
+
+      audio.ontimeupdate = updateProgress
+
+      audio.onplay = () => {
+        state.playbackStatus = 'playing'
+        updatePlaybackUI()
+      }
+
+      audio.onpause = () => {
+        state.playbackStatus = 'paused'
+        updatePlaybackUI()
+      }
+
+      audio.onended = () => {
+        audio.currentTime = 0
+        updateProgress()
+        state.playbackStatus = 'paused'
+        updatePlaybackUI()
+      }
+
+      audio.oncanplaythrough = () => {
+        if (state.playbackStatus === 'loading') {
+          state.playbackStatus = 'playing'
+        }
+        updatePlaybackUI()
+      }
+
+      const updatePlaybackUI = () => {
+        if (state.playbackStatus === 'loading') {
+          spinner.classList.remove('d-none')
+          playIcon.classList.add('d-none')
+        } else if (state.playbackStatus === 'playing') {
+          spinner.classList.add('d-none')
+          playIcon.classList.remove('d-none')
+          playIcon.className = 'bi bi-pause-fill'
+        } else {
+          spinner.classList.add('d-none')
+          playIcon.classList.remove('d-none')
+          playIcon.className = 'bi bi-play-fill'
+        }
+      }
+
+      const renderWaveform = (waveformData) => {
+        waveBg.innerHTML = ''
+        waveProgress.innerHTML = ''
+
+        const isSvg = waveformData && (waveformData.startsWith('<svg') || waveformData.startsWith('data:image/svg+xml'))
+
+        if (isSvg) {
+          try {
+            let svgString = waveformData
+            if (waveformData.startsWith('data:image/svg+xml')) {
+              const headerIndex = waveformData.indexOf(',')
+              if (headerIndex !== -1) {
+                const rawContent = waveformData.slice(headerIndex + 1)
+                if (waveformData.includes('base64')) {
+                  svgString = atob(rawContent)
+                } else {
+                  svgString = decodeURIComponent(rawContent)
+                }
+              }
+            }
+
+            const parser = new DOMParser()
+            const doc = parser.parseFromString(svgString, 'image/svg+xml')
+            const parsedSvg = doc.querySelector('svg')
+            if (parsedSvg) {
+              parsedSvg.setAttribute('class', 'waveform-image text-primary')
+              parsedSvg.setAttribute('style', 'width: 100%; height: 100%; object-fit: fill;')
+              waveEl = parsedSvg.cloneNode(true)
+
+              progressEl = parsedSvg.cloneNode(true)
+              progressEl.setAttribute('class', 'waveform-image text-primary')
+              progressEl.setAttribute('style', 'height: 100%; object-fit: fill; max-width: none;')
+            }
+          } catch (err) {
+            console.warn('[waveform-player] Failed to parse inline SVG waveform, falling back to img:', err)
+          }
+        }
+
+        if (!waveEl) {
+          waveEl = document.createElement('img')
+          waveEl.src = waveformData
+          waveEl.className = 'waveform-image'
+        }
+        if (!progressEl) {
+          progressEl = document.createElement('img')
+          progressEl.src = waveformData
+          progressEl.className = 'waveform-image'
+        }
+
+        waveBg.appendChild(waveEl)
+        waveProgress.appendChild(progressEl)
+
+        if (resizeObserver) {
+          resizeObserver.disconnect()
+        }
+        resizeObserver = new ResizeObserver(entries => {
+          for (const entry of entries) {
+            if (progressEl) {
+              progressEl.style.width = `${entry.contentRect.width}px`
+            }
+          }
+        })
+        resizeObserver.observe(waveContainer)
+      }
+
+      const setupFallbackAudio = async () => {
+        try {
+          let objectUrl = state.src
+          if (!objectUrl && state.audioId) {
+            const cached = $state.decryptionCache.get(state.audioId)
+            if (cached) {
+              objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
+            } else {
+              const asset = await $localDb.local_assets.get(state.audioId)
+              if (asset) {
+                objectUrl = await $media.decrypt(asset, signal)
+              }
+            }
+          }
+          if (signal.aborted) {
+            return
+          }
+          if (objectUrl) {
+            fallbackAudio.src = objectUrl
+            fallbackAudio.volume = $state.mediaVolume
+          }
+        } catch (err) {
+          console.error('[waveform-player] Fallback setup error:', err)
+        }
+      }
+
+      const loadWaveform = async () => {
+        let waveformData = state.waveformSrc
+
+        if (!waveformData && state.audioId) {
+          try {
+            const asset = await $localDb.local_assets.get(state.audioId)
+            if (asset && asset.message_id) {
+              const msg = await $localDb.local_messages.get(asset.message_id)
+              if (msg && msg.waveform_data) {
+                waveformData = msg.waveform_data
+              }
+            }
+          } catch (err) {
+            console.warn('[waveform-player] Failed to load asset or message:', err)
+          }
+        }
+
+        if (waveformData) {
+          state.hasWaveform = true
+          renderWaveform(waveformData)
+        } else {
+          state.hasWaveform = false
+          setupFallbackAudio()
+        }
+      }
+
+      const playAudio = async () => {
+        if (state.playbackStatus === 'loading') {
+          return
+        }
+
+        if (isLoaded) {
+          if (audio.paused) {
+            triggerPlay()
+          } else {
+            audio.pause()
+          }
+          return
+        }
+
+        state.playbackStatus = 'loading'
+        updatePlaybackUI()
+
+        try {
+          let objectUrl = state.src
+
+          if (!objectUrl && state.audioId) {
+            const cached = $state.decryptionCache.get(state.audioId)
+            if (cached) {
+              objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
+            } else {
+              const asset = await $localDb.local_assets.get(state.audioId)
+              if (!asset) {
+                throw new Error('Asset not found in local database')
+              }
+              objectUrl = await $media.decrypt(asset, signal)
+            }
+          }
+
+          if (signal.aborted) {
+            return
+          }
+
+          if (!objectUrl) {
+            throw new Error('No audio source URL available')
+          }
+
+          audio.src = objectUrl
+          audio.volume = $state.mediaVolume
+          isLoaded = true
+
+          triggerPlay()
+        } catch (err) {
+          if (err.name !== 'AbortError') {
+            console.error('[waveform-player] Playback error:', err)
+            state.playbackStatus = 'error'
+            updatePlaybackUI()
+          }
+        }
+      }
+
+      const triggerPlay = () => {
+        $bus.emit('waveform-player:play', { audioId: state.audioId })
+
+        audio.play().catch(err => {
+          if (err.name !== 'AbortError') {
+            console.warn('[waveform-player] Play failed:', err)
+            state.playbackStatus = 'paused'
+            updatePlaybackUI()
+          }
+        })
+      }
+
+      playBtn.onclick = (e) => {
+        e.stopPropagation()
+        playAudio()
+      }
+
+      waveContainer.onclick = (e) => {
+        e.stopPropagation()
+        if (!audio || !isLoaded || isNaN(audio.duration)) {
+          return
+        }
+        const rect = waveContainer.getBoundingClientRect()
+        const percent = (e.clientX - rect.left) / rect.width
+        audio.currentTime = percent * audio.duration
+        updateProgress()
+      }
+
+      // Sync settings volume
+      $state.subscribe('mediaVolume', (vol) => {
+        if (audio) {
+          audio.volume = vol
+        }
+        if (fallbackAudio) {
+          fallbackAudio.volume = vol
+        }
+      })
+
+      // Exclusive playback coordinator
+      const unsubscribePlay = $bus.on('waveform-player:play', ({ audioId }) => {
+        if (audioId !== state.audioId && audio && !audio.paused) {
+          audio.pause()
+        }
+      })
+      signal.addEventListener('abort', unsubscribePlay)
+
+      // Automatic pausing when context changes
+      $state.subscribe('activeSelectionId', (id) => {
+        if (id !== state.audioId && audio && !audio.paused) {
+          audio.pause()
+        }
+      })
+
+      $state.subscribe('activeSelectionType', (type) => {
+        if (type !== 'music' && audio && !audio.paused) {
+          audio.pause()
+        }
+      })
+
+      $state.subscribe('currentAppView', (view) => {
+        if (view !== 'music' && audio && !audio.paused) {
+          audio.pause()
+        }
+      })
+
+      loadWaveform()
+
+      return {
+        onAttributeChanged: (name) => {
+          if (name === 'audio-id' || name === 'src' || name === 'waveform-src') {
+            isLoaded = false
+            cleanup()
+            loadWaveform()
+          }
+        }
+      }
+    }
+  })
+</script>

@@ -176,7 +176,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('music-list .app-list-item').first().click()
       await page.waitForTimeout(1000)
       await page.locator('button:has(i.bi-play-fill)').last().click()
-      await expect(page.locator('audio-player-view .btn-big-play i')).toHaveClass(/bi-pause-fill/, { timeout: 15000 })
+      await expect(page.locator('audio-player-view .play-pause-btn i')).toHaveClass(/bi-pause-fill/, { timeout: 15000 })
     })
   })
 })
