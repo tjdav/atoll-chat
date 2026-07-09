@@ -9,8 +9,11 @@ export default function localDbPlugin () {
     name: 'localDb',
     client: {
       context: async (pluginContext) => {
-        // Dynamically import Dexie inside the initialization hook as requested.
-        const { default: Dexie } = await import('dexie')
+        /**
+         * @typedef {typeof import('dexie').Dexie} DexieConstructor
+         */
+        /** @type {DexieConstructor} */
+        const Dexie = (await import('dexie')).Dexie
 
         // Create the Dexie database instance once in this scope.
         const dbInstance = new Dexie('AtollChatDB')
@@ -23,8 +26,8 @@ export default function localDbPlugin () {
           local_config: 'key'
         })
 
-        // Request persistent storage from the browser to prevent data loss.
-        if (typeof navigator !== 'undefined' && navigator.storage?.persist) {
+        // Attempt to request persistent storage for local IndexedDB cache
+        if (navigator.storage && navigator.storage.persist) {
           try {
             const isPersisted = await navigator.storage.persist()
             if (!isPersisted) {
@@ -39,7 +42,13 @@ export default function localDbPlugin () {
 
         /** @todo remove when coralite has testing env */
         // Expose to window for E2E testing
-        window.$localDb = dbInstance
+        /**
+         * @typedef {Object} CustomWindow
+         * @property {import('dexie').Dexie} [$localDb]
+         */
+        /** @type {CustomWindow & typeof globalThis} */
+        const win = window
+        win.$localDb = dbInstance
 
         // Inject into pluginContext for Phase 1 access by downstream plugins
         pluginContext.$localDb = () => dbInstance

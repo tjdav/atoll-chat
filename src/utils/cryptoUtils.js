@@ -44,7 +44,9 @@ export async function createPasskey (username, challengeBuffer, saltBuffer) {
     }
   }
 
-  const credential = await navigator.credentials.create({
+  /** @type {any} */
+  const credentialsContainer = navigator.credentials
+  const credential = await credentialsContainer.create({
     publicKey: publicKeyCredentialCreationOptions
   })
 
@@ -79,7 +81,9 @@ export async function deriveKeyFromPasskey (credentialId, challengeBuffer, saltB
     throw new Error('WebAuthn is not supported on this device or browser.')
   }
 
-  const assertion = await navigator.credentials.get({
+  /** @type {any} */
+  const credentialsContainer = navigator.credentials
+  const assertion = await credentialsContainer.get({
     publicKey: {
       challenge: challengeBuffer,
       allowCredentials: [{

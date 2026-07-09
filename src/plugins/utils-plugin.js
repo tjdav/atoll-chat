@@ -22,7 +22,7 @@ export default definePlugin({
           }
           const date = new Date(timestamp)
           const now = new Date()
-          const diffInSeconds = Math.floor((now - date) / 1000)
+          const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000)
 
           if (diffInSeconds < 60) {
             return 'now'
@@ -321,7 +321,7 @@ export default definePlugin({
               }, format, quality)
             })
           } finally {
-            if (shouldRevoke && img.src) {
+            if (shouldRevoke && img instanceof HTMLImageElement && img.src) {
               URL.revokeObjectURL(img.src)
             }
           }
@@ -450,7 +450,13 @@ export default definePlugin({
                 reader.readAsArrayBuffer(file)
               })
 
-              const AudioContextClass = window.AudioContext || window.webkitAudioContext
+              /**
+               * @typedef {Object} CustomWindow
+               * @property {any} [webkitAudioContext]
+               */
+              /** @type {CustomWindow & typeof globalThis} */
+              const win = window
+              const AudioContextClass = win.AudioContext || win.webkitAudioContext
               if (!AudioContextClass) {
                 throw new Error('Web Audio API not supported')
               }

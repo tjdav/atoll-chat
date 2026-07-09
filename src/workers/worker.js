@@ -1,4 +1,45 @@
-/* global sodium, importScripts, Dexie */
+/// <reference lib="webworker" />
+
+/**
+ * @typedef {import('dexie').Dexie & {
+ *   local_rooms: import('dexie').Table<any, any>,
+ *   local_messages: import('dexie').Table<any, any>,
+ *   local_assets: import('dexie').Table<any, any>,
+ *   local_config: import('dexie').Table<any, any>
+ * }} AtollChatDatabase
+ */
+
+/**
+ * @typedef {{
+ *   new (name: string): AtollChatDatabase,
+ *   minKey: any,
+ *   maxKey: any
+ * }} DexieConstructor
+ */
+
+/**
+ * @typedef {any} DedicatedWorkerGlobalScope
+ */
+
+/**
+ * @typedef {DedicatedWorkerGlobalScope & {
+ *   sodium: typeof import('libsodium-wrappers-sumo'),
+ *   Dexie: DexieConstructor
+ * }} WorkerScope
+ */
+
+/**
+ * @typedef {any} WebWorkerBlobPart
+ */
+
+/** @type {any} */
+const rawSelf = self
+/** @type {WorkerScope} */
+const workerSelf = rawSelf
+const sodium = workerSelf.sodium
+const Dexie = workerSelf.Dexie
+
+/* global importScripts */
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
 importScripts('/assets/dexie.js')
@@ -155,7 +196,7 @@ async function handleEvent (event) {
         id,
         type,
         result: decryptedBuffer
-      }, [decryptedBuffer.buffer])
+      }, { transfer: [decryptedBuffer.buffer] })
       return
     }
 
@@ -499,7 +540,9 @@ async function sendMessage (rpcId, payload) {
       const artNonce = sodium.randombytes_buf(24)
       const encryptedArt = sodium.crypto_secretbox_easy(artBuffer, artNonce, artKey)
 
-      const artBlob = new Blob([encryptedArt], { type: 'application/octet-stream' })
+      /** @type {WebWorkerBlobPart[]} */
+      const artParts = [encryptedArt]
+      const artBlob = new Blob(artParts, { type: 'application/octet-stream' })
       const artFormData = new FormData()
       artFormData.append('file', artBlob, 'album-art.bin')
 
@@ -525,7 +568,9 @@ async function sendMessage (rpcId, payload) {
       const thumbNonce = sodium.randombytes_buf(24)
       const encryptedThumb = sodium.crypto_secretbox_easy(thumbBuffer, thumbNonce, thumbKey)
 
-      const thumbBlob = new Blob([encryptedThumb], { type: 'application/octet-stream' })
+      /** @type {WebWorkerBlobPart[]} */
+      const thumbParts = [encryptedThumb]
+      const thumbBlob = new Blob(thumbParts, { type: 'application/octet-stream' })
       const thumbFormData = new FormData()
       thumbFormData.append('file', thumbBlob, 'thumbnail.bin')
 
@@ -551,7 +596,9 @@ async function sendMessage (rpcId, payload) {
     const fileNonce = sodium.randombytes_buf(24)
     const encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, fileNonce, fileKey)
 
-    const mainBlob = new Blob([encryptedFile], { type: 'application/octet-stream' })
+    /** @type {WebWorkerBlobPart[]} */
+    const mainParts = [encryptedFile]
+    const mainBlob = new Blob(mainParts, { type: 'application/octet-stream' })
     const mainFormData = new FormData()
     mainFormData.append('file', mainBlob, 'encrypted.bin')
 

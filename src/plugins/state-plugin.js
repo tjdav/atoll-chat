@@ -27,8 +27,13 @@ export default function statePlugin (options = {}) {
         }
 
         /** @todo use until coralite has testing env */
-        // Expose to window for E2E testing
-        window.$state = storeState
+        /**
+         * @typedef {Object} CustomWindow
+         * @property {any} [$state]
+         */
+        /** @type {CustomWindow & typeof globalThis} */
+        const win = window
+        win.$state = storeState
 
         return (instanceContext) => {
           const $state = new Proxy(storeState, {

@@ -85,7 +85,7 @@ export async function compressImage (source, options = {}) {
       }, format, quality)
     })
   } finally {
-    if (shouldRevoke && img.src) {
+    if (shouldRevoke && img instanceof HTMLImageElement && img.src) {
       URL.revokeObjectURL(img.src)
     }
   }

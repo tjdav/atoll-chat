@@ -1,6 +1,11 @@
 import { definePlugin } from 'coralite'
 
 /**
+ * @typedef {Object} CustomWindow
+ * @property {boolean} [__sync_complete__]
+ */
+
+/**
  * Real-time synchronization plugin for Atoll Chat.
  */
 export default function syncPlugin () {
@@ -75,8 +80,9 @@ export default function syncPlugin () {
 
               // Notify UI that catch-up is done
               if (pluginContext.$bus) {
-                /** @todo use this hack until Coralite adds testing env */
-                window.__sync_complete__ = true
+                /** @type {CustomWindow & typeof globalThis} */
+                const win = window
+                win.__sync_complete__ = true
                 pluginContext.$bus.emit('sync:complete')
               }
 

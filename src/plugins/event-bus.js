@@ -1,6 +1,17 @@
 import { definePlugin } from 'coralite'
 
 /**
+ * @typedef {Object} EventBus
+ * @property {function(string, any): void} emit
+ * @property {function(string, function(any): void, Object=): function(): void} on
+ */
+
+/**
+ * @typedef {Object} CustomWindow
+ * @property {EventBus} [$bus]
+ */
+
+/**
  * Event Bus Plugin for Coralite
  * Provides a global singleton EventTarget for communication.
  * Auto-binds the component's AbortSignal for native listener cleanup.
@@ -45,8 +56,10 @@ export default definePlugin({
       // Inject into pluginContext for Phase 1 access by downstream plugins
       pluginContext.$bus = $bus
 
-      // Expose to window for E2E testing and global access
-      window.$bus = $bus
+
+      /** @type {CustomWindow & typeof globalThis} */
+      const win = window
+      win.$bus = $bus
 
       return (instanceContext) => {
         return {

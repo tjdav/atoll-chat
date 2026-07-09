@@ -1,3 +1,51 @@
+/// <reference lib="webworker" />
+
+/**
+ * @typedef {import('dexie').Dexie & {
+ *   local_rooms: import('dexie').Table<any, any>,
+ *   local_messages: import('dexie').Table<any, any>,
+ *   local_assets: import('dexie').Table<any, any>,
+ *   local_config: import('dexie').Table<any, any>
+ * }} AtollChatDatabase
+ */
+
+/**
+ * @typedef {{
+ *   new (name: string): AtollChatDatabase,
+ *   minKey: any,
+ *   maxKey: any
+ * }} DexieConstructor
+ */
+
+/**
+ * @typedef {any} ServiceWorkerGlobalScope
+ * @typedef {any} Clients
+ * @typedef {any} ServiceWorkerRegistration
+ */
+
+/**
+ * @typedef {ServiceWorkerGlobalScope & {
+ *   metadata: { name: string, version: string },
+ *   Dexie: DexieConstructor,
+ *   sodium: typeof import('libsodium-wrappers-sumo'),
+ *   skipWaiting: () => void,
+ *   clients: Clients,
+ *   registration: ServiceWorkerRegistration
+ * }} ServiceWorkerScope
+ */
+
+/** @type {any} */
+const rawSelf = self
+/** @type {ServiceWorkerScope} */
+const swSelf = rawSelf
+
+const metadata = swSelf.metadata
+const Dexie = swSelf.Dexie
+const sodium = swSelf.sodium
+const skipWaiting = swSelf.skipWaiting
+const clients = swSelf.clients
+const registration = swSelf.registration
+
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -14,7 +62,7 @@ importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
 importScripts('/assets/dexie.js')
 
-const CACHE_NAME = self.metadata.name + '-' + self.metadata.version
+const CACHE_NAME = metadata.name + '-' + metadata.version
 
 // Note: Libsodium WASM is embedded as a Base64 string within the JS files
 // in this build, so no separate .wasm file is needed in the cache.
@@ -25,8 +73,10 @@ const isDev = hostname === 'localhost' ||
               hostname.startsWith('10.') ||
               hostname.startsWith('172.')
 
-// The Install Event: Caching the UI shell and cryptographic dependencies
-addEventListener('install', (event) => {
+/**
+ * @param {any} event The installation event.
+ */
+const onInstall = (event) => {
   skipWaiting()
 
   if (isDev) {
@@ -39,10 +89,15 @@ addEventListener('install', (event) => {
       return cache.addAll(ASSETS_TO_CACHE)
     })
   )
-})
+}
 
-// The Activate Event: Cleanup old caches
-addEventListener('activate', (event) => {
+// The Install Event: Caching the UI shell and cryptographic dependencies
+addEventListener('install', onInstall)
+
+/**
+ * @param {any} event The activation event.
+ */
+const onActivate = (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
@@ -57,10 +112,15 @@ addEventListener('activate', (event) => {
       })
     })
   )
-})
+}
 
-// The Fetch Interceptor: Stale-While-Revalidate strategy
-addEventListener('fetch', (event) => {
+// The Activate Event: Cleanup old caches
+addEventListener('activate', onActivate)
+
+/**
+ * @param {any} event The fetch event.
+ */
+const onFetch = (event) => {
   const { request } = event
 
   // Exclude API and SSE calls to PocketBase and only handle GET requests
@@ -86,13 +146,15 @@ addEventListener('fetch', (event) => {
       return cachedResponse || fetchPromise
     })
   )
-})
+}
+
+// The Fetch Interceptor: Stale-While-Revalidate strategy
+addEventListener('fetch', onFetch)
 
 /**
- * Handle Rich Push Notifications
- * Wakes up the worker, fetches encrypted data, decrypts using IndexedDB keys.
+ * @param {any} event The push event.
  */
-addEventListener('push', (event) => {
+const onPush = (event) => {
   event.waitUntil((async () => {
     try {
       // Initialize database
@@ -188,4 +250,6 @@ addEventListener('push', (event) => {
       })
     }
   })())
-})
+}
+
+addEventListener('push', onPush)
