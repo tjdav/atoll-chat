@@ -220,7 +220,7 @@
         try {
           const room = await $localDb.local_rooms.get(room_id)
           if (!room) {
-            const existingItem = listGroup.querySelector(`chat-list-item[room_id="${room_id}"]`)
+            const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)
             if (existingItem) {
               existingItem.remove()
             }
@@ -240,7 +240,7 @@
           }
           manager.loadedItems.unshift(data)
 
-          const existingItem = listGroup.querySelector(`chat-list-item[room_id="${room_id}"]`)
+          const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)
           if (existingItem) {
             updateItemAttributes(existingItem, data)
             if (listGroup.firstElementChild !== existingItem) {
@@ -251,7 +251,7 @@
             if (emptyState && emptyState.textContent.includes('No chats found')) {
               emptyState.remove()
             }
-            if (!listGroup.querySelector(`chat-list-item[room_id="${room_id}"]`)) {
+            if (!listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)) {
               const newItem = document.createElement('chat-list-item')
               updateItemAttributes(newItem, data)
               listGroup.prepend(newItem)
@@ -276,7 +276,7 @@
           me.last_read_message_id = latestMsg.id
           await $localDb.local_rooms.put(room)
           try {
-            const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+            const memberRecord = await pb.collection('room_members').getFirstListItem(`room-id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
             if (memberRecord) {
               await pb.collection('room_members').update(memberRecord.id, { last_read_message_id: latestMsg.id }, { requestKey: null })
             }
@@ -315,7 +315,7 @@
         me.last_read_message_id = newLastReadId
         await $localDb.local_rooms.put(room)
         try {
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room-id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
           if (memberRecord) {
             await pb.collection('room_members').update(memberRecord.id, { last_read_message_id: newLastReadId }, { requestKey: null })
           }
@@ -342,7 +342,7 @@
         me.is_muted = newMuteStatus
         await $localDb.local_rooms.put(room)
         try {
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room-id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
           if (memberRecord) {
             await pb.collection('room_members').update(memberRecord.id, { is_muted: newMuteStatus }, { requestKey: null })
           }
@@ -362,7 +362,7 @@
           return
         }
         try {
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+          const memberRecord = await pb.collection('room_members').getFirstListItem(`room-id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
           if (memberRecord) {
             await pb.collection('room_members').delete(memberRecord.id, { requestKey: null })
           }
