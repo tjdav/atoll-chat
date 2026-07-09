@@ -63,14 +63,16 @@ test.describe('Messaging Features', () => {
       for (let i = 0; i < 25; i++) {
         await aliceInput.fill(`Msg ${i}`)
         await alicePage.keyboard.press('Enter')
-        await alicePage.waitForTimeout(100) // Give it a moment to process
+        // Give it a moment to process
+        await alicePage.waitForTimeout(100)
       }
       // Ensure messages are rendered
       await expect(alicePage.locator('timeline-row').last()).toContainText('Msg 24', { timeout: 20000 })
 
       const timeline = alicePage.locator('message-timeline div.overflow-auto').first()
       await timeline.evaluate(el => el.scrollTop = 0)
-      await alicePage.waitForTimeout(1000) // Wait for debounce and scroll to settle
+      // Wait for debounce and scroll to settle
+      await alicePage.waitForTimeout(1000)
 
       await aliceInput.fill('Jump')
       await alicePage.keyboard.press('Enter')

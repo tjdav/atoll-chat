@@ -31,7 +31,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, signal }) => {
+    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker }) => {
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $sync } = realtimeSync

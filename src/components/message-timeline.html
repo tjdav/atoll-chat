@@ -545,7 +545,7 @@
         prevSelectionId = val
         debouncedRender()
       })
-      $state.subscribe('activeSelectionType', (val) => {
+      $state.subscribe('activeSelectionType', () => {
         saveScrollPosition()
         debouncedRender()
       })

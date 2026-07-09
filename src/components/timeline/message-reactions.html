@@ -174,7 +174,7 @@
 
         // Mobile long-press
         let pressTimer
-        const startPress = (e) => {
+        const startPress = () => {
           pressTimer = setTimeout(() => tooltips.get(pill)?.show(), 600)
         }
         const cancelPress = () => clearTimeout(pressTimer)

@@ -40,11 +40,10 @@
       errorMessage: '',
       fileName: ''
     }),
-    client: async ({ state, signal, refs, globalStore, utils, eventBus, localDb, bootstrap }) => {
+    client: async ({ state, signal, refs, globalStore, utils, localDb, bootstrap }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $media } = utils
-      const { $bus } = eventBus
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
       const carouselInner = refs('carouselInner')

@@ -103,7 +103,7 @@
               $state.decryptionCache.set(cacheKey, blobUrl)
             }
             imgContainer.innerHTML = `<img src="${blobUrl}" class="w-100 h-100 object-fit-cover" alt="Preview">`
-          } catch (err) {
+          } catch {
             imgContainer.innerHTML = '<i class="bi bi-link-45deg fs-1 text-secondary opacity-25"></i>'
           }
         } else if (link.image) {

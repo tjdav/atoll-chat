@@ -23,7 +23,7 @@ export default function routerPlugin () {
               type: params.get('type')
             }
           }
-        } catch (e) {
+        } catch {
           // Ignore
         }
 

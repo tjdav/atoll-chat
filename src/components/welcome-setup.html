@@ -129,7 +129,6 @@
       const btnTogglePassword = refs('btnTogglePassword')
 
       let vaultMode = 'password'
-      let cryptoModules = null
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
@@ -256,7 +255,6 @@
         const username = usernameInput.value
         const email = emailInput.value
         const password = passwordInput.value
-        const passwordConfirm = passwordConfirmInput.value
 
         let vaultPassword = ''
         if (vaultMode === 'password') {

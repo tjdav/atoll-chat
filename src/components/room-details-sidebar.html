@@ -158,7 +158,7 @@
 
       // Listen for global kick events (we'll handle the logic here)
       $bus.on('ui:trigger_kick_user', async (data) => {
-        const { kickedMemberId, kickedUserId, kickedUsername, room_id } = data
+        const { kickedMemberId, kickedUsername, room_id } = data
   
         try {
           showLoading(`Rotating keys and removing ${kickedUsername}...`)

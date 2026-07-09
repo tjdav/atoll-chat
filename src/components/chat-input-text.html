@@ -191,7 +191,7 @@
         $bus.emit('ui:send_clicked')
       }, { signal })
 
-      emojiButton.addEventListener('click', (e) => {
+      emojiButton.addEventListener('click', () => {
         const rect = emojiButton.getBoundingClientRect()
         $bus.emit('ui:show_reaction_picker', {
           x: rect.left - 300,

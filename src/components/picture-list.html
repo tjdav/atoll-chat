@@ -10,7 +10,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, signal, localDb, eventBus, globalStore, refs, utils, fuse }) => {
+    client: ({ state, localDb, eventBus, globalStore, refs, utils, fuse }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore

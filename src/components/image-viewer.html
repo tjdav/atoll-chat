@@ -37,8 +37,7 @@
       errorMessage: '',
       fileName: ''
     }),
-    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, bootstrap }) => {
-      const { pb } = pocketbase
+    client: async ({ state, signal, refs, localDb, globalStore, utils, bootstrap }) => {
       const { $localDb } = localDb
       const { $state } = globalStore
       const { $media } = utils

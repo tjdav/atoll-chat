@@ -115,7 +115,7 @@ async function resetPocketBase () {
         existingUser = await pb.collection('users').getFirstListItem(pb.filter('username = {:username}', { username: user.username }), {
           requestKey: null
         })
-      } catch (e) {
+      } catch {
         // User doesn't exist, we will create it below
       }
 

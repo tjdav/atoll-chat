@@ -833,7 +833,7 @@ async function processIncomingMessage (rpcId, record) {
   let decryptedBuffer
   try {
     decryptedBuffer = sodium.crypto_secretbox_open_easy(ciphertextBuffer, nonceBuffer, epochKeyBuffer)
-  } catch (e) {
+  } catch {
     throw new Error('Decryption failed')
   }
 
@@ -1075,7 +1075,7 @@ async function processNewRoomKey (rpcId, payload) {
       inviterPublicKeyBuffer,
       userPrivateKeyBuffer
     )
-  } catch (e) {
+  } catch {
     throw new Error('Failed to unwrap room key: Decryption error')
   }
 

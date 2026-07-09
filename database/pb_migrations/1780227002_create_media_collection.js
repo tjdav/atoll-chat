@@ -3,7 +3,7 @@ migrate((app) => {
   let media
   try {
     media = app.findCollectionByNameOrId('pbc_2708086759')
-  } catch (err) {
+  } catch {
     media = new Collection({ id: 'pbc_2708086759' })
   }
 

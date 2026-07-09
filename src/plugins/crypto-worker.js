@@ -131,7 +131,7 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
           }
         }
 
-        return (instanceContext) => {
+        return () => {
           return {
             $worker
           }

@@ -112,7 +112,7 @@
               nonce: record.encrypted_master_keys.nonce,
               KEK: KEK_Password
             })
-          } catch (err) {
+          } catch {
             throw new Error('Invalid Vault Password')
           }
 

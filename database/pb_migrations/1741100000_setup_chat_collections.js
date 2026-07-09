@@ -3,7 +3,7 @@ migrate((app) => {
   let rooms
   try {
     rooms = app.findCollectionByNameOrId('pbc_3085411453')
-  } catch (err) {
+  } catch {
     rooms = new Collection({ id: 'pbc_3085411453' })
   }
 
@@ -53,7 +53,7 @@ migrate((app) => {
   let roomMembers
   try {
     roomMembers = app.findCollectionByNameOrId('pbc_4263127577')
-  } catch (err) {
+  } catch {
     roomMembers = new Collection({ id: 'pbc_4263127577' })
   }
 

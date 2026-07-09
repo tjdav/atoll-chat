@@ -32,7 +32,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, state, globalStore, eventBus, signal }) => {
+    client: ({ refs, state, globalStore, eventBus }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       state.currentAppView = $state.currentAppView || 'chats'

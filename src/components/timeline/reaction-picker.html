@@ -10,9 +10,8 @@
 
   export default defineComponent({
     client: (ctx) => {
-      const { refs, eventBus, signal, globalStore, emojiPicker } = ctx
+      const { refs, eventBus, signal, emojiPicker } = ctx
       const { $bus } = eventBus
-      const { $state } = globalStore
       const { $emojiPicker } = emojiPicker
       const container = refs('container')
       const pickerContainer = refs('pickerContainer')

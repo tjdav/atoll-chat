@@ -127,7 +127,6 @@
       const btnTogglePassword = refs('btnTogglePassword')
 
       let vaultMode = 'password'
-      let cryptoModules = null
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
@@ -376,7 +375,7 @@
           }
 
           // Create the user record in PocketBase
-          const record = await pb.collection('users').create(payload)
+          await pb.collection('users').create(payload)
 
           updateStatus('Account created! Logging in...')
 

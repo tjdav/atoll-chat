@@ -7,7 +7,7 @@ import { definePlugin } from 'coralite'
 export default definePlugin({
   name: 'emojiPicker',
   client: {
-    context: (pluginContext) => {
+    context: () => {
       console.log('[emojiPickerPlugin] Initializing context')
       const $emojiPicker = {
         createPicker: async (options = {}) => {

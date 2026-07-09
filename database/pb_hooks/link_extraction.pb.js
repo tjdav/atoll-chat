@@ -82,7 +82,7 @@ routerAdd('GET', '/api/link-extraction', (e) => {
       if (domainMatch) {
         domain = domainMatch[1]
       }
-    } catch (err) {
+    } catch {
     }
 
     if (image && !image.startsWith('http')) {

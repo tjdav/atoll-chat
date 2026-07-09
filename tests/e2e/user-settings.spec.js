@@ -4,7 +4,7 @@ import path from 'path'
 test.describe('User Settings & Profile', () => {
 
   test.describe('Profile', () => {
-    test.beforeEach(async ({ page, loginApp }) => {
+    test.beforeEach(async ({ loginApp }) => {
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
     })
 

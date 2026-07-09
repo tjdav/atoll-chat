@@ -221,9 +221,15 @@
             tracks.forEach(track => track.stop())
   
             if (shouldSendVoice && audioChunks.length > 0) {
-              const extension = mediaRecorder.mimeType.includes('webm') ? 'webm' :
-                mediaRecorder.mimeType.includes('ogg') ? 'ogg' :
-                mediaRecorder.mimeType.includes('mp4') ? 'm4a' : 'bin'
+              let extension = 'bin'
+              if (mediaRecorder.mimeType.includes('webm')) {
+                extension = 'webm'
+              } else if (mediaRecorder.mimeType.includes('ogg')) {
+                extension = 'ogg'
+              } else if (mediaRecorder.mimeType.includes('mp4')) {
+                extension = 'm4a'
+              }
+  
               const filename = `voice-note-${Date.now()}.${extension}`
               const file = new File(audioChunks, filename, { type: mediaRecorder.mimeType })
               const waveformData = generateWaveformImage()

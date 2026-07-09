@@ -103,7 +103,7 @@ async function provision () {
         })
         console.log(`User ${user.username} already exists, skipping.`)
         continue
-      } catch (e) {
+      } catch {
         // User doesn't exist, proceed
       }
 

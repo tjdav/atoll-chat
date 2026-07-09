@@ -26,7 +26,7 @@
             hour12: false
           }
           return d.toLocaleDateString('en-AU', options)
-        } catch (e) {
+        } catch {
           return state.timestamp
         }
       }

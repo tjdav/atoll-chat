@@ -5,7 +5,7 @@ migrate((app) => {
   let collection
   try {
     collection = app.findCollectionByNameOrId('pbc_2605467279')
-  } catch (err) {
+  } catch {
     collection = new Collection({ id: 'pbc_2605467279' })
   }
 

@@ -37,11 +37,10 @@
       errorMessage: '',
       fileName: 'Untitled Document'
     }),
-    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, utils, cryptoWorker, bootstrap }) => {
+    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, cryptoWorker, bootstrap }) => {
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore
-      const { $media } = utils
       const { $worker } = cryptoWorker
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
