@@ -258,4 +258,59 @@ test.describe('Messaging Features', () => {
       await bobContext.close()
     })
   })
+
+  test.describe('Mobile Keyboard and Focus Management', () => {
+    // Emulate a mobile device with touch input
+    test.use({
+      viewport: {
+        width: 375,
+        height: 667
+      },
+      hasTouch: true,
+      isMobile: true
+    })
+
+    test('should not auto-focus the input on mobile and should lose focus after sending', async ({ page, loginApp }) => {
+      test.slow()
+
+      await loginApp('alice', 'Password123!', 'VaultPassword123!')
+
+      // Create a room
+      await page.click('button[title="Create Room"]')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
+      await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
+      await page.click('.search-result-item:has-text("bob")')
+      await page.click('button:has-text("Create Room")')
+
+      await expect(page.locator('chat-view')).toBeVisible({ timeout: 15000 })
+
+      const textarea = page.locator('textarea[placeholder="Type a message..."]')
+      await expect(textarea).toBeVisible()
+
+      // On initial load / programmatic transitions, textarea should NOT be focused on mobile
+      await expect(textarea).not.toBeFocused()
+
+      // Explicitly tap the textarea to focus it (virtual keyboard pops up)
+      await textarea.click()
+      await expect(textarea).toBeFocused()
+
+      // Take screenshot of the focused state
+      await page.screenshot({ path: '/home/jules/verification/screenshots/focused.png' })
+
+      // Send a message
+      await textarea.fill('Hello from emulated touch device!')
+
+      // Click the send button to simulate mobile tap
+      await page.click('[data-testid$="__sendButton"]')
+
+      // Verify that the input loses focus (textarea.blur() was triggered)
+      await expect(textarea).not.toBeFocused({ timeout: 5000 })
+
+      // Wait for the delayed scroll-to-bottom tick (300ms) to complete
+      await page.waitForTimeout(500)
+
+      // Take screenshot of the blurred/collapsed state
+      await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+    })
+  })
 })

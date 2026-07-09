@@ -355,13 +355,26 @@ export default definePlugin({
         toString: (uint8Array) => new TextDecoder().decode(uint8Array)
       }
 
+      /**
+       * Namespace: $device
+       */
+      const device = {
+        /**
+         * Checks if the device has a touch screen.
+         */
+        isTouch: () => {
+          return window.matchMedia('(pointer: coarse)').matches
+        }
+      }
+
       const baseNamespaces = {
         $time: time,
         $string: string,
         $list: list,
         $func: func,
         $image: image,
-        $crypto: crypto
+        $crypto: crypto,
+        $device: device
       }
 
 

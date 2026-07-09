@@ -621,6 +621,11 @@
         }
       })
 
+      $bus.on('ui:scroll_to_bottom', (payload) => {
+        const smooth = payload ? payload.smooth !== false : true
+        scrollToBottom(smooth)
+      })
+
       $bus.on('message:scroll_to', async (payload) => {
         const { messageId } = payload
         if (!messageId) {

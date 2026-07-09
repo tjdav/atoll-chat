@@ -16,7 +16,7 @@ import { defineComponent } from 'coralite'
 export default defineComponent({
   client: ({ utils }) => {
     // Destructure the required namespaces
-    const { $time, $string, $list, $func, $image, $crypto, $media } = utils
+    const { $time, $string, $list, $func, $image, $crypto, $media, $device } = utils
 
     // Example: Convert a timestamp
     const relativeTime = $time.getRelative(timestamp)
@@ -122,3 +122,11 @@ Provides decryption and caching wrapper for encrypted media assets stored in Poc
 - `mime_type` (`string`): Required. MIME type of the file (e.g., `'image/webp'`).
 - `message_id` (`string`): Optional. Message ID used for local cache lookup/storage.
 - `id` (`string`): Optional. Asset ID used for local cache lookup/storage.
+
+### Device Helpers (`$device`)
+Provides hardware and browser capability checks.
+
+| Function | Description | Arguments | Returns |
+|---|---|---|---|
+| [isTouch()](file:///home/thomas/Projects/atoll-chat/src/plugins/utils-plugin.js#L365-L367) | Checks if the current device has a touch screen using a pointer media query. | None | `boolean` - `true` if the device supports touch, `false` otherwise. |
+

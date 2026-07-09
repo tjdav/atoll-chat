@@ -72,7 +72,7 @@
       isUploading: Boolean,
       isCompressing: Boolean
     },
-    server: ({ state }) => ({
+    server: () => ({
       currentMessageText: ''
     }),
     getters: {
@@ -80,9 +80,10 @@
       sendIconClass: (state) => (state.isCompressing ? 'd-none' : ''),
       spinnerClass: (state) => (state.isCompressing ? '' : 'd-none')
     },
-    client: ({ refs, state, globalStore, eventBus, signal }) => {
+    client: ({ refs, state, globalStore, eventBus, signal, utils }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
+      const { $device } = utils
       const messageInput = refs('messageInput')
       const emojiButton = refs('emojiButton')
 
@@ -229,6 +230,13 @@
 
 
       $bus.on('ui:focus_input', () => {
+        if ($device.isTouch()) {
+          messageInput.blur()
+          setTimeout(() => {
+            $bus.emit('ui:scroll_to_bottom', { smooth: true })
+          }, 300)
+          return
+        }
         requestAnimationFrame(() => {
           messageInput.focus()
         })
