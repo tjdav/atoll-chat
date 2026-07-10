@@ -13,9 +13,7 @@
       const { $notifications } = notifications
       const container = refs('container')
 
-      if (router) {
-        // Enforce plugin initialization
-      }
+      router.init()
 
       const updateUI = () => {
         // Clear previous content
