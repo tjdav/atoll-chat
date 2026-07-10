@@ -70,10 +70,12 @@
         }
       })
 
-      $bus.on('MUSIC:SELECT', ({ assetId }) => {
-        $state.activeSelectionId = assetId
-        $state.activeSelectionType = 'music'
-        debouncedRender()
+      $bus.on('media:select', ({ assetId, type }) => {
+        if (type === 'music') {
+          $state.activeSelectionId = assetId
+          $state.activeSelectionType = 'music'
+          debouncedRender()
+        }
       })
 
       $state.subscribe('activeSelectionId', () => {

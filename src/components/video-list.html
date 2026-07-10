@@ -69,7 +69,7 @@
         }
       })
 
-      $bus.on('MEDIA:SELECT', ({ assetId, type }) => {
+      $bus.on('media:select', ({ assetId, type }) => {
         if (type === 'videos') {
           $state.activeSelectionId = assetId
           $state.activeSelectionType = 'videos'

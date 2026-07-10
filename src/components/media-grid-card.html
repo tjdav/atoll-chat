@@ -67,7 +67,7 @@
 
       if (card) {
         card.onclick = () => {
-          $bus.emit('MEDIA:SELECT', {
+          $bus.emit('media:select', {
             assetId: state.assetId,
             type: state.type
           })

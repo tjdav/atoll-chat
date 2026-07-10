@@ -16,7 +16,7 @@ export default definePlugin({
 
         if (type === 'video:progress') {
           if (pluginContext.$bus) {
-            pluginContext.$bus.emit('video:progress', {
+            pluginContext.$bus.emit('media:video_progress', {
               id,
               progress: payload.progress
             })

@@ -119,7 +119,7 @@
       if (btnEditRoom) {
         btnEditRoom.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitBusAction('CHAT:EDIT_ROOM')
+          emitBusAction('room:edit')
         }, { signal })
       }
 
@@ -127,7 +127,7 @@
       if (btnToggleRead) {
         btnToggleRead.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitBusAction('CHAT:TOGGLE_READ', { isUnread: state.isUnread })
+          emitBusAction('room:toggle_read', { isUnread: state.isUnread })
         }, { signal })
       }
 
@@ -135,7 +135,7 @@
       if (btnToggleMute) {
         btnToggleMute.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitBusAction('CHAT:TOGGLE_MUTE', { isMuted: state.isMuted })
+          emitBusAction('room:toggle_mute', { isMuted: state.isMuted })
         }, { signal })
       }
 
@@ -143,7 +143,7 @@
       if (btnDelete) {
         btnDelete.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitBusAction('CHAT:DELETE', { isGroup: state.isGroup })
+          emitBusAction('room:delete', { isGroup: state.isGroup })
         }, { signal })
       }
 
@@ -152,7 +152,7 @@
           if (e.target.closest('.dropdown')) {
             return
           }
-          emitBusAction('CHAT:SELECT')
+          emitBusAction('room:select')
           $bus.emit('ui:selection_made')
         }, { signal })
       }

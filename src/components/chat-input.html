@@ -295,7 +295,7 @@
       })
 
       // Listen for video compression progress
-      $bus.on('video:progress', (payload) => {
+      $bus.on('media:video_progress', (payload) => {
         state.uploadStatus = `Compressing video... ${payload.progress}%`
       })
 

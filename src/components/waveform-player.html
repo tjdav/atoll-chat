@@ -325,7 +325,7 @@
       }
 
       const triggerPlay = () => {
-        $bus.emit('waveform-player:play', { audioId: state.audioId })
+        $bus.emit('waveform_player:play', { audioId: state.audioId })
 
         audio.play().catch(err => {
           if (err.name !== 'AbortError') {
@@ -363,7 +363,7 @@
       })
 
       // Exclusive playback coordinator
-      const unsubscribePlay = $bus.on('waveform-player:play', ({ audioId }) => {
+      const unsubscribePlay = $bus.on('waveform_player:play', ({ audioId }) => {
         if (audioId !== state.audioId && audio && !audio.paused) {
           audio.pause()
         }
