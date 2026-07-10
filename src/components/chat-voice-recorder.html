@@ -1,15 +1,15 @@
 <template id="chat-voice-recorder">
   <div class="recording-ui d-flex align-items-center gap-2">
-    <button class="btn btn-link text-danger p-1" ref="discardButton" title="Discard">
+    <button class="btn btn-link text-danger p-1" ref="discardButton" title="Discard" data-testid="discardButton">
       <i class="bi bi-trash fs-4"></i>
     </button>
     
     <div class="recording-controls flex-grow-1 d-flex align-items-center bg-light rounded-pill px-3 py-1 border">
-      <button class="btn btn-sm btn-light rounded-circle me-2" ref="pauseResumeButton">
+      <button class="btn btn-sm btn-light rounded-circle me-2" ref="pauseResumeButton" data-testid="pauseResumeButton">
         <i class="bi {{ pauseResumeIcon }}"></i>
       </button>
 
-      <button class="btn btn-sm btn-link text-primary me-2 {{ redoClass }}" ref="redoButton" title="Restart">
+      <button class="btn btn-sm btn-link text-primary me-2 {{ redoClass }}" ref="redoButton" title="Restart" data-testid="redoButton">
         <i class="bi bi-arrow-counterclockwise fs-5"></i>
       </button>
 
@@ -19,12 +19,12 @@
 
       <span class="recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
 
-      <button class="btn btn-sm btn-link text-secondary ms-2 {{ redoClass }}" ref="resumeMicButton" title="Add more">
+      <button class="btn btn-sm btn-link text-secondary ms-2 {{ redoClass }}" ref="resumeMicButton" title="Add more" data-testid="resumeMicButton">
         <i class="bi bi-mic-fill"></i>
       </button>
     </div>
 
-    <button class="btn btn-primary btn-circle" ref="sendVoiceButton">
+    <button class="btn btn-primary btn-circle" ref="sendVoiceButton" data-testid="sendVoiceButton">
       <i class="bi bi-send-fill" style="transform: rotate(-45deg); margin-left: 3px;"></i>
     </button>
   </div>

@@ -17,10 +17,10 @@ test.describe('Media & Attachments', () => {
         loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!'),
         loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
       ])
-      await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await alicePage.click('.search-result-item:has-text("bob")')
-      await alicePage.click('button:has-text("Create Room")')
+      await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const bobChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChat).toBeVisible({ timeout: 30000 })
       await bobChat.click()
@@ -59,28 +59,28 @@ test.describe('Media & Attachments', () => {
 
     test('video compression', async ({ page, loginCustomPage }) => {
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const vp = path.join(__dirname, 'fixtures', 'test-files', 'test.mp4')
       await page.setInputFiles('[data-testid$="__videoInput"]', vp)
       await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
-      await page.click('.bi-send-fill')
+      await page.locator('[data-testid$="sendButton"]').click()
       await expect(page.locator('timeline-row img').first()).toBeVisible({ timeout: 15000 })
     })
 
     test('audio uploads generate interactive SVG waveforms', async ({ page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const ap = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
       await page.setInputFiles('[data-testid$="__audioInput"]', ap)
       await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
-      await page.click('.bi-send-fill')
+      await page.locator('[data-testid$="sendButton"]').click()
 
       // Wait for the message status to be 'Sent'
       await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 60000 })
@@ -101,10 +101,10 @@ test.describe('Media & Attachments', () => {
   test.describe('Viewers and Lists', () => {
     test.beforeEach(async ({ page, loginApp }) => {
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
     })
 
     test('carousel and grid sync', async ({ page }) => {
@@ -114,7 +114,7 @@ test.describe('Media & Attachments', () => {
         await page.click('[data-testid$="__sendButton"]')
         await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 20000 })
       }
-      await page.click('button[title="Pictures"]')
+      await page.locator('[data-testid="nav-sidebar-0__btnPictures"]').click()
       const cards = page.locator('media-grid-card')
       await cards.first().click()
       await page.click('.carousel-control-next')
@@ -137,7 +137,7 @@ test.describe('Media & Attachments', () => {
       await page.setInputFiles('[data-testid$="__docInput"]', dp)
       await page.click('[data-testid$="__sendButton"]')
       await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 30000 })
-      await page.click('[title="Documents"]')
+      await page.locator('[data-testid="nav-sidebar-0__btnDocuments"]').click()
       await expect(page.locator('document-list .app-list-item').filter({ hasText: 'test.txt' })).toBeVisible()
 
       await page.route('**/api/link-extraction*', async r => {
@@ -150,12 +150,12 @@ test.describe('Media & Attachments', () => {
           })
         })
       })
-      await page.click('button[title="Chats"]')
+      await page.locator('[data-testid="nav-sidebar-0__btnChats"]').click()
       await page.fill('textarea', 'https://g.com ')
       // Wait for debounced link-extraction to run and generate the preview
       await page.waitForTimeout(1000)
       await page.click('[data-testid$="__sendButton"]')
-      await page.click('button[title="Links"]')
+      await page.locator('[data-testid="nav-sidebar-0__btnLinks"]').click()
       await expect(page.locator('link-list .app-list-item')).toContainText('PB')
     })
   })
@@ -163,10 +163,10 @@ test.describe('Media & Attachments', () => {
   test.describe('Media Manager', () => {
     test('takeover and playback', async ({ page, loginCustomPage }) => {
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const ap = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
       await page.setInputFiles('[data-testid$="__audioInput"]', ap)
       await page.click('[data-testid$="__sendButton"]')
@@ -174,7 +174,7 @@ test.describe('Media & Attachments', () => {
       // Wait for the message status to be 'Sent'
       await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 60000 })
 
-      await page.click('button[title="Music"]')
+      await page.locator('[data-testid="nav-sidebar-0__btnMusic"]').click()
       await page.locator('music-list .app-list-item').first().click()
       await page.waitForTimeout(1000)
       await page.locator('button:has(i.bi-play-fill)').last().click()

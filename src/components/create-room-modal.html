@@ -9,7 +9,7 @@
         <div class="modal-body">
           <div class="mb-3 {{ roomNameClass }}" ref="roomNameContainer">
             <label class="form-label fw-bold">Room Name</label>
-            <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput">
+            <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput" data-testid="roomNameInput">
           </div>
 
           <div class="mb-3 {{ roomNameClass }}">
@@ -31,7 +31,7 @@
             <div class="d-flex flex-wrap gap-2 mb-2" ref="selectedUsers"></div>
             <div class="input-group">
               <span class="input-group-text bg-light border-end-0"><i class="bi bi-search"></i></span>
-              <input type="text" class="form-control border-start-0 ps-0" placeholder="Search by username or email..." ref="searchInput">
+              <input type="text" class="form-control border-start-0 ps-0" placeholder="Search by username or email..." ref="searchInput" data-testid="searchInput">
             </div>
           </div>
 
@@ -39,7 +39,7 @@
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" ref="btnCancel">Cancel</button>
-          <button type="button" class="btn btn-primary" ref="btnCreate" disabled>Create Room</button>
+          <button type="button" class="btn btn-primary" ref="btnCreate" disabled data-testid="btnCreate">Create Room</button>
         </div>
       </div>
     </div>
@@ -143,6 +143,7 @@
             }
             const item = document.createElement('div')
             item.className = 'search-result-item'
+            item.setAttribute('data-testid', 'search-result-' + user.username)
             item.textContent = user.name ? `${user.name} (@${user.username})` : user.username
             item.onclick = () => {
               state.selectedParticipants = [...state.selectedParticipants, user]

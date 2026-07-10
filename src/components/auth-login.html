@@ -5,18 +5,18 @@
       <form ref="loginForm">
         <div class="mb-3">
           <label for="{{ ref_username }}" class="form-label">Username or Email</label>
-          <input ref="username" name="username" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username">
+          <input ref="username" name="username" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username" data-testid="username">
         </div>
         <div class="mb-3">
           <label for="{{ ref_password }}" class="form-label">Password</label>
           <div class="password-field-container">
-            <input ref="password" name="password" type="password" class="form-control" placeholder="Enter Password" required autocomplete="current-password">
+            <input ref="password" name="password" type="password" class="form-control" placeholder="Enter Password" required autocomplete="current-password" data-testid="password">
             <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
               <i class="bi bi-eye"></i>
             </button>
           </div>
         </div>
-        <button type="submit" class="btn btn-primary w-100">Login</button>
+        <button type="submit" class="btn btn-primary w-100" ref="loginSubmit" data-testid="loginSubmit">Login</button>
       </form>
       <div class="mt-3 text-center">
         <small class="text-muted">Don't have an account? <a href="#" ref="linkRegister" class="text-decoration-none">Register here</a></small>

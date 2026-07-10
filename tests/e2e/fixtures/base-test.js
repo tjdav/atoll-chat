@@ -216,14 +216,14 @@ export const test = base.extend({
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-      await page.fill('input[placeholder="Enter username or email"]', username)
-      await page.fill('input[placeholder="Enter Password"]', appPassword)
-      await page.click('button:has-text("Login")')
+      await page.locator('[data-testid$="username"]').fill(username)
+      await page.locator('[data-testid$="password"]').fill(appPassword)
+      await page.locator('[data-testid$="loginSubmit"]').click()
 
       await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
-      await page.fill('input[placeholder="Enter Vault Password"]', vaultPassword)
-      await page.click('button:has-text("Unlock with Password")')
+      await page.locator('[data-testid$="password"]').fill(vaultPassword)
+      await page.locator('[data-testid$="unlockSubmit"]').click()
 
       await expect(page.locator('app-layout')).toBeVisible({ timeout: 10000 })
     }
@@ -279,14 +279,14 @@ export const test = base.extend({
       await targetPage.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
       // Login Flow
-      await targetPage.fill('input[placeholder="Enter username or email"]', username)
-      await targetPage.fill('input[placeholder="Enter Password"]', appPassword)
-      await targetPage.click('button:has-text("Login")')
+      await targetPage.locator('[data-testid$="username"]').fill(username)
+      await targetPage.locator('[data-testid$="password"]').fill(appPassword)
+      await targetPage.locator('[data-testid$="loginSubmit"]').click()
 
       await expect(targetPage.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
-      await targetPage.fill('input[placeholder="Enter Vault Password"]', vaultPassword)
-      await targetPage.click('button:has-text("Unlock with Password")')
+      await targetPage.locator('[data-testid$="password"]').fill(vaultPassword)
+      await targetPage.locator('[data-testid$="unlockSubmit"]').click()
 
       await expect(targetPage.locator('app-layout')).toBeVisible({ timeout: 15000 })
     }

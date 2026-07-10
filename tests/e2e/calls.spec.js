@@ -5,7 +5,6 @@ test.describe.serial('Calls', () => {
   let bobContext, bobPage
 
   test.beforeEach(async ({ browser, loginCustomPage }) => {
-    test.slow()
     aliceContext = await browser.newContext()
     alicePage = await aliceContext.newPage()
     bobContext = await browser.newContext()
@@ -15,15 +14,14 @@ test.describe.serial('Calls', () => {
     await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
     // Setup room
-    await alicePage.click('button[title="Create Room"]')
-    await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
-    await alicePage.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
-    await alicePage.click('.search-result-item:has-text("bob")')
-    await alicePage.click('button:has-text("Create Room")')
+    await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+    await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+    await alicePage.locator('[data-testid$="search-result-bob"]').click()
+    await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
     await expect(alicePage.locator('chat-view header h6')).toContainText('bob', { timeout: 15000 })
 
     const bobChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
-    await expect(bobChat).toBeVisible({ timeout: 30000 })
+    await expect(bobChat).toBeVisible({ timeout: 15000 })
     await bobChat.click()
     await expect(bobPage.locator('chat-view header h6')).toContainText('alice', { timeout: 15000 })
   })
@@ -35,7 +33,7 @@ test.describe.serial('Calls', () => {
 
   test('Audio Call between Alice and Bob', async () => {
     console.log('Alice initiating audio call...')
-    await alicePage.click('button[title="Audio Call"]')
+    await alicePage.locator('[data-testid="chat-view-0__btnAudioCall"]').click()
 
     const bobIncomingView = bobPage.locator('call-overlay .incoming-view')
     await expect(bobIncomingView).toBeVisible({ timeout: 20000 })
@@ -66,7 +64,7 @@ test.describe.serial('Calls', () => {
 
   test('Video Call with PiP and Messaging', async () => {
     console.log('Alice initiating video call...')
-    await alicePage.click('button[title="Video Call"]')
+    await alicePage.locator('[data-testid="chat-view-0__btnVideoCall"]').click()
 
     await expect(bobPage.locator('call-overlay .incoming-view')).toBeVisible({ timeout: 20000 })
     await bobPage.click('call-overlay button[title="Accept Call"]')

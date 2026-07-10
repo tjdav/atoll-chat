@@ -2,7 +2,7 @@
   <div class="list-pane-custom d-flex flex-column h-100">
     <header class="app-header list-pane-header d-flex justify-content-between align-items-center">
       <h4 class="mb-0 fw-bold text-capitalize" ref="paneTitle">Chats</h4>
-      <button class="btn btn-sm btn-primary rounded-circle" ref="btnCreateRoom" title="Create Room" style="display: none;">
+      <button class="btn btn-sm btn-primary rounded-circle" ref="btnCreateRoom" title="Create Room" style="display: none;" data-testid="btnCreateRoom">
         <i class="bi bi-pencil-square"></i>
       </button>
     </header>
@@ -14,7 +14,8 @@
         <input type="text" 
                class="form-control pe-3" 
                placeholder="Search..." 
-               ref="searchInput">
+               ref="searchInput"
+               data-testid="searchInput">
       </div>
     </div>
     <div class="flex-grow-1 overflow-hidden" ref="listContainer">

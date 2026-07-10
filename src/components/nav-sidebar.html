@@ -1,30 +1,30 @@
 <template id="nav-sidebar">
   <div class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100">
     <div class="nav flex-column nav-pills w-100 px-2 gap-3">
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isChatsActive }}" ref="btnChats" title="Chats">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isChatsActive }}" ref="btnChats" title="Chats" data-testid="btnChats">
         <i class="bi bi-chat-left-text fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isMusicActive }}" ref="btnMusic" title="Music">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isMusicActive }}" ref="btnMusic" title="Music" data-testid="btnMusic">
         <i class="bi bi-music-note-list fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isPicturesActive }}" ref="btnPictures" title="Pictures">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isPicturesActive }}" ref="btnPictures" title="Pictures" data-testid="btnPictures">
         <i class="bi bi-image fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isVideosActive }}" ref="btnVideos" title="Videos">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isVideosActive }}" ref="btnVideos" title="Videos" data-testid="btnVideos">
         <i class="bi bi-camera-video fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isDocumentsActive }}" ref="btnDocuments" title="Documents">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isDocumentsActive }}" ref="btnDocuments" title="Documents" data-testid="btnDocuments">
         <i class="bi bi-file-earmark-fill fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isLinksActive }}" ref="btnLinks" title="Links">
+      <button class="nav-link d-flex align-items-center justify-content-center {{ isLinksActive }}" ref="btnLinks" title="Links" data-testid="btnLinks">
         <i class="bi bi-link-45deg fs-4"></i>
       </button>
     </div>
     <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative">
-      <button class="nav-link d-flex align-items-center justify-content-center w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings">
+      <button class="nav-link d-flex align-items-center justify-content-center w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings" data-testid="btnSettings">
         <i class="bi bi-gear-fill fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center w-100" ref="btnLogout" title="Logout">
+      <button class="nav-link d-flex align-items-center justify-content-center w-100" ref="btnLogout" title="Logout" data-testid="btnLogout">
         <i class="bi bi-box-arrow-right fs-4"></i>
       </button>
     </div>

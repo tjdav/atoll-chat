@@ -4,7 +4,7 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <div class="d-flex align-items-center gap-4 mb-4">
-          <div class="position-relative cursor-pointer flex-shrink-0" ref="avatarContainer" style="width: 80px; height: 80px;">
+          <div class="position-relative cursor-pointer flex-shrink-0" ref="avatarContainer" style="width: 80px; height: 80px;" data-testid="avatarContainer">
             <div ref="avatarPreview" class="avatar-circle w-100 h-100 d-flex align-items-center justify-content-center bg-primary-subtle text-primary fw-bold fs-3 overflow-hidden rounded-circle border">
               {{ userInitial }}
             </div>
@@ -15,12 +15,12 @@
           </div>
           <div class="flex-grow-1">
             <label class="form-label small text-muted text-uppercase fw-bold">Display Name</label>
-            <input type="text" class="form-control" ref="nameInput" value="{{ displayName }}" placeholder="Enter your display name">
+            <input type="text" class="form-control" ref="nameInput" value="{{ displayName }}" placeholder="Enter your display name" data-testid="nameInput">
             <p class="text-muted small mb-0 mt-1">This name will be visible to your contacts.</p>
           </div>
         </div>
         <div class="d-flex justify-content-end">
-          <button class="btn btn-primary" ref="btnSave" {{ saveBtnDisabled }}>
+          <button class="btn btn-primary" ref="btnSave" disabled="{{ saveBtnDisabled }}" data-testid="btnSave">
             {{ saveBtnText }}
           </button>
         </div>

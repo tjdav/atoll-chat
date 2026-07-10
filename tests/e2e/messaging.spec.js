@@ -6,16 +6,16 @@ test.describe('Messaging Features', () => {
     test.beforeEach(async ({ page, loginApp }) => {
       test.slow()
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.locator('.search-result-item:has-text("bob")').click()
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
       await page.fill('textarea', 'Msg 1')
       await page.keyboard.press('Enter')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'charlie')
-      await page.locator('.search-result-item:has-text("charlie")').click()
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('charlie')
+      await page.locator('[data-testid$="search-result-charlie"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
     })
 
     test('mark as unread, mute, delete', async ({ page }) => {
@@ -27,29 +27,28 @@ test.describe('Messaging Features', () => {
 
       console.log('Toggling read status...')
       await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
-      await getBobChat().getByTestId('btn-toggle-read').click()
+      await getBobChat().locator('[data-testid$="btn-toggle-read"]').click()
 
       // Wait for success toast to ensure operation finished
       await expect(page.locator('.toast')).toContainText(/Marked as unread|Marked as read/, { timeout: 20000 })
 
       // Verification: Dropdown label should have flipped
       await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
-      await expect(getBobChat().getByTestId('btn-toggle-read')).toContainText(/Mark as read|Mark as unread/, { timeout: 15000 })
+      await expect(getBobChat().locator('[data-testid$="btn-toggle-read"]')).toContainText(/Mark as read|Mark as unread/, { timeout: 15000 })
 
       console.log('Toggling mute status...')
-      const isDropdownOpen = await getBobChat().locator('.dropdown-menu').evaluate(el => el.classList.contains('show'))
-      if (!isDropdownOpen) {
+      const dropdownMenu = getBobChat().locator('.dropdown-menu')
+      if (!(await dropdownMenu.isVisible())) {
         await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
       }
-      await getBobChat().getByTestId('btn-toggle-mute').click()
+      await getBobChat().locator('[data-testid$="btn-toggle-mute"]').click()
       await expect(page.locator('.toast')).toContainText('Notifications muted')
 
       page.once('dialog', dialog => dialog.accept())
-      const isDropdownOpenForDelete = await getBobChat().locator('.dropdown-menu').evaluate(el => el.classList.contains('show'))
-      if (!isDropdownOpenForDelete) {
+      if (!(await dropdownMenu.isVisible())) {
         await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
       }
-      await getBobChat().getByTestId('btn-delete-chat').click()
+      await getBobChat().locator('[data-testid$="btn-delete-chat"]').click()
       await expect(page.locator('chat-list-item').filter({ hasText: 'Bob' })).toHaveCount(0)
     })
   })
@@ -61,10 +60,10 @@ test.describe('Messaging Features', () => {
       const alicePage = await aliceContext.newPage()
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
 
-      await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await alicePage.click('.search-result-item:has-text("bob")')
-      await alicePage.click('button:has-text("Create Room")')
+      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
+      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid$="btnCreate"]').click()
 
       const aliceInput = alicePage.locator('textarea[placeholder="Type a message..."]')
       for (let i = 0; i < 25; i++) {
@@ -97,11 +96,10 @@ test.describe('Messaging Features', () => {
     test('message ordering', async ({ page, loginApp }) => {
       test.slow()
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
       await expect(page.locator('chat-view')).toBeVisible()
 
       await page.evaluate(async () => {
@@ -145,10 +143,10 @@ test.describe('Messaging Features', () => {
     test('comprehensive markdown', async ({ page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
       const md = '# H1\n## H2\n**B**\n*I*\n- L\n> Q\n`C`\n\n| T | H |\n|---|---|\n| R | V |\n\n[G](https://google.com)'
       await page.fill('textarea', md)
       await page.click('[data-testid$="__sendButton"]')
@@ -167,10 +165,10 @@ test.describe('Messaging Features', () => {
     test('link previews', async ({ page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
       await page.fill('textarea', 'https://google.com https://github.com ')
       await expect(page.locator('link-preview-input')).toHaveCount(2, { timeout: 15000 })
       await page.locator('link-preview-input').first().locator('button[title="Dismiss preview"]').click()
@@ -189,10 +187,10 @@ test.describe('Messaging Features', () => {
       const bobPage = await bobContext.newPage()
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
-      await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await alicePage.click('.search-result-item:has-text("bob")')
-      await alicePage.click('button:has-text("Create Room")')
+      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
+      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid$="btnCreate"]').click()
       const msg = 'React ' + Date.now()
       await alicePage.fill('textarea', msg)
       await alicePage.click('[data-testid$="__sendButton"]')
@@ -222,20 +220,18 @@ test.describe('Messaging Features', () => {
     test('search and notifications', async ({ browser, page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
-      await page.locator('.search-result-item:has-text("bob")').click()
-      await page.fill('input[placeholder="Search by username or email..."]', 'charlie')
-      await page.waitForSelector('.search-result-item:has-text("charlie")', { timeout: 10000 })
-      await page.locator('.search-result-item:has-text("charlie")').click()
-      await page.fill('input[placeholder="Enter group name"]', 'Project X')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('charlie')
+      await page.locator('[data-testid$="search-result-charlie"]').click()
+      await page.locator('[data-testid$="roomNameInput"]').fill('Project X')
+      await page.locator('[data-testid$="btnCreate"]').click()
 
       // Wait for room to appear in list
       await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible({ timeout: 15000 })
 
-      await page.locator('input[placeholder="Search..."]').fill('Project')
+      await page.locator('list-pane [data-testid$="searchInput"]').fill('Project')
       await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible()
 
       // Debounce sound
@@ -253,10 +249,10 @@ test.describe('Messaging Features', () => {
       })
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
-      await bobPage.click('button[title="Create Room"]')
-      await bobPage.fill('input[placeholder="Search by username or email..."]', 'alice')
-      await bobPage.click('.search-result-item:has-text("alice")')
-      await bobPage.click('button:has-text("Create Room")')
+      await bobPage.locator('[data-testid$="btnCreateRoom"]').click()
+      await bobPage.locator('create-room-modal [data-testid$="searchInput"]').fill('alice')
+      await bobPage.locator('[data-testid$="search-result-alice"]').click()
+      await bobPage.locator('[data-testid$="btnCreate"]').click()
       for (let i = 0; i < 3; i++) {
         await bobPage.fill('textarea', `M ${i}`)
         await bobPage.keyboard.press('Enter')
@@ -285,11 +281,10 @@ test.describe('Messaging Features', () => {
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
       // Create a room
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
 
       await expect(page.locator('chat-view')).toBeVisible({ timeout: 15000 })
 

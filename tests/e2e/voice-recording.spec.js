@@ -6,10 +6,10 @@ test.describe('Voice Recording', () => {
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
     // Create a room first to have an active chat
-    await page.click('button[title="Create Room"]')
-    await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-    await page.click('.search-result-item:has-text("bob")')
-    await page.click('button:has-text("Create Room")')
+    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+    await page.locator('[data-testid$="search-result-bob"]').click()
+    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
     // Wait for sync
     await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp)
@@ -17,7 +17,7 @@ test.describe('Voice Recording', () => {
 
   test('should record and send a voice message', async ({ page }) => {
     // Click mic button to start recording mode
-    await page.click('button[title="Voice message"]')
+    await page.locator('[data-testid="chat-input-text-0__btn-mic-toggle"]').click()
 
     // Check if recorder is visible
     await expect(page.locator('chat-voice-recorder')).toBeVisible()
@@ -26,7 +26,7 @@ test.describe('Voice Recording', () => {
     await page.waitForTimeout(2000)
 
     // Click send button in recorder
-    await page.click('chat-voice-recorder button.btn-primary')
+    await page.locator('[data-testid="chat-voice-recorder-0__sendVoiceButton"]').click()
 
     // Recorder should disappear
     await expect(page.locator('chat-voice-recorder')).not.toBeVisible()

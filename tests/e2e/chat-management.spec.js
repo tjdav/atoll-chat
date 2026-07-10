@@ -12,11 +12,11 @@ test.describe('Chat Management', () => {
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
-      await alicePage.click('button[title="Create Room"]')
+      await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
       await expect(alicePage.locator('.modal-title:has-text("Create New Room")')).toBeVisible()
-      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await alicePage.click('.search-result-item:has-text("bob")')
-      await alicePage.click('button:has-text("Create Room")')
+      await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
       await expect(alicePage.locator('chat-view')).toBeVisible()
       await expect(alicePage.locator('chat-view header h6')).toContainText('bob')
@@ -62,10 +62,10 @@ test.describe('Chat Management', () => {
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
-      await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await alicePage.click('.search-result-item:has-text("bob")')
-      await alicePage.click('button:has-text("Create Room")')
+      await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
       const aliceMsg = 'Hello Bob, check this unread indicator!'
       await alicePage.fill('textarea[placeholder="Type a message..."]', aliceMsg)
@@ -107,10 +107,10 @@ test.describe('Chat Management', () => {
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
-      await alicePage.click('button[title="Create Room"]')
-      await alicePage.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await alicePage.click('.search-result-item:has-text("bob")')
-      await alicePage.click('button:has-text("Create Room")')
+      await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       await expect(alicePage.locator('chat-view')).toBeVisible()
 
       const room_id = await alicePage.evaluate(() => window.$state.activeSelectionId)
@@ -146,10 +146,10 @@ test.describe('Chat Management', () => {
 
     test('Drill-down: Root to Deep should use pushState', async ({ page }) => {
       const initialHistoryLength = await page.evaluate(() => window.history.length)
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       await expect(page).toHaveURL(/view=chats&id=/)
       expect(await page.evaluate(() => window.history.length)).toBe(initialHistoryLength + 1)
     })
@@ -176,11 +176,10 @@ test.describe('Chat Management', () => {
     })
 
     test('Timeline Scroll Restoration', async ({ page }) => {
-      await page.click('button[title="Create Room"]')
-      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
-      await page.waitForSelector('.search-result-item:has-text("bob")', { timeout: 10000 })
-      await page.click('.search-result-item:has-text("bob")')
-      await page.click('button:has-text("Create Room")')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       await expect(page.locator('chat-view')).toBeVisible()
 
       const input = page.locator('textarea[placeholder="Type a message..."]')
