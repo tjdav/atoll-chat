@@ -29,7 +29,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, eventBus, bootstrap, utils }) => {
+    client: async ({ refs, eventBus, bootstrap, utils, signal }) => {
       const { $bus } = eventBus
       const { $image } = utils
       const { Modal } = await bootstrap
@@ -46,7 +46,10 @@
       let offsetX = 0
       let offsetY = 0
       let isDragging = false
+      let isZooming = false
       let startX, startY
+      let startPinchDist = 0
+      let startPinchScale = 1
 
       const draw = () => {
         if (!img) {
@@ -92,18 +95,84 @@
         startY = e.clientY - offsetY
       }
 
-      window.onmousemove = (e) => {
+      window.addEventListener('mousemove', (e) => {
         if (!isDragging) {
           return
         }
         offsetX = e.clientX - startX
         offsetY = e.clientY - startY
         draw()
+      }, { signal })
+
+      window.addEventListener('mouseup', () => {
+        isDragging = false
+      }, { signal })
+
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          isDragging = true
+          const touch = e.touches[0]
+          startX = touch.clientX - offsetX
+          startY = touch.clientY - offsetY
+        } else if (e.touches.length === 2) {
+          isDragging = false
+          isZooming = true
+          const t1 = e.touches[0]
+          const t2 = e.touches[1]
+          startPinchDist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY)
+          startPinchScale = scale
+        }
+      }, {
+        passive: false,
+        signal
+      })
+
+      window.addEventListener('touchmove', (e) => {
+        if (!img) {
+          return
+        }
+        if (e.touches.length === 1 && isDragging) {
+          if (e.target === canvas) {
+            e.preventDefault()
+          }
+          const touch = e.touches[0]
+          offsetX = touch.clientX - startX
+          offsetY = touch.clientY - startY
+          draw()
+        } else if (e.touches.length === 2 && isZooming) {
+          if (e.target === canvas) {
+            e.preventDefault()
+          }
+          const t1 = e.touches[0]
+          const t2 = e.touches[1]
+          const dist = Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY)
+          if (startPinchDist > 0) {
+            const factor = dist / startPinchDist
+            const minScale = parseFloat(zoomRange.min) || 0.1
+            const maxScale = parseFloat(zoomRange.max) || 5
+            scale = Math.max(minScale, Math.min(maxScale, startPinchScale * factor))
+            zoomRange.value = scale
+            draw()
+          }
+        }
+      }, {
+        passive: false,
+        signal
+      })
+
+      const handleTouchEnd = () => {
+        isDragging = false
+        isZooming = false
       }
 
-      window.onmouseup = () => {
-        isDragging = false
-      }
+      window.addEventListener('touchend', handleTouchEnd, {
+        passive: true,
+        signal
+      })
+      window.addEventListener('touchcancel', handleTouchEnd, {
+        passive: true,
+        signal
+      })
 
       btnApply.onclick = async () => {
         const outputCanvas = document.createElement('canvas')
