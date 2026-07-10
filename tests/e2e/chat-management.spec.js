@@ -205,11 +205,13 @@ test.describe('Chat Management', () => {
 
       await page.click('button[title="Chats"]')
       // Wait for chat to reload and scroll to be restored
-      await page.waitForTimeout(2000)
-
-      const scrollTop = await timeline.evaluate(el => el.scrollTop)
-      console.log('Restored scroll top:', scrollTop)
-      expect(scrollTop).toBeLessThan(400)
+      await expect.poll(async () => {
+        const scrollTop = await timeline.evaluate(el => el.scrollTop)
+        console.log('Restored scroll top check:', scrollTop)
+        return scrollTop
+      }, {
+        timeout: 10000
+      }).toBeLessThan(400)
     })
   })
 })
