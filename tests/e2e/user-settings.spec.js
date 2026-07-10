@@ -62,8 +62,8 @@ test.describe('User Settings & Profile', () => {
         }
 
         const rect = canvas.getBoundingClientRect()
-        const startX = rect.left + rect.width / 2
-        const startY = rect.top + rect.height / 2
+        const startX = rect.left + (rect.width / 2)
+        const startY = rect.top + (rect.height / 2)
         const initialVal = parseFloat(zoomRange.value)
 
         // 1. Simulate Touch Drag
