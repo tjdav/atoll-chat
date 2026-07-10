@@ -207,7 +207,7 @@ test.describe('Chat Management', () => {
       // Wait for chat to reload and scroll to be restored
       await expect.poll(async () => {
         const data = await page.evaluate(() => {
-          const state = window.Coralite && window.Coralite.globalStore && window.Coralite.globalStore.state
+          const state = window.$state
           return {
             scrollTop: document.querySelector('message-timeline .overflow-auto')?.scrollTop,
             scrollPositions: state ? state.scrollPositions : undefined,
