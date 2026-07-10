@@ -42,3 +42,4 @@ pb_data_template/
 playwright-report
 .last-run.json
 test-results
+tests/e2e/screenshots/
