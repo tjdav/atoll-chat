@@ -15,28 +15,28 @@
 
     <!-- Column 3: Main Detail View -->
     <div ref="columnThree" class="detail-view {{ layoutClasses }}">
-      <div class="h-100 align-items-center justify-content-center" style="display: {{ emptyStateDisplay }};">
+      <div class="h-100 d-flex align-items-center justify-content-center" hidden="{{ isDetailView }}">
         <div class="text-center">
           <i class="bi bi-chat-dots fs-1 text-secondary mb-3 d-block"></i>
           <p class="text-muted mb-0">Select a conversation or item</p>
         </div>
       </div>
-      <div class="h-100" style="display: {{ chatViewDisplay }};">
+      <div class="h-100" hidden="{{ hideChatView }}">
         <chat-view></chat-view>
       </div>
-      <div class="h-100" style="display: {{ imageViewerDisplay }};">
+      <div class="h-100" hidden="{{ hideImageViewer }}">
         <image-viewer></image-viewer>
       </div>
-      <div class="h-100" style="display: {{ videoPlayerDisplay }};">
+      <div class="h-100" hidden="{{ hideVideoPlayer }}">
         <video-player-view></video-player-view>
       </div>
-      <div class="h-100" style="display: {{ audioPlayerDisplay }};">
+      <div class="h-100" hidden="{{ hideAudioPlayer }}">
         <audio-player-view></audio-player-view>
       </div>
-      <div class="h-100" style="display: {{ documentViewerDisplay }};">
+      <div class="h-100" hidden="{{ hideDocumentViewer }}">
         <document-viewer></document-viewer>
       </div>
-      <div class="h-100" style="display: {{ linkViewerDisplay }};">
+      <div class="h-100" hidden="{{ hideLinkViewer }}">
         <link-viewer></link-viewer>
       </div>
     </div>
@@ -70,13 +70,12 @@
     getters: {
       isDetailView: (state) => (state.activeSelectionId && ['chats', 'pictures', 'videos', 'music', 'documents', 'links'].includes(state.activeSelectionType)),
       layoutClasses: (state) => (state.isDetailView ? 'chat-active' : ''),
-      emptyStateDisplay: (state) => (state.isDetailView ? 'none' : 'flex'),
-      chatViewDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'chats' ? 'block' : 'none'),
-      imageViewerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'pictures' ? 'block' : 'none'),
-      videoPlayerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'videos' ? 'block' : 'none'),
-      audioPlayerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'music' ? 'block' : 'none'),
-      documentViewerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'documents' ? 'block' : 'none'),
-      linkViewerDisplay: (state) => (state.activeSelectionId && state.activeSelectionType === 'links' ? 'block' : 'none')
+      hideChatView: (state) => !(state.activeSelectionId && state.activeSelectionType === 'chats'),
+      hideImageViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'pictures'),
+      hideVideoPlayer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'videos'),
+      hideAudioPlayer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'music'),
+      hideDocumentViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'documents'),
+      hideLinkViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'links')
     },
     client: async ({ state, globalStore, eventBus, bootstrap, refs }) => {
       const { $state } = globalStore

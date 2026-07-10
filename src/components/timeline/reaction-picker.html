@@ -1,5 +1,5 @@
 <template id="reaction-picker">
-  <div ref="container" class="reaction-picker shadow border rounded bg-body d-none" style="position: fixed; z-index: 2000; width: 350px; height: 400px; max-width: 90vw;">
+  <div ref="container" class="reaction-picker shadow border rounded bg-body" hidden style="position: fixed; z-index: 2000; width: 350px; height: 400px; max-width: 90vw;">
     <div ref="pickerContainer" style="width: 100%; height: 100%;"></div>
   </div>
 </template>
@@ -58,9 +58,9 @@
         container.style.left = `${x}px`
         container.style.top = `${y}px`
 
-        // Use requestAnimationFrame to ensure the picker is rendered and display:none is removed
+        // Use requestAnimationFrame to ensure the picker is rendered and hidden is removed
         // before we calculate its dimensions for positioning.
-        container.classList.remove('d-none')
+        container.hidden = false
 
         await new Promise(resolve => requestAnimationFrame(resolve))
 
@@ -82,13 +82,13 @@
       }
 
       const hide = () => {
-        container.classList.add('d-none')
+        container.hidden = true
         currentTargetId = null
       }
 
       // Hide on click outside
       const handleClickOutside = (e) => {
-        if (!container.contains(e.target) && !container.classList.contains('d-none')) {
+        if (!container.contains(e.target) && !container.hidden) {
           hide()
         }
       }

@@ -2,11 +2,11 @@
   <div class="list-pane-custom d-flex flex-column h-100">
     <header class="app-header list-pane-header d-flex justify-content-between align-items-center">
       <h4 class="mb-0 fw-bold text-capitalize" ref="paneTitle">Chats</h4>
-      <button class="btn btn-sm btn-primary rounded-circle" ref="btnCreateRoom" title="Create Room" style="display: none;" data-testid="btnCreateRoom">
+      <button class="btn btn-sm btn-primary rounded-circle" ref="btnCreateRoom" title="Create Room" hidden data-testid="btnCreateRoom">
         <i class="bi bi-pencil-square"></i>
       </button>
     </header>
-    <div class="search-container-pill" ref="searchContainer" style="display: none;">
+    <div class="search-container-pill" ref="searchContainer" hidden>
       <div class="input-group">
         <span class="input-group-text ps-3">
           <i class="bi bi-search text-muted"></i>
@@ -20,10 +20,6 @@
     </div>
     <div class="flex-grow-1 overflow-hidden" ref="listContainer">
       <!-- Specialized list components will be mounted here -->
-    </div>
-    <!-- Component Registration for Bundle Inclusion -->
-    <div style="display: none !important;" ref="registrationDiv">
-      <reaction-picker></reaction-picker>
     </div>
   </div>
 </template>
@@ -64,13 +60,13 @@
 
         // Update Create Room Button visibility
         if (btnCreateRoom) {
-          btnCreateRoom.style.display = (view === 'chats') ? 'block' : 'none'
+          btnCreateRoom.hidden = (view !== 'chats')
         }
 
         // Update Search visibility
         const searchableViews = ['chats', 'pictures', 'videos', 'music', 'documents', 'links']
         if (searchContainer) {
-          searchContainer.style.display = searchableViews.includes(view) ? 'block' : 'none'
+          searchContainer.hidden = !searchableViews.includes(view)
         }
 
         // Reset search on view change

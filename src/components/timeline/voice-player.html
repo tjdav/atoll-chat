@@ -139,7 +139,7 @@
           container.appendChild(player)
 
           audio = new Audio(objectUrl)
-          audio.style.display = 'none'
+          audio.hidden = true
           container.appendChild(audio)
 
           const updateProgress = () => {

@@ -33,7 +33,7 @@
       <message-timeline></message-timeline>
 
       <!-- Room Details Sidebar (Slide-over) -->
-      <div ref="sidebarContainer" class="sidebar-slide-over shadow-lg border-start bg-body" style="display: {{ sidebarDisplay }};">
+      <div ref="sidebarContainer" class="sidebar-slide-over shadow-lg border-start bg-body" hidden="{{ hideSidebar }}">
         <room-details-sidebar></room-details-sidebar>
       </div>
     </div>
@@ -55,7 +55,7 @@
       isRoomDetailsOpen: false
     }),
     getters: {
-      sidebarDisplay: (state) => (state.isRoomDetailsOpen ? 'block' : 'none')
+      hideSidebar: (state) => !state.isRoomDetailsOpen
     },
     client: async ({ refs, state, globalStore, localDb, eventBus, webrtc: webrtcPluginContext }) => {
       const { $state } = globalStore

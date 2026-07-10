@@ -1,7 +1,7 @@
 <template id="ui-avatar">
   <div ref="container" class="avatar-container d-flex align-items-center justify-content-center overflow-hidden rounded-circle w-100 h-100">
-    <span class="avatar-initials" style="display: {{ initialsDisplay }}; font-size: {{ fontSize }}px;">{{ initials }}</span>
-    <img ref="img" class="avatar-img w-100 h-100 object-fit-cover" style="display: {{ imgDisplay }};" />
+    <span class="avatar-initials" hidden="{{ hasImage }}" style="font-size: {{ fontSize }}px;">{{ initials }}</span>
+    <img ref="img" class="avatar-img w-100 h-100 object-fit-cover" hidden="{{ hideImg }}" />
   </div>
 </template>
 
@@ -45,8 +45,7 @@
     }),
     getters: {
       fontSize: (state) => state.size * 0.4,
-      initialsDisplay: (state) => (state.hasImage ? 'none' : 'block'),
-      imgDisplay: (state) => (state.hasImage ? 'block' : 'none')
+      hideImg: (state) => !state.hasImage
     },
     client: ({ state, refs, utils, signal, root, observe }) => {
       const { $media } = utils
