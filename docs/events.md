@@ -41,6 +41,9 @@ Manage user interface states, modals, and notifications.
 | `ui:cancel` | Generic UI cancellation event. | None |
 | `ui:dismiss_link_preview` | Closes the link metadata preview in the chat input. | None |
 | `ui:selection_made` | Signals that a selection (chat, media, etc.) has been confirmed by the user. | None |
+| `ui:scroll_to_bottom` | Triggers the timeline to scroll to the bottom. | `{ smooth }` (Boolean) |
+| `ui:focus_input` | Focuses the message input textarea. | None |
+| `ui:open_mobile_nav` | Opens the mobile navigation drawer. | None |
 
 ### Database & Sync (`db:`, `sync:`)
 Handle data persistence and server synchronization states.
@@ -49,6 +52,7 @@ Handle data persistence and server synchronization states.
 |------------|-------------|---------|
 | `db:new_local_data` | Notifies that new messages or metadata have been saved to IndexedDB. | `{ room_id }` |
 | `db:new_local_room` | Notifies that a room's local metadata has been created or updated. | `{ room_id }` |
+| `db:room_deleted` | Notifies that a room's local metadata and messages have been deleted from IndexedDB. | `{ room_id }` |
 | `sync:complete` | Emitted when historical catch-up synchronization finishes. | None |
 
 ### Room & Message (`room:`, `message:`)
@@ -56,6 +60,11 @@ Events related to chat rooms and message delivery/interaction.
 
 | Event Name | Description | Payload |
 |------------|-------------|---------|
+| `room:select` | Signals that a chat room has been selected/activated. | `{ room_id }` |
+| `room:toggle_read` | Request to toggle the read/unread status of a room. | `{ room_id, isUnread }` |
+| `room:toggle_mute` | Request to toggle the mute status of a room's notifications. | `{ room_id, isMuted }` |
+| `room:delete` | Request to delete a room or leave a group chat. | `{ room_id, isGroup }` |
+| `room:edit` | Request to retrieve room info and trigger the room edit flow. | `{ room_id }` |
 | `room:read_state_changed` | Triggered when a room is marked as read or active selection changes. | `room_id` |
 | `room:member_updated` | Notifies that a participant's read status or metadata has changed. | `{ room_id }` |
 | `message:sent` | Emitted after a message is successfully encrypted and uploaded. | `Message` object |
@@ -63,7 +72,7 @@ Events related to chat rooms and message delivery/interaction.
 | `message:scroll_to` | Triggers the timeline to jump to a specific message ID. | `{ messageId }` |
 
 ### Media Player (`media:`)
-Controls for the global headless media engine.
+Controls for the global headless media engine and media selections.
 
 | Event Name | Description | Payload |
 |------------|-------------|---------|
@@ -73,6 +82,8 @@ Controls for the global headless media engine.
 | `media:next` | Moves to the next item in the media carousel. | None |
 | `media:prev` | Moves to the previous item in the media carousel. | None |
 | `media:seek` | Changes the current playback position. | `{ percent }` or `{ time }` |
+| `media:select` | Signals that a media item (music, pictures, or videos) has been selected. | `{ assetId, type }` (where type is 'music', 'pictures', or 'videos') |
+| `media:video_progress` | Notifies about video compression/processing progress. | `{ id, progress }` |
 
 ### Calls (`call:`)
 Events for real-time WebRTC audio and video communication.
@@ -102,9 +113,16 @@ User session and vault security events.
 | `auth:unlocked` | Emitted after successful vault password/passkey verification. | `{ keys, userRecord }` |
 
 ### Worker (`worker:`)
-Communication between the main thread and the cryptographic background worker.
+Communication between the main thread and the background cryptographic worker.
 
 | Event Name | Description | Payload |
 |------------|-------------|---------|
 | `worker:ready` | Emitted when the worker script is fully loaded. | None |
 | `worker:initialized` | Emitted after the worker successfully loads identity keys. | `{ user_id }` |
+
+### Component-Specific Events (`waveform_player:`)
+These events are used for internal component-level coordination.
+
+| Event Name | Description | Payload |
+|------------|-------------|---------|
+| `waveform_player:play` | Emitted when a waveform player starts playing, coordinating exclusive audio playback. | `{ audioId }` |
