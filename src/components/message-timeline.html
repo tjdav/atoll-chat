@@ -33,6 +33,7 @@
       let seenTimeout = null
       let lastRenderedMessageId = null
       let forceScrollToBottom = false
+      let isRestorePending = false
 
       const scrollToBottom = (smooth = false) => {
         if (container) {
@@ -49,7 +50,7 @@
 
       const saveScrollPosition = (idOrEvent) => {
         const room_id = typeof idOrEvent === 'string' ? idOrEvent : $state.activeSelectionId
-        if (!room_id || typeof room_id !== 'string' || !container || container.scrollHeight === 0) {
+        if (!room_id || typeof room_id !== 'string' || !container || container.clientHeight === 0 || container.scrollHeight <= container.clientHeight) {
           return
         }
 
@@ -500,12 +501,20 @@
           if (isNewRoom) {
             const savedPos = $state.scrollPositions?.[room_id]
             if (savedPos !== undefined && savedPos !== -1) {
-              // Ensure content is rendered before restoring scroll
-              setTimeout(() => {
-                if (container && room_id === $state.activeSelectionId) {
-                  container.scrollTop = savedPos
+              isRestorePending = true
+              const restore = () => {
+                if (!container || room_id !== $state.activeSelectionId) {
+                  isRestorePending = false
+                  return
                 }
-              }, 100)
+                if (container.clientHeight > 0) {
+                  container.scrollTop = savedPos
+                  isRestorePending = false
+                } else {
+                  requestAnimationFrame(restore)
+                }
+              }
+              requestAnimationFrame(restore)
             } else {
               requestAnimationFrame(() => scrollToBottom())
               // Extra safety for media that might load instantly from cache
@@ -514,7 +523,7 @@
           } else if (forceScrollToBottom) {
             scrollToBottom(true)
             forceScrollToBottom = false
-          } else {
+          } else if (!isRestorePending) {
             // New messages arrived, smooth scroll if we are already near bottom
             const isNearBottom = container.scrollHeight > container.clientHeight &&
                                  container.scrollHeight - container.scrollTop - container.clientHeight < 100

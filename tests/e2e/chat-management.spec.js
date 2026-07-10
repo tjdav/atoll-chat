@@ -206,9 +206,15 @@ test.describe('Chat Management', () => {
       await page.click('button[title="Chats"]')
       // Wait for chat to reload and scroll to be restored
       await expect.poll(async () => {
-        const scrollTop = await timeline.evaluate(el => el.scrollTop)
-        console.log('Restored scroll top check:', scrollTop)
-        return scrollTop
+        const data = await page.evaluate(() => {
+          return {
+            scrollTop: document.querySelector('message-timeline .overflow-auto')?.scrollTop,
+            scrollPositions: window.Coralite?.globalStore?.state?.scrollPositions,
+            activeSelectionId: window.Coralite?.globalStore?.state?.activeSelectionId
+          }
+        })
+        console.log('Restored scroll top check:', data.scrollTop, 'Positions:', JSON.stringify(data.scrollPositions), 'Active:', data.activeSelectionId)
+        return data.scrollTop
       }, {
         timeout: 10000
       }).toBeLessThan(400)
