@@ -78,9 +78,9 @@ test.describe.serial('Calls', () => {
     await expect(bobPage.locator('video-grid video.remote-video')).toHaveJSProperty('readyState', 4, { timeout: 25000 })
 
     // Enter PiP
-    await alicePage.click('[data-testid="call-overlay-0__btnPip"]')
+    await alicePage.click('[ref$="__btnPip"]')
     await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
-    const pipWindow = alicePage.locator('[data-testid="pip-video-0__pipWindow"]')
+    const pipWindow = alicePage.locator('[ref$="__pipWindow"]')
     await expect(pipWindow).toBeVisible()
 
     // Send message while in PiP
@@ -91,10 +91,10 @@ test.describe.serial('Calls', () => {
 
     // Expand back
     await pipWindow.hover()
-    await alicePage.click('[data-testid="pip-video-0__btnExpand"]')
+    await alicePage.click('[ref$="__btnExpand"]')
     await expect(alicePage.locator('call-overlay .modal')).toBeVisible()
 
-    await alicePage.click('[data-testid="call-overlay-0__btnEndCall"]')
+    await alicePage.click('[ref$="__btnEndCall"]')
     await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
   })
 })

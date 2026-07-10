@@ -6,16 +6,16 @@ test.describe('Messaging Features', () => {
     test.beforeEach(async ({ page, loginApp }) => {
       test.slow()
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
-      await page.getByTitle('Create Room').click()
-      await page.getByPlaceholder('Search by username...').fill('bob')
+      await page.click('button[title="Create Room"]')
+      await page.fill('input[placeholder="Search by username or email..."]', 'bob')
       await page.locator('.search-result-item:has-text("bob")').click()
-      await page.getByRole('button', { name: 'Create Room' }).click()
+      await page.click('button:has-text("Create Room")')
       await page.fill('textarea', 'Msg 1')
       await page.keyboard.press('Enter')
-      await page.getByTitle('Create Room').click()
-      await page.getByPlaceholder('Search by username...').fill('charlie')
+      await page.click('button[title="Create Room"]')
+      await page.fill('input[placeholder="Search by username or email..."]', 'charlie')
       await page.locator('.search-result-item:has-text("charlie")').click()
-      await page.getByRole('button', { name: 'Create Room' }).click()
+      await page.click('button:has-text("Create Room")')
     })
 
     test('mark as unread, mute, delete', async ({ page }) => {

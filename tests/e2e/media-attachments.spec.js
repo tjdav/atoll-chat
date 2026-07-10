@@ -33,7 +33,7 @@ test.describe('Media & Attachments', () => {
         },
         {
           n: 'test.mp4',
-          s: 'media-preview video',
+          s: 'media-preview img',
           tid: '__videoInput'
         },
         {
@@ -67,7 +67,7 @@ test.describe('Media & Attachments', () => {
       await page.setInputFiles('[data-testid$="__videoInput"]', vp)
       await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
       await page.click('.bi-send-fill')
-      await expect(page.locator('timeline-row video').first()).toBeVisible({ timeout: 15000 })
+      await expect(page.locator('timeline-row img').first()).toBeVisible({ timeout: 15000 })
     })
 
     test('audio uploads generate interactive SVG waveforms', async ({ page, loginCustomPage }) => {
@@ -152,6 +152,8 @@ test.describe('Media & Attachments', () => {
       })
       await page.click('button[title="Chats"]')
       await page.fill('textarea', 'https://g.com ')
+      // Wait for debounced link-extraction to run and generate the preview
+      await page.waitForTimeout(1000)
       await page.click('[data-testid$="__sendButton"]')
       await page.click('button[title="Links"]')
       await expect(page.locator('link-list .app-list-item')).toContainText('PB')

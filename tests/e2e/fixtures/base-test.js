@@ -57,8 +57,6 @@ function encryptVault (privateKeys, KEK, sodium) {
 }
 
 const PB_URL = process.env.PB_URL || 'http://127.0.0.1:8090'
-const ADMIN_EMAIL = process.env.PB_ADMIN_EMAIL || 'admin@example.com'
-const ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD || 'password123'
 
 const USERS = [
   {
@@ -78,16 +76,21 @@ const USERS = [
 const SHARED_PASSWORD = 'Password123!'
 const SHARED_VAULT_PASSWORD = 'VaultPassword123!'
 
-async function resetPocketBase () {
-  console.log('--- Resetting PocketBase (SDK) ---')
+async function resetPocketBase (testId) {
+  console.log(`--- Resetting PocketBase (SDK) for test: ${testId} ---`)
   await sodium.ready
   const pb = new PocketBase(PB_URL)
 
-  try {
-    await pb.collection('_superusers').authWithPassword(ADMIN_EMAIL, ADMIN_PASSWORD)
-  } catch (error) {
-    console.error('Failed to authenticate as superuser during reset. Is PocketBase running?')
-    throw error
+  // Set up the beforeSend hook to inject the x-test-id header
+  pb.beforeSend = (url, options) => {
+    options.headers = {
+      ...options.headers,
+      'x-test-id': testId
+    }
+    return {
+      url,
+      options
+    }
   }
 
   // 1. Clear transactional collections
@@ -154,17 +157,50 @@ async function resetPocketBase () {
     }
   }
 
-  console.log('--- PocketBase Reset Complete ---')
+  console.log(`--- PocketBase Reset Complete for test: ${testId} ---`)
 }
 
 export const test = base.extend({
   // Automatic fixture that resets the database before every test
-  dbReset: [async ({}, use) => {
-    await resetPocketBase()
+  dbReset: [async ({}, use, testInfo) => {
+    await resetPocketBase(testInfo.testId)
     await use()
   }, { auto: true }],
 
-  page: async ({ page }, use) => {
+  page: async ({ page }, use, testInfo) => {
+    const testId = testInfo.testId
+
+    // Intercept all API calls from the default page's context
+    await page.context().route(url => url.href.includes('/api/'), async (route) => {
+      const request = route.request()
+      if (request.url().includes('/realtime') && request.method() === 'GET') {
+        await route.continue()
+        return
+      }
+
+      const headers = {
+        ...request.headers(),
+        'x-test-id': testId
+      }
+      await route.continue({ headers })
+    })
+
+    // Inject testId into the browser's window scope and override EventSource
+    await page.context().addInitScript((tId) => {
+      window.__playwright_test_id__ = tId
+
+      const OriginalEventSource = window.EventSource
+      window.EventSource = class extends OriginalEventSource {
+        constructor (url, eventSourceInitDict) {
+          if (url && (url.includes('/api/realtime') || url.includes('/api/')) && !url.includes('x-test-id=')) {
+            const separator = url.includes('?') ? '&' : '?'
+            url = `${url}${separator}x-test-id=${tId}`
+          }
+          super(url, eventSourceInitDict)
+        }
+      }
+    }, testId)
+
     page.on('console', msg => {
       console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`)
     })
@@ -194,8 +230,40 @@ export const test = base.extend({
     await use(doLogin)
   },
 
-  loginCustomPage: async ({ baseURL }, use) => {
+  loginCustomPage: async ({ baseURL }, use, testInfo) => {
+    const testId = testInfo.testId
     const doLogin = async (targetPage, username, appPassword, vaultPassword) => {
+      // Intercept all API calls from manually created contexts as well
+      await targetPage.context().route(url => url.href.includes('/api/'), async (route) => {
+        const request = route.request()
+        if (request.url().includes('/realtime') && request.method() === 'GET') {
+          await route.continue()
+          return
+        }
+
+        const headers = {
+          ...request.headers(),
+          'x-test-id': testId
+        }
+        await route.continue({ headers })
+      })
+
+      // Inject testId into the browser's window scope and override EventSource
+      await targetPage.context().addInitScript((tId) => {
+        window.__playwright_test_id__ = tId
+
+        const OriginalEventSource = window.EventSource
+        window.EventSource = class extends OriginalEventSource {
+          constructor (url, eventSourceInitDict) {
+            if (url && (url.includes('/api/realtime') || url.includes('/api/')) && !url.includes('x-test-id=')) {
+              const separator = url.includes('?') ? '&' : '?'
+              url = `${url}${separator}x-test-id=${tId}`
+            }
+            super(url, eventSourceInitDict)
+          }
+        }
+      }, testId)
+
       targetPage.on('console', msg => {
         console.log(`[BROWSER][${username}] ${msg.type()}: ${msg.text()}`)
       })

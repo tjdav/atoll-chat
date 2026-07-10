@@ -16,25 +16,30 @@ export default function syncPlugin () {
       context: (pluginContext) => {
         let isSubscribed = false
 
-        // Reset subscription state on logout to allow re-syncing on next login
-        if (pluginContext.$bus) {
-          pluginContext.$bus.on('auth:logout', () => {
-            isSubscribed = false
-            console.log('[sync-plugin] Resetting subscription state due to logout.')
-            // Also unsubscribe from PocketBase collections if possible
-            const { pb } = pluginContext.pocketbase || {}
-            if (pb) {
-              pb.collection('messages').unsubscribe('*').catch(() => {
-              })
-              pb.collection('room_members').unsubscribe('*').catch(() => {
-              })
-            }
-          })
-        }
-
         return (instanceContext) => {
           const { pb } = instanceContext.pocketbase
           const { $worker } = instanceContext.cryptoWorker
+
+          // Reset subscription state on logout to allow re-syncing on next login
+          if (pluginContext.$bus) {
+            pluginContext.$bus.on('auth:logout', () => {
+              isSubscribed = false
+              console.log('[sync-plugin] Resetting subscription state and force disconnecting due to logout.')
+              try {
+                pb.realtime.disconnect()
+                // Force-clear internal pocketbase realtime state to guarantee a clean reconnect on next login
+                pb.realtime.clientId = ''
+                pb.realtime.subscriptions = {}
+                pb.realtime.reconnectAttempts = 0
+                pb.realtime.lastSentSubscriptions = []
+                pb.realtime.pendingConnects = []
+                pb.realtime.pendingSubmits = []
+                pb.realtime.isProcessingPendingSubmits = false
+              } catch (err) {
+                console.error('[sync-plugin] Error during realtime disconnect:', err)
+              }
+            })
+          }
           const { $localDb } = instanceContext.localDb
 
           /**
