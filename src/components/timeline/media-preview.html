@@ -22,7 +22,7 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, globalStore, eventBus, signal, utils }) => {
+    client: async ({ refs, state, localDb, globalStore, eventBus, signal, utils, observe }) => {
       const { $localDb } = localDb
       const { $state } = globalStore
       const { $bus } = eventBus
@@ -164,10 +164,8 @@
         }
       }
 
-      if (typeof state.subscribe === 'function') {
-        state.subscribe('status', loadMedia)
-        state.subscribe('localUuid', loadMedia)
-      }
+      observe('status', loadMedia)
+      observe('localUuid', loadMedia)
 
       loadMedia()
     }

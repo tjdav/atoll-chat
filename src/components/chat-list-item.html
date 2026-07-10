@@ -76,23 +76,23 @@
       roomName: String,
       previewText: String,
       relativeTime: String,
-      isUnread: String,
-      isGroup: String,
+      isUnread: Boolean,
+      isGroup: Boolean,
       userRole: String,
-      isMuted: String
+      isMuted: Boolean
     },
-    state: {
+    server: () => ({
       isActive: false
-    },
+    }),
     getters: {
-      isRead: (state) => state.isUnread !== 'true',
-      unreadClass: (state) => (state.isUnread === 'true' ? 'fw-bold' : ''),
+      isRead: (state) => !state.isUnread,
+      unreadClass: (state) => (state.isUnread ? 'fw-bold' : ''),
       activeClass: (state) => (state.isActive ? 'active' : ''),
-      readLabel: (state) => (state.isUnread === 'true' ? 'Mark as read' : 'Mark as unread'),
-      readIcon: (state) => (state.isUnread === 'true' ? 'bi-envelope-open' : 'bi-envelope'),
-      muteLabel: (state) => (state.isMuted === 'true' ? 'Unmute notifications' : 'Mute notifications'),
-      muteIcon: (state) => (state.isMuted === 'true' ? 'bi-bell' : 'bi-bell-slash'),
-      deleteLabel: (state) => (state.isGroup === 'true' ? 'Leave group' : 'Delete chat'),
+      readLabel: (state) => (state.isUnread ? 'Mark as read' : 'Mark as unread'),
+      readIcon: (state) => (state.isUnread ? 'bi-envelope-open' : 'bi-envelope'),
+      muteLabel: (state) => (state.isMuted ? 'Unmute notifications' : 'Mute notifications'),
+      muteIcon: (state) => (state.isMuted ? 'bi-bell' : 'bi-bell-slash'),
+      deleteLabel: (state) => (state.isGroup ? 'Leave group' : 'Delete chat'),
       editRoomClass: (state) => (state.userRole === 'admin' ? '' : 'd-none')
     },
     client: ({ refs, state, globalStore, eventBus, signal }) => {
@@ -127,7 +127,7 @@
       if (btnToggleRead) {
         btnToggleRead.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitBusAction('CHAT:TOGGLE_READ', { isUnread: state.isUnread === 'true' })
+          emitBusAction('CHAT:TOGGLE_READ', { isUnread: state.isUnread })
         }, { signal })
       }
 
@@ -135,7 +135,7 @@
       if (btnToggleMute) {
         btnToggleMute.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitBusAction('CHAT:TOGGLE_MUTE', { isMuted: state.isMuted === 'true' })
+          emitBusAction('CHAT:TOGGLE_MUTE', { isMuted: state.isMuted })
         }, { signal })
       }
 
@@ -143,7 +143,7 @@
       if (btnDelete) {
         btnDelete.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitBusAction('CHAT:DELETE', { isGroup: state.isGroup === 'true' })
+          emitBusAction('CHAT:DELETE', { isGroup: state.isGroup })
         }, { signal })
       }
 

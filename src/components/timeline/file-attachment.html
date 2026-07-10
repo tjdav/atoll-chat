@@ -38,7 +38,7 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal, cryptoWorker }) => {
+    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal, cryptoWorker, observe }) => {
       const { $localDb } = localDb
       const { pb } = pocketbase
       const { $state } = globalStore
@@ -191,10 +191,8 @@
 
       loadFile()
 
-      if (typeof state.subscribe === 'function') {
-        state.subscribe('status', loadFile)
-        state.subscribe('localUuid', loadFile)
-      }
+      observe('status', loadFile)
+      observe('localUuid', loadFile)
     }
   })
 </script>

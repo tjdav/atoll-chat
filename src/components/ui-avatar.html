@@ -39,16 +39,16 @@
         default: 40
       }
     },
-    state: {
+    server: () => ({
       hasImage: false,
       initials: '?'
-    },
+    }),
     getters: {
       fontSize: (state) => state.size * 0.4,
       initialsDisplay: (state) => (state.hasImage ? 'none' : 'block'),
       imgDisplay: (state) => (state.hasImage ? 'block' : 'none')
     },
-    client: ({ state, refs, utils, signal, root }) => {
+    client: ({ state, refs, utils, signal, root, observe }) => {
       const { $media } = utils
       const img = refs('img')
 
@@ -128,19 +128,12 @@
       updateInitials()
       loadAvatar()
 
-      return {
-        onAttributeChanged: (name) => {
-          if (name === 'size') {
-            updateSize()
-          }
-          if (name === 'name') {
-            updateInitials()
-          }
-          if (name === 'url' || name === 'media-id' || name === 'media-key' || name === 'media-nonce') {
-            loadAvatar()
-          }
-        }
-      }
+      observe('size', updateSize)
+      observe('name', updateInitials)
+      observe('url', loadAvatar)
+      observe('mediaId', loadAvatar)
+      observe('mediaKey', loadAvatar)
+      observe('mediaNonce', loadAvatar)
     }
   })
 </script>

@@ -545,8 +545,12 @@
         prevSelectionId = val
         debouncedRender()
       })
-      $state.subscribe('activeSelectionType', () => {
-        saveScrollPosition()
+      let prevSelectionType = $state.activeSelectionType
+      $state.subscribe('activeSelectionType', (val) => {
+        if (prevSelectionType === 'chats' && val !== 'chats') {
+          saveScrollPosition()
+        }
+        prevSelectionType = val
         debouncedRender()
       })
 

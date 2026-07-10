@@ -37,11 +37,18 @@ test.describe('Messaging Features', () => {
       await expect(getBobChat().getByTestId('btn-toggle-read')).toContainText(/Mark as read|Mark as unread/, { timeout: 15000 })
 
       console.log('Toggling mute status...')
+      const isDropdownOpen = await getBobChat().locator('.dropdown-menu').evaluate(el => el.classList.contains('show'))
+      if (!isDropdownOpen) {
+        await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
+      }
       await getBobChat().getByTestId('btn-toggle-mute').click()
       await expect(page.locator('.toast')).toContainText('Notifications muted')
 
       page.once('dialog', dialog => dialog.accept())
-      await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
+      const isDropdownOpenForDelete = await getBobChat().locator('.dropdown-menu').evaluate(el => el.classList.contains('show'))
+      if (!isDropdownOpenForDelete) {
+        await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
+      }
       await getBobChat().getByTestId('btn-delete-chat').click()
       await expect(page.locator('chat-list-item').filter({ hasText: 'Bob' })).toHaveCount(0)
     })

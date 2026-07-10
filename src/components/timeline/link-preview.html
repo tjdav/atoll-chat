@@ -33,7 +33,7 @@
       imageDisplayClass: (state) => (state.title ? '' : 'd-none'),
       urlHref: (state) => state.url
     },
-    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase, signal, cryptoWorker }) => {
+    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase, signal, cryptoWorker, observe }) => {
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $state } = globalStore
@@ -155,10 +155,8 @@
         $state.activeSelectionId = links.length > 1 ? `${uuid}:${linkIndex}` : uuid
       })
 
-      if (typeof state.subscribe === 'function') {
-        state.subscribe('status', loadPreviewImage)
-        state.subscribe('localUuid', loadPreviewImage)
-      }
+      observe('status', loadPreviewImage)
+      observe('localUuid', loadPreviewImage)
     }
   })
 </script>

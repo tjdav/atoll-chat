@@ -40,7 +40,7 @@
       glowClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : ''),
       placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : '')
     },
-    client: ({ refs, state, eventBus }) => {
+    client: ({ refs, state, eventBus, observe }) => {
       const markdownBody = refs('markdownBody')
       const { $bus } = eventBus
 
@@ -92,9 +92,7 @@
       render()
 
       // Watch for content changes
-      if (typeof state.subscribe === 'function') {
-        state.subscribe('content', render)
-      }
+      observe('content', render)
     }
   })
 </script>

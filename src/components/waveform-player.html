@@ -41,15 +41,15 @@
         default: 0
       }
     },
-    state: {
+    server: () => ({
       hasWaveform: false,
       playbackStatus: 'idle'
-    },
+    }),
     getters: {
       waveformDisplay: (state) => (state.hasWaveform ? 'd-flex' : 'd-none'),
       fallbackDisplay: (state) => (state.hasWaveform ? 'd-none' : 'd-block')
     },
-    client: async ({ state, refs, utils, signal, localDb, globalStore, eventBus }) => {
+    client: async ({ state, refs, utils, signal, localDb, globalStore, eventBus, observe }) => {
       const { $localDb } = localDb
       const { $state } = globalStore
       const { $media } = utils
@@ -392,15 +392,15 @@
 
       loadWaveform()
 
-      return {
-        onAttributeChanged: (name) => {
-          if (name === 'audio-id' || name === 'src' || name === 'waveform-src') {
-            isLoaded = false
-            cleanup()
-            loadWaveform()
-          }
-        }
+      const handleSourceChange = () => {
+        isLoaded = false
+        cleanup()
+        loadWaveform()
       }
+
+      observe('audioId', handleSourceChange)
+      observe('src', handleSourceChange)
+      observe('waveformSrc', handleSourceChange)
     }
   })
 </script>

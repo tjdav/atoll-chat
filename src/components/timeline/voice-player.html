@@ -22,7 +22,7 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, pocketbase, globalStore, signal, eventBus, cryptoWorker }) => {
+    client: async ({ refs, state, localDb, pocketbase, globalStore, signal, eventBus, cryptoWorker, observe }) => {
       const { $localDb } = localDb
       const { pb } = pocketbase
       const { $state } = globalStore
@@ -296,10 +296,8 @@
 
       loadAudio()
 
-      if (typeof state.subscribe === 'function') {
-        state.subscribe('status', loadAudio)
-        state.subscribe('localUuid', loadAudio)
-      }
+      observe('status', loadAudio)
+      observe('localUuid', loadAudio)
 
       signal.addEventListener('abort', cleanup)
     }
