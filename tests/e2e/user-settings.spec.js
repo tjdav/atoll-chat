@@ -32,6 +32,7 @@ test.describe('User Settings & Profile', () => {
         buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
       })
       await page.locator('[data-testid="avatar-editor-0__btnApply"]').click()
+      await expect(page.locator('[data-testid="profile-settings-0__btnSave"]')).toBeEnabled()
       await page.locator('[data-testid="profile-settings-0__btnSave"]').click()
       await expect(page.locator('.avatar-circle img')).toBeVisible()
     })
@@ -173,6 +174,7 @@ test.describe('User Settings & Profile', () => {
       expect(scales.finalVal).toBeGreaterThan(scales.initialVal)
 
       await page.locator('[data-testid="avatar-editor-0__btnApply"]').click()
+      await expect(page.locator('[data-testid="profile-settings-0__btnSave"]')).toBeEnabled()
       await page.locator('[data-testid="profile-settings-0__btnSave"]').click()
       await expect(page.locator('.avatar-circle img')).toBeVisible()
     })
