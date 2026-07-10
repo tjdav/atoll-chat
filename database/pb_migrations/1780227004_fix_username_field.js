@@ -1,7 +1,7 @@
 migrate((app) => {
   const collection = app.findCollectionByNameOrId('users')
 
-  // 1. Add the username field if it doesn't exist
+  // add the username field if it doesn't exist
   if (!collection.fields.getByName('username')) {
     collection.fields.add(new TextField({
       name: 'username',
@@ -12,7 +12,7 @@ migrate((app) => {
     }))
   }
 
-  // 2. Explicitly add a unique index to satisfy identityFields requirement if it doesn't exist
+  // add unique index
   if (!collection.indexes) {
     collection.indexes = []
   }
@@ -21,10 +21,10 @@ migrate((app) => {
     collection.indexes.push('CREATE UNIQUE INDEX `idx_username_unique` ON `users` (`username`)')
   }
 
-  // Save the schema changes first
+  // save schema changes
   app.save(collection)
 
-  // 3. Enable it as an identity field if not already enabled
+  // enable it as identity field
   const updatedCollection = app.findCollectionByNameOrId('users')
   if (!updatedCollection.passwordAuth.identityFields.includes('username')) {
     updatedCollection.passwordAuth.identityFields = ['email', 'username']

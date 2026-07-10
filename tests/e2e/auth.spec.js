@@ -12,17 +12,17 @@ test.describe('Authentication and Vault', () => {
   test('should login, logout, and login again successfully', async ({ page, loginApp }) => {
     test.setTimeout(60000)
 
-    // 1. Initial Login
+    // initial login
     console.log('--- Initial Login ---')
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
     await expect(page.locator('app-layout')).toBeVisible()
 
-    // 2. Logout
+    // logout
     console.log('--- Logout ---')
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
-    // 3. Login again
+    // login again
     console.log('--- Second Login ---')
     await page.locator('[data-testid$="username"]').fill('alice')
     await page.locator('[data-testid$="password"]').fill('Password123!')
@@ -45,12 +45,12 @@ test.describe('Authentication and Vault', () => {
 
     await expect(page.locator('chat-list-item')).toBeVisible({ timeout: 15000 })
 
-    // 2. Logout
+    // logout
     console.log('--- Logout ---')
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
-    // 3. Login again
+    // login again
     console.log('--- Second Login ---')
     await page.locator('[data-testid$="username"]').fill('alice')
     await page.locator('[data-testid$="password"]').fill('Password123!')

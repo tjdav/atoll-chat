@@ -12,7 +12,6 @@ const localCustomRules = {
             const comments = sourceCode.getAllComments()
             const separatorRegex = /^\s*---[\s\S]*---\s*$/
             const numberedRegex = /^\s*\d+\.\s/
-            const uppercaseRegex = /[A-Z]/
 
             for (let i = 0; i < comments.length; i++) {
               const comment = comments[i]
@@ -33,11 +32,6 @@ const localCustomRules = {
                   context.report({
                     loc: comment.loc,
                     message: 'Avoid using numbered step comments.'
-                  })
-                } else if (uppercaseRegex.test(text)) {
-                  context.report({
-                    loc: comment.loc,
-                    message: 'Single-line comments must be strictly lowercase (no CamelCase or capitalization).'
                   })
                 }
 

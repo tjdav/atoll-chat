@@ -84,12 +84,10 @@ export default function routerPlugin () {
               const idChanged = newId !== lastUrlId
 
               if (viewChanged) {
-                // Rule: Sidebar move from deep view is push (Major switch)
-                // Rule: Sidebar move from root is replace (Lateral)
+                // sidebar move from deep view is push, from root is replace
                 action = lastUrlId ? 'pushState' : 'replaceState'
               } else if (idChanged) {
-                // Rule: Drill down from root is push
-                // Rule: Switch between items is replace (Item switch)
+                // drill down from root is push, item switch is replace
                 action = !lastUrlId ? 'pushState' : 'replaceState'
               }
 

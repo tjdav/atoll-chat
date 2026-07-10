@@ -113,12 +113,12 @@
             return
           }
 
-          // 1. Sync Cache Check
+          // sync cache check
           const cached = $state.decryptionCache.get(state.localUuid)
           if (cached) {
             const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || ''
-            // We still need message for filename
+            // still need message for filename
             const message = await $localDb.local_messages.get(state.localUuid)
             if (callId !== lastCallId || signal.aborted) {
               return
@@ -126,7 +126,7 @@
             renderFile(objectUrl, mimeType || message?.mime_type, message?.filename || message?.content)
           }
 
-          // 2. Async Lifecycle
+          // async lifecycle
           const message = await $localDb.local_messages.get(state.localUuid)
           if (callId !== lastCallId || signal.aborted) {
             return

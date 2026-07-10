@@ -8,8 +8,7 @@ onRecordEnrich((e) => {
   // Check if the user making the request is the owner of this specific record
   const isOwner = e.requestInfo.auth && e.requestInfo.auth.id === e.record.id
 
-  // If the requester is a guest or a DIFFERENT user, scrub the encrypted vault from the payload.
-  // The vault_salt, public_box_key, and public_sign_key will remain visible.
+  // scrub the encrypted vault from payload if requester is guest or different user
   if (!isOwner) {
     e.record.hide('encrypted_master_keys')
   }

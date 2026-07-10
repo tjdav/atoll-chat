@@ -91,9 +91,7 @@
               delete $state.lastSelections[$state.currentAppView]
             }
 
-            // Rule: Switching root views from a deep view should be a 'pushState'.
-            // By changing the view first, the router sees the major context switch
-            // from the current deep selection before we nullify it.
+            // switching root views first lets the router see the context switch
             $state.currentAppView = viewName
 
             // Restore selection for the incoming view if it exists

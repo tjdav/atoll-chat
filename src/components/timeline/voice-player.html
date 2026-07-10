@@ -217,11 +217,11 @@
             return
           }
 
-          // 1. Sync Cache Check
+          // sync cache check
           const cached = state.localUuid ? $state.decryptionCache.get(state.localUuid) : null
           if (cached && state.localUuid) {
             const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
-            // We still need message for waveform_data
+            // still need message for waveform_data
             const message = await $localDb.local_messages.get(state.localUuid)
             if (callId !== lastCallId || signal.aborted) {
               return
@@ -229,7 +229,7 @@
             renderAudio(objectUrl, message?.waveform_data)
           }
 
-          // 2. Async Lifecycle: Fetch from DB and Decrypt
+          // async lifecycle: fetch from DB and decrypt
           if (!state.localUuid) {
             return
           }

@@ -64,8 +64,7 @@ export default function syncPlugin () {
               : defaultDate
 
             try {
-              // Fetch missed room keys (invites/epochs) first
-              // This ensures we have the keys to decrypt messages from any newly joined rooms
+              // fetch missed room keys first
               const missedKeys = await pb.collection('room_members').getFullList({
                 filter: `user_id = "${pb.authStore.model.id}" && updated > "${lastRoomSyncTime}"`,
                 sort: 'updated'

@@ -92,8 +92,7 @@ test.describe('Media & Attachments', () => {
       // Verify that the custom waveform player is visible (instead of standard <audio controls>)
       await expect(voicePlayer.locator('.waveform-player')).toBeVisible({ timeout: 15000 })
 
-      // Verify that the waveform contains SVG elements (indicating successful SVG waveform generation)
-      // (one for background, one for progress)
+      // verify that the waveform contains svg elements for background and progress
       await expect(voicePlayer.locator('.waveform-container svg')).toHaveCount(2, { timeout: 15000 })
     })
   })

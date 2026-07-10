@@ -44,7 +44,7 @@ export default function (config) {
           version: '${version}'
         }`)
 
-        // 1. Scan output directory for files to cache (excluding sw.js and .map files)
+        // scan output directory for files to cache
         let assetsToCache = []
         try {
           const allFiles = await getFilesRecursively(outputDir)
@@ -116,7 +116,7 @@ export default function (config) {
           console.error('[serviceWorker plugin] Failed to process sw.js:', err)
         }
 
-        // 3. Cache-bust worker.js
+        // cache-bust worker.js
         try {
           const workerPath = join(projectRoot, 'src', 'workers', 'worker.js')
           let workerContent = await readFile(workerPath, 'utf-8')

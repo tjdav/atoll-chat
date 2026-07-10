@@ -66,7 +66,7 @@ test.describe('User Settings & Profile', () => {
         const startY = rect.top + (rect.height / 2)
         const initialVal = parseFloat(zoomRange.value)
 
-        // 1. Simulate Touch Drag
+        // simulate touch drag
         const touchDragStart = new Touch({
           identifier: 1,
           target: canvas,
@@ -107,7 +107,7 @@ test.describe('User Settings & Profile', () => {
           cancelable: true
         }))
 
-        // 2. Simulate Pinch-to-Zoom (move fingers apart)
+        // simulate pinch-to-zoom
         const touch1Start = new Touch({
           identifier: 2,
           target: canvas,

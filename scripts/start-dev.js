@@ -36,23 +36,23 @@ const cleanupAndExit = async (code = 0) => {
 
 const run = async () => {
   try {
-    // 1. Run the Docker Compose setup and provisioning
+    // run docker-compose setup and provisioning
     await globalSetup()
 
     console.log('\n--- Starting Application ---')
-    // 3. Spawn the app process using pnpm
+    // spawn the app process using pnpm
     appProcess = spawn('pnpm', ['run', 'start:app'], {
       stdio: 'inherit',
       shell: true
     })
 
-    // 4. Listen for the app process closing naturally or crashing
+    // listen for the app process closing naturally or crashing
     appProcess.on('close', async (code) => {
       console.log(`\nApplication process exited with code ${code}`)
       await cleanupAndExit(code)
     })
 
-    // 5. Catch user interrupts (e.g., pressing Ctrl+C in the terminal)
+    // catch user interrupts
     process.on('SIGINT', () => cleanupAndExit(0))
     process.on('SIGTERM', () => cleanupAndExit(0))
 

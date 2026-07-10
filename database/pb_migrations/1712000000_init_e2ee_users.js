@@ -1,7 +1,7 @@
 migrate((app) => {
   const collection = app.findCollectionByNameOrId('users')
 
-  // 4. task: Constraints & Indexes - Update username constraints
+  // update username constraints
   const usernameField = collection.fields.getByName('username')
   if (usernameField) {
     usernameField.unique = true
@@ -10,7 +10,7 @@ migrate((app) => {
     usernameField.pattern = '^[a-zA-Z0-9_]+$'
   }
 
-  // 1. task: Public Key Fields
+  // public key fields
   collection.fields.add(new TextField({
     name: 'public_box_key',
     required: true
@@ -21,13 +21,13 @@ migrate((app) => {
     required: true
   }))
 
-  // 2. task: The Zero-Knowledge Vault
+  // zero-knowledge vault
   collection.fields.add(new JSONField({
     name: 'encrypted_master_keys',
     required: true
   }))
 
-  // 3. task: Key Derivation & Auth Fields
+  // key derivation & auth fields
   collection.fields.add(new TextField({
     name: 'pin_salt',
     required: true
@@ -37,9 +37,7 @@ migrate((app) => {
     name: 'passkey_credential_id'
   }))
 
-  // API Rules (Visibility)
-  // User requested "" (Leave empty) for List/Search & View to allow authenticated users to search.
-  // Note: In PocketBase "" means public access.
+  // api rules visibility
   collection.listRule = ''
   collection.viewRule = ''
   collection.updateRule = 'id = @request.auth.id'

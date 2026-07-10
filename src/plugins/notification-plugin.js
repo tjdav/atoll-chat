@@ -146,8 +146,6 @@ export default definePlugin({
 
             if (sender && sender.avatar) {
               options.image = pb.files.getURL(sender, sender.avatar, { thumb: '160x160' })
-              // Browser might use icon for the small image and image for the large one.
-              // For a chat notification, usually the icon is the sender's avatar.
               options.icon = pb.files.getURL(sender, sender.avatar, { thumb: '128x128' })
             }
 

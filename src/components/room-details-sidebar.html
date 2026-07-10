@@ -165,7 +165,7 @@
   
           const currentUser = $state.currentUser
 
-          // 1. Identify Survivors & Generate New Key
+          // identify survivors & generate new key
           const allMembers = await pb.collection('room_members').getFullList({
             filter: pb.filter('room_id = {:room_id}', { room_id }),
             expand: 'user_id'
@@ -174,7 +174,7 @@
           const survivors = allMembers.filter(m => m.id !== kickedMemberId)
           const newEpochKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
 
-          // 2. Wrap the New Key for Survivors
+          // wrap the new key for survivors
           const wrapPromises = survivors.map(async (survivor) => {
             const user = survivor.expand.user_id
             const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
@@ -192,14 +192,13 @@
             })
           })
 
-          // 3. The Server Transaction
-          // Update all survivors and delete the kicked user
+          // update all survivors and delete the kicked user
           await Promise.all([
             ...wrapPromises,
             pb.collection('room_members').delete(kickedMemberId)
           ])
 
-          // 4. Update the Local Cache (Key History)
+          // update the local cache
           const db = await $localDb()
           const localRoom = await db.local_rooms.get(room_id)
           const nextEpochId = (localRoom.key_history || []).length + 1
@@ -215,7 +214,7 @@
   
           await db.local_rooms.put(localRoom)
 
-          // 5. Send a System Message
+          // send a system message
           const systemContent = `${kickedUsername} was removed from the chat.`
           const plaintextObj = JSON.stringify({
             type: 'system',

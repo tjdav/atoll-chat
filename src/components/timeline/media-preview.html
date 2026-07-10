@@ -84,7 +84,7 @@
             return
           }
 
-          // 1. Synchronous Cache Check
+          // synchronous cache check
           const cached = state.localUuid ? $state.decryptionCache.get(state.localUuid) : null
           if (cached && state.localUuid) {
             const isVideo = (cached.mimeType || '').startsWith('video/')
@@ -95,7 +95,7 @@
             }
           }
 
-          // 2. Async Lifecycle: Fetch from DB and Decrypt
+          // async lifecycle: fetch from DB and decrypt
           if (!state.localUuid) {
             return
           }

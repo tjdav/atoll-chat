@@ -58,8 +58,7 @@
         container.style.left = `${x}px`
         container.style.top = `${y}px`
 
-        // Use requestAnimationFrame to ensure the picker is rendered and hidden is removed
-        // before we calculate its dimensions for positioning.
+        // use requestAnimationFrame to position after rendering
         container.hidden = false
 
         await new Promise(resolve => requestAnimationFrame(resolve))

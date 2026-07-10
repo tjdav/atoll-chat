@@ -178,14 +178,10 @@
             }
           })
 
-          // Identify new messages to render
-          // To support robust chronological sorting and handle potential out-of-order arrivals,
-          // we no longer rely on lastRenderedMessageId for slicing.
-          // The deduplication logic below will ensure we don't append duplicates.
+          // identify new messages to render without relying on lastRenderedMessageId
           let messagesToRender = messages
 
-          // Double check to prevent duplicate appending if multiple calls overlapping
-          // Check BOTH timeline-row and timeline-system-message
+          // prevent duplicate appending if multiple calls overlap
           const existingElements = Array.from(container.querySelectorAll('timeline-row, timeline-system-message'))
           const existingIds = new Set()
           existingElements.forEach(el => {
@@ -214,7 +210,7 @@
               const prevMsg = messages.find(m => (m.id && m.id === lastRenderedMessageId) || (m.local_uuid && m.local_uuid === lastRenderedMessageId))
   
               if (prevMsg && prevMsg.created_at && firstNew.created_at) {
-                // 1. Date Separator logic (> 1 hour)
+                // date separator logic
                 const prevTime = new Date(prevMsg.created_at).getTime()
                 const currTime = new Date(firstNew.created_at).getTime()
                 const showSeparator = currTime - prevTime > 3600000
@@ -236,7 +232,7 @@
             const nextMessage = messages[index + 1]
             const prevMessage = messages[index - 1]
   
-            // 1. Date Separator logic (> 1 hour)
+            // date separator logic
             let showSeparator = false
             if (prevMessage) {
               const prevTime = new Date(prevMessage.created_at).getTime()
@@ -446,15 +442,14 @@
             statusContainer.classList.add('d-none')
           }
 
-          // FINAL SORT CHECK: In case messages arrived out of order, we ensure chronological order
-          // But only if we actually added something new.
+          // sort messages chronologically if we added something new
           if (messagesToRender.length > 0) {
             const children = Array.from(container.children).filter(el => el.tagName === 'TIMELINE-ROW' ||
               el.tagName === 'TIMELINE-SYSTEM-MESSAGE' ||
               el.tagName === 'TIMELINE-DATE-SEPARATOR'
             )
   
-            // Create a lookup map for message timestamps to optimize sorting
+            // create timestamp lookup map
             const timestampMap = new Map()
             messages.forEach(m => {
               const ts = new Date(m.created_at).getTime()
@@ -569,10 +564,6 @@
 
       $bus.on('db:new_local_data', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
-          // If it's a reaction, we don't need to re-render the whole timeline
-          // but we might need to update the reactions component.
-          // message-reactions already listens for db:new_local_data.
-          // However, if a new message arrives, we DO need to re-render.
           if (payload.message && payload.message.type === 'reaction') {
             return
           }
@@ -591,7 +582,6 @@
           return
         }
 
-        // Normalize payload for backward compatibility
         const targetId = payload.targetId || payload.messageId
         let content = payload.content
 
@@ -618,8 +608,6 @@
           timestamp: Date.now()
         }
 
-        // We don't do an optimistic write for reactions in the timeline,
-        // but we do send it to the worker which will save it and emit db:new_local_data
         await $worker.execute('worker:send_message', {
           room_id,
           localUuid,
@@ -645,12 +633,10 @@
           return
         }
 
-        // 1. Check if it's already rendered
         let row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
                   container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
   
         if (!row) {
-          // If not rendered, we might need to wait for renderTimeline
           await renderTimeline()
           row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
                 container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)

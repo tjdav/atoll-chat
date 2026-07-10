@@ -31,8 +31,7 @@ test.describe('Voice Recording', () => {
     // Recorder should disappear
     await expect(page.locator('chat-voice-recorder')).not.toBeVisible()
 
-    // Verify a message appeared in the timeline
-    // The message should be an audio message rendering the custom interactive waveform
+    // verify message appeared in timeline with interactive waveform
     await expect(page.locator('message-timeline .timeline-row-container .waveform-player').last()).toBeVisible({ timeout: 15000 })
   })
 })

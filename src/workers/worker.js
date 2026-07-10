@@ -85,7 +85,7 @@ async function init () {
 self.onmessage = (event) => {
   const { type } = event.data
 
-  // Certain tasks can be processed immediately and in parallel
+  // parallelizable tasks
   const parallelTasks = [
     'worker:check_ready',
     'worker:test_rpc',
@@ -144,7 +144,7 @@ async function processQueue () {
 async function handleEvent (event) {
   const { id, type, payload } = event.data
 
-  // Handle worker:ready check if sent from main thread (optional)
+  // handle worker:ready check if sent from main thread
   if (type === 'worker:check_ready') {
     self.postMessage({ type: 'worker:ready' })
     return
@@ -263,7 +263,7 @@ async function handleEvent (event) {
       return
     }
 
-    // Low-level Libsodium primitives
+    // low-level libsodium primitives
     if (type === 'worker:crypto_secretbox_easy') {
       const { message, nonce, key } = payload
       const result = sodium.crypto_secretbox_easy(
@@ -351,7 +351,7 @@ async function handleEvent (event) {
       return
     }
 
-    // High-level tasks (replacing cryptoUtils.js)
+    // high-level tasks
     if (type === 'worker:generate_master_keys') {
       const encryptionKeys = sodium.crypto_box_keypair()
       const identityKeys = sodium.crypto_sign_keypair()
@@ -654,7 +654,7 @@ async function sendMessage (rpcId, payload) {
   const ciphertextBase64 = sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL)
   const nonceBase64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
 
-  // Fetch causal link (previous_msg_uuid)
+  // fetch causal link
   const lastMsg = await db.local_messages
     .where('[room_id+created_at]')
     .between([room_id, Dexie.minKey], [room_id, Dexie.maxKey])
@@ -697,7 +697,7 @@ async function sendMessage (rpcId, payload) {
 
   const pbRecord = await messageResponse.json()
 
-  // 7. Update IndexedDB & Notify UI
+  // update indexeddb and notify ui
   const updateData = {
     id: pbRecord.id,
     status: 'sent',
@@ -1140,7 +1140,7 @@ async function processNewRoomKey (rpcId, payload) {
     headers.Authorization = authToken
   }
 
-  // 1. Fetch Room record
+  // fetch room record
   const roomResponse = await fetchWithTimeout(`${baseUrl}/api/collections/rooms/records/${room_id}`, { headers })
   if (roomResponse.ok) {
     const roomRecord = await roomResponse.json()
@@ -1181,7 +1181,7 @@ async function processNewRoomKey (rpcId, payload) {
     }).filter(p => p !== null)
   }
 
-  // Epoch Management & Local Storage
+  // epoch management and local storage
   let room = await db.local_rooms.get(room_id)
   if (!room) {
     room = {

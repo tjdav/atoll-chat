@@ -93,11 +93,10 @@
         })
 
         try {
-          // Start and AWAIT real-time subscriptions (including catch-up sync)
-          // This ensures data is ready before the UI transitions
+          // start and await real-time subscriptions
           await $sync.startSubscriptions()
   
-          // Set global state only AFTER subscriptions are ready
+          // set global state after subscriptions are ready
           $state.isVaultUnlocked = true
         } catch (err) {
           console.error('[vault-unlock] Subscription/Sync failed:', err)

@@ -65,8 +65,7 @@ const sodium = swSelf.sodium
 
 const CACHE_NAME = metadata.name + '-' + metadata.version
 
-// Note: Libsodium WASM is embedded as a Base64 string within the JS files
-// in this build, so no separate .wasm file is needed in the cache.
+// libsodium wasm is embedded as a base64 string
 const hostname = location.hostname
 const isDev = hostname === 'localhost' ||
               hostname === '127.0.0.1' ||
@@ -92,7 +91,7 @@ const onInstall = (event) => {
   )
 }
 
-// The Install Event: Caching the UI shell and cryptographic dependencies
+// install event
 addEventListener('install', onInstall)
 
 /**
@@ -115,7 +114,7 @@ const onActivate = (event) => {
   )
 }
 
-// The Activate Event: Cleanup old caches
+// activate event
 addEventListener('activate', onActivate)
 
 /**
@@ -142,14 +141,13 @@ const onFetch = (event) => {
         return networkResponse
       })
 
-      // Return cached response immediately if available, otherwise wait for fetch.
-      // If both fail, let the error propagate.
+      // return cached response or fetch from network
       return cachedResponse || fetchPromise
     })
   )
 }
 
-// The Fetch Interceptor: Stale-While-Revalidate strategy
+// fetch interceptor
 addEventListener('fetch', onFetch)
 
 /**

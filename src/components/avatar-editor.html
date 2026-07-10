@@ -180,8 +180,7 @@
         outputCanvas.height = 400
         const outCtx = outputCanvas.getContext('2d')
   
-        // Circular clip for the final output as well (optional, but good for preview consistency)
-        // Actually, we should output a full square 400x400 and let the UI handle circularity.
+        // output standard square canvas and handle clipping in css
   
         outCtx.fillStyle = 'white'
         outCtx.fillRect(0, 0, 400, 400)

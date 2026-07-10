@@ -45,15 +45,13 @@ routerAdd('GET', '/api/link-extraction', (e) => {
       return null
     }
 
-    // 1. Extract <title>
-    // Search up to 1000 chars for the closing tag, then truncate to 250
+    // extract title
     const titleMatch = html.match(/<title[^>]{0,500}>([\s\S]{0,1000}?)<\/title>/i)
     if (titleMatch) {
       title = titleMatch[1].substring(0, 250).trim()
     }
 
-    // 2. Extract <meta> tags
-    // Limit each meta tag to 2048 chars to prevent ReDoS
+    // extract meta tags
     const metaTags = html.match(/<meta\s+[^>]{0,2048}?>/gi) || []
     for (const tag of metaTags) {
       const name = getAttr(tag, 'name')

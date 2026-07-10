@@ -71,7 +71,7 @@
           return
         }
 
-        // 1. Check Cache
+        // check cache
         if (decryptionCache.has(cacheKey)) {
           const cached = decryptionCache.get(cacheKey)
           const cachedUrl = typeof cached === 'string' ? cached : cached.blobUrl
@@ -81,7 +81,7 @@
           }
         }
 
-        // 2. Query DB
+        // query db
         const msg = await $localDb.local_messages.get(uuid)
         if (callId !== lastCallId || signal.aborted) {
           return

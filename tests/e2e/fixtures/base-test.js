@@ -93,7 +93,7 @@ async function resetPocketBase (testId) {
     }
   }
 
-  // 1. Clear transactional collections
+  // clear transactional collections
   const collectionsToClear = ['messages', 'rooms', 'room_members', 'media']
   for (const collectionName of collectionsToClear) {
     try {
@@ -110,7 +110,7 @@ async function resetPocketBase (testId) {
     }
   }
 
-  // 2. Restore test users to default state
+  // restore test users to default state
   for (const user of USERS) {
     try {
       let existingUser
