@@ -190,7 +190,7 @@ test.describe('User Settings & Profile', () => {
         await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       }
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
-      await page.setInputFiles('[data-testid$="__imageInput"]', ip)
+      await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
       await page.locator('media-preview img').first().click()
       await page.locator('share-button button').filter({ visible: true }).click()

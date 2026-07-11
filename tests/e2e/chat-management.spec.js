@@ -84,7 +84,7 @@ test.describe('Chat Management', () => {
       await bobChatListAlice.click()
       await expect(bobPreviewText).not.toHaveClass(/fw-bold/)
 
-      await alicePage.setInputFiles('[data-testid$="__imageInput"]', {
+      await alicePage.setInputFiles('[data-testid$="__fileInput"]', {
         name: 'test.png',
         mimeType: 'image/png',
         buffer: Buffer.from('fake-image-content')

@@ -28,23 +28,20 @@ test.describe('Media & Attachments', () => {
       const files = [
         {
           n: 'test.png',
-          s: 'media-preview img',
-          tid: '__imageInput'
+          s: 'media-preview img'
         },
         {
           n: 'test.mp4',
-          s: 'media-preview img',
-          tid: '__videoInput'
+          s: 'media-preview img'
         },
         {
           n: 'test.docx',
-          s: 'file-attachment',
-          tid: '__docInput'
+          s: 'file-attachment'
         }
       ]
       for (const f of files) {
         const fp = path.resolve(`tests/e2e/fixtures/test-files/${f.n}`)
-        await alicePage.locator(`chat-view [data-testid$="${f.tid}"]`).setInputFiles(fp)
+        await alicePage.locator('chat-view [data-testid$="__fileInput"]').setInputFiles(fp)
         const cap = `S ${f.n}`
         await alicePage.fill('chat-view textarea', cap)
         await alicePage.click('chat-view [data-testid$="__sendButton"]')
@@ -64,7 +61,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid$="search-result-bob"]').click()
       await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const vp = path.join(__dirname, 'fixtures', 'test-files', 'test.mp4')
-      await page.setInputFiles('[data-testid$="__videoInput"]', vp)
+      await page.setInputFiles('[data-testid$="__fileInput"]', vp)
       await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
       await page.locator('[data-testid$="sendButton"]').click()
       await expect(page.locator('timeline-row img').first()).toBeVisible({ timeout: 15000 })
@@ -78,7 +75,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid$="search-result-bob"]').click()
       await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const ap = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
-      await page.setInputFiles('[data-testid$="__audioInput"]', ap)
+      await page.setInputFiles('[data-testid$="__fileInput"]', ap)
       await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
       await page.locator('[data-testid$="sendButton"]').click()
 
@@ -109,7 +106,7 @@ test.describe('Media & Attachments', () => {
     test('carousel and grid sync', async ({ page }) => {
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
       for (let i = 0; i < 2; i++) {
-        await page.setInputFiles('[data-testid$="__imageInput"]', ip)
+        await page.setInputFiles('[data-testid$="__fileInput"]', ip)
         await page.click('[data-testid$="__sendButton"]')
         await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 20000 })
       }
@@ -122,7 +119,7 @@ test.describe('Media & Attachments', () => {
 
     test('jump to chat', async ({ page }) => {
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
-      await page.setInputFiles('[data-testid$="__imageInput"]', ip)
+      await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
       const img = page.locator('media-preview img').first()
       await expect(img).toBeVisible({ timeout: 15000 })
@@ -133,7 +130,7 @@ test.describe('Media & Attachments', () => {
 
     test('aggregate documents and links', async ({ page }) => {
       const dp = path.resolve('tests/e2e/fixtures/test-files/test.txt')
-      await page.setInputFiles('[data-testid$="__docInput"]', dp)
+      await page.setInputFiles('[data-testid$="__fileInput"]', dp)
       await page.click('[data-testid$="__sendButton"]')
       await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 30000 })
       await page.locator('[data-testid="nav-sidebar-0__btnDocuments"]').click()
@@ -167,7 +164,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid$="search-result-bob"]').click()
       await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const ap = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
-      await page.setInputFiles('[data-testid$="__audioInput"]', ap)
+      await page.setInputFiles('[data-testid$="__fileInput"]', ap)
       await page.click('[data-testid$="__sendButton"]')
 
       // Wait for the message status to be 'Sent'

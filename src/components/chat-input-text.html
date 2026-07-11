@@ -1,38 +1,11 @@
 <template id="chat-input-text">
   <div class="d-flex align-items-end chat-input-text">
-    <input type="file" ref="docInput" class="d-none" accept=".pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz" data-testid="{{ ref_docInput }}">
-    <input type="file" ref="imageInput" class="d-none" accept="image/*" data-testid="{{ ref_imageInput }}">
-    <input type="file" ref="videoInput" class="d-none" accept="video/*" data-testid="{{ ref_videoInput }}">
-    <input type="file" ref="audioInput" class="d-none" accept="audio/*" data-testid="{{ ref_audioInput }}">
+    <input type="file" ref="fileInput" class="d-none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz" data-testid="{{ ref_fileInput }}">
     
-    <!-- Desktop Attachment Buttons -->
-    <div class="d-none d-md-flex">
-      <button class="btn btn-ghost btn-circle" type="button" ref="docButton" title="Attach Document" disabled="{{ isDisabled }}">
-        <i class="bi bi-file-earmark-plus fs-5"></i>
-      </button>
-      <button class="btn btn-ghost btn-circle" type="button" ref="imageButton" title="Attach Image" disabled="{{ isDisabled }}">
-        <i class="bi bi-image fs-5"></i>
-      </button>
-      <button class="btn btn-ghost btn-circle" type="button" ref="videoButton" title="Attach Video" disabled="{{ isDisabled }}">
-        <i class="bi bi-camera-video fs-5"></i>
-      </button>
-      <button class="btn btn-ghost btn-circle" type="button" ref="audioButton" title="Attach Audio" disabled="{{ isDisabled }}">
-        <i class="bi bi-music-note fs-5"></i>
-      </button>
-    </div>
-
-    <!-- Mobile Attachment Dropup -->
-    <div class="dropdown dropup d-md-none">
-      <button class="btn btn-ghost btn-circle" type="button" data-bs-toggle="dropdown" aria-expanded="false" title="Attach" disabled="{{ isDisabled }}">
-        <i class="bi bi-paperclip fs-5"></i>
-      </button>
-      <ul class="dropdown-menu shadow-sm">
-        <li><a class="dropdown-item" href="#" ref="docButtonMobile"><i class="bi bi-file-earmark-plus me-2"></i> Document</a></li>
-        <li><a class="dropdown-item" href="#" ref="imageButtonMobile"><i class="bi bi-image me-2"></i> Image</a></li>
-        <li><a class="dropdown-item" href="#" ref="videoButtonMobile"><i class="bi bi-camera-video me-2"></i> Video</a></li>
-        <li><a class="dropdown-item" href="#" ref="audioButtonMobile"><i class="bi bi-music-note me-2"></i> Audio</a></li>
-      </ul>
-    </div>
+    <!-- Attachment Button -->
+    <button class="btn btn-ghost btn-circle" type="button" ref="attachButton" title="Attach File" disabled="{{ isDisabled }}">
+      <i class="bi bi-paperclip fs-5"></i>
+    </button>
 
     <div class="input-wrapper">
       <textarea
@@ -148,10 +121,9 @@
       // Initial expand
       autoExpand()
 
-      const setupFileInput = (btnRef, inputRef, mobileBtnRef) => {
+      const setupFileInput = (btnRef, inputRef) => {
         const btn = refs(btnRef)
         const input = refs(inputRef)
-        const mobileBtn = refs(mobileBtnRef)
 
         const clickHandler = (e) => {
           if (e) {
@@ -162,9 +134,6 @@
 
         if (btn) {
           btn.addEventListener('click', clickHandler, { signal })
-        }
-        if (mobileBtn) {
-          mobileBtn.addEventListener('click', clickHandler, { signal })
         }
 
         if (input) {
@@ -178,10 +147,7 @@
         }
       }
 
-      setupFileInput('docButton', 'docInput', 'docButtonMobile')
-      setupFileInput('imageButton', 'imageInput', 'imageButtonMobile')
-      setupFileInput('videoButton', 'videoInput', 'videoButtonMobile')
-      setupFileInput('audioButton', 'audioInput', 'audioButtonMobile')
+      setupFileInput('attachButton', 'fileInput')
 
       refs('micButton').addEventListener('click', () => {
         $bus.emit('ui:mic_clicked')
