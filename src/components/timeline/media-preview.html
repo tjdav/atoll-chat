@@ -32,6 +32,74 @@
 
       let lastCallId = 0
 
+      if (container) {
+        container.onclick = async () => {
+          if (!state.localUuid) {
+            return
+          }
+          const msg = await $localDb.local_messages.get(state.localUuid)
+          if (!msg?.media_id) {
+            return
+          }
+          const targetView = (msg.mime_type || '').startsWith('image/') ? 'pictures' : 'videos'
+          $state.currentAppView = targetView
+          $state.activeSelectionType = targetView
+          $state.activeSelectionId = msg.media_id
+        }
+      }
+
+      const addOptimizingIndicatorIfNeeded = () => {
+        const activeLocks = $state.videoCompressionLocks || {}
+        const lockExpiry = activeLocks[state.localUuid]
+        if (lockExpiry && (Date.now() < lockExpiry)) {
+          const optimizingIndicator = document.createElement('div')
+          optimizingIndicator.className = 'position-absolute top-0 start-0 p-2 m-2 bg-black bg-opacity-75 text-white rounded-pill d-flex align-items-center'
+          optimizingIndicator.style.fontSize = '0.75rem'
+          optimizingIndicator.style.zIndex = '5'
+          optimizingIndicator.innerHTML = `
+            <div class="spinner-border spinner-border-sm text-primary me-2" role="status" style="width: 12px; height: 12px;"></div>
+            <span>Optimizing...</span>
+          `
+          container.appendChild(optimizingIndicator)
+        }
+      }
+
+      const renderVideoPlaceholder = (duration = 0) => {
+        container.innerHTML = ''
+        container.appendChild(loading)
+        loading.classList.add('d-none')
+        container.style.minHeight = 'auto'
+
+        const placeholderDiv = document.createElement('div')
+        placeholderDiv.className = 'w-100 h-100 d-flex flex-column align-items-center justify-content-center bg-body-secondary position-relative rounded-3'
+        placeholderDiv.style.minHeight = '200px'
+        placeholderDiv.style.minWidth = '250px'
+        placeholderDiv.innerHTML = `
+          <div class="d-flex flex-column align-items-center text-body-secondary">
+            <i class="bi bi-camera-video fs-1 mb-2"></i>
+            <span class="x-small text-muted">Video (No Thumbnail)</span>
+          </div>
+        `
+        container.appendChild(placeholderDiv)
+
+        const overlay = document.createElement('div')
+        overlay.className = 'position-absolute bottom-0 start-0 p-2 d-flex align-items-center'
+        overlay.style.background = 'linear-gradient(transparent, rgba(0,0,0,0.5))'
+        overlay.style.width = '100%'
+
+        const badge = document.createElement('div')
+        badge.className = 'bg-black bg-opacity-75 text-white px-2 py-1 rounded-pill d-flex align-items-center'
+        badge.style.fontSize = '0.75rem'
+        badge.innerHTML = `
+          <i class="bi bi-play-fill me-1"></i>
+          <span>${$time.formatDuration(duration)}</span>
+        `
+        overlay.appendChild(badge)
+        container.appendChild(overlay)
+
+        addOptimizingIndicatorIfNeeded()
+      }
+
       const renderMedia = (objectUrl, mimeType, duration = 0) => {
         if (!objectUrl) {
           return
@@ -87,6 +155,8 @@
           overlay.appendChild(badge)
           container.appendChild(overlay)
         }
+
+        addOptimizingIndicatorIfNeeded()
       }
 
       const loadMedia = async () => {
@@ -104,6 +174,7 @@
             if (objectUrl) {
               const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || 'image/webp'
               renderMedia(objectUrl, mimeType, cached.duration)
+              return
             }
           }
 
@@ -126,7 +197,8 @@
               objectUrl = await $media.decrypt(message.thumbnail, signal)
             }
             if (!objectUrl) {
-              throw new Error('Video thumbnail missing')
+              renderVideoPlaceholder(duration)
+              return
             }
           } else {
             objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
@@ -153,17 +225,6 @@
           }
           renderMedia(objectUrl, mimeType, duration)
 
-          container.onclick = async () => {
-            const msg = await $localDb.local_messages.get(state.localUuid)
-            if (!msg?.media_id) {
-              return
-            }
-            const targetView = (msg.mime_type || '').startsWith('image/') ? 'pictures' : 'videos'
-            $state.currentAppView = targetView
-            $state.activeSelectionType = targetView
-            $state.activeSelectionId = msg.media_id
-          }
-
         } catch (err) {
           if (err.name === 'AbortError') {
             return
@@ -178,6 +239,18 @@
 
       observe('status', loadMedia)
       observe('localUuid', loadMedia)
+
+      $bus.on('media:video_compressing', (payload) => {
+        if (payload.target_message_id === state.localUuid) {
+          loadMedia()
+        }
+      })
+
+      $bus.on('media:video_upgraded', (payload) => {
+        if (payload.target_message_id === state.localUuid) {
+          loadMedia()
+        }
+      })
 
       loadMedia()
     }

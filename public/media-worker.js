@@ -40,11 +40,12 @@ self.onmessage = async (event) => {
           })
         })
       } catch (mp4Error) {
-        if (mp4Error.message.includes('encoding is not supported')) {
-          console.warn('[media-worker] MP4 encoding not supported, falling back to WebM (VP9)')
+        console.warn('[media-worker] MP4 encoding not supported, falling back to WebM (VP9)', mp4Error)
+        try {
           result = await compressVideo(payload.file, {
             ...payload.options,
-            format: 'webm'
+            format: 'webm',
+            codec: 'vp9'
           }, (progress) => {
             self.postMessage({
               id,
@@ -52,8 +53,39 @@ self.onmessage = async (event) => {
               payload: { progress }
             })
           })
-        } else {
-          throw mp4Error
+        } catch (vp9Error) {
+          console.warn('[media-worker] VP9 encoding not supported, falling back to WebM (VP8)', vp9Error)
+          try {
+            result = await compressVideo(payload.file, {
+              ...payload.options,
+              format: 'webm',
+              codec: 'vp8'
+            }, (progress) => {
+              self.postMessage({
+                id,
+                type: 'video:progress',
+                payload: { progress }
+              })
+            })
+          } catch (vp8Error) {
+            console.warn('[media-worker] VP8 encoding not supported, falling back to WebM (AV1)', vp8Error)
+            try {
+              result = await compressVideo(payload.file, {
+                ...payload.options,
+                format: 'webm',
+                codec: 'av1'
+              }, (progress) => {
+                self.postMessage({
+                  id,
+                  type: 'video:progress',
+                  payload: { progress }
+                })
+              })
+            } catch (av1Error) {
+              console.error('[media-worker] All video compression options failed:', av1Error)
+              throw av1Error
+            }
+          }
         }
       }
 
@@ -89,36 +121,59 @@ self.onmessage = async (event) => {
 }
 
 async function getMetadata (file) {
-  const input = new Input({
-    formats: SUPPORTED_FORMATS,
-    source: new BlobSource(file)
-  })
+  let duration = 0
+  let tags = {}
+  let input = null
 
-  const duration = await input.computeDuration()
-  const tags = await input.getMetadataTags()
+  try {
+    input = new Input({
+      formats: SUPPORTED_FORMATS,
+      source: new BlobSource(file)
+    })
+    try {
+      duration = await input.computeDuration()
+    } catch (durErr) {
+      console.warn('[media-worker] Failed to compute duration:', durErr)
+    }
+    try {
+      tags = await input.getMetadataTags() || {}
+    } catch (tagsErr) {
+      console.warn('[media-worker] Failed to get metadata tags:', tagsErr)
+    }
+  } catch (initErr) {
+    console.warn('[media-worker] Input initialization failed:', initErr)
+  }
 
   let thumbnail = null
-  if (file.type.startsWith('video/')) {
-    const videoTrack = await input.getPrimaryVideoTrack()
-    if (videoTrack) {
-      const sink = new CanvasSink(videoTrack, {
-        width: 1200,
-        height: 1200,
-        fit: 'contain'
-      })
-      const result = await sink.getCanvas(0)
-      if (result) {
-        thumbnail = await result.canvas.transferToImageBitmap()
+  if (file.type.startsWith('video/') && input) {
+    try {
+      const videoTrack = await input.getPrimaryVideoTrack()
+      if (videoTrack) {
+        const sink = new CanvasSink(videoTrack, {
+          width: 1200,
+          height: 1200,
+          fit: 'contain'
+        })
+        const result = await sink.getCanvas(0)
+        if (result) {
+          thumbnail = await result.canvas.transferToImageBitmap()
+        }
       }
+    } catch (thumbErr) {
+      console.warn('[media-worker] Failed to extract video thumbnail:', thumbErr)
     }
   }
 
   // Extract album art for audio
   let albumArt = null
   let albumArtMimeType = null
-  if (tags.images && tags.images.length > 0) {
-    albumArt = tags.images[0].data
-    albumArtMimeType = tags.images[0].mimeType
+  if (tags && tags.images && tags.images.length > 0) {
+    try {
+      albumArt = tags.images[0].data
+      albumArtMimeType = tags.images[0].mimeType
+    } catch (artErr) {
+      console.warn('[media-worker] Failed to extract album art:', artErr)
+    }
   }
 
   return {
@@ -142,7 +197,8 @@ async function compressVideo (file, options = {}, onProgress) {
     maxWidth = 1280,
     maxHeight = 720,
     bitrate = 2_000_000,
-    format = 'mp4'
+    format = 'mp4',
+    codec = 'vp9'
   } = options
 
   const input = new Input({
@@ -170,7 +226,7 @@ async function compressVideo (file, options = {}, onProgress) {
   }
 
   if (format === 'webm') {
-    conversionOptions.video.codec = 'vp9'
+    conversionOptions.video.codec = codec
   }
 
   const conversion = await Conversion.init(conversionOptions)

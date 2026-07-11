@@ -392,6 +392,11 @@ export default definePlugin({
             const { pb } = pocketbase
             const { $worker } = cryptoWorker
             const { $state } = globalStore
+
+            if (asset && asset.dataUrl) {
+              return asset.dataUrl
+            }
+
             const possibleKeys = [asset.message_id, asset.id, asset.media_id].filter(Boolean)
             for (const key of possibleKeys) {
               if ($state.decryptionCache.has(key)) {
