@@ -1,7 +1,26 @@
 <template id="chat-attachment-preview">
   <div class="attachment-preview p-2 mb-2 bg-body-tertiary rounded d-flex align-items-center justify-content-between border">
     <div class="d-flex align-items-center">
-      <i class="bi bi-file-earmark-arrow-up text-primary fs-4 me-2"></i>
+      <!-- Video Cover Thumbnail Container -->
+      <div class="position-relative me-2 bg-dark rounded border d-flex align-items-center justify-content-center" hidden="{{ isVideoHidden }}" style="width: 100px; height: 100px; overflow: hidden; flex-shrink: 0;">
+        <img src="{{ thumbnailUrl }}" class="w-100 h-100 object-fit-cover" alt="Cover Preview" ref="coverImg" hidden="{{ isThumbnailHidden }}">
+        <i class="bi bi-camera-video text-white fs-2" hidden="{{ isThumbnailVisibleHidden }}"></i>
+        
+        <!-- Standard file picker restricted to image files, visually hidden -->
+        <input type="file" ref="coverInput" class="d-none" accept="image/jpeg, image/png, image/webp" data-testid="cover-file-input">
+        
+        <!-- Action Button overlaid -->
+        <button class="btn btn-sm {{ coverBtnClass }} position-absolute bottom-0 start-50 translate-middle-x mb-1" 
+                style="z-index: 5; white-space: nowrap; font-size: 0.6rem; padding: 1px 4px; line-height: 1.2; width: 90%; text-overflow: ellipsis; overflow: hidden;"
+                ref="coverBtn" 
+                data-testid="btn-change-cover">
+          {{ coverBtnText }}
+        </button>
+      </div>
+
+      <!-- Generic Document/File Icon if not video -->
+      <i class="bi bi-file-earmark-arrow-up text-primary fs-4 me-2" hidden="{{ isGenericIconHidden }}"></i>
+      
       <div>
         <div class="small fw-bold text-truncate" style="max-width: 200px;">{{ fileName }}</div>
         <div class="x-small text-muted">{{ uploadStatus }}</div>
@@ -20,15 +39,48 @@
   export default defineComponent({
     attributes: {
       fileName: String,
-      uploadStatus: String
+      uploadStatus: String,
+      isVideo: Boolean,
+      thumbnailUrl: String,
+      isCustom: Boolean
     },
-    client: ({ refs, eventBus, signal }) => {
+    getters: {
+      isVideoHidden: (state) => !state.isVideo,
+      isGenericIconHidden: (state) => !!state.isVideo,
+      isThumbnailHidden: (state) => !state.thumbnailUrl,
+      isThumbnailVisibleHidden: (state) => !!state.thumbnailUrl,
+      coverBtnText: (state) => (state.isCustom ? 'Remove Custom Cover' : 'Change Cover'),
+      coverBtnClass: (state) => (state.isCustom ? 'btn-danger' : 'btn-dark')
+    },
+    client: ({ refs, state, eventBus, signal }) => {
       const { $bus } = eventBus
       const cancelBtn = refs('cancelFileButton')
+      const coverBtn = refs('coverBtn')
+      const coverInput = refs('coverInput')
   
       cancelBtn.addEventListener('click', () => {
         $bus.emit('ui:cancel')
       }, { signal })
+
+      if (coverBtn && coverInput) {
+        coverBtn.addEventListener('click', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          if (state.isCustom) {
+            $bus.emit('ui:remove_custom_cover_clicked')
+          } else {
+            coverInput.click()
+          }
+        }, { signal })
+
+        coverInput.addEventListener('change', () => {
+          const file = coverInput.files[0]
+          if (file) {
+            $bus.emit('ui:custom_cover_selected', { file })
+            coverInput.value = ''
+          }
+        }, { signal })
+      }
     }
   })
 </script>

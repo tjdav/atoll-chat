@@ -547,12 +547,7 @@ async function sendMessage (rpcId, payload) {
     file_key: existingFileKey,
     file_nonce: existingFileNonce,
     album_art: existingAlbumArt,
-    thumbnail: existingThumbnail,
-    target_message_id,
-    new_media_id,
-    new_file_key,
-    new_file_nonce,
-    new_thumbnail
+    thumbnail: existingThumbnail
   } = payload
 
   if (!currentUserKeys || !currentUserKeys.private_sign_key) {
@@ -695,18 +690,6 @@ async function sendMessage (rpcId, payload) {
     plaintextObj.album_art = albumArtInfo
     plaintextObj.thumbnail = thumbnailInfo
     plaintextObj.duration = duration
-  }
-
-  if (type === 'media_upgrade_intent') {
-    plaintextObj.target_message_id = target_message_id
-  }
-
-  if (type === 'media_upgrade') {
-    plaintextObj.target_message_id = target_message_id
-    plaintextObj.new_media_id = new_media_id
-    plaintextObj.new_file_key = new_file_key
-    plaintextObj.new_file_nonce = new_file_nonce
-    plaintextObj.new_thumbnail = new_thumbnail
   }
 
   const plaintextStr = JSON.stringify(plaintextObj)
@@ -955,107 +938,6 @@ async function processIncomingMessage (rpcId, record) {
   const decryptedString = new TextDecoder().decode(decryptedBuffer)
   const decryptedPayload = JSON.parse(decryptedString)
   const { type, content, candidate, candidates, media_types, target_id, timestamp } = decryptedPayload
-
-  if (type === 'media_upgrade_intent') {
-    self.postMessage({
-      type: 'db:new_local_data',
-      payload: {
-        room_id,
-        message: {
-          id,
-          room_id,
-          sender_id: senderId,
-          type: 'media_upgrade_intent',
-          target_message_id: decryptedPayload.target_message_id,
-          timestamp: decryptedPayload.timestamp || Date.now()
-        }
-      }
-    })
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_incoming_message',
-      result: { success: true }
-    })
-    return
-  }
-
-  if (type === 'media_upgrade') {
-    const { target_message_id, new_media_id, new_file_key, new_file_nonce, new_thumbnail } = decryptedPayload
-    const targetMsg = await db.local_messages.get(target_message_id)
-    if (targetMsg) {
-      let shouldUpdate = false
-      let loserMediaId = null
-
-      if (!targetMsg.upgrade_msg_id) {
-        shouldUpdate = true
-      } else if (id < targetMsg.upgrade_msg_id) {
-        shouldUpdate = true
-        loserMediaId = targetMsg.media_id
-      } else {
-        loserMediaId = new_media_id
-      }
-
-      if (shouldUpdate) {
-        targetMsg.media_id = new_media_id
-        targetMsg.file_key = new_file_key
-        targetMsg.file_nonce = new_file_nonce
-        targetMsg.thumbnail = { dataUrl: new_thumbnail }
-        targetMsg.upgrade_msg_id = id
-        await db.local_messages.put(targetMsg)
-
-        const asset = await db.local_assets.get(target_message_id) || await db.local_assets.get(targetMsg.media_id)
-        if (asset) {
-          asset.id = new_media_id
-          asset.media_id = new_media_id
-          asset.file_key = new_file_key
-          asset.file_nonce = new_file_nonce
-          asset.thumbnail = { dataUrl: new_thumbnail }
-          await db.local_assets.put(asset)
-        }
-      }
-
-      if (senderId === currentUserKeys.id && loserMediaId) {
-        try {
-          const headers = {}
-          if (authToken) {
-            headers.Authorization = authToken
-          }
-          await fetchWithTimeout(`${baseUrl}/api/collections/media/records/${loserMediaId}`, {
-            method: 'DELETE',
-            headers
-          })
-          console.log(`[worker] Deleted orphan/losing media upgrade asset: ${loserMediaId}`)
-        } catch (delErr) {
-          console.warn('[worker] Failed to delete losing media upgrade asset:', delErr)
-        }
-      }
-    }
-
-    self.postMessage({
-      type: 'db:new_local_data',
-      payload: {
-        room_id,
-        message: {
-          id,
-          room_id,
-          sender_id: senderId,
-          type: 'media_upgrade',
-          target_message_id,
-          new_media_id,
-          new_file_key,
-          new_file_nonce,
-          thumbnail: { dataUrl: new_thumbnail },
-          timestamp: decryptedPayload.timestamp || Date.now()
-        }
-      }
-    })
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_incoming_message',
-      result: { success: true }
-    })
-    return
-  }
 
   // Storage and causal chain resolution.
   const decryptedMessage = {

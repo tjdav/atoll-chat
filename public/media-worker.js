@@ -95,7 +95,7 @@ self.onmessage = async (event) => {
         result
       }, [result.buffer.buffer])
     } else if (type === 'media:get-metadata') {
-      const result = await getMetadata(payload.file)
+      const result = await getMetadata(payload.file, payload.options)
       const transferables = []
       if (result.albumArt) {
         transferables.push(result.albumArt.buffer)
@@ -120,7 +120,7 @@ self.onmessage = async (event) => {
   }
 }
 
-async function getMetadata (file) {
+async function getMetadata (file, options = {}) {
   let duration = 0
   let tags = {}
   let input = null
@@ -145,7 +145,7 @@ async function getMetadata (file) {
   }
 
   let thumbnail = null
-  if (file.type.startsWith('video/') && input) {
+  if (file.type.startsWith('video/') && input && !options.skipThumbnail) {
     try {
       const videoTrack = await input.getPrimaryVideoTrack()
       if (videoTrack) {

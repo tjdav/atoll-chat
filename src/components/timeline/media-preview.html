@@ -48,22 +48,6 @@
         }
       }
 
-      const addOptimizingIndicatorIfNeeded = () => {
-        const activeLocks = $state.videoCompressionLocks || {}
-        const lockExpiry = activeLocks[state.localUuid]
-        if (lockExpiry && (Date.now() < lockExpiry)) {
-          const optimizingIndicator = document.createElement('div')
-          optimizingIndicator.className = 'position-absolute top-0 start-0 p-2 m-2 bg-black bg-opacity-75 text-white rounded-pill d-flex align-items-center'
-          optimizingIndicator.style.fontSize = '0.75rem'
-          optimizingIndicator.style.zIndex = '5'
-          optimizingIndicator.innerHTML = `
-            <div class="spinner-border spinner-border-sm text-primary me-2" role="status" style="width: 12px; height: 12px;"></div>
-            <span>Optimizing...</span>
-          `
-          container.appendChild(optimizingIndicator)
-        }
-      }
-
       const renderVideoPlaceholder = (duration = 0) => {
         container.innerHTML = ''
         container.appendChild(loading)
@@ -96,8 +80,6 @@
         `
         overlay.appendChild(badge)
         container.appendChild(overlay)
-
-        addOptimizingIndicatorIfNeeded()
       }
 
       const renderMedia = (objectUrl, mimeType, duration = 0) => {
@@ -155,8 +137,6 @@
           overlay.appendChild(badge)
           container.appendChild(overlay)
         }
-
-        addOptimizingIndicatorIfNeeded()
       }
 
       const loadMedia = async () => {
@@ -239,18 +219,6 @@
 
       observe('status', loadMedia)
       observe('localUuid', loadMedia)
-
-      $bus.on('media:video_compressing', (payload) => {
-        if (payload.target_message_id === state.localUuid) {
-          loadMedia()
-        }
-      })
-
-      $bus.on('media:video_upgraded', (payload) => {
-        if (payload.target_message_id === state.localUuid) {
-          loadMedia()
-        }
-      })
 
       loadMedia()
     }

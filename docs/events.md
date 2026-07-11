@@ -84,8 +84,6 @@ Controls for the global headless media engine and media selections.
 | `media:seek` | Changes the current playback position. | `{ percent }` or `{ time }` |
 | `media:select` | Signals that a media item (music, pictures, or videos) has been selected. | `{ assetId, type }` (where type is 'music', 'pictures', or 'videos') |
 | `media:video_progress` | Notifies about video compression/processing progress. | `{ id, progress }` |
-| `media:video_compressing` | Notifies that a video community optimization has been claimed and is in progress. | `{ target_message_id }` |
-| `media:video_upgraded` | Notifies that a video has been successfully compressed and its media/thumbnail pointers have been upgraded. | `{ target_message_id }` |
 
 ### Calls (`call:`)
 Events for real-time WebRTC audio and video communication.

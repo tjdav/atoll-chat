@@ -40,13 +40,10 @@
       errorMessage: '',
       fileName: ''
     }),
-    client: async ({ state, signal, refs, globalStore, utils, localDb, bootstrap, mediaWorker, cryptoWorker, eventBus }) => {
+    client: async ({ state, signal, refs, globalStore, utils, localDb, bootstrap }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
-      const { $media, $image } = utils
-      const { $mediaWorker } = mediaWorker
-      const { $worker } = cryptoWorker
-      const { $bus } = eventBus
+      const { $media } = utils
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
       const carouselInner = refs('carouselInner')
@@ -229,103 +226,6 @@
         }
       }
 
-      const triggerCommunityOptimization = async (item) => {
-        const targetMessageId = item.message_id || item.id
-        if (!targetMessageId) {
-          return
-        }
-
-        $state.videoCompressionLocks = $state.videoCompressionLocks || {}
-        if ($state.videoCompressionLocks[targetMessageId] && (Date.now() < $state.videoCompressionLocks[targetMessageId])) {
-          console.log('[video-player-view] Video is already being optimized (local lock), skipping community compression.')
-          return
-        }
-
-        try {
-          console.log('[video-player-view] Broadcasting media upgrade intent...')
-          await $worker.execute('worker:send_message', {
-            room_id: item.room_id,
-            localUuid: crypto.randomUUID(),
-            type: 'media_upgrade_intent',
-            target_message_id: targetMessageId
-          })
-
-          $state.videoCompressionLocks[targetMessageId] = Date.now() + (3 * 60 * 1000)
-
-          const cached = $state.decryptionCache.get(item.message_id || item.id)
-          let videoBlob
-          if (cached && cached.blobUrl) {
-            const resp = await fetch(cached.blobUrl)
-            videoBlob = await resp.blob()
-          } else {
-            const objectUrl = await $media.decrypt(item, signal)
-            const resp = await fetch(objectUrl)
-            videoBlob = await resp.blob()
-          }
-
-          if (!videoBlob) {
-            throw new Error('Could not retrieve decrypted video blob')
-          }
-
-          const videoFile = new File([videoBlob], item.filename || 'video.mp4', { type: item.mime_type || videoBlob.type })
-
-          console.log('[video-player-view] Compressing video for community upgrade...')
-          const compressed = await $mediaWorker.compress(videoFile, {
-            maxWidth: 1280,
-            maxHeight: 720,
-            bitrate: 2_000_000
-          })
-
-          const compressedBlob = new Blob([compressed.buffer], { type: compressed.mimeType })
-          const compressedFile = new File([compressedBlob], videoFile.name.substring(0, videoFile.name.lastIndexOf('.')) + compressed.extension, { type: compressed.mimeType })
-
-          console.log('[video-player-view] Extracting thumbnail for community upgrade...')
-          const metaResult = await $mediaWorker.getMetadata(compressedFile)
-          let thumbDataUrl = ''
-          if (metaResult.thumbnail) {
-            const thumbBlob = await $image.compress(metaResult.thumbnail, {
-              maxWidth: 1200,
-              maxHeight: 1200,
-              quality: 0.8,
-              format: 'image/webp'
-            })
-            const reader = new FileReader()
-            thumbDataUrl = await new Promise((resolve) => {
-              reader.onload = () => resolve(reader.result)
-              reader.readAsDataURL(thumbBlob)
-            })
-          }
-
-          if (!thumbDataUrl) {
-            throw new Error('Failed to generate thumbnail for the upgraded video')
-          }
-
-          console.log('[video-player-view] Uploading compressed video...')
-          const uploadResult = await $worker.execute('worker:upload_media', { file: compressedFile })
-
-          console.log('[video-player-view] Broadcasting media upgrade...')
-          await $worker.execute('worker:send_message', {
-            room_id: item.room_id,
-            localUuid: crypto.randomUUID(),
-            type: 'media_upgrade',
-            target_message_id: targetMessageId,
-            new_media_id: uploadResult.media_id,
-            new_file_key: uploadResult.file_key,
-            new_file_nonce: uploadResult.file_nonce,
-            new_thumbnail: thumbDataUrl
-          })
-
-          if ($state.videoCompressionLocks) {
-            delete $state.videoCompressionLocks[targetMessageId]
-          }
-        } catch (err) {
-          console.error('[video-player-view] Community optimization failed:', err)
-          if ($state.videoCompressionLocks) {
-            delete $state.videoCompressionLocks[targetMessageId]
-          }
-        }
-      }
-
       const playLocalMedia = async (item) => {
         if (playbackState.currentId === item.id) {
           if (playbackState.status === 'playing') {
@@ -355,10 +255,6 @@
           video.controls = true
           await video.play()
           playbackState.status = 'playing'
-
-          if (!item.thumbnail) {
-            triggerCommunityOptimization(item)
-          }
         } catch (err) {
           if (err.name === 'AbortError') {
             return
@@ -555,21 +451,6 @@
         playbackState.status = 'idle'
         syncAll()
       }
-
-      $bus.on('media:video_upgraded', async (payload) => {
-        const { target_message_id } = payload
-        const index = loadedItems.findIndex(i => i.message_id === target_message_id || i.id === target_message_id)
-        if (index !== -1) {
-          const updatedAsset = await $localDb.local_assets.get(loadedItems[index].id) || await $localDb.local_assets.get(target_message_id)
-          if (updatedAsset) {
-            loadedItems[index] = updatedAsset
-            const container = carouselInner.children[index]
-            if (container) {
-              decryptThumbnail(updatedAsset, container)
-            }
-          }
-        }
-      })
 
       if ($state.activeSelectionType === 'videos') {
         initCarousel()

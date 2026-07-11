@@ -48,48 +48,6 @@ export default definePlugin({
         }
       }
 
-      if (pluginContext.$bus) {
-        pluginContext.$bus.on('db:new_local_data', (payload) => {
-          if (!payload || !payload.message) {
-            return
-          }
-
-          const { message } = payload
-          /**
-           * @typedef {Object} CustomWindow
-           * @property {any} [$state]
-           */
-          /** @type {CustomWindow & typeof globalThis} */
-          const win = window
-          const $state = win.$state
-
-          if (message.type === 'media_upgrade_intent') {
-            const targetId = message.target_message_id
-            if (targetId && $state) {
-              $state.videoCompressionLocks = $state.videoCompressionLocks || {}
-              $state.videoCompressionLocks[targetId] = Date.now() + (3 * 60 * 1000)
-              pluginContext.$bus.emit('media:video_compressing', { target_message_id: targetId })
-            }
-          } else if (message.type === 'media_upgrade') {
-            const targetId = message.target_message_id
-            if (targetId && $state) {
-              const thumbUrl = message.thumbnail?.dataUrl
-              if (thumbUrl) {
-                $state.decryptionCache.set(targetId, {
-                  blobUrl: null,
-                  thumbnailBlobUrl: thumbUrl,
-                  mimeType: 'video/mp4'
-                })
-              }
-              if ($state.videoCompressionLocks) {
-                delete $state.videoCompressionLocks[targetId]
-              }
-              pluginContext.$bus.emit('media:video_upgraded', { target_message_id: targetId })
-            }
-          }
-        })
-      }
-
       const $media = {
         isSupported: () => {
           return typeof VideoEncoder !== 'undefined' && typeof VideoDecoder !== 'undefined'
@@ -120,7 +78,7 @@ export default definePlugin({
           })
         },
 
-        getMetadata: (file) => {
+        getMetadata: (file, options = {}) => {
           return new Promise((resolve, reject) => {
             const id = crypto.randomUUID()
             pendingRequests.set(id, {
@@ -132,7 +90,8 @@ export default definePlugin({
               id,
               type: 'media:get-metadata',
               payload: {
-                file
+                file,
+                options
               }
             })
           })

@@ -6,6 +6,9 @@
         ref="attachmentPreview"
         file-name="{{ fileName }}" 
         upload-status="{{ uploadStatus }}"
+        is-video="{{ isVideo }}"
+        thumbnail-url="{{ thumbnailPreviewUrl }}"
+        is-custom="{{ isCustomCover }}"
       ></chat-attachment-preview>
     </div>
 
@@ -48,7 +51,11 @@
       thumbnailBlob: null,
       duration: 0,
       pendingLinkData: [],
-      ignoredUrls: {}
+      ignoredUrls: {},
+      isVideo: false,
+      thumbnailPreviewUrl: '',
+      isCustomCover: false,
+      autoExtractedThumbnailBlob: null
     }),
     getters: {
       attachmentPreviewClass: (state) => (state.hasFile ? 'd-block' : 'd-none'),
@@ -69,6 +76,13 @@
       let currentAlbumArtBlob = null
       let currentAudioWaveformData = null
 
+      const revokePreviewUrl = () => {
+        if (state.thumbnailPreviewUrl) {
+          URL.revokeObjectURL(state.thumbnailPreviewUrl)
+          state.thumbnailPreviewUrl = ''
+        }
+      }
+
       const resetUI = () => {
         state.isSending = false
         state.isUploading = false
@@ -81,6 +95,10 @@
         state.duration = 0
         state.pendingLinkData = []
         state.ignoredUrls = {}
+        state.isVideo = false
+        state.isCustomCover = false
+        state.autoExtractedThumbnailBlob = null
+        revokePreviewUrl()
         currentMusicMetadata = null
         currentAlbumArtBlob = null
         currentAudioWaveformData = null
@@ -289,9 +307,7 @@
 
       // Event Bus Subscriptions
       $bus.on('ui:cancel', () => {
-        state.hasFile = false
-        state.fileName = ''
-        state.selectedFile = null
+        resetUI()
       })
 
       // Listen for video compression progress
@@ -323,6 +339,10 @@
         } else if (file.type.startsWith('video/')) {
           state.isCompressing = true
           state.uploadStatus = 'Processing video...'
+          state.isVideo = true
+          state.isCustomCover = false
+          state.autoExtractedThumbnailBlob = null
+          revokePreviewUrl()
           try {
             // Extract thumbnail and duration first
             const result = await $media.getMetadata(file)
@@ -334,6 +354,8 @@
                 format: 'image/webp'
               })
               state.thumbnailBlob = compressedThumbnail
+              state.autoExtractedThumbnailBlob = compressedThumbnail
+              state.thumbnailPreviewUrl = URL.createObjectURL(compressedThumbnail)
             }
             state.duration = result.duration
 
@@ -437,6 +459,50 @@
             el.remove()
           }
         }
+      })
+
+      $bus.on('ui:custom_cover_selected', async (payload) => {
+        const file = payload.file
+        if (!file) {
+          return
+        }
+
+        state.isCompressing = true
+        state.uploadStatus = 'Compressing custom cover...'
+        try {
+          // Compress custom cover directly in the main thread (<= 50KB constraint)
+          const compressed = await $image.compress(file, {
+            maxWidth: 480,
+            maxHeight: 480,
+            quality: 0.6,
+            format: 'image/webp'
+          })
+
+          state.thumbnailBlob = compressed
+          state.isCustomCover = true
+
+          // Swap the preview URL
+          revokePreviewUrl()
+          state.thumbnailPreviewUrl = URL.createObjectURL(compressed)
+          state.uploadStatus = 'Custom cover applied'
+        } catch (err) {
+          console.error('[chat-input] Failed to process custom cover:', err)
+          alert('Failed to process custom cover: ' + err.message)
+        } finally {
+          state.isCompressing = false
+        }
+      })
+
+      $bus.on('ui:remove_custom_cover_clicked', () => {
+        state.isCustomCover = false
+        state.thumbnailBlob = state.autoExtractedThumbnailBlob
+
+        // Restore original preview
+        revokePreviewUrl()
+        if (state.autoExtractedThumbnailBlob) {
+          state.thumbnailPreviewUrl = URL.createObjectURL(state.autoExtractedThumbnailBlob)
+        }
+        state.uploadStatus = 'Ready to send'
       })
     }
   })

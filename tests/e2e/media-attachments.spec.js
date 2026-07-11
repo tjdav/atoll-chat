@@ -67,6 +67,38 @@ test.describe('Media & Attachments', () => {
       await expect(page.locator('timeline-row img').first()).toBeVisible({ timeout: 15000 })
     })
 
+    test('custom video cover selection and removal', async ({ page, loginCustomPage }) => {
+      await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+
+      const vp = path.join(__dirname, 'fixtures', 'test-files', 'test.mp4')
+      await page.setInputFiles('[data-testid$="__fileInput"]', vp)
+      await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
+
+      // Verify the Change Cover button exists
+      const changeCoverBtn = page.locator('[data-testid$="__btn-change-cover"]')
+      await expect(changeCoverBtn).toBeVisible()
+      await expect(changeCoverBtn).toHaveText('Change Cover')
+
+      // Programmatically input a custom cover image file
+      const customCoverPath = path.resolve('tests/e2e/fixtures/test-files/test.png')
+      await page.setInputFiles('[data-testid$="__cover-file-input"]', customCoverPath)
+
+      // Verify custom cover application
+      await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Custom cover applied', { timeout: 15000 })
+      await expect(changeCoverBtn).toHaveText('Remove Custom Cover')
+
+      // Click to remove custom cover
+      await changeCoverBtn.click()
+
+      // Should revert back to "Ready to send" or standard auto-thumbnail status
+      await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 15000 })
+      await expect(changeCoverBtn).toHaveText('Change Cover')
+    })
+
     test('audio uploads generate interactive SVG waveforms', async ({ page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
