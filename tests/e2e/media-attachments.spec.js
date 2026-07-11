@@ -128,6 +128,28 @@ test.describe('Media & Attachments', () => {
       await expect(page.locator('chat-view')).toBeVisible()
     })
 
+    test('media preview hover overlay and max-width', async ({ page }) => {
+      const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
+      await page.setInputFiles('[data-testid$="__fileInput"]', ip)
+      await page.click('[data-testid$="__sendButton"]')
+
+      const img = page.locator('media-preview img').first()
+      await expect(img).toBeVisible({ timeout: 30000 })
+
+      const container = page.locator('.media-preview-container').first()
+      const maxWidthValue = await container.evaluate(el => window.getComputedStyle(el).maxWidth)
+      expect(maxWidthValue).toBe('400px')
+
+      const overlay = container.locator('.media-hover-overlay')
+      await expect(overlay).toBeAttached()
+
+      await container.hover()
+      await page.waitForTimeout(500)
+
+      await expect(overlay).toBeVisible()
+      await expect(overlay.locator('i.bi-zoom-in')).toBeVisible()
+    })
+
     test('aggregate documents and links', async ({ page }) => {
       const dp = path.resolve('tests/e2e/fixtures/test-files/test.txt')
       await page.setInputFiles('[data-testid$="__fileInput"]', dp)

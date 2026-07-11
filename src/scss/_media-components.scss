@@ -46,3 +46,52 @@
 .is-active-card {
   box-shadow: inset 0 0 0 3px var(--#{$prefix}primary) !important;
 }
+
+.media-preview-container {
+  max-width: 400px;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+
+  .media-hover-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+    z-index: 2;
+  }
+
+  .media-hover-icon {
+    background-color: rgba(0, 0, 0, 0.6);
+    border-radius: 50%;
+    width: 3rem;
+    height: 3rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    font-size: 1.25rem;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+    transition: background-color 0.2s ease-in-out, transform 0.1s ease-in-out;
+  }
+
+  &:hover {
+    .media-hover-overlay {
+      opacity: 1;
+    }
+  }
+
+  &:active {
+    .media-hover-icon {
+      transform: scale(0.95);
+    }
+  }
+}

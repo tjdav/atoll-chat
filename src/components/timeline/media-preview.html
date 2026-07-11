@@ -53,10 +53,22 @@
         container.style.minHeight = 'auto'
 
         const img = document.createElement('img')
-        img.src = objectUrl
         img.className = 'rounded-3 shadow-sm mw-100 mh-100'
         img.style.maxHeight = '300px'
-        img.onload = () => $bus.emit('ui:media_loaded')
+        img.onload = () => {
+          $bus.emit('ui:media_loaded')
+          if (!container.querySelector('.media-hover-overlay')) {
+            const hoverOverlay = document.createElement('div')
+            hoverOverlay.className = 'media-hover-overlay'
+            hoverOverlay.innerHTML = `
+              <div class="media-hover-icon">
+                <i class="bi bi-zoom-in"></i>
+              </div>
+            `
+            container.appendChild(hoverOverlay)
+          }
+        }
+        img.src = objectUrl
         container.appendChild(img)
 
         if (mimeType.startsWith('video/')) {
