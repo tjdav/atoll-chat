@@ -112,3 +112,18 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+
+// Dark Mode core color overrides compiled via Bootstrap's SCSS color system
+@include color-mode(dark) {
+  --#{$prefix}primary: #{$primary-dark};
+  --#{$prefix}primary-rgb: #{to-rgb($primary-dark)};
+  --#{$prefix}secondary: #{$secondary-dark};
+  --#{$prefix}secondary-rgb: #{to-rgb($secondary-dark)};
+
+  // Override avatar text/initials contrast in dark mode subtle backgrounds to be white
+  .avatar-circle.bg-primary-subtle,
+  .bg-primary-subtle.text-primary,
+  .bg-primary-subtle .text-primary {
+    color: #ffffff !important;
+  }
+}

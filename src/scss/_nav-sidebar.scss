@@ -28,6 +28,10 @@
     &.active {
       background-color: var(--#{$prefix}primary-bg-subtle) !important;
       color: var(--#{$prefix}primary) !important;
+
+      [data-bs-theme="dark"] & {
+        color: #ffffff !important;
+      }
     }
   }
 }
