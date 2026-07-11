@@ -54,6 +54,7 @@
       let lastTimestamp = null
       const BATCH_SIZE = 24
       let isInternalChange = false
+      let initSequence = 0
       const objectUrls = new Map()
 
       const cleanup = () => {
@@ -202,6 +203,7 @@
       }
 
       const initCarousel = async () => {
+        const seq = ++initSequence
         cleanup()
         carouselInner.innerHTML = ''
         loadedItems = []
@@ -209,11 +211,32 @@
         hasMore = true
 
         const activeId = $state.activeSelectionId
-        while (!loadedItems.find(i => i.id === activeId) && hasMore) {
+        const activeAsset = activeId ? await $localDb.local_assets.get(activeId) : null
+        if (seq !== initSequence) {
+          return
+        }
+        const isValidActive = activeAsset && activeAsset.mime_type &&
+          !activeAsset.mime_type.startsWith('image/') &&
+          !activeAsset.mime_type.startsWith('video/') &&
+          !activeAsset.mime_type.startsWith('audio/')
+
+        if (isValidActive) {
+          while (!loadedItems.find(i => i.id === activeId) && hasMore) {
+            await fetchNextBatch()
+            if (seq !== initSequence) {
+              return
+            }
+          }
+        } else {
           await fetchNextBatch()
+          if (seq !== initSequence) {
+            return
+          }
         }
 
-        renderBatch(loadedItems, activeId)
+        const actualActiveId = isValidActive ? activeId : (loadedItems[0]?.id || null)
+
+        renderBatch(loadedItems, actualActiveId)
   
         carouselInstance = new Carousel(carouselEl, {
           interval: false,

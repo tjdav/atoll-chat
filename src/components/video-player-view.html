@@ -57,6 +57,7 @@
       let lastTimestamp = null
       const BATCH_SIZE = 24
       let isInternalChange = false
+      let initSequence = 0
 
       const BUFFER_SIZE = 3
       const CLEANUP_MARGIN = 2
@@ -333,6 +334,7 @@
       }
 
       const initCarousel = async () => {
+        const seq = ++initSequence
         cleanup()
         carouselInner.innerHTML = ''
         loadedItems = []
@@ -340,13 +342,31 @@
         hasMore = true
 
         const activeId = $state.activeSelectionId
-        while (!loadedItems.find(i => i.id === activeId) && hasMore) {
+        const activeAsset = activeId ? await $localDb.local_assets.get(activeId) : null
+        if (seq !== initSequence) {
+          return
+        }
+        const isValidActive = activeAsset && (activeAsset.mime_type || '').startsWith('video/')
+
+        if (isValidActive) {
+          while (!loadedItems.find(i => i.id === activeId) && hasMore) {
+            await fetchNextBatch()
+            if (seq !== initSequence) {
+              return
+            }
+          }
+        } else {
           await fetchNextBatch()
+          if (seq !== initSequence) {
+            return
+          }
         }
 
-        renderBatch(loadedItems, activeId)
+        const actualActiveId = isValidActive ? activeId : (loadedItems[0]?.id || null)
 
-        const activeIndex = loadedItems.findIndex(i => i.id === activeId)
+        renderBatch(loadedItems, actualActiveId)
+
+        const activeIndex = loadedItems.findIndex(i => i.id === actualActiveId)
         manageBuffer(activeIndex)
   
         carouselInstance = new Carousel(carouselEl, {

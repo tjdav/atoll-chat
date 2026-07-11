@@ -149,6 +149,31 @@ test.describe('Media & Attachments', () => {
       await expect(cards.nth(1).locator('.card')).toHaveClass(/is-active-card/)
     })
 
+    test('carousel handles out-of-order type/id state transitions safely', async ({ page }) => {
+      const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
+      await page.setInputFiles('[data-testid$="__fileInput"]', ip)
+      await page.click('[data-testid$="__sendButton"]')
+      await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 20000 })
+
+      await page.locator('[data-testid="nav-sidebar-0__btnPictures"]').click()
+
+      const cards = page.locator('media-grid-card')
+      await expect(cards.first()).toBeVisible()
+      await cards.first().click()
+
+      await page.locator('[data-testid="nav-sidebar-0__btnChats"]').click()
+
+      const chatImg = page.locator('media-preview img').first()
+      await expect(chatImg).toBeVisible()
+      await chatImg.click()
+
+      const activeCarouselImg = page.locator('image-viewer .carousel-item.active img')
+      await expect(activeCarouselImg).toBeVisible({ timeout: 10000 })
+      await expect(activeCarouselImg).toHaveAttribute('src', /^blob:/)
+
+      await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+    })
+
     test('jump to chat', async ({ page }) => {
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
       await page.setInputFiles('[data-testid$="__fileInput"]', ip)
