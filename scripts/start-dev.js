@@ -43,7 +43,11 @@ const run = async () => {
     // spawn the app process using pnpm
     appProcess = spawn('pnpm', ['run', 'start:app'], {
       stdio: 'inherit',
-      shell: true
+      shell: true,
+      env: {
+        ...process.env,
+        LOCAL_ICE_SERVER: `turn:127.0.0.1:${process.env.TURN_PORT || 3478}`
+      }
     })
 
     // listen for the app process closing naturally or crashing

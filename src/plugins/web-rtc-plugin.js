@@ -5,17 +5,29 @@ import { definePlugin } from 'coralite'
  * Orchestrates P2P connections using the E2EE message pipeline for signaling.
  */
 export default function webrtcPlugin ({
-  iceServers = [
-    { urls: 'stun:stun.l.google.com:19302' },
-    { urls: 'stun:global.stun.twilio.com:3478' }
-  ]
+  iceServers
 } = {}) {
+  const localIceServer = process.env.LOCAL_ICE_SERVER
+
+  const finalIceServers = localIceServer
+    ? [
+      {
+        urls: localIceServer,
+        username: 'testuser',
+        credential: 'testpass'
+      }
+    ]
+    : (iceServers || [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:global.stun.twilio.com:3478' }
+    ])
+
   return definePlugin({
     name: 'webrtc',
     client: {
       name: 'webrtc',
       config: {
-        iceServers
+        iceServers: finalIceServers
       },
       context: (pluginContext) => {
         // Phase 1: Global Setup

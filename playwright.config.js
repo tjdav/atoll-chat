@@ -38,6 +38,9 @@ export default defineConfig({
   webServer: {
     command: 'pnpm run test:app',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI
+    reuseExistingServer: !process.env.CI,
+    env: {
+      LOCAL_ICE_SERVER: `turn:127.0.0.1:${process.env.TURN_PORT || 3478}`
+    }
   }
 })
