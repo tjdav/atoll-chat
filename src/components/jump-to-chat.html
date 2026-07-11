@@ -54,6 +54,7 @@
             }
 
             if (room_id && messageId) {
+              $state.isJumpingToMessage = true
               $state.currentAppView = 'chats'
               $state.activeSelectionId = room_id
               $state.activeSelectionType = 'chats'

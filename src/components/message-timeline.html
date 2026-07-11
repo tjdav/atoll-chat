@@ -49,6 +49,10 @@
       }
 
       const saveScrollPosition = (idOrEvent) => {
+        if ($state.isJumpingToMessage) {
+          return
+        }
+  
         const room_id = typeof idOrEvent === 'string' ? idOrEvent : $state.activeSelectionId
         if (!room_id || typeof room_id !== 'string' || !container || container.clientHeight === 0 || container.scrollHeight <= container.clientHeight) {
           return
@@ -166,7 +170,7 @@
               }
 
               // Propagate status to children
-              row.querySelectorAll('text-message, media-preview, voice-player, file-attachment, link-preview').forEach(child => {
+              row.querySelectorAll('timeline-item-text, timeline-item-media, timeline-item-voice, timeline-item-file, timeline-item-link').forEach(child => {
                 if (child.getAttribute('status') !== m.status) {
                   child.setAttribute('status', m.status)
                 }
@@ -307,14 +311,14 @@
             // Project content into slot
             if (message.type === 'media' && (message.file_key || message.status === 'pending')) {
               if (message.mime_type?.startsWith('audio/')) {
-                const player = document.createElement('voice-player')
+                const player = document.createElement('timeline-item-voice')
                 player.setAttribute('local-uuid', message.local_uuid)
                 player.setAttribute('status', message.status)
                 player.setAttribute('is-sent', isSent)
                 row.appendChild(player)
 
                 if (message.content) {
-                  const text = document.createElement('text-message')
+                  const text = document.createElement('timeline-item-text')
                   text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
@@ -323,14 +327,14 @@
                   row.appendChild(text)
                 }
               } else if (message.mime_type?.startsWith('image/') || message.mime_type?.startsWith('video/')) {
-                const preview = document.createElement('media-preview')
+                const preview = document.createElement('timeline-item-media')
                 preview.setAttribute('local-uuid', message.local_uuid)
                 preview.setAttribute('status', message.status)
                 preview.setAttribute('is-sent', isSent)
                 row.appendChild(preview)
   
                 if (message.content) {
-                  const text = document.createElement('text-message')
+                  const text = document.createElement('timeline-item-text')
                   text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
@@ -340,14 +344,14 @@
                 }
               } else {
                 // Generic file
-                const fileComp = document.createElement('file-attachment')
+                const fileComp = document.createElement('timeline-item-file')
                 fileComp.setAttribute('local-uuid', message.local_uuid)
                 fileComp.setAttribute('status', message.status)
                 fileComp.setAttribute('is-sent', isSent)
                 row.appendChild(fileComp)
 
                 if (message.content) {
-                  const text = document.createElement('text-message')
+                  const text = document.createElement('timeline-item-text')
                   text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
@@ -358,7 +362,7 @@
               }
             } else if (message.type === 'media') {
               // Encrypted but key missing placeholder
-              const text = document.createElement('text-message')
+              const text = document.createElement('timeline-item-text')
               text.setAttribute('local-uuid', message.local_uuid)
               text.setAttribute('content', '🔒 Encrypted Attachment')
               text.setAttribute('is-sent', isSent)
@@ -381,7 +385,7 @@
             } else if (message.type === 'link') {
               if (message.links && Array.from(message.links).length > 0) {
                 message.links.forEach((link, idx) => {
-                  const preview = document.createElement('link-preview')
+                  const preview = document.createElement('timeline-item-link')
                   // Use unique identifier if multiple links exist
                   preview.setAttribute('local-uuid', message.local_uuid)
                   preview.setAttribute('link-index', idx)
@@ -395,7 +399,7 @@
                 })
               } else if (message.link_title) {
                 // Fallback for old single-link messages
-                const preview = document.createElement('link-preview')
+                const preview = document.createElement('timeline-item-link')
                 preview.setAttribute('local-uuid', message.local_uuid)
                 preview.setAttribute('url', message.content)
                 preview.setAttribute('title', message.link_title || '')
@@ -406,7 +410,7 @@
               }
 
               if (message.content) {
-                const text = document.createElement('text-message')
+                const text = document.createElement('timeline-item-text')
                 text.setAttribute('local-uuid', message.local_uuid)
                 text.setAttribute('content', message.content)
                 text.setAttribute('is-sent', isSent)
@@ -415,7 +419,7 @@
                 row.appendChild(text)
               }
             } else {
-              const text = document.createElement('text-message')
+              const text = document.createElement('timeline-item-text')
               text.setAttribute('local-uuid', message.local_uuid)
               text.setAttribute('content', message.content || '')
               text.setAttribute('is-sent', isSent)
@@ -495,7 +499,10 @@
 
           if (isNewRoom) {
             const savedPos = $state.scrollPositions?.[room_id]
-            if (savedPos !== undefined && savedPos !== -1) {
+            if ($state.isJumpingToMessage) {
+              // Skip scroll restoration if we are jumping to a specific message
+              isRestorePending = false
+            } else if (savedPos !== undefined && savedPos !== -1) {
               isRestorePending = true
               const restore = () => {
                 if (!container || room_id !== $state.activeSelectionId) {
@@ -630,23 +637,39 @@
       $bus.on('message:scroll_to', async (payload) => {
         const { messageId } = payload
         if (!messageId) {
+          $state.isJumpingToMessage = false
           return
         }
 
-        let row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
-                  container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
+        let targetEl = container.querySelector(`#timeline-item-${messageId}`) ||
+                       container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
+                       container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
   
-        if (!row) {
+        if (!targetEl) {
           await renderTimeline()
-          row = container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
-                container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
+          targetEl = container.querySelector(`#timeline-item-${messageId}`) ||
+                     container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
+                     container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
         }
 
-        if (row) {
-          row.scrollIntoView({
+        if (targetEl) {
+          targetEl.scrollIntoView({
             behavior: 'smooth',
             block: 'center'
           })
+
+          // Update saved scroll position after the smooth scroll finishes or settles
+          setTimeout(() => {
+            $state.isJumpingToMessage = false
+            const isNearBottom = container.clientHeight > 0 && (container.scrollHeight - container.scrollTop - container.clientHeight < 50)
+            const pos = isNearBottom ? -1 : container.scrollTop
+            if (!$state.scrollPositions) {
+              $state.scrollPositions = {}
+            }
+            $state.scrollPositions[$state.activeSelectionId] = pos
+          }, 400)
+        } else {
+          $state.isJumpingToMessage = false
         }
       })
     }

@@ -174,7 +174,7 @@ test.describe('Messaging Features', () => {
       await page.locator('link-preview-input').first().locator('button[title="Dismiss preview"]').click()
       await expect(page.locator('link-preview-input')).toHaveCount(1)
       await page.click('[data-testid$="__sendButton"]')
-      await expect(page.locator('link-preview')).toHaveCount(1)
+      await expect(page.locator('timeline-item-link')).toHaveCount(1)
     })
   })
 

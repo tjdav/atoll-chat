@@ -28,15 +28,15 @@ test.describe('Media & Attachments', () => {
       const files = [
         {
           n: 'test.png',
-          s: 'media-preview img'
+          s: 'timeline-item-media img'
         },
         {
           n: 'test.mp4',
-          s: 'media-preview img'
+          s: 'timeline-item-media img'
         },
         {
           n: 'test.docx',
-          s: 'file-attachment'
+          s: 'timeline-item-file'
         }
       ]
       for (const f of files) {
@@ -114,8 +114,8 @@ test.describe('Media & Attachments', () => {
       // Wait for the message status to be 'Sent'
       await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 60000 })
 
-      // Verify that voice-player is rendered
-      const voicePlayer = page.locator('voice-player')
+      // Verify that timeline-item-voice is rendered
+      const voicePlayer = page.locator('timeline-item-voice')
       await expect(voicePlayer).toBeVisible({ timeout: 15000 })
 
       // Verify that the custom waveform player is visible (instead of standard <audio controls>)
@@ -163,7 +163,7 @@ test.describe('Media & Attachments', () => {
 
       await page.locator('[data-testid="nav-sidebar-0__btnChats"]').click()
 
-      const chatImg = page.locator('media-preview img').first()
+      const chatImg = page.locator('timeline-item-media img').first()
       await expect(chatImg).toBeVisible()
       await chatImg.click()
 
@@ -178,7 +178,7 @@ test.describe('Media & Attachments', () => {
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
       await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
-      const img = page.locator('media-preview img').first()
+      const img = page.locator('timeline-item-media img').first()
       await expect(img).toBeVisible({ timeout: 15000 })
       await img.click()
       await page.click('image-viewer jump-to-chat button')
@@ -190,7 +190,7 @@ test.describe('Media & Attachments', () => {
       await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
 
-      const img = page.locator('media-preview img').first()
+      const img = page.locator('timeline-item-media img').first()
       await expect(img).toBeVisible({ timeout: 30000 })
 
       const container = page.locator('.media-preview-container').first()

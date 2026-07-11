@@ -1,5 +1,5 @@
-<template id="voice-player">
-  <div ref="container" class="voice-message-container p-1 position-relative" style="min-width: 250px;">
+<template id="timeline-item-voice">
+  <div id="timeline-item-{{ localUuid }}" ref="container" class="voice-message-container p-1 position-relative" style="min-width: 250px;">
     <div ref="loading" class="{{ loadingClass }} d-flex align-items-center p-3 w-100">
         <div class="placeholder rounded-circle me-3" style="width: 32px; height: 32px;"></div>
         <div class="placeholder col-8" style="height: 24px;"></div>
@@ -106,7 +106,7 @@
                 progressEl.setAttribute('style', 'height: 100%; object-fit: fill; max-width: none;')
               }
             } catch (err) {
-              console.warn('[voice-player] Failed to parse inline SVG waveform, falling back to img:', err)
+              console.warn('[timeline-item-voice] Failed to parse inline SVG waveform, falling back to img:', err)
             }
           }
 
@@ -174,7 +174,7 @@
             if (audio.paused) {
               audio.play().catch(err => {
                 if (err.name !== 'AbortError') {
-                  console.warn('[voice-player] Playback failed:', err)
+                  console.warn('[timeline-item-voice] Playback failed:', err)
                 }
               })
             } else {
@@ -286,7 +286,7 @@
           if (err.name === 'AbortError') {
             return
           }
-          console.error('[voice-player] Error:', err)
+          console.error('[timeline-item-voice] Error:', err)
           loading.innerHTML = `
             <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
             <div class="x-small ms-2">Failed to load audio</div>

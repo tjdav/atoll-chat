@@ -192,7 +192,7 @@ test.describe('User Settings & Profile', () => {
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
       await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
-      await page.locator('media-preview img').first().click()
+      await page.locator('timeline-item-media img').first().click()
       await page.locator('share-button button').filter({ visible: true }).click()
       const sm = page.locator('.modal.show').filter({ hasText: 'Share to...' })
       await sm.locator('label').filter({ hasText: 'bob' }).first().click()

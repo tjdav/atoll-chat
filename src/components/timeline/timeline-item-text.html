@@ -1,5 +1,5 @@
-<template id="text-message">
-  <div class="message-bubble {{ bubbleClass }} d-flex align-items-center">
+<template id="timeline-item-text">
+  <div id="timeline-item-{{ localUuid }}" class="message-bubble {{ bubbleClass }} d-flex align-items-center">
     <span class="{{ glowClass }} flex-grow-1">
       <div ref="markdownBody" class="markdown-body {{ placeholderClass }}"></div>
     </span>
@@ -83,7 +83,7 @@
             $bus.emit('ui:media_loaded')
           }
         } catch (err) {
-          console.error('[text-message] Render error:', err)
+          console.error('[timeline-item-text] Render error:', err)
           markdownBody.textContent = state.content
         }
       }
