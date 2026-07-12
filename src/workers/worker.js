@@ -1213,6 +1213,7 @@ async function updateUserData (rpcId, record) {
 
   // Update all rooms where this user is a participant
   const rooms = await db.local_rooms.toArray()
+  const updatedRooms = []
   for (const room of rooms) {
     if (room.participants) {
       const pIndex = room.participants.findIndex(p => p.id === userId)
@@ -1220,18 +1221,24 @@ async function updateUserData (rpcId, record) {
         room.participants[pIndex].name = name
         room.participants[pIndex].username = username
         room.participants[pIndex].avatar = avatar
-        await db.local_rooms.put(room)
-
-        self.postMessage({
-          type: 'db:new_local_data',
-          payload: { room_id: room.id }
-        })
-
-        self.postMessage({
-          type: 'room:member_updated',
-          payload: { room_id: room.id }
-        })
+        updatedRooms.push(room)
       }
+    }
+  }
+
+  if (updatedRooms.length > 0) {
+    await db.local_rooms.bulkPut(updatedRooms)
+
+    for (const room of updatedRooms) {
+      self.postMessage({
+        type: 'db:new_local_data',
+        payload: { room_id: room.id }
+      })
+
+      self.postMessage({
+        type: 'room:member_updated',
+        payload: { room_id: room.id }
+      })
     }
   }
 
