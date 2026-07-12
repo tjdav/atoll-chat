@@ -137,6 +137,49 @@ test.describe('Messaging Features', () => {
       await expect(page.locator('timeline-row').first()).toContainText('Old')
       await expect(page.locator('timeline-row').last()).toContainText('New')
     })
+
+    test('message bubble roundness strategy', async ({ page, loginApp }) => {
+      test.slow()
+      await loginApp('alice', 'Password123!', 'VaultPassword123!')
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
+      await expect(page.locator('chat-view')).toBeVisible()
+
+      // Send 3 consecutive text messages
+      const textarea = page.locator('textarea[placeholder="Type a message..."]')
+      await textarea.fill('Hello 1')
+      await page.keyboard.press('Enter')
+      await page.waitForTimeout(500)
+
+      await textarea.fill('Hello 2')
+      await page.keyboard.press('Enter')
+      await page.waitForTimeout(500)
+
+      await textarea.fill('Hello 3')
+      await page.keyboard.press('Enter')
+      await page.waitForTimeout(1000)
+
+      const rows = page.locator('timeline-row')
+      await expect(rows).toHaveCount(3)
+
+      // The first should be is-first-in-block="true" and is-last-in-block="false"
+      await expect(rows.nth(0)).toHaveAttribute('is-first-in-block', 'true')
+      await expect(rows.nth(0)).toHaveAttribute('is-last-in-block', 'false')
+
+      // The second should be is-first-in-block="false" and is-last-in-block="false"
+      await expect(rows.nth(1)).toHaveAttribute('is-first-in-block', 'false')
+      await expect(rows.nth(1)).toHaveAttribute('is-last-in-block', 'false')
+
+      // The third should be is-first-in-block="false" and is-last-in-block="true"
+      await expect(rows.nth(2)).toHaveAttribute('is-first-in-block', 'false')
+      await expect(rows.nth(2)).toHaveAttribute('is-last-in-block', 'true')
+
+      // Take screenshot of the message bubble roundness
+      await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+      await page.waitForTimeout(1000)
+    })
   })
 
   test.describe('Content Rendering', () => {

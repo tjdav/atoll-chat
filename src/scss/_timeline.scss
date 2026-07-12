@@ -24,19 +24,45 @@
 .bubble-sent {
   border-radius: 1.25rem;
   align-self: flex-end;
-
-  &.bubble-start { border-bottom-right-radius: 0.25rem; }
-  &.bubble-middle { border-top-right-radius: 0.25rem; border-bottom-right-radius: 0.25rem; }
-  &.bubble-end { border-top-right-radius: 0.25rem; }
 }
 
 .bubble-received {
   border-radius: 1.25rem;
   align-self: flex-start;
+}
 
-  &.bubble-start { border-bottom-left-radius: 0.25rem; }
-  &.bubble-middle { border-top-left-radius: 0.25rem; border-bottom-left-radius: 0.25rem; }
-  &.bubble-end { border-top-left-radius: 0.25rem; }
+timeline-row {
+  &[is-sent="true"] {
+    &[is-first-in-block="true"][is-last-in-block="false"] .message-bubble {
+      border-bottom-right-radius: 0.25rem;
+    }
+    &[is-first-in-block="false"][is-last-in-block="false"] .message-bubble {
+      border-top-right-radius: 0.25rem;
+      border-bottom-right-radius: 0.25rem;
+    }
+    &[is-first-in-block="false"][is-last-in-block="true"] .message-bubble {
+      border-top-right-radius: 0.25rem;
+    }
+  }
+
+  &[is-sent="false"] {
+    &[is-first-in-block="true"][is-last-in-block="false"] .message-bubble {
+      border-bottom-left-radius: 0.25rem;
+    }
+    &[is-first-in-block="false"][is-last-in-block="false"] .message-bubble {
+      border-top-left-radius: 0.25rem;
+      border-bottom-left-radius: 0.25rem;
+    }
+    &[is-first-in-block="false"][is-last-in-block="true"] .message-bubble {
+      border-top-left-radius: 0.25rem;
+    }
+  }
+
+  &[has-reactions="true"] {
+    .timeline-row-container {
+      margin-bottom: 14px;
+    }
+  }
 }
 
 .sender-name {

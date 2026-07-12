@@ -65,7 +65,7 @@
       },
       marginClass: (state) => {
         const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
-        return isLastInBlock ? 'mb-3' : 'mb-1'
+        return isLastInBlock ? 'mb-3' : 'mb-0'
       }
     },
     client: ({ refs, state, globalStore, eventBus, signal }) => {

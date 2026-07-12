@@ -28,6 +28,42 @@
       }
       signal.addEventListener('abort', cleanupTooltips)
 
+      const updateHasReactionsAttribute = (hasReactions) => {
+        const host = container.getRootNode().host || container.closest('message-reactions')
+        if (host) {
+          if (hasReactions) {
+            host.setAttribute('has-reactions', 'true')
+          } else {
+            host.removeAttribute('has-reactions')
+          }
+
+          let parentRow = host.closest('timeline-row')
+          if (!parentRow) {
+            let current = host
+            while (current) {
+              const root = current.getRootNode()
+              if (root && root.host) {
+                current = root.host
+                if (current.tagName.toLowerCase() === 'timeline-row') {
+                  parentRow = current
+                  break
+                }
+              } else {
+                break
+              }
+            }
+          }
+
+          if (parentRow) {
+            if (hasReactions) {
+              parentRow.setAttribute('has-reactions', 'true')
+            } else {
+              parentRow.removeAttribute('has-reactions')
+            }
+          }
+        }
+      }
+
       const loadReactions = async () => {
         const host = container.getRootNode().host || container.closest('message-reactions')
         const msgId = state.messageId || host?.getAttribute('message-id')
@@ -35,6 +71,7 @@
   
         if (!msgId && !localUuid) {
           container.innerHTML = ''
+          updateHasReactionsAttribute(false)
           return
         }
   
@@ -98,8 +135,11 @@
   
         const emojiEntries = Object.entries(aggregated).filter(([_, ids]) => ids.length > 0)
         if (emojiEntries.length === 0) {
+          updateHasReactionsAttribute(false)
           return
         }
+
+        updateHasReactionsAttribute(true)
   
         const pill = document.createElement('div')
         pill.className = 'reaction-consolidated-pill'

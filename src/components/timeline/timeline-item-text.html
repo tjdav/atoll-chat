@@ -20,10 +20,6 @@
         type: Boolean,
         default: false
       },
-      position: {
-        type: String,
-        default: 'start'
-      },
       status: {
         type: String,
         default: 'sent'
@@ -31,11 +27,7 @@
     },
     getters: {
       bubbleClass: (state) => {
-        const typeClass = state.isSent ? 'bubble-sent text-bg-primary' : 'bubble-received bg-body-secondary'
-        const pos = state.position || 'single'
-        const posClass = `bubble-${pos}`
-  
-        return `${typeClass} ${posClass}`
+        return state.isSent ? 'bubble-sent text-bg-primary' : 'bubble-received bg-body-secondary'
       },
       glowClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : ''),
       placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : '')

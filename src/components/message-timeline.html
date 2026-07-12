@@ -261,6 +261,7 @@
             row.setAttribute('is-sent', isSent)
             row.setAttribute('is-first-in-block', isFirstInBlock)
             row.setAttribute('is-last-in-block', isLastInBlock)
+
             if (message.id) {
               row.dataset.messageId = message.id
               row.setAttribute('message-id', message.id)
@@ -296,18 +297,6 @@
               row.setAttribute('seen-avatars', seenAvatars)
             }
 
-            // Determine bubble position for Messenger-style corners
-            let position = 'single'
-            if (isFirstInBlock && isLastInBlock) {
-              position = 'single'
-            } else if (isFirstInBlock) {
-              position = 'start'
-            } else if (isLastInBlock) {
-              position = 'end'
-            } else {
-              position = 'middle'
-            }
-
             // Project content into slot
             if (message.type === 'media' && (message.file_key || message.status === 'pending')) {
               if (message.mime_type?.startsWith('audio/')) {
@@ -322,7 +311,6 @@
                   text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
-                  text.setAttribute('position', position)
                   text.setAttribute('status', message.status)
                   row.appendChild(text)
                 }
@@ -338,7 +326,6 @@
                   text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
-                  text.setAttribute('position', position)
                   text.setAttribute('status', message.status)
                   row.appendChild(text)
                 }
@@ -355,7 +342,6 @@
                   text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
-                  text.setAttribute('position', position)
                   text.setAttribute('status', message.status)
                   row.appendChild(text)
                 }
@@ -366,7 +352,6 @@
               text.setAttribute('local-uuid', message.local_uuid)
               text.setAttribute('content', '🔒 Encrypted Attachment')
               text.setAttribute('is-sent', isSent)
-              text.setAttribute('position', position)
               row.appendChild(text)
             } else if (['call_offer', 'call_answer', 'call_end'].includes(message.type)) {
               const systemMsg = document.createElement('timeline-system-message')
@@ -414,7 +399,6 @@
                 text.setAttribute('local-uuid', message.local_uuid)
                 text.setAttribute('content', message.content)
                 text.setAttribute('is-sent', isSent)
-                text.setAttribute('position', position)
                 text.setAttribute('status', message.status)
                 row.appendChild(text)
               }
@@ -423,7 +407,6 @@
               text.setAttribute('local-uuid', message.local_uuid)
               text.setAttribute('content', message.content || '')
               text.setAttribute('is-sent', isSent)
-              text.setAttribute('position', position)
               text.setAttribute('status', message.status)
               row.appendChild(text)
             }

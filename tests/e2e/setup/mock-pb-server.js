@@ -291,6 +291,17 @@ export function createServer () {
         return
       }
 
+      // Check availability endpoint
+      if (pathname === '/api/check-availability') {
+        const username = query.username
+        const email = query.email
+        const usernameExists = db.users.some(u => u.username === username)
+        const emailExists = db.users.some(u => u.email === email)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ usernameExists, emailExists }))
+        return
+      }
+
       // Link extraction endpoint
       if (pathname === '/api/link-extraction') {
         res.writeHead(200, { 'Content-Type': 'application/json' })
@@ -361,79 +372,6 @@ export function createServer () {
           res.end(JSON.stringify({ success: true }))
           return
         }
-      }
-
-      // Custom endpoint to get last OTP for E2E testing
-      if (pathname === '/api/last-otp') {
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify(db.lastOtp || {}))
-        return
-      }
-
-      // Request OTP
-      if (pathname === '/api/collections/users/request-otp') {
-        const { email } = body
-        const otpId = 'otp_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10)
-        /* Use a static code or randomized code for testing. */
-        const code = '12345678'
-
-        db.otps = db.otps || {}
-        db.otps[otpId] = {
-          email,
-          code,
-          expiresAt: Date.now() + (5 * 60 * 1000)
-        }
-
-        db.lastOtp = {
-          otpId,
-          code,
-          email
-        }
-
-        console.log(`[MOCK PB] [${testId}] Generated OTP for ${email}: ID=${otpId}, CODE=${code}`)
-
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ otpId }))
-        return
-      }
-
-      // Auth with OTP
-      if (pathname === '/api/collections/users/auth-with-otp') {
-        const { otpId, password } = body
-        db.otps = db.otps || {}
-        const otp = db.otps[otpId]
-
-        if (!otp || otp.code !== password || otp.expiresAt < Date.now()) {
-          res.writeHead(400, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ message: 'Invalid or expired OTP code.' }))
-          return
-        }
-
-        let user = db.users.find(u => u.email === otp.email || u.username === otp.email)
-        if (!user) {
-          user = {
-            id: otp.email.split('@')[0],
-            username: otp.email.split('@')[0],
-            email: otp.email,
-            collectionId: 'users',
-            collectionName: 'users',
-            created: new Date().toISOString(),
-            updated: new Date().toISOString()
-          }
-          db.users.push(user)
-        }
-
-        user.verified = true
-        delete db.otps[otpId]
-
-        console.log(`[MOCK PB] [${testId}] Successful OTP Auth for ${otp.email}`)
-
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({
-          token: generateMockJWT(user.id),
-          record: user
-        }))
-        return
       }
 
       // Auth with password
