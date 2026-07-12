@@ -900,13 +900,14 @@ async function sendMessage (rpcId, payload) {
     })
   }
 
+  let existing = null
   if (type !== 'ice_candidate') {
-    const existing = await db.local_messages.get(localUuid)
+    existing = await db.local_messages.get(localUuid)
     if (existing) {
       await db.local_messages.update(localUuid, updateData)
     } else {
       // For reactions or other types that might not have been optimistically written yet
-      await db.local_messages.put({
+      existing = {
         local_uuid: localUuid,
         room_id: room_id,
         sender_id: currentUserKeys.id,
@@ -914,18 +915,22 @@ async function sendMessage (rpcId, payload) {
         content,
         target_id,
         ...updateData
-      })
+      }
+      await db.local_messages.put(existing)
     }
   }
 
-  const fullMessage = (type === 'ice_candidate' || !await db.local_messages.get(localUuid))
+  const fullMessage = (type === 'ice_candidate' || !existing)
     ? {
       ...plaintextObj,
       ...updateData,
       room_id,
       sender_id: currentUserKeys.id
     }
-    : await db.local_messages.get(localUuid)
+    : {
+      ...existing,
+      ...updateData
+    }
 
   self.postMessage({
     type: 'db:new_local_data',
@@ -968,7 +973,11 @@ async function processIncomingMessage (rpcId, record) {
           id: id,
           status: 'sent'
         })
-        const fullMessage = await db.local_messages.get(localUuid)
+        const fullMessage = {
+          ...exists,
+          id: id,
+          status: 'sent'
+        }
         self.postMessage({
           type: 'db:new_local_data',
           payload: {
