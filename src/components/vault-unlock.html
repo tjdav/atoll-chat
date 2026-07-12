@@ -72,7 +72,7 @@
         </form>
       </div>
 
-      <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
+      <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
       <div class="mt-3">
         <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
       </div>
@@ -84,12 +84,13 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker }) => {
+    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, utils }) => {
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $sync } = realtimeSync
       const { $state } = globalStore
       const { $worker } = cryptoWorker
+      const { $crypto } = utils
 
       const viewPassword = refs('viewPassword')
       const viewRecovery = refs('viewRecovery')
@@ -373,7 +374,7 @@
 
           updateStatus('Updating vault configuration on server...')
           await pb.collection('users').update(fetchedRecord.id, {
-            vault_salt: context.utils.$crypto.toBase64(newSalt),
+            vault_salt: $crypto.toBase64(newSalt),
             encrypted_master_keys: newPasswordWrap,
             recovery_wraps: remainingWraps
           })

@@ -155,21 +155,46 @@ test.describe('Chat Management', () => {
     })
 
     test('Deep Linking Restoration', async ({ page }) => {
-      // Logout first since beforeEach logs us in
+      /* Logout first since beforeEach logs us in */
       await page.click('button[title="Logout"]')
-      await expect(page.locator('input[placeholder*="username"]')).toBeVisible()
+      await expect(page.locator('[data-testid$="username"]')).toBeVisible()
 
       await page.goto('/?view=music')
-      await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
-      await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
+      await page.waitForFunction(() => {
+        return window.__coralite__ && window.__coralite__.lifecycle !== undefined
+      })
+      await page.evaluate(() => {
+        return window.__coralite__.lifecycle.hydrated
+      })
 
-      await expect(page.locator('input[placeholder*="username"]')).toBeVisible({ timeout: 15000 })
+      await expect(page.locator('[data-testid$="username"]')).toBeVisible({ timeout: 15000 })
 
-      await page.fill('input[placeholder*="username"]', 'alice')
-      await page.fill('input[placeholder*="Password"]', 'Password123!')
-      await page.click('button:has-text("Login")')
-      await expect(page.locator('vault-unlock input[placeholder*="Password"]')).toBeVisible({ timeout: 15000 })
-      await page.fill('vault-unlock input[placeholder*="Password"]', 'VaultPassword123!')
+      /* Passwordless Login Flow */
+      await page.locator('[data-testid$="username"]').fill('alice@example.com')
+      await page.evaluate(() => {
+        const form = document.querySelector('form')
+        if (form) {
+          form.requestSubmit()
+        }
+      })
+
+      await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
+
+      const otpRes = await page.evaluate(async () => {
+        const tId = window.__playwright_test_id__
+        const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
+          headers: {
+            'x-test-id': tId
+          }
+        })
+        return response.json()
+      })
+
+      await page.locator('input[name="otpCode"]').fill(otpRes.code)
+      await page.locator('button:has-text("Verify")').click()
+
+      await expect(page.locator('vault-unlock [data-testid$="password"]')).toBeVisible({ timeout: 15000 })
+      await page.fill('vault-unlock [data-testid$="password"]', 'VaultPassword123!')
       await page.click('vault-unlock button:has-text("Unlock with Password")')
       await expect(page).toHaveURL(/view=music/, { timeout: 20000 })
       await expect(page.locator('music-list')).toBeVisible({ timeout: 15000 })
@@ -191,6 +216,9 @@ test.describe('Chat Management', () => {
 
       // Wait for all messages to be rendered
       await expect(page.locator('timeline-row').last()).toContainText('Persistence message 29', { timeout: 20000 })
+
+      // Wait for all message sends/sends-in-flight to complete
+      await expect(page.locator('message-timeline .message-status-container span')).toHaveText('Sent', { timeout: 20000 })
 
       const timeline = page.locator('message-timeline .overflow-auto')
 

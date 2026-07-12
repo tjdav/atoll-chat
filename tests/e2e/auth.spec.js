@@ -24,7 +24,7 @@ test.describe('Authentication and Vault', () => {
 
     // login again
     console.log('--- Second Login ---')
-    await page.locator('[data-testid$="username"]').fill('alice')
+    await page.locator('[data-testid$="username"]').fill('alice@example.com')
     await page.locator('[data-testid$="loginSubmit"]').click()
 
     await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
@@ -62,7 +62,7 @@ test.describe('Authentication and Vault', () => {
 
     // login again
     console.log('--- Third Login ---')
-    await page.locator('[data-testid$="username"]').fill('alice')
+    await page.locator('[data-testid$="username"]').fill('alice@example.com')
     await page.locator('[data-testid$="loginSubmit"]').click()
 
     await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })

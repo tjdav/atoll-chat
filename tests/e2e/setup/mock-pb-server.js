@@ -202,8 +202,7 @@ function getDatabase (testId) {
       messages: [],
       media: [],
       mediaFiles: {},
-      sseClients: [],
-      lastOtp: null
+      sseClients: []
     }
   }
   return databases[testId]
@@ -292,61 +291,22 @@ export function createServer () {
         return
       }
 
-      // Get last OTP endpoint
-      if (pathname === '/api/last-otp') {
+      /* Save plaintext recovery codes for testing */
+      if (pathname === '/api/set-test-recovery-codes') {
+        const { username, codes } = body
+        db.testRecoveryCodes = db.testRecoveryCodes || {}
+        db.testRecoveryCodes[username] = codes
         res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({
-          code: db.lastOtp || '00000000'
-        }))
+        res.end(JSON.stringify({ success: true }))
         return
       }
 
-      // Request OTP
-      if (pathname === '/api/collections/users/request-otp') {
-        const { email } = body
-        const otpCode = Math.floor(10000000 + (Math.random() * 90000000)).toString()
-        db.lastOtp = otpCode
-        const otpId = 'otp_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10)
-        db.lastOtpId = otpId
-        db.lastOtpEmail = email
-        console.log(`[MOCK PB] [${testId}] Generated OTP for ${email}: ${otpCode}`)
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({
-          otpId
-        }))
-        return
-      }
-
-      // Auth with OTP
-      if (pathname === '/api/collections/users/auth-with-otp') {
-        const { otpId, password } = body
-        const code = password
-        const email = db.lastOtpEmail
-        const user = db.users.find(u => u.email === email || u.username === email)
-        console.log(`[MOCK PB] [${testId}] Auth with OTP. Body: ${JSON.stringify(body)}. Received otpId: ${otpId}, password/code: ${password}. Expected lastOtpId: ${db.lastOtpId}, lastOtp: ${db.lastOtp}, email: ${email}, user found: ${!!user}`)
-        if (!user || code !== db.lastOtp || otpId !== db.lastOtpId) {
-          res.writeHead(400, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ message: 'Invalid OTP code.' }))
-          return
-        }
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({
-          token: generateMockJWT(user.id),
-          record: user
-        }))
-        return
-      }
-
-      // Check availability endpoint
-      if (pathname === '/api/check-availability') {
+      /* Retrieval of plaintext recovery codes for testing */
+      if (pathname === '/api/test-recovery-codes') {
         const username = query.username
-        const email = query.email
-        const usernameExists = db.users.some(u => u.username === username)
-        const emailExists = db.users.some(u => u.email === email)
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({
-          usernameExists,
-          emailExists
+          codes: db.testRecoveryCodes?.[username] || []
         }))
         return
       }
@@ -421,6 +381,79 @@ export function createServer () {
           res.end(JSON.stringify({ success: true }))
           return
         }
+      }
+
+      // Custom endpoint to get last OTP for E2E testing
+      if (pathname === '/api/last-otp') {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(db.lastOtp || {}))
+        return
+      }
+
+      // Request OTP
+      if (pathname === '/api/collections/users/request-otp') {
+        const { email } = body
+        const otpId = 'otp_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+        /* Use a static code or randomized code for testing. */
+        const code = '12345678'
+
+        db.otps = db.otps || {}
+        db.otps[otpId] = {
+          email,
+          code,
+          expiresAt: Date.now() + (5 * 60 * 1000)
+        }
+
+        db.lastOtp = {
+          otpId,
+          code,
+          email
+        }
+
+        console.log(`[MOCK PB] [${testId}] Generated OTP for ${email}: ID=${otpId}, CODE=${code}`)
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ otpId }))
+        return
+      }
+
+      // Auth with OTP
+      if (pathname === '/api/collections/users/auth-with-otp') {
+        const { otpId, password } = body
+        db.otps = db.otps || {}
+        const otp = db.otps[otpId]
+
+        if (!otp || otp.code !== password || otp.expiresAt < Date.now()) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ message: 'Invalid or expired OTP code.' }))
+          return
+        }
+
+        let user = db.users.find(u => u.email === otp.email || u.username === otp.email)
+        if (!user) {
+          user = {
+            id: otp.email.split('@')[0],
+            username: otp.email.split('@')[0],
+            email: otp.email,
+            collectionId: 'users',
+            collectionName: 'users',
+            created: new Date().toISOString(),
+            updated: new Date().toISOString()
+          }
+          db.users.push(user)
+        }
+
+        user.verified = true
+        delete db.otps[otpId]
+
+        console.log(`[MOCK PB] [${testId}] Successful OTP Auth for ${otp.email}`)
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          token: generateMockJWT(user.id),
+          record: user
+        }))
+        return
       }
 
       // Auth with password
@@ -562,6 +595,9 @@ export function createServer () {
             db.mediaFiles[newRecord.id] = files[0].buffer
           }
 
+          if (collectionName === 'users') {
+            console.log('--- USER RECORD SAVED ---', newRecord.id, Object.keys(newRecord))
+          }
           list.push(newRecord)
           broadcast(db, collectionName, 'create', newRecord)
 
@@ -594,6 +630,10 @@ export function createServer () {
           if (files.length > 0) {
             updatedRecord.file = files[0].filename
             db.mediaFiles[updatedRecord.id] = files[0].buffer
+          }
+
+          if (collectionName === 'users') {
+            console.log('--- USER RECORD UPDATED ---', updatedRecord.id, Object.keys(updatedRecord))
           }
 
           list[index] = updatedRecord

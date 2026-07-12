@@ -1,6 +1,43 @@
 import { test as base, expect } from '@playwright/test'
 import PocketBase from 'pocketbase'
 import sodium from 'libsodium-wrappers-sumo'
+import http from 'http'
+
+/**
+ * Saves test recovery codes to the mock server using standard HTTP module.
+ *
+ * @param {string} testId - Test identifier.
+ * @param {string} username - User name.
+ * @param {string[]} codes - Plaintext recovery codes.
+ * @returns {Promise<void>} Resolves when done.
+ */
+function saveTestRecoveryCodes (testId, username, codes) {
+  return new Promise((resolve) => {
+    const data = JSON.stringify({
+      username,
+      codes
+    })
+    const req = http.request({
+      hostname: '127.0.0.1',
+      port: 8090,
+      path: '/api/set-test-recovery-codes',
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Content-Length': Buffer.byteLength(data),
+        'x-test-id': testId
+      }
+    }, () => {
+      resolve()
+    })
+    req.on('error', (err) => {
+      console.error('HTTP request failed:', err.message)
+      resolve()
+    })
+    req.write(data)
+    req.end()
+  })
+}
 
 /**
  * Generates a 16-byte cryptographically secure salt using libsodium.
@@ -76,8 +113,10 @@ function generateRecoveryWrapsV2 (masterKeyBytes, sodium) {
     .join('')
 
   const wraps = []
+  const plaintextCodes = []
   for (let i = 0; i < 10; i++) {
     const code = `${part()}-${part()}-${part()}`
+    plaintextCodes.push(code)
     const codeHash = sodium.crypto_generichash(32, code)
     const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
     const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
@@ -87,7 +126,10 @@ function generateRecoveryWrapsV2 (masterKeyBytes, sodium) {
       nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
     })
   }
-  return wraps
+  return {
+    wraps,
+    plaintextCodes
+  }
 }
 
 const PB_URL = process.env.PB_URL || 'http://127.0.0.1:8090'
@@ -163,7 +205,7 @@ async function resetPocketBase (testId) {
       const masterKeyBytes = sodium.randombytes_buf(32)
       const passwordWrap = encryptMasterKeyWithKekV2(masterKeyBytes, KEK, sodium)
       const encryptedPrivateKeys = encryptPrivateKeysV2(masterKeys, masterKeyBytes, sodium)
-      const recoveryWraps = generateRecoveryWrapsV2(masterKeyBytes, sodium)
+      const { wraps: recoveryWraps, plaintextCodes } = generateRecoveryWrapsV2(masterKeyBytes, sodium)
 
       const payload = {
         username: user.username,
@@ -192,6 +234,9 @@ async function resetPocketBase (testId) {
           requestKey: null
         })
       }
+
+      /* Save recovery codes to mock server's state */
+      await saveTestRecoveryCodes(testId, user.username, plaintextCodes)
     } catch (error) {
       console.error(`Failed to restore user ${user.username}:`, error.data || error.message)
     }
@@ -277,8 +322,14 @@ export const test = base.extend({
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-      await page.locator('[data-testid$="username"]').fill(username)
-      await page.locator('[data-testid$="loginSubmit"]').click()
+      const emailOrUsername = username.includes('@') ? username : `${username}@example.com`
+      await page.locator('[data-testid$="username"]').fill(emailOrUsername)
+      await page.evaluate(() => {
+        const form = document.querySelector('form')
+        if (form) {
+          form.requestSubmit()
+        }
+      })
 
       /* Wait for the OTP input to become visible, ensuring the network request completes */
       await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
@@ -364,8 +415,14 @@ export const test = base.extend({
       await targetPage.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
       /* Login Flow */
-      await targetPage.locator('[data-testid$="username"]').fill(username)
-      await targetPage.locator('[data-testid$="loginSubmit"]').click()
+      const emailOrUsername = username.includes('@') ? username : `${username}@example.com`
+      await targetPage.locator('[data-testid$="username"]').fill(emailOrUsername)
+      await targetPage.evaluate(() => {
+        const form = document.querySelector('form')
+        if (form) {
+          form.requestSubmit()
+        }
+      })
 
       /* Wait for the OTP input to become visible, ensuring the network request completes */
       await targetPage.locator('input[name="otpCode"]').waitFor({ state: 'visible' })

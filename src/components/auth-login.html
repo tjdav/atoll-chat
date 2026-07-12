@@ -3,13 +3,13 @@
     <div class="card-body p-4">
       <h3 class="card-title mb-4 text-center">Login</h3>
       
-      <form ref="loginForm" onsubmit="return false;">
+      <form ref="loginForm">
         <div ref="emailSection">
           <div class="mb-3">
-            <label for="{{ ref_username }}" class="form-label">Email Address</label>
-            <input ref="username" name="username" type="text" class="form-control" placeholder="Enter email" required autocomplete="email" data-testid="username">
+            <label for="{{ ref_email }}" class="form-label">Email Address</label>
+            <input ref="email" name="email" id="{{ ref_email }}" type="email" class="form-control" placeholder="Enter email" required autocomplete="email" data-testid="username">
           </div>
-          <button type="button" class="btn btn-primary w-100" ref="loginSubmit" data-testid="loginSubmit">Send Magic Link</button>
+          <button type="submit" class="btn btn-primary w-100" ref="loginSubmit" data-testid="loginSubmit">Send Magic Link</button>
         </div>
       </form>
 
@@ -24,7 +24,7 @@
       </form>
 
       <div class="mt-3 text-center" ref="registerLinkContainer">
-        <small class="text-muted">Don't have an account? <a href="#" ref="linkRegister" class="text-decoration-none">Register here</a></small>
+        <small class="text-muted">Don't have an account? <a href="#" ref="linkRegister" data-testid="linkRegister" class="text-decoration-none">Register here</a></small>
       </div>
       <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
     </div>
@@ -40,11 +40,11 @@
       const { $localDb } = localDb
       const { $state } = globalStore
 
-      const loginSubmit = refs('loginSubmit')
+      const loginForm = refs('loginForm')
       const btnSubmitOtp = refs('btnSubmitOtp')
       const otpForm = refs('otpForm')
       const linkRegister = refs('linkRegister')
-      const usernameInput = refs('username')
+      const emailInput = refs('email')
       const otpCodeInput = refs('otpCode')
       const btnBackToEmail = refs('btnBackToEmail')
       const statusMsg = refs('statusMsg')
@@ -94,11 +94,11 @@
         $state.isAuthenticated = true
       }
 
-      loginSubmit.addEventListener('click', async (event) => {
+      loginForm.addEventListener('submit', async (event) => {
         event.preventDefault()
-        console.log('[auth-login] Send Magic Link button clicked!', { email: usernameInput.value })
+        console.log('[auth-login] Send Magic Link form submitted!', { email: emailInput.value })
 
-        const email = usernameInput.value
+        const email = emailInput.value
         if (!email) {
           updateStatus('Please enter your email')
           return

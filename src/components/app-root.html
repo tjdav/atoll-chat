@@ -5,16 +5,16 @@
 <script type="module">
   import { defineComponent } from 'coralite'
 
-  /* SHA-256 Generator Helper */
-  async function sha256 (text) {
-    const msgUint8 = new TextEncoder().encode(text)
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8)
-    const hashArray = Array.from(new Uint8Array(hashBuffer))
-    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
-  }
-
   export default defineComponent({
     client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, localDb }) => {
+      /* SHA-256 Generator Helper */
+      async function sha256 (text) {
+        const msgUint8 = new TextEncoder().encode(text)
+        const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8)
+        const hashArray = Array.from(new Uint8Array(hashBuffer))
+        return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+      }
+
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $bus } = eventBus
