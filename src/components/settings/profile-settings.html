@@ -69,11 +69,20 @@
         if (avatarPreview) {
           if (user?.avatar && !pendingAvatarBlob) {
             const avatarUrl = pb.files.getURL(user, user.avatar, { thumb: '100x100' })
-            avatarPreview.innerHTML = `<img src="${avatarUrl}" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+            avatarPreview.innerHTML = ''
+            const img = document.createElement('img')
+            img.src = avatarUrl
+            img.className = 'd-block w-100 h-100 object-fit-cover rounded-circle'
+            avatarPreview.appendChild(img)
           } else if (pendingAvatarBlob) {
             const url = URL.createObjectURL(pendingAvatarBlob)
-            avatarPreview.innerHTML = `<img src="${url}" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+            avatarPreview.innerHTML = ''
+            const img = document.createElement('img')
+            img.src = url
+            img.className = 'd-block w-100 h-100 object-fit-cover rounded-circle'
+            avatarPreview.appendChild(img)
           } else {
+            avatarPreview.innerHTML = ''
             avatarPreview.textContent = state.userInitial
           }
         }
@@ -103,7 +112,11 @@
       $bus.on('ui:avatar_editor_applied', (blob) => {
         pendingAvatarBlob = blob
         const url = URL.createObjectURL(blob)
-        avatarPreview.innerHTML = `<img src="${url}" style="display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 50%;">`
+        avatarPreview.innerHTML = ''
+        const img = document.createElement('img')
+        img.src = url
+        img.className = 'd-block w-100 h-100 object-fit-cover rounded-circle'
+        avatarPreview.appendChild(img)
         updateBtnState()
       })
 

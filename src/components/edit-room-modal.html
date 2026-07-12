@@ -104,7 +104,11 @@
             if (decrypted) {
               const blob = new Blob([decrypted], { type: 'image/jpeg' })
               const url = URL.createObjectURL(blob)
-              avatarPreview.innerHTML = `<img src="${url}" style="width: 100%; height: 100%; object-fit: cover;">`
+              avatarPreview.innerHTML = ''
+              const img = document.createElement('img')
+              img.src = url
+              img.className = 'w-100 h-100 object-fit-cover'
+              avatarPreview.appendChild(img)
               btnClearAvatar.classList.remove('d-none')
               signal.addEventListener('abort', () => URL.revokeObjectURL(url))
             }
@@ -129,7 +133,11 @@
           state.roomAvatar = file
           const reader = new FileReader()
           reader.onload = (re) => {
-            avatarPreview.innerHTML = `<img src="${re.target.result}" style="width: 100%; height: 100%; object-fit: cover;">`
+            avatarPreview.innerHTML = ''
+            const img = document.createElement('img')
+            img.src = re.target.result
+            img.className = 'w-100 h-100 object-fit-cover'
+            avatarPreview.appendChild(img)
             btnClearAvatar.classList.remove('d-none')
           }
           reader.readAsDataURL(file)

@@ -103,7 +103,11 @@
           avatar.className = 'member-avatar bg-primary-subtle text-primary overflow-hidden'
           if (user.avatar) {
             const url = pb.files.getURL(user, user.avatar, { thumb: '32x32' })
-            avatar.innerHTML = `<img src="${url}" class="w-100 h-100 object-fit-cover">`
+            avatar.innerHTML = ''
+            const img = document.createElement('img')
+            img.src = url
+            img.className = 'w-100 h-100 object-fit-cover'
+            avatar.appendChild(img)
           } else {
             avatar.textContent = (user.name || user.username).charAt(0).toUpperCase()
           }
