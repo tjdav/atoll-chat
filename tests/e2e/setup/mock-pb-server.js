@@ -298,7 +298,10 @@ export function createServer () {
         const usernameExists = db.users.some(u => u.username === username)
         const emailExists = db.users.some(u => u.email === email)
         res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ usernameExists, emailExists }))
+        res.end(JSON.stringify({
+          usernameExists,
+          emailExists
+        }))
         return
       }
 

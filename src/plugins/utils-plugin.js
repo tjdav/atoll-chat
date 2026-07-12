@@ -501,14 +501,13 @@ export default definePlugin({
               const height = 40
               const barWidth = 3
               const gap = 1
-              let rects = ''
 
-              normalizedPeaks.forEach((amp, i) => {
+              const rects = normalizedPeaks.map((amp, i) => {
                 const barHeight = amp * height
                 const x = i * (barWidth + gap)
                 const y = (height - barHeight) / 2
-                rects += `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="1.5" ry="1.5" fill="currentColor" />`
-              })
+                return `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="1.5" ry="1.5" fill="currentColor" />`
+              }).join('')
 
               const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 40">${rects}</svg>`
               return 'data:image/svg+xml;utf8,' + encodeURIComponent(svgString)
