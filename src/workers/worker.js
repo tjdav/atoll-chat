@@ -85,7 +85,7 @@ async function init () {
 self.onmessage = (event) => {
   const { type } = event.data
 
-  // parallelizable tasks
+  /* parallelizable tasks */
   const parallelTasks = [
     'worker:check_ready',
     'worker:test_rpc',
@@ -95,7 +95,12 @@ self.onmessage = (event) => {
     'worker:decrypt_file',
     'worker:process_new_room_key',
     'room:member_updated',
-    'worker:delete_local_room'
+    'worker:delete_local_room',
+    'worker:generate_master_keys_v2',
+    'worker:encrypt_master_key_with_kek',
+    'worker:encrypt_master_key_with_code',
+    'worker:decrypt_master_key_with_code',
+    'worker:decrypt_vault_v2'
   ]
 
   if (parallelTasks.includes(type)) {
@@ -179,6 +184,124 @@ async function handleEvent (event) {
       self.postMessage({
         type: 'worker:initialized',
         payload: { userId: currentUserKeys.id }
+      })
+      return
+    }
+
+    if (type === 'worker:generate_master_keys_v2') {
+      const masterKey = sodium.randombytes_buf(32)
+      const encryptionKeys = sodium.crypto_box_keypair()
+      const identityKeys = sodium.crypto_sign_keypair()
+
+      const privateKeysPlaintext = JSON.stringify({
+        private_box_key: sodium.to_base64(encryptionKeys.privateKey, sodium.base64_variants.ORIGINAL),
+        private_sign_key: sodium.to_base64(identityKeys.privateKey, sodium.base64_variants.ORIGINAL)
+      })
+
+      const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+      const encryptedPrivateKeys = sodium.crypto_secretbox_easy(privateKeysPlaintext, nonce, masterKey)
+
+      const result = {
+        public_box_key: sodium.to_base64(encryptionKeys.publicKey, sodium.base64_variants.ORIGINAL),
+        public_sign_key: sodium.to_base64(identityKeys.publicKey, sodium.base64_variants.ORIGINAL),
+        master_key: sodium.to_base64(masterKey, sodium.base64_variants.ORIGINAL),
+        encrypted_private_keys: {
+          ciphertext: sodium.to_base64(encryptedPrivateKeys, sodium.base64_variants.ORIGINAL),
+          nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+        }
+      }
+      self.postMessage({
+        id,
+        type,
+        result
+      })
+      return
+    }
+
+    if (type === 'worker:encrypt_master_key_with_kek') {
+      const { master_key, KEK } = payload
+      const masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
+      const kekBuffer = typeof KEK === 'string' ? sodium.from_base64(KEK, sodium.base64_variants.ORIGINAL) : KEK
+
+      const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+      const ciphertext = sodium.crypto_secretbox_easy(masterKeyBuffer, nonce, kekBuffer)
+
+      const result = {
+        ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+        nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+      }
+      self.postMessage({
+        id,
+        type,
+        result
+      })
+      return
+    }
+
+    if (type === 'worker:encrypt_master_key_with_code') {
+      const { master_key, code } = payload
+      const masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
+
+      const codeHash = sodium.crypto_generichash(32, code)
+
+      const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+      const ciphertext = sodium.crypto_secretbox_easy(masterKeyBuffer, nonce, codeHash)
+
+      const result = {
+        hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+        ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+        nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+      }
+      self.postMessage({
+        id,
+        type,
+        result
+      })
+      return
+    }
+
+    if (type === 'worker:decrypt_master_key_with_code') {
+      const { code, wrap } = payload
+      const codeHash = sodium.crypto_generichash(32, code)
+
+      const decrypted = sodium.crypto_secretbox_open_easy(
+        sodium.from_base64(wrap.ciphertext, sodium.base64_variants.ORIGINAL),
+        sodium.from_base64(wrap.nonce, sodium.base64_variants.ORIGINAL),
+        codeHash
+      )
+
+      if (!decrypted) {
+        throw new Error('Failed to decrypt master key. Invalid recovery code.')
+      }
+
+      const result = sodium.to_base64(decrypted, sodium.base64_variants.ORIGINAL)
+      self.postMessage({
+        id,
+        type,
+        result
+      })
+      return
+    }
+
+    if (type === 'worker:decrypt_vault_v2') {
+      const { encrypted_private_keys, master_key } = payload
+      const masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
+
+      const decrypted = sodium.crypto_secretbox_open_easy(
+        sodium.from_base64(encrypted_private_keys.ciphertext, sodium.base64_variants.ORIGINAL),
+        sodium.from_base64(encrypted_private_keys.nonce, sodium.base64_variants.ORIGINAL),
+        masterKeyBuffer
+      )
+
+      if (!decrypted) {
+        throw new Error('Failed to decrypt vault with master key.')
+      }
+
+      const result = JSON.parse(sodium.to_string(decrypted))
+      self.postMessage({
+        id,
+        type,
+        result
       })
       return
     }

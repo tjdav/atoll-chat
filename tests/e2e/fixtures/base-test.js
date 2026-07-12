@@ -39,21 +39,55 @@ async function generateMasterKeys (sodium) {
 }
 
 /**
- * Encrypts the private keys using the derived KEK.
+ * Encrypts private keys using the random Master Key.
  */
-function encryptVault (privateKeys, KEK, sodium) {
-  const vaultPlaintext = JSON.stringify({
+function encryptPrivateKeysV2 (privateKeys, masterKeyBytes, sodium) {
+  const plaintext = JSON.stringify({
     private_box_key: privateKeys.private_box_key,
     private_sign_key: privateKeys.private_sign_key
   })
-
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-  const ciphertext = sodium.crypto_secretbox_easy(vaultPlaintext, nonce, KEK)
-
+  const ciphertext = sodium.crypto_secretbox_easy(plaintext, nonce, masterKeyBytes)
   return {
     ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
     nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
   }
+}
+
+/**
+ * Encrypts the Master Key using KEK.
+ */
+function encryptMasterKeyWithKekV2 (masterKeyBytes, KEK, sodium) {
+  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+  const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, KEK)
+  return {
+    ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+    nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+  }
+}
+
+/**
+ * Generates 10 recovery wraps.
+ */
+function generateRecoveryWrapsV2 (masterKeyBytes, sodium) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const part = () => Array.from(crypto.getRandomValues(new Uint8Array(4)))
+    .map(b => chars[b % chars.length])
+    .join('')
+
+  const wraps = []
+  for (let i = 0; i < 10; i++) {
+    const code = `${part()}-${part()}-${part()}`
+    const codeHash = sodium.crypto_generichash(32, code)
+    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+    const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
+    wraps.push({
+      hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+      ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+      nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+    })
+  }
+  return wraps
 }
 
 const PB_URL = process.env.PB_URL || 'http://127.0.0.1:8090'
@@ -125,7 +159,11 @@ async function resetPocketBase (testId) {
       const masterKeys = await generateMasterKeys(sodium)
       const salt = generateSalt(sodium)
       const KEK = await deriveKeyFromPassword(SHARED_VAULT_PASSWORD, salt, sodium)
-      const encryptedVault = encryptVault(masterKeys, KEK, sodium)
+
+      const masterKeyBytes = sodium.randombytes_buf(32)
+      const passwordWrap = encryptMasterKeyWithKekV2(masterKeyBytes, KEK, sodium)
+      const encryptedPrivateKeys = encryptPrivateKeysV2(masterKeys, masterKeyBytes, sodium)
+      const recoveryWraps = generateRecoveryWrapsV2(masterKeyBytes, sodium)
 
       const payload = {
         username: user.username,
@@ -137,7 +175,9 @@ async function resetPocketBase (testId) {
         public_box_key: masterKeys.public_box_key,
         public_sign_key: masterKeys.public_sign_key,
         vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
-        encrypted_master_keys: encryptedVault,
+        encrypted_master_keys: passwordWrap,
+        encrypted_private_keys: encryptedPrivateKeys,
+        recovery_wraps: recoveryWraps,
         passkey_credential_id: '',
         passkey_prf_salt: '',
         encrypted_master_keys_passkey: null
@@ -169,6 +209,15 @@ export const test = base.extend({
 
   page: async ({ page }, use, testInfo) => {
     const testId = testInfo.testId
+
+    // Mock sw.js to prevent background takeover, caching, and unexpected reloads in E2E tests
+    await page.context().route(url => url.href.endsWith('/sw.js'), async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: 'application/javascript',
+        body: 'console.log("Mock SW for E2E tests");'
+      })
+    })
 
     // Intercept all API calls from the default page's context
     await page.context().route(url => url.href.includes('/api/'), async (route) => {
@@ -207,18 +256,45 @@ export const test = base.extend({
     page.on('pageerror', err => {
       console.log(`[BROWSER ERROR] ${err.message}`)
     })
+    page.on('requestfailed', request => {
+      console.log(`[BROWSER REQUEST FAILED] ${request.url()}: ${request.failure()?.errorText || 'failed'}`)
+    })
+
+    try {
+      const client = await page.context().newCDPSession(page)
+      await client.send('Network.setCacheDisabled', { cacheDisabled: true })
+    } catch (e) {
+      console.warn('Could not disable cache via CDP:', e.message)
+    }
+
     await use(page)
   },
 
-  loginApp: async ({ page }, use) => {
+  loginApp: async ({ page }, use, testInfo) => {
+    const testId = testInfo.testId
     const doLogin = async (username, appPassword, vaultPassword) => {
       await page.goto('/')
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
       await page.locator('[data-testid$="username"]').fill(username)
-      await page.locator('[data-testid$="password"]').fill(appPassword)
       await page.locator('[data-testid$="loginSubmit"]').click()
+
+      /* Wait for the OTP input to become visible, ensuring the network request completes */
+      await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
+
+      /* Retrieve the generated OTP code from the mock PB server */
+      const otpRes = await page.evaluate(async (tId) => {
+        const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
+          headers: {
+            'x-test-id': tId
+          }
+        })
+        return response.json()
+      }, testId)
+
+      await page.locator('input[name="otpCode"]').fill(otpRes.code)
+      await page.locator('button:has-text("Verify")').click()
 
       await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
@@ -233,7 +309,16 @@ export const test = base.extend({
   loginCustomPage: async ({ baseURL }, use, testInfo) => {
     const testId = testInfo.testId
     const doLogin = async (targetPage, username, appPassword, vaultPassword) => {
-      // Intercept all API calls from manually created contexts as well
+      /* Mock sw.js to prevent background takeover, caching, and unexpected reloads in E2E tests */
+      await targetPage.context().route(url => url.href.endsWith('/sw.js'), async (route) => {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/javascript',
+          body: 'console.log("Mock SW for E2E tests");'
+        })
+      })
+
+      /* Intercept all API calls from manually created contexts as well */
       await targetPage.context().route(url => url.href.includes('/api/'), async (route) => {
         const request = route.request()
         if (request.url().includes('/realtime') && request.method() === 'GET') {
@@ -248,7 +333,7 @@ export const test = base.extend({
         await route.continue({ headers })
       })
 
-      // Inject testId into the browser's window scope and override EventSource
+      /* Inject testId into the browser's window scope and override EventSource */
       await targetPage.context().addInitScript((tId) => {
         window.__playwright_test_id__ = tId
 
@@ -271,17 +356,32 @@ export const test = base.extend({
         console.log(`[BROWSER ERROR][${username}] ${err.message}`)
       })
 
-      // Use the global baseURL if available
+      /* Use the global baseURL if available */
       await targetPage.goto(baseURL || '/')
 
-      // Wait for Coralite to be ready on this specific page
+      /* Wait for Coralite to be ready on this specific page */
       await targetPage.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await targetPage.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-      // Login Flow
+      /* Login Flow */
       await targetPage.locator('[data-testid$="username"]').fill(username)
-      await targetPage.locator('[data-testid$="password"]').fill(appPassword)
       await targetPage.locator('[data-testid$="loginSubmit"]').click()
+
+      /* Wait for the OTP input to become visible, ensuring the network request completes */
+      await targetPage.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
+
+      /* Retrieve the generated OTP code from the mock PB server */
+      const otpRes = await targetPage.evaluate(async (tId) => {
+        const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
+          headers: {
+            'x-test-id': tId
+          }
+        })
+        return response.json()
+      }, testId)
+
+      await targetPage.locator('input[name="otpCode"]').fill(otpRes.code)
+      await targetPage.locator('button:has-text("Verify")').click()
 
       await expect(targetPage.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 

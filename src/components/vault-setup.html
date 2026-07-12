@@ -1,38 +1,60 @@
 <template id="vault-setup">
   <div class="card shadow">
     <div class="card-body p-4">
-      <h3 class="card-title mb-3 text-center">Secure Your Vault</h3>
-      <p class="text-muted small text-center mb-4">Set a strong password to encrypt your local cryptographic keys. This password is never sent to the server.</p>
-      <form ref="setupForm">
-        <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username">
+      
+      <!-- Step 1: Password Creation -->
+      <div ref="stepPassword">
+        <h3 class="card-title mb-3 text-center">Secure Your Vault</h3>
+        <p class="text-muted small text-center mb-4">Set a strong password to encrypt your local cryptographic keys. This password is never sent to the server.</p>
+        <form ref="setupForm">
+          <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username">
+          <div class="mb-3">
+            <label for="{{ ref_password }}" class="form-label">Vault Password</label>
+            <div class="password-field-container">
+              <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="12" required autocomplete="new-password">
+              <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div class="progress mt-2" style="height: 5px;">
+              <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div ref="strengthText" class="form-text small mt-1">Minimum 12 characters.</div>
+          </div>
+          <div class="mb-3">
+            <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
+            <div class="password-field-container">
+              <input name="passwordConfirm" ref="passwordConfirm" type="password" class="form-control" placeholder="Confirm Password" minlength="12" required autocomplete="new-password">
+              <button type="button" class="password-toggle" ref="passwordConfirmToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" disabled>Generate Vault Keys</button>
+        </form>
+      </div>
+
+      <!-- Step 2: Recovery Codes Onboarding -->
+      <div ref="stepRecovery" class="d-none">
+        <h3 class="card-title mb-3 text-center">Save Recovery Codes</h3>
+        <p class="text-muted small text-center mb-4">If you lose your password, these codes are the ONLY way to decrypt your vault. Save them securely.</p>
+        
         <div class="mb-3">
-          <label for="{{ ref_password }}" class="form-label">Vault Password</label>
-          <div class="password-field-container">
-            <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="12" required autocomplete="new-password">
-            <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
-              <i class="bi bi-eye"></i>
-            </button>
-          </div>
-          <div class="progress mt-2" style="height: 5px;">
-            <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-          </div>
-          <div ref="strengthText" class="form-text small mt-1">Minimum 12 characters.</div>
+          <textarea ref="codesDisplay" class="form-control text-center font-monospace bg-light p-3 fs-5" rows="6" readonly style="resize: none;"></textarea>
         </div>
-        <div class="mb-3">
-          <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
-          <div class="password-field-container">
-            <input name="passwordConfirm" ref="passwordConfirm" type="password" class="form-control" placeholder="Confirm Password" minlength="12" required autocomplete="new-password">
-            <button type="button" class="password-toggle" ref="passwordConfirmToggle" aria-label="Toggle password visibility">
-              <i class="bi bi-eye"></i>
-            </button>
-          </div>
+
+        <div class="d-flex gap-2 mb-4">
+          <button type="button" class="btn btn-outline-secondary w-50" ref="btnCopy">
+            <i class="bi bi-clipboard me-1"></i> Copy to Clipboard
+          </button>
+          <button type="button" class="btn btn-outline-secondary w-50" ref="btnDownload">
+            <i class="bi bi-download me-1"></i> Download .txt
+          </button>
         </div>
-        <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" disabled>Initialize Vault with Password</button>
-        <hr>
-        <div class="d-grid gap-2">
-          <button type="button" class="btn btn-outline-primary" ref="btnPasskey">Setup with Passkey</button>
-        </div>
-      </form>
+
+        <button type="button" class="btn btn-primary w-100" ref="btnProceed" disabled data-testid="vaultSetupProceed">Proceed to Atoll Chat</button>
+      </div>
+
       <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
       <div class="mt-3 text-center">
         <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
@@ -52,6 +74,9 @@
       const { $sync } = realtimeSync
       const { $state } = globalStore
       const { $worker } = cryptoWorker
+
+      const stepPassword = refs('stepPassword')
+      const stepRecovery = refs('stepRecovery')
       const setupForm = refs('setupForm')
       const passwordInput = refs('password')
       const vaultUsernameHidden = refs('vaultUsernameHidden')
@@ -63,7 +88,17 @@
       const btnSubmit = refs('btnSubmit')
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout')
-      const btnPasskey = refs('btnPasskey')
+
+      const codesDisplay = refs('codesDisplay')
+      const btnCopy = refs('btnCopy')
+      const btnDownload = refs('btnDownload')
+      const btnProceed = refs('btnProceed')
+
+      let generatedCodes = []
+      let encryptionPayload = null
+      let decryptedKeysLocal = null
+      let hasCopied = false
+      let hasDownloaded = false
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
@@ -121,36 +156,12 @@
         $state.isVaultUnlocked = false
       })
 
-      const initializeVault = async (masterKeys, encryptionPayload) => {
-        try {
-          updateStatus('Saving vault to server...')
-          await pb.collection('users').update(pb.authStore.model.id, encryptionPayload)
-  
-          // Refresh auth record to ensure local authStore has the new vault fields (e.g. for unlock button logic)
-          await pb.collection('users').authRefresh()
-
-          updateStatus('Vault initialized! Starting session...')
-          await $worker.execute('worker:init_keys', {
-            id: pb.authStore.model.id,
-            private_box_key: masterKeys.private_box_key,
-            private_sign_key: masterKeys.private_sign_key
-          })
-
-          await $sync.startSubscriptions()
-
-          $bus.emit('auth:unlocked', {
-            keys: {
-              private_box_key: masterKeys.private_box_key,
-              private_sign_key: masterKeys.private_sign_key
-            },
-            userRecord: pb.authStore.model
-          })
-
-          $state.isVaultUnlocked = true
-        } catch (error) {
-          console.error('Vault initialization error:', error)
-          updateStatus(`Error: ${error.message || 'Vault initialization failed'}`)
-        }
+      const generateRecoveryCode = () => {
+        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+        const part = () => Array.from(crypto.getRandomValues(new Uint8Array(4)))
+          .map(b => chars[b % chars.length])
+          .join('')
+        return `${part()}-${part()}-${part()}`
       }
 
       setupForm.addEventListener('submit', async (event) => {
@@ -164,72 +175,121 @@
         }
 
         try {
-          updateStatus('Generating cryptographic keys...')
-          const masterKeys = await $worker.execute('worker:generate_master_keys')
+          updateStatus('Generating secure master key...')
+          const masterKeysRes = await $worker.execute('worker:generate_master_keys_v2')
           const salt = await $worker.execute('worker:randombytes_buf', { length: 16 })
 
-          updateStatus('Securing vault with Password (deriving keys)...')
+          updateStatus('Deriving Vault Password key...')
           const KEK = await $worker.execute('worker:derive_key_from_password', {
             password,
             salt
           })
-          const encryptedVault = await $worker.execute('worker:encrypt_vault', {
-            privateKeys: masterKeys,
+
+          updateStatus('Wrapping Master Key...')
+          const passwordWrap = await $worker.execute('worker:encrypt_master_key_with_kek', {
+            master_key: masterKeysRes.master_key,
             KEK
           })
 
-          await initializeVault(masterKeys, {
-            public_box_key: masterKeys.public_box_key,
-            public_sign_key: masterKeys.public_sign_key,
+          /* Generate 10 single-use recovery codes */
+          generatedCodes = Array.from({ length: 10 }, () => generateRecoveryCode())
+  
+          updateStatus('Wrapping Master Key with Recovery Codes...')
+          const recoveryWraps = []
+          for (const code of generatedCodes) {
+            const wrap = await $worker.execute('worker:encrypt_master_key_with_code', {
+              master_key: masterKeysRes.master_key,
+              code
+            })
+            recoveryWraps.push(wrap)
+          }
+
+          /* Prepare payload for server update */
+          encryptionPayload = {
+            public_box_key: masterKeysRes.public_box_key,
+            public_sign_key: masterKeysRes.public_sign_key,
             vault_salt: $crypto.toBase64(salt),
-            encrypted_master_keys: encryptedVault
+            encrypted_master_keys: passwordWrap,
+            recovery_wraps: recoveryWraps
+          }
+
+          /* Extract decrypted keys for worker:init_keys */
+          decryptedKeysLocal = await $worker.execute('worker:decrypt_vault_v2', {
+            encrypted_private_keys: masterKeysRes.encrypted_private_keys,
+            master_key: masterKeysRes.master_key
           })
+
+          /* Transition to step 2: display recovery codes */
+          codesDisplay.value = generatedCodes.join('\n')
+          stepPassword.classList.add('d-none')
+          stepRecovery.classList.remove('d-none')
+          updateStatus('')
         } catch (error) {
-          console.error('Vault setup error:', error)
+          console.error('Vault setup generation error:', error)
           updateStatus(`Error: ${error.message || 'Vault setup failed'}`)
         }
       })
 
-      btnPasskey.addEventListener('click', async () => {
+      btnCopy.addEventListener('click', async () => {
         try {
-          const { createPasskey, deriveKeyFromPasskey } = await import('../utils/cryptoUtils.js')
+          await navigator.clipboard.writeText(generatedCodes.join('\n'))
+          hasCopied = true
+          btnProceed.disabled = !(hasCopied || hasDownloaded)
+          updateStatus('Recovery codes copied to clipboard!')
+        } catch (err) {
+          console.error('Clipboard copy failed:', err)
+          updateStatus('Failed to copy. Please download the file or copy manually.')
+        }
+      })
 
-          updateStatus('Generating cryptographic keys...')
-          const masterKeys = await $worker.execute('worker:generate_master_keys')
+      btnDownload.addEventListener('click', () => {
+        try {
+          const blob = new Blob([generatedCodes.join('\n')], { type: 'text/plain' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url
+          a.download = 'atoll_recovery_codes.txt'
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(url)
 
-          updateStatus('Waiting for Passkey registration...')
-          const challenge = crypto.getRandomValues(new Uint8Array(32))
-          const passkeyPrfSalt = crypto.getRandomValues(new Uint8Array(32))
-  
-          let { credentialId, prfAvailable, prfResult: KEK } = await createPasskey(pb.authStore.model.username, challenge, passkeyPrfSalt)
+          hasDownloaded = true
+          btnProceed.disabled = !(hasCopied || hasDownloaded)
+          updateStatus('Recovery codes downloaded!')
+        } catch (err) {
+          console.error('Download failed:', err)
+          updateStatus('Failed to download file. Please copy to clipboard.')
+        }
+      })
 
-          if (!prfAvailable) {
-            throw new Error('This authenticator does not support the PRF extension required for vault encryption.')
-          }
+      btnProceed.addEventListener('click', async () => {
+        try {
+          updateStatus('Saving vault configuration to server...')
+          await pb.collection('users').update(pb.authStore.model.id, encryptionPayload)
+          await pb.collection('users').authRefresh()
 
-          // If the browser didn't return a PRF result during creation, fallback to assertion
-          if (!KEK) {
-            updateStatus('Securing vault with Passkey (verification step)...')
-            KEK = await deriveKeyFromPasskey(credentialId, challenge, passkeyPrfSalt)
-          } else {
-            updateStatus('Securing vault with Passkey...')
-          }
-
-          const encryptedVault = await $worker.execute('worker:encrypt_vault', {
-            privateKeys: masterKeys,
-            KEK
+          updateStatus('Vault active! Starting session...')
+          await $worker.execute('worker:init_keys', {
+            id: pb.authStore.model.id,
+            private_box_key: decryptedKeysLocal.private_box_key,
+            private_sign_key: decryptedKeysLocal.private_sign_key
           })
 
-          await initializeVault(masterKeys, {
-            public_box_key: masterKeys.public_box_key,
-            public_sign_key: masterKeys.public_sign_key,
-            passkey_credential_id: $crypto.toBase64(credentialId),
-            passkey_prf_salt: $crypto.toBase64(passkeyPrfSalt),
-            encrypted_master_keys_passkey: encryptedVault
+          await $sync.startSubscriptions()
+
+          $bus.emit('auth:unlocked', {
+            keys: {
+              private_box_key: decryptedKeysLocal.private_box_key,
+              private_sign_key: decryptedKeysLocal.private_sign_key
+            },
+            userRecord: pb.authStore.model
           })
+
+          $state.isVaultUnlocked = true
         } catch (error) {
-          console.error('Passkey setup error:', error)
-          updateStatus(`Error: ${error.message || 'Passkey setup failed'}`)
+          console.error('Vault setup proceed error:', error)
+          updateStatus(`Error: ${error.message || 'Vault activation failed'}`)
         }
       })
     }

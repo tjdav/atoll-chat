@@ -1,0 +1,298 @@
+<template id="totp-settings">
+  <div class="d-flex align-items-center justify-content-between mt-4">
+    <div>
+      <h6 class="mb-0">Two-Step Authentication (TOTP)</h6>
+      <p class="text-muted small mb-0">{{ totpStatus }}</p>
+    </div>
+    <button class="btn btn-outline-primary btn-sm" ref="btnManageTotp">
+      {{ totpActionLabel }}
+    </button>
+  </div>
+
+  <!-- Enable TOTP Modal -->
+  <div class="modal fade" ref="setupModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Enable 2-Step Authentication</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body text-center">
+          <p class="small text-muted mb-4">Scan this QR code with your authenticator app (such as Google Authenticator, Authy, or 1Password) to enroll.</p>
+          
+          <div class="mb-3 d-flex justify-content-center">
+            <img ref="qrImg" src="" alt="QR Code" class="img-fluid border p-2 bg-white" style="max-width: 200px; max-height: 200px;">
+          </div>
+
+          <div class="mb-4">
+            <span class="text-muted small d-block">Secret Key:</span>
+            <code class="fs-6 select-all" ref="secretText"></code>
+          </div>
+
+          <form ref="verifyForm" class="text-start">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">6-Digit Verification Code</label>
+              <input type="text" class="form-control text-center fs-4 font-monospace" ref="otpInput" required placeholder="000000" maxlength="6" pattern="\d{6}">
+            </div>
+            <div ref="verifyError" class="alert alert-danger d-none small p-2 mb-0"></div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link text-decoration-none" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" ref="btnVerifyEnable">Verify & Enable</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Disable TOTP Modal -->
+  <div class="modal fade" ref="disableModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Disable 2-Step Authentication</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body">
+          <p class="small text-muted mb-4">To disable 2-step authentication, please enter the 6-digit verification code from your authenticator app.</p>
+          
+          <form ref="disableForm">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">6-Digit Verification Code</label>
+              <input type="text" class="form-control text-center fs-4 font-monospace" ref="disableOtpInput" required placeholder="000000" maxlength="6" pattern="\d{6}">
+            </div>
+            <div ref="disableError" class="alert alert-danger d-none small p-2 mb-0"></div>
+          </form>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-link text-decoration-none" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-danger" ref="btnVerifyDisable">Verify & Disable</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  /* Base32 Decoder Helper */
+  function base32Decode (base32) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+    const clean = base32.toUpperCase().replace(/=+$/, '')
+    let length = clean.length
+    let bits = 0
+    let value = 0
+    let index = 0
+    const bytes = new Uint8Array(Math.floor((length * 5) / 8))
+
+    for (let i = 0; i < length; i++) {
+      const val = alphabet.indexOf(clean[i])
+      if (val === -1) {
+        throw new Error('Invalid base32 character')
+      }
+      value = (value << 5) | val
+      bits += 5
+      if (bits >= 8) {
+        bytes[index++] = (value >> (bits - 8)) & 255
+        bits -= 8
+      }
+    }
+    return bytes
+  }
+
+  /* HMAC-SHA1 HOTP Generator Helper */
+  async function generateHOTP (secretBase32, counter) {
+    const keyBytes = base32Decode(secretBase32)
+    const counterBytes = new Uint8Array(8)
+    let temp = counter
+    for (let i = 7; i >= 0; i--) {
+      counterBytes[i] = temp & 255
+      temp = temp >> 8
+    }
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyBytes,
+      {
+        name: 'HMAC',
+        hash: { name: 'SHA-1' }
+      },
+      false,
+      ['sign']
+    )
+
+    const hmac = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, counterBytes))
+    const offset = hmac[hmac.length - 1] & 15
+    const binary =
+      ((hmac[offset] & 127) << 24) |
+      ((hmac[offset + 1] & 255) << 16) |
+      ((hmac[offset + 2] & 255) << 8) |
+      (hmac[offset + 3] & 255)
+
+    const otp = binary % 1000000
+    return otp.toString().padStart(6, '0')
+  }
+
+  /* TOTP Verifier */
+  async function verifyTOTP (secretBase32, code) {
+    const counter = Math.floor(Date.now() / 30000)
+    for (let i = -1; i <= 1; i++) {
+      const generated = await generateHOTP(secretBase32, counter + i)
+      if (generated === code) {
+        return true
+      }
+    }
+    return false
+  }
+
+  export default defineComponent({
+    server: () => ({
+      totpEnabled: false,
+      totpActionLabel: 'Enable 2FA',
+      totpStatus: 'Disabled'
+    }),
+    client: async ({ refs, state, globalStore, bootstrap, pocketbase, eventBus }) => {
+      const { $state } = globalStore
+      const { Modal } = await bootstrap
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+
+      const updateTotpState = () => {
+        state.totpEnabled = !!pb.authStore.model?.totp_enabled
+        state.totpActionLabel = state.totpEnabled ? 'Disable 2FA' : 'Enable 2FA'
+        state.totpStatus = state.totpEnabled ? 'Enabled' : 'Disabled'
+      }
+
+      updateTotpState()
+      $state.subscribe('currentUser', updateTotpState)
+
+      const btnManageTotp = refs('btnManageTotp')
+  
+      const setupModalEl = refs('setupModal')
+      const setupModal = new Modal(setupModalEl)
+      const qrImg = refs('qrImg')
+      const secretText = refs('secretText')
+      const verifyForm = refs('verifyForm')
+      const otpInput = refs('otpInput')
+      const verifyError = refs('verifyError')
+      const btnVerifyEnable = refs('btnVerifyEnable')
+
+      const disableModalEl = refs('disableModal')
+      const disableModal = new Modal(disableModalEl)
+      const disableForm = refs('disableForm')
+      const disableOtpInput = refs('disableOtpInput')
+      const disableError = refs('disableError')
+      const btnVerifyDisable = refs('btnVerifyDisable')
+
+      let currentSecret = ''
+
+      const generateSecret = () => {
+        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+        return Array.from(crypto.getRandomValues(new Uint8Array(16)))
+          .map(b => alphabet[b % alphabet.length])
+          .join('')
+      }
+
+      btnManageTotp.addEventListener('click', async () => {
+        if (!state.totpEnabled) {
+          /* Setup / Enable Flow */
+          currentSecret = generateSecret()
+          secretText.textContent = currentSecret
+          otpInput.value = ''
+          verifyError.classList.add('d-none')
+
+          const username = pb.authStore.model.username
+          const otpauthUri = `otpauth://totp/Atoll%20Chat:${username}?secret=${currentSecret}&issuer=Atoll%20Chat`
+  
+          try {
+            const { default: QRCode } = await import('qrcode')
+            const qrDataUrl = await QRCode.toDataURL(otpauthUri)
+            qrImg.src = qrDataUrl
+            setupModal.show()
+          } catch (err) {
+            console.error('QR code generation failed:', err)
+          }
+        } else {
+          /* Disable Flow */
+          disableOtpInput.value = ''
+          disableError.classList.add('d-none')
+          disableModal.show()
+        }
+      })
+
+      btnVerifyEnable.addEventListener('click', () => verifyForm.requestSubmit())
+
+      verifyForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const code = otpInput.value.trim()
+
+        verifyError.classList.add('d-none')
+
+        try {
+          const isValid = await verifyTOTP(currentSecret, code)
+          if (!isValid) {
+            throw new Error('Invalid verification code. Please try again.')
+          }
+
+          /* Enable TOTP on server */
+          await pb.collection('users').update(pb.authStore.model.id, {
+            totp_secret: currentSecret,
+            totp_enabled: true,
+            trusted_device_hashes: []
+          })
+
+          await pb.collection('users').authRefresh()
+          updateTotpState()
+          setupModal.hide()
+
+          $bus.emit('ui:show_toast', {
+            message: 'Two-Step Authentication enabled successfully!',
+            type: 'success'
+          })
+        } catch (err) {
+          console.error('Enable TOTP error:', err)
+          verifyError.textContent = err.message || 'Verification failed.'
+          verifyError.classList.remove('d-none')
+        }
+      })
+
+      btnVerifyDisable.addEventListener('click', () => disableForm.requestSubmit())
+
+      disableForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const code = disableOtpInput.value.trim()
+
+        disableError.classList.add('d-none')
+
+        try {
+          const record = await pb.collection('users').getOne(pb.authStore.model.id)
+          const isValid = await verifyTOTP(record.totp_secret, code)
+          if (!isValid) {
+            throw new Error('Invalid verification code. Please try again.')
+          }
+
+          /* Disable TOTP on server */
+          await pb.collection('users').update(record.id, {
+            totp_secret: '',
+            totp_enabled: false,
+            trusted_device_hashes: []
+          })
+
+          await pb.collection('users').authRefresh()
+          updateTotpState()
+          disableModal.hide()
+
+          $bus.emit('ui:show_toast', {
+            message: 'Two-Step Authentication disabled successfully.',
+            type: 'success'
+          })
+        } catch (err) {
+          console.error('Disable TOTP error:', err)
+          disableError.textContent = err.message || 'Verification failed.'
+          disableError.classList.remove('d-none')
+        }
+      })
+    }
+  })
+</script>

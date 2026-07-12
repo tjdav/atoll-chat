@@ -5,29 +5,77 @@
 <script type="module">
   import { defineComponent } from 'coralite'
 
+  /* SHA-256 Generator Helper */
+  async function sha256 (text) {
+    const msgUint8 = new TextEncoder().encode(text)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  }
+
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, localDb }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $notifications } = notifications
+      const { $localDb } = localDb
       const container = refs('container')
+
+      let isDeviceTrusted = false
 
       router.init()
 
+      const checkDeviceTrust = async () => {
+        if (!$state.isAuthenticated) {
+          isDeviceTrusted = false
+          return
+        }
+
+        const user = pb.authStore.model
+        if (!user) {
+          isDeviceTrusted = false
+          return
+        }
+
+        if (!user.totp_enabled) {
+          isDeviceTrusted = true
+          return
+        }
+
+        const localToken = localStorage.getItem('device_trust_token')
+        if (!localToken) {
+          isDeviceTrusted = false
+          return
+        }
+
+        try {
+          const hash = await sha256(localToken)
+          const record = await pb.collection('users').getOne(user.id)
+          const hashes = record.trusted_device_hashes || []
+          isDeviceTrusted = hashes.includes(hash)
+        } catch (err) {
+          console.error('Device trust check failed:', err)
+          isDeviceTrusted = false
+        }
+      }
+
       const updateUI = () => {
-        // Clear previous content
+        console.log('[app-root] updateUI called', {
+          isAuthenticated: $state.isAuthenticated,
+          hasModel: !!pb.authStore.model,
+          public_box_key: pb.authStore.model?.public_box_key
+        })
+
         while (container.firstChild) {
           container.removeChild(container.firstChild)
         }
 
         if ($state.isAuthenticated && $state.isVaultUnlocked) {
-          // Full application view
           container.className = 'vh-100 vw-100 overflow-hidden'
           container.appendChild(document.createElement('app-layout'))
           container.appendChild(document.createElement('create-room-modal'))
         } else {
-          // Auth or Vault setup/unlock view
           container.className = 'vh-100 vw-100 d-flex align-items-center justify-content-center bg-body-tertiary'
 
           const contentWrapper = document.createElement('div')
@@ -50,15 +98,56 @@
               col.appendChild(document.createElement('auth-login'))
             }
           } else {
-            // Check if vault needs setup or just unlocking
-            const user = pb.authStore.model
-            if (user && user.public_box_key) {
-              // Vault exists, needs unlocking
-              col.appendChild(document.createElement('vault-unlock'))
+            /* User is authenticated. Check if device is trusted (2FA) */
+            if (!isDeviceTrusted) {
+              col.appendChild(document.createElement('totp-challenge'))
             } else {
-              // No vault, needs setup
-              col.appendChild(document.createElement('vault-setup'))
+              const user = pb.authStore.model
+              if (user && user.public_box_key) {
+                col.appendChild(document.createElement('vault-unlock'))
+              } else {
+                col.appendChild(document.createElement('vault-setup'))
+              }
             }
+          }
+        }
+      }
+
+      // Magic link handler
+      const handleMagicLink = async () => {
+        const params = new URLSearchParams(window.location.search)
+        const otpId = params.get('otpId')
+        const code = params.get('code')
+
+        if (otpId && code) {
+          try {
+            const url = new URL(window.location.href)
+            url.searchParams.delete('otpId')
+            url.searchParams.delete('code')
+            window.history.replaceState({}, document.title, url.pathname + url.search)
+
+            const authData = await pb.collection('users').authWithOTP(otpId, code)
+
+            const db = $localDb
+            await db.local_config.bulkPut([
+              {
+                key: 'pb_url',
+                value: pb.baseUrl
+              },
+              {
+                key: 'pb_token',
+                value: pb.authStore.token
+              }
+            ])
+
+            $state.currentUser = authData.record
+            $state.isAuthenticated = true
+          } catch (error) {
+            console.error('Magic Link auth failed:', error)
+            $bus.emit('ui:show_toast', {
+              message: 'Magic link login failed. It may have expired or already been used.',
+              type: 'danger'
+            })
           }
         }
       }
@@ -70,7 +159,6 @@
           ...keys
         }
 
-        // Request notification permission upon vault unlocking
         if ($state.notificationsEnabled) {
           $notifications.requestPermission().catch(console.error)
         }
@@ -80,6 +168,11 @@
         $state.currentUser = null
         $state.isAuthenticated = false
         $state.isVaultUnlocked = false
+      })
+
+      $bus.on('auth:totp_passed', () => {
+        isDeviceTrusted = true
+        updateUI()
       })
 
       // Authoritative initialization from PocketBase
@@ -92,9 +185,16 @@
         $state.authView = 'login'
       }
 
-      updateUI()
+      // Execute Magic Link detection, device trust verification, and UI setup
+      handleMagicLink().then(async () => {
+        await checkDeviceTrust()
+        updateUI()
+      })
 
-      $state.subscribe('isAuthenticated', updateUI)
+      $state.subscribe('isAuthenticated', async () => {
+        await checkDeviceTrust()
+        updateUI()
+      })
       $state.subscribe('isVaultUnlocked', updateUI)
       $state.subscribe('authView', updateUI)
     }

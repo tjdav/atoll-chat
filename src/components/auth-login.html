@@ -2,23 +2,28 @@
   <div class="card shadow">
     <div class="card-body p-4">
       <h3 class="card-title mb-4 text-center">Login</h3>
-      <form ref="loginForm">
-        <div class="mb-3">
-          <label for="{{ ref_username }}" class="form-label">Username or Email</label>
-          <input ref="username" name="username" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username" data-testid="username">
-        </div>
-        <div class="mb-3">
-          <label for="{{ ref_password }}" class="form-label">Password</label>
-          <div class="password-field-container">
-            <input ref="password" name="password" type="password" class="form-control" placeholder="Enter Password" required autocomplete="current-password" data-testid="password">
-            <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
-              <i class="bi bi-eye"></i>
-            </button>
+      
+      <form ref="loginForm" onsubmit="return false;">
+        <div ref="emailSection">
+          <div class="mb-3">
+            <label for="{{ ref_username }}" class="form-label">Email Address</label>
+            <input ref="username" name="username" type="text" class="form-control" placeholder="Enter email" required autocomplete="email" data-testid="username">
           </div>
+          <button type="button" class="btn btn-primary w-100" ref="loginSubmit" data-testid="loginSubmit">Send Magic Link</button>
         </div>
-        <button type="submit" class="btn btn-primary w-100" ref="loginSubmit" data-testid="loginSubmit">Login</button>
       </form>
-      <div class="mt-3 text-center">
+
+      <form ref="otpForm" class="d-none mt-3" onsubmit="return false;">
+        <p class="text-muted small text-center mb-3">We sent a Magic Link to your email. Click it to log in, or enter the 8-digit code manually below:</p>
+        <div class="mb-3">
+          <label for="{{ ref_otpCode }}" class="form-label">8-digit Verification Code</label>
+          <input ref="otpCode" name="otpCode" type="text" class="form-control text-center fs-4" placeholder="00000000" maxlength="8" pattern="\d{8}" required>
+        </div>
+        <button type="button" class="btn btn-success w-100 mb-2" ref="btnSubmitOtp">Verify & Log In</button>
+        <button type="button" class="btn btn-link btn-sm w-100 text-decoration-none" ref="btnBackToEmail">Change Email</button>
+      </form>
+
+      <div class="mt-3 text-center" ref="registerLinkContainer">
         <small class="text-muted">Don't have an account? <a href="#" ref="linkRegister" class="text-decoration-none">Register here</a></small>
       </div>
       <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
@@ -30,19 +35,24 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, pocketbase, globalStore, eventBus, realtimeSync, localDb, cryptoWorker }) => {
+    client: ({ refs, pocketbase, globalStore, localDb }) => {
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore
-      const { $bus } = eventBus
-      const { $sync } = realtimeSync
-      const { $worker } = cryptoWorker
-      const loginForm = refs('loginForm')
+
+      const loginSubmit = refs('loginSubmit')
+      const btnSubmitOtp = refs('btnSubmitOtp')
+      const otpForm = refs('otpForm')
       const linkRegister = refs('linkRegister')
       const usernameInput = refs('username')
-      const passwordInput = refs('password')
-      const passwordToggle = refs('passwordToggle')
+      const otpCodeInput = refs('otpCode')
+      const btnBackToEmail = refs('btnBackToEmail')
       const statusMsg = refs('statusMsg')
+
+      const emailSection = refs('emailSection')
+      const registerLinkContainer = refs('registerLinkContainer')
+
+      let currentOtpId = null
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
@@ -53,94 +63,79 @@
         $state.authView = 'register'
       })
 
-      passwordToggle.addEventListener('click', () => {
-        const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password'
-        passwordInput.setAttribute('type', type)
-        const icon = passwordToggle.querySelector('i')
-        icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
+      btnBackToEmail.addEventListener('click', () => {
+        emailSection.classList.remove('d-none')
+        otpForm.classList.add('d-none')
+        registerLinkContainer.classList.remove('d-none')
+        updateStatus('')
       })
 
-      loginForm.addEventListener('submit', async (event) => {
-        event.preventDefault()
+      const handleSuccessfulLogin = async () => {
+        const db = $localDb
+        await db.local_config.bulkPut([
+          {
+            key: 'pb_url',
+            value: pb.baseUrl
+          },
+          {
+            key: 'pb_token',
+            value: pb.authStore.token
+          }
+        ])
 
-        const identity = usernameInput.value
-        const password = passwordInput.value
+        updateStatus('Login successful! Checking vault...')
+
+        /*
+           We won't auto-unlock because we use the new double-wrapped vault flow.
+           Instead, we set isAuthenticated = true.
+           app-root.html will check if user.public_box_key exists.
+           If yes, it mounts vault-unlock. If not, it mounts vault-setup.
+        */
+        $state.isAuthenticated = true
+      }
+
+      loginSubmit.addEventListener('click', async (event) => {
+        event.preventDefault()
+        console.log('[auth-login] Send Magic Link button clicked!', { email: usernameInput.value })
+
+        const email = usernameInput.value
+        if (!email) {
+          updateStatus('Please enter your email')
+          return
+        }
 
         try {
-          updateStatus('Logging in...')
+          updateStatus('Sending Magic Link...')
+          const result = await pb.collection('users').requestOTP(email)
+          currentOtpId = result.otpId
 
-          // Perform PocketBase authentication
-          await pb.collection('users').authWithPassword(identity, password)
-
-          // Persist PB config for Service Worker access
-          const db = $localDb
-          await db.local_config.bulkPut([
-            {
-              key: 'pb_url',
-              value: pb.baseUrl
-            },
-            {
-              key: 'pb_token',
-              value: pb.authStore.token
-            }
-          ])
-
-          updateStatus('Login successful! Unlocking vault...')
-
-          // Attempt to unlock the vault automatically with the password
-          try {
-            const record = pb.authStore.model
-            const { vault_salt: saltBase64, encrypted_master_keys: encryptedMasterKeys } = record
-
-            if (encryptedMasterKeys && saltBase64) {
-              const KEK = await $worker.execute('worker:derive_key_from_password', {
-                password,
-                salt: saltBase64
-              })
-
-              const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
-                ciphertext: encryptedMasterKeys.ciphertext,
-                nonce: encryptedMasterKeys.nonce,
-                KEK
-              })
-
-              // Initialize worker with decrypted keys and token
-              await $worker.execute('worker:set_token', { token: pb.authStore.token })
-              await $worker.execute('worker:init_keys', {
-                ...decryptedKeys,
-                id: record.id
-              })
-
-              // Emit successful unlock event
-              $bus.emit('auth:unlocked', {
-                keys: decryptedKeys,
-                userRecord: record
-              })
-
-              // Start and AWAIT real-time subscriptions
-              await $sync.startSubscriptions()
-
-              $state.isVaultUnlocked = true
-            }
-          } catch (unlockErr) {
-            if (!unlockErr.message?.includes('wrong secret key') && !unlockErr.message?.includes('decrypt')) {
-              console.warn('Auto-unlock failed:', unlockErr)
-            }
-          }
-
-          $state.isAuthenticated = true
-
+          emailSection.classList.add('d-none')
+          otpForm.classList.remove('d-none')
+          registerLinkContainer.classList.add('d-none')
+  
+          updateStatus('Magic Link sent!')
         } catch (error) {
-          console.error('Login error:', error)
-          let errorMessage = 'Login failed'
+          console.error('Request OTP error:', error)
+          updateStatus(error.message || 'Failed to send Magic Link')
+        }
+      })
 
-          if (error.status === 404) {
-            errorMessage = 'User not found'
-          } else if (error.message) {
-            errorMessage = error.message
-          }
+      btnSubmitOtp.addEventListener('click', async (event) => {
+        event.preventDefault()
+        console.log('[auth-login] btnSubmitOtp clicked!', { code: otpCodeInput.value })
+        const code = otpCodeInput.value
+        if (!code || code.length !== 8) {
+          updateStatus('Please enter a valid 8-digit code')
+          return
+        }
 
-          updateStatus(errorMessage)
+        try {
+          updateStatus('Verifying code...')
+          const authData = await pb.collection('users').authWithOTP(currentOtpId, code)
+          await handleSuccessfulLogin(authData)
+        } catch (error) {
+          console.error('OTP login error:', error)
+          updateStatus(error.message || 'Verification failed')
         }
       })
     }

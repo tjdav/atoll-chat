@@ -1,0 +1,169 @@
+<template id="totp-challenge">
+  <div class="card shadow">
+    <div class="card-body p-4 text-center">
+      <h3 class="card-title mb-3">Two-Step Verification</h3>
+      <p class="text-muted small mb-4">This device is unrecognized. Please enter the 6-digit code from your authenticator app to authorize this session.</p>
+      
+      <form ref="challengeForm" class="text-start">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Verification Code</label>
+          <input type="text" class="form-control text-center fs-4 font-monospace" ref="otpInput" required placeholder="000000" maxlength="6" pattern="\d{6}" data-testid="totpChallengeInput">
+        </div>
+        <button type="submit" class="btn btn-primary w-100" ref="btnVerify" data-testid="totpChallengeSubmit">Verify Code</button>
+      </form>
+
+      <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
+      <div class="mt-3">
+        <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  /* Base32 Decoder Helper */
+  function base32Decode (base32) {
+    const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
+    const clean = base32.toUpperCase().replace(/=+$/, '')
+    let length = clean.length
+    let bits = 0
+    let value = 0
+    let index = 0
+    const bytes = new Uint8Array(Math.floor((length * 5) / 8))
+
+    for (let i = 0; i < length; i++) {
+      const val = alphabet.indexOf(clean[i])
+      if (val === -1) {
+        throw new Error('Invalid base32 character')
+      }
+      value = (value << 5) | val
+      bits += 5
+      if (bits >= 8) {
+        bytes[index++] = (value >> (bits - 8)) & 255
+        bits -= 8
+      }
+    }
+    return bytes
+  }
+
+  /* HMAC-SHA1 HOTP Generator Helper */
+  async function generateHOTP (secretBase32, counter) {
+    const keyBytes = base32Decode(secretBase32)
+    const counterBytes = new Uint8Array(8)
+    let temp = counter
+    for (let i = 7; i >= 0; i--) {
+      counterBytes[i] = temp & 255
+      temp = temp >> 8
+    }
+
+    const cryptoKey = await crypto.subtle.importKey(
+      'raw',
+      keyBytes,
+      {
+        name: 'HMAC',
+        hash: { name: 'SHA-1' }
+      },
+      false,
+      ['sign']
+    )
+
+    const hmac = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, counterBytes))
+    const offset = hmac[hmac.length - 1] & 15
+    const binary =
+      ((hmac[offset] & 127) << 24) |
+      ((hmac[offset + 1] & 255) << 16) |
+      ((hmac[offset + 2] & 255) << 8) |
+      (hmac[offset + 3] & 255)
+
+    const otp = binary % 1000000
+    return otp.toString().padStart(6, '0')
+  }
+
+  /* TOTP Verifier */
+  async function verifyTOTP (secretBase32, code) {
+    const counter = Math.floor(Date.now() / 30000)
+    for (let i = -1; i <= 1; i++) {
+      const generated = await generateHOTP(secretBase32, counter + i)
+      if (generated === code) {
+        return true
+      }
+    }
+    return false
+  }
+
+  /* SHA-256 Generator Helper */
+  async function sha256 (text) {
+    const msgUint8 = new TextEncoder().encode(text)
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8)
+    const hashArray = Array.from(new Uint8Array(hashBuffer))
+    return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+  }
+
+  export default defineComponent({
+    client: ({ refs, pocketbase, eventBus, globalStore }) => {
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $state } = globalStore
+
+      const challengeForm = refs('challengeForm')
+      const otpInput = refs('otpInput')
+      const btnVerify = refs('btnVerify')
+      const statusMsg = refs('statusMsg')
+      const btnLogout = refs('btnLogout')
+
+      const updateStatus = (message) => {
+        statusMsg.textContent = message
+      }
+
+      btnLogout.addEventListener('click', () => {
+        pb.authStore.clear()
+        $state.isAuthenticated = false
+        $state.isVaultUnlocked = false
+      })
+
+      challengeForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const code = otpInput.value.trim()
+
+        updateStatus('Verifying code...')
+        btnVerify.disabled = true
+
+        try {
+          const user = await pb.collection('users').getOne(pb.authStore.model.id)
+          const isValid = await verifyTOTP(user.totp_secret, code)
+
+          if (!isValid) {
+            throw new Error('Invalid verification code. Please try again.')
+          }
+
+          updateStatus('Authorizing device...')
+
+          /* Generate device trust token and register its hash */
+          const deviceToken = crypto.randomUUID()
+          const hashHex = await sha256(deviceToken)
+  
+          const currentHashes = user.trusted_device_hashes || []
+          const updatedHashes = [...currentHashes, hashHex]
+
+          await pb.collection('users').update(user.id, {
+            trusted_device_hashes: updatedHashes
+          })
+
+          /* Save trust token locally */
+          localStorage.setItem('device_trust_token', deviceToken)
+
+          await pb.collection('users').authRefresh()
+
+          updateStatus('Device authorized!')
+          $bus.emit('auth:totp_passed')
+        } catch (err) {
+          console.error('TOTP challenge verification failed:', err)
+          updateStatus(err.message || 'Verification failed.')
+          btnVerify.disabled = false
+        }
+      })
+    }
+  })
+</script>

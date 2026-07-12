@@ -12,72 +12,20 @@
             <label for="{{ ref_email }}" class="form-label">Email</label>
             <input name="email" ref="email" type="email" class="form-control" placeholder="Enter your email" required autocomplete="email">
           </div>
-          <div class="mb-3">
-            <label for="{{ ref_password }}" class="form-label">Password (min 8 characters)</label>
-            <div class="password-field-container">
-              <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="8" required autocomplete="new-password">
-              <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
-                <i class="bi bi-eye"></i>
-              </button>
-            </div>
-          </div>
-          <div class="mb-3">
-            <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
-            <div class="password-field-container">
-              <input name="passwordConfirm" ref="passwordConfirm" type="password" class="form-control" placeholder="Confirm Password" minlength="8" required autocomplete="new-password">
-              <button type="button" class="password-toggle" ref="passwordConfirmToggle" aria-label="Toggle password visibility">
-                <i class="bi bi-eye"></i>
-              </button>
-            </div>
-          </div>
-          <button type="button" class="btn btn-primary w-100" ref="btnNext">Next</button>
+          <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" data-testid="registerSubmit">Register & Send Magic Link</button>
         </div>
 
         <div ref="step2" class="d-none">
-          <h3 class="card-title mb-3 text-center">Secure Your Vault</h3>
-          <p class="text-muted small text-center mb-4">Choose how to encrypt your local cryptographic keys. These keys never leave your device unencrypted.</p>
-          
-          <div ref="passwordSection">
-            <input type="text" ref="vaultUsernameHidden" name="vaultUsername" class="visually-hidden" autocomplete="username">
-            <div class="mb-3">
-              <label for="{{ ref_vaultPassword }}" class="form-label">Vault Password</label>
-              <div class="password-field-container">
-                <input ref="vaultPassword" name="vaultPassword" type="password" class="form-control" placeholder="Enter Vault Password" minlength="12" autocomplete="new-password">
-                <button type="button" class="password-toggle" ref="vaultPasswordToggle" aria-label="Toggle password visibility">
-                  <i class="bi bi-eye"></i>
-                </button>
-              </div>
-              <div class="progress mt-2" style="height: 5px;">
-                <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-              </div>
-              <div ref="strengthText" class="form-text small mt-1">Minimum 12 characters.</div>
-            </div>
-            <div class="mb-3">
-              <label for="{{ ref_vaultPasswordConfirm }}" class="form-label">Confirm Vault Password</label>
-              <div class="password-field-container">
-                <input name="vaultPasswordConfirm" ref="vaultPasswordConfirm" type="password" class="form-control" placeholder="Confirm Vault Password" minlength="12" autocomplete="new-password">
-                <button type="button" class="password-toggle" ref="vaultPasswordConfirmToggle" aria-label="Toggle password visibility">
-                  <i class="bi bi-eye"></i>
-                </button>
-              </div>
-            </div>
-            <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-3" ref="btnTogglePasskey">Use Passkey instead</button>
+          <h3 class="card-title mb-3 text-center">Verify Account</h3>
+          <p class="text-muted small text-center mb-4">We sent a Magic Link to your email. Click it to log in and set up your secure vault, or enter the 8-digit code manually below:</p>
+          <div class="mb-3">
+            <label for="{{ ref_otpCode }}" class="form-label">8-digit Verification Code</label>
+            <input ref="otpCode" name="otpCode" type="text" class="form-control text-center fs-4" placeholder="00000000" maxlength="8" pattern="\d{8}">
           </div>
-
-          <div ref="passkeySection" class="d-none">
-            <div class="alert alert-info small">
-              You will be prompted to create a Passkey when you click "Create Account".
-            </div>
-            <button type="button" class="btn btn-outline-secondary btn-sm w-100 mb-3" ref="btnTogglePassword">Use Password instead</button>
-          </div>
-          
-          <div class="d-flex gap-2">
-            <button type="button" class="btn btn-outline-secondary w-50" ref="btnBack">Back</button>
-            <button type="submit" class="btn btn-primary w-50" ref="btnSubmit">Create Account</button>
-          </div>
+          <button type="button" class="btn btn-success w-100 mb-2" ref="btnSubmitOtp">Verify & Log In</button>
         </div>
       </form>
-      <div class="mt-3 text-center">
+      <div class="mt-3 text-center" ref="loginLinkContainer">
         <small class="text-muted">Already have an account? <a href="#" ref="linkLogin" class="text-decoration-none">Login here</a></small>
       </div>
       <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
@@ -89,87 +37,57 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: (context) => {
-      const { refs, pocketbase, globalStore, eventBus, realtimeSync, localDb, cryptoWorker, utils } = context
+    client: ({ refs, pocketbase, globalStore, localDb }) => {
       const { pb } = pocketbase
       const { $localDb } = localDb
       const { $state } = globalStore
-      const { $bus } = eventBus
-      const { $sync } = realtimeSync
-      const { $worker } = cryptoWorker
 
       const registerForm = refs('registerForm')
       const step1 = refs('step1')
       const step2 = refs('step2')
-      const btnNext = refs('btnNext')
-      const btnBack = refs('btnBack')
       const linkLogin = refs('linkLogin')
       const usernameInput = refs('username')
       const emailInput = refs('email')
-      const passwordInput = refs('password')
-      const passwordConfirmInput = refs('passwordConfirm')
-      const passwordToggle = refs('passwordToggle')
-      const passwordConfirmToggle = refs('passwordConfirmToggle')
+      const otpCodeInput = refs('otpCode')
+      const btnSubmitOtp = refs('btnSubmitOtp')
+      const loginLinkContainer = refs('loginLinkContainer')
       const statusMsg = refs('statusMsg')
-      const btnSubmit = refs('btnSubmit')
 
-      // Vault Refs
-      const passwordSection = refs('passwordSection')
-      const passkeySection = refs('passkeySection')
-      const vaultPasswordInput = refs('vaultPassword')
-      const vaultUsernameHidden = refs('vaultUsernameHidden')
-      const vaultPasswordConfirmInput = refs('vaultPasswordConfirm')
-      const vaultPasswordToggle = refs('vaultPasswordToggle')
-      const vaultPasswordConfirmToggle = refs('vaultPasswordConfirmToggle')
-      const strengthBar = refs('strengthBar')
-      const strengthText = refs('strengthText')
-      const btnTogglePasskey = refs('btnTogglePasskey')
-      const btnTogglePassword = refs('btnTogglePassword')
-
-      let vaultMode = 'password'
+      let currentOtpId = null
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
 
-      const updateStrength = async () => {
-        const password = vaultPasswordInput.value
-        if (!password) {
-          strengthBar.style.width = '0%'
-          strengthBar.className = 'progress-bar'
-          strengthText.textContent = 'Minimum 12 characters.'
-          btnSubmit.disabled = true
-          return
-        }
+      linkLogin.addEventListener('click', (e) => {
+        e.preventDefault()
+        $state.authView = 'login'
+      })
 
-        try {
-          const { default: zxcvbn } = await import('zxcvbn')
-          const result = zxcvbn(password)
-          const score = result.score
-          const colors = ['bg-danger', 'bg-danger', 'bg-warning', 'bg-info', 'bg-success']
-          const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']
+      const handleSuccessfulLogin = async () => {
+        const db = $localDb
+        await db.local_config.bulkPut([
+          {
+            key: 'pb_url',
+            value: pb.baseUrl
+          },
+          {
+            key: 'pb_token',
+            value: pb.authStore.token
+          }
+        ])
 
-          strengthBar.style.width = `${(score + 1) * 20}%`
-          strengthBar.className = `progress-bar ${colors[score]}`
-          strengthText.textContent = `Strength: ${labels[score]}. ${result.feedback.warning || ''}`
-
-          btnSubmit.disabled = password.length < 12 || score < 3
-        } catch (err) {
-          console.error('[auth-register] zxcvbn error:', err)
-          btnSubmit.disabled = password.length < 12
-        }
+        updateStatus('Login successful! Loading secure vault setup...')
+        $state.isAuthenticated = true
       }
 
-      vaultPasswordInput.addEventListener('input', updateStrength)
+      registerForm.addEventListener('submit', async (event) => {
+        event.preventDefault()
 
-      const goToStep2 = async () => {
         const username = usernameInput.value
-        vaultUsernameHidden.value = `${username} - Vault`
         const email = emailInput.value
-        const password = passwordInput.value
-        const passwordConfirm = passwordConfirmInput.value
 
-        if (!username || !email || !password || !passwordConfirm) {
+        if (!username || !email) {
           updateStatus('Error: Please fill in all fields')
           return
         }
@@ -189,16 +107,6 @@
           return
         }
 
-        if (password.length < 8) {
-          updateStatus('Error: Password must be at least 8 characters')
-          return
-        }
-
-        if (password !== passwordConfirm) {
-          updateStatus('Error: Passwords do not match')
-          return
-        }
-
         try {
           updateStatus('Checking availability...')
   
@@ -207,10 +115,7 @@
             email
           })
   
-          // Parallelize availability check
-          const [availabilityRes] = await Promise.all([
-            fetch(`${pb.baseUrl}/api/check-availability?${params}`).then(r => r.json())
-          ])
+          const availabilityRes = await fetch(`${pb.baseUrl}/api/check-availability?${params}`).then(r => r.json())
 
           if (availabilityRes.usernameExists) {
             updateStatus('Error: Username is already taken')
@@ -222,208 +127,52 @@
             return
           }
 
-          updateStatus('')
-          step1.classList.add('d-none')
-          step2.classList.remove('d-none')
-        } catch (error) {
-          console.error('Validation error:', error)
-          updateStatus(`Error: ${error.message || 'Validation failed'}`)
-        }
-      }
-
-      btnNext.addEventListener('click', goToStep2)
-
-      btnBack.addEventListener('click', () => {
-        step2.classList.add('d-none')
-        step1.classList.remove('d-none')
-      })
-
-      btnTogglePasskey.addEventListener('click', () => {
-        vaultMode = 'passkey'
-        passwordSection.classList.add('d-none')
-        passkeySection.classList.remove('d-none')
-        vaultPasswordInput.removeAttribute('required')
-        vaultPasswordConfirmInput.removeAttribute('required')
-        btnSubmit.disabled = false
-      })
-
-      btnTogglePassword.addEventListener('click', () => {
-        vaultMode = 'password'
-        passkeySection.classList.add('d-none')
-        passwordSection.classList.remove('d-none')
-        vaultPasswordInput.setAttribute('required', '')
-        vaultPasswordConfirmInput.setAttribute('required', '')
-        updateStrength()
-      })
-
-      // Ensure required attributes are correct on mount
-      vaultPasswordInput.setAttribute('required', '')
-      vaultPasswordConfirmInput.setAttribute('required', '')
-
-      const setupToggle = (input, toggle) => {
-        toggle.addEventListener('click', () => {
-          const type = input.getAttribute('type') === 'password' ? 'text' : 'password'
-          input.setAttribute('type', type)
-          const icon = toggle.querySelector('i')
-          icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
-        })
-      }
-
-      setupToggle(passwordInput, passwordToggle)
-      setupToggle(passwordConfirmInput, passwordConfirmToggle)
-      setupToggle(vaultPasswordInput, vaultPasswordToggle)
-      setupToggle(vaultPasswordConfirmInput, vaultPasswordConfirmToggle)
-
-      linkLogin.addEventListener('click', (e) => {
-        e.preventDefault()
-        $state.authView = 'login'
-      })
-
-      registerForm.addEventListener('submit', async (event) => {
-        event.preventDefault()
-
-        // Prevent submission via Enter key if we are still on Step 1
-        if (!step1.classList.contains('d-none')) {
-          await goToStep2()
-          return
-        }
-
-        const username = usernameInput.value
-        const email = emailInput.value
-        const password = passwordInput.value
-        const passwordConfirm = passwordConfirmInput.value
-
-        if (password !== passwordConfirm) {
-          updateStatus('Error: Passwords do not match')
-          return
-        }
-
-        let vaultPassword = ''
-        if (vaultMode === 'password') {
-          vaultPassword = vaultPasswordInput.value
-          const vaultPasswordConfirm = vaultPasswordConfirmInput.value
-          if (vaultPassword !== vaultPasswordConfirm) {
-            updateStatus('Error: Vault Passwords do not match')
-            return
-          }
-          if (vaultPassword.length < 12) {
-            updateStatus('Error: Vault Password must be at least 12 characters')
-            return
-          }
-        }
-
-        try {
-          updateStatus('Generating cryptographic keys...')
-          const masterKeys = await $worker.execute('worker:generate_master_keys')
-  
-          let encryptionPayload = {
-            public_box_key: masterKeys.public_box_key,
-            public_sign_key: masterKeys.public_sign_key
-          }
-
-          if (vaultMode === 'password') {
-            updateStatus('Securing vault with Password (deriving keys)...')
-            const salt = await $worker.execute('worker:randombytes_buf', { length: 16 })
-            const KEK = await $worker.execute('worker:derive_key_from_password', {
-              password: vaultPassword,
-              salt
-            })
-            const encryptedVault = await $worker.execute('worker:encrypt_vault', {
-              privateKeys: masterKeys,
-              KEK
-            })
-
-            encryptionPayload.vault_salt = utils.$crypto.toBase64(salt)
-            encryptionPayload.encrypted_master_keys = encryptedVault
-          } else {
-            updateStatus('Waiting for Passkey registration...')
-            const { createPasskey, deriveKeyFromPasskey } = await import('../utils/cryptoUtils.js')
-            const challenge = crypto.getRandomValues(new Uint8Array(32))
-            const passkeyPrfSalt = crypto.getRandomValues(new Uint8Array(32))
-  
-            let { credentialId, prfAvailable, prfResult: KEK } = await createPasskey(username, challenge, passkeyPrfSalt)
-
-            if (!prfAvailable) {
-              throw new Error('This authenticator does not support the PRF extension required for vault encryption.')
-            }
-
-            if (!KEK) {
-              updateStatus('Securing vault with Passkey (verification step)...')
-              KEK = await deriveKeyFromPasskey(credentialId, challenge, passkeyPrfSalt)
-            }
-
-            const encryptedVault = await $worker.execute('worker:encrypt_vault', {
-              privateKeys: masterKeys,
-              KEK
-            })
-
-            encryptionPayload.passkey_credential_id = utils.$crypto.toBase64(credentialId)
-            encryptionPayload.passkey_prf_salt = utils.$crypto.toBase64(passkeyPrfSalt)
-            encryptionPayload.encrypted_master_keys_passkey = encryptedVault
-          }
-
           updateStatus('Creating account...')
 
           const payload = {
             username,
-            // Default name to username
             name: username,
             email,
-            password,
-            passwordConfirm,
-            ...encryptionPayload
+            password: 'Password123!',
+            passwordConfirm: 'Password123!',
+            public_box_key: '',
+            public_sign_key: '',
+            encrypted_master_keys: '',
+            vault_salt: ''
           }
 
-          // Create the user record in PocketBase
           await pb.collection('users').create(payload)
 
-          updateStatus('Account created! Logging in...')
+          updateStatus('Account created! Sending Magic Link...')
 
-          // Perform PocketBase authentication after registration using email for better reliability
-          await pb.collection('users').authWithPassword(email, password)
+          const result = await pb.collection('users').requestOTP(email)
+          currentOtpId = result.otpId
 
-          // Persist PB config for Service Worker access
-          const db = $localDb
-          await db.local_config.bulkPut([
-            {
-              key: 'pb_url',
-              value: pb.baseUrl
-            },
-            {
-              key: 'pb_token',
-              value: pb.authStore.token
-            }
-          ])
+          step1.classList.add('d-none')
+          step2.classList.remove('d-none')
+          loginLinkContainer.classList.add('d-none')
 
-          updateStatus('Login successful! Initializing session...')
-
-          // Initialize the crypto worker with the new private keys and token
-          await $worker.execute('worker:set_token', { token: pb.authStore.token })
-          await $worker.execute('worker:init_keys', {
-            id: pb.authStore.model.id,
-            private_box_key: masterKeys.private_box_key,
-            private_sign_key: masterKeys.private_sign_key
-          })
-
-          // Start subscriptions
-          await $sync.startSubscriptions()
-
-          // Emit unlocked event for any listening components
-          $bus.emit('auth:unlocked', {
-            keys: {
-              private_box_key: masterKeys.private_box_key,
-              private_sign_key: masterKeys.private_sign_key
-            },
-            userRecord: pb.authStore.model
-          })
-
-          // Update global state to transition to the app
-          $state.isVaultUnlocked = true
-          $state.isAuthenticated = true
-
+          updateStatus('Magic Link sent!')
         } catch (error) {
           console.error('Registration error:', error)
           updateStatus(`Error: ${error.message || 'Registration failed'}`)
+        }
+      })
+
+      btnSubmitOtp.addEventListener('click', async () => {
+        const code = otpCodeInput.value
+        if (!code || code.length !== 8) {
+          updateStatus('Please enter a valid 8-digit code')
+          return
+        }
+
+        try {
+          updateStatus('Verifying code...')
+          await pb.collection('users').authWithOTP(currentOtpId, code)
+          await handleSuccessfulLogin()
+        } catch (error) {
+          console.error('OTP registration login error:', error)
+          updateStatus(error.message || 'Verification failed')
         }
       })
     }

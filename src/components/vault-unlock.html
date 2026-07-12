@@ -1,24 +1,77 @@
 <template id="vault-unlock">
   <div class="card shadow">
     <div class="card-body p-4 text-center">
-      <h3 class="card-title mb-3">Unlock Your Vault</h3>
-      <p class="text-muted small mb-4">Your session is active, but your cryptographic keys are locked. Please enter your vault password to unlock them.</p>
-      <form ref="unlockForm" class="text-start">
-        <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username">
-        <div class="mb-3">
-          <label for="{{ ref_password }}" class="form-label">Vault Password</label>
-          <div class="password-field-container">
-            <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Vault Password" required autocomplete="current-password" data-testid="password">
-            <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
-              <i class="bi bi-eye"></i>
-            </button>
+      
+      <!-- View 1: Password Unlock -->
+      <div ref="viewPassword">
+        <h3 class="card-title mb-3">Unlock Your Vault</h3>
+        <p class="text-muted small mb-4">Your session is active, but your cryptographic keys are locked. Please enter your vault password to unlock them.</p>
+        <form ref="unlockForm" class="text-start">
+          <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username">
+          <div class="mb-3">
+            <label for="{{ ref_password }}" class="form-label">Vault Password</label>
+            <div class="password-field-container">
+              <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Vault Password" required autocomplete="current-password" data-testid="password">
+              <button type="button" class="password-toggle" ref="passwordToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
           </div>
+          <div class="d-grid gap-2">
+            <button type="submit" class="btn btn-primary" ref="unlockSubmit" data-testid="unlockSubmit">Unlock with Password</button>
+            <button type="button" class="btn btn-outline-primary d-none" ref="btnPasskey">Unlock with Passkey</button>
+          </div>
+        </form>
+        <div class="mt-3">
+          <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnShowRecovery">Use Recovery Code</button>
         </div>
-        <div class="d-grid gap-2">
-          <button type="submit" class="btn btn-primary" ref="unlockSubmit" data-testid="unlockSubmit">Unlock with Password</button>
-          <button type="button" class="btn btn-outline-primary d-none" ref="btnPasskey">Unlock with Passkey</button>
-        </div>
-      </form>
+      </div>
+
+      <!-- View 2: Recovery Code Entry -->
+      <div ref="viewRecovery" class="d-none text-start">
+        <h3 class="card-title mb-3 text-center">Use Recovery Code</h3>
+        <p class="text-muted small mb-4 text-center">Enter one of your single-use recovery codes to recover your vault and set a new password.</p>
+        <form ref="recoveryForm">
+          <div class="mb-3">
+            <label for="{{ ref_recoveryCodeInput }}" class="form-label">Recovery Code</label>
+            <input ref="recoveryCodeInput" name="recoveryCodeInput" type="text" class="form-control text-center fs-5 font-monospace" placeholder="XXXX-XXXX-XXXX" required>
+          </div>
+          <button type="submit" class="btn btn-primary w-100 mb-2">Verify Recovery Code</button>
+          <button type="button" class="btn btn-link btn-sm w-100 text-decoration-none text-center" ref="btnCancelRecovery">Cancel</button>
+        </form>
+      </div>
+
+      <!-- View 3: Force New Password Creation -->
+      <div ref="viewNewPassword" class="d-none text-start">
+        <h3 class="card-title mb-3 text-center">Set New Vault Password</h3>
+        <p class="text-muted small text-center mb-4">Recovery successful! Please choose a new Vault Password. This will re-encrypt your Master Key.</p>
+        <form ref="newPasswordForm">
+          <div class="mb-3">
+            <label for="{{ ref_newPassword }}" class="form-label">New Vault Password</label>
+            <div class="password-field-container">
+              <input name="newPassword" ref="newPassword" type="password" class="form-control" placeholder="Enter New Password" minlength="12" required autocomplete="new-password">
+              <button type="button" class="password-toggle" ref="newPasswordToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div class="progress mt-2" style="height: 5px;">
+              <div ref="newStrengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div ref="newStrengthText" class="form-text small mt-1">Minimum 12 characters.</div>
+          </div>
+          <div class="mb-3">
+            <label for="{{ ref_newPasswordConfirm }}" class="form-label">Confirm New Password</label>
+            <div class="password-field-container">
+              <input name="newPasswordConfirm" ref="newPasswordConfirm" type="password" class="form-control" placeholder="Confirm New Password" minlength="12" required autocomplete="new-password">
+              <button type="button" class="password-toggle" ref="newPasswordConfirmToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+          </div>
+          <button type="submit" class="btn btn-success w-100" ref="btnSaveNewPassword" disabled>Save & Unlock Vault</button>
+        </form>
+      </div>
+
       <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
       <div class="mt-3">
         <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
@@ -38,6 +91,10 @@
       const { $state } = globalStore
       const { $worker } = cryptoWorker
 
+      const viewPassword = refs('viewPassword')
+      const viewRecovery = refs('viewRecovery')
+      const viewNewPassword = refs('viewNewPassword')
+
       const unlockForm = refs('unlockForm')
       const passwordInput = refs('password')
       const vaultUsernameHidden = refs('vaultUsernameHidden')
@@ -45,6 +102,25 @@
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout')
       const btnPasskey = refs('btnPasskey')
+
+      const btnShowRecovery = refs('btnShowRecovery')
+      const btnCancelRecovery = refs('btnCancelRecovery')
+      const recoveryForm = refs('recoveryForm')
+      const recoveryCodeInput = refs('recoveryCodeInput')
+
+      const newPasswordForm = refs('newPasswordForm')
+      const newPasswordInput = refs('newPassword')
+      const newPasswordConfirmInput = refs('newPasswordConfirm')
+      const newPasswordToggle = refs('newPasswordToggle')
+      const newPasswordConfirmConfirmToggle = refs('newPasswordConfirmToggle')
+      const newStrengthBar = refs('newStrengthBar')
+      const newStrengthText = refs('newStrengthText')
+      const btnSaveNewPassword = refs('btnSaveNewPassword')
+
+      let decryptedMasterKeyHex = null
+      let matchedWrapIndex = -1
+      let fetchedRecord = null
+      let decryptedKeysLocal = null
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
@@ -56,6 +132,18 @@
         const icon = passwordToggle.querySelector('i')
         icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
       })
+
+      const setupToggle = (input, toggle) => {
+        toggle.addEventListener('click', () => {
+          const type = input.getAttribute('type') === 'password' ? 'text' : 'password'
+          input.setAttribute('type', type)
+          const icon = toggle.querySelector('i')
+          icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
+        })
+      }
+
+      setupToggle(newPasswordInput, newPasswordToggle)
+      setupToggle(newPasswordConfirmInput, newPasswordConfirmConfirmToggle)
 
       btnLogout.addEventListener('click', () => {
         pb.authStore.clear()
@@ -79,24 +167,19 @@
       const completeUnlock = async (decryptedKeys, record) => {
         updateStatus('Vault unlocked!')
 
-        // Initialize worker with decrypted keys and token
         await $worker.execute('worker:set_token', { token: pb.authStore.token })
         await $worker.execute('worker:init_keys', {
           ...decryptedKeys,
           id: record.id
         })
 
-        // Emit successful unlock event
         $bus.emit('auth:unlocked', {
           keys: decryptedKeys,
           userRecord: record
         })
 
         try {
-          // start and await real-time subscriptions
           await $sync.startSubscriptions()
-  
-          // set global state after subscriptions are ready
           $state.isVaultUnlocked = true
         } catch (err) {
           console.error('[vault-unlock] Subscription/Sync failed:', err)
@@ -111,24 +194,39 @@
         try {
           updateStatus('Locating vault...')
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
-          const { vault_salt: saltBase64, encrypted_master_keys: encryptedMasterKeys } = record
+          const { vault_salt: saltBase64, encrypted_master_keys: encryptedMasterKeys, encrypted_private_keys: encryptedPrivateKeys } = record
 
           if (!encryptedMasterKeys) {
             updateStatus('Error: Secure vault not found on server.')
             return
           }
 
-          updateStatus('Unlocking secure vault (deriving keys)...')
-  
+          /* We enforce a strict clean break: V2 vault is required */
+          if (!encryptedPrivateKeys) {
+            throw new Error('This account is using an outdated vault scheme. Please register a new account.')
+          }
+
+          updateStatus('Deriving KEK...')
           const KEK = await $worker.execute('worker:derive_key_from_password', {
             password,
             salt: saltBase64
           })
 
-          const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
+          updateStatus('Decrypting Master Key...')
+          const masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
             ciphertext: encryptedMasterKeys.ciphertext,
             nonce: encryptedMasterKeys.nonce,
-            KEK
+            key: KEK
+          })
+
+          if (!masterKey) {
+            throw new Error('Invalid Vault Password')
+          }
+
+          updateStatus('Decrypting private keys...')
+          const decryptedKeys = await $worker.execute('worker:decrypt_vault_v2', {
+            encrypted_private_keys: encryptedPrivateKeys,
+            master_key: masterKey
           })
 
           await completeUnlock(decryptedKeys, record)
@@ -146,42 +244,147 @@
         }
       })
 
-      btnPasskey.addEventListener('click', async () => {
-        try {
-          updateStatus('Locating vault...')
-          const record = await pb.collection('users').getOne(pb.authStore.model.id)
-          const {
-            passkey_credential_id: credentialIdBase64,
-            passkey_prf_salt: prfSaltBase64,
-            encrypted_master_keys_passkey: encryptedMasterKeys
-          } = record
+      btnShowRecovery.addEventListener('click', () => {
+        viewPassword.classList.add('d-none')
+        viewRecovery.classList.remove('d-none')
+        updateStatus('')
+      })
 
-          if (!encryptedMasterKeys || !credentialIdBase64 || !prfSaltBase64) {
-            updateStatus('Error: Passkey vault not found on server.')
-            return
+      btnCancelRecovery.addEventListener('click', () => {
+        viewRecovery.classList.add('d-none')
+        viewPassword.classList.remove('d-none')
+        updateStatus('')
+      })
+
+      recoveryForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const code = recoveryCodeInput.value.trim()
+
+        try {
+          updateStatus('Fetching account details...')
+          fetchedRecord = await pb.collection('users').getOne(pb.authStore.model.id)
+          const { recovery_wraps: recoveryWraps, encrypted_private_keys: encryptedPrivateKeys } = fetchedRecord
+
+          if (!recoveryWraps || recoveryWraps.length === 0) {
+            throw new Error('No recovery codes configured for this account.')
           }
 
-          updateStatus('Waiting for Passkey...')
-          const { deriveKeyFromPasskey } = await import('../utils/cryptoUtils.js')
+          updateStatus('Verifying recovery code...')
+          let decryptedMasterKey = null
+          matchedWrapIndex = -1
 
-          const challenge = crypto.getRandomValues(new Uint8Array(32))
+          /* Find matching recovery wrap by attempting decryption on all of them */
+          for (let i = 0; i < recoveryWraps.length; i++) {
+            try {
+              decryptedMasterKey = await $worker.execute('worker:decrypt_master_key_with_code', {
+                code,
+                wrap: recoveryWraps[i]
+              })
+              if (decryptedMasterKey) {
+                matchedWrapIndex = i
+                break
+              }
+            } catch {
+              /* Keep searching */
+            }
+          }
 
-          const KEK = await deriveKeyFromPasskey(
-            context.utils.$crypto.fromBase64(credentialIdBase64),
-            challenge,
-            context.utils.$crypto.fromBase64(prfSaltBase64)
-          )
+          if (!decryptedMasterKey) {
+            throw new Error('Invalid or expired recovery code.')
+          }
 
-          const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
-            ciphertext: encryptedMasterKeys.ciphertext,
-            nonce: encryptedMasterKeys.nonce,
+          decryptedMasterKeyHex = decryptedMasterKey
+
+          updateStatus('Decrypting private keys...')
+          decryptedKeysLocal = await $worker.execute('worker:decrypt_vault_v2', {
+            encrypted_private_keys: encryptedPrivateKeys,
+            master_key: decryptedMasterKeyHex
+          })
+
+          /* Transition to new password setup */
+          viewRecovery.classList.add('d-none')
+          viewNewPassword.classList.remove('d-none')
+          updateStatus('Code verified! Please set a new password.')
+        } catch (err) {
+          console.error('Recovery failed:', err)
+          updateStatus(err.message || 'Recovery failed.')
+        }
+      })
+
+      const updateNewStrength = async () => {
+        const password = newPasswordInput.value
+        if (!password) {
+          newStrengthBar.style.width = '0%'
+          newStrengthBar.className = 'progress-bar'
+          newStrengthText.textContent = 'Minimum 12 characters.'
+          btnSaveNewPassword.disabled = true
+          return
+        }
+
+        try {
+          const { default: zxcvbn } = await import('zxcvbn')
+          const result = zxcvbn(password)
+          const score = result.score
+          const colors = ['bg-danger', 'bg-danger', 'bg-warning', 'bg-info', 'bg-success']
+          const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']
+
+          newStrengthBar.style.width = `${(score + 1) * 20}%`
+          newStrengthBar.className = `progress-bar ${colors[score]}`
+          newStrengthText.textContent = `Strength: ${labels[score]}. ${result.feedback.warning || ''}`
+
+          btnSaveNewPassword.disabled = password.length < 12 || score < 3
+        } catch (err) {
+          console.error('[vault-unlock] zxcvbn error:', err)
+          btnSaveNewPassword.disabled = password.length < 12
+        }
+      }
+
+      newPasswordInput.addEventListener('input', updateNewStrength)
+
+      newPasswordForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        const newPassword = newPasswordInput.value
+        const newPasswordConfirm = newPasswordConfirmInput.value
+
+        if (newPassword !== newPasswordConfirm) {
+          updateStatus('Passwords do not match.')
+          return
+        }
+
+        try {
+          updateStatus('Deriving new vault password KEK...')
+          const newSalt = await $worker.execute('worker:randombytes_buf', { length: 16 })
+          const KEK = await $worker.execute('worker:derive_key_from_password', {
+            password: newPassword,
+            salt: newSalt
+          })
+
+          updateStatus('Re-encrypting Master Key...')
+          const newPasswordWrap = await $worker.execute('worker:encrypt_master_key_with_kek', {
+            master_key: decryptedMasterKeyHex,
             KEK
           })
 
-          await completeUnlock(decryptedKeys, record)
-        } catch (error) {
-          console.error('Unlock error:', error)
-          updateStatus(`Error: ${error.message || 'Unlock failed'}`)
+          /* Client-Side Purge of the matched recovery code wrap */
+          const remainingWraps = [...fetchedRecord.recovery_wraps]
+          if (matchedWrapIndex !== -1) {
+            remainingWraps.splice(matchedWrapIndex, 1)
+          }
+
+          updateStatus('Updating vault configuration on server...')
+          await pb.collection('users').update(fetchedRecord.id, {
+            vault_salt: context.utils.$crypto.toBase64(newSalt),
+            encrypted_master_keys: newPasswordWrap,
+            recovery_wraps: remainingWraps
+          })
+
+          /* Perform auth refresh to sync changes */
+          const refreshedRecord = await pb.collection('users').authRefresh()
+
+          await completeUnlock(decryptedKeysLocal, refreshedRecord.record)
+        } catch (err) {
+          console.error('Password rotation failed:', err)
+          updateStatus(err.message || 'Password rotation failed.')
         }
       })
     }

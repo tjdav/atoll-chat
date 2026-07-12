@@ -60,6 +60,7 @@
     "marked": "^17.0.4",
     "mediabunny": "^1.50.6",
     "pocketbase": "^0.27.0",
+    "qrcode": "^1.5.4",
     "turndown": "^7.2.2",
     "zxcvbn": "^4.4.2"
   },
