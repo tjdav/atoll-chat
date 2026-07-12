@@ -154,18 +154,31 @@
       }
 
       const createCarouselItem = (item, isActive) => {
-        const div = document.createElement('div')
-        div.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
-        div.dataset.id = item.id
-        div.innerHTML = `
-          <div class="d-flex justify-content-center align-items-center h-100 overflow-hidden">
-            <div class="spinner-border text-primary d-none" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
-            <img class="mw-100 mh-100 d-none" alt="${item.filename}">
-          </div>
-        `
-        return div
+        const carouselItem = document.createElement('div')
+        carouselItem.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        carouselItem.dataset.id = item.id
+
+        const wrapper = document.createElement('div')
+        wrapper.className = 'd-flex justify-content-center align-items-center h-100 overflow-hidden'
+
+        const spinner = document.createElement('div')
+        spinner.className = 'spinner-border text-primary d-none'
+        spinner.setAttribute('role', 'status')
+
+        const spinnerText = document.createElement('span')
+        spinnerText.className = 'visually-hidden'
+        spinnerText.textContent = 'Loading...'
+        spinner.appendChild(spinnerText)
+        wrapper.appendChild(spinner)
+
+        const img = document.createElement('img')
+        img.className = 'mw-100 mh-100 d-none'
+        img.alt = item.filename || ''
+        wrapper.appendChild(img)
+
+        carouselItem.appendChild(wrapper)
+
+        return carouselItem
       }
 
       const fetchNextBatch = async () => {

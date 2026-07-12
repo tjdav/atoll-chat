@@ -144,29 +144,66 @@
       }
 
       const createCarouselItem = (item, isActive) => {
-        const div = document.createElement('div')
-        div.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
-        div.dataset.id = item.id
-        div.innerHTML = `
-          <div class="d-flex justify-content-center align-items-center h-100 overflow-hidden position-relative">
-            <div class="spinner-border text-primary d-none" role="status">
-              <span class="visually-hidden">Loading...</span>
-            </div>
-            <div class="doc-content d-none card shadow-sm p-4 text-center" style="max-width: 400px;">
-              <div class="mb-4">
-                <i class="bi ${getFileIcon(item.mime_type)} text-primary" style="font-size: 5rem;"></i>
-              </div>
-              <h4 class="mb-2 text-truncate">${item.filename || 'Unnamed Document'}</h4>
-              <p class="text-muted small mb-4">${item.mime_type || 'Unknown Type'}</p>
-              <div class="d-grid gap-2">
-                <a href="#" class="btn btn-primary btn-lg download-btn">
-                  <i class="bi bi-download me-2"></i> Download Document
-                </a>
-              </div>
-            </div>
-          </div>
-        `
-        return div
+        const carouselItem = document.createElement('div')
+        carouselItem.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        carouselItem.dataset.id = item.id
+
+        const wrapper = document.createElement('div')
+        wrapper.className = 'd-flex justify-content-center align-items-center h-100 overflow-hidden position-relative'
+
+        const spinner = document.createElement('div')
+        spinner.className = 'spinner-border text-primary d-none'
+        spinner.setAttribute('role', 'status')
+  
+        const spinnerText = document.createElement('span')
+        spinnerText.className = 'visually-hidden'
+        spinnerText.textContent = 'Loading...'
+        spinner.appendChild(spinnerText)
+        wrapper.appendChild(spinner)
+
+        const card = document.createElement('div')
+        card.className = 'doc-content d-none card shadow-sm p-4 text-center'
+        card.style.maxWidth = '400px'
+  
+        const iconWrapper = document.createElement('div')
+        iconWrapper.className = 'mb-4'
+  
+        const icon = document.createElement('i')
+        const iconClass = getFileIcon(item.mime_type)
+        icon.className = `bi ${iconClass} text-primary`
+        icon.style.fontSize = '5rem'
+        iconWrapper.appendChild(icon)
+        card.appendChild(iconWrapper)
+
+        const title = document.createElement('h4')
+        title.className = 'mb-2 text-truncate'
+        title.textContent = item.filename || 'Unnamed Document'
+        card.appendChild(title)
+
+        const mime = document.createElement('p')
+        mime.className = 'text-muted small mb-4'
+        mime.textContent = item.mime_type || 'Unknown Type'
+        card.appendChild(mime)
+
+        const btnWrapper = document.createElement('div')
+        btnWrapper.className = 'd-grid gap-2'
+
+        const downloadBtn = document.createElement('a')
+        downloadBtn.className = 'btn btn-primary btn-lg download-btn'
+        downloadBtn.href = '#'
+
+        const btnIcon = document.createElement('i')
+        btnIcon.className = 'bi bi-download me-2'
+
+        downloadBtn.appendChild(btnIcon)
+        downloadBtn.appendChild(document.createTextNode(' Download Document'))
+        btnWrapper.appendChild(downloadBtn)
+        card.appendChild(btnWrapper)
+  
+        wrapper.appendChild(card)
+        carouselItem.appendChild(wrapper)
+
+        return carouselItem
       }
 
       const fetchNextBatch = async () => {

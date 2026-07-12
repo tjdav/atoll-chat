@@ -79,8 +79,6 @@
         container.querySelector('.link-date').textContent = new Date(msg.created_at).toLocaleString()
 
         const imgContainer = container.querySelector('.link-image-container')
-        imgContainer.innerHTML = ''
-
         const cacheKey = `${msg.local_uuid}:${linkIndex}`
 
         if (msg.media_id && msg.file_key && msg.file_nonce && linkIndex === 0) {
@@ -103,15 +101,27 @@
               blobUrl = URL.createObjectURL(blob)
               $state.decryptionCache.set(cacheKey, blobUrl)
             }
-            imgContainer.innerHTML = `<img src="${blobUrl}" class="w-100 h-100 object-fit-cover" alt="Preview">`
+            const img = document.createElement('img')
+            img.src = blobUrl
+            img.className = 'w-100 h-100 object-fit-cover'
+            img.alt = 'Preview'
+            imgContainer.replaceChildren(img)
           } catch {
-            imgContainer.innerHTML = '<i class="bi bi-link-45deg fs-1 text-secondary opacity-25"></i>'
+            const icon = document.createElement('i')
+            icon.className = 'bi bi-link-45deg fs-1 text-secondary opacity-25'
+            imgContainer.replaceChildren(icon)
           }
         } else if (link.image) {
-        // Use standard image URL if provided (for secondary links or non-encrypted previews)
-          imgContainer.innerHTML = `<img src="${link.image}" class="w-100 h-100 object-fit-cover" alt="Preview">`
+          // Use standard image URL if provided (for secondary links or non-encrypted previews)
+          const img = document.createElement('img')
+          img.src = link.image
+          img.className = 'w-100 h-100 object-fit-cover'
+          img.alt = 'Preview'
+          imgContainer.replaceChildren(img)
         } else {
-          imgContainer.innerHTML = '<i class="bi bi-link-45deg fs-1 text-secondary opacity-25"></i>'
+          const icon = document.createElement('i')
+          icon.className = 'bi bi-link-45deg fs-1 text-secondary opacity-25'
+          imgContainer.replaceChildren(icon)
         }
       }
 

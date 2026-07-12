@@ -202,7 +202,8 @@ function getDatabase (testId) {
       messages: [],
       media: [],
       mediaFiles: {},
-      sseClients: []
+      sseClients: [],
+      lastOtp: null
     }
   }
   return databases[testId]
@@ -287,6 +288,51 @@ export function createServer () {
         res.end(JSON.stringify({
           code: 200,
           message: 'Healthy'
+        }))
+        return
+      }
+
+      // Get last OTP endpoint
+      if (pathname === '/api/last-otp') {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          code: db.lastOtp || '00000000'
+        }))
+        return
+      }
+
+      // Request OTP
+      if (pathname === '/api/collections/users/request-otp') {
+        const { email } = body
+        const otpCode = Math.floor(10000000 + (Math.random() * 90000000)).toString()
+        db.lastOtp = otpCode
+        const otpId = 'otp_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+        db.lastOtpId = otpId
+        db.lastOtpEmail = email
+        console.log(`[MOCK PB] [${testId}] Generated OTP for ${email}: ${otpCode}`)
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          otpId
+        }))
+        return
+      }
+
+      // Auth with OTP
+      if (pathname === '/api/collections/users/auth-with-otp') {
+        const { otpId, password } = body
+        const code = password
+        const email = db.lastOtpEmail
+        const user = db.users.find(u => u.email === email || u.username === email)
+        console.log(`[MOCK PB] [${testId}] Auth with OTP. Body: ${JSON.stringify(body)}. Received otpId: ${otpId}, password/code: ${password}. Expected lastOtpId: ${db.lastOtpId}, lastOtp: ${db.lastOtp}, email: ${email}, user found: ${!!user}`)
+        if (!user || code !== db.lastOtp || otpId !== db.lastOtpId) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ message: 'Invalid OTP code.' }))
+          return
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          token: generateMockJWT(user.id),
+          record: user
         }))
         return
       }

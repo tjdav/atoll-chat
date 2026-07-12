@@ -64,7 +64,34 @@
             btn.type = 'button'
             const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'documents'
             btn.className = `app-list-item border-0 w-100 text-start bg-transparent ${isActive ? 'active' : ''}`
-            btn.innerHTML = `<div class="list-item-icon d-flex align-items-center justify-content-center"><i class="bi bi-file-earmark-fill fs-5"></i></div><div class="text-truncate flex-grow-1"><div class="fw-bold text-truncate">${item.filename || 'Unnamed File'}</div><small class="text-body-secondary d-block text-truncate">${roomName} • ${timestamp}</small></div><i class="bi bi-chevron-right ms-auto text-body-secondary opacity-50"></i>`
+
+            const iconDiv = document.createElement('div')
+            iconDiv.className = 'list-item-icon d-flex align-items-center justify-content-center'
+  
+            const icon = document.createElement('i')
+            icon.className = 'bi bi-file-earmark-fill fs-5'
+            iconDiv.appendChild(icon)
+            btn.appendChild(iconDiv)
+
+            const textDiv = document.createElement('div')
+            textDiv.className = 'text-truncate flex-grow-1'
+
+            const titleDiv = document.createElement('div')
+            titleDiv.className = 'fw-bold text-truncate'
+            titleDiv.textContent = item.filename || 'Unnamed File'
+            textDiv.appendChild(titleDiv)
+
+            const subDiv = document.createElement('small')
+            subDiv.className = 'text-body-secondary d-block text-truncate'
+            subDiv.textContent = `${roomName} • ${timestamp}`
+            textDiv.appendChild(subDiv)
+
+            btn.appendChild(textDiv)
+
+            const chevron = document.createElement('i')
+            chevron.className = 'bi bi-chevron-right ms-auto text-body-secondary opacity-50'
+            btn.appendChild(chevron)
+
             btn.onclick = () => {
               $state.activeSelectionId = item.id; $state.activeSelectionType = 'documents'
               $bus.emit('ui:selection_made')
