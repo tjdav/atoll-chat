@@ -25,73 +25,19 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
   })
 
   /**
-   * Retrieves the current TOTP code for a secret in the browser context.
+   * Retrieves the current TOTP code for a secret in the Node.js context using otplib.
    *
    * @param {object} page - Playwright page.
    * @param {string} secret - Base32 secret key.
    * @returns {Promise<string>} Correct TOTP code.
    */
   async function getTotpCode (page, secret) {
-    return await page.evaluate(async (secretBase32) => {
-      function base32Decode (base32) {
-        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-        const clean = base32.toUpperCase().replace(/=+$/, '')
-        let length = clean.length
-        let bits = 0
-        let value = 0
-        let index = 0
-        const bytes = new Uint8Array(Math.floor((length * 5) / 8))
-
-        for (let i = 0; i < length; i++) {
-          const val = alphabet.indexOf(clean[i])
-          if (val === -1) {
-            throw new Error('Invalid base32 character')
-          }
-          value = (value << 5) | val
-          bits += 5
-          if (bits >= 8) {
-            bytes[index++] = (value >> (bits - 8)) & 255
-            bits -= 8
-          }
-        }
-        return bytes
-      }
-
-      async function generateHOTP (secretBase32, counter) {
-        const keyBytes = base32Decode(secretBase32)
-        const counterBytes = new Uint8Array(8)
-        let temp = counter
-        for (let i = 7; i >= 0; i--) {
-          counterBytes[i] = temp & 255
-          temp = temp >> 8
-        }
-
-        const cryptoKey = await crypto.subtle.importKey(
-          'raw',
-          keyBytes,
-          {
-            name: 'HMAC',
-            hash: { name: 'SHA-1' }
-          },
-          false,
-          ['sign']
-        )
-
-        const hmac = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, counterBytes))
-        const offset = hmac[hmac.length - 1] & 15
-        const binary =
-          ((hmac[offset] & 127) << 24) |
-          ((hmac[offset + 1] & 255) << 16) |
-          ((hmac[offset + 2] & 255) << 8) |
-          (hmac[offset + 3] & 255)
-
-        const otp = binary % 1000000
-        return otp.toString().padStart(6, '0')
-      }
-
-      const counter = Math.floor(Date.now() / 30000)
-      return await generateHOTP(secretBase32, counter)
-    }, secret)
+    const otplib = await import('otplib')
+    return await otplib.generate({
+      secret,
+      crypto: new otplib.NobleCryptoPlugin(),
+      base32: new otplib.ScureBase32Plugin()
+    })
   }
 
   test('should handle registration, vault onboarding, copy/download proceed-lock, and login', async ({ page }) => {

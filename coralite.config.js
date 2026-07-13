@@ -12,6 +12,7 @@ import bootstrapPlugin from './src/plugins/bootstrap.js'
 import emojiPlugin from './src/plugins/emoji-picker-plugin.js'
 import routerPlugin from './src/plugins/router-plugin.js'
 import fusePlugin from './src/plugins/fuse-plugin.js'
+import totpPlugin from './src/plugins/totp-plugin.js'
 import notificationPlugin from './src/plugins/notification-plugin.js'
 import serviceWorkerPlugin from './src/plugins/service-worker-plugin.js'
 import pkg from './package.json' with { type: 'json' }
@@ -54,6 +55,7 @@ export default defineConfig({
     routerPlugin(),
     emojiPlugin,
     fusePlugin,
+    totpPlugin,
     bootstrapPlugin,
     webrtcPlugin(),
     notificationPlugin,

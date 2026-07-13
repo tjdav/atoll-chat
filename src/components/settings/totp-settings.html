@@ -1,7 +1,7 @@
 <template id="totp-settings">
   <div class="d-flex align-items-center justify-content-between mt-4">
     <div>
-      <h6 class="mb-0">Two-Step Authentication (TOTP)</h6>
+      <h6 class="mb-0">Two-Step Authentication</h6>
       <p class="text-muted small mb-0">{{ totpStatus }}</p>
     </div>
     <button class="btn btn-outline-primary btn-sm" ref="btnManageTotp" data-testid="btnManageTotp">
@@ -82,81 +82,12 @@
       totpActionLabel: 'Enable 2FA',
       totpStatus: 'Disabled'
     }),
-    client: async ({ refs, state, globalStore, bootstrap, pocketbase, eventBus }) => {
-      /* Base32 Decoder Helper */
-      function base32Decode (base32) {
-        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-        const clean = base32.toUpperCase().replace(/=+$/, '')
-        let length = clean.length
-        let bits = 0
-        let value = 0
-        let index = 0
-        const bytes = new Uint8Array(Math.floor((length * 5) / 8))
-
-        for (let i = 0; i < length; i++) {
-          const val = alphabet.indexOf(clean[i])
-          if (val === -1) {
-            throw new Error('Invalid base32 character')
-          }
-          value = (value << 5) | val
-          bits += 5
-          if (bits >= 8) {
-            bytes[index++] = (value >> (bits - 8)) & 255
-            bits -= 8
-          }
-        }
-        return bytes
-      }
-
-      /* HMAC-SHA1 HOTP Generator Helper */
-      async function generateHOTP (secretBase32, counter) {
-        const keyBytes = base32Decode(secretBase32)
-        const counterBytes = new Uint8Array(8)
-        let temp = counter
-        for (let i = 7; i >= 0; i--) {
-          counterBytes[i] = temp & 255
-          temp = temp >> 8
-        }
-
-        const cryptoKey = await crypto.subtle.importKey(
-          'raw',
-          keyBytes,
-          {
-            name: 'HMAC',
-            hash: { name: 'SHA-1' }
-          },
-          false,
-          ['sign']
-        )
-
-        const hmac = new Uint8Array(await crypto.subtle.sign('HMAC', cryptoKey, counterBytes))
-        const offset = hmac[hmac.length - 1] & 15
-        const binary =
-          ((hmac[offset] & 127) << 24) |
-          ((hmac[offset + 1] & 255) << 16) |
-          ((hmac[offset + 2] & 255) << 8) |
-          (hmac[offset + 3] & 255)
-
-        const otp = binary % 1000000
-        return otp.toString().padStart(6, '0')
-      }
-
-      /* TOTP Verifier */
-      async function verifyTOTP (secretBase32, code) {
-        const counter = Math.floor(Date.now() / 30000)
-        for (let i = -1; i <= 1; i++) {
-          const generated = await generateHOTP(secretBase32, counter + i)
-          if (generated === code) {
-            return true
-          }
-        }
-        return false
-      }
-
+    client: async ({ refs, state, globalStore, bootstrap, pocketbase, eventBus, totp }) => {
       const { $state } = globalStore
       const { Modal } = await bootstrap
       const { pb } = pocketbase
       const { $bus } = eventBus
+      const { $totp } = await totp
 
       const updateTotpState = () => {
         state.totpEnabled = !!pb.authStore.model?.totp_enabled
@@ -187,17 +118,10 @@
 
       let currentSecret = ''
 
-      const generateSecret = () => {
-        const alphabet = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567'
-        return Array.from(crypto.getRandomValues(new Uint8Array(16)))
-          .map(b => alphabet[b % alphabet.length])
-          .join('')
-      }
-
       btnManageTotp.addEventListener('click', async () => {
         if (!state.totpEnabled) {
           /* Setup / Enable Flow */
-          currentSecret = generateSecret()
+          currentSecret = $totp.generateSecret()
           secretText.textContent = currentSecret
           otpInput.value = ''
           verifyError.classList.add('d-none')
@@ -230,7 +154,7 @@
         verifyError.classList.add('d-none')
 
         try {
-          const isValid = await verifyTOTP(currentSecret, code)
+          const isValid = await $totp.verify(code, currentSecret)
           if (!isValid) {
             throw new Error('Invalid verification code. Please try again.')
           }
@@ -267,7 +191,7 @@
 
         try {
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
-          const isValid = await verifyTOTP(record.totp_secret, code)
+          const isValid = await $totp.verify(code, record.totp_secret)
           if (!isValid) {
             throw new Error('Invalid verification code. Please try again.')
           }
