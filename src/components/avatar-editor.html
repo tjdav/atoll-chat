@@ -29,9 +29,9 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, eventBus, bootstrap, utils, signal }) => {
+    client: async ({ refs, eventBus, bootstrap, media, signal }) => {
       const { $bus } = eventBus
-      const { $image } = utils
+      const { $media } = media
       const { Modal } = await bootstrap
   
       const modalEl = refs('editorModal')
@@ -192,7 +192,7 @@
         outCtx.restore()
   
         try {
-          const blob = await $image.compress(outputCanvas, {
+          const blob = await $media.compressImage(outputCanvas, {
             maxWidth: 400,
             maxHeight: 400,
             quality: 0.8,

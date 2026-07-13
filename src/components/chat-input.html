@@ -63,14 +63,14 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'd-flex' : 'd-none')
     },
-    client: ({ state, globalStore, localDb, eventBus, refs, _signal, cryptoWorker, pocketbase, utils, mediaWorker }) => {
+    client: ({ state, globalStore, localDb, eventBus, refs, _signal, cryptoWorker, pocketbase, utils, media }) => {
       const { $state } = globalStore
       const { $localDb } = localDb
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
       const { pb } = pocketbase
-      const { $func, $image } = utils
-      const { $mediaWorker: $media } = mediaWorker
+      const { $func } = utils
+      const { $media } = media
 
       let currentMusicMetadata = null
       let currentAlbumArtBlob = null
@@ -322,7 +322,7 @@
           state.isCompressing = true
           state.uploadStatus = 'Compressing image...'
           try {
-            const compressedBlob = await $image.compress(file, {
+            const compressedBlob = await $media.compressImage(file, {
               maxWidth: 1200,
               maxHeight: 1200,
               quality: 0.8,
@@ -345,40 +345,21 @@
           revokePreviewUrl()
           try {
             // Extract thumbnail and duration first
-            const result = await $media.getMetadata(file)
+            const result = await $media.extractThumbnail(file)
             if (result.thumbnail) {
-              const compressedThumbnail = await $image.compress(result.thumbnail, {
-                maxWidth: 1200,
-                maxHeight: 1200,
-                quality: 0.8,
-                format: 'image/webp'
-              })
-              state.thumbnailBlob = compressedThumbnail
-              state.autoExtractedThumbnailBlob = compressedThumbnail
-              state.thumbnailPreviewUrl = URL.createObjectURL(compressedThumbnail)
+              state.thumbnailBlob = result.thumbnail
+              state.autoExtractedThumbnailBlob = result.thumbnail
+              state.thumbnailPreviewUrl = URL.createObjectURL(result.thumbnail)
             }
             state.duration = result.duration
 
-            // Compress video if supported
-            if ($media.isSupported()) {
-              state.uploadStatus = 'Compressing video... 0%'
-              const { buffer, mimeType, extension } = await $media.compress(file, {
-                maxWidth: 1280,
-                maxHeight: 720,
-                bitrate: 2_000_000
-              })
-              const compressedBlob = new Blob([buffer], { type: mimeType })
-              // Keep original name but change extension if needed
-              let newName = file.name
-              const lastDot = file.name.lastIndexOf('.')
-              if (lastDot !== -1) {
-                newName = file.name.substring(0, lastDot) + extension
-              } else {
-                newName = file.name + extension
-              }
-  
-              file = new File([compressedBlob], newName, { type: mimeType })
-            }
+            // Compress video
+            state.uploadStatus = 'Compressing video... 0%'
+            file = await $media.compressVideo(file, {
+              maxWidth: 1280,
+              maxHeight: 720,
+              bitrate: 2_000_000
+            })
           } catch (err) {
             console.warn('[chat-input] Video processing failed, using original file:', err)
           } finally {
@@ -388,13 +369,11 @@
           state.isCompressing = true
           state.uploadStatus = 'Extracting metadata...'
           try {
-            const result = await $media.getMetadata(file)
+            const result = await $media.extractThumbnail(file)
             if (result) {
               currentMusicMetadata = result.metadata
               state.duration = result.duration
-              if (result.albumArt) {
-                currentAlbumArtBlob = new Blob([result.albumArt], { type: result.albumArtMimeType || 'image/jpeg' })
-              }
+              currentAlbumArtBlob = result.albumArt
             }
           } catch (metaErr) {
             console.warn('[chat-input] Failed to extract metadata:', metaErr)
@@ -471,7 +450,7 @@
         state.uploadStatus = 'Compressing custom cover...'
         try {
           // Compress custom cover directly in the main thread (<= 50KB constraint)
-          const compressed = await $image.compress(file, {
+          const compressed = await $media.compressImage(file, {
             maxWidth: 480,
             maxHeight: 480,
             quality: 0.6,

@@ -6,6 +6,7 @@ import localDbPlugin from './src/plugins/local-db-plugin.js'
 import utilsPlugin from './src/plugins/utils-plugin.js'
 import cryptoPlugin from './src/plugins/crypto-worker.js'
 import mediaWorkerPlugin from './src/plugins/media-worker-plugin.js'
+import mediaPlugin from './src/plugins/media-plugin.js'
 import syncPlugin from './src/plugins/sync-plugin.js'
 import webrtcPlugin from './src/plugins/web-rtc-plugin.js'
 import bootstrapPlugin from './src/plugins/bootstrap.js'
@@ -51,6 +52,7 @@ export default defineConfig({
     utilsPlugin,
     cryptoPlugin({ url: pocketbaseBaseUrl }),
     mediaWorkerPlugin,
+    mediaPlugin,
     syncPlugin(),
     routerPlugin(),
     emojiPlugin,
