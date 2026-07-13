@@ -1,7 +1,7 @@
 <template id="passkey-settings">
   <div class="d-flex align-items-center justify-content-between">
     <div>
-      <h6 class="mb-0">Vault Passkey</h6>
+      <h6 class="mb-0">Biometric Unlock</h6>
       <p class="text-muted small mb-0">{{ passkeyStatus }}</p>
     </div>
     <button class="btn btn-outline-primary btn-sm" ref="btnManagePasskey" data-testid="btnManagePasskey">
@@ -18,7 +18,7 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <p class="small text-muted mb-4">To {{ passkeyActionVerb }} your vault passkey, please enter your current vault password to confirm your identity and access your cryptographic keys.</p>
+          <p class="small text-muted mb-4">To {{ passkeyActionVerb }} biometric unlock, please enter your current vault password to confirm your identity and access your cryptographic keys.</p>
           <form ref="verifyForm">
             <div class="mb-3">
               <label class="form-label small fw-bold">Vault Password</label>
@@ -52,28 +52,29 @@
   export default defineComponent({
     server: () => ({
       hasPasskey: false,
-      passkeyActionLabel: 'Add Passkey',
-      passkeyActionVerb: 'add'
+      passkeyActionLabel: 'Enable Biometric Unlock',
+      passkeyActionVerb: 'enable'
     }),
     getters: {
-      passkeyStatus: (state) => (state.hasPasskey ? 'Configured' : 'Not configured')
+      passkeyStatus: (state) => (state.hasPasskey ? 'Enabled on this device' : 'Disabled')
     },
-    client: async ({ refs, state, globalStore, bootstrap, pocketbase, cryptoWorker, utils, eventBus, totp }) => {
+    client: async ({ refs, state, globalStore, bootstrap, pocketbase, cryptoWorker, eventBus, totp, biometric }) => {
       const { $state } = globalStore
       const { Modal } = await bootstrap
       const { pb } = pocketbase
-      const { $crypto } = utils
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { $totp } = await totp
 
-      const updatePasskeyState = () => {
-        state.hasPasskey = !!pb.authStore.model?.passkey_credential_id
-        state.passkeyActionLabel = state.hasPasskey ? 'Update Passkey' : 'Add Passkey'
-        state.passkeyActionVerb = state.hasPasskey ? 'update' : 'add'
+      const updatePasskeyState = async () => {
+        const userId = pb.authStore.model?.id
+        const storedKey = userId ? localStorage.getItem(`atoll_vault_wrap_${userId}`) : null
+        state.hasPasskey = !!storedKey
+        state.passkeyActionLabel = state.hasPasskey ? 'Disable Biometric Unlock' : 'Enable Biometric Unlock'
+        state.passkeyActionVerb = state.hasPasskey ? 'disable' : 'enable'
       }
 
-      updatePasskeyState()
+      await updatePasskeyState()
   
       $state.subscribe('currentUser', updatePasskeyState)
 
@@ -88,6 +89,14 @@
 
       const totpStepUpSection = refs('totpStepUpSection')
       const totpStepUpInput = refs('totpStepUpInput')
+
+      const checkBiometricSupport = async () => {
+        if (!await biometric.isAvailable()) {
+          btnManagePasskey.disabled = true
+          state.passkeyActionLabel = 'Biometrics Unsupported'
+        }
+      }
+      await checkBiometricSupport()
 
       btnManagePasskey.addEventListener('click', () => {
         verifyError.classList.add('d-none')
@@ -130,67 +139,45 @@
           }
 
           const wasConfigured = state.hasPasskey
-          const { createPasskey } = await import('../../utils/cryptoUtils.js')
-  
-          const KEK_Password = await $worker.execute('worker:derive_key_from_password', {
-            password,
-            salt: record.vault_salt
-          })
 
-          let masterKey
-          try {
-            masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
-              ciphertext: record.encrypted_master_keys.ciphertext,
-              nonce: record.encrypted_master_keys.nonce,
-              key: KEK_Password
+          if (wasConfigured) {
+            await biometric.deleteMasterKey(record.id)
+            await updatePasskeyState()
+            verifyModal.hide()
+            $bus.emit('ui:show_toast', {
+              message: 'Biometric unlock successfully disabled!',
+              type: 'success'
             })
-            if (!masterKey) {
+          } else {
+            const KEK_Password = await $worker.execute('worker:derive_key_from_password', {
+              password,
+              salt: record.vault_salt
+            })
+
+            let masterKey
+            try {
+              masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
+                ciphertext: record.encrypted_master_keys.ciphertext,
+                nonce: record.encrypted_master_keys.nonce,
+                key: KEK_Password
+              })
+              if (!masterKey) {
+                throw new Error('Invalid Vault Password')
+              }
+            } catch (_err) {
               throw new Error('Invalid Vault Password')
             }
-          } catch {
-            throw new Error('Invalid Vault Password')
+
+            await biometric.storeMasterKey(masterKey, record.username, record.id)
+            await updatePasskeyState()
+            verifyModal.hide()
+            $bus.emit('ui:show_toast', {
+              message: 'Biometric unlock successfully enabled!',
+              type: 'success'
+            })
           }
-
-          const challenge = crypto.getRandomValues(new Uint8Array(32))
-          const passkeyPrfSalt = crypto.getRandomValues(new Uint8Array(32))
-  
-          const { credentialId, prfAvailable, prfResult: KEK_Passkey } = await createPasskey(record.username, challenge, passkeyPrfSalt)
-
-          if (!prfAvailable) {
-            throw new Error('This authenticator does not support the PRF extension required for vault encryption.')
-          }
-
-          if (!KEK_Passkey) {
-            throw new Error('Failed to retrieve PRF key from passkey.')
-          }
-
-          const masterKeys = {
-            private_box_key: $state.currentUser.private_box_key,
-            private_sign_key: $state.currentUser.private_sign_key
-          }
-
-          const encryptedVaultPasskey = await $worker.execute('worker:encrypt_vault', {
-            privateKeys: masterKeys,
-            KEK: KEK_Passkey
-          })
-
-          await pb.collection('users').update(record.id, {
-            passkey_credential_id: $crypto.toBase64(credentialId),
-            passkey_prf_salt: $crypto.toBase64(passkeyPrfSalt),
-            encrypted_master_keys_passkey: encryptedVaultPasskey
-          })
-
-          await pb.collection('users').authRefresh()
-  
-          updatePasskeyState()
-  
-          verifyModal.hide()
-          $bus.emit('ui:show_toast', {
-            message: `Passkey successfully ${wasConfigured ? 'updated' : 'added'}!`,
-            type: 'success'
-          })
         } catch (error) {
-          console.error('Passkey management error:', error)
+          console.error('Biometric management error:', error)
           verifyError.textContent = error.message || 'Verification failed'
           verifyError.classList.remove('d-none')
         } finally {

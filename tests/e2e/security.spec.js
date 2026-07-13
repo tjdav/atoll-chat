@@ -315,7 +315,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('[data-testid$="__btnVerifyPassword"]').click()
 
     /* Confirm passkey addition succeeded */
-    await expect(page.locator('.toast-body')).toContainText('Passkey successfully added!')
+    await expect(page.locator('.toast-body')).toContainText('Biometric unlock successfully enabled!')
 
     /* TEST DEVICE TRUST STATE MACHINE (UNTRUSTED VS TRUSTED) */
     await page.locator('[data-testid$="btnLogout"]').click()

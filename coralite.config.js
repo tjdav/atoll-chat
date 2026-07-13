@@ -16,6 +16,7 @@ import fusePlugin from './src/plugins/fuse-plugin.js'
 import totpPlugin from './src/plugins/totp-plugin.js'
 import notificationPlugin from './src/plugins/notification-plugin.js'
 import serviceWorkerPlugin from './src/plugins/service-worker-plugin.js'
+import biometricPlugin from './src/plugins/biometric-plugin.js'
 import pkg from './package.json' with { type: 'json' }
 
 const pocketbaseBaseUrl = process.env.DATABASE_URL || 'http://localhost:8090'
@@ -61,6 +62,7 @@ export default defineConfig({
     bootstrapPlugin,
     webrtcPlugin(),
     notificationPlugin,
+    biometricPlugin,
     serviceWorkerPlugin({
       name: pkg.name,
       version: pkg.version

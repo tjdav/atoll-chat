@@ -84,7 +84,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, utils }) => {
+    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, utils, biometric }) => {
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $sync } = realtimeSync
@@ -152,14 +152,58 @@
         $state.isVaultUnlocked = false
       })
 
-      const checkPasskeySupport = async () => {
+      const checkBiometricSupport = async () => {
         const record = pb.authStore.model
-        if (record && record.passkey_credential_id) {
-          btnPasskey.classList.remove('d-none')
+        if (record && await biometric.isAvailable()) {
+          const storedKey = localStorage.getItem(`atoll_vault_wrap_${record.id}`)
+          if (storedKey) {
+            btnPasskey.classList.remove('d-none')
+          } else {
+            btnPasskey.classList.add('d-none')
+          }
+        } else {
+          btnPasskey.classList.add('d-none')
         }
       }
 
-      checkPasskeySupport()
+      checkBiometricSupport()
+
+      btnPasskey.addEventListener('click', async () => {
+        try {
+          updateStatus('Authenticating via biometrics...')
+          const record = pb.authStore.model
+          if (!record) {
+            throw new Error('User not logged in.')
+          }
+
+          const masterKey = await biometric.retrieveMasterKey(record.id)
+          if (!masterKey) {
+            throw new Error('Biometric authentication failed to retrieve Master Key.')
+          }
+
+          updateStatus('Decrypting private keys...')
+          const fetchedRecord = await pb.collection('users').getOne(record.id)
+          const { encrypted_private_keys: encryptedPrivateKeys } = fetchedRecord
+
+          if (!encryptedPrivateKeys) {
+            throw new Error('Secure vault not found on server.')
+          }
+
+          const decryptedKeys = await $worker.execute('worker:decrypt_vault_v2', {
+            encrypted_private_keys: encryptedPrivateKeys,
+            master_key: masterKey
+          })
+
+          await completeUnlock(decryptedKeys, fetchedRecord)
+        } catch (error) {
+          console.error('Biometric unlock error:', error)
+          let errorMessage = 'Biometric unlock failed'
+          if (error.message) {
+            errorMessage = error.message
+          }
+          updateStatus(errorMessage)
+        }
+      })
 
       if (pb.authStore.model) {
         vaultUsernameHidden.value = `${pb.authStore.model.username} - Vault`
