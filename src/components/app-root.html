@@ -6,7 +6,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
@@ -24,6 +24,7 @@
       const container = refs('container')
 
       let isDeviceTrusted = false
+      let isLifecycleRegistered = false
 
       router.init()
 
@@ -157,6 +158,17 @@
         $state.currentUser = {
           ...userRecord,
           ...keys
+        }
+
+        if (!isLifecycleRegistered) {
+          isLifecycleRegistered = true
+          appLifecycle.registerListeners()
+            .then(() => {
+              console.log('[app-root] App lifecycle listeners registered successfully.')
+            })
+            .catch((err) => {
+              console.error('[app-root] Failed to register app lifecycle listeners:', err)
+            })
         }
 
         if ($state.notificationsEnabled) {

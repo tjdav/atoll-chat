@@ -49,6 +49,7 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
+    "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.4.1",
     "@capacitor/filesystem": "^8.1.2",
     "bootstrap": "^5.3.8",

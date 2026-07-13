@@ -100,6 +100,22 @@ export default function syncPlugin () {
             }
           }
 
+          if (pluginContext.$bus) {
+            pluginContext.$bus.on('app:foreground', async () => {
+              const { $state } = instanceContext.globalStore
+              if ($state.isAuthenticated && $state.isVaultUnlocked) {
+                console.info('[sync-plugin] App entered foreground. Triggering catch-up synchronization.')
+                try {
+                  await performCatchUpSync()
+                } catch (err) {
+                  console.error('[sync-plugin] Foreground sync catch-up failed:', err)
+                }
+              } else {
+                console.info('[sync-plugin] App entered foreground but user is not authenticated or vault is locked. Skipping sync.')
+              }
+            })
+          }
+
           const startSubscriptions = async () => {
             if (isSubscribed) {
               return
