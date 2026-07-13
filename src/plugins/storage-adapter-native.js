@@ -4,6 +4,9 @@
  * and a fallback SQLite emulator in localStorage/memory to ensure platform equivalence.
  */
 
+/**
+ *
+ */
 export function createNativeStorageAdapter () {
   // In-memory/localStorage stores to simulate SQLite persistence on Native
   const localRooms = new Map()
@@ -68,7 +71,8 @@ export function createNativeStorageAdapter () {
      * to prevent Out-Of-Memory crashes over the Capacitor JS Bridge.
      */
     saveFile: async (fileName, blob) => {
-      const CHUNK_SIZE = 2 * 1024 * 1024 // 2MB chunk limit
+      // 2MB chunk limit
+      const CHUNK_SIZE = 2 * 1024 * 1024
       const totalSize = blob.size
       let offset = 0
       let chunkIndex = 0
@@ -80,7 +84,7 @@ export function createNativeStorageAdapter () {
         const chunk = blob.slice(offset, offset + CHUNK_SIZE)
         // Convert the chunk to ArrayBuffer to simulate reading the file payload
         const buffer = await chunk.arrayBuffer()
-        
+
         chunkIndex++
         console.log(`[NativeStorageAdapter] [JS Bridge Guardrail] Writing chunk ${chunkIndex} of ${totalChunks} (${buffer.byteLength} bytes) to native disk...`)
 
@@ -90,8 +94,14 @@ export function createNativeStorageAdapter () {
       console.info(`[NativeStorageAdapter] saveFile completed successfully for "${fileName}"`)
 
       // For stub functionality, keep the metadata and blob in local memory/cache
-      localFiles.set(fileName, { name: fileName, blob })
-      persistToLocalStorage('files', fileName, { name: fileName, isMockFile: true })
+      localFiles.set(fileName, {
+        name: fileName,
+        blob
+      })
+      persistToLocalStorage('files', fileName, {
+        name: fileName,
+        isMockFile: true
+      })
       return true
     },
 
@@ -154,7 +164,7 @@ export function createNativeStorageAdapter () {
       return true
     },
 
-    // --- Config Domain ---
+    // Config Domain
     getConfig: async (key) => {
       const record = localConfig.get(key)
       return record ? record.value : null
@@ -165,7 +175,10 @@ export function createNativeStorageAdapter () {
     },
 
     saveConfig: async (key, value) => {
-      const data = { key, value }
+      const data = {
+        key,
+        value
+      }
       localConfig.set(key, data)
       persistToLocalStorage('config', key, data)
       return true
@@ -185,7 +198,7 @@ export function createNativeStorageAdapter () {
       return true
     },
 
-    // --- Room Domain ---
+    // Room Domain
     getRoom: async (id) => {
       return localRooms.get(id) || null
     },
@@ -198,10 +211,70 @@ export function createNativeStorageAdapter () {
 
     updateRoom: async (id, changes) => {
       const existing = localRooms.get(id) || {}
-      const updated = { ...existing, ...changes }
+      const updated = {
+        ...existing,
+        ...changes
+      }
       localRooms.set(id, updated)
       persistToLocalStorage('rooms', id, updated)
       return true
+    },
+
+    deleteRoomData: async (roomId) => {
+      // Remove room messages
+      for (const [uuid, msg] of localMessages.entries()) {
+        if (msg.room_id === roomId) {
+          localMessages.delete(uuid)
+          removeFromLocalStorage('messages', uuid)
+        }
+      }
+      // Remove room assets
+      for (const [id, asset] of localAssets.entries()) {
+        if (asset.room_id === roomId) {
+          localAssets.delete(id)
+          removeFromLocalStorage('assets', id)
+        }
+      }
+      // Remove room
+      localRooms.delete(roomId)
+      removeFromLocalStorage('rooms', roomId)
+      return true
+    },
+
+    updateRoomMemberState: async (roomId, userId, memberState) => {
+      const room = localRooms.get(roomId)
+      if (room && room.participants) {
+        const pIndex = room.participants.findIndex(p => p.id === userId)
+        if (pIndex !== -1) {
+          if (memberState.last_read_message_id !== undefined) {
+            room.participants[pIndex].last_read_message_id = memberState.last_read_message_id
+          }
+          if (memberState.is_muted !== undefined) {
+            room.participants[pIndex].is_muted = memberState.is_muted
+          }
+          localRooms.set(roomId, room)
+          persistToLocalStorage('rooms', roomId, room)
+        }
+      }
+      return true
+    },
+
+    updateRoomsWithParticipant: async (userId, participantData) => {
+      const updatedRoomIds = []
+      for (const [id, room] of localRooms.entries()) {
+        if (room.participants) {
+          const pIndex = room.participants.findIndex(p => p.id === userId)
+          if (pIndex !== -1) {
+            room.participants[pIndex].name = participantData.name
+            room.participants[pIndex].username = participantData.username
+            room.participants[pIndex].avatar = participantData.avatar
+            localRooms.set(id, room)
+            persistToLocalStorage('rooms', id, room)
+            updatedRoomIds.push(id)
+          }
+        }
+      }
+      return updatedRoomIds
     },
 
     getAllRoomsSorted: async (lastTimestamp, batchSize) => {
@@ -227,7 +300,7 @@ export function createNativeStorageAdapter () {
       return rooms[rooms.length - 1] || null
     },
 
-    // --- Message Domain ---
+    // Message Domain
     getMessage: async (localUuid) => {
       return localMessages.get(localUuid) || null
     },
@@ -236,6 +309,23 @@ export function createNativeStorageAdapter () {
       localMessages.set(message.local_uuid, message)
       persistToLocalStorage('messages', message.local_uuid, message)
       return true
+    },
+
+    updateMessage: async (localUuid, changes) => {
+      const existing = localMessages.get(localUuid) || {}
+      const updated = {
+        ...existing,
+        ...changes
+      }
+      localMessages.set(localUuid, updated)
+      persistToLocalStorage('messages', localUuid, updated)
+      return true
+    },
+
+    getAbsoluteLatestMessage: async (roomId) => {
+      const msgs = Array.from(localMessages.values()).filter(m => m.room_id === roomId)
+      msgs.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
+      return msgs[0] || null
     },
 
     getMessagesByRoom: async (roomId, limit) => {
@@ -280,7 +370,7 @@ export function createNativeStorageAdapter () {
       return Array.from(localMessages.values()).filter(m => ids.includes(m.target_id))
     },
 
-    // --- Asset Domain ---
+    // Asset Domain
     getAsset: async (id) => {
       return localAssets.get(id) || null
     },

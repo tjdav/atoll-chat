@@ -17,6 +17,10 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
         let isReady = false
         const readyQueue = []
 
+        if (typeof pluginContext.registerStorageWorker === 'function') {
+          pluginContext.registerStorageWorker(worker)
+        }
+
         worker.onmessage = (event) => {
           const { id, type, payload, result, error } = event.data
 

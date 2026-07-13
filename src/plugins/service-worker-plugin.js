@@ -44,6 +44,15 @@ export default function (config) {
           version: '${version}'
         }`)
 
+        // Generate worker-bridge.js
+        try {
+          const bridgeSrcPath = join(projectRoot, 'src', 'assets', 'worker-bridge.js')
+          const bridgeContent = await readFile(bridgeSrcPath, 'utf-8')
+          await app.writeFile('assets/worker-bridge.js', bridgeContent)
+        } catch (err) {
+          console.error('[serviceWorker plugin] Failed to copy worker-bridge.js to output:', err)
+        }
+
         // scan output directory for files to cache
         let assetsToCache = []
         try {

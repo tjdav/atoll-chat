@@ -40,17 +40,16 @@ const workerSelf = rawSelf
 /* global importScripts */
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
-importScripts('/assets/dexie.js')
+importScripts('/assets/worker-bridge.js')
 
 const sodium = workerSelf.sodium
-const Dexie = workerSelf.Dexie
+const workerBridge = workerSelf.workerBridge
 
 /**
  * The Worker Script for Atoll Chat
  * Handles heavy cryptographic operations off the main thread.
  */
 
-let db
 let baseUrl
 let authToken
 const publicKeyCache = new Map()
@@ -67,15 +66,6 @@ let isInitialized = false
 async function init () {
   try {
     await sodium.ready
-
-    db = new Dexie('AtollChatDB')
-    db.version(9).stores({
-      local_rooms: 'id, is_group, updated_at',
-      local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, target_id',
-      local_assets: 'id, room_id, message_id, mime_type, created_at',
-      local_config: 'key'
-    })
-
     self.postMessage({ type: 'worker:ready' })
   } catch (err) {
     console.error('Worker Init Error:', err)
@@ -677,7 +667,7 @@ async function sendMessage (rpcId, payload) {
     throw new Error('User identity keys not found in worker')
   }
 
-  const room = await db.local_rooms.get(room_id)
+  const room = await workerBridge.request('getRoom', [room_id])
   if (!room || !room.key_history || room.key_history.length === 0) {
     throw new Error('Encryption keys not found for this room')
   }
@@ -824,10 +814,7 @@ async function sendMessage (rpcId, payload) {
   const nonceBase64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
 
   // fetch causal link
-  const lastMsg = await db.local_messages
-    .where('[room_id+created_at]')
-    .between([room_id, Dexie.minKey], [room_id, Dexie.maxKey])
-    .last()
+  const lastMsg = await workerBridge.request('getAbsoluteLatestMessage', [room_id])
   const previousMsgId = lastMsg ? (lastMsg.id || lastMsg.local_uuid) : 'START'
 
   // Sign Message
@@ -883,7 +870,7 @@ async function sendMessage (rpcId, payload) {
     updateData.thumbnail = thumbnailInfo
     updateData.duration = duration
 
-    await db.local_assets.put({
+    await workerBridge.request('saveAsset', [{
       id: mediaId,
       media_id: mediaId,
       room_id,
@@ -897,14 +884,14 @@ async function sendMessage (rpcId, payload) {
       album_art: albumArtInfo,
       thumbnail: thumbnailInfo,
       duration
-    })
+    }])
   }
 
   let existing = null
   if (type !== 'ice_candidate') {
-    existing = await db.local_messages.get(localUuid)
+    existing = await workerBridge.request('getMessage', [localUuid])
     if (existing) {
-      await db.local_messages.update(localUuid, updateData)
+      await workerBridge.request('updateMessage', [localUuid, updateData, room_id])
     } else {
       // For reactions or other types that might not have been optimistically written yet
       existing = {
@@ -916,29 +903,9 @@ async function sendMessage (rpcId, payload) {
         target_id,
         ...updateData
       }
-      await db.local_messages.put(existing)
+      await workerBridge.request('saveMessage', [existing])
     }
   }
-
-  const fullMessage = (type === 'ice_candidate' || !existing)
-    ? {
-      ...plaintextObj,
-      ...updateData,
-      room_id,
-      sender_id: currentUserKeys.id
-    }
-    : {
-      ...existing,
-      ...updateData
-    }
-
-  self.postMessage({
-    type: 'db:new_local_data',
-    payload: {
-      room_id,
-      message: fullMessage
-    }
-  })
 
   self.postMessage({
     id: rpcId,
@@ -965,26 +932,14 @@ async function processIncomingMessage (rpcId, record) {
 
   // Anti-duplication: check if local_uuid already exists
   if (localUuid) {
-    const exists = await db.local_messages.get(localUuid)
+    const exists = await workerBridge.request('getMessage', [localUuid])
     if (exists) {
       // If it exists and status is pending, update it to sent/delivered
       if (exists.status === 'pending') {
-        await db.local_messages.update(localUuid, {
-          id: id,
+        await workerBridge.request('updateMessage', [localUuid, {
+          id,
           status: 'sent'
-        })
-        const fullMessage = {
-          ...exists,
-          id: id,
-          status: 'sent'
-        }
-        self.postMessage({
-          type: 'db:new_local_data',
-          payload: {
-            room_id,
-            message: fullMessage
-          }
-        })
+        }, room_id])
       }
 
       self.postMessage({
@@ -1042,7 +997,7 @@ async function processIncomingMessage (rpcId, record) {
   }
 
   // Symmetric Decryption (X25519)
-  const room = await db.local_rooms.get(room_id)
+  const room = await workerBridge.request('getRoom', [room_id])
   if (!room) {
     throw new Error(`Local room ${room_id} not found`)
   }
@@ -1104,7 +1059,7 @@ async function processIncomingMessage (rpcId, record) {
     decryptedMessage.duration = duration
 
     // Also store in local_assets for the global archive
-    await db.local_assets.put({
+    await workerBridge.request('saveAsset', [{
       id: media_id,
       media_id,
       room_id: room_id,
@@ -1118,7 +1073,7 @@ async function processIncomingMessage (rpcId, record) {
       album_art,
       thumbnail,
       duration
-    })
+    }])
   }
 
   if (type === 'link') {
@@ -1126,17 +1081,9 @@ async function processIncomingMessage (rpcId, record) {
   }
 
   if (type !== 'ice_candidate') {
-    await db.local_messages.put(decryptedMessage)
+    await workerBridge.request('saveMessage', [decryptedMessage])
   }
 
-  // Notify UI and resolve RPC.
-  self.postMessage({
-    type: 'db:new_local_data',
-    payload: {
-      room_id: room_id,
-      message: decryptedMessage
-    }
-  })
   self.postMessage({
     id: rpcId,
     type: 'worker:process_incoming_message',
@@ -1147,29 +1094,14 @@ async function processIncomingMessage (rpcId, record) {
 async function updateRoomMember (rpcId, record) {
   const { room_id, user_id, last_read_message_id, is_muted } = record
 
-  const room = await db.local_rooms.get(room_id)
-  if (room && room.participants) {
-    const pIndex = room.participants.findIndex(p => p.id === user_id)
-    if (pIndex !== -1) {
-      if (last_read_message_id !== undefined) {
-        room.participants[pIndex].last_read_message_id = last_read_message_id
-      }
-      if (is_muted !== undefined) {
-        room.participants[pIndex].is_muted = is_muted
-      }
-      await db.local_rooms.put(room)
-
-      self.postMessage({
-        type: 'db:new_local_data',
-        payload: { room_id }
-      })
-
-      self.postMessage({
-        type: 'room:member_updated',
-        payload: { room_id }
-      })
+  await workerBridge.request('updateRoomMemberState', [
+    room_id,
+    user_id,
+    {
+      last_read_message_id,
+      is_muted
     }
-  }
+  ])
 
   self.postMessage({
     id: rpcId,
@@ -1180,14 +1112,7 @@ async function updateRoomMember (rpcId, record) {
 
 async function deleteLocalRoom (rpcId, payload) {
   const { room_id } = payload
-  await db.local_messages.where('room_id').equals(room_id).delete()
-  await db.local_assets.where('room_id').equals(room_id).delete()
-  await db.local_rooms.delete(room_id)
-
-  self.postMessage({
-    type: 'db:room_deleted',
-    payload: { room_id: room_id }
-  })
+  await workerBridge.request('deleteRoomData', [room_id])
 
   self.postMessage({
     id: rpcId,
@@ -1211,36 +1136,14 @@ async function updateUserData (rpcId, record) {
     })
   }
 
-  // Update all rooms where this user is a participant
-  const rooms = await db.local_rooms.toArray()
-  const updatedRooms = []
-  for (const room of rooms) {
-    if (room.participants) {
-      const pIndex = room.participants.findIndex(p => p.id === userId)
-      if (pIndex !== -1) {
-        room.participants[pIndex].name = name
-        room.participants[pIndex].username = username
-        room.participants[pIndex].avatar = avatar
-        updatedRooms.push(room)
-      }
+  await workerBridge.request('updateRoomsWithParticipant', [
+    userId,
+    {
+      name,
+      username,
+      avatar
     }
-  }
-
-  if (updatedRooms.length > 0) {
-    await db.local_rooms.bulkPut(updatedRooms)
-
-    for (const room of updatedRooms) {
-      self.postMessage({
-        type: 'db:new_local_data',
-        payload: { room_id: room.id }
-      })
-
-      self.postMessage({
-        type: 'room:member_updated',
-        payload: { room_id: room.id }
-      })
-    }
-  }
+  ])
 
   self.postMessage({
     id: rpcId,
@@ -1367,7 +1270,7 @@ async function processNewRoomKey (rpcId, payload) {
   }
 
   // epoch management and local storage
-  let room = await db.local_rooms.get(room_id)
+  let room = await workerBridge.request('getRoom', [room_id])
   if (!room) {
     room = {
       id: room_id,
@@ -1406,13 +1309,8 @@ async function processNewRoomKey (rpcId, payload) {
     })
   }
 
-  await db.local_rooms.put(room)
+  await workerBridge.request('saveRoom', [room])
 
-  // UI Notification
-  self.postMessage({
-    type: 'db:new_local_room',
-    payload: { room_id }
-  })
   self.postMessage({
     id: rpcId,
     type: 'worker:process_new_room_key',

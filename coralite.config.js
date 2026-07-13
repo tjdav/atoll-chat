@@ -86,6 +86,10 @@ export default defineConfig({
       dest: 'assets/libsodium-wrappers.js'
     },
     {
+      src: 'src/assets/worker-bridge.js',
+      dest: 'assets/worker-bridge.js'
+    },
+    {
       pkg: 'libsodium-sumo',
       path: 'dist/modules-sumo/libsodium-sumo.js',
       dest: 'assets/libsodium-sumo.js'

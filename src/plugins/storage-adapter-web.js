@@ -3,6 +3,9 @@
  * Standardizes Dexie/IndexedDB operations under a unified interface.
  */
 
+/**
+ *
+ */
 export function createWebStorageAdapter () {
   let dbInstance = null
 
@@ -85,7 +88,10 @@ export function createWebStorageAdapter () {
       if (!dbInstance) {
         throw new Error('Database not initialized')
       }
-      return dbInstance.table('local_files').put({ name: fileName, blob })
+      return dbInstance.table('local_files').put({
+        name: fileName,
+        blob
+      })
     },
 
     /**
@@ -99,7 +105,7 @@ export function createWebStorageAdapter () {
       return record ? record.blob : null
     },
 
-    // --- Config Domain ---
+    // Config Domain
     getConfig: async (key) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -119,7 +125,10 @@ export function createWebStorageAdapter () {
       if (!dbInstance) {
         throw new Error('Database not initialized')
       }
-      return dbInstance.local_config.put({ key, value })
+      return dbInstance.local_config.put({
+        key,
+        value
+      })
     },
 
     saveConfigs: async (configs) => {
@@ -136,7 +145,7 @@ export function createWebStorageAdapter () {
       return dbInstance.local_config.delete(key)
     },
 
-    // --- Room Domain ---
+    // Room Domain
     getRoom: async (id) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -156,6 +165,59 @@ export function createWebStorageAdapter () {
         throw new Error('Database not initialized')
       }
       return dbInstance.local_rooms.update(id, changes)
+    },
+
+    deleteRoomData: async (roomId) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      await dbInstance.local_messages.where('room_id').equals(roomId).delete()
+      await dbInstance.local_assets.where('room_id').equals(roomId).delete()
+      await dbInstance.local_rooms.delete(roomId)
+      return true
+    },
+
+    updateRoomMemberState: async (roomId, userId, memberState) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      const room = await dbInstance.local_rooms.get(roomId)
+      if (room && room.participants) {
+        const pIndex = room.participants.findIndex(p => p.id === userId)
+        if (pIndex !== -1) {
+          if (memberState.last_read_message_id !== undefined) {
+            room.participants[pIndex].last_read_message_id = memberState.last_read_message_id
+          }
+          if (memberState.is_muted !== undefined) {
+            room.participants[pIndex].is_muted = memberState.is_muted
+          }
+          await dbInstance.local_rooms.put(room)
+        }
+      }
+      return true
+    },
+
+    updateRoomsWithParticipant: async (userId, participantData) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      const rooms = await dbInstance.local_rooms.toArray()
+      const updatedRooms = []
+      for (const room of rooms) {
+        if (room.participants) {
+          const pIndex = room.participants.findIndex(p => p.id === userId)
+          if (pIndex !== -1) {
+            room.participants[pIndex].name = participantData.name
+            room.participants[pIndex].username = participantData.username
+            room.participants[pIndex].avatar = participantData.avatar
+            updatedRooms.push(room)
+          }
+        }
+      }
+      if (updatedRooms.length > 0) {
+        await dbInstance.local_rooms.bulkPut(updatedRooms)
+      }
+      return updatedRooms.map(r => r.id)
     },
 
     getAllRoomsSorted: async (lastTimestamp, batchSize) => {
@@ -179,7 +241,7 @@ export function createWebStorageAdapter () {
       return dbInstance.local_rooms.orderBy('updated_at').last()
     },
 
-    // --- Message Domain ---
+    // Message Domain
     getMessage: async (localUuid) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -192,6 +254,25 @@ export function createWebStorageAdapter () {
         throw new Error('Database not initialized')
       }
       return dbInstance.local_messages.put(message)
+    },
+
+    updateMessage: async (localUuid, changes) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_messages.update(localUuid, changes)
+    },
+
+    getAbsoluteLatestMessage: async (roomId) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      const messages = await dbInstance.local_messages
+        .where('[room_id+created_at]')
+        .between([roomId, ''], [roomId, '\uffff'])
+        .reverse()
+        .toArray()
+      return messages[0] || null
     },
 
     getMessagesByRoom: async (roomId, limit) => {
@@ -254,7 +335,7 @@ export function createWebStorageAdapter () {
       return dbInstance.local_messages.where('target_id').anyOf(ids).toArray()
     },
 
-    // --- Asset Domain ---
+    // Asset Domain
     getAsset: async (id) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')

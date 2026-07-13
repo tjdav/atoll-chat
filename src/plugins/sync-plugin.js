@@ -50,14 +50,8 @@ export default function syncPlugin () {
 
             $state.isCatchingUp = true
 
-            // Determine high-water marks using the storage plugin gateway
-            const lastMsg = await $storage.getLatestMessage('') // passing empty or dummy since getLatestMessage scans the DB
-            // Wait, our getLatestMessage(roomId) takes roomId, but to scan ALL rooms/messages, we can also use getAllRoomsSorted to find the latest updated room!
-            // Or we can query the latest message across all rooms.
-            // Let's check how lastMsg was fetched originally:
-            // "const lastMsg = await db.local_messages.orderBy('created_at').last()"
-            // Let's add a generic or custom latest message helper or query in storage-adapter-web.js for this.
-            // Let's see: we can implement a custom method `getLatestGlobalMessage()` and `getLatestGlobalRoom()` in our storage adapter!
+            /* Determine high-water marks using the storage plugin gateway.
+               We fetch the latest global message and the latest global room. */
             const lastMsgFromStorage = await $storage.getLatestGlobalMessage()
             const lastRoomFromStorage = await $storage.getLatestGlobalRoom()
 

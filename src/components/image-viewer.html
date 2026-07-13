@@ -185,7 +185,10 @@
         if (!hasMore) {
           return []
         }
-        const rawItems = await $storage.getAssetsByCategory('image', lastTimestamp ? { created_at: lastTimestamp, id: loadedItems[loadedItems.length - 1]?.id } : null, BATCH_SIZE)
+        const rawItems = await $storage.getAssetsByCategory('image', lastTimestamp ? {
+          created_at: lastTimestamp,
+          id: loadedItems[loadedItems.length - 1]?.id
+        } : null, BATCH_SIZE)
         if (rawItems.length < BATCH_SIZE) {
           hasMore = false
         }
