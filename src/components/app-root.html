@@ -6,7 +6,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
@@ -20,6 +20,7 @@
       const { $bus } = eventBus
       const { $notifications } = notifications
       const { $storage } = storage
+      const { $push } = push
       const container = refs('container')
 
       let isDeviceTrusted = false
@@ -161,6 +162,34 @@
         if ($state.notificationsEnabled) {
           $notifications.requestPermission().catch(console.error)
         }
+
+        $push.requestPermission()
+          .then((granted) => {
+            if (granted) {
+              return $push.register()
+            }
+            throw new Error('Push permission not granted')
+          })
+          .then((token) => {
+            if (token) {
+              console.log('[app-root] Push registration successful, transmitting token to backend:', token)
+              return pb.collection('users').update(userRecord.id, {
+                push_subscription: token
+              })
+            }
+          })
+          .then((updatedUser) => {
+            if (updatedUser) {
+              console.log('[app-root] Push subscription updated on backend successfully.')
+              $state.currentUser = {
+                ...$state.currentUser,
+                push_subscription: updatedUser.push_subscription
+              }
+            }
+          })
+          .catch((err) => {
+            console.error('[app-root] Push notification registration/update failed:', err)
+          })
       })
 
       $bus.on('auth:logout', () => {
