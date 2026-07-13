@@ -9,7 +9,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle, network, cryptoWorker }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle, network, cryptoWorker, deeplink }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
@@ -107,6 +107,96 @@
 
       router.init()
 
+      let pendingInviteRoomId = null
+
+      const processPendingInvite = async () => {
+        if (pendingInviteRoomId && $state.isAuthenticated && $state.isVaultUnlocked) {
+          const roomId = pendingInviteRoomId
+          pendingInviteRoomId = null
+          console.log(`[app-root] Processing pending room invitation for room ${roomId}`)
+          await handleJoinRoom(roomId)
+        }
+      }
+
+      /* Handler to join room from a deep-linked group invitation */
+      const handleJoinRoom = async (roomId) => {
+        if (!$state.currentUser || !$state.isVaultUnlocked) {
+          console.log(`[app-root] Queueing pending room invitation for ${roomId} (waiting for auth and vault unlock)`)
+          pendingInviteRoomId = roomId
+          return
+        }
+
+        try {
+          let isAlreadyMember = false
+          try {
+            await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+            isAlreadyMember = true
+          } catch (_err) {
+            /* Not a member yet */
+          }
+
+          if (!isAlreadyMember) {
+            console.log(`[app-root] User not a member of room ${roomId}. Creating membership record...`)
+            const roomRecord = await pb.collection('rooms').getOne(roomId, { requestKey: null })
+
+            await pb.collection('room_members').create({
+              room_id: roomId,
+              user_id: $state.currentUser.id,
+              epoch_id: 1,
+              role: 'member',
+              encrypted_room_key: '',
+              key_nonce: ''
+            }, { requestKey: null })
+
+            let participants = []
+            try {
+              const membersRes = await pb.collection('room_members').getList(1, 100, {
+                filter: `room_id="${roomId}"`,
+                expand: 'user_id',
+                requestKey: null
+              })
+              participants = membersRes.items.map(m => m.expand?.user_id).filter(Boolean)
+            } catch (err) {
+              console.error('[app-root] Failed to fetch participants for joined room:', err)
+            }
+
+            if (participants.length === 0) {
+              participants = [$state.currentUser]
+            }
+
+            await $storage.saveRoom({
+              id: roomId,
+              is_group: roomRecord.is_group || false,
+              name: roomRecord.name || 'Joined Room',
+              avatar: roomRecord.avatar || '',
+              participants: participants.map(u => ({
+                id: u.id,
+                username: u.username,
+                avatar: u.avatar,
+                collectionId: u.collectionId,
+                collectionName: u.collectionName
+              })),
+              user_role: 'member',
+              key_history: [{
+                epoch_id: 1,
+                key: ''
+              }],
+              created_at: roomRecord.created,
+              updated_at: roomRecord.updated
+            })
+          }
+
+          console.log(`[app-root] Selecting room ${roomId}`)
+          $bus.emit('room:select', { room_id: roomId })
+        } catch (err) {
+          console.error('[app-root] Failed to join room:', err)
+          $bus.emit('ui:show_toast', {
+            message: 'Failed to join group room. It may have been deleted or you do not have permission.',
+            type: 'danger'
+          })
+        }
+      }
+
       const checkDeviceTrust = async () => {
         if (!$state.isAuthenticated) {
           isDeviceTrusted = false
@@ -194,18 +284,25 @@
         }
       }
 
-      // Magic link handler
-      const handleMagicLink = async () => {
-        const params = new URLSearchParams(window.location.search)
-        const otpId = params.get('otpId')
-        const code = params.get('code')
+      /* Listen for unified deep link route events */
+      $bus.on('app:route_requested', async ({ path: routePath, queryParams }) => {
+        console.log('[app-root] Deep link route requested:', {
+          path: routePath,
+          queryParams
+        })
+
+        const otpId = queryParams?.otpId
+        const code = queryParams?.code
 
         if (otpId && code) {
           try {
-            const url = new URL(window.location.href)
-            url.searchParams.delete('otpId')
-            url.searchParams.delete('code')
-            window.history.replaceState({}, document.title, url.pathname + url.search)
+            console.log('[app-root] Deep Link Magic Link detected. Authenticating...')
+            if (window && window.location) {
+              const url = new URL(window.location.href)
+              url.searchParams.delete('otpId')
+              url.searchParams.delete('code')
+              window.history.replaceState({}, document.title, url.pathname + url.search)
+            }
 
             const authData = await pb.collection('users').authWithOTP(otpId, code)
 
@@ -223,14 +320,21 @@
             $state.currentUser = authData.record
             $state.isAuthenticated = true
           } catch (error) {
-            console.error('Magic Link auth failed:', error)
+            console.error('[app-root] Magic Link auth failed via Deep Link:', error)
             $bus.emit('ui:show_toast', {
               message: 'Magic link login failed. It may have expired or already been used.',
               type: 'danger'
             })
           }
+          return
         }
-      }
+
+        const inviteRoomId = queryParams?.invite || (routePath && routePath.startsWith('/invite/') ? routePath.split('/invite/')[1]?.split('?')[0]?.trim() : null)
+        if (inviteRoomId) {
+          console.log('[app-root] Deep Link Room invitation detected for room:', inviteRoomId)
+          await handleJoinRoom(inviteRoomId)
+        }
+      })
 
       // Network status listener
       $bus.on('app:network_change', (payload) => {
@@ -244,6 +348,8 @@
           ...userRecord,
           ...keys
         }
+
+        processPendingInvite().catch(console.error)
 
         if (!isLifecycleRegistered) {
           isLifecycleRegistered = true
@@ -318,8 +424,13 @@
         $state.authView = 'login'
       }
 
-      // Execute Magic Link detection, device trust verification, and UI setup
-      handleMagicLink().then(async () => {
+      /* Initialize deep link plugin on boot */
+      deeplink.initialize().then(async () => {
+        console.log('[app-root] DeepLink plugin initialized.')
+        await checkDeviceTrust()
+        updateUI()
+      }).catch(async (err) => {
+        console.error('[app-root] Failed to initialize DeepLink plugin:', err)
         await checkDeviceTrust()
         updateUI()
       })
@@ -328,7 +439,10 @@
         await checkDeviceTrust()
         updateUI()
       })
-      $state.subscribe('isVaultUnlocked', updateUI)
+      $state.subscribe('isVaultUnlocked', () => {
+        updateUI()
+        processPendingInvite().catch(console.error)
+      })
       $state.subscribe('authView', updateUI)
 
       $state.subscribe('isOnline', (val) => {
