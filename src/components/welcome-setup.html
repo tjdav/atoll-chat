@@ -93,9 +93,9 @@
 
   export default defineComponent({
     client: (context) => {
-      const { refs, pocketbase, globalStore, eventBus, realtimeSync, localDb, cryptoWorker } = context
+      const { refs, pocketbase, globalStore, eventBus, realtimeSync, storage, cryptoWorker } = context
       const { pb } = pocketbase
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $sync } = realtimeSync
@@ -345,8 +345,7 @@
           await pb.collection('users').authWithPassword(email, password)
 
           // Persist PB config for Service Worker access
-          const db = $localDb
-          await db.local_config.bulkPut([
+          await $storage.saveConfigs([
             {
               key: 'pb_url',
               value: pb.baseUrl

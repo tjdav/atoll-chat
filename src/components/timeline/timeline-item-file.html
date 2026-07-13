@@ -38,8 +38,8 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, globalStore, pocketbase, eventBus, signal, cryptoWorker, observe }) => {
-      const { $localDb } = localDb
+    client: async ({ refs, state, storage, globalStore, pocketbase, eventBus, signal, cryptoWorker, observe }) => {
+      const { $storage } = storage
       const { pb } = pocketbase
       const { $state } = globalStore
       const { $bus } = eventBus
@@ -119,7 +119,7 @@
             const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || ''
             // still need message for filename
-            const message = await $localDb.local_messages.get(state.localUuid)
+            const message = await $storage.getMessage(state.localUuid)
             if (callId !== lastCallId || signal.aborted) {
               return
             }
@@ -127,7 +127,7 @@
           }
 
           // async lifecycle
-          const message = await $localDb.local_messages.get(state.localUuid)
+          const message = await $storage.getMessage(state.localUuid)
           if (callId !== lastCallId || signal.aborted) {
             return
           }

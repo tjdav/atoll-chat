@@ -10,8 +10,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, localDb, eventBus, globalStore, refs, utils, fuse, pocketbase, cryptoWorker }) => {
-      const { $localDb } = localDb
+    client: ({ state, storage, eventBus, globalStore, refs, utils, fuse, pocketbase, cryptoWorker }) => {
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $time, $string, $list } = utils
@@ -24,12 +24,7 @@
       const BATCH_SIZE = 24
 
       const getLatestMessage = async (room_id) => {
-        const messages = await $localDb.local_messages
-          .where('[room_id+created_at]')
-          .between([room_id, ''], [room_id, '\uffff'])
-          .reverse()
-          .toArray()
-        return messages.find(m => m.type !== 'reaction' && m.type !== 'ice_candidate')
+        return $storage.getLatestMessage(room_id)
       }
 
       const getPreviewText = (msg, participants, isGroup) => {
@@ -188,11 +183,7 @@
         bus: eventBus,
         Fuse: $Fuse,
         fetchNextBatch: async (lastItem) => {
-          let query = $localDb.local_rooms.reverse()
-          if (lastItem) {
-            query = query.filter(item => item.updated_at < lastItem.item.updated_at)
-          }
-          const rawItems = await query.limit(BATCH_SIZE).toArray()
+          const rawItems = await $storage.getAllRoomsSorted(lastItem ? lastItem.item.updated_at : null, BATCH_SIZE)
           const items = await Promise.all(rawItems.map(enrichItem))
           return { items }
         },
@@ -218,7 +209,7 @@
         }
         updatingRooms.add(room_id)
         try {
-          const room = await $localDb.local_rooms.get(room_id)
+          const room = await $storage.getRoom(room_id)
           if (!room) {
             const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)
             if (existingItem) {
@@ -263,7 +254,7 @@
       }
 
       const markAsRead = async (room_id) => {
-        const room = await $localDb.local_rooms.get(room_id)
+        const room = await $storage.getRoom(room_id)
         if (!room) {
           return
         }
@@ -274,7 +265,7 @@
         const me = room.participants.find(p => p.id === $state.currentUser?.id)
         if (me && me.last_read_message_id !== latestMsg.id) {
           me.last_read_message_id = latestMsg.id
-          await $localDb.local_rooms.put(room)
+          await $storage.saveRoom(room)
           try {
             const memberRecord = await pb.collection('room_members').getFirstListItem(`room-id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
             if (memberRecord) {
@@ -297,7 +288,7 @@
       })
 
       $bus.on('room:toggle_read', async ({ room_id, isUnread }) => {
-        const room = await $localDb.local_rooms.get(room_id)
+        const room = await $storage.getRoom(room_id)
         if (!room) {
           return
         }
@@ -313,7 +304,7 @@
           }
         }
         me.last_read_message_id = newLastReadId
-        await $localDb.local_rooms.put(room)
+        await $storage.saveRoom(room)
         try {
           const memberRecord = await pb.collection('room_members').getFirstListItem(`room-id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
           if (memberRecord) {
@@ -330,7 +321,7 @@
       })
 
       $bus.on('room:toggle_mute', async ({ room_id, isMuted }) => {
-        const room = await $localDb.local_rooms.get(room_id)
+        const room = await $storage.getRoom(room_id)
         if (!room) {
           return
         }
@@ -340,7 +331,7 @@
         }
         const newMuteStatus = !isMuted
         me.is_muted = newMuteStatus
-        await $localDb.local_rooms.put(room)
+        await $storage.saveRoom(room)
         try {
           const memberRecord = await pb.collection('room_members').getFirstListItem(`room-id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
           if (memberRecord) {
@@ -366,7 +357,7 @@
           if (memberRecord) {
             await pb.collection('room_members').delete(memberRecord.id, { requestKey: null })
           }
-          const room = await $localDb.local_rooms.get(room_id)
+          const room = await $storage.getRoom(room_id)
           if (!isGroup && room?.participants?.length <= 1) {
             await pb.collection('rooms').delete(room_id, { requestKey: null })
           }
@@ -384,7 +375,7 @@
       })
 
       $bus.on('room:edit', async ({ room_id }) => {
-        const room = await $localDb.local_rooms.get(room_id)
+        const room = await $storage.getRoom(room_id)
         if (room) {
           $bus.emit('ui:open_edit_room', room)
         }

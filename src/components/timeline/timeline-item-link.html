@@ -33,8 +33,8 @@
       imageDisplayClass: (state) => (state.title ? '' : 'd-none'),
       urlHref: (state) => state.url
     },
-    client: ({ state, refs, localDb, globalStore, eventBus, pocketbase, signal, cryptoWorker, observe }) => {
-      const { $localDb } = localDb
+    client: ({ state, refs, storage, globalStore, eventBus, pocketbase, signal, cryptoWorker, observe }) => {
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { pb } = pocketbase
@@ -82,7 +82,7 @@
         }
 
         // query db
-        const msg = await $localDb.local_messages.get(uuid)
+        const msg = await $storage.getMessage(uuid)
         if (callId !== lastCallId || signal.aborted) {
           return
         }
@@ -147,7 +147,7 @@
         e.preventDefault()
         const uuid = state.localUuid
         const linkIndex = state.linkIndex || 0
-        const msg = await $localDb.local_messages.get(uuid)
+        const msg = await $storage.getMessage(uuid)
         const links = msg?.links || []
   
         $state.currentAppView = 'links'

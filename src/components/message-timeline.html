@@ -15,9 +15,9 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, globalStore, localDb, eventBus, signal, utils, pocketbase, cryptoWorker }) => {
+    client: ({ refs, globalStore, storage, eventBus, signal, utils, pocketbase, cryptoWorker }) => {
       const { $state } = globalStore
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $func } = utils
       const { pb } = pocketbase
@@ -139,8 +139,8 @@
             return
           }
           let [messages, room] = await Promise.all([
-            $localDb.local_messages.where('room_id').equals(room_id).sortBy('created_at'),
-            $localDb.local_rooms.get(room_id)
+            $storage.getMessagesByRoom(room_id),
+            $storage.getRoom(room_id)
           ])
 
           if ($state.activeSelectionId !== room_id) {

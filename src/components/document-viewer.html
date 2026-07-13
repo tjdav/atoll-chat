@@ -37,9 +37,9 @@
       errorMessage: '',
       fileName: 'Untitled Document'
     }),
-    client: async ({ state, signal, refs, pocketbase, localDb, globalStore, cryptoWorker, bootstrap }) => {
+    client: async ({ state, signal, refs, pocketbase, storage, globalStore, cryptoWorker, bootstrap }) => {
       const { pb } = pocketbase
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { $state } = globalStore
       const { $worker } = cryptoWorker
       const { Carousel } = bootstrap
@@ -210,13 +210,7 @@
         if (!hasMore) {
           return []
         }
-        let query = $localDb.local_assets.where('mime_type').notEqual('image/').and(a => !a.mime_type.startsWith('video/') && !a.mime_type.startsWith('audio/')).reverse()
-        const allMatching = await query.toArray()
-        let startIndex = 0
-        if (lastTimestamp) {
-          startIndex = allMatching.findIndex(a => a.created_at === lastTimestamp) + 1
-        }
-        const rawItems = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+        const rawItems = await $storage.getAssetsByCategory('document', lastTimestamp ? { created_at: lastTimestamp, id: loadedItems[loadedItems.length - 1]?.id } : null, BATCH_SIZE)
         if (rawItems.length < BATCH_SIZE) {
           hasMore = false
         }
@@ -248,7 +242,7 @@
         hasMore = true
 
         const activeId = $state.activeSelectionId
-        const activeAsset = activeId ? await $localDb.local_assets.get(activeId) : null
+        const activeAsset = activeId ? await $storage.getAsset(activeId) : null
         if (seq !== initSequence) {
           return
         }

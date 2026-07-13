@@ -2,7 +2,7 @@ import { defineConfig } from 'coralite-scripts'
 import pocketbasePlugin from './src/plugins/pocketbase.js'
 import eventBus from './src/plugins/event-bus.js'
 import statePlugin from './src/plugins/state-plugin.js'
-import localDbPlugin from './src/plugins/local-db-plugin.js'
+import storagePlugin from './src/plugins/storage-plugin.js'
 import utilsPlugin from './src/plugins/utils-plugin.js'
 import cryptoPlugin from './src/plugins/crypto-worker.js'
 import mediaWorkerPlugin from './src/plugins/media-worker-plugin.js'
@@ -49,7 +49,7 @@ export default defineConfig({
         isCatchingUp: false
       }
     }),
-    localDbPlugin(),
+    storagePlugin,
     utilsPlugin,
     cryptoPlugin({ url: pocketbaseBaseUrl }),
     mediaWorkerPlugin,

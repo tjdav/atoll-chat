@@ -11,7 +11,7 @@ export default definePlugin({
       return (instanceContext) => {
         const { $bus } = instanceContext.eventBus
         const { $state } = instanceContext.globalStore
-        const { $localDb } = instanceContext.localDb
+        const { $storage } = instanceContext.storage
         const { pb } = instanceContext.pocketbase
 
         let lastSoundPlayTime = 0
@@ -32,9 +32,9 @@ export default definePlugin({
 
           try {
             let audioSource = '/sounds/notification.mp3'
-            const customSound = await $localDb.local_config.get('custom_message_sound')
-            if (customSound && customSound.value instanceof Blob) {
-              audioSource = URL.createObjectURL(customSound.value)
+            const customSound = await $storage.getConfig('custom_message_sound')
+            if (customSound && customSound instanceof Blob) {
+              audioSource = URL.createObjectURL(customSound)
             }
 
             const audio = new Audio(audioSource)
@@ -88,7 +88,7 @@ export default definePlugin({
             if (!room_id) {
               return
             }
-            const room = await $localDb.local_rooms.get(room_id)
+            const room = await $storage.getRoom(room_id)
             if (!room) {
               return
             }
@@ -183,7 +183,7 @@ export default definePlugin({
             return
           }
 
-          const room = await $localDb.local_rooms.get(room_id)
+          const room = await $storage.getRoom(room_id)
           const me = room?.participants?.find(p => p.id === $state.currentUser?.id)
           const isMuted = me?.is_muted
 

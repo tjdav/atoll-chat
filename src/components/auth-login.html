@@ -35,9 +35,9 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, pocketbase, globalStore, localDb }) => {
+    client: ({ refs, pocketbase, globalStore, storage }) => {
       const { pb } = pocketbase
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { $state } = globalStore
 
       const loginForm = refs('loginForm')
@@ -71,8 +71,7 @@
       })
 
       const handleSuccessfulLogin = async () => {
-        const db = $localDb
-        await db.local_config.bulkPut([
+        await $storage.saveConfigs([
           {
             key: 'pb_url',
             value: pb.baseUrl

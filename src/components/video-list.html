@@ -10,8 +10,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, localDb, eventBus, globalStore, refs, utils, fuse }) => {
-      const { $localDb } = localDb
+    client: ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $list } = utils
@@ -31,13 +31,7 @@
         Fuse: $Fuse,
         searchKeys: ['filename'],
         fetchNextBatch: async (lastItem) => {
-          let query = $localDb.local_assets.where('mime_type').startsWith('video/').reverse()
-          const allMatching = await query.toArray()
-          let startIndex = 0
-          if (lastItem) {
-            startIndex = allMatching.findIndex(a => a.id === lastItem.id) + 1
-          }
-          const items = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+          const items = await $storage.getAssetsByCategory('video', lastItem, BATCH_SIZE)
           return { items }
         },
         render: async (itemsToDisplay, query) => {

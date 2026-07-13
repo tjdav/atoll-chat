@@ -37,8 +37,8 @@
       errorMessage: '',
       fileName: ''
     }),
-    client: async ({ state, signal, refs, localDb, globalStore, utils, bootstrap }) => {
-      const { $localDb } = localDb
+    client: async ({ state, signal, refs, storage, globalStore, utils, bootstrap }) => {
+      const { $storage } = storage
       const { $state } = globalStore
       const { $media } = utils
       const { Carousel } = bootstrap
@@ -185,13 +185,7 @@
         if (!hasMore) {
           return []
         }
-        let query = $localDb.local_assets.where('mime_type').startsWith('image/').reverse()
-        const allMatching = await query.toArray()
-        let startIndex = 0
-        if (lastTimestamp) {
-          startIndex = allMatching.findIndex(a => a.created_at === lastTimestamp) + 1
-        }
-        const rawItems = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+        const rawItems = await $storage.getAssetsByCategory('image', lastTimestamp ? { created_at: lastTimestamp, id: loadedItems[loadedItems.length - 1]?.id } : null, BATCH_SIZE)
         if (rawItems.length < BATCH_SIZE) {
           hasMore = false
         }
@@ -222,7 +216,7 @@
         hasMore = true
 
         const activeId = $state.activeSelectionId
-        const activeAsset = activeId ? await $localDb.local_assets.get(activeId) : null
+        const activeAsset = activeId ? await $storage.getAsset(activeId) : null
         if (seq !== initSequence) {
           return
         }

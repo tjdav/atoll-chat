@@ -63,9 +63,9 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'd-flex' : 'd-none')
     },
-    client: ({ state, globalStore, localDb, eventBus, refs, _signal, cryptoWorker, pocketbase, utils, media }) => {
+    client: ({ state, globalStore, storage, eventBus, refs, _signal, cryptoWorker, pocketbase, utils, media }) => {
       const { $state } = globalStore
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
       const { pb } = pocketbase
@@ -215,7 +215,7 @@
           links: params.links
         }
 
-        await $localDb.local_messages.put(optimisticMessage)
+        await $storage.saveMessage(optimisticMessage)
         $bus.emit('db:new_local_data', {
           room_id: room_id,
           message: optimisticMessage

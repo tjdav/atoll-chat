@@ -10,8 +10,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, localDb, eventBus, globalStore, refs, utils, fuse }) => {
-      const { $localDb } = localDb
+    client: ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $list } = utils
@@ -30,18 +30,9 @@
         bus: eventBus,
         Fuse: $Fuse,
         fetchNextBatch: async (lastItem) => {
-          const allAssets = await $localDb.local_assets.reverse().sortBy('created_at')
-          const filteredAssets = allAssets.filter(a => {
-            const mt = a.mime_type || ''
-            return !mt.startsWith('image/') && !mt.startsWith('audio/') && !mt.startsWith('video/')
-          })
-          let startIndex = 0
-          if (lastItem) {
-            startIndex = filteredAssets.findIndex(a => a.id === lastItem.item.id) + 1
-          }
-          const rawItems = filteredAssets.slice(startIndex, startIndex + BATCH_SIZE)
+          const rawItems = await $storage.getAssetsByCategory('document', lastItem ? lastItem.item : null, BATCH_SIZE)
           const items = await Promise.all(rawItems.map(async (asset) => {
-            const room = await $localDb.local_rooms.get(asset.room_id)
+            const room = await $storage.getRoom(asset.room_id)
             const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
             const searchContent = `${asset.filename || ''} ${roomName}`.toLowerCase()
             return {

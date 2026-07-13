@@ -10,8 +10,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, localDb, eventBus, globalStore, refs, utils, fuse }) => {
-      const { $localDb } = localDb
+    client: ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $list } = utils
@@ -30,11 +30,7 @@
         bus: eventBus,
         Fuse: $Fuse,
         fetchNextBatch: async (lastItem) => {
-          const allMessages = await $localDb.local_messages
-            .where('type')
-            .equals('link')
-            .reverse()
-            .sortBy('created_at')
+          const allMessages = await $storage.getLinkMessages()
 
           let startIndex = 0
           if (lastItem) {
@@ -44,7 +40,7 @@
           const rawItems = allMessages.slice(startIndex, startIndex + BATCH_SIZE)
           const items = []
           for (const message of rawItems) {
-            const room = await $localDb.local_rooms.get(message.room_id)
+            const room = await $storage.getRoom(message.room_id)
             const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
             let senderName = 'Unknown'
             if (room && room.participants) {

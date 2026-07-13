@@ -22,8 +22,8 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, pocketbase, globalStore, signal, eventBus, cryptoWorker, observe }) => {
-      const { $localDb } = localDb
+    client: async ({ refs, state, storage, pocketbase, globalStore, signal, eventBus, cryptoWorker, observe }) => {
+      const { $storage } = storage
       const { pb } = pocketbase
       const { $state } = globalStore
       const { $bus } = eventBus
@@ -222,7 +222,7 @@
           if (cached && state.localUuid) {
             const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             // still need message for waveform_data
-            const message = await $localDb.local_messages.get(state.localUuid)
+            const message = await $storage.getMessage(state.localUuid)
             if (callId !== lastCallId || signal.aborted) {
               return
             }
@@ -233,7 +233,7 @@
           if (!state.localUuid) {
             return
           }
-          const message = await $localDb.local_messages.get(state.localUuid)
+          const message = await $storage.getMessage(state.localUuid)
           if (callId !== lastCallId || signal.aborted) {
             return
           }

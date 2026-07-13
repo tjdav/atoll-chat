@@ -49,8 +49,8 @@
       ratioClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'ratio-16x9' : 'ratio-1x1'),
       iconClass: (state) => ((state.mimeType || '').startsWith('video/') ? 'bi-camera-video' : 'bi-image')
     },
-    client: ({ refs, state, localDb, eventBus, signal, utils }) => {
-      const { $localDb } = localDb
+    client: ({ refs, state, storage, eventBus, signal, utils }) => {
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $media } = utils
       const card = refs('card')
@@ -81,7 +81,7 @@
         }
   
         try {
-          const asset = await $localDb.local_assets.get(state.assetId)
+          const asset = await $storage.getAsset(state.assetId)
           let objectUrl = null
 
           if (isVideo) {

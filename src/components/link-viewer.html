@@ -31,8 +31,8 @@
     server: () => ({
       domain: ''
     }),
-    client: async ({ state, signal, refs, localDb, globalStore, pocketbase, cryptoWorker, bootstrap }) => {
-      const { $localDb } = localDb
+    client: async ({ state, signal, refs, storage, globalStore, pocketbase, cryptoWorker, bootstrap }) => {
+      const { $storage } = storage
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $worker } = cryptoWorker
@@ -60,7 +60,7 @@
 
       const updateItemUI = async (item, container) => {
         const { message: msg, link, linkIndex } = item
-        const room = await $localDb.local_rooms.get(msg.room_id)
+        const room = await $storage.getRoom(msg.room_id)
         const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
         let senderName = 'Unknown'
         if (room && room.participants) {
@@ -175,7 +175,7 @@
         if (!hasMore) {
           return []
         }
-        const allMessages = await $localDb.local_messages.where('type').equals('link').reverse().sortBy('created_at')
+        const allMessages = await $storage.getLinkMessages()
         let startIndex = 0
         if (lastTimestamp) {
           startIndex = allMessages.findIndex(a => a.created_at === lastTimestamp) + 1
@@ -232,7 +232,7 @@
 
         const activeId = $state.activeSelectionId
         const baseId = activeId ? activeId.split(':')[0] : null
-        const activeMsg = baseId ? await $localDb.local_messages.get(baseId) : null
+        const activeMsg = baseId ? await $storage.getMessage(baseId) : null
         if (seq !== initSequence) {
           return
         }

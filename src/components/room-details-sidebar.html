@@ -37,13 +37,13 @@
       memberCount: (state) => (state.members || []).length,
       loadingClass: (state) => (state.isLoading ? 'd-flex' : 'd-none')
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb, cryptoWorker, utils }) => {
+    client: ({ refs, state, pocketbase, eventBus, globalStore, storage, cryptoWorker, utils }) => {
       const { pb } = pocketbase
       const { $crypto } = utils
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { $localDb } = localDb
+      const { $storage } = storage
       const memberListContainer = refs('memberList')
 
       const showLoading = (text) => {
@@ -203,8 +203,7 @@
           ])
 
           // update the local cache
-          const db = await $localDb()
-          const localRoom = await db.local_rooms.get(room_id)
+          const localRoom = await $storage.getRoom(room_id)
           const nextEpochId = (localRoom.key_history || []).length + 1
   
           if (!localRoom.key_history) {
@@ -216,7 +215,7 @@
             key: $crypto.toBase64(newEpochKey)
           })
   
-          await db.local_rooms.put(localRoom)
+          await $storage.saveRoom(localRoom)
 
           // send a system message
           const systemContent = `${kickedUsername} was removed from the chat.`

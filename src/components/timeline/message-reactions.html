@@ -14,9 +14,9 @@
       localUuid: String
     },
     client: (ctx) => {
-      const { refs, state, globalStore, localDb, eventBus, signal, utils } = ctx
+      const { refs, state, globalStore, storage, eventBus, signal, utils } = ctx
       const { $state } = globalStore
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $func } = utils
       const container = refs('container')
@@ -76,9 +76,7 @@
         }
   
         const ids = [msgId, localUuid].filter(Boolean)
-        const reactions = await $localDb.local_messages
-          .where('target_id').anyOf(ids)
-          .toArray()
+        const reactions = await $storage.getMessageReactions(ids)
   
         const userReactions = {}
         reactions.sort((a, b) => {
@@ -164,7 +162,7 @@
         }
   
         const room_id = $state.activeSelectionId
-        const room = await $localDb.local_rooms.get(room_id)
+        const room = await $storage.getRoom(room_id)
         const participants = room?.participants || []
   
         const attributionLines = emojiEntries.map(([emoji, userIds]) => {

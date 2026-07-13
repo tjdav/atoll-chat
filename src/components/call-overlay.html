@@ -86,11 +86,11 @@
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
       videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill')
     },
-    client: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, localDb, refs, signal, bootstrap }) => {
+    client: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, storage, refs, signal, bootstrap }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $webrtc } = webrtcPluginContext
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { Modal } = bootstrap
       const modalEl = refs('modal')
       const modal = new Modal(modalEl, {
@@ -156,9 +156,9 @@
 
         try {
           let audioSource = '/sounds/ringtone.mp3'
-          const customSound = await $localDb.local_config.get('custom_call_sound')
-          if (customSound && customSound.value instanceof Blob) {
-            audioSource = URL.createObjectURL(customSound.value)
+          const customSound = await $storage.getConfig('custom_call_sound')
+          if (customSound && customSound instanceof Blob) {
+            audioSource = URL.createObjectURL(customSound)
           }
 
           ringtoneAudio = new Audio(audioSource)
@@ -258,7 +258,7 @@
           return
         }
 
-        const room = await $localDb.local_rooms.get(room_id)
+        const room = await $storage.getRoom(room_id)
         if (room) {
           const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
           if (!room.is_group && participants.length > 0) {

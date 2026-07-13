@@ -1,0 +1,305 @@
+/**
+ * Web Storage Adapter for Atoll Chat.
+ * Standardizes Dexie/IndexedDB operations under a unified interface.
+ */
+
+export function createWebStorageAdapter () {
+  let dbInstance = null
+
+  return {
+    /**
+     * Initializes the Dexie database and opens the connection.
+     */
+    initialize: async () => {
+      if (dbInstance) {
+        return dbInstance
+      }
+
+      const { Dexie } = await import('dexie')
+      dbInstance = new Dexie('AtollChatDB')
+
+      dbInstance.version(10).stores({
+        local_rooms: 'id, is_group, updated_at',
+        local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, target_id',
+        local_assets: 'id, room_id, message_id, mime_type, created_at',
+        local_config: 'key',
+        local_files: 'name'
+      })
+
+      // Attempt to request persistent storage for local IndexedDB cache
+      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+        try {
+          const isPersisted = await navigator.storage.persist()
+          if (!isPersisted) {
+            console.warn('Persistent storage was not granted by the browser.')
+          }
+        } catch (storageError) {
+          console.error('Error requesting persistent storage:', storageError)
+        }
+      }
+
+      await dbInstance.open()
+
+      // Expose to window for E2E testing compatibility
+      if (typeof window !== 'undefined') {
+        window.$localDb = dbInstance
+      }
+
+      return dbInstance
+    },
+
+    /**
+     * Low-level record save.
+     */
+    saveRecord: async (storeName, data) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.table(storeName).put(data)
+    },
+
+    /**
+     * Low-level record bulk save.
+     */
+    saveRecordsBulk: async (storeName, records) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.table(storeName).bulkPut(records)
+    },
+
+    /**
+     * Low-level record delete.
+     */
+    deleteRecord: async (storeName, key) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.table(storeName).delete(key)
+    },
+
+    /**
+     * Stores encrypted media blobs natively in IndexedDB.
+     */
+    saveFile: async (fileName, blob) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.table('local_files').put({ name: fileName, blob })
+    },
+
+    /**
+     * Retrieves the blob for decryption.
+     */
+    getFile: async (fileName) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      const record = await dbInstance.table('local_files').get(fileName)
+      return record ? record.blob : null
+    },
+
+    // --- Config Domain ---
+    getConfig: async (key) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      const record = await dbInstance.local_config.get(key)
+      return record ? record.value : null
+    },
+
+    getConfigRecord: async (key) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_config.get(key)
+    },
+
+    saveConfig: async (key, value) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_config.put({ key, value })
+    },
+
+    saveConfigs: async (configs) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_config.bulkPut(configs)
+    },
+
+    deleteConfig: async (key) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_config.delete(key)
+    },
+
+    // --- Room Domain ---
+    getRoom: async (id) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_rooms.get(id)
+    },
+
+    saveRoom: async (room) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_rooms.put(room)
+    },
+
+    updateRoom: async (id, changes) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_rooms.update(id, changes)
+    },
+
+    getAllRoomsSorted: async (lastTimestamp, batchSize) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      let query = dbInstance.local_rooms.reverse()
+      if (lastTimestamp) {
+        query = query.filter(item => item.updated_at < lastTimestamp)
+      }
+      if (batchSize) {
+        query = query.limit(batchSize)
+      }
+      return query.toArray()
+    },
+
+    getLatestGlobalRoom: async () => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_rooms.orderBy('updated_at').last()
+    },
+
+    // --- Message Domain ---
+    getMessage: async (localUuid) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_messages.get(localUuid)
+    },
+
+    saveMessage: async (message) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_messages.put(message)
+    },
+
+    getMessagesByRoom: async (roomId, limit) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      let query = dbInstance.local_messages.where('room_id').equals(roomId)
+      if (limit) {
+        // Dexie sortBy is performed in memory or on index, let's keep it consistent
+        const raw = await query.sortBy('created_at')
+        return raw.slice(0, limit)
+      }
+      return query.sortBy('created_at')
+    },
+
+    getMessagesByRoomCursor: async (roomId, lastItem, batchSize) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      let query = dbInstance.local_messages.where('room_id').equals(roomId)
+      const allMatching = await query.sortBy('created_at')
+      let startIndex = 0
+      if (lastItem) {
+        startIndex = allMatching.findIndex(a => a.local_uuid === lastItem.local_uuid) + 1
+      }
+      return allMatching.slice(startIndex, startIndex + batchSize)
+    },
+
+    getLatestMessage: async (roomId) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      const messages = await dbInstance.local_messages
+        .where('[room_id+created_at]')
+        .between([roomId, ''], [roomId, '\uffff'])
+        .reverse()
+        .toArray()
+      return messages.find(m => m.type !== 'reaction' && m.type !== 'ice_candidate')
+    },
+
+    getLatestGlobalMessage: async () => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_messages.orderBy('created_at').last()
+    },
+
+    getLinkMessages: async () => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_messages.where('type').equals('link').reverse().sortBy('created_at')
+    },
+
+    getMessageReactions: async (targetIds) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      const ids = Array.isArray(targetIds) ? targetIds : [targetIds]
+      return dbInstance.local_messages.where('target_id').anyOf(ids).toArray()
+    },
+
+    // --- Asset Domain ---
+    getAsset: async (id) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_assets.get(id)
+    },
+
+    saveAsset: async (asset) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.local_assets.put(asset)
+    },
+
+    getAssetsByCategory: async (category, lastItem, batchSize) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      let query
+      if (category === 'image') {
+        query = dbInstance.local_assets.where('mime_type').startsWith('image/').reverse()
+      } else if (category === 'video') {
+        query = dbInstance.local_assets.where('mime_type').startsWith('video/').reverse()
+      } else if (category === 'audio') {
+        query = dbInstance.local_assets.where('mime_type').startsWith('audio/').reverse()
+      } else if (category === 'document') {
+        query = dbInstance.local_assets.where('mime_type').notEqual('image/').and(a => !a.mime_type.startsWith('video/') && !a.mime_type.startsWith('audio/')).reverse()
+      } else {
+        query = dbInstance.local_assets.reverse()
+      }
+
+      if (category === 'document' && !lastItem && !batchSize) {
+        // Handle custom sort for document-list (allAssets)
+        return dbInstance.local_assets.reverse().sortBy('created_at')
+      }
+
+      const allMatching = await query.toArray()
+      let startIndex = 0
+      if (lastItem) {
+        startIndex = allMatching.findIndex(a => a.id === lastItem.id) + 1
+      }
+      if (batchSize) {
+        return allMatching.slice(startIndex, startIndex + batchSize)
+      }
+      return allMatching
+    }
+  }
+}

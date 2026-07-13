@@ -53,12 +53,12 @@
         return (state.roomName || '').trim().length > 0
       }
     },
-    client: ({ refs, state, pocketbase, eventBus, localDb, bootstrap, cryptoWorker, utils, signal }) => {
+    client: ({ refs, state, pocketbase, eventBus, storage, bootstrap, cryptoWorker, utils, signal }) => {
       const { pb } = pocketbase
       const { $crypto } = utils
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { Modal } = bootstrap
       const modalEl = refs('editModal')
       const modal = new Modal(modalEl)
@@ -216,7 +216,7 @@
           })
 
           // Update local cache
-          await $localDb.local_rooms.update(room.id, {
+          await $storage.updateRoom(room.id, {
             name: state.roomName,
             avatar: avatarPayload,
             updated_at: new Date().toISOString()

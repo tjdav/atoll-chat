@@ -75,13 +75,13 @@
       },
       roomNameClass: (state) => (((state.selectedParticipants || []).length > 1) ? 'd-block' : 'd-none')
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, localDb, bootstrap, utils, cryptoWorker, signal }) => {
+    client: ({ refs, state, pocketbase, eventBus, globalStore, storage, bootstrap, utils, cryptoWorker, signal }) => {
       const { pb } = pocketbase
       const { $func, $crypto } = utils
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { Modal } = bootstrap
       const modalEl = refs('roomModal')
       const modal = new Modal(modalEl)
@@ -375,7 +375,7 @@
           }
 
           // Update local cache
-          await $localDb.local_rooms.put({
+          await $storage.saveRoom({
             id: newRoom.id,
             is_group: isGroup,
             name: roomName,

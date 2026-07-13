@@ -37,8 +37,8 @@
       errorMessage: '',
       fileName: 'Untitled Audio'
     }),
-    client: async ({ state, signal, refs, localDb, globalStore, bootstrap }) => {
-      const { $localDb } = localDb
+    client: async ({ state, signal, refs, storage, globalStore, bootstrap }) => {
+      const { $storage } = storage
       const { $state } = globalStore
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
@@ -63,7 +63,7 @@
       signal.addEventListener('abort', cleanup)
 
       const updateItemUI = async (item, container) => {
-        const room = await $localDb.local_rooms.get(item.room_id)
+        const room = await $storage.getRoom(item.room_id)
         const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
         const artistAlbum = item.artist ? `${item.artist}${item.album ? ' • ' + item.album : ''}` : ''
 
@@ -103,13 +103,7 @@
         if (!hasMore) {
           return []
         }
-        let query = $localDb.local_assets.where('mime_type').startsWith('audio/').reverse()
-        const allMatching = await query.toArray()
-        let startIndex = 0
-        if (lastTimestamp) {
-          startIndex = allMatching.findIndex(a => a.created_at === lastTimestamp) + 1
-        }
-        const rawItems = allMatching.slice(startIndex, startIndex + BATCH_SIZE)
+        const rawItems = await $storage.getAssetsByCategory('audio', lastTimestamp ? { created_at: lastTimestamp, id: loadedItems[loadedItems.length - 1]?.id } : null, BATCH_SIZE)
         if (rawItems.length < BATCH_SIZE) {
           hasMore = false
         }
@@ -141,7 +135,7 @@
         hasMore = true
 
         const activeId = $state.activeSelectionId
-        const activeAsset = activeId ? await $localDb.local_assets.get(activeId) : null
+        const activeAsset = activeId ? await $storage.getAsset(activeId) : null
         if (seq !== initSequence) {
           return
         }

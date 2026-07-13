@@ -8,8 +8,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, localDb, globalStore, eventBus }) => {
-      const { $localDb } = localDb
+    client: ({ refs, storage, globalStore, eventBus }) => {
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const btnJump = refs('btnJump')
@@ -28,28 +28,17 @@
 
           try {
             if (type === 'links') {
-              const msg = await $localDb.local_messages.get(id)
+              const msg = await $storage.getMessage(id)
               if (msg) {
                 room_id = msg.room_id
                 messageId = id
               }
             } else {
               // For pictures, videos, music, documents
-              const asset = await $localDb.local_assets.get(id)
+              const asset = await $storage.getAsset(id)
               if (asset) {
                 room_id = asset.room_id
                 messageId = asset.message_id
-              }
-
-              // Fallback for older assets without message_id
-              if (!messageId && room_id) {
-                const msg = await $localDb.local_messages
-                  .where('room_id').equals(room_id)
-                  .filter(m => m.media_id === id)
-                  .first()
-                if (msg) {
-                  messageId = msg.local_uuid
-                }
               }
             }
 

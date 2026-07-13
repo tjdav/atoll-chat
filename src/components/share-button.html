@@ -28,8 +28,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, localDb, globalStore, eventBus, bootstrap, pocketbase, cryptoWorker, signal }) => {
-      const { $localDb } = localDb
+    client: ({ refs, storage, globalStore, eventBus, bootstrap, pocketbase, cryptoWorker, signal }) => {
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $worker } = cryptoWorker
@@ -130,7 +130,7 @@
         btnSend.disabled = true
   
         // Fetch rooms sorted by most recent
-        loadedRooms = await $localDb.local_rooms.orderBy('updated_at').reverse().toArray()
+        loadedRooms = await $storage.getAllRoomsSorted()
   
         renderRooms()
         modal.show()
@@ -151,7 +151,7 @@
           let shareParams = null
 
           if (type === 'links') {
-            const msg = await $localDb.local_messages.get(id)
+            const msg = await $storage.getMessage(id)
             if (msg) {
               shareParams = {
                 type: 'link',
@@ -160,7 +160,7 @@
               }
             }
           } else {
-            const asset = await $localDb.local_assets.get(id)
+            const asset = await $storage.getAsset(id)
             if (asset) {
               shareParams = {
                 type: 'media',

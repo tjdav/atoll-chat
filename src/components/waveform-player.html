@@ -48,8 +48,8 @@
     getters: {
       hideWaveform: (state) => !state.hasWaveform
     },
-    client: async ({ state, refs, utils, signal, localDb, globalStore, eventBus, observe }) => {
-      const { $localDb } = localDb
+    client: async ({ state, refs, utils, signal, storage, globalStore, eventBus, observe }) => {
+      const { $storage } = storage
       const { $state } = globalStore
       const { $media } = utils
       const { $bus } = eventBus
@@ -225,7 +225,7 @@
             if (cached) {
               objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             } else {
-              const asset = await $localDb.local_assets.get(state.audioId)
+              const asset = await $storage.getAsset(state.audioId)
               if (asset) {
                 objectUrl = await $media.decrypt(asset, signal)
               }
@@ -248,9 +248,9 @@
 
         if (!waveformData && state.audioId) {
           try {
-            const asset = await $localDb.local_assets.get(state.audioId)
+            const asset = await $storage.getAsset(state.audioId)
             if (asset && asset.message_id) {
-              const msg = await $localDb.local_messages.get(asset.message_id)
+              const msg = await $storage.getMessage(asset.message_id)
               if (msg && msg.waveform_data) {
                 waveformData = msg.waveform_data
               }
@@ -294,7 +294,7 @@
             if (cached) {
               objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             } else {
-              const asset = await $localDb.local_assets.get(state.audioId)
+              const asset = await $storage.getAsset(state.audioId)
               if (!asset) {
                 throw new Error('Asset not found in local database')
               }

@@ -70,9 +70,9 @@
       resetMessageSoundClass: (state) => (state.hasCustomMessageSound ? 'd-inline-block' : 'd-none'),
       resetCallSoundClass: (state) => (state.hasCustomCallSound ? 'd-inline-block' : 'd-none')
     },
-    client: async ({ refs, state, globalStore, localDb }) => {
+    client: async ({ refs, state, globalStore, storage }) => {
       const { $state } = globalStore
-      const { $localDb } = localDb
+      const { $storage } = storage
 
       state.messageSoundsEnabled = $state.messageSoundsEnabled ?? true
       state.callSoundsEnabled = $state.callSoundsEnabled ?? true
@@ -88,11 +88,11 @@
       }
 
       const refreshSoundInfo = async () => {
-        const customMessage = await $localDb.local_config.get('custom_message_sound')
+        const customMessage = await $storage.getConfigRecord('custom_message_sound')
         state.hasCustomMessageSound = !!customMessage
         state.messageSoundName = customMessage ? (customMessage.fileName || 'Custom Sound') : 'Default (notification.mp3)'
 
-        const customCall = await $localDb.local_config.get('custom_call_sound')
+        const customCall = await $storage.getConfigRecord('custom_call_sound')
         state.hasCustomCallSound = !!customCall
         state.callSoundName = customCall ? (customCall.fileName || 'Custom Sound') : 'Default (ringtone.mp3)'
       }
@@ -116,7 +116,7 @@
       const playPreview = async (type) => {
         let audioSource = type === 'message' ? '/sounds/notification.mp3' : '/sounds/ringtone.mp3'
         const key = type === 'message' ? 'custom_message_sound' : 'custom_call_sound'
-        const customSound = await $localDb.local_config.get(key)
+        const customSound = await $storage.getConfigRecord(key)
   
         if (customSound && customSound.value instanceof Blob) {
           audioSource = URL.createObjectURL(customSound.value)
@@ -141,7 +141,7 @@
         }
 
         const key = type === 'message' ? 'custom_message_sound' : 'custom_call_sound'
-        await $localDb.local_config.put({
+        await $storage.saveRecord('local_config', {
           key,
           value: file,
           fileName: file.name
@@ -154,12 +154,12 @@
       refs('fileCallSound').addEventListener('change', (e) => handleFileUpload(e, 'call'))
 
       refs('btnResetMessageSound').addEventListener('click', async () => {
-        await $localDb.local_config.delete('custom_message_sound')
+        await $storage.deleteConfig('custom_message_sound')
         await refreshSoundInfo()
       })
 
       refs('btnResetCallSound').addEventListener('click', async () => {
-        await $localDb.local_config.delete('custom_call_sound')
+        await $storage.deleteConfig('custom_call_sound')
         await refreshSoundInfo()
       })
     }

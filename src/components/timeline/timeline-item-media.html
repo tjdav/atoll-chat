@@ -22,8 +22,8 @@
     getters: {
       loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
     },
-    client: async ({ refs, state, localDb, globalStore, eventBus, signal, utils, observe }) => {
-      const { $localDb } = localDb
+    client: async ({ refs, state, storage, globalStore, eventBus, signal, utils, observe }) => {
+      const { $storage } = storage
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $time, $media } = utils
@@ -37,7 +37,7 @@
           if (!state.localUuid) {
             return
           }
-          const msg = await $localDb.local_messages.get(state.localUuid)
+          const msg = await $storage.getMessage(state.localUuid)
           if (!msg?.media_id) {
             return
           }
@@ -162,7 +162,7 @@
           if (!state.localUuid) {
             return
           }
-          const message = await $localDb.local_messages.get(state.localUuid)
+          const message = await $storage.getMessage(state.localUuid)
           if (callId !== lastCallId || signal.aborted) {
             return
           }

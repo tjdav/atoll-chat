@@ -57,9 +57,9 @@
     getters: {
       hideSidebar: (state) => !state.isRoomDetailsOpen
     },
-    client: async ({ refs, state, globalStore, localDb, eventBus, webrtc: webrtcPluginContext }) => {
+    client: async ({ refs, state, globalStore, storage, eventBus, webrtc: webrtcPluginContext }) => {
       const { $state } = globalStore
-      const { $localDb } = localDb
+      const { $storage } = storage
       const { $bus } = eventBus
       const { $webrtc } = webrtcPluginContext
 
@@ -71,7 +71,7 @@
         }
   
         try {
-          const room = await $localDb.local_rooms.get(room_id)
+          const room = await $storage.getRoom(room_id)
 
           if (room) {
             const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
