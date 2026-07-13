@@ -1,0 +1,24 @@
+<template id="offline-banner">
+  <div class="offline-banner text-center py-1 fw-semibold text-white" style="background-color: #df4759; font-size: 0.85rem;" hidden="{{ isOnline }}">
+    <i class="bi bi-wifi-off me-1"></i> Waiting for network...
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      isOnline: true
+    }),
+    client: ({ state, globalStore }) => {
+      const { $state } = globalStore
+
+      state.isOnline = $state.isOnline !== false
+
+      $state.subscribe('isOnline', (val) => {
+        state.isOnline = val !== false
+      })
+    }
+  })
+</script>

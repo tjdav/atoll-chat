@@ -1,12 +1,15 @@
 <template id="app-root">
-  <div ref="container"></div>
+  <div class="vh-100 vw-100 d-flex flex-column overflow-hidden">
+    <offline-banner></offline-banner>
+    <div ref="container" class="flex-grow-1 position-relative"></div>
+  </div>
 </template>
 
 <script type="module">
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle, network, cryptoWorker }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
@@ -21,10 +24,86 @@
       const { $notifications } = notifications
       const { $storage } = storage
       const { $push } = push
+      const { $worker } = cryptoWorker
       const container = refs('container')
 
       let isDeviceTrusted = false
       let isLifecycleRegistered = false
+      let isFlushing = false
+
+      const flushQueue = async () => {
+        if (isFlushing) {
+          console.log('[Queue] Flush is already in progress. Skipping duplicate invocation.')
+          return
+        }
+
+        isFlushing = true
+
+        try {
+          const rooms = await $storage.getAllRoomsSorted()
+          const pendingMessages = []
+
+          for (const room of rooms) {
+            const msgs = await $storage.getMessagesByRoom(room.id)
+            const pMsgs = msgs.filter(m => m.status === 'pending')
+            pendingMessages.push(...pMsgs)
+          }
+
+          pendingMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
+
+          if (pendingMessages.length === 0) {
+            console.log('[Queue] No pending messages to flush.')
+            return
+          }
+
+          console.log(`[Queue] Found ${pendingMessages.length} pending messages to flush.`)
+
+          for (const msg of pendingMessages) {
+            if (!$state.isOnline) {
+              console.log('[Queue] Connection lost during flush. Aborting.')
+              break
+            }
+
+            try {
+              const storedParams = await $storage.getFile(msg.local_uuid)
+
+              let params
+              if (storedParams) {
+                params = storedParams
+              } else {
+                params = {
+                  type: msg.type,
+                  content: msg.content,
+                  links: msg.links,
+                  timestamp: new Date(msg.created_at).getTime()
+                }
+              }
+
+              console.log(`[Queue] Flushing message ${msg.local_uuid}...`)
+              const result = await $worker.execute('worker:send_message', {
+                room_id: msg.room_id,
+                localUuid: msg.local_uuid,
+                ...params
+              })
+
+              $bus.emit('message:sent', result)
+
+              if (storedParams) {
+                await $storage.deleteRecord('local_files', msg.local_uuid)
+              }
+
+              console.log(`[Queue] Message ${msg.local_uuid} flushed successfully.`)
+            } catch (err) {
+              console.error(`[Queue] Failed to flush message ${msg.local_uuid}:`, err)
+              break
+            }
+          }
+        } catch (err) {
+          console.error('[Queue] Error during flushQueue:', err)
+        } finally {
+          isFlushing = false
+        }
+      }
 
       router.init()
 
@@ -74,11 +153,11 @@
         }
 
         if ($state.isAuthenticated && $state.isVaultUnlocked) {
-          container.className = 'vh-100 vw-100 overflow-hidden'
+          container.className = 'h-100 w-100 overflow-hidden'
           container.appendChild(document.createElement('app-layout'))
           container.appendChild(document.createElement('create-room-modal'))
         } else {
-          container.className = 'vh-100 vw-100 d-flex align-items-center justify-content-center bg-body-tertiary'
+          container.className = 'h-100 w-100 d-flex align-items-center justify-content-center bg-body-tertiary'
 
           const contentWrapper = document.createElement('div')
           contentWrapper.className = 'container'
@@ -153,6 +232,12 @@
         }
       }
 
+      // Network status listener
+      $bus.on('app:network_change', (payload) => {
+        console.log('[app-root] Network status changed:', payload)
+        $state.isOnline = payload.isOnline
+      })
+
       // Auth lifecycle management
       $bus.on('auth:unlocked', ({ keys, userRecord }) => {
         $state.currentUser = {
@@ -168,6 +253,14 @@
             })
             .catch((err) => {
               console.error('[app-root] Failed to register app lifecycle listeners:', err)
+            })
+
+          network.registerListeners()
+            .then(() => {
+              console.log('[app-root] Network listeners registered successfully.')
+            })
+            .catch((err) => {
+              console.error('[app-root] Failed to register network listeners:', err)
             })
         }
 
@@ -237,6 +330,13 @@
       })
       $state.subscribe('isVaultUnlocked', updateUI)
       $state.subscribe('authView', updateUI)
+
+      $state.subscribe('isOnline', (val) => {
+        if (val) {
+          console.log('[app-root] Network is back online. Triggering flushQueue.')
+          flushQueue().catch(console.error)
+        }
+      })
     }
   })
 </script>

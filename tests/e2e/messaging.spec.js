@@ -360,4 +360,60 @@ test.describe('Messaging Features', () => {
       await page.screenshot({ path: './tests/e2e/screenshots/verification.png' })
     })
   })
+
+  test.describe('Network Resiliency & Offline Queuing', () => {
+    test('should queue messages offline and automatically flush them when online', async ({ page, loginApp }) => {
+      test.slow()
+      await loginApp('alice', 'Password123!', 'VaultPassword123!')
+
+      // Create a room
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
+
+      await expect(page.locator('chat-view')).toBeVisible({ timeout: 15000 })
+
+      // Send an initial online message to trigger and cache all dynamic components
+      const textarea = page.locator('textarea[placeholder="Type a message..."]')
+      await textarea.fill('Warmup online message')
+      await page.keyboard.press('Enter')
+      await page.waitForTimeout(1000)
+
+      // Verify isOnline is true and offline banner is hidden initially
+      const banner = page.locator('.offline-banner')
+      await expect(banner).toBeHidden()
+
+      // Transition to offline state
+      await page.context().setOffline(true)
+      await page.waitForTimeout(1000)
+
+      // Verify the banner is now visible
+      await expect(banner).toBeVisible()
+
+      // Compose and send an offline message
+      await textarea.fill('Offline message!')
+      await page.keyboard.press('Enter')
+
+      // Verify the message immediately appears on the timeline with the "pending" visual treatment (opacity-75 class)
+      const lastRow = page.locator('timeline-row').last()
+      await expect(lastRow).toContainText('Offline message!')
+      await expect(lastRow).toHaveClass(/opacity-75/)
+
+      // Verify the global status indicator shows a clock icon
+      const statusIcon = page.locator('message-timeline .message-status-container i')
+      await expect(statusIcon).toHaveClass(/bi-clock/)
+
+      // Transition back to online state
+      await page.context().setOffline(false)
+      await page.waitForTimeout(2000)
+
+      // Verify the offline banner is hidden again
+      await expect(banner).toBeHidden()
+
+      // Verify the message is successfully flushed, sent to the server, and updated from "pending" to "sent" (no opacity-75 class, showing check icon)
+      await expect(lastRow).not.toHaveClass(/opacity-75/, { timeout: 15000 })
+      await expect(statusIcon).toHaveClass(/bi-check/, { timeout: 15000 })
+    })
+  })
 })

@@ -221,6 +221,19 @@
           message: optimisticMessage
         })
 
+        if (!$state.isOnline) {
+          if (params.file || params.thumbnail_blob || params.album_art_blob) {
+            await $storage.saveFile(localUuid, params)
+          }
+          console.log('[chat-input] Offline: Queued message locally', { localUuid })
+          return {
+            success: true,
+            queued: true,
+            id: null,
+            localUuid
+          }
+        }
+
         // Dispatch to worker
         console.log('[chat-input] Dispatching worker:send_message to worker', { localUuid })
         const result = await $worker.execute('worker:send_message', {

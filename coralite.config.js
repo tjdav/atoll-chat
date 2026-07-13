@@ -19,6 +19,7 @@ import serviceWorkerPlugin from './src/plugins/service-worker-plugin.js'
 import biometricPlugin from './src/plugins/biometric-plugin.js'
 import pushPlugin from './src/plugins/push-plugin.js'
 import appLifecyclePlugin from './src/plugins/app-lifecycle-plugin.js'
+import networkPlugin from './src/plugins/network-plugin.js'
 import pkg from './package.json' with { type: 'json' }
 
 const pocketbaseBaseUrl = process.env.DATABASE_URL || 'http://localhost:8090'
@@ -48,7 +49,8 @@ export default defineConfig({
         notificationsEnabled: true,
         messageSoundsEnabled: true,
         callSoundsEnabled: true,
-        isCatchingUp: false
+        isCatchingUp: false,
+        isOnline: true
       }
     }),
     storagePlugin,
@@ -69,6 +71,7 @@ export default defineConfig({
       vapidKey: 'BI42LscA_XvC28RpxgGk_g0-XW5yC4S_N924_68yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2'
     }),
     appLifecyclePlugin,
+    networkPlugin,
     serviceWorkerPlugin({
       name: pkg.name,
       version: pkg.version

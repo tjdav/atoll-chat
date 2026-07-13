@@ -176,8 +176,13 @@
                 }
               })
 
-              if (m.status !== 'pending' && row.classList.contains('placeholder-wave')) {
-                row.classList.remove('placeholder-wave')
+              if (m.status !== 'pending') {
+                if (row.classList.contains('placeholder-wave')) {
+                  row.classList.remove('placeholder-wave')
+                }
+                if (row.classList.contains('opacity-75')) {
+                  row.classList.remove('opacity-75')
+                }
               }
             }
           })
@@ -261,6 +266,9 @@
             row.setAttribute('is-sent', isSent)
             row.setAttribute('is-first-in-block', isFirstInBlock)
             row.setAttribute('is-last-in-block', isLastInBlock)
+            if (message.status === 'pending') {
+              row.classList.add('opacity-75')
+            }
 
             if (message.id) {
               row.dataset.messageId = message.id
@@ -421,7 +429,7 @@
           if (lastMessage && lastMessage.sender_id === $state.currentUser?.id) {
             statusContainer.classList.remove('d-none')
             statusText.textContent = lastMessage.status === 'pending' ? 'Sending...' : 'Sent'
-            statusIcon.className = lastMessage.status === 'pending' ? 'bi bi-circle text-muted' : 'bi bi-check text-muted'
+            statusIcon.className = lastMessage.status === 'pending' ? 'bi bi-clock text-muted' : 'bi bi-check text-muted'
   
             // Always move to end, making sure it is the absolute last element
             container.appendChild(statusContainer)

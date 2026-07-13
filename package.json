@@ -52,6 +52,7 @@
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.4.1",
     "@capacitor/filesystem": "^8.1.2",
+    "@capacitor/network": "^8.0.1",
     "bootstrap": "^5.3.8",
     "dexie": "^4.4.3",
     "emoji-picker-element": "^1.29.1",
