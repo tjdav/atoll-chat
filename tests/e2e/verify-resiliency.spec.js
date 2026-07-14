@@ -1,13 +1,12 @@
 import { test, expect } from './fixtures/base-test.js'
 import fs from 'fs'
-import path from 'path'
 
 test.use({
   video: 'on'
 })
 
 test.describe('Verify Network Resiliency UI', () => {
-  test('should record video and capture screenshot of offline banner', async ({ page, loginApp }, testInfo) => {
+  test('should record video and capture screenshot of offline banner', async ({ page, loginApp }, _testInfo) => {
     test.slow()
 
     // Ensure directory exists
@@ -49,7 +48,8 @@ test.describe('Verify Network Resiliency UI', () => {
 
     // Go online
     await page.context().setOffline(false)
-    await page.waitForTimeout(2500) // Wait for flush to complete
+    // Wait for flush to complete
+    await page.waitForTimeout(2500)
 
     // Verify banner is hidden and message is sent
     await expect(banner).toBeHidden()

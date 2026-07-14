@@ -1,0 +1,108 @@
+<template id="p2p-consent-modal">
+  <div ref="consentModal" class="modal fade" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Incoming File Transfer</h5>
+        </div>
+        <div class="modal-body text-center py-4">
+          <div class="mb-3">
+            <i class="bi bi-file-earmark-arrow-down fs-1 text-primary"></i>
+          </div>
+          <h6 class="fw-bold mb-2" ref="promptText">
+            Incoming transfer...
+          </h6>
+          <p class="text-muted small mb-0" ref="detailsText">
+            Size: --
+          </p>
+        </div>
+        <div class="modal-footer d-flex justify-content-center gap-3">
+          <button type="button" class="btn btn-danger px-4" ref="btnReject" data-testid="consent-btn-reject">Reject</button>
+          <button type="button" class="btn btn-success px-4" ref="btnAccept" data-testid="consent-btn-accept">Accept</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      senderName: '',
+      filename: '',
+      fileSizeStr: '',
+      p2pUuid: '',
+      roomId: '',
+      senderId: ''
+    }),
+    client: ({ state, refs, eventBus, pocketbase, storage, bootstrap, signal }) => {
+      const { $bus } = eventBus
+      const { pb } = pocketbase
+      const { $storage } = storage
+      const { Modal } = bootstrap
+      const modalEl = refs('consentModal')
+      const modal = new Modal(modalEl)
+
+      $bus.on('ui:prompt_p2p_consent', async (payload) => {
+        console.info('[p2p-consent-modal] Bob received ui:prompt_p2p_consent payload:', payload)
+        state.p2pUuid = payload.p2pUuid
+        state.roomId = payload.roomId
+        state.senderId = payload.senderId
+        state.filename = payload.filename
+
+        const sizeInMB = (payload.size / (1024 * 1024)).toFixed(1)
+        state.fileSizeStr = `${sizeInMB} MB`
+
+        // Resolve sender name
+        let name = 'Someone'
+        try {
+          console.info('[p2p-consent-modal] Bob fetching room or user info...')
+          const room = await $storage.getRoom(payload.roomId)
+          console.info('[p2p-consent-modal] Bob room from storage:', room)
+          const participant = room?.participants?.find(p => p.id === payload.senderId)
+          if (participant) {
+            name = participant.name || participant.username
+          } else {
+            const user = await pb.collection('users').getOne(payload.senderId, { requestKey: null })
+            name = user.name || user.username
+          }
+        } catch (err) {
+          console.error('[p2p-consent-modal] Failed to resolve sender name:', err)
+        }
+
+        state.senderName = name
+        console.info('[p2p-consent-modal] Bob resolved senderName:', state.senderName)
+
+        refs('promptText').textContent = `${state.senderName} wants to send you a file:`
+        refs('detailsText').textContent = `${state.filename} (${state.fileSizeStr})`
+
+        console.info('[p2p-consent-modal] Bob calling modal.show()')
+        modal.show()
+      })
+
+      refs('btnAccept').onclick = () => {
+        modal.hide()
+        $bus.emit('action:execute_p2p_accept', {
+          p2pUuid: state.p2pUuid,
+          roomId: state.roomId,
+          senderId: state.senderId
+        })
+      }
+
+      refs('btnReject').onclick = () => {
+        modal.hide()
+        $bus.emit('action:execute_p2p_reject', {
+          p2pUuid: state.p2pUuid,
+          roomId: state.roomId,
+          senderId: state.senderId
+        })
+      }
+
+      signal.addEventListener('abort', () => {
+        modal.dispose()
+      })
+    }
+  })
+</script>

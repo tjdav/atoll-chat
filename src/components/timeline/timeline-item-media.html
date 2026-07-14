@@ -142,7 +142,10 @@
       const loadMedia = async () => {
         const callId = ++lastCallId
         try {
-          console.info('[timeline-item-media] loadMedia start', { localUuid: state.localUuid, status: state.status })
+          console.info('[timeline-item-media] loadMedia start', {
+            localUuid: state.localUuid,
+            status: state.status
+          })
           if (!state.localUuid || signal.aborted) {
             return
           }

@@ -40,13 +40,18 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
     await alicePage.fill('chat-view textarea', 'Sending heavy image P2P')
     await alicePage.click('chat-view [data-testid$="__sendButton"]')
 
-    const bobTimelineRow = bobPage.locator('timeline-row').filter({ hasText: 'Sending heavy image P2P' }).last()
-    await expect(bobTimelineRow).toBeVisible({ timeout: 60000 })
+    // Bob should see the consent modal appear
+    const acceptBtn = bobPage.locator('[data-testid$="__consent-btn-accept"]')
+    await expect(acceptBtn).toBeVisible({ timeout: 60000 })
 
-    const decryptedImg = bobTimelineRow.locator('timeline-item-media img').first()
-    await expect(decryptedImg).toBeVisible({ timeout: 30000 })
+    // Accept the file and wait for download
+    const downloadPromise = bobPage.waitForEvent('download', { timeout: 60000 })
+    await acceptBtn.click()
+    const download = await downloadPromise
 
-    // Take screenshot of Bob's view with the decrypted image
+    expect(download.suggestedFilename()).toBe('test.webp')
+
+    // Take screenshot of Bob's view with the completed state
     await bobPage.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
 
     const hasMediaUpload = await alicePage.evaluate(async () => {
@@ -66,6 +71,67 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
     })
 
     expect(hasMediaUpload).toBe(false)
+
+    await aliceContext.close()
+    await bobContext.close()
+  })
+
+  test('prevent group mesh by intercepting large file upload and prompting reroute', async ({ browser, loginCustomPage }) => {
+    test.setTimeout(120000)
+
+    const aliceContext = await browser.newContext()
+    const alicePage = await aliceContext.newPage()
+
+    const bobContext = await browser.newContext()
+    const bobPage = await bobContext.newPage()
+
+    await Promise.all([
+      loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!'),
+      loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
+    ])
+
+    // Create a group room with Bob and Charlie
+    await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+    await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+    await alicePage.locator('[data-testid$="search-result-bob"]').click()
+    await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('charlie')
+    await alicePage.locator('[data-testid$="search-result-charlie"]').click()
+    await alicePage.locator('[data-testid$="roomNameInput"]').fill('Project X')
+    await alicePage.locator('[data-testid$="btnCreate"]').click()
+
+    // Wait for Bob to click the Project X group chat
+    const bobGroupChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'Project X' }).first()
+    await expect(bobGroupChat).toBeVisible({ timeout: 30000 })
+    await bobGroupChat.click()
+
+    await alicePage.evaluate(() => {
+      if (window.$config) {
+        window.$config.maxServerUploadSizeBytes = 1
+      }
+    })
+
+    // Attach heavy file in Group Chat
+    const fp = path.resolve('tests/e2e/fixtures/test-files/test.png')
+    await alicePage.locator('chat-view [data-testid$="__fileInput"]').setInputFiles(fp)
+
+    await alicePage.fill('chat-view textarea', 'Sending heavy image in Group')
+    await alicePage.click('chat-view [data-testid$="__sendButton"]')
+
+    // Alice should see the reroute modal and Bob in the list
+    const bobRerouteOption = alicePage.locator('[data-testid$="reroute-user-bob"]')
+    await expect(bobRerouteOption).toBeVisible({ timeout: 30000 })
+    await bobRerouteOption.click()
+
+    // Bob should see the consent modal appear
+    const acceptBtn = bobPage.locator('[data-testid$="__consent-btn-accept"]')
+    await expect(acceptBtn).toBeVisible({ timeout: 60000 })
+
+    // Accept the file and wait for download
+    const downloadPromise = bobPage.waitForEvent('download', { timeout: 60000 })
+    await acceptBtn.click()
+    const download = await downloadPromise
+
+    expect(download.suggestedFilename()).toBe('test.webp')
 
     await aliceContext.close()
     await bobContext.close()

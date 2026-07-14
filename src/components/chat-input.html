@@ -280,13 +280,46 @@
 
             const maxServerUpload = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
             const isP2P = file.size > maxServerUpload
-            console.info('[chat-input] P2P check:', { isP2P, fileSize: file.size, maxServerUpload })
+            console.info('[chat-input] P2P check:', {
+              isP2P,
+              fileSize: file.size,
+              maxServerUpload
+            })
 
-            const finalTransferMode = isP2P ? 'p2p' : undefined
-            const finalStatus = isP2P ? 'pending_p2p' : undefined
-            console.info('[chat-input] final P2P fields:', { finalTransferMode, finalStatus })
+            if (isP2P) {
+              const activeRoomId = $state.activeSelectionId
+              const room = await $storage.getRoom(activeRoomId)
+              const participantsCount = room?.participants?.length || 0
 
-            // Dispatch media message - worker handles encryption and upload
+              if (participantsCount > 2) {
+                console.info('[chat-input] P2P file size exceeds limit in group. Prompting reroute...')
+                state.isSending = false
+                state.isUploading = false
+                state.uploadStatus = ''
+                $bus.emit('ui:prompt_p2p_reroute', {
+                  file,
+                  room
+                })
+                resetUI()
+                return
+              } else {
+                const recipient = room?.participants?.find(p => p.id !== $state.currentUser?.id)
+                if (recipient) {
+                  console.info(`[chat-input] P2P file size exceeds limit in DM. Initiating ephemeral transfer to ${recipient.id}...`)
+                  state.isSending = false
+                  state.isUploading = false
+                  state.uploadStatus = ''
+                  $bus.emit('action:execute_p2p_transfer', {
+                    file,
+                    selectedUserId: recipient.id,
+                    roomId: activeRoomId
+                  })
+                  resetUI()
+                  return
+                }
+              }
+            }
+
             const payloadToDispatch = {
               type: 'media',
               content: recordedBlob ? '' : text,
@@ -298,9 +331,7 @@
               album_art_blob: albumArtBlob,
               thumbnail_blob: state.thumbnailBlob,
               duration: state.duration,
-              timestamp: Date.now(),
-              transfer_mode: finalTransferMode,
-              status: finalStatus
+              timestamp: Date.now()
             }
             console.info('[chat-input] payloadToDispatch:', payloadToDispatch)
             await dispatchMessage(payloadToDispatch)

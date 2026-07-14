@@ -92,7 +92,9 @@ export function createNativeRTCTransferAdapter () {
           console.error(`[WebRTC-Native-P2P] DataChannel error for ${localUuid}:`, err)
           pc.close()
           sessions.delete(localUuid)
-          if (onError) onError(err)
+          if (onError) {
+            onError(err)
+          }
         }
       }
 
@@ -136,7 +138,7 @@ export function createNativeRTCTransferAdapter () {
         const capFs = await import('@capacitor/filesystem')
         Filesystem = capFs.Filesystem
         Directory = capFs.Directory
-      } catch (err) {
+      } catch (_err) {
         console.warn('[WebRTC-Native-P2P] Capacitor Filesystem not available, falling back to Blob slicing')
       }
 

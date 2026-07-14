@@ -888,58 +888,83 @@ async function sendMessage (rpcId, payload) {
 
   const pbRecord = await messageResponse.json()
 
-  // update indexeddb and notify ui
-  const updateData = {
-    id: pbRecord.id,
-    status: status || 'sent',
-    transfer_mode,
-    created_at: pbRecord.created
-  }
+  const isEphemeral = ['p2p_transfer_request', 'p2p_accept', 'p2p_rejected', 'p2p_request_offer', 'p2p_offer', 'p2p_answer', 'p2p_ice_candidate'].includes(type) || payload.ephemeral
 
-  if (type === 'media') {
-    updateData.media_id = mediaId || localUuid
-    updateData.file_key = fileKeyBase64
-    updateData.file_nonce = fileNonceBase64
-    updateData.filename = filename
-    updateData.mime_type = mime_type
-    updateData.album_art = albumArtInfo
-    updateData.thumbnail = thumbnailInfo
-    updateData.duration = duration
-
-    await workerBridge.request('saveAsset', [{
-      id: mediaId || localUuid,
-      media_id: mediaId || localUuid,
-      room_id,
-      message_id: localUuid,
-      filename,
-      mime_type,
-      file_key: fileKeyBase64,
-      file_nonce: fileNonceBase64,
-      created_at: pbRecord.created,
-      music_metadata,
-      album_art: albumArtInfo,
-      thumbnail: thumbnailInfo,
-      duration
-    }])
-  }
-
-  let existing = null
-  if (type !== 'ice_candidate') {
-    existing = await workerBridge.request('getMessage', [localUuid])
-    if (existing) {
-      await workerBridge.request('updateMessage', [localUuid, updateData, room_id])
-    } else {
-      // For reactions or other types that might not have been optimistically written yet
-      existing = {
-        local_uuid: localUuid,
-        room_id: room_id,
-        sender_id: currentUserKeys.id,
-        type,
-        content,
-        target_id,
-        ...updateData
+  if (isEphemeral) {
+    self.postMessage({
+      type: 'db:new_local_data',
+      payload: {
+        room_id,
+        message: {
+          local_uuid: localUuid,
+          id: pbRecord.id,
+          room_id,
+          sender_id: currentUserKeys.id,
+          type,
+          content,
+          candidate,
+          candidates,
+          media_types,
+          target_id,
+          p2pUuid,
+          timestamp: timestamp || Date.now(),
+          ephemeral: true,
+          created_at: pbRecord.created
+        }
       }
-      await workerBridge.request('saveMessage', [existing])
+    })
+  } else {
+    const updateData = {
+      id: pbRecord.id,
+      status: status || 'sent',
+      transfer_mode,
+      created_at: pbRecord.created
+    }
+
+    if (type === 'media') {
+      updateData.media_id = mediaId || localUuid
+      updateData.file_key = fileKeyBase64
+      updateData.file_nonce = fileNonceBase64
+      updateData.filename = filename
+      updateData.mime_type = mime_type
+      updateData.album_art = albumArtInfo
+      updateData.thumbnail = thumbnailInfo
+      updateData.duration = duration
+
+      await workerBridge.request('saveAsset', [{
+        id: mediaId || localUuid,
+        media_id: mediaId || localUuid,
+        room_id,
+        message_id: localUuid,
+        filename,
+        mime_type,
+        file_key: fileKeyBase64,
+        file_nonce: fileNonceBase64,
+        created_at: pbRecord.created,
+        music_metadata,
+        album_art: albumArtInfo,
+        thumbnail: thumbnailInfo,
+        duration
+      }])
+    }
+
+    let existing = null
+    if (type !== 'ice_candidate') {
+      existing = await workerBridge.request('getMessage', [localUuid])
+      if (existing) {
+        await workerBridge.request('updateMessage', [localUuid, updateData, room_id])
+      } else {
+        existing = {
+          local_uuid: localUuid,
+          room_id: room_id,
+          sender_id: currentUserKeys.id,
+          type,
+          content,
+          target_id,
+          ...updateData
+        }
+        await workerBridge.request('saveMessage', [existing])
+      }
     }
   }
 
@@ -1080,7 +1105,27 @@ async function processIncomingMessage (rpcId, record) {
     transfer_mode: decryptedPayload.transfer_mode,
     p2pUuid,
     previous_msg_uuid: previousMsgUuid,
-    created_at: created
+    created_at: created,
+    ephemeral: decryptedPayload.ephemeral
+  }
+
+  const isIncomingEphemeral = ['p2p_transfer_request', 'p2p_accept', 'p2p_rejected', 'p2p_request_offer', 'p2p_offer', 'p2p_answer', 'p2p_ice_candidate'].includes(type) || decryptedPayload.ephemeral
+
+  if (isIncomingEphemeral) {
+    self.postMessage({
+      type: 'db:new_local_data',
+      payload: {
+        room_id,
+        message: decryptedMessage
+      }
+    })
+
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_incoming_message',
+      result: { success: true }
+    })
+    return
   }
 
   // If media, extend the message with media metadata for easier rendering in the timeline

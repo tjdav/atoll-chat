@@ -92,7 +92,9 @@ export function createWebRTCTransferAdapter () {
           console.error(`[WebRTC-P2P] DataChannel error for ${localUuid}:`, err)
           pc.close()
           sessions.delete(localUuid)
-          if (onError) onError(err)
+          if (onError) {
+            onError(err)
+          }
         }
       }
 

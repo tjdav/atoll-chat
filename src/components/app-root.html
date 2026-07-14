@@ -9,7 +9,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, webrtcTransfer }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, _webrtcTransfer }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
@@ -246,6 +246,8 @@
           container.className = 'h-100 w-100 overflow-hidden'
           container.appendChild(document.createElement('app-layout'))
           container.appendChild(document.createElement('create-room-modal'))
+          container.appendChild(document.createElement('p2p-reroute-modal'))
+          container.appendChild(document.createElement('p2p-consent-modal'))
         } else {
           container.className = 'h-100 w-100 d-flex align-items-center justify-content-center bg-body-tertiary'
 
