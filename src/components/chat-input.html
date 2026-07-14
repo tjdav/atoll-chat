@@ -63,7 +63,7 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'd-flex' : 'd-none')
     },
-    client: ({ state, globalStore, storage, eventBus, refs, _signal, cryptoWorker, pocketbase, utils, media }) => {
+    client: ({ state, globalStore, storage, eventBus, refs, _signal, cryptoWorker, pocketbase, utils, media, config }) => {
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -71,6 +71,7 @@
       const { pb } = pocketbase
       const { $func } = utils
       const { $media } = media
+      const { $config } = config
 
       let currentMusicMetadata = null
       let currentAlbumArtBlob = null
@@ -177,6 +178,7 @@
       })
 
       const dispatchMessage = async (params) => {
+        console.info('[chat-input] dispatchMessage params:', params)
         const localUuid = crypto.randomUUID()
         const room_id = $state.activeSelectionId
 
@@ -204,7 +206,8 @@
           sender_id: $state.currentUser.id,
           type: params.type,
           content: params.content,
-          status: 'pending',
+          status: params.status || 'pending',
+          transfer_mode: params.transfer_mode,
           created_at: new Date().toISOString(),
           // Include any specific metadata for UI rendering while pending
           mime_type: params.mime_type,
@@ -275,8 +278,16 @@
             let albumArtBlob = currentAlbumArtBlob
             let audioWaveformData = currentAudioWaveformData
 
+            const maxServerUpload = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
+            const isP2P = file.size > maxServerUpload
+            console.info('[chat-input] P2P check:', { isP2P, fileSize: file.size, maxServerUpload })
+
+            const finalTransferMode = isP2P ? 'p2p' : undefined
+            const finalStatus = isP2P ? 'pending_p2p' : undefined
+            console.info('[chat-input] final P2P fields:', { finalTransferMode, finalStatus })
+
             // Dispatch media message - worker handles encryption and upload
-            await dispatchMessage({
+            const payloadToDispatch = {
               type: 'media',
               content: recordedBlob ? '' : text,
               file: file,
@@ -287,8 +298,12 @@
               album_art_blob: albumArtBlob,
               thumbnail_blob: state.thumbnailBlob,
               duration: state.duration,
-              timestamp: Date.now()
-            })
+              timestamp: Date.now(),
+              transfer_mode: finalTransferMode,
+              status: finalStatus
+            }
+            console.info('[chat-input] payloadToDispatch:', payloadToDispatch)
+            await dispatchMessage(payloadToDispatch)
           } else if (state.pendingLinkData.length > 0) {
             // Link Preview Flow
             console.log('[chat-input] Processing link message')

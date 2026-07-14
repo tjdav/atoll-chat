@@ -637,6 +637,7 @@ async function fetchWithTimeout (resource, options = {}) {
 }
 
 async function sendMessage (rpcId, payload) {
+  console.info('[worker] Alice sendMessage payload:', payload)
   const {
     room_id,
     localUuid,
@@ -660,8 +661,19 @@ async function sendMessage (rpcId, payload) {
     file_key: existingFileKey,
     file_nonce: existingFileNonce,
     album_art: existingAlbumArt,
-    thumbnail: existingThumbnail
+    thumbnail: existingThumbnail,
+    transfer_mode,
+    status,
+    p2pUuid
   } = payload
+
+  console.info('[worker] Alice sendMessage variables destructured:', {
+    type,
+    hasFile: !!file,
+    existingMediaId,
+    transfer_mode,
+    status
+  })
 
   if (!currentUserKeys || !currentUserKeys.private_sign_key) {
     throw new Error('User identity keys not found in worker')
@@ -756,24 +768,31 @@ async function sendMessage (rpcId, payload) {
     const fileNonce = sodium.randombytes_buf(24)
     const encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, fileNonce, fileKey)
 
-    /** @type {WebWorkerBlobPart[]} */
-    const mainParts = [encryptedFile]
-    const mainBlob = new Blob(mainParts, { type: 'application/octet-stream' })
-    const mainFormData = new FormData()
-    mainFormData.append('file', mainBlob, 'encrypted.bin')
-
-    const mainResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
-      method: 'POST',
-      headers,
-      body: mainFormData
-    })
-    if (!mainResponse.ok) {
-      throw new Error(`Failed to upload media: ${mainResponse.status}`)
-    }
-    const mainRecord = await mainResponse.json()
-    mediaId = mainRecord.id
     fileKeyBase64 = sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL)
     fileNonceBase64 = sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL)
+
+    if (transfer_mode === 'p2p') {
+      const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' })
+      await workerBridge.request('saveFile', [localUuid, encryptedBlob])
+      mediaId = localUuid
+    } else {
+      /** @type {WebWorkerBlobPart[]} */
+      const mainParts = [encryptedFile]
+      const mainBlob = new Blob(mainParts, { type: 'application/octet-stream' })
+      const mainFormData = new FormData()
+      mainFormData.append('file', mainBlob, 'encrypted.bin')
+
+      const mainResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
+        method: 'POST',
+        headers,
+        body: mainFormData
+      })
+      if (!mainResponse.ok) {
+        throw new Error(`Failed to upload media: ${mainResponse.status}`)
+      }
+      const mainRecord = await mainResponse.json()
+      mediaId = mainRecord.id
+    }
   }
 
   // Construct Plaintext
@@ -785,6 +804,7 @@ async function sendMessage (rpcId, payload) {
     candidates,
     media_types,
     target_id,
+    p2pUuid,
     timestamp: timestamp || Date.now()
   }
 
@@ -803,6 +823,21 @@ async function sendMessage (rpcId, payload) {
     plaintextObj.album_art = albumArtInfo
     plaintextObj.thumbnail = thumbnailInfo
     plaintextObj.duration = duration
+    plaintextObj.transfer_mode = transfer_mode
+    plaintextObj.status = status || 'sent'
+
+    console.info('[worker] plaintextObj inside media block:', {
+      media_id: plaintextObj.media_id,
+      file_key: plaintextObj.file_key,
+      transfer_mode: plaintextObj.transfer_mode,
+      status: plaintextObj.status
+    })
+    console.info('[worker] local variables inside media block:', {
+      mediaId,
+      fileKeyBase64,
+      transfer_mode,
+      status
+    })
   }
 
   const plaintextStr = JSON.stringify(plaintextObj)
@@ -856,12 +891,13 @@ async function sendMessage (rpcId, payload) {
   // update indexeddb and notify ui
   const updateData = {
     id: pbRecord.id,
-    status: 'sent',
+    status: status || 'sent',
+    transfer_mode,
     created_at: pbRecord.created
   }
 
   if (type === 'media') {
-    updateData.media_id = mediaId
+    updateData.media_id = mediaId || localUuid
     updateData.file_key = fileKeyBase64
     updateData.file_nonce = fileNonceBase64
     updateData.filename = filename
@@ -871,8 +907,8 @@ async function sendMessage (rpcId, payload) {
     updateData.duration = duration
 
     await workerBridge.request('saveAsset', [{
-      id: mediaId,
-      media_id: mediaId,
+      id: mediaId || localUuid,
+      media_id: mediaId || localUuid,
       room_id,
       message_id: localUuid,
       filename,
@@ -1024,7 +1060,8 @@ async function processIncomingMessage (rpcId, record) {
 
   const decryptedString = new TextDecoder().decode(decryptedBuffer)
   const decryptedPayload = JSON.parse(decryptedString)
-  const { type, content, candidate, candidates, media_types, target_id, timestamp } = decryptedPayload
+  console.info('[worker] decryptedPayload:', decryptedPayload)
+  const { type, content, candidate, candidates, media_types, target_id, timestamp, p2pUuid } = decryptedPayload
 
   // Storage and causal chain resolution.
   const decryptedMessage = {
@@ -1039,14 +1076,16 @@ async function processIncomingMessage (rpcId, record) {
     media_types,
     target_id,
     timestamp,
-    status: 'sent',
+    status: decryptedPayload.status || 'sent',
+    transfer_mode: decryptedPayload.transfer_mode,
+    p2pUuid,
     previous_msg_uuid: previousMsgUuid,
     created_at: created
   }
 
   // If media, extend the message with media metadata for easier rendering in the timeline
   if (type === 'media') {
-    const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art, thumbnail, duration } = decryptedPayload
+    const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art, thumbnail, duration, transfer_mode } = decryptedPayload
     decryptedMessage.media_id = media_id
     decryptedMessage.file_key = file_key
     decryptedMessage.file_nonce = file_nonce
@@ -1057,23 +1096,26 @@ async function processIncomingMessage (rpcId, record) {
     decryptedMessage.album_art = album_art
     decryptedMessage.thumbnail = thumbnail
     decryptedMessage.duration = duration
+    decryptedMessage.transfer_mode = transfer_mode
 
-    // Also store in local_assets for the global archive
-    await workerBridge.request('saveAsset', [{
-      id: media_id,
-      media_id,
-      room_id: room_id,
-      message_id: decryptedMessage.local_uuid,
-      filename,
-      mime_type,
-      file_key,
-      file_nonce,
-      created_at: created,
-      music_metadata,
-      album_art,
-      thumbnail,
-      duration
-    }])
+    if (transfer_mode !== 'p2p') {
+      // Also store in local_assets for the global archive
+      await workerBridge.request('saveAsset', [{
+        id: media_id,
+        media_id,
+        room_id: room_id,
+        message_id: decryptedMessage.local_uuid,
+        filename,
+        mime_type,
+        file_key,
+        file_nonce,
+        created_at: created,
+        music_metadata,
+        album_art,
+        thumbnail,
+        duration
+      }])
+    }
   }
 
   if (type === 'link') {

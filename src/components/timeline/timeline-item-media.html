@@ -20,7 +20,7 @@
       }
     },
     getters: {
-      loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
+      loadingClass: (state) => (['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave')
     },
     client: async ({ refs, state, storage, globalStore, eventBus, signal, utils, observe }) => {
       const { $storage } = storage
@@ -142,9 +142,12 @@
       const loadMedia = async () => {
         const callId = ++lastCallId
         try {
+          console.info('[timeline-item-media] loadMedia start', { localUuid: state.localUuid, status: state.status })
           if (!state.localUuid || signal.aborted) {
             return
           }
+          const testMsg = await $storage.getMessage(state.localUuid)
+          console.info('[timeline-item-media] testMsg from DB:', testMsg)
 
           // synchronous cache check
           const cached = state.localUuid ? $state.decryptionCache.get(state.localUuid) : null
@@ -183,10 +186,10 @@
           } else {
             objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
             if (!objectUrl) {
+              if (['pending', 'pending_p2p'].includes(state.status)) {
+                return
+              }
               if (!message || !message.file_key) {
-                if (state.status === 'pending') {
-                  return
-                }
                 throw new Error('Message or key missing')
               }
 

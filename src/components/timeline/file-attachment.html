@@ -36,7 +36,7 @@
       }
     },
     getters: {
-      loadingClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : 'placeholder-wave')
+      loadingClass: (state) => (['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave')
     },
     client: async ({ refs, state, storage, globalStore, pocketbase, eventBus, signal, cryptoWorker, observe }) => {
       const { $storage } = storage
@@ -134,22 +134,29 @@
 
           let objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
           if (!objectUrl) {
+            if (['pending', 'pending_p2p'].includes(state.status)) {
+              return
+            }
             if (!message || !message.file_key) {
-              if (state.status === 'pending') {
-                return
-              }
               throw new Error('Message or key missing')
             }
 
-            const mediaRecord = await pb.collection('media').getOne(message.media_id)
-            const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
+            let encryptedData
+            const localFile = await $storage.getFile(state.localUuid || message.media_id)
+            if (localFile) {
+              encryptedData = await localFile.arrayBuffer()
+            } else if (message.media_id) {
+              const mediaRecord = await pb.collection('media').getOne(message.media_id)
+              const fileUrl = pb.files.getURL(mediaRecord, mediaRecord.file)
 
-            const response = await fetch(fileUrl, { signal })
-            if (!response.ok) {
-              throw new Error('Fetch failed')
+              const response = await fetch(fileUrl, { signal })
+              if (!response.ok) {
+                throw new Error('Fetch failed')
+              }
+              encryptedData = await response.arrayBuffer()
+            } else {
+              throw new Error('File not found locally or on server')
             }
-  
-            const encryptedData = await response.arrayBuffer()
             if (callId !== lastCallId || signal.aborted) {
               return
             }

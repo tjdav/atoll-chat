@@ -1,4 +1,5 @@
 import { defineConfig } from 'coralite-scripts'
+import configPlugin from './src/plugins/config-plugin.js'
 import pocketbasePlugin from './src/plugins/pocketbase.js'
 import eventBus from './src/plugins/event-bus.js'
 import statePlugin from './src/plugins/state-plugin.js'
@@ -9,6 +10,7 @@ import mediaWorkerPlugin from './src/plugins/media-worker-plugin.js'
 import mediaPlugin from './src/plugins/media-plugin.js'
 import syncPlugin from './src/plugins/sync-plugin.js'
 import webrtcPlugin from './src/plugins/web-rtc-plugin.js'
+import webrtcTransferPlugin from './src/plugins/webrtc-transfer-plugin.js'
 import bootstrapPlugin from './src/plugins/bootstrap.js'
 import emojiPlugin from './src/plugins/emoji-picker-plugin.js'
 import routerPlugin from './src/plugins/router-plugin.js'
@@ -29,6 +31,10 @@ const pocketbaseBaseUrl = process.env.DATABASE_URL || 'http://localhost:8090'
 export default defineConfig({
   public: 'public',
   plugins: [
+    configPlugin({
+      maxServerUploadSizeBytes: 26214400,
+      webrtcChunkSizeBytes: 16384
+    }),
     pocketbasePlugin({ baseUrl: pocketbaseBaseUrl }),
     eventBus,
     statePlugin({
@@ -67,6 +73,7 @@ export default defineConfig({
     totpPlugin,
     bootstrapPlugin,
     webrtcPlugin(),
+    webrtcTransferPlugin,
     notificationPlugin,
     biometricPlugin,
     pushPlugin({

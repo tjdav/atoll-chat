@@ -203,7 +203,7 @@
           })
 
           messagesToRender = messagesToRender.filter(m => {
-            if (m.type === 'ice_candidate' || m.type === 'reaction') {
+            if (m.type === 'ice_candidate' || m.type === 'reaction' || m.type === 'p2p_request_offer' || m.type === 'p2p_offer' || m.type === 'p2p_answer' || m.type === 'p2p_ice_candidate') {
               return false
             }
             const hasId = m.id && existingIds.has(m.id)

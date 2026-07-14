@@ -295,7 +295,8 @@ export default definePlugin({
 
 
       return (instanceContext) => {
-        const { pocketbase, cryptoWorker, globalStore } = instanceContext
+        const { pocketbase, cryptoWorker, globalStore, storage } = instanceContext
+        const { $storage } = storage
 
         /**
          * Namespace: $media
@@ -320,13 +321,23 @@ export default definePlugin({
                 return typeof cached === 'string' ? cached : cached.blobUrl
               }
             }
-            const mediaRecord = await pb.collection('media').getOne(asset.media_id)
-            const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-            const response = await fetch(url, { signal })
-            if (!response.ok) {
-              throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+
+            let encryptedBuffer
+            const localFile = await $storage.getFile(asset.message_id || asset.id || asset.media_id)
+            if (localFile) {
+              encryptedBuffer = await localFile.arrayBuffer()
+            } else if (asset.media_id) {
+              const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+              const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+              const response = await fetch(url, { signal })
+              if (!response.ok) {
+                throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+              }
+              encryptedBuffer = await response.arrayBuffer()
+            } else {
+              throw new Error('Media file not found locally or on server')
             }
-            const encryptedBuffer = await response.arrayBuffer()
+
             if (signal?.aborted) {
               throw new DOMException('Aborted', 'AbortError')
             }
