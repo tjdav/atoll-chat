@@ -429,6 +429,9 @@
       /* Initialize deep link plugin on boot */
       deeplink.initialize().then(async () => {
         console.log('[app-root] DeepLink plugin initialized.')
+        if (webrtcTransfer) {
+          console.log('[app-root] webrtcTransfer plugin registered.')
+        }
         await checkDeviceTrust()
         updateUI()
       }).catch(async (err) => {

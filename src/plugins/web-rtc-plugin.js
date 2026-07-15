@@ -133,14 +133,44 @@ export default function webrtcPlugin ({
           })
         }
 
-        const setupPeerConnection = (room_id, mediaStream, $state) => {
+        const setupPeerConnection = async (room_id, mediaStream, $state, pb) => {
           if (activeCalls.has(room_id)) {
             console.warn(`[WebRTC] PeerConnection already exists for room ${room_id}, closing old one.`)
             teardownCall(room_id)
           }
 
           console.log(`[WebRTC] Setting up PeerConnection for room ${room_id}`)
-          const pc = new RTCPeerConnection(rtcConfig)
+          let dynamicIceServers = rtcConfig.iceServers
+
+          if (!localIceServer) {
+            const defaultStun = [
+              { urls: 'stun:stun.l.google.com:19302' },
+              { urls: 'stun:global.stun.twilio.com:3478' }
+            ]
+            try {
+              console.log('[WebRTC] Fetching dynamic TURN credentials from PocketBase')
+              const credentialsResponse = await pb.send('/api/turn-credentials', {
+                method: 'GET'
+              })
+              if (credentialsResponse && credentialsResponse.username && credentialsResponse.password) {
+                dynamicIceServers = [
+                  ...defaultStun,
+                  {
+                    urls: 'turns:turn.atol.chat:5349',
+                    username: credentialsResponse.username,
+                    credential: credentialsResponse.password
+                  }
+                ]
+              } else {
+                dynamicIceServers = defaultStun
+              }
+            } catch (err) {
+              console.warn('[WebRTC] Failed to fetch dynamic TURN credentials, falling back to STUN-only:', err)
+              dynamicIceServers = defaultStun
+            }
+          }
+
+          const pc = new RTCPeerConnection({ iceServers: dynamicIceServers })
           if (mediaStream) {
             mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
           }
@@ -279,12 +309,13 @@ export default function webrtcPlugin ({
         return (instanceContext) => {
           const { $worker } = instanceContext.cryptoWorker
           const { $state } = instanceContext.globalStore
+          const { pb } = instanceContext.pocketbase
           setupSignalingListeners($worker, $state)
 
           return {
             $webrtc: {
               initiateCall: async (room_id, mediaStream) => {
-                const pc = setupPeerConnection(room_id, mediaStream, $state)
+                const pc = await setupPeerConnection(room_id, mediaStream, $state, pb)
                 const offer = await pc.createOffer()
                 await pc.setLocalDescription(offer)
                 const hasVideo = mediaStream.getVideoTracks().length > 0
@@ -294,7 +325,7 @@ export default function webrtcPlugin ({
                 })
               },
               answerCall: async (room_id, mediaStream, remoteOffer) => {
-                const pc = setupPeerConnection(room_id, mediaStream, $state)
+                const pc = await setupPeerConnection(room_id, mediaStream, $state, pb)
                 await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer))
                 await applyPendingCandidates(room_id, pc)
                 const answer = await pc.createAnswer()

@@ -89,25 +89,51 @@ export default definePlugin({
       }
 
       return (instanceContext) => {
-        const { globalStore, eventBus, cryptoWorker, config } = instanceContext
+        const { globalStore, eventBus, cryptoWorker, config, pocketbase } = instanceContext
         const { $state } = globalStore
         const { $bus } = eventBus
         const { $worker } = cryptoWorker
         const { $config } = config
         const localIceServer = $config ? $config.get('localIceServer') : undefined
 
-        const finalIceServers = localIceServer
-          ? [
-            {
-              urls: localIceServer,
-              username: 'testuser',
-              credential: 'testpass'
-            }
-          ]
-          : [
+        const getIceServers = async () => {
+          if (localIceServer) {
+            return [
+              {
+                urls: localIceServer,
+                username: 'testuser',
+                credential: 'testpass'
+              }
+            ]
+          }
+
+          const defaultStun = [
             { urls: 'stun:stun.l.google.com:19302' },
             { urls: 'stun:global.stun.twilio.com:3478' }
           ]
+
+          try {
+            console.log('[webrtcTransfer] Fetching dynamic TURN credentials from PocketBase')
+            const { pb } = pocketbase
+            const credentialsResponse = await pb.send('/api/turn-credentials', {
+              method: 'GET'
+            })
+            if (credentialsResponse && credentialsResponse.username && credentialsResponse.password) {
+              return [
+                ...defaultStun,
+                {
+                  urls: 'turns:turn.atol.chat:5349',
+                  username: credentialsResponse.username,
+                  credential: credentialsResponse.password
+                }
+              ]
+            }
+          } catch (err) {
+            console.warn('[webrtcTransfer] Failed to fetch dynamic TURN credentials, falling back to STUN-only:', err)
+          }
+
+          return defaultStun
+        }
 
         const sendSignalingMessage = async (roomId, type, payload = {}) => {
           const localUuid = crypto.randomUUID()
@@ -192,6 +218,7 @@ export default definePlugin({
             alert('Transfer failed: ' + err.message)
           }
 
+          const activeIceServers = await getIceServers()
           const adapter = await adapterPromise
           adapter.createSession(
             p2pUuid,
@@ -200,7 +227,7 @@ export default definePlugin({
             onProgress,
             onComplete,
             onError,
-            finalIceServers
+            activeIceServers
           )
         })
 
@@ -300,6 +327,7 @@ export default definePlugin({
               alert('Transfer failed: ' + err.message)
             }
 
+            const activeIceServers = await getIceServers()
             const adapter = await adapterPromise
             const session = adapter.createSession(
               p2pUuid,
@@ -308,7 +336,7 @@ export default definePlugin({
               onProgress,
               onComplete,
               onError,
-              finalIceServers
+              activeIceServers
             )
 
             session.fileToSend = file
