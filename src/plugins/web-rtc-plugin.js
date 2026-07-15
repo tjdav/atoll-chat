@@ -27,10 +27,12 @@ export default function webrtcPlugin ({
     client: {
       name: 'webrtc',
       config: {
-        iceServers: finalIceServers
+        iceServers: finalIceServers,
+        localIceServer
       },
       context: (pluginContext) => {
         // Phase 1: Global Setup
+        const localIceServer = pluginContext.config.localIceServer
         const activeCalls = new Map()
         const pendingCandidates = new Map()
         const candidateBuffers = new Map()
