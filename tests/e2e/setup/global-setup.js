@@ -48,7 +48,14 @@ async function globalSetup () {
   try {
     runDockerComposeUp()
   } catch (err) {
-    console.error('Failed to start coturn service via docker compose:', err)
+    console.error('Failed to start coturn service via docker compose, attempting native turnserver daemon start...', err)
+    try {
+      execSync('sudo killall turnserver || true', { stdio: 'inherit' })
+      execSync('sudo /usr/bin/turnserver -n --log-file=/tmp/turnserver.log --listening-port=3478 --lt-cred-mech --user=testuser:testpass --realm=atoll-chat > /tmp/turnserver-start.log 2>&1 &')
+      console.log('Successfully started native turnserver daemon in background!')
+    } catch (nativeErr) {
+      console.error('Failed to start native turnserver daemon:', nativeErr)
+    }
   }
 }
 

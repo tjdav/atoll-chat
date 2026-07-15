@@ -1250,6 +1250,16 @@ async function processNewRoomKey (rpcId, payload) {
     updated
   } = payload
 
+  if (!encrypted_room_key || !wrapped_by) {
+    console.warn(`[worker] Skipping room key processing for room ${room_id} because encrypted_room_key or wrapped_by is empty.`);
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_new_room_key',
+      result: { success: true }
+    })
+    return
+  }
+
   const effectiveEpochId = epoch_id || 1
 
   if (!currentUserKeys || !currentUserKeys.private_box_key) {

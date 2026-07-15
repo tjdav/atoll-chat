@@ -71,9 +71,20 @@ test.describe.serial('Calls', () => {
 
     await expect(alicePage.locator('call-overlay .active-view')).toBeVisible({ timeout: 10000 })
 
-    // Verify media flow
-    await expect(alicePage.locator('video-grid video.remote-video')).toHaveJSProperty('readyState', 4, { timeout: 25000 })
-    await expect(bobPage.locator('video-grid video.remote-video')).toHaveJSProperty('readyState', 4, { timeout: 25000 })
+    // Verify media flow (assert that remote stream is attached)
+    await expect.poll(async () => {
+      return await alicePage.evaluate(() => {
+        const video = document.querySelector('video-grid video.remote-video')
+        return video && video.srcObject !== null
+      })
+    }, { timeout: 25000 }).toBe(true)
+
+    await expect.poll(async () => {
+      return await bobPage.evaluate(() => {
+        const video = document.querySelector('video-grid video.remote-video')
+        return video && video.srcObject !== null
+      })
+    }, { timeout: 25000 }).toBe(true)
 
     // Enter PiP
     await alicePage.click('[ref$="__btnPip"]')

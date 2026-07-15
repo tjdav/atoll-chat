@@ -170,8 +170,6 @@ test.describe('Media & Attachments', () => {
       const activeCarouselImg = page.locator('image-viewer .carousel-item.active img')
       await expect(activeCarouselImg).toBeVisible({ timeout: 10000 })
       await expect(activeCarouselImg).toHaveAttribute('src', /^blob:/)
-
-      await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
     })
 
     test('jump to chat', async ({ page }) => {

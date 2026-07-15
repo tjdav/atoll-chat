@@ -33,7 +33,8 @@ export default defineConfig({
   plugins: [
     configPlugin({
       maxServerUploadSizeBytes: 26214400,
-      webrtcChunkSizeBytes: 16384
+      webrtcChunkSizeBytes: 16384,
+      localIceServer: process.env.LOCAL_ICE_SERVER
     }),
     pocketbasePlugin({ baseUrl: pocketbaseBaseUrl }),
     eventBus,

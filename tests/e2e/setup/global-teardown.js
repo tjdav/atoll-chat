@@ -44,6 +44,12 @@ async function globalTeardown () {
   } catch (err) {
     console.error('Failed to stop coturn service via docker compose:', err)
   }
+  try {
+    console.log('Attempting to stop native turnserver daemon...')
+    execSync('sudo killall turnserver || true', { stdio: 'inherit' })
+  } catch (err) {
+    console.error('Failed to kill native turnserver daemon:', err)
+  }
 }
 
 export default globalTeardown

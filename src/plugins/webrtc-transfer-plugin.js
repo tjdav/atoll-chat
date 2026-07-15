@@ -7,7 +7,7 @@ import { definePlugin } from 'coralite'
 export default definePlugin({
   name: 'webrtcTransfer',
   client: {
-    context: async (_pluginContext) => {
+    context: () => {
       let resolvedAdapter = null
 
       const getAdapter = async () => {
@@ -33,7 +33,7 @@ export default definePlugin({
         return resolvedAdapter
       }
 
-      const initialAdapter = await getAdapter()
+      const adapterPromise = getAdapter()
 
       const pendingCandidates = new Map()
       const activeTransfers = new Map()
@@ -94,8 +94,7 @@ export default definePlugin({
         const { $bus } = eventBus
         const { $worker } = cryptoWorker
         const { $config } = config
-
-        const localIceServer = typeof process !== 'undefined' && process.env ? process.env.LOCAL_ICE_SERVER : undefined
+        const localIceServer = $config ? $config.get('localIceServer') : undefined
 
         const finalIceServers = localIceServer
           ? [
@@ -193,7 +192,8 @@ export default definePlugin({
             alert('Transfer failed: ' + err.message)
           }
 
-          initialAdapter.createSession(
+          const adapter = await adapterPromise
+          adapter.createSession(
             p2pUuid,
             false,
             onSignal,
@@ -300,7 +300,8 @@ export default definePlugin({
               alert('Transfer failed: ' + err.message)
             }
 
-            const session = initialAdapter.createSession(
+            const adapter = await adapterPromise
+            const session = adapter.createSession(
               p2pUuid,
               true,
               onSignal,
@@ -330,7 +331,7 @@ export default definePlugin({
               }
               console.info(`[webrtcTransfer] Starting file transfer for ${p2pUuid}`)
               try {
-                await initialAdapter.startOutgoing(p2pUuid, session.fileToSend, session.chunkSizeBytes)
+                await adapter.startOutgoing(p2pUuid, session.fileToSend, session.chunkSizeBytes)
               } catch (err) {
                 console.error('[webrtcTransfer] Failed to start outgoing transfer:', err)
               }
@@ -341,7 +342,9 @@ export default definePlugin({
             const p2pUuid = message.p2pUuid
             console.info(`[webrtcTransfer] Bob received p2p_offer for ${p2pUuid} from ${message.sender_id}`)
 
-            const session = initialAdapter.sessions.get(p2pUuid)
+            const adapter = await adapterPromise
+            const session = adapter.sessions.get(p2pUuid)
+
             if (session) {
               await session.pc.setRemoteDescription(new RTCSessionDescription(message.content))
 
@@ -371,7 +374,9 @@ export default definePlugin({
           if (message.type === 'p2p_answer' && message.target_id === $state.currentUser?.id) {
             const p2pUuid = message.p2pUuid
             console.info(`[webrtcTransfer] Alice received p2p_answer for ${p2pUuid} from ${message.sender_id}`)
-            const session = initialAdapter.sessions.get(p2pUuid)
+            const adapter = await adapterPromise
+            const session = adapter.sessions.get(p2pUuid)
+
             if (session) {
               await session.pc.setRemoteDescription(new RTCSessionDescription(message.content))
 
@@ -391,7 +396,8 @@ export default definePlugin({
           if (message.type === 'p2p_ice_candidate' && message.target_id === $state.currentUser?.id) {
             const p2pUuid = message.p2pUuid
             const candidate = message.candidate
-            const session = initialAdapter.sessions.get(p2pUuid)
+            const adapter = await adapterPromise
+            const session = adapter.sessions.get(p2pUuid)
             if (session && session.pc.remoteDescription && session.pc.remoteDescription.type) {
               try {
                 await session.pc.addIceCandidate(new RTCIceCandidate(candidate))

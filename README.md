@@ -17,13 +17,51 @@ In an age of constant surveillance, Atoll Chat provides a sanctuary for your dig
 
 ---
 
+## Key Features
+
+Atoll Chat is packed with powerful, privacy-preserving features designed to run securely client-side:
+
+### Cryptography & Security
+*   **Zero-Knowledge Architecture:** Cryptographic operations are performed locally using [Libsodium](https://doc.libsodium.org/) inside a background Web Worker, ensuring a completely unblocked UI.
+*   **Biometric Passkeys (WebAuthn PRF):** Hardware-backed key derivation using the WebAuthn PRF extension. Log in or unlock your vault with biometrics (e.g., TouchID/FaceID) or hardware keys (e.g., YubiKey) without exposing secrets to the server.
+*   **Argon2id Key Stretching:** High-entropy key derivation for fallback Vault PINs using the Argon2id hashing algorithm via Libsodium.
+*   **Multi-Factor Authentication (TOTP):** Two-factor authentication support with native QR code generation and verification.
+*   **E2EE Room Keys:** Every chat room is secured by a unique 32-byte symmetric Room Key with local message signing for identity verification.
+
+### End-to-End Encrypted Messaging
+*   **Encrypted Chat Rooms:** Real-time text messaging with full E2EE room capabilities.
+*   **Message Reactions:** React to messages using rich, secure emoji reactions.
+*   **Interactive Voice Messages:** Record and send inline voice messages. Includes a custom waveform visualizer generated on-the-fly using the Web Audio API to analyze audio peaks.
+*   **Rich Previews & Markdown:** Write messages in Markdown and view rich inline previews for URLs.
+*   **Room Customization:** Create, edit, configure, or leave chat rooms. Update room names, avatars, and member permissions securely.
+*   **Jump-to-Chat:** A global modal to quickly search and switch between active chat rooms.
+
+### Personal Media Vault
+*   **Encrypted Media Storage:** Securely store, view, and play pictures, videos, music, and documents.
+*   **On-the-Fly RAM Decryption:** Files are decrypted dynamically inside browser RAM and cached locally using IndexedDB for ultra-secure access.
+*   **Custom Media Players:** Secure, client-side players for audio and video, including Picture-in-Picture (PiP) support.
+*   **Shared Links & Documents:** Access dedicated views of all links, documents, and media shared across individual chat rooms.
+
+### Peer-to-Peer Calls & WebRTC
+*   **E2EE Audio & Video Calls:** Direct, peer-to-peer calling using end-to-end encrypted signaling messages over PocketBase.
+*   **Direct File Transfer:** Send large files directly to peers using WebRTC, avoiding cloud storage upload sizes and speeds.
+*   **Fallback STUN/TURN:** Automatic STUN/TURN server fallback (orchestrated via Coturn) to guarantee reliable connections across firewalls and NATs.
+
+### Multi-Platform & Offline Reliability
+*   **Progressive Web App (PWA):** Installs natively on desktop and mobile devices.
+*   **Capacitor Native Apps:** Ready for Android and iOS wrapper deployments.
+*   **Offline-First Cache:** Full IndexedDB offline caching allows reading chats, composing queued messages, and viewing cached media without an active internet connection.
+*   **Multi-Tab Sync:** Synchronize application state and database updates seamlessly across multiple browser tabs.
+
+---
+
 ## The Security Model: Zero-Knowledge Flow
 
 Atoll Chat relies on the robust [Libsodium](https://doc.libsodium.org/) library for all cryptographic operations and the **WebAuthn PRF extension** for hardware-backed security.
 
 1.  **Vault Unlocking:** We support two primary methods to derive your high-entropy Key Encryption Key (KEK):
     -   **Biometric Passkeys (Primary):** Utilises the **WebAuthn PRF extension**. This allows your hardware security key or biometric sensor (TouchID/FaceID) to derive a site-specific secret that never leaves the hardware.
-    -   **Vault PIN (Fallback):** Your 8-character secret is stretched using **Argon2id** (via `crypto_pwhash`) with interactive-grade memory and CPU limits to prevent brute-force attacks.
+    -   **Vault PIN (Fallback):** Your secret is stretched using **Argon2id** (via `crypto_pwhash`) with interactive-grade memory and CPU limits to prevent brute-force attacks.
 2.  **Local Decryption:** The derived KEK is used to decrypt your "Vault" — a JSON blob stored on the server that contains your private X25519 (encryption) and Ed25519 (identity) keys.
 3.  **Message Pipeline:**
     - Every room has a unique 32-byte symmetric **Room Key**.
@@ -50,32 +88,59 @@ Atoll Chat is a showcase for the **Coralite** framework, leveraging its unique a
 
 ### Getting Started
 
-#### 1. Backend (PocketBase)
-The backend is powered by PocketBase and runs in Docker.
+#### 1. Quick Start Dev Environment (Recommended)
+
+To spin up the entire development environment including a mock PocketBase server, local Coturn TURN server container, and the frontend dev server running on `http://localhost:3000`:
 
 ```bash
-# Start the services
-pnpm run start:services
-```
-
-This will spin up a PocketBase instance at `http://localhost:8090`. The custom logic for rate-limiting and generic push notifications is located in the `database/pb_hooks/` directory.
-
-#### 2. Frontend (Coralite)
-Install the dependencies and start the development server.
-
-```bash
+# Install dependencies
 pnpm install
-pnpm run start:app
+
+# Start database services & app dev server
+pnpm start
 ```
 
-The app will be available at `http://localhost:3000`. Ensure you have Node.js installed with `--experimental-vm-modules` support (handled automatically by our scripts).
+#### 2. Running Services Separately
 
-### Running Tests
-We use Playwright for end-to-end testing, covering our complex cryptographic flows and multi-user interactions.
+If you prefer to run services individually:
+
+*   **Database & TURN Service:**
+    ```bash
+    pnpm run start:database
+    ```
+    This spins up the production-ready Docker containers (PocketBase on port `8080` and Coturn on port `3478`).
+    
+*   **Frontend Development Server:**
+    ```bash
+    pnpm run start:app
+    ```
+    Runs the Coralite dev server at `http://localhost:3000`. Ensure Node.js is executed with `--experimental-vm-modules` support (handled automatically by our scripts).
+
+*   **Production Build:**
+    ```bash
+    pnpm run build
+    ```
+    Compiles the frontend to the `./dist` folder, ready for deployment or serving via PocketBase's public directory.
+
+### Running Tests & Linting
+
+Our codebase implements extensive E2E testing using Playwright to cover hardware security keys, cryptographic flows, and real-time room communication.
 
 ```bash
-# Run all E2E tests
+# Run unit tests
+pnpm run test:unit
+
+# Run all E2E tests in headless mode
 pnpm run test:e2e
+
+# Run E2E tests in interactive UI mode
+pnpm run test:e2e:ui
+
+# Check TypeScript definitions
+pnpm run lint:types
+
+# Lint and fix style formatting issues
+pnpm run lint:format
 ```
 
 ---

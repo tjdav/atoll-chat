@@ -14,17 +14,14 @@ services:
       retries: 5
 
   coturn:
-    image: docker.io/coturn/coturn:latest
+    image: coturn/coturn:latest
     container_name: atoll-coturn
-    ports:
-      - "${TURN_PORT:-3478}:${TURN_PORT:-3478}"
-      - "${TURN_PORT:-3478}:${TURN_PORT:-3478}/udp"
-    command:
-      - turnserver
-      - -n
-      - --log-file=stdout
-      - --listening-port=${TURN_PORT:-3478}
-      - --lt-cred-mech
-      - --user=testuser:testpass
-      - --realm=atoll-chat
+    network_mode: "host"
+    command: >
+      turnserver
+      --log-file=stdout
+      --listening-port=3478
+      --user=testuser:testpass
+      --realm=atoll-chat
+      --no-cli
     restart: unless-stopped

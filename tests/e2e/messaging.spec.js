@@ -175,10 +175,6 @@ test.describe('Messaging Features', () => {
       // The third should be is-first-in-block="false" and is-last-in-block="true"
       await expect(rows.nth(2)).toHaveAttribute('is-first-in-block', 'false')
       await expect(rows.nth(2)).toHaveAttribute('is-last-in-block', 'true')
-
-      // Take screenshot of the message bubble roundness
-      await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
-      await page.waitForTimeout(1000)
     })
   })
 
@@ -352,12 +348,6 @@ test.describe('Messaging Features', () => {
 
       // Verify that the input loses focus (textarea.blur() was triggered)
       await expect(textarea).not.toBeFocused({ timeout: 5000 })
-
-      // Wait for the delayed scroll-to-bottom tick (300ms) to complete
-      await page.waitForTimeout(500)
-
-      // Take screenshot of the blurred/collapsed state
-      await page.screenshot({ path: './tests/e2e/screenshots/verification.png' })
     })
   })
 

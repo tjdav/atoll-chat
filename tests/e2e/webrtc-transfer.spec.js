@@ -51,9 +51,6 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
 
     expect(download.suggestedFilename()).toBe('test.webp')
 
-    // Take screenshot of Bob's view with the completed state
-    await bobPage.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
-
     const hasMediaUpload = await alicePage.evaluate(async () => {
       if (window.$state && window.$state.currentUser) {
         const pbUrl = window.$config?.pb_url || 'http://localhost:8090'
