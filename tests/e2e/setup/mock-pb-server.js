@@ -291,6 +291,40 @@ export function createServer () {
         return
       }
 
+      // TURN credentials endpoint
+      if (pathname === '/api/turn-credentials') {
+        if (req.method !== 'GET') {
+          res.writeHead(405, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ message: 'Method Not Allowed' }))
+          return
+        }
+
+        const authHeader = req.headers.authorization || ''
+        const userId = getUserIdFromToken(authHeader)
+        const user = db.users.find(u => u.id === userId)
+        if (!user) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ message: 'Unauthorized' }))
+          return
+        }
+
+        const sharedSecret = process.env.TURN_SHARED_SECRET || 'REPLACE_THIS_WITH_A_LONG_RANDOM_STRING'
+        const expiresEnv = process.env.TURN_EXPIRES_IN_SECONDS
+        const expiresInSeconds = expiresEnv ? parseInt(expiresEnv, 10) : 3600
+
+        const unixTimestamp = Math.floor(Date.now() / 1000) + expiresInSeconds
+        const username = `${unixTimestamp}:${userId}`
+        const password = crypto.createHmac('sha1', sharedSecret).update(username).digest('base64')
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          username,
+          password,
+          ttl: expiresInSeconds
+        }))
+        return
+      }
+
       /* Save plaintext recovery codes for testing */
       if (pathname === '/api/set-test-recovery-codes') {
         const { username, codes } = body
