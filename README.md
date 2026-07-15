@@ -1,3 +1,7 @@
+<p align="center">
+    <img src="https://codeberg.org/tjdavid/atoll-chat/raw/branch/main/docs/assets/hero.png" alt="Atoll Chat" />
+</p>
+
 # Atoll Chat 🏝️
 
 Atoll Chat is a privacy-first, zero-knowledge messaging application and personal media vault built on the [Coralite](https://coralite.dev) framework. It's designed to give you total control over your digital life, ensuring that your messages, photos, and videos stay strictly between you and your recipients.
