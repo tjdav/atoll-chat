@@ -3,7 +3,7 @@ import { definePlugin } from 'coralite'
 /**
  *
  */
-export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
+export default function workerPlugin ({ url = '/' } = {}) {
   return definePlugin({
     name: 'cryptoWorker',
     client: {
@@ -28,7 +28,7 @@ export default function workerPlugin ({ url = 'http://localhost:8090' } = {}) {
             isReady = true
 
             // Send worker:init message with baseUrl
-            const baseUrl = pluginContext.config?.url || 'http://localhost:8090'
+            const baseUrl = pluginContext.config?.url || '/'
             worker.postMessage({
               type: 'worker:init',
               payload: { baseUrl }

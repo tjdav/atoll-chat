@@ -3,10 +3,10 @@ import { definePlugin } from 'coralite'
 /**
  * PocketBase plugin loader.
  * @param {Object} options Plugin configuration options.
- * @param {string} [options.baseUrl='http://127.0.0.1:8090'] The pocketbase API base URL.
+ * @param {string} [options.baseUrl='/'] The pocketbase API base URL.
  */
 export default function pocketbase (options = {}) {
-  const url = options.baseUrl || 'http://127.0.0.1:8090'
+  const url = options.baseUrl || '/'
 
   return definePlugin({
     name: 'pocketbase',

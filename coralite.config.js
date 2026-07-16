@@ -78,7 +78,7 @@ export default defineConfig({
     notificationPlugin,
     biometricPlugin,
     pushPlugin({
-      vapidKey: 'BI42LscA_XvC28RpxgGk_g0-XW5yC4S_N924_68yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2'
+      vapidKey: process.env.VAPID_KEY || 'BI42LscA_XvC28RpxgGk_g0-XW5yC4S_N924_68yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2'
     }),
     appLifecyclePlugin,
     networkPlugin,
