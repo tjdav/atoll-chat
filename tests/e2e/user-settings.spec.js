@@ -9,6 +9,7 @@ test.describe('User Settings & Profile', () => {
     })
 
     test('update display name', async ({ browser, page, loginCustomPage }) => {
+      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
       await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
       const nn = 'Alice Wonderland'
       await page.locator('[data-testid="profile-settings-0__nameInput"]').fill(nn)
@@ -24,6 +25,7 @@ test.describe('User Settings & Profile', () => {
     })
 
     test('update avatar', async ({ page }) => {
+      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
       await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
       const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.locator('[data-testid="profile-settings-0__avatarContainer"]').click()])
       await fc.setFiles({
@@ -38,6 +40,7 @@ test.describe('User Settings & Profile', () => {
     })
 
     test('mobile touch editing of avatar (drag and pinch)', async ({ page }) => {
+      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
       await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
       const [fc] = await Promise.all([
         page.waitForEvent('filechooser'),

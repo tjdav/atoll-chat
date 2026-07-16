@@ -22,10 +22,6 @@
     </div>
     
     <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative align-items-center">
-      <button class="nav-link d-flex align-items-center justify-content-center w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings" data-testid="btnSettings" hidden="{{ isSidebarMenuHidden }}">
-        <i class="bi bi-gear-fill fs-4"></i>
-      </button>
-
       <!-- Profile Avatar / Island Dropup -->
       <div class="dropup w-100 d-flex justify-content-center align-items-center" ref="profileDropupContainer">
         <button class="btn p-0 border-0 d-flex align-items-center justify-content-center" 
@@ -39,23 +35,33 @@
             <!-- Render avatar dynamically or standard fallback inside client -->
           </div>
         </button>
-        <ul class="dropdown-menu shadow dropdown-menu-dark p-2" style="min-width: 240px; margin-bottom: 8px;" ref="profileDropdownMenu" data-testid="profileDropdownMenu">
+        <ul class="dropdown-menu shadow dropdown-menu-dark p-0 overflow-hidden" style="min-width: 240px; margin-bottom: 8px;" ref="profileDropdownMenu" data-testid="profileDropdownMenu">
           <!-- Island Section (rendered if Islands mode is active) -->
-          <li hidden="{{ hideIslandsHeader }}" class="dropdown-header px-3 py-1">Your Islands</li>
+          <li hidden="{{ hideIslandsHeader }}" class="dropdown-header px-3 py-2">Your Islands</li>
           <div ref="islandsList" data-testid="islandsList"></div>
           
           <li hidden="{{ hideIslandsActions }}">
-            <button class="dropdown-item d-flex align-items-center gap-2" ref="btnChartNewIsland" data-testid="btnChartNewIsland">
+            <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnChartNewIsland" data-testid="btnChartNewIsland">
               <i class="bi bi-compass"></i>
               <span>Chart New Island</span>
             </button>
           </li>
           
-          <li hidden="{{ hideIslandsActions }}"><hr class="dropdown-divider"></li>
+          <li hidden="{{ hideIslandsActions }}"><hr class="dropdown-divider m-0"></li>
+
+          <!-- Settings Section -->
+          <li>
+            <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 {{ isSettingsActive }}" ref="btnSettings" data-testid="btnSettings">
+              <i class="bi bi-gear"></i>
+              <span>Settings</span>
+            </button>
+          </li>
+          
+          <li><hr class="dropdown-divider m-0"></li>
           
           <!-- Logout Section -->
           <li>
-            <button class="dropdown-item text-danger d-flex align-items-center gap-2" ref="btnLogout" data-testid="btnLogout">
+            <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnLogout" data-testid="btnLogout">
               <i class="bi bi-box-arrow-right"></i>
               <span>Logout</span>
             </button>
@@ -130,6 +136,11 @@
         const btn = refs(refName)
         if (btn) {
           btn.addEventListener('click', () => {
+            // Hide dropdown if clicked Settings inside the dropdown
+            if (refName === 'btnSettings' && dropdownInstance) {
+              dropdownInstance.hide()
+            }
+
             if ($state.currentAppView === viewName) {
               return
             }
@@ -242,7 +253,7 @@
 
           const li = document.createElement('li')
           const btn = document.createElement('button')
-          btn.className = `dropdown-item d-flex align-items-center justify-content-between gap-3 ${isActive ? 'active' : ''}`
+          btn.className = `dropdown-item d-flex align-items-center justify-content-between gap-3 py-2 px-3 ${isActive ? 'active' : ''}`
           btn.setAttribute('data-id', w.id)
           btn.setAttribute('data-testid', `workspace-btn-${w.id}`)
           if (isActive) {

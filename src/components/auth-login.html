@@ -39,12 +39,12 @@
                   data-testid="islandSelectBtn">
             <span ref="currentIslandLabel">Current Island: Loading...</span>
           </button>
-          <ul class="dropdown-menu shadow dropdown-menu-dark p-2" style="min-width: 240px;" ref="islandsDropdownMenu" data-testid="islandsDropdownMenu">
-            <li class="dropdown-header px-3 py-1">Your Islands</li>
+          <ul class="dropdown-menu shadow dropdown-menu-dark p-0 overflow-hidden" style="min-width: 240px;" ref="islandsDropdownMenu" data-testid="islandsDropdownMenu">
+            <li class="dropdown-header px-3 py-2">Your Islands</li>
             <div ref="islandsList" data-testid="islandsList"></div>
-            <li><hr class="dropdown-divider"></li>
+            <li><hr class="dropdown-divider m-0"></li>
             <li>
-              <button class="dropdown-item d-flex align-items-center gap-2" ref="btnChartNewIsland" data-testid="btnChartNewIsland">
+              <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnChartNewIsland" data-testid="btnChartNewIsland">
                 <i class="bi bi-compass"></i>
                 <span>Chart New Island</span>
               </button>
@@ -175,7 +175,7 @@
 
           const li = document.createElement('li')
           const btn = document.createElement('button')
-          btn.className = `dropdown-item d-flex align-items-center justify-content-between gap-3 ${isActive ? 'active' : ''}`
+          btn.className = `dropdown-item d-flex align-items-center justify-content-between gap-3 py-2 px-3 ${isActive ? 'active' : ''}`
           btn.setAttribute('data-id', w.id)
           btn.setAttribute('data-testid', `workspace-btn-${w.id}`)
           if (isActive) {

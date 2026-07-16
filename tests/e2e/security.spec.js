@@ -258,6 +258,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
     /* Open profile settings modal */
+    await page.locator('[data-testid$="__profileBtn"]').click()
     await page.locator('[data-testid$="__btnSettings"]').click()
 
     /* Trigger 2FA setup */
@@ -395,6 +396,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('app-layout')).toBeVisible()
 
     /* DISABLE TOTP */
+    await page.locator('[data-testid$="__profileBtn"]').click()
     await page.locator('[data-testid$="__btnSettings"]').click()
     await page.locator('[data-testid$="__btnManageTotp"]').click()
 

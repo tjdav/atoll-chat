@@ -70,11 +70,19 @@
           }
           const cleanUrl = url.origin
           const id = 'ws_' + btoa(cleanUrl).replace(/=/g, '').slice(-15)
-          return { id, name, url: cleanUrl }
-        } catch (e) {
+          return {
+            id,
+            name,
+            url: cleanUrl
+          }
+        } catch (_e) {
           const sanitized = urlStr.trim().replace(/\/+$/, '')
           const id = 'ws_' + btoa(sanitized).replace(/=/g, '').slice(-15)
-          return { id, name: 'Workspace', url: sanitized }
+          return {
+            id,
+            name: 'Workspace',
+            url: sanitized
+          }
         }
       }
 
@@ -178,7 +186,10 @@
         urlInput = urlInput.replace(/\/+$/, '')
 
         try {
-          const response = await fetch(`${urlInput}/api/health`, { method: 'GET', mode: 'cors' })
+          const response = await fetch(`${urlInput}/api/health`, {
+            method: 'GET',
+            mode: 'cors'
+          })
           if (!response.ok) {
             throw new Error(`Server returned ${response.status}`)
           }
