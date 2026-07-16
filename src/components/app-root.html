@@ -9,7 +9,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, webrtcTransfer }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, webrtcTransfer, config }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
@@ -25,11 +25,104 @@
       const { $storage } = storage
       const { $push } = push
       const { $worker } = cryptoWorker
+      const { $config } = config
       const container = refs('container')
 
       let isDeviceTrusted = false
       let isLifecycleRegistered = false
       let isFlushing = false
+
+      const isWorkspacesEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
+      console.log('[app-root] isWorkspacesEnabled:', isWorkspacesEnabled, {
+        config: $config?.get('enableWorkspaces'),
+        override: window.__coralite_workspaces_override__
+      })
+
+      const deriveWorkspaceFromUrl = (urlStr) => {
+        try {
+          const url = new URL(urlStr)
+          const host = url.hostname
+          const parts = host.split('.')
+          let name = parts[0]
+          if (name === 'www' && parts.length > 1) {
+            name = parts[1]
+          }
+          const cleanUrl = url.origin
+          const id = 'ws_' + btoa(cleanUrl).replace(/=/g, '').slice(-15)
+          return {
+            id,
+            name,
+            url: cleanUrl
+          }
+        } catch (e) {
+          const sanitized = urlStr.trim().replace(/\/+$/, '')
+          const id = 'ws_' + btoa(sanitized).replace(/=/g, '').slice(-15)
+          return {
+            id,
+            name: 'Workspace',
+            url: sanitized
+          }
+        }
+      }
+
+      const tryAutoOnboardDeepLink = async () => {
+        if (!isWorkspacesEnabled) {
+          return false
+        }
+        const workspaces = pb.authStore.workspaces || []
+        if (workspaces.length > 0) {
+          return false
+        }
+
+        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+          if (!window.location.search) {
+            return false
+          }
+        }
+
+        const urlInput = window.location.origin
+        if (!urlInput) {
+          return false
+        }
+
+        console.log('[app-root] Zero state deep link auto-onboarding detected for:', urlInput)
+        try {
+          const response = await fetch(`${urlInput}/api/health`, {
+            method: 'GET',
+            mode: 'cors'
+          })
+          if (!response.ok) {
+            return false
+          }
+          const data = await response.json()
+          if (data.code !== 200 && !data.message) {
+            return false
+          }
+
+          const workspaceInfo = deriveWorkspaceFromUrl(urlInput)
+          pb.authStore.addWorkspace({
+            id: workspaceInfo.id,
+            name: workspaceInfo.name,
+            url: workspaceInfo.url,
+            token: '',
+            user: null
+          })
+          pb.authStore.setActiveWorkspace(workspaceInfo.id)
+          pb.baseUrl = workspaceInfo.url
+
+          await $storage.initialize('AtollChatDB_' + workspaceInfo.id)
+          await $worker.execute('worker:set_workspace_context', {
+            workspaceId: workspaceInfo.id,
+            baseUrl: workspaceInfo.url
+          })
+
+          $state.isOnboardingWorkspace = true
+          return true
+        } catch (err) {
+          console.warn('[app-root] Auto-onboarding failed:', err)
+          return false
+        }
+      }
 
       const flushQueue = async () => {
         if (isFlushing) {
@@ -235,52 +328,94 @@
         console.log('[app-root] updateUI called', {
           isAuthenticated: $state.isAuthenticated,
           hasModel: !!pb.authStore.model,
-          public_box_key: pb.authStore.model?.public_box_key
+          public_box_key: pb.authStore.model?.public_box_key,
+          isWorkspacesEnabled,
+          workspacesLength: pb.authStore.workspaces?.length,
+          isOnboardingWorkspace: $state.isOnboardingWorkspace
         })
 
         while (container.firstChild) {
           container.removeChild(container.firstChild)
         }
 
-        if ($state.isAuthenticated && $state.isVaultUnlocked) {
-          container.className = 'h-100 w-100 overflow-hidden'
-          container.appendChild(document.createElement('app-layout'))
-          container.appendChild(document.createElement('create-room-modal'))
-          container.appendChild(document.createElement('p2p-reroute-modal'))
-          container.appendChild(document.createElement('p2p-consent-modal'))
-        } else {
-          container.className = 'h-100 w-100 d-flex align-items-center justify-content-center bg-body-tertiary'
-
-          const contentWrapper = document.createElement('div')
-          contentWrapper.className = 'container'
-
-          const row = document.createElement('div')
-          row.className = 'row justify-content-center'
-
-          const col = document.createElement('div')
-          col.className = 'col-12 col-sm-10 col-md-8 col-lg-6 col-xl-4'
-
-          row.appendChild(col)
-          contentWrapper.appendChild(row)
-          container.appendChild(contentWrapper)
-
-          if (!$state.isAuthenticated) {
-            if ($state.authView === 'register') {
-              col.appendChild(document.createElement('auth-register'))
+        if (isWorkspacesEnabled) {
+          const workspaces = pb.authStore.workspaces || []
+          if (workspaces.length === 0) {
+            if ($state.isOnboardingWorkspace) {
+              renderAuthFlow()
             } else {
-              col.appendChild(document.createElement('auth-login'))
+              container.className = 'vh-100 vw-100 d-flex align-items-center justify-content-center bg-body-tertiary'
+              container.appendChild(document.createElement('workspace-onboarding'))
             }
+            return
+          }
+        }
+
+        if ($state.isAuthenticated && $state.isVaultUnlocked) {
+          container.className = 'h-100 w-100 overflow-hidden d-flex'
+
+          if (isWorkspacesEnabled) {
+            container.appendChild(document.createElement('workspace-switcher'))
+          }
+
+          const mainContent = document.createElement('div')
+          mainContent.className = 'flex-grow-1 h-100 position-relative'
+          mainContent.appendChild(document.createElement('app-layout'))
+          mainContent.appendChild(document.createElement('create-room-modal'))
+          mainContent.appendChild(document.createElement('p2p-reroute-modal'))
+          mainContent.appendChild(document.createElement('p2p-consent-modal'))
+          container.appendChild(mainContent)
+        } else {
+          container.className = 'h-100 w-100 overflow-hidden d-flex'
+
+          const workspaces = pb.authStore.workspaces || []
+          if (isWorkspacesEnabled && workspaces.length > 0) {
+            container.appendChild(document.createElement('workspace-switcher'))
+          }
+
+          const mainContent = document.createElement('div')
+          mainContent.className = 'flex-grow-1 h-100 position-relative d-flex align-items-center justify-content-center bg-body-tertiary'
+          container.appendChild(mainContent)
+
+          renderAuthFlow(mainContent)
+        }
+      }
+
+      const renderAuthFlow = (targetContainer) => {
+        const parent = targetContainer || container
+        if (!targetContainer) {
+          parent.className = 'h-100 w-100 d-flex align-items-center justify-content-center bg-body-tertiary'
+        }
+
+        const contentWrapper = document.createElement('div')
+        contentWrapper.className = 'container'
+
+        const row = document.createElement('div')
+        row.className = 'row justify-content-center'
+
+        const col = document.createElement('div')
+        col.className = 'col-12 col-sm-10 col-md-8 col-lg-6 col-xl-4'
+
+        row.appendChild(col)
+        contentWrapper.appendChild(row)
+        parent.appendChild(contentWrapper)
+
+        if (!$state.isAuthenticated) {
+          if ($state.authView === 'register') {
+            col.appendChild(document.createElement('auth-register'))
           } else {
-            /* User is authenticated. Check if device is trusted (2FA) */
-            if (!isDeviceTrusted) {
-              col.appendChild(document.createElement('totp-challenge'))
+            col.appendChild(document.createElement('auth-login'))
+          }
+        } else {
+          /* User is authenticated. Check if device is trusted (2FA) */
+          if (!isDeviceTrusted) {
+            col.appendChild(document.createElement('totp-challenge'))
+          } else {
+            const user = pb.authStore.model
+            if (user && user.public_box_key) {
+              col.appendChild(document.createElement('vault-unlock'))
             } else {
-              const user = pb.authStore.model
-              if (user && user.public_box_key) {
-                col.appendChild(document.createElement('vault-unlock'))
-              } else {
-                col.appendChild(document.createElement('vault-setup'))
-              }
+              col.appendChild(document.createElement('vault-setup'))
             }
           }
         }
@@ -416,28 +551,57 @@
         updateUI()
       })
 
-      // Authoritative initialization from PocketBase
-      $state.isAuthenticated = pb.authStore.isValid
-      if ($state.isAuthenticated) {
-        $state.currentUser = pb.authStore.model
-      }
+      /* Boot sequence namespacing initialization */
+      const initWorkspacesBoot = async () => {
+        if (isWorkspacesEnabled) {
+          const workspaces = pb.authStore.workspaces || []
+          const activeId = pb.authStore.activeWorkspaceId
 
-      if (!$state.authView) {
-        $state.authView = 'login'
-      }
+          if (activeId) {
+            const active = workspaces.find(w => w.id === activeId)
+            pb.baseUrl = active ? active.url : ''
 
-      /* Initialize deep link plugin on boot */
-      deeplink.initialize().then(async () => {
-        console.log('[app-root] DeepLink plugin initialized.')
-        if (webrtcTransfer) {
-          console.log('[app-root] webrtcTransfer plugin registered.')
+            /* Initialize namespaced IndexedDB and worker context */
+            await $storage.initialize('AtollChatDB_' + activeId)
+            await $worker.execute('worker:set_workspace_context', {
+              workspaceId: activeId,
+              baseUrl: pb.baseUrl
+            })
+
+            $state.activeWorkspaceId = activeId
+            $state.workspaces = workspaces
+          } else {
+            await tryAutoOnboardDeepLink()
+          }
         }
-        await checkDeviceTrust()
-        updateUI()
-      }).catch(async (err) => {
-        console.error('[app-root] Failed to initialize DeepLink plugin:', err)
-        await checkDeviceTrust()
-        updateUI()
+      }
+
+      /* Initialize boot workspaces context before standard authentication evaluations */
+      initWorkspacesBoot().then(() => {
+        $state.isAuthenticated = pb.authStore.isValid
+        if ($state.isAuthenticated) {
+          $state.currentUser = pb.authStore.model
+        }
+
+        if (!$state.authView) {
+          $state.authView = 'login'
+        }
+
+        /* Initialize deep link plugin on boot */
+        deeplink.initialize().then(async () => {
+          console.log('[app-root] DeepLink plugin initialized.')
+          if (webrtcTransfer) {
+            console.log('[app-root] webrtcTransfer plugin registered.')
+          }
+          await checkDeviceTrust()
+          updateUI()
+        }).catch(async (err) => {
+          console.error('[app-root] Failed to initialize DeepLink plugin:', err)
+          await checkDeviceTrust()
+          updateUI()
+        })
+      }).catch((err) => {
+        console.error('[app-root] Workspaces boot failed:', err)
       })
 
       $state.subscribe('isAuthenticated', async () => {
@@ -449,6 +613,7 @@
         processPendingInvite().catch(console.error)
       })
       $state.subscribe('authView', updateUI)
+      $state.subscribe('isOnboardingWorkspace', updateUI)
 
       $state.subscribe('isOnline', (val) => {
         if (val) {

@@ -3,9 +3,6 @@
  * Standardizes Dexie/IndexedDB operations under a unified interface.
  */
 
-/**
- *
- */
 export function createWebStorageAdapter () {
   let dbInstance = null
 
@@ -13,35 +10,51 @@ export function createWebStorageAdapter () {
     /**
      * Initializes the Dexie database and opens the connection.
      */
-    initialize: async () => {
+    initialize: async (customDbName) => {
+      const name = customDbName || 'AtollChatDB'
+      console.log('[WebStorageAdapter] initialize starting for:', name)
       if (dbInstance) {
-        return dbInstance
-      }
-
-      const { Dexie } = await import('dexie')
-      dbInstance = new Dexie('AtollChatDB')
-
-      dbInstance.version(10).stores({
-        local_rooms: 'id, is_group, updated_at',
-        local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, target_id',
-        local_assets: 'id, room_id, message_id, mime_type, created_at',
-        local_config: 'key',
-        local_files: 'name'
-      })
-
-      // Attempt to request persistent storage for local IndexedDB cache
-      if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
-        try {
-          const isPersisted = await navigator.storage.persist()
-          if (!isPersisted) {
-            console.warn('Persistent storage was not granted by the browser.')
-          }
-        } catch (storageError) {
-          console.error('Error requesting persistent storage:', storageError)
+        if (dbInstance.name === name) {
+          console.log('[WebStorageAdapter] Already initialized to:', name)
+          return dbInstance
         }
+        console.log('[WebStorageAdapter] Closing existing db:', dbInstance.name)
+        await dbInstance.close()
+        console.log('[WebStorageAdapter] Existing db closed')
       }
 
-      await dbInstance.open()
+      try {
+        const { Dexie } = await import('dexie')
+        dbInstance = new Dexie(name)
+        console.log('[WebStorageAdapter] Dexie instance created for:', name)
+
+        dbInstance.version(10).stores({
+          local_rooms: 'id, is_group, updated_at',
+          local_messages: 'local_uuid, id, room_id, created_at, [room_id+created_at], type, target_id',
+          local_assets: 'id, room_id, message_id, mime_type, created_at',
+          local_config: 'key',
+          local_files: 'name'
+        })
+
+        // Attempt to request persistent storage for local IndexedDB cache
+        if (typeof navigator !== 'undefined' && navigator.storage && navigator.storage.persist) {
+          try {
+            const isPersisted = await navigator.storage.persist()
+            if (!isPersisted) {
+              console.warn('Persistent storage was not granted by the browser.')
+            }
+          } catch (storageError) {
+            console.error('Error requesting persistent storage:', storageError)
+          }
+        }
+
+        console.log('[WebStorageAdapter] Opening db:', name)
+        await dbInstance.open()
+        console.log('[WebStorageAdapter] Db opened:', name)
+      } catch (err) {
+        console.error('[WebStorageAdapter] Error opening db:', err)
+        throw err
+      }
 
       // Expose to window for E2E testing compatibility
       if (typeof window !== 'undefined') {

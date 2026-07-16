@@ -1,0 +1,227 @@
+<template id="workspace-switcher">
+  <div class="workspace-switcher py-3" data-testid="workspaceSwitcher">
+    <div class="workspace-list flex-grow-1 overflow-y-auto" ref="workspaceList" data-testid="workspaceList">
+      <!-- Workspaces will be rendered here dynamically -->
+    </div>
+    <div class="mt-auto d-flex justify-content-center w-100 pt-3 border-top border-secondary-subtle">
+      <button class="add-workspace-btn" ref="btnAddWorkspace" data-testid="btnAddWorkspace" title="Add Workspace">
+        <i class="bi bi-plus fs-4"></i>
+      </button>
+    </div>
+  </div>
+
+  <!-- Add Workspace Modal -->
+  <div ref="addWorkspaceModal" class="modal fade" tabindex="-1" aria-hidden="true" data-testid="addWorkspaceModal">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Workspace</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <form ref="addWorkspaceForm" data-testid="addWorkspaceForm">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="{{ ref_workspaceUrl }}" class="form-label">Workspace URL</label>
+              <input type="url" class="form-control" ref="workspaceUrl" name="workspaceUrl" placeholder="https://corporate.my-chat.com" required data-testid="workspaceUrlField">
+              <div class="form-text small">Enter the URL of the PocketBase server.</div>
+            </div>
+            <div ref="modalError" class="text-danger small" style="min-height: 1.25rem;" data-testid="modalError"></div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-primary" ref="btnVerifyWorkspace" data-testid="btnVerifyWorkspace">Connect</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: async ({ refs, pocketbase, eventBus, globalStore, cryptoWorker, storage, bootstrap }) => {
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const { $worker } = cryptoWorker
+      const { $storage } = storage
+      const { Modal } = await bootstrap
+
+      const workspaceList = refs('workspaceList')
+      const btnAddWorkspace = refs('btnAddWorkspace')
+      const modalEl = refs('addWorkspaceModal')
+      const addWorkspaceForm = refs('addWorkspaceForm')
+      const workspaceUrlInput = refs('workspaceUrl')
+      const modalError = refs('modalError')
+      const btnVerifyWorkspace = refs('btnVerifyWorkspace')
+
+      const modal = new Modal(modalEl)
+
+      const deriveWorkspaceFromUrl = (urlStr) => {
+        try {
+          const url = new URL(urlStr)
+          const host = url.hostname
+          const parts = host.split('.')
+          let name = parts[0]
+          if (name === 'www' && parts.length > 1) {
+            name = parts[1]
+          }
+          const cleanUrl = url.origin
+          const id = 'ws_' + btoa(cleanUrl).replace(/=/g, '').slice(-15)
+          return { id, name, url: cleanUrl }
+        } catch (e) {
+          const sanitized = urlStr.trim().replace(/\/+$/, '')
+          const id = 'ws_' + btoa(sanitized).replace(/=/g, '').slice(-15)
+          return { id, name: 'Workspace', url: sanitized }
+        }
+      }
+
+      const handleSwitchWorkspace = async (newId, force = false) => {
+        if (pb.authStore.activeWorkspaceId === newId && !force) {
+          return
+        }
+
+        /* Clear existing active selection to avoid mismatch state issues */
+        $state.activeSelectionId = null
+        $state.activeSelectionType = null
+
+        pb.authStore.setActiveWorkspace(newId)
+        const active = pb.authStore.workspaces.find(w => w.id === newId)
+        pb.baseUrl = active ? active.url : ''
+
+        /* Update active context in worker */
+        const contextRes = await $worker.execute('worker:set_workspace_context', {
+          workspaceId: newId,
+          baseUrl: pb.baseUrl
+        })
+
+        /* Re-initialize IndexedDB storage adapter namespaced */
+        await $storage.initialize('AtollChatDB_' + newId)
+
+        /* Update states reactively */
+        $state.isAuthenticated = pb.authStore.isValid
+        $state.currentUser = pb.authStore.model
+
+        if ($state.isAuthenticated) {
+          if (contextRes.isInitialized) {
+            $state.isVaultUnlocked = true
+            $bus.emit('auth:unlocked', {
+              keys: {
+                private_box_key: contextRes.private_box_key,
+                private_sign_key: contextRes.private_sign_key
+              },
+              userRecord: pb.authStore.model
+            })
+            $bus.emit('sync:complete')
+          } else {
+            $state.isVaultUnlocked = false
+          }
+        } else {
+          $state.isVaultUnlocked = false
+          $state.authView = 'login'
+        }
+
+        renderWorkspaces()
+        $bus.emit('ui:show_toast', {
+          message: `Switched to workspace: ${active ? active.name : 'Workspace'}`,
+          type: 'success'
+        })
+      }
+
+      const renderWorkspaces = () => {
+        workspaceList.innerHTML = ''
+        const workspaces = pb.authStore.workspaces || []
+        const activeId = pb.authStore.activeWorkspaceId
+
+        workspaces.forEach(w => {
+          const initials = w.name ? w.name.slice(0, 2).toUpperCase() : 'WS'
+
+          const wrapper = document.createElement('div')
+          wrapper.className = `workspace-btn-wrapper ${w.id === activeId ? 'active' : ''}`
+
+          const btn = document.createElement('button')
+          btn.className = `workspace-btn ${w.id === activeId ? 'active' : ''}`
+          btn.title = w.name || 'Workspace'
+          btn.style.backgroundColor = w.id === activeId ? 'var(--bs-primary)' : 'var(--bs-secondary-bg)'
+          btn.style.color = w.id === activeId ? '#ffffff' : 'var(--bs-body-color)'
+          btn.textContent = initials
+          btn.setAttribute('data-id', w.id)
+          btn.setAttribute('data-testid', `workspace-btn-${w.id}`)
+
+          btn.addEventListener('click', async () => {
+            await handleSwitchWorkspace(w.id)
+          })
+
+          wrapper.appendChild(btn)
+          workspaceList.appendChild(wrapper)
+        })
+      }
+
+      btnAddWorkspace.addEventListener('click', () => {
+        modalError.textContent = ''
+        workspaceUrlInput.value = ''
+        modal.show()
+      })
+
+      addWorkspaceForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        modalError.textContent = ''
+        btnVerifyWorkspace.disabled = true
+        btnVerifyWorkspace.textContent = 'Verifying...'
+
+        let urlInput = workspaceUrlInput.value.trim()
+        if (!/^https?:\/\//i.test(urlInput)) {
+          urlInput = 'http://' + urlInput
+        }
+        urlInput = urlInput.replace(/\/+$/, '')
+
+        try {
+          const response = await fetch(`${urlInput}/api/health`, { method: 'GET', mode: 'cors' })
+          if (!response.ok) {
+            throw new Error(`Server returned ${response.status}`)
+          }
+          const data = await response.json()
+          if (data.code !== 200 && !data.message) {
+            throw new Error('Not a valid PocketBase server')
+          }
+
+          const workspaceInfo = deriveWorkspaceFromUrl(urlInput)
+
+          const exists = pb.authStore.workspaces.some(w => w.id === workspaceInfo.id)
+          if (exists) {
+            modalError.textContent = 'This workspace has already been added.'
+            btnVerifyWorkspace.disabled = false
+            btnVerifyWorkspace.textContent = 'Connect'
+            return
+          }
+
+          pb.authStore.addWorkspace({
+            id: workspaceInfo.id,
+            name: workspaceInfo.name,
+            url: workspaceInfo.url,
+            token: '',
+            user: null
+          })
+
+          modal.hide()
+          renderWorkspaces()
+          await handleSwitchWorkspace(workspaceInfo.id, true)
+        } catch (err) {
+          console.error('[add-workspace] Connection failed:', err)
+          modalError.textContent = 'Failed to connect. Make sure the URL points to an active Atoll Chat/PocketBase instance.'
+        } finally {
+          btnVerifyWorkspace.disabled = false
+          btnVerifyWorkspace.textContent = 'Connect'
+        }
+      })
+
+      renderWorkspaces()
+
+      $bus.on('auth:logout', () => {
+        renderWorkspaces()
+      })
+    }
+  })
+</script>

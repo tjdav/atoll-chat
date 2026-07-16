@@ -51,17 +51,55 @@ const workerBridge = workerSelf.workerBridge
  */
 
 let baseUrl
-let authToken
-const publicKeyCache = new Map()
-let currentUserKeys = null
-
 let isProcessing = false
 const messageQueue = []
 
-/**
- * Worker state tracking
- */
-let isInitialized = false
+/* Active workspace tracking */
+let activeWorkspaceId = null
+const workspacesData = new Map()
+
+const defaultState = {
+  currentUserKeys: null,
+  isInitialized: false,
+  authToken: null,
+  publicKeyCache: new Map()
+}
+
+function getActiveWorkspace () {
+  if (!activeWorkspaceId) {
+    return defaultState
+  }
+  if (!workspacesData.has(activeWorkspaceId)) {
+    workspacesData.set(activeWorkspaceId, {
+      currentUserKeys: null,
+      isInitialized: false,
+      authToken: null,
+      publicKeyCache: new Map()
+    })
+  }
+  return workspacesData.get(activeWorkspaceId)
+}
+
+/* Dynamic properties mapping back to the active workspace for full backward-compatibility */
+Object.defineProperty(self, 'currentUserKeys', {
+  get () { return getActiveWorkspace().currentUserKeys },
+  set (val) { getActiveWorkspace().currentUserKeys = val }
+})
+
+Object.defineProperty(self, 'isInitialized', {
+  get () { return getActiveWorkspace().isInitialized },
+  set (val) { getActiveWorkspace().isInitialized = val }
+})
+
+Object.defineProperty(self, 'authToken', {
+  get () { return getActiveWorkspace().authToken },
+  set (val) { getActiveWorkspace().authToken = val }
+})
+
+Object.defineProperty(self, 'publicKeyCache', {
+  get () { return getActiveWorkspace().publicKeyCache },
+  set (val) { getActiveWorkspace().publicKeyCache = val }
+})
 
 async function init () {
   try {
@@ -74,6 +112,7 @@ async function init () {
 
 self.onmessage = (event) => {
   const { type } = event.data
+  console.log('[worker] Received message:', type)
 
   /* parallelizable tasks */
   const parallelTasks = [
@@ -160,6 +199,26 @@ async function handleEvent (event) {
     return
   }
 
+  if (type === 'worker:set_workspace_context') {
+    const { workspaceId, baseUrl: newBaseUrl } = payload
+    activeWorkspaceId = workspaceId
+    baseUrl = newBaseUrl
+
+    const ws = getActiveWorkspace()
+    self.postMessage({
+      id,
+      type,
+      result: {
+        success: true,
+        isInitialized: ws.isInitialized,
+        userId: ws.currentUserKeys?.id,
+        private_box_key: ws.currentUserKeys?.private_box_key,
+        private_sign_key: ws.currentUserKeys?.private_sign_key
+      }
+    })
+    return
+  }
+
   try {
     if (type === 'worker:init_keys') {
       currentUserKeys = payload
@@ -170,7 +229,7 @@ async function handleEvent (event) {
         type,
         result: 'ACK'
       })
-      // Broadcast ready state
+      /* Broadcast ready state */
       self.postMessage({
         type: 'worker:initialized',
         payload: { userId: currentUserKeys.id }
@@ -315,9 +374,15 @@ async function handleEvent (event) {
     }
 
     if (type === 'worker:wipe_keys') {
-      currentUserKeys = null
-      isInitialized = false
-      publicKeyCache.clear()
+      const targetWorkspaceId = payload?.workspaceId || activeWorkspaceId
+      if (targetWorkspaceId && workspacesData.has(targetWorkspaceId)) {
+        workspacesData.delete(targetWorkspaceId)
+      } else {
+        workspacesData.clear()
+        currentUserKeys = null
+        isInitialized = false
+        publicKeyCache.clear()
+      }
       self.postMessage({
         id,
         type,
@@ -1049,7 +1114,7 @@ async function processIncomingMessage (rpcId, record) {
   const signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
   const publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
 
-  const validationString = `${room_id}|${epochId}|${previousMsgUuid}|${ciphertext}|${nonce}`
+  const validationString = `${room_id}|${epochId}|${previous_msgUuid}|${ciphertext}|${nonce}`
   const validationBuffer = new TextEncoder().encode(validationString)
 
   const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)

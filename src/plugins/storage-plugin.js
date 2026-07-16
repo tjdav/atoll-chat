@@ -174,7 +174,7 @@ export default definePlugin({
       // Phase 2: Return proxy methods for main thread UI components
       return () => {
         const api = {
-          initialize: () => initialAdapter.initialize(),
+          initialize: (customDbName) => initialAdapter.initialize(customDbName),
           saveRecord: (storeName, data) => initialAdapter.saveRecord(storeName, data),
           saveRecordsBulk: (storeName, records) => initialAdapter.saveRecordsBulk(storeName, records),
           deleteRecord: (storeName, key) => initialAdapter.deleteRecord(storeName, key),
