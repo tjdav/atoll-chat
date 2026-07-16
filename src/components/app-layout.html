@@ -39,6 +39,9 @@
       <div class="h-100" hidden="{{ hideLinkViewer }}">
         <link-viewer></link-viewer>
       </div>
+      <div class="h-100" hidden="{{ hideSettingsMain }}">
+        <settings-main></settings-main>
+      </div>
     </div>
   </div>
   <call-overlay></call-overlay>
@@ -68,14 +71,20 @@
       toastMessage: ''
     }),
     getters: {
-      isDetailView: (state) => (state.activeSelectionId && ['chats', 'pictures', 'videos', 'music', 'documents', 'links'].includes(state.activeSelectionType)),
+      isDetailView: (state) => {
+        if (state.currentAppView === 'settings') {
+          return window.innerWidth >= 576 || !!state.activeSelectionId
+        }
+        return !!(state.activeSelectionId && ['chats', 'pictures', 'videos', 'music', 'documents', 'links'].includes(state.activeSelectionType))
+      },
       layoutClasses: (state) => (state.isDetailView ? 'chat-active' : ''),
       hideChatView: (state) => !(state.activeSelectionId && state.activeSelectionType === 'chats'),
       hideImageViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'pictures'),
       hideVideoPlayer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'videos'),
       hideAudioPlayer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'music'),
       hideDocumentViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'documents'),
-      hideLinkViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'links')
+      hideLinkViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'links'),
+      hideSettingsMain: (state) => !(state.currentAppView === 'settings')
     },
     client: async ({ state, globalStore, eventBus, bootstrap, refs }) => {
       const { $state } = globalStore

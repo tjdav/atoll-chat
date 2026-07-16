@@ -203,4 +203,57 @@ test.describe('User Settings & Profile', () => {
       await expect(page.locator('.toast.show')).toContainText('Shared with 1 room')
     })
   })
+
+  test.describe('Navigation and Scrollspy', () => {
+    test.beforeEach(async ({ loginApp }) => {
+      await loginApp('alice', 'Password123!', 'VaultPassword123!')
+    })
+
+    test('scrollspy binding - active class changes on scroll', async ({ page }) => {
+      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
+      await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+
+      // Expect the first category (Account) to be active initially
+      await expect(page.locator('[data-testid="settings-pane-0__nav-account"]')).toHaveClass(/active/)
+
+      // Scroll the container to the Profile section
+      const scrollContainer = page.locator('[data-testid="settings-main-0__scrollContainer"]')
+      await scrollContainer.evaluate((el) => {
+        const target = el.querySelector('#section-profile')
+        if (target) {
+          target.scrollIntoView({ block: 'start' })
+        }
+      })
+
+      // Wait for Scrollspy to detect scroll and verify Profile is active
+      await expect(page.locator('[data-testid="settings-pane-0__nav-profile"]')).toHaveClass(/active/, { timeout: 5000 })
+    })
+
+    test('mobile traversal - offcanvas drawer open/close behavior', async ({ page }) => {
+      // Set to mobile viewport size (e.g. 375x812)
+      await page.setViewportSize({ width: 375, height: 812 })
+
+      // Open settings
+      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
+      await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+
+      // The mobile nav offcanvas (drawer) is initially visible
+      await expect(page.locator('.mobile-nav-offcanvas')).toBeVisible()
+
+      // Tap on the Notifications category in settings-pane
+      await page.locator('[data-testid="settings-pane-0__nav-notifications"]').click()
+
+      // Tapping must emit ui:selection_made, which hides the mobile drawer offcanvas
+      await expect(page.locator('.mobile-nav-offcanvas')).not.toBeVisible()
+
+      // The settings-main detail view should be visible now
+      await expect(page.locator('settings-main')).toBeVisible()
+
+      // Click the Back chevron button in settings-main header to restore the drawer
+      await page.locator('[data-testid="settings-main-0__settingsBackBtn"]').click()
+
+      // The mobile drawer offcanvas is restored
+      await expect(page.locator('.mobile-nav-offcanvas')).toBeVisible()
+    })
+  })
 })

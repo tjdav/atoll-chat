@@ -1,0 +1,131 @@
+<template id="settings-main">
+  <div class="settings-main d-flex flex-column h-100 bg-body">
+    <!-- Top Bar Header (Only shows Back chevron on mobile, no redundant title text) -->
+    <header class="app-header chat-view-header d-flex justify-content-between align-items-center border-bottom bg-body px-3" style="height: 71px;" ref="settingsHeader">
+      <div class="d-flex align-items-center">
+        <button class="btn btn-link link-body-emphasis ps-0 pe-2 d-sm-none" ref="btnBack" data-testid="settingsBackBtn">
+          <i class="bi bi-chevron-left fs-4"></i>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <div ref="scrollContainer" data-testid="scrollContainer" class="flex-grow-1 overflow-y-auto p-4" style="position: relative;" data-bs-spy="scroll" data-bs-target="#settings-navbar" data-bs-offset="30">
+      <div class="container-fluid pb-5">
+        <div class="row">
+          <div class="col-12 col-md-10 offset-md-1 col-lg-8 offset-lg-2">
+            
+            <!-- Section: Account Info -->
+            <div id="section-account">
+              <account-info></account-info>
+            </div>
+
+            <!-- Section: Profile Settings -->
+            <div id="section-profile">
+              <profile-settings></profile-settings>
+            </div>
+
+            <!-- Section: Notifications -->
+            <div id="section-notifications" class="mb-5">
+              <h6 class="text-uppercase text-muted fw-bold small mb-3">Notifications</h6>
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <browser-notifications></browser-notifications>
+                  <hr class="my-4">
+                  <sound-notifications></sound-notifications>
+                </div>
+              </div>
+            </div>
+
+            <!-- Section: Security -->
+            <div id="section-security" class="mb-5">
+              <h6 class="text-uppercase text-muted fw-bold small mb-3">Security</h6>
+              <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                  <passkey-settings></passkey-settings>
+                  <hr class="my-4">
+                  <totp-settings></totp-settings>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: async ({ refs, eventBus, bootstrap, globalStore }) => {
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const { ScrollSpy } = await bootstrap
+
+      const btnBack = refs('btnBack')
+      if (btnBack) {
+        btnBack.addEventListener('click', () => {
+          $state.activeSelectionId = null
+          $state.activeSelectionType = null
+          $bus.emit('ui:open_mobile_nav')
+        })
+      }
+
+      const scrollEl = refs('scrollContainer')
+      let spyInstance = null
+
+      const initScrollSpy = () => {
+        if (scrollEl && document.querySelector('#settings-navbar')) {
+          spyInstance = new ScrollSpy(scrollEl, {
+            target: '#settings-navbar',
+            offset: 30,
+            smoothScroll: true
+          })
+        }
+      }
+
+      // Defer initialization to guarantee elements are fully mounted and sized
+      setTimeout(initScrollSpy, 400)
+
+      const handleScrollSync = () => {
+        if (!scrollEl) {
+          return
+        }
+        if (spyInstance) {
+          spyInstance.refresh()
+        }
+
+        // Supplementary high-reliability active class sync
+        const sections = ['#section-account', '#section-profile', '#section-notifications', '#section-security']
+        let activeId = sections[0]
+
+        for (const id of sections) {
+          const el = document.querySelector(id)
+          if (el) {
+            const rect = el.getBoundingClientRect()
+            const parentRect = scrollEl.getBoundingClientRect()
+            if (rect.top - parentRect.top <= 120) {
+              activeId = id
+            }
+          }
+        }
+
+        const links = document.querySelectorAll('#settings-navbar a')
+        links.forEach(link => {
+          if (link.getAttribute('href') === activeId) {
+            link.classList.add('active')
+          } else {
+            link.classList.remove('active')
+          }
+        })
+      }
+
+      if (scrollEl) {
+        scrollEl.addEventListener('scroll', handleScrollSync, { passive: true })
+      }
+    }
+  })
+</script>

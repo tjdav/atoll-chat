@@ -1,0 +1,55 @@
+<template id="settings-pane">
+  <div class="settings-pane h-100 d-flex flex-column bg-body-tertiary">
+    <div class="flex-grow-1 overflow-y-auto p-3">
+      <div id="settings-navbar" class="list-group list-group-flush shadow-sm rounded border bg-body">
+        <a class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center gap-3 active" href="#section-account" data-testid="nav-account">
+          <i class="bi bi-person-badge fs-5"></i>
+          <span>Account Info</span>
+        </a>
+        <a class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center gap-3" href="#section-profile" data-testid="nav-profile">
+          <i class="bi bi-person-circle fs-5"></i>
+          <span>Profile Settings</span>
+        </a>
+        <a class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center gap-3" href="#section-notifications" data-testid="nav-notifications">
+          <i class="bi bi-bell fs-5"></i>
+          <span>Notifications</span>
+        </a>
+        <a class="list-group-item list-group-item-action py-3 px-3 d-flex align-items-center gap-3" href="#section-security" data-testid="nav-security">
+          <i class="bi bi-shield-lock fs-5"></i>
+          <span>Security & Passkeys</span>
+        </a>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: ({ refs, eventBus, globalStore }) => {
+      const { $bus } = eventBus
+      const { $state } = globalStore
+
+      const links = document.querySelectorAll('#settings-navbar a')
+      links.forEach(link => {
+        link.addEventListener('click', (e) => {
+          e.preventDefault()
+
+          const targetId = link.getAttribute('href')
+
+          // Set active selection to trigger detail view on mobile
+          $state.activeSelectionType = 'settings'
+          $state.activeSelectionId = targetId
+
+          $bus.emit('ui:selection_made')
+
+          const targetEl = document.querySelector(targetId)
+          if (targetEl) {
+            targetEl.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }
+        })
+      })
+    }
+  })
+</script>

@@ -98,3 +98,24 @@
     border: none !important;
   }
 }
+
+#settings-navbar {
+  .list-group-item {
+    border-left: 3px solid transparent;
+    transition: all 0.2s ease;
+    border-top: none;
+    border-right: none;
+    border-bottom: 1px solid var(--#{$prefix}border-color-translucent);
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    &.active {
+      background-color: var(--#{$prefix}primary-bg-subtle) !important;
+      color: var(--#{$prefix}primary) !important;
+      border-left-color: var(--#{$prefix}primary) !important;
+      font-weight: 600;
+    }
+  }
+}
