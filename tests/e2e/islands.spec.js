@@ -57,6 +57,15 @@ test.describe('Multi-Island Architecture', () => {
     await expect(btnSendOtp).toBeVisible()
     await page.waitForTimeout(500)
 
+    /* Ensure nav-sidebar is completely hidden before authentication/decryption */
+    const sidebarBeforeAuth = page.locator('[data-testid$="navSidebar"]')
+    await expect(sidebarBeforeAuth).not.toBeVisible()
+
+    /* Verify the unauthenticated island switcher is visible at the bottom of the card */
+    const islandSelectBtn = page.locator('[data-testid$="islandSelectBtn"]')
+    await expect(islandSelectBtn).toBeVisible()
+    await expect(islandSelectBtn).toContainText('Current Island: localhost')
+
     /* Complete standard magic link OTP login flow */
     await emailField.fill('alice@example.com')
     await page.waitForTimeout(500)
@@ -134,12 +143,15 @@ test.describe('Multi-Island Architecture', () => {
     await page.locator('[data-testid$="btnVerifyIsland"]').click()
     await page.waitForTimeout(1500)
 
-    /* Click profile button again to open the dropup list */
-    await profileBtn.click()
+    /* Click the unauthenticated island switcher button to open the dropdown menu */
+    const islandSelectBtnAfterChart = page.locator('[data-testid$="islandSelectBtn"]')
+    await expect(islandSelectBtnAfterChart).toBeVisible()
+    await islandSelectBtnAfterChart.click()
     await page.waitForTimeout(500)
 
     /* Dropdown list should now contain 2 Islands */
-    const islandButtons = islandsList.locator('[data-testid^="workspace-btn-ws_"]')
+    const islandsDropdownList = page.locator('[data-testid$="islandsList"]')
+    const islandButtons = islandsDropdownList.locator('[data-testid^="workspace-btn-ws_"]')
     await expect(islandButtons).toHaveCount(2)
     await page.waitForTimeout(500)
 

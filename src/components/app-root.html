@@ -369,11 +369,6 @@
 
           const mainContent = document.createElement('div')
           mainContent.className = 'flex-grow-1 h-100 position-relative d-flex'
-  
-          // Let nav-sidebar render so users can use the Island Switcher / Chart Island Dropup
-          if (isIslandsEnabled) {
-            mainContent.appendChild(document.createElement('nav-sidebar'))
-          }
 
           const rightSection = document.createElement('div')
           rightSection.className = 'flex-grow-1 h-100 position-relative d-flex align-items-center justify-content-center bg-body-tertiary'
