@@ -74,10 +74,15 @@
         const badge = document.createElement('div')
         badge.className = 'bg-black bg-opacity-75 text-white px-2 py-1 rounded-pill d-flex align-items-center'
         badge.style.fontSize = '0.75rem'
-        badge.innerHTML = `
-          <i class="bi bi-play-fill me-1"></i>
-          <span>${$time.formatDuration(duration)}</span>
-        `
+
+        const icon = document.createElement('i')
+        icon.className = 'bi bi-play-fill me-1'
+
+        const span = document.createElement('span')
+        span.textContent = $time.formatDuration(duration)
+
+        badge.appendChild(icon)
+        badge.appendChild(span)
         overlay.appendChild(badge)
         container.appendChild(overlay)
       }
@@ -130,10 +135,15 @@
           const badge = document.createElement('div')
           badge.className = 'bg-black bg-opacity-75 text-white px-2 py-1 rounded-pill d-flex align-items-center'
           badge.style.fontSize = '0.75rem'
-          badge.innerHTML = `
-            <i class="bi bi-play-fill me-1"></i>
-            <span>${$time.formatDuration(duration)}</span>
-          `
+
+          const icon = document.createElement('i')
+          icon.className = 'bi bi-play-fill me-1'
+
+          const span = document.createElement('span')
+          span.textContent = $time.formatDuration(duration)
+
+          badge.appendChild(icon)
+          badge.appendChild(span)
           overlay.appendChild(badge)
           container.appendChild(overlay)
         }
