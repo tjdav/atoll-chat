@@ -1,0 +1,134 @@
+<template id="island-onboarding">
+  <div class="card shadow" style="max-width: 450px; width: 100%;">
+    <div class="card-body p-4 text-center">
+      <div class="mb-4">
+        <i class="bi bi-chat-dots-fill text-primary" style="font-size: 3rem;"></i>
+      </div>
+      <h3 class="card-title mb-2">Welcome to Atoll Chat</h3>
+      <p class="text-muted small mb-4">Please enter your Island URL to get connected to your server.</p>
+      
+      <form ref="onboardingForm" class="text-start">
+        <div class="mb-3">
+          <label for="{{ ref_islandUrl }}" class="form-label">Island URL</label>
+          <input type="url" ref="islandUrl" name="islandUrl" class="form-control" placeholder="https://chat.my-server.com" required data-testid="islandUrlInput">
+          <div class="form-text small">E.g., https://corporate.my-chat.com</div>
+        </div>
+        <div ref="onboardingError" class="text-danger small mb-3" style="min-height: 1.25rem;" data-testid="onboardingError"></div>
+        <button type="submit" class="btn btn-primary w-100" ref="btnConnect" data-testid="btnConnect">Connect to Island</button>
+      </form>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: async ({ refs, pocketbase, eventBus, globalStore, cryptoWorker, storage }) => {
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $state } = globalStore
+      const { $worker } = cryptoWorker
+      const { $storage } = storage
+
+      const onboardingForm = refs('onboardingForm')
+      const islandUrlInput = refs('islandUrl')
+      const onboardingError = refs('onboardingError')
+      const btnConnect = refs('btnConnect')
+
+      const deriveIslandFromUrl = (urlStr) => {
+        try {
+          const url = new URL(urlStr)
+          const host = url.hostname
+          const parts = host.split('.')
+          let name = parts[0]
+          if (name === 'www' && parts.length > 1) {
+            name = parts[1]
+          }
+          const cleanUrl = url.origin
+          const id = 'ws_' + btoa(cleanUrl).replace(/=/g, '').slice(-15)
+          return {
+            id,
+            name,
+            url: cleanUrl
+          }
+        } catch (_e) {
+          const sanitized = urlStr.trim().replace(/\/+$/, '')
+          const id = 'ws_' + btoa(sanitized).replace(/=/g, '').slice(-15)
+          return {
+            id,
+            name: 'Island',
+            url: sanitized
+          }
+        }
+      }
+
+      onboardingForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        onboardingError.textContent = ''
+        btnConnect.disabled = true
+        btnConnect.textContent = 'Connecting...'
+
+        let urlInput = islandUrlInput.value.trim()
+        if (!/^https?:\/\//i.test(urlInput)) {
+          urlInput = 'http://' + urlInput
+        }
+        urlInput = urlInput.replace(/\/+$/, '')
+
+        try {
+          const healthUrl = `${urlInput}/api/health`
+          const response = await fetch(healthUrl, {
+            method: 'GET',
+            mode: 'cors'
+          })
+          if (!response.ok) {
+            throw new Error(`Server returned status ${response.status}`)
+          }
+          const data = await response.json()
+          if (data.code !== 200 && !data.message) {
+            throw new Error('Not a valid PocketBase server')
+          }
+
+          const islandInfo = deriveIslandFromUrl(urlInput)
+          console.log('[island-onboarding] Health check passed, adding Island:', islandInfo)
+  
+          pb.authStore.addWorkspace({
+            id: islandInfo.id,
+            name: islandInfo.name,
+            url: islandInfo.url,
+            token: '',
+            user: null
+          })
+
+          pb.authStore.setActiveWorkspace(islandInfo.id)
+          pb.baseUrl = islandInfo.url
+
+          console.log('[island-onboarding] Initializing storage...')
+          await $storage.initialize('AtollChatDB_' + islandInfo.id)
+  
+          console.log('[island-onboarding] Storage initialized, setting worker context...')
+          await $worker.execute('worker:set_workspace_context', {
+            workspaceId: islandInfo.id,
+            baseUrl: islandInfo.url
+          })
+
+          console.log('[island-onboarding] Worker context set, transitioning states...')
+          $state.activeIslandId = islandInfo.id
+          $state.islands = pb.authStore.workspaces || []
+          $state.isOnboardingIsland = true
+          $state.authView = 'login'
+          $state.isAuthenticated = false
+          $state.isVaultUnlocked = false
+
+          console.log('[island-onboarding] Emitting logout...')
+          $bus.emit('auth:logout')
+        } catch (err) {
+          console.error('[island-onboarding] Connection error:', err)
+          onboardingError.textContent = 'Failed to connect. Make sure the URL points to an active Atoll Chat/PocketBase instance.'
+          btnConnect.disabled = false
+          btnConnect.textContent = 'Connect to Island'
+        }
+      })
+    }
+  })
+</script>

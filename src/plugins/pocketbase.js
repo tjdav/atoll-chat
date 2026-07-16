@@ -24,7 +24,10 @@ export default function pocketbase (options = {}) {
       }
     },
     client: {
-      config: { url, enableWorkspaces },
+      config: {
+        url,
+        enableWorkspaces
+      },
       context: async (pluginContext) => {
         const { default: PocketBase, BaseAuthStore } = await import('pocketbase')
         const isWorkspacesEnabled = pluginContext.config.enableWorkspaces || (typeof window !== 'undefined' && window.__coralite_workspaces_override__)
@@ -45,7 +48,7 @@ export default function pocketbase (options = {}) {
                 this.workspaces = stored ? JSON.parse(stored) : []
                 const activeId = localStorage.getItem('atoll_active_workspace_id')
                 this.activeWorkspaceId = activeId || (this.workspaces[0]?.id || null)
-              } catch (e) {
+              } catch (_e) {
                 this.workspaces = []
                 this.activeWorkspaceId = null
               }
@@ -105,7 +108,10 @@ export default function pocketbase (options = {}) {
             addWorkspace (workspace) {
               const existingIndex = this.workspaces.findIndex(w => w.id === workspace.id)
               if (existingIndex !== -1) {
-                this.workspaces[existingIndex] = { ...this.workspaces[existingIndex], ...workspace }
+                this.workspaces[existingIndex] = {
+                  ...this.workspaces[existingIndex],
+                  ...workspace
+                }
               } else {
                 this.workspaces.push(workspace)
               }

@@ -188,6 +188,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     /* LOG OUT and test if new password works and old password fails */
+    await page.locator('[data-testid$="profileBtn"]').click()
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
@@ -222,6 +223,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     /* LOG OUT and verify that the used recovery code is permanently burned */
+    await page.locator('[data-testid$="profileBtn"]').click()
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
@@ -318,6 +320,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('.toast-body')).toContainText('Biometric unlock successfully enabled!')
 
     /* TEST DEVICE TRUST STATE MACHINE (UNTRUSTED VS TRUSTED) */
+    await page.locator('[data-testid$="profileBtn"]').click()
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
@@ -363,6 +366,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     /* TRUSTED STATE: Log out normally (keep the trust token in local storage) */
+    await page.locator('[data-testid$="profileBtn"]').click()
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 

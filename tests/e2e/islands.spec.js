@@ -1,17 +1,16 @@
 import { test, expect } from './fixtures/base-test.js'
-import { join } from 'path'
-import { copyFileSync, mkdirSync } from 'fs'
+import { mkdirSync } from 'fs'
 
-test.describe('Multi-Workspace Architecture', () => {
+test.describe('Multi-Island Architecture', () => {
   test.beforeEach(async ({ context }) => {
-    /* Enable workspaces mode via init script override and ensure a completely clean local state */
+    /* Enable islands mode via init script override and ensure a completely clean local state */
     await context.addInitScript(() => {
       window.__coralite_workspaces_override__ = true
       localStorage.clear()
     })
   })
 
-  test('should present first-time onboarding zero state, perform validation, and complete login into active workspace', async ({ page }) => {
+  test('should present first-time onboarding zero state, perform validation, and complete login into active Island', async ({ page }) => {
     await page.goto('/')
 
     /* Unregister any active service workers to prevent unexpected page reloads during E2E testing */
@@ -28,7 +27,7 @@ test.describe('Multi-Workspace Architecture', () => {
     await page.waitForTimeout(500)
 
     /* Verify first-time onboarding Zero State welcome screen is shown */
-    const urlInput = page.locator('[data-testid$="workspaceUrlInput"]')
+    const urlInput = page.locator('[data-testid$="islandUrlInput"]')
     const btnConnect = page.locator('[data-testid$="btnConnect"]')
     await expect(urlInput).toBeVisible()
     await expect(btnConnect).toBeVisible()
@@ -91,17 +90,27 @@ test.describe('Multi-Workspace Architecture', () => {
     await page.locator('[data-testid$="unlockSubmit"]').click()
     await page.waitForTimeout(2000)
 
-    /* Standard application layout with leftmost Workspace Switcher is now visible */
-    const switcher = page.locator('[data-testid$="workspaceSwitcher"]')
-    const switcherList = page.locator('[data-testid$="workspaceList"]')
-    await expect(switcher).toBeVisible()
-    await expect(switcherList).toBeVisible()
+    /* Standard application layout with leftmost primary sidebar is now visible */
+    const sidebar = page.locator('[data-testid$="navSidebar"]')
+    await expect(sidebar).toBeVisible()
     await page.waitForTimeout(500)
 
-    /* Active workspace list button should display the derived initials from hostname */
-    const firstWorkspaceBtn = page.locator('.workspace-btn')
-    await expect(firstWorkspaceBtn).toBeVisible()
-    await expect(firstWorkspaceBtn).toHaveText('LO')
+    /* Click the Profile Avatar dropup trigger to open dropdown menu */
+    const profileBtn = page.locator('[data-testid$="profileBtn"]')
+    await expect(profileBtn).toBeVisible()
+    await profileBtn.click()
+    await page.waitForTimeout(500)
+
+    /* Verify the dropdown menu and the active Island is listed */
+    const dropdownMenu = page.locator('[data-testid$="profileDropdownMenu"]')
+    await expect(dropdownMenu).toBeVisible()
+
+    const islandsList = page.locator('[data-testid$="islandsList"]')
+    await expect(islandsList).toBeVisible()
+
+    const firstIslandBtn = islandsList.locator('[data-testid^="workspace-btn-ws_"]')
+    await expect(firstIslandBtn).toBeVisible()
+    await expect(firstIslandBtn).toContainText('LO')
     await page.waitForTimeout(500)
 
     /* Verify database is correctly namespaced under IndexedDB */
@@ -109,20 +118,29 @@ test.describe('Multi-Workspace Architecture', () => {
     expect(dbName).toContain('AtollChatDB_ws_')
     await page.waitForTimeout(500)
 
-    /* Verify the "Add Workspace" flow */
-    await page.locator('[data-testid$="btnAddWorkspace"]').click()
-    const modal = page.locator('[data-testid$="addWorkspaceModal"]')
+    /* Verify the "Chart New Island" flow */
+    const btnChartNewIsland = page.locator('[data-testid$="btnChartNewIsland"]')
+    await expect(btnChartNewIsland).toBeVisible()
+    await btnChartNewIsland.click()
+    await page.waitForTimeout(500)
+
+    const modal = page.locator('[data-testid$="chartIslandModal"]')
     await expect(modal).toBeVisible()
     await page.waitForTimeout(500)
 
-    /* Connect another workspace using same valid server URL but different host query to simulate another realm */
-    await page.locator('[data-testid$="workspaceUrlField"]').fill('http://127.0.0.1:8090')
+    /* Connect another Island using same valid server URL but different host query to simulate another realm */
+    await page.locator('[data-testid$="islandUrlField"]').fill('http://127.0.0.1:8090')
     await page.waitForTimeout(500)
-    await page.locator('[data-testid$="btnVerifyWorkspace"]').click()
+    await page.locator('[data-testid$="btnVerifyIsland"]').click()
     await page.waitForTimeout(1500)
 
-    /* Switcher list should now contain 2 workspaces */
-    await expect(page.locator('.workspace-btn')).toHaveCount(2)
+    /* Click profile button again to open the dropup list */
+    await profileBtn.click()
+    await page.waitForTimeout(500)
+
+    /* Dropdown list should now contain 2 Islands */
+    const islandButtons = islandsList.locator('[data-testid^="workspace-btn-ws_"]')
+    await expect(islandButtons).toHaveCount(2)
     await page.waitForTimeout(500)
 
     /* Save screenshot for frontend verification */

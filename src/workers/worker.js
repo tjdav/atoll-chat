@@ -82,23 +82,39 @@ function getActiveWorkspace () {
 
 /* Dynamic properties mapping back to the active workspace for full backward-compatibility */
 Object.defineProperty(self, 'currentUserKeys', {
-  get () { return getActiveWorkspace().currentUserKeys },
-  set (val) { getActiveWorkspace().currentUserKeys = val }
+  get () {
+    return getActiveWorkspace().currentUserKeys
+  },
+  set (val) {
+    getActiveWorkspace().currentUserKeys = val
+  }
 })
 
 Object.defineProperty(self, 'isInitialized', {
-  get () { return getActiveWorkspace().isInitialized },
-  set (val) { getActiveWorkspace().isInitialized = val }
+  get () {
+    return getActiveWorkspace().isInitialized
+  },
+  set (val) {
+    getActiveWorkspace().isInitialized = val
+  }
 })
 
 Object.defineProperty(self, 'authToken', {
-  get () { return getActiveWorkspace().authToken },
-  set (val) { getActiveWorkspace().authToken = val }
+  get () {
+    return getActiveWorkspace().authToken
+  },
+  set (val) {
+    getActiveWorkspace().authToken = val
+  }
 })
 
 Object.defineProperty(self, 'publicKeyCache', {
-  get () { return getActiveWorkspace().publicKeyCache },
-  set (val) { getActiveWorkspace().publicKeyCache = val }
+  get () {
+    return getActiveWorkspace().publicKeyCache
+  },
+  set (val) {
+    getActiveWorkspace().publicKeyCache = val
+  }
 })
 
 async function init () {

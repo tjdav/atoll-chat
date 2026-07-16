@@ -1,6 +1,6 @@
 <template id="nav-sidebar">
-  <div class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100">
-    <div class="nav flex-column nav-pills w-100 px-2 gap-3">
+  <div class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100" data-testid="navSidebar">
+    <div class="nav flex-column nav-pills w-100 px-2 gap-3" hidden="{{ isSidebarMenuHidden }}">
       <button class="nav-link d-flex align-items-center justify-content-center {{ isChatsActive }}" ref="btnChats" title="Chats" data-testid="btnChats">
         <i class="bi bi-chat-left-text fs-4"></i>
       </button>
@@ -20,24 +20,62 @@
         <i class="bi bi-link-45deg fs-4"></i>
       </button>
     </div>
-    <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative">
-      <button class="nav-link d-flex align-items-center justify-content-center w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings" data-testid="btnSettings">
+    
+    <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative align-items-center">
+      <button class="nav-link d-flex align-items-center justify-content-center w-100 {{ isSettingsActive }}" ref="btnSettings" title="Settings" data-testid="btnSettings" hidden="{{ isSidebarMenuHidden }}">
         <i class="bi bi-gear-fill fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center w-100" ref="btnLogout" title="Logout" data-testid="btnLogout">
-        <i class="bi bi-box-arrow-right fs-4"></i>
-      </button>
+
+      <!-- Profile Avatar / Island Dropup -->
+      <div class="dropup w-100 d-flex justify-content-center align-items-center" ref="profileDropupContainer">
+        <button class="btn p-0 border-0 d-flex align-items-center justify-content-center" 
+                type="button" 
+                data-bs-toggle="dropdown" 
+                aria-expanded="false" 
+                ref="profileBtn" 
+                data-testid="profileBtn" 
+                title="Account & Islands">
+          <div ref="avatarContainer" class="d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+            <!-- Render avatar dynamically or standard fallback inside client -->
+          </div>
+        </button>
+        <ul class="dropdown-menu shadow dropdown-menu-dark p-2" style="min-width: 240px; margin-bottom: 8px;" ref="profileDropdownMenu" data-testid="profileDropdownMenu">
+          <!-- Island Section (rendered if Islands mode is active) -->
+          <li hidden="{{ hideIslandsHeader }}" class="dropdown-header px-3 py-1">Your Islands</li>
+          <div ref="islandsList" data-testid="islandsList"></div>
+          
+          <li hidden="{{ hideIslandsActions }}">
+            <button class="dropdown-item d-flex align-items-center gap-2" ref="btnChartNewIsland" data-testid="btnChartNewIsland">
+              <i class="bi bi-compass"></i>
+              <span>Chart New Island</span>
+            </button>
+          </li>
+          
+          <li hidden="{{ hideIslandsActions }}"><hr class="dropdown-divider"></li>
+          
+          <!-- Logout Section -->
+          <li>
+            <button class="dropdown-item text-danger d-flex align-items-center gap-2" ref="btnLogout" data-testid="btnLogout">
+              <i class="bi bi-box-arrow-right"></i>
+              <span>Logout</span>
+            </button>
+          </li>
+        </ul>
+      </div>
     </div>
   </div>
 </template>
-
 
 <script type="module">
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
     server: () => ({
-      currentAppView: 'chats'
+      currentAppView: 'chats',
+      isAuthenticated: false,
+      isVaultUnlocked: false,
+      isIslandsEnabled: false,
+      islands: []
     }),
     getters: {
       isChatsActive: (state) => (state.currentAppView === 'chats' ? 'active' : ''),
@@ -46,19 +84,38 @@
       isVideosActive: (state) => (state.currentAppView === 'videos' ? 'active' : ''),
       isDocumentsActive: (state) => (state.currentAppView === 'documents' ? 'active' : ''),
       isLinksActive: (state) => (state.currentAppView === 'links' ? 'active' : ''),
-      isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : '')
+      isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : ''),
+      isSidebarMenuHidden: (state) => !(state.isAuthenticated && state.isVaultUnlocked),
+      hideIslandsHeader: (state) => !state.isIslandsEnabled,
+      hideIslandsActions: (state) => !state.isIslandsEnabled
     },
-    client: ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker }) => {
+    client: async ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker, storage, config, bootstrap }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
-      // Sync global state to component local state for reactivity in getters/template
+      const { $storage } = storage
+      const { $config } = config
+      const { Dropdown } = await bootstrap
+
+      // Init and subscribe to states
       state.currentAppView = $state.currentAppView || 'chats'
+      state.isAuthenticated = $state.isAuthenticated || false
+      state.isVaultUnlocked = $state.isVaultUnlocked || false
+      state.isIslandsEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
+      state.islands = pb.authStore.workspaces || []
 
-      // Subscribe to global state changes
       $state.subscribe('currentAppView', (value) => state.currentAppView = value)
+      $state.subscribe('isAuthenticated', (value) => {
+        state.isAuthenticated = value
+        updateAvatar()
+      })
+      $state.subscribe('isVaultUnlocked', (value) => {
+        state.isVaultUnlocked = value
+        updateAvatar()
+      })
 
+      // Setup view navigation buttons
       const views = {
         btnChats: 'chats',
         btnMusic: 'music',
@@ -77,7 +134,6 @@
               return
             }
 
-            // Save current selection for the outgoing view
             if (!$state.lastSelections) {
               $state.lastSelections = {}
             }
@@ -91,10 +147,8 @@
               delete $state.lastSelections[$state.currentAppView]
             }
 
-            // switching root views first lets the router see the context switch
             $state.currentAppView = viewName
 
-            // Restore selection for the incoming view if it exists
             const last = $state.lastSelections[viewName]
             if (last) {
               $state.activeSelectionId = last.id
@@ -107,10 +161,176 @@
         }
       })
 
+      // Set up dropup trigger & dropdown initialization
+      const profileBtn = refs('profileBtn')
+      let dropdownInstance = null
+      if (profileBtn) {
+        dropdownInstance = new Dropdown(profileBtn)
+      }
+
+      // Action: Switch Island context
+      const handleSwitchIsland = async (newId, force = false) => {
+        if (pb.authStore.activeWorkspaceId === newId && !force) {
+          return
+        }
+
+        $state.activeSelectionId = null
+        $state.activeSelectionType = null
+
+        pb.authStore.setActiveWorkspace(newId)
+        const active = pb.authStore.workspaces.find(w => w.id === newId)
+        pb.baseUrl = active ? active.url : ''
+
+        const contextRes = await $worker.execute('worker:set_workspace_context', {
+          workspaceId: newId,
+          baseUrl: pb.baseUrl
+        })
+
+        await $storage.initialize('AtollChatDB_' + newId)
+
+        $state.isAuthenticated = pb.authStore.isValid
+        $state.currentUser = pb.authStore.model
+
+        if ($state.isAuthenticated) {
+          if (contextRes.isInitialized) {
+            $state.isVaultUnlocked = true
+            $bus.emit('auth:unlocked', {
+              keys: {
+                private_box_key: contextRes.private_box_key,
+                private_sign_key: contextRes.private_sign_key
+              },
+              userRecord: pb.authStore.model
+            })
+            $bus.emit('sync:complete')
+          } else {
+            $state.isVaultUnlocked = false
+          }
+        } else {
+          $state.isVaultUnlocked = false
+          $state.authView = 'login'
+        }
+
+        $state.activeIslandId = newId
+        $state.islands = pb.authStore.workspaces || []
+
+        renderIslandsList()
+        updateAvatar()
+
+        $bus.emit('ui:show_toast', {
+          message: `Switched to Island: ${active ? active.name : 'Island'}`,
+          type: 'success'
+        })
+      }
+
+      // Render the Island items list inside dropup
+      const islandsListContainer = refs('islandsList')
+      const renderIslandsList = () => {
+        if (!islandsListContainer) {
+          return
+        }
+        islandsListContainer.innerHTML = ''
+        if (!state.isIslandsEnabled) {
+          return
+        }
+
+        const activeId = pb.authStore.activeWorkspaceId
+        const list = pb.authStore.workspaces || []
+
+        list.forEach(w => {
+          const isActive = w.id === activeId
+          const initials = w.name ? w.name.slice(0, 2).toUpperCase() : 'IS'
+
+          const li = document.createElement('li')
+          const btn = document.createElement('button')
+          btn.className = `dropdown-item d-flex align-items-center justify-content-between gap-3 ${isActive ? 'active' : ''}`
+          btn.setAttribute('data-id', w.id)
+          btn.setAttribute('data-testid', `workspace-btn-${w.id}`)
+          if (isActive) {
+            btn.style.fontWeight = 'bold'
+          }
+
+          // Flex-left container: initials badge & full name
+          const leftContainer = document.createElement('div')
+          leftContainer.className = 'd-flex align-items-center gap-2'
+
+          const badge = document.createElement('div')
+          badge.className = 'rounded-circle d-flex align-items-center justify-content-center text-white font-weight-bold'
+          badge.style.width = '24px'
+          badge.style.height = '24px'
+          badge.style.fontSize = '10px'
+          badge.style.backgroundColor = isActive ? 'var(--bs-primary)' : 'var(--bs-secondary)'
+          badge.textContent = initials
+
+          const nameSpan = document.createElement('span')
+          nameSpan.textContent = w.name || 'Island'
+
+          leftContainer.appendChild(badge)
+          leftContainer.appendChild(nameSpan)
+          btn.appendChild(leftContainer)
+
+          // Right side active checkmark indicator
+          if (isActive) {
+            const check = document.createElement('i')
+            check.className = 'bi bi-check-lg'
+            btn.appendChild(check)
+          }
+
+          btn.addEventListener('click', async (e) => {
+            e.stopPropagation()
+            if (dropdownInstance) {
+              dropdownInstance.hide()
+            }
+            await handleSwitchIsland(w.id)
+          })
+
+          li.appendChild(btn)
+          islandsListContainer.appendChild(li)
+        })
+      }
+
+      // Render profile avatar / fallback inside the dropup button
+      const avatarContainer = refs('avatarContainer')
+      const updateAvatar = () => {
+        if (!avatarContainer) {
+          return
+        }
+        avatarContainer.innerHTML = ''
+
+        const avatar = document.createElement('ui-avatar')
+        avatar.setAttribute('size', '40')
+
+        if (state.isAuthenticated && pb.authStore.model) {
+          const user = pb.authStore.model
+          avatar.setAttribute('name', user.name || user.username)
+          if (user.avatar) {
+            const avatarUrl = pb.files.getUrl(user, user.avatar)
+            avatar.setAttribute('url', avatarUrl)
+          }
+        } else {
+          avatar.setAttribute('name', 'Guest')
+        }
+
+        avatarContainer.appendChild(avatar)
+      }
+
+      // Button: "Chart New Island" opens global modal
+      const btnChartNewIsland = refs('btnChartNewIsland')
+      if (btnChartNewIsland) {
+        btnChartNewIsland.addEventListener('click', () => {
+          if (dropdownInstance) {
+            dropdownInstance.hide()
+          }
+          $bus.emit('ui:open_chart_island_modal')
+        })
+      }
+
+      // Button: Logout Action
       const btnLogout = refs('btnLogout')
       if (btnLogout) {
         btnLogout.addEventListener('click', async () => {
-          // Secure Logout Flow
+          if (dropdownInstance) {
+            dropdownInstance.hide()
+          }
           pb.authStore.clear()
           $state.authView = 'login'
           $bus.emit('auth:logout')
@@ -123,6 +343,15 @@
         })
       }
 
+      // Initialize renders
+      renderIslandsList()
+      updateAvatar()
+
+      $bus.on('auth:logout', () => {
+        state.islands = pb.authStore.workspaces || []
+        renderIslandsList()
+        updateAvatar()
+      })
     }
   })
 </script>

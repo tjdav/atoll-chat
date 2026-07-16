@@ -3,6 +3,9 @@
  * Standardizes Dexie/IndexedDB operations under a unified interface.
  */
 
+/**
+ *
+ */
 export function createWebStorageAdapter () {
   let dbInstance = null
 

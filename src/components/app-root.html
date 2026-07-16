@@ -32,13 +32,13 @@
       let isLifecycleRegistered = false
       let isFlushing = false
 
-      const isWorkspacesEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
-      console.log('[app-root] isWorkspacesEnabled:', isWorkspacesEnabled, {
+      const isIslandsEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
+      console.log('[app-root] isIslandsEnabled:', isIslandsEnabled, {
         config: $config?.get('enableWorkspaces'),
         override: window.__coralite_workspaces_override__
       })
 
-      const deriveWorkspaceFromUrl = (urlStr) => {
+      const deriveIslandFromUrl = (urlStr) => {
         try {
           const url = new URL(urlStr)
           const host = url.hostname
@@ -54,19 +54,19 @@
             name,
             url: cleanUrl
           }
-        } catch (e) {
+        } catch (_e) {
           const sanitized = urlStr.trim().replace(/\/+$/, '')
           const id = 'ws_' + btoa(sanitized).replace(/=/g, '').slice(-15)
           return {
             id,
-            name: 'Workspace',
+            name: 'Island',
             url: sanitized
           }
         }
       }
 
       const tryAutoOnboardDeepLink = async () => {
-        if (!isWorkspacesEnabled) {
+        if (!isIslandsEnabled) {
           return false
         }
         const workspaces = pb.authStore.workspaces || []
@@ -99,24 +99,26 @@
             return false
           }
 
-          const workspaceInfo = deriveWorkspaceFromUrl(urlInput)
+          const islandInfo = deriveIslandFromUrl(urlInput)
           pb.authStore.addWorkspace({
-            id: workspaceInfo.id,
-            name: workspaceInfo.name,
-            url: workspaceInfo.url,
+            id: islandInfo.id,
+            name: islandInfo.name,
+            url: islandInfo.url,
             token: '',
             user: null
           })
-          pb.authStore.setActiveWorkspace(workspaceInfo.id)
-          pb.baseUrl = workspaceInfo.url
+          pb.authStore.setActiveWorkspace(islandInfo.id)
+          pb.baseUrl = islandInfo.url
 
-          await $storage.initialize('AtollChatDB_' + workspaceInfo.id)
+          await $storage.initialize('AtollChatDB_' + islandInfo.id)
           await $worker.execute('worker:set_workspace_context', {
-            workspaceId: workspaceInfo.id,
-            baseUrl: workspaceInfo.url
+            workspaceId: islandInfo.id,
+            baseUrl: islandInfo.url
           })
 
-          $state.isOnboardingWorkspace = true
+          $state.activeIslandId = islandInfo.id
+          $state.islands = pb.authStore.workspaces || []
+          $state.isOnboardingIsland = true
           return true
         } catch (err) {
           console.warn('[app-root] Auto-onboarding failed:', err)
@@ -329,23 +331,23 @@
           isAuthenticated: $state.isAuthenticated,
           hasModel: !!pb.authStore.model,
           public_box_key: pb.authStore.model?.public_box_key,
-          isWorkspacesEnabled,
-          workspacesLength: pb.authStore.workspaces?.length,
-          isOnboardingWorkspace: $state.isOnboardingWorkspace
+          isIslandsEnabled,
+          islandsLength: pb.authStore.workspaces?.length,
+          isOnboardingIsland: $state.isOnboardingIsland
         })
 
         while (container.firstChild) {
           container.removeChild(container.firstChild)
         }
 
-        if (isWorkspacesEnabled) {
+        if (isIslandsEnabled) {
           const workspaces = pb.authStore.workspaces || []
           if (workspaces.length === 0) {
-            if ($state.isOnboardingWorkspace) {
+            if ($state.isOnboardingIsland) {
               renderAuthFlow()
             } else {
               container.className = 'vh-100 vw-100 d-flex align-items-center justify-content-center bg-body-tertiary'
-              container.appendChild(document.createElement('workspace-onboarding'))
+              container.appendChild(document.createElement('island-onboarding'))
             }
             return
           }
@@ -354,30 +356,33 @@
         if ($state.isAuthenticated && $state.isVaultUnlocked) {
           container.className = 'h-100 w-100 overflow-hidden d-flex'
 
-          if (isWorkspacesEnabled) {
-            container.appendChild(document.createElement('workspace-switcher'))
-          }
-
           const mainContent = document.createElement('div')
-          mainContent.className = 'flex-grow-1 h-100 position-relative'
+          mainContent.className = 'flex-grow-1 h-100 position-relative d-flex'
           mainContent.appendChild(document.createElement('app-layout'))
           mainContent.appendChild(document.createElement('create-room-modal'))
+          mainContent.appendChild(document.createElement('chart-island-modal'))
           mainContent.appendChild(document.createElement('p2p-reroute-modal'))
           mainContent.appendChild(document.createElement('p2p-consent-modal'))
           container.appendChild(mainContent)
         } else {
           container.className = 'h-100 w-100 overflow-hidden d-flex'
 
-          const workspaces = pb.authStore.workspaces || []
-          if (isWorkspacesEnabled && workspaces.length > 0) {
-            container.appendChild(document.createElement('workspace-switcher'))
+          const mainContent = document.createElement('div')
+          mainContent.className = 'flex-grow-1 h-100 position-relative d-flex'
+  
+          // Let nav-sidebar render so users can use the Island Switcher / Chart Island Dropup
+          if (isIslandsEnabled) {
+            mainContent.appendChild(document.createElement('nav-sidebar'))
           }
 
-          const mainContent = document.createElement('div')
-          mainContent.className = 'flex-grow-1 h-100 position-relative d-flex align-items-center justify-content-center bg-body-tertiary'
+          const rightSection = document.createElement('div')
+          rightSection.className = 'flex-grow-1 h-100 position-relative d-flex align-items-center justify-content-center bg-body-tertiary'
+          mainContent.appendChild(rightSection)
           container.appendChild(mainContent)
 
-          renderAuthFlow(mainContent)
+          mainContent.appendChild(document.createElement('chart-island-modal'))
+
+          renderAuthFlow(rightSection)
         }
       }
 
@@ -551,9 +556,9 @@
         updateUI()
       })
 
-      /* Boot sequence namespacing initialization */
+      /* Boot workspaces context before standard authentication evaluations */
       const initWorkspacesBoot = async () => {
-        if (isWorkspacesEnabled) {
+        if (isIslandsEnabled) {
           const workspaces = pb.authStore.workspaces || []
           const activeId = pb.authStore.activeWorkspaceId
 
@@ -568,8 +573,8 @@
               baseUrl: pb.baseUrl
             })
 
-            $state.activeWorkspaceId = activeId
-            $state.workspaces = workspaces
+            $state.activeIslandId = activeId
+            $state.islands = workspaces
           } else {
             await tryAutoOnboardDeepLink()
           }
@@ -613,7 +618,7 @@
         processPendingInvite().catch(console.error)
       })
       $state.subscribe('authView', updateUI)
-      $state.subscribe('isOnboardingWorkspace', updateUI)
+      $state.subscribe('isOnboardingIsland', updateUI)
 
       $state.subscribe('isOnline', (val) => {
         if (val) {

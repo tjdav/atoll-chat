@@ -18,7 +18,8 @@ test.describe('Authentication and Vault', () => {
     await expect(page.locator('app-layout')).toBeVisible()
 
     // logout
-    console.log('--- Logout ---')
+    console.log('--- Logout 1 ---')
+    await page.locator('[data-testid$="profileBtn"]').click()
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
@@ -56,7 +57,8 @@ test.describe('Authentication and Vault', () => {
     await expect(page.locator('chat-list-item')).toBeVisible({ timeout: 15000 })
 
     // logout
-    console.log('--- Logout ---')
+    console.log('--- Logout 2 ---')
+    await page.locator('[data-testid$="profileBtn"]').click()
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
