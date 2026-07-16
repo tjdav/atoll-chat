@@ -231,7 +231,10 @@ test.describe('User Settings & Profile', () => {
 
     test('mobile traversal - offcanvas drawer open/close behavior', async ({ page }) => {
       // Set to mobile viewport size (e.g. 375x812)
-      await page.setViewportSize({ width: 375, height: 812 })
+      await page.setViewportSize({
+        width: 375,
+        height: 812
+      })
 
       // Open settings
       await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()

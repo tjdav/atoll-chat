@@ -1,6 +1,6 @@
 <template id="link-list">
   <div class="link-list h-100 overflow-y-auto" ref="scrollRoot">
-    <div class="list-group list-group-flush" ref="listGroup">
+    <div class="list-group list-group-spaced" ref="listGroup">
       <!-- Links will be rendered here -->
     </div>
   </div>
@@ -82,7 +82,7 @@
             const btn = document.createElement('button')
             btn.type = 'button'
             const isActive = selectionId === $state.activeSelectionId && $state.activeSelectionType === 'links'
-            btn.className = `app-list-item border-0 w-100 text-start bg-transparent ${isActive ? 'active' : ''}`
+            btn.className = `list-group-item border-0 w-100 text-start bg-transparent ${isActive ? 'active' : ''}`
             const domainStr = link.domain ? `${link.domain} • ` : ''
             btn.innerHTML = `<div class="list-item-icon d-flex align-items-center justify-content-center"><i class="bi bi-link-45deg fs-5"></i></div><div class="text-truncate flex-grow-1"><div class="fw-bold text-truncate"></div><small class="text-body-secondary d-block text-truncate"></small></div><i class="bi bi-chevron-right ms-auto text-body-secondary opacity-50"></i>`
             btn.querySelector('.fw-bold').textContent = link.title || link.url || 'Untitled Link'

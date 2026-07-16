@@ -9,7 +9,7 @@
 }
 
 .list-pane-header {
-  // Border removed as per requirement
+  /* Border removed as per requirement */
   border-bottom: none !important;
   background-color: var(--#{$prefix}tertiary-bg);
 }
@@ -75,7 +75,7 @@
   }
 }
 
-// Search bar refinements
+/* Search bar refinements */
 .search-container-pill {
   padding: 0 $app-item-padding-x 1rem $app-item-padding-x;
   
@@ -101,8 +101,6 @@
 
 #settings-navbar {
   .list-group-item {
-    border-left: 3px solid transparent;
-    transition: all 0.2s ease;
     border-top: none;
     border-right: none;
     border-bottom: 1px solid var(--#{$prefix}border-color-translucent);
@@ -112,9 +110,6 @@
     }
 
     &.active {
-      background-color: var(--#{$prefix}primary-bg-subtle) !important;
-      color: var(--#{$prefix}primary) !important;
-      border-left-color: var(--#{$prefix}primary) !important;
       font-weight: 600;
     }
   }

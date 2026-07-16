@@ -1,6 +1,6 @@
 <template id="document-list">
   <div class="document-list h-100 overflow-y-auto" ref="scrollRoot">
-    <div class="list-group list-group-flush" ref="listGroup">
+    <div class="list-group list-group-spaced" ref="listGroup">
       <!-- Documents will be rendered here -->
     </div>
   </div>
@@ -54,7 +54,7 @@
             const btn = document.createElement('button')
             btn.type = 'button'
             const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'documents'
-            btn.className = `app-list-item border-0 w-100 text-start bg-transparent ${isActive ? 'active' : ''}`
+            btn.className = `list-group-item border-0 w-100 text-start bg-transparent ${isActive ? 'active' : ''}`
 
             const iconDiv = document.createElement('div')
             iconDiv.className = 'list-item-icon d-flex align-items-center justify-content-center'
