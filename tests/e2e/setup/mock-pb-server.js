@@ -625,7 +625,9 @@ export function createServer () {
 
           // Handle file uploads
           if (files.length > 0) {
-            newRecord.file = files[0].filename
+            for (const file of files) {
+              newRecord[file.name] = file.filename
+            }
             db.mediaFiles[newRecord.id] = files[0].buffer
           }
 
@@ -662,7 +664,9 @@ export function createServer () {
 
           // Handle file updates
           if (files.length > 0) {
-            updatedRecord.file = files[0].filename
+            for (const file of files) {
+              updatedRecord[file.name] = file.filename
+            }
             db.mediaFiles[updatedRecord.id] = files[0].buffer
           }
 
