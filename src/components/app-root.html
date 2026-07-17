@@ -279,6 +279,8 @@
               created_at: roomRecord.created,
               updated_at: roomRecord.updated
             })
+
+            $bus.emit('db:new_local_room', { room_id: roomId })
           }
 
           console.log(`[app-root] Selecting room ${roomId}`)
