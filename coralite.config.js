@@ -26,7 +26,7 @@ import deeplinkPlugin from './src/plugins/deeplink-plugin.js'
 import deeplinkManifestPlugin from './src/plugins/deeplink-manifest-plugin.js'
 import pkg from './package.json' with { type: 'json' }
 
-const pocketbaseBaseUrl = process.env.ATOLL_DATABASE_URL || 'http://localhost:8090'
+const pocketbaseBaseUrl = process.env.ATOLL_POCKETBASE_URL || 'http://localhost:8090'
 
 export default defineConfig({
   public: 'public',

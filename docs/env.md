@@ -23,7 +23,7 @@ Here is a template you can use for local development:
 # ==========================================
 # Frontend Build-Time variables
 # ==========================================
-ATOLL_DATABASE_URL=http://localhost:8090
+ATOLL_POCKETBASE_URL=http://localhost:8090
 
 # LOCAL_ICE_SERVER=turn:127.0.0.1:3478
 # ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS=1000
@@ -58,7 +58,7 @@ ATOLL_S3_FORCE_PATH_STYLE=false
 ATOLL_VAPID_PUBLIC_KEY=BI42LscA_XvC28RpxgGk_g0-XW5yC4S_N924_68yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2
 ATOLL_VAPID_PRIVATE_KEY=your_private_key_here
 ATOLL_VAPID_SUBJECT=mailto:admin@example.com
-ATOLL_POCKETBASE_URL=http://localhost:8080
+ATOLL_INTERNAL_POCKETBASE_URL=http://localhost:8080
 ```
 
 ---
@@ -71,7 +71,7 @@ These variables configure the application compile-time behavior in [coralite.con
 
 | Variable Name | Default Value | Description | Used In / By |
 |---------------|---------------|-------------|--------------|
-| `ATOLL_DATABASE_URL` | `http://localhost:8090` | Base URL of the PocketBase database server. In the [Dockerfile](/Dockerfile) build stage 1, this defaults to `/` for relative api routing. | [coralite.config.js](/coralite.config.js), [pocketbasePlugin](/src/plugins/pocketbase.js) |
+| `ATOLL_POCKETBASE_URL` | `http://localhost:8090` | Base URL of the PocketBase database server. In the [Dockerfile](/Dockerfile) build stage 1, this defaults to `/` for relative api routing. | [coralite.config.js](/coralite.config.js), [pocketbasePlugin](/src/plugins/pocketbase.js) |
 | `ATOLL_VAPID_PUBLIC_KEY` | `BI42LscA_XvC28...` | VAPID public key for client push notifications subscription. | [coralite.config.js](/coralite.config.js), [pushPlugin](/src/plugins/push-plugin.js) |
 | `LOCAL_ICE_SERVER` | None | Overrides the Ice Server configuration for local WebRTC calls. | [coralite.config.js](/coralite.config.js), [configPlugin](/src/plugins/config-plugin.js), [webrtcPlugin](/src/plugins/web-rtc-plugin.js) |
 | `ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS` | `1000` | Minimum interval (in milliseconds) required between triggering message notification sounds. | [coralite.config.js](/coralite.config.js), [configPlugin](/src/plugins/config-plugin.js) |
@@ -118,7 +118,7 @@ These variables configure the Node.js service responsible for dispatching push n
 |---------------|---------------|-------------|--------------|
 | `PORT` | `3000` | Port the push worker listens on. | [push-worker/index.js](/push-worker/index.js) |
 | `ATOLL_PUSH_WORKER_SECRET` | None | Security secret shared with the backend, used to validate incoming prune notifications callback and auth headers. | [push-worker/index.js](/push-worker/index.js) |
-| `ATOLL_POCKETBASE_URL` | None | URL of the PocketBase application server, used to dispatch subscription pruning requests back to PocketBase. | [push-worker/index.js](/push-worker/index.js) |
+| `ATOLL_INTERNAL_POCKETBASE_URL` | None | URL of the PocketBase application server, used to dispatch subscription pruning requests back to PocketBase. | [push-worker/index.js](/push-worker/index.js) |
 | `ATOLL_VAPID_PUBLIC_KEY` | None | VAPID public key matching the client configuration, used to generate web-push authorization headers. | [push-worker/index.js](/push-worker/index.js) |
 | `ATOLL_VAPID_PRIVATE_KEY` | None | VAPID private key used to sign web-push requests. | [push-worker/index.js](/push-worker/index.js) |
 | `ATOLL_VAPID_SUBJECT` | None | VAPID contact URL or mailto address (e.g., `mailto:admin@example.com`). | [push-worker/index.js](/push-worker/index.js) |

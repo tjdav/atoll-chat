@@ -25,7 +25,7 @@ services:
       - ATOLL_VAPID_SUBJECT=${ATOLL_VAPID_SUBJECT}
       - PORT=3000
       - ATOLL_PUSH_WORKER_SECRET=${ATOLL_PUSH_WORKER_SECRET}
-      - ATOLL_POCKETBASE_URL=http://atoll:8080
+      - ATOLL_INTERNAL_POCKETBASE_URL=http://atoll:8080
     restart: unless-stopped
 
   coturn:

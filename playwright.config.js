@@ -56,7 +56,7 @@ export default defineConfig({
       LOCAL_ICE_SERVER: `turn:127.0.0.1:${process.env.TURN_PORT || 3478}`,
       ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS: '5000',
       ATOLL_PUSH_WORKER_SECRET: 'test_secret_123',
-      ATOLL_POCKETBASE_URL: 'http://localhost:8090'
+      ATOLL_INTERNAL_POCKETBASE_URL: 'http://localhost:8090'
     }
   }
 })
