@@ -156,7 +156,8 @@ test.describe('Chat Management', () => {
 
     test('Deep Linking Restoration', async ({ page }) => {
       /* Logout first since beforeEach logs us in */
-      await page.click('button[title="Logout"]')
+      await page.locator('[data-testid$="profileBtn"]').click()
+      await page.locator('[data-testid$="btnLogout"]').click()
       await expect(page.locator('[data-testid$="username"]')).toBeVisible()
 
       await page.goto('/?view=music')
