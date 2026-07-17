@@ -34,7 +34,8 @@ export default defineConfig({
     configPlugin({
       maxServerUploadSizeBytes: 26214400,
       webrtcChunkSizeBytes: 16384,
-      localIceServer: process.env.LOCAL_ICE_SERVER
+      localIceServer: process.env.LOCAL_ICE_SERVER,
+      notificationSoundDebounceMs: process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS ? parseInt(process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS, 10) : 1000
     }),
     pocketbasePlugin({ baseUrl: pocketbaseBaseUrl }),
     eventBus,

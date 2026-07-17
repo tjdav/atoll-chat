@@ -10,6 +10,7 @@ export default function configPlugin (config = {}) {
   const mergedConfig = {
     maxServerUploadSizeBytes: 26214400,
     webrtcChunkSizeBytes: 16384,
+    notificationSoundDebounceMs: 1000,
     ...config
   }
 

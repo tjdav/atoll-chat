@@ -43,7 +43,7 @@ RUN pnpm run build
 FROM alpine:latest
 
 # Set PocketBase version
-ARG PB_VERSION=0.39.5
+ARG PB_VERSION=0.39.7
 
 # Combine apk add and wget/unzip into a single RUN to reduce image layers
 RUN apk add --no-cache ca-certificates unzip wget libc6-compat \

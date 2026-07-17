@@ -8,14 +8,14 @@ export default definePlugin({
   name: 'notifications',
   client: {
     context: () => {
+      let lastSoundPlayTime = 0
+
       return (instanceContext) => {
         const { $bus } = instanceContext.eventBus
         const { $state } = instanceContext.globalStore
         const { $storage } = instanceContext.storage
         const { pb } = instanceContext.pocketbase
-
-        let lastSoundPlayTime = 0
-        const SOUND_DEBOUNCE_MS = 1000
+        const { config } = instanceContext
 
         const playMessageSound = async () => {
           if (!$state.messageSoundsEnabled) {
@@ -23,8 +23,9 @@ export default definePlugin({
           }
 
           const now = Date.now()
+          const debounceMs = config?.$config?.get('notificationSoundDebounceMs') ?? 1000
 
-          if (now - lastSoundPlayTime < SOUND_DEBOUNCE_MS) {
+          if (now - lastSoundPlayTime < debounceMs) {
             return
           }
 
