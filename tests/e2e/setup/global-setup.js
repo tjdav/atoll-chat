@@ -1,5 +1,56 @@
 import { execSync } from 'child_process'
 import { createServer } from './mock-pb-server.js'
+import fs from 'fs'
+import path from 'path'
+import { fileURLToPath } from 'url'
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url))
+const targetDir = path.join(__dirname, '../fixtures')
+const targetPath = path.join(targetDir, 'test-video.y4m')
+
+/**
+ * Ensure the fake Y4M test video exists before any browser context boots.
+ */
+function ensureTestVideoExists () {
+  if (fs.existsSync(targetPath)) {
+    return
+  }
+
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true })
+  }
+
+  const width = 128
+  const height = 96
+  const numFrames = 10
+
+  const fileHeader = `YUV4MPEG2 W${width} H${height} F30:1 Ip C420jpeg\n`
+  const frameHeader = 'FRAME\n'
+
+  const ySize = width * height
+  const uSize = (width / 2) * (height / 2)
+  const vSize = (width / 2) * (height / 2)
+  const frameDataSize = ySize + uSize + vSize
+
+  const buffers = [Buffer.from(fileHeader, 'ascii')]
+
+  for (let i = 0; i < numFrames; i++) {
+    buffers.push(Buffer.from(frameHeader, 'ascii'))
+
+    const frameBuffer = Buffer.alloc(frameDataSize)
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const val = (((y * 2) + x) + (i * 4)) % 256
+        frameBuffer[(y * width) + x] = val
+      }
+    }
+    frameBuffer.fill(128, ySize, frameDataSize)
+    buffers.push(frameBuffer)
+  }
+
+  fs.writeFileSync(targetPath, Buffer.concat(buffers))
+  console.log(`Successfully generated fake Y4M video fixture at: ${targetPath}`)
+}
 
 /**
  * Check if the coturn docker container is running.
@@ -65,6 +116,9 @@ function runDockerComposeUp () {
  * Set up mock PocketBase and start local coturn STUN/TURN server.
  */
 async function globalSetup () {
+  console.log('--- Ensuring E2E Test Video Fixture ---')
+  ensureTestVideoExists()
+
   console.log('--- Mock PocketBase Setup ---')
   const server = createServer()
   await new Promise((resolve, reject) => {
