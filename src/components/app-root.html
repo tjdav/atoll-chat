@@ -509,37 +509,30 @@
             })
         }
 
-        if ($state.notificationsEnabled) {
-          $notifications.requestPermission().catch(console.error)
-        }
-
-        $push.requestPermission()
-          .then((granted) => {
-            if (granted) {
-              return $push.register()
-            }
-            throw new Error('Push permission not granted')
-          })
-          .then((token) => {
-            if (token) {
-              console.log('[app-root] Push registration successful, transmitting token to backend:', token)
-              return pb.collection('users').update(userRecord.id, {
-                push_subscription: token
-              })
-            }
-          })
-          .then((updatedUser) => {
-            if (updatedUser) {
-              console.log('[app-root] Push subscription updated on backend successfully.')
-              $state.currentUser = {
-                ...$state.currentUser,
-                push_subscription: updatedUser.push_subscription
+        // Only perform background registration silently if browser permissions have already been granted
+        if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+          $push.register()
+            .then((token) => {
+              if (token) {
+                console.log('[app-root] Silent push registration successful, transmitting token to backend:', token)
+                return pb.collection('users').update(userRecord.id, {
+                  push_subscription: token
+                })
               }
-            }
-          })
-          .catch((err) => {
-            console.error('[app-root] Push notification registration/update failed:', err)
-          })
+            })
+            .then((updatedUser) => {
+              if (updatedUser) {
+                console.log('[app-root] Push subscription updated on backend successfully.')
+                $state.currentUser = {
+                  ...$state.currentUser,
+                  push_subscription: updatedUser.push_subscription
+                }
+              }
+            })
+            .catch((err) => {
+              console.error('[app-root] Silent background push registration/update failed:', err)
+            })
+        }
       })
 
       $bus.on('auth:logout', () => {

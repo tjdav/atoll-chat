@@ -4,12 +4,17 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
   test.beforeEach(async ({ page }) => {
     /* Enable simulated PushManager support and mock permissions on initial page load */
     await page.addInitScript(() => {
+      let currentPermission = 'default'
       Object.defineProperty(window.Notification, 'permission', {
         get () {
-          return 'granted'
-        }
+          return currentPermission
+        },
+        configurable: true
       })
-      window.Notification.requestPermission = async () => 'granted'
+      window.Notification.requestPermission = async () => {
+        currentPermission = 'granted'
+        return 'granted'
+      }
 
       /* Define MockPushManager class to avoid Illegal Constructor error */
       class MockPushManager {
@@ -48,7 +53,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     })
   })
 
-  test('should request push permissions and register when vault is unlocked', async ({ page, loginApp }) => {
+  test('should request push permissions and register when explicitly toggled in settings', async ({ page, loginApp }) => {
     const logs = []
     page.on('console', msg => {
       logs.push(msg.text())
@@ -60,10 +65,34 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     /* Verify standard app-layout is visible */
     await expect(page.locator('app-layout')).toBeVisible()
 
+    /* Ensure no automatic push registration log exists on login when permission is default */
+    expect(logs.some(log => log.includes('[app-root] Silent push registration successful'))).toBe(false)
+
+    // Navigate to Settings
+    await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
+    await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+
+    // Tap on the Notifications category in settings-pane
+    await page.locator('[data-testid="settings-pane-0__nav-notifications"]').click()
+
+    // Find and click/toggle the browser notifications switch
+    const switchInput = page.locator('browser-notifications input[type="checkbox"]')
+    await expect(switchInput).toBeVisible()
+    await expect(switchInput).not.toBeChecked()
+
+    // Toggle the switch to True
+    await switchInput.click()
+
+    // Assert that the switch is now checked
+    await expect(switchInput).toBeChecked()
+
+    // Take screenshot for visual verification
+    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+
     /* Assert that the push plugin requested permission and registered successfully */
     let pushRegistered = false
     for (let i = 0; i < 20; i++) {
-      if (logs.some(log => log.includes('[app-root] Push registration successful') || log.includes('Push subscription updated on backend successfully'))) {
+      if (logs.some(log => log.includes('[browser-notifications] Push registration successful') || log.includes('Push subscription updated on backend successfully'))) {
         pushRegistered = true
         break
       }

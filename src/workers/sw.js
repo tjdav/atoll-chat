@@ -247,7 +247,27 @@ const onPush = (event) => {
         type: 'window',
         includeUncontrolled: true
       })
+
+      let isAppFocused = false
+      for (const client of windowClients) {
+        if (client.focused) {
+          isAppFocused = true
+          break
+        }
+      }
+
       const activeClient = windowClients.find(c => c.visibilityState === 'visible') || windowClients[0]
+
+      if (isAppFocused) {
+        console.log('[SW] App is focused. Suppressing OS push notification.')
+        if (activeClient) {
+          activeClient.postMessage({
+            type: 'PUSH_RECEIVED',
+            payload: record
+          })
+        }
+        return
+      }
 
       if (activeClient) {
         console.log('[SW] Active window found. Forwarding push record to main thread.')
