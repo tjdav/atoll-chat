@@ -119,10 +119,11 @@ export default definePlugin({
               method: 'GET'
             })
             if (credentialsResponse && credentialsResponse.username && credentialsResponse.password) {
+              const turnUrls = credentialsResponse.uris || ['turns:turn.atol.chat:5349']
               return [
                 ...defaultStun,
                 {
-                  urls: 'turns:turn.atol.chat:5349',
+                  urls: turnUrls,
                   username: credentialsResponse.username,
                   credential: credentialsResponse.password
                 }

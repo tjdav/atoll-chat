@@ -316,11 +316,15 @@ export function createServer () {
         const username = `${unixTimestamp}:${userId}`
         const password = crypto.createHmac('sha1', sharedSecret).update(username).digest('base64')
 
+        const turnUrisEnv = process.env.ATOLL_TURN_URIS
+        const uris = turnUrisEnv ? turnUrisEnv.split(',').map(s => s.trim()) : ['turns:turn.atol.chat:5349']
+
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({
           username,
           password,
-          ttl: expiresInSeconds
+          ttl: expiresInSeconds,
+          uris
         }))
         return
       }

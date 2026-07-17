@@ -161,10 +161,11 @@ export default function webrtcPlugin ({
                 method: 'GET'
               })
               if (credentialsResponse && credentialsResponse.username && credentialsResponse.password) {
+                const turnUrls = credentialsResponse.uris || ['turns:turn.atol.chat:5349']
                 dynamicIceServers = [
                   ...defaultStun,
                   {
-                    urls: 'turns:turn.atol.chat:5349',
+                    urls: turnUrls,
                     username: credentialsResponse.username,
                     credential: credentialsResponse.password
                   }

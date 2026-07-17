@@ -45,11 +45,14 @@ test.describe('TURN Credentials Endpoint', () => {
     expect(credentials).toHaveProperty('username')
     expect(credentials).toHaveProperty('password')
     expect(credentials).toHaveProperty('ttl')
+    expect(credentials).toHaveProperty('uris')
     expect(typeof credentials.username).toBe('string')
     expect(typeof credentials.password).toBe('string')
     expect(typeof credentials.ttl).toBe('number')
+    expect(Array.isArray(credentials.uris)).toBe(true)
 
     expect(credentials.ttl).toBe(3600)
+    expect(credentials.uris).toContain('turns:turn.atol.chat:5349')
 
     const parts = credentials.username.split(':')
     expect(parts.length).toBe(2)

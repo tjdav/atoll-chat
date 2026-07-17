@@ -5,20 +5,20 @@ const PORT = process.env.PORT || 3000
 
 // Validate strict environment variables
 const internalWorkerSecret = process.env.ATOLL_PUSH_WORKER_SECRET
-const pocketbaseUrl = process.env.POCKETBASE_URL
+const pocketbaseUrl = process.env.ATOLL_POCKETBASE_URL
 
 if (!internalWorkerSecret) {
   throw new Error('[push-worker] Fatal: ATOLL_PUSH_WORKER_SECRET environment variable is missing.')
 }
 
 if (!pocketbaseUrl) {
-  throw new Error('[push-worker] Fatal: POCKETBASE_URL environment variable is missing.')
+  throw new Error('[push-worker] Fatal: ATOLL_POCKETBASE_URL environment variable is missing.')
 }
 
 // Read VAPID keys from environment
-const vapidPublicKey = process.env.VAPID_PUBLIC_KEY
-const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY
-const vapidSubject = process.env.VAPID_SUBJECT
+const vapidPublicKey = process.env.ATOLL_VAPID_PUBLIC_KEY
+const vapidPrivateKey = process.env.ATOLL_VAPID_PRIVATE_KEY
+const vapidSubject = process.env.ATOLL_VAPID_SUBJECT
 
 if (vapidPublicKey && vapidPrivateKey && vapidSubject) {
   console.log('[push-worker] VAPID keys loaded successfully.')
