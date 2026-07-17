@@ -4,11 +4,11 @@ import webpush from 'web-push'
 const PORT = process.env.PORT || 3000
 
 // Validate strict environment variables
-const internalWorkerSecret = process.env.INTERNAL_WORKER_SECRET
+const internalWorkerSecret = process.env.ATOLL_PUSH_WORKER_SECRET
 const pocketbaseUrl = process.env.POCKETBASE_URL
 
 if (!internalWorkerSecret) {
-  throw new Error('[push-worker] Fatal: INTERNAL_WORKER_SECRET environment variable is missing.')
+  throw new Error('[push-worker] Fatal: ATOLL_PUSH_WORKER_SECRET environment variable is missing.')
 }
 
 if (!pocketbaseUrl) {

@@ -567,7 +567,7 @@ export function createServer () {
         if (expiredUserIds.length > 0) {
           // Asynchronously trigger the internal pruning webhook via HTTP to verify the full network handshake
           setTimeout(() => {
-            const secret = process.env.INTERNAL_WORKER_SECRET || 'test_secret_123'
+            const secret = process.env.ATOLL_PUSH_WORKER_SECRET || 'test_secret_123'
             const payload = JSON.stringify({ user_ids: expiredUserIds })
 
             const reqOpts = {
@@ -612,7 +612,7 @@ export function createServer () {
           return
         }
 
-        const expectedSecret = process.env.INTERNAL_WORKER_SECRET || 'test_secret_123'
+        const expectedSecret = process.env.ATOLL_PUSH_WORKER_SECRET || 'test_secret_123'
         const reqSecret = req.headers['x-worker-token']
 
         console.log('[MOCK PB WEBHOOK] Got request:', {

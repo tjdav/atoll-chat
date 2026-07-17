@@ -2,11 +2,11 @@
 
 // Register an internal webhook for the push-worker to prune dead subscriptions
 routerAdd('POST', '/api/internal/prune-subscriptions', (c) => {
-  const secret = $os.getenv('INTERNAL_WORKER_SECRET')
+  const secret = $os.getenv('ATOLL_PUSH_WORKER_SECRET')
   const reqSecret = c.request().header.get('X-Worker-Token')
 
   if (!secret) {
-    throw new Error('[push_notifications] Missing INTERNAL_WORKER_SECRET environment variable.')
+    throw new Error('[push_notifications] Missing ATOLL_PUSH_WORKER_SECRET environment variable.')
   }
 
   // Block unauthorized external requests
@@ -34,9 +34,9 @@ routerAdd('POST', '/api/internal/prune-subscriptions', (c) => {
 })
 
 onRecordAfterCreateRequest((e) => {
-  const internalSecret = $os.getenv('INTERNAL_WORKER_SECRET')
+  const internalSecret = $os.getenv('ATOLL_PUSH_WORKER_SECRET')
   if (!internalSecret) {
-    throw new Error('[push_notifications] Missing INTERNAL_WORKER_SECRET environment variable.')
+    throw new Error('[push_notifications] Missing ATOLL_PUSH_WORKER_SECRET environment variable.')
   }
 
   const message = e.record
