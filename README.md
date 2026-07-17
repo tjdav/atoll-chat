@@ -6,7 +6,7 @@
 
 Atoll Chat is a privacy-first, zero-knowledge messaging application and personal media vault built on the [Coralite](https://coralite.dev) framework. It's designed to give you total control over your digital life, ensuring that your messages, photos, and videos stay strictly between you and your recipients.
 
-[![Licence: MPL 2.0](https://img.shields.io/badge/License-MPL_2.0-brightgreen.svg)](./LICENSE)
+![License: AGPL v3](https://img.shields.io/badge/License-AGPL_v3-blue.svg)(./LICENSE)
 ![Status: Work In Progress](https://img.shields.io/badge/Status-Work_In_Progress-orange)
 
 ## Why Atoll Chat?
