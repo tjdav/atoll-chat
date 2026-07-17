@@ -39,16 +39,25 @@ async function globalTeardown () {
   }
 
   console.log('--- Coturn STUN/TURN Server Teardown ---')
-  try {
-    runDockerComposeStop()
-  } catch (err) {
-    console.error('Failed to stop coturn service via docker compose:', err)
+  if (globalThis.__COTURN_CONTAINER_USED__) {
+    try {
+      runDockerComposeStop()
+    } catch (err) {
+      console.error('Failed to stop coturn service via docker compose:', err)
+    }
+  } else {
+    console.log('Coturn container was not used. Skipping docker compose stop.')
   }
-  try {
-    console.log('Attempting to stop native turnserver daemon...')
-    execSync('sudo killall turnserver || true', { stdio: 'inherit' })
-  } catch (err) {
-    console.error('Failed to kill native turnserver daemon:', err)
+
+  if (globalThis.__NATIVE_TURNSERVER_STARTED__) {
+    try {
+      console.log('Attempting to stop native turnserver daemon...')
+      execSync('sudo killall turnserver || true', { stdio: 'inherit' })
+    } catch (err) {
+      console.error('Failed to kill native turnserver daemon:', err)
+    }
+  } else {
+    console.log('Native turnserver daemon was not started by this test run. Skipping stop.')
   }
 }
 
