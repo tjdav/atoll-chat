@@ -43,3 +43,4 @@ playwright-report
 .last-run.json
 test-results
 tests/e2e/screenshots/
+tests/e2e/fixtures/test-files/test-video.y4m
