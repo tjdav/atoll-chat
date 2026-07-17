@@ -24,7 +24,7 @@ Here is a template you can use for local development:
 # Frontend Build-Time variables
 # ==========================================
 ATOLL_DATABASE_URL=http://localhost:8090
-ATOLL_VAPID_KEY=BI42LscA_XvC28RpxgGk_g0-XW5yC4S_N924_68yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2
+
 # LOCAL_ICE_SERVER=turn:127.0.0.1:3478
 # ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS=1000
 
@@ -72,7 +72,7 @@ These variables configure the application compile-time behavior in [coralite.con
 | Variable Name | Default Value | Description | Used In / By |
 |---------------|---------------|-------------|--------------|
 | `ATOLL_DATABASE_URL` | `http://localhost:8090` | Base URL of the PocketBase database server. In the [Dockerfile](/Dockerfile) build stage 1, this defaults to `/` for relative api routing. | [coralite.config.js](/coralite.config.js), [pocketbasePlugin](/src/plugins/pocketbase.js) |
-| `ATOLL_VAPID_KEY` | `BI42LscA_XvC28...` | VAPID public key for client push notifications subscription. | [coralite.config.js](/coralite.config.js), [pushPlugin](/src/plugins/push-plugin.js) |
+| `ATOLL_VAPID_PUBLIC_KEY` | `BI42LscA_XvC28...` | VAPID public key for client push notifications subscription. | [coralite.config.js](/coralite.config.js), [pushPlugin](/src/plugins/push-plugin.js) |
 | `LOCAL_ICE_SERVER` | None | Overrides the Ice Server configuration for local WebRTC calls. | [coralite.config.js](/coralite.config.js), [configPlugin](/src/plugins/config-plugin.js), [webrtcPlugin](/src/plugins/web-rtc-plugin.js) |
 | `ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS` | `1000` | Minimum interval (in milliseconds) required between triggering message notification sounds. | [coralite.config.js](/coralite.config.js), [configPlugin](/src/plugins/config-plugin.js) |
 | `ATOLL_IOS_TEAM_ID` | `TEAMID1234` | iOS Developer Team ID used to compile the `apple-app-site-association` file. | [deeplinkManifestPlugin](/src/plugins/deeplink-manifest-plugin.js) |
