@@ -6,12 +6,24 @@ services:
       - "8080:8080"
     volumes:
       - ./pb_data:/pb/pb_data
+    environment:
+      - PUSH_WORKER_URL=http://push-worker:3000
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  push-worker:
+    build: ./push-worker
+    container_name: atoll-push-worker
+    environment:
+      - VAPID_PUBLIC_KEY=${VAPID_PUBLIC_KEY}
+      - VAPID_PRIVATE_KEY=${VAPID_PRIVATE_KEY}
+      - VAPID_SUBJECT=${VAPID_SUBJECT}
+      - PORT=3000
+    restart: unless-stopped
 
   coturn:
     image: coturn/coturn:latest

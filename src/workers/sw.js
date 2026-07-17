@@ -198,17 +198,45 @@ const onPush = (event) => {
       const pbUrl = urlConfig.value
       const pbToken = tokenConfig.value
 
-      // Fetch Latest Message from PocketBase
-      const response = await fetch(`${pbUrl}/api/collections/messages/records?sort=-created&limit=1`, {
-        headers: { Authorization: pbToken }
-      })
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch message: ${response.statusText}`)
+      let pushData = null
+      if (event.data) {
+        try {
+          pushData = event.data.json()
+        } catch {
+          /* If parsing raw JSON fails, leave as null */
+        }
       }
 
-      const data = await response.json()
-      const record = data.items[0]
+      let record = null
+
+      if (pushData && pushData.message_id) {
+        try {
+          const response = await fetch(`${pbUrl}/api/collections/messages/records/${pushData.message_id}`, {
+            headers: { Authorization: pbToken }
+          })
+          if (response.ok) {
+            record = await response.json()
+          } else {
+            console.warn(`[SW] Failed to fetch message ${pushData.message_id} specifically, trying fallback.`)
+          }
+        } catch (fetchErr) {
+          console.warn('[SW] Exception while fetching specific message_id, trying fallback.', fetchErr)
+        }
+      }
+
+      if (!record) {
+        // Fallback to fetching latest message
+        const response = await fetch(`${pbUrl}/api/collections/messages/records?sort=-created&limit=1`, {
+          headers: { Authorization: pbToken }
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to fetch latest message: ${response.statusText}`)
+        }
+
+        const data = await response.json()
+        record = data.items[0]
+      }
 
       if (!record) {
         throw new Error('No new messages found')

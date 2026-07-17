@@ -1,0 +1,9 @@
+{
+  "name": "push-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "main": "index.js",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}

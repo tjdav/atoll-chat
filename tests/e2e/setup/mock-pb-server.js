@@ -538,6 +538,27 @@ export function createServer () {
         return
       }
 
+      // Mock push-worker endpoint
+      if (pathname === '/send-push') {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ message: 'Method Not Allowed' }))
+          return
+        }
+        db.lastPush = body
+        console.log(`[MOCK PB] [${testId}] Stored last push:`, JSON.stringify(body))
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true }))
+        return
+      }
+
+      // Endpoint to retrieve last push
+      if (pathname === '/api/last-push') {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(db.lastPush || null))
+        return
+      }
+
       // File download
       const fileRouteMatch = pathname.match(/^\/api\/files\/([^/]+)\/([^/]+)\/([^/]+)/)
       if (fileRouteMatch) {
@@ -636,6 +657,74 @@ export function createServer () {
           }
           list.push(newRecord)
           broadcast(db, collectionName, 'create', newRecord)
+
+          // Simulate push_notifications.pb.js hook inside Mock PocketBase
+          if (collectionName === 'messages') {
+            const roomId = newRecord.room_id
+            const senderId = newRecord.sender_id
+
+            // Filter room members
+            const members = db.room_members.filter(m => m.room_id === roomId)
+            const subscriptions = []
+
+            for (const member of members) {
+              const userId = member.user_id
+              if (userId === senderId) {
+                continue
+              }
+              if (member.role === 'kicked') {
+                continue
+              }
+              if (member.is_muted === true) {
+                continue
+              }
+              const user = db.users.find(u => u.id === userId)
+              if (user && user.push_subscription) {
+                let parsed = user.push_subscription
+                if (typeof parsed === 'string') {
+                  try {
+                    parsed = JSON.parse(parsed)
+                  } catch {
+                  }
+                }
+                if (parsed && (parsed.endpoint || parsed.keys)) {
+                  subscriptions.push(parsed)
+                }
+              }
+            }
+
+            if (subscriptions.length > 0) {
+              const payload = {
+                subscriptions,
+                payload: {
+                  type: 'NEW_MESSAGE',
+                  room_id: roomId,
+                  message_id: newRecord.id
+                }
+              }
+
+              // Fire request to /send-push over local HTTP or direct store
+              const reqOpts = {
+                hostname: '127.0.0.1',
+                port: req.socket.localPort || 8090,
+                path: '/send-push',
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                  'x-test-id': testId
+                }
+              }
+              const pushReq = http.request(reqOpts, (pushRes) => {
+                pushRes.on('data', () => {
+                })
+              })
+              pushReq.on('error', (err) => {
+                console.error('[MOCK PB] Failed to call /send-push in mock hook:', err)
+              })
+              pushReq.write(JSON.stringify(payload))
+              pushReq.end()
+            }
+          }
 
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify(newRecord))
