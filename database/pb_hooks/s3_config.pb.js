@@ -1,25 +1,25 @@
 // database/pb_hooks/s3_config.pb.js
 
-/**
- * Retrieves the value of the environment variable named by the key.
- *
- * @param {string} key - The environment variable name.
- * @returns {string|undefined} The environment variable value or undefined if not present.
- */
-function getEnv (key) {
-  if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined) {
-    return process.env[key]
-  }
-
-  if (typeof $os !== 'undefined' && typeof $os.getenv === 'function') {
-    return $os.getenv(key)
-  }
-
-  return undefined
-}
-
 onBootstrap((e) => {
   e.next()
+
+  /**
+   * Retrieves the value of the environment variable named by the key.
+   *
+   * @param {string} key - The environment variable name.
+   * @returns {string|undefined} The environment variable value or undefined if not present.
+   */
+  function getEnv (key) {
+    if (typeof process !== 'undefined' && process.env && process.env[key] !== undefined) {
+      return process.env[key]
+    }
+
+    if (typeof $os !== 'undefined' && typeof $os.getenv === 'function') {
+      return $os.getenv(key)
+    }
+
+    return undefined
+  }
 
   const s3Endpoint = getEnv('ATOLL_S3_ENDPOINT')
   const s3Bucket = getEnv('ATOLL_S3_BUCKET')

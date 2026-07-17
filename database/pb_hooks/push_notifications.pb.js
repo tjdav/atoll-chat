@@ -1,9 +1,9 @@
 // database/pb_hooks/push_notifications.pb.js
 
 // Register an internal webhook for the push-worker to prune dead subscriptions
-routerAdd('POST', '/api/internal/prune-subscriptions', (c) => {
+routerAdd('POST', '/api/internal/prune-subscriptions', (e) => {
   const secret = $os.getenv('ATOLL_PUSH_WORKER_SECRET')
-  const reqSecret = c.request().header.get('X-Worker-Token')
+  const reqSecret = e.request.header.get('X-Worker-Token')
 
   if (!secret) {
     throw new Error('[push_notifications] Missing ATOLL_PUSH_WORKER_SECRET environment variable.')
@@ -15,25 +15,27 @@ routerAdd('POST', '/api/internal/prune-subscriptions', (c) => {
   }
 
   const data = new DynamicModel({ user_ids: [] })
-  c.bind(data)
+  e.bindBody(data)
 
   // Batch clear the subscriptions
   if (data.user_ids && data.user_ids.length > 0) {
     data.user_ids.forEach((id) => {
       try {
-        const user = $app.dao().findRecordById('users', id)
+        const user = $app.findRecordById('users', id)
         user.set('push_subscription', null)
-        $app.dao().saveRecord(user)
+        $app.save(user)
       } catch {
         $app.logger().warn('Failed to prune subscription for user: ' + id)
       }
     })
   }
 
-  return c.JSON(200, { success: true })
+  return e.json(200, { success: true })
 })
 
-onRecordAfterCreateRequest((e) => {
+onRecordCreateRequest((e) => {
+  e.next()
+
   const internalSecret = $os.getenv('ATOLL_PUSH_WORKER_SECRET')
   if (!internalSecret) {
     throw new Error('[push_notifications] Missing ATOLL_PUSH_WORKER_SECRET environment variable.')
