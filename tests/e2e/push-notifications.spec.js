@@ -168,10 +168,73 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     expect(pushPayload.payload.message_id).toBeDefined()
 
     /* Assert that Bob is included as a recipient, but Alice (sender) and Charlie (muted) are strictly excluded */
-    expect(pushPayload.subscriptions).toBeDefined()
-    expect(pushPayload.subscriptions.length).toBe(1)
-    expect(pushPayload.subscriptions[0].endpoint).toContain('BOB')
-    expect(pushPayload.subscriptions[0].endpoint).not.toContain('ALICE')
-    expect(pushPayload.subscriptions[0].endpoint).not.toContain('CHARLIE')
+    expect(pushPayload.recipients).toBeDefined()
+    expect(pushPayload.recipients.length).toBe(1)
+    expect(pushPayload.recipients[0].subscription.endpoint).toContain('BOB')
+    expect(pushPayload.recipients[0].subscription.endpoint).not.toContain('ALICE')
+    expect(pushPayload.recipients[0].subscription.endpoint).not.toContain('CHARLIE')
+  })
+
+  test('should asynchronously prune stale subscriptions (410/404) via the self-healing webhook', async ({ page, loginApp, request }) => {
+    /* Log in as Alice first so that window is loaded and we can retrieve the active E2E testId */
+    await loginApp('alice', 'Password123!', 'VaultPassword123!')
+    await expect(page.locator('app-layout')).toBeVisible()
+
+    const testId = await page.evaluate(() => {
+      return window.__playwright_test_id__ || 'default'
+    })
+
+    console.log(`[TEST Self-Healing] Using resolved E2E testId: ${testId}`)
+    const headers = { 'x-test-id': testId }
+
+    /* Set up Bob with an "EXPIRED" push subscription endpoint on the backend database */
+    await request.patch(`http://localhost:8090/api/collections/users/records/bob`, {
+      headers,
+      data: {
+        push_subscription: {
+          endpoint: 'https://updates.push.services.mozilla.com/push/v1/gAAAAAB_BOB_EXPIRED...',
+          keys: {
+            p256dh: 'BAs=',
+            auth: 'c3g='
+          }
+        }
+      }
+    })
+
+    /* Create a direct room with Bob */
+    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+    await expect(page.locator('.modal-title:has-text("Create New Room")')).toBeVisible()
+
+    /* Search and add Bob */
+    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+    await page.locator('[data-testid$="search-result-bob"]').click()
+
+    /* Submitting direct room with Bob (roomNameInput is hidden for direct chats) */
+    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+
+    /* Wait for room list to update and room to be selected */
+    await expect(page.locator('chat-view')).toBeVisible()
+
+    /* Send a text message in the room */
+    const chatInput = page.getByPlaceholder('Type a message...')
+    await chatInput.fill('Prune this stale sub please!')
+    await chatInput.press('Enter')
+
+    /* Confirm message is instantly rendered in timeline (verifying non-blocking/asynchronous transaction finish) */
+    await expect(page.locator('message-timeline')).toContainText('Prune this stale sub please!')
+
+    /* Wait for self-healing pruning webhook to be called in background and clean Bob's subscription */
+    let pruned = false
+    for (let i = 0; i < 20; i++) {
+      const res = await request.get(`http://localhost:8090/api/collections/users/records/bob`, { headers })
+      const user = await res.json()
+      if (user && user.push_subscription === null) {
+        pruned = true
+        break
+      }
+      await page.waitForTimeout(500)
+    }
+
+    expect(pruned).toBe(true)
   })
 })

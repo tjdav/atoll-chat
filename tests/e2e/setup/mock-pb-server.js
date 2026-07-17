@@ -547,8 +547,53 @@ export function createServer () {
         }
         db.lastPush = body
         console.log(`[MOCK PB] [${testId}] Stored last push:`, JSON.stringify(body))
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ success: true }))
+
+        // Find any "EXPIRED" recipients to simulate background self-healing
+        const recipients = body.recipients || []
+        const expiredUserIds = []
+        for (const item of recipients) {
+          const { user_id, subscription } = item
+          if (subscription && subscription.endpoint && subscription.endpoint.includes('EXPIRED')) {
+            expiredUserIds.push(user_id)
+          }
+        }
+
+        const localPort = req.socket.localPort || 8090
+
+        // Return 202 immediately to match the real async worker
+        res.writeHead(202, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ message: 'Accepted' }))
+
+        if (expiredUserIds.length > 0) {
+          // Asynchronously trigger the internal pruning webhook via HTTP to verify the full network handshake
+          setTimeout(() => {
+            const secret = process.env.INTERNAL_WORKER_SECRET || 'test_secret_123'
+            const payload = JSON.stringify({ user_ids: expiredUserIds })
+
+            const reqOpts = {
+              hostname: '127.0.0.1',
+              port: localPort,
+              path: '/api/internal/prune-subscriptions',
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-Worker-Token': secret,
+                'x-test-id': testId
+              }
+            }
+
+            const pruneReq = http.request(reqOpts, (pruneRes) => {
+              pruneRes.on('data', () => {
+              })
+              console.log(`[MOCK PB] [${testId}] Async pruning webhook returned status:`, pruneRes.statusCode)
+            })
+            pruneReq.on('error', (err) => {
+              console.error('[MOCK PB] Failed to call prune webhook:', err)
+            })
+            pruneReq.write(payload)
+            pruneReq.end()
+          }, 100)
+        }
         return
       }
 
@@ -556,6 +601,52 @@ export function createServer () {
       if (pathname === '/api/last-push') {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify(db.lastPush || null))
+        return
+      }
+
+      // Prune subscriptions internal endpoint
+      if (pathname === '/api/internal/prune-subscriptions') {
+        if (req.method !== 'POST') {
+          res.writeHead(405, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ message: 'Method Not Allowed' }))
+          return
+        }
+
+        const expectedSecret = process.env.INTERNAL_WORKER_SECRET || 'test_secret_123'
+        const reqSecret = req.headers['x-worker-token']
+
+        console.log('[MOCK PB WEBHOOK] Got request:', {
+          reqSecret,
+          expectedSecret,
+          body,
+          headers: req.headers
+        })
+
+        if (reqSecret !== expectedSecret) {
+          console.error('[MOCK PB WEBHOOK] Secret mismatch!', {
+            reqSecret,
+            expectedSecret
+          })
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Unauthorized' }))
+          return
+        }
+
+        const { user_ids } = body
+        if (user_ids && Array.isArray(user_ids)) {
+          user_ids.forEach(id => {
+            const user = db.users.find(u => u.id === id)
+            if (user) {
+              user.push_subscription = null
+              console.log(`[MOCK PB] [${testId}] Pruned push_subscription for user: ${id}`)
+            } else {
+              console.warn(`[MOCK PB] [${testId}] User not found to prune: ${id}`)
+            }
+          })
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true }))
         return
       }
 
@@ -665,7 +756,7 @@ export function createServer () {
 
             // Filter room members
             const members = db.room_members.filter(m => m.room_id === roomId)
-            const subscriptions = []
+            const recipients = []
 
             for (const member of members) {
               const userId = member.user_id
@@ -688,14 +779,17 @@ export function createServer () {
                   }
                 }
                 if (parsed && (parsed.endpoint || parsed.keys)) {
-                  subscriptions.push(parsed)
+                  recipients.push({
+                    user_id: userId,
+                    subscription: parsed
+                  })
                 }
               }
             }
 
-            if (subscriptions.length > 0) {
+            if (recipients.length > 0) {
               const payload = {
-                subscriptions,
+                recipients,
                 payload: {
                   type: 'NEW_MESSAGE',
                   room_id: roomId,

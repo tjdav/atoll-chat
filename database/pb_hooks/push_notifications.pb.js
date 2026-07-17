@@ -1,6 +1,44 @@
 // database/pb_hooks/push_notifications.pb.js
 
+// Register an internal webhook for the push-worker to prune dead subscriptions
+routerAdd('POST', '/api/internal/prune-subscriptions', (c) => {
+  const secret = $os.getenv('INTERNAL_WORKER_SECRET')
+  const reqSecret = c.request().header.get('X-Worker-Token')
+
+  if (!secret) {
+    throw new Error('[push_notifications] Missing INTERNAL_WORKER_SECRET environment variable.')
+  }
+
+  // Block unauthorized external requests
+  if (secret !== reqSecret) {
+    throw new BadRequestError('Unauthorized')
+  }
+
+  const data = new DynamicModel({ user_ids: [] })
+  c.bind(data)
+
+  // Batch clear the subscriptions
+  if (data.user_ids && data.user_ids.length > 0) {
+    data.user_ids.forEach((id) => {
+      try {
+        const user = $app.dao().findRecordById('users', id)
+        user.set('push_subscription', null)
+        $app.dao().saveRecord(user)
+      } catch {
+        $app.logger().warn('Failed to prune subscription for user: ' + id)
+      }
+    })
+  }
+
+  return c.JSON(200, { success: true })
+})
+
 onRecordAfterCreateRequest((e) => {
+  const internalSecret = $os.getenv('INTERNAL_WORKER_SECRET')
+  if (!internalSecret) {
+    throw new Error('[push_notifications] Missing INTERNAL_WORKER_SECRET environment variable.')
+  }
+
   const message = e.record
   const roomId = message.get('room_id')
   const senderId = message.get('sender_id')
@@ -21,7 +59,7 @@ onRecordAfterCreateRequest((e) => {
     return
   }
 
-  const subscriptions = []
+  const recipients = []
 
   for (let i = 0; i < members.length; i++) {
     const member = members[i]
@@ -58,7 +96,10 @@ onRecordAfterCreateRequest((e) => {
           }
         }
         if (parsed && (parsed.endpoint || parsed.keys)) {
-          subscriptions.push(parsed)
+          recipients.push({
+            user_id: userId,
+            subscription: parsed
+          })
         }
       }
     } catch (err) {
@@ -66,7 +107,7 @@ onRecordAfterCreateRequest((e) => {
     }
   }
 
-  if (subscriptions.length === 0) {
+  if (recipients.length === 0) {
     return
   }
 
@@ -77,7 +118,7 @@ onRecordAfterCreateRequest((e) => {
   }
 
   const payload = {
-    subscriptions: subscriptions,
+    recipients: recipients,
     payload: {
       type: 'NEW_MESSAGE',
       room_id: roomId,
