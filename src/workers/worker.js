@@ -206,7 +206,7 @@ async function handleEvent (event) {
   }
 
   if (type === 'worker:set_token') {
-    authToken = payload.token
+    self.authToken = payload.token
     self.postMessage({
       id,
       type,
@@ -237,9 +237,9 @@ async function handleEvent (event) {
 
   try {
     if (type === 'worker:init_keys') {
-      currentUserKeys = payload
-      isInitialized = true
-      console.log('[worker] Keys initialized for user:', currentUserKeys.id)
+      self.currentUserKeys = payload
+      self.isInitialized = true
+      console.log('[worker] Keys initialized for user:', self.currentUserKeys.id)
       self.postMessage({
         id,
         type,
@@ -248,7 +248,7 @@ async function handleEvent (event) {
       /* Broadcast ready state */
       self.postMessage({
         type: 'worker:initialized',
-        payload: { userId: currentUserKeys.id }
+        payload: { userId: self.currentUserKeys.id }
       })
       return
     }
@@ -395,9 +395,9 @@ async function handleEvent (event) {
         workspacesData.delete(targetWorkspaceId)
       } else {
         workspacesData.clear()
-        currentUserKeys = null
-        isInitialized = false
-        publicKeyCache.clear()
+        self.currentUserKeys = null
+        self.isInitialized = false
+        self.publicKeyCache.clear()
       }
       self.postMessage({
         id,
@@ -412,8 +412,8 @@ async function handleEvent (event) {
         id,
         type,
         result: {
-          isInitialized,
-          userId: currentUserKeys?.id
+          isInitialized: self.isInitialized,
+          userId: self.currentUserKeys?.id
         }
       })
       return
@@ -620,8 +620,8 @@ async function handleEvent (event) {
         mainFormData.append('file', mainBlob, 'encrypted.bin')
 
         const headers = {}
-        if (authToken) {
-          headers.Authorization = authToken
+        if (self.authToken) {
+          headers.Authorization = self.authToken
         }
 
         const mainResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
@@ -756,7 +756,7 @@ async function sendMessage (rpcId, payload) {
     status
   })
 
-  if (!currentUserKeys || !currentUserKeys.private_sign_key) {
+  if (!self.currentUserKeys || !self.currentUserKeys.private_sign_key) {
     throw new Error('User identity keys not found in worker')
   }
 
@@ -781,8 +781,8 @@ async function sendMessage (rpcId, payload) {
   let thumbnailInfo = existingThumbnail || null
 
   const headers = {}
-  if (authToken) {
-    headers.Authorization = authToken
+  if (self.authToken) {
+    headers.Authorization = self.authToken
   }
 
   if (type === 'media' && file && !mediaId) {
@@ -936,13 +936,13 @@ async function sendMessage (rpcId, payload) {
   // Sign Message
   const validationString = `${room_id}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
   const validationBuffer = new TextEncoder().encode(validationString)
-  const privateSignKeyBuffer = sodium.from_base64(currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
+  const privateSignKeyBuffer = sodium.from_base64(self.currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
   const signatureBuffer = sodium.crypto_sign_detached(validationBuffer, privateSignKeyBuffer)
 
   // Server upload
   const uploadPayload = {
     room_id: room_id,
-    sender_id: currentUserKeys.id,
+    sender_id: self.currentUserKeys.id,
     epoch_id: latestEpochId,
     payload: {
       ciphertext: ciphertextBase64,
@@ -980,7 +980,7 @@ async function sendMessage (rpcId, payload) {
           local_uuid: localUuid,
           id: pbRecord.id,
           room_id,
-          sender_id: currentUserKeys.id,
+          sender_id: self.currentUserKeys.id,
           type,
           content,
           candidate,
@@ -1038,7 +1038,7 @@ async function sendMessage (rpcId, payload) {
         existing = {
           local_uuid: localUuid,
           room_id: room_id,
-          sender_id: currentUserKeys.id,
+          sender_id: self.currentUserKeys.id,
           type,
           content,
           target_id,
@@ -1099,14 +1099,14 @@ async function processIncomingMessage (rpcId, record) {
   const { ciphertext, nonce } = payload
 
   // Fetch Sender Key
-  let senderKeys = publicKeyCache.get(senderId)
+  let senderKeys = self.publicKeyCache.get(senderId)
   if (!senderKeys || !senderKeys.public_sign_key) {
     if (!baseUrl) {
       throw new Error('Base URL not initialized')
     }
     const headers = {}
-    if (authToken) {
-      headers.Authorization = authToken
+    if (self.authToken) {
+      headers.Authorization = self.authToken
     }
     const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${senderId}`, { headers })
     if (!response.ok) {
@@ -1118,7 +1118,7 @@ async function processIncomingMessage (rpcId, record) {
       public_box_key: userRecord.public_box_key,
       public_sign_key: userRecord.public_sign_key
     }
-    publicKeyCache.set(senderId, senderKeys)
+    self.publicKeyCache.set(senderId, senderKeys)
   }
 
   const publicSignKey = senderKeys.public_sign_key
@@ -1130,7 +1130,7 @@ async function processIncomingMessage (rpcId, record) {
   const signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
   const publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
 
-  const validationString = `${room_id}|${epochId}|${previous_msgUuid}|${ciphertext}|${nonce}`
+  const validationString = `${room_id}|${epochId}|${previousMsgUuid}|${ciphertext}|${nonce}`
   const validationBuffer = new TextEncoder().encode(validationString)
 
   const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
@@ -1294,9 +1294,9 @@ async function updateUserData (rpcId, record) {
   const { name, username, avatar } = record
 
   // Update publicKeyCache
-  const existingKeys = publicKeyCache.get(userId)
+  const existingKeys = self.publicKeyCache.get(userId)
   if (existingKeys) {
-    publicKeyCache.set(userId, {
+    self.publicKeyCache.set(userId, {
       ...existingKeys,
       name,
       username,
@@ -1343,19 +1343,19 @@ async function processNewRoomKey (rpcId, payload) {
 
   const effectiveEpochId = epoch_id || 1
 
-  if (!currentUserKeys || !currentUserKeys.private_box_key) {
+  if (!self.currentUserKeys || !self.currentUserKeys.private_box_key) {
     throw new Error('User keys not initialized in worker')
   }
 
   // Fetch Inviter's Public Key
-  let inviterKeys = publicKeyCache.get(wrapped_by)
+  let inviterKeys = self.publicKeyCache.get(wrapped_by)
   if (!inviterKeys || !inviterKeys.public_box_key) {
     if (!baseUrl) {
       throw new Error('Base URL not initialized')
     }
     const headers = {}
-    if (authToken) {
-      headers.Authorization = authToken
+    if (self.authToken) {
+      headers.Authorization = self.authToken
     }
     const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${wrapped_by}`, { headers })
     if (!response.ok) {
@@ -1367,7 +1367,7 @@ async function processNewRoomKey (rpcId, payload) {
       public_box_key: userRecord.public_box_key,
       public_sign_key: userRecord.public_sign_key
     }
-    publicKeyCache.set(wrapped_by, inviterKeys)
+    self.publicKeyCache.set(wrapped_by, inviterKeys)
   }
 
   const inviterPublicKey = inviterKeys.public_box_key
@@ -1379,7 +1379,7 @@ async function processNewRoomKey (rpcId, payload) {
   const encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key, sodium.base64_variants.ORIGINAL)
   const nonceBuffer = sodium.from_base64(key_nonce, sodium.base64_variants.ORIGINAL)
   const inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey, sodium.base64_variants.ORIGINAL)
-  const userPrivateKeyBuffer = sodium.from_base64(currentUserKeys.private_box_key, sodium.base64_variants.ORIGINAL)
+  const userPrivateKeyBuffer = sodium.from_base64(self.currentUserKeys.private_box_key, sodium.base64_variants.ORIGINAL)
 
   let unwrappedKeyBuffer
   try {
@@ -1402,8 +1402,8 @@ async function processNewRoomKey (rpcId, payload) {
   let isGroup = true
   let participants = []
   const headers = {}
-  if (authToken) {
-    headers.Authorization = authToken
+  if (self.authToken) {
+    headers.Authorization = self.authToken
   }
 
   // fetch room record
