@@ -56,7 +56,7 @@ RUN apk add --no-cache ca-certificates unzip wget libc6-compat \
 ENV PORT=8080
 ENV ATOLL_TURN_SHARED_SECRET="REPLACE_THIS_WITH_A_LONG_RANDOM_STRING"
 ENV ATOLL_TURN_EXPIRES_IN_SECONDS=3600
-ENV ALLOWED_ORIGINS="*"
+ENV ATOLL_ALLOWED_ORIGINS="*"
 
 # S3 Configuration
 ENV ATOLL_S3_ENDPOINT=""
@@ -84,4 +84,4 @@ COPY ./database/pb_migrations ./pb_migrations
 EXPOSE 8080
 
 # Start PocketBase with dynamic port binding and CORS configuration
-ENTRYPOINT ["sh", "-c", "/usr/local/bin/pocketbase serve --http=0.0.0.0:${PORT} --dir=/pb/pb_data --publicDir=/pb/pb_public --hooksDir=/pb/pb_hooks --migrationsDir=/pb/pb_migrations --cors=\"${ALLOWED_ORIGINS}\""]
+ENTRYPOINT ["sh", "-c", "/usr/local/bin/pocketbase serve --http=0.0.0.0:${PORT} --dir=/pb/pb_data --publicDir=/pb/pb_public --hooksDir=/pb/pb_hooks --migrationsDir=/pb/pb_migrations --cors=\"${ATOLL_ALLOWED_ORIGINS}\""]
