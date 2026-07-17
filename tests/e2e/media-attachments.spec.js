@@ -211,7 +211,7 @@ test.describe('Media & Attachments', () => {
       await page.click('[data-testid$="__sendButton"]')
       await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 30000 })
       await page.locator('[data-testid="nav-sidebar-0__btnDocuments"]').click()
-      await expect(page.locator('document-list .app-list-item').filter({ hasText: 'test.txt' })).toBeVisible()
+      await expect(page.locator('[data-testid$="__document-list-group"] .list-group-item').filter({ hasText: 'test.txt' })).toBeVisible()
 
       await page.route('**/api/link-extraction*', async r => {
         await r.fulfill({
@@ -229,7 +229,7 @@ test.describe('Media & Attachments', () => {
       await page.waitForTimeout(1000)
       await page.click('[data-testid$="__sendButton"]')
       await page.locator('[data-testid="nav-sidebar-0__btnLinks"]').click()
-      await expect(page.locator('link-list .app-list-item')).toContainText('PB')
+      await expect(page.locator('[data-testid$="__link-list-group"] .list-group-item')).toContainText('PB')
     })
   })
 
@@ -250,7 +250,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid="nav-sidebar-0__btnMusic"]').click()
       await page.locator('music-list .app-list-item').first().click()
       await page.waitForTimeout(1000)
-      await page.locator('button:has(i.bi-play-fill)').last().click()
+      await page.locator('audio-player-view .play-pause-btn').click()
       await expect(page.locator('audio-player-view .play-pause-btn i')).toHaveClass(/bi-pause-fill/, { timeout: 15000 })
     })
   })
