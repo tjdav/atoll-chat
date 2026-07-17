@@ -111,9 +111,9 @@ onRecordAfterCreateRequest((e) => {
     return
   }
 
-  const pushWorkerUrl = $os.getenv('PUSH_WORKER_URL')
+  const pushWorkerUrl = $os.getenv('ATOLL_PUSH_WORKER_URL')
   if (!pushWorkerUrl) {
-    console.warn('[push_notifications] Missing PUSH_WORKER_URL environment variable; skipping push dispatch.')
+    console.warn('[push_notifications] Missing ATOLL_PUSH_WORKER_URL environment variable; skipping push dispatch.')
     return
   }
 

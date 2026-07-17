@@ -7,7 +7,7 @@ services:
     volumes:
       - ./pb_data:/pb/pb_data
     environment:
-      - PUSH_WORKER_URL=http://push-worker:3000
+      - ATOLL_PUSH_WORKER_URL=http://push-worker:3000
       - ATOLL_PUSH_WORKER_SECRET=${ATOLL_PUSH_WORKER_SECRET}
     restart: unless-stopped
     healthcheck:
