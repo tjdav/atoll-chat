@@ -31,8 +31,8 @@
     "lint:format": "eslint --cache --fix .",
     "test:unit": "node --experimental-vm-modules --test",
     "test:unit:coverage": "node --experimental-vm-modules --experimental-test-coverage --test",
-    "test:e2e": "pnpm exec playwright test",
-    "test:e2e:ui": "pnpm exec playwright test --ui"
+    "test:e2e": "node scripts/generate-test-video.js && pnpm exec playwright test",
+    "test:e2e:ui": "node scripts/generate-test-video.js && pnpm exec playwright test --ui"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",

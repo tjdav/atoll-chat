@@ -1,5 +1,6 @@
 import { defineConfig, devices } from '@playwright/test'
 import { existsSync } from 'fs'
+import path from 'path'
 
 const getExecutablePath = (path) => (existsSync(path) ? path : undefined)
 
@@ -31,7 +32,18 @@ export default defineConfig({
     {
       name: 'chromium',
       use: {
-        ...devices['Desktop Chrome']
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          executablePath: getExecutablePath('/usr/bin/google-chrome') || getExecutablePath('/usr/bin/chromium'),
+          args: [
+            '--use-fake-ui-for-media-stream',
+            '--use-fake-device-for-media-stream',
+            '--allow-loopback-in-peer-connection',
+            '--enforce-webrtc-ip-permission-check=false',
+            '--unlimited-storage',
+            `--use-file-for-fake-video-capture=${path.join(import.meta.dirname, 'tests/e2e/fixtures/test-video.y4m')}`
+          ]
+        }
       }
     }
   ],

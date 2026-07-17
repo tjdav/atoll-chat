@@ -9,18 +9,21 @@ export default function webrtcPlugin ({
 } = {}) {
   const localIceServer = process.env.LOCAL_ICE_SERVER
 
+  const defaultStun = [
+    { urls: 'stun:stun.l.google.com:19302' },
+    { urls: 'stun:global.stun.twilio.com:3478' }
+  ]
+
   const finalIceServers = localIceServer
     ? [
+      ...defaultStun,
       {
         urls: localIceServer,
         username: 'testuser',
         credential: 'testpass'
       }
     ]
-    : (iceServers || [
-      { urls: 'stun:stun.l.google.com:19302' },
-      { urls: 'stun:global.stun.twilio.com:3478' }
-    ])
+    : (iceServers || defaultStun)
 
   return definePlugin({
     name: 'webrtc',
@@ -78,6 +81,9 @@ export default function webrtcPlugin ({
             pc.close()
             activeCalls.delete(room_id)
             console.log(`[WebRTC] PeerConnection closed and removed for room ${room_id}`)
+          }
+          if (typeof window !== 'undefined') {
+            window.__E2E_PEER_CONNECTION__ = null
           }
           pendingCandidates.delete(room_id)
 
@@ -173,6 +179,9 @@ export default function webrtcPlugin ({
           }
 
           const pc = new RTCPeerConnection({ iceServers: dynamicIceServers })
+          if (typeof window !== 'undefined') {
+            window.__E2E_PEER_CONNECTION__ = pc
+          }
           if (mediaStream) {
             mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
           }
