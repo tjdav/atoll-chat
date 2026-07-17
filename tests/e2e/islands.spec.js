@@ -153,15 +153,5 @@ test.describe('Multi-Island Architecture', () => {
     const islandsDropdownList = page.locator('[data-testid$="islandsList"]')
     const islandButtons = islandsDropdownList.locator('[data-testid^="workspace-btn-ws_"]')
     await expect(islandButtons).toHaveCount(2)
-    await page.waitForTimeout(500)
-
-    /* Save screenshot for frontend verification */
-    try {
-      mkdirSync('/home/jules/verification/screenshots', { recursive: true })
-      await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
-      console.log('Saved verification screenshot to /home/jules/verification/screenshots/verification.png')
-    } catch (err) {
-      console.error('Failed to save screenshot:', err)
-    }
   })
 })

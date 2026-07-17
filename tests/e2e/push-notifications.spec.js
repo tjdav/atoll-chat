@@ -86,9 +86,6 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     // Assert that the switch is now checked
     await expect(switchInput).toBeChecked()
 
-    // Take screenshot for visual verification
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
-
     /* Assert that the push plugin requested permission and registered successfully */
     let pushRegistered = false
     for (let i = 0; i < 20; i++) {
