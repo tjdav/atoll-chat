@@ -225,8 +225,8 @@ function hmacSha1Base64 (key, data) {
 }
 
 routerAdd('GET', '/api/turn-credentials', (e) => {
-  const sharedSecret = getEnv('TURN_SHARED_SECRET') || 'REPLACE_THIS_WITH_A_LONG_RANDOM_STRING'
-  const expiresEnv = getEnv('TURN_EXPIRES_IN_SECONDS')
+  const sharedSecret = getEnv('ATOLL_TURN_SHARED_SECRET') || 'REPLACE_THIS_WITH_A_LONG_RANDOM_STRING'
+  const expiresEnv = getEnv('ATOLL_TURN_EXPIRES_IN_SECONDS')
   const expiresInSeconds = expiresEnv ? parseInt(expiresEnv, 10) : 3600
 
   const unixTimestamp = Math.floor(Date.now() / 1000) + expiresInSeconds

@@ -308,8 +308,8 @@ export function createServer () {
           return
         }
 
-        const sharedSecret = process.env.TURN_SHARED_SECRET || 'REPLACE_THIS_WITH_A_LONG_RANDOM_STRING'
-        const expiresEnv = process.env.TURN_EXPIRES_IN_SECONDS
+        const sharedSecret = process.env.ATOLL_TURN_SHARED_SECRET || 'REPLACE_THIS_WITH_A_LONG_RANDOM_STRING'
+        const expiresEnv = process.env.ATOLL_TURN_EXPIRES_IN_SECONDS
         const expiresInSeconds = expiresEnv ? parseInt(expiresEnv, 10) : 3600
 
         const unixTimestamp = Math.floor(Date.now() / 1000) + expiresInSeconds
