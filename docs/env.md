@@ -52,6 +52,14 @@ ATOLL_S3_SECRET_KEY=
 ATOLL_S3_REGION=us-east-1
 ATOLL_S3_FORCE_PATH_STYLE=false
 
+# PocketBase SMTP Config (Optional)
+ATOLL_SMTP_HOST=
+ATOLL_SMTP_PORT=587
+ATOLL_SMTP_USERNAME=
+ATOLL_SMTP_PASSWORD=
+ATOLL_SMTP_SENDER_NAME="Atoll Chat"
+ATOLL_SMTP_SENDER_ADDRESS="noreply@atoll.chat"
+
 # ==========================================
 # Push Worker Runtime Variables
 # ==========================================
@@ -107,6 +115,18 @@ If the following variables are present, they automatically enable and configure 
 | `ATOLL_S3_SECRET_KEY` | None | S3 API Secret Access Key. | [s3_config.pb.js](/database/pb_hooks/s3_config.pb.js) |
 | `ATOLL_S3_REGION` | `'us-east-1'` | S3 region location. | [s3_config.pb.js](/database/pb_hooks/s3_config.pb.js) |
 | `ATOLL_S3_FORCE_PATH_STYLE` | `false` | Enable or disable path-style addressing (`http://s3.endpoint/bucket`) instead of virtual-host addressing (`http://bucket.s3.endpoint`). Set to `'true'` to enable. | [s3_config.pb.js](/database/pb_hooks/s3_config.pb.js) |
+
+#### SMTP Configuration Hook Variables
+If the `ATOLL_SMTP_HOST` variable is present, it automatically enables and configures SMTP mail sender settings in PocketBase:
+
+| Variable Name | Default Value | Description | Used In / By |
+|---------------|---------------|-------------|--------------|
+| `ATOLL_SMTP_HOST` | None | Host name of the SMTP server. If not specified, SMTP configuration hook is skipped. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_PORT` | `587` | Port of the SMTP server. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_USERNAME` | None | Username for SMTP server authentication. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_PASSWORD` | None | Password for SMTP server authentication. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_SENDER_NAME` | `'Atoll Chat'` | The sender name displayed on outgoing emails. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_SENDER_ADDRESS` | `'noreply@atoll.chat'` | The sender email address. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
 
 ---
 
