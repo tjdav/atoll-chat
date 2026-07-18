@@ -66,6 +66,14 @@ ENV ATOLL_S3_SECRET_KEY=""
 ENV ATOLL_S3_REGION="us-east-1"
 ENV ATOLL_S3_FORCE_PATH_STYLE="false"
 
+# SMTP Configuration
+ENV ATOLL_SMTP_HOST=""
+ENV ATOLL_SMTP_PORT="587"
+ENV ATOLL_SMTP_USERNAME=""
+ENV ATOLL_SMTP_PASSWORD=""
+ENV ATOLL_SMTP_SENDER_NAME="Atoll Chat"
+ENV ATOLL_SMTP_SENDER_ADDRESS="noreply@atoll.chat"
+
 # OPTIONAL: Native PocketBase auto-provisioning admin credentials on startup
 # ENV PB_ADMIN_EMAIL="admin@example.com"
 # ENV PB_ADMIN_PASSWORD="ChooseAStrongPassword123"

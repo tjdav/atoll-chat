@@ -19,6 +19,12 @@ services:
       - ATOLL_S3_SECRET=${ATOLL_S3_SECRET}
       - ATOLL_TURN_SHARED_SECRET=${ATOLL_TURN_SHARED_SECRET}
       - ATOLL_TURN_URIS=${ATOLL_TURN_URIS}
+      - ATOLL_SMTP_HOST=${ATOLL_SMTP_HOST}
+      - ATOLL_SMTP_PORT=${ATOLL_SMTP_PORT}
+      - ATOLL_SMTP_USERNAME=${ATOLL_SMTP_USERNAME}
+      - ATOLL_SMTP_PASSWORD=${ATOLL_SMTP_PASSWORD}
+      - ATOLL_SMTP_SENDER_NAME=${ATOLL_SMTP_SENDER_NAME}
+      - ATOLL_SMTP_SENDER_ADDRESS=${ATOLL_SMTP_SENDER_ADDRESS}
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/api/health"]
