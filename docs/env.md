@@ -93,8 +93,8 @@ These variables configure the runtime environment of the PocketBase application 
 | `ATOLL_TURN_SHARED_SECRET` | `'REPLACE_THIS_WITH_A_LONG_RANDOM_STRING'` | Shared cryptographic key for signing dynamic WebRTC TURN relay credentials. | [turn_credentials.pb.js](/database/pb_hooks/turn_credentials.pb.js) |
 | `ATOLL_TURN_EXPIRES_IN_SECONDS` | `3600` | Expiry duration (TTL) for generated TURN credentials. | [turn_credentials.pb.js](/database/pb_hooks/turn_credentials.pb.js) |
 | `ATOLL_TURN_URIS` | None | Comma-separated list of STUN/TURN URIs passed to the client (e.g., `turn:edge.atoll.chat:3478`). | [turn_credentials.pb.js](/database/pb_hooks/turn_credentials.pb.js) |
-| `ATOLL_PUSH_WORKER_URL` | None | URL endpoint of the standalone push worker microservice. | [push_notifications.pb.js](/database/pb_hooks/push_notifications.pb.js), [docker-compose.yml](/docker-compose.yml) |
-| `ATOLL_PUSH_WORKER_SECRET` | None | Cryptographic secret shared with the push-worker, used to authenticate webhook dispatches and subscription prunings. | [push_notifications.pb.js](/database/pb_hooks/push_notifications.pb.js), [docker-compose.yml](/docker-compose.yml) |
+| `ATOLL_PUSH_WORKER_URL` | None | URL endpoint of the standalone push worker microservice. | [push_notifications.pb.js](/database/pb_hooks/push_notifications.pb.js), [docker-compose.yml](/tests/e2e/setup/docker-compose.yml) |
+| `ATOLL_PUSH_WORKER_SECRET` | None | Cryptographic secret shared with the push-worker, used to authenticate webhook dispatches and subscription prunings. | [push_notifications.pb.js](/database/pb_hooks/push_notifications.pb.js), [docker-compose.yml](/tests/e2e/setup/docker-compose.yml) |
 
 #### S3 Storage Hook Variables
 If the following variables are present, they automatically enable and configure S3 compatibility storage in PocketBase for uploaded media/assets:

@@ -5,10 +5,10 @@ import { execSync } from 'child_process'
  */
 function runDockerComposeStop () {
   const commands = [
-    'docker compose stop coturn',
-    'docker-compose stop coturn',
-    'sudo docker compose stop coturn',
-    'sudo docker-compose stop coturn'
+    'docker compose -f tests/e2e/setup/docker-compose.yml stop coturn',
+    'docker-compose -f tests/e2e/setup/docker-compose.yml stop coturn',
+    'sudo docker compose -f tests/e2e/setup/docker-compose.yml stop coturn',
+    'sudo docker-compose -f tests/e2e/setup/docker-compose.yml stop coturn'
   ]
 
   for (const cmd of commands) {

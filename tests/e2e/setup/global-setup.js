@@ -92,10 +92,10 @@ function isNativeTurnserverRunning () {
  */
 function runDockerComposeUp () {
   const commands = [
-    'docker compose up -d coturn',
-    'docker-compose up -d coturn',
-    'sudo docker compose up -d coturn',
-    'sudo docker-compose up -d coturn'
+    'docker compose -f tests/e2e/setup/docker-compose.yml up -d coturn',
+    'docker-compose -f tests/e2e/setup/docker-compose.yml up -d coturn',
+    'sudo docker compose -f tests/e2e/setup/docker-compose.yml up -d coturn',
+    'sudo docker-compose -f tests/e2e/setup/docker-compose.yml up -d coturn'
   ]
 
   let lastError = null
