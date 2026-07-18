@@ -130,6 +130,11 @@ export default defineConfig({
       pkg: 'mediabunny',
       path: 'dist/bundles/mediabunny.min.mjs',
       dest: 'assets/mediabunny.mjs'
+    },
+    {
+      pkg: 'altcha',
+      path: 'dist/external/altcha.min.js',
+      dest: 'assets/altcha.js'
     }
   ]
 })
