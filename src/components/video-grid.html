@@ -8,10 +8,22 @@
 
     <!-- Overlay if no remote video yet -->
     <div ref="remotePlaceholder" class="remote-placeholder position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
-      <div class="spinner-border video-spinner text-primary mb-3" role="status">
-        <span class="visually-hidden">Connecting...</span>
+      <!-- Video Call waiting spinner and text -->
+      <div class="{{ videoWaitingClass }} flex-column align-items-center justify-content-center">
+        <div class="spinner-border video-spinner text-primary mb-3" role="status">
+          <span class="visually-hidden">Connecting...</span>
+        </div>
+        <p class="h5">Waiting for remote participant...</p>
       </div>
-      <p class="h5">Waiting for remote participant...</p>
+
+      <!-- Audio Call active view with avatar and name -->
+      <div class="{{ audioCallClass }} flex-column align-items-center justify-content-center">
+        <div class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-4 shadow" style="width: 120px; height: 120px; font-size: 3rem;">
+          {{ remoteInitial }}
+        </div>
+        <h2 class="mb-2">{{ remoteName }}</h2>
+        <p class="text-light fs-5">Audio Call Active</p>
+      </div>
     </div>
   </div>
 </template>
@@ -22,16 +34,27 @@
   export default defineComponent({
     server: () => ({
       isPipMode: false,
-      hasRemoteVideo: false
+      hasRemoteVideo: false,
+      isVideoEnabled: true,
+      remoteName: 'Remote Participant',
+      remoteInitial: '?'
     }),
     getters: {
       placeholderClass: (state) => (state.hasRemoteVideo ? 'd-none' : 'd-flex'),
       pipClass: (state) => (state.isPipMode ? 'is-pip' : ''),
-      localVideoClass: (state) => (state.isPipMode ? 'd-none' : 'd-block')
+      localVideoClass: (state) => {
+        if (state.isPipMode) {
+          return 'd-none'
+        }
+        return state.isVideoEnabled ? 'd-block' : 'd-none'
+      },
+      videoWaitingClass: (state) => (state.isVideoEnabled ? 'd-flex' : 'd-none'),
+      audioCallClass: (state) => (state.isVideoEnabled ? 'd-none' : 'd-flex')
     },
-    client: ({ refs, state, eventBus, signal, globalStore }) => {
+    client: ({ refs, state, eventBus, signal, globalStore, storage }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
+      const { $storage } = storage
       const remoteVideo = refs('remoteVideo')
       const localVideo = refs('localVideo')
 
@@ -39,6 +62,44 @@
       state.hasRemoteVideo = $state.hasRemoteVideo
       $state.subscribe('hasRemoteVideo', (val) => {
         state.hasRemoteVideo = val
+      })
+
+      state.isVideoEnabled = $state.isVideoEnabled || false
+      $state.subscribe('isVideoEnabled', (val) => {
+        state.isVideoEnabled = val
+      })
+
+      const updateRemoteParticipantInfo = async () => {
+        const roomId = $state.activeCallRoomId
+        if (!roomId) {
+          return
+        }
+
+        try {
+          const room = await $storage.getRoom(roomId)
+          if (room) {
+            const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
+            if (!room.is_group && participants.length > 0) {
+              state.remoteName = participants[0].name || participants[0].username
+            } else {
+              state.remoteName = room.name || 'Remote Participant'
+            }
+            state.remoteInitial = state.remoteName.charAt(0).toUpperCase()
+          }
+        } catch (err) {
+          console.error('[video-grid] Failed to fetch remote participant info:', err)
+        }
+      }
+
+      // Fetch on mount if room ID is already set
+      if ($state.activeCallRoomId) {
+        updateRemoteParticipantInfo()
+      }
+
+      $state.subscribe('activeCallRoomId', (roomId) => {
+        if (roomId) {
+          updateRemoteParticipantInfo()
+        }
       })
 
       const playVideo = (videoEl) => {

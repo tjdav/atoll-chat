@@ -278,7 +278,8 @@ export default function webrtcPlugin ({
                 $bus.emit('call:incoming', {
                   room_id,
                   offer: message.content,
-                  senderId: message.sender_id
+                  senderId: message.sender_id,
+                  media_types: message.media_types
                 })
               } else if (message.type === 'call_answer') {
                 console.log(`[WebRTC] Received call_answer for room ${room_id}`)

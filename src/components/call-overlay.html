@@ -12,7 +12,7 @@
               {{ callerInitial }}
             </div>
             <h2 class="mb-2">{{ callerName }}</h2>
-            <p class="text-light mb-5">Incoming Video Call...</p>
+            <p class="text-light mb-5">{{ incomingCallTypeText }}</p>
             
             <div class="d-flex gap-4">
               <button ref="btnAccept" class="btn btn-success btn-lg rounded-circle p-3 shadow" title="Accept Call" aria-label="Accept Call">
@@ -75,7 +75,8 @@
       isVideoEnabled: true,
       localStream: null,
       remoteOffer: null,
-      isPipMode: false
+      isPipMode: false,
+      incomingMediaTypes: ['audio', 'video']
     }),
     getters: {
       incomingClass: (state) => (state.callStatus === 'incoming' ? 'd-flex' : 'd-none'),
@@ -86,7 +87,11 @@
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
       videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill'),
       audioPressed: (state) => (!state.isAudioEnabled ? 'true' : 'false'),
-      videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false')
+      videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false'),
+      incomingCallTypeText: (state) => {
+        const hasVideo = state.incomingMediaTypes && state.incomingMediaTypes.includes('video')
+        return hasVideo ? 'Incoming Video Call...' : 'Incoming Audio Call...'
+      }
     },
     client: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, storage, refs, signal, bootstrap }) => {
       const { $state } = globalStore
@@ -181,6 +186,19 @@
         }
       }
 
+      const updateTrackStates = (stream) => {
+        if (!stream) {
+          return
+        }
+        const hasAudio = stream.getAudioTracks().some(t => t.enabled)
+        const hasVideo = stream.getVideoTracks().some(t => t.enabled)
+  
+        state.isAudioEnabled = hasAudio
+        $state.isAudioEnabled = hasAudio
+        state.isVideoEnabled = hasVideo
+        $state.isVideoEnabled = hasVideo
+      }
+
       const endCall = async () => {
         if ($state.activeCallRoomId) {
           await $webrtc.endCall($state.activeCallRoomId)
@@ -192,6 +210,10 @@
         $state.remoteStream = null
         $state.hasRemoteVideo = false
         state.remoteOffer = null
+        state.isAudioEnabled = true
+        $state.isAudioEnabled = true
+        state.isVideoEnabled = true
+        $state.isVideoEnabled = true
       }
 
       const toggleAudio = () => {
@@ -240,7 +262,7 @@
       })
 
       // Listen for incoming calls
-      $bus.on('call:incoming', async ({ room_id, offer, senderId }) => {
+      $bus.on('call:incoming', async ({ room_id, offer, senderId, media_types }) => {
         if (senderId === $state.currentUser?.id) {
           return
         }
@@ -255,6 +277,7 @@
         $state.set('callStatus', 'incoming')
 
         state.remoteOffer = offer
+        state.incomingMediaTypes = media_types || ['audio', 'video']
 
         if (!room_id) {
           return
@@ -278,8 +301,7 @@
       $bus.on('call:initiated_locally', ({ localStream }) => {
         $state.localStream = localStream
         state.localStream = localStream
-        state.isAudioEnabled = localStream.getAudioTracks().some(t => t.enabled)
-        state.isVideoEnabled = localStream.getVideoTracks().some(t => t.enabled)
+        updateTrackStates(localStream)
   
         // Re-emit for video-grid
         $bus.emit('call:local_stream_available', { stream: localStream })
@@ -313,13 +335,15 @@
         console.log('[call-overlay] Accept button clicked')
         try {
           console.log('[call-overlay] Requesting media permissions...')
+          const hasVideoOffer = state.incomingMediaTypes && state.incomingMediaTypes.includes('video')
           const localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
-            video: true
+            video: hasVideoOffer
           })
           console.log('[call-overlay] Media permissions granted')
           state.localStream = localStream
           $state.localStream = localStream
+          updateTrackStates(localStream)
   
           // Set status to active before answering to ensure UI is ready for tracks
           console.log('[call-overlay] Setting call status to active')
