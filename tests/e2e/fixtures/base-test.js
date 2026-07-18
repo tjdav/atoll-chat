@@ -222,7 +222,8 @@ async function resetPocketBase (testId) {
         recovery_wraps: recoveryWraps,
         passkey_credential_id: '',
         passkey_prf_salt: '',
-        encrypted_master_keys_passkey: null
+        encrypted_master_keys_passkey: null,
+        altcha: 'atoll-mock-bypass-token'
       }
 
       if (existingUser) {
@@ -325,7 +326,7 @@ export const test = base.extend({
       const emailOrUsername = username.includes('@') ? username : `${username}@example.com`
       await page.locator('[data-testid$="username"]').fill(emailOrUsername)
       await page.evaluate(() => {
-        const form = document.querySelector('form')
+        const form = document.querySelector('form:not([data-code-challenge-form])') || document.querySelector('form')
         if (form) {
           form.requestSubmit()
         }
@@ -418,7 +419,7 @@ export const test = base.extend({
       const emailOrUsername = username.includes('@') ? username : `${username}@example.com`
       await targetPage.locator('[data-testid$="username"]').fill(emailOrUsername)
       await targetPage.evaluate(() => {
-        const form = document.querySelector('form')
+        const form = document.querySelector('form:not([data-code-challenge-form])') || document.querySelector('form')
         if (form) {
           form.requestSubmit()
         }

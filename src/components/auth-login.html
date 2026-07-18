@@ -3,12 +3,13 @@
     <div class="card-body p-4">
       <h3 class="card-title mb-4 text-center">Login</h3>
       
-      <form ref="loginForm">
+      <form ref="loginForm" novalidate>
         <div ref="emailSection">
           <div class="mb-3">
             <label for="{{ ref_email }}" class="form-label">Email Address</label>
             <input ref="email" name="email" id="{{ ref_email }}" type="email" class="form-control" placeholder="Enter email" required autocomplete="email" data-testid="username">
           </div>
+          <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
           <button type="submit" class="btn btn-primary w-100" ref="loginSubmit" data-testid="loginSubmit">Send Magic Link</button>
         </div>
       </form>
@@ -72,6 +73,7 @@
       const loginForm = refs('loginForm')
       const btnSubmitOtp = refs('btnSubmitOtp')
       const otpForm = refs('otpForm')
+      const altchaContainer = refs('altchaContainer')
       const linkRegister = refs('linkRegister')
       const emailInput = refs('email')
       const otpCodeInput = refs('otpCode')
@@ -99,7 +101,23 @@
         $state.authView = 'register'
       })
 
-      // Setup and manage Island Switcher dropdown if Islands mode is active
+      let altchaWidget = null
+      if (altchaContainer) {
+        const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
+        altchaWidget = document.createElement('altcha-widget')
+        altchaWidget.setAttribute('floating', '')
+        altchaWidget.style.width = '100%'
+        altchaWidget.style.maxWidth = '100%'
+  
+        if (isTesting) {
+          altchaWidget.setAttribute('test', 'true')
+        } else {
+          altchaWidget.setAttribute('challengeurl', pb.buildURL('/api/altcha/challenge'))
+        }
+  
+        altchaContainer.appendChild(altchaWidget)
+      }
+
       const isIslandsEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
   
       const handleSwitchIsland = async (newId, force = false) => {
@@ -280,9 +298,25 @@
           return
         }
 
+        const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
+        let altchaPayload = altchaWidget ? altchaWidget.value : null
+        if (isTesting) {
+          altchaPayload = 'atoll-mock-bypass-token'
+        }
+
+        if (!altchaPayload) {
+          updateStatus('Error: Please complete the security challenge')
+          return
+        }
+
         try {
           updateStatus('Sending Magic Link...')
-          const result = await pb.collection('users').requestOTP(email)
+          const result = await pb.collection('users').requestOTP(email, {
+            body: {
+              email,
+              altcha: altchaPayload
+            }
+          })
           currentOtpId = result.otpId
 
           emailSection.classList.add('d-none')
@@ -293,6 +327,9 @@
         } catch (error) {
           console.error('Request OTP error:', error)
           updateStatus(error.message || 'Failed to send Magic Link')
+          if (altchaWidget && typeof altchaWidget.reset === 'function') {
+            altchaWidget.reset()
+          }
         }
       })
 

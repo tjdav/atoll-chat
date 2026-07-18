@@ -1,7 +1,7 @@
 <template id="auth-register">
   <div class="card shadow">
     <div class="card-body p-4">
-      <form ref="registerForm">
+      <form ref="registerForm" novalidate>
         <div ref="step1">
           <h3 class="card-title mb-4 text-center">Create Account</h3>
           <div class="mb-3">
@@ -12,6 +12,7 @@
             <label for="{{ ref_email }}" class="form-label">Email</label>
             <input name="email" ref="email" type="email" class="form-control" placeholder="Enter your email" required autocomplete="email">
           </div>
+          <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
           <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" data-testid="registerSubmit">Register & Send Magic Link</button>
         </div>
 
@@ -74,6 +75,7 @@
       const registerForm = refs('registerForm')
       const step1 = refs('step1')
       const step2 = refs('step2')
+      const altchaContainer = refs('altchaContainer')
       const linkLogin = refs('linkLogin')
       const usernameInput = refs('username')
       const emailInput = refs('email')
@@ -100,7 +102,23 @@
         $state.authView = 'login'
       })
 
-      // Setup and manage Island Switcher dropdown if Islands mode is active
+      let altchaWidget = null
+      if (altchaContainer) {
+        const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
+        altchaWidget = document.createElement('altcha-widget')
+        altchaWidget.setAttribute('floating', '')
+        altchaWidget.style.width = '100%'
+        altchaWidget.style.maxWidth = '100%'
+  
+        if (isTesting) {
+          altchaWidget.setAttribute('test', 'true')
+        } else {
+          altchaWidget.setAttribute('challengeurl', pb.buildURL('/api/altcha/challenge'))
+        }
+  
+        altchaContainer.appendChild(altchaWidget)
+      }
+
       const isIslandsEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
   
       const handleSwitchIsland = async (newId, force = false) => {
@@ -283,6 +301,17 @@
           return
         }
 
+        const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
+        let altchaPayload = altchaWidget ? altchaWidget.value : null
+        if (isTesting) {
+          altchaPayload = 'atoll-mock-bypass-token'
+        }
+
+        if (!altchaPayload) {
+          updateStatus('Error: Please complete the security challenge')
+          return
+        }
+
         try {
           updateStatus('Checking availability...')
   
@@ -314,7 +343,8 @@
             public_box_key: '',
             public_sign_key: '',
             encrypted_master_keys: '',
-            vault_salt: ''
+            vault_salt: '',
+            altcha: altchaPayload
           }
 
           await pb.collection('users').create(payload)
@@ -332,6 +362,9 @@
         } catch (error) {
           console.error('Registration error:', error)
           updateStatus(`Error: ${error.message || 'Registration failed'}`)
+          if (altchaWidget && typeof altchaWidget.reset === 'function') {
+            altchaWidget.reset()
+          }
         }
       })
 

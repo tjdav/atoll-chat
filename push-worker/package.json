@@ -4,6 +4,7 @@
   "type": "module",
   "main": "index.js",
   "dependencies": {
+    "altcha-lib": "^2.2.0",
     "web-push": "^3.6.7"
   }
 }

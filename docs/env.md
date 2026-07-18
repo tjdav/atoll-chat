@@ -52,6 +52,9 @@ ATOLL_S3_SECRET_KEY=
 ATOLL_S3_REGION=us-east-1
 ATOLL_S3_FORCE_PATH_STYLE=false
 
+# ALTCHA CAPTCHA variables
+ATOLL_ALTCHA_SECRET=your_32_byte_hex_string_here
+
 # PocketBase SMTP Config (Optional)
 ATOLL_SMTP_HOST=
 ATOLL_SMTP_PORT=587
@@ -103,6 +106,7 @@ These variables configure the runtime environment of the PocketBase application 
 | `ATOLL_TURN_URIS` | None | Comma-separated list of STUN/TURN URIs passed to the client (e.g., `turn:edge.atoll.chat:3478`). | [turn_credentials.pb.js](/database/pb_hooks/turn_credentials.pb.js) |
 | `ATOLL_PUSH_WORKER_URL` | None | URL endpoint of the standalone push worker microservice. | [push_notifications.pb.js](/database/pb_hooks/push_notifications.pb.js), [docker-compose.yml](/tests/e2e/setup/docker-compose.yml) |
 | `ATOLL_PUSH_WORKER_SECRET` | None | Cryptographic secret shared with the push-worker, used to authenticate webhook dispatches and subscription prunings. | [push_notifications.pb.js](/database/pb_hooks/push_notifications.pb.js), [docker-compose.yml](/tests/e2e/setup/docker-compose.yml) |
+| `ATOLL_ALTCHA_SECRET` | `'fallback-altcha-secret...'` | Cryptographic secret key used to generate and verify ALTCHA challenges. | [captcha.pb.js](/database/pb_hooks/captcha.pb.js) |
 
 #### S3 Storage Hook Variables
 If the following variables are present, they automatically enable and configure S3 compatibility storage in PocketBase for uploaded media/assets:
@@ -115,18 +119,6 @@ If the following variables are present, they automatically enable and configure 
 | `ATOLL_S3_SECRET_KEY` | None | S3 API Secret Access Key. | [s3_config.pb.js](/database/pb_hooks/s3_config.pb.js) |
 | `ATOLL_S3_REGION` | `'us-east-1'` | S3 region location. | [s3_config.pb.js](/database/pb_hooks/s3_config.pb.js) |
 | `ATOLL_S3_FORCE_PATH_STYLE` | `false` | Enable or disable path-style addressing (`http://s3.endpoint/bucket`) instead of virtual-host addressing (`http://bucket.s3.endpoint`). Set to `'true'` to enable. | [s3_config.pb.js](/database/pb_hooks/s3_config.pb.js) |
-
-#### SMTP Configuration Hook Variables
-If the `ATOLL_SMTP_HOST` variable is present, it automatically enables and configures SMTP mail sender settings in PocketBase:
-
-| Variable Name | Default Value | Description | Used In / By |
-|---------------|---------------|-------------|--------------|
-| `ATOLL_SMTP_HOST` | None | Host name of the SMTP server. If not specified, SMTP configuration hook is skipped. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
-| `ATOLL_SMTP_PORT` | `587` | Port of the SMTP server. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
-| `ATOLL_SMTP_USERNAME` | None | Username for SMTP server authentication. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
-| `ATOLL_SMTP_PASSWORD` | None | Password for SMTP server authentication. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
-| `ATOLL_SMTP_SENDER_NAME` | `'Atoll Chat'` | The sender name displayed on outgoing emails. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
-| `ATOLL_SMTP_SENDER_ADDRESS` | `'noreply@atoll.chat'` | The sender email address. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
 
 ---
 
@@ -142,6 +134,7 @@ These variables configure the Node.js service responsible for dispatching push n
 | `ATOLL_VAPID_PUBLIC_KEY` | None | VAPID public key matching the client configuration, used to generate web-push authorization headers. | [push-worker/index.js](/push-worker/index.js) |
 | `ATOLL_VAPID_PRIVATE_KEY` | None | VAPID private key used to sign web-push requests. | [push-worker/index.js](/push-worker/index.js) |
 | `ATOLL_VAPID_SUBJECT` | None | VAPID contact URL or mailto address (e.g., `mailto:admin@example.com`). | [push-worker/index.js](/push-worker/index.js) |
+| `ATOLL_ALTCHA_SECRET` | `'fallback-altcha-secret...'` | Cryptographic HMAC secret key used by altcha-lib to generate and verify Proof-of-Work CAPTCHA challenges. | [push-worker/index.js](/push-worker/index.js) |
 
 ---
 

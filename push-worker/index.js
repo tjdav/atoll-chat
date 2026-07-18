@@ -1,5 +1,7 @@
 import http from 'http'
 import webpush from 'web-push'
+import { createChallenge, deriveHmacKeySecret, randomInt, verifySolution } from 'altcha-lib'
+import { deriveKey } from 'altcha-lib/algorithms/pbkdf2'
 
 const PORT = process.env.PORT || 3000
 
@@ -14,6 +16,9 @@ if (!internalWorkerSecret) {
 if (!pocketbaseUrl) {
   throw new Error('[push-worker] Fatal: ATOLL_INTERNAL_POCKETBASE_URL environment variable is missing.')
 }
+
+const altchaSecret = process.env.ATOLL_ALTCHA_SECRET || 'fallback-altcha-secret-key-1234567890'
+const hmacKeySecret = await deriveHmacKeySecret(altchaSecret)
 
 // Read VAPID keys from environment
 const vapidPublicKey = process.env.ATOLL_VAPID_PUBLIC_KEY
@@ -30,12 +35,82 @@ if (vapidPublicKey && vapidPrivateKey && vapidSubject) {
 const server = http.createServer((req, res) => {
   // CORS configuration
   res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
 
   if (req.method === 'OPTIONS') {
     res.writeHead(200)
     res.end()
+    return
+  }
+
+  // ALTCHA Challenge Generation
+  if (req.method === 'GET' && req.url === '/altcha/challenge') {
+    createChallenge({
+      algorithm: 'PBKDF2/SHA-256',
+      cost: 5000,
+      counter: randomInt(5000, 10000),
+      deriveKey,
+      hmacKey: hmacKeySecret
+    }).then(challenge => {
+      res.writeHead(200, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify(challenge))
+    }).catch(err => {
+      console.error('[push-worker] Error generating ALTCHA challenge:', err)
+      res.writeHead(500, { 'Content-Type': 'application/json' })
+      res.end(JSON.stringify({ error: err.message }))
+    })
+    return
+  }
+
+  // ALTCHA Challenge Verification
+  if (req.method === 'POST' && req.url === '/altcha/verify') {
+    let body = ''
+    req.on('data', chunk => {
+      body += chunk
+    })
+
+    req.on('end', async () => {
+      try {
+        const data = JSON.parse(body)
+        const { payload } = data
+
+        if (!payload) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Missing challenge payload' }))
+          return
+        }
+
+        // Deterministic bypass for E2E tests
+        if (process.env.NODE_ENV === 'test' && payload === 'atoll-mock-bypass-token') {
+          console.log('[push-worker] Bypassing ALTCHA verification for test')
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ success: true }))
+          return
+        }
+
+        const payloadObj = typeof payload === 'string' ? JSON.parse(Buffer.from(payload, 'base64').toString('utf8')) : payload
+
+        const result = await verifySolution({
+          challenge: payloadObj.challenge,
+          solution: payloadObj.solution,
+          deriveKey,
+          hmacKey: hmacKeySecret
+        })
+
+        if (result.verified) {
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ success: true }))
+        } else {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid challenge solution' }))
+        }
+      } catch (err) {
+        console.error('[push-worker] Error verifying ALTCHA solution:', err)
+        res.writeHead(500, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ error: err.message }))
+      }
+    })
     return
   }
 

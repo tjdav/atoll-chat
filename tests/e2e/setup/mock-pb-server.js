@@ -291,6 +291,41 @@ export function createServer () {
         return
       }
 
+      /* Mock Check Availability endpoint for tests */
+      if (pathname === '/api/check-availability') {
+        const username = query.username
+        const email = query.email
+
+        let usernameExists = false
+        let emailExists = false
+
+        if (username) {
+          usernameExists = db.users.some(u => u.username === username)
+        }
+        if (email) {
+          emailExists = db.users.some(u => u.email === email)
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          usernameExists,
+          emailExists
+        }))
+        return
+      }
+
+      /* Mock ALTCHA Challenge endpoint for tests */
+      if (pathname === '/api/altcha/challenge') {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          algorithm: 'SHA-256',
+          challenge: '58196f3f56be3d0ba9e3db52c5699796b3fc220c89fca9560f4d682c8ec91f8d',
+          salt: '0123456789abcdef',
+          signature: 'mock-signature'
+        }))
+        return
+      }
+
       // TURN credentials endpoint
       if (pathname === '/api/turn-credentials') {
         if (req.method !== 'GET') {
@@ -430,7 +465,23 @@ export function createServer () {
 
       // Request OTP
       if (pathname === '/api/collections/users/request-otp') {
-        const { email } = body
+        const { email, altcha } = body
+        // Find user record in simulated db
+        const user = db.users.find(u => u.email === email || u.username === email)
+        const isNewUser = user && (Date.now() - new Date(user.created).getTime() < 15000)
+
+        if (!isNewUser) {
+          if (!altcha) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ message: 'Security challenge is required.' }))
+            return
+          }
+          if (altcha !== 'atoll-mock-bypass-token') {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ message: 'Invalid security challenge.' }))
+            return
+          }
+        }
         const otpId = 'otp_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10)
         /* Use a static code or randomized code for testing. */
         const code = '12345678'
@@ -730,6 +781,20 @@ export function createServer () {
         }
 
         if (req.method === 'POST') {
+          if (collectionName === 'users') {
+            const { altcha } = body
+            if (!altcha) {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ message: 'Security challenge is required.' }))
+              return
+            }
+            if (altcha !== 'atoll-mock-bypass-token') {
+              res.writeHead(400, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ message: 'Invalid security challenge.' }))
+              return
+            }
+          }
+
           const newRecord = {
             id: body.id || (collectionName === 'users' ? body.username : collectionName.slice(0, 3) + '_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10)),
             collectionId: collectionName,
