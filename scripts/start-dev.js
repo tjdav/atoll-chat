@@ -11,7 +11,10 @@ let isDockerUsed = false
 // Helper to run commands silently without crashing
 function runCommandSilently (cmd, options = {}) {
   try {
-    execSync(cmd, { stdio: 'ignore', ...options })
+    execSync(cmd, {
+      stdio: 'ignore',
+      ...options
+    })
     return true
   } catch {
     return false
