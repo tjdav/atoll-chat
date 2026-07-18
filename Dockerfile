@@ -83,5 +83,5 @@ COPY ./database/pb_migrations ./pb_migrations
 # Expose the PocketBase port (defaults to 8080 but dynamic)
 EXPOSE 8080
 
-# Start PocketBase with dynamic port binding and CORS configuration
-ENTRYPOINT ["sh", "-c", "/usr/local/bin/pocketbase serve --http=0.0.0.0:${PORT} --dir=/pb/pb_data --publicDir=/pb/pb_public --hooksDir=/pb/pb_hooks --migrationsDir=/pb/pb_migrations --cors=\"${ATOLL_ALLOWED_ORIGINS}\""]
+# Start PocketBase with dynamic port binding and CORS configuration using origins flag
+ENTRYPOINT ["sh", "-c", "/usr/local/bin/pocketbase serve --http=0.0.0.0:${PORT} --dir=/pb/pb_data --publicDir=/pb/pb_public --hooksDir=/pb/pb_hooks --migrationsDir=/pb/pb_migrations --origins=\"${ATOLL_ALLOWED_ORIGINS}\""]

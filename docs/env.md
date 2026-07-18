@@ -89,7 +89,7 @@ These variables configure the runtime environment of the PocketBase application 
 | Variable Name | Default Value | Description | Used In / By |
 |---------------|---------------|-------------|--------------|
 | `PORT` | `8080` (or `8090` in dev) | The port number that the PocketBase server listens on. | [Dockerfile](/Dockerfile) |
-| `ATOLL_ALLOWED_ORIGINS` | `*` | CORS origins configuration allowed by PocketBase. | [Dockerfile](/Dockerfile) |
+| `ATOLL_ALLOWED_ORIGINS` | `*` | CORS allowed domain origins list passed to PocketBase `--origins` flag. | [Dockerfile](/Dockerfile) |
 | `ATOLL_TURN_SHARED_SECRET` | `'REPLACE_THIS_WITH_A_LONG_RANDOM_STRING'` | Shared cryptographic key for signing dynamic WebRTC TURN relay credentials. | [turn_credentials.pb.js](/database/pb_hooks/turn_credentials.pb.js) |
 | `ATOLL_TURN_EXPIRES_IN_SECONDS` | `3600` | Expiry duration (TTL) for generated TURN credentials. | [turn_credentials.pb.js](/database/pb_hooks/turn_credentials.pb.js) |
 | `ATOLL_TURN_URIS` | None | Comma-separated list of STUN/TURN URIs passed to the client (e.g., `turn:edge.atoll.chat:3478`). | [turn_credentials.pb.js](/database/pb_hooks/turn_credentials.pb.js) |
