@@ -1,0 +1,20 @@
+FROM alpine:latest
+
+# Set PocketBase version
+ARG PB_VERSION=0.39.7
+
+# Install dependencies, download and extract PocketBase
+RUN apk add --no-cache ca-certificates unzip wget libc6-compat \
+    && wget -q https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip \
+    && unzip -o pocketbase_${PB_VERSION}_linux_amd64.zip -d /usr/local/bin/ \
+    && rm pocketbase_${PB_VERSION}_linux_amd64.zip \
+    && chmod +x /usr/local/bin/pocketbase
+
+# Expose default PocketBase dev port
+EXPOSE 8090
+
+# Set working directory for PocketBase
+WORKDIR /pb
+
+# Command to serve PocketBase with standard mappings
+ENTRYPOINT ["/usr/local/bin/pocketbase", "serve", "--http=0.0.0.0:8090", "--dir=/pb/pb_data", "--hooksDir=/pb/pb_hooks", "--migrationsDir=/pb/pb_migrations"]

@@ -1,0 +1,25 @@
+services:
+  pocketbase-dev:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    container_name: atoll-pocketbase-dev
+    ports:
+      - "8090:8090"
+    volumes:
+      - ./pb_data:/pb/pb_data
+      - ./database/pb_hooks:/pb/pb_hooks
+      - ./database/pb_migrations:/pb/pb_migrations
+    restart: unless-stopped
+
+  coturn:
+    image: coturn/coturn
+    container_name: atoll-coturn
+    network_mode: "host"
+    command:
+      - -n
+      - --lt-cred-mech
+      - --user=testuser:testpass
+      - --realm=atoll-chat
+      - --listening-port=3478
+    restart: unless-stopped
