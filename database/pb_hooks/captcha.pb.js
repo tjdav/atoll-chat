@@ -18,7 +18,12 @@ routerAdd('GET', '/api/altcha/challenge', (e) => {
       return e.json(res.statusCode, { error: 'Failed to retrieve challenge from worker' })
     }
 
-    return e.json(200, JSON.parse(res.text))
+    const json = res.json
+    if (!json) {
+      return e.json(500, { error: 'Invalid or empty response from challenge worker' })
+    }
+
+    return e.json(200, json)
   } catch (err) {
     return e.json(500, { error: err.message })
   }
