@@ -133,7 +133,7 @@ export default defineConfig({
     },
     {
       pkg: 'altcha',
-      path: 'dist/external/altcha.min.js',
+      path: 'dist/main/altcha.min.js',
       dest: 'assets/altcha.js'
     }
   ]
