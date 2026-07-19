@@ -147,6 +147,12 @@ const run = async () => {
   try {
     console.log('--- PocketBase & Coturn Dev Environment Setup ---')
 
+    // Load .env file if it exists (Node 24+)
+    if (fs.existsSync('.env')) {
+      process.loadEnvFile('.env')
+      console.log('Loaded .env file successfully.')
+    }
+
     // Pre-create pb_data or verify permissions
     if (fs.existsSync('./pb_data')) {
       try {
