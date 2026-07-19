@@ -21,15 +21,15 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Stub the altcha-widget value to be null (unsolved) to test the error state
     await page.evaluate(() => {
       // Temporarily override window.__coralite__.mode to trigger real payload check
-      window.__original_mode__ = window.__coralite__.mode;
-      window.__coralite__.mode = 'production';
+      window.__original_mode__ = window.__coralite__.mode
+      window.__coralite__.mode = 'production'
 
-      const widget = document.querySelector('altcha-widget');
+      const widget = document.querySelector('altcha-widget')
       if (widget) {
         Object.defineProperty(widget, 'value', {
           get: () => null,
           configurable: true
-        });
+        })
       }
     })
 
@@ -43,13 +43,13 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
 
     // Restore testing mode and stub value to proceed successfully
     await page.evaluate(() => {
-      window.__coralite__.mode = window.__original_mode__;
-      const widget = document.querySelector('altcha-widget');
+      window.__coralite__.mode = window.__original_mode__
+      const widget = document.querySelector('altcha-widget')
       if (widget) {
         Object.defineProperty(widget, 'value', {
           get: () => 'atoll-mock-bypass-token',
           configurable: true
-        });
+        })
       }
     })
 
@@ -74,15 +74,15 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
 
     // Stub the altcha-widget value to be null (unsolved) to test the error state
     await page.evaluate(() => {
-      window.__original_mode__ = window.__coralite__.mode;
-      window.__coralite__.mode = 'production';
+      window.__original_mode__ = window.__coralite__.mode
+      window.__coralite__.mode = 'production'
 
-      const widget = document.querySelector('altcha-widget');
+      const widget = document.querySelector('altcha-widget')
       if (widget) {
         Object.defineProperty(widget, 'value', {
           get: () => null,
           configurable: true
-        });
+        })
       }
     })
 
@@ -95,13 +95,13 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
 
     // Restore testing mode and stub value to proceed successfully
     await page.evaluate(() => {
-      window.__coralite__.mode = window.__original_mode__;
-      const widget = document.querySelector('altcha-widget');
+      window.__coralite__.mode = window.__original_mode__
+      const widget = document.querySelector('altcha-widget')
       if (widget) {
         Object.defineProperty(widget, 'value', {
           get: () => 'atoll-mock-bypass-token',
           configurable: true
-        });
+        })
       }
     })
 
