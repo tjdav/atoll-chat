@@ -67,7 +67,14 @@ async function ensureLocalPocketBaseDownloaded () {
     fs.mkdirSync(binDir, { recursive: true })
   }
 
-  const platform = process.platform === 'win32' ? 'windows' : (process.platform === 'darwin' ? 'darwin' : 'linux')
+  let platform = 'linux'
+
+  if (process.platform === 'win32') {
+    platform = 'windows'
+  } else if (process.platform === 'darwin') {
+    platform = 'darwin'
+  }
+
   const arch = process.arch === 'arm64' ? 'arm64' : 'amd64'
   const zipName = `pocketbase_0.39.7_${platform}_${arch}.zip`
   const downloadUrl = `https://github.com/pocketbase/pocketbase/releases/download/v0.39.7/${zipName}`
@@ -140,11 +147,11 @@ const run = async () => {
   try {
     console.log('--- PocketBase & Coturn Dev Environment Setup ---')
 
-    // 1. Pre-create pb_data or verify permissions
+    // Pre-create pb_data or verify permissions
     if (fs.existsSync('./pb_data')) {
       try {
         fs.accessSync('./pb_data', fs.constants.W_OK)
-      } catch (err) {
+      } catch (_err) {
         console.error(`\n======================================================================`)
         console.error(`Error: The directory 'pb_data' exists but is not writable by the current user.`)
         console.error(`This typically happens if a previous Docker run created it as 'root'.`)
@@ -167,6 +174,9 @@ const run = async () => {
     let dockerStarted = false
 
     try {
+      console.log('Cleaning up any existing/conflicting Docker containers...')
+      runCommandSilently('docker rm -f atoll-pocketbase-dev atoll-coturn')
+
       console.log('Attempting to spin up dev services via Docker Compose...')
       const env = {
         ...process.env,
@@ -229,12 +239,14 @@ const run = async () => {
     // Start local push-worker process
     console.log('Starting local push-worker on port 3001...')
     const pushWorkerDir = path.join(process.cwd(), 'push-worker')
-    if (!fs.existsSync(path.join(pushWorkerDir, 'node_modules'))) {
-      console.log('Installing dependencies for push-worker...')
-      execSync('pnpm install', {
+    console.log('Installing dependencies for push-worker...')
+    try {
+      execSync('pnpm install --ignore-workspace', {
         cwd: pushWorkerDir,
         stdio: 'inherit'
       })
+    } catch (err) {
+      throw new Error(`Failed to install dependencies for push-worker: ${err.message}`)
     }
 
     pushWorkerProcess = spawn('node', ['index.js'], {
