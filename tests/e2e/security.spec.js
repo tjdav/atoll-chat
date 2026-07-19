@@ -157,7 +157,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     /* Verify invalid code shows error message */
     await page.locator('input[name="recoveryCodeInput"]').fill('1111-2222-3333')
     await page.locator('vault-unlock button:has-text("Verify Recovery Code")').click()
-    await expect(page.locator('[data-testid$="__statusMsg"]')).toContainText('Invalid or expired recovery code')
+    await expect(page.locator('[data-testid$="recoveryCodeInput-feedback"]')).toContainText('Invalid or expired recovery code')
 
     /* Retrieve Alice's actual plaintext recovery codes from mock server */
     const codesRes = await page.evaluate(async () => {
@@ -213,7 +213,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
     await page.locator('[data-testid$="unlockSubmit"]').click()
 
-    await expect(page.locator('[data-testid$="__statusMsg"]')).toContainText(
+    await expect(page.locator('[data-testid$="password-feedback"]')).toContainText(
       /wrong secret key|Invalid Password|Unlock failed/
     )
 
@@ -250,7 +250,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('vault-unlock button:has-text("Verify Recovery Code")').click()
 
     /* Verify rejection */
-    await expect(page.locator('[data-testid$="__statusMsg"]')).toContainText('Invalid or expired recovery code')
+    await expect(page.locator('[data-testid$="recoveryCodeInput-feedback"]')).toContainText('Invalid or expired recovery code')
   })
 
   test('should handle TOTP dual modal setup, device trust state machine, and step-up verification', async ({ page, loginApp }) => {
@@ -351,7 +351,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     /* Enter invalid TOTP code */
     await page.locator('[data-testid$="totpChallengeInput"]').fill('000000')
     await page.locator('[data-testid$="totpChallengeSubmit"]').click()
-    await expect(page.locator('[data-testid$="__statusMsg"]')).toContainText('Invalid verification code.')
+    await expect(page.locator('[data-testid$="totpChallenge-feedback"]')).toContainText('Invalid verification code.')
 
     /* Enter valid TOTP code */
     const challengeCode = await getTotpCode(page, secret)

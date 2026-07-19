@@ -1,16 +1,21 @@
 <template id="auth-register">
   <div class="card shadow">
     <div class="card-body p-4">
-      <form ref="registerForm" novalidate>
+      <!-- Centralized Error Alert Box for system errors -->
+      <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
+
+      <form ref="registerForm" class="needs-validation" novalidate>
         <div ref="step1">
           <h3 class="card-title mb-4 text-center">Create Account</h3>
           <div class="mb-3">
             <label for="{{ ref_username }}" class="form-label">Username</label>
             <input name="username" ref="username" type="text" class="form-control" placeholder="Choose a username" minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" required autocomplete="username">
+            <div class="invalid-feedback" data-testid="username-feedback"></div>
           </div>
           <div class="mb-3">
             <label for="{{ ref_email }}" class="form-label">Email</label>
             <input name="email" ref="email" type="email" class="form-control" placeholder="Enter your email" required autocomplete="email">
+            <div class="invalid-feedback" data-testid="email-feedback"></div>
           </div>
           <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
           <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" data-testid="registerSubmit">Register & Send Magic Link</button>
@@ -21,7 +26,8 @@
           <p class="text-muted small text-center mb-4">We sent a Magic Link to your email. Click it to log in and set up your secure vault, or enter the 8-digit code manually below:</p>
           <div class="mb-3">
             <label for="{{ ref_otpCode }}" class="form-label">8-digit Verification Code</label>
-            <input ref="otpCode" name="otpCode" type="text" class="form-control text-center fs-4" placeholder="00000000" maxlength="8" pattern="\d{8}">
+            <input ref="otpCode" name="otpCode" type="text" class="form-control text-center fs-4" placeholder="00000000" maxlength="8" pattern="\d{8}" required>
+            <div class="invalid-feedback" data-testid="otp-feedback"></div>
           </div>
           <button type="button" class="btn btn-success w-100 mb-2" ref="btnSubmitOtp">Verify & Log In</button>
         </div>
@@ -84,6 +90,7 @@
       const btnSubmitOtp = refs('btnSubmitOtp')
       const loginLinkContainer = refs('loginLinkContainer')
       const statusMsg = refs('statusMsg')
+      const globalAlert = refs('globalAlert')
 
       const islandSwitcherContainer = refs('islandSwitcherContainer')
       const islandSelectBtn = refs('islandSelectBtn')
@@ -97,6 +104,57 @@
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
+
+      const showGlobalAlert = (msg) => {
+        if (globalAlert) {
+          if (msg) {
+            globalAlert.textContent = msg
+            globalAlert.classList.remove('d-none')
+          } else {
+            globalAlert.classList.add('d-none')
+          }
+        }
+      }
+
+      const getFeedbackElement = (input) => {
+        let sibling = input.nextElementSibling
+        while (sibling) {
+          if (sibling.classList.contains('invalid-feedback')) {
+            return sibling
+          }
+          sibling = sibling.nextElementSibling
+        }
+        const container = input.closest('.mb-3') || input.parentNode
+        if (container) {
+          return container.querySelector('.invalid-feedback')
+        }
+        return null
+      }
+
+      const updateValidationFeedback = (form) => {
+        const inputs = form.querySelectorAll('input, select, textarea')
+        inputs.forEach(input => {
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage || 'Invalid value.'
+          }
+        })
+      }
+
+      const registerInputReset = (form) => {
+        form.addEventListener('input', (e) => {
+          const input = e.target
+          if (input.setCustomValidity) {
+            input.setCustomValidity('')
+          }
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage
+          }
+        })
+      }
+
+      registerInputReset(registerForm)
 
       linkLogin.addEventListener('click', (e) => {
         e.preventDefault()
@@ -283,29 +341,27 @@
 
       registerForm.addEventListener('submit', async (event) => {
         event.preventDefault()
+        showGlobalAlert('')
+
+        // Validate step 1 fields only
+        const inputsStep1 = step1.querySelectorAll('input, select, textarea')
+        let step1Valid = true
+        inputsStep1.forEach(input => {
+          if (!input.checkValidity()) {
+            step1Valid = false
+          }
+        })
+
+        updateValidationFeedback(registerForm)
+
+        if (!step1Valid) {
+          event.stopPropagation()
+          registerForm.classList.add('was-validated')
+          return
+        }
 
         const username = usernameInput.value
         const email = emailInput.value
-
-        if (!username || !email) {
-          updateStatus('Error: Please fill in all fields')
-          return
-        }
-
-        if (username.length < 3) {
-          updateStatus('Error: Username must be at least 3 characters')
-          return
-        }
-
-        if (username.length > 20) {
-          updateStatus('Error: Username must be at most 20 characters')
-          return
-        }
-
-        if (!/^[a-zA-Z0-9_]+$/.test(username)) {
-          updateStatus('Error: Username can only contain alphanumeric characters and underscores')
-          return
-        }
 
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
         let altchaPayload = altchaWidget ? altchaWidget.value : null
@@ -314,11 +370,14 @@
         }
 
         if (!altchaPayload) {
-          updateStatus('Error: Please complete the security challenge')
+          usernameInput.setCustomValidity('Please complete the security challenge')
+          updateValidationFeedback(registerForm)
+          registerForm.classList.add('was-validated')
           return
         }
 
         try {
+          registerForm.classList.remove('was-validated')
           updateStatus('Checking availability...')
   
           const params = new URLSearchParams({
@@ -329,12 +388,18 @@
           const availabilityRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/check-availability?${params}`)).then(r => r.json())
 
           if (availabilityRes.usernameExists) {
-            updateStatus('Error: Username is already taken')
+            usernameInput.setCustomValidity('Username is already taken')
+            updateValidationFeedback(registerForm)
+            registerForm.classList.add('was-validated')
+            updateStatus('')
             return
           }
 
           if (availabilityRes.emailExists) {
-            updateStatus('Error: Email is already taken')
+            emailInput.setCustomValidity('Email is already taken')
+            updateValidationFeedback(registerForm)
+            registerForm.classList.add('was-validated')
+            updateStatus('')
             return
           }
 
@@ -367,27 +432,54 @@
           updateStatus('Magic Link sent!')
         } catch (error) {
           console.error('Registration error:', error)
-          updateStatus(`Error: ${error.message || 'Registration failed'}`)
+          if (error.status && error.status >= 500) {
+            showGlobalAlert(error.message || 'Server error. Please try again.')
+          } else {
+            usernameInput.setCustomValidity(error.message || 'Registration failed')
+            updateValidationFeedback(registerForm)
+            registerForm.classList.add('was-validated')
+          }
           if (altchaWidget && typeof altchaWidget.reset === 'function') {
             altchaWidget.reset()
           }
         }
       })
 
-      btnSubmitOtp.addEventListener('click', async () => {
-        const code = otpCodeInput.value
-        if (!code || code.length !== 8) {
-          updateStatus('Please enter a valid 8-digit code')
+      btnSubmitOtp.addEventListener('click', async (event) => {
+        event.preventDefault()
+        showGlobalAlert('')
+
+        // Validate step 2 fields only
+        const inputsStep2 = step2.querySelectorAll('input, select, textarea')
+        let step2Valid = true
+        inputsStep2.forEach(input => {
+          if (!input.checkValidity()) {
+            step2Valid = false
+          }
+        })
+
+        updateValidationFeedback(registerForm)
+
+        if (!step2Valid) {
+          registerForm.classList.add('was-validated')
           return
         }
 
+        const code = otpCodeInput.value
         try {
+          registerForm.classList.remove('was-validated')
           updateStatus('Verifying code...')
           await pb.collection('users').authWithOTP(currentOtpId, code)
           await handleSuccessfulLogin()
         } catch (error) {
           console.error('OTP registration login error:', error)
-          updateStatus(error.message || 'Verification failed')
+          if (error.status && error.status >= 500) {
+            showGlobalAlert(error.message || 'Server error. Please try again.')
+          } else {
+            otpCodeInput.setCustomValidity(error.message || 'Verification failed')
+            updateValidationFeedback(registerForm)
+            registerForm.classList.add('was-validated')
+          }
         }
       })
     }

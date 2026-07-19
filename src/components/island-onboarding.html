@@ -7,13 +7,16 @@
       <h3 class="card-title mb-2">Welcome to Atoll Chat</h3>
       <p class="text-muted small mb-4">Please enter your Island URL to get connected to your server.</p>
       
-      <form ref="onboardingForm" class="text-start">
+      <!-- Centralized Error Alert Box for system errors -->
+      <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
+
+      <form ref="onboardingForm" class="text-start needs-validation" novalidate>
         <div class="mb-3">
           <label for="{{ ref_islandUrl }}" class="form-label">Island URL</label>
           <input type="url" ref="islandUrl" name="islandUrl" class="form-control" placeholder="https://chat.my-server.com" required data-testid="islandUrlInput">
+          <div class="invalid-feedback" data-testid="onboardingError"></div>
           <div class="form-text small">E.g., https://corporate.my-chat.com</div>
         </div>
-        <div ref="onboardingError" class="text-danger small mb-3" style="min-height: 1.25rem;" data-testid="onboardingError"></div>
         <button type="submit" class="btn btn-primary w-100" ref="btnConnect" data-testid="btnConnect">Connect to Island</button>
       </form>
     </div>
@@ -33,8 +36,55 @@
 
       const onboardingForm = refs('onboardingForm')
       const islandUrlInput = refs('islandUrl')
-      const onboardingError = refs('onboardingError')
       const btnConnect = refs('btnConnect')
+      const globalAlert = refs('globalAlert')
+
+      const showGlobalAlert = (msg) => {
+        if (globalAlert) {
+          if (msg) {
+            globalAlert.textContent = msg
+            globalAlert.classList.remove('d-none')
+          } else {
+            globalAlert.classList.add('d-none')
+          }
+        }
+      }
+
+      const getFeedbackElement = (input) => {
+        let sibling = input.nextElementSibling
+        while (sibling) {
+          if (sibling.classList.contains('invalid-feedback')) {
+            return sibling
+          }
+          sibling = sibling.nextElementSibling
+        }
+        const container = input.closest('.mb-3') || input.parentNode
+        if (container) {
+          return container.querySelector('.invalid-feedback')
+        }
+        return null
+      }
+
+      const updateValidationFeedback = (form) => {
+        const inputs = form.querySelectorAll('input, select, textarea')
+        inputs.forEach(input => {
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage || 'Invalid value.'
+          }
+        })
+      }
+
+      onboardingForm.addEventListener('input', (e) => {
+        const input = e.target
+        if (input.setCustomValidity) {
+          input.setCustomValidity('')
+        }
+        const feedback = getFeedbackElement(input)
+        if (feedback) {
+          feedback.textContent = input.validationMessage
+        }
+      })
 
       const deriveIslandFromUrl = (urlStr) => {
         try {
@@ -65,7 +115,15 @@
 
       onboardingForm.addEventListener('submit', async (e) => {
         e.preventDefault()
-        onboardingError.textContent = ''
+        showGlobalAlert('')
+        updateValidationFeedback(onboardingForm)
+
+        if (!onboardingForm.checkValidity()) {
+          e.stopPropagation()
+          onboardingForm.classList.add('was-validated')
+          return
+        }
+
         btnConnect.disabled = true
         btnConnect.textContent = 'Connecting...'
 
@@ -76,6 +134,7 @@
         urlInput = urlInput.replace(/\/+$/, '')
 
         try {
+          onboardingForm.classList.remove('was-validated')
           const healthUrl = `${urlInput}/api/health`
           const response = await fetch(healthUrl, {
             method: 'GET',
@@ -124,7 +183,9 @@
           $bus.emit('auth:logout')
         } catch (err) {
           console.error('[island-onboarding] Connection error:', err)
-          onboardingError.textContent = 'Failed to connect. Make sure the URL points to an active Atoll Chat/PocketBase instance.'
+          islandUrlInput.setCustomValidity('Failed to connect. Make sure the URL points to an active Atoll Chat/PocketBase instance.')
+          updateValidationFeedback(onboardingForm)
+          onboardingForm.classList.add('was-validated')
           btnConnect.disabled = false
           btnConnect.textContent = 'Connect to Island'
         }

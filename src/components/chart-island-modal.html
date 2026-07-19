@@ -7,14 +7,14 @@
           <h5 class="modal-title">Chart New Island</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
-        <form ref="chartIslandForm" data-testid="chartIslandForm">
+        <form ref="chartIslandForm" class="needs-validation" novalidate data-testid="chartIslandForm">
           <div class="modal-body">
             <div class="mb-3">
               <label for="{{ ref_islandUrl }}" class="form-label">Island URL</label>
               <input type="url" class="form-control" ref="islandUrl" name="islandUrl" placeholder="https://corporate.my-chat.com" required data-testid="islandUrlField">
+              <div class="invalid-feedback" data-testid="modalError"></div>
               <div class="form-text small">Enter the URL of the PocketBase server.</div>
             </div>
-            <div ref="modalError" class="text-danger small" style="min-height: 1.25rem;" data-testid="modalError"></div>
           </div>
           <div class="modal-footer">
             <button type="button" class="btn btn-link text-decoration-none" data-bs-dismiss="modal">Cancel</button>
@@ -41,10 +41,45 @@
       const modalEl = refs('chartIslandModal')
       const chartIslandForm = refs('chartIslandForm')
       const islandUrlInput = refs('islandUrl')
-      const modalError = refs('modalError')
       const btnVerifyIsland = refs('btnVerifyIsland')
 
       const modal = new Modal(modalEl)
+
+      const getFeedbackElement = (input) => {
+        let sibling = input.nextElementSibling
+        while (sibling) {
+          if (sibling.classList.contains('invalid-feedback')) {
+            return sibling
+          }
+          sibling = sibling.nextElementSibling
+        }
+        const container = input.closest('.mb-3') || input.parentNode
+        if (container) {
+          return container.querySelector('.invalid-feedback')
+        }
+        return null
+      }
+
+      const updateValidationFeedback = (form) => {
+        const inputs = form.querySelectorAll('input, select, textarea')
+        inputs.forEach(input => {
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage || 'Invalid value.'
+          }
+        })
+      }
+
+      chartIslandForm.addEventListener('input', (e) => {
+        const input = e.target
+        if (input.setCustomValidity) {
+          input.setCustomValidity('')
+        }
+        const feedback = getFeedbackElement(input)
+        if (feedback) {
+          feedback.textContent = input.validationMessage
+        }
+      })
 
       const deriveIslandFromUrl = (urlStr) => {
         try {
@@ -124,14 +159,22 @@
       }
 
       $bus.on('ui:open_chart_island_modal', () => {
-        modalError.textContent = ''
+        chartIslandForm.classList.remove('was-validated')
+        islandUrlInput.setCustomValidity('')
         islandUrlInput.value = ''
         modal.show()
       })
 
       chartIslandForm.addEventListener('submit', async (e) => {
         e.preventDefault()
-        modalError.textContent = ''
+        updateValidationFeedback(chartIslandForm)
+
+        if (!chartIslandForm.checkValidity()) {
+          e.stopPropagation()
+          chartIslandForm.classList.add('was-validated')
+          return
+        }
+
         btnVerifyIsland.disabled = true
         btnVerifyIsland.textContent = 'Verifying...'
 
@@ -142,6 +185,7 @@
         urlInput = urlInput.replace(/\/+$/, '')
 
         try {
+          chartIslandForm.classList.remove('was-validated')
           const response = await fetch(`${urlInput}/api/health`, {
             method: 'GET',
             mode: 'cors'
@@ -158,7 +202,9 @@
 
           const exists = pb.authStore.workspaces.some(w => w.id === islandInfo.id)
           if (exists) {
-            modalError.textContent = 'This Island has already been added.'
+            islandUrlInput.setCustomValidity('This Island has already been added.')
+            updateValidationFeedback(chartIslandForm)
+            chartIslandForm.classList.add('was-validated')
             btnVerifyIsland.disabled = false
             btnVerifyIsland.textContent = 'Connect'
             return
@@ -176,7 +222,9 @@
           await handleSwitchIsland(islandInfo.id, true)
         } catch (err) {
           console.error('[chart-island] Connection failed:', err)
-          modalError.textContent = 'Failed to connect. Make sure the URL points to an active Atoll Chat/PocketBase instance.'
+          islandUrlInput.setCustomValidity('Failed to connect. Make sure the URL points to an active Atoll Chat/PocketBase instance.')
+          updateValidationFeedback(chartIslandForm)
+          chartIslandForm.classList.add('was-validated')
         } finally {
           btnVerifyIsland.disabled = false
           btnVerifyIsland.textContent = 'Connect'

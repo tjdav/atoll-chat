@@ -2,11 +2,14 @@
   <div class="card shadow">
     <div class="card-body p-4">
       
+      <!-- Centralized Error Alert Box for system errors -->
+      <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
+
       <!-- Step 1: Password Creation -->
       <div ref="stepPassword">
         <h3 class="card-title mb-3 text-center">Secure Your Vault</h3>
         <p class="text-muted small text-center mb-4">Set a strong password to encrypt your local cryptographic keys. This password is never sent to the server.</p>
-        <form ref="setupForm">
+        <form ref="setupForm" class="needs-validation" novalidate>
           <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username">
           <div class="mb-3">
             <label for="{{ ref_password }}" class="form-label">Vault Password</label>
@@ -16,6 +19,7 @@
                 <i class="bi bi-eye"></i>
               </button>
             </div>
+            <div class="invalid-feedback" data-testid="password-feedback"></div>
             <div class="progress mt-2" style="height: 5px;">
               <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
@@ -29,6 +33,7 @@
                 <i class="bi bi-eye"></i>
               </button>
             </div>
+            <div class="invalid-feedback" data-testid="passwordConfirm-feedback"></div>
           </div>
           <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" disabled>Generate Vault Keys</button>
         </form>
@@ -88,6 +93,7 @@
       const btnSubmit = refs('btnSubmit')
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout')
+      const globalAlert = refs('globalAlert')
 
       const codesDisplay = refs('codesDisplay')
       const btnCopy = refs('btnCopy')
@@ -99,10 +105,62 @@
       let decryptedKeysLocal = null
       let hasCopied = false
       let hasDownloaded = false
+      let zxcvbnScore = 0
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
+
+      const showGlobalAlert = (msg) => {
+        if (globalAlert) {
+          if (msg) {
+            globalAlert.textContent = msg
+            globalAlert.classList.remove('d-none')
+          } else {
+            globalAlert.classList.add('d-none')
+          }
+        }
+      }
+
+      const getFeedbackElement = (input) => {
+        let sibling = input.closest('.password-field-container')?.nextElementSibling || input.nextElementSibling
+        while (sibling) {
+          if (sibling.classList.contains('invalid-feedback')) {
+            return sibling
+          }
+          sibling = sibling.nextElementSibling
+        }
+        const container = input.closest('.mb-3') || input.parentNode
+        if (container) {
+          return container.querySelector('.invalid-feedback')
+        }
+        return null
+      }
+
+      const updateValidationFeedback = (form) => {
+        const inputs = form.querySelectorAll('input, select, textarea')
+        inputs.forEach(input => {
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage || 'Invalid value.'
+          }
+        })
+      }
+
+      const registerInputReset = (form) => {
+        form.addEventListener('input', (e) => {
+          const input = e.target
+          if (input.setCustomValidity) {
+            input.setCustomValidity('')
+          }
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage
+          }
+        })
+      }
+
+      registerInputReset(setupForm)
 
       if (pb.authStore.model) {
         vaultUsernameHidden.value = `${pb.authStore.model.username} - Vault`
@@ -127,24 +185,26 @@
           strengthBar.className = 'progress-bar'
           strengthText.textContent = 'Minimum 12 characters.'
           btnSubmit.disabled = true
+          zxcvbnScore = 0
           return
         }
 
         try {
           const { default: zxcvbn } = await import('zxcvbn')
           const result = zxcvbn(password)
-          const score = result.score
+          zxcvbnScore = result.score
           const colors = ['bg-danger', 'bg-danger', 'bg-warning', 'bg-info', 'bg-success']
           const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']
 
-          strengthBar.style.width = `${(score + 1) * 20}%`
-          strengthBar.className = `progress-bar ${colors[score]}`
-          strengthText.textContent = `Strength: ${labels[score]}. ${result.feedback.warning || ''}`
+          strengthBar.style.width = `${(zxcvbnScore + 1) * 20}%`
+          strengthBar.className = `progress-bar ${colors[zxcvbnScore]}`
+          strengthText.textContent = `Strength: ${labels[zxcvbnScore]}. ${result.feedback.warning || ''}`
 
-          btnSubmit.disabled = password.length < 12 || score < 3
+          btnSubmit.disabled = password.length < 12 || zxcvbnScore < 3
         } catch (err) {
           console.error('[vault-setup] zxcvbn error:', err)
           btnSubmit.disabled = password.length < 12
+          zxcvbnScore = 3 // Safe fallback
         }
       }
 
@@ -166,15 +226,35 @@
 
       setupForm.addEventListener('submit', async (event) => {
         event.preventDefault()
+        showGlobalAlert('')
+
         const password = passwordInput.value
         const passwordConfirm = passwordConfirmInput.value
 
+        if (password.length < 12) {
+          passwordInput.setCustomValidity('Password must be at least 12 characters.')
+        } else if (zxcvbnScore < 3) {
+          passwordInput.setCustomValidity('Password is too weak. Please use a stronger password.')
+        } else {
+          passwordInput.setCustomValidity('')
+        }
+
         if (password !== passwordConfirm) {
-          updateStatus('Error: Passwords do not match')
+          passwordConfirmInput.setCustomValidity('Passwords do not match')
+        } else {
+          passwordConfirmInput.setCustomValidity('')
+        }
+
+        updateValidationFeedback(setupForm)
+
+        if (!setupForm.checkValidity()) {
+          event.stopPropagation()
+          setupForm.classList.add('was-validated')
           return
         }
 
         try {
+          setupForm.classList.remove('was-validated')
           updateStatus('Generating secure master key...')
           const masterKeysRes = await $worker.execute('worker:generate_master_keys_v2')
           const salt = await $worker.execute('worker:randombytes_buf', { length: 16 })
@@ -226,7 +306,11 @@
           updateStatus('')
         } catch (error) {
           console.error('Vault setup generation error:', error)
-          updateStatus(`Error: ${error.message || 'Vault setup failed'}`)
+          if (error.status && error.status >= 500) {
+            showGlobalAlert(error.message || 'Server error. Please try again.')
+          } else {
+            showGlobalAlert(`Error: ${error.message || 'Vault setup failed'}`)
+          }
         }
       })
 
@@ -289,7 +373,7 @@
           $state.isVaultUnlocked = true
         } catch (error) {
           console.error('Vault setup proceed error:', error)
-          updateStatus(`Error: ${error.message || 'Vault activation failed'}`)
+          showGlobalAlert(`Error: ${error.message || 'Vault activation failed'}`)
         }
       })
     }

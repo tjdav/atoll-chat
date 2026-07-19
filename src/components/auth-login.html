@@ -3,24 +3,29 @@
     <div class="card-body p-4">
       <h3 class="card-title mb-4 text-center">Login</h3>
       
-      <form ref="loginForm" novalidate>
+      <!-- Centralized Error Alert Box for system errors -->
+      <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
+
+      <form ref="loginForm" class="needs-validation" novalidate>
         <div ref="emailSection">
           <div class="mb-3">
             <label for="{{ ref_email }}" class="form-label">Email Address</label>
             <input ref="email" name="email" id="{{ ref_email }}" type="email" class="form-control" placeholder="Enter email" required autocomplete="email" data-testid="username">
+            <div class="invalid-feedback" data-testid="email-feedback"></div>
           </div>
           <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
           <button type="submit" class="btn btn-primary w-100" ref="loginSubmit" data-testid="loginSubmit">Send Magic Link</button>
         </div>
       </form>
 
-      <form ref="otpForm" class="d-none mt-3" onsubmit="return false;">
+      <form ref="otpForm" class="d-none mt-3 needs-validation" novalidate>
         <p class="text-muted small text-center mb-3">We sent a Magic Link to your email. Click it to log in, or enter the 8-digit code manually below:</p>
         <div class="mb-3">
           <label for="{{ ref_otpCode }}" class="form-label">8-digit Verification Code</label>
           <input ref="otpCode" name="otpCode" type="text" class="form-control text-center fs-4" placeholder="00000000" maxlength="8" pattern="\d{8}" required>
+          <div class="invalid-feedback" data-testid="otp-feedback"></div>
         </div>
-        <button type="button" class="btn btn-success w-100 mb-2" ref="btnSubmitOtp">Verify & Log In</button>
+        <button type="submit" class="btn btn-success w-100 mb-2" ref="btnSubmitOtp">Verify & Log In</button>
         <button type="button" class="btn btn-link btn-sm w-100 text-decoration-none" ref="btnBackToEmail">Change Email</button>
       </form>
 
@@ -79,6 +84,7 @@
       const otpCodeInput = refs('otpCode')
       const btnBackToEmail = refs('btnBackToEmail')
       const statusMsg = refs('statusMsg')
+      const globalAlert = refs('globalAlert')
 
       const emailSection = refs('emailSection')
       const registerLinkContainer = refs('registerLinkContainer')
@@ -95,6 +101,58 @@
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
+
+      const showGlobalAlert = (msg) => {
+        if (globalAlert) {
+          if (msg) {
+            globalAlert.textContent = msg
+            globalAlert.classList.remove('d-none')
+          } else {
+            globalAlert.classList.add('d-none')
+          }
+        }
+      }
+
+      const getFeedbackElement = (input) => {
+        let sibling = input.nextElementSibling
+        while (sibling) {
+          if (sibling.classList.contains('invalid-feedback')) {
+            return sibling
+          }
+          sibling = sibling.nextElementSibling
+        }
+        const container = input.closest('.mb-3') || input.parentNode
+        if (container) {
+          return container.querySelector('.invalid-feedback')
+        }
+        return null
+      }
+
+      const updateValidationFeedback = (form) => {
+        const inputs = form.querySelectorAll('input, select, textarea')
+        inputs.forEach(input => {
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage || 'Invalid value.'
+          }
+        })
+      }
+
+      const registerInputReset = (form) => {
+        form.addEventListener('input', (e) => {
+          const input = e.target
+          if (input.setCustomValidity) {
+            input.setCustomValidity('')
+          }
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage
+          }
+        })
+      }
+
+      registerInputReset(loginForm)
+      registerInputReset(otpForm)
 
       linkRegister.addEventListener('click', (e) => {
         e.preventDefault()
@@ -268,6 +326,11 @@
         otpForm.classList.add('d-none')
         registerLinkContainer.classList.remove('d-none')
         updateStatus('')
+        showGlobalAlert('')
+        loginForm.classList.remove('was-validated')
+        otpForm.classList.remove('was-validated')
+        emailInput.setCustomValidity('')
+        otpCodeInput.setCustomValidity('')
       })
 
       const handleSuccessfulLogin = async () => {
@@ -295,14 +358,16 @@
 
       loginForm.addEventListener('submit', async (event) => {
         event.preventDefault()
-        console.log('[auth-login] Send Magic Link form submitted!', { email: emailInput.value })
+        showGlobalAlert('')
+        updateValidationFeedback(loginForm)
 
-        const email = emailInput.value
-        if (!email) {
-          updateStatus('Please enter your email')
+        if (!loginForm.checkValidity()) {
+          event.stopPropagation()
+          loginForm.classList.add('was-validated')
           return
         }
 
+        const email = emailInput.value
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
         let altchaPayload = altchaWidget ? altchaWidget.value : null
         if (isTesting) {
@@ -310,11 +375,14 @@
         }
 
         if (!altchaPayload) {
-          updateStatus('Error: Please complete the security challenge')
+          emailInput.setCustomValidity('Please complete the security challenge')
+          updateValidationFeedback(loginForm)
+          loginForm.classList.add('was-validated')
           return
         }
 
         try {
+          loginForm.classList.remove('was-validated')
           updateStatus('Sending Magic Link...')
           const result = await pb.collection('users').requestOTP(email, {
             body: {
@@ -331,29 +399,45 @@
           updateStatus('Magic Link sent!')
         } catch (error) {
           console.error('Request OTP error:', error)
-          updateStatus(error.message || 'Failed to send Magic Link')
+          if (error.status && error.status >= 500) {
+            showGlobalAlert(error.message || 'Server error. Please try again.')
+          } else {
+            emailInput.setCustomValidity(error.message || 'Failed to send Magic Link')
+            updateValidationFeedback(loginForm)
+            loginForm.classList.add('was-validated')
+          }
           if (altchaWidget && typeof altchaWidget.reset === 'function') {
             altchaWidget.reset()
           }
         }
       })
 
-      btnSubmitOtp.addEventListener('click', async (event) => {
+      otpForm.addEventListener('submit', async (event) => {
         event.preventDefault()
-        console.log('[auth-login] btnSubmitOtp clicked!', { code: otpCodeInput.value })
-        const code = otpCodeInput.value
-        if (!code || code.length !== 8) {
-          updateStatus('Please enter a valid 8-digit code')
+        showGlobalAlert('')
+        updateValidationFeedback(otpForm)
+
+        if (!otpForm.checkValidity()) {
+          event.stopPropagation()
+          otpForm.classList.add('was-validated')
           return
         }
 
+        const code = otpCodeInput.value
         try {
+          otpForm.classList.remove('was-validated')
           updateStatus('Verifying code...')
           const authData = await pb.collection('users').authWithOTP(currentOtpId, code)
           await handleSuccessfulLogin(authData)
         } catch (error) {
           console.error('OTP login error:', error)
-          updateStatus(error.message || 'Verification failed')
+          if (error.status && error.status >= 500) {
+            showGlobalAlert(error.message || 'Server error. Please try again.')
+          } else {
+            otpCodeInput.setCustomValidity(error.message || 'Verification failed')
+            updateValidationFeedback(otpForm)
+            otpForm.classList.add('was-validated')
+          }
         }
       })
     }

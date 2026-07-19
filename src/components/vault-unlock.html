@@ -2,11 +2,14 @@
   <div class="card shadow">
     <div class="card-body p-4 text-center">
       
+      <!-- Centralized Error Alert Box for system errors -->
+      <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
+
       <!-- View 1: Password Unlock -->
       <div ref="viewPassword">
         <h3 class="card-title mb-3">Unlock Your Vault</h3>
         <p class="text-muted small mb-4">Your session is active, but your cryptographic keys are locked. Please enter your vault password to unlock them.</p>
-        <form ref="unlockForm" class="text-start">
+        <form ref="unlockForm" class="text-start needs-validation" novalidate>
           <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username">
           <div class="mb-3">
             <label for="{{ ref_password }}" class="form-label">Vault Password</label>
@@ -16,6 +19,7 @@
                 <i class="bi bi-eye"></i>
               </button>
             </div>
+            <div class="invalid-feedback" data-testid="password-feedback"></div>
           </div>
           <div class="d-grid gap-2">
             <button type="submit" class="btn btn-primary" ref="unlockSubmit" data-testid="unlockSubmit">Unlock with Password</button>
@@ -31,10 +35,11 @@
       <div ref="viewRecovery" class="d-none text-start">
         <h3 class="card-title mb-3 text-center">Use Recovery Code</h3>
         <p class="text-muted small mb-4 text-center">Enter one of your single-use recovery codes to recover your vault and set a new password.</p>
-        <form ref="recoveryForm">
+        <form ref="recoveryForm" class="needs-validation" novalidate>
           <div class="mb-3">
             <label for="{{ ref_recoveryCodeInput }}" class="form-label">Recovery Code</label>
             <input ref="recoveryCodeInput" name="recoveryCodeInput" type="text" class="form-control text-center fs-5 font-monospace" placeholder="XXXX-XXXX-XXXX" required>
+            <div class="invalid-feedback" data-testid="recoveryCodeInput-feedback"></div>
           </div>
           <button type="submit" class="btn btn-primary w-100 mb-2">Verify Recovery Code</button>
           <button type="button" class="btn btn-link btn-sm w-100 text-decoration-none text-center" ref="btnCancelRecovery">Cancel</button>
@@ -45,7 +50,7 @@
       <div ref="viewNewPassword" class="d-none text-start">
         <h3 class="card-title mb-3 text-center">Set New Vault Password</h3>
         <p class="text-muted small text-center mb-4">Recovery successful! Please choose a new Vault Password. This will re-encrypt your Master Key.</p>
-        <form ref="newPasswordForm">
+        <form ref="newPasswordForm" class="needs-validation" novalidate>
           <div class="mb-3">
             <label for="{{ ref_newPassword }}" class="form-label">New Vault Password</label>
             <div class="password-field-container">
@@ -54,6 +59,7 @@
                 <i class="bi bi-eye"></i>
               </button>
             </div>
+            <div class="invalid-feedback" data-testid="newPassword-feedback"></div>
             <div class="progress mt-2" style="height: 5px;">
               <div ref="newStrengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
@@ -67,6 +73,7 @@
                 <i class="bi bi-eye"></i>
               </button>
             </div>
+            <div class="invalid-feedback" data-testid="newPasswordConfirm-feedback"></div>
           </div>
           <button type="submit" class="btn btn-success w-100" ref="btnSaveNewPassword" disabled>Save & Unlock Vault</button>
         </form>
@@ -103,6 +110,7 @@
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout')
       const btnPasskey = refs('btnPasskey')
+      const globalAlert = refs('globalAlert')
 
       const btnShowRecovery = refs('btnShowRecovery')
       const btnCancelRecovery = refs('btnCancelRecovery')
@@ -122,10 +130,64 @@
       let matchedWrapIndex = -1
       let fetchedRecord = null
       let decryptedKeysLocal = null
+      let zxcvbnScore = 0
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
+
+      const showGlobalAlert = (msg) => {
+        if (globalAlert) {
+          if (msg) {
+            globalAlert.textContent = msg
+            globalAlert.classList.remove('d-none')
+          } else {
+            globalAlert.classList.add('d-none')
+          }
+        }
+      }
+
+      const getFeedbackElement = (input) => {
+        let sibling = input.closest('.password-field-container')?.nextElementSibling || input.nextElementSibling
+        while (sibling) {
+          if (sibling.classList.contains('invalid-feedback')) {
+            return sibling
+          }
+          sibling = sibling.nextElementSibling
+        }
+        const container = input.closest('.mb-3') || input.parentNode
+        if (container) {
+          return container.querySelector('.invalid-feedback')
+        }
+        return null
+      }
+
+      const updateValidationFeedback = (form) => {
+        const inputs = form.querySelectorAll('input, select, textarea')
+        inputs.forEach(input => {
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage || 'Invalid value.'
+          }
+        })
+      }
+
+      const registerInputReset = (form) => {
+        form.addEventListener('input', (e) => {
+          const input = e.target
+          if (input.setCustomValidity) {
+            input.setCustomValidity('')
+          }
+          const feedback = getFeedbackElement(input)
+          if (feedback) {
+            feedback.textContent = input.validationMessage
+          }
+        })
+      }
+
+      registerInputReset(unlockForm)
+      registerInputReset(recoveryForm)
+      registerInputReset(newPasswordForm)
 
       passwordToggle.addEventListener('click', () => {
         const type = passwordInput.getAttribute('type') === 'password' ? 'text' : 'password'
@@ -170,6 +232,7 @@
 
       btnPasskey.addEventListener('click', async () => {
         try {
+          showGlobalAlert('')
           updateStatus('Authenticating via biometrics...')
           const record = pb.authStore.model
           if (!record) {
@@ -201,7 +264,8 @@
           if (error.message) {
             errorMessage = error.message
           }
-          updateStatus(errorMessage)
+          showGlobalAlert(errorMessage)
+          updateStatus('')
         }
       })
 
@@ -228,21 +292,35 @@
           $state.isVaultUnlocked = true
         } catch (err) {
           console.error('[vault-unlock] Subscription/Sync failed:', err)
-          updateStatus('Error: Failed to synchronize data. Please try again.')
+          showGlobalAlert('Error: Failed to synchronize data. Please try again.')
+          updateStatus('')
         }
       }
 
       unlockForm.addEventListener('submit', async (event) => {
         event.preventDefault()
+        showGlobalAlert('')
+        updateValidationFeedback(unlockForm)
+
+        if (!unlockForm.checkValidity()) {
+          event.stopPropagation()
+          unlockForm.classList.add('was-validated')
+          return
+        }
+
         const password = passwordInput.value
 
         try {
+          unlockForm.classList.remove('was-validated')
           updateStatus('Locating vault...')
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
           const { vault_salt: saltBase64, encrypted_master_keys: encryptedMasterKeys, encrypted_private_keys: encryptedPrivateKeys } = record
 
           if (!encryptedMasterKeys) {
-            updateStatus('Error: Secure vault not found on server.')
+            passwordInput.setCustomValidity('Error: Secure vault not found on server.')
+            updateValidationFeedback(unlockForm)
+            unlockForm.classList.add('was-validated')
+            updateStatus('')
             return
           }
 
@@ -285,7 +363,14 @@
             errorMessage = error.message
           }
   
-          updateStatus(errorMessage)
+          if (error.status && error.status >= 500) {
+            showGlobalAlert(errorMessage)
+          } else {
+            passwordInput.setCustomValidity(errorMessage)
+            updateValidationFeedback(unlockForm)
+            unlockForm.classList.add('was-validated')
+          }
+          updateStatus('')
         }
       })
 
@@ -293,19 +378,35 @@
         viewPassword.classList.add('d-none')
         viewRecovery.classList.remove('d-none')
         updateStatus('')
+        showGlobalAlert('')
+        recoveryForm.classList.remove('was-validated')
+        recoveryCodeInput.setCustomValidity('')
       })
 
       btnCancelRecovery.addEventListener('click', () => {
         viewRecovery.classList.add('d-none')
         viewPassword.classList.remove('d-none')
         updateStatus('')
+        showGlobalAlert('')
+        unlockForm.classList.remove('was-validated')
+        passwordInput.setCustomValidity('')
       })
 
       recoveryForm.addEventListener('submit', async (e) => {
         e.preventDefault()
+        showGlobalAlert('')
+        updateValidationFeedback(recoveryForm)
+
+        if (!recoveryForm.checkValidity()) {
+          e.stopPropagation()
+          recoveryForm.classList.add('was-validated')
+          return
+        }
+
         const code = recoveryCodeInput.value.trim()
 
         try {
+          recoveryForm.classList.remove('was-validated')
           updateStatus('Fetching account details...')
           fetchedRecord = await pb.collection('users').getOne(pb.authStore.model.id)
           const { recovery_wraps: recoveryWraps, encrypted_private_keys: encryptedPrivateKeys } = fetchedRecord
@@ -350,9 +451,19 @@
           viewRecovery.classList.add('d-none')
           viewNewPassword.classList.remove('d-none')
           updateStatus('Code verified! Please set a new password.')
+          newPasswordForm.classList.remove('was-validated')
+          newPasswordInput.setCustomValidity('')
+          newPasswordConfirmInput.setCustomValidity('')
         } catch (err) {
           console.error('Recovery failed:', err)
-          updateStatus(err.message || 'Recovery failed.')
+          if (err.status && err.status >= 500) {
+            showGlobalAlert(err.message || 'Recovery failed.')
+          } else {
+            recoveryCodeInput.setCustomValidity(err.message || 'Recovery failed.')
+            updateValidationFeedback(recoveryForm)
+            recoveryForm.classList.add('was-validated')
+          }
+          updateStatus('')
         }
       })
 
@@ -363,24 +474,26 @@
           newStrengthBar.className = 'progress-bar'
           newStrengthText.textContent = 'Minimum 12 characters.'
           btnSaveNewPassword.disabled = true
+          zxcvbnScore = 0
           return
         }
 
         try {
           const { default: zxcvbn } = await import('zxcvbn')
           const result = zxcvbn(password)
-          const score = result.score
+          zxcvbnScore = result.score
           const colors = ['bg-danger', 'bg-danger', 'bg-warning', 'bg-info', 'bg-success']
           const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']
 
-          newStrengthBar.style.width = `${(score + 1) * 20}%`
-          newStrengthBar.className = `progress-bar ${colors[score]}`
-          newStrengthText.textContent = `Strength: ${labels[score]}. ${result.feedback.warning || ''}`
+          newStrengthBar.style.width = `${(zxcvbnScore + 1) * 20}%`
+          newStrengthBar.className = `progress-bar ${colors[zxcvbnScore]}`
+          newStrengthText.textContent = `Strength: ${labels[zxcvbnScore]}. ${result.feedback.warning || ''}`
 
-          btnSaveNewPassword.disabled = password.length < 12 || score < 3
+          btnSaveNewPassword.disabled = password.length < 12 || zxcvbnScore < 3
         } catch (err) {
           console.error('[vault-unlock] zxcvbn error:', err)
           btnSaveNewPassword.disabled = password.length < 12
+          zxcvbnScore = 3
         }
       }
 
@@ -388,15 +501,35 @@
 
       newPasswordForm.addEventListener('submit', async (e) => {
         e.preventDefault()
+        showGlobalAlert('')
+
         const newPassword = newPasswordInput.value
         const newPasswordConfirm = newPasswordConfirmInput.value
 
+        if (newPassword.length < 12) {
+          newPasswordInput.setCustomValidity('Password must be at least 12 characters.')
+        } else if (zxcvbnScore < 3) {
+          newPasswordInput.setCustomValidity('Password is too weak. Please use a stronger password.')
+        } else {
+          newPasswordInput.setCustomValidity('')
+        }
+
         if (newPassword !== newPasswordConfirm) {
-          updateStatus('Passwords do not match.')
+          newPasswordConfirmInput.setCustomValidity('Passwords do not match.')
+        } else {
+          newPasswordConfirmInput.setCustomValidity('')
+        }
+
+        updateValidationFeedback(newPasswordForm)
+
+        if (!newPasswordForm.checkValidity()) {
+          e.stopPropagation()
+          newPasswordForm.classList.add('was-validated')
           return
         }
 
         try {
+          newPasswordForm.classList.remove('was-validated')
           updateStatus('Deriving new vault password KEK...')
           const newSalt = await $worker.execute('worker:randombytes_buf', { length: 16 })
           const KEK = await $worker.execute('worker:derive_key_from_password', {
@@ -429,7 +562,12 @@
           await completeUnlock(decryptedKeysLocal, refreshedRecord.record)
         } catch (err) {
           console.error('Password rotation failed:', err)
-          updateStatus(err.message || 'Password rotation failed.')
+          if (err.status && err.status >= 500) {
+            showGlobalAlert(err.message || 'Password rotation failed.')
+          } else {
+            showGlobalAlert(err.message || 'Password rotation failed.')
+          }
+          updateStatus('')
         }
       })
     }
