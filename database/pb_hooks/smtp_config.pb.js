@@ -31,33 +31,20 @@ onBootstrap((e) => {
   const settings = e.app.settings()
 
   // Apply the EU-strict routing and credentials
-  const smtp = settings.smtp || settings.SMTP
+  const smtp = settings.smtp
   if (smtp) {
-    if (smtp.enabled !== undefined) {
-      smtp.enabled = true
-      smtp.host = host
-      smtp.port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
-      smtp.username = getEnv('ATOLL_SMTP_USERNAME') || ''
-      smtp.password = getEnv('ATOLL_SMTP_PASSWORD') || ''
-    } else {
-      smtp.Enabled = true
-      smtp.Host = host
-      smtp.Port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
-      smtp.Username = getEnv('ATOLL_SMTP_USERNAME') || ''
-      smtp.Password = getEnv('ATOLL_SMTP_PASSWORD') || ''
-    }
+    smtp.enabled = true
+    smtp.host = host
+    smtp.port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
+    smtp.username = getEnv('ATOLL_SMTP_USERNAME') || ''
+    smtp.password = getEnv('ATOLL_SMTP_PASSWORD') || ''
   }
 
   // Configure the sender profile
-  const meta = settings.meta || settings.Meta
+  const meta = settings.meta
   if (meta) {
-    if (meta.senderName !== undefined) {
-      meta.senderName = getEnv('ATOLL_SMTP_SENDER_NAME') || 'Atoll Chat'
-      meta.senderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS') || 'noreply@atoll.chat'
-    } else {
-      meta.SenderName = getEnv('ATOLL_SMTP_SENDER_NAME') || 'Atoll Chat'
-      meta.SenderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS') || 'noreply@atoll.chat'
-    }
+    meta.senderName = getEnv('ATOLL_SMTP_SENDER_NAME') || 'Atoll Chat'
+    meta.senderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS') || 'noreply@atoll.chat'
   }
 
   // Commit the changes safely to the database

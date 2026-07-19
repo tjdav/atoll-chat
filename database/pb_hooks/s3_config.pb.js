@@ -29,33 +29,19 @@ onBootstrap((e) => {
   const forcePathStyle = getEnv('ATOLL_S3_FORCE_PATH_STYLE') === 'true'
 
   const settings = e.app.settings()
-  const s3 = settings.s3 || settings.S3
+  const s3 = settings.s3
 
   if (s3) {
     if (s3Endpoint && s3Bucket && s3AccessKey && s3SecretKey) {
-      if (s3.enabled !== undefined) {
-        s3.enabled = true
-        s3.endpoint = s3Endpoint
-        s3.bucket = s3Bucket
-        s3.accessKey = s3AccessKey
-        s3.secret = s3SecretKey
-        s3.region = s3Region
-        s3.forcePathStyle = forcePathStyle
-      } else {
-        s3.Enabled = true
-        s3.Endpoint = s3Endpoint
-        s3.Bucket = s3Bucket
-        s3.AccessKey = s3AccessKey
-        s3.Secret = s3SecretKey
-        s3.Region = s3Region
-        s3.ForcePathStyle = forcePathStyle
-      }
+      s3.enabled = true
+      s3.endpoint = s3Endpoint
+      s3.bucket = s3Bucket
+      s3.accessKey = s3AccessKey
+      s3.secret = s3SecretKey
+      s3.region = s3Region
+      s3.forcePathStyle = forcePathStyle
     } else {
-      if (s3.enabled !== undefined) {
-        s3.enabled = false
-      } else {
-        s3.Enabled = false
-      }
+      s3.enabled = false
     }
     e.app.save(settings)
   }
