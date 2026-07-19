@@ -93,8 +93,9 @@
 
   export default defineComponent({
     client: (context) => {
-      const { refs, pocketbase, globalStore, eventBus, realtimeSync, storage, cryptoWorker } = context
+      const { refs, pocketbase, globalStore, eventBus, realtimeSync, storage, cryptoWorker, utils } = context
       const { pb } = pocketbase
+      const { $url } = utils
       const { $storage } = storage
       const { $state } = globalStore
       const { $bus } = eventBus
@@ -326,7 +327,7 @@
           }
 
           // Use the custom setup hook
-          const setupRes = await fetch(`${pb.baseUrl}/api/setup`, {
+          const setupRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/setup`), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'

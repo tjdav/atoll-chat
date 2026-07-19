@@ -41,6 +41,7 @@ const workerSelf = rawSelf
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
 importScripts('/assets/worker-bridge.js')
+importScripts('/assets/url.js')
 
 const sodium = workerSelf.sodium
 const workerBridge = workerSelf.workerBridge
@@ -697,17 +698,19 @@ async function handleEvent (event) {
   }
 }
 
+
 /**
  * Helper to perform fetch with a timeout
  */
 async function fetchWithTimeout (resource, options = {}) {
+  const normalizedResource = workerSelf.normalizeUrl(resource)
   const { timeout = 15000 } = options
 
   const controller = new AbortController()
   const id = setTimeout(() => controller.abort(), timeout)
 
   try {
-    const response = await fetch(resource, {
+    const response = await fetch(normalizedResource, {
       ...options,
       signal: controller.signal
     })

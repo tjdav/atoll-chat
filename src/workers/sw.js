@@ -39,6 +39,7 @@ const ASSETS_TO_CACHE = [
 importScripts('/assets/metadata.js')
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
+importScripts('/assets/url.js')
 
 const metadata = swSelf.metadata
 const sodium = swSelf.sodium
@@ -211,7 +212,7 @@ const onPush = (event) => {
 
       if (pushData && pushData.message_id) {
         try {
-          const response = await fetch(`${pbUrl}/api/collections/messages/records/${pushData.message_id}`, {
+          const response = await fetch(swSelf.normalizeUrl(`${pbUrl}/api/collections/messages/records/${pushData.message_id}`), {
             headers: { Authorization: pbToken }
           })
           if (response.ok) {
@@ -226,7 +227,7 @@ const onPush = (event) => {
 
       if (!record) {
         // Fallback to fetching latest message
-        const response = await fetch(`${pbUrl}/api/collections/messages/records?sort=-created&limit=1`, {
+        const response = await fetch(swSelf.normalizeUrl(`${pbUrl}/api/collections/messages/records?sort=-created&limit=1`), {
           headers: { Authorization: pbToken }
         })
 

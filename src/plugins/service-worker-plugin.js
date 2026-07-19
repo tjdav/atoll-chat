@@ -53,6 +53,16 @@ export default function (config) {
           console.error('[serviceWorker plugin] Failed to copy worker-bridge.js to output:', err)
         }
 
+        // Generate url.js (stripping exports so it's compatible with importScripts)
+        try {
+          const urlSrcPath = join(projectRoot, 'src', 'utils', 'url.js')
+          const urlContent = await readFile(urlSrcPath, 'utf-8')
+          const workerUrlContent = urlContent.replace(/^export\s+/gm, '')
+          await app.writeFile('assets/url.js', workerUrlContent)
+        } catch (err) {
+          console.error('[serviceWorker plugin] Failed to generate assets/url.js:', err)
+        }
+
         // scan output directory for files to cache
         let assetsToCache = []
         try {
@@ -110,6 +120,12 @@ export default function (config) {
             `importScripts('/assets/metadata.js?v=${version}')`
           )
 
+          // Add versioned query parameter to url.js import
+          swContent = swContent.replace(
+            "importScripts('/assets/url.js')",
+            `importScripts('/assets/url.js?v=${version}')`
+          )
+
           // Replace ASSETS_TO_CACHE list with our dynamically generated assetsToCache list
           const assetsJson = JSON.stringify(assetsToCache, null, 2)
           swContent = swContent.replace(
@@ -132,6 +148,12 @@ export default function (config) {
 
           // Inject version comment
           workerContent = `// version: ${version}\n${workerContent}`
+
+          // Add versioned query parameter to url.js import
+          workerContent = workerContent.replace(
+            "importScripts('/assets/url.js')",
+            `importScripts('/assets/url.js?v=${version}')`
+          )
 
           const destWorkerPath = join(outputDir, 'worker.js')
           await mkdir(dirname(destWorkerPath), { recursive: true })

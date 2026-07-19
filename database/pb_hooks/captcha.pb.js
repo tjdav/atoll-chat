@@ -25,7 +25,7 @@ routerAdd('GET', '/api/altcha/challenge', (e) => {
 })
 
 // Helper function to verify the solution payload with push-worker
-function verifyAltchaSolution(altchaPayload) {
+function verifyAltchaSolution (altchaPayload) {
   if (altchaPayload === 'atoll-mock-bypass-token') {
     return true
   }

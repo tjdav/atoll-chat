@@ -63,8 +63,9 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, config, bootstrap, cryptoWorker, eventBus }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, config, bootstrap, cryptoWorker, eventBus, utils }) => {
       const { pb } = pocketbase
+      const { $url } = utils
       const { $storage } = storage
       const { $state } = globalStore
       const { $config } = config
@@ -320,7 +321,7 @@
             email
           })
   
-          const availabilityRes = await fetch(`${pb.baseUrl}/api/check-availability?${params}`).then(r => r.json())
+          const availabilityRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/check-availability?${params}`)).then(r => r.json())
 
           if (availabilityRes.usernameExists) {
             updateStatus('Error: Username is already taken')

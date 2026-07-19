@@ -8,7 +8,9 @@ import { definePlugin } from 'coralite'
 export default definePlugin({
   name: 'utils',
   client: {
-    context: () => {
+    context: async () => {
+      const { normalizeUrl } = await import('../utils/url.js')
+
       /**
        * Namespace: $time
        */
@@ -284,13 +286,25 @@ export default definePlugin({
         }
       }
 
+      /**
+       * Namespace: $url
+       */
+      const url = {
+        /**
+         * Normalizes a base URL and/or path into a valid, safe URL.
+         * Prevents protocol-relative "//" URL traps when relative paths (like "/") are used.
+         */
+        normalizeUrl
+      }
+
       const baseNamespaces = {
         $time: time,
         $string: string,
         $list: list,
         $func: func,
         $crypto: crypto,
-        $device: device
+        $device: device,
+        $url: url
       }
 
 
