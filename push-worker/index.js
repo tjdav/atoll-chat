@@ -1,6 +1,7 @@
 import http from 'http'
 import webpush from 'web-push'
-import { createChallenge, deriveHmacKeySecret, randomInt, verifySolution } from 'altcha-lib'
+import { createChallenge, randomInt, verifySolution } from 'altcha-lib'
+import { deriveHmacKeySecret } from 'altcha-lib/frameworks/shared'
 import { deriveKey } from 'altcha-lib/algorithms/pbkdf2'
 
 const PORT = process.env.PORT || 3000
