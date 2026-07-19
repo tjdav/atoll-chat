@@ -7,6 +7,7 @@ let isTearingDown = false
 let appProcess = null
 let pbProcess = null
 let isDockerUsed = false
+let dockerComposeCmd = 'docker compose'
 
 // Helper to run commands silently without crashing
 function runCommandSilently (cmd, options = {}) {
@@ -110,9 +111,9 @@ const cleanupAndExit = async (code = 0) => {
   }
 
   if (isDockerUsed) {
-    console.log('Stopping PocketBase and Coturn containers via Docker Compose...')
+    console.log(`Stopping PocketBase and Coturn containers via ${dockerComposeCmd}...`)
     try {
-      execSync('docker compose -f docker-compose.dev.yml down', { stdio: 'inherit' })
+      execSync(`${dockerComposeCmd} -f docker-compose.dev.yml down`, { stdio: 'inherit' })
     } catch (err) {
       console.error('Failed to teardown Docker compose:', err.message)
     }
@@ -127,14 +128,61 @@ const cleanupAndExit = async (code = 0) => {
 const run = async () => {
   try {
     console.log('--- PocketBase & Coturn Dev Environment Setup ---')
+
+    // 1. Pre-create pb_data or verify permissions
+    if (fs.existsSync('./pb_data')) {
+      try {
+        fs.accessSync('./pb_data', fs.constants.W_OK)
+      } catch (err) {
+        console.error(`\n======================================================================`)
+        console.error(`Error: The directory 'pb_data' exists but is not writable by the current user.`)
+        console.error(`This typically happens if a previous Docker run created it as 'root'.`)
+        console.error(`To resolve this issue, please run the following command in your terminal:`)
+        console.error(`    sudo chown -R $USER pb_data`)
+        console.error(`Or, if you want to reset your local development database:`)
+        console.error(`    sudo rm -rf pb_data`)
+        console.error(`======================================================================\n`)
+        process.exit(1)
+      }
+    } else {
+      try {
+        console.log('Pre-creating `./pb_data` directory to ensure it is owned by the current host user...')
+        fs.mkdirSync('./pb_data', { recursive: true })
+      } catch (err) {
+        console.warn('Warning: Failed to pre-create pb_data directory:', err.message)
+      }
+    }
+
     let dockerStarted = false
 
     try {
       console.log('Attempting to spin up dev services via Docker Compose...')
-      execSync('docker compose -f docker-compose.dev.yml up -d --build', { stdio: 'inherit' })
-      isDockerUsed = true
-      dockerStarted = true
-      console.log('Dev services started successfully via Docker Compose.')
+      const env = {
+        ...process.env,
+        HOST_UID: process.getuid ? process.getuid() : 1000,
+        HOST_GID: process.getgid ? process.getgid() : 1000
+      }
+
+      // Try 'docker compose' first
+      try {
+        execSync('docker compose -f docker-compose.dev.yml up -d --build', { stdio: 'inherit', env })
+        dockerComposeCmd = 'docker compose'
+        isDockerUsed = true
+        dockerStarted = true
+      } catch (err1) {
+        console.warn('docker compose failed, trying fallback docker-compose...')
+        try {
+          execSync('docker-compose -f docker-compose.dev.yml up -d --build', { stdio: 'inherit', env })
+          dockerComposeCmd = 'docker-compose'
+          isDockerUsed = true
+          dockerStarted = true
+        } catch (err2) {
+          throw new Error(`Both docker compose and docker-compose failed.\n` +
+            `docker compose error: ${err1.message}\n` +
+            `docker-compose error: ${err2.message}`)
+        }
+      }
+      console.log(`Dev services started successfully via Docker Compose using: ${dockerComposeCmd}`)
     } catch (error) {
       console.warn('Docker compose failed/unavailable. Falling back to local PocketBase binary...', error.message)
       isDockerUsed = false

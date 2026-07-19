@@ -4,6 +4,7 @@ services:
       context: .
       dockerfile: Dockerfile.dev
     container_name: atoll-pocketbase-dev
+    user: "${HOST_UID:-1000}:${HOST_GID:-1000}"
     ports:
       - "8090:8090"
     volumes:
