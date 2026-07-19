@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1
 # Stage 1: Build Coralite Frontend
 FROM node:24-alpine AS builder
 
@@ -45,11 +46,15 @@ FROM alpine:latest
 # Set PocketBase version
 ARG PB_VERSION=0.39.7
 
-# Combine apk add and wget/unzip into a single RUN to reduce image layers
-RUN apk add --no-cache ca-certificates unzip wget libc6-compat \
-    && wget https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip \
-    && unzip pocketbase_${PB_VERSION}_linux_amd64.zip -d /usr/local/bin/ \
-    && rm pocketbase_${PB_VERSION}_linux_amd64.zip \
+# Install dependencies
+RUN apk add --no-cache ca-certificates unzip wget libc6-compat
+
+# Download and extract PocketBase using BuildKit cache mount
+RUN --mount=type=cache,target=/var/cache/pocketbase \
+    if [ ! -f /var/cache/pocketbase/pocketbase_${PB_VERSION}_linux_amd64.zip ]; then \
+        wget -q https://github.com/pocketbase/pocketbase/releases/download/v${PB_VERSION}/pocketbase_${PB_VERSION}_linux_amd64.zip -O /var/cache/pocketbase/pocketbase_${PB_VERSION}_linux_amd64.zip; \
+    fi \
+    && unzip -o /var/cache/pocketbase/pocketbase_${PB_VERSION}_linux_amd64.zip -d /usr/local/bin/ \
     && chmod +x /usr/local/bin/pocketbase
 
 # Expose run-time environment variables for deployment
