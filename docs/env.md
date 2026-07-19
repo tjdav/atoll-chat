@@ -56,10 +56,14 @@ ATOLL_S3_FORCE_PATH_STYLE=false
 ATOLL_ALTCHA_SECRET=your_32_byte_hex_string_here
 
 # PocketBase SMTP Config (Optional)
+ATOLL_SMTP_ENABLED=false
 ATOLL_SMTP_HOST=
 ATOLL_SMTP_PORT=587
 ATOLL_SMTP_USERNAME=
 ATOLL_SMTP_PASSWORD=
+ATOLL_SMTP_TLS=false
+ATOLL_SMTP_AUTH_METHOD=PLAIN
+ATOLL_SMTP_LOCAL_NAME=
 ATOLL_SMTP_SENDER_NAME="Atoll Chat"
 ATOLL_SMTP_SENDER_ADDRESS="noreply@atoll.chat"
 
@@ -119,6 +123,23 @@ If the following variables are present, they automatically enable and configure 
 | `ATOLL_S3_SECRET_KEY` | None | S3 API Secret Access Key. | [s3_config.pb.js](/database/pb_hooks/s3_config.pb.js) |
 | `ATOLL_S3_REGION` | `'us-east-1'` | S3 region location. | [s3_config.pb.js](/database/pb_hooks/s3_config.pb.js) |
 | `ATOLL_S3_FORCE_PATH_STYLE` | `false` | Enable or disable path-style addressing (`http://s3.endpoint/bucket`) instead of virtual-host addressing (`http://bucket.s3.endpoint`). Set to `'true'` to enable. | [s3_config.pb.js](/database/pb_hooks/s3_config.pb.js) |
+
+#### SMTP Mail Server Hook Variables
+If any of the following variables are present, they configure and override SMTP mail server settings in PocketBase:
+
+| Variable Name | Default Value | Description | Used In / By |
+|---------------|---------------|-------------|--------------|
+| `ATOLL_SMTP_ENABLED` | None | Explicitly enable or disable the SMTP mail server. If not specified but `ATOLL_SMTP_HOST` is provided, SMTP defaults to enabled. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_HOST` | None | Mail server host address. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_PORT` | `587` | Mail server port. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_USERNAME` | None | Username for mail server authentication. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_PASSWORD` | None | Password for mail server authentication. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_TLS` | `false` | Whether to enforce TLS connection encryption. Set to `'true'` to enable. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_AUTH_METHOD` | `'PLAIN'` | The SMTP AUTH method to use (`PLAIN` or `LOGIN`). | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_LOCAL_NAME` | None | Optional domain name or IP address to use for the initial HELO/EHLO exchange. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_SENDER_NAME` | `'Atoll Chat'` | The display name for transactional emails. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+| `ATOLL_SMTP_SENDER_ADDRESS` | `'noreply@atoll.chat'` | The sender email address for transactional emails. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
+
 
 ---
 

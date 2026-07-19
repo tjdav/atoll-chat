@@ -21,30 +21,96 @@ onBootstrap((e) => {
     return undefined
   }
 
-  // Check if the SMTP Host variable exists before attempting to apply
+  /**
+   * Parses a string representation of a boolean.
+   *
+   * @param {string|undefined} value - The string value.
+   * @param {boolean} defaultValue - The default value to return if undefined.
+   * @returns {boolean} The parsed boolean.
+   */
+  function parseBool (value, defaultValue = false) {
+    if (value === undefined || value === '') {
+      return defaultValue
+    }
+    return value === 'true' || value === '1'
+  }
+
+  const enabledEnv = getEnv('ATOLL_SMTP_ENABLED')
   const host = getEnv('ATOLL_SMTP_HOST')
-  if (!host) {
+  const portEnv = getEnv('ATOLL_SMTP_PORT')
+  const username = getEnv('ATOLL_SMTP_USERNAME')
+  const password = getEnv('ATOLL_SMTP_PASSWORD')
+  const tlsEnv = getEnv('ATOLL_SMTP_TLS')
+  const authMethod = getEnv('ATOLL_SMTP_AUTH_METHOD')
+  const localName = getEnv('ATOLL_SMTP_LOCAL_NAME')
+  const senderName = getEnv('ATOLL_SMTP_SENDER_NAME')
+  const senderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS')
+
+  const hasSmtpConfig = enabledEnv !== undefined ||
+                        host !== undefined ||
+                        portEnv !== undefined ||
+                        username !== undefined ||
+                        password !== undefined ||
+                        tlsEnv !== undefined ||
+                        authMethod !== undefined ||
+                        localName !== undefined ||
+                        senderName !== undefined ||
+                        senderAddress !== undefined
+
+  if (!hasSmtpConfig) {
     return
   }
 
   // Fetch the current application settings
   const settings = e.app.settings()
 
-  // Apply the EU-strict routing and credentials
+  // Configure SMTP settings
   const smtp = settings.smtp
   if (smtp) {
-    smtp.enabled = true
-    smtp.host = host
-    smtp.port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
-    smtp.username = getEnv('ATOLL_SMTP_USERNAME') || ''
-    smtp.password = getEnv('ATOLL_SMTP_PASSWORD') || ''
+    if (enabledEnv !== undefined) {
+      smtp.enabled = parseBool(enabledEnv)
+    } else if (host) {
+      // Default to enabled if host is provided but enabled is not explicitly set
+      smtp.enabled = true
+    }
+
+    if (host !== undefined) {
+      smtp.host = host
+    }
+    if (portEnv !== undefined) {
+      smtp.port = parseInt(portEnv, 10) || 587
+    }
+    if (username !== undefined) {
+      smtp.username = username
+    }
+    if (password !== undefined) {
+      smtp.password = password
+    }
+    if (tlsEnv !== undefined) {
+      smtp.tls = parseBool(tlsEnv)
+    }
+    if (authMethod !== undefined) {
+      smtp.authMethod = authMethod
+    }
+    if (localName !== undefined) {
+      smtp.localName = localName
+    }
   }
 
-  // Configure the sender profile
+  // Configure the sender profile in metadata
   const meta = settings.meta
   if (meta) {
-    meta.senderName = getEnv('ATOLL_SMTP_SENDER_NAME') || 'Atoll Chat'
-    meta.senderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS') || 'noreply@atoll.chat'
+    if (senderName !== undefined) {
+      meta.senderName = senderName
+    } else if (!meta.senderName) {
+      meta.senderName = 'Atoll Chat'
+    }
+
+    if (senderAddress !== undefined) {
+      meta.senderAddress = senderAddress
+    } else if (!meta.senderAddress) {
+      meta.senderAddress = 'noreply@atoll.chat'
+    }
   }
 
   // Commit the changes safely to the database

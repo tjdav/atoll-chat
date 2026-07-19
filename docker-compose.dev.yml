@@ -17,10 +17,14 @@ services:
     environment:
       - ATOLL_PUSH_WORKER_URL=${ATOLL_PUSH_WORKER_URL:-http://host.docker.internal:3001}
       - ATOLL_PUSH_WORKER_SECRET=${ATOLL_PUSH_WORKER_SECRET:-test_secret_123}
+      - ATOLL_SMTP_ENABLED
       - ATOLL_SMTP_HOST
       - ATOLL_SMTP_PORT
       - ATOLL_SMTP_USERNAME
       - ATOLL_SMTP_PASSWORD
+      - ATOLL_SMTP_TLS
+      - ATOLL_SMTP_AUTH_METHOD
+      - ATOLL_SMTP_LOCAL_NAME
       - ATOLL_SMTP_SENDER_NAME
       - ATOLL_SMTP_SENDER_ADDRESS
     extra_hosts:
