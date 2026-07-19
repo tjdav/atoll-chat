@@ -105,16 +105,21 @@
       if (altchaContainer) {
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
         altchaWidget = document.createElement('altcha-widget')
-        altchaWidget.setAttribute('floating', '')
+        altchaWidget.setAttribute('display', 'floating')
+        altchaWidget.setAttribute('floating', 'bottom')
         altchaWidget.style.width = '100%'
         altchaWidget.style.maxWidth = '100%'
   
+        const configObj = {}
         if (isTesting) {
           altchaWidget.setAttribute('test', 'true')
+          configObj.test = true
         } else {
-          altchaWidget.setAttribute('challengeurl', pb.buildURL('/api/altcha/challenge'))
+          altchaWidget.setAttribute('challenge', pb.buildURL('/api/altcha/challenge'))
+          configObj.challenge = pb.buildURL('/api/altcha/challenge')
         }
-  
+        altchaWidget.setAttribute('configuration', JSON.stringify(configObj))
+
         altchaContainer.appendChild(altchaWidget)
       }
 
