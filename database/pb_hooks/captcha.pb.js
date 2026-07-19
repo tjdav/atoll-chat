@@ -2,7 +2,7 @@
 
 // Proxy route to retrieve a new challenge from the internal push-worker
 routerAdd('GET', '/api/altcha/challenge', (e) => {
-  const pushWorkerUrl = $os.getenv('ATOLL_PUSH_WORKER_URL') || 'http://push-worker:3000'
+  const pushWorkerUrl = $os.getenv('ATOLL_PUSH_WORKER_URL') || 'http://localhost:3001'
 
   try {
     const res = $http.send({
@@ -30,7 +30,7 @@ function verifyAltchaSolution (altchaPayload) {
     return true
   }
 
-  const pushWorkerUrl = $os.getenv('ATOLL_PUSH_WORKER_URL') || 'http://push-worker:3000'
+  const pushWorkerUrl = $os.getenv('ATOLL_PUSH_WORKER_URL') || 'http://localhost:3001'
 
   try {
     const res = $http.send({

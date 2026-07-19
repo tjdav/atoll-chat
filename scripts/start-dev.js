@@ -6,6 +6,7 @@ import path from 'path'
 let isTearingDown = false
 let appProcess = null
 let pbProcess = null
+let pushWorkerProcess = null
 let isDockerUsed = false
 let dockerComposeCmd = 'docker compose'
 
@@ -103,11 +104,21 @@ const cleanupAndExit = async (code = 0) => {
   }
   isTearingDown = true
 
+  let exitCode = code
+  if (exitCode === null || exitCode === 130 || exitCode === 'SIGINT' || exitCode === 'SIGTERM') {
+    exitCode = 0
+  }
+
   console.log('\nInitiating teardown process...')
 
   if (appProcess && !appProcess.killed) {
     console.log('Stopping frontend app process...')
     appProcess.kill('SIGINT')
+  }
+
+  if (pushWorkerProcess && !pushWorkerProcess.killed) {
+    console.log('Stopping local push-worker process...')
+    pushWorkerProcess.kill('SIGINT')
   }
 
   if (isDockerUsed) {
@@ -122,7 +133,7 @@ const cleanupAndExit = async (code = 0) => {
     pbProcess.kill('SIGINT')
   }
 
-  process.exit(code)
+  process.exit(exitCode)
 }
 
 const run = async () => {
@@ -165,14 +176,20 @@ const run = async () => {
 
       // Try 'docker compose' first
       try {
-        execSync('docker compose -f docker-compose.dev.yml up -d --build', { stdio: 'inherit', env })
+        execSync('docker compose -f docker-compose.dev.yml up -d --build', {
+          stdio: 'inherit',
+          env
+        })
         dockerComposeCmd = 'docker compose'
         isDockerUsed = true
         dockerStarted = true
       } catch (err1) {
         console.warn('docker compose failed, trying fallback docker-compose...')
         try {
-          execSync('docker-compose -f docker-compose.dev.yml up -d --build', { stdio: 'inherit', env })
+          execSync('docker-compose -f docker-compose.dev.yml up -d --build', {
+            stdio: 'inherit',
+            env
+          })
           dockerComposeCmd = 'docker-compose'
           isDockerUsed = true
           dockerStarted = true
@@ -200,9 +217,36 @@ const run = async () => {
         '--hooksDir=database/pb_hooks',
         '--migrationsDir=database/pb_migrations'
       ], {
+        stdio: 'inherit',
+        env: {
+          ...process.env,
+          ATOLL_PUSH_WORKER_URL: 'http://localhost:3001',
+          ATOLL_PUSH_WORKER_SECRET: 'test_secret_123'
+        }
+      })
+    }
+
+    // Start local push-worker process
+    console.log('Starting local push-worker on port 3001...')
+    const pushWorkerDir = path.join(process.cwd(), 'push-worker')
+    if (!fs.existsSync(path.join(pushWorkerDir, 'node_modules'))) {
+      console.log('Installing dependencies for push-worker...')
+      execSync('pnpm install', {
+        cwd: pushWorkerDir,
         stdio: 'inherit'
       })
     }
+
+    pushWorkerProcess = spawn('node', ['index.js'], {
+      cwd: pushWorkerDir,
+      stdio: 'inherit',
+      env: {
+        ...process.env,
+        PORT: '3001',
+        ATOLL_PUSH_WORKER_SECRET: 'test_secret_123',
+        ATOLL_INTERNAL_POCKETBASE_URL: 'http://localhost:8090'
+      }
+    })
 
     // Wait for health check
     console.log('Waiting for PocketBase to be healthy on port 8090...')
@@ -235,7 +279,9 @@ const run = async () => {
       shell: true,
       env: {
         ...process.env,
-        LOCAL_ICE_SERVER: `turn:127.0.0.1:${process.env.TURN_PORT || 3478}`
+        LOCAL_ICE_SERVER: `turn:127.0.0.1:${process.env.TURN_PORT || 3478}`,
+        ATOLL_PUSH_WORKER_URL: 'http://localhost:3001',
+        ATOLL_PUSH_WORKER_SECRET: 'test_secret_123'
       }
     })
 
