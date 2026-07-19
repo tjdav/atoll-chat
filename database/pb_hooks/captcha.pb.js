@@ -52,8 +52,13 @@ function verifyAltchaSolution (altchaPayload) {
 
 // Hook to verify ALTCHA during registration (user record creation)
 onRecordCreateRequest((e) => {
+  if (e.hasSuperuserAuth()) {
+    e.next()
+    return
+  }
+
   const reqInfo = e.requestInfo()
-  const altchaPayload = reqInfo.body ? reqInfo.body.altcha : null
+  const altchaPayload = reqInfo && reqInfo.body ? reqInfo.body.altcha : null
 
   if (!altchaPayload) {
     throw new BadRequestError('Security challenge is required. Are you a bot?')
@@ -68,6 +73,11 @@ onRecordCreateRequest((e) => {
 
 // Hook to verify ALTCHA during login (OTP requests)
 onRecordRequestOTPRequest((e) => {
+  if (e.hasSuperuserAuth()) {
+    e.next()
+    return
+  }
+
   const record = e.record
   if (record) {
     const createdStr = record.get('created').string()
@@ -85,7 +95,7 @@ onRecordRequestOTPRequest((e) => {
   }
 
   const reqInfo = e.requestInfo()
-  const altchaPayload = reqInfo.body ? reqInfo.body.altcha : null
+  const altchaPayload = reqInfo && reqInfo.body ? reqInfo.body.altcha : null
 
   if (!altchaPayload) {
     throw new BadRequestError('Security challenge is required. Are you a bot?')
