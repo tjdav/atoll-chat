@@ -317,41 +317,20 @@ export const test = base.extend({
   },
 
   loginApp: async ({ page }, use, testInfo) => {
-    const testId = testInfo.testId
     const doLogin = async (username, appPassword, vaultPassword) => {
       await page.goto('/')
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
       const emailOrUsername = username.includes('@') ? username : `${username}@example.com`
-      await page.locator('[data-testid$="username"]').fill(emailOrUsername)
-      await page.evaluate(() => {
-        const form = document.querySelector('form:not([data-code-challenge-form])') || document.querySelector('form')
-        if (form) {
-          form.requestSubmit()
-        }
-      })
-
-      /* Wait for the OTP input to become visible, ensuring the network request completes */
-      await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-
-      /* Retrieve the generated OTP code from the mock PB server */
-      const otpRes = await page.evaluate(async (tId) => {
-        const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-          headers: {
-            'x-test-id': tId
-          }
-        })
-        return response.json()
-      }, testId)
-
-      await page.locator('input[name="otpCode"]').fill(otpRes.code)
-      await page.locator('button:has-text("Verify")').click()
+      await page.locator('auth-login [data-testid$="username"]').fill(emailOrUsername)
+      await page.locator('auth-login [data-testid$="password"]').fill(appPassword)
+      await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
       await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
-      await page.locator('[data-testid$="password"]').fill(vaultPassword)
-      await page.locator('[data-testid$="unlockSubmit"]').click()
+      await page.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword)
+      await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
 
       await expect(page.locator('app-layout')).toBeVisible({ timeout: 10000 })
     }
@@ -417,34 +396,14 @@ export const test = base.extend({
 
       /* Login Flow */
       const emailOrUsername = username.includes('@') ? username : `${username}@example.com`
-      await targetPage.locator('[data-testid$="username"]').fill(emailOrUsername)
-      await targetPage.evaluate(() => {
-        const form = document.querySelector('form:not([data-code-challenge-form])') || document.querySelector('form')
-        if (form) {
-          form.requestSubmit()
-        }
-      })
-
-      /* Wait for the OTP input to become visible, ensuring the network request completes */
-      await targetPage.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-
-      /* Retrieve the generated OTP code from the mock PB server */
-      const otpRes = await targetPage.evaluate(async (tId) => {
-        const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-          headers: {
-            'x-test-id': tId
-          }
-        })
-        return response.json()
-      }, testId)
-
-      await targetPage.locator('input[name="otpCode"]').fill(otpRes.code)
-      await targetPage.locator('button:has-text("Verify")').click()
+      await targetPage.locator('auth-login [data-testid$="username"]').fill(emailOrUsername)
+      await targetPage.locator('auth-login [data-testid$="password"]').fill(appPassword)
+      await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
 
       await expect(targetPage.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
-      await targetPage.locator('[data-testid$="password"]').fill(vaultPassword)
-      await targetPage.locator('[data-testid$="unlockSubmit"]').click()
+      await targetPage.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword)
+      await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
 
       await expect(targetPage.locator('app-layout')).toBeVisible({ timeout: 15000 })
     }

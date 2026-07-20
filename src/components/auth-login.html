@@ -1,32 +1,49 @@
 <template id="auth-login">
   <div class="card shadow">
     <div class="card-body p-4">
-      <h3 class="card-title mb-4 text-center">Login</h3>
-      
       <!-- Centralized Error Alert Box for system errors -->
       <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
 
+      <!-- Login Form -->
       <form ref="loginForm" class="needs-validation" novalidate>
-        <div ref="emailSection">
+        <div ref="loginSection">
+          <h3 class="card-title mb-4 text-center">Login</h3>
           <div class="mb-3">
-            <label for="{{ ref_email }}" class="form-label">Email Address</label>
-            <input ref="email" name="email" id="{{ ref_email }}" type="email" class="form-control" placeholder="Enter email" required autocomplete="email" data-testid="username">
-            <div class="invalid-feedback" data-testid="email-feedback"></div>
+            <label for="{{ ref_identity }}" class="form-label">Username or Email</label>
+            <input ref="identity" name="identity" id="{{ ref_identity }}" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username" data-testid="username">
+            <div class="invalid-feedback" data-testid="identity-feedback"></div>
+          </div>
+          <div class="mb-3">
+            <label for="{{ ref_password }}" class="form-label">Password</label>
+            <div class="password-field-container">
+              <input ref="password" name="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter password" required autocomplete="current-password" data-testid="password">
+              <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div class="invalid-feedback" data-testid="password-feedback"></div>
           </div>
           <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
-          <button type="submit" class="btn btn-primary w-100" ref="loginSubmit" data-testid="loginSubmit">Send Magic Link</button>
+          <button type="submit" class="btn btn-primary w-100 mb-2" ref="loginSubmit" data-testid="loginSubmit">Log In</button>
+          
+          <div class="text-end">
+            <a href="#" ref="linkForgotPassword" class="text-decoration-none small">Forgot Password?</a>
+          </div>
         </div>
       </form>
 
-      <form ref="otpForm" class="d-none mt-3 needs-validation" novalidate>
-        <p class="text-muted small text-center mb-3">We sent a Magic Link to your email. Click it to log in, or enter the 8-digit code manually below:</p>
+      <!-- Forgot Password Form -->
+      <form ref="forgotPasswordForm" class="d-none needs-validation" novalidate>
+        <h3 class="card-title mb-3 text-center">Reset Password</h3>
+        <p class="text-muted small text-center mb-4">Enter your email address and solve the security challenge to request a password reset link.</p>
         <div class="mb-3">
-          <label for="{{ ref_otpCode }}" class="form-label">8-digit Verification Code</label>
-          <input ref="otpCode" name="otpCode" type="text" class="form-control text-center fs-4" placeholder="00000000" maxlength="8" pattern="\d{8}" required>
-          <div class="invalid-feedback" data-testid="otp-feedback"></div>
+          <label for="{{ ref_forgotEmail }}" class="form-label">Email Address</label>
+          <input ref="forgotEmail" name="forgotEmail" id="{{ ref_forgotEmail }}" type="email" class="form-control" placeholder="Enter email" required autocomplete="email">
+          <div class="invalid-feedback" data-testid="forgot-email-feedback"></div>
         </div>
-        <button type="submit" class="btn btn-success w-100 mb-2" ref="btnSubmitOtp">Verify & Log In</button>
-        <button type="button" class="btn btn-link btn-sm w-100 text-decoration-none" ref="btnBackToEmail">Change Email</button>
+        <div class="mb-3 d-flex justify-content-center" ref="forgotAltchaContainer"></div>
+        <button type="submit" class="btn btn-primary w-100 mb-2" ref="forgotSubmit">Send Reset Link</button>
+        <button type="button" class="btn btn-link btn-sm w-100 text-decoration-none" ref="btnBackToLogin">Back to Login</button>
       </form>
 
       <div class="mt-3 text-center" ref="registerLinkContainer">
@@ -66,7 +83,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, config, bootstrap, cryptoWorker, eventBus }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, config, bootstrap, cryptoWorker, eventBus, utils }) => {
       const { pb } = pocketbase
       const { $storage } = storage
       const { $state } = globalStore
@@ -74,20 +91,26 @@
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { Dropdown } = await bootstrap
+      const { $url } = utils
 
       const loginForm = refs('loginForm')
-      const btnSubmitOtp = refs('btnSubmitOtp')
-      const otpForm = refs('otpForm')
+      const loginSubmit = refs('loginSubmit')
       const altchaContainer = refs('altchaContainer')
+      const identityInput = refs('identity')
+      const passwordInput = refs('password')
+      const passwordToggle = refs('passwordToggle')
+      const linkForgotPassword = refs('linkForgotPassword')
+
+      const forgotPasswordForm = refs('forgotPasswordForm')
+      const forgotEmailInput = refs('forgotEmail')
+      const forgotAltchaContainer = refs('forgotAltchaContainer')
+      const forgotSubmit = refs('forgotSubmit')
+      const btnBackToLogin = refs('btnBackToLogin')
+
       const linkRegister = refs('linkRegister')
-      const emailInput = refs('email')
-      const otpCodeInput = refs('otpCode')
-      const btnBackToEmail = refs('btnBackToEmail')
+      const registerLinkContainer = refs('registerLinkContainer')
       const statusMsg = refs('statusMsg')
       const globalAlert = refs('globalAlert')
-
-      const emailSection = refs('emailSection')
-      const registerLinkContainer = refs('registerLinkContainer')
 
       const islandSwitcherContainer = refs('islandSwitcherContainer')
       const islandSelectBtn = refs('islandSelectBtn')
@@ -95,8 +118,8 @@
       const islandsListContainer = refs('islandsList')
       const btnChartNewIsland = refs('btnChartNewIsland')
 
-      let currentOtpId = null
       let dropdownInstance = null
+      let activeAltchaWidget = null
 
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message
@@ -106,14 +129,6 @@
         } else {
           statusMsg.classList.remove('text-danger')
           statusMsg.classList.add('text-muted')
-        }
-
-        if (altchaContainer) {
-          if (message) {
-            altchaContainer.classList.add('d-none')
-          } else {
-            altchaContainer.classList.remove('d-none')
-          }
         }
       }
 
@@ -168,34 +183,94 @@
       }
 
       registerInputReset(loginForm)
-      registerInputReset(otpForm)
+      registerInputReset(forgotPasswordForm)
+
+      const setupToggle = (input, toggle) => {
+        toggle.addEventListener('click', () => {
+          const type = input.getAttribute('type') === 'password' ? 'text' : 'password'
+          input.setAttribute('type', type)
+          const icon = toggle.querySelector('i')
+          icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
+        })
+      }
+      setupToggle(passwordInput, passwordToggle)
 
       linkRegister.addEventListener('click', (e) => {
         e.preventDefault()
         $state.authView = 'register'
       })
 
-      let altchaWidget = null
-      if (altchaContainer) {
+      const renderAltcha = (container, submitBtn) => {
+        container.innerHTML = ''
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
-        altchaWidget = document.createElement('altcha-widget')
-        altchaWidget.setAttribute('display', 'floating')
-        altchaWidget.setAttribute('floating', 'bottom')
-        altchaWidget.style.width = '100%'
-        altchaWidget.style.maxWidth = '100%'
+        
+        if (!isTesting) {
+          submitBtn.disabled = true
+        }
+
+        const widget = document.createElement('altcha-widget')
+        widget.setAttribute('display', 'floating')
+        widget.setAttribute('floating', 'bottom')
+        widget.style.width = '100%'
+        widget.style.maxWidth = '100%'
   
         const configObj = {}
         if (isTesting) {
-          altchaWidget.setAttribute('test', 'true')
+          widget.setAttribute('test', 'true')
           configObj.test = true
         } else {
-          altchaWidget.setAttribute('challenge', pb.buildURL('/api/altcha/challenge'))
+          widget.setAttribute('challenge', pb.buildURL('/api/altcha/challenge'))
           configObj.challenge = pb.buildURL('/api/altcha/challenge')
         }
-        altchaWidget.setAttribute('configuration', JSON.stringify(configObj))
+        widget.setAttribute('configuration', JSON.stringify(configObj))
 
-        altchaContainer.appendChild(altchaWidget)
+        widget.addEventListener('statechange', (ev) => {
+          const state = ev.detail?.state
+          if (state === 'verifying') {
+            container.classList.add('d-none')
+            submitBtn.disabled = true
+            updateStatus('Verifying security challenge...')
+          } else if (state === 'verified') {
+            container.classList.add('d-none')
+            submitBtn.disabled = false
+            updateStatus('')
+          } else if (state === 'unverified') {
+            container.classList.remove('d-none')
+            submitBtn.disabled = true
+            updateStatus('')
+          } else if (state === 'error') {
+            container.classList.remove('d-none')
+            submitBtn.disabled = true
+            updateStatus('Security challenge failed. Please try again.', true)
+          }
+        })
+
+        container.appendChild(widget)
+        return widget
       }
+
+      // Initialize Altcha on Login Form
+      activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
+
+      linkForgotPassword.addEventListener('click', (e) => {
+        e.preventDefault()
+        loginForm.classList.add('d-none')
+        forgotPasswordForm.classList.remove('d-none')
+        registerLinkContainer.classList.add('d-none')
+        showGlobalAlert('')
+        updateStatus('')
+        activeAltchaWidget = renderAltcha(forgotAltchaContainer, forgotSubmit)
+      })
+
+      btnBackToLogin.addEventListener('click', (e) => {
+        e.preventDefault()
+        forgotPasswordForm.classList.add('d-none')
+        loginForm.classList.remove('d-none')
+        registerLinkContainer.classList.remove('d-none')
+        showGlobalAlert('')
+        updateStatus('')
+        activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
+      })
 
       const isIslandsEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
   
@@ -337,18 +412,6 @@
         })
       }
 
-      btnBackToEmail.addEventListener('click', () => {
-        emailSection.classList.remove('d-none')
-        otpForm.classList.add('d-none')
-        registerLinkContainer.classList.remove('d-none')
-        updateStatus('')
-        showGlobalAlert('')
-        loginForm.classList.remove('was-validated')
-        otpForm.classList.remove('was-validated')
-        emailInput.setCustomValidity('')
-        otpCodeInput.setCustomValidity('')
-      })
-
       const handleSuccessfulLogin = async () => {
         await $storage.saveConfigs([
           {
@@ -362,13 +425,6 @@
         ])
 
         updateStatus('Login successful! Checking vault...')
-
-        /*
-           We won't auto-unlock because we use the new double-wrapped vault flow.
-           Instead, we set isAuthenticated = true.
-           app-root.html will check if user.public_box_key exists.
-           If yes, it mounts vault-unlock. If not, it mounts vault-setup.
-        */
         $state.isAuthenticated = true
       }
 
@@ -376,22 +432,23 @@
         event.preventDefault()
         showGlobalAlert('')
 
-        // Clear all custom validities first
-        emailInput.setCustomValidity('')
-        otpCodeInput.setCustomValidity('')
+        identityInput.setCustomValidity('')
+        passwordInput.setCustomValidity('')
         updateStatus('')
 
         updateValidationFeedback(loginForm)
 
-        if (!emailInput.checkValidity()) {
+        if (!identityInput.checkValidity() || !passwordInput.checkValidity()) {
           event.stopPropagation()
           loginForm.classList.add('was-validated')
           return
         }
 
-        const email = emailInput.value
+        const identity = identityInput.value
+        const password = passwordInput.value
+
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
-        let altchaPayload = altchaWidget ? altchaWidget.value : null
+        let altchaPayload = activeAltchaWidget ? activeAltchaWidget.value : null
         if (isTesting) {
           altchaPayload = 'atoll-mock-bypass-token'
         }
@@ -402,64 +459,97 @@
 
         try {
           loginForm.classList.remove('was-validated')
-          updateStatus('Sending Magic Link...')
-          const result = await pb.collection('users').requestOTP(email, {
-            body: {
-              email,
-              altcha: altchaPayload
-            }
-          })
-          currentOtpId = result.otpId
+          updateStatus('Logging in...')
 
-          emailSection.classList.add('d-none')
-          otpForm.classList.remove('d-none')
-          registerLinkContainer.classList.add('d-none')
-  
-          updateStatus('Magic Link sent!')
-        } catch (error) {
-          console.error('Request OTP error:', error)
-          if (error.status && error.status >= 500) {
-            showGlobalAlert(error.message || 'Server error. Please try again.')
-          } else {
-            updateStatus(error.message || 'Failed to send Magic Link', true)
+          const loginRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/login`), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              identity,
+              password,
+              altcha: altchaPayload
+            })
+          })
+
+          if (!loginRes.ok) {
+            const errData = await loginRes.json()
+            throw new Error(errData.error || 'Login failed')
           }
-          if (altchaWidget && typeof altchaWidget.reset === 'function') {
-            altchaWidget.reset()
+
+          const authData = await loginRes.json()
+          
+          // Authenticate SDK instance
+          pb.authStore.save(authData.token, authData.record)
+
+          await handleSuccessfulLogin()
+        } catch (error) {
+          console.error('Login error:', error)
+          updateStatus(error.message || 'Failed to log in', true)
+          if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
+            activeAltchaWidget.reset()
           }
         }
       })
 
-      otpForm.addEventListener('submit', async (event) => {
+      forgotPasswordForm.addEventListener('submit', async (event) => {
         event.preventDefault()
         showGlobalAlert('')
 
-        // Clear all custom validities first
-        emailInput.setCustomValidity('')
-        otpCodeInput.setCustomValidity('')
+        forgotEmailInput.setCustomValidity('')
         updateStatus('')
 
-        updateValidationFeedback(otpForm)
+        updateValidationFeedback(forgotPasswordForm)
 
-        if (!otpCodeInput.checkValidity()) {
+        if (!forgotEmailInput.checkValidity()) {
           event.stopPropagation()
-          otpForm.classList.add('was-validated')
+          forgotPasswordForm.classList.add('was-validated')
           return
         }
 
-        const code = otpCodeInput.value
+        const email = forgotEmailInput.value
+
+        const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
+        let altchaPayload = activeAltchaWidget ? activeAltchaWidget.value : null
+        if (isTesting) {
+          altchaPayload = 'atoll-mock-bypass-token'
+        }
+
+        if (!altchaPayload) {
+          return
+        }
+
         try {
-          otpForm.classList.remove('was-validated')
-          updateStatus('Verifying code...')
-          const authData = await pb.collection('users').authWithOTP(currentOtpId, code)
-          await handleSuccessfulLogin(authData)
+          forgotPasswordForm.classList.remove('was-validated')
+          updateStatus('Sending password reset request...')
+
+          const resetRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/password-reset`), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              email,
+              altcha: altchaPayload
+            })
+          })
+
+          if (!resetRes.ok) {
+            const errData = await resetRes.json()
+            throw new Error(errData.error || 'Failed to send reset link')
+          }
+
+          updateStatus('If an account exists, a password reset link has been sent!')
+          forgotEmailInput.value = ''
+          if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
+            activeAltchaWidget.reset()
+          }
         } catch (error) {
-          console.error('OTP login error:', error)
-          if (error.status && error.status >= 500) {
-            showGlobalAlert(error.message || 'Server error. Please try again.')
-          } else {
-            otpCodeInput.setCustomValidity(error.message || 'Verification failed')
-            updateValidationFeedback(otpForm)
-            otpForm.classList.add('was-validated')
+          console.error('Reset error:', error)
+          updateStatus(error.message || 'Failed to send reset link', true)
+          if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
+            activeAltchaWidget.reset()
           }
         }
       })

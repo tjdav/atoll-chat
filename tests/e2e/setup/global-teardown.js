@@ -1,9 +1,23 @@
 import { execSync } from 'child_process'
 
 /**
- * Attempt to stop coturn using different docker compose commands.
+ * Attempt to stop coturn using direct docker commands or docker compose commands.
  */
 function runDockerComposeStop () {
+  const stopCommands = [
+    'docker stop atoll-coturn',
+    'sudo docker stop atoll-coturn'
+  ]
+  for (const cmd of stopCommands) {
+    try {
+      execSync(cmd, { stdio: 'pipe' })
+      console.log(`Successfully stopped coturn container using: ${cmd}`)
+      return
+    } catch {
+      /* ignore and try next or compose */
+    }
+  }
+
   const commands = [
     'docker compose -f tests/e2e/setup/docker-compose.yml stop coturn',
     'docker-compose -f tests/e2e/setup/docker-compose.yml stop coturn',
@@ -13,7 +27,7 @@ function runDockerComposeStop () {
 
   for (const cmd of commands) {
     try {
-      execSync(cmd, { stdio: 'inherit' })
+      execSync(cmd, { stdio: 'pipe' })
       console.log(`Successfully stopped coturn service using: ${cmd}`)
       return
     } catch {
@@ -52,7 +66,7 @@ async function globalTeardown () {
   if (globalThis.__NATIVE_TURNSERVER_STARTED__) {
     try {
       console.log('Attempting to stop native turnserver daemon...')
-      execSync('sudo killall turnserver || true', { stdio: 'inherit' })
+      execSync('sudo killall turnserver || true', { stdio: 'pipe' })
     } catch (err) {
       console.error('Failed to kill native turnserver daemon:', err)
     }

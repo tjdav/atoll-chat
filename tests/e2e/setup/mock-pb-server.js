@@ -456,92 +456,115 @@ export function createServer () {
         }
       }
 
-      // Custom endpoint to get last OTP for E2E testing
-      if (pathname === '/api/last-otp') {
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify(db.lastOtp || {}))
-        return
-      }
-
-      // Request OTP
-      if (pathname === '/api/collections/users/request-otp') {
-        const { email, altcha } = body
-        // Find user record in simulated db
-        const user = db.users.find(u => u.email === email || u.username === email)
-        const isNewUser = user && (Date.now() - new Date(user.created).getTime() < 15000)
-
-        if (!isNewUser) {
-          if (!altcha) {
-            res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ message: 'Security challenge is required.' }))
-            return
-          }
-          if (altcha !== 'atoll-mock-bypass-token') {
-            res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ message: 'Invalid security challenge.' }))
-            return
-          }
-        }
-        const otpId = 'otp_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10)
-        /* Use a static code or randomized code for testing. */
-        const code = '12345678'
-
-        db.otps = db.otps || {}
-        db.otps[otpId] = {
-          email,
-          code,
-          expiresAt: Date.now() + (5 * 60 * 1000)
-        }
-
-        db.lastOtp = {
-          otpId,
-          code,
-          email
-        }
-
-        console.log(`[MOCK PB] [${testId}] Generated OTP for ${email}: ID=${otpId}, CODE=${code}`)
-
-        res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ otpId }))
-        return
-      }
-
-      // Auth with OTP
-      if (pathname === '/api/collections/users/auth-with-otp') {
-        const { otpId, password } = body
-        db.otps = db.otps || {}
-        const otp = db.otps[otpId]
-
-        if (!otp || otp.code !== password || otp.expiresAt < Date.now()) {
+      // Custom route for login
+      if (pathname === '/api/custom/login' && req.method === 'POST') {
+        const { identity, password, altcha } = body
+        if (!altcha) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ message: 'Invalid or expired OTP code.' }))
+          res.end(JSON.stringify({ error: 'Security challenge is required.' }))
           return
         }
-
-        let user = db.users.find(u => u.email === otp.email || u.username === otp.email)
-        if (!user) {
-          user = {
-            id: otp.email.split('@')[0],
-            username: otp.email.split('@')[0],
-            email: otp.email,
-            collectionId: 'users',
-            collectionName: 'users',
-            created: new Date().toISOString(),
-            updated: new Date().toISOString()
-          }
-          db.users.push(user)
+        if (altcha !== 'atoll-mock-bypass-token') {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid security challenge.' }))
+          return
         }
-
-        user.verified = true
-        delete db.otps[otpId]
-
-        console.log(`[MOCK PB] [${testId}] Successful OTP Auth for ${otp.email}`)
-
+        if (!identity || !password) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Missing identity or password.' }))
+          return
+        }
+        const user = db.users.find(u => u.username === identity || u.email === identity)
+        if (!user || (password !== 'Password123!' && password !== user.password)) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid login credentials.' }))
+          return
+        }
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({
           token: generateMockJWT(user.id),
           record: user
         }))
+        return
+      }
+
+      // Custom route for register
+      if (pathname === '/api/custom/register' && req.method === 'POST') {
+        const { username, email, password, passwordConfirm, altcha } = body
+        if (!altcha) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Security challenge is required.' }))
+          return
+        }
+        if (altcha !== 'atoll-mock-bypass-token') {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid security challenge.' }))
+          return
+        }
+        if (!username || !email || !password || !passwordConfirm) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Missing required registration fields.' }))
+          return
+        }
+        const usernameExists = db.users.some(u => u.username === username)
+        if (usernameExists) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Username is already taken' }))
+          return
+        }
+        const emailExists = db.users.some(u => u.email === email)
+        if (emailExists) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Email is already taken' }))
+          return
+        }
+
+        const newUser = {
+          id: username,
+          username,
+          name: username,
+          email,
+          collectionId: 'users',
+          collectionName: 'users',
+          created: new Date().toISOString(),
+          updated: new Date().toISOString(),
+          verified: true,
+          emailVisibility: true,
+          public_box_key: '',
+          public_sign_key: '',
+          encrypted_master_keys: '',
+          vault_salt: '',
+          password
+        }
+        db.users.push(newUser)
+
+        console.log(`[MOCK PB] [${testId}] Custom Registered user: ${username}`)
+        res.writeHead(201, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true, record: newUser }))
+        return
+      }
+
+      // Custom route for password reset
+      if (pathname === '/api/custom/password-reset' && req.method === 'POST') {
+        const { email, altcha } = body
+        if (!altcha) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Security challenge is required.' }))
+          return
+        }
+        if (altcha !== 'atoll-mock-bypass-token') {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid security challenge.' }))
+          return
+        }
+        if (!email) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Email is required.' }))
+          return
+        }
+        // No enumeration, return success regardless
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true, message: 'Password reset email sent if account exists.' }))
         return
       }
 

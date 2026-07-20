@@ -9,27 +9,36 @@
           <h3 class="card-title mb-4 text-center">Create Account</h3>
           <div class="mb-3">
             <label for="{{ ref_username }}" class="form-label">Username</label>
-            <input name="username" ref="username" type="text" class="form-control" placeholder="Choose a username" minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" required autocomplete="username">
+            <input name="username" ref="username" id="{{ ref_username }}" type="text" class="form-control" placeholder="Choose a username" minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" required autocomplete="username">
             <div class="invalid-feedback" data-testid="username-feedback"></div>
           </div>
           <div class="mb-3">
             <label for="{{ ref_email }}" class="form-label">Email</label>
-            <input name="email" ref="email" type="email" class="form-control" placeholder="Enter your email" required autocomplete="email">
+            <input name="email" ref="email" id="{{ ref_email }}" type="email" class="form-control" placeholder="Enter your email" required autocomplete="email">
             <div class="invalid-feedback" data-testid="email-feedback"></div>
           </div>
-          <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
-          <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" data-testid="registerSubmit">Register & Send Magic Link</button>
-        </div>
-
-        <div ref="step2" class="d-none">
-          <h3 class="card-title mb-3 text-center">Verify Account</h3>
-          <p class="text-muted small text-center mb-4">We sent a Magic Link to your email. Click it to log in and set up your secure vault, or enter the 8-digit code manually below:</p>
           <div class="mb-3">
-            <label for="{{ ref_otpCode }}" class="form-label">8-digit Verification Code</label>
-            <input ref="otpCode" name="otpCode" type="text" class="form-control text-center fs-4" placeholder="00000000" maxlength="8" pattern="\d{8}" required>
-            <div class="invalid-feedback" data-testid="otp-feedback"></div>
+            <label for="{{ ref_password }}" class="form-label">Password</label>
+            <div class="password-field-container">
+              <input name="password" ref="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter Password" minlength="8" required autocomplete="new-password" data-testid="password">
+              <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div class="invalid-feedback" data-testid="password-feedback"></div>
           </div>
-          <button type="button" class="btn btn-success w-100 mb-2" ref="btnSubmitOtp">Verify & Log In</button>
+          <div class="mb-3">
+            <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
+            <div class="password-field-container">
+              <input name="passwordConfirm" ref="passwordConfirm" id="{{ ref_passwordConfirm }}" type="password" class="form-control" placeholder="Confirm Password" minlength="8" required autocomplete="new-password">
+              <button type="button" class="password-toggle focus-ring" ref="passwordConfirmToggle" aria-label="Toggle password visibility">
+                <i class="bi bi-eye"></i>
+              </button>
+            </div>
+            <div class="invalid-feedback" data-testid="password-confirm-feedback"></div>
+          </div>
+          <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
+          <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" data-testid="registerSubmit">Register & Log In</button>
         </div>
       </form>
       <div class="mt-3 text-center" ref="loginLinkContainer">
@@ -80,15 +89,15 @@
       const { Dropdown } = await bootstrap
 
       const registerForm = refs('registerForm')
-      const step1 = refs('step1')
-      const step2 = refs('step2')
       const altchaContainer = refs('altchaContainer')
       const linkLogin = refs('linkLogin')
       const usernameInput = refs('username')
       const emailInput = refs('email')
-      const otpCodeInput = refs('otpCode')
-      const btnSubmitOtp = refs('btnSubmitOtp')
-      const loginLinkContainer = refs('loginLinkContainer')
+      const passwordInput = refs('password')
+      const passwordConfirmInput = refs('passwordConfirm')
+      const passwordToggle = refs('passwordToggle')
+      const passwordConfirmToggle = refs('passwordConfirmToggle')
+      const btnSubmit = refs('btnSubmit')
       const statusMsg = refs('statusMsg')
       const globalAlert = refs('globalAlert')
 
@@ -98,8 +107,8 @@
       const islandsListContainer = refs('islandsList')
       const btnChartNewIsland = refs('btnChartNewIsland')
 
-      let currentOtpId = null
       let dropdownInstance = null
+      let altchaWidget = null
 
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message
@@ -109,14 +118,6 @@
         } else {
           statusMsg.classList.remove('text-danger')
           statusMsg.classList.add('text-muted')
-        }
-
-        if (altchaContainer) {
-          if (message) {
-            altchaContainer.classList.add('d-none')
-          } else {
-            altchaContainer.classList.remove('d-none')
-          }
         }
       }
 
@@ -172,12 +173,22 @@
 
       registerInputReset(registerForm)
 
+      const setupToggle = (input, toggle) => {
+        toggle.addEventListener('click', () => {
+          const type = input.getAttribute('type') === 'password' ? 'text' : 'password'
+          input.setAttribute('type', type)
+          const icon = toggle.querySelector('i')
+          icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
+        })
+      }
+      setupToggle(passwordInput, passwordToggle)
+      setupToggle(passwordConfirmInput, passwordConfirmToggle)
+
       linkLogin.addEventListener('click', (e) => {
         e.preventDefault()
         $state.authView = 'login'
       })
 
-      let altchaWidget = null
       if (altchaContainer) {
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
         altchaWidget = document.createElement('altcha-widget')
@@ -195,6 +206,27 @@
           configObj.challenge = pb.buildURL('/api/altcha/challenge')
         }
         altchaWidget.setAttribute('configuration', JSON.stringify(configObj))
+
+        altchaWidget.addEventListener('statechange', (ev) => {
+          const state = ev.detail?.state
+          if (state === 'verifying') {
+            altchaContainer.classList.add('d-none')
+            btnSubmit.disabled = true
+            updateStatus('Verifying security challenge...')
+          } else if (state === 'verified') {
+            altchaContainer.classList.add('d-none')
+            btnSubmit.disabled = false
+            updateStatus('')
+          } else if (state === 'unverified') {
+            altchaContainer.classList.remove('d-none')
+            btnSubmit.disabled = true
+            updateStatus('')
+          } else if (state === 'error') {
+            altchaContainer.classList.remove('d-none')
+            btnSubmit.disabled = true
+            updateStatus('Security challenge failed. Please try again.', true)
+          }
+        })
 
         altchaContainer.appendChild(altchaWidget)
       }
@@ -362,21 +394,21 @@
         // Clear all custom validities first
         usernameInput.setCustomValidity('')
         emailInput.setCustomValidity('')
-        otpCodeInput.setCustomValidity('')
+        passwordInput.setCustomValidity('')
+        passwordConfirmInput.setCustomValidity('')
         updateStatus('')
 
-        // Validate step 1 fields only
-        const inputsStep1 = [usernameInput, emailInput]
-        let step1Valid = true
-        inputsStep1.forEach(input => {
+        const inputs = [usernameInput, emailInput, passwordInput, passwordConfirmInput]
+        let isValid = true
+        inputs.forEach(input => {
           if (!input.checkValidity()) {
-            step1Valid = false
+            isValid = false
           }
         })
 
         updateValidationFeedback(registerForm)
 
-        if (!step1Valid) {
+        if (!isValid) {
           event.stopPropagation()
           registerForm.classList.add('was-validated')
           return
@@ -384,6 +416,15 @@
 
         const username = usernameInput.value
         const email = emailInput.value
+        const password = passwordInput.value
+        const passwordConfirm = passwordConfirmInput.value
+
+        if (password !== passwordConfirm) {
+          passwordConfirmInput.setCustomValidity('Passwords do not match')
+          updateValidationFeedback(registerForm)
+          registerForm.classList.add('was-validated')
+          return
+        }
 
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
         let altchaPayload = altchaWidget ? altchaWidget.value : null
@@ -424,84 +465,54 @@
 
           updateStatus('Creating account...')
 
-          const payload = {
-            username,
-            name: username,
-            email,
-            password: 'Password123!',
-            passwordConfirm: 'Password123!',
-            public_box_key: '',
-            public_sign_key: '',
-            encrypted_master_keys: '',
-            vault_salt: '',
-            altcha: altchaPayload
+          const regRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/register`), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              username,
+              email,
+              password,
+              passwordConfirm,
+              altcha: altchaPayload
+            })
+          })
+
+          if (!regRes.ok) {
+            const errData = await regRes.json()
+            throw new Error(errData.error || 'Registration failed')
           }
 
-          await pb.collection('users').create(payload)
+          updateStatus('Logging you in...')
 
-          updateStatus('Account created! Sending Magic Link...')
+          const loginRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/login`), {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              identity: username,
+              password,
+              altcha: altchaPayload
+            })
+          })
 
-          const result = await pb.collection('users').requestOTP(email)
-          currentOtpId = result.otpId
-
-          step1.classList.add('d-none')
-          step2.classList.remove('d-none')
-          loginLinkContainer.classList.add('d-none')
-
-          updateStatus('Magic Link sent!')
-        } catch (error) {
-          console.error('Registration error:', error)
-          if (error.status && error.status >= 500) {
-            showGlobalAlert(error.message || 'Server error. Please try again.')
-          } else {
-            updateStatus(error.message || 'Registration failed', true)
+          if (!loginRes.ok) {
+            const errData = await loginRes.json()
+            throw new Error(errData.error || 'Auto-login failed')
           }
-          if (altchaWidget && typeof altchaWidget.reset === 'function') {
-            altchaWidget.reset()
-          }
-        }
-      })
 
-      btnSubmitOtp.addEventListener('click', async (event) => {
-        event.preventDefault()
-        showGlobalAlert('')
+          const authData = await loginRes.json()
+          
+          pb.authStore.save(authData.token, authData.record)
 
-        // Clear all custom validities first
-        usernameInput.setCustomValidity('')
-        emailInput.setCustomValidity('')
-        otpCodeInput.setCustomValidity('')
-        updateStatus('')
-
-        // Validate step 2 fields only
-        const inputsStep2 = [otpCodeInput]
-        let step2Valid = true
-        inputsStep2.forEach(input => {
-          if (!input.checkValidity()) {
-            step2Valid = false
-          }
-        })
-
-        updateValidationFeedback(registerForm)
-
-        if (!step2Valid) {
-          registerForm.classList.add('was-validated')
-          return
-        }
-
-        const code = otpCodeInput.value
-        try {
-          registerForm.classList.remove('was-validated')
-          updateStatus('Verifying code...')
-          await pb.collection('users').authWithOTP(currentOtpId, code)
           await handleSuccessfulLogin()
         } catch (error) {
-          console.error('OTP registration login error:', error)
-          if (error.status && error.status >= 500) {
-            showGlobalAlert(error.message || 'Server error. Please try again.')
-          } else {
-            otpCodeInput.setCustomValidity(error.message || 'Verification failed')
-            updateValidationFeedback(registerForm)
-            registerForm.classList.add('was-validated')
+          console.error('Registration error:', error)
+          updateStatus(error.message || 'Registration failed', true)
+          if (altchaWidget && typeof altchaWidget.reset === 'function') {
+            altchaWidget.reset()
           }
         }
       })

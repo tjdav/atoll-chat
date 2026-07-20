@@ -1,54 +1,6 @@
 import { test, expect } from './fixtures/base-test.js'
 
 test.describe('Deep Linking & Universal Links', () => {
-  test('should login automatically when loading with a deep-linked OTP Magic Link', async ({ page }) => {
-    /* Open the main page first to get the hydrated window state and context */
-    await page.goto('/')
-    await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
-    await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
-
-    /* Request an OTP code for alice */
-    await page.locator('[data-testid$="username"]').fill('alice@example.com')
-    await page.evaluate(() => {
-      const form = document.querySelector('form')
-      if (form) {
-        form.requestSubmit()
-      }
-    })
-
-    /* Wait for the OTP input to become visible to ensure the request is processed */
-    await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-
-    /* Retrieve the generated OTP code and ID from mock PocketBase */
-    const testId = await page.evaluate(() => window.__playwright_test_id__)
-    const otpRes = await page.evaluate(async (tId) => {
-      const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-        headers: { 'x-test-id': tId }
-      })
-      return response.json()
-    }, testId)
-
-    expect(otpRes.otpId).toBeDefined()
-    expect(otpRes.code).toBeDefined()
-
-    /* Navigate to the Magic Link deep-link URL containing the otpId and code */
-    const magicLinkUrl = `/?otpId=${otpRes.otpId}&code=${otpRes.code}`
-    await page.goto(magicLinkUrl)
-
-    /* Wait for Coralite hydration on the new page load */
-    await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
-    await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
-
-    /* It should bypass the login form and directly show the 'Unlock Your Vault' challenge */
-    await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible({ timeout: 15000 })
-
-    /* Unlock the vault to verify full session recovery */
-    await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
-    await page.locator('[data-testid$="unlockSubmit"]').click()
-
-    await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
-  })
-
   test('should join room and select it when loading with a deep-linked group invitation', async ({ browser, loginCustomPage }) => {
     /* Login as alice and create a room to get a valid room ID */
     const aliceContext = await browser.newContext()

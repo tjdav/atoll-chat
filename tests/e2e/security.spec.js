@@ -66,22 +66,9 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
 
     /* Fill in valid registration details */
     await page.locator('auth-register input[name="email"]').fill('testuser@example.com')
+    await page.locator('auth-register input[name="password"]').fill('Password123!')
+    await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
     await page.locator('[data-testid$="registerSubmit"]').click()
-
-    /* Wait for the manual OTP input to become visible */
-    await page.locator('auth-register input[name="otpCode"]').waitFor({ state: 'visible' })
-
-    /* Retrieve manual 8-digit OTP from mock server */
-    const otpRes = await page.evaluate(async () => {
-      const tId = window.__playwright_test_id__
-      const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-        headers: { 'x-test-id': tId }
-      })
-      return response.json()
-    })
-
-    await page.locator('auth-register input[name="otpCode"]').fill(otpRes.code)
-    await page.locator('auth-register button:has-text("Verify & Log In")').click()
 
     /* Wait for Vault Setup screen to appear */
     await expect(page.locator('vault-setup')).toBeVisible()
@@ -106,23 +93,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
   })
 
-  test('should handle login email format validation', async ({ page }) => {
-    await page.goto('/')
-    await page.waitForFunction(() => {
-      return window.__coralite__ && window.__coralite__.lifecycle !== undefined
-    })
-    await page.evaluate(() => {
-      return window.__coralite__.lifecycle.hydrated
-    })
 
-    const emailInput = page.locator('[data-testid$="username"]')
-    await emailInput.fill('invalidemail')
-
-    const isInvalid = await emailInput.evaluate((el) => {
-      return !el.checkValidity()
-    })
-    expect(isInvalid).toBe(true)
-  })
 
   test('should perform passwordless login, OTP verification, and password-rotation self-recovery', async ({ page }) => {
     await page.goto('/')
@@ -133,20 +104,10 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
       return window.__coralite__.lifecycle.hydrated
     })
 
-    /* Passwordless Login Flow */
-    await page.locator('[data-testid$="username"]').fill('alice@example.com')
-    await page.locator('[data-testid$="loginSubmit"]').click()
-
-    await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-    let otpRes = await page.evaluate(async () => {
-      const tId = window.__playwright_test_id__
-      const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-        headers: { 'x-test-id': tId }
-      })
-      return response.json()
-    })
-    await page.locator('input[name="otpCode"]').fill(otpRes.code)
-    await page.locator('button:has-text("Verify")').click()
+    /* Login Flow */
+    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
@@ -192,20 +153,10 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
-    /* Log in with Magic Link / OTP */
-    await page.locator('[data-testid$="username"]').fill('alice@example.com')
-    await page.locator('[data-testid$="loginSubmit"]').click()
-    await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-
-    otpRes = await page.evaluate(async () => {
-      const tId = window.__playwright_test_id__
-      const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-        headers: { 'x-test-id': tId }
-      })
-      return response.json()
-    })
-    await page.locator('input[name="otpCode"]').fill(otpRes.code)
-    await page.locator('button:has-text("Verify")').click()
+    /* Log in with password */
+    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
@@ -227,20 +178,10 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
-    /* Log in with Magic Link / OTP */
-    await page.locator('[data-testid$="username"]').fill('alice@example.com')
-    await page.locator('[data-testid$="loginSubmit"]').click()
-    await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-
-    otpRes = await page.evaluate(async () => {
-      const tId = window.__playwright_test_id__
-      const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-        headers: { 'x-test-id': tId }
-      })
-      return response.json()
-    })
-    await page.locator('input[name="otpCode"]').fill(otpRes.code)
-    await page.locator('button:has-text("Verify")').click()
+    /* Log in with password */
+    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
@@ -330,20 +271,10 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
       return localStorage.clear()
     })
 
-    /* Log in with Magic Link / OTP */
-    await page.locator('[data-testid$="username"]').fill('alice@example.com')
-    await page.locator('[data-testid$="loginSubmit"]').click()
-    await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-
-    let otpRes = await page.evaluate(async () => {
-      const tId = window.__playwright_test_id__
-      const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-        headers: { 'x-test-id': tId }
-      })
-      return response.json()
-    })
-    await page.locator('input[name="otpCode"]').fill(otpRes.code)
-    await page.locator('button:has-text("Verify")').click()
+    /* Log in with password */
+    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     /* Assert that unrecognized device halts flow and mounts the TOTP challenge modal */
     await expect(page.locator('totp-challenge')).toBeVisible()
@@ -371,20 +302,10 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('[data-testid$="btnLogout"]').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
-    /* Log back in with OTP */
-    await page.locator('[data-testid$="username"]').fill('alice@example.com')
-    await page.locator('[data-testid$="loginSubmit"]').click()
-    await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-
-    otpRes = await page.evaluate(async () => {
-      const tId = window.__playwright_test_id__
-      const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-        headers: { 'x-test-id': tId }
-      })
-      return response.json()
-    })
-    await page.locator('input[name="otpCode"]').fill(otpRes.code)
-    await page.locator('button:has-text("Verify")').click()
+    /* Log back in with password */
+    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     /* Assert that recognized device completely bypasses TOTP challenge and goes straight to vault unlock */
     await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()

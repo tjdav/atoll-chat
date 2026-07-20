@@ -25,19 +25,9 @@ test.describe('Authentication and Vault', () => {
 
     // login again
     console.log('--- Second Login ---')
-    await page.locator('[data-testid$="username"]').fill('alice@example.com')
-    await page.locator('[data-testid$="loginSubmit"]').click()
-
-    await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-    let otpRes = await page.evaluate(async () => {
-      const tId = window.__playwright_test_id__
-      const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-        headers: { 'x-test-id': tId }
-      })
-      return response.json()
-    })
-    await page.locator('input[name="otpCode"]').fill(otpRes.code)
-    await page.locator('button:has-text("Verify")').click()
+    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 
@@ -64,19 +54,9 @@ test.describe('Authentication and Vault', () => {
 
     // login again
     console.log('--- Third Login ---')
-    await page.locator('[data-testid$="username"]').fill('alice@example.com')
-    await page.locator('[data-testid$="loginSubmit"]').click()
-
-    await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
-    otpRes = await page.evaluate(async () => {
-      const tId = window.__playwright_test_id__
-      const response = await fetch('http://127.0.0.1:8090/api/last-otp', {
-        headers: { 'x-test-id': tId }
-      })
-      return response.json()
-    })
-    await page.locator('input[name="otpCode"]').fill(otpRes.code)
-    await page.locator('button:has-text("Verify")').click()
+    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
 

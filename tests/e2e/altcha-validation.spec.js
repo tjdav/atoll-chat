@@ -17,6 +17,8 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Fill registration info
     await page.locator('auth-register input[name="username"]').fill('thomas')
     await page.locator('auth-register input[name="email"]').fill('thomas@example.com')
+    await page.locator('auth-register input[name="password"]').fill('Password123!')
+    await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
 
     // Stub the altcha-widget value to be null (unsolved) to test the error state
     await page.evaluate(() => {
@@ -24,7 +26,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
       window.__original_mode__ = window.__coralite__.mode
       window.__coralite__.mode = 'production'
 
-      const widget = document.querySelector('altcha-widget')
+      const widget = document.querySelector('auth-register altcha-widget')
       if (widget) {
         Object.defineProperty(widget, 'value', {
           get: () => null,
@@ -44,20 +46,22 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Restore testing mode and stub value to proceed successfully
     await page.evaluate(() => {
       window.__coralite__.mode = window.__original_mode__
-      const widget = document.querySelector('altcha-widget')
+      const widget = document.querySelector('auth-register altcha-widget')
       if (widget) {
         Object.defineProperty(widget, 'value', {
           get: () => 'atoll-mock-bypass-token',
           configurable: true
         })
       }
+      const btn = document.querySelector('[data-testid$="registerSubmit"]')
+      if (btn) btn.disabled = false
     })
 
     // Clicking submit again now that testing mode is restored should proceed successfully
     await page.locator('[data-testid$="registerSubmit"]').click()
 
-    // Wait for OTP step to be reached, showing successful progress
-    await page.locator('auth-register input[name="otpCode"]').waitFor({ state: 'visible' })
+    // Registration should succeed and login programmatically, transitioning to Vault Setup
+    await page.locator('vault-setup').waitFor({ state: 'visible' })
   })
 
   test('should display ALTCHA validation error inside ALTCHA widget and allow submit on login form', async ({ page }) => {
@@ -69,15 +73,16 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
       return window.__coralite__.lifecycle.hydrated
     })
 
-    // Fill in valid login email
-    await page.locator('[data-testid$="username"]').fill('alice@example.com')
+    // Fill in valid login credentials
+    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
 
     // Stub the altcha-widget value to be null (unsolved) to test the error state
     await page.evaluate(() => {
       window.__original_mode__ = window.__coralite__.mode
       window.__coralite__.mode = 'production'
 
-      const widget = document.querySelector('altcha-widget')
+      const widget = document.querySelector('auth-login altcha-widget')
       if (widget) {
         Object.defineProperty(widget, 'value', {
           get: () => null,
@@ -86,29 +91,31 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
       }
     })
 
-    // Try to login with correct email but without ALTCHA
+    // Try to login with credentials but without ALTCHA
     await page.locator('[data-testid$="loginSubmit"]').click()
 
     // Ensure the email input does NOT have custom validity set
-    const emailValidity = await page.locator('[data-testid$="username"]').evaluate((el) => el.validationMessage)
+    const emailValidity = await page.locator('auth-login [data-testid$="username"]').evaluate((el) => el.validationMessage)
     expect(emailValidity).toBe('')
 
     // Restore testing mode and stub value to proceed successfully
     await page.evaluate(() => {
       window.__coralite__.mode = window.__original_mode__
-      const widget = document.querySelector('altcha-widget')
+      const widget = document.querySelector('auth-login altcha-widget')
       if (widget) {
         Object.defineProperty(widget, 'value', {
           get: () => 'atoll-mock-bypass-token',
           configurable: true
         })
       }
+      const btn = document.querySelector('[data-testid$="loginSubmit"]')
+      if (btn) btn.disabled = false
     })
 
     // Submit login again
     await page.locator('[data-testid$="loginSubmit"]').click()
 
-    // Wait for OTP step to be reached
-    await page.locator('input[name="otpCode"]').waitFor({ state: 'visible' })
+    // Wait for vault unlock step to be reached
+    await page.locator(':is(h3):has-text("Unlock Your Vault")').waitFor({ state: 'visible' })
   })
 })

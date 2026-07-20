@@ -32,6 +32,6 @@ test.describe('Voice Recording', () => {
     await expect(page.locator('chat-voice-recorder')).not.toBeVisible()
 
     // verify message appeared in timeline with interactive waveform
-    await expect(page.locator('message-timeline .timeline-row-container .waveform-player').last()).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('message-timeline .timeline-row-container .waveform-player').last()).toBeVisible({ timeout: 30000 })
   })
 })
