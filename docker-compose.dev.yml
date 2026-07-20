@@ -15,6 +15,7 @@ services:
       - path: .env
         required: false
     environment:
+      - ATOLL_APP_URL
       - ATOLL_PUSH_WORKER_URL=${ATOLL_PUSH_WORKER_URL:-http://host.docker.internal:3001}
       - ATOLL_PUSH_WORKER_SECRET=${ATOLL_PUSH_WORKER_SECRET:-test_secret_123}
       - ATOLL_SMTP_ENABLED
