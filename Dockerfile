@@ -44,7 +44,7 @@ RUN pnpm run build
 FROM alpine:latest
 
 # Set PocketBase version
-ARG PB_VERSION=0.39.7
+ARG PB_VERSION=0.39.8
 
 # Install dependencies
 RUN apk add --no-cache ca-certificates unzip wget libc6-compat

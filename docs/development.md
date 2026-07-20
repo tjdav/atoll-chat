@@ -25,7 +25,7 @@ The script first attempts to spin up backend services using Docker Compose:
 - **Docker Compose:** Runs `docker compose -f docker-compose.dev.yml up -d --build` to start PocketBase and Coturn in the background. See [docker-compose.dev.yml](/docker-compose.dev.yml) for service definitions.
 - **Local Fallback:** If Docker is not installed or the daemon is not running, the script automatically falls back to downloading a local PocketBase binary:
   - Resolves the OS platform and architecture.
-  - Downloads the corresponding PocketBase zip release (v0.39.7) from GitHub into the [bin/](/bin) folder.
+  - Downloads the corresponding PocketBase zip release (v0.39.8) from GitHub into the [bin/](/bin) folder.
   - Extracts the binary and runs it locally on port `8090` using the local database folders.
 
 ### 2. Health Monitoring & Superuser Setup
