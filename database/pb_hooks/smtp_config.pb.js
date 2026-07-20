@@ -33,11 +33,26 @@ onBootstrap((e) => {
   // Configure SMTP settings
   const smtp = settings.smtp
   if (smtp) {
-    smtp.enabled = true
+    const enabledEnv = getEnv('ATOLL_SMTP_ENABLED')
+    smtp.enabled = enabledEnv !== 'false'
     smtp.host = host
-    smtp.port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
+
+    const port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
+    smtp.port = port
     smtp.username = getEnv('ATOLL_SMTP_USERNAME') || ''
     smtp.password = getEnv('ATOLL_SMTP_PASSWORD') || ''
+
+    const tlsEnv = getEnv('ATOLL_SMTP_TLS')
+    let tls = false
+    if (tlsEnv !== undefined) {
+      tls = tlsEnv === 'true'
+    } else if (port === 465 || port === 2465) {
+      tls = true
+    }
+    smtp.tls = tls
+
+    smtp.authMethod = getEnv('ATOLL_SMTP_AUTH_METHOD') || 'PLAIN'
+    smtp.localName = getEnv('ATOLL_SMTP_LOCAL_NAME') || ''
   }
 
   // Configure the sender profile
