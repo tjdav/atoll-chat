@@ -118,15 +118,49 @@ const cleanupAndExit = async (code = 0) => {
 
   console.log('\nInitiating teardown process...')
 
-  if (appProcess && !appProcess.killed) {
-    console.log('Stopping frontend app process...')
-    appProcess.kill('SIGINT')
+  // Helper to gracefully kill and wait for a process to fully close
+  const stopProcess = (proc, name) => {
+    return new Promise((resolve) => {
+      if (!proc || proc.killed) {
+        return resolve()
+      }
+
+      console.log(`Stopping ${name}...`)
+
+      let isResolved = false
+
+      // Fallback: If it doesn't close cleanly in 5 seconds, force kill it
+      const timeout = setTimeout(() => {
+        if (isResolved) {
+          return
+        }
+        console.warn(`Force killing ${name} (timed out waiting for graceful exit)...`)
+        try {
+          proc.kill('SIGKILL')
+        } catch {
+        }
+        isResolved = true
+        resolve()
+      }, 5000)
+
+      const onExit = () => {
+        if (isResolved) {
+          return
+        }
+        clearTimeout(timeout)
+        isResolved = true
+        resolve()
+      }
+
+      proc.on('close', onExit)
+      proc.on('exit', onExit)
+      proc.kill('SIGINT')
+    })
   }
 
-  if (pushWorkerProcess && !pushWorkerProcess.killed) {
-    console.log('Stopping local push-worker process...')
-    pushWorkerProcess.kill('SIGINT')
-  }
+  // Await the graceful shutdown of our spawned processes
+  await stopProcess(appProcess, 'frontend app process')
+  await stopProcess(pushWorkerProcess, 'local push-worker process')
 
   if (isDockerUsed) {
     console.log(`Stopping PocketBase and Coturn containers via ${dockerComposeCmd}...`)
@@ -136,10 +170,10 @@ const cleanupAndExit = async (code = 0) => {
       console.error('Failed to teardown Docker compose:', err.message)
     }
   } else if (pbProcess) {
-    console.log('Stopping local PocketBase process...')
-    pbProcess.kill('SIGINT')
+    await stopProcess(pbProcess, 'local PocketBase process')
   }
 
+  console.log('Teardown complete. Exiting.')
   process.exit(exitCode)
 }
 
@@ -190,32 +224,40 @@ const run = async () => {
         HOST_GID: process.getgid ? process.getgid() : 1000
       }
 
-      // Try 'docker compose' first
+      let composeCmd = null
       try {
-        execSync('docker compose -f docker-compose.dev.yml up -d --build', {
-          stdio: 'inherit',
+        // Check for V2 silently
+        execSync('docker compose version', {
+          stdio: 'ignore',
           env
         })
-        dockerComposeCmd = 'docker compose'
-        isDockerUsed = true
-        dockerStarted = true
-      } catch (err1) {
-        console.warn('docker compose failed, trying fallback docker-compose...')
+        composeCmd = 'docker compose'
+      } catch {
+        console.warn('docker compose (V2) not found, trying docker-compose (V1)...')
         try {
-          execSync('docker-compose -f docker-compose.dev.yml up -d --build', {
-            stdio: 'inherit',
+          // Check for V1 silently
+          execSync('docker-compose --version', {
+            stdio: 'ignore',
             env
           })
-          dockerComposeCmd = 'docker-compose'
-          isDockerUsed = true
-          dockerStarted = true
-        } catch (err2) {
-          throw new Error(`Both docker compose and docker-compose failed.\n` +
-            `docker compose error: ${err1.message}\n` +
-            `docker-compose error: ${err2.message}`)
+          composeCmd = 'docker-compose'
+        } catch {
+          throw new Error('Neither docker compose nor docker-compose is installed.')
         }
       }
-      console.log(`Dev services started successfully via Docker Compose using: ${dockerComposeCmd}`)
+
+      // Run the build with the correct command
+      execSync(`${composeCmd} -f docker-compose.dev.yml up -d --build`, {
+        stdio: 'inherit',
+        env
+      })
+
+      // (Assuming dockerComposeCmd is defined somewhere above in your original code)
+      dockerComposeCmd = composeCmd
+      isDockerUsed = true
+      dockerStarted = true
+      console.log(`Dev services started successfully via Docker Compose using: ${composeCmd}`)
+
     } catch (error) {
       console.warn('Docker compose failed/unavailable. Falling back to local PocketBase binary...', error.message)
       isDockerUsed = false
