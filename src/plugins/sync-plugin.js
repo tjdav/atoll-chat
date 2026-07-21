@@ -71,7 +71,12 @@ export default function syncPlugin () {
               })
 
               // Process room keys in parallel for maximum speed
-              await Promise.all(missedKeys.map(record => $worker.execute('worker:process_new_room_key', record)))
+              const keyResults = await Promise.allSettled(missedKeys.map(record => $worker.execute('worker:process_new_room_key', record)))
+              keyResults.forEach((res, idx) => {
+                if (res.status === 'rejected') {
+                  console.warn(`[sync-plugin] Failed to process room key for record ${missedKeys[idx]?.id}:`, res.reason)
+                }
+              })
 
               // Fetch missed messages SECOND
               const missedMessages = await pb.collection('messages').getFullList({
@@ -80,7 +85,12 @@ export default function syncPlugin () {
               })
 
               // Process messages in parallel for maximum speed
-              await Promise.all(missedMessages.map(record => $worker.execute('worker:process_incoming_message', record)))
+              const msgResults = await Promise.allSettled(missedMessages.map(record => $worker.execute('worker:process_incoming_message', record)))
+              msgResults.forEach((res, idx) => {
+                if (res.status === 'rejected') {
+                  console.warn(`[sync-plugin] Failed to process incoming message ${missedMessages[idx]?.id}:`, res.reason)
+                }
+              })
 
               // Notify UI that catch-up is done
               if (pluginContext.$bus) {
