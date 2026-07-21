@@ -53,29 +53,12 @@ routerAdd('POST', '/api/custom/login', (e) => {
     return e.json(400, { error: 'Invalid login credentials.' })
   }
 
-  // Bypass ALTCHA verification if the user record was created less than 60 seconds ago (auto-login after registration)
-  let isAutoLogin = false
-  if (record) {
-    let createdStr = record.get('created') + ''
-    if (createdStr && !createdStr.endsWith('Z')) {
-      createdStr = createdStr.replace(' ', 'T') + 'Z'
-    }
-    const createdTime = new Date(createdStr).getTime()
-    const nowTime = Date.now()
-    const diff = nowTime - createdTime
-    console.log('[DEBUG LOGIN] createdStr:', createdStr, 'createdTime:', createdTime, 'nowTime:', nowTime, 'diff:', diff)
-    isAutoLogin = (diff >= 0 && diff < 60000)
-    console.log('[DEBUG LOGIN] isAutoLogin evaluated to:', isAutoLogin)
+  if (!data.altcha) {
+    return e.json(400, { error: 'Security challenge is required.' })
   }
 
-  if (!isAutoLogin) {
-    if (!data.altcha) {
-      return e.json(400, { error: 'Security challenge is required.' })
-    }
-
-    if (!verifyAltchaSolution(data.altcha)) {
-      return e.json(400, { error: 'Invalid security challenge. Are you a bot?' })
-    }
+  if (!verifyAltchaSolution(data.altcha)) {
+    return e.json(400, { error: 'Invalid security challenge. Are you a bot?' })
   }
 
   try {
@@ -147,8 +130,10 @@ routerAdd('POST', '/api/custom/register', (e) => {
 
     $app.save(record)
     console.log('[DEBUG REGISTER] User saved successfully. ID:', record.id)
+    const token = record.newAuthToken()
     return e.json(201, {
       success: true,
+      token: token,
       record: record
     })
   } catch (err) {
