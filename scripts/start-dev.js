@@ -317,13 +317,13 @@ const run = async () => {
     }
     console.log('PocketBase is healthy and listening on port 8090.')
 
-    // Ensure superuser is created (moved here to prevent race conditions before service is healthy)
+    // Ensure superuser is created or updated (upsert ensures password is reset if user already exists)
     console.log('Ensuring superuser admin exists...')
     if (isDockerUsed) {
-      runCommandSilently('docker exec -i atoll-pocketbase-dev /usr/local/bin/pocketbase superuser create admin@example.com password123')
+      runCommandSilently('docker exec -i atoll-pocketbase-dev /usr/local/bin/pocketbase superuser upsert admin@example.com password123')
     } else {
       const localBinary = getLocalPocketBaseBinary()
-      runCommandSilently(`"${localBinary}" superuser create admin@example.com password123 --dir=pb_data`)
+      runCommandSilently(`"${localBinary}" superuser upsert admin@example.com password123 --dir=pb_data`)
     }
 
     // Run provisioning of test users (Alice, Bob, Charlie)
