@@ -17,8 +17,25 @@ export default definePlugin({
         const { pb } = instanceContext.pocketbase
         const { config } = instanceContext
 
+        if ($state.notificationsEnabled === undefined) {
+          $state.notificationsEnabled = true
+        }
+        if ($state.messageSoundsEnabled === undefined) {
+          $state.messageSoundsEnabled = true
+        }
+
+        $state.subscribe('isAuthenticated', async (isAuth) => {
+          if (isAuth && $state.notificationsEnabled !== false && 'Notification' in window && Notification.permission === 'default') {
+            try {
+              await requestPermission()
+            } catch {
+              /* ignore user gesture restriction */
+            }
+          }
+        })
+
         const playMessageSound = async () => {
-          if (!$state.messageSoundsEnabled) {
+          if (($state.messageSoundsEnabled ?? true) === false) {
             return
           }
 
@@ -69,7 +86,7 @@ export default definePlugin({
         }
 
         const showNotification = async (payload) => {
-          if (!$state.notificationsEnabled || Notification.permission !== 'granted') {
+          if (($state.notificationsEnabled ?? true) === false || Notification.permission !== 'granted') {
             return
           }
 
