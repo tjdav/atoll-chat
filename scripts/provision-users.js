@@ -178,11 +178,22 @@ async function provision () {
       }
 
       if (existingRecord) {
-        console.log(`User ${user.username} already exists. Updating password, keys, and master vault...`)
-        await pb.collection('users').update(existingRecord.id, payload, {
-          requestKey: null
-        })
-        console.log(`User ${user.username} updated successfully.`)
+        if (existingRecord.public_box_key && existingRecord.encrypted_master_keys) {
+          console.log(`User ${user.username} already exists with active vault keys. Preserving existing cryptographic keys...`)
+          await pb.collection('users').update(existingRecord.id, {
+            password: SHARED_PASSWORD,
+            passwordConfirm: SHARED_PASSWORD
+          }, {
+            requestKey: null
+          })
+          console.log(`User ${user.username} updated successfully (keys preserved).`)
+        } else {
+          console.log(`User ${user.username} already exists but missing keys. Setting vault keys...`)
+          await pb.collection('users').update(existingRecord.id, payload, {
+            requestKey: null
+          })
+          console.log(`User ${user.username} updated successfully.`)
+        }
       } else {
         await pb.collection('users').create(payload, {
           requestKey: null
