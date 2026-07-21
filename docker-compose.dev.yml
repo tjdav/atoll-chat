@@ -36,10 +36,16 @@ services:
     image: coturn/coturn
     container_name: atoll-coturn
     network_mode: "host"
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
     command:
       - -n
       - --lt-cred-mech
+      - --fingerprint
       - --user=testuser:testpass
       - --realm=atoll-chat
       - --listening-port=3478
+      - --listening-ip=0.0.0.0
+      - --no-cli
     restart: unless-stopped
