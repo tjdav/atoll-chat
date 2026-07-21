@@ -239,7 +239,7 @@ routerAdd('GET', '/api/turn-credentials', (e) => {
   const password = hmacSha1Base64(sharedSecret, username)
 
   const turnUrisEnv = getEnv('ATOLL_TURN_URIS')
-  const uris = turnUrisEnv ? turnUrisEnv.split(',').map(s => s.trim()) : ['stun.l.google.com:19302', 'stun1.l.google.com:19302', 'stun2.l.google.com:19302', 'stun3.l.google.com:19302', 'stun4.l.google.com:19302']
+  const uris = turnUrisEnv ? turnUrisEnv.split(',').map(s => s.trim()) : ['stun:stun.l.google.com:19302', 'stun:stun1.l.google.com:19302', 'stun:stun2.l.google.com:19302', 'stun:stun3.l.google.com:19302', 'stun:stun4.l.google.com:19302']
 
   return e.json(200, {
     username,
