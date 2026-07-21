@@ -35,6 +35,20 @@ function getUserIdFromToken (token) {
   }
 }
 
+function sanitizeUserRecord (authHeader, record) {
+  if (!record || (record.collectionName && record.collectionName !== 'users')) {
+    return record
+  }
+  const requesterId = getUserIdFromToken(authHeader)
+  const isOwner = requesterId && requesterId === record.id
+  if (!isOwner && record.encrypted_master_keys) {
+    const copy = { ...record }
+    delete copy.encrypted_master_keys
+    return copy
+  }
+  return record
+}
+
 function evaluateFilter (record, filterStr) {
   if (!filterStr) {
     return true
@@ -571,6 +585,7 @@ export function createServer () {
         res.writeHead(201, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({
           success: true,
+          token: generateMockJWT(newUser.id),
           record: newUser
         }))
         return
@@ -798,8 +813,9 @@ export function createServer () {
               res.end(JSON.stringify({ message: 'Record not found' }))
               return
             }
+            const authHeader = req.headers.authorization
             res.writeHead(200, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify(expandRecord(db, item, query.expand)))
+            res.end(JSON.stringify(sanitizeUserRecord(authHeader, expandRecord(db, item, query.expand))))
             return
           } else {
             // Filter, sort, expand list
@@ -809,7 +825,8 @@ export function createServer () {
             }
 
             // Expanded records
-            items = items.map(item => expandRecord(db, item, query.expand))
+            const authHeader = req.headers.authorization
+            items = items.map(item => sanitizeUserRecord(authHeader, expandRecord(db, item, query.expand)))
 
             // Default sorting by created
             if (query.sort) {
