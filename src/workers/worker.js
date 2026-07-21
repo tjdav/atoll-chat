@@ -1079,18 +1079,45 @@ async function processIncomingMessage (rpcId, record) {
 
   const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
   if (!isValid) {
-    throw new Error('Signature forged or invalid')
+    console.warn(`[worker] Skipping message processing in room ${room_id}: Signature forged or invalid`)
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_incoming_message',
+      result: {
+        success: false,
+        error: 'Signature forged or invalid'
+      }
+    })
+    return
   }
 
   // Symmetric Decryption (X25519)
   const room = await workerBridge.request('getRoom', [room_id])
   if (!room) {
-    throw new Error(`Local room ${room_id} not found`)
+    console.warn(`[worker] Skipping message processing: Local room ${room_id} not found`)
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_incoming_message',
+      result: {
+        success: false,
+        error: `Local room ${room_id} not found`
+      }
+    })
+    return
   }
 
   const activeEpoch = room.key_history?.find(h => h.epoch_id === epochId)
   if (!activeEpoch) {
-    throw new Error('Missing cryptographic key for this epoch.')
+    console.warn(`[worker] Skipping message processing: Missing cryptographic key for epoch ${epochId} in room ${room_id}`)
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_incoming_message',
+      result: {
+        success: false,
+        error: 'Missing cryptographic key for this epoch.'
+      }
+    })
+    return
   }
 
   const ciphertextBuffer = sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL)
@@ -1100,12 +1127,30 @@ async function processIncomingMessage (rpcId, record) {
   let decryptedBuffer
   try {
     decryptedBuffer = sodium.crypto_secretbox_open_easy(ciphertextBuffer, nonceBuffer, epochKeyBuffer)
-  } catch {
-    throw new Error('Decryption failed')
+  } catch (err) {
+    console.warn(`[worker] Decryption failed for message in room ${room_id}:`, err)
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_incoming_message',
+      result: {
+        success: false,
+        error: 'Decryption failed'
+      }
+    })
+    return
   }
 
   if (!decryptedBuffer) {
-    throw new Error('Decryption failed (null result)')
+    console.warn(`[worker] Decryption failed (null result) for message in room ${room_id}`)
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_incoming_message',
+      result: {
+        success: false,
+        error: 'Decryption failed (null result)'
+      }
+    })
+    return
   }
 
   const decryptedString = new TextDecoder().decode(decryptedBuffer)
@@ -1301,44 +1346,93 @@ async function processNewRoomKey (rpcId, payload) {
     if (self.authToken) {
       headers.Authorization = self.authToken
     }
-    const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${wrapped_by}`, { headers })
-    if (!response.ok) {
-      throw new Error(`Failed to fetch inviter public key (${wrapped_by}): ${response.status} ${response.statusText}`)
+    try {
+      const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${wrapped_by}`, { headers })
+      if (!response.ok) {
+        console.warn(`[worker] Failed to fetch inviter public key (${wrapped_by}): ${response.status} ${response.statusText}`)
+        self.postMessage({
+          id: rpcId,
+          type: 'worker:process_new_room_key',
+          result: {
+            success: false,
+            error: 'Inviter public key not found'
+          }
+        })
+        return
+      }
+      const userRecord = await response.json()
+      inviterKeys = {
+        ...(inviterKeys || {}),
+        public_box_key: userRecord.public_box_key,
+        public_sign_key: userRecord.public_sign_key
+      }
+      self.publicKeyCache.set(wrapped_by, inviterKeys)
+    } catch (err) {
+      console.warn(`[worker] Error fetching inviter public key (${wrapped_by}):`, err)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_new_room_key',
+        result: {
+          success: false,
+          error: err.message
+        }
+      })
+      return
     }
-    const userRecord = await response.json()
-    inviterKeys = {
-      ...(inviterKeys || {}),
-      public_box_key: userRecord.public_box_key,
-      public_sign_key: userRecord.public_sign_key
-    }
-    self.publicKeyCache.set(wrapped_by, inviterKeys)
   }
 
   const inviterPublicKey = inviterKeys.public_box_key
   if (!inviterPublicKey) {
-    throw new Error('Inviter public box key is missing')
+    console.warn(`[worker] Inviter (${wrapped_by}) public box key is missing`)
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_new_room_key',
+      result: {
+        success: false,
+        error: 'Inviter public box key missing'
+      }
+    })
+    return
   }
 
   // Decrypt (Unwrap)
-  const encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key, sodium.base64_variants.ORIGINAL)
-  const nonceBuffer = sodium.from_base64(key_nonce, sodium.base64_variants.ORIGINAL)
-  const inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey, sodium.base64_variants.ORIGINAL)
-  const userPrivateKeyBuffer = sodium.from_base64(self.currentUserKeys.private_box_key, sodium.base64_variants.ORIGINAL)
-
   let unwrappedKeyBuffer
   try {
+    const encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key, sodium.base64_variants.ORIGINAL)
+    const nonceBuffer = sodium.from_base64(key_nonce, sodium.base64_variants.ORIGINAL)
+    const inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey, sodium.base64_variants.ORIGINAL)
+    const userPrivateKeyBuffer = sodium.from_base64(self.currentUserKeys.private_box_key, sodium.base64_variants.ORIGINAL)
+
     unwrappedKeyBuffer = sodium.crypto_box_open_easy(
       encryptedRoomKeyBuffer,
       nonceBuffer,
       inviterPublicKeyBuffer,
       userPrivateKeyBuffer
     )
-  } catch {
-    throw new Error('Failed to unwrap room key: Decryption error')
+  } catch (err) {
+    console.warn(`[worker] Failed to unwrap room key for room ${room_id}: Decryption error`, err)
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_new_room_key',
+      result: {
+        success: false,
+        error: 'Failed to unwrap room key: Decryption error'
+      }
+    })
+    return
   }
 
-  if (!unwrappedKeyBuffer) {
-    throw new Error('Failed to unwrap room key: Null result')
+  if (!unwrappedKeyBuffer || unwrappedKeyBuffer.length === 0) {
+    console.warn(`[worker] Failed to unwrap room key for room ${room_id}: Null result`)
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:process_new_room_key',
+      result: {
+        success: false,
+        error: 'Failed to unwrap room key: Null result'
+      }
+    })
+    return
   }
 
   // Fetch Room metadata and members from server
