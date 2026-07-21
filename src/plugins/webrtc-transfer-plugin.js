@@ -118,16 +118,25 @@ export default definePlugin({
             const credentialsResponse = await pb.send('/api/turn-credentials', {
               method: 'GET'
             })
+
             if (credentialsResponse && credentialsResponse.username && credentialsResponse.password) {
-              const turnUrls = credentialsResponse.uris || ['turns:turn.atol.chat:5349']
-              return [
+              const rawUrls = credentialsResponse.uris || []
+              const turnOnly = rawUrls.filter(u => u.startsWith('turn:') || u.startsWith('turns:'))
+              const stunOnly = rawUrls.filter(u => u.startsWith('stun:'))
+
+              const resultServers = [
                 ...defaultStun,
-                {
-                  urls: turnUrls,
+                ...stunOnly.map(u => ({ urls: u }))
+              ]
+
+              if (turnOnly.length > 0) {
+                resultServers.push({
+                  urls: turnOnly,
                   username: credentialsResponse.username,
                   credential: credentialsResponse.password
-                }
-              ]
+                })
+              }
+              return resultServers
             }
           } catch (err) {
             console.warn('[webrtcTransfer] Failed to fetch dynamic TURN credentials, falling back to STUN-only:', err)
