@@ -218,7 +218,7 @@
         const record = pb.authStore.model
         if (record && await biometric.isAvailable()) {
           const storedKey = localStorage.getItem(`atoll_vault_wrap_${record.id}`)
-          if (storedKey) {
+          if (storedKey || record.passkey_credential_id || record.encrypted_master_keys_passkey) {
             btnPasskey.classList.remove('d-none')
           } else {
             btnPasskey.classList.add('d-none')
@@ -233,27 +233,27 @@
       btnPasskey.addEventListener('click', async () => {
         try {
           showGlobalAlert('')
-          updateStatus('Authenticating via biometrics...')
+          updateStatus('Authenticating via passkey/biometrics...')
           const record = pb.authStore.model
           if (!record) {
             throw new Error('User not logged in.')
           }
 
-          const masterKey = await biometric.retrieveMasterKey(record.id)
+          const masterKey = await biometric.retrieveMasterKey(record.id, record)
           if (!masterKey) {
-            throw new Error('Biometric authentication failed to retrieve Master Key.')
+            throw new Error('Passkey authentication failed to retrieve Master Key.')
           }
 
           updateStatus('Decrypting private keys...')
           const fetchedRecord = await pb.collection('users').getOne(record.id)
-          const { encrypted_private_keys: encryptedPrivateKeys } = fetchedRecord
+          const encryptedVault = fetchedRecord.encrypted_master_keys_passkey || fetchedRecord.encrypted_private_keys
 
-          if (!encryptedPrivateKeys) {
+          if (!encryptedVault) {
             throw new Error('Secure vault not found on server.')
           }
 
           const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
-            encrypted_private_keys: encryptedPrivateKeys,
+            encrypted_private_keys: encryptedVault,
             master_key: masterKey
           })
 

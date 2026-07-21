@@ -165,9 +165,16 @@ export function createWebBiometricAdapter (_instanceContext) {
      * @param {string} userId - The unique identifier of the logged-in user.
      * @returns {Promise<Uint8Array>} Resolves to the decrypted AES Master Key.
      */
-    retrieveMasterKey: async (userId) => {
+    retrieveMasterKey: async (userId, userRecord) => {
       const rawData = localStorage.getItem(`atoll_vault_wrap_${userId}`)
       if (!rawData) {
+        if (userRecord && userRecord.passkey_credential_id && userRecord.passkey_prf_salt) {
+          const { deriveKeyFromPasskey } = await import('../utils/cryptoUtils.js')
+          const credentialId = base64ToUint8Array(userRecord.passkey_credential_id)
+          const prfSalt = base64ToUint8Array(userRecord.passkey_prf_salt)
+          const challenge = window.crypto.getRandomValues(new Uint8Array(32))
+          return deriveKeyFromPasskey(credentialId, challenge, prfSalt)
+        }
         throw new Error('No biometric vault wrap found for this user.')
       }
 

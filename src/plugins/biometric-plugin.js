@@ -60,9 +60,9 @@ export default definePlugin({
            * @param {string} userId - The unique identifier of the logged-in user.
            * @returns {Promise<Uint8Array>} Resolves to the decrypted AES Master Key.
            */
-          retrieveMasterKey: async (userId) => {
+          retrieveMasterKey: async (userId, userRecord) => {
             const adapter = await getAdapter(instanceContext)
-            return adapter.retrieveMasterKey(userId)
+            return adapter.retrieveMasterKey(userId, userRecord)
           },
 
           /**
