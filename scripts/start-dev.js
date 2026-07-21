@@ -335,15 +335,19 @@ const run = async () => {
     }
 
     console.log('\n--- Starting Application ---')
+    const appEnv = {
+      ...process.env,
+      ATOLL_PUSH_WORKER_URL: 'http://localhost:3001',
+      ATOLL_PUSH_WORKER_SECRET: 'test_secret_123'
+    }
+    if (isDockerUsed) {
+      appEnv.LOCAL_ICE_SERVER = `turn:127.0.0.1:${process.env.TURN_PORT || 3478}`
+    }
+
     appProcess = spawn('pnpm', ['run', 'start:app'], {
       stdio: 'inherit',
       shell: true,
-      env: {
-        ...process.env,
-        LOCAL_ICE_SERVER: `turn:127.0.0.1:${process.env.TURN_PORT || 3478}`,
-        ATOLL_PUSH_WORKER_URL: 'http://localhost:3001',
-        ATOLL_PUSH_WORKER_SECRET: 'test_secret_123'
-      }
+      env: appEnv
     })
 
     appProcess.on('close', async (code) => {
