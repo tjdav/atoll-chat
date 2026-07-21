@@ -525,28 +525,9 @@
           }
 
           updateStatus('Logging you in...')
+          const authData = await regRes.json()
 
-          const loginRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/login`), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              identity: username,
-              password,
-              altcha: currentPayload
-            })
-          })
-
-          if (!loginRes.ok) {
-            const errData = await loginRes.json()
-            throw new Error(errData.error || 'Auto-login failed')
-          }
-
-          const authData = await loginRes.json()
-  
           pb.authStore.save(authData.token, authData.record)
-
           await handleSuccessfulLogin()
         } catch (error) {
           console.error('Registration error:', error)
