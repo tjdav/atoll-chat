@@ -18,7 +18,11 @@ export default function webrtcPlugin ({
     ? [
       ...defaultStun,
       {
-        urls: localIceServer,
+        urls: [
+          localIceServer,
+          `${localIceServer}?transport=udp`,
+          `${localIceServer}?transport=tcp`
+        ],
         username: 'testuser',
         credential: 'testpass'
       }
@@ -160,16 +164,24 @@ export default function webrtcPlugin ({
               const credentialsResponse = await pb.send('/api/turn-credentials', {
                 method: 'GET'
               })
+
               if (credentialsResponse && credentialsResponse.username && credentialsResponse.password) {
-                const turnUrls = credentialsResponse.uris || ['turns:turn.atol.chat:5349']
+                const rawUrls = credentialsResponse.uris || []
+                const turnOnly = rawUrls.filter(u => u.startsWith('turn:') || u.startsWith('turns:'))
+                const stunOnly = rawUrls.filter(u => u.startsWith('stun:'))
+
                 dynamicIceServers = [
                   ...defaultStun,
-                  {
-                    urls: turnUrls,
+                  ...stunOnly.map(u => ({ urls: u }))
+                ]
+
+                if (turnOnly.length > 0) {
+                  dynamicIceServers.push({
+                    urls: turnOnly,
                     username: credentialsResponse.username,
                     credential: credentialsResponse.password
-                  }
-                ]
+                  })
+                }
               } else {
                 dynamicIceServers = defaultStun
               }
@@ -179,16 +191,23 @@ export default function webrtcPlugin ({
             }
           }
 
-          const pc = new RTCPeerConnection({ iceServers: dynamicIceServers })
+          const pc = new RTCPeerConnection({
+            iceServers: dynamicIceServers,
+            bundlePolicy: 'max-bundle',
+            rtcpMuxPolicy: 'require'
+          })
+
           if (typeof window !== 'undefined') {
             window.__E2E_PEER_CONNECTION__ = pc
           }
+
           if (mediaStream) {
             mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
           }
           pc.oniceconnectionstatechange = () => {
             console.log(`[WebRTC] ICE Connection State changed for room ${room_id}: ${pc.iceConnectionState}`)
           }
+
           pc.onicecandidate = (event) => {
             if (event.candidate) {
               if (!candidateBuffers.has(room_id)) {
@@ -211,6 +230,7 @@ export default function webrtcPlugin ({
               candidateTimers.set(room_id, timer)
             }
           }
+
           pc.ontrack = (event) => {
             const stream = event.streams[0]
             if (event.track.kind === 'video') {
