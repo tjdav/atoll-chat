@@ -142,11 +142,11 @@ self.onmessage = (event) => {
     'worker:process_new_room_key',
     'room:member_updated',
     'worker:delete_local_room',
-    'worker:generate_master_keys_v2',
+    'worker:generate_master_keys',
     'worker:encrypt_master_key_with_kek',
     'worker:encrypt_master_key_with_code',
     'worker:decrypt_master_key_with_code',
-    'worker:decrypt_vault_v2'
+    'worker:decrypt_vault'
   ]
 
   if (parallelTasks.includes(type)) {
@@ -254,7 +254,7 @@ async function handleEvent (event) {
       return
     }
 
-    if (type === 'worker:generate_master_keys_v2') {
+    if (type === 'worker:generate_master_keys') {
       const masterKey = sodium.randombytes_buf(32)
       const encryptionKeys = sodium.crypto_box_keypair()
       const identityKeys = sodium.crypto_sign_keypair()
@@ -349,7 +349,7 @@ async function handleEvent (event) {
       return
     }
 
-    if (type === 'worker:decrypt_vault_v2') {
+    if (type === 'worker:decrypt_vault') {
       const { encrypted_private_keys, master_key } = payload
       const masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
 
@@ -547,65 +547,6 @@ async function handleEvent (event) {
     }
 
     // high-level tasks
-    if (type === 'worker:generate_master_keys') {
-      const encryptionKeys = sodium.crypto_box_keypair()
-      const identityKeys = sodium.crypto_sign_keypair()
-      const result = {
-        public_box_key: sodium.to_base64(encryptionKeys.publicKey, sodium.base64_variants.ORIGINAL),
-        private_box_key: sodium.to_base64(encryptionKeys.privateKey, sodium.base64_variants.ORIGINAL),
-        public_sign_key: sodium.to_base64(identityKeys.publicKey, sodium.base64_variants.ORIGINAL),
-        private_sign_key: sodium.to_base64(identityKeys.privateKey, sodium.base64_variants.ORIGINAL)
-      }
-      self.postMessage({
-        id,
-        type,
-        result
-      })
-      return
-    }
-
-    if (type === 'worker:encrypt_vault') {
-      const { privateKeys, KEK } = payload
-      const vaultPlaintext = JSON.stringify({
-        private_box_key: privateKeys.private_box_key,
-        private_sign_key: privateKeys.private_sign_key
-      })
-      const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-      const ciphertext = sodium.crypto_secretbox_easy(
-        vaultPlaintext,
-        nonce,
-        typeof KEK === 'string' ? sodium.from_base64(KEK, sodium.base64_variants.ORIGINAL) : KEK
-      )
-      const result = {
-        ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
-        nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
-      }
-      self.postMessage({
-        id,
-        type,
-        result
-      })
-      return
-    }
-
-    if (type === 'worker:decrypt_vault') {
-      const { ciphertext, nonce, KEK } = payload
-      const decrypted = sodium.crypto_secretbox_open_easy(
-        sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL),
-        sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL),
-        typeof KEK === 'string' ? sodium.from_base64(KEK, sodium.base64_variants.ORIGINAL) : KEK
-      )
-      if (!decrypted) {
-        throw new Error('Failed to decrypt vault. Invalid Password or corrupt data.')
-      }
-      const result = JSON.parse(sodium.to_string(decrypted))
-      self.postMessage({
-        id,
-        type,
-        result
-      })
-      return
-    }
 
     if (type === 'worker:upload_media') {
       try {

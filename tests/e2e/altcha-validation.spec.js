@@ -54,7 +54,9 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
         })
       }
       const btn = document.querySelector('[data-testid$="registerSubmit"]')
-      if (btn) btn.disabled = false
+      if (btn) {
+        btn.disabled = false
+      }
     })
 
     // Clicking submit again now that testing mode is restored should proceed successfully
@@ -109,7 +111,9 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
         })
       }
       const btn = document.querySelector('[data-testid$="loginSubmit"]')
-      if (btn) btn.disabled = false
+      if (btn) {
+        btn.disabled = false
+      }
     })
 
     // Submit login again

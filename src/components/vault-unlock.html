@@ -252,7 +252,7 @@
             throw new Error('Secure vault not found on server.')
           }
 
-          const decryptedKeys = await $worker.execute('worker:decrypt_vault_v2', {
+          const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
             encrypted_private_keys: encryptedPrivateKeys,
             master_key: masterKey
           })
@@ -347,7 +347,7 @@
           }
 
           updateStatus('Decrypting private keys...')
-          const decryptedKeys = await $worker.execute('worker:decrypt_vault_v2', {
+          const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
             encrypted_private_keys: encryptedPrivateKeys,
             master_key: masterKey
           })
@@ -442,7 +442,7 @@
           decryptedMasterKeyHex = decryptedMasterKey
 
           updateStatus('Decrypting private keys...')
-          decryptedKeysLocal = await $worker.execute('worker:decrypt_vault_v2', {
+          decryptedKeysLocal = await $worker.execute('worker:decrypt_vault', {
             encrypted_private_keys: encryptedPrivateKeys,
             master_key: decryptedMasterKeyHex
           })

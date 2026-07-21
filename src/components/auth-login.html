@@ -207,7 +207,7 @@
         container.innerHTML = ''
         altchaPayload = null
         const isTesting = typeof window !== 'undefined' && (window.__coralite__?.mode === 'testing' || (window.__playwright_test_id__ && window.__coralite__?.mode !== 'production'))
-        
+  
         if (!submitBtn._originalHtml) {
           submitBtn._originalHtml = submitBtn.innerHTML
         }
@@ -255,14 +255,20 @@
               if (typeof loginForm.requestSubmit === 'function') {
                 loginForm.requestSubmit()
               } else {
-                loginForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))
+                loginForm.dispatchEvent(new Event('submit', {
+                  cancelable: true,
+                  bubbles: true
+                }))
               }
             } else if (submitBtn === forgotSubmit && forgotSubmitPending) {
               forgotSubmitPending = false
               if (typeof forgotPasswordForm.requestSubmit === 'function') {
                 forgotPasswordForm.requestSubmit()
               } else {
-                forgotPasswordForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))
+                forgotPasswordForm.dispatchEvent(new Event('submit', {
+                  cancelable: true,
+                  bubbles: true
+                }))
               }
             }
           } else if (state === 'unverified') {
@@ -521,7 +527,7 @@
           }
 
           const authData = await loginRes.json()
-          
+  
           // Authenticate SDK instance
           pb.authStore.save(authData.token, authData.record)
 

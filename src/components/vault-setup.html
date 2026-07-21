@@ -204,7 +204,8 @@
         } catch (err) {
           console.error('[vault-setup] zxcvbn error:', err)
           btnSubmit.disabled = password.length < 12
-          zxcvbnScore = 3 // Safe fallback
+          /* Safe fallback */
+          zxcvbnScore = 3
         }
       }
 
@@ -256,7 +257,7 @@
         try {
           setupForm.classList.remove('was-validated')
           updateStatus('Generating secure master key...')
-          const masterKeysRes = await $worker.execute('worker:generate_master_keys_v2')
+          const masterKeysRes = await $worker.execute('worker:generate_master_keys')
           const salt = await $worker.execute('worker:randombytes_buf', { length: 16 })
 
           updateStatus('Deriving Vault Password key...')
@@ -294,7 +295,7 @@
           }
 
           /* Extract decrypted keys for worker:init_keys */
-          decryptedKeysLocal = await $worker.execute('worker:decrypt_vault_v2', {
+          decryptedKeysLocal = await $worker.execute('worker:decrypt_vault', {
             encrypted_private_keys: masterKeysRes.encrypted_private_keys,
             master_key: masterKeysRes.master_key
           })

@@ -9,7 +9,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, notifications, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, webrtcTransfer, config }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, webrtcTransfer, config }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
@@ -21,7 +21,6 @@
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $bus } = eventBus
-      const { $notifications } = notifications
       const { $storage } = storage
       const { $push } = push
       const { $worker } = cryptoWorker

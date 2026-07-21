@@ -316,7 +316,7 @@ export const test = base.extend({
     await use(page)
   },
 
-  loginApp: async ({ page }, use, testInfo) => {
+  loginApp: async ({ page }, use) => {
     const doLogin = async (username, appPassword, vaultPassword) => {
       await page.goto('/')
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
