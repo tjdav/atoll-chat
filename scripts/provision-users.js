@@ -38,20 +38,62 @@ async function generateMasterKeys (sodium) {
 }
 
 /**
- * Encrypts the private keys using the derived KEK.
+ * Encrypts private keys using the random Master Key.
  */
-function encryptVault (privateKeys, KEK, sodium) {
-  const vaultPlaintext = JSON.stringify({
+function encryptPrivateKeys (privateKeys, masterKeyBytes, sodium) {
+  const plaintext = JSON.stringify({
     private_box_key: privateKeys.private_box_key,
     private_sign_key: privateKeys.private_sign_key
   })
-
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-  const ciphertext = sodium.crypto_secretbox_easy(vaultPlaintext, nonce, KEK)
-
+  const ciphertext = sodium.crypto_secretbox_easy(plaintext, nonce, masterKeyBytes)
   return {
     ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
     nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+  }
+}
+
+/**
+ * Encrypts the Master Key using KEK.
+ */
+function encryptMasterKeyWithKek (masterKeyBytes, KEK, sodium) {
+  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+  const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, KEK)
+  return {
+    ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+    nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+  }
+}
+
+/**
+ * Generates 10 recovery wraps using the cryptographically secure RNG from libsodium.
+ */
+function generateRecoveryWraps (masterKeyBytes, sodium) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const part = () => {
+    const bytes = sodium.randombytes_buf(4)
+    return Array.from(bytes)
+      .map(b => chars[b % chars.length])
+      .join('')
+  }
+
+  const wraps = []
+  const plaintextCodes = []
+  for (let i = 0; i < 10; i++) {
+    const code = `${part()}-${part()}-${part()}`
+    plaintextCodes.push(code)
+    const codeHash = sodium.crypto_generichash(32, code)
+    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+    const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
+    wraps.push({
+      hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+      ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+      nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+    })
+  }
+  return {
+    wraps,
+    plaintextCodes
   }
 }
 
@@ -100,7 +142,15 @@ async function provision () {
       const masterKeys = await generateMasterKeys(sodium)
       const salt = generateSalt(sodium)
       const KEK = await deriveKeyFromPassword(SHARED_VAULT_PASSWORD, salt, sodium)
-      const encryptedVault = encryptVault(masterKeys, KEK, sodium)
+
+      const masterKeyBytes = sodium.randombytes_buf(32)
+      const passwordWrap = encryptMasterKeyWithKek(masterKeyBytes, KEK, sodium)
+      const encryptedPrivateKeys = encryptPrivateKeys(masterKeys, masterKeyBytes, sodium)
+      const { wraps: recoveryWraps, plaintextCodes } = generateRecoveryWraps(masterKeyBytes, sodium)
+
+      console.log(`Recovery codes for ${user.username}:`)
+      console.log(plaintextCodes.join('\n'))
+      console.log('----------------------------------------')
 
       const payload = {
         username: user.username,
@@ -112,7 +162,9 @@ async function provision () {
         public_box_key: masterKeys.public_box_key,
         public_sign_key: masterKeys.public_sign_key,
         vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
-        encrypted_master_keys: encryptedVault
+        encrypted_master_keys: passwordWrap,
+        encrypted_private_keys: encryptedPrivateKeys,
+        recovery_wraps: recoveryWraps
       }
 
       // Check if user already exists
