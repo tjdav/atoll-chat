@@ -42,10 +42,14 @@ function runDockerComposeStop () {
 async function globalTeardown () {
   console.log('--- Mock PocketBase Teardown ---')
   if (globalThis.__MOCK_PB_SERVER__) {
+    if (typeof globalThis.__MOCK_PB_SERVER__.closeAllConnections === 'function') {
+      globalThis.__MOCK_PB_SERVER__.closeAllConnections()
+    }
     await new Promise((resolve) => {
       globalThis.__MOCK_PB_SERVER__.close(() => {
         resolve()
       })
+      setTimeout(resolve, 1000)
     })
     console.log('Mock PocketBase server stopped.')
   } else {
