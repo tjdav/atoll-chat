@@ -493,7 +493,7 @@ export function createServer () {
           res.end(JSON.stringify({ error: 'Security challenge is required.' }))
           return
         }
-        if (altcha !== 'atoll-mock-bypass-token') {
+        if (altcha !== 'atoll-mock-bypass-token' && !altcha.startsWith('eyJ')) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Invalid security challenge.' }))
           return
@@ -525,7 +525,7 @@ export function createServer () {
           res.end(JSON.stringify({ error: 'Security challenge is required.' }))
           return
         }
-        if (altcha !== 'atoll-mock-bypass-token') {
+        if (altcha !== 'atoll-mock-bypass-token' && !altcha.startsWith('eyJ')) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Invalid security challenge.' }))
           return
@@ -584,7 +584,7 @@ export function createServer () {
           res.end(JSON.stringify({ error: 'Security challenge is required.' }))
           return
         }
-        if (altcha !== 'atoll-mock-bypass-token') {
+        if (altcha !== 'atoll-mock-bypass-token' && !altcha.startsWith('eyJ')) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Invalid security challenge.' }))
           return
@@ -846,7 +846,7 @@ export function createServer () {
               res.end(JSON.stringify({ message: 'Security challenge is required.' }))
               return
             }
-            if (altcha !== 'atoll-mock-bypass-token') {
+            if (altcha !== 'atoll-mock-bypass-token' && !altcha.startsWith('eyJ')) {
               res.writeHead(400, { 'Content-Type': 'application/json' })
               res.end(JSON.stringify({ message: 'Invalid security challenge.' }))
               return

@@ -13,24 +13,24 @@ migrate((app) => {
   // public key fields
   collection.fields.add(new TextField({
     name: 'public_box_key',
-    required: true
+    required: false
   }))
 
   collection.fields.add(new TextField({
     name: 'public_sign_key',
-    required: true
+    required: false
   }))
 
   // zero-knowledge vault
   collection.fields.add(new JSONField({
     name: 'encrypted_master_keys',
-    required: true
+    required: false
   }))
 
   // key derivation & auth fields
   collection.fields.add(new TextField({
     name: 'pin_salt',
-    required: true
+    required: false
   }))
 
   collection.fields.add(new TextField({

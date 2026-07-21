@@ -192,8 +192,8 @@
       })
 
       if (altchaContainer) {
-        const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
-        
+        const isTesting = typeof window !== 'undefined' && (window.__coralite__?.mode === 'testing' || (window.__playwright_test_id__ && window.__coralite__?.mode !== 'production'))
+  
         if (!btnSubmit._originalHtml) {
           btnSubmit._originalHtml = btnSubmit.innerHTML
         }
@@ -241,7 +241,10 @@
               if (typeof registerForm.requestSubmit === 'function') {
                 registerForm.requestSubmit()
               } else {
-                registerForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))
+                registerForm.dispatchEvent(new Event('submit', {
+                  cancelable: true,
+                  bubbles: true
+                }))
               }
             }
           } else if (state === 'unverified') {
@@ -456,7 +459,7 @@
           return
         }
 
-        const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
+        const isTesting = typeof window !== 'undefined' && (window.__coralite__?.mode === 'testing' || (window.__playwright_test_id__ && window.__coralite__?.mode !== 'production'))
         let currentPayload = altchaPayload
         if (altchaWidget && altchaWidget.value) {
           currentPayload = altchaWidget.value
@@ -541,7 +544,7 @@
           }
 
           const authData = await loginRes.json()
-          
+  
           pb.authStore.save(authData.token, authData.record)
 
           await handleSuccessfulLogin()

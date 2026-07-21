@@ -304,7 +304,8 @@ const run = async () => {
         ...process.env,
         PORT: '3001',
         ATOLL_PUSH_WORKER_SECRET: 'test_secret_123',
-        ATOLL_INTERNAL_POCKETBASE_URL: 'http://localhost:8090'
+        ATOLL_INTERNAL_POCKETBASE_URL: 'http://localhost:8090',
+        ATOLL_ALTCHA_COST: '100'
       }
     })
 

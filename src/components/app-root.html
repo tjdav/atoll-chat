@@ -430,44 +430,6 @@
           queryParams
         })
 
-        const otpId = queryParams?.otpId
-        const code = queryParams?.code
-
-        if (otpId && code) {
-          try {
-            console.log('[app-root] Deep Link Magic Link detected. Authenticating...')
-            if (window && window.location) {
-              const url = new URL(window.location.href)
-              url.searchParams.delete('otpId')
-              url.searchParams.delete('code')
-              window.history.replaceState({}, document.title, url.pathname + url.search)
-            }
-
-            const authData = await pb.collection('users').authWithOTP(otpId, code)
-
-            await $storage.saveConfigs([
-              {
-                key: 'pb_url',
-                value: pb.baseUrl
-              },
-              {
-                key: 'pb_token',
-                value: pb.authStore.token
-              }
-            ])
-
-            $state.currentUser = authData.record
-            $state.isAuthenticated = true
-          } catch (error) {
-            console.error('[app-root] Magic Link auth failed via Deep Link:', error)
-            $bus.emit('ui:show_toast', {
-              message: 'Magic link login failed. It may have expired or already been used.',
-              type: 'danger'
-            })
-          }
-          return
-        }
-
         const inviteRoomId = queryParams?.invite || (routePath && routePath.startsWith('/invite/') ? routePath.split('/invite/')[1]?.split('?')[0]?.trim() : null)
         if (inviteRoomId) {
           console.log('[app-root] Deep Link Room invitation detected for room:', inviteRoomId)
@@ -576,6 +538,10 @@
         $state.isAuthenticated = pb.authStore.isValid
         if ($state.isAuthenticated) {
           $state.currentUser = pb.authStore.model
+          const user = pb.authStore.model
+          if (!user || !user.public_box_key) {
+            $state.isVaultUnlocked = false
+          }
         }
 
         if (!$state.authView) {
@@ -600,6 +566,10 @@
       })
 
       $state.subscribe('isAuthenticated', async () => {
+        const user = pb.authStore.model
+        if ($state.isAuthenticated && (!user || !user.public_box_key)) {
+          $state.isVaultUnlocked = false
+        }
         await checkDeviceTrust()
         updateUI()
       })
