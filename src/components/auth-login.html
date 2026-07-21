@@ -120,6 +120,9 @@
 
       let dropdownInstance = null
       let activeAltchaWidget = null
+      let loginSubmitPending = false
+      let forgotSubmitPending = false
+      let altchaPayload = null
 
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message
@@ -202,15 +205,17 @@
 
       const renderAltcha = (container, submitBtn) => {
         container.innerHTML = ''
+        altchaPayload = null
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
         
-        if (!isTesting) {
-          submitBtn.disabled = true
+        if (!submitBtn._originalHtml) {
+          submitBtn._originalHtml = submitBtn.innerHTML
         }
+        submitBtn.disabled = false
 
         const widget = document.createElement('altcha-widget')
-        widget.setAttribute('display', 'floating')
-        widget.setAttribute('floating', 'bottom')
+        widget.setAttribute('display', 'invisible')
+        widget.setAttribute('auto', 'off')
         widget.style.width = '100%'
         widget.style.maxWidth = '100%'
   
@@ -224,24 +229,53 @@
         }
         widget.setAttribute('configuration', JSON.stringify(configObj))
 
+        widget.addEventListener('verified', (ev) => {
+          altchaPayload = ev.detail?.payload || null
+          console.log('[ALTCHA DEBUG] verified event payload:', altchaPayload)
+        })
+
         widget.addEventListener('statechange', (ev) => {
           const state = ev.detail?.state
+          console.log('[ALTCHA DEBUG]', 'state:', state, 'value:', widget.value, 'payload:', ev.detail?.payload)
           if (state === 'verifying') {
-            container.classList.add('d-none')
+            altchaPayload = null
             submitBtn.disabled = true
-            updateStatus('Verifying security challenge...')
+            submitBtn.innerHTML = `
+              <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+              <span role="status">Verifying security challenge...</span>
+            `
           } else if (state === 'verified') {
-            container.classList.add('d-none')
+            if (ev.detail?.payload) {
+              altchaPayload = ev.detail.payload
+            }
             submitBtn.disabled = false
-            updateStatus('')
+            submitBtn.innerHTML = submitBtn._originalHtml
+            if (submitBtn === loginSubmit && loginSubmitPending) {
+              loginSubmitPending = false
+              if (typeof loginForm.requestSubmit === 'function') {
+                loginForm.requestSubmit()
+              } else {
+                loginForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))
+              }
+            } else if (submitBtn === forgotSubmit && forgotSubmitPending) {
+              forgotSubmitPending = false
+              if (typeof forgotPasswordForm.requestSubmit === 'function') {
+                forgotPasswordForm.requestSubmit()
+              } else {
+                forgotPasswordForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))
+              }
+            }
           } else if (state === 'unverified') {
-            container.classList.remove('d-none')
-            submitBtn.disabled = true
-            updateStatus('')
+            altchaPayload = null
+            submitBtn.disabled = false
+            submitBtn.innerHTML = submitBtn._originalHtml
           } else if (state === 'error') {
-            container.classList.remove('d-none')
-            submitBtn.disabled = true
+            altchaPayload = null
+            submitBtn.disabled = false
+            submitBtn.innerHTML = submitBtn._originalHtml
             updateStatus('Security challenge failed. Please try again.', true)
+            loginSubmitPending = false
+            forgotSubmitPending = false
           }
         })
 
@@ -430,6 +464,7 @@
 
       loginForm.addEventListener('submit', async (event) => {
         event.preventDefault()
+        event.stopImmediatePropagation()
         showGlobalAlert('')
 
         identityInput.setCustomValidity('')
@@ -448,12 +483,19 @@
         const password = passwordInput.value
 
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
-        let altchaPayload = activeAltchaWidget ? activeAltchaWidget.value : null
-        if (isTesting) {
-          altchaPayload = 'atoll-mock-bypass-token'
+        let currentPayload = altchaPayload
+        if (activeAltchaWidget && activeAltchaWidget.value) {
+          currentPayload = activeAltchaWidget.value
+        }
+        if (isTesting && !currentPayload) {
+          currentPayload = 'atoll-mock-bypass-token'
         }
 
-        if (!altchaPayload) {
+        if (!currentPayload) {
+          if (activeAltchaWidget) {
+            loginSubmitPending = true
+            activeAltchaWidget.verify()
+          }
           return
         }
 
@@ -469,7 +511,7 @@
             body: JSON.stringify({
               identity,
               password,
-              altcha: altchaPayload
+              altcha: currentPayload
             })
           })
 
@@ -495,6 +537,7 @@
 
       forgotPasswordForm.addEventListener('submit', async (event) => {
         event.preventDefault()
+        event.stopImmediatePropagation()
         showGlobalAlert('')
 
         forgotEmailInput.setCustomValidity('')
@@ -511,12 +554,19 @@
         const email = forgotEmailInput.value
 
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
-        let altchaPayload = activeAltchaWidget ? activeAltchaWidget.value : null
-        if (isTesting) {
-          altchaPayload = 'atoll-mock-bypass-token'
+        let currentPayload = altchaPayload
+        if (activeAltchaWidget && activeAltchaWidget.value) {
+          currentPayload = activeAltchaWidget.value
+        }
+        if (isTesting && !currentPayload) {
+          currentPayload = 'atoll-mock-bypass-token'
         }
 
-        if (!altchaPayload) {
+        if (!currentPayload) {
+          if (activeAltchaWidget) {
+            forgotSubmitPending = true
+            activeAltchaWidget.verify()
+          }
           return
         }
 
@@ -531,7 +581,7 @@
             },
             body: JSON.stringify({
               email,
-              altcha: altchaPayload
+              altcha: currentPayload
             })
           })
 

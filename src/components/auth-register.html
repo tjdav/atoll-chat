@@ -109,6 +109,8 @@
 
       let dropdownInstance = null
       let altchaWidget = null
+      let registerSubmitPending = false
+      let altchaPayload = null
 
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message
@@ -191,9 +193,15 @@
 
       if (altchaContainer) {
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
+        
+        if (!btnSubmit._originalHtml) {
+          btnSubmit._originalHtml = btnSubmit.innerHTML
+        }
+        btnSubmit.disabled = false
+
         altchaWidget = document.createElement('altcha-widget')
-        altchaWidget.setAttribute('display', 'floating')
-        altchaWidget.setAttribute('floating', 'bottom')
+        altchaWidget.setAttribute('display', 'invisible')
+        altchaWidget.setAttribute('auto', 'off')
         altchaWidget.style.width = '100%'
         altchaWidget.style.maxWidth = '100%'
   
@@ -207,24 +215,45 @@
         }
         altchaWidget.setAttribute('configuration', JSON.stringify(configObj))
 
+        altchaWidget.addEventListener('verified', (ev) => {
+          altchaPayload = ev.detail?.payload || null
+          console.log('[ALTCHA REGISTER DEBUG] verified event payload:', altchaPayload)
+        })
+
         altchaWidget.addEventListener('statechange', (ev) => {
           const state = ev.detail?.state
+          console.log('[ALTCHA REGISTER DEBUG]', 'state:', state, 'value:', altchaWidget.value, 'payload:', ev.detail?.payload)
           if (state === 'verifying') {
-            altchaContainer.classList.add('d-none')
+            altchaPayload = null
             btnSubmit.disabled = true
-            updateStatus('Verifying security challenge...')
+            btnSubmit.innerHTML = `
+              <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+              <span role="status">Verifying security challenge...</span>
+            `
           } else if (state === 'verified') {
-            altchaContainer.classList.add('d-none')
+            if (ev.detail?.payload) {
+              altchaPayload = ev.detail.payload
+            }
             btnSubmit.disabled = false
-            updateStatus('')
+            btnSubmit.innerHTML = btnSubmit._originalHtml
+            if (registerSubmitPending) {
+              registerSubmitPending = false
+              if (typeof registerForm.requestSubmit === 'function') {
+                registerForm.requestSubmit()
+              } else {
+                registerForm.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }))
+              }
+            }
           } else if (state === 'unverified') {
-            altchaContainer.classList.remove('d-none')
-            btnSubmit.disabled = true
-            updateStatus('')
+            altchaPayload = null
+            btnSubmit.disabled = false
+            btnSubmit.innerHTML = btnSubmit._originalHtml
           } else if (state === 'error') {
-            altchaContainer.classList.remove('d-none')
-            btnSubmit.disabled = true
+            altchaPayload = null
+            btnSubmit.disabled = false
+            btnSubmit.innerHTML = btnSubmit._originalHtml
             updateStatus('Security challenge failed. Please try again.', true)
+            registerSubmitPending = false
           }
         })
 
@@ -389,6 +418,7 @@
 
       registerForm.addEventListener('submit', async (event) => {
         event.preventDefault()
+        event.stopImmediatePropagation()
         showGlobalAlert('')
 
         // Clear all custom validities first
@@ -427,12 +457,19 @@
         }
 
         const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
-        let altchaPayload = altchaWidget ? altchaWidget.value : null
-        if (isTesting) {
-          altchaPayload = 'atoll-mock-bypass-token'
+        let currentPayload = altchaPayload
+        if (altchaWidget && altchaWidget.value) {
+          currentPayload = altchaWidget.value
+        }
+        if (isTesting && !currentPayload) {
+          currentPayload = 'atoll-mock-bypass-token'
         }
 
-        if (!altchaPayload) {
+        if (!currentPayload) {
+          if (altchaWidget) {
+            registerSubmitPending = true
+            altchaWidget.verify()
+          }
           return
         }
 
@@ -475,7 +512,7 @@
               email,
               password,
               passwordConfirm,
-              altcha: altchaPayload
+              altcha: currentPayload
             })
           })
 
@@ -494,7 +531,7 @@
             body: JSON.stringify({
               identity: username,
               password,
-              altcha: altchaPayload
+              altcha: currentPayload
             })
           })
 

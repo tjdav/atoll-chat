@@ -52,7 +52,7 @@ const server = http.createServer((req, res) => {
       cost: 5000,
       counter: randomInt(5000, 10000),
       deriveKey,
-      hmacKey: hmacKeySecret
+      hmacSignatureSecret: hmacKeySecret
     }).then(challenge => {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify(challenge))
@@ -96,7 +96,7 @@ const server = http.createServer((req, res) => {
           challenge: payloadObj.challenge,
           solution: payloadObj.solution,
           deriveKey,
-          hmacKey: hmacKeySecret
+          hmacSignatureSecret: hmacKeySecret
         })
 
         if (result.verified) {
