@@ -155,7 +155,7 @@
           if (container) {
             container.innerHTML = ''
             state.pendingLinkData.forEach(data => {
-              const el = document.createElement('link-preview-input')
+              const el = document.createElement('ui-link-preview-input')
               el.setAttribute('title', data.title || '')
               el.setAttribute('description', data.description || '')
               el.setAttribute('image', data.image || '')
@@ -492,7 +492,7 @@
   
         const container = refs('linkPreviewContainer')
         if (container) {
-          const el = container.querySelector(`link-preview-input[url="${url}"]`)
+          const el = container.querySelector(`ui-link-preview-input[url="${url}"]`)
           if (el) {
             el.remove()
           }

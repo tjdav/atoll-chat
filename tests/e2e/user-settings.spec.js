@@ -33,7 +33,7 @@ test.describe('User Settings & Profile', () => {
         mimeType: 'image/png',
         buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
       })
-      await page.locator('[data-testid="avatar-editor-0__btnApply"]').click()
+      await page.locator('[data-testid="ui-avatar-editor-0__btnApply"]').click()
       await expect(page.locator('[data-testid="profile-settings-0__btnSave"]')).toBeEnabled()
       await page.locator('[data-testid="profile-settings-0__btnSave"]').click()
       await expect(page.locator('.avatar-circle img')).toBeVisible()
@@ -53,13 +53,13 @@ test.describe('User Settings & Profile', () => {
       })
 
       // Wait for editor canvas to be visible
-      const canvasLocator = page.locator('avatar-editor canvas')
+      const canvasLocator = page.locator('ui-avatar-editor canvas')
       await expect(canvasLocator).toBeVisible()
 
       // Simulate pinch-to-zoom and drag-to-move using Touch API in browser context
       const scales = await page.evaluate(async () => {
-        const canvas = document.querySelector('avatar-editor canvas')
-        const zoomRange = document.querySelector('avatar-editor input[type="range"]')
+        const canvas = document.querySelector('ui-avatar-editor canvas')
+        const zoomRange = document.querySelector('ui-avatar-editor input[type="range"]')
         if (!canvas || !zoomRange) {
           throw new Error('Canvas or zoom slider not found')
         }
@@ -176,7 +176,7 @@ test.describe('User Settings & Profile', () => {
       // Assert that zoom value increased due to pinch-to-zoom
       expect(scales.finalVal).toBeGreaterThan(scales.initialVal)
 
-      await page.locator('[data-testid="avatar-editor-0__btnApply"]').click()
+      await page.locator('[data-testid="ui-avatar-editor-0__btnApply"]').click()
       await expect(page.locator('[data-testid="profile-settings-0__btnSave"]')).toBeEnabled()
       await page.locator('[data-testid="profile-settings-0__btnSave"]').click()
       await expect(page.locator('.avatar-circle img')).toBeVisible()
@@ -196,7 +196,7 @@ test.describe('User Settings & Profile', () => {
       await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
       await page.locator('timeline-item-media img').first().click()
-      await page.locator('share-button button').filter({ visible: true }).click()
+      await page.locator('ui-share-button button').filter({ visible: true }).click()
       const sm = page.locator('.modal.show').filter({ hasText: 'Share to...' })
       await sm.locator('label').filter({ hasText: 'bob' }).first().click()
       await sm.locator('button:has-text("Send")').click()
