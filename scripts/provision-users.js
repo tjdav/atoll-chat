@@ -96,17 +96,7 @@ async function provision () {
     try {
       console.log(`Creating user: ${user.username}...`)
 
-      // Check if user already exists
-      try {
-        await pb.collection('users').getFirstListItem(pb.filter('username = {:username}', { username: user.username }), {
-          requestKey: null
-        })
-        console.log(`User ${user.username} already exists, skipping.`)
-        continue
-      } catch {
-        // User doesn't exist, proceed
-      }
-
+      // Generate keys and payload
       const masterKeys = await generateMasterKeys(sodium)
       const salt = generateSalt(sodium)
       const KEK = await deriveKeyFromPassword(SHARED_VAULT_PASSWORD, salt, sodium)
@@ -125,10 +115,28 @@ async function provision () {
         encrypted_master_keys: encryptedVault
       }
 
-      await pb.collection('users').create(payload, {
-        requestKey: null
-      })
-      console.log(`User ${user.username} created successfully.`)
+      // Check if user already exists
+      let existingRecord = null
+      try {
+        existingRecord = await pb.collection('users').getFirstListItem(pb.filter('username = {:username}', { username: user.username }), {
+          requestKey: null
+        })
+      } catch {
+        // User doesn't exist
+      }
+
+      if (existingRecord) {
+        console.log(`User ${user.username} already exists. Updating password, keys, and master vault...`)
+        await pb.collection('users').update(existingRecord.id, payload, {
+          requestKey: null
+        })
+        console.log(`User ${user.username} updated successfully.`)
+      } else {
+        await pb.collection('users').create(payload, {
+          requestKey: null
+        })
+        console.log(`User ${user.username} created successfully.`)
+      }
     } catch (error) {
       console.error(`Failed to create user ${user.username}:`, error.data || error.message)
     }

@@ -245,6 +245,35 @@ export function createServer () {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-test-id')
     res.setHeader('Access-Control-Allow-Credentials', 'true')
 
+    // Content Security Policy and Safety Headers (simulating Goja csp.pb.js)
+    const pbUrl = process.env.ATOLL_POCKETBASE_URL || 'http://localhost:8090'
+    const pushUrl = process.env.ATOLL_PUSH_WORKER_URL || 'http://localhost:3001'
+    const isReportOnly = process.env.ATOLL_CSP_REPORT_ONLY === 'true'
+
+    const cspDirectives = [
+      "default-src 'none'",
+      "script-src 'self' 'wasm-unsafe-eval'",
+      `connect-src 'self' ${pbUrl} ${pushUrl} ws: wss: stun: turn: turns:`,
+      "worker-src 'self' blob:",
+      "style-src 'self' 'unsafe-inline'",
+      "img-src 'self' data: blob:",
+      "media-src 'self' blob:",
+      "font-src 'self'",
+      "manifest-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self'"
+    ]
+
+    const cspHeaderName = isReportOnly ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'
+    if (isReportOnly) {
+      cspDirectives.push('report-uri /api/csp-report')
+    }
+
+    res.setHeader(cspHeaderName, cspDirectives.join('; '))
+    res.setHeader('X-Frame-Options', 'DENY')
+    res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+
     if (req.method === 'OPTIONS') {
       res.writeHead(200)
       res.end()
@@ -540,7 +569,10 @@ export function createServer () {
 
         console.log(`[MOCK PB] [${testId}] Custom Registered user: ${username}`)
         res.writeHead(201, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ success: true, record: newUser }))
+        res.end(JSON.stringify({
+          success: true,
+          record: newUser
+        }))
         return
       }
 
@@ -564,7 +596,10 @@ export function createServer () {
         }
         // No enumeration, return success regardless
         res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ success: true, message: 'Password reset email sent if account exists.' }))
+        res.end(JSON.stringify({
+          success: true,
+          message: 'Password reset email sent if account exists.'
+        }))
         return
       }
 

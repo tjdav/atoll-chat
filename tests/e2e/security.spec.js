@@ -329,4 +329,28 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     /* Toast confirmation */
     await expect(page.locator('.toast-body')).toContainText('Two-Step Authentication disabled successfully.')
   })
+
+  test('should inject the strict Content Security Policy and safety headers', async ({ page }) => {
+    const response = await page.request.get('http://localhost:8090/api/health')
+    expect(response).not.toBeNull()
+    const headers = response.headers()
+
+    expect(headers['content-security-policy']).toBeDefined()
+    const csp = headers['content-security-policy']
+    expect(csp).toContain("default-src 'none'")
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'")
+    expect(csp).toContain("worker-src 'self' blob:")
+    expect(csp).toContain("style-src 'self' 'unsafe-inline'")
+    expect(csp).toContain("img-src 'self' data: blob:")
+    expect(csp).toContain("media-src 'self' blob:")
+    expect(csp).toContain("font-src 'self'")
+    expect(csp).toContain("manifest-src 'self'")
+    expect(csp).toContain("base-uri 'self'")
+    expect(csp).toContain("form-action 'self'")
+
+    // Safety Headers
+    expect(headers['x-frame-options']).toBe('DENY')
+    expect(headers['x-content-type-options']).toBe('nosniff')
+    expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
+  })
 })

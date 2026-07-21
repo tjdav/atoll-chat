@@ -135,6 +135,10 @@ export default defineConfig({
       pkg: 'altcha',
       path: 'dist/main/altcha.min.js',
       dest: 'assets/altcha.js'
+    },
+    {
+      src: 'src/assets/register-sw.js',
+      dest: 'assets/register-sw.js'
     }
   ]
 })
