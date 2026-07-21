@@ -245,6 +245,7 @@ export default [
       '**/dist/',
       '**/.history/',
       '**/playwright-report/',
+      '**/test-results/',
       '**/.coralite/',
       '**/.coralite-testing/',
       '**/.coralite-dev/',

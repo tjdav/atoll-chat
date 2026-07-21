@@ -35,6 +35,14 @@ function getUserIdFromToken (token) {
   }
 }
 
+const isVerbose = Boolean(process.env.DEBUG || process.env.VERBOSE)
+
+function logVerbose (...args) {
+  if (isVerbose) {
+    console.log(...args)
+  }
+}
+
 function sanitizeUserRecord (authHeader, record) {
   if (!record || (record.collectionName && record.collectionName !== 'users')) {
     return record
@@ -208,7 +216,7 @@ function parseMultipart (bodyBuffer, boundary) {
 
 function getDatabase (testId) {
   if (!databases[testId]) {
-    console.log(`[MOCK PB] Initializing new database for testId: ${testId}`)
+    logVerbose(`[MOCK PB] Initializing new database for testId: ${testId}`)
     databases[testId] = {
       users: [],
       rooms: [],
@@ -229,12 +237,12 @@ function broadcast (db, collectionName, action, record) {
     record
   })
 
-  console.log(`[MOCK PB] Broadcasting "${eventName}" action "${action}" to ${db.sseClients.length} clients. Subscriptions list:`, db.sseClients.map(c => `${c.clientId}: [${c.subscriptions.join(', ')}]`))
+  logVerbose(`[MOCK PB] Broadcasting "${eventName}" action "${action}" to ${db.sseClients.length} clients. Subscriptions list:`, db.sseClients.map(c => `${c.clientId}: [${c.subscriptions.join(', ')}]`))
 
   for (const client of db.sseClients) {
     if (client.subscriptions.includes('*') || client.subscriptions.includes(eventName)) {
       try {
-        console.log(`[MOCK PB] Delivering event "${eventName}" to client ${client.clientId}`)
+        logVerbose(`[MOCK PB] Delivering event "${eventName}" to client ${client.clientId}`)
         client.res.write(`event: ${eventName}\ndata: ${data}\n\n`)
       } catch (err) {
         console.error('Failed to write to SSE client:', err.message)
@@ -297,7 +305,7 @@ export function createServer () {
     const testId = req.headers['x-test-id'] || query['x-test-id'] || 'default'
     const db = getDatabase(testId)
 
-    console.log(`[MOCK PB] [${testId}] ${req.method} ${pathname}`)
+    logVerbose(`[MOCK PB] [${testId}] ${req.method} ${pathname}`)
 
     // Raw body parser
     let bodyBuffer = Buffer.alloc(0)
@@ -457,7 +465,7 @@ export function createServer () {
           })
 
           const clientId = 'client_' + crypto.randomUUID().replace(/-/g, '')
-          console.log(`[MOCK PB] [${testId}] GET /api/realtime. Created clientId: ${clientId}. Current sseClients count: ${db.sseClients.length}`)
+          logVerbose(`[MOCK PB] [${testId}] GET /api/realtime. Created clientId: ${clientId}. Current sseClients count: ${db.sseClients.length}`)
           const client = {
             clientId,
             res,
@@ -481,7 +489,7 @@ export function createServer () {
           }, 15000)
 
           res.on('close', () => {
-            console.log(`[MOCK PB] [${testId}] SSE client ${clientId} disconnected. Remaining:`, db.sseClients.length - 1)
+            logVerbose(`[MOCK PB] [${testId}] SSE client ${clientId} disconnected. Remaining:`, db.sseClients.length - 1)
             clearInterval(heartbeat)
             db.sseClients = db.sseClients.filter(c => c.clientId !== clientId)
           })
@@ -489,7 +497,7 @@ export function createServer () {
         } else if (req.method === 'POST') {
           const { clientId, subscriptions } = body
           const client = db.sseClients.find(c => c.clientId === clientId)
-          console.log(`[MOCK PB] [${testId}] POST /api/realtime. clientId: ${clientId}, subscriptions: [${(subscriptions || []).join(', ')}]. Found client: ${!!client}`)
+          logVerbose(`[MOCK PB] [${testId}] POST /api/realtime. clientId: ${clientId}, subscriptions: [${(subscriptions || []).join(', ')}]. Found client: ${!!client}`)
           if (client) {
             client.subscriptions = subscriptions || []
           }
@@ -581,7 +589,7 @@ export function createServer () {
         }
         db.users.push(newUser)
 
-        console.log(`[MOCK PB] [${testId}] Custom Registered user: ${username}`)
+        logVerbose(`[MOCK PB] [${testId}] Custom Registered user: ${username}`)
         res.writeHead(201, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({
           success: true,
@@ -674,7 +682,7 @@ export function createServer () {
           return
         }
         db.lastPush = body
-        console.log(`[MOCK PB] [${testId}] Stored last push:`, JSON.stringify(body))
+        logVerbose(`[MOCK PB] [${testId}] Stored last push:`, JSON.stringify(body))
 
         // Find any "EXPIRED" recipients to simulate background self-healing
         const recipients = body.recipients || []
@@ -888,7 +896,7 @@ export function createServer () {
           }
 
           if (collectionName === 'users') {
-            console.log('--- USER RECORD SAVED ---', newRecord.id, Object.keys(newRecord))
+            logVerbose('--- USER RECORD SAVED ---', newRecord.id, Object.keys(newRecord))
           }
           list.push(newRecord)
           broadcast(db, collectionName, 'create', newRecord)
@@ -998,7 +1006,7 @@ export function createServer () {
           }
 
           if (collectionName === 'users') {
-            console.log('--- USER RECORD UPDATED ---', updatedRecord.id, Object.keys(updatedRecord))
+            logVerbose('--- USER RECORD UPDATED ---', updatedRecord.id, Object.keys(updatedRecord))
           }
 
           list[index] = updatedRecord

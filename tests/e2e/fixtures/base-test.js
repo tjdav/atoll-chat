@@ -133,6 +133,7 @@ function generateRecoveryWrapsV2 (masterKeyBytes, sodium) {
 }
 
 const PB_URL = process.env.PB_URL || 'http://127.0.0.1:8090'
+const isVerbose = Boolean(process.env.DEBUG || process.env.VERBOSE)
 
 const USERS = [
   {
@@ -153,7 +154,9 @@ const SHARED_PASSWORD = 'Password123!'
 const SHARED_VAULT_PASSWORD = 'VaultPassword123!'
 
 async function resetPocketBase (testId) {
-  console.log(`--- Resetting PocketBase (SDK) for test: ${testId} ---`)
+  if (process.env.DEBUG || process.env.VERBOSE) {
+    console.log(`--- Resetting PocketBase (SDK) for test: ${testId} ---`)
+  }
   await sodium.ready
   const pb = new PocketBase(PB_URL)
 
@@ -243,7 +246,9 @@ async function resetPocketBase (testId) {
     }
   }
 
-  console.log(`--- PocketBase Reset Complete for test: ${testId} ---`)
+  if (process.env.DEBUG || process.env.VERBOSE) {
+    console.log(`--- PocketBase Reset Complete for test: ${testId} ---`)
+  }
 }
 
 export const test = base.extend({
@@ -297,13 +302,17 @@ export const test = base.extend({
     }, testId)
 
     page.on('console', msg => {
-      console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`)
+      if (isVerbose || msg.type() === 'error') {
+        console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`)
+      }
     })
     page.on('pageerror', err => {
       console.log(`[BROWSER ERROR] ${err.message}`)
     })
     page.on('requestfailed', request => {
-      console.log(`[BROWSER REQUEST FAILED] ${request.url()}: ${request.failure()?.errorText || 'failed'}`)
+      if (isVerbose) {
+        console.log(`[BROWSER REQUEST FAILED] ${request.url()}: ${request.failure()?.errorText || 'failed'}`)
+      }
     })
 
     try {
@@ -381,7 +390,9 @@ export const test = base.extend({
       }, testId)
 
       targetPage.on('console', msg => {
-        console.log(`[BROWSER][${username}] ${msg.type()}: ${msg.text()}`)
+        if (isVerbose || msg.type() === 'error') {
+          console.log(`[BROWSER][${username}] ${msg.type()}: ${msg.text()}`)
+        }
       })
       targetPage.on('pageerror', err => {
         console.log(`[BROWSER ERROR][${username}] ${err.message}`)
