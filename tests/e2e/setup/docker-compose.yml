@@ -61,4 +61,10 @@ services:
       - --user=testuser:testpass
       - --realm=atoll-chat
       - --listening-port=3478
+    healthcheck:
+      test: ["CMD-SHELL", "turnutils_stunclient -p 3478 127.0.0.1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped

@@ -170,3 +170,25 @@ These environment variables configure local development provisioning and automat
 | `PB_URL` | `http://127.0.0.1:8090` | Base URL configuration for automated provisioning and E2E mock server connections. | [provision-users.js](/scripts/provision-users.js), [base-test.js](/tests/e2e/fixtures/base-test.js) |
 | `PB_ADMIN_EMAIL` | `admin@example.com` | Administrator email address used for auto-provisioning databases during local setup. | [provision-users.js](/scripts/provision-users.js) |
 | `PB_ADMIN_PASSWORD` | `password123` | Administrator password configuration used for database auto-provisioning. | [provision-users.js](/scripts/provision-users.js) |
+
+---
+
+### 5. Coturn TURN/STUN Container & Health Check Configuration
+
+The Coturn relay server (`atoll-coturn`) handles NAT traversal and WebRTC media relay when direct P2P connections cannot be established.
+
+#### Container Health Check
+Both `docker-compose.dev.yml` and `tests/e2e/setup/docker-compose.yml` include an automated health check using Coturn's native `turnutils_stunclient` tool. This performs real STUN binding handshakes against port `3478` rather than simple TCP socket checks:
+
+```yaml
+healthcheck:
+  test: ["CMD-SHELL", "turnutils_stunclient -p 3478 127.0.0.1 || exit 1"]
+  interval: 10s
+  timeout: 5s
+  retries: 3
+  start_period: 5s
+```
+
+#### Production Security Recommendation
+- **Development**: Uses long-term credentials (`--lt-cred-mech`, `--user=testuser:testpass`, `--realm=atoll-chat`).
+- **Production**: Use Coturn's Shared Secret Authentication (`use-auth-secret` and `static-auth-secret=<secret_key>`). This enables backend services (PocketBase or Node API) to generate short-lived, time-limited HMAC-SHA1 credentials for users dynamically without exposing static credentials.

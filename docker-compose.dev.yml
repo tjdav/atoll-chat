@@ -48,4 +48,10 @@ services:
       - --listening-port=3478
       - --listening-ip=0.0.0.0
       - --no-cli
+    healthcheck:
+      test: ["CMD-SHELL", "turnutils_stunclient -p 3478 127.0.0.1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
     restart: unless-stopped
