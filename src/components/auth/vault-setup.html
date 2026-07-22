@@ -275,6 +275,7 @@
             public_sign_key: masterKeysRes.public_sign_key,
             vault_salt: $crypto.toBase64(salt),
             encrypted_master_keys: passwordWrap,
+            encrypted_private_keys: masterKeysRes.encrypted_private_keys,
             recovery_wraps: recoveryWraps
           }
 

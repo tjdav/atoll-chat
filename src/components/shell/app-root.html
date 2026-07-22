@@ -413,7 +413,7 @@
             col.appendChild(document.createElement('totp-challenge'))
           } else {
             const user = pb.authStore.model
-            if (user && user.public_box_key) {
+            if (user && user.public_box_key && user.encrypted_private_keys) {
               col.appendChild(document.createElement('vault-unlock'))
             } else {
               col.appendChild(document.createElement('vault-setup'))

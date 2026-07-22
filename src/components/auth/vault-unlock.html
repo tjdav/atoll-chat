@@ -444,6 +444,10 @@
             throw new Error('Invalid or expired recovery code.')
           }
 
+          if (!encryptedPrivateKeys) {
+            throw new Error('This account is missing vault key data. Please re-initialize your vault.')
+          }
+
           decryptedMasterKeyHex = decryptedMasterKey
 
           updateStatus('Decrypting private keys...')
