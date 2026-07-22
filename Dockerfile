@@ -31,17 +31,17 @@ RUN corepack enable pnpm
 COPY pnpm-lock.yaml ./
 RUN pnpm fetch
 
-#  Copy the entire source code
+# Copy the entire source code
 COPY . .
 
 # Install dependencies offline (instant, uses the fetched cache)
 RUN pnpm install --frozen-lockfile --offline
 
-# Install push-worker dependencies using pnpm
-RUN cd push-worker && pnpm install --prod
-
 # Build the frontend
 RUN pnpm run build
+
+# Install push-worker dependencies using pnpm
+RUN cd push-worker && pnpm install --prod
 
 # Stage 2: Final Image
 FROM alpine:latest
