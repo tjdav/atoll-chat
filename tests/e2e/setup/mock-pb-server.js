@@ -274,13 +274,13 @@ export function createServer () {
 
     const cspDirectives = [
       "default-src 'none'",
-      "script-src 'self' 'wasm-unsafe-eval'",
-      `connect-src 'self' ${pbUrl} ${pushUrl} ws: wss: stun: turn: turns:`,
+      "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
+      `connect-src 'self' ${pbUrl} ${pushUrl} https: wss: ws: stun: turn: turns:`,
       "worker-src 'self' blob:",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob:",
+      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+      "img-src 'self' data: blob: https:",
       "media-src 'self' blob:",
-      "font-src 'self'",
+      "font-src 'self' data: https://cdn.jsdelivr.net",
       "manifest-src 'self'",
       "base-uri 'self'",
       "form-action 'self'"
