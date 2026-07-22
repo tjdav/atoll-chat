@@ -10,11 +10,11 @@
         <h3 class="card-title mb-3 text-center">Secure Your Vault</h3>
         <p class="text-muted small text-center mb-4">Set a strong password to encrypt your local cryptographic keys. This password is never sent to the server.</p>
         <form ref="setupForm" class="needs-validation" novalidate>
-          <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username">
+          <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username" tabindex="-1" aria-hidden="true">
           <div class="mb-3">
             <label for="{{ ref_password }}" class="form-label">Vault Password</label>
             <div class="password-field-container">
-              <input id="{{ ref_password }}" name="password" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="12" required autocomplete="new-password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false">
+              <input id="{{ ref_password }}" name="password" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="12" required autocomplete="new-password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false" autofocus>
               <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
                 <i class="bi bi-eye"></i>
               </button>
