@@ -6,17 +6,9 @@ import { deriveKey } from 'altcha-lib/algorithms/pbkdf2'
 
 const PORT = process.env.PORT || 3000
 
-// Validate strict environment variables
+// Validate environment variables
 const internalWorkerSecret = process.env.ATOLL_PUSH_WORKER_SECRET
-const pocketbaseUrl = process.env.ATOLL_INTERNAL_POCKETBASE_URL
-
-if (!internalWorkerSecret) {
-  throw new Error('[push-worker] Fatal: ATOLL_PUSH_WORKER_SECRET environment variable is missing.')
-}
-
-if (!pocketbaseUrl) {
-  throw new Error('[push-worker] Fatal: ATOLL_INTERNAL_POCKETBASE_URL environment variable is missing.')
-}
+const pocketbaseUrl = process.env.ATOLL_INTERNAL_POCKETBASE_URL || 'http://127.0.0.1:8080'
 
 const altchaSecret = process.env.ATOLL_ALTCHA_SECRET || 'fallback-altcha-secret-key-1234567890'
 const hmacKeySecret = await deriveHmacKeySecret(altchaSecret)
