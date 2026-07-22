@@ -91,6 +91,24 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     /* Click Proceed and verify successful navigation to dashboard layout */
     await proceedBtn.click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
+
+    /* Clear storage/logout and reload page to test full re-login and vault unlock */
+    await page.evaluate(() => window.localStorage.clear())
+    await page.reload()
+    await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
+
+    /* Log in with the newly registered user */
+    await page.locator('auth-login [data-testid$="username"]').fill(regUser)
+    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+
+    /* Verify vault-unlock screen appears and successfully unlocks with vault password */
+    await expect(page.locator('vault-unlock')).toBeVisible({ timeout: 15000 })
+    await page.locator('vault-unlock [data-testid$="password"]').fill('VaultPassword123!')
+    await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+
+    /* Verify dashboard app-layout renders after unlocking */
+    await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
   })
 
 
