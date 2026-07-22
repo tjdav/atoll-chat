@@ -79,7 +79,7 @@ export default defineConfig({
     notificationPlugin,
     biometricPlugin,
     pushPlugin({
-      vapidKey: process.env.ATOLL_VAPID_PUBLIC_KEY || 'BI42LscA_XvC28RpxgGk_g0-XW5yC4S_N924_68yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2_58yL4Zpx8aX_P1_x2'
+      vapidKey: process.env.ATOLL_VAPID_PUBLIC_KEY || 'BG6jbL6oHXUyR8hntptF57uh1ZC229JFqe0t4moskBqFNFhN8nYrCUma47Vmlg7eL1NhmyO8BKznjpqTx_T-7XQ'
     }),
     appLifecyclePlugin,
     networkPlugin,
