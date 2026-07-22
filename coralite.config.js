@@ -143,12 +143,12 @@ export default defineConfig({
     {
       pkg: 'bootstrap-icons',
       path: 'font/fonts/bootstrap-icons.woff',
-      dest: 'assets/fonts/bootstrap-icons.woff'
+      dest: 'assets/css/fonts/bootstrap-icons.woff'
     },
     {
       pkg: 'bootstrap-icons',
       path: 'font/fonts/bootstrap-icons.woff2',
-      dest: 'assets/fonts/bootstrap-icons.woff2'
+      dest: 'assets/css/fonts/bootstrap-icons.woff2'
     }
   ]
 })
