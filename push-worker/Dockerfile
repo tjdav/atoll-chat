@@ -2,9 +2,11 @@ FROM node:24-alpine
 
 WORKDIR /app
 
-COPY package.json ./
+RUN corepack enable pnpm
 
-RUN npm install --omit=dev
+COPY package.json pnpm-lock.yaml* ./
+
+RUN pnpm install --prod
 
 COPY index.js ./
 

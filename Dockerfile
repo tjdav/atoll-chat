@@ -34,10 +34,11 @@ RUN pnpm fetch
 #  Copy the entire source code
 COPY . .
 
-# 3. Install dependencies offline (instant, uses the fetched cache)
+# Install dependencies offline (instant, uses the fetched cache)
 RUN pnpm install --frozen-lockfile --offline
 
-ARG BUILD_ID=1
+# Install push-worker dependencies using pnpm
+RUN cd push-worker && pnpm install --prod
 
 # Build the frontend
 RUN pnpm run build
@@ -48,8 +49,8 @@ FROM alpine:latest
 # Set PocketBase version
 ARG PB_VERSION=0.39.8
 
-# Install dependencies
-RUN apk add --no-cache ca-certificates unzip wget libc6-compat
+# Install dependencies (Node.js runtime for push worker)
+RUN apk add --no-cache ca-certificates unzip wget libc6-compat nodejs
 
 # Download and extract PocketBase using BuildKit cache mount
 RUN --mount=type=cache,target=/var/cache/pocketbase \
@@ -85,12 +86,11 @@ ENV ATOLL_SMTP_LOCAL_NAME=""
 ENV ATOLL_SMTP_SENDER_NAME="Atoll Chat"
 ENV ATOLL_SMTP_SENDER_ADDRESS="noreply@atoll.chat"
 
-# OPTIONAL: Native PocketBase auto-provisioning admin credentials on startup
-# ENV PB_ADMIN_EMAIL="admin@example.com"
-# ENV PB_ADMIN_PASSWORD="ChooseAStrongPassword123"
-
 # Set working directory for PocketBase
 WORKDIR /pb
+
+# Copy push worker microservice (with pnpm pre-installed node_modules from builder stage)
+COPY --from=builder /app/push-worker /pb/push-worker
 
 # Copy the compiled frontend from builder stage
 COPY --from=builder /app/dist ./pb_public
@@ -102,5 +102,5 @@ COPY ./database/pb_migrations ./pb_migrations
 # Expose the PocketBase port (defaults to 8080 but dynamic)
 EXPOSE 8080
 
-# Start PocketBase with dynamic port binding and CORS configuration using origins flag
-ENTRYPOINT ["sh", "-c", "/usr/local/bin/pocketbase serve --http=0.0.0.0:${PORT} --dir=/pb/pb_data --publicDir=/pb/pb_public --hooksDir=/pb/pb_hooks --migrationsDir=/pb/pb_migrations --origins=\"${ATOLL_ALLOWED_ORIGINS}\""]
+# Start push-worker in background if local/standalone, then start PocketBase
+ENTRYPOINT ["sh", "-c", "export ATOLL_INTERNAL_POCKETBASE_URL=${ATOLL_INTERNAL_POCKETBASE_URL:-http://127.0.0.1:${PORT}}; (cd /pb/push-worker && PORT=3000 node index.js &); cd /pb && /usr/local/bin/pocketbase serve --http=0.0.0.0:${PORT} --dir=/pb/pb_data --publicDir=/pb/pb_public --hooksDir=/pb/pb_hooks --migrationsDir=/pb/pb_migrations --origins=\"${ATOLL_ALLOWED_ORIGINS}\""]
