@@ -37,6 +37,8 @@ COPY . .
 # 3. Install dependencies offline (instant, uses the fetched cache)
 RUN pnpm install --frozen-lockfile --offline
 
+ARG BUILD_ID=1
+
 # Build the frontend
 RUN pnpm run build
 
