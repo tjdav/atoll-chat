@@ -5,7 +5,7 @@
       {{ senderName }}
     </div>
 
-    <div class="timeline-row-container {{ rowClass }}" ref="rowContainer">
+    <div class="timeline-row-container {{ rowClass }}">
       <!-- Avatar Column (Received only) -->
       <div class="avatar-col d-flex align-items-end {{ avatarColDisplayClass }}">
         <div ref="avatarContainer">
@@ -13,7 +13,7 @@
         </div>
       </div>
 
-      <div class="message-bubble-column d-flex flex-column {{ alignmentClass }}" ref="bubbleColumn">
+      <div class="message-bubble-column d-flex flex-column {{ alignmentClass }}">
         <div class="position-relative d-flex flex-column {{ alignmentClass }}" ref="bubbleWrapper">
           <slot></slot>
           <div ref="reactionIcon" class="reaction-trigger-icon position-absolute d-none" style="cursor: pointer; z-index: 10;">
@@ -38,7 +38,6 @@
   export default defineComponent({
     attributes: {
       isSent: String,
-      isFirstInBlock: String,
       isLastInBlock: String,
       senderName: String,
       avatarUrl: String,

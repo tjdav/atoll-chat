@@ -11,7 +11,7 @@
         <div class="mb-3">
           <label class="form-label small fw-bold">Verification Code</label>
           <input type="text" class="form-control text-center fs-4 font-monospace" ref="otpInput" id="{{ ref_otpInput }}" required placeholder="000000" maxlength="6" pattern="\d{6}" data-testid="totpChallengeInput" aria-describedby="{{ ref_totpChallengeFeedback }}" aria-invalid="false">
-          <div id="{{ ref_totpChallengeFeedback }}" ref="totpChallengeFeedback" class="invalid-feedback" data-testid="totpChallenge-feedback" aria-live="polite"></div>
+          <div id="{{ ref_totpChallengeFeedback }}" class="invalid-feedback" data-testid="totpChallenge-feedback" aria-live="polite"></div>
         </div>
         <button type="submit" class="btn btn-primary w-100" ref="btnVerify" data-testid="totpChallengeSubmit">Verify Code</button>
       </form>

@@ -35,12 +35,6 @@
       state.currentAppView = $state.currentAppView || 'chats'
       $state.listSearchQuery = ''
 
-      // Clear registration div on client mount to avoid duplicate elements in DOM
-      const regDiv = refs('registrationDiv')
-      if (regDiv) {
-        regDiv.innerHTML = ''
-      }
-
       const updateView = () => {
         const view = state.currentAppView
         const container = refs('listContainer')

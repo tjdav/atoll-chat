@@ -13,11 +13,7 @@
   export default defineComponent({
     attributes: {
       localUuid: String,
-      status: String,
-      isSent: {
-        type: Boolean,
-        default: false
-      }
+      status: String
     },
     getters: {
       loadingClass: (state) => (['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave')

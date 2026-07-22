@@ -9,7 +9,7 @@
     </div>
   </div>
   
-  <div ref="messageSoundControls" id="{{ ref_messageSoundControls }}" class="mb-4 {{ messageSoundControlsClass }}">
+  <div id="{{ ref_messageSoundControls }}" class="mb-4 {{ messageSoundControlsClass }}">
     <div class="d-flex gap-2 align-items-center mb-2">
       <button class="btn btn-sm btn-outline-secondary" ref="btnPreviewMessage">
         <i class="bi bi-play-fill"></i> Preview
@@ -20,7 +20,7 @@
       </label>
       <button class="btn btn-sm btn-link text-danger p-0 ms-2 {{ resetMessageSoundClass }}" ref="btnResetMessageSound">Reset to default</button>
     </div>
-    <div class="small text-muted" ref="messageSoundName">{{ messageSoundName }}</div>
+    <div class="small text-muted">{{ messageSoundName }}</div>
   </div>
 
   <div class="d-flex align-items-center justify-content-between mb-3">
@@ -33,7 +33,7 @@
     </div>
   </div>
 
-  <div ref="callSoundControls" id="{{ ref_callSoundControls }}" class="{{ callSoundControlsClass }}">
+  <div id="{{ ref_callSoundControls }}" class="{{ callSoundControlsClass }}">
     <div class="d-flex gap-2 align-items-center mb-2">
       <button class="btn btn-sm btn-outline-secondary" ref="btnPreviewCall">
         <i class="bi bi-play-fill"></i> Preview
@@ -44,7 +44,7 @@
       </label>
       <button class="btn btn-sm btn-link text-danger p-0 ms-2 {{ resetCallSoundClass }}" ref="btnResetCallSound">Reset to default</button>
     </div>
-    <div class="small text-muted" ref="callSoundName">{{ callSoundName }}</div>
+    <div class="small text-muted">{{ callSoundName }}</div>
   </div>
 </template>
 

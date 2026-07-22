@@ -3,7 +3,6 @@
     <!-- Attachment Preview Bar -->
     <div class="{{ attachmentPreviewClass }}">
       <chat-attachment-preview 
-        ref="attachmentPreview"
         file-name="{{ fileName }}" 
         upload-status="{{ uploadStatus }}"
         is-video="{{ isVideo }}"
@@ -20,7 +19,6 @@
     <!-- Normal Input Mode -->
     <div class="{{ inputGroupClass }}" data-testid="chat-input-wrapper">
       <chat-input-text
-        ref="inputText"
         is-sending="{{ isSending }}"
         is-uploading="{{ isUploading }}"
         is-compressing="{{ isCompressing }}"

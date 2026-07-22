@@ -14,7 +14,7 @@
         <div class="mb-3">
           <label for="{{ ref_workspaceUrl }}" class="form-label">Workspace URL</label>
           <input type="url" ref="workspaceUrl" name="workspaceUrl" id="{{ ref_workspaceUrl }}" class="form-control" placeholder="https://chat.my-server.com" required data-testid="workspaceUrlInput" aria-describedby="{{ ref_onboardingError }}" aria-invalid="false">
-          <div id="{{ ref_onboardingError }}" ref="onboardingError" class="invalid-feedback" data-testid="onboardingError" aria-live="polite"></div>
+          <div id="{{ ref_onboardingError }}" class="invalid-feedback" data-testid="onboardingError" aria-live="polite"></div>
           <div class="form-text small">E.g., https://corporate.my-chat.com</div>
         </div>
         <button type="submit" class="btn btn-primary w-100" ref="btnConnect" data-testid="btnConnect">Connect to Workspace</button>

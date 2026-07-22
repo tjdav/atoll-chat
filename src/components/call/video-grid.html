@@ -7,7 +7,7 @@
     <video ref="localVideo" class="local-video position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light {{ localVideoClass }} {{ localVideoSpeakingClass }}" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
 
     <!-- Overlay if no remote video yet -->
-    <div ref="remotePlaceholder" class="remote-placeholder position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
+    <div class="remote-placeholder position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
       <!-- Video Call waiting spinner and text -->
       <div class="{{ videoWaitingClass }} flex-column align-items-center justify-content-center">
         <div class="spinner-border video-spinner text-primary mb-3" role="status">

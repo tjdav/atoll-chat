@@ -19,7 +19,7 @@
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div id="{{ ref_passwordFeedback }}" ref="passwordFeedback" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
+            <div id="{{ ref_passwordFeedback }}" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
             <div class="progress mt-2" style="height: 5px;">
               <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
@@ -33,7 +33,7 @@
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div id="{{ ref_passwordConfirmFeedback }}" ref="passwordConfirmFeedback" class="invalid-feedback" data-testid="passwordConfirm-feedback" aria-live="polite"></div>
+            <div id="{{ ref_passwordConfirmFeedback }}" class="invalid-feedback" data-testid="passwordConfirm-feedback" aria-live="polite"></div>
           </div>
           <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" disabled>Generate Vault Keys</button>
         </form>

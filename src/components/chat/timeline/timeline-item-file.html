@@ -1,5 +1,5 @@
 <template id="timeline-item-file">
-  <div id="timeline-item-{{ localUuid }}" ref="container" class="file-attachment-container p-2 mb-1 border rounded bg-body-tertiary d-flex align-items-center" style="min-width: 250px; max-width: 350px;">
+  <div id="timeline-item-{{ localUuid }}" class="file-attachment-container p-2 mb-1 border rounded bg-body-tertiary d-flex align-items-center" style="min-width: 250px; max-width: 350px;">
     <div ref="loading" class="{{ loadingClass }} d-flex align-items-center w-100">
       <div class="placeholder rounded me-2" style="width: 40px; height: 40px;"></div>
       <div class="flex-grow-1">
@@ -29,11 +29,7 @@
   export default defineComponent({
     attributes: {
       localUuid: String,
-      status: String,
-      isSent: {
-        type: Boolean,
-        default: false
-      }
+      status: String
     },
     getters: {
       loadingClass: (state) => (['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave')

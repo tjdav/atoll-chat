@@ -6,29 +6,27 @@
 
       <!-- Login Form -->
       <form ref="loginForm" class="needs-validation" novalidate>
-        <div ref="loginSection">
-          <h3 class="card-title mb-4 text-center">Login</h3>
-          <div class="mb-3">
-            <label for="{{ ref_identity }}" class="form-label">Username or Email</label>
-            <input ref="identity" name="identity" id="{{ ref_identity }}" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username" data-testid="username" aria-describedby="{{ ref_identityFeedback }}" aria-invalid="false">
-            <div id="{{ ref_identityFeedback }}" ref="identityFeedback" class="invalid-feedback" data-testid="identity-feedback" aria-live="polite"></div>
+        <h3 class="card-title mb-4 text-center">Login</h3>
+        <div class="mb-3">
+          <label for="{{ ref_identity }}" class="form-label">Username or Email</label>
+          <input ref="identity" name="identity" id="{{ ref_identity }}" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username" data-testid="username" aria-describedby="{{ ref_identityFeedback }}" aria-invalid="false">
+          <div id="{{ ref_identityFeedback }}" class="invalid-feedback" data-testid="identity-feedback" aria-live="polite"></div>
+        </div>
+        <div class="mb-3">
+          <label for="{{ ref_password }}" class="form-label">Password</label>
+          <div class="password-field-container">
+            <input ref="password" name="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter password" required autocomplete="current-password" data-testid="password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false">
+            <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
+              <i class="bi bi-eye"></i>
+            </button>
           </div>
-          <div class="mb-3">
-            <label for="{{ ref_password }}" class="form-label">Password</label>
-            <div class="password-field-container">
-              <input ref="password" name="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter password" required autocomplete="current-password" data-testid="password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false">
-              <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
-                <i class="bi bi-eye"></i>
-              </button>
-            </div>
-            <div id="{{ ref_passwordFeedback }}" ref="passwordFeedback" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
-          </div>
-          <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
-          <button type="submit" class="btn btn-primary w-100 mb-2" ref="loginSubmit" data-testid="loginSubmit">Log In</button>
-          
-          <div class="text-end">
-            <a href="#" ref="linkForgotPassword" class="text-decoration-none small">Forgot Password?</a>
-          </div>
+          <div id="{{ ref_passwordFeedback }}" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
+        </div>
+        <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
+        <button type="submit" class="btn btn-primary w-100 mb-2" ref="loginSubmit" data-testid="loginSubmit">Log In</button>
+        
+        <div class="text-end">
+          <a href="#" ref="linkForgotPassword" class="text-decoration-none small">Forgot Password?</a>
         </div>
       </form>
 
@@ -39,7 +37,7 @@
         <div class="mb-3">
           <label for="{{ ref_forgotEmail }}" class="form-label">Email Address</label>
           <input ref="forgotEmail" name="forgotEmail" id="{{ ref_forgotEmail }}" type="email" class="form-control" placeholder="Enter email" required autocomplete="email" aria-describedby="{{ ref_forgotEmailFeedback }}" aria-invalid="false">
-          <div id="{{ ref_forgotEmailFeedback }}" ref="forgotEmailFeedback" class="invalid-feedback" data-testid="forgot-email-feedback" aria-live="polite"></div>
+          <div id="{{ ref_forgotEmailFeedback }}" class="invalid-feedback" data-testid="forgot-email-feedback" aria-live="polite"></div>
         </div>
         <div class="mb-3 d-flex justify-content-center" ref="forgotAltchaContainer"></div>
         <button type="submit" class="btn btn-primary w-100 mb-2" ref="forgotSubmit">Send Reset Link</button>
@@ -62,7 +60,7 @@
                   data-testid="islandSelectBtn">
             <span ref="currentIslandLabel">Current Island: Loading...</span>
           </button>
-          <ul class="dropdown-menu shadow dropdown-menu-dark p-0 overflow-hidden" style="min-width: 240px;" ref="islandsDropdownMenu" data-testid="islandsDropdownMenu">
+          <ul class="dropdown-menu shadow dropdown-menu-dark p-0 overflow-hidden" style="min-width: 240px;" data-testid="islandsDropdownMenu">
             <li class="dropdown-header px-3 py-2">Your Islands</li>
             <div ref="islandsList" data-testid="islandsList"></div>
             <li><hr class="dropdown-divider m-0"></li>

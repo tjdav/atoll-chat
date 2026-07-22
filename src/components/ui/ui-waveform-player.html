@@ -1,7 +1,7 @@
 <template id="ui-waveform-player">
-  <div ref="container" class="w-100 position-relative">
+  <div class="w-100 position-relative">
     <!-- Waveform layout -->
-    <div ref="waveformLayout" class="waveform-player w-100" hidden="{{ hideWaveform }}">
+    <div class="waveform-player w-100" hidden="{{ hideWaveform }}">
       <button ref="playBtn" class="play-pause-btn" type="button" style="z-index: 2;">
         <div ref="spinner" class="spinner-border spinner-border-sm text-light" hidden role="status" style="width: 1rem; height: 1rem;">
           <span class="visually-hidden">Loading...</span>
@@ -19,7 +19,7 @@
     </div>
 
     <!-- Fallback native audio controls layout -->
-    <div ref="fallbackLayout" class="w-100" hidden="{{ hasWaveform }}">
+    <div class="w-100" hidden="{{ hasWaveform }}">
       <audio ref="fallbackAudio" class="w-100" controls></audio>
     </div>
 

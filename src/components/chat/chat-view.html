@@ -1,7 +1,7 @@
 <template id="chat-view">
   <div class="chat-view d-flex flex-column h-100 bg-body">
     <!-- Chat Header -->
-    <header class="app-header chat-view-header d-flex justify-content-between align-items-center" ref="chatHeader">
+    <header class="app-header chat-view-header d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">
         <button class="btn btn-link link-body-emphasis ps-0 pe-2 d-sm-none" ref="btnBack">
           <i class="bi bi-chevron-left fs-4"></i>
@@ -33,7 +33,7 @@
       <message-timeline></message-timeline>
 
       <!-- Room Details Sidebar (Slide-over) -->
-      <div ref="sidebarContainer" class="sidebar-slide-over shadow-lg border-start bg-body" hidden="{{ hideSidebar }}">
+      <div class="sidebar-slide-over shadow-lg border-start bg-body" hidden="{{ hideSidebar }}">
         <room-details-sidebar></room-details-sidebar>
       </div>
     </div>
