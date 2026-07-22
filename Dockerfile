@@ -47,7 +47,7 @@ FROM alpine:latest
 ARG PB_VERSION=0.39.8
 
 # Install dependencies (Node.js runtime for push worker and pnpm)
-RUN apk add --no-cache ca-certificates unzip wget libc6-compat nodejs npm && corepack enable pnpm
+RUN apk add --no-cache ca-certificates unzip wget libc6-compat nodejs npm && npm install -g pnpm
 
 # Download and extract PocketBase using BuildKit cache mount
 RUN --mount=type=cache,target=/var/cache/pocketbase \
