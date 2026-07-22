@@ -83,7 +83,12 @@
       incomingClass: (state) => (state.callStatus === 'incoming' ? 'd-flex' : 'd-none'),
       activeClass: (state) => (state.callStatus === 'active' && !state.isPipMode ? 'd-block' : 'd-none'),
       pipClass: (state) => (state.callStatus === 'active' && state.isPipMode ? 'd-block' : 'd-none'),
-      audioBtnClass: (state) => (!state.isAudioEnabled ? 'btn-danger' : (state.isLocalSpeaking ? 'btn-success speaking-btn-glow' : 'btn-light')),
+      audioBtnClass: (state) => {
+        if (!state.isAudioEnabled) {
+          return 'btn-danger'
+        }
+        return state.isLocalSpeaking ? 'btn-success speaking-btn-glow' : 'btn-light'
+      },
       audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
       videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill'),

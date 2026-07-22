@@ -45,7 +45,7 @@
     },
     client: async ({ refs, state, globalStore, pocketbase, eventBus }) => {
       const { $state } = globalStore
-      const { pb } = pocketbase
+      const { records, files } = pocketbase
       const { $bus } = eventBus
 
       const nameInput = refs('nameInput')
@@ -68,7 +68,7 @@
   
         if (avatarPreview) {
           if (user?.avatar && !pendingAvatarBlob) {
-            const avatarUrl = pb.files.getURL(user, user.avatar, { thumb: '100x100' })
+            const avatarUrl = files.getUrl(user, user.avatar, { thumb: '100x100' })
             avatarPreview.innerHTML = ''
             const img = document.createElement('img')
             img.src = avatarUrl
@@ -134,7 +134,7 @@
             formData.append('avatar', pendingAvatarBlob, 'avatar.webp')
           }
 
-          const updatedUser = await pb.collection('users').update($state.currentUser.id, formData)
+          const updatedUser = await records.update('users', $state.currentUser.id, formData)
   
           $state.currentUser = {
             ...$state.currentUser,

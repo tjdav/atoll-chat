@@ -37,7 +37,7 @@
         return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
       }
 
-      const { pb } = pocketbase
+      const { pb, auth } = pocketbase
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $totp } = await totp
@@ -101,7 +101,7 @@
       })
 
       btnLogout.addEventListener('click', () => {
-        pb.authStore.clear()
+        auth.logout()
         $state.isAuthenticated = false
         $state.isVaultUnlocked = false
       })

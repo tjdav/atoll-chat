@@ -314,7 +314,7 @@
           const user = pb.authStore.model
           avatar.setAttribute('name', user.name || user.username)
           if (user.avatar) {
-            const avatarUrl = pb.files.getUrl(user, user.avatar)
+            const avatarUrl = pb.files.getURL(user, user.avatar)
             avatar.setAttribute('url', avatarUrl)
           }
         } else {

@@ -130,7 +130,7 @@ export function createAudioSpeakerDetector ({
     }
     try {
       monitor.source.disconnect()
-    } catch (e) {
+    } catch {
       /* Safe ignore */
     }
 
