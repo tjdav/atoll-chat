@@ -26,6 +26,10 @@
               </button>
             </div>
             <div id="{{ ref_passwordFeedback }}" ref="passwordFeedback" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
+            <div class="progress mt-2" style="height: 5px;">
+              <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+            </div>
+            <div ref="strengthText" class="form-text small mt-1">Minimum 8 characters.</div>
           </div>
           <div class="mb-3">
             <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
@@ -100,6 +104,9 @@
       const btnSubmit = refs('btnSubmit')
       const statusMsg = refs('statusMsg')
       const globalAlert = refs('globalAlert')
+      const strengthBar = refs('strengthBar')
+      const strengthText = refs('strengthText')
+      let zxcvbnScore = 0
 
       const islandSwitcherContainer = refs('islandSwitcherContainer')
       const islandSelectBtn = refs('islandSelectBtn')
@@ -178,6 +185,17 @@
       }
 
       registerInputReset(registerForm)
+
+      const updateStrength = async () => {
+        const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
+        const { score, width, colorClass, text } = await evaluatePasswordStrength(passwordInput.value, 8)
+        zxcvbnScore = score
+        strengthBar.style.width = width
+        strengthBar.className = colorClass
+        strengthText.textContent = text
+      }
+
+      passwordInput.addEventListener('input', updateStrength)
 
       const setupToggle = (input, toggle) => {
         toggle.addEventListener('click', () => {

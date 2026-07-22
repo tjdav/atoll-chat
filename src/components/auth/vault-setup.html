@@ -184,33 +184,13 @@
 
       const updateStrength = async () => {
         const password = passwordInput.value
-        if (!password) {
-          strengthBar.style.width = '0%'
-          strengthBar.className = 'progress-bar'
-          strengthText.textContent = 'Minimum 12 characters.'
-          btnSubmit.disabled = true
-          zxcvbnScore = 0
-          return
-        }
-
-        try {
-          const { default: zxcvbn } = await import('zxcvbn')
-          const result = zxcvbn(password)
-          zxcvbnScore = result.score
-          const colors = ['bg-danger', 'bg-danger', 'bg-warning', 'bg-info', 'bg-success']
-          const labels = ['Very Weak', 'Weak', 'Fair', 'Good', 'Strong']
-
-          strengthBar.style.width = `${(zxcvbnScore + 1) * 20}%`
-          strengthBar.className = `progress-bar ${colors[zxcvbnScore]}`
-          strengthText.textContent = `Strength: ${labels[zxcvbnScore]}. ${result.feedback.warning || ''}`
-
-          btnSubmit.disabled = password.length < 12 || zxcvbnScore < 3
-        } catch (err) {
-          console.error('[vault-setup] zxcvbn error:', err)
-          btnSubmit.disabled = password.length < 12
-          /* Safe fallback */
-          zxcvbnScore = 3
-        }
+        const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
+        const { score, width, colorClass, text } = await evaluatePasswordStrength(password, 12)
+        zxcvbnScore = score
+        strengthBar.style.width = width
+        strengthBar.className = colorClass
+        strengthText.textContent = text
+        btnSubmit.disabled = password.length < 12 || zxcvbnScore < 3
       }
 
       passwordInput.addEventListener('input', updateStrength)
