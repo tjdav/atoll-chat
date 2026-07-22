@@ -277,10 +277,10 @@ export function createServer () {
       "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
       `connect-src 'self' ${pbUrl} ${pushUrl} https: wss: ws: stun: turn: turns:`,
       "worker-src 'self' blob:",
-      "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net",
+      "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "media-src 'self' blob:",
-      "font-src 'self' data: https://cdn.jsdelivr.net",
+      "font-src 'self' data:",
       "manifest-src 'self'",
       "base-uri 'self'",
       "form-action 'self'"

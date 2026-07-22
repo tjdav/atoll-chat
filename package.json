@@ -54,6 +54,7 @@
     "@capacitor/network": "^8.0.1",
     "altcha": "3.2.1",
     "bootstrap": "^5.3.8",
+    "bootstrap-icons": "^1.13.1",
     "dexie": "^4.4.3",
     "emoji-picker-element": "^1.29.1",
     "fuse.js": "^7.4.2",

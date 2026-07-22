@@ -139,6 +139,16 @@ export default defineConfig({
     {
       src: 'src/assets/register-sw.js',
       dest: 'assets/register-sw.js'
+    },
+    {
+      pkg: 'bootstrap-icons',
+      path: 'font/fonts/bootstrap-icons.woff',
+      dest: 'assets/fonts/bootstrap-icons.woff'
+    },
+    {
+      pkg: 'bootstrap-icons',
+      path: 'font/fonts/bootstrap-icons.woff2',
+      dest: 'assets/fonts/bootstrap-icons.woff2'
     }
   ]
 })
