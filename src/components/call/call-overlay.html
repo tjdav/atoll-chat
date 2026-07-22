@@ -76,13 +76,14 @@
       localStream: null,
       remoteOffer: null,
       isPipMode: false,
+      isLocalSpeaking: false,
       incomingMediaTypes: ['audio', 'video']
     }),
     getters: {
       incomingClass: (state) => (state.callStatus === 'incoming' ? 'd-flex' : 'd-none'),
       activeClass: (state) => (state.callStatus === 'active' && !state.isPipMode ? 'd-block' : 'd-none'),
       pipClass: (state) => (state.callStatus === 'active' && state.isPipMode ? 'd-block' : 'd-none'),
-      audioBtnClass: (state) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
+      audioBtnClass: (state) => (!state.isAudioEnabled ? 'btn-danger' : (state.isLocalSpeaking ? 'btn-success speaking-btn-glow' : 'btn-light')),
       audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
       videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill'),
@@ -296,6 +297,78 @@
         }
         state.callerInitial = state.callerName.charAt(0).toUpperCase()
       }, { signal })
+
+      const btnToggleAudio = refs('btnToggleAudio')
+
+      const updateLocalSpeakingBtn = () => {
+        const targetBtn = refs('btnToggleAudio') || btnToggleAudio
+        if (targetBtn) {
+          if (state.isAudioEnabled && state.isLocalSpeaking) {
+            targetBtn.classList.add('btn-success', 'speaking-btn-glow')
+            targetBtn.classList.remove('btn-light', 'btn-danger')
+          } else if (!state.isAudioEnabled) {
+            targetBtn.classList.add('btn-danger')
+            targetBtn.classList.remove('btn-light', 'btn-success', 'speaking-btn-glow')
+          } else {
+            targetBtn.classList.add('btn-light')
+            targetBtn.classList.remove('btn-danger', 'btn-success', 'speaking-btn-glow')
+          }
+        }
+      }
+
+      $state.subscribe('isLocalSpeaking', (val) => {
+        state.isLocalSpeaking = Boolean(val)
+        updateLocalSpeakingBtn()
+      })
+
+      // Speaker Detection Setup
+      const { createAudioSpeakerDetector } = await import('../../utils/audioSpeakerDetector.js')
+      const speakerDetector = createAudioSpeakerDetector({
+        onSpeakingChange: ({ isSpeaking, participantId }) => {
+          if (participantId === 'local') {
+            state.isLocalSpeaking = isSpeaking
+            $state.isLocalSpeaking = isSpeaking
+          } else {
+            $state.isRemoteSpeaking = isSpeaking
+          }
+        }
+      })
+
+      let localStreamId = null
+      let remoteStreamId = null
+
+      $state.subscribe('localStream', (stream) => {
+        if (localStreamId) {
+          speakerDetector.detachStream(localStreamId)
+          localStreamId = null
+        }
+        if (stream) {
+          localStreamId = speakerDetector.attachStream(stream, 'local')
+        }
+      })
+
+      $state.subscribe('remoteStream', (stream) => {
+        if (remoteStreamId) {
+          speakerDetector.detachStream(remoteStreamId)
+          remoteStreamId = null
+        }
+        if (stream) {
+          remoteStreamId = speakerDetector.attachStream(stream, 'remote')
+        }
+      })
+
+      $bus.on('call:remote_track_arrival', ({ stream }) => {
+        if (stream) {
+          if (remoteStreamId) {
+            speakerDetector.detachStream(remoteStreamId)
+          }
+          remoteStreamId = speakerDetector.attachStream(stream, 'remote')
+        }
+      }, { signal })
+
+      signal.addEventListener('abort', () => {
+        speakerDetector.destroy()
+      })
 
       // Listen for locally initiated calls to grab the stream
       $bus.on('call:initiated_locally', ({ localStream }) => {

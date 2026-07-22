@@ -95,3 +95,32 @@
     }
   }
 }
+
+/* Audio & Video Call Speaking Indicators */
+@keyframes speaker-pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(25, 135, 84, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 16px rgba(25, 135, 84, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(25, 135, 84, 0);
+  }
+}
+
+.speaking-ring {
+  animation: speaker-pulse 1.5s infinite;
+  border: 3px solid #198754 !important;
+}
+
+.speaking-border {
+  border: 3px solid #198754 !important;
+  box-shadow: 0 0 18px rgba(25, 135, 84, 0.75) !important;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.speaking-btn-glow {
+  box-shadow: 0 0 14px rgba(25, 135, 84, 0.9) !important;
+  border-color: #198754 !important;
+}

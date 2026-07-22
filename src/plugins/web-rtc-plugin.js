@@ -233,10 +233,14 @@ export default function webrtcPlugin ({
 
           pc.ontrack = (event) => {
             const stream = event.streams[0]
-            if (event.track.kind === 'video') {
+            if (stream) {
               $state.remoteStream = stream
+            }
+
+            if (event.track.kind === 'video') {
               $state.hasRemoteVideo = true
             }
+
             $bus.emit('call:remote_track_arrival', {
               room_id,
               stream,

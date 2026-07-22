@@ -1,10 +1,10 @@
 <template id="video-grid">
   <div class="video-grid position-relative w-100 h-100 bg-dark overflow-hidden {{ pipClass }}">
     <!-- Main background video (Remote) -->
-    <video ref="remoteVideo" class="remote-video w-100 h-100 object-fit-cover" autoplay playsinline></video>
+    <video ref="remoteVideo" class="remote-video w-100 h-100 object-fit-cover {{ remoteVideoSpeakingClass }}" autoplay playsinline></video>
     
     <!-- Picture-in-Picture local video -->
-    <video ref="localVideo" class="local-video position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light {{ localVideoClass }}" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
+    <video ref="localVideo" class="local-video position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light {{ localVideoClass }} {{ localVideoSpeakingClass }}" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
 
     <!-- Overlay if no remote video yet -->
     <div ref="remotePlaceholder" class="remote-placeholder position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
@@ -18,7 +18,7 @@
 
       <!-- Audio Call active view with avatar and name -->
       <div class="{{ audioCallClass }} flex-column align-items-center justify-content-center">
-        <div class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-4 shadow" style="width: 120px; height: 120px; font-size: 3rem;">
+        <div ref="remoteAvatar" class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-4 shadow {{ remoteAvatarSpeakingClass }}" style="width: 120px; height: 120px; font-size: 3rem;">
           {{ remoteInitial }}
         </div>
         <h2 class="mb-2">{{ remoteName }}</h2>
@@ -37,7 +37,9 @@
       hasRemoteVideo: false,
       isVideoEnabled: true,
       remoteName: 'Remote Participant',
-      remoteInitial: '?'
+      remoteInitial: '?',
+      isLocalSpeaking: false,
+      isRemoteSpeaking: false
     }),
     getters: {
       placeholderClass: (state) => (state.hasRemoteVideo ? 'd-none' : 'd-flex'),
@@ -49,7 +51,10 @@
         return state.isVideoEnabled ? 'd-block' : 'd-none'
       },
       videoWaitingClass: (state) => (state.isVideoEnabled ? 'd-flex' : 'd-none'),
-      audioCallClass: (state) => (state.isVideoEnabled ? 'd-none' : 'd-flex')
+      audioCallClass: (state) => (state.isVideoEnabled ? 'd-none' : 'd-flex'),
+      remoteAvatarSpeakingClass: (state) => (state.isRemoteSpeaking ? 'speaking-ring' : ''),
+      remoteVideoSpeakingClass: (state) => (state.isRemoteSpeaking ? 'speaking-border' : ''),
+      localVideoSpeakingClass: (state) => (state.isLocalSpeaking ? 'speaking-border' : '')
     },
     client: ({ refs, state, eventBus, signal, globalStore, storage }) => {
       const { $bus } = eventBus
@@ -57,16 +62,46 @@
       const { $storage } = storage
       const remoteVideo = refs('remoteVideo')
       const localVideo = refs('localVideo')
+      const remoteAvatar = refs('remoteAvatar')
 
-      // Sync global track state to local state for reactivity in getters
-      state.hasRemoteVideo = $state.hasRemoteVideo
-      $state.subscribe('hasRemoteVideo', (val) => {
-        state.hasRemoteVideo = val
+      const updateSpeakingDOM = () => {
+        const targetAvatar = refs('remoteAvatar') || remoteAvatar
+        const targetRemoteVideo = refs('remoteVideo') || remoteVideo
+        const targetLocalVideo = refs('localVideo') || localVideo
+
+        if (targetAvatar) {
+          if (state.isRemoteSpeaking) {
+            targetAvatar.classList.add('speaking-ring')
+          } else {
+            targetAvatar.classList.remove('speaking-ring')
+          }
+        }
+        if (targetRemoteVideo) {
+          if (state.isRemoteSpeaking) {
+            targetRemoteVideo.classList.add('speaking-border')
+          } else {
+            targetRemoteVideo.classList.remove('speaking-border')
+          }
+        }
+        if (targetLocalVideo) {
+          if (state.isLocalSpeaking) {
+            targetLocalVideo.classList.add('speaking-border')
+          } else {
+            targetLocalVideo.classList.remove('speaking-border')
+          }
+        }
+      }
+
+      state.isLocalSpeaking = Boolean($state.isLocalSpeaking)
+      $state.subscribe('isLocalSpeaking', (val) => {
+        state.isLocalSpeaking = Boolean(val)
+        updateSpeakingDOM()
       })
 
-      state.isVideoEnabled = $state.isVideoEnabled || false
-      $state.subscribe('isVideoEnabled', (val) => {
-        state.isVideoEnabled = val
+      state.isRemoteSpeaking = Boolean($state.isRemoteSpeaking)
+      $state.subscribe('isRemoteSpeaking', (val) => {
+        state.isRemoteSpeaking = Boolean(val)
+        updateSpeakingDOM()
       })
 
       const updateRemoteParticipantInfo = async () => {
@@ -177,6 +212,7 @@
           if (remoteVideo.srcObject !== stream) {
             remoteVideo.srcObject = stream
           }
+          remoteVideo.muted = true
           if ($state.hasRemoteVideo) {
             console.log('[video-grid] Remote video detected, playing...')
             playVideo(remoteVideo)
@@ -227,8 +263,15 @@
           attachRemoteStream(stream)
         } else if (track.kind === 'audio') {
           const audio = new Audio()
+          audio.autoplay = true
           audio.srcObject = stream
-          audio.play().catch(err => console.error('[video-grid] Failed to play remote audio:', err))
+          audio.play().catch(err => {
+            if (err.name === 'NotAllowedError') {
+              console.warn('[video-grid] Autoplay blocked for audio track, enabling fallback playback...')
+              audio.muted = true
+              audio.play().catch(e => console.error('[video-grid] Audio play failed:', e))
+            }
+          })
 
           // Cleanup audio on call end or unmount
           const cleanup = (e) => {

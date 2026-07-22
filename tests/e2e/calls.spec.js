@@ -21,6 +21,80 @@ test.describe.serial('Calls', () => {
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
     })
 
+    await test.step('Inject dynamic Web Audio tone generator into getUserMedia', async () => {
+      const injectAudioMock = async (page) => {
+        await page.evaluate(() => {
+          if (window.__E2E_AUDIO_MOCK_INJECTED__) {
+            return
+          }
+          window.__E2E_AUDIO_MOCK_INJECTED__ = true
+
+          const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
+          navigator.mediaDevices.getUserMedia = async (constraints) => {
+            const stream = await originalGetUserMedia(constraints)
+            if (constraints && constraints.audio) {
+              try {
+                const AudioCtxClass = window.AudioContext || window.webkitAudioContext
+                const audioCtx = new AudioCtxClass()
+                if (audioCtx.state === 'suspended') {
+                  audioCtx.resume().catch(() => {
+                  })
+                }
+                const osc = audioCtx.createOscillator()
+                const gain = audioCtx.createGain()
+                const dest = audioCtx.createMediaStreamDestination()
+
+                osc.type = 'sine'
+                osc.frequency.value = 440
+                gain.gain.value = 0.5
+
+                osc.connect(gain)
+                gain.connect(dest)
+                try {
+                  gain.connect(audioCtx.destination)
+                } catch {
+                }
+                osc.start()
+
+                const dummyAudio = new Audio()
+                dummyAudio.muted = true
+                dummyAudio.srcObject = dest.stream
+                dummyAudio.play().catch(() => {
+                })
+
+                const synthTrack = dest.stream.getAudioTracks()[0]
+                window.__E2E_AUDIO_CONTROLLER__ = {
+                  audioCtx,
+                  osc,
+                  gain,
+                  synthTrack,
+                  setVolume: (val) => {
+                    if (audioCtx.state === 'suspended') {
+                      audioCtx.resume().catch(() => {
+                      })
+                    }
+                    gain.gain.setValueAtTime(val, audioCtx.currentTime)
+                  }
+                }
+
+                const origTracks = stream.getAudioTracks()
+                if (origTracks.length > 0) {
+                  stream.removeTrack(origTracks[0])
+                }
+                stream.addTrack(synthTrack)
+              } catch (err) {
+                console.warn('[E2E Audio Mock] Error wrapping audio track:', err)
+              }
+            }
+            return stream
+          }
+        })
+      }
+
+      await injectAudioMock(alicePage)
+      await injectAudioMock(bobPage)
+    })
+
     await test.step('Setup direct room between Alice and Bob', async () => {
       // Fast-timeout check to see if Bob's chat room is already in Alice's sidebar list
       const aliceBobChat = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'bob' }).first()
@@ -77,6 +151,30 @@ test.describe.serial('Calls', () => {
       await expect(aliceVideoBtn).toHaveAttribute('aria-pressed', 'true')
     })
 
+    await test.step('Verify visual speaking indicator via dynamic Web Audio stream', async () => {
+      // Assert local mic button receives glowing class from live audio track
+      await expect(alicePage.locator('call-overlay [ref$="btnToggleAudio"]')).toHaveClass(/speaking-btn-glow/, { timeout: 10000 })
+
+      // Mute local mic generator audio gain
+      await alicePage.evaluate(() => {
+        if (window.__E2E_AUDIO_CONTROLLER__) {
+          window.__E2E_AUDIO_CONTROLLER__.gain.gain.value = 0
+        }
+      })
+
+      // Assert local mic button loses glowing class after hangover delay
+      await expect(alicePage.locator('call-overlay [ref$="btnToggleAudio"]')).not.toHaveClass(/speaking-btn-glow/, { timeout: 10000 })
+
+      // Restore local mic generator audio gain
+      await alicePage.evaluate(() => {
+        if (window.__E2E_AUDIO_CONTROLLER__) {
+          window.__E2E_AUDIO_CONTROLLER__.gain.gain.value = 0.5
+        }
+      })
+
+      await expect(alicePage.locator('call-overlay [ref$="btnToggleAudio"]')).toHaveClass(/speaking-btn-glow/, { timeout: 10000 })
+    })
+
     await test.step('Toggle microphone mute', async () => {
       await aliceAudioBtn.click()
       await expect(aliceAudioBtn).toHaveAttribute('aria-pressed', 'true')
@@ -117,6 +215,36 @@ test.describe.serial('Calls', () => {
         timeout: 25000,
         message: 'Remote video stream never arrived for Alice'
       }).toBe(true)
+    })
+
+    await test.step('Verify glowing speaking-border on video tile when audio stream is active', async () => {
+      // Ensure Alice's audio generator is producing tone
+      await alicePage.evaluate(() => {
+        if (window.__E2E_AUDIO_CONTROLLER__) {
+          window.__E2E_AUDIO_CONTROLLER__.setVolume(0.5)
+        }
+      })
+      // Assert Alice's local video element receives speaking-border from Web Audio stream
+      await expect(alicePage.locator('video-grid video.local-video')).toHaveClass(/speaking-border/, { timeout: 10000 })
+
+      // Mute Alice's audio generator
+      await alicePage.evaluate(() => {
+        if (window.__E2E_AUDIO_CONTROLLER__) {
+          window.__E2E_AUDIO_CONTROLLER__.setVolume(0)
+        }
+      })
+
+      // Assert Alice's local video element loses speaking-border after hangover delay
+      await expect(alicePage.locator('video-grid video.local-video')).not.toHaveClass(/speaking-border/, { timeout: 10000 })
+
+      // Restore Alice's audio generator
+      await alicePage.evaluate(() => {
+        if (window.__E2E_AUDIO_CONTROLLER__) {
+          window.__E2E_AUDIO_CONTROLLER__.setVolume(0.5)
+        }
+      })
+
+      await expect(alicePage.locator('video-grid video.local-video')).toHaveClass(/speaking-border/, { timeout: 10000 })
     })
 
     await test.step('Verify remote video stream has arrived for Bob', async () => {
