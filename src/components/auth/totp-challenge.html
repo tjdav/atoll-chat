@@ -10,8 +10,8 @@
       <form ref="challengeForm" class="text-start needs-validation" novalidate>
         <div class="mb-3">
           <label class="form-label small fw-bold">Verification Code</label>
-          <input type="text" class="form-control text-center fs-4 font-monospace" ref="otpInput" required placeholder="000000" maxlength="6" pattern="\d{6}" data-testid="totpChallengeInput">
-          <div class="invalid-feedback" data-testid="totpChallenge-feedback"></div>
+          <input type="text" class="form-control text-center fs-4 font-monospace" ref="otpInput" id="{{ ref_otpInput }}" required placeholder="000000" maxlength="6" pattern="\d{6}" data-testid="totpChallengeInput" aria-describedby="{{ ref_totpChallengeFeedback }}" aria-invalid="false">
+          <div id="{{ ref_totpChallengeFeedback }}" ref="totpChallengeFeedback" class="invalid-feedback" data-testid="totpChallenge-feedback" aria-live="polite"></div>
         </div>
         <button type="submit" class="btn btn-primary w-100" ref="btnVerify" data-testid="totpChallengeSubmit">Verify Code</button>
       </form>
@@ -65,12 +65,12 @@
       }
 
       const getFeedbackElement = (input) => {
-        let sibling = input.nextElementSibling
-        while (sibling) {
-          if (sibling.classList.contains('invalid-feedback')) {
-            return sibling
+        const ariaDescribedBy = input.getAttribute('aria-describedby')
+        if (ariaDescribedBy) {
+          const target = document.getElementById(ariaDescribedBy)
+          if (target) {
+            return target
           }
-          sibling = sibling.nextElementSibling
         }
         const container = input.closest('.mb-3') || input.parentNode
         if (container) {

@@ -9,33 +9,33 @@
           <h3 class="card-title mb-4 text-center">Create Account</h3>
           <div class="mb-3">
             <label for="{{ ref_username }}" class="form-label">Username</label>
-            <input name="username" ref="username" id="{{ ref_username }}" type="text" class="form-control" placeholder="Choose a username" minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" required autocomplete="username">
-            <div class="invalid-feedback" data-testid="username-feedback"></div>
+            <input name="username" ref="username" id="{{ ref_username }}" type="text" class="form-control" placeholder="Choose a username" minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" required autocomplete="username" aria-describedby="{{ ref_usernameFeedback }}" aria-invalid="false">
+            <div id="{{ ref_usernameFeedback }}" ref="usernameFeedback" class="invalid-feedback" data-testid="username-feedback" aria-live="polite"></div>
           </div>
           <div class="mb-3">
             <label for="{{ ref_email }}" class="form-label">Email</label>
-            <input name="email" ref="email" id="{{ ref_email }}" type="email" class="form-control" placeholder="Enter your email" required autocomplete="email">
-            <div class="invalid-feedback" data-testid="email-feedback"></div>
+            <input name="email" ref="email" id="{{ ref_email }}" type="email" class="form-control" placeholder="Enter your email" required autocomplete="email" aria-describedby="{{ ref_emailFeedback }}" aria-invalid="false">
+            <div id="{{ ref_emailFeedback }}" ref="emailFeedback" class="invalid-feedback" data-testid="email-feedback" aria-live="polite"></div>
           </div>
           <div class="mb-3">
             <label for="{{ ref_password }}" class="form-label">Password</label>
             <div class="password-field-container">
-              <input name="password" ref="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter Password" minlength="8" required autocomplete="new-password" data-testid="password">
+              <input name="password" ref="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter Password" minlength="8" required autocomplete="new-password" data-testid="password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false">
               <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div class="invalid-feedback" data-testid="password-feedback"></div>
+            <div id="{{ ref_passwordFeedback }}" ref="passwordFeedback" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
           </div>
           <div class="mb-3">
             <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
             <div class="password-field-container">
-              <input name="passwordConfirm" ref="passwordConfirm" id="{{ ref_passwordConfirm }}" type="password" class="form-control" placeholder="Confirm Password" minlength="8" required autocomplete="new-password">
+              <input name="passwordConfirm" ref="passwordConfirm" id="{{ ref_passwordConfirm }}" type="password" class="form-control" placeholder="Confirm Password" minlength="8" required autocomplete="new-password" aria-describedby="{{ ref_passwordConfirmFeedback }}" aria-invalid="false">
               <button type="button" class="password-toggle focus-ring" ref="passwordConfirmToggle" aria-label="Toggle password visibility">
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div class="invalid-feedback" data-testid="password-confirm-feedback"></div>
+            <div id="{{ ref_passwordConfirmFeedback }}" ref="passwordConfirmFeedback" class="invalid-feedback" data-testid="password-confirm-feedback" aria-live="polite"></div>
           </div>
           <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
           <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" data-testid="registerSubmit">Register & Log In</button>
@@ -135,12 +135,12 @@
       }
 
       const getFeedbackElement = (input) => {
-        let sibling = input.nextElementSibling
-        while (sibling) {
-          if (sibling.classList.contains('invalid-feedback')) {
-            return sibling
+        const ariaDescribedBy = input.getAttribute('aria-describedby')
+        if (ariaDescribedBy) {
+          const target = document.getElementById(ariaDescribedBy)
+          if (target) {
+            return target
           }
-          sibling = sibling.nextElementSibling
         }
         const container = input.closest('.mb-3') || input.parentNode
         if (container) {
@@ -153,6 +153,8 @@
         const inputs = form.querySelectorAll('input, select, textarea')
         inputs.forEach(input => {
           const feedback = getFeedbackElement(input)
+          const isValid = input.checkValidity()
+          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
           if (feedback) {
             feedback.textContent = input.validationMessage || 'Invalid value.'
           }
@@ -165,6 +167,8 @@
           if (input.setCustomValidity) {
             input.setCustomValidity('')
           }
+          const isValid = input.checkValidity()
+          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
           const feedback = getFeedbackElement(input)
           if (feedback) {
             feedback.textContent = input.validationMessage

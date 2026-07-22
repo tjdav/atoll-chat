@@ -14,12 +14,12 @@
           <div class="mb-3">
             <label for="{{ ref_password }}" class="form-label">Vault Password</label>
             <div class="password-field-container">
-              <input name="password" ref="password" type="password" class="form-control" placeholder="Enter Vault Password" required autocomplete="current-password" data-testid="password">
+              <input id="{{ ref_password }}" name="password" ref="password" type="password" class="form-control" placeholder="Enter Vault Password" required autocomplete="current-password" data-testid="password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false">
               <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div class="invalid-feedback" data-testid="password-feedback"></div>
+            <div id="{{ ref_passwordFeedback }}" ref="passwordFeedback" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
           </div>
           <div class="d-grid gap-2">
             <button type="submit" class="btn btn-primary" ref="unlockSubmit" data-testid="unlockSubmit">Unlock with Password</button>
@@ -38,8 +38,8 @@
         <form ref="recoveryForm" class="needs-validation" novalidate>
           <div class="mb-3">
             <label for="{{ ref_recoveryCodeInput }}" class="form-label">Recovery Code</label>
-            <input ref="recoveryCodeInput" name="recoveryCodeInput" type="text" class="form-control text-center fs-5 font-monospace" placeholder="XXXX-XXXX-XXXX" required>
-            <div class="invalid-feedback" data-testid="recoveryCodeInput-feedback"></div>
+            <input id="{{ ref_recoveryCodeInput }}" ref="recoveryCodeInput" name="recoveryCodeInput" type="text" class="form-control text-center fs-5 font-monospace" placeholder="XXXX-XXXX-XXXX" required aria-describedby="{{ ref_recoveryCodeInputFeedback }}" aria-invalid="false">
+            <div id="{{ ref_recoveryCodeInputFeedback }}" ref="recoveryCodeInputFeedback" class="invalid-feedback" data-testid="recoveryCodeInput-feedback" aria-live="polite"></div>
           </div>
           <button type="submit" class="btn btn-primary w-100 mb-2">Verify Recovery Code</button>
           <button type="button" class="btn btn-link btn-sm w-100 text-decoration-none text-center" ref="btnCancelRecovery">Cancel</button>
@@ -54,12 +54,12 @@
           <div class="mb-3">
             <label for="{{ ref_newPassword }}" class="form-label">New Vault Password</label>
             <div class="password-field-container">
-              <input name="newPassword" ref="newPassword" type="password" class="form-control" placeholder="Enter New Password" minlength="12" required autocomplete="new-password">
+              <input id="{{ ref_newPassword }}" name="newPassword" ref="newPassword" type="password" class="form-control" placeholder="Enter New Password" minlength="12" required autocomplete="new-password" aria-describedby="{{ ref_newPasswordFeedback }}" aria-invalid="false">
               <button type="button" class="password-toggle focus-ring" ref="newPasswordToggle" aria-label="Toggle password visibility">
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div class="invalid-feedback" data-testid="newPassword-feedback"></div>
+            <div id="{{ ref_newPasswordFeedback }}" ref="newPasswordFeedback" class="invalid-feedback" data-testid="newPassword-feedback" aria-live="polite"></div>
             <div class="progress mt-2" style="height: 5px;">
               <div ref="newStrengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
             </div>
@@ -68,12 +68,12 @@
           <div class="mb-3">
             <label for="{{ ref_newPasswordConfirm }}" class="form-label">Confirm New Password</label>
             <div class="password-field-container">
-              <input name="newPasswordConfirm" ref="newPasswordConfirm" type="password" class="form-control" placeholder="Confirm New Password" minlength="12" required autocomplete="new-password">
+              <input id="{{ ref_newPasswordConfirm }}" name="newPasswordConfirm" ref="newPasswordConfirm" type="password" class="form-control" placeholder="Confirm New Password" minlength="12" required autocomplete="new-password" aria-describedby="{{ ref_newPasswordConfirmFeedback }}" aria-invalid="false">
               <button type="button" class="password-toggle focus-ring" ref="newPasswordConfirmToggle" aria-label="Toggle password visibility">
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div class="invalid-feedback" data-testid="newPasswordConfirm-feedback"></div>
+            <div id="{{ ref_newPasswordConfirmFeedback }}" ref="newPasswordConfirmFeedback" class="invalid-feedback" data-testid="newPasswordConfirm-feedback" aria-live="polite"></div>
           </div>
           <button type="submit" class="btn btn-success w-100" ref="btnSaveNewPassword" disabled>Save & Unlock Vault</button>
         </form>
@@ -148,12 +148,12 @@
       }
 
       const getFeedbackElement = (input) => {
-        let sibling = input.closest('.password-field-container')?.nextElementSibling || input.nextElementSibling
-        while (sibling) {
-          if (sibling.classList.contains('invalid-feedback')) {
-            return sibling
+        const ariaDescribedBy = input.getAttribute('aria-describedby')
+        if (ariaDescribedBy) {
+          const target = document.getElementById(ariaDescribedBy)
+          if (target) {
+            return target
           }
-          sibling = sibling.nextElementSibling
         }
         const container = input.closest('.mb-3') || input.parentNode
         if (container) {
@@ -166,6 +166,8 @@
         const inputs = form.querySelectorAll('input, select, textarea')
         inputs.forEach(input => {
           const feedback = getFeedbackElement(input)
+          const isValid = input.checkValidity()
+          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
           if (feedback) {
             feedback.textContent = input.validationMessage || 'Invalid value.'
           }
@@ -178,6 +180,8 @@
           if (input.setCustomValidity) {
             input.setCustomValidity('')
           }
+          const isValid = input.checkValidity()
+          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
           const feedback = getFeedbackElement(input)
           if (feedback) {
             feedback.textContent = input.validationMessage

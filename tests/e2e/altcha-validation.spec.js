@@ -122,4 +122,34 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Wait for vault unlock step to be reached
     await page.locator(':is(h3):has-text("Unlock Your Vault")').waitFor({ state: 'visible' })
   })
+
+  test('should display invalid-feedback when entering a password too short on registration form', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => {
+      return window.__coralite__ && window.__coralite__.lifecycle !== undefined
+    })
+    await page.evaluate(() => {
+      return window.__coralite__.lifecycle.hydrated
+    })
+
+    // Navigate to registration page
+    await page.locator('[data-testid$="linkRegister"]').click()
+    await expect(page.locator('auth-register')).toBeVisible()
+
+    // Fill short password (5 chars)
+    await page.locator('auth-register input[name="username"]').fill('shortpassuser')
+    await page.locator('auth-register input[name="email"]').fill('shortpassuser@example.com')
+    await page.locator('auth-register input[name="password"]').fill('12345')
+    await page.locator('auth-register input[name="passwordConfirm"]').fill('12345')
+
+    // Submit form
+    await page.locator('[data-testid$="registerSubmit"]').click()
+
+    // Password feedback should be visible and contain character count message
+    const feedback = page.locator('auth-register [data-testid$="password-feedback"]')
+    await expect(feedback).toBeVisible()
+    await expect(feedback).toContainText('8 characters')
+  })
 })
+
+

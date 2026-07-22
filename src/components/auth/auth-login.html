@@ -10,18 +10,18 @@
           <h3 class="card-title mb-4 text-center">Login</h3>
           <div class="mb-3">
             <label for="{{ ref_identity }}" class="form-label">Username or Email</label>
-            <input ref="identity" name="identity" id="{{ ref_identity }}" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username" data-testid="username">
-            <div class="invalid-feedback" data-testid="identity-feedback"></div>
+            <input ref="identity" name="identity" id="{{ ref_identity }}" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username" data-testid="username" aria-describedby="{{ ref_identityFeedback }}" aria-invalid="false">
+            <div id="{{ ref_identityFeedback }}" ref="identityFeedback" class="invalid-feedback" data-testid="identity-feedback" aria-live="polite"></div>
           </div>
           <div class="mb-3">
             <label for="{{ ref_password }}" class="form-label">Password</label>
             <div class="password-field-container">
-              <input ref="password" name="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter password" required autocomplete="current-password" data-testid="password">
+              <input ref="password" name="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter password" required autocomplete="current-password" data-testid="password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false">
               <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
                 <i class="bi bi-eye"></i>
               </button>
             </div>
-            <div class="invalid-feedback" data-testid="password-feedback"></div>
+            <div id="{{ ref_passwordFeedback }}" ref="passwordFeedback" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
           </div>
           <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
           <button type="submit" class="btn btn-primary w-100 mb-2" ref="loginSubmit" data-testid="loginSubmit">Log In</button>
@@ -38,8 +38,8 @@
         <p class="text-muted small text-center mb-4">Enter your email address and solve the security challenge to request a password reset link.</p>
         <div class="mb-3">
           <label for="{{ ref_forgotEmail }}" class="form-label">Email Address</label>
-          <input ref="forgotEmail" name="forgotEmail" id="{{ ref_forgotEmail }}" type="email" class="form-control" placeholder="Enter email" required autocomplete="email">
-          <div class="invalid-feedback" data-testid="forgot-email-feedback"></div>
+          <input ref="forgotEmail" name="forgotEmail" id="{{ ref_forgotEmail }}" type="email" class="form-control" placeholder="Enter email" required autocomplete="email" aria-describedby="{{ ref_forgotEmailFeedback }}" aria-invalid="false">
+          <div id="{{ ref_forgotEmailFeedback }}" ref="forgotEmailFeedback" class="invalid-feedback" data-testid="forgot-email-feedback" aria-live="polite"></div>
         </div>
         <div class="mb-3 d-flex justify-content-center" ref="forgotAltchaContainer"></div>
         <button type="submit" class="btn btn-primary w-100 mb-2" ref="forgotSubmit">Send Reset Link</button>
@@ -147,12 +147,12 @@
       }
 
       const getFeedbackElement = (input) => {
-        let sibling = input.nextElementSibling
-        while (sibling) {
-          if (sibling.classList.contains('invalid-feedback')) {
-            return sibling
+        const ariaDescribedBy = input.getAttribute('aria-describedby')
+        if (ariaDescribedBy) {
+          const target = document.getElementById(ariaDescribedBy)
+          if (target) {
+            return target
           }
-          sibling = sibling.nextElementSibling
         }
         const container = input.closest('.mb-3') || input.parentNode
         if (container) {
@@ -165,6 +165,8 @@
         const inputs = form.querySelectorAll('input, select, textarea')
         inputs.forEach(input => {
           const feedback = getFeedbackElement(input)
+          const isValid = input.checkValidity()
+          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
           if (feedback) {
             feedback.textContent = input.validationMessage || 'Invalid value.'
           }
@@ -177,6 +179,8 @@
           if (input.setCustomValidity) {
             input.setCustomValidity('')
           }
+          const isValid = input.checkValidity()
+          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
           const feedback = getFeedbackElement(input)
           if (feedback) {
             feedback.textContent = input.validationMessage

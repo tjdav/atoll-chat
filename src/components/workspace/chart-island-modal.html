@@ -11,8 +11,8 @@
           <div class="modal-body">
             <div class="mb-3">
               <label for="{{ ref_islandUrl }}" class="form-label">Island URL</label>
-              <input type="url" class="form-control" ref="islandUrl" name="islandUrl" placeholder="https://corporate.my-chat.com" required data-testid="islandUrlField">
-              <div class="invalid-feedback" data-testid="modalError"></div>
+              <input type="url" class="form-control" ref="islandUrl" id="{{ ref_islandUrl }}" name="islandUrl" placeholder="https://corporate.my-chat.com" required data-testid="islandUrlField" aria-describedby="{{ ref_modalError }}" aria-invalid="false">
+              <div id="{{ ref_modalError }}" ref="modalError" class="invalid-feedback" data-testid="modalError" aria-live="polite"></div>
               <div class="form-text small">Enter the URL of the PocketBase server.</div>
             </div>
           </div>
@@ -46,12 +46,12 @@
       const modal = new Modal(modalEl)
 
       const getFeedbackElement = (input) => {
-        let sibling = input.nextElementSibling
-        while (sibling) {
-          if (sibling.classList.contains('invalid-feedback')) {
-            return sibling
+        const ariaDescribedBy = input.getAttribute('aria-describedby')
+        if (ariaDescribedBy) {
+          const target = document.getElementById(ariaDescribedBy)
+          if (target) {
+            return target
           }
-          sibling = sibling.nextElementSibling
         }
         const container = input.closest('.mb-3') || input.parentNode
         if (container) {

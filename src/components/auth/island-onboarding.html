@@ -13,8 +13,8 @@
       <form ref="onboardingForm" class="text-start needs-validation" novalidate>
         <div class="mb-3">
           <label for="{{ ref_islandUrl }}" class="form-label">Island URL</label>
-          <input type="url" ref="islandUrl" name="islandUrl" class="form-control" placeholder="https://chat.my-server.com" required data-testid="islandUrlInput">
-          <div class="invalid-feedback" data-testid="onboardingError"></div>
+          <input type="url" ref="islandUrl" name="islandUrl" id="{{ ref_islandUrl }}" class="form-control" placeholder="https://chat.my-server.com" required data-testid="islandUrlInput" aria-describedby="{{ ref_onboardingError }}" aria-invalid="false">
+          <div id="{{ ref_onboardingError }}" ref="onboardingError" class="invalid-feedback" data-testid="onboardingError" aria-live="polite"></div>
           <div class="form-text small">E.g., https://corporate.my-chat.com</div>
         </div>
         <button type="submit" class="btn btn-primary w-100" ref="btnConnect" data-testid="btnConnect">Connect to Island</button>
@@ -51,12 +51,12 @@
       }
 
       const getFeedbackElement = (input) => {
-        let sibling = input.nextElementSibling
-        while (sibling) {
-          if (sibling.classList.contains('invalid-feedback')) {
-            return sibling
+        const ariaDescribedBy = input.getAttribute('aria-describedby')
+        if (ariaDescribedBy) {
+          const target = document.getElementById(ariaDescribedBy)
+          if (target) {
+            return target
           }
-          sibling = sibling.nextElementSibling
         }
         const container = input.closest('.mb-3') || input.parentNode
         if (container) {
