@@ -51,19 +51,6 @@ export default definePlugin({
           })
         }
 
-        if (window.__coralite__.mode === 'testing') {
-          window.__simulateNotificationClick = async (room_id, messageId) => {
-            if (room_id) {
-              $state.currentAppView = 'chats'
-              $state.activeSelectionType = 'chats'
-              $state.activeSelectionId = room_id
-
-              if (messageId) {
-                $bus.emit('message:scroll_to', { messageId })
-              }
-            }
-          }
-        }
 
         try {
           const params = new URLSearchParams(window.location.search)
