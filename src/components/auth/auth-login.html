@@ -122,6 +122,8 @@
       let forgotSubmitPending = false
       let altchaPayload = null
 
+      const isTesting = window.__coralite__?.mode === 'testing'
+
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message
         if (isError) {
@@ -208,7 +210,6 @@
       const renderAltcha = (container, submitBtn) => {
         container.innerHTML = ''
         altchaPayload = null
-        const isTesting = typeof window !== 'undefined' && (window.__coralite__?.mode === 'testing' || (window.__playwright_test_id__ && window.__coralite__?.mode !== 'production'))
   
         if (!submitBtn._originalHtml) {
           submitBtn._originalHtml = submitBtn.innerHTML
@@ -490,7 +491,6 @@
         const identity = identityInput.value
         const password = passwordInput.value
 
-        const isTesting = typeof window !== 'undefined' && (window.__coralite__?.mode === 'testing' || (window.__playwright_test_id__ && window.__coralite__?.mode !== 'production'))
         let currentPayload = altchaPayload
         if (activeAltchaWidget && activeAltchaWidget.value) {
           currentPayload = activeAltchaWidget.value
@@ -561,7 +561,6 @@
 
         const email = forgotEmailInput.value
 
-        const isTesting = typeof window !== 'undefined' && (window.__coralite__?.mode === 'testing' || (window.__playwright_test_id__ && window.__coralite__?.mode !== 'production'))
         let currentPayload = altchaPayload
         if (activeAltchaWidget && activeAltchaWidget.value) {
           currentPayload = activeAltchaWidget.value

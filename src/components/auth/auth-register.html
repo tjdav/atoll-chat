@@ -118,6 +118,8 @@
       let registerSubmitPending = false
       let altchaPayload = null
 
+      const isTesting = window.__coralite__?.mode === 'testing'
+
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message
         if (isError) {
@@ -213,7 +215,6 @@
       })
 
       if (altchaContainer) {
-        const isTesting = typeof window !== 'undefined' && (window.__coralite__?.mode === 'testing' || (window.__playwright_test_id__ && window.__coralite__?.mode !== 'production'))
   
         if (!btnSubmit._originalHtml) {
           btnSubmit._originalHtml = btnSubmit.innerHTML
@@ -480,7 +481,6 @@
           return
         }
 
-        const isTesting = typeof window !== 'undefined' && (window.__coralite__?.mode === 'testing' || (window.__playwright_test_id__ && window.__coralite__?.mode !== 'production'))
         let currentPayload = altchaPayload
         if (altchaWidget && altchaWidget.value) {
           currentPayload = altchaWidget.value
