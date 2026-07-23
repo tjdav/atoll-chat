@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
-  "version": "0.2.12",
+  "version": "0.2.13",
   "keywords": [
     "chat",
     "real-time",
