@@ -95,7 +95,7 @@ The following helper scripts are configured in [package.json](/package.json):
 
 ### Testing Scripts
 
-- **`pnpm run test:app`**
+- **`pnpm run test:server`**
   Runs the testing suite in dev mode using `coralite-scripts test`.
 - **`pnpm run test:unit`**
   Runs backend/unit tests with the native Node.js test runner and experimental VM module support.
