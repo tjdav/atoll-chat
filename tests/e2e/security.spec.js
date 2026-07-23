@@ -64,8 +64,10 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
     expect(isInvalid).toBe(true)
 
+    const regUser = 'testuser@example.com'
+
     /* Fill in valid registration details */
-    await page.locator('auth-register input[name="email"]').fill('testuser@example.com')
+    await page.locator('auth-register input[name="email"]').fill(regUser)
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
     await page.locator('[data-testid$="registerSubmit"]').click()
