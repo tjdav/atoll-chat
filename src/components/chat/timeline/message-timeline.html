@@ -583,8 +583,7 @@
           }
 
           if (payload.message && ['call_offer', 'call_answer', 'call_end'].includes(payload.message.type)) {
-            const exists = ephemeralMessages.some(m => 
-              (m.id && m.id === payload.message.id) || 
+            const exists = ephemeralMessages.some(m => (m.id && m.id === payload.message.id) ||
               (m.local_uuid && m.local_uuid === payload.message.local_uuid)
             )
             if (!exists) {

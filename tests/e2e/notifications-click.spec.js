@@ -50,7 +50,7 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
   })
 
   test('should navigate and scroll to message on cold boot when URL query parameters are present', async ({ page, loginApp }) => {
-    // 1. Perform successful login & unlock first to establish a valid room & message
+    // Perform successful login & unlock first to establish a valid room & message
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
     await expect(page.locator('app-layout')).toBeVisible()
 
@@ -79,22 +79,22 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     expect(messageId).not.toBeUndefined()
     expect(messageId).not.toBe('')
 
-    // 2. Load the app with the specific notification destination URL parameters to simulate cold boot
+    // Load the app with the specific notification destination URL parameters to simulate cold boot
     const targetUrl = `/?view=chats&id=${roomId}&type=chats&messageId=${messageId}`
     await page.goto(targetUrl)
 
-    // 3. Wait for hydration
+    // Wait for hydration
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-    // 4. Since the session is preserved, we should see the Unlock Vault page
+    // Since the session is preserved, we should see the Unlock Vault page
     await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible({ timeout: 15000 })
 
-    // 5. Unlock the vault
+    // Unlock the vault
     await page.locator('vault-unlock [data-testid$="password"]').fill('VaultPassword123!')
     await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
 
-    // 6. Wait for the app-layout/chats view to load, and verify navigation & message visibility
+    // Wait for the app-layout/chats view to load, and verify navigation & message visibility
     await expect(page.locator('app-layout')).toBeVisible()
     await expect(page.locator('chat-view')).toBeVisible({ timeout: 10000 })
     await expect(page.locator(`timeline-row[data-message-id="${messageId}"]`)).toBeVisible()

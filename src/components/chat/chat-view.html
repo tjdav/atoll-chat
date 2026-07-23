@@ -81,7 +81,7 @@
               state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
             }
             state.roomInitial = state.roomName.charAt(0).toUpperCase()
-            
+  
             let baseStatus = room.is_group ? 'Group Chat' : 'Private'
             if ($state.callStatus && $state.callStatus !== 'idle' && $state.activeCallRoomId === room_id) {
               state.roomStatus = $state.callStatus === 'active' ? 'In Call' : 'Calling...'

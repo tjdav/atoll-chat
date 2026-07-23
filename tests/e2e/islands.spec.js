@@ -91,10 +91,8 @@ test.describe('Multi-Island Architecture', () => {
     await expect(activeWorkspaceItem).toContainText('localhost')
 
     await page.evaluate(() => {
-      try {
-        localStorage.clear()
-        sessionStorage.clear()
-      } catch (e) {}
+      localStorage.clear()
+      sessionStorage.clear()
     })
 
     await islandContext.close()
