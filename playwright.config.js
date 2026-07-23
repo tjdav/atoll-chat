@@ -6,6 +6,10 @@ const getExecutablePath = (path) => (existsSync(path) ? path : undefined)
 
 export default defineConfig({
   testDir: './tests/e2e',
+  timeout: 60000,
+  expect: {
+    timeout: 4000
+  },
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: process.env.CI ? 2 : undefined,

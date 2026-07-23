@@ -8,7 +8,7 @@ test.describe('Media & Attachments', () => {
 
   test.describe('File Handling', () => {
     test('send various file types', async ({ browser, loginCustomPage }) => {
-      test.setTimeout(120000)
+
       const aliceContext = await browser.newContext()
       const alicePage = await aliceContext.newPage()
       const bobContext = await browser.newContext()

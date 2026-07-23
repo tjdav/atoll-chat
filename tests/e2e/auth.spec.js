@@ -10,8 +10,6 @@ test.describe('Authentication and Vault', () => {
   })
 
   test('should login, logout, and login again successfully', async ({ page, loginApp }) => {
-    test.setTimeout(60000)
-
     // initial login
     console.log('--- Initial Login ---')
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
@@ -34,8 +32,7 @@ test.describe('Authentication and Vault', () => {
     await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
     await page.locator('[data-testid$="unlockSubmit"]').click()
 
-    // This is where it's expected to fail or hang
-    await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
+    await expect(page.locator('app-layout')).toBeVisible()
 
     // Create a room to ensure there is something to sync
     console.log('--- Creating Room ---')
@@ -44,7 +41,7 @@ test.describe('Authentication and Vault', () => {
     await page.locator('[data-testid$="search-result-bob"]').click()
     await page.locator('[data-testid$="btnCreate"]').click()
 
-    await expect(page.locator('chat-list-item')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('chat-list-item')).toBeVisible()
 
     // logout
     console.log('--- Logout 2 ---')
@@ -63,9 +60,9 @@ test.describe('Authentication and Vault', () => {
     await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
     await page.locator('[data-testid$="unlockSubmit"]').click()
 
-    await expect(page.locator('app-layout')).toBeVisible({ timeout: 25000 })
+    await expect(page.locator('app-layout')).toBeVisible()
 
     // Check if chats are loaded (to verify sync)
-    await expect(page.locator('chat-list-item')).toBeVisible({ timeout: 20000 })
+    await expect(page.locator('chat-list-item')).toBeVisible()
   })
 })

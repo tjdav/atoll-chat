@@ -341,7 +341,7 @@ export const test = base.extend({
       await page.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword)
       await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
 
-      await expect(page.locator('app-layout')).toBeVisible({ timeout: 10000 })
+      await expect(page.locator('app-layout')).toBeVisible()
     }
     await use(doLogin)
   },
@@ -416,7 +416,7 @@ export const test = base.extend({
       await targetPage.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword)
       await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
 
-      await expect(targetPage.locator('app-layout')).toBeVisible({ timeout: 15000 })
+      await expect(targetPage.locator('app-layout')).toBeVisible()
     }
 
     await use(doLogin)

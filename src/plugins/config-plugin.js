@@ -19,13 +19,14 @@ export default function configPlugin (config = {}) {
     client: {
       config: mergedConfig,
       context: (pluginContext) => {
+        const testingMocks = (typeof window !== 'undefined' && window.__coralite__?.mode === 'testing')
+          ? window.__coralite__?.mocks?.config
+          : null
+
         const currentConfig = {
-          ...pluginContext.config
+          ...pluginContext.config,
+          ...testingMocks
         }
-
-        pluginContext.$config = currentConfig
-
-        window.$config = currentConfig
 
         return () => {
           return {

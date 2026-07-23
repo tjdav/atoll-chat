@@ -285,7 +285,7 @@
         altchaContainer.appendChild(altchaWidget)
       }
 
-      const isIslandsEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
+      const isIslandsEnabled = Boolean($config?.get('enableWorkspaces'))
   
       const handleSwitchIsland = async (newId, force = false) => {
         if (pb.authStore.activeWorkspaceId === newId && !force) {

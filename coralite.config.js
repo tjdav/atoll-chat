@@ -35,6 +35,7 @@ export default defineConfig({
     configPlugin({
       maxServerUploadSizeBytes: 26214400,
       webrtcChunkSizeBytes: 16384,
+      enableWorkspaces: process.env.ATOLL_ENABLE_WORKSPACES === 'true',
       localIceServer: process.env.LOCAL_ICE_SERVER,
       notificationSoundDebounceMs: process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS ? parseInt(process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS, 10) : 1000
     }),

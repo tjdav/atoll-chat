@@ -107,8 +107,7 @@
       // Init and subscribe to states
       state.currentAppView = $state.currentAppView || 'chats'
       state.isAuthenticated = $state.isAuthenticated || false
-      state.isVaultUnlocked = $state.isVaultUnlocked || false
-      state.isIslandsEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
+      state.isIslandsEnabled = Boolean($config?.get('enableWorkspaces'))
       state.islands = pb.authStore.workspaces || []
 
       $state.subscribe('currentAppView', (value) => state.currentAppView = value)

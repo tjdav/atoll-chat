@@ -297,9 +297,10 @@ export default function pocketbase (options = {}) {
       },
       context: async (pluginContext) => {
         const { default: PocketBase, BaseAuthStore } = await import('pocketbase')
-        /** @type {any} */
-        const win = window
-        const isWorkspacesEnabled = pluginContext.config.enableWorkspaces || (typeof window !== 'undefined' && win.__coralite_workspaces_override__)
+        const isTesting = typeof window !== 'undefined' && window.__coralite__?.mode === 'testing'
+        const isWorkspacesEnabled = Boolean(
+          pluginContext.config.enableWorkspaces || (isTesting && window.__coralite__?.mocks?.config?.enableWorkspaces)
+        )
 
         let pb
         let customStore = null

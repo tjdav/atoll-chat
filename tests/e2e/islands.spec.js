@@ -1,15 +1,17 @@
 import { test, expect } from './fixtures/base-test.js'
 
 test.describe('Multi-Island Architecture', () => {
-  test('should present first-time onboarding zero state, perform validation, and complete login into active Island', async ({ page }) => {
-    test.setTimeout(60000)
+  test('should present first-time onboarding zero state, perform validation, and complete login into active Island', async ({ browser, baseURL }) => {
+    const islandContext = await browser.newContext()
+    const page = await islandContext.newPage()
 
-    /* Enable spaces/islands mode dynamically for E2E tests */
+    /* Enable spaces/islands mode dynamically for E2E tests using Coralite testing mocks contract */
     await page.addInitScript(() => {
-      window.__coralite_workspaces_override__ = true
+      window.__coralite__ = window.__coralite__ || {}
+      window.__coralite__.mocks = window.__coralite__.mocks || {}
+      window.__coralite__.mocks.config = { enableWorkspaces: true }
     })
-
-    await page.goto('/')
+    await page.goto(baseURL || '/')
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
@@ -87,5 +89,14 @@ test.describe('Multi-Island Architecture', () => {
     const activeWorkspaceItem = page.locator('[data-testid^="workspace-btn-ws_"]')
     await expect(activeWorkspaceItem).toBeVisible()
     await expect(activeWorkspaceItem).toContainText('localhost')
+
+    await page.evaluate(() => {
+      try {
+        localStorage.clear()
+        sessionStorage.clear()
+      } catch (e) {}
+    })
+
+    await islandContext.close()
   })
 })

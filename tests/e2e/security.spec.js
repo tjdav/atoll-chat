@@ -1,8 +1,7 @@
 import { test, expect } from './fixtures/base-test.js'
 
 test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
-  /* Set longer timeout because vault crypto derivations can be slow */
-  test.setTimeout(90000)
+
 
   /* WebAuthn simulation setup for passkeys */
   test.beforeEach(async ({ page }) => {

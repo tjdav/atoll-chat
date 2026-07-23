@@ -6,7 +6,6 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 test.describe('P2P WebRTC Media Transfer Fallback', () => {
   test('transfer a media file over WebRTC when exceeding maxServerUploadSizeBytes', async ({ browser, loginCustomPage }) => {
-    test.setTimeout(120000)
 
     const aliceContext = await browser.newContext()
     const alicePage = await aliceContext.newPage()
@@ -74,7 +73,6 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
   })
 
   test('prevent group mesh by intercepting large file upload and prompting reroute', async ({ browser, loginCustomPage }) => {
-    test.setTimeout(120000)
 
     const aliceContext = await browser.newContext()
     const alicePage = await aliceContext.newPage()

@@ -31,11 +31,8 @@
       let isLifecycleRegistered = false
       let isFlushing = false
 
-      const isIslandsEnabled = $config?.get('enableWorkspaces') || window.__coralite_workspaces_override__ || false
-      console.log('[app-root] isIslandsEnabled:', isIslandsEnabled, {
-        config: $config?.get('enableWorkspaces'),
-        override: window.__coralite_workspaces_override__
-      })
+      const isIslandsEnabled = Boolean($config?.get('enableWorkspaces'))
+      console.log('[app-root] isIslandsEnabled:', isIslandsEnabled)
 
       const deriveIslandFromUrl = (urlStr) => {
         try {
