@@ -22,6 +22,7 @@ import biometricPlugin from './src/plugins/biometric-plugin.js'
 import pushPlugin from './src/plugins/push-plugin.js'
 import appLifecyclePlugin from './src/plugins/app-lifecycle-plugin.js'
 import networkPlugin from './src/plugins/network-plugin.js'
+import markdownPlugin from './src/plugins/markdown-plugin.js'
 import deeplinkPlugin from './src/plugins/deeplink-plugin.js'
 import deeplinkManifestPlugin from './src/plugins/deeplink-manifest-plugin.js'
 import pkg from './package.json' with { type: 'json' }
@@ -73,6 +74,7 @@ export default defineConfig({
     emojiPlugin,
     fusePlugin,
     totpPlugin,
+    markdownPlugin,
     bootstrapPlugin,
     webrtcPlugin(),
     webrtcTransferPlugin,

@@ -32,32 +32,10 @@
       glowClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : ''),
       placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : '')
     },
-    client: ({ refs, state, eventBus, observe }) => {
+    client: ({ refs, state, eventBus, observe, markdown }) => {
       const markdownBody = refs('markdownBody')
       const { $bus } = eventBus
-
-      const getLibs = () => {
-        if (!window.__markdownLibsPromise) {
-          window.__markdownLibsPromise = Promise.all([
-            import('marked'),
-            import('isomorphic-dompurify')
-          ]).then(([m, d]) => {
-            const marked = m.marked || m
-            const DOMPurify = d.default || d
-            if (marked.setOptions) {
-              marked.setOptions({
-                breaks: true,
-                gfm: true
-              })
-            }
-            return {
-              marked,
-              DOMPurify
-            }
-          })
-        }
-        return window.__markdownLibsPromise
-      }
+      const { renderMarkdown } = markdown
 
       const render = async () => {
         if (!state.content) {
@@ -66,9 +44,7 @@
         }
 
         try {
-          const { marked, DOMPurify } = await getLibs()
-          const rawHtml = await marked.parse(state.content)
-          const cleanHtml = DOMPurify.sanitize(rawHtml)
+          const cleanHtml = await renderMarkdown(state.content)
   
           if (markdownBody.innerHTML !== cleanHtml) {
             markdownBody.innerHTML = cleanHtml
