@@ -14,11 +14,12 @@
       localUuid: String
     },
     client: (ctx) => {
-      const { refs, state, globalStore, storage, eventBus, signal, utils, observe } = ctx
+      const { refs, state, globalStore, storage, eventBus, signal, utils, observe, bootstrap } = ctx
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
       const { $func } = utils
+      const { Tooltip } = bootstrap
       const container = refs('container')
   
       const tooltips = new Map()
@@ -185,8 +186,8 @@
         pill.title = attributionLines.join('\n')
         pill.dataset.bsToggle = 'tooltip'
   
-        if (window.bootstrap?.Tooltip) {
-          const t = new window.bootstrap.Tooltip(pill, {
+        if (Tooltip) {
+          const t = new Tooltip(pill, {
             trigger: 'hover focus',
             placement: 'bottom'
           })
