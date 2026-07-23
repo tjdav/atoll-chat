@@ -282,8 +282,12 @@ const onPush = (event) => {
            Let's show the standard message alert */
         return registration.showNotification('atoll chat', {
           body: 'You have a new secure message.',
-          icon: '/images/icon-coralite.avif',
-          tag: 'atoll-chat-msg'
+          icon: '/icon-192x192.png',
+          tag: 'atoll-chat-msg',
+          data: {
+            room_id: record.room_id,
+            messageId: record.id
+          }
         })
       }
 
@@ -384,8 +388,12 @@ const onPush = (event) => {
       // Show rich notification
       return registration.showNotification(senderName, {
         body: notificationBody,
-        icon: '/images/icon-coralite.avif',
-        tag: 'atoll-chat-msg'
+        icon: '/icon-192x192.png',
+        tag: 'atoll-chat-msg',
+        data: {
+          room_id: record.room_id,
+          messageId: record.id
+        }
       })
 
     } catch (err) {
@@ -393,11 +401,62 @@ const onPush = (event) => {
       // Fallback to generic notification
       return registration.showNotification('atoll chat', {
         body: 'You have a new secure message.',
-        icon: '/images/icon-coralite.avif',
-        tag: 'atoll-chat-msg'
+        icon: '/icon-192x192.png',
+        tag: 'atoll-chat-msg',
+        data: record ? {
+          room_id: record.room_id,
+          messageId: record.id
+        } : undefined
       })
     }
   })())
 }
 
 addEventListener('push', onPush)
+
+/**
+ * @param {any} event The notification click event.
+ */
+const onNotificationClick = (event) => {
+  event.notification.close()
+
+  const data = event.notification.data || {}
+  const roomId = data.room_id
+  const messageId = data.messageId
+
+  event.waitUntil((async () => {
+    const windowClients = await clients.matchAll({
+      type: 'window',
+      includeUncontrolled: true
+    })
+
+    let activeClient = null
+    for (const client of windowClients) {
+      activeClient = client
+      break
+    }
+
+    if (activeClient) {
+      await activeClient.focus()
+      activeClient.postMessage({
+        type: 'NOTIFICATION_CLICKED',
+        payload: {
+          room_id: roomId,
+          messageId: messageId
+        }
+      })
+    } else {
+      let url = '/'
+      if (roomId) {
+        url = `/?view=chats&id=${roomId}&type=chats`
+        if (messageId) {
+          url += `&messageId=${messageId}`
+        }
+      }
+      await clients.openWindow(url)
+    }
+  })())
+}
+
+// notification click event
+addEventListener('notificationclick', onNotificationClick)

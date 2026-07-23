@@ -576,7 +576,12 @@
 
       $bus.on('message:send_reaction', async (payload) => {
         const room_id = $state.activeSelectionId
+  
         if (!room_id) {
+          return
+        }
+
+        if (!payload) {
           return
         }
 
@@ -626,7 +631,13 @@
       })
 
       $bus.on('message:scroll_to', async (payload) => {
+        if (!payload) {
+          $state.isJumpingToMessage = false
+          return
+        }
+
         const { messageId } = payload
+  
         if (!messageId) {
           $state.isJumpingToMessage = false
           return

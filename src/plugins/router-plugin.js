@@ -19,7 +19,8 @@ export default function routerPlugin () {
             pendingDeepLink = {
               view: params.get('view'),
               id: params.get('id'),
-              type: params.get('type')
+              type: params.get('type'),
+              messageId: params.get('messageId')
             }
           }
         } catch {
@@ -111,6 +112,8 @@ export default function routerPlugin () {
               }
               deepLinkApplied = true
 
+              const bus = instanceContext.eventBus?.$bus
+
               if (pendingDeepLink) {
                 isNavigatingFromPopstate = true
 
@@ -122,6 +125,12 @@ export default function routerPlugin () {
                 }
                 if (pendingDeepLink.type) {
                   $state.activeSelectionType = pendingDeepLink.type
+                }
+                if (pendingDeepLink.messageId && bus) {
+                  const targetMsgId = pendingDeepLink.messageId
+                  setTimeout(() => {
+                    bus.emit('message:scroll_to', { messageId: targetMsgId })
+                  }, 1500)
                 }
 
                 setTimeout(() => {

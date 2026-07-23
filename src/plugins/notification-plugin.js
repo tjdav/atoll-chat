@@ -34,6 +34,60 @@ export default definePlugin({
           }
         })
 
+        if ('serviceWorker' in navigator) {
+          navigator.serviceWorker.addEventListener('message', async (event) => {
+            if (event.data && event.data.type === 'NOTIFICATION_CLICKED') {
+              const { room_id, messageId } = event.data.payload || {}
+              if (room_id) {
+                $state.currentAppView = 'chats'
+                $state.activeSelectionType = 'chats'
+                $state.activeSelectionId = room_id
+
+                if (messageId) {
+                  $bus.emit('message:scroll_to', { messageId })
+                }
+              }
+            }
+          })
+        }
+
+        if (window.__coralite__.mode === 'testing') {
+          window.__simulateNotificationClick = async (room_id, messageId) => {
+            if (room_id) {
+              $state.currentAppView = 'chats'
+              $state.activeSelectionType = 'chats'
+              $state.activeSelectionId = room_id
+
+              if (messageId) {
+                $bus.emit('message:scroll_to', { messageId })
+              }
+            }
+          }
+        }
+
+        try {
+          const params = new URLSearchParams(window.location.search)
+          const urlMessageId = params.get('messageId')
+          const urlRoomId = params.get('id')
+          if (urlMessageId && urlRoomId) {
+            let unSub
+            unSub = $state.subscribe('isVaultUnlocked', (unlocked) => {
+              if (unlocked) {
+                setTimeout(() => {
+                  $bus.emit('message:scroll_to', { messageId: urlMessageId })
+                }, 1500)
+                if (unSub) {
+                  unSub()
+                } else {
+                  setTimeout(() => unSub?.(), 0)
+                }
+              }
+            })
+          }
+        } catch (err) {
+          console.error('[notification-plugin] Failed to parse URL messageId:', err)
+        }
+
         const playMessageSound = async () => {
           if (($state.messageSoundsEnabled ?? true) === false) {
             return
@@ -153,7 +207,7 @@ export default definePlugin({
 
             const options = {
               body,
-              icon: '/images/icon-coralite.avif',
+              icon: '/icon-192x192.png',
               tag: room_id,
               renotify: true,
               data: {
