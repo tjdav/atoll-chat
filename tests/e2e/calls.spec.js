@@ -141,6 +141,20 @@ test.describe.serial('Calls', () => {
     await test.step('Verify both calls enter active state', async () => {
       await expect(alicePage.locator('call-overlay .active-view')).toBeVisible({ timeout: 10000 })
       await expect(bobPage.locator('call-overlay .active-view')).toBeVisible({ timeout: 10000 })
+
+      // Verify that local video preview is hidden on both sides for audio call
+      await expect(alicePage.locator('video-grid video.local-video')).toHaveClass(/d-none/)
+      await expect(bobPage.locator('video-grid video.local-video')).toHaveClass(/d-none/)
+
+      // Verify centered avatar and active audio call view are shown
+      await expect(alicePage.locator('video-grid .remote-placeholder')).toContainText('Audio Call Active')
+      await expect(bobPage.locator('video-grid .remote-placeholder')).toContainText('Audio Call Active')
+      await expect(alicePage.locator('video-grid .remote-placeholder h2')).toHaveText('bob')
+      await expect(bobPage.locator('video-grid .remote-placeholder h2')).toHaveText('alice')
+
+      // Verify that call status is displayed in the chat view header
+      await expect(alicePage.locator('chat-view header small')).toHaveText('In Call')
+      await expect(bobPage.locator('chat-view header small')).toHaveText('In Call')
     })
 
     const aliceAudioBtn = alicePage.getByRole('button', { name: 'Mute Microphone' })
@@ -184,6 +198,15 @@ test.describe.serial('Calls', () => {
       await alicePage.locator('call-overlay .active-view button:has(.bi-telephone-x-fill)').click()
       await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
       await expect(bobPage.locator('call-overlay .modal')).not.toBeVisible()
+
+      // Verify that call status reverts back to Private
+      await expect(alicePage.locator('chat-view header small')).toHaveText('Private')
+      await expect(bobPage.locator('chat-view header small')).toHaveText('Private')
+
+      // Verify timeline system messages for calls exist
+      await expect(alicePage.locator('timeline-system-message').filter({ hasText: 'Audio Call' })).toBeVisible()
+      await expect(alicePage.locator('timeline-system-message').filter({ hasText: 'Call joined' })).toBeVisible()
+      await expect(alicePage.locator('timeline-system-message').filter({ hasText: 'Call ended' })).toBeVisible()
     })
   })
 

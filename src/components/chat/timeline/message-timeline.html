@@ -34,6 +34,7 @@
       let lastRenderedMessageId = null
       let forceScrollToBottom = false
       let isRestorePending = false
+      let ephemeralMessages = []
 
       const scrollToBottom = (smooth = false) => {
         if (container) {
@@ -138,7 +139,7 @@
           if (!room_id) {
             return
           }
-          let [messages, room] = await Promise.all([
+          let [storedMessages, room] = await Promise.all([
             $storage.getMessagesByRoom(room_id),
             $storage.getRoom(room_id)
           ])
@@ -147,6 +148,13 @@
             return
           }
           const participants = room?.participants || []
+
+          let messages = [...storedMessages, ...ephemeralMessages]
+          messages.sort((a, b) => {
+            const timeA = new Date(a.created_at || a.timestamp).getTime()
+            const timeB = new Date(b.created_at || b.timestamp).getTime()
+            return timeA - timeB
+          })
   
           if (messages.length === 0) {
             if (isNewRoom) {
@@ -371,6 +379,9 @@
               systemMsg.setAttribute('local-uuid', message.local_uuid)
               systemMsg.setAttribute('data-local-uuid', message.local_uuid)
               systemMsg.dataset.localUuid = message.local_uuid
+              if (message.media_types) {
+                systemMsg.setAttribute('media-types', message.media_types.join(','))
+              }
               // Don't append to row, signaling messages are centered
               container.appendChild(systemMsg)
               lastRenderedMessageId = message.id || message.local_uuid
@@ -545,6 +556,7 @@
           saveScrollPosition(prevSelectionId)
         }
         prevSelectionId = val
+        ephemeralMessages = []
         debouncedRender()
       })
       let prevSelectionType = $state.activeSelectionType
@@ -568,6 +580,16 @@
 
           if (payload.message && payload.message.sender_id === $state.currentUser?.id) {
             forceScrollToBottom = true
+          }
+
+          if (payload.message && ['call_offer', 'call_answer', 'call_end'].includes(payload.message.type)) {
+            const exists = ephemeralMessages.some(m => 
+              (m.id && m.id === payload.message.id) || 
+              (m.local_uuid && m.local_uuid === payload.message.local_uuid)
+            )
+            if (!exists) {
+              ephemeralMessages.push(payload.message)
+            }
           }
 
           debouncedRender()

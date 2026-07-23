@@ -15,7 +15,8 @@
       type: String,
       content: String,
       messageId: String,
-      localUuid: String
+      localUuid: String,
+      mediaTypes: String
     },
     getters: {
       iconClass: (state) => {
@@ -28,7 +29,10 @@
       },
       message: (state) => {
         switch (state.type) {
-          case 'call_offer': return 'Call started'
+          case 'call_offer': {
+            const hasVideo = !state.mediaTypes || state.mediaTypes.split(',').includes('video')
+            return hasVideo ? 'Video Call' : 'Audio Call'
+          }
           case 'call_answer': return 'Call joined'
           case 'call_end': return 'Call ended'
           default: return state.content || 'System notification'

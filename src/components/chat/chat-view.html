@@ -81,7 +81,13 @@
               state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
             }
             state.roomInitial = state.roomName.charAt(0).toUpperCase()
-            state.roomStatus = room.is_group ? 'Group Chat' : 'Private'
+            
+            let baseStatus = room.is_group ? 'Group Chat' : 'Private'
+            if ($state.callStatus && $state.callStatus !== 'idle' && $state.activeCallRoomId === room_id) {
+              state.roomStatus = $state.callStatus === 'active' ? 'In Call' : 'Calling...'
+            } else {
+              state.roomStatus = baseStatus
+            }
           }
         } catch (err) {
           console.error('[chat-view] Failed to load room info:', err)
@@ -100,6 +106,14 @@
       })
 
       $state.subscribe('activeSelectionType', () => {
+        updateRoomInfo($state.activeSelectionId)
+      })
+
+      $state.subscribe('callStatus', () => {
+        updateRoomInfo($state.activeSelectionId)
+      })
+
+      $state.subscribe('activeCallRoomId', () => {
         updateRoomInfo($state.activeSelectionId)
       })
 

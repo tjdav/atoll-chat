@@ -36,6 +36,7 @@
       isPipMode: false,
       hasRemoteVideo: false,
       isVideoEnabled: true,
+      hasRemoteConnected: false,
       remoteName: 'Remote Participant',
       remoteInitial: '?',
       isLocalSpeaking: false,
@@ -50,8 +51,8 @@
         }
         return state.isVideoEnabled ? 'd-block' : 'd-none'
       },
-      videoWaitingClass: (state) => (state.isVideoEnabled ? 'd-flex' : 'd-none'),
-      audioCallClass: (state) => (state.isVideoEnabled ? 'd-none' : 'd-flex'),
+      videoWaitingClass: (state) => (!state.hasRemoteConnected ? 'd-flex' : 'd-none'),
+      audioCallClass: (state) => (!state.isVideoEnabled && state.hasRemoteConnected ? 'd-flex' : 'd-none'),
       remoteAvatarSpeakingClass: (state) => (state.isRemoteSpeaking ? 'speaking-ring' : ''),
       remoteVideoSpeakingClass: (state) => (state.isRemoteSpeaking ? 'speaking-border' : ''),
       localVideoSpeakingClass: (state) => (state.isLocalSpeaking ? 'speaking-border' : '')
@@ -102,6 +103,11 @@
       $state.subscribe('isRemoteSpeaking', (val) => {
         state.isRemoteSpeaking = Boolean(val)
         updateSpeakingDOM()
+      })
+
+      state.isVideoEnabled = $state.isVideoEnabled !== undefined ? Boolean($state.isVideoEnabled) : true
+      $state.subscribe('isVideoEnabled', (val) => {
+        state.isVideoEnabled = val !== undefined ? Boolean(val) : true
       })
 
       const updateRemoteParticipantInfo = async () => {
@@ -242,7 +248,9 @@
         }
       })
 
+      state.hasRemoteConnected = Boolean($state.remoteStream)
       $state.subscribe('remoteStream', (stream) => {
+        state.hasRemoteConnected = Boolean(stream)
         if (stream) {
           attachRemoteStream(stream)
         } else {

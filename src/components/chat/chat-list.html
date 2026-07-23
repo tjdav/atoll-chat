@@ -41,13 +41,14 @@
             prefix = `${senderName.split(' ')[0]}: `
           }
         }
+        const hasVideo = msg.media_types && msg.media_types.includes('video')
         const fallbacks = {
           image: 'Sent a photo.',
           video: 'Sent a video.',
           voice: 'Sent a voice message.',
           audio: 'Sent an audio file.',
           file: 'Sent an attachment.',
-          call_offer: 'Video Call',
+          call_offer: hasVideo ? 'Video Call' : 'Audio Call',
           call_answer: 'Call joined',
           call_end: 'Call ended'
         }
