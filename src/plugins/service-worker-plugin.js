@@ -114,16 +114,10 @@ export default function (config) {
           // Inject version comment
           swContent = `// version: ${version}\n${swContent}`
 
-          // Add versioned query parameter to metadata import
+          // Add versioned query parameter to all asset importScripts
           swContent = swContent.replace(
-            "importScripts('/assets/metadata.js')",
-            `importScripts('/assets/metadata.js?v=${version}')`
-          )
-
-          // Add versioned query parameter to url.js import
-          swContent = swContent.replace(
-            "importScripts('/assets/url.js')",
-            `importScripts('/assets/url.js?v=${version}')`
+            /importScripts\(['"](\/assets\/[^'"]+\.js)['"]\)/g,
+            `importScripts('$1?v=${version}')`
           )
 
           // Replace ASSETS_TO_CACHE list with our dynamically generated assetsToCache list
@@ -149,10 +143,10 @@ export default function (config) {
           // Inject version comment
           workerContent = `// version: ${version}\n${workerContent}`
 
-          // Add versioned query parameter to url.js import
+          // Add versioned query parameter to all asset importScripts
           workerContent = workerContent.replace(
-            "importScripts('/assets/url.js')",
-            `importScripts('/assets/url.js?v=${version}')`
+            /importScripts\(['"](\/assets\/[^'"]+\.js)['"]\)/g,
+            `importScripts('$1?v=${version}')`
           )
 
           const destWorkerPath = join(outputDir, 'worker.js')

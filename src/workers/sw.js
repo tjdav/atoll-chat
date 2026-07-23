@@ -65,9 +65,10 @@ const onInstall = (event) => {
   }
 
   event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
+    caches.open(CACHE_NAME).then(async (cache) => {
       console.log('Opened cache and adding assets')
-      return cache.addAll(ASSETS_TO_CACHE)
+      const requests = ASSETS_TO_CACHE.map(url => new Request(url, { cache: 'reload' }))
+      return Promise.all(requests.map(req => cache.add(req)))
     })
   )
 }
