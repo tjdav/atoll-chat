@@ -252,7 +252,7 @@
 
       $state.subscribe('callStatus', (val) => {
         state.callStatus = val
-        if (val === 'idle' || val === 'active') {
+        if (val === 'idle' || (val === 'active' && (state.remoteOffer || $state.remoteStream))) {
           stopRingtone()
         }
         if (val === 'idle') {
@@ -358,6 +358,7 @@
           remoteStreamId = null
         }
         if (stream) {
+          stopRingtone()
           remoteStreamId = speakerDetector.attachStream(stream, 'remote')
         }
       })
@@ -383,6 +384,9 @@
   
         // Re-emit for video-grid
         $bus.emit('call:local_stream_available', { stream: localStream })
+
+        // Play calling sound for initiator
+        playRingtone()
       }, { signal })
 
       // Listen for call ended from remote

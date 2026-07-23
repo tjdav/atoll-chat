@@ -1179,7 +1179,19 @@ async function processIncomingMessage (rpcId, record) {
     ephemeral: decryptedPayload.ephemeral
   }
 
-  const isIncomingEphemeral = ['p2p_transfer_request', 'p2p_accept', 'p2p_rejected', 'p2p_request_offer', 'p2p_offer', 'p2p_answer', 'p2p_ice_candidate'].includes(type) || decryptedPayload.ephemeral
+  const isIncomingEphemeral = [
+    'p2p_transfer_request',
+    'p2p_accept',
+    'p2p_rejected',
+    'p2p_request_offer',
+    'p2p_offer',
+    'p2p_answer',
+    'p2p_ice_candidate',
+    'ice_candidate',
+    'call_offer',
+    'call_answer',
+    'call_end'
+  ].includes(type) || decryptedPayload.ephemeral
 
   if (isIncomingEphemeral) {
     self.postMessage({
