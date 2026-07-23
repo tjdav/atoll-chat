@@ -129,6 +129,44 @@ test.describe('Chat Management', () => {
       await aliceContext.close()
       await bobContext.close()
     })
+
+    test('should successfully delete a chat from the chat-list-item dropdown menu', async ({ browser, loginCustomPage }) => {
+      const aliceContext = await browser.newContext()
+      const alicePage = await aliceContext.newPage()
+      const bobContext = await browser.newContext()
+      const bobPage = await bobContext.newPage()
+
+      await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
+      await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
+
+      // Alice creates a private chat with Bob
+      await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+
+      await expect(alicePage.locator('chat-view')).toBeVisible()
+
+      // Bob's chat list item should be visible for Alice
+      const bobListItem = alicePage.locator('chat-list chat-list-item').filter({ hasText: 'bob' }).first()
+      await expect(bobListItem).toBeVisible({ timeout: 15000 })
+
+      // Set up dialog handler to confirm the deletion
+      alicePage.once('dialog', dialog => {
+        expect(dialog.message()).toContain('Are you sure you want to delete this chat?')
+        dialog.accept()
+      })
+
+      // Click dropdown and then click Delete chat
+      await bobListItem.locator('button[aria-label="Chat actions"]').evaluate(el => el.click())
+      await bobListItem.locator('[data-testid$="btn-delete-chat"]').click()
+
+      // Assert that the item is successfully removed from Alice's sidebar list
+      await expect(bobListItem).not.toBeVisible({ timeout: 15000 })
+
+      await aliceContext.close()
+      await bobContext.close()
+    })
   })
 
   test.describe('Routing and Persistence', () => {

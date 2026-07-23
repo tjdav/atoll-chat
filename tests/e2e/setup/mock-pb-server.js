@@ -105,13 +105,6 @@ function evaluateFilter (record, filterStr) {
         field = field.trim().replace(/^['"\s(]+|['"\s)]+$/g, '')
         val = val.trim().replace(/^['"\s(]+|['"\s)]+$/g, '')
 
-        if (field === 'room-id') {
-          field = 'room_id'
-        }
-        if (field === 'user-id') {
-          field = 'user_id'
-        }
-
         const recordValue = rec[field]
         if (recordValue === undefined) {
           return false
