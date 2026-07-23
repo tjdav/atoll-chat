@@ -160,8 +160,7 @@ export default function webrtcPlugin ({
 
           if (!localIceServer) {
             const defaultStun = [
-              { urls: 'stun:stun.l.google.com:19302' },
-              { urls: 'stun:global.stun.twilio.com:3478' }
+              { urls: 'stun:stun.l.google.com:19302' }
             ]
             try {
               console.log('[WebRTC] Fetching dynamic TURN credentials from PocketBase')
@@ -174,10 +173,13 @@ export default function webrtcPlugin ({
                 const turnOnly = rawUrls.filter(u => u.startsWith('turn:') || u.startsWith('turns:'))
                 const stunOnly = rawUrls.filter(u => u.startsWith('stun:'))
 
-                dynamicIceServers = [
-                  ...defaultStun,
-                  ...stunOnly.map(u => ({ urls: u }))
-                ]
+                dynamicIceServers = []
+
+                if (stunOnly.length > 0) {
+                  dynamicIceServers.push({ urls: stunOnly })
+                } else {
+                  dynamicIceServers.push(...defaultStun)
+                }
 
                 if (turnOnly.length > 0) {
                   dynamicIceServers.push({
