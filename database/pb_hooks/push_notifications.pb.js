@@ -38,7 +38,8 @@ onRecordCreateRequest((e) => {
 
   const internalSecret = $os.getenv('ATOLL_PUSH_WORKER_SECRET')
   if (!internalSecret) {
-    throw new Error('[push_notifications] Missing ATOLL_PUSH_WORKER_SECRET environment variable.')
+    console.warn('[push_notifications] Missing ATOLL_PUSH_WORKER_SECRET environment variable; skipping push notification dispatch.')
+    return
   }
 
   const message = e.record

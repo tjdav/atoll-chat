@@ -136,13 +136,17 @@ export default function webrtcPlugin ({
           }
           const localUuid = crypto.randomUUID()
           console.log(`[WebRTC] Sending signaling message: ${type} for room ${room_id}`)
-          await globalWorker.execute('worker:send_message', {
-            room_id,
-            localUuid,
-            type,
-            ...payload,
-            timestamp: Date.now()
-          })
+          try {
+            await globalWorker.execute('worker:send_message', {
+              room_id,
+              localUuid,
+              type,
+              ...payload,
+              timestamp: Date.now()
+            })
+          } catch (err) {
+            console.warn(`[WebRTC] Non-fatal error sending signaling message (${type}):`, err)
+          }
         }
 
         const setupPeerConnection = async (room_id, mediaStream, $state, pb) => {
