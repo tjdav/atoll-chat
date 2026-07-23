@@ -911,6 +911,8 @@ async function sendMessage (rpcId, payload) {
     throw new Error(`Failed to send message: ${messageResponse.status} ${JSON.stringify(errorData)}`)
   }
 
+  const pbRecord = await messageResponse.json()
+
   const isEphemeral = ['ice_candidate', 'call_offer', 'call_answer', 'call_end', 'p2p_transfer_request', 'p2p_accept', 'p2p_rejected', 'p2p_request_offer', 'p2p_offer', 'p2p_answer', 'p2p_ice_candidate'].includes(type) || payload.ephemeral
 
   if (isEphemeral) {

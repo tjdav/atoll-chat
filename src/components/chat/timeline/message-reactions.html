@@ -14,7 +14,7 @@
       localUuid: String
     },
     client: (ctx) => {
-      const { refs, state, globalStore, storage, eventBus, signal, utils } = ctx
+      const { refs, state, globalStore, storage, eventBus, signal, utils, observe } = ctx
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -31,10 +31,13 @@
       const updateHasReactionsAttribute = (hasReactions) => {
         const host = container.getRootNode().host || container.closest('message-reactions')
         if (host) {
-          if (hasReactions) {
-            host.setAttribute('has-reactions', 'true')
-          } else {
-            host.removeAttribute('has-reactions')
+          const currentHasReactions = host.getAttribute('has-reactions') === 'true'
+          if (currentHasReactions !== hasReactions) {
+            if (hasReactions) {
+              host.setAttribute('has-reactions', 'true')
+            } else {
+              host.removeAttribute('has-reactions')
+            }
           }
 
           let parentRow = host.closest('timeline-row')
@@ -55,10 +58,13 @@
           }
 
           if (parentRow) {
-            if (hasReactions) {
-              parentRow.setAttribute('has-reactions', 'true')
-            } else {
-              parentRow.removeAttribute('has-reactions')
+            const rowHasReactions = parentRow.getAttribute('has-reactions') === 'true'
+            if (rowHasReactions !== hasReactions) {
+              if (hasReactions) {
+                parentRow.setAttribute('has-reactions', 'true')
+              } else {
+                parentRow.removeAttribute('has-reactions')
+              }
             }
           }
         }
@@ -244,12 +250,8 @@
         }
       })
   
-      const host = container.getRootNode().host || container.closest('message-reactions')
-      if (host instanceof Node) {
-        const observer = new MutationObserver(() => debouncedLoad())
-        observer.observe(host, { attributes: true })
-        signal.addEventListener('abort', () => observer.disconnect())
-      }
+      observe('messageId', debouncedLoad)
+      observe('localUuid', debouncedLoad)
 
       debouncedLoad()
     }
