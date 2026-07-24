@@ -410,7 +410,6 @@ test.describe.serial('Calls', () => {
 
       const camMenu = alicePage.locator('call-overlay .device-dropdown-menu').last()
       await expect(camMenu).toBeVisible()
-      await alicePage.screenshot({ path: '/home/jules/verification/screenshots/verification-active-dropdown.png' })
       await expect(camMenu.locator('.dropdown-header').filter({ hasText: 'Select a Camera' })).toBeVisible()
       await expect(camMenu.locator('.dropdown-header').filter({ hasText: 'Video Effects' })).toBeVisible()
 
@@ -432,7 +431,11 @@ test.describe.serial('Calls', () => {
       await alicePage.evaluate(() => {
         // Enforce microphones list is empty on next fetch
         navigator.mediaDevices.enumerateDevices = async () => [
-          { kind: 'videoinput', label: 'Camera', deviceId: 'cam1' }
+          {
+            kind: 'videoinput',
+            label: 'Camera',
+            deviceId: 'cam1'
+          }
         ]
         // Trigger devicechange event
         navigator.mediaDevices.dispatchEvent(new Event('devicechange'))

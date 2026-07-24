@@ -1,0 +1,187 @@
+<template id="call-control-bar">
+  <div class="control-bar position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-3 p-3 rounded-pill bg-dark bg-opacity-75 shadow-lg border border-secondary align-items-center">
+    
+    <!-- Split Button for Audio control -->
+    <div class="btn-group dropup btn-group-pill {{ audioGroupClass }}" ref="audioGroup">
+      <button ref="btnToggleAudio" type="button" class="btn btn-action btn-light" aria-label="Mute Microphone" aria-pressed="{{ audioPressed }}">
+        <i class="bi {{ audioIconClass }} fs-4"></i>
+      </button>
+      <button ref="btnAudioSettings" type="button" class="btn btn-chevron dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false" aria-label="Microphone Settings">
+        <i class="bi bi-chevron-up"></i>
+      </button>
+      <div class="dropdown-menu device-dropdown-menu p-3" aria-label="Microphone Settings Menu">
+        <h6 class="dropdown-header">Select a Microphone</h6>
+        <div class="device-list" ref="micList">
+          <!-- Mic items will be generated here -->
+        </div>
+
+        <h6 class="dropdown-header">Microphone Effects</h6>
+        <div class="effect-toggle-container">
+          <span class="effect-label">Noise cancellation</span>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" role="switch" ref="toggleNoiseCancellation" id="noise-cancellation-switch">
+          </div>
+        </div>
+
+        <h6 class="dropdown-header">Select a Speaker</h6>
+        <div class="device-list" ref="speakerList">
+          <!-- Speaker items will be generated here -->
+        </div>
+        <div class="speaker-fallback-box d-none" ref="speakerFallback">
+          Speaker selection isn’t available in this browser. Use your system settings to choose a different speaker.
+        </div>
+      </div>
+    </div>
+
+    <!-- Split Button for Video control -->
+    <div class="btn-group dropup btn-group-pill {{ videoGroupClass }}" ref="videoGroup">
+      <button ref="btnToggleVideo" type="button" class="btn btn-action {{ videoBtnClass }}" aria-label="Mute Video" aria-pressed="{{ videoPressed }}">
+        <i class="bi {{ videoIconClass }} fs-4"></i>
+      </button>
+      <button ref="btnVideoSettings" type="button" class="btn btn-chevron dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false" aria-label="Video Settings">
+        <i class="bi bi-chevron-up"></i>
+      </button>
+      <div class="dropdown-menu device-dropdown-menu p-3" aria-label="Video Settings Menu">
+        <h6 class="dropdown-header">Select a Camera</h6>
+        <div class="device-list" ref="camList">
+          <!-- Cam items will be generated here -->
+        </div>
+
+        <h6 class="dropdown-header">Video Effects</h6>
+        <div class="effect-toggle-container">
+          <span class="effect-label">Background blur</span>
+          <div class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" role="switch" ref="toggleBackgroundBlur" id="background-blur-switch">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <button ref="btnPip" class="btn btn-light rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;" title="Picture-in-Picture">
+      <i class="bi bi-pip fs-4"></i>
+    </button>
+    <button ref="btnEndCall" class="btn btn-danger rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
+      <i class="bi bi-telephone-x-fill fs-4"></i>
+    </button>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      callStatus: 'idle',
+      isAudioEnabled: true,
+      isVideoEnabled: true,
+      isLocalSpeaking: false,
+      microphones: [],
+      cameras: [],
+      speakers: [],
+      activeMicId: 'default',
+      activeCamId: 'default',
+      activeSpeakerId: 'default',
+      isNoiseCancellationEnabled: true,
+      isBackgroundBlurEnabled: false,
+      isSpeakerSelectionSupported: true
+    }),
+    getters: {
+      audioGroupClass: (state) => {
+        if (!state.isAudioEnabled) {
+          return 'muted-state'
+        }
+        return state.isLocalSpeaking ? 'speaking-state' : 'active-state'
+      },
+      videoGroupClass: (state) => {
+        return state.isVideoEnabled ? 'active-state' : 'muted-state'
+      },
+      videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
+      audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
+      videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill'),
+      audioPressed: (state) => (!state.isAudioEnabled ? 'true' : 'false'),
+      videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false')
+    },
+    client: async ({ state, globalStore, eventBus, refs, signal }) => {
+      const { $state } = globalStore
+      const { $bus } = eventBus
+
+      // Reference all template refs explicitly for validation tracking
+      refs('audioGroup')
+      refs('btnAudioSettings')
+      refs('micList')
+      refs('toggleNoiseCancellation')
+      refs('speakerList')
+      refs('speakerFallback')
+      refs('videoGroup')
+      refs('btnVideoSettings')
+      refs('camList')
+      refs('toggleBackgroundBlur')
+
+      const { createCallDeviceManager } = await import('../../utils/call/callDeviceManager.js')
+      const deviceManager = createCallDeviceManager({
+        state,
+        refs,
+        globalStore,
+        eventBus,
+        signal
+      })
+
+      const updateLocalSpeakingBtn = () => {
+        const targetBtn = refs('btnToggleAudio')
+        if (targetBtn) {
+          const isAudioOn = Boolean($state.isAudioEnabled)
+          const isSpeaking = Boolean($state.isLocalSpeaking)
+          if (isAudioOn && isSpeaking) {
+            targetBtn.className = 'btn btn-action btn-success speaking-btn-glow'
+          } else if (!isAudioOn) {
+            targetBtn.className = 'btn btn-action btn-danger'
+          } else {
+            targetBtn.className = 'btn btn-action btn-light'
+          }
+        }
+      }
+
+      state.isAudioEnabled = Boolean($state.isAudioEnabled)
+      state.isVideoEnabled = Boolean($state.isVideoEnabled)
+      state.isLocalSpeaking = Boolean($state.isLocalSpeaking)
+      updateLocalSpeakingBtn()
+
+      $state.subscribe('callStatus', (val) => {
+        state.callStatus = val
+        if (val === 'active') {
+          deviceManager.enumerateAndBootDevices()
+        }
+      })
+
+      $state.subscribe('isAudioEnabled', (val) => {
+        state.isAudioEnabled = Boolean(val)
+        updateLocalSpeakingBtn()
+      })
+
+      $state.subscribe('isVideoEnabled', (val) => {
+        state.isVideoEnabled = Boolean(val)
+      })
+
+      $state.subscribe('isLocalSpeaking', (val) => {
+        state.isLocalSpeaking = Boolean(val)
+        updateLocalSpeakingBtn()
+      })
+
+      refs('btnToggleAudio').addEventListener('click', () => {
+        $bus.emit('call:toggle_audio_clicked')
+      })
+
+      refs('btnToggleVideo').addEventListener('click', () => {
+        $bus.emit('call:toggle_video_clicked')
+      })
+
+      refs('btnPip').addEventListener('click', () => {
+        $bus.emit('call:pip_clicked')
+      })
+
+      refs('btnEndCall').addEventListener('click', () => {
+        $bus.emit('call:end_clicked')
+      })
+    }
+  })
+</script>

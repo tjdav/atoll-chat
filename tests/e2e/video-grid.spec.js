@@ -17,9 +17,24 @@ test.describe('Video Grid and Speaker Features', () => {
     await test.step('Mock active call room state and participants', async () => {
       await page.evaluate(() => {
         window.__MOCK_CALL_PARTICIPANTS__ = [
-          { id: 'user-1', name: 'Jaxon Wooley', username: 'jaxon' },
-          { id: 'user-2', name: 'Alexis Lim', username: 'alexis', isSpeaking: true, isMuted: false },
-          { id: 'user-3', name: 'Elizabeth Adams', username: 'elizabeth', isMuted: true }
+          {
+            id: 'user-1',
+            name: 'Jaxon Wooley',
+            username: 'jaxon'
+          },
+          {
+            id: 'user-2',
+            name: 'Alexis Lim',
+            username: 'alexis',
+            isSpeaking: true,
+            isMuted: false
+          },
+          {
+            id: 'user-3',
+            name: 'Elizabeth Adams',
+            username: 'elizabeth',
+            isMuted: true
+          }
         ]
         window.$stateSet('activeCallRoomId', 'mock-room-123')
         window.$stateSet('callStatus', 'active')
@@ -45,7 +60,7 @@ test.describe('Video Grid and Speaker Features', () => {
 
     await test.step('Pin a participant and verify Master-Detail layout transition', async () => {
       const alexisTile = page.locator('video-grid .grid-tile').filter({ hasText: 'Alexis Lim' })
-      
+
       // Click Alexis Lim Pin button
       await alexisTile.locator('.pin-btn').click({ force: true })
 
@@ -61,7 +76,7 @@ test.describe('Video Grid and Speaker Features', () => {
 
     await test.step('Unpin participant and verify restore to standard grid layout', async () => {
       const alexisTile = page.locator('video-grid .grid-tile').filter({ hasText: 'Alexis Lim' })
-      
+
       // Click pin button again to unpin
       await alexisTile.locator('.pin-btn').click({ force: true })
 
@@ -71,6 +86,10 @@ test.describe('Video Grid and Speaker Features', () => {
   })
 
   test('Video grid pagination with 50+ participants', async () => {
+    await page.setViewportSize({
+      width: 1280,
+      height: 720
+    })
     await test.step('Mock 52 active participants', async () => {
       await page.evaluate(() => {
         const list = []
@@ -82,6 +101,7 @@ test.describe('Video Grid and Speaker Features', () => {
           })
         }
         window.__MOCK_CALL_PARTICIPANTS__ = list
+        window.$stateSet('activeCallRoomId', '')
         window.$stateSet('activeCallRoomId', 'mock-room-pagination')
         window.$stateSet('callStatus', 'active')
       })
@@ -99,7 +119,7 @@ test.describe('Video Grid and Speaker Features', () => {
     })
 
     await test.step('Navigate to page 2 and verify next page contents', async () => {
-      await page.click('video-grid .pagination-controls button[ref$="btnNextPage"]', { force: true })
+      await page.locator('video-grid .pagination-controls .btn-next-page').click({ force: true })
       const paginationControls = page.locator('video-grid .pagination-controls')
       await expect(paginationControls).toContainText('Page 2 of 2')
 
@@ -111,15 +131,32 @@ test.describe('Video Grid and Speaker Features', () => {
 
   test('Mobile responsive view scaling & touch adaptations', async () => {
     await test.step('Set viewport to Mobile Dimensions (375x667)', async () => {
-      await page.setViewportSize({ width: 375, height: 667 })
+      await page.setViewportSize({
+        width: 375,
+        height: 667
+      })
     })
 
     await test.step('Mock group active call state and participants', async () => {
       await page.evaluate(() => {
         window.__MOCK_CALL_PARTICIPANTS__ = [
-          { id: 'user-1', name: 'Jaxon Wooley', username: 'jaxon' },
-          { id: 'user-2', name: 'Alexis Lim', username: 'alexis', isSpeaking: true, isMuted: false },
-          { id: 'user-3', name: 'Elizabeth Adams', username: 'elizabeth' }
+          {
+            id: 'user-1',
+            name: 'Jaxon Wooley',
+            username: 'jaxon'
+          },
+          {
+            id: 'user-2',
+            name: 'Alexis Lim',
+            username: 'alexis',
+            isSpeaking: true,
+            isMuted: false
+          },
+          {
+            id: 'user-3',
+            name: 'Elizabeth Adams',
+            username: 'elizabeth'
+          }
         ]
         window.$stateSet('activeCallRoomId', 'mock-room-mobile')
         window.$stateSet('callStatus', 'active')

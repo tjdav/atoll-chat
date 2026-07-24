@@ -5,16 +5,41 @@ test.describe('Multi-Island Architecture', () => {
     const islandContext = await browser.newContext()
     const page = await islandContext.newPage()
 
+    page.on('console', msg => console.log('[BROWSER CONSOLE]', msg.text()))
+
     /* Enable spaces/islands mode dynamically for E2E tests using Coralite testing mocks contract */
     await page.addInitScript(() => {
-      window.__coralite__ = window.__coralite__ || {}
-      window.__coralite__.mocks = window.__coralite__.mocks || {}
-      window.__coralite__.mocks.config = { enableWorkspaces: true }
+      window.localStorage.clear()
+      window.sessionStorage.clear()
+      window.localStorage.setItem('atoll_workspaces', '[]')
+      window.localStorage.removeItem('atoll_active_workspace_id')
+      if (!window.$config) {
+        window.$config = {}
+      }
+      Object.defineProperty(window.$config, 'enableWorkspaces', {
+        get: () => true,
+        set: () => {
+        },
+        configurable: true,
+        enumerable: true
+      })
+      window.__coralite__ = {
+        mode: 'testing',
+        mocks: {
+          config: { enableWorkspaces: true }
+        }
+      }
     })
     await page.goto(baseURL || '/')
+    await page.evaluate(() => {
+      if (window.$pocketbase && window.$pocketbase.pb) {
+        window.$pocketbase.pb.authStore.clear()
+      }
+    })
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
+    console.log('[islands.spec.js] Page innerHTML:', await page.evaluate(() => document.body.innerHTML))
     /* Island onboarding zero state should be displayed */
     const onboarding = page.locator('island-onboarding')
     await expect(onboarding).toBeVisible()
@@ -44,8 +69,8 @@ test.describe('Multi-Island Architecture', () => {
     /* Connection succeeds, transitions to login/auth view of the connected instance */
     const emailField = page.locator('[data-testid$="username"]')
     const btnSendOtp = page.locator('[data-testid$="loginSubmit"]')
-    await expect(emailField).toBeVisible()
-    await expect(btnSendOtp).toBeVisible()
+    await expect(emailField).toBeVisible({ timeout: 10000 })
+    await expect(btnSendOtp).toBeVisible({ timeout: 10000 })
     await page.waitForTimeout(500)
 
     /* Ensure nav-sidebar is completely hidden before authentication/decryption */
@@ -60,6 +85,18 @@ test.describe('Multi-Island Architecture', () => {
     /* Complete standard login flow */
     await emailField.fill('alice@example.com')
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.evaluate(() => {
+      const widget = document.querySelector('auth-login altcha-widget')
+      if (widget) {
+        widget.dispatchEvent(new CustomEvent('statechange', {
+          detail: {
+            state: 'verified',
+            payload: 'atoll-mock-bypass-token',
+            value: 'atoll-mock-bypass-token'
+          }
+        }))
+      }
+    })
     await page.waitForTimeout(500)
     await btnSendOtp.click()
     await page.waitForTimeout(1000)

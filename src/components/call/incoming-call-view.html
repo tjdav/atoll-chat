@@ -1,0 +1,89 @@
+<template id="incoming-call-view">
+  <div class="incoming-view h-100 {{ incomingClass }} flex-column align-items-center justify-content-center">
+    <div class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-4 shadow" style="width: 120px; height: 120px; font-size: 3rem;">
+      {{ callerInitial }}
+    </div>
+    <h2 class="mb-2">{{ callerName }}</h2>
+    <p class="text-light mb-5">{{ incomingCallTypeText }}</p>
+    
+    <div class="d-flex gap-4">
+      <button ref="btnAccept" class="btn btn-success btn-lg rounded-circle p-3 shadow" title="Accept Call" aria-label="Accept Call">
+        <i class="bi bi-telephone-fill fs-3"></i>
+      </button>
+      <button ref="btnReject" class="btn btn-danger btn-lg rounded-circle p-3 shadow" title="Reject Call" aria-label="Reject Call">
+        <i class="bi bi-telephone-x-fill fs-3"></i>
+      </button>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      callStatus: 'idle',
+      callerName: 'Unknown Caller',
+      callerInitial: '?',
+      incomingMediaTypes: ['audio', 'video']
+    }),
+    getters: {
+      incomingClass: (state) => (state.callStatus === 'incoming' ? 'd-flex' : 'd-none'),
+      incomingCallTypeText: (state) => {
+        const hasVideo = state.incomingMediaTypes && state.incomingMediaTypes.includes('video')
+        return hasVideo ? 'Incoming Video Call...' : 'Incoming Audio Call...'
+      }
+    },
+    client: ({ state, globalStore, eventBus, storage, refs, signal }) => {
+      const { $state } = globalStore
+      const { $bus } = eventBus
+      const { $storage } = storage
+
+      state.callStatus = $state.callStatus
+
+      $state.subscribe('callStatus', (val) => {
+        state.callStatus = val
+      })
+
+      $bus.on('call:incoming', async ({ room_id, senderId, media_types }) => {
+        if (senderId === $state.currentUser?.id) {
+          return
+        }
+
+        state.incomingMediaTypes = media_types || ['audio', 'video']
+
+        if (!room_id) {
+          state.callerName = 'Unknown Caller'
+          state.callerInitial = '?'
+          return
+        }
+
+        try {
+          const room = await $storage.getRoom(room_id)
+          if (room) {
+            const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
+            if (!room.is_group && participants.length > 0) {
+              state.callerName = participants[0].name || participants[0].username
+            } else {
+              state.callerName = room.name || 'Unknown Caller'
+            }
+          } else {
+            state.callerName = 'Unknown Caller'
+          }
+        } catch (err) {
+          console.error('[incoming-call-view] Failed to fetch room details:', err)
+          state.callerName = 'Unknown Caller'
+        }
+        state.callerInitial = state.callerName.charAt(0).toUpperCase()
+      }, { signal })
+
+      refs('btnAccept').addEventListener('click', () => {
+        $bus.emit('call:accept_clicked')
+      })
+
+      refs('btnReject').addEventListener('click', () => {
+        $bus.emit('call:reject_clicked')
+      })
+    }
+  })
+</script>

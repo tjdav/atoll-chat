@@ -6,10 +6,10 @@
     </div>
 
     <!-- Pagination controls -->
-    <div ref="paginationControls" class="pagination-controls position-absolute bottom-0 start-50 translate-middle-x mb-2 bg-dark bg-opacity-75 rounded-pill px-3 py-1 text-white d-none align-items-center" style="z-index: 20;">
-      <button ref="btnPrevPage" class="btn btn-link text-white p-0 me-2" style="text-decoration: none;"><i class="bi bi-chevron-left"></i></button>
+    <div ref="paginationControls" class="pagination-controls position-absolute start-50 translate-middle-x rounded-pill px-3 py-1 text-white d-none align-items-center" style="bottom: 100px !important; z-index: 9999; background: rgba(0,0,0,0.85);">
+      <button ref="btnPrevPage" class="btn btn-link text-white p-0 me-2 btn-prev-page" style="text-decoration: none;"><i class="bi bi-chevron-left"></i></button>
       <span ref="pageInfo">Page 1 of 1</span>
-      <button ref="btnNextPage" class="btn btn-link text-white p-0 ms-2" style="text-decoration: none;"><i class="bi bi-chevron-right"></i></button>
+      <button ref="btnNextPage" class="btn btn-link text-white p-0 ms-2 btn-next-page" style="text-decoration: none;"><i class="bi bi-chevron-right"></i></button>
     </div>
   </div>
 </template>
@@ -70,20 +70,29 @@
 
       const updateGridWithParticipants = (rawParticipants) => {
         const container = refs('gridContainer')
-        if (!container) return
+        if (!container) {
+          return
+        }
 
-        const me = $state.currentUser || { id: 'local-user', name: 'You', username: 'you' }
+        const me = $state.currentUser || {
+          id: 'local-user',
+          name: 'You',
+          username: 'you'
+        }
 
         // Default list to prevent blank screen
         if (rawParticipants.length === 0 && $state.callStatus === 'active') {
           rawParticipants = [
             me,
-            { id: 'remote-user', name: 'Remote Participant', username: 'remote' }
+            {
+              id: 'remote-user',
+              name: 'Remote Participant',
+              username: 'remote'
+            }
           ]
         }
 
         const list = []
-        const meInRaw = rawParticipants.find(p => p.id === me.id)
         const meObj = {
           id: me.id,
           name: 'You',
@@ -97,11 +106,23 @@
         list.push(meObj)
 
         rawParticipants.forEach(p => {
-          if (p.id === me.id) return
-          
+          if (p.id === me.id) {
+            return
+          }
+  
           const isPrimaryRemote = list.length === 1
           const hasStream = isPrimaryRemote && $state.remoteStream
           const remoteMuted = hasStream ? !$state.remoteStream.getAudioTracks().some(t => t.enabled) : true
+
+          let defaultSpeaking = false
+          if (isPrimaryRemote) {
+            defaultSpeaking = Boolean($state.isRemoteSpeaking)
+          }
+
+          let defaultVideo = false
+          if (isPrimaryRemote) {
+            defaultVideo = Boolean($state.hasRemoteVideo)
+          }
 
           list.push({
             id: p.id,
@@ -110,8 +131,8 @@
             avatar: p.avatar,
             isLocal: false,
             isMuted: p.isMuted !== undefined ? p.isMuted : remoteMuted,
-            isSpeaking: p.isSpeaking !== undefined ? p.isSpeaking : (isPrimaryRemote ? Boolean($state.isRemoteSpeaking) : false),
-            isVideoEnabled: p.isVideoEnabled !== undefined ? p.isVideoEnabled : (isPrimaryRemote ? Boolean($state.hasRemoteVideo) : false)
+            isSpeaking: p.isSpeaking !== undefined ? p.isSpeaking : defaultSpeaking,
+            isVideoEnabled: p.isVideoEnabled !== undefined ? p.isVideoEnabled : defaultVideo
           })
         })
 
@@ -173,7 +194,7 @@
         const currentDisplayIds = displayList.map(p => p.id).join(',')
         const currentRailIds = railList.map(p => p.id).join(',')
 
-        const needsReconstruct = 
+        const needsReconstruct =
           currentLayoutMode !== lastLayoutMode ||
           currentHeroId !== lastHeroId ||
           currentDisplayIds !== lastDisplayIds ||
@@ -219,18 +240,20 @@
           }
         } else {
           // Perform high-performance in-place updates to prevent active WebRTC stream flickering
-          const updateParticipantTile = (p, isMini = false) => {
+          const updateParticipantTile = (p, _isMini = false) => {
             const tile = container.querySelector(`[data-participant-id="${p.id}"]`)
-            if (!tile) return
+            if (!tile) {
+              return
+            }
 
-            // 1. Update active speaker border glow
+            // Update active speaker border glow
             if (p.isSpeaking) {
               tile.classList.add('speaking-border-blue')
             } else {
               tile.classList.remove('speaking-border-blue')
             }
 
-            // 2. Update audio status icon container (muted vs pulsing active waves vs none)
+            // Update audio status icon container (muted vs pulsing active waves vs none)
             const audioContainer = tile.querySelector('.audio-status-container')
             if (audioContainer) {
               if (p.isMuted) {
@@ -258,7 +281,7 @@
               }
             }
 
-            // 3. Update pin/unpin button icon and title state
+            // Update pin/unpin button icon and title state
             const pinBtn = tile.querySelector('.pin-btn')
             if (pinBtn) {
               const pinIcon = pinBtn.querySelector('.bi')
@@ -269,7 +292,7 @@
               pinBtn.setAttribute('title', state.pinnedParticipantId === p.id ? 'Unpin Participant' : 'Pin Participant')
             }
 
-            // 4. Update video element srcObject safely without resetting active/playing streams
+            // Update video element srcObject safely without resetting active/playing streams
             const videoEl = tile.querySelector('.tile-video')
             const avatarOverlay = tile.querySelector('.tile-avatar-overlay')
 
@@ -328,6 +351,23 @@
 
         const initial = (p.name || '?').charAt(0).toUpperCase()
 
+        let audioStatusHtml = ''
+        if (p.isMuted) {
+          audioStatusHtml = `
+            <div class="audio-status-icon muted-audio d-flex align-items-center justify-content-center bg-white rounded-circle text-dark" style="width: 32px; height: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+              <i class="bi bi-mic-mute-fill text-danger" style="font-size: 16px;"></i>
+            </div>
+          `
+        } else if (p.isSpeaking) {
+          audioStatusHtml = `
+            <div class="audio-status-icon active-audio d-flex align-items-center justify-content-center bg-primary rounded-circle" style="width: 32px; height: 32px;">
+              <div class="wave-bar bar-1"></div>
+              <div class="wave-bar bar-2"></div>
+              <div class="wave-bar bar-3"></div>
+            </div>
+          `
+        }
+
         tile.innerHTML = `
           <video class="tile-video w-100 h-100 object-fit-cover d-none" autoplay playsinline ${p.isLocal ? 'muted' : ''}></video>
 
@@ -339,17 +379,7 @@
           </div>
 
           <div class="audio-status-container position-absolute top-0 end-0 m-2" style="z-index: 15;">
-            ${p.isMuted ? `
-              <div class="audio-status-icon muted-audio d-flex align-items-center justify-content-center bg-white rounded-circle text-dark" style="width: 32px; height: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                <i class="bi bi-mic-mute-fill text-danger" style="font-size: 16px;"></i>
-              </div>
-            ` : p.isSpeaking ? `
-              <div class="audio-status-icon active-audio d-flex align-items-center justify-content-center bg-primary rounded-circle" style="width: 32px; height: 32px;">
-                <div class="wave-bar bar-1"></div>
-                <div class="wave-bar bar-2"></div>
-                <div class="wave-bar bar-3"></div>
-              </div>
-            ` : ''}
+            ${audioStatusHtml}
           </div>
 
           <button class="pin-btn btn btn-dark btn-sm rounded-circle position-absolute top-0 start-0 m-2" style="z-index: 16; width: 32px; height: 32px; padding: 0; opacity: 0.8; background: rgba(0,0,0,0.6);" title="${state.pinnedParticipantId === p.id ? 'Unpin Participant' : 'Pin Participant'}">
@@ -381,7 +411,7 @@
             videoEl.classList.remove('d-none')
             avatarOverlay.classList.add('d-none')
             videoEl.srcObject = stream
-            
+  
             videoEl.play().catch(err => {
               console.warn('[video-grid] Inline play failed:', err)
             })
@@ -408,7 +438,9 @@
 
       const layoutGrid = (count) => {
         const container = refs('gridContainer')
-        if (!container || count === 0) return
+        if (!container || count === 0) {
+          return
+        }
         const rect = container.getBoundingClientRect()
         const width = rect.width || window.innerWidth
         const height = rect.height || window.innerHeight
@@ -475,11 +507,11 @@
         renderGrid()
       })
 
-      $state.subscribe('localStream', (stream) => {
+      $state.subscribe('localStream', (_stream) => {
         renderGrid()
       })
 
-      $state.subscribe('isAudioEnabled', (val) => {
+      $state.subscribe('isAudioEnabled', (_val) => {
         renderGrid()
       })
 
@@ -495,21 +527,30 @@
         renderGrid()
       }
 
-      if (refs('btnPrevPage')) {
-        refs('btnPrevPage').addEventListener('click', () => {
-          if (state.currentPage > 1) {
-            state.currentPage--
-            renderGrid()
-          }
-        })
-      }
+      const paginationControlsEl = refs('paginationControls')
+      if (paginationControlsEl) {
+        paginationControlsEl.addEventListener('click', (e) => {
+          const btnNext = e.target.closest('[ref$="btnNextPage"]') || e.target.closest('.btn-next-page')
+          const btnPrev = e.target.closest('[ref$="btnPrevPage"]') || e.target.closest('.btn-prev-page')
 
-      if (refs('btnNextPage')) {
-        refs('btnNextPage').addEventListener('click', () => {
-          const totalPages = Math.ceil(state.participants.length / 49)
-          if (state.currentPage < totalPages) {
-            state.currentPage++
-            renderGrid()
+          if (btnNext) {
+            e.preventDefault()
+            e.stopPropagation()
+            const totalCount = state.participants ? state.participants.length : 0
+            const totalPages = Math.ceil(totalCount / 49)
+            if (state.currentPage < totalPages) {
+              state.currentPage++
+              renderGrid()
+            }
+          }
+
+          if (btnPrev) {
+            e.preventDefault()
+            e.stopPropagation()
+            if (state.currentPage > 1) {
+              state.currentPage--
+              renderGrid()
+            }
           }
         })
       }
@@ -545,7 +586,7 @@
         window.removeEventListener('resize', onResize)
       })
 
-      $bus.on('call:remote_track_arrival', ({ room_id, stream, track }) => {
+      $bus.on('call:remote_track_arrival', ({ room_id, stream: _stream, track: _track }) => {
         if (room_id && room_id !== $state.activeCallRoomId) {
           return
         }
