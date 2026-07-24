@@ -415,14 +415,38 @@
       // Accept Call
       refs('btnAccept').addEventListener('click', async () => {
         console.log('[call-overlay] Accept button clicked')
+        let localStream = null
+        const hasVideoOffer = state.incomingMediaTypes && state.incomingMediaTypes.includes('video')
+
         try {
-          console.log('[call-overlay] Requesting media permissions...')
-          const hasVideoOffer = state.incomingMediaTypes && state.incomingMediaTypes.includes('video')
-          const localStream = await navigator.mediaDevices.getUserMedia({
+          console.log('[call-overlay] Requesting media permissions (audio and video)...')
+          localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
             video: hasVideoOffer
           })
           console.log('[call-overlay] Media permissions granted')
+        } catch (err) {
+          console.warn('[call-overlay] Failed to get audio and video, trying audio-only fallback:', err)
+          if (hasVideoOffer) {
+            try {
+              localStream = await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: false
+              })
+              console.log('[call-overlay] Audio-only fallback media permissions granted')
+            } catch (fallbackErr) {
+              console.error('[call-overlay] Both audio/video and audio-only media requests failed:', fallbackErr)
+              endCall()
+              return
+            }
+          } else {
+            console.error('[call-overlay] Failed to accept audio call:', err)
+            endCall()
+            return
+          }
+        }
+
+        try {
           state.localStream = localStream
           $state.localStream = localStream
           updateTrackStates(localStream)
@@ -436,7 +460,7 @@
           await $webrtc.answerCall($state.activeCallRoomId, localStream, state.remoteOffer)
           console.log('[call-overlay] answerCall initiated successfully')
         } catch (err) {
-          console.error('[call-overlay] Failed to accept call:', err)
+          console.error('[call-overlay] Failed to answer call:', err)
           endCall()
         }
       })

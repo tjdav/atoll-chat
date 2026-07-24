@@ -149,12 +149,34 @@
           return
         }
 
+        let localStream = null
         try {
-          const localStream = await navigator.mediaDevices.getUserMedia({
+          console.log('[chat-view] Requesting media permissions (audio and video)...')
+          localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
             video
           })
-  
+          console.log('[chat-view] Media permissions granted')
+        } catch (err) {
+          console.warn('[chat-view] Failed to get audio and video, trying audio-only fallback:', err)
+          if (video) {
+            try {
+              localStream = await navigator.mediaDevices.getUserMedia({
+                audio: true,
+                video: false
+              })
+              console.log('[chat-view] Audio-only fallback media permissions granted')
+            } catch (fallbackErr) {
+              console.error('[chat-view] Both audio/video and audio-only media requests failed:', fallbackErr)
+              return
+            }
+          } else {
+            console.error('[chat-view] Failed to initiate audio call:', err)
+            return
+          }
+        }
+
+        try {
           /**
            * @todo We'll need a way to pass this stream to the call-overlay.
            * Since call-overlay is global and reacts to callStatus, we can use $bus or shared state.
