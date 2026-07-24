@@ -107,6 +107,8 @@
       // Init and subscribe to states
       state.currentAppView = $state.currentAppView || 'chats'
       state.isAuthenticated = $state.isAuthenticated || false
+      state.isVaultUnlocked = $state.isVaultUnlocked || false
+
       state.isIslandsEnabled = Boolean($config?.get('enableWorkspaces'))
       state.islands = pb.authStore.workspaces || []
 
