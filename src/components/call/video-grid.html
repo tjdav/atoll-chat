@@ -52,7 +52,7 @@
         return state.isVideoEnabled ? 'd-block' : 'd-none'
       },
       videoWaitingClass: (state) => (!state.hasRemoteConnected ? 'd-flex' : 'd-none'),
-      audioCallClass: (state) => (!state.isVideoEnabled && state.hasRemoteConnected ? 'd-flex' : 'd-none'),
+      audioCallClass: (state) => (!state.hasRemoteVideo && state.hasRemoteConnected ? 'd-flex' : 'd-none'),
       remoteAvatarSpeakingClass: (state) => (state.isRemoteSpeaking ? 'speaking-ring' : ''),
       remoteVideoSpeakingClass: (state) => (state.isRemoteSpeaking ? 'speaking-border' : ''),
       localVideoSpeakingClass: (state) => (state.isLocalSpeaking ? 'speaking-border' : '')
@@ -108,6 +108,11 @@
       state.isVideoEnabled = $state.isVideoEnabled !== undefined ? Boolean($state.isVideoEnabled) : true
       $state.subscribe('isVideoEnabled', (val) => {
         state.isVideoEnabled = val !== undefined ? Boolean(val) : true
+      })
+
+      state.hasRemoteVideo = Boolean($state.hasRemoteVideo)
+      $state.subscribe('hasRemoteVideo', (val) => {
+        state.hasRemoteVideo = Boolean(val)
       })
 
       const updateRemoteParticipantInfo = async () => {
