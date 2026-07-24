@@ -348,4 +348,108 @@ test.describe.serial('Calls', () => {
       await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
     })
   })
+
+  test('In-Call Device Settings, Effects, and Loss Fail-Safe', async () => {
+    await test.step('Alice initiates video call', async () => {
+      await alicePage.locator('[data-testid="chat-view-0__btnVideoCall"]').click()
+    })
+
+    await test.step('Bob receives incoming video call overlay and accepts', async () => {
+      await expect(bobPage.locator('call-overlay .incoming-view')).toBeVisible({ timeout: 20000 })
+      await bobPage.getByRole('button', { name: 'Accept Call' }).click()
+    })
+
+    await test.step('Verify call is active', async () => {
+      await expect(alicePage.locator('call-overlay .active-view')).toBeVisible({ timeout: 10000 })
+    })
+
+    await test.step('Verify Split Drop-Up Buttons and ARIA settings', async () => {
+      const btnToggleAudio = alicePage.locator('call-overlay [ref$="btnToggleAudio"]')
+      const btnAudioSettings = alicePage.locator('call-overlay [ref$="btnAudioSettings"]')
+      const btnToggleVideo = alicePage.locator('call-overlay [ref$="btnToggleVideo"]')
+      const btnVideoSettings = alicePage.locator('call-overlay [ref$="btnVideoSettings"]')
+
+      await expect(btnToggleAudio).toHaveAttribute('aria-label', 'Mute Microphone')
+      await expect(btnAudioSettings).toHaveAttribute('aria-haspopup', 'menu')
+      await expect(btnAudioSettings).toHaveAttribute('aria-expanded', 'false')
+
+      await expect(btnToggleVideo).toHaveAttribute('aria-label', 'Mute Video')
+      await expect(btnVideoSettings).toHaveAttribute('aria-haspopup', 'menu')
+      await expect(btnVideoSettings).toHaveAttribute('aria-expanded', 'false')
+    })
+
+    await test.step('Open Microphone settings menu and verify structure', async () => {
+      const btnAudioSettings = alicePage.locator('call-overlay [ref$="btnAudioSettings"]')
+      await btnAudioSettings.click()
+      await expect(btnAudioSettings).toHaveAttribute('aria-expanded', 'true')
+
+      // Assert Select a Microphone, Effects, and Select a Speaker headings exist
+      const micMenu = alicePage.locator('call-overlay .device-dropdown-menu').first()
+      await expect(micMenu).toBeVisible()
+      await expect(micMenu.locator('.dropdown-header').filter({ hasText: 'Select a Microphone' })).toBeVisible()
+      await expect(micMenu.locator('.dropdown-header').filter({ hasText: 'Microphone Effects' })).toBeVisible()
+      await expect(micMenu.locator('.dropdown-header').filter({ hasText: 'Select a Speaker' })).toBeVisible()
+
+      // Expect default "Noise cancellation" checked
+      await expect(alicePage.locator('call-overlay #noise-cancellation-switch')).toBeChecked()
+    })
+
+    await test.step('Toggle Noise Cancellation', async () => {
+      await alicePage.locator('call-overlay #noise-cancellation-switch').click()
+      await expect(alicePage.locator('call-overlay #noise-cancellation-switch')).not.toBeChecked()
+
+      // Verify stored preference in local storage
+      const value = await alicePage.evaluate(() => localStorage.getItem('atoll_noise_cancellation'))
+      expect(value).toBe('false')
+    })
+
+    await test.step('Open Camera settings menu and verify Background Blur Mock', async () => {
+      const btnVideoSettings = alicePage.locator('call-overlay [ref$="btnVideoSettings"]')
+      await btnVideoSettings.click()
+      await expect(btnVideoSettings).toHaveAttribute('aria-expanded', 'true')
+
+      const camMenu = alicePage.locator('call-overlay .device-dropdown-menu').last()
+      await expect(camMenu).toBeVisible()
+      await alicePage.screenshot({ path: '/home/jules/verification/screenshots/verification-active-dropdown.png' })
+      await expect(camMenu.locator('.dropdown-header').filter({ hasText: 'Select a Camera' })).toBeVisible()
+      await expect(camMenu.locator('.dropdown-header').filter({ hasText: 'Video Effects' })).toBeVisible()
+
+      // Toggle Background Blur
+      const blurSwitch = alicePage.locator('call-overlay #background-blur-switch')
+      await expect(blurSwitch).not.toBeChecked()
+      await blurSwitch.click()
+      await expect(blurSwitch).toBeChecked()
+
+      // Verify CSS blur filter is applied to Alice's local preview element
+      await expect(alicePage.locator('video-grid .grid-tile:has-text("You") video')).toHaveCSS('filter', /blur\(10px\)/)
+    })
+
+    await test.step('Simulate Active Microphone disconnected fail-safe mid-call', async () => {
+      // Capture state before disconnect
+      await expect(alicePage.locator('call-overlay [ref$="btnToggleAudio"]')).not.toHaveClass(/btn-danger/)
+
+      // Simulate disconnect
+      await alicePage.evaluate(() => {
+        // Enforce microphones list is empty on next fetch
+        navigator.mediaDevices.enumerateDevices = async () => [
+          { kind: 'videoinput', label: 'Camera', deviceId: 'cam1' }
+        ]
+        // Trigger devicechange event
+        navigator.mediaDevices.dispatchEvent(new Event('devicechange'))
+      })
+
+      // Expect warning toast
+      await expect(alicePage.locator('.toast-body')).toContainText('Microphone disconnected.')
+
+      // Expect Alice to be force muted
+      const btnToggleAudio = alicePage.locator('call-overlay [ref$="btnToggleAudio"]')
+      await expect(btnToggleAudio).toHaveClass(/btn-danger/)
+      await expect(btnToggleAudio).toHaveAttribute('aria-pressed', 'true')
+    })
+
+    await test.step('End the call', async () => {
+      await alicePage.locator('call-overlay [ref$="btnEndCall"]').click()
+      await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
+    })
+  })
 })

@@ -1,0 +1,208 @@
+/* Styling for call-overlay component dropups and custom split buttons */
+
+.control-bar {
+  /* Ensure bootstrap dropdown positioning is relative to the button group, not overflowing */
+  z-index: 1050;
+}
+
+/* Custom rounded-pill button group */
+.btn-group-pill {
+  border-radius: 50rem !important;
+  overflow: visible !important; /* allow dropup menu */
+  background-color: transparent !important;
+  border: none !important;
+
+  .btn {
+    border-radius: 0 !important;
+    height: 60px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: none !important;
+
+    &:first-child {
+      border-top-left-radius: 50rem !important;
+      border-bottom-left-radius: 50rem !important;
+      padding-left: 20px !important;
+      padding-right: 12px !important;
+      width: 65px !important;
+    }
+
+    &:last-child {
+      border-top-right-radius: 50rem !important;
+      border-bottom-right-radius: 50rem !important;
+      padding-right: 20px !important;
+      padding-left: 12px !important;
+      width: 45px !important;
+    }
+  }
+
+  /* When group is in active/unmuted state */
+  &.active-state {
+    .btn-action {
+      background-color: var(--bs-light) !important;
+      color: var(--bs-dark) !important;
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.85) !important;
+      }
+    }
+    .btn-chevron {
+      background-color: var(--bs-light) !important;
+      color: var(--bs-dark) !important;
+      border-left: 1px solid rgba(0, 0, 0, 0.1) !important;
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.8) !important;
+      }
+    }
+  }
+
+  /* When speaking (and unmuted) */
+  &.speaking-state {
+    .btn-action {
+      background-color: var(--bs-success) !important;
+      color: var(--bs-white) !important;
+    }
+    .btn-chevron {
+      background-color: var(--bs-success) !important;
+      color: var(--bs-white) !important;
+      border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
+    }
+  }
+
+  /* When group is in muted state */
+  &.muted-state {
+    .btn-action {
+      background-color: var(--bs-danger) !important;
+      color: var(--bs-white) !important;
+      &:hover {
+        background-color: #dc3545d9 !important;
+      }
+    }
+    .btn-chevron {
+      background-color: var(--bs-danger) !important;
+      color: var(--bs-white) !important;
+      border-left: 1px solid rgba(0, 0, 0, 0.15) !important;
+      /* subtle darker variant or dark transparent overlay on the chevron button */
+      background-image: linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15)) !important;
+
+      &:hover {
+        background-image: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.25)) !important;
+      }
+    }
+  }
+}
+
+/* Custom dropdown-menu for device selection dropup */
+.device-dropdown-menu {
+  width: 320px;
+  max-width: 90vw;
+  background-color: var(--bs-body-bg) !important;
+  border: 1px solid var(--bs-border-color) !important;
+  border-radius: 1rem !important;
+  padding: 1.25rem !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  color: var(--bs-emphasis-color) !important;
+
+  .dropdown-header {
+    font-size: 0.75rem !important;
+    text-transform: uppercase;
+    font-weight: 700;
+    color: var(--bs-secondary-color) !important;
+    padding: 0 !important;
+    margin-bottom: 0.75rem;
+    margin-top: 0.5rem;
+
+    &:first-child {
+      margin-top: 0;
+    }
+  }
+
+  .device-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    margin-bottom: 1rem;
+    max-height: 160px;
+    overflow-y: auto;
+  }
+
+  .device-item {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    padding: 0.5rem 0.75rem;
+    background: transparent;
+    border: none;
+    color: var(--bs-body-color);
+    border-radius: 0.5rem;
+    text-align: left;
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: background-color 0.15s ease, color 0.15s ease;
+
+    &:hover {
+      background-color: var(--bs-tertiary-bg);
+      color: var(--bs-emphasis-color);
+    }
+
+    &.active {
+      font-weight: 500;
+      color: var(--bs-emphasis-color);
+      
+      .check-icon {
+        visibility: visible;
+      }
+    }
+
+    .check-icon {
+      margin-right: 0.5rem;
+      font-size: 1rem;
+      visibility: hidden;
+      flex-shrink: 0;
+    }
+
+    .device-name {
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-grow: 1;
+    }
+  }
+
+  .effect-toggle-container {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: var(--bs-tertiary-bg);
+    margin-bottom: 1rem;
+
+    .effect-label {
+      font-size: 0.875rem;
+      color: var(--bs-body-color);
+    }
+
+    .form-switch {
+      padding-left: 2.5em;
+      margin-bottom: 0;
+      
+      .form-check-input {
+        cursor: pointer;
+        height: 1.5rem;
+        width: 2.75rem;
+      }
+    }
+  }
+
+  .speaker-fallback-box {
+    background-color: var(--bs-tertiary-bg);
+    border: 1px solid var(--bs-border-color);
+    border-radius: 0.75rem;
+    padding: 0.75rem 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.4;
+    color: var(--bs-secondary-color);
+    margin-bottom: 0.5rem;
+  }
+}

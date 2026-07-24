@@ -31,13 +31,64 @@
             </div>
             
             <!-- Control Bar -->
-            <div class="control-bar position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-3 p-3 rounded-pill bg-dark bg-opacity-75 shadow-lg border border-secondary">
-              <button ref="btnToggleAudio" role="button" title="Mute Microphone" aria-label="Mute Microphone" aria-pressed="{{ audioPressed }}" class="btn {{ audioBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                <i class="bi {{ audioIconClass }} fs-4"></i>
-              </button>
-              <button ref="btnToggleVideo" role="button" title="Mute Video" aria-label="Mute Video" aria-pressed="{{ videoPressed }}" class="btn {{ videoBtnClass }} rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-                <i class="bi {{ videoIconClass }} fs-4"></i>
-              </button>
+            <div class="control-bar position-absolute bottom-0 start-50 translate-middle-x mb-4 d-flex gap-3 p-3 rounded-pill bg-dark bg-opacity-75 shadow-lg border border-secondary align-items-center">
+              
+              <!-- Split Button for Audio control -->
+              <div class="btn-group dropup btn-group-pill {{ audioGroupClass }}" ref="audioGroup">
+                <button ref="btnToggleAudio" type="button" class="btn btn-action btn-light" aria-label="Mute Microphone" aria-pressed="{{ audioPressed }}">
+                  <i class="bi {{ audioIconClass }} fs-4"></i>
+                </button>
+                <button ref="btnAudioSettings" type="button" class="btn btn-chevron dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false" aria-label="Microphone Settings">
+                  <i class="bi bi-chevron-up"></i>
+                </button>
+                <div class="dropdown-menu device-dropdown-menu p-3" aria-label="Microphone Settings Menu">
+                  <h6 class="dropdown-header">Select a Microphone</h6>
+                  <div class="device-list" ref="micList">
+                    <!-- Mic items will be generated here -->
+                  </div>
+
+                  <h6 class="dropdown-header">Microphone Effects</h6>
+                  <div class="effect-toggle-container">
+                    <span class="effect-label">Noise cancellation</span>
+                    <div class="form-check form-switch m-0">
+                      <input class="form-check-input" type="checkbox" role="switch" ref="toggleNoiseCancellation" id="noise-cancellation-switch">
+                    </div>
+                  </div>
+
+                  <h6 class="dropdown-header">Select a Speaker</h6>
+                  <div class="device-list" ref="speakerList">
+                    <!-- Speaker items will be generated here -->
+                  </div>
+                  <div class="speaker-fallback-box d-none" ref="speakerFallback">
+                    Speaker selection isn’t available in this browser. Use your system settings to choose a different speaker.
+                  </div>
+                </div>
+              </div>
+
+              <!-- Split Button for Video control -->
+              <div class="btn-group dropup btn-group-pill {{ videoGroupClass }}" ref="videoGroup">
+                <button ref="btnToggleVideo" type="button" class="btn btn-action {{ videoBtnClass }}" aria-label="Mute Video" aria-pressed="{{ videoPressed }}">
+                  <i class="bi {{ videoIconClass }} fs-4"></i>
+                </button>
+                <button ref="btnVideoSettings" type="button" class="btn btn-chevron dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false" aria-label="Video Settings">
+                  <i class="bi bi-chevron-up"></i>
+                </button>
+                <div class="dropdown-menu device-dropdown-menu p-3" aria-label="Video Settings Menu">
+                  <h6 class="dropdown-header">Select a Camera</h6>
+                  <div class="device-list" ref="camList">
+                    <!-- Cam items will be generated here -->
+                  </div>
+
+                  <h6 class="dropdown-header">Video Effects</h6>
+                  <div class="effect-toggle-container">
+                    <span class="effect-label">Background blur</span>
+                    <div class="form-check form-switch m-0">
+                      <input class="form-check-input" type="checkbox" role="switch" ref="toggleBackgroundBlur" id="background-blur-switch">
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <button ref="btnPip" class="btn btn-light rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;" title="Picture-in-Picture">
                 <i class="bi bi-pip fs-4"></i>
               </button>
@@ -77,20 +128,34 @@
       remoteOffer: null,
       isPipMode: false,
       isLocalSpeaking: false,
-      incomingMediaTypes: ['audio', 'video']
+      incomingMediaTypes: ['audio', 'video'],
+  
+      // Device state
+      microphones: [],
+      cameras: [],
+      speakers: [],
+      activeMicId: 'default',
+      activeCamId: 'default',
+      activeSpeakerId: 'default',
+      isNoiseCancellationEnabled: true,
+      isBackgroundBlurEnabled: false,
+      isSpeakerSelectionSupported: true
     }),
     getters: {
       incomingClass: (state) => (state.callStatus === 'incoming' ? 'd-flex' : 'd-none'),
       activeClass: (state) => (state.callStatus === 'active' && !state.isPipMode ? 'd-block' : 'd-none'),
       pipClass: (state) => (state.callStatus === 'active' && state.isPipMode ? 'd-block' : 'd-none'),
-      audioBtnClass: (state) => {
+      audioGroupClass: (state) => {
         if (!state.isAudioEnabled) {
-          return 'btn-danger'
+          return 'muted-state'
         }
-        return state.isLocalSpeaking ? 'btn-success speaking-btn-glow' : 'btn-light'
+        return state.isLocalSpeaking ? 'speaking-state' : 'active-state'
       },
-      audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
+      videoGroupClass: (state) => {
+        return state.isVideoEnabled ? 'active-state' : 'muted-state'
+      },
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
+      audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
       videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill'),
       audioPressed: (state) => (!state.isAudioEnabled ? 'true' : 'false'),
       videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false'),
@@ -104,7 +169,7 @@
       const { $bus } = eventBus
       const { $webrtc } = webrtcPluginContext
       const { $storage } = storage
-      const { Modal } = bootstrap
+      const { Modal, Dropdown } = bootstrap
       const modalEl = refs('modal')
       const modal = new Modal(modalEl, {
         backdrop: 'static',
@@ -151,6 +216,12 @@
       $state.isAudioEnabled = state.isAudioEnabled
       $state.isVideoEnabled = state.isVideoEnabled
 
+      // Initialize default toggles
+      state.isNoiseCancellationEnabled = localStorage.getItem('atoll_noise_cancellation') !== 'false'
+      state.isBackgroundBlurEnabled = localStorage.getItem('atoll_background_blur') === 'true'
+      refs('toggleNoiseCancellation').checked = state.isNoiseCancellationEnabled
+      refs('toggleBackgroundBlur').checked = state.isBackgroundBlurEnabled
+
       const stopRingtone = () => {
         if (ringtoneAudio) {
           ringtoneAudio.pause()
@@ -192,6 +263,19 @@
         }
       }
 
+      const updateLocalSpeakingBtn = () => {
+        const targetBtn = refs('btnToggleAudio')
+        if (targetBtn) {
+          if (state.isAudioEnabled && state.isLocalSpeaking) {
+            targetBtn.className = 'btn btn-action btn-success speaking-btn-glow'
+          } else if (!state.isAudioEnabled) {
+            targetBtn.className = 'btn btn-action btn-danger'
+          } else {
+            targetBtn.className = 'btn btn-action btn-light'
+          }
+        }
+      }
+
       const updateTrackStates = (stream) => {
         if (!stream) {
           return
@@ -203,6 +287,7 @@
         $state.isAudioEnabled = hasAudio
         state.isVideoEnabled = hasVideo
         $state.isVideoEnabled = hasVideo
+        updateLocalSpeakingBtn()
       }
 
       const endCall = async () => {
@@ -220,6 +305,7 @@
         $state.isAudioEnabled = true
         state.isVideoEnabled = true
         $state.isVideoEnabled = true
+        updateLocalSpeakingBtn()
       }
 
       const toggleAudio = () => {
@@ -232,6 +318,7 @@
             })
             state.isAudioEnabled = nextState
             $state.isAudioEnabled = nextState
+            updateLocalSpeakingBtn()
           }
         }
       }
@@ -265,6 +352,11 @@
         }
         updateModalVisibility(val, state.isPipMode)
         syncVideoGrid()
+  
+        // Populate and validate devices on join
+        if (val === 'active') {
+          enumerateAndBootDevices()
+        }
       })
 
       // Listen for incoming calls
@@ -303,24 +395,6 @@
         state.callerInitial = state.callerName.charAt(0).toUpperCase()
       }, { signal })
 
-      const btnToggleAudio = refs('btnToggleAudio')
-
-      const updateLocalSpeakingBtn = () => {
-        const targetBtn = refs('btnToggleAudio') || btnToggleAudio
-        if (targetBtn) {
-          if (state.isAudioEnabled && state.isLocalSpeaking) {
-            targetBtn.classList.add('btn-success', 'speaking-btn-glow')
-            targetBtn.classList.remove('btn-light', 'btn-danger')
-          } else if (!state.isAudioEnabled) {
-            targetBtn.classList.add('btn-danger')
-            targetBtn.classList.remove('btn-light', 'btn-success', 'speaking-btn-glow')
-          } else {
-            targetBtn.classList.add('btn-light')
-            targetBtn.classList.remove('btn-danger', 'btn-success', 'speaking-btn-glow')
-          }
-        }
-      }
-
       $state.subscribe('isLocalSpeaking', (val) => {
         state.isLocalSpeaking = Boolean(val)
         updateLocalSpeakingBtn()
@@ -333,6 +407,7 @@
           if (participantId === 'local') {
             state.isLocalSpeaking = isSpeaking
             $state.isLocalSpeaking = isSpeaking
+            updateLocalSpeakingBtn()
           } else {
             $state.isRemoteSpeaking = isSpeaking
           }
@@ -479,6 +554,368 @@
       refs('btnEndCall').addEventListener('click', () => {
         endCall()
       })
+
+      /* =======================================================================
+         DEVICE MANAGEMENT LOGIC
+         ======================================================================= */
+
+      // 1. Capability & Enumeration Gating
+      state.isSpeakerSelectionSupported = typeof HTMLMediaElement.prototype.setSinkId !== 'undefined'
+      if (!state.isSpeakerSelectionSupported) {
+        refs('speakerFallback').classList.remove('d-none')
+      }
+
+      const requestTemporaryPermissions = async () => {
+        if (window.__E2E_AUDIO_MOCK_INJECTED__) {
+          console.log('[call-overlay] E2E audio mock detected, skipping temporary permission stream to avoid mock collision.')
+          return
+        }
+        if (state.localStream && state.localStream.getTracks().length > 0) {
+          console.log('[call-overlay] active localStream already exists, skipping temporary permission stream.')
+          return
+        }
+        try {
+          console.log('[call-overlay] Spawning temporary media stream to prompt native OS permissions...')
+          const tempStream = await navigator.mediaDevices.getUserMedia({
+            audio: true,
+            video: true
+          })
+          tempStream.getTracks().forEach(track => track.stop())
+          console.log('[call-overlay] Temporary permission granted and tracks stopped.')
+        } catch (err) {
+          console.warn('[call-overlay] Temporary permission stream failed, attempting audio-only...', err)
+          try {
+            const tempAudio = await navigator.mediaDevices.getUserMedia({ audio: true })
+            tempAudio.getTracks().forEach(track => track.stop())
+          } catch (audioErr) {
+            console.error('[call-overlay] Permanent permission failure or user denied access:', audioErr)
+          }
+        }
+      }
+
+      const enumerateAndBootDevices = async () => {
+        await requestTemporaryPermissions()
+        await fetchHardwareLists()
+        await bootValidatePreferences()
+        renderDeviceMenus()
+        applyLocalVideoEffects()
+      }
+
+      const fetchHardwareLists = async () => {
+        try {
+          const devices = await navigator.mediaDevices.enumerateDevices()
+          state.microphones = devices.filter(d => d.kind === 'audioinput')
+          state.cameras = devices.filter(d => d.kind === 'videoinput')
+          state.speakers = devices.filter(d => d.kind === 'audiooutput')
+          console.log('[call-overlay] Enumerate devices successful:', {
+            mics: state.microphones.length,
+            cams: state.cameras.length,
+            speakers: state.speakers.length
+          })
+        } catch (err) {
+          console.error('[call-overlay] Failed to enumerate hardware devices:', err)
+        }
+      }
+
+      // 2. State Preference Preservation and Boot Validation
+      const bootValidatePreferences = async () => {
+        const storedMic = localStorage.getItem('atoll_active_microphone')
+        const storedCam = localStorage.getItem('atoll_active_camera')
+        const storedSpeaker = localStorage.getItem('atoll_active_speaker')
+
+        if (storedMic && state.microphones.some(m => m.deviceId === storedMic)) {
+          state.activeMicId = storedMic
+        } else {
+          state.activeMicId = state.microphones[0]?.deviceId || 'default'
+          localStorage.setItem('atoll_active_microphone', state.activeMicId)
+        }
+
+        if (storedCam && state.cameras.some(c => c.deviceId === storedCam)) {
+          state.activeCamId = storedCam
+        } else {
+          state.activeCamId = state.cameras[0]?.deviceId || 'default'
+          localStorage.setItem('atoll_active_camera', state.activeCamId)
+        }
+
+        if (state.isSpeakerSelectionSupported) {
+          if (storedSpeaker && state.speakers.some(s => s.deviceId === storedSpeaker)) {
+            state.activeSpeakerId = storedSpeaker
+          } else {
+            state.activeSpeakerId = state.speakers[0]?.deviceId || 'default'
+            localStorage.setItem('atoll_active_speaker', state.activeSpeakerId)
+          }
+        }
+      }
+
+      // 3. UI Construction & Dynamic Selection Listeners
+      const renderDeviceMenus = () => {
+        // Render Microphone list
+        const micContainer = refs('micList')
+        if (micContainer) {
+          micContainer.innerHTML = ''
+          if (state.microphones.length === 0) {
+            micContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem;">No microphones found</div>`
+          } else {
+            state.microphones.forEach(mic => {
+              const button = document.createElement('button')
+              button.className = `device-item ${state.activeMicId === mic.deviceId ? 'active' : ''}`
+              button.setAttribute('data-device-id', mic.deviceId)
+              button.innerHTML = `
+                <i class="bi bi-check2 check-icon"></i>
+                <span class="device-name">${mic.label || 'Microphone (' + mic.deviceId.substring(0, 5) + ')'}</span>
+              `
+              button.addEventListener('click', () => selectMicrophone(mic.deviceId))
+              micContainer.appendChild(button)
+            })
+          }
+        }
+
+        // Render Camera list
+        const camContainer = refs('camList')
+        if (camContainer) {
+          camContainer.innerHTML = ''
+          if (state.cameras.length === 0) {
+            camContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem;">No cameras found</div>`
+          } else {
+            state.cameras.forEach(cam => {
+              const button = document.createElement('button')
+              button.className = `device-item ${state.activeCamId === cam.deviceId ? 'active' : ''}`
+              button.setAttribute('data-device-id', cam.deviceId)
+              button.innerHTML = `
+                <i class="bi bi-check2 check-icon"></i>
+                <span class="device-name">${cam.label || 'Camera (' + cam.deviceId.substring(0, 5) + ')'}</span>
+              `
+              button.addEventListener('click', () => selectCamera(cam.deviceId))
+              camContainer.appendChild(button)
+            })
+          }
+        }
+
+        // Render Speaker list
+        const speakerContainer = refs('speakerList')
+        if (speakerContainer && state.isSpeakerSelectionSupported) {
+          speakerContainer.innerHTML = ''
+          if (state.speakers.length === 0) {
+            speakerContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem;">No speakers found</div>`
+          } else {
+            state.speakers.forEach(speaker => {
+              const button = document.createElement('button')
+              button.className = `device-item ${state.activeSpeakerId === speaker.deviceId ? 'active' : ''}`
+              button.setAttribute('data-device-id', speaker.deviceId)
+              button.innerHTML = `
+                <i class="bi bi-check2 check-icon"></i>
+                <span class="device-name">${speaker.label || 'Speaker (' + speaker.deviceId.substring(0, 5) + ')'}</span>
+              `
+              button.addEventListener('click', () => selectSpeaker(speaker.deviceId))
+              speakerContainer.appendChild(button)
+            })
+          }
+        }
+      }
+
+      // Hot-swap microphone helper
+      const selectMicrophone = async (deviceId) => {
+        state.activeMicId = deviceId
+        localStorage.setItem('atoll_active_microphone', deviceId)
+        renderDeviceMenus()
+
+        if (state.callStatus !== 'active' || !state.localStream) {
+          return
+        }
+
+        const audioConstraints = {
+          deviceId: { exact: deviceId },
+          noiseSuppression: state.isNoiseCancellationEnabled,
+          echoCancellation: state.isNoiseCancellationEnabled,
+          autoGainControl: state.isNoiseCancellationEnabled
+        }
+
+        try {
+          const newStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
+          const newTrack = newStream.getAudioTracks()[0]
+
+          // Mute State Preservation
+          if (!state.isAudioEnabled) {
+            newTrack.enabled = false
+          }
+
+          const pc = window.__E2E_PEER_CONNECTION__
+          if (pc) {
+            const senders = pc.getSenders()
+            const audioSender = senders.find(s => s.track && s.track.kind === 'audio')
+            if (audioSender) {
+              await audioSender.replaceTrack(newTrack)
+              console.log('[call-overlay] Active WebRTC audio track swapped successfully.')
+            }
+          }
+
+          // Swap local stream track
+          const oldAudioTrack = state.localStream.getAudioTracks()[0]
+          if (oldAudioTrack) {
+            oldAudioTrack.stop()
+            state.localStream.removeTrack(oldAudioTrack)
+          }
+          state.localStream.addTrack(newTrack)
+          $bus.emit('call:local_stream_available', { stream: state.localStream })
+        } catch (err) {
+          console.error('[call-overlay] Failed to swap active audio track:', err)
+        }
+      }
+
+      // Hot-swap camera helper
+      const selectCamera = async (deviceId) => {
+        state.activeCamId = deviceId
+        localStorage.setItem('atoll_active_camera', deviceId)
+        renderDeviceMenus()
+
+        if (state.callStatus !== 'active' || !state.localStream) {
+          return
+        }
+
+        try {
+          const newStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } })
+          const newTrack = newStream.getVideoTracks()[0]
+
+          // Mute State Preservation
+          if (!state.isVideoEnabled) {
+            newTrack.enabled = false
+          }
+
+          const pc = window.__E2E_PEER_CONNECTION__
+          if (pc) {
+            const senders = pc.getSenders()
+            const videoSender = senders.find(s => s.track && s.track.kind === 'video')
+            if (videoSender) {
+              await videoSender.replaceTrack(newTrack)
+              console.log('[call-overlay] Active WebRTC video track swapped successfully.')
+            }
+          }
+
+          // Swap local stream track
+          const oldVideoTrack = state.localStream.getVideoTracks()[0]
+          if (oldVideoTrack) {
+            oldVideoTrack.stop()
+            state.localStream.removeTrack(oldVideoTrack)
+          }
+          state.localStream.addTrack(newTrack)
+          $bus.emit('call:local_stream_available', { stream: state.localStream })
+          applyLocalVideoEffects()
+        } catch (err) {
+          console.error('[call-overlay] Failed to swap active video track:', err)
+        }
+      }
+
+      // Hot-swap speaker helper
+      const selectSpeaker = async (deviceId) => {
+        if (!state.isSpeakerSelectionSupported) {
+          return
+        }
+        state.activeSpeakerId = deviceId
+        localStorage.setItem('atoll_active_speaker', deviceId)
+        renderDeviceMenus()
+
+        const remoteVideos = document.querySelectorAll('video-grid video')
+        remoteVideos.forEach(async (video) => {
+          try {
+            await video.setSinkId(deviceId)
+            console.log(`[call-overlay] Speaker sink ID set successfully to: ${deviceId}`)
+          } catch (err) {
+            console.error('[call-overlay] Failed to set speaker sink ID:', err)
+          }
+        })
+      }
+
+      // Effect Toggles
+      refs('toggleNoiseCancellation').addEventListener('change', (e) => {
+        state.isNoiseCancellationEnabled = e.target.checked
+        localStorage.setItem('atoll_noise_cancellation', state.isNoiseCancellationEnabled)
+        if (state.callStatus === 'active') {
+          selectMicrophone(state.activeMicId)
+        }
+      })
+
+      const applyLocalVideoEffects = () => {
+        const videoGrid = refs('videoGrid')
+        if (!videoGrid) {
+          return
+        }
+  
+        // Find local video element and apply CSS blur
+        const me = $state.currentUser || { id: 'local-user' }
+        const localTile = videoGrid.querySelector(`[data-participant-id="${me.id}"]`)
+        if (localTile) {
+          const videoEl = localTile.querySelector('.tile-video')
+          if (videoEl) {
+            if (state.isBackgroundBlurEnabled) {
+              videoEl.style.filter = 'blur(10px)'
+            } else {
+              videoEl.style.filter = ''
+            }
+          }
+        }
+      }
+
+      refs('toggleBackgroundBlur').addEventListener('change', (e) => {
+        state.isBackgroundBlurEnabled = e.target.checked
+        localStorage.setItem('atoll_background_blur', state.isBackgroundBlurEnabled)
+        applyLocalVideoEffects()
+      })
+
+      // Ensure effects are applied on grid updates
+      $bus.on('call:local_stream_available', () => {
+        setTimeout(applyLocalVideoEffects, 100)
+      })
+
+      // 4. Dynamic Hardware Events (Plug-and-Play & Loss)
+      const onDeviceChange = async () => {
+        console.log('[call-overlay] Global media device change event triggered.')
+        const oldMics = [...state.microphones]
+        await fetchHardwareLists()
+        renderDeviceMenus()
+
+        if (state.callStatus !== 'active') {
+          return
+        }
+
+        // Handle Hardware Loss (Fail Safe)
+        const currentActiveMicStillExists = state.microphones.some(m => m.deviceId === state.activeMicId)
+        if (oldMics.length > 0 && !currentActiveMicStillExists) {
+          console.warn('[call-overlay] Active microphone was unplugged mid-call! Executing fail-safe...')
+  
+          // Force-mute the user
+          if (state.localStream) {
+            const tracks = state.localStream.getAudioTracks()
+            tracks.forEach(track => {
+              track.enabled = false
+              track.stop()
+            })
+            state.isAudioEnabled = false
+            $state.isAudioEnabled = false
+          }
+
+          // Clear local storage preference
+          localStorage.removeItem('atoll_active_microphone')
+          state.activeMicId = 'default'
+
+          // Trigger warning toast notification
+          $bus.emit('ui:show_toast', {
+            message: 'Microphone disconnected.',
+            type: 'danger'
+          })
+
+          renderDeviceMenus()
+        }
+      }
+
+      navigator.mediaDevices.addEventListener('devicechange', onDeviceChange)
+      signal.addEventListener('abort', () => {
+        navigator.mediaDevices.removeEventListener('devicechange', onDeviceChange)
+      })
+
+      // Initialize speaking state initially on Active transition
+      if (state.callStatus === 'active') {
+        updateLocalSpeakingBtn()
+      }
 
       // Cleanup on unmount
       signal.addEventListener('abort', () => {
