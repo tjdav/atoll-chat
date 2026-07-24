@@ -81,7 +81,7 @@ export default definePlugin({
           }
 
           const now = Date.now()
-          const debounceMs = config?.$config?.get('notificationSoundDebounceMs') ?? 1000
+          const debounceMs = config.$config.get('notificationSoundDebounceMs') ?? 1000
 
           if (now - lastSoundPlayTime < debounceMs) {
             return

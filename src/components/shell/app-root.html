@@ -31,7 +31,7 @@
       let isLifecycleRegistered = false
       let isFlushing = false
 
-      const isIslandsEnabled = Boolean($config?.get('enableWorkspaces'))
+      const isIslandsEnabled = Boolean($config.get('enableWorkspaces'))
       console.log('[app-root] isIslandsEnabled:', isIslandsEnabled)
 
       const deriveIslandFromUrl = (urlStr) => {
