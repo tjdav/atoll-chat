@@ -142,15 +142,9 @@ test.describe.serial('Calls', () => {
       await expect(alicePage.locator('call-overlay .active-view')).toBeVisible({ timeout: 10000 })
       await expect(bobPage.locator('call-overlay .active-view')).toBeVisible({ timeout: 10000 })
 
-      // Verify that local video preview is hidden on both sides for audio call
-      await expect(alicePage.locator('video-grid video.local-video')).toHaveClass(/d-none/)
-      await expect(bobPage.locator('video-grid video.local-video')).toHaveClass(/d-none/)
-
-      // Verify centered avatar and active audio call view are shown
-      await expect(alicePage.locator('video-grid .remote-placeholder')).toContainText('Audio Call Active')
-      await expect(bobPage.locator('video-grid .remote-placeholder')).toContainText('Audio Call Active')
-      await expect(alicePage.locator('video-grid .remote-placeholder h2')).toHaveText('bob')
-      await expect(bobPage.locator('video-grid .remote-placeholder h2')).toHaveText('alice')
+      // Verify that dynamic grid elements are displayed
+      await expect(alicePage.locator('video-grid .grid-tile').first()).toBeVisible({ timeout: 10000 })
+      await expect(bobPage.locator('video-grid .grid-tile').first()).toBeVisible({ timeout: 10000 })
 
       // Verify that call status is displayed in the chat view header
       await expect(alicePage.locator('chat-view header small')).toHaveText('In Call')
@@ -227,7 +221,7 @@ test.describe.serial('Calls', () => {
     await test.step('Verify remote video stream has arrived for Alice', async () => {
       await expect.poll(async () => {
         return await alicePage.evaluate(() => {
-          const video = document.querySelector('video-grid video.remote-video')
+          const video = document.querySelector('video-grid video.tile-video:not(.d-none)')
           if (!video || !video.srcObject) {
             return false
           }
@@ -248,7 +242,7 @@ test.describe.serial('Calls', () => {
         }
       })
       // Assert Alice's local video element receives speaking-border from Web Audio stream
-      await expect(alicePage.locator('video-grid video.local-video')).toHaveClass(/speaking-border/, { timeout: 10000 })
+      await expect(alicePage.locator('video-grid .grid-tile:has-text("You")')).toHaveClass(/speaking-border-blue/, { timeout: 10000 })
 
       // Mute Alice's audio generator
       await alicePage.evaluate(() => {
@@ -258,7 +252,7 @@ test.describe.serial('Calls', () => {
       })
 
       // Assert Alice's local video element loses speaking-border after hangover delay
-      await expect(alicePage.locator('video-grid video.local-video')).not.toHaveClass(/speaking-border/, { timeout: 10000 })
+      await expect(alicePage.locator('video-grid .grid-tile:has-text("You")')).not.toHaveClass(/speaking-border-blue/, { timeout: 10000 })
 
       // Restore Alice's audio generator
       await alicePage.evaluate(() => {
@@ -267,13 +261,13 @@ test.describe.serial('Calls', () => {
         }
       })
 
-      await expect(alicePage.locator('video-grid video.local-video')).toHaveClass(/speaking-border/, { timeout: 10000 })
+      await expect(alicePage.locator('video-grid .grid-tile:has-text("You")')).toHaveClass(/speaking-border-blue/, { timeout: 10000 })
     })
 
     await test.step('Verify remote video stream has arrived for Bob', async () => {
       await expect.poll(async () => {
         return await bobPage.evaluate(() => {
-          const video = document.querySelector('video-grid video.remote-video')
+          const video = document.querySelector('video-grid video.tile-video:not(.d-none)')
           if (!video || !video.srcObject) {
             return false
           }

@@ -150,7 +150,7 @@ test.describe.serial('Group Audio and Video Calls', () => {
     await test.step('Verify remote video stream arrival for Alice', async () => {
       await expect.poll(async () => {
         return await alicePage.evaluate(() => {
-          const video = document.querySelector('video-grid video.remote-video')
+          const video = document.querySelector('video-grid video.tile-video:not(.d-none)')
           if (!video || !video.srcObject) {
             return false
           }
@@ -166,7 +166,7 @@ test.describe.serial('Group Audio and Video Calls', () => {
     await test.step('Verify remote video stream arrival for Bob', async () => {
       await expect.poll(async () => {
         return await bobPage.evaluate(() => {
-          const video = document.querySelector('video-grid video.remote-video')
+          const video = document.querySelector('video-grid video.tile-video:not(.d-none)')
           if (!video || !video.srcObject) {
             return false
           }
@@ -182,7 +182,7 @@ test.describe.serial('Group Audio and Video Calls', () => {
     await test.step('Verify remote video stream arrival for Charlie', async () => {
       await expect.poll(async () => {
         return await charliePage.evaluate(() => {
-          const video = document.querySelector('video-grid video.remote-video')
+          const video = document.querySelector('video-grid video.tile-video:not(.d-none)')
           if (!video || !video.srcObject) {
             return false
           }

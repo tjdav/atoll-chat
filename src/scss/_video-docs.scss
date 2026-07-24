@@ -1,19 +1,150 @@
 .video-grid {
   background-color: var(--#{$prefix}dark);
+}
 
-  &.is-pip {
-    .local-video {
-      display: none !important;
+// -----------------------------------------------------------------------------
+// Upgraded Responsive Grid & Master-Detail Layout System
+// -----------------------------------------------------------------------------
+
+.grid-container {
+  display: grid;
+  padding: 15px;
+  box-sizing: border-box;
+  overflow: auto;
+  gap: 10px;
+
+  &.layout-hero {
+    display: flex !important;
+    flex-direction: row;
+    height: 100%;
+    width: 100%;
+    gap: 15px;
+
+    .hero-area {
+      flex: 1 1 75%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+
+      .grid-tile {
+        width: 100%;
+        height: auto;
+        max-height: 100%;
+        aspect-ratio: 16/9;
+      }
     }
-  }
 
-  .remote-placeholder p {
-    font-size: 0.8rem !important;
-  }
+    .rail-area {
+      flex: 0 0 25%;
+      height: 100%;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding-right: 5px;
 
-  .video-spinner {
-    width: 1.5rem;
-    height: 1.5rem;
+      .grid-tile {
+        width: 100%;
+        aspect-ratio: 16/9;
+        flex-shrink: 0;
+      }
+    }
   }
 }
 
+.grid-tile {
+  width: 100%;
+  height: 100%;
+  aspect-ratio: 16/9;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  background-color: #1a1e21;
+  border: 2px solid transparent;
+
+  &:hover {
+    .pin-btn {
+      opacity: 1 !important;
+    }
+  }
+
+  .pin-btn {
+    opacity: 0;
+    transition: opacity 0.2s ease-in-out;
+  }
+}
+
+// Speaking indicator styles with glowing borders and active audio animations
+.speaking-border-blue {
+  border: 3px solid #0056b3 !important;
+  box-shadow: 0 0 18px rgba(0, 86, 179, 0.95) !important;
+}
+
+// Wave animation keyframe for the pulsing audio wave bars
+@keyframes audio-wave-pulse {
+  0%, 100% {
+    height: 4px;
+  }
+  50% {
+    height: 18px;
+  }
+}
+
+.audio-status-icon.active-audio {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  padding-bottom: 6px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+
+  .wave-bar {
+    width: 3px;
+    background-color: #ffffff;
+    border-radius: 1px;
+    animation: audio-wave-pulse 1s ease-in-out infinite;
+
+    &.bar-1 {
+      animation-delay: 0.1s;
+    }
+    &.bar-2 {
+      animation-delay: 0.3s;
+    }
+    &.bar-3 {
+      animation-delay: 0.2s;
+    }
+  }
+}
+
+// Mobile View Adaptation (Viewport below 576px)
+@media (max-width: 575.98px) {
+  .grid-container.layout-hero {
+    flex-direction: column !important;
+
+    .hero-area {
+      flex: 1 1 70% !important;
+      width: 100%;
+    }
+
+    .rail-area {
+      flex: 0 0 30% !important;
+      width: 100%;
+      flex-direction: row !important;
+      overflow-x: auto !important;
+      overflow-y: hidden !important;
+      padding-bottom: 5px;
+      padding-right: 0;
+
+      .grid-tile {
+        height: 100%;
+        width: auto;
+        aspect-ratio: 16/9;
+      }
+    }
+  }
+
+  .grid-tile {
+    .pin-btn {
+      opacity: 0.8 !important; // Replace hover with visible icons on tap interaction for touchscreens
+    }
+  }
+}

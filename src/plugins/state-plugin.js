@@ -34,6 +34,12 @@ export default function statePlugin (options = {}) {
         /** @type {CustomWindow & typeof globalThis} */
         const win = window
         win.$state = storeState
+        win.$stateSet = (key, value) => {
+          if (storeState[key] !== value) {
+            storeState[key] = value
+            notify(key, value)
+          }
+        }
 
         return (instanceContext) => {
           const $state = new Proxy(storeState, {

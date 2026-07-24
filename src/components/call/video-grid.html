@@ -1,29 +1,15 @@
 <template id="video-grid">
   <div class="video-grid position-relative w-100 h-100 bg-dark overflow-hidden {{ pipClass }}">
-    <!-- Main background video (Remote) -->
-    <video ref="remoteVideo" class="remote-video w-100 h-100 object-fit-cover {{ remoteVideoSpeakingClass }}" autoplay playsinline></video>
-    
-    <!-- Picture-in-Picture local video -->
-    <video ref="localVideo" class="local-video position-absolute top-0 end-0 m-3 rounded shadow-lg border border-2 border-light {{ localVideoClass }} {{ localVideoSpeakingClass }}" style="width: 200px; aspect-ratio: 16/9; object-fit: cover; z-index: 10;" autoplay playsinline muted></video>
+    <!-- Grid Container for all participants -->
+    <div ref="gridContainer" class="grid-container w-100 h-100">
+      <!-- Dynamic tiles will be rendered here -->
+    </div>
 
-    <!-- Overlay if no remote video yet -->
-    <div class="remote-placeholder position-absolute top-0 start-0 w-100 h-100 {{ placeholderClass }} flex-column align-items-center justify-content-center text-white" style="background: rgba(0,0,0,0.5);">
-      <!-- Video Call waiting spinner and text -->
-      <div class="{{ videoWaitingClass }} flex-column align-items-center justify-content-center">
-        <div class="spinner-border video-spinner text-primary mb-3" role="status">
-          <span class="visually-hidden">Connecting...</span>
-        </div>
-        <p class="h5">Waiting for remote participant...</p>
-      </div>
-
-      <!-- Audio Call active view with avatar and name -->
-      <div class="{{ audioCallClass }} flex-column align-items-center justify-content-center">
-        <div ref="remoteAvatar" class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-4 shadow {{ remoteAvatarSpeakingClass }}" style="width: 120px; height: 120px; font-size: 3rem;">
-          {{ remoteInitial }}
-        </div>
-        <h2 class="mb-2">{{ remoteName }}</h2>
-        <p class="text-light fs-5">Audio Call Active</p>
-      </div>
+    <!-- Pagination controls -->
+    <div ref="paginationControls" class="pagination-controls position-absolute bottom-0 start-50 translate-middle-x mb-2 bg-dark bg-opacity-75 rounded-pill px-3 py-1 text-white d-none align-items-center" style="z-index: 20;">
+      <button ref="btnPrevPage" class="btn btn-link text-white p-0 me-2" style="text-decoration: none;"><i class="bi bi-chevron-left"></i></button>
+      <span ref="pageInfo">Page 1 of 1</span>
+      <button ref="btnNextPage" class="btn btn-link text-white p-0 ms-2" style="text-decoration: none;"><i class="bi bi-chevron-right"></i></button>
     </div>
   </div>
 </template>
@@ -40,134 +26,496 @@
       remoteName: 'Remote Participant',
       remoteInitial: '?',
       isLocalSpeaking: false,
-      isRemoteSpeaking: false
+      isRemoteSpeaking: false,
+      currentPage: 1,
+      pinnedParticipantId: null,
+      participants: []
     }),
     getters: {
-      placeholderClass: (state) => (state.hasRemoteVideo ? 'd-none' : 'd-flex'),
-      pipClass: (state) => (state.isPipMode ? 'is-pip' : ''),
-      localVideoClass: (state) => {
-        if (state.isPipMode) {
-          return 'd-none'
-        }
-        return state.isVideoEnabled ? 'd-block' : 'd-none'
-      },
-      videoWaitingClass: (state) => (!state.hasRemoteConnected ? 'd-flex' : 'd-none'),
-      audioCallClass: (state) => (!state.hasRemoteVideo && state.hasRemoteConnected ? 'd-flex' : 'd-none'),
-      remoteAvatarSpeakingClass: (state) => (state.isRemoteSpeaking ? 'speaking-ring' : ''),
-      remoteVideoSpeakingClass: (state) => (state.isRemoteSpeaking ? 'speaking-border' : ''),
-      localVideoSpeakingClass: (state) => (state.isLocalSpeaking ? 'speaking-border' : '')
+      pipClass: (state) => (state.isPipMode ? 'is-pip' : '')
     },
     client: ({ refs, state, eventBus, signal, globalStore, storage }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $storage } = storage
-      const remoteVideo = refs('remoteVideo')
-      const localVideo = refs('localVideo')
-      const remoteAvatar = refs('remoteAvatar')
 
-      const updateSpeakingDOM = () => {
-        const targetAvatar = refs('remoteAvatar') || remoteAvatar
-        const targetRemoteVideo = refs('remoteVideo') || remoteVideo
-        const targetLocalVideo = refs('localVideo') || localVideo
+      state.currentPage = 1
+      state.pinnedParticipantId = null
+      state.participants = []
 
-        if (targetAvatar) {
-          if (state.isRemoteSpeaking) {
-            targetAvatar.classList.add('speaking-ring')
-          } else {
-            targetAvatar.classList.remove('speaking-ring')
+      let lastHeroId = null
+      let lastLayoutMode = null
+      let lastDisplayIds = ''
+      let lastRailIds = ''
+
+      const renderGrid = async () => {
+        const roomId = $state.activeCallRoomId
+        let rawParticipants = []
+
+        if (window.__MOCK_CALL_PARTICIPANTS__) {
+          rawParticipants = window.__MOCK_CALL_PARTICIPANTS__
+        } else if (roomId) {
+          try {
+            const room = await $storage.getRoom(roomId)
+            if (room) {
+              rawParticipants = room.participants || []
+            }
+          } catch (err) {
+            console.error('[video-grid] Failed to get room participants:', err)
           }
         }
-        if (targetRemoteVideo) {
-          if (state.isRemoteSpeaking) {
-            targetRemoteVideo.classList.add('speaking-border')
+
+        updateGridWithParticipants(rawParticipants)
+      }
+
+      const updateGridWithParticipants = (rawParticipants) => {
+        const container = refs('gridContainer')
+        if (!container) return
+
+        const me = $state.currentUser || { id: 'local-user', name: 'You', username: 'you' }
+
+        // Default list to prevent blank screen
+        if (rawParticipants.length === 0 && $state.callStatus === 'active') {
+          rawParticipants = [
+            me,
+            { id: 'remote-user', name: 'Remote Participant', username: 'remote' }
+          ]
+        }
+
+        const list = []
+        const meInRaw = rawParticipants.find(p => p.id === me.id)
+        const meObj = {
+          id: me.id,
+          name: 'You',
+          username: me.username || 'you',
+          avatar: me.avatar,
+          isLocal: true,
+          isMuted: !$state.isAudioEnabled,
+          isSpeaking: Boolean($state.isLocalSpeaking),
+          isVideoEnabled: Boolean($state.isVideoEnabled)
+        }
+        list.push(meObj)
+
+        rawParticipants.forEach(p => {
+          if (p.id === me.id) return
+          
+          const isPrimaryRemote = list.length === 1
+          const hasStream = isPrimaryRemote && $state.remoteStream
+          const remoteMuted = hasStream ? !$state.remoteStream.getAudioTracks().some(t => t.enabled) : true
+
+          list.push({
+            id: p.id,
+            name: p.name || p.username || 'Remote Participant',
+            username: p.username || 'remote',
+            avatar: p.avatar,
+            isLocal: false,
+            isMuted: p.isMuted !== undefined ? p.isMuted : remoteMuted,
+            isSpeaking: p.isSpeaking !== undefined ? p.isSpeaking : (isPrimaryRemote ? Boolean($state.isRemoteSpeaking) : false),
+            isVideoEnabled: p.isVideoEnabled !== undefined ? p.isVideoEnabled : (isPrimaryRemote ? Boolean($state.hasRemoteVideo) : false)
+          })
+        })
+
+        state.participants = list
+
+        const isMobile = window.innerWidth < 576
+        let hero = null
+        if (state.pinnedParticipantId) {
+          hero = list.find(p => p.id === state.pinnedParticipantId)
+        } else if (isMobile && list.length > 2) {
+          const speakingRemote = list.find(p => p.isSpeaking && !p.isLocal)
+          hero = speakingRemote || list.find(p => !p.isLocal) || list[0]
+        }
+
+        console.log('[video-grid] renderGrid state:', {
+          pinnedParticipantId: state.pinnedParticipantId,
+          isMobile,
+          listLength: list.length,
+          hero: hero ? hero.name : null
+        })
+
+        const itemsPerPage = 49
+        const totalPages = Math.ceil(list.length / itemsPerPage)
+        if (state.currentPage > totalPages) {
+          state.currentPage = Math.max(1, totalPages)
+        }
+
+        const showPagination = totalPages > 1 && !hero
+        const paginationControls = refs('paginationControls')
+        if (paginationControls) {
+          if (showPagination) {
+            paginationControls.classList.remove('d-none')
+            paginationControls.classList.add('d-flex')
+            const pageInfo = refs('pageInfo')
+            if (pageInfo) {
+              pageInfo.textContent = `Page ${state.currentPage} of ${totalPages}`
+            }
           } else {
-            targetRemoteVideo.classList.remove('speaking-border')
+            paginationControls.classList.remove('d-flex')
+            paginationControls.classList.add('d-none')
           }
         }
-        if (targetLocalVideo) {
-          if (state.isLocalSpeaking) {
-            targetLocalVideo.classList.add('speaking-border')
+
+        let displayList = []
+        let railList = []
+
+        if (hero) {
+          displayList = [hero]
+          railList = list.filter(p => p.id !== hero.id)
+          // Limit the rail-area to a maximum of 15 participants to safeguard memory and CPU usage
+          railList = railList.slice(0, 15)
+        } else {
+          const startIdx = (state.currentPage - 1) * itemsPerPage
+          displayList = list.slice(startIdx, startIdx + itemsPerPage)
+        }
+
+        const currentHeroId = hero ? hero.id : null
+        const currentLayoutMode = hero ? 'hero' : 'grid'
+        const currentDisplayIds = displayList.map(p => p.id).join(',')
+        const currentRailIds = railList.map(p => p.id).join(',')
+
+        const needsReconstruct = 
+          currentLayoutMode !== lastLayoutMode ||
+          currentHeroId !== lastHeroId ||
+          currentDisplayIds !== lastDisplayIds ||
+          currentRailIds !== lastRailIds
+
+        if (needsReconstruct) {
+          lastLayoutMode = currentLayoutMode
+          lastHeroId = currentHeroId
+          lastDisplayIds = currentDisplayIds
+          lastRailIds = currentRailIds
+
+          container.className = 'grid-container w-100 h-100'
+          container.style.display = ''
+          container.style.gridTemplateColumns = ''
+          container.style.gridTemplateRows = ''
+          container.style.gap = ''
+
+          if (hero) {
+            container.classList.add('layout-hero')
+            container.innerHTML = `
+              <div class="hero-area"></div>
+              <div class="rail-area"></div>
+            `
+            const heroArea = container.querySelector('.hero-area')
+            const railArea = container.querySelector('.rail-area')
+
+            const heroTile = createTile(hero)
+            heroArea.appendChild(heroTile)
+
+            railList.forEach(p => {
+              const tile = createTile(p, true)
+              railArea.appendChild(tile)
+            })
           } else {
-            targetLocalVideo.classList.remove('speaking-border')
+            container.classList.add('layout-grid')
+            container.innerHTML = ''
+            displayList.forEach(p => {
+              const tile = createTile(p)
+              container.appendChild(tile)
+            })
+
+            layoutGrid(displayList.length)
+          }
+        } else {
+          // Perform high-performance in-place updates to prevent active WebRTC stream flickering
+          const updateParticipantTile = (p, isMini = false) => {
+            const tile = container.querySelector(`[data-participant-id="${p.id}"]`)
+            if (!tile) return
+
+            // 1. Update active speaker border glow
+            if (p.isSpeaking) {
+              tile.classList.add('speaking-border-blue')
+            } else {
+              tile.classList.remove('speaking-border-blue')
+            }
+
+            // 2. Update audio status icon container (muted vs pulsing active waves vs none)
+            const audioContainer = tile.querySelector('.audio-status-container')
+            if (audioContainer) {
+              if (p.isMuted) {
+                if (!audioContainer.querySelector('.muted-audio')) {
+                  audioContainer.innerHTML = `
+                    <div class="audio-status-icon muted-audio d-flex align-items-center justify-content-center bg-white rounded-circle text-dark" style="width: 32px; height: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                      <i class="bi bi-mic-mute-fill text-danger" style="font-size: 16px;"></i>
+                    </div>
+                  `
+                }
+              } else if (p.isSpeaking) {
+                if (!audioContainer.querySelector('.active-audio')) {
+                  audioContainer.innerHTML = `
+                    <div class="audio-status-icon active-audio d-flex align-items-center justify-content-center bg-primary rounded-circle" style="width: 32px; height: 32px;">
+                      <div class="wave-bar bar-1"></div>
+                      <div class="wave-bar bar-2"></div>
+                      <div class="wave-bar bar-3"></div>
+                    </div>
+                  `
+                }
+              } else {
+                if (audioContainer.children.length > 0) {
+                  audioContainer.innerHTML = ''
+                }
+              }
+            }
+
+            // 3. Update pin/unpin button icon and title state
+            const pinBtn = tile.querySelector('.pin-btn')
+            if (pinBtn) {
+              const pinIcon = pinBtn.querySelector('.bi')
+              if (pinIcon) {
+                const isPinned = state.pinnedParticipantId === p.id
+                pinIcon.className = `bi ${isPinned ? 'bi-pin-fill' : 'bi-pin-angle-fill'} text-white`
+              }
+              pinBtn.setAttribute('title', state.pinnedParticipantId === p.id ? 'Unpin Participant' : 'Pin Participant')
+            }
+
+            // 4. Update video element srcObject safely without resetting active/playing streams
+            const videoEl = tile.querySelector('.tile-video')
+            const avatarOverlay = tile.querySelector('.tile-avatar-overlay')
+
+            if (videoEl && avatarOverlay) {
+              let stream = null
+              if (p.isVideoEnabled) {
+                if (p.isLocal) {
+                  stream = $state.localStream
+                } else {
+                  const firstRemote = state.participants.find(part => !part.isLocal)
+                  if (firstRemote && p.id === firstRemote.id) {
+                    stream = $state.remoteStream
+                  }
+                }
+              }
+
+              if (p.isVideoEnabled && stream) {
+                videoEl.classList.remove('d-none')
+                avatarOverlay.classList.add('d-none')
+                if (videoEl.srcObject !== stream) {
+                  videoEl.srcObject = stream
+                  videoEl.play().catch(err => {
+                    console.warn('[video-grid] Inline play failed:', err)
+                  })
+                }
+              } else {
+                videoEl.classList.add('d-none')
+                avatarOverlay.classList.remove('d-none')
+                if (videoEl.srcObject !== null) {
+                  videoEl.srcObject = null
+                }
+              }
+            }
+          }
+
+          if (hero) {
+            updateParticipantTile(hero)
+            railList.forEach(p => updateParticipantTile(p, true))
+          } else {
+            displayList.forEach(p => updateParticipantTile(p))
+            layoutGrid(displayList.length)
           }
         }
+      }
+
+      const createTile = (p, isMini = false) => {
+        const tile = document.createElement('div')
+        tile.className = `grid-tile position-relative rounded overflow-hidden shadow bg-dark d-flex align-items-center justify-content-center ${isMini ? 'mini-tile' : ''}`
+        tile.setAttribute('data-participant-id', p.id)
+        tile.style.aspectRatio = '16/9'
+        tile.style.transition = 'all 0.3s ease'
+
+        if (p.isSpeaking) {
+          tile.classList.add('speaking-border-blue')
+        }
+
+        const initial = (p.name || '?').charAt(0).toUpperCase()
+
+        tile.innerHTML = `
+          <video class="tile-video w-100 h-100 object-fit-cover d-none" autoplay playsinline ${p.isLocal ? 'muted' : ''}></video>
+
+          <div class="tile-avatar-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white bg-dark">
+            <div class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-2 shadow" style="width: ${isMini ? '50px' : '80px'}; height: ${isMini ? '50px' : '80px'}; font-size: ${isMini ? '1.5rem' : '2.2rem'};">
+              ${initial}
+            </div>
+            <div class="tile-avatar-name text-center px-2" style="font-size: ${isMini ? '0.8rem' : '1rem'};">${p.name}</div>
+          </div>
+
+          <div class="audio-status-container position-absolute top-0 end-0 m-2" style="z-index: 15;">
+            ${p.isMuted ? `
+              <div class="audio-status-icon muted-audio d-flex align-items-center justify-content-center bg-white rounded-circle text-dark" style="width: 32px; height: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
+                <i class="bi bi-mic-mute-fill text-danger" style="font-size: 16px;"></i>
+              </div>
+            ` : p.isSpeaking ? `
+              <div class="audio-status-icon active-audio d-flex align-items-center justify-content-center bg-primary rounded-circle" style="width: 32px; height: 32px;">
+                <div class="wave-bar bar-1"></div>
+                <div class="wave-bar bar-2"></div>
+                <div class="wave-bar bar-3"></div>
+              </div>
+            ` : ''}
+          </div>
+
+          <button class="pin-btn btn btn-dark btn-sm rounded-circle position-absolute top-0 start-0 m-2" style="z-index: 16; width: 32px; height: 32px; padding: 0; opacity: 0.8; background: rgba(0,0,0,0.6);" title="${state.pinnedParticipantId === p.id ? 'Unpin Participant' : 'Pin Participant'}">
+            <i class="bi ${state.pinnedParticipantId === p.id ? 'bi-pin-fill' : 'bi-pin-angle-fill'} text-white"></i>
+          </button>
+
+          <div class="participant-label position-absolute bottom-0 start-0 w-100 p-2 text-white" style="background: linear-gradient(transparent, rgba(0,0,0,0.7)); z-index: 12; pointer-events: none;">
+            <span class="participant-name" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8); font-size: 0.9rem; font-weight: 500;">
+              ${p.isLocal ? 'You' : p.name}
+            </span>
+          </div>
+        `
+
+        const videoEl = tile.querySelector('.tile-video')
+        const avatarOverlay = tile.querySelector('.tile-avatar-overlay')
+
+        if (p.isVideoEnabled) {
+          let stream = null
+          if (p.isLocal) {
+            stream = $state.localStream
+          } else {
+            const firstRemote = state.participants.find(part => !part.isLocal)
+            if (firstRemote && p.id === firstRemote.id) {
+              stream = $state.remoteStream
+            }
+          }
+
+          if (stream) {
+            videoEl.classList.remove('d-none')
+            avatarOverlay.classList.add('d-none')
+            videoEl.srcObject = stream
+            
+            videoEl.play().catch(err => {
+              console.warn('[video-grid] Inline play failed:', err)
+            })
+          }
+        }
+
+        const pinBtn = tile.querySelector('.pin-btn')
+        pinBtn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          console.log('[video-grid] pin button clicked:', {
+            id: p.id,
+            currentPin: state.pinnedParticipantId
+          })
+          if (state.pinnedParticipantId === p.id) {
+            state.pinnedParticipantId = null
+          } else {
+            state.pinnedParticipantId = p.id
+          }
+          renderGrid()
+        })
+
+        return tile
+      }
+
+      const layoutGrid = (count) => {
+        const container = refs('gridContainer')
+        if (!container || count === 0) return
+        const rect = container.getBoundingClientRect()
+        const width = rect.width || window.innerWidth
+        const height = rect.height || window.innerHeight
+
+        let bestCols = 1
+        let bestRows = 1
+        let maxArea = 0
+        const targetAspectRatio = 16 / 9
+
+        for (let cols = 1; cols <= count; cols++) {
+          const rows = Math.ceil(count / cols)
+          const tileWidth = width / cols
+          const tileHeight = height / rows
+
+          let actualWidth = tileWidth
+          let actualHeight = tileHeight
+          if (tileWidth / tileHeight > targetAspectRatio) {
+            actualWidth = tileHeight * targetAspectRatio
+          } else {
+            actualHeight = tileWidth / targetAspectRatio
+          }
+
+          const area = actualWidth * actualHeight * count
+          if (area > maxArea) {
+            maxArea = area
+            bestCols = cols
+            bestRows = rows
+          }
+        }
+
+        container.style.display = 'grid'
+        container.style.gridTemplateColumns = `repeat(${bestCols}, 1fr)`
+        container.style.gridTemplateRows = `repeat(${bestRows}, 1fr)`
+        container.style.gap = '10px'
       }
 
       state.isLocalSpeaking = Boolean($state.isLocalSpeaking)
       $state.subscribe('isLocalSpeaking', (val) => {
         state.isLocalSpeaking = Boolean(val)
-        updateSpeakingDOM()
+        renderGrid()
       })
 
       state.isRemoteSpeaking = Boolean($state.isRemoteSpeaking)
       $state.subscribe('isRemoteSpeaking', (val) => {
         state.isRemoteSpeaking = Boolean(val)
-        updateSpeakingDOM()
+        renderGrid()
       })
 
       state.isVideoEnabled = $state.isVideoEnabled !== undefined ? Boolean($state.isVideoEnabled) : true
       $state.subscribe('isVideoEnabled', (val) => {
         state.isVideoEnabled = val !== undefined ? Boolean(val) : true
+        renderGrid()
       })
 
       state.hasRemoteVideo = Boolean($state.hasRemoteVideo)
       $state.subscribe('hasRemoteVideo', (val) => {
         state.hasRemoteVideo = Boolean(val)
+        renderGrid()
       })
 
-      const updateRemoteParticipantInfo = async () => {
-        const roomId = $state.activeCallRoomId
-        if (!roomId) {
-          return
-        }
+      state.hasRemoteConnected = Boolean($state.remoteStream)
+      $state.subscribe('remoteStream', (stream) => {
+        state.hasRemoteConnected = Boolean(stream)
+        renderGrid()
+      })
 
-        try {
-          const room = await $storage.getRoom(roomId)
-          if (room) {
-            const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
-            if (!room.is_group && participants.length > 0) {
-              state.remoteName = participants[0].name || participants[0].username
-            } else {
-              state.remoteName = room.name || 'Remote Participant'
-            }
-            state.remoteInitial = state.remoteName.charAt(0).toUpperCase()
-          }
-        } catch (err) {
-          console.error('[video-grid] Failed to fetch remote participant info:', err)
-        }
-      }
+      $state.subscribe('localStream', (stream) => {
+        renderGrid()
+      })
 
-      // Fetch on mount if room ID is already set
-      if ($state.activeCallRoomId) {
-        updateRemoteParticipantInfo()
-      }
+      $state.subscribe('isAudioEnabled', (val) => {
+        renderGrid()
+      })
 
       $state.subscribe('activeCallRoomId', (roomId) => {
         if (roomId) {
-          updateRemoteParticipantInfo()
+          state.currentPage = 1
+          state.pinnedParticipantId = null
+          renderGrid()
         }
       })
 
-      const playVideo = (videoEl) => {
-        if (!videoEl || !videoEl.srcObject) {
-          return
-        }
-  
-        videoEl.play().catch(err => {
-          if (err.name === 'AbortError') {
-            setTimeout(() => playVideo(videoEl), 100)
-          } else if (err.name === 'NotAllowedError') {
-            console.warn('[video-grid] Play not allowed, muting and retrying...', videoEl.className)
-            videoEl.muted = true
-            videoEl.play().catch(e => console.error('[video-grid] Play failed even when muted:', e))
-          } else {
-            console.error('[video-grid] Play failed:', err)
+      if ($state.activeCallRoomId) {
+        renderGrid()
+      }
+
+      if (refs('btnPrevPage')) {
+        refs('btnPrevPage').addEventListener('click', () => {
+          if (state.currentPage > 1) {
+            state.currentPage--
+            renderGrid()
+          }
+        })
+      }
+
+      if (refs('btnNextPage')) {
+        refs('btnNextPage').addEventListener('click', () => {
+          const totalPages = Math.ceil(state.participants.length / 49)
+          if (state.currentPage < totalPages) {
+            state.currentPage++
+            renderGrid()
           }
         })
       }
 
       const checkPip = () => {
-        let el = remoteVideo
+        let el = refs('gridContainer')
         let isPip = false
         while (el) {
           if (el.tagName === 'PIP-VIDEO' || (el.classList && el.classList.contains('pip-window'))) {
@@ -180,25 +528,8 @@
         if (state.isPipMode !== isPip) {
           state.isPipMode = isPip
         }
-
-        const resumeAll = () => {
-          if (remoteVideo && remoteVideo.srcObject && remoteVideo.paused) {
-            playVideo(remoteVideo)
-          }
-          if (localVideo && localVideo.srcObject && localVideo.paused) {
-            playVideo(localVideo)
-          }
-        }
-
-        resumeAll()
-        // Ensure we resume after DOM re-parenting completes and settles
-        setTimeout(resumeAll, 100)
-        setTimeout(resumeAll, 500)
-        setTimeout(resumeAll, 1000)
       }
 
-      checkPip()
-  
       const observer = new MutationObserver(checkPip)
       observer.observe(document.body, {
         childList: true,
@@ -206,126 +537,29 @@
       })
       signal.addEventListener('abort', () => observer.disconnect())
 
-      const attachLocalStream = (stream) => {
-        if (localVideo) {
-          if (localVideo.srcObject !== stream) {
-            localVideo.srcObject = stream
-          }
-  
-          playVideo(localVideo)
-          localVideo.onloadedmetadata = () => playVideo(localVideo)
-        }
+      const onResize = () => {
+        renderGrid()
       }
-
-      const attachRemoteStream = (stream) => {
-        if (remoteVideo && stream) {
-          console.log('[video-grid] Attaching remote stream', { hasTracks: stream.getTracks().length > 0 })
-          if (remoteVideo.srcObject !== stream) {
-            remoteVideo.srcObject = stream
-          }
-          remoteVideo.muted = true
-          if ($state.hasRemoteVideo) {
-            console.log('[video-grid] Remote video detected, playing...')
-            playVideo(remoteVideo)
-            remoteVideo.onloadedmetadata = () => {
-              console.log('[video-grid] Remote video metadata loaded')
-              playVideo(remoteVideo)
-            }
-          }
-        }
-      }
-
-      // If streams are already available in global state, attach them
-      if ($state.localStream) {
-        attachLocalStream($state.localStream)
-      }
-      if ($state.remoteStream) {
-        attachRemoteStream($state.remoteStream)
-      }
-
-      $state.subscribe('localStream', (stream) => {
-        if (stream) {
-          attachLocalStream(stream)
-        } else {
-          if (localVideo) {
-            localVideo.srcObject = null
-          }
-        }
+      window.addEventListener('resize', onResize)
+      signal.addEventListener('abort', () => {
+        window.removeEventListener('resize', onResize)
       })
 
-      state.hasRemoteConnected = Boolean($state.remoteStream)
-      $state.subscribe('remoteStream', (stream) => {
-        state.hasRemoteConnected = Boolean(stream)
-        if (stream) {
-          attachRemoteStream(stream)
-        } else {
-          if (remoteVideo) {
-            remoteVideo.srcObject = null
-          }
-        }
-      })
-
-      // Listen for remote track arrival
       $bus.on('call:remote_track_arrival', ({ room_id, stream, track }) => {
         if (room_id && room_id !== $state.activeCallRoomId) {
           return
         }
-
-        console.log(`[video-grid] Remote track arrival: ${track.kind} for room ${room_id}`)
-        if (track.kind === 'video' && remoteVideo) {
-          attachRemoteStream(stream)
-        } else if (track.kind === 'audio') {
-          const audio = new Audio()
-          audio.autoplay = true
-          audio.srcObject = stream
-          audio.play().catch(err => {
-            if (err.name === 'NotAllowedError') {
-              console.warn('[video-grid] Autoplay blocked for audio track, enabling fallback playback...')
-              audio.muted = true
-              audio.play().catch(e => console.error('[video-grid] Audio play failed:', e))
-            }
-          })
-
-          // Cleanup audio on call end or unmount
-          const cleanup = (e) => {
-            if (e?.room_id && e.room_id !== room_id) {
-              return
-            }
-            audio.pause()
-            audio.srcObject = null
-            audio.remove()
-            signal.removeEventListener('abort', cleanup)
-          }
-          $bus.on('call:ended', cleanup)
-          signal.addEventListener('abort', cleanup)
-        }
+        renderGrid()
       }, { signal })
 
-      // Listen for call ended to release UI resources immediately
       $bus.on('call:ended', ({ room_id }) => {
         if (room_id && room_id !== $state.activeCallRoomId) {
           return
         }
-        if (remoteVideo) {
-          remoteVideo.pause()
-          remoteVideo.srcObject = null
-          remoteVideo.load()
-        }
-        if (localVideo) {
-          localVideo.srcObject = null
-        }
+        state.currentPage = 1
+        state.pinnedParticipantId = null
+        state.participants = []
       }, { signal })
-
-      // Handle video element cleanup
-      signal.addEventListener('abort', () => {
-        if (remoteVideo) {
-          remoteVideo.srcObject = null
-        }
-        if (localVideo) {
-          localVideo.srcObject = null
-        }
-      })
     }
   })
 </script>
-
