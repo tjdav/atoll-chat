@@ -29,7 +29,7 @@ RUN corepack enable pnpm
 
 # Cache dependency downloads based ONLY on the lockfile
 COPY pnpm-lock.yaml ./
-RUN pnpm fetch
+RUN pnpm fetch --minimum-release-age=0
 
 # Copy the entire source code
 COPY . .
