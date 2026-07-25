@@ -24,7 +24,11 @@
 /**
  * @typedef {DedicatedWorkerGlobalScope & {
  *   sodium: typeof import('libsodium-wrappers-sumo'),
- *   Dexie: DexieConstructor
+ *   Dexie: DexieConstructor,
+ *   currentUserKeys: any,
+ *   isInitialized: boolean,
+ *   authToken: string | null,
+ *   publicKeyCache: Map<string, any>
  * }} WorkerScope
  */
 
@@ -55,66 +59,49 @@ let baseUrl
 let isProcessing = false
 const messageQueue = []
 
-/* Active workspace tracking */
-let activeWorkspaceId = null
-const workspacesData = new Map()
+let currentUserKeys = null
+let isInitialized = false
+let authToken = null
+const publicKeyCache = new Map()
 
-const defaultState = {
-  currentUserKeys: null,
-  isInitialized: false,
-  authToken: null,
-  publicKeyCache: new Map()
-}
-
-function getActiveWorkspace () {
-  if (!activeWorkspaceId) {
-    return defaultState
-  }
-  if (!workspacesData.has(activeWorkspaceId)) {
-    workspacesData.set(activeWorkspaceId, {
-      currentUserKeys: null,
-      isInitialized: false,
-      authToken: null,
-      publicKeyCache: new Map()
-    })
-  }
-  return workspacesData.get(activeWorkspaceId)
-}
-
-/* Dynamic properties mapping back to the active workspace for full backward-compatibility */
 Object.defineProperty(self, 'currentUserKeys', {
   get () {
-    return getActiveWorkspace().currentUserKeys
+    return currentUserKeys
   },
   set (val) {
-    getActiveWorkspace().currentUserKeys = val
+    currentUserKeys = val
   }
 })
 
 Object.defineProperty(self, 'isInitialized', {
   get () {
-    return getActiveWorkspace().isInitialized
+    return isInitialized
   },
   set (val) {
-    getActiveWorkspace().isInitialized = val
+    isInitialized = val
   }
 })
 
 Object.defineProperty(self, 'authToken', {
   get () {
-    return getActiveWorkspace().authToken
+    return authToken
   },
   set (val) {
-    getActiveWorkspace().authToken = val
+    authToken = val
   }
 })
 
 Object.defineProperty(self, 'publicKeyCache', {
   get () {
-    return getActiveWorkspace().publicKeyCache
+    return publicKeyCache
   },
   set (val) {
-    getActiveWorkspace().publicKeyCache = val
+    if (val instanceof Map) {
+      publicKeyCache.clear()
+      for (const [k, v] of val.entries()) {
+        publicKeyCache.set(k, v)
+      }
+    }
   }
 })
 
@@ -212,26 +199,6 @@ async function handleEvent (event) {
       id,
       type,
       result: 'ACK'
-    })
-    return
-  }
-
-  if (type === 'worker:set_workspace_context') {
-    const { workspaceId, baseUrl: newBaseUrl } = payload
-    activeWorkspaceId = workspaceId
-    baseUrl = newBaseUrl
-
-    const ws = getActiveWorkspace()
-    self.postMessage({
-      id,
-      type,
-      result: {
-        success: true,
-        isInitialized: ws.isInitialized,
-        userId: ws.currentUserKeys?.id,
-        private_box_key: ws.currentUserKeys?.private_box_key,
-        private_sign_key: ws.currentUserKeys?.private_sign_key
-      }
     })
     return
   }
@@ -391,15 +358,10 @@ async function handleEvent (event) {
     }
 
     if (type === 'worker:wipe_keys') {
-      const targetWorkspaceId = payload?.workspaceId || activeWorkspaceId
-      if (targetWorkspaceId && workspacesData.has(targetWorkspaceId)) {
-        workspacesData.delete(targetWorkspaceId)
-      } else {
-        workspacesData.clear()
-        self.currentUserKeys = null
-        self.isInitialized = false
-        self.publicKeyCache.clear()
-      }
+      self.currentUserKeys = null
+      self.isInitialized = false
+      self.authToken = null
+      self.publicKeyCache.clear()
       self.postMessage({
         id,
         type,

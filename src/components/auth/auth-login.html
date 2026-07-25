@@ -48,31 +48,6 @@
         <small class="text-muted">Don't have an account? <a href="#" ref="linkRegister" data-testid="linkRegister" class="text-decoration-none">Register here</a></small>
       </div>
       <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
-
-      <!-- Island Switcher Dropdown (visible if Islands mode is active) -->
-      <div class="mt-4 border-top pt-3 text-center" ref="islandSwitcherContainer" data-testid="islandSwitcherContainer" hidden>
-        <div class="dropdown">
-          <button class="btn btn-link btn-sm text-secondary text-decoration-none dropdown-toggle d-inline-flex align-items-center gap-1"
-                  type="button"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                  ref="islandSelectBtn"
-                  data-testid="islandSelectBtn">
-            <span ref="currentIslandLabel">Current Island: Loading...</span>
-          </button>
-          <ul class="dropdown-menu shadow dropdown-menu-dark p-0 overflow-hidden" style="min-width: 240px;" data-testid="islandsDropdownMenu">
-            <li class="dropdown-header px-3 py-2">Your Islands</li>
-            <div ref="islandsList" data-testid="islandsList"></div>
-            <li><hr class="dropdown-divider m-0"></li>
-            <li>
-              <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnChartNewIsland" data-testid="btnChartNewIsland">
-                <i class="bi bi-compass"></i>
-                <span>Chart New Island</span>
-              </button>
-            </li>
-          </ul>
-        </div>
-      </div>
     </div>
   </div>
 </template>
@@ -88,7 +63,6 @@
       const { $config } = config
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
-      const { Dropdown } = await bootstrap
       const { $url } = utils
 
       const loginForm = refs('loginForm')
@@ -109,12 +83,6 @@
       const registerLinkContainer = refs('registerLinkContainer')
       const statusMsg = refs('statusMsg')
       const globalAlert = refs('globalAlert')
-
-      const islandSwitcherContainer = refs('islandSwitcherContainer')
-      const islandSelectBtn = refs('islandSelectBtn')
-      const currentIslandLabel = refs('currentIslandLabel')
-      const islandsListContainer = refs('islandsList')
-      const btnChartNewIsland = refs('btnChartNewIsland')
 
       let dropdownInstance = null
       let activeAltchaWidget = null
@@ -314,146 +282,6 @@
         updateStatus('')
         activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
       })
-
-      const isIslandsEnabled = false
-  
-      const handleSwitchIsland = async (newId, force = false) => {
-        if (pb.authStore.activeWorkspaceId === newId && !force) {
-          return
-        }
-
-        $state.activeSelectionId = null
-        $state.activeSelectionType = null
-
-        pb.authStore.setActiveWorkspace(newId)
-        const active = pb.authStore.workspaces.find(w => w.id === newId)
-        pb.baseUrl = active ? active.url : ''
-
-        const contextRes = await $worker.execute('worker:set_workspace_context', {
-          workspaceId: newId,
-          baseUrl: pb.baseUrl
-        })
-
-        await $storage.initialize('AtollChatDB_' + newId)
-
-        $state.isAuthenticated = pb.authStore.isValid
-        $state.currentUser = pb.authStore.model
-
-        if ($state.isAuthenticated) {
-          if (contextRes.isInitialized) {
-            $state.isVaultUnlocked = true
-            $bus.emit('auth:unlocked', {
-              keys: {
-                private_box_key: contextRes.private_box_key,
-                private_sign_key: contextRes.private_sign_key
-              },
-              userRecord: pb.authStore.model
-            })
-            $bus.emit('sync:complete')
-          } else {
-            $state.isVaultUnlocked = false
-          }
-        } else {
-          $state.isVaultUnlocked = false
-          $state.authView = 'login'
-        }
-
-        $state.activeIslandId = newId
-        $state.islands = pb.authStore.workspaces || []
-
-        renderIslandsDropdownList()
-
-        $bus.emit('ui:show_toast', {
-          message: `Switched to Island: ${active ? active.name : 'Island'}`,
-          type: 'success'
-        })
-      }
-
-      const renderIslandsDropdownList = () => {
-        if (!islandsListContainer) {
-          return
-        }
-        islandsListContainer.innerHTML = ''
-        if (!isIslandsEnabled) {
-          return
-        }
-
-        const activeId = pb.authStore.activeWorkspaceId
-        const list = pb.authStore.workspaces || []
-        const active = list.find(w => w.id === activeId)
-  
-        currentIslandLabel.textContent = `Current Island: ${active ? active.name : 'Unknown'}`
-
-        list.forEach(w => {
-          const isActive = w.id === activeId
-          const initials = w.name ? w.name.slice(0, 2).toUpperCase() : 'IS'
-
-          const li = document.createElement('li')
-          const btn = document.createElement('button')
-          btn.className = `dropdown-item d-flex align-items-center justify-content-between gap-3 py-2 px-3 ${isActive ? 'active' : ''}`
-          btn.setAttribute('data-id', w.id)
-          btn.setAttribute('data-testid', `workspace-btn-${w.id}`)
-          if (isActive) {
-            btn.style.fontWeight = 'bold'
-          }
-
-          const leftContainer = document.createElement('div')
-          leftContainer.className = 'd-flex align-items-center gap-2'
-
-          const badge = document.createElement('div')
-          badge.className = 'rounded-circle d-flex align-items-center justify-content-center text-white font-weight-bold'
-          badge.style.width = '24px'
-          badge.style.height = '24px'
-          badge.style.fontSize = '10px'
-          badge.style.backgroundColor = isActive ? 'var(--bs-primary)' : 'var(--bs-secondary)'
-          badge.textContent = initials
-
-          const nameSpan = document.createElement('span')
-          nameSpan.textContent = w.name || 'Island'
-
-          leftContainer.appendChild(badge)
-          leftContainer.appendChild(nameSpan)
-          btn.appendChild(leftContainer)
-
-          if (isActive) {
-            const check = document.createElement('i')
-            check.className = 'bi bi-check-lg'
-            btn.appendChild(check)
-          }
-
-          btn.addEventListener('click', async (e) => {
-            e.stopPropagation()
-            if (dropdownInstance) {
-              dropdownInstance.hide()
-            }
-            await handleSwitchIsland(w.id)
-          })
-
-          li.appendChild(btn)
-          islandsListContainer.appendChild(li)
-        })
-      }
-
-      if (isIslandsEnabled) {
-        islandSwitcherContainer.removeAttribute('hidden')
-        if (islandSelectBtn) {
-          dropdownInstance = new Dropdown(islandSelectBtn)
-        }
-        renderIslandsDropdownList()
-
-        if (btnChartNewIsland) {
-          btnChartNewIsland.addEventListener('click', () => {
-            if (dropdownInstance) {
-              dropdownInstance.hide()
-            }
-            $bus.emit('ui:open_chart_island_modal')
-          })
-        }
-  
-        $state.subscribe('activeIslandId', () => {
-          renderIslandsDropdownList()
-        })
-      }
 
       const handleSuccessfulLogin = async () => {
         await $storage.saveConfigs([

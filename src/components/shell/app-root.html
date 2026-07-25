@@ -563,12 +563,6 @@
         console.log('[app-root] Initializing dynamic local database:', dbName)
         await $storage.initialize(dbName)
 
-        // Asynchronously register work context for the worker
-        await $worker.execute('worker:set_workspace_context', {
-          workspaceId: instanceId,
-          baseUrl: pb.baseUrl
-        })
-
         // Asynchronously run Garbage Collection in background
         runGarbageCollection(instanceId).catch(err => {
           console.warn('[app-root] Garbage collection failed:', err)

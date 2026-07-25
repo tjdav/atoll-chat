@@ -35,7 +35,6 @@ export default defineConfig({
     configPlugin({
       maxServerUploadSizeBytes: 26214400,
       webrtcChunkSizeBytes: 16384,
-      enableWorkspaces: process.env.ATOLL_ENABLE_WORKSPACES === 'true',
       localIceServer: process.env.LOCAL_ICE_SERVER,
       notificationSoundDebounceMs: process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS ? parseInt(process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS, 10) : 1000
     }),
@@ -180,288 +179,94 @@ export default defineConfig({
         pocketbase: {
           client: {
             context: async (pluginContext) => {
-              const { default: PocketBase, BaseAuthStore } = await import('pocketbase')
-              const isWorkspacesEnabled = false
+              const { default: PocketBase } = await import('pocketbase')
+              const pb = new PocketBase(pluginContext.config.url)
+              pb.autoCancellation(false)
 
-              if (isWorkspacesEnabled) {
-                /**
-                 *
-                 */
-                class WorkspaceAuthStore extends BaseAuthStore {
-                  constructor () {
-                    super()
-                    this.loadFromStorage()
-                  }
-
-                  loadFromStorage () {
-                    try {
-                      const stored = localStorage.getItem('atoll_workspaces')
-                      this.workspaces = stored ? JSON.parse(stored) : []
-                      const activeId = localStorage.getItem('atoll_active_workspace_id')
-                      this.activeWorkspaceId = activeId || (this.workspaces[0]?.id || null)
-                    } catch (_e) {
-                      this.workspaces = []
-                      this.activeWorkspaceId = null
-                    }
-                    this.syncActive()
-                  }
-
-                  saveWorkspaces () {
-                    localStorage.setItem('atoll_workspaces', JSON.stringify(this.workspaces))
-                    if (this.activeWorkspaceId) {
-                      localStorage.setItem('atoll_active_workspace_id', this.activeWorkspaceId)
-                    } else {
-                      localStorage.removeItem('atoll_active_workspace_id')
-                    }
-                  }
-
-                  syncActive () {
-                    const active = this.workspaces.find(w => w.id === this.activeWorkspaceId)
-                    if (active) {
-                      this.baseToken = active.token || ''
-                      this.baseModel = active.user || null
-                    } else {
-                      this.baseToken = ''
-                      this.baseModel = null
-                    }
-                  }
-
-                  save (token, model) {
-                    super.save(token, model)
-                    if (this.activeWorkspaceId) {
-                      const active = this.workspaces.find(w => w.id === this.activeWorkspaceId)
-                      if (active) {
-                        active.token = token
-                        active.user = model
-                      }
-                      this.saveWorkspaces()
-                    }
-                  }
-
-                  clear () {
-                    super.clear()
-                    if (this.activeWorkspaceId) {
-                      const active = this.workspaces.find(w => w.id === this.activeWorkspaceId)
-                      if (active) {
-                        active.token = ''
-                        active.user = null
-                      }
-                      this.saveWorkspaces()
-                    }
-                  }
-
-                  setActiveWorkspace (id) {
-                    this.activeWorkspaceId = id
-                    this.syncActive()
-                    this.saveWorkspaces()
-                  }
-
-                  addWorkspace (workspace) {
-                    const existingIndex = this.workspaces.findIndex(w => w.id === workspace.id)
-                    if (existingIndex !== -1) {
-                      this.workspaces[existingIndex] = {
-                        ...this.workspaces[existingIndex],
-                        ...workspace
-                      }
-                    } else {
-                      this.workspaces.push(workspace)
-                    }
-                    this.activeWorkspaceId = workspace.id
-                    this.syncActive()
-                    this.saveWorkspaces()
-                  }
-
-                  removeWorkspace (id) {
-                    this.workspaces = this.workspaces.filter(w => w.id !== id)
-                    if (this.activeWorkspaceId === id) {
-                      this.activeWorkspaceId = this.workspaces[0]?.id || null
-                    }
-                    this.syncActive()
-                    this.saveWorkspaces()
-                  }
+              const createAuthApi = (instance) => ({
+                async login (identity, password, options = {}) {
+                  return await instance.collection('users').authWithPassword(identity, password, options)
+                },
+                async requestOTP (identity) {
+                  return await instance.collection('users').requestOTP(identity)
+                },
+                async verifyOTP (otpId, code) {
+                  return await instance.collection('users').authWithOTP(otpId, code)
+                },
+                logout () {
+                  instance.authStore.clear()
+                },
+                getUser () {
+                  return instance.authStore.record || instance.authStore.model || null
+                },
+                getToken () {
+                  return instance.authStore.token || ''
+                },
+                isAuthenticated () {
+                  return Boolean(instance.authStore.isValid)
+                },
+                onAuthChange (callback) {
+                  return instance.authStore.onChange((token, record) => {
+                    callback(token, record)
+                  })
                 }
+              })
 
-                const customStore = new WorkspaceAuthStore()
-                const active = customStore.workspaces.find(w => w.id === customStore.activeWorkspaceId)
-                const activeUrl = active ? active.url : ''
-                const pb = new PocketBase(activeUrl, customStore)
-                pb.autoCancellation(false)
+              const createRecordApi = (instance) => ({
+                async getList (collection, page = 1, perPage = 30, options = {}) {
+                  return await instance.collection(collection).getList(page, perPage, options)
+                },
+                async getFullList (collection, options = {}) {
+                  return await instance.collection(collection).getFullList(options)
+                },
+                async getOne (collection, id, options = {}) {
+                  return await instance.collection(collection).getOne(id, options)
+                },
+                async getFirst (collection, filter, options = {}) {
+                  return await instance.collection(collection).getFirstListItem(filter, options)
+                },
+                async create (collection, data, options = {}) {
+                  return await instance.collection(collection).create(data, options)
+                },
+                async update (collection, id, data, options = {}) {
+                  return await instance.collection(collection).update(id, data, options)
+                },
+                async delete (collection, id, options = {}) {
+                  return await instance.collection(collection).delete(id, options)
+                }
+              })
 
-                const createAuthApi = (instance) => ({
-                  async login (identity, password, options = {}) {
-                    return await instance.collection('users').authWithPassword(identity, password, options)
-                  },
-                  async requestOTP (identity) {
-                    return await instance.collection('users').requestOTP(identity)
-                  },
-                  async verifyOTP (otpId, code) {
-                    return await instance.collection('users').authWithOTP(otpId, code)
-                  },
-                  logout () {
-                    instance.authStore.clear()
-                  },
-                  getUser () {
-                    return instance.authStore.record || instance.authStore.model || null
-                  },
-                  getToken () {
-                    return instance.authStore.token || ''
-                  },
-                  isAuthenticated () {
-                    return Boolean(instance.authStore.isValid)
-                  },
-                  onAuthChange (callback) {
-                    return instance.authStore.onChange((token, record) => {
-                      callback(token, record)
-                    })
+              const createRealtimeApi = (instance) => ({
+                async subscribe (collection, topic, callback, options = {}) {
+                  return await instance.collection(collection).subscribe(topic, callback, options)
+                },
+                async unsubscribe (collection, topic) {
+                  return await instance.collection(collection).unsubscribe(topic)
+                }
+              })
+
+              const createFileApi = (instance) => ({
+                getUrl (record, filename, options = {}) {
+                  if (!record || !filename) {
+                    return ''
                   }
-                })
-
-                const createRecordApi = (instance) => ({
-                  async getList (collection, page = 1, perPage = 30, options = {}) {
-                    return await instance.collection(collection).getList(page, perPage, options)
-                  },
-                  async getFullList (collection, options = {}) {
-                    return await instance.collection(collection).getFullList(options)
-                  },
-                  async getOne (collection, id, options = {}) {
-                    return await instance.collection(collection).getOne(id, options)
-                  },
-                  async getFirst (collection, filter, options = {}) {
-                    return await instance.collection(collection).getFirstListItem(filter, options)
-                  },
-                  async create (collection, data, options = {}) {
-                    return await instance.collection(collection).create(data, options)
-                  },
-                  async update (collection, id, data, options = {}) {
-                    return await instance.collection(collection).update(id, data, options)
-                  },
-                  async delete (collection, id, options = {}) {
-                    return await instance.collection(collection).delete(id, options)
+                  return instance.files.getURL(record, filename, options)
+                },
+                getURL (record, filename, options = {}) {
+                  if (!record || !filename) {
+                    return ''
                   }
-                })
+                  return instance.files.getURL(record, filename, options)
+                }
+              })
 
-                const createRealtimeApi = (instance) => ({
-                  async subscribe (collection, topic, callback, options = {}) {
-                    return await instance.collection(collection).subscribe(topic, callback, options)
-                  },
-                  async unsubscribe (collection, topic) {
-                    return await instance.collection(collection).unsubscribe(topic)
-                  }
-                })
-
-                const createFileApi = (instance) => ({
-                  getUrl (record, filename, options = {}) {
-                    if (!record || !filename) {
-                      return ''
-                    }
-                    return instance.files.getURL(record, filename, options)
-                  },
-                  getURL (record, filename, options = {}) {
-                    if (!record || !filename) {
-                      return ''
-                    }
-                    return instance.files.getURL(record, filename, options)
-                  }
-                })
-
-                return () => ({
-                  pb,
-                  auth: createAuthApi(pb),
-                  records: createRecordApi(pb),
-                  realtime: createRealtimeApi(pb),
-                  files: createFileApi(pb),
-                  workspaces: customStore
-                })
-              } else {
-                const pb = new PocketBase(pluginContext.config.url)
-                pb.autoCancellation(false)
-
-                const createAuthApi = (instance) => ({
-                  async login (identity, password, options = {}) {
-                    return await instance.collection('users').authWithPassword(identity, password, options)
-                  },
-                  async requestOTP (identity) {
-                    return await instance.collection('users').requestOTP(identity)
-                  },
-                  async verifyOTP (otpId, code) {
-                    return await instance.collection('users').authWithOTP(otpId, code)
-                  },
-                  logout () {
-                    instance.authStore.clear()
-                  },
-                  getUser () {
-                    return instance.authStore.record || instance.authStore.model || null
-                  },
-                  getToken () {
-                    return instance.authStore.token || ''
-                  },
-                  isAuthenticated () {
-                    return Boolean(instance.authStore.isValid)
-                  },
-                  onAuthChange (callback) {
-                    return instance.authStore.onChange((token, record) => {
-                      callback(token, record)
-                    })
-                  }
-                })
-
-                const createRecordApi = (instance) => ({
-                  async getList (collection, page = 1, perPage = 30, options = {}) {
-                    return await instance.collection(collection).getList(page, perPage, options)
-                  },
-                  async getFullList (collection, options = {}) {
-                    return await instance.collection(collection).getFullList(options)
-                  },
-                  async getOne (collection, id, options = {}) {
-                    return await instance.collection(collection).getOne(id, options)
-                  },
-                  async getFirst (collection, filter, options = {}) {
-                    return await instance.collection(collection).getFirstListItem(filter, options)
-                  },
-                  async create (collection, data, options = {}) {
-                    return await instance.collection(collection).create(data, options)
-                  },
-                  async update (collection, id, data, options = {}) {
-                    return await instance.collection(collection).update(id, data, options)
-                  },
-                  async delete (collection, id, options = {}) {
-                    return await instance.collection(collection).delete(id, options)
-                  }
-                })
-
-                const createRealtimeApi = (instance) => ({
-                  async subscribe (collection, topic, callback, options = {}) {
-                    return await instance.collection(collection).subscribe(topic, callback, options)
-                  },
-                  async unsubscribe (collection, topic) {
-                    return await instance.collection(collection).unsubscribe(topic)
-                  }
-                })
-
-                const createFileApi = (instance) => ({
-                  getUrl (record, filename, options = {}) {
-                    if (!record || !filename) {
-                      return ''
-                    }
-                    return instance.files.getURL(record, filename, options)
-                  },
-                  getURL (record, filename, options = {}) {
-                    if (!record || !filename) {
-                      return ''
-                    }
-                    return instance.files.getURL(record, filename, options)
-                  }
-                })
-
-                return () => ({
-                  pb,
-                  auth: createAuthApi(pb),
-                  records: createRecordApi(pb),
-                  realtime: createRealtimeApi(pb),
-                  files: createFileApi(pb),
-                  workspaces: null
-                })
-              }
+              return () => ({
+                pb,
+                auth: createAuthApi(pb),
+                records: createRecordApi(pb),
+                realtime: createRealtimeApi(pb),
+                files: createFileApi(pb)
+              })
             }
           }
         }
