@@ -928,7 +928,7 @@ export function createServer () {
                   } catch {
                   }
                 }
-                if (parsed && (parsed.endpoint || parsed.keys)) {
+                if (parsed && parsed.endpoint) {
                   recipients.push({
                     user_id: userId,
                     subscription: parsed

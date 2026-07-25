@@ -184,7 +184,9 @@ async function processPushRecipientsAsync (recipients, payload) {
 
   for (const item of recipients) {
     const { user_id, subscription } = item
-    if (!subscription) {
+    if (!subscription || !subscription.endpoint) {
+      console.warn(`[push-worker] Subscription for user ${user_id} is missing an endpoint or invalid. Queueing for pruning.`)
+      staleUserIds.push(user_id)
       continue
     }
 
@@ -193,6 +195,9 @@ async function processPushRecipientsAsync (recipients, payload) {
     } catch (error) {
       if (error.statusCode === 410 || error.statusCode === 404) {
         console.warn(`[push-worker] Subscription for user ${user_id} expired/revoked (Status ${error.statusCode}). Queueing for pruning.`)
+        staleUserIds.push(user_id)
+      } else if (error.message && (error.message.includes('subscription') || error.message.includes('endpoint'))) {
+        console.warn(`[push-worker] Subscription validation failed for user ${user_id}: ${error.message}. Queueing for pruning.`)
         staleUserIds.push(user_id)
       } else {
         console.error(`[push-worker] Push failed for user ${user_id}:`, error)
