@@ -340,7 +340,6 @@
           await pb.collection('users').authRefresh()
 
           updateStatus('Vault active! Starting session...')
-          await $worker.execute('worker:set_token', { token: pb.authStore.token })
           await $worker.execute('worker:init_keys', {
             id: pb.authStore.model.id,
             private_box_key: decryptedKeysLocal.private_box_key,

@@ -9,7 +9,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ globalStore, pocketbase, refs, eventBus, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, webrtcTransfer, config }) => {
+    client: ({ globalStore, pocketbase, refs, eventBus, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, webrtcTransfer, _config }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
@@ -24,8 +24,19 @@
       const { $storage } = storage
       const { $push } = push
       const { $worker } = cryptoWorker
-      const { $config } = config
       const container = refs('container')
+
+      // Keep worker auth token in sync with PocketBase auth store
+      pb.authStore.onChange((token) => {
+        if (token) {
+          $worker.execute('worker:set_token', { token }).catch(console.error)
+        } else {
+          $worker.execute('worker:wipe_keys').catch(console.error)
+        }
+      })
+      if (pb.authStore.token) {
+        $worker.execute('worker:set_token', { token: pb.authStore.token }).catch(console.error)
+      }
 
       let isDeviceTrusted = false
       let isLifecycleRegistered = false
@@ -75,10 +86,7 @@
           console.log('[app-root] Enumerated databases for garbage collection:', dbs)
           for (const dbInfo of dbs) {
             const name = dbInfo.name
-            if (name === 'AtollChatDB') {
-              console.log('[app-root] Deleting legacy database:', name)
-              indexedDB.deleteDatabase(name)
-            } else if (name && name.startsWith('atoll_data_')) {
+            if (name && name.startsWith('atoll_data_')) {
               const suffix = name.substring('atoll_data_'.length)
               if (suffix !== activeInstanceId) {
                 console.log('[app-root] Deleting orphaned database:', name)
@@ -415,10 +423,13 @@
         const newId = metadata.instance_id
 
         if (activeId && activeId !== newId) {
-          console.error('[app-root] INSTANCE ID MISMATCH DETECTED ON RECONNECTION!', { activeId, newId })
+          console.error('[app-root] INSTANCE ID MISMATCH DETECTED ON RECONNECTION!', {
+            activeId,
+            newId
+          })
           console.log('[app-root] Server was wiped/rebuilt while offline. Cleaning up local state.')
 
-          // 1. Sever database connection
+          // sever database connection
           if (window.$localDb) {
             try {
               await window.$localDb.close()
@@ -428,7 +439,7 @@
             }
           }
 
-          // 2. Trigger Garbage Collection to delete current database and other orphans
+          // trigger Garbage Collection to delete current database and other orphans
           try {
             if (typeof indexedDB !== 'undefined') {
               indexedDB.deleteDatabase('atoll_data_' + activeId)
@@ -441,13 +452,13 @@
           // Run general GC to be thorough
           await runGarbageCollection(newId)
 
-          // 3. Purge user session tokens
+          // purge user session tokens
           pb.authStore.clear()
           localStorage.removeItem('device_trust_token')
           localStorage.removeItem('atoll_active_instance_id')
           console.log('[app-root] Session tokens and credentials purged.')
 
-          // 4. Force hard reload to push user back to clean login screen
+          // force hard reload to push user back to clean login screen
           window.location.reload()
           return
         }
