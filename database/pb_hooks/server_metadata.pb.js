@@ -23,8 +23,15 @@ onBootstrap((e) => {
 
   try {
     const collection = e.app.findCollectionByNameOrId('server_metadata')
-    // Check if any record exists in server_metadata
-    const records = e.app.findRecordsByFilter('server_metadata', '1=1', '', 1, 0)
+    let records = []
+
+    try {
+      // Check if any record exists in server_metadata
+      records = e.app.findRecordsByFilter('server_metadata', '1=1', '', 1, 0)
+    } catch {
+      records = []
+    }
+
     if (!records || records.length === 0) {
       console.log('[server_metadata.pb.js] Initializing server metadata singleton...')
       const record = new Record(collection)
