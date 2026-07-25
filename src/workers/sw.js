@@ -25,17 +25,6 @@ const skipWaiting = swSelf.skipWaiting
 const clients = swSelf.clients
 const registration = swSelf.registration
 
-const ASSETS_TO_CACHE = [
-  '/',
-  '/index.html',
-  '/worker.js',
-  '/favicon.ico',
-  '/assets/css/styles.css',
-  '/assets/libsodium-wrappers.js',
-  '/assets/libsodium-sumo.js',
-  '/assets/dexie.js'
-]
-
 importScripts('/assets/metadata.js')
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
@@ -44,33 +33,11 @@ importScripts('/assets/url.js')
 const metadata = swSelf.metadata
 const sodium = swSelf.sodium
 
-const CACHE_NAME = metadata.name + '-' + metadata.version
-
-// libsodium wasm is embedded as a base64 string
-const hostname = location.hostname
-const isDev = hostname === 'localhost' ||
-              hostname === '127.0.0.1' ||
-              hostname.startsWith('192.168.') ||
-              hostname.startsWith('10.') ||
-              hostname.startsWith('172.')
-
 /**
  * @param {any} event The installation event.
  */
 const onInstall = (event) => {
   skipWaiting()
-
-  if (isDev) {
-    return
-  }
-
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(async (cache) => {
-      console.log('Opened cache and adding assets')
-      const requests = ASSETS_TO_CACHE.map(url => new Request(url, { cache: 'reload' }))
-      return Promise.all(requests.map(req => cache.add(req)))
-    })
-  )
 }
 
 // install event
@@ -84,10 +51,8 @@ const onActivate = (event) => {
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames.map((cacheName) => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Deleting cache:', cacheName)
-            return caches.delete(cacheName)
-          }
+          console.log('Deleting cache:', cacheName)
+          return caches.delete(cacheName)
         })
       ).then(() => {
         return clients.claim()
@@ -98,39 +63,6 @@ const onActivate = (event) => {
 
 // activate event
 addEventListener('activate', onActivate)
-
-/**
- * @param {any} event The fetch event.
- */
-const onFetch = (event) => {
-  const { request } = event
-
-  // Exclude API and SSE calls to PocketBase and only handle GET requests
-  if (isDev || request.url.includes('/api/') || request.method !== 'GET') {
-    return
-  }
-
-  event.respondWith(
-    caches.match(request, { cacheName: CACHE_NAME }).then((cachedResponse) => {
-      const fetchPromise = fetch(request).then((networkResponse) => {
-        // Update the cache with the new response if it's a valid response
-        if (networkResponse && networkResponse.status === 200) {
-          const responseToCache = networkResponse.clone()
-          caches.open(CACHE_NAME).then((cache) => {
-            cache.put(request, responseToCache)
-          })
-        }
-        return networkResponse
-      })
-
-      // return cached response or fetch from network
-      return cachedResponse || fetchPromise
-    })
-  )
-}
-
-// fetch interceptor
-addEventListener('fetch', onFetch)
 
 /**
  * Opens connection to IndexedDB.
