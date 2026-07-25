@@ -29,7 +29,7 @@ RUN corepack enable pnpm
 
 # Cache dependency downloads based ONLY on the lockfile
 COPY pnpm-lock.yaml ./
-RUN pnpm fetch
+RUN pnpm fetch --config.minimum-release-age=0
 
 # Copy the entire source code
 COPY . .
@@ -41,12 +41,11 @@ RUN pnpm install --frozen-lockfile --offline
 RUN pnpm run build
 
 # Stage 2: Final Image
-FROM alpine:latest
+FROM alpine:3.24
 
 # Set PocketBase version
 ARG PB_VERSION=0.39.8
 
-# Install dependencies (Node.js runtime for push worker and pnpm)
 RUN apk add --no-cache ca-certificates unzip wget libc6-compat nodejs npm && npm install -g pnpm
 
 # Download and extract PocketBase using BuildKit cache mount
@@ -83,17 +82,12 @@ ENV ATOLL_SMTP_LOCAL_NAME=""
 ENV ATOLL_SMTP_SENDER_NAME="Atoll Chat"
 ENV ATOLL_SMTP_SENDER_ADDRESS="noreply@atoll.chat"
 
-# Set working directory for PocketBase
+WORKDIR /pb/push-worker
+COPY ./push-worker ./
+RUN CI=true pnpm install --prod --node-linker=hoisted
+
 WORKDIR /pb
-
-# Copy push worker microservice and install standalone dependencies with pnpm
-COPY ./push-worker /pb/push-worker
-RUN cd /pb/push-worker && pnpm install --prod --node-linker=hoisted
-
-# Copy the compiled frontend from builder stage
 COPY --from=builder /app/dist ./pb_public
-
-# Copy hooks and migrations
 COPY ./database/pb_hooks ./pb_hooks
 COPY ./database/pb_migrations ./pb_migrations
 
