@@ -69,17 +69,20 @@ addEventListener('activate', onActivate)
  * @returns {Promise<any>} Opened DB instance.
  */
 async function openDB () {
-  let dbName = 'AtollChatDB' // fallback
+  let dbName = null
   if (typeof indexedDB !== 'undefined' && typeof indexedDB.databases === 'function') {
     try {
       const dbs = await indexedDB.databases()
-      const atollDb = dbs.find(d => d.name && d.name.startsWith('atoll_data_'));
+      const atollDb = dbs.find(d => d.name && d.name.startsWith('atoll_data_'))
       if (atollDb) {
         dbName = atollDb.name
       }
     } catch (e) {
       console.warn('[SW] failed to enumerate databases', e)
     }
+  }
+  if (!dbName) {
+    throw new Error('[SW] Dynamic atoll_data database not found')
   }
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(dbName)

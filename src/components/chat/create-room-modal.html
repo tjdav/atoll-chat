@@ -396,6 +396,9 @@
             updated_at: newRoom.updated
           })
 
+          $bus.emit('db:new_local_room', { room_id: newRoom.id })
+          $bus.emit('room:select', { room_id: newRoom.id })
+
           // Navigation & cleanup
           $state.currentAppView = 'chats'
           $state.activeSelectionId = newRoom.id

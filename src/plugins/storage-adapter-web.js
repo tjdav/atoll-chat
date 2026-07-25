@@ -14,7 +14,18 @@ export function createWebStorageAdapter () {
      * Initializes the Dexie database and opens the connection.
      */
     initialize: async (customDbName) => {
-      const name = customDbName || 'AtollChatDB'
+      let activeId = null
+      if (typeof localStorage !== 'undefined') {
+        try {
+          activeId = localStorage.getItem('atoll_active_instance_id')
+        } catch {
+        }
+      }
+      const name = customDbName || (activeId ? 'atoll_data_' + activeId : null)
+      if (!name) {
+        console.log('[WebStorageAdapter] Deferring database initialization until instance ID or custom DB name is set.')
+        return null
+      }
       console.log('[WebStorageAdapter] initialize starting for:', name)
       if (dbInstance) {
         if (dbInstance.name === name) {

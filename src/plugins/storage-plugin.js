@@ -32,7 +32,16 @@ export default definePlugin({
         console.info('[storage-plugin] Web platform detected. Loading WebStorageAdapter.')
         const { createWebStorageAdapter } = await import('./storage-adapter-web.js')
         resolvedAdapter = createWebStorageAdapter()
-        await resolvedAdapter.initialize()
+        let activeId = null
+        if (typeof localStorage !== 'undefined') {
+          try {
+            activeId = localStorage.getItem('atoll_active_instance_id')
+          } catch {
+          }
+        }
+        if (activeId) {
+          await resolvedAdapter.initialize('atoll_data_' + activeId)
+        }
         return resolvedAdapter
       }
 

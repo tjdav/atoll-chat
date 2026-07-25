@@ -1467,13 +1467,13 @@ async function processNewRoomKey (rpcId, payload) {
       is_group: isGroup,
       name: roomMetadata?.name || '',
       avatar: roomMetadata?.avatar || '',
-      participants,
+      participants: participants || [],
       user_role: role,
       key_history: [],
       updated_at: updated
     }
   } else {
-    room.updated_at = updated
+    room.updated_at = updated || room.updated_at
     room.user_role = role || room.user_role
     if (roomMetadata?.name) {
       room.name = roomMetadata.name
@@ -1481,7 +1481,20 @@ async function processNewRoomKey (rpcId, payload) {
     if (roomMetadata?.avatar) {
       room.avatar = roomMetadata.avatar
     }
-    room.participants = participants
+    if (participants && participants.length > 0) {
+      const existingParticipants = room.participants || []
+      const mergedMap = new Map()
+      for (const p of existingParticipants) {
+        if (p && p.id) mergedMap.set(p.id, p)
+      }
+      for (const p of participants) {
+        if (p && p.id) {
+          const existing = mergedMap.get(p.id)
+          mergedMap.set(p.id, { ...existing, ...p })
+        }
+      }
+      room.participants = Array.from(mergedMap.values())
+    }
   }
 
   if (!room.key_history) {

@@ -75,7 +75,10 @@
           console.log('[app-root] Enumerated databases for garbage collection:', dbs)
           for (const dbInfo of dbs) {
             const name = dbInfo.name
-            if (name && name.startsWith('atoll_data_')) {
+            if (name === 'AtollChatDB') {
+              console.log('[app-root] Deleting legacy database:', name)
+              indexedDB.deleteDatabase(name)
+            } else if (name && name.startsWith('atoll_data_')) {
               const suffix = name.substring('atoll_data_'.length)
               if (suffix !== activeInstanceId) {
                 console.log('[app-root] Deleting orphaned database:', name)
