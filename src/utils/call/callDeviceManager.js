@@ -3,13 +3,18 @@
  * and media effect settings (noise cancellation, background blur).
  */
 
+/**
+ *
+ */
 export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, signal }) => {
   const { $state } = globalStore
   const { $bus } = eventBus
 
   const getRef = (name) => {
     const fromRefs = refs(name)
-    if (fromRefs) return fromRefs
+    if (fromRefs) {
+      return fromRefs
+    }
     const overlay = document.querySelector('call-overlay')
     if (overlay) {
       if (overlay.shadowRoot) {
@@ -279,7 +284,7 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     const me = $state.currentUser || { id: 'local-user' }
     const localTile = videoGrid.querySelector(`[data-participant-id="${me.id}"]`)
       || videoGrid.querySelector('.grid-tile')
-    
+
     if (localTile) {
       const videoEl = localTile.querySelector('.tile-video') || localTile.querySelector('video')
       if (videoEl) {

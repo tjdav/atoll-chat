@@ -4,6 +4,9 @@
 
 let ringtoneAudio = null
 
+/**
+ *
+ */
 export const stopRingtone = () => {
   if (ringtoneAudio) {
     ringtoneAudio.pause()
@@ -15,6 +18,9 @@ export const stopRingtone = () => {
   }
 }
 
+/**
+ *
+ */
 export const playRingtone = async ({ globalStore, $storage }) => {
   const $state = globalStore?.$state
 

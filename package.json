@@ -31,14 +31,16 @@
     "test:unit": "node --experimental-vm-modules --test",
     "test:unit:coverage": "node --experimental-vm-modules --experimental-test-coverage --test",
     "test:e2e": "node scripts/generate-test-video.js && pnpm exec playwright test",
-    "test:e2e:ui": "node scripts/generate-test-video.js && pnpm exec playwright test --ui"
+    "test:e2e:ui": "node scripts/generate-test-video.js && pnpm exec playwright test --ui",
+    "test:components": "coralite validate-components --coverage",
+    "test:plugins": "coralite validate-plugins --coverage"
   },
   "devDependencies": {
     "@playwright/test": "^1.61.0",
     "@stylistic/eslint-plugin": "^5.9.0",
     "@types/node": "^26.1.0",
-    "coralite": "^0.43.1",
-    "coralite-scripts": "^0.43.1",
+    "coralite": "^0.43.2",
+    "coralite-scripts": "^0.43.2",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^10.0.2",

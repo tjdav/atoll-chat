@@ -402,8 +402,7 @@ export const test = base.extend({
       await targetPage.goto(baseURL || '/')
 
       /* Wait for Coralite to be ready on this specific page */
-      await targetPage.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
-      await targetPage.evaluate(() => window.__coralite__.lifecycle.hydrated)
+      await targetPage.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle && window.__coralite__.lifecycle.hydrated)
 
       /* Login Flow */
       const emailOrUsername = username.includes('@') ? username : `${username}@example.com`

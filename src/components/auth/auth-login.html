@@ -122,7 +122,7 @@
       let forgotSubmitPending = false
       let altchaPayload = null
 
-      const isTesting = window.__coralite__?.mode === 'testing'
+      const isTesting = import.meta.env.MODE === 'testing'
 
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message

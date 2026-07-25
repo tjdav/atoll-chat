@@ -9,38 +9,45 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
 
     const aliceContext = await browser.newContext()
     const alicePage = await aliceContext.newPage()
+    alicePage.on('console', msg => console.log('[BROWSER][alice]', msg.text()))
+    await alicePage.addInitScript(() => {
+      window.$config = window.$config || {}
+      window.$config.maxServerUploadSizeBytes = 1
+    })
 
     const bobContext = await browser.newContext()
     const bobPage = await bobContext.newPage()
+    bobPage.on('console', msg => console.log('[BROWSER][bob]', msg.text()))
 
     await Promise.all([
       loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!'),
       loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
     ])
 
-    await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await alicePage.locator('[data-testid$="search-result-bob"]').click()
-    await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    const aliceChat = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'bob' }).first()
+    if (!(await aliceChat.isVisible().catch(() => false))) {
+      await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    }
+
+    const aliceChatSelect = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'bob' }).first()
+    await expect(aliceChatSelect).toBeVisible({ timeout: 30000 })
+    await aliceChatSelect.click()
 
     const bobChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChat).toBeVisible({ timeout: 30000 })
     await bobChat.click()
 
-    await alicePage.evaluate(() => {
-      if (window.$config) {
-        window.$config.maxServerUploadSizeBytes = 1
-      }
-    })
-
     const fp = path.resolve('tests/e2e/fixtures/test-files/test.png')
-    await alicePage.locator('chat-view [data-testid$="__fileInput"]').setInputFiles(fp)
+    await alicePage.locator('chat-view [data-testid$="fileInput"]').setInputFiles(fp)
 
     await alicePage.fill('chat-view textarea', 'Sending heavy image P2P')
-    await alicePage.click('chat-view [data-testid$="__sendButton"]')
+    await alicePage.click('chat-view [data-testid$="sendButton"]')
 
     // Bob should see the consent modal appear
-    const acceptBtn = bobPage.locator('[data-testid$="__consent-btn-accept"]')
+    const acceptBtn = bobPage.locator('[data-testid*="consent-btn-accept"]')
     await expect(acceptBtn).toBeVisible({ timeout: 60000 })
 
     // Accept the file and wait for download
@@ -58,14 +65,11 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
             'x-test-id': window.__playwright_test_id__
           }
         })
-        if (response.ok) {
-          const list = await response.json()
-          return list.items.length > 0
-        }
+        const data = await response.json()
+        return data && data.items && data.items.length > 0
       }
       return false
     })
-
     expect(hasMediaUpload).toBe(false)
 
     await aliceContext.close()
@@ -76,6 +80,10 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
 
     const aliceContext = await browser.newContext()
     const alicePage = await aliceContext.newPage()
+    await alicePage.addInitScript(() => {
+      window.$config = window.$config || {}
+      window.$config.maxServerUploadSizeBytes = 1
+    })
 
     const bobContext = await browser.newContext()
     const bobPage = await bobContext.newPage()
@@ -94,6 +102,10 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
     await alicePage.locator('[data-testid$="roomNameInput"]').fill('Project X')
     await alicePage.locator('[data-testid$="btnCreate"]').click()
 
+    const aliceGroupChat = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'Project X' }).first()
+    await expect(aliceGroupChat).toBeVisible({ timeout: 30000 })
+    await aliceGroupChat.click()
+
     // Wait for Bob to click the Project X group chat
     const bobGroupChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'Project X' }).first()
     await expect(bobGroupChat).toBeVisible({ timeout: 30000 })
@@ -107,18 +119,18 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
 
     // Attach heavy file in Group Chat
     const fp = path.resolve('tests/e2e/fixtures/test-files/test.png')
-    await alicePage.locator('chat-view [data-testid$="__fileInput"]').setInputFiles(fp)
+    await alicePage.locator('chat-view [data-testid$="fileInput"]').setInputFiles(fp)
 
     await alicePage.fill('chat-view textarea', 'Sending heavy image in Group')
-    await alicePage.click('chat-view [data-testid$="__sendButton"]')
+    await alicePage.click('chat-view [data-testid$="sendButton"]')
 
     // Alice should see the reroute modal and Bob in the list
-    const bobRerouteOption = alicePage.locator('[data-testid$="reroute-user-bob"]')
+    const bobRerouteOption = alicePage.locator('[data-testid*="reroute-user-bob"]')
     await expect(bobRerouteOption).toBeVisible({ timeout: 30000 })
     await bobRerouteOption.click()
 
     // Bob should see the consent modal appear
-    const acceptBtn = bobPage.locator('[data-testid$="__consent-btn-accept"]')
+    const acceptBtn = bobPage.locator('[data-testid*="consent-btn-accept"]')
     await expect(acceptBtn).toBeVisible({ timeout: 60000 })
 
     // Accept the file and wait for download

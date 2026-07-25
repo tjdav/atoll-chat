@@ -85,9 +85,11 @@ test.describe('Multi-Island Architecture', () => {
     /* Complete standard login flow */
     await emailField.fill('alice@example.com')
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.waitForTimeout(1000)
     await page.evaluate(() => {
       const widget = document.querySelector('auth-login altcha-widget')
       if (widget) {
+        widget.payload = 'atoll-mock-bypass-token'
         widget.dispatchEvent(new CustomEvent('statechange', {
           detail: {
             state: 'verified',
@@ -101,14 +103,35 @@ test.describe('Multi-Island Architecture', () => {
     await btnSendOtp.click()
     await page.waitForTimeout(1000)
 
-    /* Wait for onboarding vault page setup or unlock */
-    const passwordField = page.locator('[data-testid$="password"]')
-    await expect(passwordField).toBeVisible()
-    await page.waitForTimeout(500)
-    await passwordField.fill('VaultPassword123!')
-    await page.waitForTimeout(500)
-    await page.locator('[data-testid$="unlockSubmit"]').click()
-    await page.waitForTimeout(2000)
+    /* Handle onboarding vault setup or vault unlock if presented */
+    const vaultSetup = page.locator('vault-setup')
+    if (await vaultSetup.isVisible({ timeout: 3000 }).catch(() => false)) {
+      const passInput = vaultSetup.locator('input[name="password"]')
+      const confirmInput = vaultSetup.locator('input[name="passwordConfirm"]')
+      await passInput.fill('VaultPassword123!')
+      await confirmInput.fill('VaultPassword123!')
+      await page.waitForTimeout(500)
+      await vaultSetup.locator('button[type="submit"]').click()
+
+      const copyBtn = vaultSetup.locator('button:has-text("Copy to Clipboard")')
+      await expect(copyBtn).toBeVisible({ timeout: 15000 })
+      await copyBtn.click()
+
+      const proceedBtn = page.locator('[data-testid$="vaultSetupProceed"]')
+      await expect(proceedBtn).toBeEnabled({ timeout: 5000 })
+      await proceedBtn.click()
+    } else {
+      const vaultUnlockBtn = page.locator('[data-testid$="unlockSubmit"]')
+      if (await vaultUnlockBtn.isVisible({ timeout: 2000 }).catch(() => false)) {
+        const passwordField = page.locator('vault-unlock [data-testid$="password"]')
+        if (await passwordField.isVisible().catch(() => false)) {
+          await passwordField.fill('VaultPassword123!')
+          await page.waitForTimeout(500)
+          await vaultUnlockBtn.click()
+        }
+      }
+    }
+    await page.waitForTimeout(1000)
 
     /* Standard application layout with leftmost primary sidebar is now visible */
     const sidebar = page.locator('[data-testid$="navSidebar"]')

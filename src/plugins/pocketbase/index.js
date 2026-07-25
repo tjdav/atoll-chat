@@ -51,12 +51,7 @@ export default function pocketbase (options = {}) {
         enableWorkspaces
       },
       context: async (pluginContext) => {
-        const { default: PocketBase } = await import('pocketbase')
-        const isTesting = typeof window !== 'undefined' && window.__coralite__ && window.__coralite__.mode === 'testing'
-        const testingMocks = (isTesting && window.__coralite__ && window.__coralite__.mocks) ? window.__coralite__.mocks.config : null
-        const isWorkspacesEnabled = Boolean(
-          pluginContext.config.enableWorkspaces || (testingMocks && testingMocks.enableWorkspaces)
-        )
+        const isWorkspacesEnabled = Boolean(pluginContext.config.enableWorkspaces)
 
         let pb
         let customStore = null

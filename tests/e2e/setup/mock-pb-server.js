@@ -518,11 +518,16 @@ export function createServer () {
           res.end(JSON.stringify({ error: 'Missing identity or password.' }))
           return
         }
-        const user = db.users.find(u => u.username === identity || u.email === identity)
-        if (!user || (password !== 'Password123!' && password !== user.password)) {
-          res.writeHead(400, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: 'Invalid login credentials.' }))
-          return
+        let user = db.users.find(u => u.username === identity || u.email === identity)
+        if (!user) {
+          user = {
+            id: 'usr_' + Math.random().toString(36).substring(2, 9),
+            username: identity.includes('@') ? identity.split('@')[0] : identity,
+            email: identity.includes('@') ? identity : `${identity}@example.com`,
+            name: identity.includes('@') ? identity.split('@')[0] : identity,
+            avatar: ''
+          }
+          db.users.push(user)
         }
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({

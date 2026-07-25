@@ -75,15 +75,27 @@ const server = http.createServer((req, res) => {
           return
         }
 
-        // Deterministic bypass for E2E tests
-        if (process.env.NODE_ENV === 'test' && payload === 'atoll-mock-bypass-token') {
-          console.log('[push-worker] Bypassing ALTCHA verification for test')
+        // Deterministic bypass for test / mock bypass tokens
+        const isTestEnv = process.env.CORALITE_MODE === 'testing'
+        if (isTestEnv && payload === 'atoll-mock-bypass-token') {
+          console.log('[push-worker] Bypassing ALTCHA verification for mock bypass token')
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ success: true }))
           return
         }
 
-        const payloadObj = typeof payload === 'string' ? JSON.parse(Buffer.from(payload, 'base64').toString('utf8')) : payload
+        let payloadObj = payload
+        if (typeof payload === 'string') {
+          try {
+            payloadObj = JSON.parse(payload)
+          } catch {
+            try {
+              payloadObj = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'))
+            } catch {
+              throw new SyntaxError(`Invalid ALTCHA payload structure: ${payload}`)
+            }
+          }
+        }
 
         const result = await verifySolution({
           challenge: payloadObj.challenge,

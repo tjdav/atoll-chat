@@ -160,6 +160,7 @@ test.describe('Video Grid and Speaker Features', () => {
         ]
         window.$stateSet('activeCallRoomId', 'mock-room-mobile')
         window.$stateSet('callStatus', 'active')
+        window.dispatchEvent(new Event('resize'))
       })
     })
 

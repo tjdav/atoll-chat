@@ -156,6 +156,12 @@ function runDockerComposeUp () {
  * Set up mock PocketBase and start local coturn STUN/TURN server.
  */
 async function globalSetup () {
+  try {
+    execSync('fuser -k 8090/tcp || true', { stdio: 'ignore' })
+  } catch {
+    /* ignore */
+  }
+
   console.log('--- Ensuring E2E Test Video Fixture ---')
   ensureTestVideoExists()
 
