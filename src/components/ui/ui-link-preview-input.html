@@ -2,7 +2,7 @@
   <div class="link-preview-input-container p-2 mb-2 position-relative">
     <div class="d-flex align-items-center flex-grow-1 overflow-hidden">
       <div class="preview-image-col me-2 {{ imageDisplayClass }}">
-        <img src="{{ image }}" class="rounded" style="width: 60px; height: 60px;" alt="Preview">
+        <img ref="previewImg" class="rounded" style="width: 60px; height: 60px;" alt="Preview">
       </div>
       <div class="preview-text-container overflow-hidden">
         <div class="small fw-bold text-truncate">{{ title }}</div>
@@ -30,9 +30,19 @@
     getters: {
       imageDisplayClass: (state) => (state.image ? 'd-block' : 'd-none')
     },
-    client: ({ state, refs, eventBus, signal }) => {
+    client: ({ state, refs, eventBus, signal, observe }) => {
       const { $bus } = eventBus
       const cancelBtn = refs('cancelPreviewButton')
+      const previewImg = refs('previewImg')
+
+      const updateImage = () => {
+        if (previewImg) {
+          previewImg.src = state.image || ''
+        }
+      }
+
+      updateImage()
+      observe('image', updateImage)
   
       cancelBtn.addEventListener('click', () => {
         $bus.emit('ui:dismiss_link_preview', { url: state.url })

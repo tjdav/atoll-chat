@@ -3,7 +3,7 @@
     <div class="d-flex align-items-center">
       <!-- Video Cover Thumbnail Container -->
       <div class="position-relative me-2 bg-dark rounded border d-flex align-items-center justify-content-center" hidden="{{ isVideoHidden }}" style="width: 100px; height: 100px; overflow: hidden; flex-shrink: 0;">
-        <img src="{{ thumbnailUrl }}" class="w-100 h-100 object-fit-cover" alt="Cover Preview" hidden="{{ isThumbnailHidden }}">
+        <img ref="thumbnailImg" class="w-100 h-100 object-fit-cover" alt="Cover Preview" hidden="{{ isThumbnailHidden }}">
         <i class="bi bi-camera-video text-white fs-2" hidden="{{ isThumbnailVisibleHidden }}"></i>
         
         <!-- Standard file picker restricted to image files, visually hidden -->
@@ -52,11 +52,21 @@
       coverBtnText: (state) => (state.isCustom ? 'Remove Custom Cover' : 'Change Cover'),
       coverBtnClass: (state) => (state.isCustom ? 'btn-danger' : 'btn-dark')
     },
-    client: ({ refs, state, eventBus, signal }) => {
+    client: ({ refs, state, eventBus, signal, observe }) => {
       const { $bus } = eventBus
       const cancelBtn = refs('cancelFileButton')
       const coverBtn = refs('coverBtn')
       const coverInput = refs('coverInput')
+      const thumbnailImg = refs('thumbnailImg')
+
+      const updateThumbnail = () => {
+        if (thumbnailImg) {
+          thumbnailImg.src = state.thumbnailUrl || ''
+        }
+      }
+
+      updateThumbnail()
+      observe('thumbnailUrl', updateThumbnail)
   
       cancelBtn.addEventListener('click', () => {
         $bus.emit('ui:cancel')
