@@ -267,6 +267,13 @@ const run = async () => {
       console.log('Setting up local PocketBase fallback...')
       const localBinary = await ensureLocalPocketBaseDownloaded()
 
+      console.log('Ensuring superuser admin exists in local database...')
+      try {
+        execSync(`"${localBinary}" superuser upsert admin@example.com password123 --dir=pb_data`, { stdio: 'inherit' })
+      } catch (err) {
+        console.warn('Warning: Failed to upsert local superuser:', err.message)
+      }
+
       console.log('Starting local PocketBase binary on port 8090...')
       pbProcess = spawn(localBinary, [
         'serve',
@@ -318,12 +325,13 @@ const run = async () => {
     console.log('PocketBase is healthy and listening on port 8090.')
 
     // Ensure superuser is created or updated (upsert ensures password is reset if user already exists)
-    console.log('Ensuring superuser admin exists...')
     if (isDockerUsed) {
-      runCommandSilently('docker exec -i atoll-pocketbase-dev /usr/local/bin/pocketbase superuser upsert admin@example.com password123')
-    } else {
-      const localBinary = getLocalPocketBaseBinary()
-      runCommandSilently(`"${localBinary}" superuser upsert admin@example.com password123 --dir=pb_data`)
+      console.log('Ensuring superuser admin exists in Docker container...')
+      try {
+        execSync('docker exec -w /pb -i atoll-pocketbase-dev /usr/local/bin/pocketbase superuser upsert admin@example.com password123 --dir=/pb/pb_data', { stdio: 'inherit' })
+      } catch (err) {
+        console.warn('Warning: Failed to upsert docker superuser:', err.message)
+      }
     }
 
     // Run provisioning of test users (Alice, Bob, Charlie)

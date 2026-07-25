@@ -784,20 +784,20 @@ export function createServer () {
         return
       }
 
-      // Server metadata collection override for E2E tests
-      if (pathname.startsWith('/api/collections/server_metadata/records')) {
+      // App metadata collection override for E2E tests
+      if (pathname.startsWith('/api/collections/app_metadata/records')) {
         res.writeHead(200, { 'Content-Type': 'application/json' })
         const mockRecord = {
           id: 'mock_metadata_singleton_id',
-          collectionId: 'server_metadata',
-          collectionName: 'server_metadata',
+          collectionId: 'app_metadata',
+          collectionName: 'app_metadata',
           created: '2025-01-01T00:00:00.000Z',
           updated: '2025-01-01T00:00:00.000Z',
           instance_id: 'mock_test_instance_123',
           app_name: 'Atoll Chat',
           app_url: 'http://localhost:3000'
         }
-        if (pathname === '/api/collections/server_metadata/records') {
+        if (pathname === '/api/collections/app_metadata/records') {
           // List request
           res.end(JSON.stringify({
             page: 1,
