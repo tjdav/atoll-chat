@@ -164,8 +164,11 @@ export default defineConfig({
               return () => ({
                 $config: {
                   get: (key) => {
-                    if (typeof window !== 'undefined' && window.$config && window.$config[key] !== undefined) {
-                      return window.$config[key]
+                    if (typeof window !== 'undefined' && window.sessionStorage) {
+                      const stored = window.sessionStorage.getItem(`atoll_config_${key}`)
+                      if (stored !== null) {
+                        return !isNaN(stored) && stored.trim() !== '' ? Number(stored) : stored
+                      }
                     }
                     return pluginContext.config[key]
                   }
@@ -178,10 +181,7 @@ export default defineConfig({
           client: {
             context: async (pluginContext) => {
               const { default: PocketBase, BaseAuthStore } = await import('pocketbase')
-              const isWorkspacesEnabled = Boolean(
-                pluginContext.config.enableWorkspaces ||
-                (typeof window !== 'undefined' && window.$config && window.$config.enableWorkspaces)
-              )
+              const isWorkspacesEnabled = false
 
               if (isWorkspacesEnabled) {
                 /**

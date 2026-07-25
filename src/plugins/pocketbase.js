@@ -297,7 +297,7 @@ export default function pocketbase (options = {}) {
       },
       context: async (pluginContext) => {
         const { default: PocketBase, BaseAuthStore } = await import('pocketbase')
-        const isWorkspacesEnabled = Boolean(pluginContext.config.enableWorkspaces)
+        const isWorkspacesEnabled = false
 
         let pb
         let customStore = null

@@ -51,7 +51,7 @@ export default function pocketbase (options = {}) {
         enableWorkspaces
       },
       context: async (pluginContext) => {
-        const isWorkspacesEnabled = Boolean(pluginContext.config.enableWorkspaces)
+        const isWorkspacesEnabled = false
 
         let pb
         let customStore = null

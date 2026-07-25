@@ -21,7 +21,15 @@ export default function configPlugin (config = {}) {
       context: (pluginContext) => {
         return () => ({
           $config: {
-            get: (key) => pluginContext.config[key]
+            get: (key) => {
+              if (typeof window !== 'undefined' && window.sessionStorage) {
+                const stored = window.sessionStorage.getItem(`atoll_config_${key}`)
+                if (stored !== null) {
+                  return !isNaN(stored) && stored.trim() !== '' ? Number(stored) : stored
+                }
+              }
+              return pluginContext.config[key]
+            }
           }
         })
       }

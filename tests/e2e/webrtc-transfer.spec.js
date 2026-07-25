@@ -11,8 +11,7 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
     const alicePage = await aliceContext.newPage()
     alicePage.on('console', msg => console.log('[BROWSER][alice]', msg.text()))
     await alicePage.addInitScript(() => {
-      window.$config = window.$config || {}
-      window.$config.maxServerUploadSizeBytes = 1
+      window.sessionStorage.setItem('atoll_config_maxServerUploadSizeBytes', '1')
     })
 
     const bobContext = await browser.newContext()
@@ -59,7 +58,7 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
 
     const hasMediaUpload = await alicePage.evaluate(async () => {
       if (window.$state && window.$state.currentUser) {
-        const pbUrl = window.$config?.pb_url || 'http://localhost:8090'
+        const pbUrl = 'http://localhost:8090'
         const response = await fetch(`${pbUrl}/api/collections/media/records`, {
           headers: {
             'x-test-id': window.__playwright_test_id__
@@ -81,8 +80,7 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
     const aliceContext = await browser.newContext()
     const alicePage = await aliceContext.newPage()
     await alicePage.addInitScript(() => {
-      window.$config = window.$config || {}
-      window.$config.maxServerUploadSizeBytes = 1
+      window.sessionStorage.setItem('atoll_config_maxServerUploadSizeBytes', '1')
     })
 
     const bobContext = await browser.newContext()
@@ -110,12 +108,6 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
     const bobGroupChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'Project X' }).first()
     await expect(bobGroupChat).toBeVisible({ timeout: 30000 })
     await bobGroupChat.click()
-
-    await alicePage.evaluate(() => {
-      if (window.$config) {
-        window.$config.maxServerUploadSizeBytes = 1
-      }
-    })
 
     // Attach heavy file in Group Chat
     const fp = path.resolve('tests/e2e/fixtures/test-files/test.png')

@@ -285,7 +285,7 @@
         altchaContainer.appendChild(altchaWidget)
       }
 
-      const isIslandsEnabled = Boolean($config.get('enableWorkspaces'))
+      const isIslandsEnabled = false
   
       const handleSwitchIsland = async (newId, force = false) => {
         if (pb.authStore.activeWorkspaceId === newId && !force) {

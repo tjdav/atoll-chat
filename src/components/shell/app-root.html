@@ -31,94 +31,60 @@
       let isLifecycleRegistered = false
       let isFlushing = false
 
-      const isIslandsEnabled = Boolean($config.get('enableWorkspaces'))
-      console.log('[app-root] isIslandsEnabled:', isIslandsEnabled)
-
-      const deriveIslandFromUrl = (urlStr) => {
+      async function fetchWithTimeout (resource, options = {}) {
+        const { timeout = 2000 } = options
+        const controller = new AbortController()
+        const id = setTimeout(() => controller.abort(), timeout)
         try {
-          const url = new URL(urlStr)
-          const host = url.hostname
-          const parts = host.split('.')
-          let name = parts[0]
-          if (name === 'www' && parts.length > 1) {
-            name = parts[1]
-          }
-          const cleanUrl = url.origin
-          const id = 'ws_' + btoa(cleanUrl).replace(/=/g, '').slice(-15)
-          return {
-            id,
-            name,
-            url: cleanUrl
-          }
-        } catch (_e) {
-          const sanitized = urlStr.trim().replace(/\/+$/, '')
-          const id = 'ws_' + btoa(sanitized).replace(/=/g, '').slice(-15)
-          return {
-            id,
-            name: 'Island',
-            url: sanitized
-          }
+          const response = await fetch(resource, {
+            ...options,
+            signal: controller.signal
+          })
+          clearTimeout(id)
+          return response
+        } catch (error) {
+          clearTimeout(id)
+          throw error
         }
       }
 
-      const tryAutoOnboardDeepLink = async () => {
-        if (!isIslandsEnabled) {
-          return false
-        }
-        const workspaces = pb.authStore.workspaces || []
-        if (workspaces.length > 0) {
-          return false
-        }
-
-        if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-          if (!window.location.search) {
-            return false
-          }
-        }
-
-        const urlInput = window.location.origin
-        if (!urlInput) {
-          return false
-        }
-
-        console.log('[app-root] Zero state deep link auto-onboarding detected for:', urlInput)
+      const fetchServerMetadata = async () => {
         try {
-          const response = await fetch(`${urlInput}/api/health`, {
-            method: 'GET',
-            mode: 'cors'
-          })
-          if (!response.ok) {
-            return false
+          const pbBaseUrl = pb.baseUrl || '/'
+          const metadataUrl = pbBaseUrl.replace(/\/+$/, '') + '/api/collections/server_metadata/records'
+          const res = await fetchWithTimeout(metadataUrl, { timeout: 2000 })
+          if (res.ok) {
+            const data = await res.json()
+            if (data && data.items && data.items.length > 0) {
+              return data.items[0]
+            }
           }
-          const data = await response.json()
-          if (data.code !== 200 && !data.message) {
-            return false
-          }
-
-          const islandInfo = deriveIslandFromUrl(urlInput)
-          pb.authStore.addWorkspace({
-            id: islandInfo.id,
-            name: islandInfo.name,
-            url: islandInfo.url,
-            token: '',
-            user: null
-          })
-          pb.authStore.setActiveWorkspace(islandInfo.id)
-          pb.baseUrl = islandInfo.url
-
-          await $storage.initialize('AtollChatDB_' + islandInfo.id)
-          await $worker.execute('worker:set_workspace_context', {
-            workspaceId: islandInfo.id,
-            baseUrl: islandInfo.url
-          })
-
-          $state.activeIslandId = islandInfo.id
-          $state.islands = pb.authStore.workspaces || []
-          $state.isOnboardingIsland = true
-          return true
         } catch (err) {
-          console.warn('[app-root] Auto-onboarding failed:', err)
-          return false
+          console.warn('[app-root] Failed to fetch server metadata:', err)
+        }
+        return null
+      }
+
+      async function runGarbageCollection (activeInstanceId) {
+        if (typeof indexedDB === 'undefined' || typeof indexedDB.databases !== 'function') {
+          console.warn('[app-root] indexedDB.databases is not supported.')
+          return
+        }
+        try {
+          const dbs = await indexedDB.databases()
+          console.log('[app-root] Enumerated databases for garbage collection:', dbs)
+          for (const dbInfo of dbs) {
+            const name = dbInfo.name
+            if (name && name.startsWith('atoll_data_')) {
+              const suffix = name.substring('atoll_data_'.length)
+              if (suffix !== activeInstanceId) {
+                console.log('[app-root] Deleting orphaned database:', name)
+                indexedDB.deleteDatabase(name)
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[app-root] Error during garbage collection:', err)
         }
       }
 
@@ -328,27 +294,30 @@
         console.log('[app-root] updateUI called', {
           isAuthenticated: $state.isAuthenticated,
           hasModel: !!pb.authStore.model,
-          public_box_key: pb.authStore.model?.public_box_key,
-          isIslandsEnabled,
-          islandsLength: pb.authStore.workspaces?.length,
-          isOnboardingIsland: $state.isOnboardingIsland
+          public_box_key: pb.authStore.model?.public_box_key
         })
 
         while (container.firstChild) {
           container.removeChild(container.firstChild)
         }
 
-        if (isIslandsEnabled) {
-          const workspaces = pb.authStore.workspaces || []
-          if (workspaces.length === 0) {
-            if ($state.isOnboardingIsland) {
-              renderAuthFlow()
-            } else {
-              container.className = 'vh-100 vw-100 d-flex align-items-center justify-content-center bg-body-tertiary'
-              container.appendChild(document.createElement('island-onboarding'))
-            }
-            return
-          }
+        if ($state.isOfflineSetup) {
+          container.className = 'vh-100 vw-100 d-flex align-items-center justify-content-center bg-body-tertiary'
+          const setupDiv = document.createElement('div')
+          setupDiv.className = 'card shadow-sm p-4 text-center'
+          setupDiv.style.maxWidth = '400px'
+          setupDiv.innerHTML = `
+            <div class="mb-3 text-danger">
+              <i class="bi bi-wifi-off" style="font-size: 3rem;"></i>
+            </div>
+            <h4 class="card-title mb-2">Connection Required</h4>
+            <p class="card-text text-muted">Atoll needs to connect to the server once to initialize your secure environment.</p>
+            <button class="btn btn-primary w-100 mt-2" onclick="window.location.reload()">
+              <i class="bi bi-arrow-clockwise me-1"></i> Retry Connection
+            </button>
+          `
+          container.appendChild(setupDiv)
+          return
         }
 
         if ($state.isAuthenticated && $state.isVaultUnlocked) {
@@ -358,7 +327,6 @@
           mainContent.className = 'flex-grow-1 h-100 position-relative d-flex'
           mainContent.appendChild(document.createElement('app-layout'))
           mainContent.appendChild(document.createElement('create-room-modal'))
-          mainContent.appendChild(document.createElement('chart-island-modal'))
           mainContent.appendChild(document.createElement('p2p-reroute-modal'))
           mainContent.appendChild(document.createElement('p2p-consent-modal'))
           container.appendChild(mainContent)
@@ -372,8 +340,6 @@
           rightSection.className = 'flex-grow-1 h-100 position-relative d-flex align-items-center justify-content-center bg-body-tertiary'
           mainContent.appendChild(rightSection)
           container.appendChild(mainContent)
-
-          mainContent.appendChild(document.createElement('chart-island-modal'))
 
           renderAuthFlow(rightSection)
         }
@@ -433,10 +399,73 @@
         }
       })
 
+      // Reconnection verification and conflict resolution
+      const handleReconnectionHandshake = async () => {
+        console.log('[app-root] Reconnection detected. Fetching server metadata in background...')
+        const metadata = await fetchServerMetadata()
+        if (!metadata) {
+          console.warn('[app-root] Reconnection verification fetch failed. Remaining in offline state.')
+          return
+        }
+
+        const activeId = localStorage.getItem('atoll_active_instance_id')
+        const newId = metadata.instance_id
+
+        if (activeId && activeId !== newId) {
+          console.error('[app-root] INSTANCE ID MISMATCH DETECTED ON RECONNECTION!', { activeId, newId })
+          console.log('[app-root] Server was wiped/rebuilt while offline. Cleaning up local state.')
+
+          // 1. Sever database connection
+          if (window.$localDb) {
+            try {
+              await window.$localDb.close()
+              console.log('[app-root] Local database closed.')
+            } catch (err) {
+              console.error('[app-root] Error closing local database:', err)
+            }
+          }
+
+          // 2. Trigger Garbage Collection to delete current database and other orphans
+          try {
+            if (typeof indexedDB !== 'undefined') {
+              indexedDB.deleteDatabase('atoll_data_' + activeId)
+              console.log('[app-root] Deleted mismatched database:', 'atoll_data_' + activeId)
+            }
+          } catch (err) {
+            console.error('[app-root] Error deleting mismatched database:', err)
+          }
+
+          // Run general GC to be thorough
+          await runGarbageCollection(newId)
+
+          // 3. Purge user session tokens
+          pb.authStore.clear()
+          localStorage.removeItem('device_trust_token')
+          localStorage.removeItem('atoll_active_instance_id')
+          console.log('[app-root] Session tokens and credentials purged.')
+
+          // 4. Force hard reload to push user back to clean login screen
+          window.location.reload()
+          return
+        }
+
+        // IDs match: hide Offline Mode and resume
+        $state.isOnline = true
+        console.log('[app-root] Reconnection verification successful. Instance ID matches.')
+      }
+
       // Network status listener
       $bus.on('app:network_change', (payload) => {
         console.log('[app-root] Network status changed:', payload)
-        $state.isOnline = payload.isOnline
+        if (payload.isOnline) {
+          handleReconnectionHandshake().catch(console.error)
+        } else {
+          $state.isOnline = false
+        }
+      })
+
+      window.addEventListener('online', () => {
+        handleReconnectionHandshake().catch(console.error)
       })
 
       // Auth lifecycle management
@@ -504,33 +533,48 @@
         updateUI()
       })
 
-      /* Boot workspaces context before standard authentication evaluations */
-      const initWorkspacesBoot = async () => {
-        if (isIslandsEnabled) {
-          const workspaces = pb.authStore.workspaces || []
-          const activeId = pb.authStore.activeWorkspaceId
+      // The dynamic frontend boot handshake
+      const startBootHandshake = async () => {
+        const metadata = await fetchServerMetadata()
+        let instanceId = null
 
-          if (activeId) {
-            const active = workspaces.find(w => w.id === activeId)
-            pb.baseUrl = active ? active.url : ''
-
-            /* Initialize namespaced IndexedDB and worker context */
-            await $storage.initialize('AtollChatDB_' + activeId)
-            await $worker.execute('worker:set_workspace_context', {
-              workspaceId: activeId,
-              baseUrl: pb.baseUrl
-            })
-
-            $state.activeIslandId = activeId
-            $state.islands = workspaces
-          } else {
-            await tryAutoOnboardDeepLink()
-          }
+        if (metadata) {
+          instanceId = metadata.instance_id
+          localStorage.setItem('atoll_active_instance_id', instanceId)
+          $state.isOnline = true
+        } else {
+          // Fallback to cached instance_id
+          instanceId = localStorage.getItem('atoll_active_instance_id')
+          $state.isOnline = false
         }
-      }
 
-      /* Initialize boot workspaces context before standard authentication evaluations */
-      initWorkspacesBoot().then(() => {
+        if (!instanceId) {
+          // Cold boot offline with no server contact ever - Block access entirely!
+          console.error('[app-root] Cold boot offline: No cached instance_id available. Blocking access.')
+          $state.isOfflineSetup = true
+          updateUI()
+          return
+        }
+
+        $state.isOfflineSetup = false
+        $state.activeInstanceId = instanceId
+
+        const dbName = 'atoll_data_' + instanceId
+        console.log('[app-root] Initializing dynamic local database:', dbName)
+        await $storage.initialize(dbName)
+
+        // Asynchronously register work context for the worker
+        await $worker.execute('worker:set_workspace_context', {
+          workspaceId: instanceId,
+          baseUrl: pb.baseUrl
+        })
+
+        // Asynchronously run Garbage Collection in background
+        runGarbageCollection(instanceId).catch(err => {
+          console.warn('[app-root] Garbage collection failed:', err)
+        })
+
+        // Continue normal boot
         $state.isAuthenticated = pb.authStore.isValid
         if ($state.isAuthenticated) {
           $state.currentUser = pb.authStore.model
@@ -557,8 +601,11 @@
           await checkDeviceTrust()
           updateUI()
         })
-      }).catch((err) => {
-        console.error('[app-root] Workspaces boot failed:', err)
+      }
+
+      /* Initialize boot handshake */
+      startBootHandshake().catch((err) => {
+        console.error('[app-root] Boot handshake failed:', err)
       })
 
       $state.subscribe('isAuthenticated', async () => {
@@ -574,7 +621,6 @@
         processPendingInvite().catch(console.error)
       })
       $state.subscribe('authView', updateUI)
-      $state.subscribe('isOnboardingIsland', updateUI)
 
       $state.subscribe('isOnline', (val) => {
         if (val) {

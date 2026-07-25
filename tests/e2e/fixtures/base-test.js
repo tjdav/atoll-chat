@@ -348,7 +348,7 @@ export const test = base.extend({
 
   loginCustomPage: async ({ baseURL }, use, testInfo) => {
     const testId = testInfo.testId
-    const doLogin = async (targetPage, username, appPassword, vaultPassword) => {
+    const doLogin = async (targetPage, username, appPassword, vaultPassword, path = '/') => {
       /* Mock sw.js to prevent background takeover, caching, and unexpected reloads in E2E tests */
       await targetPage.context().route(url => url.href.endsWith('/sw.js'), async (route) => {
         await route.fulfill({
@@ -399,7 +399,8 @@ export const test = base.extend({
       })
 
       /* Use the global baseURL if available */
-      await targetPage.goto(baseURL || '/')
+      const targetUrl = baseURL ? new URL(path, baseURL).toString() : path
+      await targetPage.goto(targetUrl)
 
       /* Wait for Coralite to be ready on this specific page */
       await targetPage.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle && window.__coralite__.lifecycle.hydrated)

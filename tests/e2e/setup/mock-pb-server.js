@@ -784,6 +784,35 @@ export function createServer () {
         return
       }
 
+      // Server metadata collection override for E2E tests
+      if (pathname.startsWith('/api/collections/server_metadata/records')) {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        const mockRecord = {
+          id: 'mock_metadata_singleton_id',
+          collectionId: 'server_metadata',
+          collectionName: 'server_metadata',
+          created: '2025-01-01T00:00:00.000Z',
+          updated: '2025-01-01T00:00:00.000Z',
+          instance_id: 'mock_test_instance_123',
+          app_name: 'Atoll Chat',
+          app_url: 'http://localhost:3000'
+        }
+        if (pathname === '/api/collections/server_metadata/records') {
+          // List request
+          res.end(JSON.stringify({
+            page: 1,
+            perPage: 100,
+            totalItems: 1,
+            totalPages: 1,
+            items: [mockRecord]
+          }))
+        } else {
+          // Single record view request
+          res.end(JSON.stringify(mockRecord))
+        }
+        return
+      }
+
       // File download
       const fileRouteMatch = pathname.match(/^\/api\/files\/([^/]+)\/([^/]+)\/([^/]+)/)
       if (fileRouteMatch) {

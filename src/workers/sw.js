@@ -68,9 +68,21 @@ addEventListener('activate', onActivate)
  * Opens connection to IndexedDB.
  * @returns {Promise<any>} Opened DB instance.
  */
-function openDB () {
+async function openDB () {
+  let dbName = 'AtollChatDB' // fallback
+  if (typeof indexedDB !== 'undefined' && typeof indexedDB.databases === 'function') {
+    try {
+      const dbs = await indexedDB.databases()
+      const atollDb = dbs.find(d => d.name && d.name.startsWith('atoll_data_'));
+      if (atollDb) {
+        dbName = atollDb.name
+      }
+    } catch (e) {
+      console.warn('[SW] failed to enumerate databases', e)
+    }
+  }
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('AtollChatDB')
+    const request = indexedDB.open(dbName)
     request.onerror = () => reject(request.error)
     request.onsuccess = () => resolve(request.result)
   })
