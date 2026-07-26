@@ -1,20 +1,23 @@
-# Atoll Chat Color System & Theme Architecture
+# Atoll Chat Color, Layout, & Gutter System Architecture
 
-This document establishes the foundational modular color system for Atoll Chat. Built on the structural principles of high-scale messenger design systems, all variables, CSS custom properties, and theme attributes have been re-engineered to map seamlessly into native Bootstrap 5.3+ variables under a custom namespace prefix.
+This document establishes the foundational modular design systems for Atoll Chat. It governs the visual rhythm, color foundations, screen margins, responsive column gutters, touch target dimensions, and dynamic viewport safe areas across all supported platforms (Web, Capacitor iOS/Android). All design variables map seamlessly into native Bootstrap 5.3+ variables under a custom namespace prefix.
 
 ---
 
 ## 1. Modular Directory Structure
 
-The theme and color system reside in a dedicated, modular directory under `src/scss/theme/` to ensure modularity, separation of concerns, and clean maintenance:
+The design system assets reside under `src/scss/theme/` to ensure modularity, separation of concerns, and clean maintenance:
 
 ```text
 src/scss/
 ├── theme/
-│   ├── _variables-primitives.scss  # Brand base primitives & 20-step neutral scale
+│   ├── _variables-primitives.scss  # Brand base primitives, 20-step neutral scale, and $spacers
 │   ├── _variables-rainbow.scss     # Rainbow scale map & core Bootstrap overrides
+│   ├── _variables-layout.scss      # Responsive breakpoints, container widths, and grid columns
+│   ├── _theme-layout-insets.scss   # Viewport safe area variables and composite dimension rules
 │   ├── _mixins-states.scss         # Interactive component state functions/mixins
-│   └── _theme-semantic.scss        # Semantic CSS variables for light/dark modes
+│   ├── _theme-semantic.scss        # Semantic CSS variables for light/dark modes
+│   └── _layout.scss                # Consolidated dual-pane split, touch targets, and responsive overrides
 └── styles.scss                     # Main entry stylesheet orchestrating cascading imports
 ```
 
@@ -22,7 +25,7 @@ src/scss/
 
 ## 2. Strict Cascade Import Order
 
-In `src/scss/styles.scss`, the import cascade is ordered intentionally so that Bootstrap consumes all primitive overrides and the custom prefix configuration *prior* to generating utility maps and classes:
+In `src/scss/styles.scss`, the import cascade is ordered intentionally so that Bootstrap consumes all primitive, layout, and override variables *prior* to generating utility maps and classes, and sets up semantic states and layouts in sequence:
 
 ```scss
 // 1. Primitive Tokens & Custom Prefix Configuration
@@ -31,10 +34,13 @@ In `src/scss/styles.scss`, the import cascade is ordered intentionally so that B
 // 2. Rainbow & Bootstrap Variable Overrides ($primary, $theme-colors, etc.)
 @import "theme/variables-rainbow";
 
-// 3. Main Project Custom Layout variables
+// 3. Responsive Breakpoints & Layout overrides
+@import "theme/variables-layout";
+
+// 4. Main Project Custom overrides
 @import "./variables";
 
-// 4. Bootstrap Core Functions, Mixins & Variables
+// 5. Bootstrap Core Functions, Mixins & Variables
 @import "bootstrap-icons/font/bootstrap-icons.scss";
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
@@ -45,20 +51,23 @@ In `src/scss/styles.scss`, the import cascade is ordered intentionally so that B
 
 // [Project Utility Map-Merges]
 
-// 5. Native Bootstrap CSS Generation Imports
+// 6. Native Bootstrap CSS Generation Imports
 @import "bootstrap/scss/root";
 @import "bootstrap/scss/reboot";
 // ... Other Bootstrap component modules ...
 
-// 6. Interactive Component State Mixins & Functions
+// 7. Interactive Component State Mixins & Functions
 @import "theme/mixins-states";
 
-// 7. Light/Dark Semantic Token Matrix
+// 8. Light/Dark Semantic Token Matrix
 @import "theme/theme-semantic";
 
-// 8. Application Layouts & Component styles
-@import "display";
-@import "layout";
+// 9. Viewport Safe Area Layout Insets
+@import "theme/theme-layout-insets";
+
+// 10. Unified & Responsive Layout
+@import "theme/layout";
+
 // ... Other component stylesheet partials ...
 ```
 
@@ -174,3 +183,174 @@ The state SASS function is configured in `_mixins-states.scss`:
 ```
 
 Components requiring standard, accessible buttons make use of `.btn-atoll-primary` styling utilizing `color-mix` transformations to resolve dynamic state shifts.
+
+---
+
+## 7. Spatial Grid System (4px / 8px Base Grid)
+
+Atoll Chat enforces a dual-density spatial grid system to ensure visual rhythm, predictable element alignment, and high touch accuracy.
+
+```
+Spatial Scale Concept (Base Unit = 8px, Micro Increment = 4px)
+
+ [0px]  [4px]   [8px]    [12px]   [16px]    [24px]    [32px]    [48px]    [64px]
+   │      │       │        │         │         │         │         │         │
+   └──0───┴──1────┴──2─────┴──3──────┴──4──────┴──5──────┴──6──────┴──7──────┴──8──►
+        Micro    Base    Micro-   Standard  Section   Container Component Structural
+        Offset  Padding   Gap     Margin    Padding    Margin    Header    Banner
+```
+
+* **Micro-Grid (4px increments):** Used for fine-grained internal component padding, inline icon-to-text spacing, status badge offsets, and dense chat bubble metadata.
+* **Macro-Grid (8px increments):** Used for external layout margins, card container padding, section spacing, and vertical list rhythm.
+
+### Bootstrap `$spacers` Map Override
+
+We expand Bootstrap’s default numeric spacing utility scale (`p-1`, `mb-3`, etc.) directly inside `src/scss/theme/_variables-primitives.scss`:
+
+```scss
+$spacer: 1rem; // 16px base
+
+$spacers: (
+  0: 0,
+  1: 0.25rem, //  4px (Micro Offset)
+  2: 0.5rem,  //  8px (Base Spatial Unit)
+  3: 0.75rem, // 12px (Micro Gap)
+  4: 1rem,    // 16px (Standard Layout Margin)
+  5: 1.5rem,  // 24px (Container Padding)
+  6: 2rem,    // 32px (Section Gap)
+  7: 3rem,    // 48px (Control Bar Height)
+  8: 4rem     // 64px (Desktop Header Height)
+);
+```
+
+---
+
+## 8. Responsive Breakpoints & Multi-Column Grid
+
+Atoll Chat adapts fluidly from single-column mobile views to multi-pane desktop layouts.
+
+| Breakpoint Tier | Target Screen Range | Active Columns | Outer Margin ($M_x$) | Column Gutter ($G_x$) | Primary UX Pattern |
+| --- | --- | --- | --- | --- | --- |
+| **`xs` (Mobile Portrait)** | **< 576px** | **4** | **16px** | **12px** | Single Column (Full Screen Feed / Chat Swap) |
+| **`sm` (Mobile Landscape)** | **576px – 767px** | **4** | **16px** | **16px** | Single Column with Collapsible Sidebar Overlay |
+| **`md` (Tablet Portrait)** | **768px – 991px** | **8** | **24px** | **16px** | Master-Detail Split (30% Nav / 70% Active Chat) |
+| **`lg` (Desktop / Tablet LS)** | **992px – 1199px** | **12** | **32px** | **24px** | Master-Detail Split (320px List / Fluid Chat) |
+| **`xl` (Large Desktop)** | **1200px – 1399px** | **12** | **32px** | **24px** | 3-Pane Layout (List / Active Chat / User Info) |
+| **`xxl` (Ultra-Wide)** | **≥ 1400px** | **12** | **Auto (Max 1400px)** | **24px** | 3-Pane Layout with Fixed Max-Width Container |
+
+These values are configured inside `src/scss/theme/_variables-layout.scss`:
+
+```scss
+$grid-breakpoints: (
+  xs: 0,
+  sm: 576px,
+  md: 768px,
+  lg: 992px,
+  xl: 1200px,
+  xxl: 1400px
+);
+
+$container-max-widths: (
+  sm: 540px,
+  md: 720px,
+  lg: 960px,
+  xl: 1140px,
+  xxl: 1320px
+);
+
+$grid-columns: 12;
+$grid-gutter-width: 1.5rem; // Default 24px
+```
+
+---
+
+## 9. Gutter & Outer Margin Architecture
+
+Horizontal rhythm ensures that messaging feeds, media grids, and settings panels remain legible regardless of display width.
+
+```
+Layout Layout Anatomy (Mobile vs. Desktop)
+
+  Mobile View (<576px)                  Desktop Master-Detail View (≥992px)
+  ┌─────────────────────────┐           ┌──────────────┬─────────────────────────┐
+  ││ Mx │ Content │ Mx ││           ││ Mx │ List │Gx│ Active Chat    │ Mx ││
+  ││16px│ Area    │16px││           ││32px│320px │24│ Fluid           │32px││
+  ││    │         │    ││           ││    │      │px│                 │    ││
+  └─────────────────────────┘           └──────────────┴─────────────────────────┘
+```
+
+### 1. Edge-to-Edge List Items
+List containers (e.g., direct message feeds, chat room lists) extend to **0px** outer margins to allow full-width press/hover states across the device screen. Internal text and avatars apply the horizontal margin ($M_x$) internally:
+* **Mobile List Item Padding:** `padding-left: 16px; padding-right: 16px;`
+* **Desktop List Item Padding:** `padding-left: 20px; padding-right: 20px;`
+
+### 2. Chat Feed Bubble Gutters
+Message bubbles sit within a padded stream container to prevent text from clinging to display bezels:
+* **Mobile Message Stream Side Margin:** **12px** from screen edges.
+* **Desktop Message Stream Side Margin:** **24px** from pane borders.
+* **Max Bubble Width:** **75%** of active chat pane width on mobile; **65%** on desktop.
+
+---
+
+## 10. Vertical Rhythm & Structural Dimensions
+
+Consistent height constraints prevent layout shifting during real-time data streaming and keyboard toggles.
+
+### Fixed Height Tokens
+
+| Structural Component | Height Token | CSS Custom Property | Usage Rule |
+| --- | --- | --- | --- |
+| **Mobile Header / App Bar** | **56px** | `--atoll-header-height-mobile` | Fixed top bar on iOS/Android WebViews |
+| **Desktop Header / App Bar** | **64px** | `--atoll-header-height-desktop` | Fixed top navigation bar on desktop |
+| **Chat Room List Item** | **72px** | `--atoll-list-item-height-lg` | Contains 48px avatar, title, subtitle, timestamp badge |
+| **Settings / Menu Item** | **56px** | `--atoll-list-item-height-md` | Standard option list row |
+| **Compact List Item** | **48px** | `--atoll-list-item-height-sm` | Member selection lists, file list previews |
+| **Bottom Chat Input Bar** | **56px (Min)** | `--atoll-input-bar-height` | Auto-expanding textarea with minimum 56px baseline |
+| **Accessible Touch Target** | **44px x 44px** | `--atoll-touch-target-min` | Minimum clickable area for all icons and buttons |
+
+---
+
+## 11. Viewport Safe Areas (Capacitor Mobile & Notch Handling)
+
+To prevent mobile OS overlays (iOS Home Indicator, Android Navigation Bar, Display Notches) from obscuring messaging UI elements, Atoll Chat integrates CSS `env(safe-area-inset-*)` variables directly into layout calculation rules inside `src/scss/theme/_theme-layout-insets.scss`:
+
+```scss
+:root {
+  /* Safe Area Defaults (Fallback for Standard Desktop Web Browsers) */
+  --atoll-safe-area-top: env(safe-area-inset-top, 0px);
+  --atoll-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --atoll-safe-area-left: env(safe-area-inset-left, 0px);
+  --atoll-safe-area-right: env(safe-area-inset-right, 0px);
+
+  /* Calculated Composite Dimensions */
+  --atoll-header-height: 56px;
+  --atoll-total-header-height: calc(var(--atoll-header-height) + var(--atoll-safe-area-top));
+  --atoll-total-bottom-bar-height: calc(56px + var(--atoll-safe-area-bottom));
+}
+
+@media (min-width: 992px) {
+  :root {
+    --atoll-header-height: 64px;
+  }
+}
+```
+
+### Layout Utility Classes for Mobile Insets
+
+These classes are available globally to adjust scroll pads and top/bottom offsets cleanly:
+
+* **`.atoll-header-fixed`**: Fixed top app bar container with notch padding-top.
+* **`.atoll-content-has-header`**: Scrollable body content padded below the fixed header.
+* **`.atoll-footer-fixed`**: Fixed bottom input / toolbar container with safe home-indicator padding-bottom.
+* **`.atoll-chat-feed-scroll`**: Scrollable message feed padded above the fixed bottom input bar.
+
+---
+
+## 12. Layout Integration Classes
+
+The foundational layout and split-pane structural system is written inside `src/scss/theme/_layout.scss` to finalize the spatial system configuration.
+
+* **`.atoll-main-layout`**: The master full-viewport flex container with dynamic viewport height support (`100dvh`).
+* **`.atoll-sidebar-pane`**: Responsive master split-pane pane supporting offcanvas modes, sized at `100%` on mobile and tablet, `320px` on desktop, and `360px` on large desktop.
+* **`.atoll-chat-pane`**: Responsive fluid messaging and chat detail pane, automatically hidden on mobile viewports when inactive.
+* **`.atoll-touch-target`**: Accessible touch target enforcer which natively overrides min-width and min-height to comply with the $44\text{px} \times 44\text{px}$ minimum size standard.
