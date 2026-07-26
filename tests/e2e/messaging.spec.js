@@ -270,7 +270,7 @@ test.describe('Messaging Features', () => {
       // Wait for room to appear in list
       await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible({ timeout: 15000 })
 
-      await page.locator('list-pane [data-testid$="searchInput"]').fill('Project')
+      await page.locator('list-pane [data-testid$="searchInput"]').locator('input[type="search"]').fill('Project')
       await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible()
 
       // Debounce sound
@@ -404,6 +404,41 @@ test.describe('Messaging Features', () => {
       // Verify the message is successfully flushed, sent to the server, and updated from "pending" to "sent" (no opacity-75 class, showing check icon)
       await expect(lastRow).not.toHaveClass(/opacity-75/, { timeout: 15000 })
       await expect(statusIcon).toHaveClass(/bi-check/, { timeout: 15000 })
+    })
+  })
+
+  test.describe('Foreground Sync Concurrency', () => {
+    test('should reuse ongoing catch-up synchronization promise on multiple concurrent foreground events', async ({ page, loginApp }) => {
+      test.slow()
+
+      const consoleLogs = []
+      page.on('console', msg => {
+        consoleLogs.push(msg.text())
+      })
+
+      await loginApp('alice', 'Password123!', 'VaultPassword123!')
+
+      // Ensure initial sync is fully complete
+      await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp, { timeout: 30000 })
+
+      // Trigger app:foreground multiple times in rapid succession
+      await page.evaluate(() => {
+        window.$bus.emit('app:foreground')
+        window.$bus.emit('app:foreground')
+        window.$bus.emit('app:foreground')
+      })
+
+      // Wait a moment for async execution
+      await page.waitForTimeout(2000)
+
+      // Ensure that our concurrency guard message was printed in console
+      const reuseLogs = consoleLogs.filter(log => log.includes('[sync-plugin] Catch-up synchronization already in progress. Reusing existing promise.'))
+      expect(reuseLogs.length).toBeGreaterThanOrEqual(1)
+
+      // Ensure catch-up is done and no errors were thrown
+      await page.waitForFunction(() => !window.$state.isCatchingUp, { timeout: 15000 })
+      const errorLogs = consoleLogs.filter(log => log.includes('Foreground sync catch-up failed') || log.includes('Critical failure during historical catch-up'))
+      expect(errorLogs.length).toBe(0)
     })
   })
 })

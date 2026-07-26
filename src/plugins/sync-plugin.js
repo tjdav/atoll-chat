@@ -20,10 +20,13 @@ export default function syncPlugin () {
           const { pb } = instanceContext.pocketbase
           const { $worker } = instanceContext.cryptoWorker
 
+          let catchUpPromise = null
+
           // Reset subscription state on logout to allow re-syncing on next login
           if (pluginContext.$bus) {
             pluginContext.$bus.on('auth:logout', () => {
               isSubscribed = false
+              catchUpPromise = null
               console.log('[sync-plugin] Resetting subscription state and force disconnecting due to logout.')
               try {
                 pb.realtime.disconnect()
@@ -48,65 +51,75 @@ export default function syncPlugin () {
           const performCatchUpSync = async () => {
             const { $state } = instanceContext.globalStore
 
+            if ($state.isCatchingUp && catchUpPromise) {
+              console.info('[sync-plugin] Catch-up synchronization already in progress. Reusing existing promise.')
+              return catchUpPromise
+            }
+
             $state.isCatchingUp = true
 
-            /* Determine high-water marks using the storage plugin gateway.
-               We fetch the latest global message and the latest global room. */
-            const lastMsgFromStorage = await $storage.getLatestGlobalMessage()
-            const lastRoomFromStorage = await $storage.getLatestGlobalRoom()
+            catchUpPromise = (async () => {
+              const lastMsgFromStorage = await $storage.getLatestGlobalMessage()
+              const lastRoomFromStorage = await $storage.getLatestGlobalRoom()
 
-            const defaultDate = '2000-01-01 00:00:00.000Z'
-            const lastMsgSyncTime = lastMsgFromStorage?.created_at
-              ? new Date(lastMsgFromStorage.created_at).toISOString().replace('T', ' ')
-              : defaultDate
-            const lastRoomSyncTime = lastRoomFromStorage?.updated_at
-              ? new Date(lastRoomFromStorage.updated_at).toISOString().replace('T', ' ')
-              : defaultDate
+              const defaultDate = '2000-01-01 00:00:00.000Z'
+              const lastMsgSyncTime = lastMsgFromStorage?.created_at
+                ? new Date(lastMsgFromStorage.created_at).toISOString().replace('T', ' ')
+                : defaultDate
+              const lastRoomSyncTime = lastRoomFromStorage?.updated_at
+                ? new Date(lastRoomFromStorage.updated_at).toISOString().replace('T', ' ')
+                : defaultDate
+
+              try {
+                // fetch missed room keys first
+                const missedKeys = await pb.collection('room_members').getFullList({
+                  filter: `user_id = "${pb.authStore.model.id}" && updated > "${lastRoomSyncTime}"`,
+                  sort: 'updated'
+                })
+
+                // Process room keys in parallel for maximum speed
+                const keyResults = await Promise.allSettled(missedKeys.map(record => $worker.execute('worker:process_new_room_key', record)))
+                keyResults.forEach((res, idx) => {
+                  if (res.status === 'rejected') {
+                    console.warn(`[sync-plugin] Failed to process room key for record ${missedKeys[idx]?.id}:`, res.reason)
+                  }
+                })
+
+                // Fetch missed messages SECOND
+                const missedMessages = await pb.collection('messages').getFullList({
+                  filter: `created > "${lastMsgSyncTime}"`,
+                  sort: 'created'
+                })
+
+                // Process messages in parallel for maximum speed
+                const msgResults = await Promise.allSettled(missedMessages.map(record => $worker.execute('worker:process_incoming_message', record)))
+                msgResults.forEach((res, idx) => {
+                  if (res.status === 'rejected') {
+                    console.warn(`[sync-plugin] Failed to process incoming message ${missedMessages[idx]?.id}:`, res.reason)
+                  }
+                })
+
+                // Notify UI that catch-up is done
+                if (pluginContext.$bus) {
+                  /** @type {CustomWindow & typeof globalThis} */
+                  const win = window
+                  win.__sync_complete__ = true
+                  pluginContext.$bus.emit('sync:complete')
+                }
+
+                console.log('Historical catch-up synchronization complete.')
+              } catch (err) {
+                console.error('Critical failure during historical catch-up:', err)
+                // Rethrow all errors to halt the sync process as requested
+                throw err
+              }
+            })()
 
             try {
-              // fetch missed room keys first
-              const missedKeys = await pb.collection('room_members').getFullList({
-                filter: `user_id = "${pb.authStore.model.id}" && updated > "${lastRoomSyncTime}"`,
-                sort: 'updated'
-              })
-
-              // Process room keys in parallel for maximum speed
-              const keyResults = await Promise.allSettled(missedKeys.map(record => $worker.execute('worker:process_new_room_key', record)))
-              keyResults.forEach((res, idx) => {
-                if (res.status === 'rejected') {
-                  console.warn(`[sync-plugin] Failed to process room key for record ${missedKeys[idx]?.id}:`, res.reason)
-                }
-              })
-
-              // Fetch missed messages SECOND
-              const missedMessages = await pb.collection('messages').getFullList({
-                filter: `created > "${lastMsgSyncTime}"`,
-                sort: 'created'
-              })
-
-              // Process messages in parallel for maximum speed
-              const msgResults = await Promise.allSettled(missedMessages.map(record => $worker.execute('worker:process_incoming_message', record)))
-              msgResults.forEach((res, idx) => {
-                if (res.status === 'rejected') {
-                  console.warn(`[sync-plugin] Failed to process incoming message ${missedMessages[idx]?.id}:`, res.reason)
-                }
-              })
-
-              // Notify UI that catch-up is done
-              if (pluginContext.$bus) {
-                /** @type {CustomWindow & typeof globalThis} */
-                const win = window
-                win.__sync_complete__ = true
-                pluginContext.$bus.emit('sync:complete')
-              }
-
-              console.log('Historical catch-up synchronization complete.')
-            } catch (err) {
-              console.error('Critical failure during historical catch-up:', err)
-              // Rethrow all errors to halt the sync process as requested
-              throw err
+              await catchUpPromise
             } finally {
               $state.isCatchingUp = false
+              catchUpPromise = null
             }
           }
 
