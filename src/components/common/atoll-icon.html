@@ -3,76 +3,90 @@
 </template>
 
 <script type="module">
-  import { defineComponent } from 'coralite';
+  import { defineComponent } from 'coralite'
 
-  export default defineComponent({
+export default defineComponent({
     attributes: {
       name: String,
-      size: { type: String, default: '24' },
-      color: { type: String, default: '' },
-      secondaryColor: { type: String, default: '' },
-      ariaLabel: { type: String, default: '' }
+      size: {
+        type: String,
+        default: '24'
+      },
+      color: {
+        type: String,
+        default: ''
+      },
+      secondaryColor: {
+        type: String,
+        default: ''
+      },
+      ariaLabel: {
+        type: String,
+        default: ''
+      }
     },
 
     getters: {
       sizePx: (state) => {
-        const sz = state.size;
-        return isNaN(sz) ? `var(--atoll-icon-size-${sz}, 24px)` : `${sz}px`;
+        const sz = state.size
+        return isNaN(sz) ? `var(--atoll-icon-size-${sz}, 24px)` : `${sz}px`
       }
     },
 
     client: async ({ state, refs, root, observe }) => {
       // Add the host class for iconography layout & rules
-      root.classList.add('atoll-icon');
+      root.classList.add('atoll-icon')
 
       // Dynamic import inside client block
-      const { getIconSvg } = await import('../../utils/icon-registry.js');
+      const { getIconSvg } = await import('../../utils/icon-registry.js')
 
       const render = () => {
-        const wrapper = refs('iconWrapper');
-        if (!wrapper) return;
+        const wrapper = refs('iconWrapper')
+        if (!wrapper) {
+          return
+        }
 
-        // 1. Inject SVG Content
-        const svgContent = getIconSvg(state.name);
-        wrapper.innerHTML = svgContent || '';
+        // Inject SVG Content
+        const svgContent = getIconSvg(state.name)
+        wrapper.innerHTML = svgContent || ''
 
-        // 2. Set Custom Sizing & Color Properties
+        // Set Custom Sizing & Color Properties
         if (state.sizePx) {
-          root.style.setProperty('--atoll-icon-size', state.sizePx);
+          root.style.setProperty('--atoll-icon-size', state.sizePx)
         }
 
         if (state.color) {
-          root.style.setProperty('--atoll-icon-primary-color', state.color);
+          root.style.setProperty('--atoll-icon-primary-color', state.color)
         } else {
-          root.style.removeProperty('--atoll-icon-primary-color');
+          root.style.removeProperty('--atoll-icon-primary-color')
         }
 
         if (state.secondaryColor) {
-          root.style.setProperty('--atoll-icon-secondary-color', state.secondaryColor);
+          root.style.setProperty('--atoll-icon-secondary-color', state.secondaryColor)
         } else {
-          root.style.removeProperty('--atoll-icon-secondary-color');
+          root.style.removeProperty('--atoll-icon-secondary-color')
         }
 
-        // 3. Accessibility Handling
+        // Accessibility Handling
         if (state.ariaLabel) {
-          root.setAttribute('role', 'img');
-          root.setAttribute('aria-label', state.ariaLabel);
-          root.removeAttribute('aria-hidden');
+          root.setAttribute('role', 'img')
+          root.setAttribute('aria-label', state.ariaLabel)
+          root.removeAttribute('aria-hidden')
         } else {
-          root.setAttribute('aria-hidden', 'true');
-          root.removeAttribute('role');
-          root.removeAttribute('aria-label');
+          root.setAttribute('aria-hidden', 'true')
+          root.removeAttribute('role')
+          root.removeAttribute('aria-label')
         }
-      };
+      }
 
       // Re-render automatically on attribute mutations
-      observe('name', render);
-      observe('size', render);
-      observe('color', render);
-      observe('secondaryColor', render);
-      observe('ariaLabel', render);
+      observe('name', render)
+      observe('size', render)
+      observe('color', render)
+      observe('secondaryColor', render)
+      observe('ariaLabel', render)
 
-      render();
-    }
-  });
+      render()
+  }
+  })
 </script>

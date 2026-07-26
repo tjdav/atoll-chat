@@ -1,0 +1,124 @@
+<template id="atoll-badge">
+  <span ref="badgeWrapper" class="atoll-badge {{ badgeClasses }}" hidden="{{ isHidden }}">
+    {{ displayText }}
+  </span>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      count: {
+        type: Number,
+        default: null
+      },
+      maxCount: {
+        type: Number,
+        default: 99
+      },
+      dot: Boolean,
+      variant: {
+        type: String,
+        default: 'danger'
+      },
+      size: {
+        type: String,
+        default: 'md'
+      },
+      label: {
+        type: String,
+        default: ''
+      },
+      showZero: Boolean
+    },
+
+    getters: {
+      badgeClasses: (state) => {
+        const classes = []
+
+        // Variant modifier
+        if (state.variant) {
+          classes.push(`atoll-badge-${state.variant}`)
+        } else {
+          classes.push('atoll-badge-danger')
+        }
+
+        // Size / Dot modifier
+        if (state.dot) {
+          classes.push('atoll-badge-dot')
+        } else if (state.size) {
+          classes.push(`atoll-badge-${state.size}`)
+        } else {
+          classes.push('atoll-badge-md')
+        }
+
+        return classes.join(' ')
+      },
+
+      isHidden: (state) => {
+        if (state.dot) {
+          return false
+        }
+        if (state.label && state.label.trim() !== '') {
+          return false
+        }
+        if (state.count === null || state.count === undefined) {
+          return true
+        }
+        if (state.count === 0 && !state.showZero) {
+          return true
+        }
+        return false
+      },
+
+      displayText: (state) => {
+        if (state.dot) {
+          return ''
+        }
+        if (state.label && state.label.trim() !== '') {
+          return state.label
+        }
+        if (state.count === null || state.count === undefined) {
+          return ''
+        }
+        if (state.count > state.maxCount) {
+          return `${state.maxCount}+`
+        }
+        return String(state.count)
+      }
+    },
+
+    client: ({ state, root, observe }) => {
+      const updateAccessibility = () => {
+        if (state.isHidden) {
+          root.setAttribute('hidden', '')
+          root.setAttribute('aria-hidden', 'true')
+        } else {
+          root.removeAttribute('hidden')
+          root.removeAttribute('aria-hidden')
+          root.setAttribute('role', 'status')
+
+          let accessibleText = ''
+          if (state.dot) {
+            accessibleText = 'New notification'
+          } else if (state.label) {
+            accessibleText = state.label
+          } else if (state.count !== null) {
+            accessibleText = `${state.displayText} unread messages`
+          }
+          root.setAttribute('aria-label', accessibleText)
+        }
+      }
+
+      // Observe attribute changes to update host visibility and accessibility
+      observe('count', updateAccessibility)
+      observe('maxCount', updateAccessibility)
+      observe('dot', updateAccessibility)
+      observe('label', updateAccessibility)
+      observe('showZero', updateAccessibility)
+
+      updateAccessibility()
+    }
+  })
+</script>

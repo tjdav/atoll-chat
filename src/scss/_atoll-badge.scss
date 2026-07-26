@@ -1,0 +1,113 @@
+:root {
+  /* Badge Sizing Custom Properties */
+  --#{$prefix}badge-dot-size: 8px;
+  --#{$prefix}badge-height-sm: 16px;
+  --#{$prefix}badge-height-md: 20px;
+  --#{$prefix}badge-height-lg: 24px;
+
+  /* Default Colors */
+  --#{$prefix}badge-bg: var(--#{$prefix}rainbow-red, #FF334B);
+  --#{$prefix}badge-color: #FFFFFF;
+}
+
+/* Base Component Styling (placed on the span element inside the component) */
+.atoll-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  border-radius: 9999px; // Pill shape
+  font-family: var(--#{$prefix}font-sans-serif);
+  white-space: nowrap;
+  user-select: none;
+  box-sizing: border-box;
+  background-color: var(--#{$prefix}badge-bg);
+  color: var(--#{$prefix}badge-color);
+  line-height: 1;
+
+  /* Prevent background-color or border-radius override from bg-primary/rounded-circle utilities on host/element */
+  &.bg-primary {
+    background-color: transparent !important;
+  }
+  &.rounded-circle {
+    border-radius: 0 !important;
+  }
+
+  &[hidden] {
+    display: none !important;
+    opacity: 0 !important;
+    transform: scale(0.6) !important;
+    pointer-events: none !important;
+  }
+
+  /* Subtle entry/exit scale transition */
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease-in-out;
+}
+
+/* Badge Color Variant Modifiers */
+.atoll-badge-danger {
+  --#{$prefix}badge-bg: var(--#{$prefix}rainbow-red, #FF334B);
+  --#{$prefix}badge-color: #FFFFFF;
+}
+
+.atoll-badge-primary {
+  --#{$prefix}badge-bg: var(--#{$prefix}brand-primary, #06C755);
+  --#{$prefix}badge-color: #FFFFFF;
+}
+
+.atoll-badge-secondary {
+  --#{$prefix}badge-bg: var(--#{$prefix}bg-surface-tertiary, #E8E8E8);
+  --#{$prefix}badge-color: var(--#{$prefix}text-secondary, #555555);
+}
+
+.atoll-badge-info {
+  --#{$prefix}badge-bg: var(--#{$prefix}rainbow-blue, #4270ED);
+  --#{$prefix}badge-color: #FFFFFF;
+}
+
+/* Badge Size Modifiers */
+.atoll-badge-dot {
+  width: var(--#{$prefix}badge-dot-size);
+  height: var(--#{$prefix}badge-dot-size);
+  min-width: var(--#{$prefix}badge-dot-size);
+  padding: 0;
+}
+
+.atoll-badge-sm {
+  height: var(--#{$prefix}badge-height-sm);
+  min-width: var(--#{$prefix}badge-height-sm);
+  padding: 0 4px;
+  font-size: var(--#{$prefix}font-size-caption-2, 10px);
+  font-weight: var(--#{$prefix}font-weight-medium, 500);
+}
+
+.atoll-badge-md {
+  height: var(--#{$prefix}badge-height-md);
+  min-width: var(--#{$prefix}badge-height-md);
+  padding: 0 6px;
+  font-size: var(--#{$prefix}font-size-caption-1, 12px);
+  font-weight: var(--#{$prefix}font-weight-semibold, 600);
+}
+
+.atoll-badge-lg {
+  height: var(--#{$prefix}badge-height-lg);
+  min-width: var(--#{$prefix}badge-height-lg);
+  padding: 0 8px;
+  font-size: var(--#{$prefix}font-size-body-2, 14px);
+  font-weight: var(--#{$prefix}font-weight-semibold, 600);
+}
+
+/* Relative Positioning Wrapper Helpers */
+.atoll-badge-container {
+  position: relative;
+  display: inline-flex;
+}
+
+.atoll-badge-positioned {
+  position: absolute;
+  top: 0;
+  right: 0;
+  transform: translate(35%, -35%);
+  z-index: 2;
+  box-shadow: 0 0 0 2px var(--#{$prefix}body-bg, #FFFFFF); // Outer ring border clip
+}

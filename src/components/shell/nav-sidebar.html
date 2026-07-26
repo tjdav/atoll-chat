@@ -2,7 +2,10 @@
   <div class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100" data-testid="navSidebar">
     <div class="nav flex-column nav-pills w-100 px-2 gap-3" hidden="{{ isSidebarMenuHidden }}">
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isChatsActive }}" ref="btnChats" title="Chats" data-testid="btnChats">
-        <img src="/logo.svg" alt="Atoll chat logo" class="img-fluid">
+        <div class="atoll-badge-container">
+          <img src="/logo.svg" alt="Atoll chat logo" class="img-fluid">
+          <atoll-badge count="{{ totalUnread }}" size="sm" class="atoll-badge-positioned" data-testid="chats-unread-badge"></atoll-badge>
+        </div>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isMusicActive }}" ref="btnMusic" title="Music" data-testid="btnMusic">
         <atoll-icon name="disk" size="24"></atoll-icon>
@@ -66,7 +69,8 @@
     server: () => ({
       currentAppView: 'chats',
       isAuthenticated: false,
-      isVaultUnlocked: false
+      isVaultUnlocked: false,
+      totalUnread: 0
     }),
     getters: {
       isChatsActive: (state) => (state.currentAppView === 'chats' ? 'active' : ''),
@@ -78,27 +82,76 @@
       isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : ''),
       isSidebarMenuHidden: (state) => !(state.isAuthenticated && state.isVaultUnlocked)
     },
-    client: async ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker, bootstrap }) => {
+    client: async ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker, bootstrap, storage }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
       const { Dropdown } = await bootstrap
+      const { $storage } = storage
 
       // Init and subscribe to states
       state.currentAppView = $state.currentAppView || 'chats'
       state.isAuthenticated = $state.isAuthenticated || false
       state.isVaultUnlocked = $state.isVaultUnlocked || false
+      state.totalUnread = 0
+
+      const calculateTotalUnread = async () => {
+        if (!state.isAuthenticated || !state.isVaultUnlocked) {
+          state.totalUnread = 0
+          return
+        }
+        try {
+          const rooms = await $storage.getAllRoomsSorted()
+          let unreadCount = 0
+          for (const room of rooms) {
+            const latestMsg = await $storage.getLatestMessage(room.id)
+            if (latestMsg) {
+              const me = room.participants?.find(p => p.id === $state.currentUser?.id)
+              const isUnread = latestMsg && (
+                me?.last_read_message_id === null ||
+                (latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id)
+              )
+              if (isUnread) {
+                unreadCount++
+              }
+            }
+          }
+          state.totalUnread = unreadCount
+        } catch (err) {
+          console.error('[nav-sidebar] Failed to calculate total unread chats:', err)
+          state.totalUnread = 0
+        }
+      }
+
+      const updateUnread = () => {
+        calculateTotalUnread().catch(console.error)
+      }
+
+      $bus.on('db:new_local_data', updateUnread)
+      $bus.on('db:new_local_room', updateUnread)
+      $bus.on('db:room_deleted', updateUnread)
+      $bus.on('room:member_updated', updateUnread)
+      $bus.on('room:read_state_changed', updateUnread)
+      $bus.on('sync:complete', updateUnread)
+      $bus.on('auth:unlocked', updateUnread)
+      $bus.on('auth:logout', updateUnread)
 
       $state.subscribe('currentAppView', (value) => state.currentAppView = value)
       $state.subscribe('isAuthenticated', (value) => {
         state.isAuthenticated = value
         updateAvatar()
+        updateUnread()
       })
       $state.subscribe('isVaultUnlocked', (value) => {
         state.isVaultUnlocked = value
         updateAvatar()
+        updateUnread()
       })
+
+      if (state.isAuthenticated && state.isVaultUnlocked) {
+        updateUnread()
+      }
 
       // Setup view navigation buttons
       const btnChats = refs('btnChats')

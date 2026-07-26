@@ -16,7 +16,7 @@
         </small>
       </div>
     </div>
-    <span class="position-absolute top-50 translate-middle-y bg-primary rounded-circle unread-dot" hidden="{{ isRead }}" data-testid="unread-dot"></span>
+    <atoll-badge count="{{ unreadCount }}" variant="primary" class="position-absolute top-50 translate-middle-y bg-primary rounded-circle unread-badge" data-testid="unread-badge"></atoll-badge>
 
     <!-- Dropdown Menu -->
     <div class="dropdown ms-2">
@@ -60,9 +60,7 @@
     margin: 0 !important;
   }
 
-  .unread-dot {
-    width: 8px;
-    height: 8px;
+  .unread-badge {
     right: 12px;
   }
 </style>
@@ -77,6 +75,10 @@
       previewText: String,
       relativeTime: String,
       isUnread: Boolean,
+      unreadCount: {
+        type: Number,
+        default: 0
+      },
       isGroup: Boolean,
       userRole: String,
       isMuted: Boolean

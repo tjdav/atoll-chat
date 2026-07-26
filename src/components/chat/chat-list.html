@@ -91,6 +91,26 @@
           me?.last_read_message_id === null ||
           (latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id)
         )
+  
+        let unreadCount = 0
+        if (isUnread) {
+          if (me?.last_read_message_id === null || me?.last_read_message_id === undefined) {
+            const msgs = await $storage.getMessagesByRoom(item.id)
+            unreadCount = msgs.filter(m => m.sender_id !== $state.currentUser?.id).length
+          } else {
+            const msgs = await $storage.getMessagesByRoom(item.id)
+            const lastReadIdx = msgs.findIndex(m => m.id === me.last_read_message_id)
+            if (lastReadIdx !== -1) {
+              unreadCount = msgs.slice(lastReadIdx + 1).filter(m => m.sender_id !== $state.currentUser?.id).length
+            } else {
+              unreadCount = msgs.filter(m => m.sender_id !== $state.currentUser?.id).length
+            }
+          }
+          if (unreadCount === 0) {
+            unreadCount = 1
+          }
+        }
+
         const isMuted = me?.is_muted === true
         const relativeTime = latestMsg ? $time.getRelative(latestMsg.created_at) : ''
 
@@ -100,6 +120,7 @@
           roomName,
           previewText,
           isUnread,
+          unreadCount,
           isMuted,
           relativeTime,
           searchContent: `${roomName} ${participants.map(p => p.name || p.username).join(' ') || ''} ${previewText}`.toLowerCase()
@@ -162,6 +183,7 @@
         el.setAttribute('preview-text', data.previewText)
         el.setAttribute('relative-time', data.relativeTime)
         el.setAttribute('is-unread', data.isUnread ? 'true' : 'false')
+        el.setAttribute('unread-count', String(data.unreadCount || 0))
         el.setAttribute('is-group', data.item.is_group ? 'true' : 'false')
         el.setAttribute('user-role', data.item.user_role)
         el.setAttribute('is-muted', data.isMuted ? 'true' : 'false')
