@@ -62,9 +62,15 @@
         }
 
         // Layout modifiers
-        if (state.block) classes.push('atoll-btn-block')
-        if (state.pill) classes.push('atoll-btn-pill')
-        if (state.loading) classes.push('atoll-btn-loading')
+        if (state.block) {
+          classes.push('atoll-btn-block')
+        }
+        if (state.pill) {
+          classes.push('atoll-btn-pill')
+        }
+        if (state.loading) {
+          classes.push('atoll-btn-loading')
+        }
 
         return classes.join(' ')
       },
@@ -78,8 +84,6 @@
 
       // Imperatively create/destroy the spinner container and icon
       const syncLoadingState = () => {
-        if (!btn) return
-
         if (state.loading) {
           if (!spinnerEl) {
             spinnerEl = document.createElement('span')
@@ -112,7 +116,6 @@
 
       // Sync custom aria-label from host to the inner button
       const syncAriaLabel = () => {
-        if (!btn) return
         // Check for host aria-label attribute or component ariaLabel attribute
         const labelVal = state.ariaLabel || root.getAttribute('aria-label')
         if (labelVal) {
@@ -140,12 +143,13 @@
       syncLoadingState()
       syncAriaLabel()
 
-      // Set up a MutationObserver on the host to watch for changes to aria-label
-      // which allows dynamic/reactive attribute setting on the host component.
       const observer = new MutationObserver(() => {
         syncAriaLabel()
       })
-      observer.observe(root, { attributes: true, attributeFilter: ['aria-label'] })
+      observer.observe(root, {
+        attributes: true,
+        attributeFilter: ['aria-label']
+      })
 
       return () => {
         observer.disconnect()

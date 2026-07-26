@@ -49,10 +49,17 @@ const ICON_MAP = {
 /**
  * Generates two-tone SVG content using IconPark functions.
  * @param {string} name - Semantic icon identifier
- * @param {object} options
+ * @param {object} options - Configuration options
+ * @param {number} [options.size=24] - Icon display size
+ * @param {string} [options.primaryColor='currentColor'] - Primary stroke/fill color
+ * @param {string} [options.secondaryColor='currentColor'] - Secondary highlight color
  * @returns {string} SVG string
  */
-export function getIconSvg (name, { size = 24, primaryColor = 'currentColor', secondaryColor = 'currentColor' } = {}) {
+export function getIconSvg (name, {
+  size = 24,
+  primaryColor = 'currentColor',
+  secondaryColor = 'currentColor'
+} = {}) {
   if (!name) {
     return ''
   }
@@ -63,9 +70,14 @@ export function getIconSvg (name, { size = 24, primaryColor = 'currentColor', se
   }
 
   return iconFn({
-    theme: 'two-tone',
+    theme: 'multi-color',
     size: size,
-    fill: [primaryColor, secondaryColor],
+    fill: [
+      primaryColor !== 'currentColor' ? primaryColor : 'var(--atoll-icon-out-stroke, currentColor)',
+      secondaryColor !== 'currentColor' ? secondaryColor : 'var(--atoll-icon-out-fill, var(--atoll-brand-primary, #06C755))',
+      'var(--atoll-icon-inner-stroke, #FFFFFF)',
+      'var(--atoll-icon-inner-fill, var(--atoll-brand-primary, #06C755))'
+    ],
     strokeWidth: 3
   })
 }

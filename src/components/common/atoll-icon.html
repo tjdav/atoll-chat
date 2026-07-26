@@ -92,14 +92,18 @@
 
         // Apply inline color overrides if explicitly passed
         if (state.color) {
+          wrapper.style.setProperty('--atoll-icon-out-stroke', state.color)
           wrapper.style.setProperty('--atoll-icon-primary-color', state.color)
         } else {
+          wrapper.style.removeProperty('--atoll-icon-out-stroke')
           wrapper.style.removeProperty('--atoll-icon-primary-color')
         }
 
         if (state.secondaryColor) {
+          wrapper.style.setProperty('--atoll-icon-out-fill', state.secondaryColor)
           wrapper.style.setProperty('--atoll-icon-secondary-color', state.secondaryColor)
         } else {
+          wrapper.style.removeProperty('--atoll-icon-out-fill')
           wrapper.style.removeProperty('--atoll-icon-secondary-color')
         }
 

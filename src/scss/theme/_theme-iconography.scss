@@ -30,17 +30,4 @@
     display: block;
   }
 
-  /* duo-icons Layer Rules */
-  .duo-icon-primary,
-  .duo-icons-primary-layer,
-  path:first-child {
-    fill: var(--#{$prefix}icon-primary-color, currentColor);
-  }
-
-  .duo-icon-secondary,
-  .duo-icons-secondary-layer,
-  path:nth-child(2) {
-    fill: var(--#{$prefix}icon-secondary-color, currentColor);
-    opacity: var(--#{$prefix}icon-secondary-opacity, 0.35);
-  }
 }

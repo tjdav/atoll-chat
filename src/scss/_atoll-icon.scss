@@ -12,6 +12,33 @@
   --#{$prefix}icon-primary-color: currentColor;
   --#{$prefix}icon-secondary-color: currentColor;
   --#{$prefix}icon-secondary-opacity: 0.35;
+
+  /* Default Multi-Color Theme Tokens (Light Mode) */
+  --#{$prefix}icon-out-stroke: currentColor;
+  --#{$prefix}icon-out-fill: var(--#{$prefix}brand-primary, #06C755);
+  --#{$prefix}icon-inner-stroke: #FFFFFF;
+  --#{$prefix}icon-inner-fill: var(--#{$prefix}brand-primary, #06C755);
+}
+
+[data-bs-theme="dark"] {
+  /* Dark Mode Adjustments */
+  --#{$prefix}icon-out-stroke: currentColor;
+  --#{$prefix}icon-out-fill: var(--#{$prefix}brand-primary, #06C755);
+  --#{$prefix}icon-inner-stroke: #1F1F1F; // Dark surface contrast for inner detail lines
+  --#{$prefix}icon-inner-fill: var(--#{$prefix}brand-primary, #06C755);
+}
+
+/* Solid Brand/Theme Buttons: Invert contrast so inner details match white text */
+.atoll-btn-primary,
+.btn-primary,
+.atoll-btn-danger,
+.btn-danger {
+  .atoll-icon {
+    --#{$prefix}icon-out-stroke: #FFFFFF;
+    --#{$prefix}icon-out-fill: rgba(255, 255, 255, 0.25); // Subtle translucent fill
+    --#{$prefix}icon-inner-stroke: #FFFFFF;
+    --#{$prefix}icon-inner-fill: #FFFFFF;
+  }
 }
 
 /* Base Icon Class */
@@ -30,15 +57,6 @@
     display: block;
   }
 
-  /* Target IconPark Two-Tone SVG Layers */
-  path[fill-opacity] {
-    fill: var(--#{$prefix}icon-secondary-color, currentColor);
-    opacity: var(--#{$prefix}icon-secondary-opacity, 0.35);
-  }
-
-  path:not([fill-opacity]) {
-    fill: var(--#{$prefix}icon-primary-color, currentColor);
-  }
 }
 
 /* Size Modifier Classes */
