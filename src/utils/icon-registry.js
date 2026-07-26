@@ -18,11 +18,14 @@ import {
   PreviewCloseOne,
   Search,
   SettingTwo,
-  VideoTwo
+  VideoTwo,
+  Down
 } from '@icon-park/svg'
 
 // Clean, semantic IconPark registry
 const ICON_MAP = {
+  down: Down,
+  'chevron-down': Down,
   // Core Navigation
   music: MusicMenu,
   document: FileText,

@@ -1,0 +1,172 @@
+<template id="atoll-list-header">
+  <div 
+    ref="headerRoot"
+    class="{{ headerClasses }}" 
+    role="{{ headerRole }}"
+    tabindex="{{ headerTabindex }}"
+    aria-expanded="{{ isAriaExpanded }}"
+  >
+    <!-- Left Main Content Area -->
+    <div class="atoll-list-header-main">
+      <slot name="leading"></slot>
+
+      <div class="atoll-list-header-titles">
+        <div class="atoll-list-header-title-row">
+          <span>{{ title }}</span>
+          <slot></slot> <!-- Default slot for custom inline title content -->
+
+          <!-- Count Badge -->
+          <atoll-badge hidden="{{ hideBadge }}" count="{{ badge }}" size="sm"></atoll-badge>
+
+          <!-- Sorting Dropdown Indicator -->
+          <span class="atoll-list-header-dropdown-icon" hidden="{{ hideDropdown }}">
+            <atoll-icon name="down" size="14"></atoll-icon>
+          </span>
+        </div>
+
+        <!-- Optional Subtitle -->
+        <span class="atoll-list-header-subtitle" hidden="{{ hideSubtitle }}">
+          {{ subtitle }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Right Trailing Action Area -->
+    <div class="atoll-list-header-actions">
+      <!-- Trailing Action Slot -->
+      <slot name="action"></slot>
+
+      <!-- Action Button / Link -->
+      <atoll-button 
+        hidden="{{ hideActionButton }}" 
+        variant="ghost" 
+        size="sm"
+      >
+        {{ actionText }}
+      </atoll-button>
+
+      <!-- Accordion Chevron Trigger -->
+      <span class="atoll-list-header-chevron" hidden="{{ hideChevron }}">
+        <atoll-icon name="chevron-down" size="18"></atoll-icon>
+      </span>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      title: {
+        type: String,
+        default: ''
+      },
+      subtitle: {
+        type: String,
+        default: ''
+      },
+      variant: {
+        type: String,
+        default: 'list'
+      },
+      size: {
+        type: String,
+        default: 'md'
+      },
+      badge: {
+        type: String,
+        default: ''
+      },
+      actionText: {
+        type: String,
+        default: ''
+      },
+      dropdown: Boolean,
+      expanded: Boolean,
+      collapsible: Boolean
+    },
+
+    getters: {
+      isAccordion: (state) => state.variant === 'accordion' || Boolean(state.collapsible),
+
+      headerRole: (state) => (state.variant === 'accordion' || Boolean(state.collapsible) ? 'button' : 'region'),
+
+      headerTabindex: (state) => (state.variant === 'accordion' || Boolean(state.collapsible) ? '0' : '-1'),
+
+      isAriaExpanded: (state, getters) => {
+        if (!getters.isAccordion) {
+          return null
+        }
+        return state.expanded ? 'true' : 'false'
+      },
+
+      hideBadge: (state) => !state.badge,
+
+      hideSubtitle: (state) => !state.subtitle,
+
+      hideDropdown: (state) => !state.dropdown,
+
+      hideActionButton: (state) => !state.actionText,
+
+      hideChevron: (state) => !(state.variant === 'accordion' || Boolean(state.collapsible)),
+
+      headerClasses: (state) => {
+        const classes = ['atoll-list-header']
+
+        if (state.variant) {
+          classes.push(`atoll-list-header-${state.variant}`)
+        } else {
+          classes.push('atoll-list-header-list')
+        }
+
+        if (state.size) {
+          classes.push(`atoll-list-header-${state.size}`)
+        } else {
+          classes.push('atoll-list-header-md')
+        }
+
+        if (state.expanded && (state.variant === 'accordion' || state.collapsible)) {
+          classes.push('atoll-list-header-expanded')
+        }
+
+        return classes.join(' ')
+      }
+    },
+
+    client: ({ state, refs, root, observe }) => {
+      const header = refs('headerRoot')
+
+      const toggleAccordion = () => {
+        if (state.variant === 'accordion' || state.collapsible) {
+          state.expanded = !state.expanded
+
+          // Dispatch custom event for parent accordion containers
+          root.dispatchEvent(
+            new CustomEvent('atoll-header-toggle', {
+              bubbles: true,
+              composed: true,
+              detail: { expanded: state.expanded }
+            })
+          )
+        }
+      }
+
+      if (header) {
+        header.addEventListener('click', toggleAccordion)
+
+        header.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            toggleAccordion()
+          }
+        })
+      }
+
+      // Observe the dynamic "expanded" attribute from parent updates
+      observe('expanded', (val) => {
+        state.expanded = Boolean(val)
+      })
+    }
+  })
+</script>
