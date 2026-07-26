@@ -4,10 +4,10 @@
     <!-- Split Button for Audio control -->
     <div class="btn-group dropup btn-group-pill {{ audioGroupClass }}" ref="audioGroup">
       <button ref="btnToggleAudio" type="button" class="btn btn-action btn-light" aria-label="Mute Microphone" aria-pressed="{{ audioPressed }}">
-        <i class="bi {{ audioIconClass }} fs-4"></i>
+        <atoll-icon name="{{ audioIconName }}" size="24"></atoll-icon>
       </button>
       <button ref="btnAudioSettings" type="button" class="btn btn-chevron dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false" aria-label="Microphone Settings">
-        <i class="bi bi-chevron-up"></i>
+        <atoll-icon name="menu" size="20"></atoll-icon>
       </button>
       <div class="dropdown-menu device-dropdown-menu p-3" aria-label="Microphone Settings Menu">
         <h6 class="dropdown-header">Select a Microphone</h6>
@@ -36,10 +36,10 @@
     <!-- Split Button for Video control -->
     <div class="btn-group dropup btn-group-pill {{ videoGroupClass }}" ref="videoGroup">
       <button ref="btnToggleVideo" type="button" class="btn btn-action {{ videoBtnClass }}" aria-label="Mute Video" aria-pressed="{{ videoPressed }}">
-        <i class="bi {{ videoIconClass }} fs-4"></i>
+        <atoll-icon name="{{ videoIconName }}" size="24"></atoll-icon>
       </button>
       <button ref="btnVideoSettings" type="button" class="btn btn-chevron dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown" aria-haspopup="menu" aria-expanded="false" aria-label="Video Settings">
-        <i class="bi bi-chevron-up"></i>
+        <atoll-icon name="menu" size="20"></atoll-icon>
       </button>
       <div class="dropdown-menu device-dropdown-menu p-3" aria-label="Video Settings Menu">
         <h6 class="dropdown-header">Select a Camera</h6>
@@ -58,10 +58,10 @@
     </div>
 
     <button ref="btnPip" class="btn btn-light rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;" title="Picture-in-Picture">
-      <i class="bi bi-pip fs-4"></i>
+      <atoll-icon name="airplay" size="24"></atoll-icon>
     </button>
     <button ref="btnEndCall" class="btn btn-danger rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-      <i class="bi bi-telephone-x-fill fs-4"></i>
+      <atoll-icon name="phone" size="24"></atoll-icon>
     </button>
   </div>
 </template>
@@ -98,6 +98,8 @@
       videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
       audioIconClass: (state) => (state.isAudioEnabled ? 'bi-mic-fill' : 'bi-mic-mute-fill'),
       videoIconClass: (state) => (state.isVideoEnabled ? 'bi-camera-video-fill' : 'bi-camera-video-off-fill'),
+      audioIconName: (state) => (state.isAudioEnabled ? 'mic' : 'mic-off'),
+      videoIconName: (state) => (state.isVideoEnabled ? 'video' : 'video-off'),
       audioPressed: (state) => (!state.isAudioEnabled ? 'true' : 'false'),
       videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false')
     },

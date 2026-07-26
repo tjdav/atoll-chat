@@ -1,0 +1,78 @@
+<template id="atoll-icon">
+  <span ref="iconWrapper" class="atoll-icon-container"></span>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite';
+
+  export default defineComponent({
+    attributes: {
+      name: String,
+      size: { type: String, default: '24' },
+      color: { type: String, default: '' },
+      secondaryColor: { type: String, default: '' },
+      ariaLabel: { type: String, default: '' }
+    },
+
+    getters: {
+      sizePx: (state) => {
+        const sz = state.size;
+        return isNaN(sz) ? `var(--atoll-icon-size-${sz}, 24px)` : `${sz}px`;
+      }
+    },
+
+    client: async ({ state, refs, root, observe }) => {
+      // Add the host class for iconography layout & rules
+      root.classList.add('atoll-icon');
+
+      // Dynamic import inside client block
+      const { getIconSvg } = await import('../../utils/icon-registry.js');
+
+      const render = () => {
+        const wrapper = refs('iconWrapper');
+        if (!wrapper) return;
+
+        // 1. Inject SVG Content
+        const svgContent = getIconSvg(state.name);
+        wrapper.innerHTML = svgContent || '';
+
+        // 2. Set Custom Sizing & Color Properties
+        if (state.sizePx) {
+          root.style.setProperty('--atoll-icon-size', state.sizePx);
+        }
+
+        if (state.color) {
+          root.style.setProperty('--atoll-icon-primary-color', state.color);
+        } else {
+          root.style.removeProperty('--atoll-icon-primary-color');
+        }
+
+        if (state.secondaryColor) {
+          root.style.setProperty('--atoll-icon-secondary-color', state.secondaryColor);
+        } else {
+          root.style.removeProperty('--atoll-icon-secondary-color');
+        }
+
+        // 3. Accessibility Handling
+        if (state.ariaLabel) {
+          root.setAttribute('role', 'img');
+          root.setAttribute('aria-label', state.ariaLabel);
+          root.removeAttribute('aria-hidden');
+        } else {
+          root.setAttribute('aria-hidden', 'true');
+          root.removeAttribute('role');
+          root.removeAttribute('aria-label');
+        }
+      };
+
+      // Re-render automatically on attribute mutations
+      observe('name', render);
+      observe('size', render);
+      observe('color', render);
+      observe('secondaryColor', render);
+      observe('ariaLabel', render);
+
+      render();
+    }
+  });
+</script>

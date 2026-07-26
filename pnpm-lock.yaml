@@ -32,6 +32,9 @@ importers:
       dexie:
         specifier: ^4.4.3
         version: 4.4.4
+      duo-icons:
+        specifier: 2.0.1
+        version: 2.0.1
       emoji-picker-element:
         specifier: ^1.29.1
         version: 1.29.1
@@ -814,6 +817,9 @@ packages:
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
+
+  duo-icons@2.0.1:
+    resolution: {integrity: sha512-7Uro+VlS8PsstwUb9IFrr0B0vDSPiu6oNMqJwgcM9nzgXAL1aKFCjn9Z0nwfbPUD4nVIuN/rrLUmN5yItc+ReA==}
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
@@ -2275,6 +2281,8 @@ snapshots:
       call-bind-apply-helpers: 1.0.2
       es-errors: 1.3.0
       gopd: 1.2.0
+
+  duo-icons@2.0.1: {}
 
   ee-first@1.1.1: {}
 

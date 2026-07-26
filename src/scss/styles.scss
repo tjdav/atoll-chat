@@ -104,6 +104,9 @@ $utilities: map-merge($utilities,
 
 @import "theme/theme-typography";
 
+// Iconography Sizing and Layer Rules
+@import "theme/theme-iconography";
+
 // Utility Classes & Component Stylesheets
 @import "theme/typography-utilities";
 

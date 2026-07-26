@@ -1,0 +1,46 @@
+// src/scss/theme/_theme-iconography.scss
+
+:root {
+  /* Default Icon Sizing Scale (4px Grid) */
+  --#{$prefix}icon-size-xs: 16px;
+  --#{$prefix}icon-size-sm: 20px;
+  --#{$prefix}icon-size-md: 24px;
+  --#{$prefix}icon-size-lg: 32px;
+  --#{$prefix}icon-size-xl: 48px;
+
+  /* Color Inheritance Defaults */
+  --#{$prefix}icon-primary-color: currentColor;
+  --#{$prefix}icon-secondary-color: currentColor;
+  --#{$prefix}icon-secondary-opacity: 0.35;
+}
+
+/* Iconography styling */
+.atoll-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: var(--#{$prefix}icon-size, 24px);
+  height: var(--#{$prefix}icon-size, 24px);
+  flex-shrink: 0;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* duo-icons Layer Rules */
+  .duo-icon-primary,
+  .duo-icons-primary-layer,
+  path:first-child {
+    fill: var(--#{$prefix}icon-primary-color, currentColor);
+  }
+
+  .duo-icon-secondary,
+  .duo-icons-secondary-layer,
+  path:nth-child(2) {
+    fill: var(--#{$prefix}icon-secondary-color, currentColor);
+    opacity: var(--#{$prefix}icon-secondary-opacity, 0.35);
+  }
+}

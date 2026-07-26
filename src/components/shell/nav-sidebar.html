@@ -5,19 +5,19 @@
         <img src="/logo.svg" alt="Atoll chat logo" class="img-fluid">
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isMusicActive }}" ref="btnMusic" title="Music" data-testid="btnMusic">
-        <i class="bi bi-music-note-list fs-4"></i>
+        <atoll-icon name="disk" size="24"></atoll-icon>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isPicturesActive }}" ref="btnPictures" title="Pictures" data-testid="btnPictures">
-        <i class="bi bi-image fs-4"></i>
+        <atoll-icon name="camera" size="24"></atoll-icon>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isVideosActive }}" ref="btnVideos" title="Videos" data-testid="btnVideos">
-        <i class="bi bi-camera-video fs-4"></i>
+        <atoll-icon name="video" size="24"></atoll-icon>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isDocumentsActive }}" ref="btnDocuments" title="Documents" data-testid="btnDocuments">
-        <i class="bi bi-file-earmark-fill fs-4"></i>
+        <atoll-icon name="file" size="24"></atoll-icon>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isLinksActive }}" ref="btnLinks" title="Links" data-testid="btnLinks">
-        <i class="bi bi-link-45deg fs-4"></i>
+        <atoll-icon name="world" size="24"></atoll-icon>
       </button>
     </div>
     
@@ -39,7 +39,7 @@
           <!-- Settings Section -->
           <li>
             <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 {{ isSettingsActive }}" ref="btnSettings" data-testid="btnSettings">
-              <i class="bi bi-gear"></i>
+              <atoll-icon name="settings" size="20"></atoll-icon>
               <span>Settings</span>
             </button>
           </li>
@@ -49,7 +49,7 @@
           <!-- Logout Section -->
           <li>
             <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnLogout" data-testid="btnLogout">
-              <i class="bi bi-box-arrow-right"></i>
+              <atoll-icon name="toggle" size="20"></atoll-icon>
               <span>Logout</span>
             </button>
           </li>
