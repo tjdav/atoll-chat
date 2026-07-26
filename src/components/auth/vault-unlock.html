@@ -22,12 +22,12 @@
             <div id="{{ ref_passwordFeedback }}" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
           </div>
           <div class="d-grid gap-2">
-            <button type="submit" class="btn btn-primary" data-testid="unlockSubmit">Unlock with Password</button>
-            <button type="button" class="btn btn-outline-primary d-none" ref="btnPasskey">Unlock with Passkey</button>
+            <atoll-button type="submit" variant="primary" block="true" ref="btnUnlockSubmit" data-testid="unlockSubmit">Unlock with Password</atoll-button>
+            <atoll-button type="button" variant="outline" block="true" class="d-none" ref="btnPasskey">Unlock with Passkey</atoll-button>
           </div>
         </form>
         <div class="mt-3">
-          <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnShowRecovery">Use Recovery Code</button>
+          <atoll-button type="button" variant="ghost" block="true" size="sm" ref="btnShowRecovery">Use Recovery Code</atoll-button>
         </div>
       </div>
 
@@ -41,8 +41,8 @@
             <input id="{{ ref_recoveryCodeInput }}" ref="recoveryCodeInput" name="recoveryCodeInput" type="text" class="form-control text-center fs-5 font-monospace" placeholder="XXXX-XXXX-XXXX" required aria-describedby="{{ ref_recoveryCodeInputFeedback }}" aria-invalid="false">
             <div id="{{ ref_recoveryCodeInputFeedback }}" class="invalid-feedback" data-testid="recoveryCodeInput-feedback" aria-live="polite"></div>
           </div>
-          <button type="submit" class="btn btn-primary w-100 mb-2">Verify Recovery Code</button>
-          <button type="button" class="btn btn-link btn-sm w-100 text-decoration-none text-center" ref="btnCancelRecovery">Cancel</button>
+          <atoll-button type="submit" variant="primary" block="true" class="mb-2">Verify Recovery Code</atoll-button>
+          <atoll-button type="button" variant="ghost" block="true" size="sm" ref="btnCancelRecovery">Cancel</atoll-button>
         </form>
       </div>
 
@@ -75,13 +75,13 @@
             </div>
             <div id="{{ ref_newPasswordConfirmFeedback }}" class="invalid-feedback" data-testid="newPasswordConfirm-feedback" aria-live="polite"></div>
           </div>
-          <button type="submit" class="btn btn-success w-100" ref="btnSaveNewPassword" disabled>Save & Unlock Vault</button>
+          <atoll-button type="submit" variant="primary" block="true" ref="btnSaveNewPassword" disabled>Save & Unlock Vault</atoll-button>
         </form>
       </div>
 
       <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
       <div class="mt-3">
-        <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
+        <atoll-button type="button" variant="ghost" block="true" size="sm" ref="btnLogout">Logout</atoll-button>
       </div>
     </div>
   </div>

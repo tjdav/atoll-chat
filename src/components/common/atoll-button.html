@@ -1,0 +1,155 @@
+<template id="atoll-button">
+  <button 
+    ref="btnElement" 
+    type="{{ type }}" 
+    class="{{ btnClasses }}" 
+    disabled="{{ isDisabled }}"
+  >
+    <!-- Content Slot Container -->
+    <span class="atoll-btn-content">
+      <slot name="leading"></slot>
+      <span class="atoll-btn-label">
+        <slot></slot>
+      </span>
+      <slot name="trailing"></slot>
+    </span>
+  </button>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      type: {
+        type: String,
+        default: 'button'
+      },
+      variant: {
+        type: String,
+        default: 'primary'
+      },
+      size: {
+        type: String,
+        default: 'md'
+      },
+      disabled: Boolean,
+      loading: Boolean,
+      block: Boolean,
+      pill: Boolean,
+      ariaLabel: {
+        type: String,
+        default: ''
+      }
+    },
+
+    getters: {
+      btnClasses: (state) => {
+        const classes = ['atoll-btn']
+
+        // Variant modifier
+        if (state.variant) {
+          classes.push(`atoll-btn-${state.variant}`)
+        } else {
+          classes.push('atoll-btn-primary')
+        }
+
+        // Size modifier
+        if (state.size) {
+          classes.push(`atoll-btn-${state.size}`)
+        } else {
+          classes.push('atoll-btn-md')
+        }
+
+        // Layout modifiers
+        if (state.block) classes.push('atoll-btn-block')
+        if (state.pill) classes.push('atoll-btn-pill')
+        if (state.loading) classes.push('atoll-btn-loading')
+
+        return classes.join(' ')
+      },
+
+      isDisabled: (state) => state.disabled || state.loading
+    },
+
+    client: ({ state, refs, root, observe }) => {
+      const btn = refs('btnElement')
+      let spinnerEl = null
+
+      // Imperatively create/destroy the spinner container and icon
+      const syncLoadingState = () => {
+        if (!btn) return
+
+        if (state.loading) {
+          if (!spinnerEl) {
+            spinnerEl = document.createElement('span')
+            spinnerEl.className = 'atoll-btn-spinner'
+
+            // Create icon imperatively using string literal with hyphen
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'settings')
+            icon.setAttribute('size', '20')
+
+            spinnerEl.appendChild(icon)
+          }
+
+          if (!btn.contains(spinnerEl)) {
+            btn.insertBefore(spinnerEl, btn.firstChild)
+          }
+
+          // Set accessibility attributes for loading
+          btn.setAttribute('aria-busy', 'true')
+          btn.setAttribute('aria-disabled', 'true')
+        } else {
+          if (spinnerEl && spinnerEl.parentNode) {
+            spinnerEl.parentNode.removeChild(spinnerEl)
+          }
+          // Remove or reset accessibility attributes
+          btn.removeAttribute('aria-busy')
+          btn.removeAttribute('aria-disabled')
+        }
+      }
+
+      // Sync custom aria-label from host to the inner button
+      const syncAriaLabel = () => {
+        if (!btn) return
+        // Check for host aria-label attribute or component ariaLabel attribute
+        const labelVal = state.ariaLabel || root.getAttribute('aria-label')
+        if (labelVal) {
+          btn.setAttribute('aria-label', labelVal)
+        } else {
+          btn.removeAttribute('aria-label')
+        }
+      }
+
+      // Synchronize native click events
+      if (btn) {
+        btn.addEventListener('click', (event) => {
+          if (state.disabled || state.loading) {
+            event.preventDefault()
+            event.stopImmediatePropagation()
+          }
+        })
+      }
+
+      // Observe loading state mutations
+      observe('loading', syncLoadingState)
+      observe('ariaLabel', syncAriaLabel)
+
+      // Initial execution
+      syncLoadingState()
+      syncAriaLabel()
+
+      // Set up a MutationObserver on the host to watch for changes to aria-label
+      // which allows dynamic/reactive attribute setting on the host component.
+      const observer = new MutationObserver(() => {
+        syncAriaLabel()
+      })
+      observer.observe(root, { attributes: true, attributeFilter: ['aria-label'] })
+
+      return () => {
+        observer.disconnect()
+      }
+    }
+  })
+</script>

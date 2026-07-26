@@ -41,7 +41,7 @@
           <div id="{{ ref_passwordConfirmFeedback }}" class="invalid-feedback" data-testid="password-confirm-feedback" aria-live="polite"></div>
         </div>
         <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
-        <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" data-testid="registerSubmit">Register & Log In</button>
+        <atoll-button type="submit" variant="primary" block="true" ref="btnSubmit" data-testid="registerSubmit">Register & Log In</atoll-button>
       </form>
       <div class="mt-3 text-center">
         <small class="text-muted">Already have an account? <a href="#" ref="linkLogin" data-testid="linkLogin" class="text-decoration-none">Login here</a></small>
@@ -183,10 +183,8 @@
 
       if (altchaContainer) {
   
-        if (!btnSubmit._originalHtml) {
-          btnSubmit._originalHtml = btnSubmit.innerHTML
-        }
-        btnSubmit.disabled = false
+        btnSubmit.removeAttribute('loading')
+        btnSubmit.removeAttribute('disabled')
 
         altchaWidget = document.createElement('altcha-widget')
         altchaWidget.setAttribute('display', 'invisible')
@@ -214,17 +212,12 @@
           console.log('[ALTCHA REGISTER DEBUG]', 'state:', state, 'value:', altchaWidget.value, 'payload:', ev.detail?.payload)
           if (state === 'verifying') {
             altchaPayload = null
-            btnSubmit.disabled = true
-            btnSubmit.innerHTML = `
-              <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
-              <span role="status">Verifying security challenge...</span>
-            `
+            btnSubmit.setAttribute('loading', 'true')
           } else if (state === 'verified') {
             if (ev.detail?.payload) {
               altchaPayload = ev.detail.payload
             }
-            btnSubmit.disabled = false
-            btnSubmit.innerHTML = btnSubmit._originalHtml
+            btnSubmit.removeAttribute('loading')
             if (registerSubmitPending) {
               registerSubmitPending = false
               if (typeof registerForm.requestSubmit === 'function') {
@@ -238,12 +231,10 @@
             }
           } else if (state === 'unverified') {
             altchaPayload = null
-            btnSubmit.disabled = false
-            btnSubmit.innerHTML = btnSubmit._originalHtml
+            btnSubmit.removeAttribute('loading')
           } else if (state === 'error') {
             altchaPayload = null
-            btnSubmit.disabled = false
-            btnSubmit.innerHTML = btnSubmit._originalHtml
+            btnSubmit.removeAttribute('loading')
             updateStatus('Security challenge failed. Please try again.', true)
             registerSubmitPending = false
           }
