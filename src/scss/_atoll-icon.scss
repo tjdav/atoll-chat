@@ -1,0 +1,63 @@
+// src/scss/_atoll-icon.scss
+
+:root {
+  /* Sizing Tokens */
+  --#{$prefix}icon-size-xs: 16px;
+  --#{$prefix}icon-size-sm: 20px;
+  --#{$prefix}icon-size-md: 24px;
+  --#{$prefix}icon-size-lg: 32px;
+  --#{$prefix}icon-size-xl: 48px;
+
+  /* Color Inheritance Defaults */
+  --#{$prefix}icon-primary-color: currentColor;
+  --#{$prefix}icon-secondary-color: currentColor;
+  --#{$prefix}icon-secondary-opacity: 0.35;
+}
+
+/* Base Icon Class */
+.atoll-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  vertical-align: middle;
+  width: var(--#{$prefix}icon-size, var(--#{$prefix}icon-size-md));
+  height: var(--#{$prefix}icon-size, var(--#{$prefix}icon-size-md));
+  flex-shrink: 0;
+
+  svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Target IconPark Two-Tone SVG Layers */
+  path[fill-opacity] {
+    fill: var(--#{$prefix}icon-secondary-color, currentColor);
+    opacity: var(--#{$prefix}icon-secondary-opacity, 0.35);
+  }
+
+  path:not([fill-opacity]) {
+    fill: var(--#{$prefix}icon-primary-color, currentColor);
+  }
+}
+
+/* Size Modifier Classes */
+.atoll-icon-xs {
+  --#{$prefix}icon-size: var(--#{$prefix}icon-size-xs);
+}
+
+.atoll-icon-sm {
+  --#{$prefix}icon-size: var(--#{$prefix}icon-size-sm);
+}
+
+.atoll-icon-md {
+  --#{$prefix}icon-size: var(--#{$prefix}icon-size-md);
+}
+
+.atoll-icon-lg {
+  --#{$prefix}icon-size: var(--#{$prefix}icon-size-lg);
+}
+
+.atoll-icon-xl {
+  --#{$prefix}icon-size: var(--#{$prefix}icon-size-xl);
+}

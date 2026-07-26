@@ -1,16 +1,19 @@
 <template id="atoll-icon">
-  <span ref="iconWrapper" class="atoll-icon-container"></span>
+  <span ref="iconWrapper" class="atoll-icon {{ iconClasses }}"></span>
 </template>
 
 <script type="module">
   import { defineComponent } from 'coralite'
 
-export default defineComponent({
+  export default defineComponent({
     attributes: {
-      name: String,
+      name: {
+        type: String,
+        default: ''
+      },
       size: {
         type: String,
-        default: '24'
+        default: 'md'
       },
       color: {
         type: String,
@@ -27,16 +30,23 @@ export default defineComponent({
     },
 
     getters: {
-      sizePx: (state) => {
-        const sz = state.size
-        return isNaN(sz) ? `var(--atoll-icon-size-${sz}, 24px)` : `${sz}px`
+      iconClasses: (state) => {
+        const classes = []
+
+        // Size modifier class
+        if (state.size) {
+          if (['xs', 'sm', 'md', 'lg', 'xl'].includes(state.size)) {
+            classes.push(`atoll-icon-${state.size}`)
+          }
+        } else {
+          classes.push('atoll-icon-md')
+        }
+
+        return classes.join(' ')
       }
     },
 
     client: async ({ state, refs, root, observe }) => {
-      // Add the host class for iconography layout & rules
-      root.classList.add('atoll-icon')
-
       // Dynamic import inside client block
       const { getIconSvg } = await import('../../utils/icon-registry.js')
 
@@ -46,28 +56,54 @@ export default defineComponent({
           return
         }
 
-        // Inject SVG Content
-        const svgContent = getIconSvg(state.name)
-        wrapper.innerHTML = svgContent || ''
-
-        // Set Custom Sizing & Color Properties
-        if (state.sizePx) {
-          root.style.setProperty('--atoll-icon-size', state.sizePx)
+        // Map token sizes to numeric values for IconPark function
+        let numericSize = 24
+        if (state.size) {
+          if (state.size === 'xs') {
+            numericSize = 16
+          } else if (state.size === 'sm') {
+            numericSize = 20
+          } else if (state.size === 'md') {
+            numericSize = 24
+          } else if (state.size === 'lg') {
+            numericSize = 32
+          } else if (state.size === 'xl') {
+            numericSize = 48
+          } else if (!isNaN(state.size)) {
+            numericSize = Number(state.size)
+          }
         }
 
-        if (state.color) {
-          root.style.setProperty('--atoll-icon-primary-color', state.color)
+        // Fetch SVG from IconPark Registry
+        const svgContent = getIconSvg(state.name, {
+          size: numericSize,
+          primaryColor: state.color || 'currentColor',
+          secondaryColor: state.secondaryColor || 'currentColor'
+        })
+
+        wrapper.innerHTML = svgContent || ''
+
+        // Handle explicit numeric size (e.g., size="28") if not a token name
+        if (state.size && !['xs', 'sm', 'md', 'lg', 'xl'].includes(state.size) && !isNaN(state.size)) {
+          wrapper.style.setProperty('--atoll-icon-size', `${state.size}px`)
         } else {
-          root.style.removeProperty('--atoll-icon-primary-color')
+          wrapper.style.removeProperty('--atoll-icon-size')
+        }
+
+        // Apply inline color overrides if explicitly passed
+        if (state.color) {
+          wrapper.style.setProperty('--atoll-icon-primary-color', state.color)
+        } else {
+          wrapper.style.removeProperty('--atoll-icon-primary-color')
         }
 
         if (state.secondaryColor) {
-          root.style.setProperty('--atoll-icon-secondary-color', state.secondaryColor)
+          wrapper.style.setProperty('--atoll-icon-secondary-color', state.secondaryColor)
         } else {
-          root.style.removeProperty('--atoll-icon-secondary-color')
+          wrapper.style.removeProperty('--atoll-icon-secondary-color')
         }
 
-        // Accessibility Handling
+        // Accessibility handling
         if (state.ariaLabel) {
           root.setAttribute('role', 'img')
           root.setAttribute('aria-label', state.ariaLabel)
@@ -79,7 +115,7 @@ export default defineComponent({
         }
       }
 
-      // Re-render automatically on attribute mutations
+      // Re-render when attributes update
       observe('name', render)
       observe('size', render)
       observe('color', render)
@@ -87,6 +123,6 @@ export default defineComponent({
       observe('ariaLabel', render)
 
       render()
-  }
+    }
   })
 </script>

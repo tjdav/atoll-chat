@@ -20,6 +20,9 @@ importers:
       '@capacitor/network':
         specifier: ^8.0.1
         version: 8.0.1(@capacitor/core@8.4.2)
+      '@icon-park/svg':
+        specifier: 1.4.2
+        version: 1.4.2
       altcha:
         specifier: 3.2.1
         version: 3.2.1
@@ -32,9 +35,6 @@ importers:
       dexie:
         specifier: ^4.4.3
         version: 4.4.4
-      duo-icons:
-        specifier: 2.0.1
-        version: 2.0.1
       emoji-picker-element:
         specifier: ^1.29.1
         version: 1.29.1
@@ -415,6 +415,10 @@ packages:
   '@humanwhocodes/retry@0.4.3':
     resolution: {integrity: sha512-bV0Tgo9K4hfPCek+aMAn81RppFKv2ySDQeMoSZuvTASywNTnVJCArCZE2FWqpvIatKu7VMRLWlR1EazvVhDyhQ==}
     engines: {node: '>=18.18'}
+
+  '@icon-park/svg@1.4.2':
+    resolution: {integrity: sha512-1X0DA+1e0R0liYvw+Nb2BQmF1oEo/wS3o/JYkQYifPJXCGYij2vN9sJf/NNhbzDsJWTg4W2bbzZjJvC7Q4w4oQ==}
+    engines: {node: '>= 8.0.0', npm: '>= 5.0.0'}
 
   '@jspm/core@2.1.0':
     resolution: {integrity: sha512-3sRl+pkyFY/kLmHl0cgHiFp2xEqErA8N3ECjMs7serSUBmoJ70lBa0PG5t0IM6WJgdZNyyI0R8YFfi5wM8+mzg==}
@@ -817,9 +821,6 @@ packages:
   dunder-proto@1.0.1:
     resolution: {integrity: sha512-KIN/nDJBQRcXw0MLVhZE9iQHmG68qAVIBg9CqmUYjmQIhgij9U5MFvrqkUL5FbtyyzZuOeOt0zdeRe4UY7ct+A==}
     engines: {node: '>= 0.4'}
-
-  duo-icons@2.0.1:
-    resolution: {integrity: sha512-7Uro+VlS8PsstwUb9IFrr0B0vDSPiu6oNMqJwgcM9nzgXAL1aKFCjn9Z0nwfbPUD4nVIuN/rrLUmN5yItc+ReA==}
 
   ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}
@@ -1905,6 +1906,8 @@ snapshots:
 
   '@humanwhocodes/retry@0.4.3': {}
 
+  '@icon-park/svg@1.4.2': {}
+
   '@jspm/core@2.1.0': {}
 
   '@mixmark-io/domino@2.2.0': {}
@@ -2281,8 +2284,6 @@ snapshots:
       call-bind-apply-helpers: 1.0.2
       es-errors: 1.3.0
       gopd: 1.2.0
-
-  duo-icons@2.0.1: {}
 
   ee-first@1.1.1: {}
 
