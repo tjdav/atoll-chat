@@ -1,0 +1,188 @@
+<template id="atoll-tooltip">
+  <div class="atoll-tooltip-wrapper">
+    <!-- Anchor Trigger Slot -->
+    <div ref="trigger" aria-describedby="{{ ref_bubble }}">
+      <slot></slot>
+    </div>
+
+    <!-- Floating Tooltip Bubble -->
+    <div 
+      ref="bubble"
+      id="{{ ref_bubble }}"
+      class="{{ tooltipClasses }}"
+      role="{{ computedRole }}"
+      aria-hidden="{{ isAriaHidden }}"
+    >
+      <!-- Optional Header (Title + Close Button) -->
+      <div class="atoll-tooltip-header" hidden="{{ hideHeader }}">
+        <span>{{ title }}</span>
+        
+        <button 
+          ref="closeBtn" 
+          type="button" 
+          class="atoll-tooltip-close" 
+          aria-label="Close tooltip"
+          hidden="{{ hideCloseBtn }}"
+        >
+          <atoll-icon name="close" size="14"></atoll-icon>
+        </button>
+      </div>
+
+      <!-- Content Slot / Text Message -->
+      <div class="atoll-tooltip-body">
+        <slot name="content">{{ text }}</slot>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      text: {
+        type: String,
+        default: ''
+      },
+      title: {
+        type: String,
+        default: ''
+      },
+      placement: {
+        type: String,
+        default: 'top'
+      },
+      variant: {
+        type: String,
+        default: 'plain'
+      },
+      trigger: {
+        type: String,
+        default: 'hover'
+      },
+      open: Boolean,
+      closeable: Boolean
+    },
+
+    getters: {
+      computedRole: (state) => (state.variant === 'action' ? 'dialog' : 'tooltip'),
+
+      isAriaHidden: (state) => (state.open ? 'false' : 'true'),
+
+      hideHeader: (state) => !state.title && !state.closeable,
+
+      hideCloseBtn: (state) => !state.closeable,
+
+      tooltipClasses: (state) => {
+        const classes = ['atoll-tooltip-bubble']
+
+        if (state.placement) {
+          classes.push(`atoll-tooltip-${state.placement}`)
+        } else {
+          classes.push('atoll-tooltip-top')
+        }
+
+        if (state.variant) {
+          classes.push(`atoll-tooltip-${state.variant}`)
+        } else {
+          classes.push('atoll-tooltip-plain')
+        }
+
+        if (state.open) {
+          classes.push('atoll-tooltip-visible')
+        }
+
+        return classes.join(' ')
+      }
+    },
+
+    client: ({ state, refs, root }) => {
+      const triggerEl = refs('trigger')
+      const closeBtn = refs('closeBtn')
+
+      const show = () => {
+        state.open = true
+      }
+      const hide = () => {
+        state.open = false
+      }
+
+      // Event Listeners for Hover Trigger
+      if (triggerEl) {
+        triggerEl.addEventListener('mouseenter', () => {
+          if (state.trigger === 'hover') {
+            show()
+          }
+        })
+
+        triggerEl.addEventListener('mouseleave', () => {
+          if (state.trigger === 'hover') {
+            hide()
+          }
+        })
+
+        triggerEl.addEventListener('focusin', () => {
+          if (state.trigger === 'hover') {
+            show()
+          }
+        })
+
+        triggerEl.addEventListener('focusout', () => {
+          if (state.trigger === 'hover') {
+            hide()
+          }
+        })
+
+        triggerEl.addEventListener('click', () => {
+          if (state.trigger === 'click') {
+            state.open = !state.open
+          }
+        })
+      }
+
+      // Close Button Handler
+      if (closeBtn) {
+        closeBtn.addEventListener('click', (event) => {
+          event.stopPropagation()
+          hide()
+          root.dispatchEvent(
+            new CustomEvent('atoll-tooltip-close', {
+              bubbles: true,
+              composed: true
+            })
+          )
+        })
+      }
+
+      // Escape key listener & click-outside listener helper
+      const onKeyDown = (event) => {
+        if (event.key === 'Escape' && state.open) {
+          hide()
+        }
+      }
+
+      const onClickOutside = (event) => {
+        if (state.open && state.trigger === 'click') {
+          // Check if clicked outside of the root component
+          const isClickInside = root.contains(event.target) || (event.composedPath && event.composedPath().includes(root))
+          if (!isClickInside) {
+            hide()
+          }
+        }
+      }
+
+      document.addEventListener('keydown', onKeyDown)
+      document.addEventListener('pointerdown', onClickOutside)
+
+      // Public DOM interface
+      root.show = show
+      root.hide = hide
+
+      return () => {
+        document.removeEventListener('keydown', onKeyDown)
+        document.removeEventListener('pointerdown', onClickOutside)
+      }
+    }
+  })
+</script>

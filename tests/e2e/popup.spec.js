@@ -48,16 +48,28 @@ test.describe('Atoll Popup / Modal Component', () => {
 
       window.__popupEvents = []
       popup.addEventListener('atoll-popup-open', (e) => {
-        window.__popupEvents.push({ type: 'open', detail: e.detail })
+        window.__popupEvents.push({
+          type: 'open',
+          detail: e.detail
+        })
       })
       popup.addEventListener('atoll-popup-primary', (e) => {
-        window.__popupEvents.push({ type: 'primary', detail: e.detail })
+        window.__popupEvents.push({
+          type: 'primary',
+          detail: e.detail
+        })
       })
       popup.addEventListener('atoll-popup-secondary', (e) => {
-        window.__popupEvents.push({ type: 'secondary', detail: e.detail })
+        window.__popupEvents.push({
+          type: 'secondary',
+          detail: e.detail
+        })
       })
       popup.addEventListener('atoll-popup-close', (e) => {
-        window.__popupEvents.push({ type: 'close', detail: e.detail })
+        window.__popupEvents.push({
+          type: 'close',
+          detail: e.detail
+        })
       })
 
       document.body.appendChild(popup)
@@ -82,10 +94,16 @@ test.describe('Atoll Popup / Modal Component', () => {
     const events = await page.evaluate(() => window.__popupEvents)
 
     const openEvent = events.find(e => e.type === 'open')
-    expect(openEvent.detail).toEqual({ variant: 'confirm', size: 'md' })
+    expect(openEvent.detail).toEqual({
+      variant: 'confirm',
+      size: 'md'
+    })
 
     const primaryEvent = events.find(e => e.type === 'primary')
-    expect(primaryEvent.detail).toEqual({ variant: 'confirm', size: 'md' })
+    expect(primaryEvent.detail).toEqual({
+      variant: 'confirm',
+      size: 'md'
+    })
 
     const secondaryEvent = events.find(e => e.type === 'secondary')
     expect(secondaryEvent.detail).toEqual({ variant: 'confirm' })

@@ -148,7 +148,10 @@
       checkSlottedHero()
 
       const observer = new MutationObserver(checkSlottedHero)
-      observer.observe(root, { childList: true, subtree: true })
+      observer.observe(root, {
+        childList: true,
+        subtree: true
+      })
 
       const applyBackdropClass = () => {
         const backdrops = document.querySelectorAll('.modal-backdrop')
@@ -187,7 +190,10 @@
             new CustomEvent('atoll-popup-open', {
               bubbles: true,
               composed: true,
-              detail: { variant: state.variant, size: state.size }
+              detail: {
+                variant: state.variant,
+                size: state.size
+              }
             })
           )
         })
@@ -200,7 +206,10 @@
             new CustomEvent('atoll-popup-primary', {
               bubbles: true,
               composed: true,
-              detail: { variant: state.variant, size: state.size }
+              detail: {
+                variant: state.variant,
+                size: state.size
+              }
             })
           )
         })
@@ -216,13 +225,17 @@
               detail: { variant: state.variant }
             })
           )
-          if (bsModalInstance) bsModalInstance.hide()
+          if (bsModalInstance) {
+            bsModalInstance.hide()
+          }
         })
       }
 
       // Reactive observer for [open] attribute
       observe('open', (isOpen) => {
-        if (!bsModalInstance) return
+        if (!bsModalInstance) {
+          return
+        }
 
         if (isOpen) {
           bsModalInstance.show()
