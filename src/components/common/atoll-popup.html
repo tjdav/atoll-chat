@@ -1,0 +1,252 @@
+<template id="atoll-popup">
+  <div 
+    ref="modalElement"
+    class="modal fade" 
+    tabindex="-1" 
+    role="dialog"
+    aria-modal="true"
+    aria-labelledby="{{ ref_modalTitle }}"
+    aria-describedby="{{ ref_modalDesc }}"
+  >
+    <div class="modal-dialog atoll-popup-dialog {{ dialogClasses }}">
+      <div class="modal-content">
+        <!-- Optional Hero Graphic / Illustration Slot -->
+        <div ref="heroSlotWrapper" class="atoll-popup-hero" hidden="{{ hideHero }}">
+          <slot name="hero">
+            <atoll-icon name="{{ heroIcon }}" size="48"></atoll-icon>
+          </slot>
+        </div>
+
+        <!-- Popup Text Body -->
+        <div class="atoll-popup-body">
+          <h3 ref="modalTitle" id="{{ ref_modalTitle }}" class="atoll-popup-title">
+            {{ title }}
+          </h3>
+          
+          <p 
+            ref="modalDesc" 
+            id="{{ ref_modalDesc }}" 
+            class="atoll-popup-description" 
+            hidden="{{ hideDescription }}"
+          >
+            {{ description }}
+          </p>
+
+          <!-- Custom Content Slot (Forms, Checkboxes, Inputs) -->
+          <slot></slot>
+        </div>
+
+        <!-- Action Button Bar -->
+        <div class="atoll-popup-actions {{ actionClasses }}">
+          <slot name="actions">
+            <!-- Secondary / Cancel Button -->
+            <atoll-button 
+              ref="secondaryBtn"
+              variant="secondary" 
+              size="md" 
+              hidden="{{ hideSecondaryBtn }}"
+            >
+              {{ secondaryText }}
+            </atoll-button>
+
+            <!-- Primary Action Button -->
+            <atoll-button 
+              ref="primaryBtn"
+              variant="{{ primaryVariant }}" 
+              size="md" 
+              hidden="{{ hidePrimaryBtn }}"
+            >
+              {{ primaryText }}
+            </atoll-button>
+          </slot>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      open: Boolean,
+      title: {
+        type: String,
+        default: ''
+      },
+      description: {
+        type: String,
+        default: ''
+      },
+      heroIcon: {
+        type: String,
+        default: ''
+      },
+      variant: {
+        type: String,
+        default: 'confirm' // 'alert' | 'confirm' | 'danger' | 'graphic'
+      },
+      size: {
+        type: String,
+        default: 'md' // 'sm' | 'md' | 'lg'
+      },
+      primaryText: {
+        type: String,
+        default: 'OK'
+      },
+      secondaryText: {
+        type: String,
+        default: 'Cancel'
+      },
+      stackedActions: Boolean,
+      staticBackdrop: Boolean,
+      hasSlottedHero: {
+        type: Boolean,
+        default: false
+      }
+    },
+
+    getters: {
+      primaryVariant: (state) => (state.variant === 'danger' ? 'danger' : 'primary'),
+
+      hideHero: (state) => !state.heroIcon && !state.hasSlottedHero,
+
+      hideDescription: (state) => !state.description,
+
+      hideSecondaryBtn: (state) => state.variant === 'alert' || !state.secondaryText,
+
+      hidePrimaryBtn: (state) => !state.primaryText,
+
+      dialogClasses: (state) => {
+        const classes = []
+
+        if (state.size) {
+          classes.push(`atoll-popup-${state.size}`)
+        } else {
+          classes.push('atoll-popup-md')
+        }
+
+        return classes.join(' ')
+      },
+
+      actionClasses: (state) => (state.stackedActions ? 'atoll-popup-actions-stacked' : '')
+    },
+
+    client: ({ state, refs, root, observe, bootstrap }) => {
+      const { Modal } = bootstrap
+      const modalEl = refs('modalElement')
+      const primaryBtn = refs('primaryBtn')
+      const secondaryBtn = refs('secondaryBtn')
+
+      let bsModalInstance = null
+
+      // Check for slotted hero content
+      const checkSlottedHero = () => {
+        state.hasSlottedHero = !!root.querySelector('[slot="hero"]')
+      }
+      checkSlottedHero()
+
+      const observer = new MutationObserver(checkSlottedHero)
+      observer.observe(root, { childList: true, subtree: true })
+
+      const applyBackdropClass = () => {
+        const backdrops = document.querySelectorAll('.modal-backdrop')
+        backdrops.forEach(backdrop => {
+          backdrop.classList.add('atoll-popup-backdrop')
+        })
+      }
+
+      if (modalEl) {
+        // Initialize Bootstrap Modal Engine
+        bsModalInstance = Modal.getOrCreateInstance(modalEl, {
+          backdrop: state.staticBackdrop ? 'static' : true,
+          keyboard: !state.staticBackdrop
+        })
+
+        modalEl.addEventListener('show.bs.modal', () => {
+          state.open = true
+          setTimeout(applyBackdropClass, 0)
+        })
+
+        // Synchronize state when closed via backdrop click or Escape key
+        modalEl.addEventListener('hidden.bs.modal', () => {
+          state.open = false
+          root.dispatchEvent(
+            new CustomEvent('atoll-popup-close', {
+              bubbles: true,
+              composed: true,
+              detail: { variant: state.variant }
+            })
+          )
+        })
+
+        modalEl.addEventListener('shown.bs.modal', () => {
+          applyBackdropClass()
+          root.dispatchEvent(
+            new CustomEvent('atoll-popup-open', {
+              bubbles: true,
+              composed: true,
+              detail: { variant: state.variant, size: state.size }
+            })
+          )
+        })
+      }
+
+      // Handle Primary Action Click
+      if (primaryBtn) {
+        primaryBtn.addEventListener('click', () => {
+          root.dispatchEvent(
+            new CustomEvent('atoll-popup-primary', {
+              bubbles: true,
+              composed: true,
+              detail: { variant: state.variant, size: state.size }
+            })
+          )
+        })
+      }
+
+      // Handle Secondary Action Click
+      if (secondaryBtn) {
+        secondaryBtn.addEventListener('click', () => {
+          root.dispatchEvent(
+            new CustomEvent('atoll-popup-secondary', {
+              bubbles: true,
+              composed: true,
+              detail: { variant: state.variant }
+            })
+          )
+          if (bsModalInstance) bsModalInstance.hide()
+        })
+      }
+
+      // Reactive observer for [open] attribute
+      observe('open', (isOpen) => {
+        if (!bsModalInstance) return
+
+        if (isOpen) {
+          bsModalInstance.show()
+        } else {
+          bsModalInstance.hide()
+        }
+      })
+
+      // Expose public DOM interface methods on component host
+      root.show = () => {
+        state.open = true
+      }
+      root.hide = () => {
+        state.open = false
+      }
+
+      // Initial Sync if open attribute is set on mount
+      if (state.open && bsModalInstance) {
+        bsModalInstance.show()
+      }
+
+      return () => {
+        observer.disconnect()
+      }
+    }
+  })
+</script>

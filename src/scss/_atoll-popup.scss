@@ -1,0 +1,154 @@
+// src/scss/_atoll-popup.scss
+
+atoll-popup {
+  display: block !important;
+}
+
+:root {
+  /* Dimensions & Radius Tokens */
+  --#{$prefix}popup-radius: 20px;
+  --#{$prefix}popup-padding: 24px;
+  --#{$prefix}popup-max-width-sm: 300px;
+  --#{$prefix}popup-max-width-md: 360px;
+  --#{$prefix}popup-max-width-lg: 480px;
+
+  /* Surface & Color Tokens */
+  --#{$prefix}popup-bg: var(--#{$prefix}bg-surface-primary, #FFFFFF);
+  --#{$prefix}popup-title-color: var(--#{$prefix}text-primary, #111111);
+  --#{$prefix}popup-desc-color: var(--#{$prefix}text-secondary, #666666);
+  --#{$prefix}popup-backdrop-bg: rgba(0, 0, 0, 0.55);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Bootstrap Modal Structural Overrides                                       */
+/* -------------------------------------------------------------------------- */
+
+.atoll-popup-dialog {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: calc(100% - 3.5rem);
+  margin: 1.75rem auto;
+
+  .modal-content {
+    background-color: var(--#{$prefix}popup-bg);
+    border: none;
+    border-radius: var(--#{$prefix}popup-radius);
+    padding: var(--#{$prefix}popup-padding);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    box-sizing: border-box;
+    text-align: center;
+    overflow: hidden;
+  }
+}
+
+/* Scoped Modal Backdrop Override */
+.modal-backdrop.atoll-popup-backdrop {
+  opacity: 1 !important;
+  background-color: var(--#{$prefix}popup-backdrop-bg);
+  backdrop-filter: blur(2px);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Inner Popup Anatomy Elements                                               */
+/* -------------------------------------------------------------------------- */
+
+.atoll-popup-hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+
+  img, svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Hide by default unless heroIcon is present or slot="hero" has content */
+  &:empty:not([data-has-icon="true"]) {
+    display: none;
+  }
+}
+
+.atoll-popup-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+
+.atoll-popup-title {
+  font-family: var(--#{$prefix}font-sans-serif);
+  font-size: var(--#{$prefix}font-size-body-1, 16px);
+  font-weight: var(--#{$prefix}font-weight-bold, 700);
+  color: var(--#{$prefix}popup-title-color);
+  line-height: 1.35;
+  margin: 0;
+}
+
+.atoll-popup-description {
+  font-family: var(--#{$prefix}font-sans-serif);
+  font-size: var(--#{$prefix}font-size-body-2, 14px);
+  color: var(--#{$prefix}popup-desc-color);
+  line-height: 1.45;
+  margin: 0;
+}
+
+/* Action Area (Buttons) */
+.atoll-popup-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+
+  /* Default horizontal row: force equal button widths */
+  > atoll-button,
+  > .atoll-btn {
+    flex: 1;
+    width: 100%;
+  }
+
+  /* Vertical button stacking variant */
+  &.atoll-popup-actions-stacked {
+    flex-direction: column-reverse;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Size Modifiers                                                             */
+/* -------------------------------------------------------------------------- */
+
+.atoll-popup-sm {
+  max-width: var(--#{$prefix}popup-max-width-sm);
+  --#{$prefix}popup-padding: 20px;
+}
+
+.atoll-popup-md {
+  max-width: var(--#{$prefix}popup-max-width-md);
+}
+
+.atoll-popup-lg {
+  max-width: var(--#{$prefix}popup-max-width-lg);
+  --#{$prefix}popup-padding: 32px;
+
+  .atoll-popup-title {
+    font-size: var(--#{$prefix}font-size-title-2, 18px);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dark Mode Theme Overrides ([data-bs-theme="dark"])                         */
+/* -------------------------------------------------------------------------- */
+
+[data-bs-theme="dark"] {
+  .atoll-popup-dialog {
+    --#{$prefix}popup-bg: var(--#{$prefix}bg-surface-primary, #1F1F1F);
+    --#{$prefix}popup-title-color: var(--#{$prefix}text-primary, #FFFFFF);
+    --#{$prefix}popup-desc-color: var(--#{$prefix}text-secondary, #AAAAAA);
+    --#{$prefix}popup-backdrop-bg: rgba(0, 0, 0, 0.75);
+
+    .modal-content {
+      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    }
+  }
+}
