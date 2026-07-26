@@ -15,15 +15,39 @@
         </div>
       </div>
       <div class="d-flex gap-2">
-        <button ref="btnAudioCall" class="btn btn-light btn-sm rounded-circle atoll-touch-target" title="Audio Call" style="width: 44px; height: 44px;" data-testid="btnAudioCall">
-          <i class="bi bi-telephone"></i>
-        </button>
-        <button ref="btnVideoCall" class="btn btn-light btn-sm rounded-circle atoll-touch-target" title="Video Call" style="width: 44px; height: 44px;" data-testid="btnVideoCall">
-          <i class="bi bi-camera-video"></i>
-        </button>
-        <button class="btn btn-outline-secondary btn-sm rounded-pill px-2 px-sm-3 atoll-touch-target" ref="btnDetails">
-          <i class="bi bi-info-circle me-sm-1"></i> <span class="d-none d-sm-inline">Details</span>
-        </button>
+        <atoll-button 
+          ref="btnAudioCall" 
+          icon-only="true" 
+          variant="secondary" 
+          size="md" 
+          pill="true" 
+          title="Audio Call" 
+          aria-label="Audio Call" 
+          data-testid="btnAudioCall"
+        >
+          <atoll-icon name="phone" size="24"></atoll-icon>
+        </atoll-button>
+        <atoll-button 
+          ref="btnVideoCall" 
+          icon-only="true" 
+          variant="secondary" 
+          size="md" 
+          pill="true" 
+          title="Video Call" 
+          aria-label="Video Call" 
+          data-testid="btnVideoCall"
+        >
+          <atoll-icon name="video" size="24"></atoll-icon>
+        </atoll-button>
+        <atoll-button 
+          ref="btnDetails"
+          variant="outline" 
+          size="sm" 
+          pill="true"
+        >
+          <span slot="leading"><atoll-icon name="settings" size="16"></atoll-icon></span>
+          <span class="d-none d-sm-inline">Details</span>
+        </atoll-button>
       </div>
     </header>
 

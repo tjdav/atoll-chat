@@ -189,6 +189,57 @@ test.describe('Atoll Button Component', () => {
     await expect(spinner).toBeHidden()
   })
 
+  test('should support icon-only variants with shapes, classes, and accessibility warnings', async ({ page }) => {
+    // Collect console logs/warnings during execution
+    const warnings = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'warning') {
+        warnings.push(msg.text())
+      }
+    })
+
+    await page.evaluate(() => {
+      // 1. Valid Icon-Only button with aria-label
+      const btnValid = document.createElement('atoll-button')
+      btnValid.id = 'icon-btn-valid'
+      btnValid.setAttribute('icon-only', 'true')
+      btnValid.setAttribute('aria-label', 'Valid Search')
+      btnValid.innerHTML = '<atoll-icon name="search" size="24"></atoll-icon>'
+      document.body.appendChild(btnValid)
+
+      // 2. Invalid Icon-Only button missing aria-label (should trigger warning)
+      const btnWarning = document.createElement('atoll-button')
+      btnWarning.id = 'icon-btn-warn'
+      btnWarning.setAttribute('icon-only', 'true')
+      btnWarning.innerHTML = '<atoll-icon name="add" size="20"></atoll-icon>'
+      document.body.appendChild(btnWarning)
+
+      // 3. Circular pill variant
+      const btnPill = document.createElement('atoll-button')
+      btnPill.id = 'icon-btn-pill'
+      btnPill.setAttribute('icon-only', 'true')
+      btnPill.setAttribute('pill', 'true')
+      btnPill.setAttribute('aria-label', 'Circular Mic')
+      btnPill.innerHTML = '<atoll-icon name="mic" size="24"></atoll-icon>'
+      document.body.appendChild(btnPill)
+    })
+
+    const validHost = page.locator('#icon-btn-valid')
+    await expect(validHost).toBeVisible()
+    const validInner = validHost.locator('button')
+    await expect(validInner).toHaveClass(/atoll-btn-icon/)
+    await expect(validInner).toHaveAttribute('aria-label', 'Valid Search')
+
+    const pillHost = page.locator('#icon-btn-pill')
+    await expect(pillHost).toBeVisible()
+    const pillInner = pillHost.locator('button')
+    await expect(pillInner).toHaveClass(/atoll-btn-icon/)
+    await expect(pillInner).toHaveClass(/atoll-btn-pill/)
+
+    // Assert that the warning was logged
+    expect(warnings).toContain('[atoll-button] icon-only buttons require an aria-label attribute for accessibility.')
+  })
+
   test('should render visual variants for screenshot', async ({ page }) => {
     await page.evaluate(() => {
       document.body.innerHTML = `
@@ -209,6 +260,10 @@ test.describe('Atoll Button Component', () => {
 
           <div id="section-loading" style="display: flex; gap: 20px; align-items: center;">
             <strong>Loading & State:</strong>
+          </div>
+
+          <div id="section-icon-only" style="display: flex; gap: 20px; align-items: center;">
+            <strong>Icon-Only Buttons:</strong>
           </div>
         </div>
       `
@@ -312,6 +367,33 @@ test.describe('Atoll Button Component', () => {
       pillDanger.setAttribute('size', 'md')
       pillDanger.textContent = 'End Call'
       capsuleSec.appendChild(pillDanger)
+
+      // Icon-Only Buttons
+      const iconBtnSm = document.createElement('atoll-button')
+      iconBtnSm.setAttribute('icon-only', 'true')
+      iconBtnSm.setAttribute('size', 'sm')
+      iconBtnSm.setAttribute('variant', 'ghost')
+      iconBtnSm.setAttribute('aria-label', 'Attachment')
+      iconBtnSm.innerHTML = '<atoll-icon name="add" size="20"></atoll-icon>'
+      document.getElementById('section-icon-only').appendChild(iconBtnSm)
+
+      const iconBtnMd = document.createElement('atoll-button')
+      iconBtnMd.setAttribute('icon-only', 'true')
+      iconBtnMd.setAttribute('size', 'md')
+      iconBtnMd.setAttribute('pill', 'true')
+      iconBtnMd.setAttribute('variant', 'secondary')
+      iconBtnMd.setAttribute('aria-label', 'Video Call')
+      iconBtnMd.innerHTML = '<atoll-icon name="video" size="24"></atoll-icon>'
+      document.getElementById('section-icon-only').appendChild(iconBtnMd)
+
+      const iconBtnLg = document.createElement('atoll-button')
+      iconBtnLg.setAttribute('icon-only', 'true')
+      iconBtnLg.setAttribute('size', 'lg')
+      iconBtnLg.setAttribute('pill', 'true')
+      iconBtnLg.setAttribute('variant', 'danger')
+      iconBtnLg.setAttribute('aria-label', 'End Call')
+      iconBtnLg.innerHTML = '<atoll-icon name="phone" size="32"></atoll-icon>'
+      document.getElementById('section-icon-only').appendChild(iconBtnLg)
     })
 
     // Wait for rendering

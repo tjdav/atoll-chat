@@ -77,8 +77,8 @@
         // Fetch SVG from IconPark Registry
         const svgContent = getIconSvg(state.name, {
           size: numericSize,
-          primaryColor: state.color || 'currentColor',
-          secondaryColor: state.secondaryColor || 'currentColor'
+          primaryColor: state.color || 'var(--atoll-icon-primary-color, currentColor)',
+          secondaryColor: state.secondaryColor || 'var(--atoll-icon-secondary-color, currentColor)'
         })
 
         wrapper.innerHTML = svgContent || ''

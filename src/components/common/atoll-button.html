@@ -37,6 +37,7 @@
       loading: Boolean,
       block: Boolean,
       pill: Boolean,
+      iconOnly: Boolean,
       ariaLabel: {
         type: String,
         default: ''
@@ -62,6 +63,9 @@
         }
 
         // Layout modifiers
+        if (state.iconOnly) {
+          classes.push('atoll-btn-icon')
+        }
         if (state.block) {
           classes.push('atoll-btn-block')
         }
@@ -92,7 +96,11 @@
             // Create icon imperatively using string literal with hyphen
             const icon = document.createElement('atoll-icon')
             icon.setAttribute('name', 'settings')
-            icon.setAttribute('size', '20')
+            
+            // Determined by Resolved Spinner Sizing Scale: sm: 16, md: 20, lg: 24
+            const spinnerSizes = { sm: '16', md: '20', lg: '24' }
+            const iconSize = spinnerSizes[state.size] || '20'
+            icon.setAttribute('size', iconSize)
 
             spinnerEl.appendChild(icon)
           }
@@ -122,6 +130,9 @@
           btn.setAttribute('aria-label', labelVal)
         } else {
           btn.removeAttribute('aria-label')
+          if (state.iconOnly) {
+            console.warn('[atoll-button] icon-only buttons require an aria-label attribute for accessibility.')
+          }
         }
       }
 

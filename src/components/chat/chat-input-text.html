@@ -3,9 +3,17 @@
     <input type="file" ref="fileInput" class="d-none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz" data-testid="fileInput">
     
     <!-- Attachment Button -->
-    <button class="btn btn-ghost btn-circle" type="button" ref="attachButton" title="Attach File" disabled="{{ isDisabled }}">
-      <i class="bi bi-paperclip fs-5"></i>
-    </button>
+    <atoll-button 
+      icon-only="true" 
+      variant="ghost" 
+      size="sm" 
+      ref="attachButton" 
+      title="Attach File" 
+      aria-label="Attach File"
+      disabled="{{ isDisabled }}"
+    >
+      <atoll-icon name="add" size="20"></atoll-icon>
+    </atoll-button>
 
     <div class="input-wrapper">
       <textarea
@@ -17,21 +25,45 @@
         disabled="{{ isDisabled }}"
       >{{ currentMessageText }}</textarea>
       
-      <button class="btn btn-ghost emoji-button" type="button" ref="emojiButton" title="Emojis" disabled="{{ isDisabled }}">
-        <i class="bi bi-emoji-smile fs-5"></i>
-      </button>
+      <atoll-button 
+        icon-only="true" 
+        variant="ghost" 
+        size="sm" 
+        class="emoji-button" 
+        ref="emojiButton" 
+        title="Emojis" 
+        aria-label="Select Emoji"
+        disabled="{{ isDisabled }}"
+      >
+        <atoll-icon name="globe" size="20"></atoll-icon>
+      </atoll-button>
     </div>
 
-    <button class="btn btn-ghost btn-circle" type="button" ref="micButton" title="Voice message" disabled="{{ isDisabled }}" data-testid="btn-mic-toggle">
-      <i class="bi bi-mic fs-5"></i>
-    </button>
+    <atoll-button 
+      icon-only="true" 
+      variant="ghost" 
+      size="sm" 
+      ref="micButton" 
+      title="Voice message" 
+      aria-label="Voice message"
+      disabled="{{ isDisabled }}" 
+      data-testid="btn-mic-toggle"
+    >
+      <atoll-icon name="mic" size="20"></atoll-icon>
+    </atoll-button>
 
-    <button class="btn btn-primary btn-circle" type="button" ref="sendButton" disabled="{{ isDisabled }}" data-testid="sendButton">
-      <i class="bi bi-send-fill {{ sendIconClass }}"></i>
-      <div class="spinner-border spinner-border-sm {{ spinnerClass }}" role="status">
-        <span class="visually-hidden">Loading...</span>
-      </div>
-    </button>
+    <atoll-button 
+      icon-only="true" 
+      variant="primary" 
+      size="sm" 
+      pill="true"
+      ref="sendButton" 
+      aria-label="Send Message"
+      disabled="{{ isDisabled }}" 
+      data-testid="sendButton"
+    >
+      <atoll-icon name="add" size="20"></atoll-icon>
+    </atoll-button>
   </div>
 </template>
 

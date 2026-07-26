@@ -57,12 +57,28 @@
       </div>
     </div>
 
-    <button ref="btnPip" class="btn btn-light rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;" title="Picture-in-Picture">
-      <atoll-icon name="pic-in-pic" size="24"></atoll-icon>
-    </button>
-    <button ref="btnEndCall" class="btn btn-danger rounded-circle p-3 d-flex align-items-center justify-content-center" style="width: 60px; height: 60px;">
-      <atoll-icon name="phone" size="24"></atoll-icon>
-    </button>
+    <atoll-button 
+      ref="btnPip" 
+      icon-only="true" 
+      variant="secondary" 
+      size="lg" 
+      pill="true" 
+      title="Picture-in-Picture"
+      aria-label="Picture-in-Picture"
+    >
+      <atoll-icon name="pic-in-pic" size="32"></atoll-icon>
+    </atoll-button>
+    <atoll-button 
+      ref="btnEndCall" 
+      icon-only="true" 
+      variant="danger" 
+      size="lg" 
+      pill="true" 
+      title="End Call"
+      aria-label="End Call"
+    >
+      <atoll-icon name="phone" size="32"></atoll-icon>
+    </atoll-button>
   </div>
 </template>
 
