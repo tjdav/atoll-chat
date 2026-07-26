@@ -1,0 +1,245 @@
+<template id="atoll-profile">
+  <div class="{{ profileClasses }}" role="img" aria-label="{{ computedAlt }}">
+    <div class="atoll-profile-circle {{ gridClass }}">
+      <slot name="image">
+        <img 
+          ref="avatarImage" 
+          alt="{{ computedAlt }}" 
+          hidden="{{ hideImage }}" 
+        />
+        <span class="atoll-profile-fallback" hidden="{{ hideFallback }}">
+          <atoll-icon name="user" size="{{ iconSize }}"></atoll-icon>
+        </span>
+      </slot>
+    </div>
+
+    <div class="atoll-profile-badge" hidden="{{ hideBadge }}">
+      <slot name="badge">
+        <atoll-badge count="{{ badge }}" size="sm"></atoll-badge>
+      </slot>
+    </div>
+
+    <div class="atoll-profile-icon" hidden="{{ hideOverlayIcon }}">
+      <slot name="icon">
+        <atoll-icon name="{{ iconName }}" size="{{ overlayIconSize }}"></atoll-icon>
+      </slot>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      src: {
+        type: String,
+        default: ''
+      },
+      alt: {
+        type: String,
+        default: 'User profile'
+      },
+      size: {
+        type: String,
+        default: 'md'
+      },
+      type: {
+        type: String,
+        default: 'single'
+      },
+      badge: {
+        type: String,
+        default: ''
+      },
+      iconName: {
+        type: String,
+        default: ''
+      },
+      splitCount: {
+        type: Number,
+        default: 1
+      },
+      ring: Boolean,
+      hasError: Boolean
+    },
+
+    getters: {
+      computedAlt: (state) => state.alt || 'User profile',
+
+      hideImage: (state) => !state.src || state.hasError,
+
+      hideFallback: (state) => Boolean(state.src) && !state.hasError,
+
+      hideBadge: (state) => !state.badge,
+
+      hideOverlayIcon: (state) => !state.iconName,
+
+      iconSize: (state) => {
+        if (state.size === '2xs' || state.size === 'xs') {
+          return '16'
+        }
+        if (state.size === 'sm' || state.size === 'md') {
+          return '24'
+        }
+        if (state.size === 'lg' || state.size === 'xl') {
+          return '32'
+        }
+        return '48'
+      },
+
+      overlayIconSize: (state) => {
+        if (state.size === '2xs' || state.size === 'xs') {
+          return '10'
+        }
+        if (state.size === 'sm' || state.size === 'md') {
+          return '14'
+        }
+        return '18'
+      },
+
+      gridClass: (state) => {
+        if (state.type === 'multiparty') {
+          const count = Math.min(Math.max(state.splitCount, 2), 4)
+          return `atoll-profile-grid-${count}`
+        }
+        return ''
+      },
+
+      profileClasses: (state) => {
+        const classes = ['atoll-profile']
+
+        if (state.size) {
+          classes.push(`atoll-profile-${state.size}`)
+        } else {
+          classes.push('atoll-profile-md')
+        }
+
+        if (state.type) {
+          classes.push(`atoll-profile-${state.type}`)
+        }
+
+        if (state.ring) {
+          classes.push('atoll-profile-ring')
+        }
+
+        return classes.join(' ')
+      }
+    },
+
+    client: ({ state, refs, root, observe }) => {
+      const img = refs('avatarImage')
+
+      if (img) {
+        img.addEventListener('error', () => {
+          state.hasError = true
+        })
+
+        img.addEventListener('load', () => {
+          state.hasError = false
+        })
+      }
+
+      const updateSrc = (newSrc) => {
+        if (img) {
+          if (newSrc) {
+            state.hasError = false
+            img.src = newSrc
+          } else {
+            state.hasError = true
+            img.removeAttribute('src')
+          }
+        }
+      }
+
+      updateSrc(state.src)
+      observe('src', updateSrc)
+
+      let disconnectMultiparty = null
+
+      const handleMultiparty = () => {
+        if (state.type !== 'multiparty') {
+          return
+        }
+
+        const container = root.querySelector('[slot="image"]')
+        if (!container) {
+          return
+        }
+
+        const targetCount = Math.min(Math.max(state.splitCount, 2), 4)
+
+        const syncImages = () => {
+          const children = Array.from(container.children)
+
+          children.forEach((child) => {
+            if (child.tagName === 'IMG' && !child.dataset.fallbackBound) {
+              child.dataset.fallbackBound = 'true'
+
+              const replaceWithFallback = () => {
+                const fallback = document.createElement('span')
+                fallback.className = 'atoll-profile-fallback'
+
+                const icon = document.createElement('atoll-icon')
+                icon.setAttribute('name', 'user')
+                icon.setAttribute('size', state.iconSize)
+
+                fallback.appendChild(icon)
+                child.replaceWith(fallback)
+              }
+
+              child.addEventListener('error', replaceWithFallback)
+            }
+          })
+
+          let currentCount = container.children.length
+          while (currentCount < targetCount) {
+            const fallback = document.createElement('span')
+            fallback.className = 'atoll-profile-fallback'
+
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'user')
+            icon.setAttribute('size', state.iconSize)
+
+            fallback.appendChild(icon)
+            container.appendChild(fallback)
+            currentCount++
+          }
+        }
+
+        syncImages()
+
+        const mutObserver = new MutationObserver(syncImages)
+        mutObserver.observe(container, { childList: true })
+
+        disconnectMultiparty = () => {
+          mutObserver.disconnect()
+        }
+      }
+
+      handleMultiparty()
+
+      observe('type', () => {
+        if (disconnectMultiparty) {
+          disconnectMultiparty()
+          disconnectMultiparty = null
+        }
+        handleMultiparty()
+      })
+
+      observe('splitCount', () => {
+        if (disconnectMultiparty) {
+          disconnectMultiparty()
+          disconnectMultiparty = null
+        }
+        handleMultiparty()
+      })
+
+      return () => {
+        if (disconnectMultiparty) {
+          disconnectMultiparty()
+        }
+      }
+    }
+  })
+</script>
