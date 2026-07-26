@@ -113,12 +113,12 @@
           }
         }
 
-        const links = document.querySelectorAll('#settings-navbar a')
+        const links = document.querySelectorAll('#settings-navbar atoll-list-item')
         links.forEach(link => {
           if (link.getAttribute('href') === activeId) {
-            link.classList.add('active')
+            link.setAttribute('selected', 'true')
           } else {
-            link.classList.remove('active')
+            link.setAttribute('selected', 'false')
           }
         })
       }

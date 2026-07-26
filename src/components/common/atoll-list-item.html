@@ -1,0 +1,170 @@
+<template id="atoll-list-item">
+  <div 
+    ref="itemRoot"
+    class="{{ itemClasses }}" 
+    role="{{ itemRole }}"
+    tabindex="{{ itemTabindex }}"
+  >
+    <!-- 3-1. Left Area (Avatar, Thumbnail, Selection Control) -->
+    <div class="atoll-list-item-left">
+      <slot name="left"></slot>
+    </div>
+
+    <!-- 3-2. Center Text Area -->
+    <div class="atoll-list-item-content">
+      <div class="atoll-list-item-title-row">
+        <span class="atoll-list-item-title">
+          <slot>{{ title }}</slot>
+        </span>
+
+        <!-- Optional Top-Right Timestamp -->
+        <span class="atoll-list-item-timestamp" hidden="{{ hideTimestamp }}">
+          {{ timestamp }}
+        </span>
+      </div>
+
+      <!-- Optional Subtitle / Description -->
+      <span class="atoll-list-item-description" hidden="{{ hideDescription }}">
+        {{ description }}
+      </span>
+    </div>
+
+    <!-- 3-3. Right Area (Switch, Badge, Chevron, Custom Action) -->
+    <div class="atoll-list-item-right">
+      <slot name="right"></slot>
+
+      <!-- Unread Count Badge -->
+      <atoll-badge hidden="{{ hideBadge }}" count="{{ badge }}" size="sm"></atoll-badge>
+
+      <!-- Navigation Directional Chevron -->
+      <span class="atoll-list-item-chevron" hidden="{{ hideChevron }}">
+        <atoll-icon name="chevron-right" size="18"></atoll-icon>
+      </span>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      title: {
+        type: String,
+        default: ''
+      },
+      description: {
+        type: String,
+        default: ''
+      },
+      timestamp: {
+        type: String,
+        default: ''
+      },
+      badge: {
+        type: String,
+        default: ''
+      },
+      size: {
+        type: String,
+        default: 'md' // 'sm' | 'md' | 'lg'
+      },
+      chevron: Boolean,
+      clickable: Boolean,
+      highlighted: Boolean,
+      disabled: Boolean,
+      selected: Boolean
+    },
+
+    getters: {
+      hideDescription: (state) => !state.description,
+
+      hideTimestamp: (state) => !state.timestamp,
+
+      hideBadge: (state) => !state.badge,
+
+      hideChevron: (state) => !state.chevron,
+
+      isClickable: (state) => state.clickable || state.chevron,
+
+      itemRole: (state) => (state.isClickable ? 'button' : 'listitem'),
+
+      itemTabindex: (state) => (state.isClickable && !state.disabled ? '0' : '-1'),
+
+      itemClasses: (state) => {
+        const classes = ['atoll-list-item']
+
+        if (state.size) {
+          classes.push(`atoll-list-item-${state.size}`)
+        } else {
+          classes.push('atoll-list-item-md')
+        }
+
+        if (state.isClickable) classes.push('atoll-list-item-clickable')
+        if (state.highlighted) classes.push('atoll-list-item-highlighted')
+        if (state.selected) {
+          classes.push('atoll-list-item-selected')
+          classes.push('active')
+        }
+        if (state.disabled) classes.push('disabled')
+
+        return classes.join(' ')
+      }
+    },
+
+    client: ({ state, refs, root, observe }) => {
+      const itemRoot = refs('itemRoot')
+
+      const handleTrigger = (event) => {
+        if (state.disabled) return
+
+        root.dispatchEvent(
+          new CustomEvent('atoll-item-click', {
+            bubbles: true,
+            composed: true,
+            detail: { title: state.title, selected: state.selected }
+          })
+        )
+      }
+
+      if (itemRoot) {
+        itemRoot.addEventListener('click', handleTrigger)
+
+        itemRoot.addEventListener('keydown', (event) => {
+          if (state.isClickable && (event.key === 'Enter' || event.key === ' ')) {
+            event.preventDefault()
+            handleTrigger(event)
+          }
+        })
+      }
+
+      // Sync attribute changes dynamically
+      if (observe) {
+        observe('selected', (val) => {
+          state.selected = val === 'true' || val === true || val === ''
+        })
+        observe('disabled', (val) => {
+          state.disabled = val === 'true' || val === true || val === ''
+        })
+        observe('highlighted', (val) => {
+          state.highlighted = val === 'true' || val === true || val === ''
+        })
+        observe('clickable', (val) => {
+          state.clickable = val === 'true' || val === true || val === ''
+        })
+        observe('title', (val) => {
+          state.title = val
+        })
+        observe('description', (val) => {
+          state.description = val
+        })
+        observe('timestamp', (val) => {
+          state.timestamp = val
+        })
+        observe('badge', (val) => {
+          state.badge = val
+        })
+      }
+    }
+  })
+</script>

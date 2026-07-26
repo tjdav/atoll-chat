@@ -1,0 +1,27 @@
+<template id="atoll-list">
+  <div class="{{ listClasses }}" role="list">
+    <slot></slot>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      divided: Boolean
+    },
+
+    getters: {
+      listClasses: (state) => {
+        const classes = ['atoll-list']
+
+        if (state.divided) {
+          classes.push('atoll-list-divided')
+        }
+
+        return classes.join(' ')
+      }
+    }
+  })
+</script>

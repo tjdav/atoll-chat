@@ -94,8 +94,8 @@
 
       headerTabindex: (state) => (state.variant === 'accordion' || Boolean(state.collapsible) ? '0' : '-1'),
 
-      isAriaExpanded: (state, getters) => {
-        if (!getters.isAccordion) {
+      isAriaExpanded: (state) => {
+        if (!state.isAccordion) {
           return null
         }
         return state.expanded ? 'true' : 'false'
