@@ -1,0 +1,191 @@
+// src/scss/_atoll-input.scss
+
+:root {
+  /* Input Dimension Tokens */
+  --#{$prefix}input-height-sm: 36px;
+  --#{$prefix}input-height-md: 44px;
+  --#{$prefix}input-height-lg: 52px;
+
+  /* Color Tokens */
+  --#{$prefix}input-text-color: var(--#{$prefix}text-primary, #111111);
+  --#{$prefix}input-placeholder-color: var(--#{$prefix}text-tertiary, #999999);
+  --#{$prefix}input-underline-color: var(--#{$prefix}border-subtle, #E0E0E0);
+  --#{$prefix}input-underline-focus: var(--#{$prefix}brand-primary, #06C755);
+  --#{$prefix}input-underline-error: var(--#{$prefix}rainbow-red, #FF334B);
+  --#{$prefix}input-label-color: var(--#{$prefix}text-secondary, #555555);
+}
+
+/* Host Container Wrapper */
+.atoll-input-group {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  position: relative;
+  font-family: var(--#{$prefix}font-sans-serif);
+  box-sizing: border-box;
+
+  &.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}
+
+/* Label & Counter Row Header */
+.atoll-input-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 4px;
+  font-size: var(--#{$prefix}font-size-caption-1, 12px);
+  color: var(--#{$prefix}input-label-color);
+  font-weight: var(--#{$prefix}font-weight-medium, 500);
+}
+
+.atoll-input-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.atoll-input-required-mark {
+  color: var(--#{$prefix}rainbow-red, #FF334B);
+  font-weight: bold;
+}
+
+.atoll-input-counter {
+  font-size: var(--#{$prefix}font-size-caption-2, 11px);
+  color: var(--#{$prefix}text-tertiary, #999999);
+  margin-left: auto;
+}
+
+/* Underlined Input Field Container */
+.atoll-input-wrapper {
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: 100%;
+  height: var(--#{$prefix}input-height, var(--#{$prefix}input-height-md));
+  border-bottom: 1px solid var(--#{$prefix}input-underline-color);
+  transition: border-color 0.15s ease-in-out, border-width 0.1s ease-in-out;
+
+  /* Focus Underline State */
+  &:focus-within {
+    border-bottom: 2px solid var(--#{$prefix}input-underline-focus);
+  }
+}
+
+/* Native Input Field Reset */
+.atoll-input-field {
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  border: none;
+  outline: none;
+  padding: 0;
+  margin: 0;
+  font-family: inherit;
+  font-size: var(--#{$prefix}font-size-body-2, 14px);
+  color: var(--#{$prefix}input-text-color);
+
+  &::placeholder {
+    color: var(--#{$prefix}input-placeholder-color);
+  }
+
+  &:disabled {
+    cursor: not-allowed;
+  }
+}
+
+/* Action Controls Row (Clear X, Eye Toggle, Timer) */
+.atoll-input-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-left: 8px;
+  flex-shrink: 0;
+}
+
+.atoll-input-action-btn {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+  color: var(--#{$prefix}text-secondary, #666666);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.15s ease-in-out;
+
+  &:hover {
+    opacity: 1;
+  }
+
+  &:focus-visible {
+    outline: none;
+  }
+}
+
+.atoll-input-timer {
+  font-size: var(--#{$prefix}font-size-caption-1, 12px);
+  color: var(--#{$prefix}brand-primary, #06C755);
+  font-weight: var(--#{$prefix}font-weight-semibold, 600);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Helper & Error Message Footer */
+.atoll-input-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+  font-size: var(--#{$prefix}font-size-caption-2, 11px);
+  color: var(--#{$prefix}text-secondary, #666666);
+  min-height: 16px;
+}
+
+/* -------------------------------------------------------------------------- */
+/* State & Size Modifiers                                                     */
+/* -------------------------------------------------------------------------- */
+
+/* Error Modifier */
+.atoll-input-error {
+  .atoll-input-wrapper {
+    border-bottom: 2px solid var(--#{$prefix}input-underline-error) !important;
+  }
+
+  .atoll-input-footer {
+    color: var(--#{$prefix}rainbow-red, #FF334B);
+  }
+}
+
+/* Size Modifiers */
+.atoll-input-sm {
+  --#{$prefix}input-height: var(--#{$prefix}input-height-sm);
+
+  .atoll-input-field {
+    font-size: var(--#{$prefix}font-size-caption-1, 12px);
+  }
+}
+
+.atoll-input-lg {
+  --#{$prefix}input-height: var(--#{$prefix}input-height-lg);
+
+  .atoll-input-field {
+    font-size: var(--#{$prefix}font-size-body-1, 16px);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dark Mode Overrides ([data-bs-theme="dark"])                                */
+/* -------------------------------------------------------------------------- */
+
+[data-bs-theme="dark"] {
+  .atoll-input-group {
+    --#{$prefix}input-text-color: var(--#{$prefix}text-primary, #FFFFFF);
+    --#{$prefix}input-placeholder-color: var(--#{$prefix}text-tertiary, #666666);
+    --#{$prefix}input-underline-color: var(--#{$prefix}border-strong, #333333);
+    --#{$prefix}input-label-color: var(--#{$prefix}text-secondary, #AAAAAA);
+  }
+}

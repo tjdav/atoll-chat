@@ -96,9 +96,13 @@
             // Create icon imperatively using string literal with hyphen
             const icon = document.createElement('atoll-icon')
             icon.setAttribute('name', 'settings')
-            
+  
             // Determined by Resolved Spinner Sizing Scale: sm: 16, md: 20, lg: 24
-            const spinnerSizes = { sm: '16', md: '20', lg: '24' }
+            const spinnerSizes = {
+              sm: '16',
+              md: '20',
+              lg: '24'
+            }
             const iconSize = spinnerSizes[state.size] || '20'
             icon.setAttribute('size', iconSize)
 

@@ -14,6 +14,8 @@ import {
   MusicMenu,
   OffScreen,
   Phone,
+  PreviewOpen,
+  PreviewCloseOne,
   Search,
   SettingTwo,
   VideoTwo
@@ -35,6 +37,8 @@ const ICON_MAP = {
   more: MoreTwo,
   lock: Lock,
   close: CloseOne,
+  eye: PreviewOpen,
+  'eye-off': PreviewCloseOne,
 
   // Call & Media Controls
   mic: Microphone,

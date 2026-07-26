@@ -1,0 +1,225 @@
+<template id="atoll-input">
+  <div class="{{ groupClasses }}">
+    <!-- Optional Header (Label + Required Asterisk + Character Counter) -->
+    <div class="atoll-input-header" hidden="{{ hideHeader }}">
+      <label class="atoll-input-label" for="{{ ref_input }}">
+        {{ label }}
+        <span class="atoll-input-required-mark" hidden="{{ hideRequiredMark }}">*</span>
+      </label>
+      <span class="atoll-input-counter" hidden="{{ hideCounter }}">
+        {{ currentLength }} / {{ maxlength }}
+      </span>
+    </div>
+
+    <!-- Underlined Input Wrapper -->
+    <div class="atoll-input-wrapper">
+      <input 
+        ref="input"
+        id="{{ ref_input }}"
+        type="{{ computedType }}"
+        value="{{ value }}"
+        placeholder="{{ placeholder }}"
+        maxlength="{{ maxlength }}"
+        disabled="{{ disabled }}"
+        readonly="{{ readonly }}"
+        required="{{ required }}"
+        aria-invalid="{{ isAriaInvalid }}"
+        aria-describedby="{{ ref_footer }}"
+        class="atoll-input-field"
+      />
+
+      <!-- Action Area: Clear (X), Password Eye, Timer, Custom Slot -->
+      <div class="atoll-input-actions">
+        <!-- Clear Button -->
+        <button 
+          ref="clearBtn"
+          type="button" 
+          class="atoll-input-action-btn" 
+          aria-label="Clear input"
+          hidden="{{ hideClearBtn }}"
+        >
+          <atoll-icon name="close" size="16"></atoll-icon>
+        </button>
+
+        <!-- Password Visibility Toggle -->
+        <button 
+          ref="passwordToggleBtn"
+          type="button" 
+          class="atoll-input-action-btn" 
+          aria-label="Toggle password visibility"
+          hidden="{{ hidePasswordToggle }}"
+        >
+          <atoll-icon name="{{ passwordIconName }}" size="18"></atoll-icon>
+        </button>
+
+        <!-- Countdown Timer for Code Mode -->
+        <span class="atoll-input-timer" hidden="{{ hideTimer }}">
+          {{ timer }}
+        </span>
+
+        <!-- Trailing Action Slot (e.g. Resend Code Button) -->
+        <slot name="action"></slot>
+      </div>
+    </div>
+
+    <!-- Footer: Helper or Error Message -->
+    <div ref="footer" id="{{ ref_footer }}" class="atoll-input-footer" hidden="{{ hideFooter }}">
+      <span>{{ displayMessage }}</span>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      type: {
+        type: String,
+        // 'text' | 'password' | 'email' | 'tel' | 'code'
+        default: 'text'
+      },
+      value: {
+        type: String,
+        default: ''
+      },
+      placeholder: {
+        type: String,
+        default: ''
+      },
+      label: {
+        type: String,
+        default: ''
+      },
+      helperText: {
+        type: String,
+        default: ''
+      },
+      errorMessage: {
+        type: String,
+        default: ''
+      },
+      timer: {
+        type: String,
+        default: ''
+      },
+      size: {
+        type: String,
+        default: 'md'
+      },
+      maxlength: {
+        type: Number,
+        default: null
+      },
+      required: Boolean,
+      disabled: Boolean,
+      readonly: Boolean,
+      invalid: Boolean,
+      clearable: Boolean,
+      showCounter: Boolean,
+      showPassword: Boolean
+    },
+
+    getters: {
+      computedType: (state) => {
+        if (state.type === 'password') {
+          return state.showPassword ? 'text' : 'password'
+        }
+        return state.type === 'code' ? 'text' : state.type
+      },
+
+      passwordIconName: (state) => (state.showPassword ? 'eye-off' : 'eye'),
+
+      currentLength: (state) => (state.value ? String(state.value).length : 0),
+
+      isAriaInvalid: (state) => (state.invalid || Boolean(state.errorMessage) ? 'true' : 'false'),
+
+      // Operator-free boolean getters for template attributes
+      hideHeader: (state) => !state.label && !state.showCounter,
+
+      hideRequiredMark: (state) => !state.required,
+
+      hideCounter: (state) => !state.showCounter,
+
+      hideClearBtn: (state) => !state.clearable || !state.value || state.disabled || state.readonly,
+
+      hidePasswordToggle: (state) => state.type !== 'password',
+
+      hideTimer: (state) => !state.timer,
+
+      hideFooter: (state) => !state.errorMessage && !state.helperText,
+
+      displayMessage: (state) => (state.invalid && state.errorMessage ? state.errorMessage : state.helperText),
+
+      groupClasses: (state) => {
+        const classes = ['atoll-input-group']
+
+        if (state.size) {
+          classes.push(`atoll-input-${state.size}`)
+        } else {
+          classes.push('atoll-input-md')
+        }
+
+        if (state.invalid || state.errorMessage) {
+          classes.push('atoll-input-error')
+        }
+        if (state.disabled) {
+          classes.push('disabled')
+        }
+
+        return classes.join(' ')
+      }
+    },
+
+    client: ({ state, refs, root, observe }) => {
+      const input = refs('input')
+      const clearBtn = refs('clearBtn')
+      const passBtn = refs('passwordToggleBtn')
+
+      const dispatchEvents = () => {
+        root.dispatchEvent(new Event('input', {
+          bubbles: true,
+          composed: true
+        }))
+        root.dispatchEvent(new Event('change', {
+          bubbles: true,
+          composed: true
+        }))
+      }
+
+      // Sync native user typing back to state and trigger form events
+      if (input) {
+        input.addEventListener('input', () => {
+          state.value = input.value
+          dispatchEvents()
+        })
+      }
+
+      // Clear button handler
+      if (clearBtn) {
+        clearBtn.addEventListener('click', () => {
+          state.value = ''
+          if (input) {
+            input.value = ''
+            input.focus()
+          }
+          dispatchEvents()
+        })
+      }
+
+      // Password visibility toggle handler
+      if (passBtn) {
+        passBtn.addEventListener('click', () => {
+          state.showPassword = !state.showPassword
+        })
+      }
+
+      // Two-way sync: Update native input if value changes programmatically from outside
+      observe('value', (newVal) => {
+        if (input && input.value !== (newVal || '')) {
+          input.value = newVal || ''
+        }
+      })
+    }
+  })
+</script>
