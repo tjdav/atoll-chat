@@ -1,0 +1,64 @@
+// scss/theme/_typography-utilities.scss
+
+.atoll-text-display {
+  font-size: var(--#{$prefix}font-size-display);
+  line-height: var(--#{$prefix}line-height-display);
+  font-weight: var(--#{$prefix}font-weight-bold);
+}
+
+.atoll-text-title-1 {
+  font-size: var(--#{$prefix}font-size-title-1);
+  line-height: var(--#{$prefix}line-height-title-1);
+  font-weight: var(--#{$prefix}font-weight-bold);
+}
+
+.atoll-text-title-2 {
+  font-size: var(--#{$prefix}font-size-title-2);
+  line-height: var(--#{$prefix}line-height-title-2);
+  font-weight: var(--#{$prefix}font-weight-semibold);
+}
+
+.atoll-text-title-3 {
+  font-size: var(--#{$prefix}font-size-title-3);
+  line-height: var(--#{$prefix}line-height-title-3);
+  font-weight: var(--#{$prefix}font-weight-semibold);
+}
+
+.atoll-text-body-1 {
+  font-size: var(--#{$prefix}font-size-body-1);
+  line-height: var(--#{$prefix}line-height-body-1);
+  font-weight: var(--#{$prefix}font-weight-normal);
+}
+
+.atoll-text-body-2 {
+  font-size: var(--#{$prefix}font-size-body-2);
+  line-height: var(--#{$prefix}line-height-body-2);
+  font-weight: var(--#{$prefix}font-weight-normal);
+}
+
+.atoll-text-caption-1 {
+  font-size: var(--#{$prefix}font-size-caption-1);
+  line-height: var(--#{$prefix}line-height-caption-1);
+  font-weight: var(--#{$prefix}font-weight-normal);
+}
+
+.atoll-text-caption-2 {
+  font-size: var(--#{$prefix}font-size-caption-2);
+  line-height: var(--#{$prefix}line-height-caption-2);
+  font-weight: var(--#{$prefix}font-weight-medium);
+}
+
+/* Multiline Truncation Utilities */
+.atoll-text-truncate-1 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.atoll-text-truncate-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

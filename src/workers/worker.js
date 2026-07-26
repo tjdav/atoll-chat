@@ -1485,12 +1485,17 @@ async function processNewRoomKey (rpcId, payload) {
       const existingParticipants = room.participants || []
       const mergedMap = new Map()
       for (const p of existingParticipants) {
-        if (p && p.id) mergedMap.set(p.id, p)
+        if (p && p.id) {
+          mergedMap.set(p.id, p)
+        }
       }
       for (const p of participants) {
         if (p && p.id) {
           const existing = mergedMap.get(p.id)
-          mergedMap.set(p.id, { ...existing, ...p })
+          mergedMap.set(p.id, {
+            ...existing,
+            ...p
+          })
         }
       }
       room.participants = Array.from(mergedMap.values())

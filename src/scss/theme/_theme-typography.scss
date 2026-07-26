@@ -1,0 +1,33 @@
+// scss/theme/_theme-typography.scss
+
+:root {
+  /* Font Family Stack */
+  --#{$prefix}font-sans-serif: #{$font-family-sans-serif};
+  --#{$prefix}font-monospace: #{$font-family-monospace};
+
+  /* Font Sizes */
+  --#{$prefix}font-size-display: #{$atoll-font-size-display};
+  --#{$prefix}font-size-title-1: #{$atoll-font-size-title-1};
+  --#{$prefix}font-size-title-2: #{$atoll-font-size-title-2};
+  --#{$prefix}font-size-title-3: #{$atoll-font-size-title-3};
+  --#{$prefix}font-size-body-1: #{$atoll-font-size-body-1};
+  --#{$prefix}font-size-body-2: #{$atoll-font-size-body-2};
+  --#{$prefix}font-size-caption-1: #{$atoll-font-size-caption-1};
+  --#{$prefix}font-size-caption-2: #{$atoll-font-size-caption-2};
+
+  /* Line Heights */
+  --#{$prefix}line-height-display: #{$atoll-line-height-display};
+  --#{$prefix}line-height-title-1: #{$atoll-line-height-title-1};
+  --#{$prefix}line-height-title-2: #{$atoll-line-height-title-2};
+  --#{$prefix}line-height-title-3: #{$atoll-line-height-title-3};
+  --#{$prefix}line-height-body-1: #{$atoll-line-height-body-1};
+  --#{$prefix}line-height-body-2: #{$atoll-line-height-body-2};
+  --#{$prefix}line-height-caption-1: #{$atoll-line-height-caption-1};
+  --#{$prefix}line-height-caption-2: #{$atoll-line-height-caption-2};
+
+  /* Font Weights */
+  --#{$prefix}font-weight-normal: #{$font-weight-normal};
+  --#{$prefix}font-weight-medium: #{$font-weight-medium};
+  --#{$prefix}font-weight-semibold: #{$font-weight-semibold};
+  --#{$prefix}font-weight-bold: #{$font-weight-bold};
+}

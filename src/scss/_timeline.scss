@@ -17,7 +17,9 @@
 .message-bubble {
   padding: 0.5rem 0.75rem;
   word-wrap: break-word;
-  font-size: 0.9375rem;
+  font-size: var(--#{$prefix}font-size-body-1);
+  line-height: var(--#{$prefix}line-height-body-1);
+  font-weight: var(--#{$prefix}font-weight-normal);
 }
 
 // Messenger-style rounded corners

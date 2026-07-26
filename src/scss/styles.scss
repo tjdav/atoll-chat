@@ -7,6 +7,8 @@
 // Breakpoints & Layout variables
 @import "theme/variables-layout";
 
+@import "theme/variables-typography";
+
 @import "./variables";
 @import "bootstrap-icons/font/bootstrap-icons.scss";
 @import "bootstrap/scss/functions";
@@ -99,6 +101,11 @@ $utilities: map-merge($utilities,
 
 // Viewport Safe Area Layout Insets
 @import "theme/theme-layout-insets";
+
+@import "theme/theme-typography";
+
+// Utility Classes & Component Stylesheets
+@import "theme/typography-utilities";
 
 // Unified & Responsive Layout
 @import "theme/layout";
