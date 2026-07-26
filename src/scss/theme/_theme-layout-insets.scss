@@ -1,0 +1,20 @@
+// scss/theme/_theme-layout-insets.scss
+
+:root {
+  /* Safe Area Defaults (Fallback for Standard Desktop Web Browsers) */
+  --atoll-safe-area-top: env(safe-area-inset-top, 0px);
+  --atoll-safe-area-bottom: env(safe-area-inset-bottom, 0px);
+  --atoll-safe-area-left: env(safe-area-inset-left, 0px);
+  --atoll-safe-area-right: env(safe-area-inset-right, 0px);
+
+  /* Calculated Composite Dimensions */
+  --atoll-header-height: 56px;
+  --atoll-total-header-height: calc(var(--atoll-header-height) + var(--atoll-safe-area-top));
+  --atoll-total-bottom-bar-height: calc(56px + var(--atoll-safe-area-bottom));
+}
+
+@media (min-width: 992px) {
+  :root {
+    --atoll-header-height: 64px;
+  }
+}

@@ -4,6 +4,9 @@
 // Rainbow & Bootstrap Variable Overrides ($primary, $theme-colors, etc.)
 @import "theme/variables-rainbow";
 
+// Breakpoints & Layout variables
+@import "theme/variables-layout";
+
 @import "./variables";
 @import "bootstrap-icons/font/bootstrap-icons.scss";
 @import "bootstrap/scss/functions";
@@ -94,8 +97,13 @@ $utilities: map-merge($utilities,
 // Semantic Token Matrix ([data-bs-theme="light"] / [data-bs-theme="dark"])
 @import "theme/theme-semantic";
 
+// Viewport Safe Area Layout Insets
+@import "theme/theme-layout-insets";
+
+// Unified & Responsive Layout
+@import "theme/layout";
+
 @import "display";
-@import "layout";
 @import "timeline";
 @import "waveform";
 @import "link-preview";

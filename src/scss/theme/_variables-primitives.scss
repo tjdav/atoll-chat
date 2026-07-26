@@ -32,3 +32,17 @@ $grays: (
   "950": #0A0A0A,
   "1000": #000000
 );
+
+$spacer: 1rem; // 16px base
+
+$spacers: (
+  0: 0,
+  1: 0.25rem, //  4px (Micro Offset)
+  2: 0.5rem,  //  8px (Base Spatial Unit)
+  3: 0.75rem, // 12px (Micro Gap)
+  4: 1rem,    // 16px (Standard Layout Margin)
+  5: 1.5rem,  // 24px (Container Padding)
+  6: 2rem,    // 32px (Section Gap)
+  7: 3rem,    // 48px (Control Bar Height)
+  8: 4rem     // 64px (Desktop Header Height)
+);

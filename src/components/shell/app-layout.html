@@ -1,20 +1,20 @@
 <template id="app-layout">
-  <div class="layout-container {{ layoutClasses }}">
+  <div class="atoll-main-layout {{ layoutClasses }}">
     <!-- Mobile Nav Offcanvas -->
     <div class="offcanvas-sm offcanvas-start mobile-nav-offcanvas h-100" tabindex="-1" ref="mobileNav">
       <div class="d-flex h-100">
         <!-- Column 1: Navigation Sidebar -->
         <nav-sidebar></nav-sidebar>
 
-        <!-- Column 2: Contextual List -->
-        <div class="contextual-list">
+        <!-- Column 2: Sidebar list pane -->
+        <div class="atoll-sidebar-pane contextual-list">
           <list-pane></list-pane>
         </div>
       </div>
     </div>
 
-    <!-- Column 3: Main Detail View -->
-    <div class="detail-view {{ layoutClasses }}">
+    <!-- Column 3: Main Detail View / Chat Pane -->
+    <div class="atoll-chat-pane detail-view {{ layoutClasses }}">
       <div class="h-100 d-flex align-items-center justify-content-center" hidden="{{ isDetailView }}">
         <div class="text-center">
           <i class="bi bi-chat-dots fs-1 text-secondary mb-3 d-block"></i>

@@ -1,22 +1,22 @@
 <template id="nav-sidebar">
   <div class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100" data-testid="navSidebar">
     <div class="nav flex-column nav-pills w-100 px-2 gap-3" hidden="{{ isSidebarMenuHidden }}">
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isChatsActive }}" ref="btnChats" title="Chats" data-testid="btnChats">
+      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isChatsActive }}" ref="btnChats" title="Chats" data-testid="btnChats">
         <img src="/logo.svg" alt="Atoll chat logo" class="img-fluid">
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isMusicActive }}" ref="btnMusic" title="Music" data-testid="btnMusic">
+      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isMusicActive }}" ref="btnMusic" title="Music" data-testid="btnMusic">
         <i class="bi bi-music-note-list fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isPicturesActive }}" ref="btnPictures" title="Pictures" data-testid="btnPictures">
+      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isPicturesActive }}" ref="btnPictures" title="Pictures" data-testid="btnPictures">
         <i class="bi bi-image fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isVideosActive }}" ref="btnVideos" title="Videos" data-testid="btnVideos">
+      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isVideosActive }}" ref="btnVideos" title="Videos" data-testid="btnVideos">
         <i class="bi bi-camera-video fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isDocumentsActive }}" ref="btnDocuments" title="Documents" data-testid="btnDocuments">
+      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isDocumentsActive }}" ref="btnDocuments" title="Documents" data-testid="btnDocuments">
         <i class="bi bi-file-earmark-fill fs-4"></i>
       </button>
-      <button class="nav-link d-flex align-items-center justify-content-center {{ isLinksActive }}" ref="btnLinks" title="Links" data-testid="btnLinks">
+      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isLinksActive }}" ref="btnLinks" title="Links" data-testid="btnLinks">
         <i class="bi bi-link-45deg fs-4"></i>
       </button>
     </div>
@@ -24,14 +24,14 @@
     <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative align-items-center">
       <!-- Profile Avatar / Settings Dropup -->
       <div class="dropup w-100 d-flex justify-content-center align-items-center" ref="profileDropupContainer">
-        <button class="btn p-0 border-0 d-flex align-items-center justify-content-center" 
+        <button class="btn p-0 border-0 d-flex align-items-center justify-content-center atoll-touch-target" 
                 type="button" 
                 data-bs-toggle="dropdown" 
                 aria-expanded="false" 
                 ref="profileBtn" 
                 data-testid="profileBtn" 
                 title="Account">
-          <div ref="avatarContainer" class="d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+          <div ref="avatarContainer" class="d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
             <!-- Render avatar dynamically or standard fallback inside client -->
           </div>
         </button>
@@ -177,7 +177,7 @@
         avatarContainer.innerHTML = ''
 
         const avatar = document.createElement('ui-avatar')
-        avatar.setAttribute('size', '40')
+        avatar.setAttribute('size', '44')
 
         if (state.isAuthenticated && pb.authStore.model) {
           const user = pb.authStore.model

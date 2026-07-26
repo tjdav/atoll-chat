@@ -1,0 +1,161 @@
+// scss/theme/_layout.scss
+
+$prefix: "atoll-";
+
+// Responsive Layout Container Classes
+.atoll-main-layout, .layout-container {
+  display: flex;
+  height: 100vh;
+  height: 100dvh; // Dynamic viewport height for mobile browsers
+  width: 100vw;
+  overflow: hidden;
+  background-color: var(--#{$prefix}body-bg);
+  color: var(--#{$prefix}body-color);
+}
+
+.vh-100 {
+  height: 100dvh !important;
+}
+
+// Dual-Pane Master-Detail Split Layout
+.atoll-sidebar-pane, .contextual-list {
+  width: 100%;
+  height: 100%;
+  flex-shrink: 0;
+  border-right: 1px solid var(--#{$prefix}border-color);
+  background-color: var(--#{$prefix}surface-primary, var(--#{$prefix}bg-surface-primary, var(--#{$prefix}tertiary-bg)));
+
+  @media (min-width: 768px) {
+    width: 320px;
+  }
+
+  @media (min-width: 1200px) {
+    width: 360px;
+  }
+}
+
+.atoll-chat-pane, .detail-view {
+  flex-grow: 1;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--#{$prefix}body-bg);
+
+  // On Mobile, hide inactive pane
+  @media (max-width: 767.98px) {
+    &.d-none-mobile {
+      display: none !important;
+    }
+  }
+}
+
+// Accessible Touch Target Enforcer
+.atoll-touch-target {
+  min-width: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// Layout Utility Classes for Mobile Insets
+// Fixed Top App Bar Container
+.atoll-header-fixed {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--atoll-total-header-height);
+  padding-top: var(--atoll-safe-area-top);
+  z-index: 1030;
+}
+
+// Scrollable Body Content Below Fixed Header
+.atoll-content-has-header {
+  padding-top: var(--atoll-total-header-height);
+}
+
+// Fixed Bottom Input / Toolbar Container
+.atoll-footer-fixed {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  padding-bottom: var(--atoll-safe-area-bottom);
+  z-index: 1030;
+}
+
+// Scrollable Message Feed Above Fixed Bottom Input Bar
+.atoll-chat-feed-scroll {
+  padding-bottom: var(--atoll-total-bottom-bar-height);
+}
+
+// Mobile Responsive Layout Overrides
+@include media-breakpoint-down(sm) {
+  .mobile-nav-offcanvas {
+    width: calc(100vw - 60px); // Sidebar width (60px) + some of list pane
+    max-width: 410px; // 60px + 350px
+
+    &.show {
+      display: block !important;
+    }
+  }
+
+  // Hide the offcanvas-sm behavior when not in chat-active mode
+  // This ensures the "List View" (nav + list) is always visible on the main screen
+  .atoll-main-layout:not(.chat-active) .mobile-nav-offcanvas,
+  .layout-container:not(.chat-active) .mobile-nav-offcanvas {
+    transform: none !important;
+    visibility: visible !important;
+    position: relative !important;
+    z-index: 1 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .atoll-main-layout:not(.chat-active) .offcanvas-backdrop,
+  .layout-container:not(.chat-active) .offcanvas-backdrop {
+    display: none !important;
+  }
+
+  // When chat is active, the offcanvas should behave as a normal offcanvas
+  .atoll-main-layout.chat-active .mobile-nav-offcanvas,
+  .layout-container.chat-active .mobile-nav-offcanvas {
+    background-color: var(--#{$prefix}tertiary-bg);
+  }
+
+  // Show Column 3 when active
+  .atoll-chat-pane.chat-active,
+  .detail-view.chat-active {
+    display: block !important;
+    width: 100% !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    height: 100% !important;
+    z-index: 10 !important;
+  }
+
+  // Hide Column 3 when not active
+  .atoll-main-layout:not(.chat-active) .atoll-chat-pane,
+  .atoll-main-layout:not(.chat-active) .detail-view,
+  .layout-container:not(.chat-active) .atoll-chat-pane,
+  .layout-container:not(.chat-active) .detail-view {
+    display: none !important;
+  }
+}
+
+.border-radius-start-pill {
+  border-top-left-radius: 50rem !important;
+  border-bottom-left-radius: 50rem !important;
+}
+
+.border-radius-end-pill {
+  border-top-right-radius: 50rem !important;
+  border-bottom-right-radius: 50rem !important;
+}
+
+[hidden] {
+  display: none !important;
+}
