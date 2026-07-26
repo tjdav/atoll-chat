@@ -14,45 +14,7 @@ $timeline-avatar-margin: 8px;
 $timeline-reaction-size: 24px;
 $timeline-reaction-gutter: 48px;
 
-// Light Mode Core Theme Color Variables (Accessible WCAG 2.2 compliant brand green)
-$primary: #1b8849;
-$secondary: #943deb;
-$body-bg: #ffffff;
-$body-color: #212529;
-$body-secondary-color: #6c757d;
-$body-tertiary-bg: #f4f6f8;
-$border-color: #e1e4e8;
-
-// Text Emphasis (Light Mode)
-$primary-text-emphasis: #1b8849;
-$secondary-text-emphasis: #943deb;
-
-// Chat Bubble Extensions (Light Mode)
-$primary-bg-subtle: #e3f5ea;
-$primary-border-subtle: #bce6ce;
-$secondary-bg-subtle: #f0f2f5;
-$secondary-border-subtle: #e1e4e8;
-
-// Dark Mode Core Theme Color Variables
-$primary-dark: #9cff3d;
-$secondary-dark: #aa68ff;
-$body-bg-dark: #151719;
-$body-color-dark: #e9ecef;
-$body-secondary-color-dark: #adb5bd;
-$body-tertiary-bg-dark: #1c1e21;
-$border-color-dark: #2a2d31;
-
-// Text Emphasis (Dark Mode)
-$primary-text-emphasis-dark: #9cff3d;
-$secondary-text-emphasis-dark: #aa68ff;
-
-// Chat Bubble Extensions (Dark Mode)
-$primary-bg-subtle-dark: #0f523c;
-$primary-border-subtle-dark: #177556;
-$secondary-bg-subtle-dark: #25282c;
-$secondary-border-subtle-dark: #33373c;
-
 // Messenger-like colors (approximate) - updated to match the theme colors shared
-$messenger-blue: #1b8849;
-$messenger-light-gray: #f0f2f5;
-$messenger-dark-gray: #25282c;
+$messenger-blue: #06C755;
+$messenger-light-gray: #f5f5f5;
+$messenger-dark-gray: #1f1f1f;

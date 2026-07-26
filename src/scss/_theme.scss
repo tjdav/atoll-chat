@@ -1,0 +1,26 @@
+// Primary palette definition
+$primary:       $atoll-green-base !default; // #06C755
+$secondary:     $atoll-navy-700 !default;   // #464F69
+$success:       $atoll-green-ios !default;   // #4CC764
+$info:          $atoll-blue-500 !default;    // #638DFF
+$danger:        $atoll-red-400 !default;     // #FF334B
+$light:         $gray-150 !default;         // #F5F5F5
+$dark:          $gray-800 !default;         // #1F1F1F
+
+// Merge with Bootstrap's theme-colors map
+$theme-colors: (
+  "primary":    $primary,
+  "secondary":  $secondary,
+  "success":    $success,
+  "info":       $info,
+  "danger":     $danger,
+  "light":      $light,
+  "dark":       $dark
+) !default;
+
+// Global UI overrides
+$body-bg:          #FFFFFF !default;
+$body-color:       $gray-870 !default; // #111111 for contrast >= 3.0:1
+$link-color:       $atoll-blue-600 !default;
+$border-color:     $gray-200 !default;
+$component-active-bg: $atoll-green-base !default;

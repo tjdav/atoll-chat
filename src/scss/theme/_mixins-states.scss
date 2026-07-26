@@ -1,0 +1,49 @@
+// scss/theme/_mixins-states.scss
+
+@use "sass:color";
+
+@function calculate-atoll-state($color, $state-type: "hover") {
+  $lightness: color.get-lightness($color);
+  
+  @if $state-type == "hover" {
+    @if $lightness > 85% {
+      @return color.adjust($color, $lightness: -6%);
+    } @else if $lightness < 20% {
+      @return color.adjust($color, $lightness: +12%);
+    } @else {
+      @return color.adjust($color, $lightness: -8%);
+    }
+  } @else if $state-type == "active" {
+    @if $lightness > 85% {
+      @return color.adjust($color, $lightness: -12%);
+    } @else if $lightness < 20% {
+      @return color.adjust($color, $lightness: +20%);
+    } @else {
+      @return color.adjust($color, $lightness: -15%);
+    }
+  }
+  @return $color;
+}
+
+// Global Interactive Component State Classes
+.btn-atoll-primary {
+  background-color: var(--atoll-brand-primary);
+  color: var(--atoll-text-on-brand);
+  border: none;
+
+  &:hover {
+    background-color: color-mix(in srgb, var(--atoll-brand-primary) 92%, #000000);
+  }
+
+  &:active,
+  &.active {
+    background-color: color-mix(in srgb, var(--atoll-brand-primary) 82%, #000000);
+  }
+
+  &:disabled,
+  &.disabled {
+    background-color: var(--atoll-brand-primary);
+    opacity: 0.4;
+    pointer-events: none;
+  }
+}

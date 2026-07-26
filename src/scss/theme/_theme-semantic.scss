@@ -1,0 +1,83 @@
+/* css/theme-semantic.css */
+
+:root,
+[data-bs-theme="light"] {
+  /* Native Bootstrap Overrides */
+  --#{$prefix}body-bg: #{map-get($grays, "000")};
+  --#{$prefix}body-bg-rgb: #{to-rgb(map-get($grays, "000"))};
+  --#{$prefix}body-color: #{map-get($grays, "900")};
+  --#{$prefix}body-color-rgb: #{to-rgb(map-get($grays, "900"))};
+  --#{$prefix}secondary-bg: #{map-get($grays, "100")};
+  --#{$prefix}tertiary-bg: #{map-get($grays, "200")};
+  --#{$prefix}border-color: #{map-get($grays, "200")};
+  --#{$prefix}border-color-translucent: rgba(#{to-rgb(map-get($grays, "1000"))}, 0.08);
+
+  /* Atoll Semantic Extensions - Backgrounds */
+  --#{$prefix}bg-body: #{map-get($grays, "000")};
+  --#{$prefix}bg-surface-primary: #{map-get($grays, "000")};
+  --#{$prefix}bg-surface-secondary: #{map-get($grays, "100")};
+  --#{$prefix}bg-surface-tertiary: #{map-get($grays, "200")};
+  --#{$prefix}bg-surface-elevated: #{map-get($grays, "000")};
+
+  /* Atoll Semantic Extensions - Typography & Icons */
+  --#{$prefix}text-primary: #{map-get($grays, "900")};
+  --#{$prefix}text-secondary: #{map-get($grays, "700")};
+  --#{$prefix}text-tertiary: #{map-get($grays, "600")};
+  --#{$prefix}text-quaternary: #{map-get($grays, "400")};
+  --#{$prefix}text-on-brand: #{map-get($grays, "000")};
+
+  /* Atoll Semantic Extensions - Borders & Dividers */
+  --#{$prefix}border-subtle: #{map-get($grays, "200")};
+  --#{$prefix}border-strong: #{map-get($grays, "300")};
+  --#{$prefix}border-interactive: #{$atoll-green-500};
+
+  /* Atoll Semantic Extensions - Brand Identity */
+  --#{$prefix}brand-primary: #{$atoll-green-500};
+  --#{$prefix}brand-primary-rgb: #{to-rgb($atoll-green-500)};
+  --#{$prefix}brand-secondary: #{$atoll-green-600};
+  --#{$prefix}brand-subtle-bg: #E6F9EE;
+}
+
+[data-bs-theme="dark"] {
+  /* Native Bootstrap Overrides */
+  --#{$prefix}body-bg: #{map-get($grays, "900")};
+  --#{$prefix}body-bg-rgb: #{to-rgb(map-get($grays, "900"))};
+  --#{$prefix}body-color: #{map-get($grays, "000")};
+  --#{$prefix}body-color-rgb: #{to-rgb(map-get($grays, "000"))};
+  --#{$prefix}secondary-bg: #{map-get($grays, "850")};
+  --#{$prefix}tertiary-bg: #{map-get($grays, "800")};
+  --#{$prefix}border-color: #{map-get($grays, "800")};
+  --#{$prefix}border-color-translucent: rgba(#{to-rgb(map-get($grays, "000"))}, 0.08);
+
+  /* Atoll Semantic Extensions - Backgrounds */
+  --#{$prefix}bg-body: #{map-get($grays, "900")};
+  --#{$prefix}bg-surface-primary: #{map-get($grays, "870")};
+  --#{$prefix}bg-surface-secondary: #{map-get($grays, "850")};
+  --#{$prefix}bg-surface-tertiary: #{map-get($grays, "800")};
+  --#{$prefix}bg-surface-elevated: #{map-get($grays, "830")};
+
+  /* Atoll Semantic Extensions - Typography & Icons */
+  --#{$prefix}text-primary: #{map-get($grays, "000")};
+  --#{$prefix}text-secondary: #{map-get($grays, "400")};
+  --#{$prefix}text-tertiary: #{map-get($grays, "500")};
+  --#{$prefix}text-quaternary: #{map-get($grays, "600")};
+  --#{$prefix}text-on-brand: #{map-get($grays, "000")};
+
+  /* Atoll Semantic Extensions - Borders & Dividers */
+  --#{$prefix}border-subtle: #{map-get($grays, "800")};
+  --#{$prefix}border-strong: #{map-get($grays, "750")};
+  --#{$prefix}border-interactive: #{$atoll-green-500};
+
+  /* Atoll Semantic Extensions - Brand Identity */
+  --#{$prefix}brand-primary: #{$atoll-green-500};
+  --#{$prefix}brand-primary-rgb: #{to-rgb($atoll-green-500)};
+  --#{$prefix}brand-secondary: #{$atoll-green-400};
+  --#{$prefix}brand-subtle-bg: #0A2E16;
+
+  // Override avatar text/initials contrast in dark mode subtle backgrounds to be white
+  .avatar-circle.bg-primary-subtle,
+  .bg-primary-subtle.text-primary,
+  .bg-primary-subtle .text-primary {
+    color: #ffffff !important;
+  }
+}

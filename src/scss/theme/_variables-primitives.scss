@@ -1,0 +1,34 @@
+// scss/theme/_variables-primitives.scss
+
+$prefix: "atoll-";
+
+// Primary Brand Primitives
+$atoll-green-500: #06C755;
+$atoll-green-400: #4CC764;
+$atoll-green-600: #00A843;
+
+$atoll-white:    #FFFFFF;
+$atoll-black:    #000000;
+
+// The 20-Step Neutral Scale
+$grays: (
+  "000": #FFFFFF,
+  "050": #FAFAFA,
+  "100": #F5F5F5,
+  "150": #EFEFEF,
+  "200": #E8E8E8,
+  "250": #DFDFDF,
+  "300": #D4D4D4,
+  "400": #B0B0B0,
+  "500": #949494,
+  "600": #777777,
+  "700": #555555,
+  "750": #3A3A3A,
+  "800": #2A2A2A,
+  "830": #222222,
+  "850": #1F1F1F,
+  "870": #161616,
+  "900": #111111,
+  "950": #0A0A0A,
+  "1000": #000000
+);

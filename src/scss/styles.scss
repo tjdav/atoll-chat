@@ -1,3 +1,9 @@
+// Primitive Tokens & Custom Prefix Configuration
+@import "theme/variables-primitives";
+
+// Rainbow & Bootstrap Variable Overrides ($primary, $theme-colors, etc.)
+@import "theme/variables-rainbow";
+
 @import "./variables";
 @import "bootstrap-icons/font/bootstrap-icons.scss";
 @import "bootstrap/scss/functions";
@@ -82,6 +88,12 @@ $utilities: map-merge($utilities,
 // This specifically triggers the API to generate the CSS classes
 @import "bootstrap/scss/utilities/api";
 
+// Custom State Mixins & Functions
+@import "theme/mixins-states";
+
+// Semantic Token Matrix ([data-bs-theme="light"] / [data-bs-theme="dark"])
+@import "theme/theme-semantic";
+
 @import "display";
 @import "layout";
 @import "timeline";
@@ -113,19 +125,4 @@ body {
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-}
-
-// Dark Mode core color overrides compiled via Bootstrap's SCSS color system
-@include color-mode(dark) {
-  --#{$prefix}primary: #{$primary-dark};
-  --#{$prefix}primary-rgb: #{to-rgb($primary-dark)};
-  --#{$prefix}secondary: #{$secondary-dark};
-  --#{$prefix}secondary-rgb: #{to-rgb($secondary-dark)};
-
-  // Override avatar text/initials contrast in dark mode subtle backgrounds to be white
-  .avatar-circle.bg-primary-subtle,
-  .bg-primary-subtle.text-primary,
-  .bg-primary-subtle .text-primary {
-    color: #ffffff !important;
-  }
 }

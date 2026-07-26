@@ -1,0 +1,33 @@
+// scss/theme/_variables-rainbow.scss
+
+$atoll-rainbow: (
+  "red":    #FF334B,
+  "orange": #FF8A00,
+  "yellow": #FFC700,
+  "green":  #06C755,
+  "blue":   #4270ED,
+  "purple": #9B51E0
+);
+
+// Native Bootstrap Theme Colors Overrides
+$primary:   #06C755;
+$secondary: #777777;
+$success:   #06C755;
+$info:      #4270ED;
+$warning:   #FF8A00;
+$danger:    #FF334B;
+$light:     #F5F5F5;
+$dark:      #111111;
+
+$theme-colors: (
+  "primary":   $primary,
+  "secondary": $secondary,
+  "success":   $success,
+  "info":      $info,
+  "warning":   $warning,
+  "danger":    $danger,
+  "light":     $light,
+  "dark":      $dark,
+  "purple":    map-get($atoll-rainbow, "purple"),
+  "yellow":    map-get($atoll-rainbow, "yellow")
+);
