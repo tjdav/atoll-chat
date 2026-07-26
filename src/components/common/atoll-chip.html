@@ -1,0 +1,181 @@
+<template id="atoll-chip">
+  <div 
+    ref="chipElement" 
+    class="{{ chipClasses }}" 
+    role="{{ chipRole }}" 
+    tabindex="{{ chipTabindex }}"
+    aria-selected="{{ isAriaSelected }}"
+  >
+    <span class="atoll-chip-content">
+      <slot name="leading"></slot>
+      <span class="atoll-chip-label">
+        <slot></slot>
+      </span>
+      <slot name="trailing"></slot>
+    </span>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      variant: {
+        type: String,
+        default: 'secondary'
+      },
+      size: {
+        type: String,
+        default: 'md'
+      },
+      selected: Boolean,
+      removable: Boolean,
+      disabled: Boolean,
+      value: {
+        type: String,
+        default: ''
+      }
+    },
+
+    getters: {
+      chipClasses: (state) => {
+        const classes = ['atoll-chip']
+
+        // Variant modifier
+        if (state.variant) {
+          classes.push(`atoll-chip-${state.variant}`)
+        } else {
+          classes.push('atoll-chip-secondary')
+        }
+
+        // Size modifier
+        if (state.size) {
+          classes.push(`atoll-chip-${state.size}`)
+        } else {
+          classes.push('atoll-chip-md')
+        }
+
+        // State modifiers
+        if (state.selected) {
+          classes.push('atoll-chip-selected')
+        }
+        if (state.removable) {
+          classes.push('atoll-chip-removable')
+        }
+        if (state.disabled) {
+          classes.push('disabled')
+        }
+
+        return classes.join(' ')
+      },
+
+      chipRole: (state) => (state.selected !== undefined ? 'option' : 'button'),
+      isAriaSelected: (state) => (state.selected ? 'true' : 'false'),
+      chipTabindex: (state) => (state.disabled ? '-1' : '0')
+    },
+
+    client: ({ state, refs, root, observe }) => {
+      const chip = refs('chipElement')
+      let removeBtnEl = null
+
+      // Imperatively sync the close/remove button when removable="true"
+      const syncRemoveButton = () => {
+        if (!chip) {
+          return
+        }
+
+        if (state.removable) {
+          if (!removeBtnEl) {
+            removeBtnEl = document.createElement('button')
+            removeBtnEl.type = 'button'
+            removeBtnEl.className = 'atoll-chip-remove'
+            removeBtnEl.setAttribute('aria-label', 'Remove filter')
+
+            // Imperative Web Component creation for remove icon
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'close')
+            icon.setAttribute('size', state.size === 'sm' ? '14' : '16')
+
+            removeBtnEl.appendChild(icon)
+
+            removeBtnEl.addEventListener('click', (event) => {
+              event.stopPropagation()
+              event.preventDefault()
+
+              // Dispatch custom remove event with payload
+              root.dispatchEvent(
+                new CustomEvent('atoll-chip-remove', {
+                  bubbles: true,
+                  composed: true,
+                  detail: { value: state.value }
+                })
+              )
+            })
+          } else {
+            // Update the icon size dynamically if size changes
+            const icon = removeBtnEl.querySelector('atoll-icon')
+            if (icon) {
+              icon.setAttribute('size', state.size === 'sm' ? '14' : '16')
+            }
+          }
+
+          if (!chip.contains(removeBtnEl)) {
+            chip.appendChild(removeBtnEl)
+          }
+        } else if (removeBtnEl && removeBtnEl.parentNode) {
+          removeBtnEl.parentNode.removeChild(removeBtnEl)
+        }
+      }
+
+      // Intercept and prevent click events in capture phase when disabled to block host listeners
+      const preventClickWhenDisabled = (event) => {
+        if (state.disabled) {
+          event.preventDefault()
+          event.stopPropagation()
+          event.stopImmediatePropagation()
+        }
+      }
+
+      root.addEventListener('click', preventClickWhenDisabled, { capture: true })
+
+      // Handle keyboard navigation (Enter / Space toggles or activates chip)
+      if (chip) {
+        chip.addEventListener('keydown', (event) => {
+          if (state.disabled) {
+            return
+          }
+
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            chip.click()
+          } else if ((event.key === 'Backspace' || event.key === 'Delete') && state.removable) {
+            event.preventDefault()
+            if (removeBtnEl) {
+              removeBtnEl.click()
+            }
+          }
+        })
+
+        // Also add click listener to the inner chip element for consistency
+        chip.addEventListener('click', preventClickWhenDisabled)
+      }
+
+      // Observe reactive attribute updates
+      observe('removable', syncRemoveButton)
+      observe('size', syncRemoveButton)
+      observe('value', () => {
+        /* Value updates automatically reflect in state.value, which the removeBtnEl click handler reads synchronously. */
+      })
+
+      syncRemoveButton()
+
+      return () => {
+        root.removeEventListener('click', preventClickWhenDisabled, { capture: true })
+        if (chip) {
+          chip.removeEventListener('click', preventClickWhenDisabled)
+        }
+      }
+    }
+  })
+</script>
