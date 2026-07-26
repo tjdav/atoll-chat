@@ -209,6 +209,6 @@ test.describe('Atoll Badge Component', () => {
     console.log('COUNT BADGE EVALUATION STATE:', JSON.stringify(state, null, 2))
 
     // Take screenshot
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+    await page.screenshot({ path: 'tests/e2e/screenshots/badge-verification.png' })
   })
 })

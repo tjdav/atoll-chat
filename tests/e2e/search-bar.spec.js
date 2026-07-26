@@ -280,6 +280,6 @@ test.describe('Atoll Search Bar Component', () => {
     await page.waitForTimeout(1000)
 
     // Take verification screenshot
-    await page.screenshot({ path: '/home/jules/verification/screenshots/search-bar-verification.png' })
+    await page.screenshot({ path: 'tests/e2e/screenshots/search-bar-verification.png' })
   })
 })

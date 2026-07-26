@@ -323,6 +323,6 @@ test.describe('Atoll Tooltip Component', () => {
     await expect(bubbleRight).toHaveClass(/atoll-tooltip-visible/)
 
     // Take screenshot
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+    await page.screenshot({ path: 'tests/e2e/screenshots/tooltip-verification.png' })
   })
 })

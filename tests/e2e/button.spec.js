@@ -400,6 +400,6 @@ test.describe('Atoll Button Component', () => {
     await page.waitForTimeout(2000)
 
     // Take screenshot
-    await page.screenshot({ path: '/home/jules/verification/screenshots/btn-verification.png' })
+    await page.screenshot({ path: 'tests/e2e/screenshots/btn-verification.png' })
   })
 })

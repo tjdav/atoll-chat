@@ -260,6 +260,6 @@ test.describe('Atoll List Header Component', () => {
     await page.waitForTimeout(2000)
 
     // Take screenshot of verification
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+    await page.screenshot({ path: 'tests/e2e/screenshots/list-header-verification.png' })
   })
 })

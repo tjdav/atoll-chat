@@ -365,6 +365,6 @@ test.describe('Atoll Chip Component', () => {
     await page.waitForTimeout(2000)
 
     // Take screenshot
-    await page.screenshot({ path: '/home/jules/verification/screenshots/chip-verification.png' })
+    await page.screenshot({ path: 'tests/e2e/screenshots/chip-verification.png' })
   })
 })

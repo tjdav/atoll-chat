@@ -244,7 +244,7 @@ test.describe('Atoll Profile Component', () => {
 
     await page.waitForTimeout(2000)
     await page.screenshot({
-      path: '/home/jules/verification/screenshots/verification.png'
+      path: 'tests/e2e/screenshots/profile-verification.png'
     })
   })
 })
