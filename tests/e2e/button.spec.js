@@ -60,6 +60,63 @@ test.describe('Atoll Button Component', () => {
     expect(clicked).toBe(false)
   })
 
+  test('should apply pill compact sizes and heights', async ({ page }) => {
+    await page.evaluate(() => {
+      // Create pill small button
+      const btnSm = document.createElement('atoll-button')
+      btnSm.id = 'test-btn-pill-sm'
+      btnSm.setAttribute('pill', 'true')
+      btnSm.setAttribute('size', 'sm')
+      btnSm.textContent = 'Small Pill'
+      document.body.appendChild(btnSm)
+
+      // Create pill medium button
+      const btnMd = document.createElement('atoll-button')
+      btnMd.id = 'test-btn-pill-md'
+      btnMd.setAttribute('pill', 'true')
+      btnMd.setAttribute('size', 'md')
+      btnMd.textContent = 'Medium Pill'
+      document.body.appendChild(btnMd)
+
+      // Create pill large button
+      const btnLg = document.createElement('atoll-button')
+      btnLg.id = 'test-btn-pill-lg'
+      btnLg.setAttribute('pill', 'true')
+      btnLg.setAttribute('size', 'lg')
+      btnLg.textContent = 'Large Pill'
+      document.body.appendChild(btnLg)
+    })
+
+    const smallPill = page.locator('#test-btn-pill-sm button')
+    const medPill = page.locator('#test-btn-pill-md button')
+    const lgPill = page.locator('#test-btn-pill-lg button')
+
+    await expect(smallPill).toHaveCSS('height', '28px')
+    await expect(smallPill).toHaveCSS('padding-left', '12px')
+    await expect(smallPill).toHaveCSS('padding-right', '12px')
+
+    await expect(medPill).toHaveCSS('height', '36px')
+    await expect(medPill).toHaveCSS('padding-left', '16px')
+    await expect(medPill).toHaveCSS('padding-right', '16px')
+
+    await expect(lgPill).toHaveCSS('height', '44px')
+    await expect(lgPill).toHaveCSS('padding-left', '20px')
+    await expect(lgPill).toHaveCSS('padding-right', '20px')
+
+    // Verify touch target expanded pseudo-element (::before exists on small pill button)
+    const touchTargetBox = await smallPill.evaluate((el) => {
+      const style = window.getComputedStyle(el, '::before')
+      return {
+        content: style.getPropertyValue('content'),
+        minHeight: style.getPropertyValue('min-height'),
+        width: style.getPropertyValue('width')
+      }
+    })
+    expect(touchTargetBox.content).toBe('""')
+    expect(touchTargetBox.minHeight).toBe('44px')
+    expect(parseFloat(touchTargetBox.width)).toBeGreaterThanOrEqual(44)
+  })
+
   test('should assert slot projection order', async ({ page }) => {
     await page.evaluate(() => {
       const btn = document.createElement('atoll-button')
@@ -214,6 +271,47 @@ test.describe('Atoll Button Component', () => {
       btnLoad.setAttribute('loading', 'true')
       btnLoad.textContent = 'Loading state...'
       document.getElementById('section-loading').appendChild(btnLoad)
+
+      // Add a capsule layout section for the screenshot
+      const capsuleSec = document.createElement('div')
+      capsuleSec.id = 'section-capsules'
+      capsuleSec.style.display = 'flex'
+      capsuleSec.style.gap = '20px'
+      capsuleSec.style.alignItems = 'center'
+      capsuleSec.innerHTML = '<strong>Capsules / Pills:</strong>'
+      document.getElementById('section-loading').parentNode.appendChild(capsuleSec)
+
+      // Active Call Bar Trigger (Primary Capsule)
+      const pillPrimary = document.createElement('atoll-button')
+      pillPrimary.setAttribute('pill', 'true')
+      pillPrimary.setAttribute('variant', 'primary')
+      pillPrimary.setAttribute('size', 'md')
+      pillPrimary.textContent = 'Return to Call (02:14)'
+      capsuleSec.appendChild(pillPrimary)
+
+      // Filter / Category Chip (Secondary Capsule)
+      const pillSecondary = document.createElement('atoll-button')
+      pillSecondary.setAttribute('pill', 'true')
+      pillSecondary.setAttribute('variant', 'secondary')
+      pillSecondary.setAttribute('size', 'sm')
+      pillSecondary.textContent = 'Unread Only'
+      capsuleSec.appendChild(pillSecondary)
+
+      // Floating Quick Reply Chip (Outline Capsule)
+      const pillOutline = document.createElement('atoll-button')
+      pillOutline.setAttribute('pill', 'true')
+      pillOutline.setAttribute('variant', 'outline')
+      pillOutline.setAttribute('size', 'sm')
+      pillOutline.textContent = 'Quick Reply'
+      capsuleSec.appendChild(pillOutline)
+
+      // End Call / Destructive Action Chip (Danger Capsule)
+      const pillDanger = document.createElement('atoll-button')
+      pillDanger.setAttribute('pill', 'true')
+      pillDanger.setAttribute('variant', 'danger')
+      pillDanger.setAttribute('size', 'md')
+      pillDanger.textContent = 'End Call'
+      capsuleSec.appendChild(pillDanger)
     })
 
     // Wait for rendering

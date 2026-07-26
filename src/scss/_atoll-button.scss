@@ -175,6 +175,104 @@
 
 .atoll-btn-pill {
   border-radius: 9999px !important;
+
+  /* Pill-specific Compact Sizing Ratios */
+  &.atoll-btn-sm {
+    height: 28px;
+    padding: 0 12px;
+    font-size: var(--#{$prefix}font-size-caption-1, 12px);
+    position: relative;
+
+    // Invisible touch target expansion (expands hit area to 44px height)
+    &::before {
+      content: "";
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      min-width: 100%;
+      min-height: 44px;
+      width: 44px; // Guarantees 44px min touch box even for narrow icon-only pills
+    }
+  }
+
+  &.atoll-btn-md {
+    height: 36px;
+    padding: 0 16px;
+    font-size: var(--#{$prefix}font-size-body-2, 14px);
+  }
+
+  &.atoll-btn-lg {
+    height: 44px;
+    padding: 0 20px;
+    font-size: var(--#{$prefix}font-size-body-1, 16px);
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Dark Mode Surface Overrides ([data-bs-theme="dark"])                        */
+/* -------------------------------------------------------------------------- */
+
+[data-bs-theme="dark"] {
+  .atoll-btn-secondary {
+    background-color: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
+    color: var(--#{$prefix}text-primary, #FFFFFF);
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-tertiary, #2A2A2A) 88%, #FFFFFF);
+    }
+
+    &:active {
+      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-tertiary, #2A2A2A) 78%, #FFFFFF);
+    }
+  }
+
+  .atoll-btn-outline {
+    background-color: transparent;
+    color: var(--#{$prefix}text-primary, #FFFFFF);
+    border-color: var(--#{$prefix}border-strong, #3A3A3A);
+
+    &:hover {
+      background-color: var(--#{$prefix}bg-surface-secondary, #1F1F1F);
+    }
+
+    &:active {
+      background-color: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
+    }
+  }
+
+  .atoll-btn-ghost {
+    color: var(--#{$prefix}text-primary, #FFFFFF);
+
+    &:hover {
+      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-primary, #161616) 90%, #FFFFFF);
+    }
+
+    &:active {
+      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-primary, #161616) 80%, #FFFFFF);
+    }
+  }
+
+  /* Dark Mode Hover Behavior for Primary & Danger (Lighten instead of Darken) */
+  .atoll-btn-primary {
+    &:hover {
+      background-color: color-mix(in srgb, var(--#{$prefix}brand-primary, #06C755) 90%, #FFFFFF);
+    }
+
+    &:active {
+      background-color: color-mix(in srgb, var(--#{$prefix}brand-primary, #06C755) 80%, #000000);
+    }
+  }
+
+  .atoll-btn-danger {
+    &:hover {
+      background-color: color-mix(in srgb, var(--#{$prefix}rainbow-red, #FF334B) 90%, #FFFFFF);
+    }
+
+    &:active {
+      background-color: color-mix(in srgb, var(--#{$prefix}rainbow-red, #FF334B) 80%, #000000);
+    }
+  }
 }
 
 .atoll-btn-loading {
