@@ -7,16 +7,11 @@
       </button>
     </header>
     <div class="search-container-pill" ref="searchContainer" hidden>
-      <div class="input-group">
-        <span class="input-group-text ps-3">
-          <atoll-icon name="search" size="16"></atoll-icon>
-        </span>
-        <input type="text" 
-               class="form-control pe-3" 
-               placeholder="Search..." 
-               ref="searchInput"
-               data-testid="searchInput">
-      </div>
+      <atoll-search-bar 
+        ref="searchInput"
+        placeholder="Search..."
+        data-testid="searchInput"
+      ></atoll-search-bar>
     </div>
     <div class="flex-grow-1 overflow-hidden" ref="listContainer">
       <!-- Specialized list components will be mounted here -->
@@ -102,8 +97,8 @@
       // Handle Search Input
       const searchInput = refs('searchInput')
       if (searchInput) {
-        searchInput.addEventListener('input', (e) => {
-          $state.listSearchQuery = e.target.value.toLowerCase()
+        searchInput.addEventListener('input', () => {
+          $state.listSearchQuery = searchInput.value.toLowerCase()
         })
       }
 

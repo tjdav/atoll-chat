@@ -1,0 +1,258 @@
+<template id="atoll-search-bar">
+  <div class="{{ containerClasses }}" role="search">
+    <!-- Pill Field Box -->
+    <div class="atoll-search-bar-field">
+      <!-- Leading Search Icon -->
+      <span class="atoll-search-bar-icon">
+        <atoll-icon name="search" size="{{ iconSize }}"></atoll-icon>
+      </span>
+
+      <!-- Native Search Input -->
+      <input 
+        ref="input"
+        id="{{ ref_input }}"
+        type="search" 
+        value="{{ value }}"
+        placeholder="{{ placeholder }}"
+        disabled="{{ disabled }}"
+        readonly="{{ readonly }}"
+        aria-label="{{ computedAriaLabel }}"
+        class="atoll-search-bar-input"
+      />
+
+      <!-- Action Area: Clear (X) Button -->
+      <div class="atoll-search-bar-actions">
+        <button 
+          ref="clearBtn"
+          type="button" 
+          class="atoll-search-bar-clear" 
+          aria-label="Clear search"
+          hidden="{{ hideClearBtn }}"
+          tabindex="{{ clearBtnTabIndex }}"
+          disabled="{{ disabled }}"
+        >
+          <atoll-icon name="close" size="16"></atoll-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Optional Cancel CTA Trigger -->
+    <div class="atoll-search-bar-cancel" hidden="{{ hideCancelBtn }}">
+      <atoll-button 
+        ref="cancelBtn" 
+        variant="ghost" 
+        size="sm"
+        disabled="{{ disabled }}"
+        tabindex="{{ cancelBtnTabIndex }}"
+      >
+        {{ cancelText }}
+      </atoll-button>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      value: {
+        type: String,
+        default: ''
+      },
+      placeholder: {
+        type: String,
+        default: 'Search'
+      },
+      cancelText: {
+        type: String,
+        default: 'Cancel'
+      },
+      size: {
+        type: String,
+        // 'sm' | 'md' | 'lg'
+        default: 'md'
+      },
+      disabled: Boolean,
+      readonly: Boolean,
+      showCancel: Boolean,
+      isFocused: Boolean
+    },
+
+    getters: {
+      computedAriaLabel: (state) => state.placeholder || 'Search',
+
+      iconSize: (state) => {
+        if (state.size === 'sm') {
+          return '16'
+        }
+        if (state.size === 'lg') {
+          return '24'
+        }
+        return '20'
+      },
+
+      hideClearBtn: (state) => !state.value || state.disabled || state.readonly,
+
+      hideCancelBtn: (state) => {
+        if (!state.showCancel || state.disabled) {
+          return true
+        }
+        return !state.isFocused && !state.value
+      },
+
+      clearBtnTabIndex: (state) => {
+        return state.disabled ? '-1' : '0'
+      },
+
+      cancelBtnTabIndex: (state) => {
+        return state.disabled ? '-1' : '0'
+      },
+
+      containerClasses: (state) => {
+        const classes = ['atoll-search-bar-container']
+
+        if (state.size) {
+          classes.push(`atoll-search-bar-${state.size}`)
+        } else {
+          classes.push('atoll-search-bar-md')
+        }
+
+        if (state.isFocused) {
+          classes.push('atoll-search-bar-active')
+        }
+        if (state.disabled) {
+          classes.push('disabled')
+        }
+
+        return classes.join(' ')
+      }
+    },
+
+    client: ({ state, refs, root, observe }) => {
+      const input = refs('input')
+      const clearBtn = refs('clearBtn')
+      const cancelBtn = refs('cancelBtn')
+
+      const dispatchEvents = (eventName) => {
+        root.dispatchEvent(new Event(eventName, {
+          bubbles: true,
+          composed: true
+        }))
+      }
+
+      // Input Focus and Blur Observers
+      if (input) {
+        input.addEventListener('focus', () => {
+          state.isFocused = true
+        })
+
+        input.addEventListener('blur', () => {
+          state.isFocused = false
+        })
+
+        input.addEventListener('input', () => {
+          state.value = input.value
+          dispatchEvents('input')
+          dispatchEvents('change')
+        })
+
+        // Prevent native search event from bubbling and conflicting
+        input.addEventListener('search', (event) => {
+          event.stopPropagation()
+        })
+
+        input.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault()
+            root.dispatchEvent(
+              new CustomEvent('search', {
+                bubbles: true,
+                composed: true,
+                detail: { value: state.value }
+              })
+            )
+          } else if (event.key === 'Escape') {
+            if (state.value) {
+              state.value = ''
+              input.value = ''
+              dispatchEvents('input')
+              dispatchEvents('change')
+            } else {
+              input.blur()
+            }
+          }
+        })
+      }
+
+      // Clear Button Trigger Handler (Touch-safe using pointerdown/mousedown with preventDefault)
+      if (clearBtn) {
+        const handleClear = (event) => {
+          // Prevents input blur on tap
+          event.preventDefault()
+          state.value = ''
+          if (input) {
+            input.value = ''
+            input.focus()
+          }
+          dispatchEvents('input')
+          dispatchEvents('change')
+        }
+        clearBtn.addEventListener('pointerdown', handleClear)
+        clearBtn.addEventListener('mousedown', handleClear)
+      }
+
+      // Cancel Button Handler
+      if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+          state.value = ''
+          state.isFocused = false
+          if (input) {
+            input.value = ''
+            input.blur()
+          }
+
+          dispatchEvents('input')
+          dispatchEvents('change')
+
+          root.dispatchEvent(
+            new CustomEvent('cancel', {
+              bubbles: true,
+              composed: true
+            })
+          )
+        })
+      }
+
+      // Programmatic External Sync for value property/attribute
+      observe('value', (newVal) => {
+        if (input && input.value !== (newVal || '')) {
+          input.value = newVal || ''
+        }
+      })
+
+      // Expose helper methods directly on host element
+      root.focus = () => input?.focus()
+      root.blur = () => input?.blur()
+      root.clear = () => {
+        state.value = ''
+        if (input) {
+          input.value = ''
+        }
+        dispatchEvents('input')
+        dispatchEvents('change')
+      }
+
+      // Define property descriptor for bidirectional sync
+      Object.defineProperty(root, 'value', {
+        get () {
+          return state.value
+        },
+        set (newVal) {
+          state.value = newVal || ''
+        },
+        configurable: true
+      })
+    }
+  })
+</script>
