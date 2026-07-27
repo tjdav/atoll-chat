@@ -10,19 +10,22 @@
   >
     <div class="modal-dialog atoll-popup-dialog {{ dialogClasses }}">
       <div class="modal-content">
-        <!-- Optional Hero Graphic / Illustration Slot -->
-        <div ref="heroSlotWrapper" class="atoll-popup-hero" hidden="{{ hideHero }}">
-          <slot name="hero">
-            <atoll-icon name="{{ heroIcon }}" size="48"></atoll-icon>
-          </slot>
-        </div>
+        <!-- Header Zone -->
+        <div class="atoll-popup-header">
+          <!-- Optional Hero Graphic / Illustration Slot -->
+          <div ref="heroSlotWrapper" class="atoll-popup-hero" hidden="{{ hideHero }}">
+            <slot name="hero">
+              <atoll-icon name="{{ heroIcon }}" size="48"></atoll-icon>
+            </slot>
+          </div>
 
-        <!-- Popup Text Body -->
-        <div class="atoll-popup-body">
           <h3 ref="modalTitle" id="{{ ref_modalTitle }}" class="atoll-popup-title">
             {{ title }}
           </h3>
-          
+        </div>
+
+        <!-- Body Zone -->
+        <div class="atoll-popup-body">
           <p 
             ref="modalDesc" 
             id="{{ ref_modalDesc }}" 
@@ -36,8 +39,8 @@
           <slot></slot>
         </div>
 
-        <!-- Action Button Bar -->
-        <div class="atoll-popup-actions {{ actionClasses }}">
+        <!-- Footer Zone -->
+        <div class="atoll-popup-footer atoll-popup-actions {{ actionClasses }}">
           <slot name="actions">
             <!-- Secondary / Cancel Button -->
             <atoll-button 

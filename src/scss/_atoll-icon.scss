@@ -84,3 +84,8 @@
 .atoll-icon-xl {
   --#{$prefix}icon-size: var(--#{$prefix}icon-size-xl);
 }
+
+.atoll-icon-hangup {
+  display: inline-block;
+  transform: rotate(135deg);
+}

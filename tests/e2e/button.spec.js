@@ -383,7 +383,7 @@ test.describe('Atoll Button Component', () => {
       iconBtnMd.setAttribute('pill', 'true')
       iconBtnMd.setAttribute('variant', 'secondary')
       iconBtnMd.setAttribute('aria-label', 'Video Call')
-      iconBtnMd.innerHTML = '<atoll-icon name="video" size="24"></atoll-icon>'
+      iconBtnMd.innerHTML = '<atoll-icon name="videocam" size="24"></atoll-icon>'
       document.getElementById('section-icon-only').appendChild(iconBtnMd)
 
       const iconBtnLg = document.createElement('atoll-button')

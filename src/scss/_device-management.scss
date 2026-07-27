@@ -10,15 +10,16 @@
   gap: 16px;
   padding: 12px 24px;
   border-radius: 999px !important;
-  background-color: rgba(17, 17, 17, 0.8) !important;
-  backdrop-filter: blur(15px);
+  background-color: rgba(0, 0, 0, 0.45) !important;
+  backdrop-filter: blur(12px) !important;
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   z-index: 1040;
   align-items: center;
 }
 
 /* Standalone uniform circular buttons */
-.atoll-call-btn {
+.atoll-call-btn,
+.atoll-call-btn .atoll-btn {
   /* Semi-transparent dark or light white blur by default when active/on */
   background-color: rgba(255, 255, 255, 0.15) !important;
   color: #ffffff !important;
@@ -33,20 +34,21 @@
   &:active {
     background-color: rgba(255, 255, 255, 0.35) !important;
   }
+}
 
-  /* When the button is in danger / muted / end call state */
-  &.atoll-btn-danger,
-  &.btn-danger {
-    background-color: #FF334B !important;
-    color: #ffffff !important;
+.atoll-call-btn-danger,
+.atoll-call-btn-danger .atoll-btn {
+  background-color: #FF334B !important;
+  color: #ffffff !important;
+  border: none !important;
+  transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
 
-    &:hover {
-      background-color: color-mix(in srgb, #FF334B 90%, #000000) !important;
-    }
+  &:hover {
+    background-color: color-mix(in srgb, #FF334B 90%, #000000) !important;
+  }
 
-    &:active {
-      background-color: color-mix(in srgb, #FF334B 80%, #000000) !important;
-    }
+  &:active {
+    background-color: color-mix(in srgb, #FF334B 80%, #000000) !important;
   }
 }
 

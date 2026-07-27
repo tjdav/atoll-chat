@@ -130,13 +130,13 @@ export const SOLAR_ICON_MAP = {
   mic: MicrophoneLinearIcon,
   'mic-off': MutedLinearIcon,
   phone: PhoneLinearIcon,
-  video: {
+  'phone-hangup': PhoneLinearIcon,
+  videocam: {
     linear: VideocameraLinearIcon,
     bold: VideocameraBoldIcon
   },
-  camera: CameraLinearIcon,
-  'camera-off': CameraMinimalisticLinearIcon,
-  'pic-in-pic': Widget2LinearIcon,
+  'videocam-off': CameraMinimalisticLinearIcon,
+  widget: Widget2LinearIcon,
 
   // Chevrons
   down: AltArrowDownLinearIcon,

@@ -8,11 +8,11 @@
       size="lg" 
       pill="true" 
       variant="{{ audioBtnVariant }}"
-      class="atoll-call-btn {{ audioSpeakingClass }} {{ audioBtnClass }}"
+      class="atoll-call-btn"
       aria-label="Mute Microphone" 
       aria-pressed="{{ audioPressed }}"
     >
-      <atoll-icon name="{{ audioIconName }}" size="24"></atoll-icon>
+      <atoll-icon size="24"></atoll-icon>
     </atoll-button>
 
     <!-- Video Control Button -->
@@ -22,11 +22,11 @@
       size="lg" 
       pill="true" 
       variant="{{ videoBtnVariant }}"
-      class="atoll-call-btn {{ videoBtnClass }}"
+      class="atoll-call-btn"
       aria-label="Mute Video" 
       aria-pressed="{{ videoPressed }}"
     >
-      <atoll-icon name="{{ videoIconName }}" size="24"></atoll-icon>
+      <atoll-icon size="24"></atoll-icon>
     </atoll-button>
 
     <!-- Picture-in-Picture Button -->
@@ -40,7 +40,7 @@
       aria-label="Picture-in-Picture"
       class="atoll-call-btn"
     >
-      <atoll-icon name="pic-in-pic" size="24"></atoll-icon>
+      <atoll-icon name="widget" size="24"></atoll-icon>
     </atoll-button>
 
     <!-- Settings Button -->
@@ -66,9 +66,9 @@
       pill="true" 
       title="End Call"
       aria-label="End Call"
-      class="atoll-call-btn"
+      class="atoll-call-btn-danger"
     >
-      <atoll-icon name="phone" size="24"></atoll-icon>
+      <atoll-icon name="phone-hangup" class="atoll-icon-hangup" size="24"></atoll-icon>
     </atoll-button>
 
   </div>
@@ -185,17 +185,10 @@
     getters: {
       audioBtnVariant: (state) => (state.isAudioEnabled ? 'secondary' : 'danger'),
       videoBtnVariant: (state) => (state.isVideoEnabled ? 'secondary' : 'danger'),
-      videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
-      audioBtnClass: (state) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
-      audioIconName: (state) => (state.isAudioEnabled ? 'mic' : 'mic-off'),
-      videoIconName: (state) => (state.isVideoEnabled ? 'video' : 'camera-off'),
       audioPressed: (state) => (!state.isAudioEnabled ? 'true' : 'false'),
-      videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false'),
-      audioSpeakingClass: (state) => {
-        return (state.isAudioEnabled && state.isLocalSpeaking) ? 'speaking-btn-glow atoll-call-speaking' : ''
-      }
+      videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false')
     },
-    client: async ({ state, globalStore, eventBus, refs, signal, bootstrap }) => {
+    client: async ({ state, globalStore, eventBus, refs, signal, bootstrap, observe }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
 
@@ -214,6 +207,70 @@
       refs('speakerFallback')
       refs('camList')
       refs('toggleBackgroundBlur')
+
+      const updateAudioIcon = () => {
+        const btn = refs('btnToggleAudio')
+        const icon = btn?.querySelector('atoll-icon')
+        if (icon) {
+          icon.setAttribute('name', state.isAudioEnabled ? 'mic' : 'mic-off')
+        }
+      }
+
+      const updateVideoIcon = () => {
+        const btn = refs('btnToggleVideo')
+        const icon = btn?.querySelector('atoll-icon')
+        if (icon) {
+          icon.setAttribute('name', state.isVideoEnabled ? 'videocam' : 'videocam-off')
+        }
+      }
+
+      const updateAudioClasses = () => {
+        const btn = refs('btnToggleAudio')
+        if (!btn) return
+        
+        btn.classList.add('atoll-call-btn')
+        
+        if (state.isAudioEnabled) {
+          btn.classList.remove('atoll-call-btn-danger')
+          if (state.isLocalSpeaking) {
+            btn.classList.add('speaking-btn-glow', 'atoll-call-speaking')
+          } else {
+            btn.classList.remove('speaking-btn-glow', 'atoll-call-speaking')
+          }
+        } else {
+          btn.classList.add('atoll-call-btn-danger')
+          btn.classList.remove('speaking-btn-glow', 'atoll-call-speaking')
+        }
+      }
+
+      const updateVideoClasses = () => {
+        const btn = refs('btnToggleVideo')
+        if (!btn) return
+        
+        btn.classList.add('atoll-call-btn')
+        
+        if (state.isVideoEnabled) {
+          btn.classList.remove('atoll-call-btn-danger')
+        } else {
+          btn.classList.add('atoll-call-btn-danger')
+        }
+      }
+
+      observe('isAudioEnabled', () => {
+        updateAudioIcon()
+        updateAudioClasses()
+      })
+      observe('isLocalSpeaking', updateAudioClasses)
+      observe('isVideoEnabled', () => {
+        updateVideoIcon()
+        updateVideoClasses()
+      })
+
+      // Initial update
+      updateAudioIcon()
+      updateAudioClasses()
+      updateVideoIcon()
+      updateVideoClasses()
 
       const { createCallDeviceManager } = await import('../../utils/call/callDeviceManager.js')
       const deviceManager = createCallDeviceManager({

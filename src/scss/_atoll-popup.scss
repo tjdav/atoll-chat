@@ -39,6 +39,9 @@ atoll-popup {
     box-sizing: border-box;
     text-align: center;
     overflow: hidden;
+    max-height: calc(100vh - 48px);
+    display: flex;
+    flex-direction: column;
   }
 }
 
@@ -70,11 +73,22 @@ atoll-popup {
   }
 }
 
+.atoll-popup-header {
+  flex-shrink: 0;
+  margin-bottom: 16px;
+}
+
 .atoll-popup-body {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 24px;
+  flex: 1;
+  overflow-y: auto;
+}
+
+.atoll-popup-footer {
+  flex-shrink: 0;
 }
 
 .atoll-popup-title {
