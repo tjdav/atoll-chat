@@ -188,7 +188,10 @@
 
       const showGlobalAlert = (msg) => {
         if (msg) {
-          $bus.emit('ui:show_toast', { message: msg, variant: 'danger' })
+          $bus.emit('ui:show_toast', {
+            message: msg,
+            variant: 'danger'
+          })
         }
       }
 
@@ -211,7 +214,11 @@
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
           const input = e.target.closest('atoll-input')
-          if (!input) return
+  
+          if (!input) {
+            return
+          }
+  
           if (typeof input.setCustomValidity === 'function') {
             input.setCustomValidity('')
           }

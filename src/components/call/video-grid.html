@@ -298,25 +298,28 @@
 
             if (videoEl && avatarOverlay) {
               let stream = null
-              if (p.isVideoEnabled) {
-                if (p.isLocal) {
-                  stream = $state.localStream
-                } else {
-                  const firstRemote = state.participants.find(part => !part.isLocal)
-                  if (firstRemote && p.id === firstRemote.id) {
-                    stream = $state.remoteStream
-                  }
+              if (p.isLocal) {
+                stream = $state.localStream
+              } else {
+                const firstRemote = state.participants.find(part => !part.isLocal)
+                if (firstRemote && p.id === firstRemote.id) {
+                  stream = $state.remoteStream
                 }
               }
 
-              if (p.isVideoEnabled && stream) {
-                videoEl.classList.remove('d-none')
-                avatarOverlay.classList.add('d-none')
+              if (stream) {
                 if (videoEl.srcObject !== stream) {
                   videoEl.srcObject = stream
                   videoEl.play().catch(err => {
                     console.warn('[video-grid] Inline play failed:', err)
                   })
+                }
+                if (p.isVideoEnabled) {
+                  videoEl.classList.remove('d-none')
+                  avatarOverlay.classList.add('d-none')
+                } else {
+                  videoEl.classList.add('d-none')
+                  avatarOverlay.classList.remove('d-none')
                 }
               } else {
                 videoEl.classList.add('d-none')
@@ -396,26 +399,32 @@
         const videoEl = tile.querySelector('.tile-video')
         const avatarOverlay = tile.querySelector('.tile-avatar-overlay')
 
-        if (p.isVideoEnabled) {
-          let stream = null
-          if (p.isLocal) {
-            stream = $state.localStream
-          } else {
-            const firstRemote = state.participants.find(part => !part.isLocal)
-            if (firstRemote && p.id === firstRemote.id) {
-              stream = $state.remoteStream
-            }
+        let stream = null
+        if (p.isLocal) {
+          stream = $state.localStream
+        } else {
+          const firstRemote = state.participants.find(part => !part.isLocal)
+          if (firstRemote && p.id === firstRemote.id) {
+            stream = $state.remoteStream
           }
+        }
 
-          if (stream) {
+        if (stream) {
+          videoEl.srcObject = stream
+          videoEl.play().catch(err => {
+            console.warn('[video-grid] Inline play failed:', err)
+          })
+          if (p.isVideoEnabled) {
             videoEl.classList.remove('d-none')
             avatarOverlay.classList.add('d-none')
-            videoEl.srcObject = stream
-  
-            videoEl.play().catch(err => {
-              console.warn('[video-grid] Inline play failed:', err)
-            })
+          } else {
+            videoEl.classList.add('d-none')
+            avatarOverlay.classList.remove('d-none')
           }
+        } else {
+          videoEl.classList.add('d-none')
+          avatarOverlay.classList.remove('d-none')
+          videoEl.srcObject = null
         }
 
         const pinBtn = tile.querySelector('.pin-btn')

@@ -26,10 +26,26 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
   }
 
   // Capability Gating
-  state.isSpeakerSelectionSupported = typeof HTMLMediaElement.prototype.setSinkId !== 'undefined'
+  state.isSpeakerSelectionSupported =
+    ('setSinkId' in HTMLMediaElement.prototype && typeof HTMLMediaElement.prototype.setSinkId !== 'undefined') ||
+    Boolean(navigator.mediaDevices?.selectAudioOutput)
+
   const speakerFallbackEl = getRef('speakerFallback')
-  if (!state.isSpeakerSelectionSupported && speakerFallbackEl) {
-    speakerFallbackEl.classList.remove('d-none')
+  const speakerListEl = getRef('speakerList')
+  if (!state.isSpeakerSelectionSupported) {
+    if (speakerFallbackEl) {
+      speakerFallbackEl.classList.remove('d-none')
+    }
+    if (speakerListEl) {
+      speakerListEl.classList.add('d-none')
+    }
+  } else {
+    if (speakerFallbackEl) {
+      speakerFallbackEl.classList.add('d-none')
+    }
+    if (speakerListEl) {
+      speakerListEl.classList.remove('d-none')
+    }
   }
 
   const requestTemporaryPermissions = async () => {

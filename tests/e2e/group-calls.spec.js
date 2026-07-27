@@ -114,7 +114,7 @@ test.describe.serial('Group Audio and Video Calls', () => {
     })
 
     await test.step('Alice ends group audio call for all users', async () => {
-      await alicePage.locator('call-overlay .active-view button:has(.bi-telephone-x-fill)').click()
+      await alicePage.locator('call-overlay .active-view [ref$="__btnEndCall"]').click()
       await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible({ timeout: 10000 })
       await expect(bobPage.locator('call-overlay .modal')).not.toBeVisible({ timeout: 10000 })
       await expect(charliePage.locator('call-overlay .modal')).not.toBeVisible({ timeout: 10000 })

@@ -189,7 +189,7 @@ test.describe.serial('Calls', () => {
     })
 
     await test.step('Alice ends the call', async () => {
-      await alicePage.locator('call-overlay .active-view button:has(.bi-telephone-x-fill)').click()
+      await alicePage.locator('call-overlay .active-view [ref$="__btnEndCall"]').click()
       await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
       await expect(bobPage.locator('call-overlay .modal')).not.toBeVisible()
 

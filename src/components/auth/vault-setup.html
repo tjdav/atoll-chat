@@ -110,7 +110,7 @@
       const stepPassword = refs('stepPassword')
       const stepRecovery = refs('stepRecovery')
       const setupForm = refs('setupForm')
-      
+  
       const passwordInput = refs('password') || root.querySelector('[ref*="password"]')
       const vaultUsernameHidden = refs('vaultUsernameHidden') || root.querySelector('[ref*="vaultUsernameHidden"]')
       const passwordConfirmInput = refs('passwordConfirm') || root.querySelector('[ref*="passwordConfirm"]')
@@ -139,7 +139,10 @@
 
       const showGlobalAlert = (msg) => {
         if (msg) {
-          $bus.emit('ui:show_toast', { message: msg, variant: 'danger' })
+          $bus.emit('ui:show_toast', {
+            message: msg,
+            variant: 'danger'
+          })
         }
       }
 
@@ -162,7 +165,11 @@
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
           const input = e.target.closest('atoll-input')
-          if (!input) return
+
+          if (!input) {
+            return
+          }
+  
           input.removeAttribute('invalid')
           input.removeAttribute('error-message')
         })
