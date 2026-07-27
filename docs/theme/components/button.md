@@ -19,7 +19,7 @@ Standard buttons use rounded corners with medium radius bounds, while Capsule/Pi
 
 ### Visual Variants & Dark Mode Contrast Rules
 
-| Variant | Light Mode Appearance | Dark Mode Appearance (`[data-bs-theme="dark"]`) | Primary Application |
+| Variant | Light Mode Appearance | Dark Mode Appearance (`[data-atoll-theme="dark"]`) | Primary Application |
 | --- | --- | --- | --- |
 | **`primary`** | Solid Brand Green (`#06C755`), white text | Solid Brand Green (`#06C755`), white text | Floating quick actions, active audio call bar |
 | **`secondary`** | Light surface (`#E8E8E8`), dark text | Dark surface (`#2A2A2A`), white text | Filter chips, contextual chat room tags |

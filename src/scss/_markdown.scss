@@ -126,7 +126,7 @@
   // Ensure links are visible enough on secondary background
   --#{$prefix}link-color: var(--#{$prefix}primary);
   
-  [data-bs-theme="dark"] & {
+  [data-#{$prefix}theme="dark"] & {
     --#{$prefix}link-color: #6ea8fe; // Better contrast for dark mode
   }
 }

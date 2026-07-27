@@ -64,7 +64,7 @@ All properties utilize the custom prefix configured globally via `#{$prefix}`.
 
 ### Dark Mode Support
 
-In dark mode (`[data-bs-theme="dark"]`), the theme semantic variables are updated automatically for both the lightweight `plain` text tooltip and the elevated `action` onboarding balloon.
+In dark mode (`[data-atoll-theme="dark"]`), the theme semantic variables are updated automatically for both the lightweight `plain` text tooltip and the elevated `action` onboarding balloon.
 
 ---
 

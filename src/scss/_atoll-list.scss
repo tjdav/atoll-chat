@@ -180,10 +180,10 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dark Mode Overrides ([data-bs-theme="dark"])                                */
+/* Dark Mode Overrides ([data-atoll-theme="dark"])                                */
 /* -------------------------------------------------------------------------- */
 
-[data-bs-theme="dark"] {
+[data-#{$prefix}theme="dark"] {
   .atoll-list-item {
     --#{$prefix}list-item-bg-hover: var(--#{$prefix}bg-surface-secondary, #242424);
     --#{$prefix}list-item-bg-active: var(--#{$prefix}bg-surface-tertiary, #2F2F2F);

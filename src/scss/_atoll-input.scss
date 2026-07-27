@@ -178,10 +178,10 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dark Mode Overrides ([data-bs-theme="dark"])                                */
+/* Dark Mode Overrides ([data-atoll-theme="dark"])                                */
 /* -------------------------------------------------------------------------- */
 
-[data-bs-theme="dark"] {
+[data-#{$prefix}theme="dark"] {
   .atoll-input-group {
     --#{$prefix}input-text-color: var(--#{$prefix}text-primary, #FFFFFF);
     --#{$prefix}input-placeholder-color: var(--#{$prefix}text-tertiary, #666666);

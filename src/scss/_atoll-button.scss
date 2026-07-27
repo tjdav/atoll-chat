@@ -210,10 +210,10 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dark Mode Surface Overrides ([data-bs-theme="dark"])                        */
+/* Dark Mode Surface Overrides ([data-atoll-theme="dark"])                       */
 /* -------------------------------------------------------------------------- */
 
-[data-bs-theme="dark"] {
+[data-#{$prefix}theme="dark"] {
   .atoll-btn-secondary {
     background-color: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
     color: var(--#{$prefix}text-primary, #FFFFFF);

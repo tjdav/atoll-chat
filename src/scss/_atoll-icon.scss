@@ -24,7 +24,7 @@
   --solar-secondary-opacity: var(--#{$prefix}icon-secondary-opacity, 0.35);
 }
 
-[data-bs-theme="dark"] {
+[data-#{$prefix}theme="dark"] {
   /* Dark Mode Adjustments */
   --#{$prefix}icon-out-stroke: currentColor;
   --#{$prefix}icon-out-fill: var(--#{$prefix}brand-primary, #06C755);

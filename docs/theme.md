@@ -139,7 +139,7 @@ Provides contrast-rich distinction for tags, statuses, badges, and user-group in
 
 ## 5. Semantic Tokens (Theme Engine)
 
-Atoll bridges abstract primitive values to user-facing layouts using semantic variables, which transition dynamically depending on the current theme mode (`[data-bs-theme="light"]` and `[data-bs-theme="dark"]`).
+Atoll bridges abstract primitive values to user-facing layouts using semantic variables, which transition dynamically depending on the current theme mode (`[data-atoll-theme="light"]` and `[data-atoll-theme="dark"]`).
 
 Semantic variables observe a structured naming framework:
 `--atoll-[category]-[property]-[priority]`

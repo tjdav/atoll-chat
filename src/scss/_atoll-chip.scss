@@ -246,10 +246,10 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dark Mode Overrides ([data-bs-theme="dark"])                                */
+/* Dark Mode Overrides ([data-atoll-theme="dark"])                                */
 /* -------------------------------------------------------------------------- */
 
-[data-bs-theme="dark"] {
+[data-#{$prefix}theme="dark"] {
   .atoll-chip-secondary {
     --#{$prefix}chip-bg: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
     --#{$prefix}chip-color: var(--#{$prefix}text-primary, #FFFFFF);

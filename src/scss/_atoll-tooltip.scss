@@ -179,10 +179,10 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dark Mode Overrides ([data-bs-theme="dark"])                                */
+/* Dark Mode Overrides ([data-atoll-theme="dark"])                                */
 /* -------------------------------------------------------------------------- */
 
-[data-bs-theme="dark"] {
+[data-#{$prefix}theme="dark"] {
   .atoll-tooltip-bubble {
     --#{$prefix}tooltip-bg: #2C2C2C;
     --#{$prefix}tooltip-color: #FFFFFF;

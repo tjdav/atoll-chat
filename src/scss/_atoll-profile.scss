@@ -175,8 +175,8 @@
 .atoll-profile-2xl { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-2xl); }
 .atoll-profile-3xl { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-3xl); }
 
-/* Dark Mode Overrides ([data-bs-theme="dark"]) */
-[data-bs-theme="dark"] {
+/* Dark Mode Overrides ([data-atoll-theme="dark"]) */
+[data-#{$prefix}theme="dark"] {
   .atoll-profile {
     --#{$prefix}profile-border-color: var(--#{$prefix}bg-surface-primary, #1F1F1F);
     --#{$prefix}profile-placeholder-bg: var(--#{$prefix}bg-surface-tertiary, #3A3A3A);

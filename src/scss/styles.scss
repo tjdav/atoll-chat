@@ -96,7 +96,7 @@ $utilities: map-merge($utilities,
 // Custom State Mixins & Functions
 @import "theme/mixins-states";
 
-// Semantic Token Matrix ([data-bs-theme="light"] / [data-bs-theme="dark"])
+// Semantic Token Matrix ([data-atoll-theme="light"] / [data-#{$prefix}theme="dark"])
 @import "theme/theme-semantic";
 
 // Viewport Safe Area Layout Insets

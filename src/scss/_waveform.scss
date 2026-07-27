@@ -29,7 +29,7 @@
   object-fit: fill;
   opacity: 0.5;
 
-  [data-bs-theme="dark"] & {
+  [data-#{$prefix}theme="dark"] & {
     // Apply inversion filter to legacy PNG/canvas images, but not inline SVGs
     &:not(svg) {
       filter: invert(1) hue-rotate(180deg);

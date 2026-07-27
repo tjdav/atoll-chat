@@ -24,7 +24,7 @@
     &:hover {
       background-color: rgba(0, 0, 0, 0.04);
 
-      [data-bs-theme="dark"] & {
+      [data-#{$prefix}theme="dark"] & {
         background-color: rgba(255, 255, 255, 0.06);
       }
     }
@@ -46,7 +46,7 @@
         --#{$prefix}icon-out-fill: var(--#{$prefix}brand-primary, #06C755) !important;
       }
 
-      [data-bs-theme="dark"] & {
+      [data-#{$prefix}theme="dark"] & {
         background-color: rgba(255, 255, 255, 0.06) !important;
         color: var(--#{$prefix}brand-primary, #06C755) !important;
       }

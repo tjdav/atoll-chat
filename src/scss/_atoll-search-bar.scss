@@ -162,10 +162,10 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dark Mode Overrides ([data-bs-theme="dark"])                                */
+/* Dark Mode Overrides ([data-atoll-theme="dark"])                                */
 /* -------------------------------------------------------------------------- */
 
-[data-bs-theme="dark"] {
+[data-#{$prefix}theme="dark"] {
   .atoll-search-bar-container {
     --#{$prefix}search-bg: var(--#{$prefix}input-bg, #2A2A2A);
     --#{$prefix}search-bg-focus: var(--#{$prefix}input-bg, #2A2A2A);

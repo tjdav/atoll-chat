@@ -1,7 +1,7 @@
 /* css/theme-semantic.css */
 
 :root,
-[data-bs-theme="light"] {
+[data-#{$prefix}theme="light"] {
   /* Native Bootstrap Overrides */
   --#{$prefix}body-bg: #{map-get($grays, "100")};
   --#{$prefix}body-bg-rgb: #{to-rgb(map-get($grays, "100"))};
@@ -42,7 +42,7 @@
   --#{$prefix}brand-subtle-bg: #E6F9EE;
 }
 
-[data-bs-theme="dark"] {
+[data-#{$prefix}theme="dark"] {
   /* Native Bootstrap Overrides */
   --#{$prefix}body-bg: #{map-get($grays, "900")};
   --#{$prefix}body-bg-rgb: #{to-rgb(map-get($grays, "900"))};
