@@ -7,8 +7,8 @@
   --#{$prefix}search-height-lg: 44px;
 
   /* Color Tokens */
-  --#{$prefix}search-bg: var(--#{$prefix}bg-surface-secondary, #F2F2F2);
-  --#{$prefix}search-bg-focus: var(--#{$prefix}bg-surface-primary, #FFFFFF);
+  --#{$prefix}search-bg: var(--#{$prefix}input-bg, #F5F5F5);
+  --#{$prefix}search-bg-focus: var(--#{$prefix}input-bg, #F5F5F5);
   --#{$prefix}search-text: var(--#{$prefix}text-primary, #111111);
   --#{$prefix}search-placeholder: var(--#{$prefix}text-tertiary, #999999);
   --#{$prefix}search-border: transparent;
@@ -167,8 +167,8 @@
 
 [data-bs-theme="dark"] {
   .atoll-search-bar-container {
-    --#{$prefix}search-bg: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
-    --#{$prefix}search-bg-focus: var(--#{$prefix}bg-surface-secondary, #1F1F1F);
+    --#{$prefix}search-bg: var(--#{$prefix}input-bg, #2A2A2A);
+    --#{$prefix}search-bg-focus: var(--#{$prefix}input-bg, #2A2A2A);
     --#{$prefix}search-text: var(--#{$prefix}text-primary, #FFFFFF);
     --#{$prefix}search-placeholder: var(--#{$prefix}text-tertiary, #777777);
   }

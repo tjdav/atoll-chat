@@ -3,8 +3,8 @@
 :root,
 [data-bs-theme="light"] {
   /* Native Bootstrap Overrides */
-  --#{$prefix}body-bg: #{map-get($grays, "000")};
-  --#{$prefix}body-bg-rgb: #{to-rgb(map-get($grays, "000"))};
+  --#{$prefix}body-bg: #{map-get($grays, "100")};
+  --#{$prefix}body-bg-rgb: #{to-rgb(map-get($grays, "100"))};
   --#{$prefix}body-color: #{map-get($grays, "900")};
   --#{$prefix}body-color-rgb: #{to-rgb(map-get($grays, "900"))};
   --#{$prefix}secondary-bg: #{map-get($grays, "100")};
@@ -13,11 +13,15 @@
   --#{$prefix}border-color-translucent: rgba(#{to-rgb(map-get($grays, "1000"))}, 0.08);
 
   /* Atoll Semantic Extensions - Backgrounds */
-  --#{$prefix}bg-body: #{map-get($grays, "000")};
-  --#{$prefix}bg-surface-primary: #{map-get($grays, "000")};
+  --#{$prefix}bg-body: #{map-get($grays, "100")};
+  --#{$prefix}bg-surface-primary: #{map-get($grays, "100")};
   --#{$prefix}bg-surface-secondary: #{map-get($grays, "100")};
   --#{$prefix}bg-surface-tertiary: #{map-get($grays, "200")};
-  --#{$prefix}bg-surface-elevated: #{map-get($grays, "000")};
+  --#{$prefix}bg-surface-elevated: #{map-get($grays, "100")};
+
+  /* Pane and Input Background custom properties */
+  --#{$prefix}pane-bg: #{map-get($grays, "000")};
+  --#{$prefix}input-bg: #{map-get($grays, "100")};
 
   /* Atoll Semantic Extensions - Typography & Icons */
   --#{$prefix}text-primary: #{map-get($grays, "900")};
@@ -51,10 +55,14 @@
 
   /* Atoll Semantic Extensions - Backgrounds */
   --#{$prefix}bg-body: #{map-get($grays, "900")};
-  --#{$prefix}bg-surface-primary: #{map-get($grays, "870")};
+  --#{$prefix}bg-surface-primary: #{map-get($grays, "900")};
   --#{$prefix}bg-surface-secondary: #{map-get($grays, "850")};
   --#{$prefix}bg-surface-tertiary: #{map-get($grays, "800")};
-  --#{$prefix}bg-surface-elevated: #{map-get($grays, "830")};
+  --#{$prefix}bg-surface-elevated: #{map-get($grays, "900")};
+
+  /* Pane and Input Background custom properties */
+  --#{$prefix}pane-bg: #{map-get($grays, "850")}; // #1F1F1F
+  --#{$prefix}input-bg: #{map-get($grays, "800")}; // #2A2A2A
 
   /* Atoll Semantic Extensions - Typography & Icons */
   --#{$prefix}text-primary: #{map-get($grays, "000")};

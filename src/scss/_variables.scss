@@ -1,10 +1,13 @@
 // Enable Bootstrap CSS Grid
 $enable-cssgrid: true;
 
+// Global Body Overrides
+$body-bg: map-get($grays, "100");
+$body-color: map-get($grays, "900");
+
 // Custom variables for Layout
 $app-header-height: 72px;
-$app-sidebar-width: 80px;
-$app-sidebar-width-mobile: 60px;
+$app-sidebar-width: 54px;
 $app-item-padding-y: 0.75rem;
 $app-item-padding-x: 1rem;
 

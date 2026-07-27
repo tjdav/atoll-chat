@@ -3,14 +3,18 @@
 $prefix: "atoll-";
 
 // Responsive Layout Container Classes
-.atoll-main-layout, .layout-container {
+.atoll-main-layout {
   display: flex;
-  height: 100vh;
-  height: 100dvh; // Dynamic viewport height for mobile browsers
-  width: 100vw;
+  height: 100dvh;
+  width: 100dvw;
   overflow: hidden;
   background-color: var(--#{$prefix}body-bg);
   color: var(--#{$prefix}body-color);
+
+  @media (min-width: 768px) {
+    padding: 1rem;
+    gap: 1rem;
+  }
 }
 
 .vh-100 {
@@ -27,6 +31,11 @@ $prefix: "atoll-";
 
   @media (min-width: 768px) {
     width: 320px;
+    border-radius: var(--bs-border-radius-xl, 1rem) !important;
+    background-color: var(--#{$prefix}pane-bg) !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: hidden;
   }
 
   @media (min-width: 1200px) {
@@ -40,6 +49,13 @@ $prefix: "atoll-";
   display: flex;
   flex-direction: column;
   background-color: var(--#{$prefix}body-bg);
+
+  @media (min-width: 768px) {
+    border-radius: var(--bs-border-radius-xl, 1rem) !important;
+    background-color: var(--#{$prefix}pane-bg) !important;
+    border: none !important;
+    overflow: hidden;
+  }
 
   // On Mobile, hide inactive pane
   @media (max-width: 767.98px) {
@@ -143,6 +159,17 @@ $prefix: "atoll-";
   .layout-container:not(.chat-active) .atoll-chat-pane,
   .layout-container:not(.chat-active) .detail-view {
     display: none !important;
+  }
+}
+
+@media (min-width: 768px) {
+  .mobile-nav-offcanvas {
+    background-color: transparent !important;
+    border: none !important;
+
+    > .d-flex {
+      gap: 1rem !important;
+    }
   }
 }
 

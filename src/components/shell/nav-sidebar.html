@@ -1,6 +1,6 @@
 <template id="nav-sidebar">
-  <div class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100" data-testid="navSidebar">
-    <div class="nav flex-column nav-pills w-100 px-2 gap-3" hidden="{{ isSidebarMenuHidden }}">
+  <nav class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100" data-testid="navSidebar" role="navigation" aria-label="Main menu">
+    <div class="nav flex-column nav-pills w-100 gap-2" hidden="{{ isSidebarMenuHidden }}">
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isChatsActive }}" ref="btnChats" title="Chats" data-testid="btnChats">
         <div class="atoll-badge-container">
           <img src="/logo.svg" alt="Atoll chat logo" class="img-fluid">

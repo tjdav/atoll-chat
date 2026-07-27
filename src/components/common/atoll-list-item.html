@@ -100,13 +100,19 @@
           classes.push('atoll-list-item-md')
         }
 
-        if (state.isClickable) classes.push('atoll-list-item-clickable')
-        if (state.highlighted) classes.push('atoll-list-item-highlighted')
+        if (state.isClickable) {
+          classes.push('atoll-list-item-clickable')
+        }
+        if (state.highlighted) {
+          classes.push('atoll-list-item-highlighted')
+        }
         if (state.selected) {
           classes.push('atoll-list-item-selected')
           classes.push('active')
         }
-        if (state.disabled) classes.push('disabled')
+        if (state.disabled) {
+          classes.push('disabled')
+        }
 
         return classes.join(' ')
       }
@@ -116,13 +122,18 @@
       const itemRoot = refs('itemRoot')
 
       const handleTrigger = (event) => {
-        if (state.disabled) return
+        if (state.disabled) {
+          return
+        }
 
         root.dispatchEvent(
           new CustomEvent('atoll-item-click', {
             bubbles: true,
             composed: true,
-            detail: { title: state.title, selected: state.selected }
+            detail: {
+              title: state.title,
+              selected: state.selected
+            }
           })
         )
       }

@@ -1,9 +1,11 @@
 .nav-sidebar {
   width: $app-sidebar-width;
   transition: width 0.2s ease-in-out;
+  border-right: none !important;
+  background-color: var(--#{$prefix}body-bg) !important;
 
   @include media-breakpoint-down(md) {
-    width: $app-sidebar-width-mobile;
+    padding: 0 0.2rem;
   }
 
   .nav-link {
@@ -15,10 +17,6 @@
 
     @include media-breakpoint-down(md) {
       padding: 0.5rem !important;
-      
-      i {
-        font-size: 1.25rem !important; // Shrink icon size
-      }
     }
 
     &:hover {

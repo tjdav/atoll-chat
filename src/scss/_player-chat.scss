@@ -11,6 +11,7 @@
 
 .chat-view {
   height: 100%;
+  background-color: var(--#{$prefix}pane-bg) !important;
 
   .sidebar-slide-over {
     position: absolute;
@@ -19,6 +20,7 @@
     bottom: 0;
     width: 350px;
     z-index: $zindex-offcanvas;
+    background-color: var(--#{$prefix}pane-bg) !important;
     @include transition(transform 0.3s ease-in-out);
   }
 

@@ -4,23 +4,25 @@
   display: flex;
   align-items: center;
   padding: 0 $app-item-padding-x;
-  background-color: var(--#{$prefix}body-bg);
+  background-color: transparent !important;
   z-index: 10;
 }
 
 .list-pane-header {
   /* Border removed as per requirement */
   border-bottom: none !important;
-  background-color: var(--#{$prefix}tertiary-bg);
+  background-color: var(--#{$prefix}pane-bg) !important;
 }
 
-.chat-view-header {
-  border-bottom: 1px solid var(--#{$prefix}border-color);
+.chat-view-header, .sidebar-header {
+  border-bottom: 1px solid var(--#{$prefix}border-color-translucent) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background-color: var(--#{$prefix}pane-bg) !important;
 }
 
-.room-details {
+.room-details, .settings-main, .settings-pane {
   height: 100%;
+  background-color: var(--#{$prefix}pane-bg) !important;
 }
 
 .member-item {
@@ -46,7 +48,7 @@
 }
 
 .list-pane-custom {
-  background-color: var(--#{$prefix}tertiary-bg);
+  background-color: var(--#{$prefix}pane-bg) !important;
 }
 
 .user-chip {
