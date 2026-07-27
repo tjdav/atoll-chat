@@ -6,8 +6,11 @@ test.describe('Atoll Icon Component (@solar-icons/js)', () => {
     await page.waitForFunction(() => {
       return window.__coralite__ && window.__coralite__.lifecycle !== undefined
     })
-    await page.evaluate(() => {
-      return window.__coralite__.lifecycle.hydrated
+    await page.evaluate(async () => {
+      await window.__coralite__.lifecycle.hydrated
+      // Force load and register the component for E2E dynamically-inserted html tests
+      document.createElement('atoll-icon')
+      await customElements.whenDefined('atoll-icon')
     })
   })
 

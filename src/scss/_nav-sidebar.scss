@@ -14,21 +14,41 @@
     border-radius: 12px;
     color: var(--#{$prefix}secondary-color);
     padding: 0.75rem !important;
+    background-color: transparent;
+    border-left: 3px solid transparent;
 
     @include media-breakpoint-down(md) {
       padding: 0.5rem !important;
     }
 
     &:hover {
-      background-color: var(--#{$prefix}tertiary-bg);
+      background-color: rgba(0, 0, 0, 0.04);
+
+      [data-bs-theme="dark"] & {
+        background-color: rgba(255, 255, 255, 0.06);
+      }
     }
 
     &.active {
-      background-color: var(--#{$prefix}primary-bg-subtle) !important;
-      color: var(--#{$prefix}primary) !important;
+      background-color: rgba(0, 0, 0, 0.04) !important;
+      color: var(--#{$prefix}brand-primary, #06C755) !important;
+      border-left: 3px solid var(--#{$prefix}brand-primary, #06C755) !important;
+      border-radius: 0 12px 12px 0;
+      padding-left: calc(0.75rem - 3px) !important;
+
+      @include media-breakpoint-down(md) {
+        padding-left: calc(0.5rem - 3px) !important;
+      }
+
+      // Force ADSM active single-tone color override (Brand Green)
+      .atoll-icon {
+        --#{$prefix}icon-out-stroke: var(--#{$prefix}brand-primary, #06C755) !important;
+        --#{$prefix}icon-out-fill: var(--#{$prefix}brand-primary, #06C755) !important;
+      }
 
       [data-bs-theme="dark"] & {
-        color: #ffffff !important;
+        background-color: rgba(255, 255, 255, 0.06) !important;
+        color: var(--#{$prefix}brand-primary, #06C755) !important;
       }
     }
   }

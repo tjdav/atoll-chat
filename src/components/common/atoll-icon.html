@@ -26,6 +26,10 @@
       ariaLabel: {
         type: String,
         default: ''
+      },
+      active: {
+        type: Boolean,
+        default: false
       }
     },
 
@@ -76,7 +80,8 @@
           name: state.name,
           size: numericSize,
           primaryColor: state.color,
-          secondaryColor: state.secondaryColor
+          secondaryColor: state.secondaryColor,
+          active: state.active
         })
 
         // Handle explicit numeric size (e.g., size="28") if not a token name
@@ -121,6 +126,7 @@
       observe('color', render)
       observe('secondaryColor', render)
       observe('ariaLabel', render)
+      observe('active', render)
 
       render()
     }

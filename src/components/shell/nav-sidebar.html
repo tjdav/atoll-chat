@@ -8,19 +8,19 @@
         </div>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isMusicActive }}" ref="btnMusic" title="Music" data-testid="btnMusic">
-        <atoll-icon name="music" size="24"></atoll-icon>
+        <atoll-icon name="music" size="24" active="{{ isMusicActiveBool }}"></atoll-icon>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isPicturesActive }}" ref="btnPictures" title="Pictures" data-testid="btnPictures">
-        <atoll-icon name="gallery" size="24"></atoll-icon>
+        <atoll-icon name="gallery" size="24" active="{{ isPicturesActiveBool }}"></atoll-icon>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isVideosActive }}" ref="btnVideos" title="Videos" data-testid="btnVideos">
-        <atoll-icon name="video" size="24"></atoll-icon>
+        <atoll-icon name="video" size="24" active="{{ isVideosActiveBool }}"></atoll-icon>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isDocumentsActive }}" ref="btnDocuments" title="Documents" data-testid="btnDocuments">
-        <atoll-icon name="document" size="24"></atoll-icon>
+        <atoll-icon name="document" size="24" active="{{ isDocumentsActiveBool }}"></atoll-icon>
       </button>
       <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isLinksActive }}" ref="btnLinks" title="Links" data-testid="btnLinks">
-        <atoll-icon name="link" size="24"></atoll-icon>
+        <atoll-icon name="link" size="24" active="{{ isLinksActiveBool }}"></atoll-icon>
       </button>
     </div>
     
@@ -59,7 +59,7 @@
         </ul>
       </div>
     </div>
-  </div>
+  </nav>
 </template>
 
 <script type="module">
@@ -80,6 +80,11 @@
       isDocumentsActive: (state) => (state.currentAppView === 'documents' ? 'active' : ''),
       isLinksActive: (state) => (state.currentAppView === 'links' ? 'active' : ''),
       isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : ''),
+      isMusicActiveBool: (state) => state.currentAppView === 'music',
+      isPicturesActiveBool: (state) => state.currentAppView === 'pictures',
+      isVideosActiveBool: (state) => state.currentAppView === 'videos',
+      isDocumentsActiveBool: (state) => state.currentAppView === 'documents',
+      isLinksActiveBool: (state) => state.currentAppView === 'links',
       isSidebarMenuHidden: (state) => !(state.isAuthenticated && state.isVaultUnlocked)
     },
     client: async ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker, bootstrap, storage }) => {
