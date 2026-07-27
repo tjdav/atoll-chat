@@ -38,9 +38,10 @@
     }
 
     .emoji-button {
+      display: block;
       position: absolute;
       right: 8px;
-      bottom: 4px;
+      bottom: 0;
       padding: 4px;
       line-height: 1;
     }
