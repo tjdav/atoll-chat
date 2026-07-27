@@ -1,208 +1,211 @@
-/* Styling for call-overlay component dropups and custom split buttons */
+/* Styling for ADSM minimalist overlay pattern and unified settings popup */
 
 .control-bar {
-  /* Ensure bootstrap dropdown positioning is relative to the button group, not overflowing */
-  z-index: 1050;
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%) !important;
+  margin-bottom: 24px;
+  display: flex;
+  gap: 16px;
+  padding: 12px 24px;
+  border-radius: 999px !important;
+  background-color: rgba(17, 17, 17, 0.8) !important;
+  backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  z-index: 1040;
+  align-items: center;
 }
 
-/* Custom rounded-pill button group */
-.btn-group-pill {
-  border-radius: 50rem !important;
-  overflow: visible !important; /* allow dropup menu */
-  background-color: transparent !important;
+/* Standalone uniform circular buttons */
+.atoll-call-btn {
+  /* Semi-transparent dark or light white blur by default when active/on */
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  color: #ffffff !important;
   border: none !important;
+  backdrop-filter: blur(5px);
+  transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
 
-  .btn {
-    border-radius: 0 !important;
-    height: 60px;
+  &:hover {
+    background-color: rgba(255, 255, 255, 0.25) !important;
+  }
+
+  &:active {
+    background-color: rgba(255, 255, 255, 0.35) !important;
+  }
+
+  /* When the button is in danger / muted / end call state */
+  &.atoll-btn-danger,
+  &.btn-danger {
+    background-color: #FF334B !important;
+    color: #ffffff !important;
+
+    &:hover {
+      background-color: color-mix(in srgb, #FF334B 90%, #000000) !important;
+    }
+
+    &:active {
+      background-color: color-mix(in srgb, #FF334B 80%, #000000) !important;
+    }
+  }
+}
+
+/* Subtle Brand Green halo/ring accent for speaking state */
+.atoll-call-speaking {
+  box-shadow: 0 0 0 3px #06C755 !important;
+  animation: atoll-speaking-pulse 1.5s infinite ease-in-out;
+}
+
+@keyframes atoll-speaking-pulse {
+  0% {
+    box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.8);
+  }
+  50% {
+    box-shadow: 0 0 0 6px rgba(6, 199, 85, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.8);
+  }
+}
+
+/* Scoped Modal Backdrop Override with Deep Blur and Dimming */
+.modal-backdrop.atoll-popup-backdrop,
+.modal-backdrop.show {
+  opacity: 1 !important;
+  background-color: rgba(0, 0, 0, 0.65) !important;
+  backdrop-filter: blur(8px) !important;
+}
+
+/* ADSM Call Settings Modal - Always Dark Surface */
+.atoll-call-settings-modal {
+  color: #ffffff !important;
+
+  .modal-dialog {
     display: flex;
     align-items: center;
     justify-content: center;
-    border: none !important;
-
-    &:first-child {
-      border-top-left-radius: 50rem !important;
-      border-bottom-left-radius: 50rem !important;
-      padding-left: 20px !important;
-      padding-right: 12px !important;
-      width: 65px !important;
-    }
-
-    &:last-child {
-      border-top-right-radius: 50rem !important;
-      border-bottom-right-radius: 50rem !important;
-      padding-right: 20px !important;
-      padding-left: 12px !important;
-      width: 45px !important;
-    }
-  }
-
-  /* When group is in active/unmuted state */
-  &.active-state {
-    .btn-action {
-      background-color: var(--bs-light) !important;
-      color: var(--bs-dark) !important;
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.85) !important;
-      }
-    }
-    .btn-chevron {
-      background-color: var(--bs-light) !important;
-      color: var(--bs-dark) !important;
-      border-left: 1px solid rgba(0, 0, 0, 0.1) !important;
-      &:hover {
-        background-color: rgba(255, 255, 255, 0.8) !important;
-      }
-    }
-  }
-
-  /* When speaking (and unmuted) */
-  &.speaking-state {
-    .btn-action {
-      background-color: var(--bs-success) !important;
-      color: var(--bs-white) !important;
-    }
-    .btn-chevron {
-      background-color: var(--bs-success) !important;
-      color: var(--bs-white) !important;
-      border-left: 1px solid rgba(255, 255, 255, 0.15) !important;
-    }
-  }
-
-  /* When group is in muted state */
-  &.muted-state {
-    .btn-action {
-      background-color: var(--bs-danger) !important;
-      color: var(--bs-white) !important;
-      &:hover {
-        background-color: #dc3545d9 !important;
-      }
-    }
-    .btn-chevron {
-      background-color: var(--bs-danger) !important;
-      color: var(--bs-white) !important;
-      border-left: 1px solid rgba(0, 0, 0, 0.15) !important;
-      /* subtle darker variant or dark transparent overlay on the chevron button */
-      background-image: linear-gradient(rgba(0, 0, 0, 0.15), rgba(0, 0, 0, 0.15)) !important;
-
-      &:hover {
-        background-image: linear-gradient(rgba(0, 0, 0, 0.25), rgba(0, 0, 0, 0.25)) !important;
-      }
-    }
-  }
-}
-
-/* Custom dropdown-menu for device selection dropup */
-.device-dropdown-menu {
-  width: 320px;
-  max-width: 90vw;
-  background-color: var(--bs-body-bg) !important;
-  border: 1px solid var(--bs-border-color) !important;
-  border-radius: 1rem !important;
-  padding: 1.25rem !important;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
-  color: var(--bs-emphasis-color) !important;
-
-  .dropdown-header {
-    font-size: 0.75rem !important;
-    text-transform: uppercase;
-    font-weight: 700;
-    color: var(--bs-secondary-color) !important;
-    padding: 0 !important;
-    margin-bottom: 0.75rem;
-    margin-top: 0.5rem;
-
-    &:first-child {
-      margin-top: 0;
-    }
-  }
-
-  .device-list {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-    margin-bottom: 1rem;
-    max-height: 160px;
-    overflow-y: auto;
-  }
-
-  .device-item {
-    display: flex;
-    align-items: center;
+    min-height: calc(100% - 3.5rem);
+    margin: 1.75rem auto;
+    max-width: 420px;
     width: 100%;
-    padding: 0.5rem 0.75rem;
-    background: transparent;
-    border: none;
-    color: var(--bs-body-color);
-    border-radius: 0.5rem;
+  }
+
+  .modal-content {
+    background-color: #1F1F1F !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
+    border-radius: 20px !important;
+    padding: 20px 24px !important;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5) !important;
+    box-sizing: border-box;
     text-align: left;
-    font-size: 0.875rem;
-    cursor: pointer;
+    overflow: hidden;
+  }
+
+  /* Category Section Headers & Spacing */
+  .settings-section-header {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    color: #999999 !important;
+    padding: 12px 0 6px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    margin-bottom: 8px;
+  }
+
+  .settings-section-subheader {
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.03em;
+    text-transform: uppercase;
+    color: #888888 !important;
+    padding: 12px 0 4px 0;
+  }
+
+  /* List & Row Styling - Subtle Highlight, Green Checkmark */
+  .device-list {
+    background-color: rgba(255, 255, 255, 0.03) !important;
+    border-radius: 12px;
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    padding: 0;
+    margin-bottom: 1rem;
+  }
+
+  .atoll-list-item {
+    background-color: transparent !important;
+    color: #e5e5e5 !important;
+    border-left: none !important; /* Ensure no heavy green bar on the left inside Settings choice lists */
+    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
     transition: background-color 0.15s ease, color 0.15s ease;
 
+    &:last-child {
+      border-bottom: none;
+    }
+
     &:hover {
-      background-color: var(--bs-tertiary-bg);
-      color: var(--bs-emphasis-color);
+      background-color: rgba(255, 255, 255, 0.03) !important;
+      color: #ffffff !important;
     }
 
+    /* Selected state is represented by subtle dark row highlight and the green checkmark */
+    &.atoll-list-item-selected,
     &.active {
-      font-weight: 500;
-      color: var(--bs-emphasis-color);
-      
-      .check-icon {
-        visibility: visible;
-      }
-    }
-
-    .check-icon {
-      margin-right: 0.5rem;
-      font-size: 1rem;
-      visibility: hidden;
-      flex-shrink: 0;
-    }
-
-    .device-name {
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      flex-grow: 1;
-    }
-  }
-
-  .effect-toggle-container {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0.5rem 0.75rem;
-    border-radius: 0.5rem;
-    background-color: var(--bs-tertiary-bg);
-    margin-bottom: 1rem;
-
-    .effect-label {
-      font-size: 0.875rem;
-      color: var(--bs-body-color);
-    }
-
-    .form-switch {
-      padding-left: 2.5em;
-      margin-bottom: 0;
-      
-      .form-check-input {
-        cursor: pointer;
-        height: 1.5rem;
-        width: 2.75rem;
-      }
+      background-color: rgba(255, 255, 255, 0.05) !important;
+      color: #ffffff !important;
     }
   }
 
   .speaker-fallback-box {
-    background-color: var(--bs-tertiary-bg);
-    border: 1px solid var(--bs-border-color);
-    border-radius: 0.75rem;
-    padding: 0.75rem 1rem;
+    background-color: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 12px 16px;
     font-size: 0.8125rem;
     line-height: 1.4;
-    color: var(--bs-secondary-color);
-    margin-bottom: 0.5rem;
+    color: #888888;
+  }
+
+  /* Close "X" Button Header Alignment */
+  .atoll-popup-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #ffffff !important;
+    margin: 0;
+  }
+
+  /* Custom switch integration */
+  .form-switch {
+    .form-check-input {
+      cursor: pointer;
+      background-color: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+
+      &:checked {
+        background-color: #06C755;
+        border-color: #06C755;
+      }
+    }
+  }
+}
+
+/* Mobile Viewports: ADSM Anchored Bottom Sheet */
+@media (max-width: 767.98px) {
+  .atoll-call-settings-modal {
+    .modal-dialog {
+      margin: 0 !important;
+      align-items: flex-end !important;
+      min-height: 100% !important;
+      max-width: 100% !important;
+      width: 100% !important;
+
+      .modal-content {
+        width: 100% !important;
+        border-radius: 20px 20px 0 0 !important;
+        padding: 20px 24px !important;
+        margin-bottom: 0 !important;
+        border-bottom: none !important;
+      }
+    }
   }
 }

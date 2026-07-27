@@ -26,26 +26,10 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
   }
 
   // Capability Gating
-  state.isSpeakerSelectionSupported =
-    ('setSinkId' in HTMLMediaElement.prototype && typeof HTMLMediaElement.prototype.setSinkId !== 'undefined') ||
-    Boolean(navigator.mediaDevices?.selectAudioOutput)
-
+  state.isSpeakerSelectionSupported = typeof HTMLMediaElement.prototype.setSinkId !== 'undefined'
   const speakerFallbackEl = getRef('speakerFallback')
-  const speakerListEl = getRef('speakerList')
-  if (!state.isSpeakerSelectionSupported) {
-    if (speakerFallbackEl) {
-      speakerFallbackEl.classList.remove('d-none')
-    }
-    if (speakerListEl) {
-      speakerListEl.classList.add('d-none')
-    }
-  } else {
-    if (speakerFallbackEl) {
-      speakerFallbackEl.classList.add('d-none')
-    }
-    if (speakerListEl) {
-      speakerListEl.classList.remove('d-none')
-    }
+  if (!state.isSpeakerSelectionSupported && speakerFallbackEl) {
+    speakerFallbackEl.classList.remove('d-none')
   }
 
   const requestTemporaryPermissions = async () => {
@@ -127,18 +111,25 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     if (micContainer) {
       micContainer.innerHTML = ''
       if (state.microphones.length === 0) {
-        micContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem;">No microphones found</div>`
+        micContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem; padding-left: 1rem;">No microphones found</div>`
       } else {
         state.microphones.forEach(mic => {
-          const button = document.createElement('button')
-          button.className = `device-item ${state.activeMicId === mic.deviceId ? 'active' : ''}`
-          button.setAttribute('data-device-id', mic.deviceId)
-          button.innerHTML = `
-            <i class="bi bi-check2 check-icon"></i>
-            <span class="device-name">${mic.label || 'Microphone (' + mic.deviceId.substring(0, 5) + ')'}</span>
-          `
-          button.addEventListener('click', () => selectMicrophone(mic.deviceId))
-          micContainer.appendChild(button)
+          const item = document.createElement('atoll-list-item')
+          item.setAttribute('title', mic.label || 'Microphone (' + mic.deviceId.substring(0, 5) + ')')
+          item.setAttribute('clickable', 'true')
+          item.setAttribute('data-device-id', mic.deviceId)
+
+          if (state.activeMicId === mic.deviceId) {
+            item.setAttribute('selected', 'true')
+            const checkIcon = document.createElement('atoll-icon')
+            checkIcon.setAttribute('name', 'check')
+            checkIcon.setAttribute('active', 'true')
+            checkIcon.setAttribute('slot', 'right')
+            item.appendChild(checkIcon)
+          }
+
+          item.addEventListener('atoll-item-click', () => selectMicrophone(mic.deviceId))
+          micContainer.appendChild(item)
         })
       }
     }
@@ -148,18 +139,25 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     if (camContainer) {
       camContainer.innerHTML = ''
       if (state.cameras.length === 0) {
-        camContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem;">No cameras found</div>`
+        camContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem; padding-left: 1rem;">No cameras found</div>`
       } else {
         state.cameras.forEach(cam => {
-          const button = document.createElement('button')
-          button.className = `device-item ${state.activeCamId === cam.deviceId ? 'active' : ''}`
-          button.setAttribute('data-device-id', cam.deviceId)
-          button.innerHTML = `
-            <i class="bi bi-check2 check-icon"></i>
-            <span class="device-name">${cam.label || 'Camera (' + cam.deviceId.substring(0, 5) + ')'}</span>
-          `
-          button.addEventListener('click', () => selectCamera(cam.deviceId))
-          camContainer.appendChild(button)
+          const item = document.createElement('atoll-list-item')
+          item.setAttribute('title', cam.label || 'Camera (' + cam.deviceId.substring(0, 5) + ')')
+          item.setAttribute('clickable', 'true')
+          item.setAttribute('data-device-id', cam.deviceId)
+
+          if (state.activeCamId === cam.deviceId) {
+            item.setAttribute('selected', 'true')
+            const checkIcon = document.createElement('atoll-icon')
+            checkIcon.setAttribute('name', 'check')
+            checkIcon.setAttribute('active', 'true')
+            checkIcon.setAttribute('slot', 'right')
+            item.appendChild(checkIcon)
+          }
+
+          item.addEventListener('atoll-item-click', () => selectCamera(cam.deviceId))
+          camContainer.appendChild(item)
         })
       }
     }
@@ -169,18 +167,25 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     if (speakerContainer && state.isSpeakerSelectionSupported) {
       speakerContainer.innerHTML = ''
       if (state.speakers.length === 0) {
-        speakerContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem;">No speakers found</div>`
+        speakerContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem; padding-left: 1rem;">No speakers found</div>`
       } else {
         state.speakers.forEach(speaker => {
-          const button = document.createElement('button')
-          button.className = `device-item ${state.activeSpeakerId === speaker.deviceId ? 'active' : ''}`
-          button.setAttribute('data-device-id', speaker.deviceId)
-          button.innerHTML = `
-            <i class="bi bi-check2 check-icon"></i>
-            <span class="device-name">${speaker.label || 'Speaker (' + speaker.deviceId.substring(0, 5) + ')'}</span>
-          `
-          button.addEventListener('click', () => selectSpeaker(speaker.deviceId))
-          speakerContainer.appendChild(button)
+          const item = document.createElement('atoll-list-item')
+          item.setAttribute('title', speaker.label || 'Speaker (' + speaker.deviceId.substring(0, 5) + ')')
+          item.setAttribute('clickable', 'true')
+          item.setAttribute('data-device-id', speaker.deviceId)
+
+          if (state.activeSpeakerId === speaker.deviceId) {
+            item.setAttribute('selected', 'true')
+            const checkIcon = document.createElement('atoll-icon')
+            checkIcon.setAttribute('name', 'check')
+            checkIcon.setAttribute('active', 'true')
+            checkIcon.setAttribute('slot', 'right')
+            item.appendChild(checkIcon)
+          }
+
+          item.addEventListener('atoll-item-click', () => selectSpeaker(speaker.deviceId))
+          speakerContainer.appendChild(item)
         })
       }
     }

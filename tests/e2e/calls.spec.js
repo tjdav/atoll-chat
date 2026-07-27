@@ -189,9 +189,9 @@ test.describe.serial('Calls', () => {
     })
 
     await test.step('Alice ends the call', async () => {
-      await alicePage.locator('call-overlay .active-view [ref$="__btnEndCall"]').click()
-      await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
-      await expect(bobPage.locator('call-overlay .modal')).not.toBeVisible()
+      await alicePage.locator('call-overlay [ref$="btnEndCall"]').click()
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
+      await expect(bobPage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
 
       // Verify that call status reverts back to Private
       await expect(alicePage.locator('chat-view header small')).toHaveText('Private')
@@ -326,7 +326,7 @@ test.describe.serial('Calls', () => {
 
     await test.step('Alice enters Picture-in-Picture mode', async () => {
       await alicePage.click('[ref$="__btnPip"]')
-      await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
       const pipWindow = alicePage.locator('[ref$="__pipWindow"]')
       await expect(pipWindow).toBeVisible()
     })
@@ -342,10 +342,10 @@ test.describe.serial('Calls', () => {
       const pipWindow = alicePage.locator('[ref$="__pipWindow"]')
       await pipWindow.hover()
       await alicePage.click('[ref$="__btnExpand"]')
-      await expect(alicePage.locator('call-overlay .modal')).toBeVisible()
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).toBeVisible()
 
       await alicePage.click('[ref$="__btnEndCall"]')
-      await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
     })
   })
 
@@ -363,32 +363,31 @@ test.describe.serial('Calls', () => {
       await expect(alicePage.locator('call-overlay .active-view')).toBeVisible({ timeout: 10000 })
     })
 
-    await test.step('Verify Split Drop-Up Buttons and ARIA settings', async () => {
+    await test.step('Verify 5-Button Layout and ARIA settings', async () => {
       const btnToggleAudio = alicePage.locator('call-overlay [ref$="btnToggleAudio"]')
-      const btnAudioSettings = alicePage.locator('call-overlay [ref$="btnAudioSettings"]')
       const btnToggleVideo = alicePage.locator('call-overlay [ref$="btnToggleVideo"]')
-      const btnVideoSettings = alicePage.locator('call-overlay [ref$="btnVideoSettings"]')
+      const btnSettings = alicePage.locator('call-overlay [ref$="btnSettings"]')
 
       await expect(btnToggleAudio).toHaveAttribute('aria-label', 'Mute Microphone')
-      await expect(btnAudioSettings).toHaveAttribute('aria-haspopup', 'menu')
-      await expect(btnAudioSettings).toHaveAttribute('aria-expanded', 'false')
-
       await expect(btnToggleVideo).toHaveAttribute('aria-label', 'Mute Video')
-      await expect(btnVideoSettings).toHaveAttribute('aria-haspopup', 'menu')
-      await expect(btnVideoSettings).toHaveAttribute('aria-expanded', 'false')
+      await expect(btnSettings).toHaveAttribute('aria-label', 'Settings')
     })
 
-    await test.step('Open Microphone settings menu and verify structure', async () => {
-      const btnAudioSettings = alicePage.locator('call-overlay [ref$="btnAudioSettings"]')
-      await btnAudioSettings.click()
-      await expect(btnAudioSettings).toHaveAttribute('aria-expanded', 'true')
+    await test.step('Open Unified Device Settings popup and verify structure', async () => {
+      const btnSettings = alicePage.locator('call-overlay [ref$="btnSettings"]')
+      await btnSettings.click()
 
       // Assert Select a Microphone, Effects, and Select a Speaker headings exist
-      const micMenu = alicePage.locator('call-overlay .device-dropdown-menu').first()
-      await expect(micMenu).toBeVisible()
-      await expect(micMenu.locator('.dropdown-header').filter({ hasText: 'Select a Microphone' })).toBeVisible()
-      await expect(micMenu.locator('.dropdown-header').filter({ hasText: 'Microphone Effects' })).toBeVisible()
-      await expect(micMenu.locator('.dropdown-header').filter({ hasText: 'Select a Speaker' })).toBeVisible()
+      const settingsPopup = alicePage.locator('call-overlay [ref$="settingsPopup"]')
+      await expect(settingsPopup).toBeVisible()
+
+      // Take a screenshot for visual verification
+      await alicePage.screenshot({ path: '/app/verification-screenshot.png' })
+
+      await expect(alicePage.locator('call-overlay .settings-section-header').filter({ hasText: 'AUDIO' })).toBeVisible()
+      await expect(alicePage.locator('call-overlay .settings-section-subheader').filter({ hasText: 'Select a Microphone' })).toBeVisible()
+      await expect(alicePage.locator('call-overlay .settings-section-subheader').filter({ hasText: 'Microphone Effects' })).toBeVisible()
+      await expect(alicePage.locator('call-overlay .settings-section-subheader').filter({ hasText: 'Select a Speaker' })).toBeVisible()
 
       // Expect default "Noise cancellation" checked
       await expect(alicePage.locator('call-overlay #noise-cancellation-switch')).toBeChecked()
@@ -403,15 +402,10 @@ test.describe.serial('Calls', () => {
       expect(value).toBe('false')
     })
 
-    await test.step('Open Camera settings menu and verify Background Blur Mock', async () => {
-      const btnVideoSettings = alicePage.locator('call-overlay [ref$="btnVideoSettings"]')
-      await btnVideoSettings.click()
-      await expect(btnVideoSettings).toHaveAttribute('aria-expanded', 'true')
-
-      const camMenu = alicePage.locator('call-overlay .device-dropdown-menu').last()
-      await expect(camMenu).toBeVisible()
-      await expect(camMenu.locator('.dropdown-header').filter({ hasText: 'Select a Camera' })).toBeVisible()
-      await expect(camMenu.locator('.dropdown-header').filter({ hasText: 'Video Effects' })).toBeVisible()
+    await test.step('Verify Camera settings and Background Blur Mock inside Unified Settings', async () => {
+      await expect(alicePage.locator('call-overlay .settings-section-header').filter({ hasText: 'VIDEO' })).toBeVisible()
+      await expect(alicePage.locator('call-overlay .settings-section-subheader').filter({ hasText: 'Select a Camera' })).toBeVisible()
+      await expect(alicePage.locator('call-overlay .settings-section-subheader').filter({ hasText: 'Video Effects' })).toBeVisible()
 
       // Toggle Background Blur
       const blurSwitch = alicePage.locator('call-overlay #background-blur-switch')
@@ -451,8 +445,12 @@ test.describe.serial('Calls', () => {
     })
 
     await test.step('End the call', async () => {
+      const doneBtn = alicePage.getByRole('button', { name: 'Done' })
+      if (await doneBtn.isVisible()) {
+        await doneBtn.click()
+      }
       await alicePage.locator('call-overlay [ref$="btnEndCall"]').click()
-      await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
     })
   })
 })

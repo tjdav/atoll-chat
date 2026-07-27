@@ -8,6 +8,8 @@ import {
   BellLinearIcon,
   CameraLinearIcon,
   CameraMinimalisticLinearIcon,
+  CheckSquareLinearIcon,
+  CheckSquareBoldIcon,
   CloseCircleLinearIcon,
   DocumentsLinearIcon,
   DocumentsBoldIcon,
@@ -121,6 +123,10 @@ export const SOLAR_ICON_MAP = {
   'eye-off': EyeClosedLinearIcon,
 
   // Call & Media Controls
+  check: {
+    linear: CheckSquareLinearIcon,
+    bold: CheckSquareBoldIcon
+  },
   mic: MicrophoneLinearIcon,
   'mic-off': MutedLinearIcon,
   phone: PhoneLinearIcon,
@@ -195,8 +201,8 @@ export function renderIcon (wrapper, {
     attrs['secondary-color'] = secondaryColor
   }
 
-  // Use a Proxy as the icons dictionary to automatically resolve any rendered icon's AST
-  // This prevents console warnings when multiple different icons exist on the page
+  /* Use a Proxy as the icons dictionary to automatically resolve any rendered icon's AST
+     This prevents console warnings when multiple different icons exist on the page */
   const iconsProxy = new Proxy({}, {
     get (target, prop) {
       if (typeof prop !== 'string') {
@@ -218,7 +224,7 @@ export function renderIcon (wrapper, {
     }
   })
 
-  // To ensure the specifically being rendered icon is resolved with the correct active/bold state:
+  /* To ensure the specifically being rendered icon is resolved with the correct active/bold state: */
   const solarKey = toPascalCase(name) + 'Icon'
   iconsProxy[solarKey] = iconAst
 

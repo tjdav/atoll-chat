@@ -153,6 +153,16 @@
         }
       }
 
+      // Sync custom aria-pressed from host to the inner button
+      const syncAriaPressed = () => {
+        const pressedVal = root.getAttribute('aria-pressed')
+        if (pressedVal !== null) {
+          btn.setAttribute('aria-pressed', pressedVal)
+        } else {
+          btn.removeAttribute('aria-pressed')
+        }
+      }
+
       // Synchronize native click events
       if (btn) {
         btn.addEventListener('click', (event) => {
@@ -170,13 +180,15 @@
       // Initial execution
       syncLoadingState()
       syncAriaLabel()
+      syncAriaPressed()
 
       const observer = new MutationObserver(() => {
         syncAriaLabel()
+        syncAriaPressed()
       })
       observer.observe(root, {
         attributes: true,
-        attributeFilter: ['aria-label']
+        attributeFilter: ['aria-label', 'aria-pressed']
       })
 
       return () => {
