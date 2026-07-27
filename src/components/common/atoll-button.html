@@ -86,6 +86,19 @@
       const btn = refs('btnElement')
       let spinnerEl = null
 
+      // Forward test-id / data-testid from host to the nested native button
+      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid')
+  
+      if (testId && btn) {
+        btn.setAttribute('data-testid', testId)
+        root.removeAttribute('data-testid')
+      }
+
+      // Focus, blur, and click forwarding
+      root.focus = () => btn?.focus()
+      root.blur = () => btn?.blur()
+      root.click = () => btn?.click()
+
       // Imperatively create/destroy the spinner container and icon
       const syncLoadingState = () => {
         if (state.loading) {

@@ -3,6 +3,7 @@ import {
   createIcons,
   AddCircleLinearIcon,
   AltArrowDownLinearIcon,
+  AltArrowLeftLinearIcon,
   AltArrowRightLinearIcon,
   BellLinearIcon,
   CameraLinearIcon,
@@ -134,6 +135,7 @@ export const SOLAR_ICON_MAP = {
   // Chevrons
   down: AltArrowDownLinearIcon,
   'chevron-down': AltArrowDownLinearIcon,
+  'chevron-left': AltArrowLeftLinearIcon,
   'chevron-right': AltArrowRightLinearIcon
 }
 

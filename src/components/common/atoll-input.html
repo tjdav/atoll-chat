@@ -176,6 +176,77 @@
       const clearBtn = refs('clearBtn')
       const passBtn = refs('passwordToggleBtn')
 
+      // Forward test-id / data-testid and standard attributes
+      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid')
+      if (testId && input) {
+        input.setAttribute('data-testid', testId)
+        root.removeAttribute('data-testid')
+      }
+
+      const feedbackTestId = root.getAttribute('feedback-test-id')
+      const footer = refs('footer')
+      if (feedbackTestId && footer) {
+        footer.setAttribute('data-testid', feedbackTestId)
+      }
+
+      const attributesToForward = ['name', 'autocomplete', 'autofocus', 'minlength', 'pattern']
+      attributesToForward.forEach(attrName => {
+        const val = root.getAttribute(attrName)
+        if (val !== null && input) {
+          input.setAttribute(attrName, val)
+        }
+      })
+
+      // Native validity and validation delegates
+      root.checkValidity = () => (input ? input.checkValidity() : true)
+      root.reportValidity = () => (input ? input.reportValidity() : true)
+      root.setCustomValidity = (msg) => {
+        if (input) {
+          input.setCustomValidity(msg)
+        }
+      }
+      Object.defineProperty(root, 'validity', {
+        get () {
+          return input ? input.validity : null
+        },
+        configurable: true
+      })
+
+      // Expose properties on root for bidirectional data binding
+      Object.defineProperty(root, 'value', {
+        get () {
+          return state.value
+        },
+        set (newVal) {
+          state.value = newVal || ''
+        },
+        configurable: true
+      })
+
+      Object.defineProperty(root, 'invalid', {
+        get () {
+          return state.invalid
+        },
+        set (val) {
+          state.invalid = Boolean(val)
+        },
+        configurable: true
+      })
+
+      Object.defineProperty(root, 'errorMessage', {
+        get () {
+          return state.errorMessage
+        },
+        set (val) {
+          state.errorMessage = val || ''
+        },
+        configurable: true
+      })
+
+      // Focus / blur forwarding
+      root.focus = () => input?.focus()
+      root.blur = () => input?.blur()
+
       const dispatchEvents = () => {
         root.dispatchEvent(new Event('input', {
           bubbles: true,

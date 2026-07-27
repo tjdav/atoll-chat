@@ -1,54 +1,94 @@
 <template id="auth-login">
-  <div class="card shadow">
-    <div class="card-body p-4">
-      <!-- Centralized Error Alert Box for system errors -->
-      <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
-
-      <!-- Login Form -->
-      <form ref="loginForm" class="needs-validation" novalidate>
-        <h3 class="card-title mb-4 text-center">Login</h3>
-        <div class="mb-3">
-          <label for="{{ ref_identity }}" class="form-label">Username or Email</label>
-          <input ref="identity" name="identity" id="{{ ref_identity }}" type="text" class="form-control" placeholder="Enter username or email" required autocomplete="username" data-testid="username" aria-describedby="{{ ref_identityFeedback }}" aria-invalid="false">
-          <div id="{{ ref_identityFeedback }}" class="invalid-feedback" data-testid="identity-feedback" aria-live="polite"></div>
-        </div>
-        <div class="mb-3">
-          <label for="{{ ref_password }}" class="form-label">Password</label>
-          <div class="password-field-container">
-            <input ref="password" name="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter password" required autocomplete="current-password" data-testid="password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false">
-            <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
-              <i class="bi bi-eye"></i>
-            </button>
-          </div>
-          <div id="{{ ref_passwordFeedback }}" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
-        </div>
-        <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
-        <atoll-button type="submit" variant="primary" block="true" class="mb-2" ref="loginSubmit" data-testid="loginSubmit">Log In</atoll-button>
-        
-        <div class="text-end">
-          <a href="#" ref="linkForgotPassword" class="text-decoration-none small">Forgot Password?</a>
-        </div>
-      </form>
-
-      <!-- Forgot Password Form -->
-      <form ref="forgotPasswordForm" class="d-none needs-validation" novalidate>
-        <h3 class="card-title mb-3 text-center">Reset Password</h3>
-        <p class="text-muted small text-center mb-4">Enter your email address and solve the security challenge to request a password reset link.</p>
-        <div class="mb-3">
-          <label for="{{ ref_forgotEmail }}" class="form-label">Email Address</label>
-          <input ref="forgotEmail" name="forgotEmail" id="{{ ref_forgotEmail }}" type="email" class="form-control" placeholder="Enter email" required autocomplete="email" aria-describedby="{{ ref_forgotEmailFeedback }}" aria-invalid="false">
-          <div id="{{ ref_forgotEmailFeedback }}" class="invalid-feedback" data-testid="forgot-email-feedback" aria-live="polite"></div>
-        </div>
-        <div class="mb-3 d-flex justify-content-center" ref="forgotAltchaContainer"></div>
-        <atoll-button type="submit" variant="primary" block="true" class="mb-2" ref="forgotSubmit">Send Reset Link</atoll-button>
-        <atoll-button type="button" variant="ghost" block="true" size="sm" ref="btnBackToLogin">Back to Login</atoll-button>
-      </form>
-
-      <div class="mt-3 text-center" ref="registerLinkContainer">
-        <small class="text-muted">Don't have an account? <a href="#" ref="linkRegister" data-testid="linkRegister" class="text-decoration-none">Register here</a></small>
+  <div class="atoll-auth-card">
+    
+    <!-- LOGIN VIEW -->
+    <div ref="viewLogin" class="d-flex flex-column h-100">
+      <!-- Zone 2: Hero Greeting -->
+      <div class="atoll-auth-hero-zone">
+        <atoll-profile size="3xl" class="mb-3">
+          <img slot="image" src="/logo.svg" alt="Atoll chat logo" class="img-fluid">
+        </atoll-profile>
+        <h3 class="mb-1">Welcome Back</h3>
+        <p class="text-muted small">Enter your credentials to continue</p>
       </div>
-      <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
+
+      <!-- Zone 3: Form Input Zone -->
+      <form ref="loginForm" class="atoll-auth-form-zone" novalidate>
+        <atoll-input 
+          ref="identity" 
+          name="identity"
+          label="Username or Email" 
+          placeholder="Enter username or email" 
+          required="true" 
+          autocomplete="username" 
+          test-id="username"
+          feedback-test-id="identity-feedback"
+        ></atoll-input>
+
+        <atoll-input 
+          ref="password" 
+          name="password"
+          type="password"
+          label="Password" 
+          placeholder="Enter password" 
+          required="true" 
+          autocomplete="current-password" 
+          test-id="password"
+          feedback-test-id="password-feedback"
+        ></atoll-input>
+
+        <div class="d-flex justify-content-center" ref="altchaContainer"></div>
+
+        <!-- Zone 4: Bottom Action Zone -->
+        <div class="atoll-auth-bottom-zone">
+          <atoll-button type="submit" variant="primary" block="true" ref="loginSubmit" test-id="loginSubmit">Log In</atoll-button>
+          <atoll-button type="button" variant="ghost" block="true" ref="linkForgotPassword">Forgot Password?</atoll-button>
+          <atoll-button type="button" variant="ghost" block="true" ref="linkRegister" test-id="linkRegister">Don't have an account? Register</atoll-button>
+        </div>
+      </form>
     </div>
+
+    <!-- FORGOT PASSWORD VIEW -->
+    <div ref="viewForgotPassword" class="d-none flex-column h-100">
+      <!-- Zone 1: Top Navigation (Header) -->
+      <div class="atoll-auth-header-zone">
+        <atoll-list-header variant="list" title="Reset Password">
+          <div slot="leading">
+            <atoll-button type="button" variant="ghost" icon-only="true" ref="btnBackToLogin">
+              <atoll-icon name="chevron-right" style="transform: rotate(180deg); display: inline-block;"></atoll-icon>
+            </atoll-button>
+          </div>
+        </atoll-list-header>
+      </div>
+
+      <!-- Zone 2: Hero Greeting -->
+      <div class="atoll-auth-hero-zone">
+        <h3 class="mb-1">Reset Password</h3>
+        <p class="text-muted small">Enter your email and solve the security challenge to request a password reset link.</p>
+      </div>
+
+      <!-- Zone 3: Form Input Zone -->
+      <form ref="forgotPasswordForm" class="atoll-auth-form-zone" novalidate>
+        <atoll-input 
+          ref="forgotEmail" 
+          name="forgotEmail"
+          type="email"
+          label="Email Address" 
+          placeholder="Enter email" 
+          required="true" 
+          autocomplete="email"
+        ></atoll-input>
+
+        <div class="d-flex justify-content-center" ref="forgotAltchaContainer"></div>
+
+        <!-- Zone 4: Bottom Action Zone -->
+        <div class="atoll-auth-bottom-zone">
+          <atoll-button type="submit" variant="primary" block="true" ref="forgotSubmit">Send Reset Link</atoll-button>
+        </div>
+      </form>
+    </div>
+
+    <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
   </div>
 </template>
 
@@ -56,7 +96,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, config, bootstrap, cryptoWorker, eventBus, utils }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, config, bootstrap, cryptoWorker, eventBus, utils, root }) => {
       const { pb } = pocketbase
       const { $storage } = storage
       const { $state } = globalStore
@@ -70,21 +110,17 @@
       const altchaContainer = refs('altchaContainer')
       const identityInput = refs('identity')
       const passwordInput = refs('password')
-      const passwordToggle = refs('passwordToggle')
       const linkForgotPassword = refs('linkForgotPassword')
 
       const forgotPasswordForm = refs('forgotPasswordForm')
       const forgotEmailInput = refs('forgotEmail')
       const forgotAltchaContainer = refs('forgotAltchaContainer')
       const forgotSubmit = refs('forgotSubmit')
-      const btnBackToLogin = refs('btnBackToLogin')
+      const btnBackToLogin = refs('btnBackToLogin') || root.querySelector('[ref*="btnBackToLogin"]')
 
       const linkRegister = refs('linkRegister')
-      const registerLinkContainer = refs('registerLinkContainer')
       const statusMsg = refs('statusMsg')
-      const globalAlert = refs('globalAlert')
 
-      let dropdownInstance = null
       let activeAltchaWidget = null
       let loginSubmitPending = false
       let forgotSubmitPending = false
@@ -104,55 +140,40 @@
       }
 
       const showGlobalAlert = (msg) => {
-        if (globalAlert) {
-          if (msg) {
-            globalAlert.textContent = msg
-            globalAlert.classList.remove('d-none')
-          } else {
-            globalAlert.classList.add('d-none')
-          }
+        if (msg) {
+          $bus.emit('ui:show_toast', {
+            message: msg,
+            variant: 'danger'
+          })
         }
-      }
-
-      const getFeedbackElement = (input) => {
-        const ariaDescribedBy = input.getAttribute('aria-describedby')
-        if (ariaDescribedBy) {
-          const target = document.getElementById(ariaDescribedBy)
-          if (target) {
-            return target
-          }
-        }
-        const container = input.closest('.mb-3') || input.parentNode
-        if (container) {
-          return container.querySelector('.invalid-feedback')
-        }
-        return null
       }
 
       const updateValidationFeedback = (form) => {
-        const inputs = form.querySelectorAll('input, select, textarea')
+        const inputs = form.querySelectorAll('atoll-input')
         inputs.forEach(input => {
-          const feedback = getFeedbackElement(input)
           const isValid = input.checkValidity()
-          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
-          if (feedback) {
-            feedback.textContent = input.validationMessage || 'Invalid value.'
+          if (!isValid) {
+            input.setAttribute('invalid', 'true')
+            const innerInput = input.querySelector('input')
+            const validationMsg = innerInput ? innerInput.validationMessage : 'Invalid value.'
+            input.setAttribute('error-message', validationMsg)
+          } else {
+            input.removeAttribute('invalid')
+            input.removeAttribute('error-message')
           }
         })
       }
 
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
-          const input = e.target
-          if (input.setCustomValidity) {
-            input.setCustomValidity('')
+          const input = e.target.closest('atoll-input')
+  
+          if (!input) {
+            return
           }
-          const isValid = input.checkValidity()
-          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
-          const feedback = getFeedbackElement(input)
-          if (feedback) {
-            feedback.textContent = input.validationMessage
-          }
+  
+          input.removeAttribute('invalid')
+          input.removeAttribute('error-message')
           updateStatus('')
         })
       }
@@ -160,20 +181,12 @@
       registerInputReset(loginForm)
       registerInputReset(forgotPasswordForm)
 
-      const setupToggle = (input, toggle) => {
-        toggle.addEventListener('click', () => {
-          const type = input.getAttribute('type') === 'password' ? 'text' : 'password'
-          input.setAttribute('type', type)
-          const icon = toggle.querySelector('i')
-          icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
+      if (linkRegister) {
+        linkRegister.addEventListener('click', (e) => {
+          e.preventDefault()
+          $state.authView = 'register'
         })
       }
-      setupToggle(passwordInput, passwordToggle)
-
-      linkRegister.addEventListener('click', (e) => {
-        e.preventDefault()
-        $state.authView = 'register'
-      })
 
       const renderAltcha = (container, submitBtn) => {
         container.innerHTML = ''
@@ -254,25 +267,27 @@
       // Initialize Altcha on Login Form
       activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
 
-      linkForgotPassword.addEventListener('click', (e) => {
-        e.preventDefault()
-        loginForm.classList.add('d-none')
-        forgotPasswordForm.classList.remove('d-none')
-        registerLinkContainer.classList.add('d-none')
-        showGlobalAlert('')
-        updateStatus('')
-        activeAltchaWidget = renderAltcha(forgotAltchaContainer, forgotSubmit)
-      })
+      if (linkForgotPassword) {
+        linkForgotPassword.addEventListener('click', (e) => {
+          e.preventDefault()
+          refs('viewLogin').classList.add('d-none')
+          refs('viewForgotPassword').classList.remove('d-none')
+          showGlobalAlert('')
+          updateStatus('')
+          activeAltchaWidget = renderAltcha(forgotAltchaContainer, forgotSubmit)
+        })
+      }
 
-      btnBackToLogin.addEventListener('click', (e) => {
-        e.preventDefault()
-        forgotPasswordForm.classList.add('d-none')
-        loginForm.classList.remove('d-none')
-        registerLinkContainer.classList.remove('d-none')
-        showGlobalAlert('')
-        updateStatus('')
-        activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
-      })
+      if (btnBackToLogin) {
+        btnBackToLogin.addEventListener('click', (e) => {
+          e.preventDefault()
+          refs('viewForgotPassword').classList.add('d-none')
+          refs('viewLogin').classList.remove('d-none')
+          showGlobalAlert('')
+          updateStatus('')
+          activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
+        })
+      }
 
       const handleSuccessfulLogin = async () => {
         await $storage.saveConfigs([
@@ -356,6 +371,7 @@
         } catch (error) {
           console.error('Login error:', error)
           updateStatus(error.message || 'Failed to log in', true)
+          showGlobalAlert(error.message || 'Failed to log in')
           if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
             activeAltchaWidget.reset()
           }
@@ -382,7 +398,7 @@
 
         let currentPayload = altchaPayload
         if (activeAltchaWidget && activeAltchaWidget.value) {
-          currentPayload = activeAltchaWidget.value
+          currentPayload = altchaPayload
         }
         if (isTesting && !currentPayload) {
           currentPayload = 'atoll-mock-bypass-token'
@@ -417,6 +433,10 @@
           }
 
           updateStatus('If an account exists, a password reset link has been sent!')
+          $bus.emit('ui:show_toast', {
+            message: 'If an account exists, a password reset link has been sent!',
+            variant: 'success'
+          })
           forgotEmailInput.value = ''
           if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
             activeAltchaWidget.reset()
@@ -424,6 +444,7 @@
         } catch (error) {
           console.error('Reset error:', error)
           updateStatus(error.message || 'Failed to send reset link', true)
+          showGlobalAlert(error.message || 'Failed to send reset link')
           if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
             activeAltchaWidget.reset()
           }

@@ -1,70 +1,97 @@
 <template id="vault-setup">
-  <div class="card shadow">
-    <div class="card-body p-4">
-      
-      <!-- Centralized Error Alert Box for system errors -->
-      <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
-
-      <!-- Step 1: Password Creation -->
-      <div ref="stepPassword">
-        <h3 class="card-title mb-3 text-center">Secure Your Vault</h3>
-        <p class="text-muted small text-center mb-4">Set a strong password to encrypt your local cryptographic keys. This password is never sent to the server.</p>
-        <form ref="setupForm" class="needs-validation" novalidate>
-          <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username" tabindex="-1" aria-hidden="true">
-          <div class="mb-3">
-            <label for="{{ ref_password }}" class="form-label">Vault Password</label>
-            <div class="password-field-container">
-              <input id="{{ ref_password }}" name="password" ref="password" type="password" class="form-control" placeholder="Enter Password" minlength="12" required autocomplete="new-password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false" autofocus>
-              <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
-                <i class="bi bi-eye"></i>
-              </button>
-            </div>
-            <div id="{{ ref_passwordFeedback }}" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
-            <div class="progress mt-2" style="height: 5px;">
-              <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-            </div>
-            <div ref="strengthText" class="form-text small mt-1">Minimum 12 characters.</div>
-          </div>
-          <div class="mb-3">
-            <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
-            <div class="password-field-container">
-              <input id="{{ ref_passwordConfirm }}" name="passwordConfirm" ref="passwordConfirm" type="password" class="form-control" placeholder="Confirm Password" minlength="12" required autocomplete="new-password" aria-describedby="{{ ref_passwordConfirmFeedback }}" aria-invalid="false">
-              <button type="button" class="password-toggle focus-ring" ref="passwordConfirmToggle" aria-label="Toggle password visibility">
-                <i class="bi bi-eye"></i>
-              </button>
-            </div>
-            <div id="{{ ref_passwordConfirmFeedback }}" class="invalid-feedback" data-testid="passwordConfirm-feedback" aria-live="polite"></div>
-          </div>
-          <button type="submit" class="btn btn-primary w-100" ref="btnSubmit" disabled>Generate Vault Keys</button>
-        </form>
+  <div class="atoll-auth-card">
+    
+    <!-- STEP 1: PASSWORD SETUP -->
+    <div ref="stepPassword" class="d-flex flex-column h-100">
+      <!-- Zone 2: Hero Greeting -->
+      <div class="atoll-auth-hero-zone">
+        <atoll-profile size="3xl" icon-name="lock" class="mb-3"></atoll-profile>
+        <h3 class="mb-1">Secure Your Vault</h3>
+        <p class="text-muted small">Set a strong password to encrypt your local cryptographic keys. This password is never sent to the server.</p>
       </div>
 
-      <!-- Step 2: Recovery Codes Onboarding -->
-      <div ref="stepRecovery" class="d-none">
-        <h3 class="card-title mb-3 text-center">Save Recovery Codes</h3>
-        <p class="text-muted small text-center mb-4">If you lose your password, these codes are the ONLY way to decrypt your vault. Save them securely.</p>
+      <!-- Zone 3: Form Input Zone -->
+      <form ref="setupForm" class="atoll-auth-form-zone" novalidate>
+        <input type="text" ref="vaultUsernameHidden" name="username" class="visually-hidden" autocomplete="username" tabindex="-1" aria-hidden="true">
         
-        <div class="mb-3">
-          <textarea ref="codesDisplay" class="form-control text-center font-monospace bg-light p-3 fs-5" rows="6" readonly style="resize: none;"></textarea>
+        <div>
+          <atoll-input 
+            id="vaultPasswordInput"
+            ref="password" 
+            name="password"
+            type="password"
+            label="Vault Password" 
+            placeholder="Enter Password" 
+            required="true" 
+            autocomplete="new-password"
+            minlength="12"
+          ></atoll-input>
+          <div class="progress mt-2" style="height: 5px;">
+            <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div ref="strengthText" class="form-text small mt-1">Minimum 12 characters.</div>
         </div>
 
-        <div class="d-flex gap-2 mb-4">
-          <button type="button" class="btn btn-outline-secondary w-50" ref="btnCopy">
-            <i class="bi bi-clipboard me-1"></i> Copy to Clipboard
-          </button>
-          <button type="button" class="btn btn-outline-secondary w-50" ref="btnDownload">
-            <i class="bi bi-download me-1"></i> Download .txt
-          </button>
-        </div>
+        <atoll-input 
+          id="vaultPasswordConfirmInput"
+          ref="passwordConfirm" 
+          name="passwordConfirm"
+          type="password"
+          label="Confirm Password" 
+          placeholder="Confirm Password" 
+          required="true" 
+          autocomplete="new-password"
+          minlength="12"
+        ></atoll-input>
 
-        <button type="button" class="btn btn-primary w-100" ref="btnProceed" disabled data-testid="vaultSetupProceed">Proceed to Atoll Chat</button>
+        <!-- Zone 4: Bottom Action Zone -->
+        <div class="atoll-auth-bottom-zone">
+          <atoll-button type="submit" variant="primary" block="true" ref="btnSubmit" disabled="true">Generate Vault Keys</atoll-button>
+          <atoll-button type="button" variant="ghost" block="true" ref="btnLogout">Logout</atoll-button>
+        </div>
+      </form>
+    </div>
+
+    <!-- STEP 2: RECOVERY CODES -->
+    <div ref="stepRecovery" class="d-none flex-column h-100">
+      <!-- Zone 1: Header (Top Navigation) -->
+      <div class="atoll-auth-header-zone">
+        <atoll-list-header variant="list" title="Step 2 of 2">
+          <div slot="leading">
+            <atoll-button type="button" variant="ghost" icon-only="true" ref="btnBackToPassword">
+              <atoll-icon name="chevron-right" style="transform: rotate(180deg); display: inline-block;"></atoll-icon>
+            </atoll-button>
+          </div>
+        </atoll-list-header>
       </div>
 
-      <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
-      <div class="mt-3 text-center">
-        <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
+      <!-- Zone 2: Hero Greeting -->
+      <div class="atoll-auth-hero-zone">
+        <h3 class="mb-1">Save Recovery Codes</h3>
+        <p class="text-muted small">If you lose your password, these codes are the ONLY way to decrypt your vault. Save them securely.</p>
+      </div>
+
+      <!-- Zone 3: Form Input Zone -->
+      <div class="atoll-auth-form-zone">
+        <textarea ref="codesDisplay" class="form-control text-center font-monospace bg-light p-3 fs-5" rows="6" readonly style="resize: none;"></textarea>
+
+        <div class="d-flex gap-2">
+          <atoll-button type="button" variant="outline" class="w-50" ref="btnCopy">
+            <atoll-icon name="copy" size="16" class="me-1"></atoll-icon> Copy to Clipboard
+          </atoll-button>
+          <atoll-button type="button" variant="outline" class="w-50" ref="btnDownload">
+            <atoll-icon name="download" size="16" class="me-1"></atoll-icon> Download .txt
+          </atoll-button>
+        </div>
+      </div>
+
+      <!-- Zone 4: Bottom Action Zone -->
+      <div class="atoll-auth-bottom-zone">
+        <atoll-button type="button" variant="primary" block="true" ref="btnProceed" disabled="true" test-id="vaultSetupProceed">Proceed to Atoll Chat</atoll-button>
       </div>
     </div>
+
+    <div ref="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
   </div>
 </template>
 
@@ -72,7 +99,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, utils }) => {
+    client: ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, utils, root }) => {
       const { pb } = pocketbase
       const { $crypto } = utils
       const { $bus } = eventBus
@@ -83,22 +110,21 @@
       const stepPassword = refs('stepPassword')
       const stepRecovery = refs('stepRecovery')
       const setupForm = refs('setupForm')
-      const passwordInput = refs('password')
-      const vaultUsernameHidden = refs('vaultUsernameHidden')
-      const passwordConfirmInput = refs('passwordConfirm')
-      const passwordToggle = refs('passwordToggle')
-      const passwordConfirmToggle = refs('passwordConfirmToggle')
-      const strengthBar = refs('strengthBar')
-      const strengthText = refs('strengthText')
-      const btnSubmit = refs('btnSubmit')
+      
+      const passwordInput = refs('password') || root.querySelector('[ref*="password"]')
+      const vaultUsernameHidden = refs('vaultUsernameHidden') || root.querySelector('[ref*="vaultUsernameHidden"]')
+      const passwordConfirmInput = refs('passwordConfirm') || root.querySelector('[ref*="passwordConfirm"]')
+      const strengthBar = refs('strengthBar') || root.querySelector('[ref*="strengthBar"]')
+      const strengthText = refs('strengthText') || root.querySelector('[ref*="strengthText"]')
+      const btnSubmit = refs('btnSubmit') || root.querySelector('[ref*="btnSubmit"]')
       const statusMsg = refs('statusMsg')
-      const btnLogout = refs('btnLogout')
-      const globalAlert = refs('globalAlert')
+      const btnLogout = refs('btnLogout') || root.querySelector('[ref*="btnLogout"]')
+      const btnBackToPassword = refs('btnBackToPassword') || root.querySelector('[ref*="btnBackToPassword"]')
 
-      const codesDisplay = refs('codesDisplay')
-      const btnCopy = refs('btnCopy')
-      const btnDownload = refs('btnDownload')
-      const btnProceed = refs('btnProceed')
+      const codesDisplay = refs('codesDisplay') || root.querySelector('[ref*="codesDisplay"]')
+      const btnCopy = refs('btnCopy') || root.querySelector('[ref*="btnCopy"]')
+      const btnDownload = refs('btnDownload') || root.querySelector('[ref*="btnDownload"]')
+      const btnProceed = refs('btnProceed') || root.querySelector('[ref*="btnProceed"]')
 
       let generatedCodes = []
       let encryptionPayload = null
@@ -112,94 +138,80 @@
       }
 
       const showGlobalAlert = (msg) => {
-        if (globalAlert) {
-          if (msg) {
-            globalAlert.textContent = msg
-            globalAlert.classList.remove('d-none')
-          } else {
-            globalAlert.classList.add('d-none')
-          }
+        if (msg) {
+          $bus.emit('ui:show_toast', { message: msg, variant: 'danger' })
         }
-      }
-
-      const getFeedbackElement = (input) => {
-        const ariaDescribedBy = input.getAttribute('aria-describedby')
-        if (ariaDescribedBy) {
-          const target = document.getElementById(ariaDescribedBy)
-          if (target) {
-            return target
-          }
-        }
-        const container = input.closest('.mb-3') || input.parentNode
-        if (container) {
-          return container.querySelector('.invalid-feedback')
-        }
-        return null
       }
 
       const updateValidationFeedback = (form) => {
-        const inputs = form.querySelectorAll('input, select, textarea')
+        const inputs = form.querySelectorAll('atoll-input')
         inputs.forEach(input => {
-          const feedback = getFeedbackElement(input)
           const isValid = input.checkValidity()
-          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
-          if (feedback) {
-            feedback.textContent = input.validationMessage || 'Invalid value.'
+          if (!isValid) {
+            input.setAttribute('invalid', 'true')
+            const innerInput = input.shadowRoot ? input.shadowRoot.querySelector('input') : null
+            const validationMsg = innerInput ? innerInput.validationMessage : 'Invalid value.'
+            input.setAttribute('error-message', validationMsg)
+          } else {
+            input.removeAttribute('invalid')
+            input.removeAttribute('error-message')
           }
         })
       }
 
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
-          const input = e.target
-          if (input.setCustomValidity) {
-            input.setCustomValidity('')
-          }
-          const isValid = input.checkValidity()
-          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
-          const feedback = getFeedbackElement(input)
-          if (feedback) {
-            feedback.textContent = input.validationMessage
-          }
+          const input = e.target.closest('atoll-input')
+          if (!input) return
+          input.removeAttribute('invalid')
+          input.removeAttribute('error-message')
         })
       }
 
       registerInputReset(setupForm)
 
-      if (pb.authStore.model) {
+      if (pb.authStore.model && vaultUsernameHidden) {
         vaultUsernameHidden.value = `${pb.authStore.model.username} - Vault`
       }
 
-      const setupToggle = (input, toggle) => {
-        toggle.addEventListener('click', () => {
-          const type = input.getAttribute('type') === 'password' ? 'text' : 'password'
-          input.setAttribute('type', type)
-          const icon = toggle.querySelector('i')
-          icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
-        })
-      }
-
-      setupToggle(passwordInput, passwordToggle)
-      setupToggle(passwordConfirmInput, passwordConfirmToggle)
-
       const updateStrength = async () => {
-        const password = passwordInput.value
+        const password = passwordInput?.value || ''
         const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
         const { score, width, colorClass, text } = await evaluatePasswordStrength(password, 12)
         zxcvbnScore = score
-        strengthBar.style.width = width
-        strengthBar.className = colorClass
-        strengthText.textContent = text
-        btnSubmit.disabled = password.length < 12 || zxcvbnScore < 3
+        if (strengthBar) {
+          strengthBar.style.width = width
+          strengthBar.className = colorClass
+        }
+        if (strengthText) {
+          strengthText.textContent = text
+        }
+        if (password.length < 12 || zxcvbnScore < 3) {
+          btnSubmit?.setAttribute('disabled', 'true')
+        } else {
+          btnSubmit?.removeAttribute('disabled')
+        }
       }
 
-      passwordInput.addEventListener('input', updateStrength)
+      if (passwordInput) {
+        passwordInput.addEventListener('input', updateStrength)
+      }
 
-      btnLogout.addEventListener('click', () => {
-        pb.authStore.clear()
-        $state.isAuthenticated = false
-        $state.isVaultUnlocked = false
-      })
+      if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+          pb.authStore.clear()
+          $state.isAuthenticated = false
+          $state.isVaultUnlocked = false
+        })
+      }
+
+      if (btnBackToPassword) {
+        btnBackToPassword.addEventListener('click', () => {
+          stepRecovery.classList.add('d-none')
+          stepPassword.classList.remove('d-none')
+          updateStatus('')
+        })
+      }
 
       const generateRecoveryCode = () => {
         const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -213,21 +225,21 @@
         event.preventDefault()
         showGlobalAlert('')
 
-        const password = passwordInput.value
-        const passwordConfirm = passwordConfirmInput.value
+        const password = passwordInput?.value || ''
+        const passwordConfirm = passwordConfirmInput?.value || ''
 
         if (password.length < 12) {
-          passwordInput.setCustomValidity('Password must be at least 12 characters.')
+          passwordInput?.setCustomValidity('Password must be at least 12 characters.')
         } else if (zxcvbnScore < 3) {
-          passwordInput.setCustomValidity('Password is too weak. Please use a stronger password.')
+          passwordInput?.setCustomValidity('Password is too weak. Please use a stronger password.')
         } else {
-          passwordInput.setCustomValidity('')
+          passwordInput?.setCustomValidity('')
         }
 
         if (password !== passwordConfirm) {
-          passwordConfirmInput.setCustomValidity('Passwords do not match')
+          passwordConfirmInput?.setCustomValidity('Passwords do not match')
         } else {
-          passwordConfirmInput.setCustomValidity('')
+          passwordConfirmInput?.setCustomValidity('')
         }
 
         updateValidationFeedback(setupForm)
@@ -241,6 +253,7 @@
         try {
           setupForm.classList.remove('was-validated')
           updateStatus('Generating secure master key...')
+          btnSubmit?.setAttribute('loading', 'true')
           const masterKeysRes = await $worker.execute('worker:generate_master_keys')
           const salt = await $worker.execute('worker:randombytes_buf', { length: 16 })
 
@@ -286,82 +299,95 @@
           })
 
           /* Transition to step 2: display recovery codes */
-          codesDisplay.value = generatedCodes.join('\n')
+          if (codesDisplay) {
+            codesDisplay.value = generatedCodes.join('\n')
+          }
           stepPassword.classList.add('d-none')
           stepRecovery.classList.remove('d-none')
           updateStatus('')
+          btnSubmit?.removeAttribute('loading')
         } catch (error) {
           console.error('Vault setup generation error:', error)
-          if (error.status && error.status >= 500) {
-            showGlobalAlert(error.message || 'Server error. Please try again.')
-          } else {
-            showGlobalAlert(`Error: ${error.message || 'Vault setup failed'}`)
+          btnSubmit?.removeAttribute('loading')
+          showGlobalAlert(error.message || 'Vault setup failed')
+        }
+      })
+
+      if (btnCopy) {
+        btnCopy.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(generatedCodes.join('\n'))
+            hasCopied = true
+            if ((hasCopied || hasDownloaded) && btnProceed) {
+              btnProceed.removeAttribute('disabled')
+            }
+            updateStatus('Recovery codes copied to clipboard!')
+          } catch (err) {
+            console.error('Clipboard copy failed:', err)
+            updateStatus('Failed to copy. Please download the file or copy manually.')
           }
-        }
-      })
+        })
+      }
 
-      btnCopy.addEventListener('click', async () => {
-        try {
-          await navigator.clipboard.writeText(generatedCodes.join('\n'))
-          hasCopied = true
-          btnProceed.disabled = !(hasCopied || hasDownloaded)
-          updateStatus('Recovery codes copied to clipboard!')
-        } catch (err) {
-          console.error('Clipboard copy failed:', err)
-          updateStatus('Failed to copy. Please download the file or copy manually.')
-        }
-      })
+      if (btnDownload) {
+        btnDownload.addEventListener('click', () => {
+          try {
+            const blob = new Blob([generatedCodes.join('\n')], { type: 'text/plain' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = 'atoll_recovery_codes.txt'
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            URL.revokeObjectURL(url)
 
-      btnDownload.addEventListener('click', () => {
-        try {
-          const blob = new Blob([generatedCodes.join('\n')], { type: 'text/plain' })
-          const url = URL.createObjectURL(blob)
-          const a = document.createElement('a')
-          a.href = url
-          a.download = 'atoll_recovery_codes.txt'
-          document.body.appendChild(a)
-          a.click()
-          document.body.removeChild(a)
-          URL.revokeObjectURL(url)
+            hasDownloaded = true
+            if ((hasCopied || hasDownloaded) && btnProceed) {
+              btnProceed.removeAttribute('disabled')
+            }
+            updateStatus('Recovery codes downloaded!')
+          } catch (err) {
+            console.error('Download failed:', err)
+            updateStatus('Failed to download file. Please copy to clipboard.')
+          }
+        })
+      }
 
-          hasDownloaded = true
-          btnProceed.disabled = !(hasCopied || hasDownloaded)
-          updateStatus('Recovery codes downloaded!')
-        } catch (err) {
-          console.error('Download failed:', err)
-          updateStatus('Failed to download file. Please copy to clipboard.')
-        }
-      })
+      if (btnProceed) {
+        btnProceed.addEventListener('click', async () => {
+          try {
+            updateStatus('Saving vault configuration to server...')
+            btnProceed.setAttribute('loading', 'true')
+            await pb.collection('users').update(pb.authStore.model.id, encryptionPayload)
+            await pb.collection('users').authRefresh()
 
-      btnProceed.addEventListener('click', async () => {
-        try {
-          updateStatus('Saving vault configuration to server...')
-          await pb.collection('users').update(pb.authStore.model.id, encryptionPayload)
-          await pb.collection('users').authRefresh()
-
-          updateStatus('Vault active! Starting session...')
-          await $worker.execute('worker:init_keys', {
-            id: pb.authStore.model.id,
-            private_box_key: decryptedKeysLocal.private_box_key,
-            private_sign_key: decryptedKeysLocal.private_sign_key
-          })
-
-          await $sync.startSubscriptions()
-
-          $bus.emit('auth:unlocked', {
-            keys: {
+            updateStatus('Vault active! Starting session...')
+            await $worker.execute('worker:init_keys', {
+              id: pb.authStore.model.id,
               private_box_key: decryptedKeysLocal.private_box_key,
               private_sign_key: decryptedKeysLocal.private_sign_key
-            },
-            userRecord: pb.authStore.model
-          })
+            })
 
-          $state.isVaultUnlocked = true
-        } catch (error) {
-          console.error('Vault setup proceed error:', error)
-          showGlobalAlert(`Error: ${error.message || 'Vault activation failed'}`)
-        }
-      })
+            await $sync.startSubscriptions()
+
+            $bus.emit('auth:unlocked', {
+              keys: {
+                private_box_key: decryptedKeysLocal.private_box_key,
+                private_sign_key: decryptedKeysLocal.private_sign_key
+              },
+              userRecord: pb.authStore.model
+            })
+
+            $state.isVaultUnlocked = true
+            btnProceed.removeAttribute('loading')
+          } catch (error) {
+            console.error('Vault setup proceed error:', error)
+            btnProceed.removeAttribute('loading')
+            showGlobalAlert(error.message || 'Vault activation failed')
+          }
+        })
+      }
     }
   })
 </script>

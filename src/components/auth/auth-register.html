@@ -1,53 +1,86 @@
 <template id="auth-register">
-  <div class="card shadow">
-    <div class="card-body p-4">
-      <!-- Centralized Error Alert Box for system errors -->
-      <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
-
-      <form ref="registerForm" class="needs-validation" novalidate>
-        <h3 class="card-title mb-4 text-center">Create Account</h3>
-        <div class="mb-3">
-          <label for="{{ ref_username }}" class="form-label">Username</label>
-          <input name="username" ref="username" id="{{ ref_username }}" type="text" class="form-control" placeholder="Choose a username" minlength="3" maxlength="20" pattern="^[a-zA-Z0-9_]+$" required autocomplete="username" aria-describedby="{{ ref_usernameFeedback }}" aria-invalid="false">
-          <div id="{{ ref_usernameFeedback }}" class="invalid-feedback" data-testid="username-feedback" aria-live="polite"></div>
+  <div class="atoll-auth-card">
+    <!-- Zone 1: Header (Top Navigation) -->
+    <div class="atoll-auth-header-zone">
+      <atoll-list-header variant="list">
+        <div slot="leading">
+          <atoll-button type="button" variant="ghost" icon-only="true" ref="linkLogin">
+            <atoll-icon name="chevron-left"></atoll-icon>
+          </atoll-button>
         </div>
-        <div class="mb-3">
-          <label for="{{ ref_email }}" class="form-label">Email</label>
-          <input name="email" ref="email" id="{{ ref_email }}" type="email" class="form-control" placeholder="Enter your email" required autocomplete="email" aria-describedby="{{ ref_emailFeedback }}" aria-invalid="false">
-          <div id="{{ ref_emailFeedback }}" class="invalid-feedback" data-testid="email-feedback" aria-live="polite"></div>
-        </div>
-        <div class="mb-3">
-          <label for="{{ ref_password }}" class="form-label">Password</label>
-          <div class="password-field-container">
-            <input name="password" ref="password" id="{{ ref_password }}" type="password" class="form-control" placeholder="Enter Password" minlength="8" required autocomplete="new-password" data-testid="password" aria-describedby="{{ ref_passwordFeedback }}" aria-invalid="false">
-            <button type="button" class="password-toggle focus-ring" ref="passwordToggle" aria-label="Toggle password visibility">
-              <i class="bi bi-eye"></i>
-            </button>
-          </div>
-          <div id="{{ ref_passwordFeedback }}" class="invalid-feedback" data-testid="password-feedback" aria-live="polite"></div>
-          <div class="progress mt-2" style="height: 5px;">
-            <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-          </div>
-          <div ref="strengthText" class="form-text small mt-1">Minimum 8 characters.</div>
-        </div>
-        <div class="mb-3">
-          <label for="{{ ref_passwordConfirm }}" class="form-label">Confirm Password</label>
-          <div class="password-field-container">
-            <input name="passwordConfirm" ref="passwordConfirm" id="{{ ref_passwordConfirm }}" type="password" class="form-control" placeholder="Confirm Password" minlength="8" required autocomplete="new-password" aria-describedby="{{ ref_passwordConfirmFeedback }}" aria-invalid="false">
-            <button type="button" class="password-toggle focus-ring" ref="passwordConfirmToggle" aria-label="Toggle password visibility">
-              <i class="bi bi-eye"></i>
-            </button>
-          </div>
-          <div id="{{ ref_passwordConfirmFeedback }}" class="invalid-feedback" data-testid="password-confirm-feedback" aria-live="polite"></div>
-        </div>
-        <div class="mb-3 d-flex justify-content-center" ref="altchaContainer"></div>
-        <atoll-button type="submit" variant="primary" block="true" ref="btnSubmit" data-testid="registerSubmit">Register & Log In</atoll-button>
-      </form>
-      <div class="mt-3 text-center">
-        <small class="text-muted">Already have an account? <a href="#" ref="linkLogin" data-testid="linkLogin" class="text-decoration-none">Login here</a></small>
-      </div>
-      <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
+      </atoll-list-header>
     </div>
+
+    <!-- Zone 2: Hero Greeting -->
+    <div class="atoll-auth-hero-zone">
+      <h3 class="mb-1">Create Account</h3>
+      <p class="text-muted small">Enter your details to join Atoll</p>
+    </div>
+
+    <!-- Zone 3: Form Input Zone -->
+    <form ref="registerForm" class="atoll-auth-form-zone" novalidate>
+      <atoll-input 
+        ref="username" 
+        name="username"
+        label="Username" 
+        placeholder="Choose a username" 
+        required="true" 
+        autocomplete="username" 
+        test-id="username"
+        feedback-test-id="username-feedback"
+      ></atoll-input>
+
+      <atoll-input 
+        ref="email" 
+        name="email"
+        type="email"
+        label="Email" 
+        placeholder="Enter your email" 
+        required="true" 
+        autocomplete="email" 
+        test-id="email"
+        feedback-test-id="email-feedback"
+      ></atoll-input>
+
+      <div>
+        <atoll-input 
+          ref="password" 
+          name="password"
+          type="password"
+          label="Password" 
+          placeholder="Enter Password" 
+          required="true" 
+          autocomplete="new-password" 
+          test-id="password"
+          feedback-test-id="password-feedback"
+        ></atoll-input>
+        <div class="progress mt-2" style="height: 5px;">
+          <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <div ref="strengthText" class="form-text small mt-1">Minimum 8 characters.</div>
+      </div>
+
+      <atoll-input 
+        ref="passwordConfirm" 
+        name="passwordConfirm"
+        type="password"
+        label="Confirm Password" 
+        placeholder="Confirm Password" 
+        required="true" 
+        autocomplete="new-password" 
+        test-id="passwordConfirm"
+        feedback-test-id="password-confirm-feedback"
+      ></atoll-input>
+
+      <div class="d-flex justify-content-center" ref="altchaContainer"></div>
+
+      <!-- Zone 4: Bottom Action Zone -->
+      <div class="atoll-auth-bottom-zone">
+        <atoll-button type="submit" variant="primary" block="true" ref="btnSubmit" test-id="registerSubmit">Register & Log In</atoll-button>
+      </div>
+    </form>
+
+    <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
   </div>
 </template>
 
@@ -55,27 +88,22 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, config, bootstrap, cryptoWorker, eventBus, utils }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, eventBus, utils, root }) => {
       const { pb } = pocketbase
       const { $url } = utils
       const { $storage } = storage
       const { $state } = globalStore
-      const { $config } = config
-      const { $worker } = cryptoWorker
       const { $bus } = eventBus
 
       const registerForm = refs('registerForm')
       const altchaContainer = refs('altchaContainer')
-      const linkLogin = refs('linkLogin')
+      const linkLogin = refs('linkLogin') || root.querySelector('[ref*="linkLogin"]')
       const usernameInput = refs('username')
       const emailInput = refs('email')
       const passwordInput = refs('password')
       const passwordConfirmInput = refs('passwordConfirm')
-      const passwordToggle = refs('passwordToggle')
-      const passwordConfirmToggle = refs('passwordConfirmToggle')
       const btnSubmit = refs('btnSubmit')
       const statusMsg = refs('statusMsg')
-      const globalAlert = refs('globalAlert')
       const strengthBar = refs('strengthBar')
       const strengthText = refs('strengthText')
       // eslint-disable-next-line no-unused-vars
@@ -99,55 +127,38 @@
       }
 
       const showGlobalAlert = (msg) => {
-        if (globalAlert) {
-          if (msg) {
-            globalAlert.textContent = msg
-            globalAlert.classList.remove('d-none')
-          } else {
-            globalAlert.classList.add('d-none')
-          }
+        if (msg) {
+          $bus.emit('ui:show_toast', {
+            message: msg,
+            variant: 'danger'
+          })
         }
-      }
-
-      const getFeedbackElement = (input) => {
-        const ariaDescribedBy = input.getAttribute('aria-describedby')
-        if (ariaDescribedBy) {
-          const target = document.getElementById(ariaDescribedBy)
-          if (target) {
-            return target
-          }
-        }
-        const container = input.closest('.mb-3') || input.parentNode
-        if (container) {
-          return container.querySelector('.invalid-feedback')
-        }
-        return null
       }
 
       const updateValidationFeedback = (form) => {
-        const inputs = form.querySelectorAll('input, select, textarea')
+        const inputs = form.querySelectorAll('atoll-input')
         inputs.forEach(input => {
-          const feedback = getFeedbackElement(input)
           const isValid = input.checkValidity()
-          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
-          if (feedback) {
-            feedback.textContent = input.validationMessage || 'Invalid value.'
+          if (!isValid) {
+            input.setAttribute('invalid', 'true')
+            const innerInput = input.querySelector('input')
+            const validationMsg = innerInput ? innerInput.validationMessage : 'Invalid value.'
+            input.setAttribute('error-message', validationMsg)
+          } else {
+            input.removeAttribute('invalid')
+            input.removeAttribute('error-message')
           }
         })
       }
 
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
-          const input = e.target
-          if (input.setCustomValidity) {
-            input.setCustomValidity('')
+          const input = e.target.closest('atoll-input')
+          if (!input) {
+            return
           }
-          const isValid = input.checkValidity()
-          input.setAttribute('aria-invalid', isValid ? 'false' : 'true')
-          const feedback = getFeedbackElement(input)
-          if (feedback) {
-            feedback.textContent = input.validationMessage
-          }
+          input.removeAttribute('invalid')
+          input.removeAttribute('error-message')
           updateStatus('')
         })
       }
@@ -165,21 +176,12 @@
 
       passwordInput.addEventListener('input', updateStrength)
 
-      const setupToggle = (input, toggle) => {
-        toggle.addEventListener('click', () => {
-          const type = input.getAttribute('type') === 'password' ? 'text' : 'password'
-          input.setAttribute('type', type)
-          const icon = toggle.querySelector('i')
-          icon.className = type === 'password' ? 'bi bi-eye' : 'bi bi-eye-slash'
+      if (linkLogin) {
+        linkLogin.addEventListener('click', (e) => {
+          e.preventDefault()
+          $state.authView = 'login'
         })
       }
-      setupToggle(passwordInput, passwordToggle)
-      setupToggle(passwordConfirmInput, passwordConfirmToggle)
-
-      linkLogin.addEventListener('click', (e) => {
-        e.preventDefault()
-        $state.authView = 'login'
-      })
 
       if (altchaContainer) {
   
@@ -371,6 +373,7 @@
         } catch (error) {
           console.error('Registration error:', error)
           updateStatus(error.message || 'Registration failed', true)
+          showGlobalAlert(error.message || 'Registration failed')
           if (altchaWidget && typeof altchaWidget.reset === 'function') {
             altchaWidget.reset()
           }

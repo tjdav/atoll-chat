@@ -1,0 +1,104 @@
+.atoll-auth-card {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  box-sizing: border-box;
+
+  /* Desktop (>= 768px) */
+  @media (min-width: 768px) {
+    background-color: var(--#{$prefix}pane-bg, #FFFFFF);
+    border: 1px solid var(--#{$prefix}border-color, #E0E0E0);
+    border-radius: var(--#{$prefix}border-radius-xl, 16px);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+    padding: 2.5rem !important; // 40px
+    width: 450px;
+    max-width: 100%;
+    margin: 2rem auto;
+  }
+
+  /* Mobile (< 768px) */
+  @media (max-width: 767.98px) {
+    background-color: var(--#{$prefix}pane-bg, #FFFFFF); // Unified primary surface
+    width: 100%;
+    height: 100dvh;
+    border: none !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 1.5rem !important;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* Layout Zones */
+  .atoll-auth-header-zone {
+    flex-shrink: 0;
+    margin-bottom: 1rem;
+  }
+
+  .atoll-auth-hero-zone {
+    flex-shrink: 0;
+    margin-top: 1rem;
+    margin-bottom: 2rem;
+    text-align: center;
+
+    h1 {
+      font-size: var(--#{$prefix}font-size-h3, 22px);
+      font-weight: var(--#{$prefix}font-weight-bold, 700);
+      color: var(--#{$prefix}text-primary);
+      margin: 0;
+    }
+
+    p {
+      color: var(--#{$prefix}text-secondary);
+      font-size: var(--#{$prefix}font-size-body-2, 14px);
+    }
+  }
+
+  .atoll-auth-form-zone {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+  }
+
+  .atoll-auth-bottom-zone {
+    flex-shrink: 0;
+    margin-top: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding-bottom: env(safe-area-inset-bottom, 1rem);
+  }
+}
+
+/* Make sure on mobile, the parent containers of .atoll-auth-card are expanded fully to support Edge-to-Edge */
+@media (max-width: 767.98px) {
+  // If any wrapper has an .atoll-auth-card, expand it fully
+  :has(> .atoll-auth-card),
+  :has(> * > .atoll-auth-card),
+  :has(> * > * > .atoll-auth-card),
+  :has(> * > * > * > .atoll-auth-card) {
+    &.container, &.row, &.col-12, &.flex-grow-1 {
+      padding: 0 !important;
+      margin: 0 !important;
+      max-width: 100% !important;
+      width: 100% !important;
+      height: 100dvh !important;
+      background-color: var(--#{$prefix}pane-bg, #FFFFFF) !important;
+    }
+  }
+
+  // Target the container in app-root
+  .bg-body-tertiary:has(.atoll-auth-card) {
+    background-color: var(--#{$prefix}pane-bg, #FFFFFF) !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+}
+
+/* Ensure password field and toggle styling plays nicely with atoll-input */
+.password-field-container {
+  position: relative;
+  width: 100%;
+}

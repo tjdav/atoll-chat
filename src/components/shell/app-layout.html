@@ -48,16 +48,6 @@
   <reaction-picker></reaction-picker>
   <ui-avatar-editor></ui-avatar-editor>
 
-  <div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 1100">
-    <div ref="globalToast" class="toast align-items-center border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
-      <div class="d-flex">
-        <div class="toast-body">
-          {{ toastMessage }}
-        </div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-      </div>
-    </div>
-  </div>
 </template>
 
 <script type="module">
@@ -89,23 +79,14 @@
     client: async ({ state, globalStore, eventBus, bootstrap, refs }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
-      const { Toast, Offcanvas } = await bootstrap
+      const { Offcanvas } = await bootstrap
 
       state.activeSelectionId = $state.activeSelectionId
       state.activeSelectionType = $state.activeSelectionType
       state.currentAppView = $state.currentAppView
 
-      const toastEl = refs('globalToast')
-      const toast = new Toast(toastEl)
-
       const mobileNavEl = refs('mobileNav')
       const mobileNav = new Offcanvas(mobileNavEl)
-
-      $bus.on('ui:show_toast', ({ message, type = 'primary' }) => {
-        state.toastMessage = message
-        toastEl.className = `toast align-items-center text-white bg-${type} border-0 shadow`
-        toast.show()
-      })
 
       $bus.on('ui:open_mobile_nav', () => {
         mobileNav.show()

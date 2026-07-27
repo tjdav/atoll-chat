@@ -1,26 +1,34 @@
 <template id="totp-challenge">
-  <div class="card shadow">
-    <div class="card-body p-4 text-center">
-      <h3 class="card-title mb-3">Two-Step Verification</h3>
-      <p class="text-muted small mb-4">This device is unrecognized. Please enter the 6-digit code from your authenticator app to authorize this session.</p>
-      
-      <!-- Centralized Error Alert Box for system errors -->
-      <div ref="globalAlert" class="alert alert-danger d-none mb-3" role="alert" data-testid="globalAlert"></div>
-
-      <form ref="challengeForm" class="text-start needs-validation" novalidate>
-        <div class="mb-3">
-          <label class="form-label small fw-bold">Verification Code</label>
-          <input type="text" class="form-control text-center fs-4 font-monospace" ref="otpInput" id="{{ ref_otpInput }}" required placeholder="000000" maxlength="6" pattern="\d{6}" data-testid="totpChallengeInput" aria-describedby="{{ ref_totpChallengeFeedback }}" aria-invalid="false">
-          <div id="{{ ref_totpChallengeFeedback }}" class="invalid-feedback" data-testid="totpChallenge-feedback" aria-live="polite"></div>
-        </div>
-        <button type="submit" class="btn btn-primary w-100" ref="btnVerify" data-testid="totpChallengeSubmit">Verify Code</button>
-      </form>
-
-      <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
-      <div class="mt-3">
-        <button type="button" class="btn btn-link btn-sm text-decoration-none" ref="btnLogout">Logout</button>
-      </div>
+  <div class="atoll-auth-card">
+    <!-- Zone 2: Hero Greeting -->
+    <div class="atoll-auth-hero-zone">
+      <atoll-profile size="3xl" class="mb-3"></atoll-profile>
+      <h3 class="mb-1">Two-Step Verification</h3>
+      <p class="text-muted small">This device is unrecognized. Please enter the 6-digit code from your authenticator app to authorize this session.</p>
     </div>
+
+    <!-- Zone 3: Form Input Zone -->
+    <form ref="challengeForm" class="atoll-auth-form-zone" novalidate>
+      <atoll-input 
+        ref="otpInput" 
+        name="otpInput"
+        label="Verification Code" 
+        placeholder="000000" 
+        required="true" 
+        maxlength="6"
+        pattern="\d{6}"
+        test-id="totpChallengeInput"
+        feedback-test-id="totpChallenge-feedback"
+      ></atoll-input>
+
+      <!-- Zone 4: Bottom Action Zone -->
+      <div class="atoll-auth-bottom-zone">
+        <atoll-button type="submit" variant="primary" block="true" ref="btnVerify" test-id="totpChallengeSubmit">Verify Code</atoll-button>
+        <atoll-button type="button" variant="ghost" block="true" ref="btnLogout">Logout</atoll-button>
+      </div>
+    </form>
+
+    <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
   </div>
 </template>
 
@@ -28,7 +36,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, eventBus, globalStore, totp }) => {
+    client: async ({ refs, pocketbase, eventBus, globalStore, totp, root }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
@@ -44,67 +52,55 @@
 
       const challengeForm = refs('challengeForm')
       const otpInput = refs('otpInput')
-      const btnVerify = refs('btnVerify')
+      const btnVerify = refs('btnVerify') || root.querySelector('[ref*="btnVerify"]')
       const statusMsg = refs('statusMsg')
-      const btnLogout = refs('btnLogout')
-      const globalAlert = refs('globalAlert')
+      const btnLogout = refs('btnLogout') || root.querySelector('[ref*="btnLogout"]')
 
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
 
       const showGlobalAlert = (msg) => {
-        if (globalAlert) {
-          if (msg) {
-            globalAlert.textContent = msg
-            globalAlert.classList.remove('d-none')
-          } else {
-            globalAlert.classList.add('d-none')
-          }
+        if (msg) {
+          $bus.emit('ui:show_toast', { message: msg, variant: 'danger' })
         }
-      }
-
-      const getFeedbackElement = (input) => {
-        const ariaDescribedBy = input.getAttribute('aria-describedby')
-        if (ariaDescribedBy) {
-          const target = document.getElementById(ariaDescribedBy)
-          if (target) {
-            return target
-          }
-        }
-        const container = input.closest('.mb-3') || input.parentNode
-        if (container) {
-          return container.querySelector('.invalid-feedback')
-        }
-        return null
       }
 
       const updateValidationFeedback = (form) => {
-        const inputs = form.querySelectorAll('input, select, textarea')
+        const inputs = form.querySelectorAll('atoll-input')
         inputs.forEach(input => {
-          const feedback = getFeedbackElement(input)
-          if (feedback) {
-            feedback.textContent = input.validationMessage || 'Invalid value.'
+          const isValid = input.checkValidity()
+          if (!isValid) {
+            input.setAttribute('invalid', 'true')
+            const innerInput = input.shadowRoot ? input.shadowRoot.querySelector('input') : null
+            const validationMsg = innerInput ? innerInput.validationMessage : 'Invalid value.'
+            input.setAttribute('error-message', validationMsg)
+          } else {
+            input.removeAttribute('invalid')
+            input.removeAttribute('error-message')
           }
         })
       }
 
       challengeForm.addEventListener('input', (e) => {
-        const input = e.target
-        if (input.setCustomValidity) {
-          input.setCustomValidity('')
-        }
-        const feedback = getFeedbackElement(input)
-        if (feedback) {
-          feedback.textContent = input.validationMessage
-        }
+        const input = e.target.closest('atoll-input')
+        if (!input) return
+        input.removeAttribute('invalid')
+        input.removeAttribute('error-message')
+        updateStatus('')
       })
 
-      btnLogout.addEventListener('click', () => {
-        auth.logout()
-        $state.isAuthenticated = false
-        $state.isVaultUnlocked = false
-      })
+      if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+          if (auth) {
+            auth.logout()
+          } else {
+            pb.authStore.clear()
+          }
+          $state.isAuthenticated = false
+          $state.isVaultUnlocked = false
+        })
+      }
 
       challengeForm.addEventListener('submit', async (e) => {
         e.preventDefault()
@@ -121,7 +117,7 @@
 
         challengeForm.classList.remove('was-validated')
         updateStatus('Verifying code...')
-        btnVerify.disabled = true
+        btnVerify?.setAttribute('loading', 'true')
 
         try {
           const user = await pb.collection('users').getOne(pb.authStore.model.id)
@@ -153,14 +149,10 @@
           $bus.emit('auth:totp_passed')
         } catch (err) {
           console.error('TOTP challenge verification failed:', err)
-          if (err.status && err.status >= 500) {
-            showGlobalAlert(err.message || 'Verification failed.')
-          } else {
-            otpInput.setCustomValidity(err.message || 'Invalid verification code.')
-            updateValidationFeedback(challengeForm)
-            challengeForm.classList.add('was-validated')
-          }
-          btnVerify.disabled = false
+          showGlobalAlert(err.message || 'Verification failed.')
+          otpInput.setAttribute('invalid', 'true')
+          otpInput.setAttribute('error-message', err.message || 'Invalid verification code.')
+          btnVerify?.removeAttribute('loading')
           updateStatus('')
         }
       })
