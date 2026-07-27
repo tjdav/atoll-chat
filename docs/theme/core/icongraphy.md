@@ -1,8 +1,8 @@
 # Atoll Chat Iconography Architecture
 
-This document defines the iconography foundation for Atoll Chat, integrating **`duo-icons` (v2.0.1)** under the **Coralite framework architecture**.
+This document defines the iconography foundation for Atoll Chat, integrating **`@solar-icons/js` (v2.0.0-beta.2)** under the **Coralite framework architecture**.
 
-The iconography system features scalable grid alignment, a responsive dual-layer duotone engine, a custom registry utility with input normalization, and a reusable `<atoll-icon>` Coralite custom component.
+The iconography system features scalable grid alignment, a responsive dual-layer duotone engine, a custom registry utility with input normalization, and a reusable `<atoll-icon>` Coralite custom component using **BoldDuotone** variant icons.
 
 ---
 
@@ -20,9 +20,9 @@ All icons are designed on a square bounding box aligned to Atoll Chat's 4px micr
 
 ---
 
-## 2. Dual-Layer (Duotone) Color Engine
+## 2. Dual-Layer (BoldDuotone) Color Engine
 
-`duo-icons` consist of two distinct SVG paths per icon: a **primary layer** (strokes/main forms) and a **secondary layer** (background fills/accents).
+Solar BoldDuotone icons consist of two distinct visual layers: a **primary layer** (solid forms/outlines) and a **secondary layer** (accent shapes/fills).
 
 ```
  ┌─────────────────────────────────────────────────────────────┐
@@ -37,7 +37,7 @@ All icons are designed on a square bounding box aligned to Atoll Chat's 4px micr
 The iconography SCSS theme handles default sizing and dual-layer color inheritance.
 
 ```scss
-// src/scss/theme/_theme-iconography.scss
+// src/scss/_atoll-icon.scss
 
 :root {
   /* Default Icon Sizing Scale (4px Grid) */
@@ -51,9 +51,12 @@ The iconography SCSS theme handles default sizing and dual-layer color inheritan
   --#{$prefix}icon-primary-color: currentColor;
   --#{$prefix}icon-secondary-color: currentColor;
   --#{$prefix}icon-secondary-opacity: 0.35;
+
+  /* Solar Secondary Fill Custom Properties */
+  --solar-secondary-color: var(--#{$prefix}icon-secondary-color, currentColor);
+  --solar-secondary-opacity: var(--#{$prefix}icon-secondary-opacity, 0.35);
 }
 
-/* Iconography styling */
 .atoll-icon {
   display: inline-flex;
   align-items: center;
@@ -68,20 +71,6 @@ The iconography SCSS theme handles default sizing and dual-layer color inheritan
     height: 100%;
     display: block;
   }
-
-  /* duo-icons Layer Rules */
-  .duo-icon-primary,
-  .duo-icons-primary-layer,
-  path:first-child {
-    fill: var(--#{$prefix}icon-primary-color, currentColor);
-  }
-
-  .duo-icon-secondary,
-  .duo-icons-secondary-layer,
-  path:nth-child(2) {
-    fill: var(--#{$prefix}icon-secondary-color, currentColor);
-    opacity: var(--#{$prefix}icon-secondary-opacity, 0.35);
-  }
 }
 ```
 
@@ -89,18 +78,12 @@ The iconography SCSS theme handles default sizing and dual-layer color inheritan
 
 ## 3. Icon Registry Utility (`src/utils/icon-registry.js`)
 
-This module wraps `duo-icons`'s internal SVG path map (`duoIcons.icons`). It exports a lightweight, normalized lookup helper `getIconSvg(name)` to construct complete scalable `<svg>` tags.
+This module maps Atoll's semantic icon identifiers to `@solar-icons/js` AST definitions. It exports a `renderIcon(wrapper, options)` helper using Solar's `createIcons()` API.
 
-### Normalization & Aliases
-The registry automatically normalizes names of all cases (camelCase, kebab-case, snake_case) to `snake_case` (e.g. `mic-off` $\rightarrow$ `mic_off`, `addCircle` $\rightarrow$ `add_circle`) to correctly query duo-icons.
-It maps standard aliases such as `video` $\rightarrow$ `computer_camera` and `video-off` $\rightarrow$ `computer_camera-off`.
-
-### Custom Duotone Fallbacks
-For critical messaging icons not present in `duo-icons` v2.0.1, the registry implements inline, highly optimized duotone SVG path pairs with appropriate classes (`.duo-icon-primary` and `.duo-icon-secondary`) to guarantee an identical visual aesthetic:
-* `mic`
-* `mic_off` (Mute button)
-* `search` (Header input search)
-* `phone` (Audio call initiator / hangup triggers)
+### Core Mappings & Semantic Aliases
+- **Chat Actions**: `send` (`SendSquareBoldDuotoneIcon`), `attach` (`PaperclipBoldDuotoneIcon`), `emoji` (`SmileCircleBoldDuotoneIcon`)
+- **Sidebar Menu Items**: `gallery` (`GalleryBoldDuotoneIcon`), `menu-music` (`PlaylistMinimalistic2BoldDuotoneIcon`), `menu-videos` (`VideocameraRecordBoldDuotoneIcon`), `menu-documents` (`DocumentsBoldDuotoneIcon`), `menu-links` (`LinkCircleBoldDuotoneIcon`)
+- **Navigation & Settings**: `search` (`MagnifierBoldDuotoneIcon`), `phone` (`PhoneBoldDuotoneIcon`), `video` (`VideocameraBoldDuotoneIcon`), `mic` (`MicrophoneBoldDuotoneIcon`), `mic-off` (`MutedBoldDuotoneIcon`), `settings` (`SettingsBoldDuotoneIcon`), `logout` (`LogoutBoldDuotoneIcon`), `close` (`CloseCircleBoldDuotoneIcon`)
 
 ---
 
@@ -118,9 +101,12 @@ The `<atoll-icon>` element is registered as a native, lightweight Coralite compo
 <!-- Standard 24px Icon with custom accessibility label -->
 <atoll-icon name="mic" size="24" aria-label="Microphone active"></atoll-icon>
 
+<!-- Chat input send button -->
+<atoll-icon name="send" size="20"></atoll-icon>
+
 <!-- Custom sizes (sm, md, lg, etc.) and explicit duotone colors -->
 <atoll-icon 
-  name="video-off" 
+  name="camera-off" 
   size="lg" 
   color="#FF334B" 
   secondary-color="#FF334B"

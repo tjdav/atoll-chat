@@ -47,8 +47,7 @@
     },
 
     client: async ({ state, refs, root, observe }) => {
-      // Dynamic import inside client block
-      const { getIconSvg } = await import('../../utils/icon-registry.js')
+      const { renderIcon } = await import('../../utils/icon-registry.js')
 
       const render = () => {
         const wrapper = refs('iconWrapper')
@@ -56,7 +55,6 @@
           return
         }
 
-        // Map token sizes to numeric values for IconPark function
         let numericSize = 24
         if (state.size) {
           if (state.size === 'xs') {
@@ -74,14 +72,12 @@
           }
         }
 
-        // Fetch SVG from IconPark Registry
-        const svgContent = getIconSvg(state.name, {
+        renderIcon(wrapper, {
+          name: state.name,
           size: numericSize,
-          primaryColor: state.color || 'var(--atoll-icon-primary-color, currentColor)',
-          secondaryColor: state.secondaryColor || 'var(--atoll-icon-secondary-color, currentColor)'
+          primaryColor: state.color,
+          secondaryColor: state.secondaryColor
         })
-
-        wrapper.innerHTML = svgContent || ''
 
         // Handle explicit numeric size (e.g., size="28") if not a token name
         if (state.size && !['xs', 'sm', 'md', 'lg', 'xl'].includes(state.size) && !isNaN(state.size)) {

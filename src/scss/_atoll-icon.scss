@@ -18,6 +18,10 @@
   --#{$prefix}icon-out-fill: var(--#{$prefix}brand-primary, #06C755);
   --#{$prefix}icon-inner-stroke: #FFFFFF;
   --#{$prefix}icon-inner-fill: var(--#{$prefix}brand-primary, #06C755);
+
+  /* Solar Icons Secondary Color & Opacity Tokens */
+  --solar-secondary-color: var(--#{$prefix}icon-secondary-color, currentColor);
+  --solar-secondary-opacity: var(--#{$prefix}icon-secondary-opacity, 0.35);
 }
 
 [data-bs-theme="dark"] {
@@ -38,6 +42,8 @@
     --#{$prefix}icon-out-fill: rgba(255, 255, 255, 0.25); // Subtle translucent fill
     --#{$prefix}icon-inner-stroke: #FFFFFF;
     --#{$prefix}icon-inner-fill: #FFFFFF;
+    --solar-secondary-color: currentColor;
+    --solar-secondary-opacity: 0.6;
   }
 }
 
