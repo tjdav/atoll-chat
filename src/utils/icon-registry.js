@@ -6,7 +6,6 @@ import {
   AltArrowLeftLinearIcon,
   AltArrowRightLinearIcon,
   BellLinearIcon,
-  CameraLinearIcon,
   CameraMinimalisticLinearIcon,
   CheckSquareLinearIcon,
   CheckSquareBoldIcon,
@@ -41,7 +40,7 @@ import {
   VideocameraBoldIcon,
   VideocameraRecordLinearIcon,
   VideocameraRecordBoldIcon,
-  Widget2LinearIcon
+  PipLinearIcon
 } from '@solar-icons/js'
 
 /**
@@ -135,8 +134,8 @@ export const SOLAR_ICON_MAP = {
     linear: VideocameraLinearIcon,
     bold: VideocameraBoldIcon
   },
-  'videocam-off': CameraMinimalisticLinearIcon,
-  widget: Widget2LinearIcon,
+  'camera-off': CameraMinimalisticLinearIcon,
+  pip: PipLinearIcon,
 
   // Chevrons
   down: AltArrowDownLinearIcon,

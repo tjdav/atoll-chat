@@ -8,11 +8,11 @@
       size="lg" 
       pill="true" 
       variant="{{ audioBtnVariant }}"
-      class="atoll-call-btn"
+      class="atoll-call-btn {{ audioSpeakingClass }} {{ audioBtnClass }}"
       aria-label="Mute Microphone" 
       aria-pressed="{{ audioPressed }}"
     >
-      <atoll-icon size="24"></atoll-icon>
+      <atoll-icon name="{{ audioIconName }}" size="24"></atoll-icon>
     </atoll-button>
 
     <!-- Video Control Button -->
@@ -22,11 +22,11 @@
       size="lg" 
       pill="true" 
       variant="{{ videoBtnVariant }}"
-      class="atoll-call-btn"
+      class="atoll-call-btn {{ videoBtnClass }}"
       aria-label="Mute Video" 
       aria-pressed="{{ videoPressed }}"
     >
-      <atoll-icon size="24"></atoll-icon>
+      <atoll-icon name="{{ videoIconName }}" size="24"></atoll-icon>
     </atoll-button>
 
     <!-- Picture-in-Picture Button -->
@@ -40,7 +40,7 @@
       aria-label="Picture-in-Picture"
       class="atoll-call-btn"
     >
-      <atoll-icon name="widget" size="24"></atoll-icon>
+      <atoll-icon name="pip" size="24"></atoll-icon>
     </atoll-button>
 
     <!-- Settings Button -->
@@ -66,99 +66,70 @@
       pill="true" 
       title="End Call"
       aria-label="End Call"
-      class="atoll-call-btn-danger"
+      class="atoll-call-btn"
     >
-      <atoll-icon name="phone-hangup" class="atoll-icon-hangup" size="24"></atoll-icon>
+      <atoll-icon name="phone" size="24"></atoll-icon>
     </atoll-button>
 
   </div>
 
-  <!-- Unified Device Settings Drawer (Inlined for perfect path hydration) -->
-  <div 
+  <!-- Unified Device Settings Drawer using atoll-popup wrapper -->
+  <atoll-popup 
     ref="settingsPopup"
-    class="modal fade atoll-call-settings-modal" 
-    tabindex="-1" 
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="settingsPopupTitle"
+    class="atoll-call-settings-modal" 
+    title="Device Settings"
+    size="md"
+    primary-text="Done"
+    static-backdrop="true"
+    closeable="true"
   >
-    <div class="modal-dialog atoll-popup-dialog atoll-popup-md">
-      <div class="modal-content">
-        <!-- Modal Header -->
-        <div class="atoll-popup-header d-flex align-items-center justify-content-between mb-3">
-          <h3 id="settingsPopupTitle" class="atoll-popup-title font-weight-bold">
-            Device Settings
-          </h3>
-          <atoll-button 
-            ref="btnCloseSettings" 
-            icon-only="true" 
-            variant="ghost" 
-            size="md"
-            aria-label="Close"
-          >
-            <atoll-icon name="close" size="24"></atoll-icon>
-          </atoll-button>
-        </div>
+    <!-- Content will be appended dynamically here on client mount to bypass Coralite's static nesting slot limitations -->
+  </atoll-popup>
 
-        <!-- Popup Text Body -->
-        <div class="atoll-popup-body p-0">
-          <div class="device-settings-popup-content text-start">
-            <!-- Audio Section -->
-            <div class="settings-section-header">AUDIO</div>
-            
-            <div class="settings-section-subheader">Select a Microphone</div>
-            <atoll-list class="device-list mb-3" ref="micList">
-              <!-- Generated mic <atoll-list-item>s -->
-            </atoll-list>
+  <!-- Pre-rendered settings content to ensure 100% correct Coralite static template compilation and hydration -->
+  <div ref="settingsContent" class="d-none">
+    <div class="device-settings-popup-content text-start">
+      <!-- Audio Section -->
+      <div class="settings-section-header">AUDIO</div>
+      
+      <div class="settings-section-subheader">Select a Microphone</div>
+      <atoll-list class="device-list mb-3" ref="micList">
+        <!-- Generated mic <atoll-list-item>s -->
+      </atoll-list>
 
-            <div class="settings-section-subheader">Microphone Effects</div>
-            <atoll-list class="device-list mb-3">
-              <atoll-list-item title="Noise cancellation">
-                <div slot="right" class="form-check form-switch m-0">
-                  <input class="form-check-input" type="checkbox" role="switch" ref="toggleNoiseCancellation" id="noise-cancellation-switch">
-                </div>
-              </atoll-list-item>
-            </atoll-list>
-
-            <div class="settings-section-subheader">Select a Speaker</div>
-            <atoll-list class="device-list mb-3" ref="speakerList">
-              <!-- Generated speaker <atoll-list-item> -->
-            </atoll-list>
-            <div class="speaker-fallback-box d-none mb-3" ref="speakerFallback">
-              Playing via system speaker. Use your phone's control panel or bluetooth settings to switch audio devices.
-            </div>
-
-            <!-- Video Section -->
-            <div class="settings-section-header mt-4">VIDEO</div>
-
-            <div class="settings-section-subheader">Select a Camera</div>
-            <atoll-list class="device-list mb-3" ref="camList">
-              <!-- Generated cam <atoll-list-item> -->
-            </atoll-list>
-
-            <div class="settings-section-subheader">Video Effects</div>
-            <atoll-list class="device-list mb-3">
-              <atoll-list-item title="Background blur">
-                <div slot="right" class="form-check form-switch m-0">
-                  <input class="form-check-input" type="checkbox" role="switch" ref="toggleBackgroundBlur" id="background-blur-switch">
-                </div>
-              </atoll-list-item>
-            </atoll-list>
+      <div class="settings-section-subheader">Microphone Effects</div>
+      <atoll-list class="device-list mb-3">
+        <atoll-list-item title="Noise cancellation">
+          <div slot="right" class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" role="switch" ref="toggleNoiseCancellation" id="noise-cancellation-switch">
           </div>
-        </div>
+        </atoll-list-item>
+      </atoll-list>
 
-        <!-- Action Button Bar -->
-        <div class="atoll-popup-actions mt-4">
-          <atoll-button 
-            ref="primaryBtn"
-            variant="primary" 
-            size="md"
-            block="true"
-          >
-            Done
-          </atoll-button>
-        </div>
+      <div class="settings-section-subheader">Select a Speaker</div>
+      <atoll-list class="device-list mb-3" ref="speakerList">
+        <!-- Generated speaker <atoll-list-item> -->
+      </atoll-list>
+      <div class="speaker-fallback-box d-none mb-3" ref="speakerFallback">
+        Playing via system speaker. Use your phone's control panel or bluetooth settings to switch audio devices.
       </div>
+
+      <!-- Video Section -->
+      <div class="settings-section-header mt-4">VIDEO</div>
+
+      <div class="settings-section-subheader">Select a Camera</div>
+      <atoll-list class="device-list mb-3" ref="camList">
+        <!-- Generated cam <atoll-list-item> -->
+      </atoll-list>
+
+      <div class="settings-section-subheader">Video Effects</div>
+      <atoll-list class="device-list mb-3">
+        <atoll-list-item title="Background blur">
+          <div slot="right" class="form-check form-switch m-0">
+            <input class="form-check-input" type="checkbox" role="switch" ref="toggleBackgroundBlur" id="background-blur-switch">
+          </div>
+        </atoll-list-item>
+      </atoll-list>
     </div>
   </div>
 </template>
@@ -185,10 +156,17 @@
     getters: {
       audioBtnVariant: (state) => (state.isAudioEnabled ? 'secondary' : 'danger'),
       videoBtnVariant: (state) => (state.isVideoEnabled ? 'secondary' : 'danger'),
+      videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
+      audioBtnClass: (state) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
+      audioIconName: (state) => (state.isAudioEnabled ? 'mic' : 'mic-off'),
+      videoIconName: (state) => (state.isVideoEnabled ? 'video' : 'camera-off'),
       audioPressed: (state) => (!state.isAudioEnabled ? 'true' : 'false'),
-      videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false')
+      videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false'),
+      audioSpeakingClass: (state) => {
+        return (state.isAudioEnabled && state.isLocalSpeaking) ? 'speaking-btn-glow atoll-call-speaking' : ''
+      }
     },
-    client: async ({ state, globalStore, eventBus, refs, signal, bootstrap, observe }) => {
+    client: async ({ state, globalStore, eventBus, refs, signal }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
 
@@ -199,8 +177,7 @@
       refs('btnSettings')
       refs('btnEndCall')
       refs('settingsPopup')
-      refs('btnCloseSettings')
-      refs('primaryBtn')
+      refs('settingsContent')
       refs('micList')
       refs('toggleNoiseCancellation')
       refs('speakerList')
@@ -208,69 +185,18 @@
       refs('camList')
       refs('toggleBackgroundBlur')
 
-      const updateAudioIcon = () => {
-        const btn = refs('btnToggleAudio')
-        const icon = btn?.querySelector('atoll-icon')
-        if (icon) {
-          icon.setAttribute('name', state.isAudioEnabled ? 'mic' : 'mic-off')
-        }
-      }
+      const settingsPopup = refs('settingsPopup')
+      const settingsContent = refs('settingsContent')
 
-      const updateVideoIcon = () => {
-        const btn = refs('btnToggleVideo')
-        const icon = btn?.querySelector('atoll-icon')
-        if (icon) {
-          icon.setAttribute('name', state.isVideoEnabled ? 'videocam' : 'videocam-off')
-        }
-      }
-
-      const updateAudioClasses = () => {
-        const btn = refs('btnToggleAudio')
-        if (!btn) return
-        
-        btn.classList.add('atoll-call-btn')
-        
-        if (state.isAudioEnabled) {
-          btn.classList.remove('atoll-call-btn-danger')
-          if (state.isLocalSpeaking) {
-            btn.classList.add('speaking-btn-glow', 'atoll-call-speaking')
-          } else {
-            btn.classList.remove('speaking-btn-glow', 'atoll-call-speaking')
+      const moveContent = () => {
+        if (settingsPopup && settingsContent) {
+          const popupBody = settingsPopup.querySelector('.atoll-popup-body')
+          if (popupBody && settingsContent.parentNode !== popupBody) {
+            settingsContent.classList.remove('d-none')
+            popupBody.appendChild(settingsContent)
           }
-        } else {
-          btn.classList.add('atoll-call-btn-danger')
-          btn.classList.remove('speaking-btn-glow', 'atoll-call-speaking')
         }
       }
-
-      const updateVideoClasses = () => {
-        const btn = refs('btnToggleVideo')
-        if (!btn) return
-        
-        btn.classList.add('atoll-call-btn')
-        
-        if (state.isVideoEnabled) {
-          btn.classList.remove('atoll-call-btn-danger')
-        } else {
-          btn.classList.add('atoll-call-btn-danger')
-        }
-      }
-
-      observe('isAudioEnabled', () => {
-        updateAudioIcon()
-        updateAudioClasses()
-      })
-      observe('isLocalSpeaking', updateAudioClasses)
-      observe('isVideoEnabled', () => {
-        updateVideoIcon()
-        updateVideoClasses()
-      })
-
-      // Initial update
-      updateAudioIcon()
-      updateAudioClasses()
-      updateVideoIcon()
-      updateVideoClasses()
 
       const { createCallDeviceManager } = await import('../../utils/call/callDeviceManager.js')
       const deviceManager = createCallDeviceManager({
@@ -281,13 +207,6 @@
         signal
       })
 
-      const { Modal } = await bootstrap
-      const settingsModalEl = refs('settingsPopup')
-      const settingsModal = new Modal(settingsModalEl, {
-        backdrop: 'static',
-        keyboard: true
-      })
-
       state.isAudioEnabled = Boolean($state.isAudioEnabled)
       state.isVideoEnabled = Boolean($state.isVideoEnabled)
       state.isLocalSpeaking = Boolean($state.isLocalSpeaking)
@@ -295,6 +214,8 @@
       $state.subscribe('callStatus', (val) => {
         state.callStatus = val
         if (val === 'active') {
+          // Pre-emptively move content when active so enumerated devices can render
+          moveContent()
           deviceManager.enumerateAndBootDevices()
         }
       })
@@ -324,30 +245,22 @@
       })
 
       refs('btnSettings').addEventListener('click', () => {
-        if (settingsModal) {
-          settingsModal.show()
+        moveContent()
+        if (settingsPopup && typeof settingsPopup.show === 'function') {
+          settingsPopup.show()
         }
       })
 
-      refs('btnCloseSettings').addEventListener('click', () => {
-        if (settingsModal) {
-          settingsModal.hide()
-        }
-      })
-
-      refs('primaryBtn').addEventListener('click', () => {
-        if (settingsModal) {
-          settingsModal.hide()
-        }
-      })
+      if (settingsPopup) {
+        settingsPopup.addEventListener('atoll-popup-primary', () => {
+          if (typeof settingsPopup.hide === 'function') {
+            settingsPopup.hide()
+          }
+        })
+      }
 
       refs('btnEndCall').addEventListener('click', () => {
         $bus.emit('call:end_clicked')
-      })
-
-      // Clean up modal on unmount
-      signal.addEventListener('abort', () => {
-        settingsModal.dispose()
       })
     }
   })

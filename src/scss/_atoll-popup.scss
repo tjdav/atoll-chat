@@ -1,23 +1,44 @@
-// src/scss/_atoll-popup.scss
-
 atoll-popup {
   display: block !important;
 }
 
-:root {
-  /* Dimensions & Radius Tokens */
+/* -------------------------------------------------------------------------- */
+/* Theme Tokens (CSS Custom Properties)                                       */
+/* -------------------------------------------------------------------------- */
+
+/* Combined Light Theme & Global Root variables */
+:root,
+[data-#{$prefix}theme="light"],
+atoll-popup[data-#{$prefix}theme="light"] {
   --#{$prefix}popup-radius: 20px;
-  --#{$prefix}popup-padding: 24px;
+  --#{$prefix}popup-padding: #{map-get($spacers, 5)}; // 24px
   --#{$prefix}popup-max-width-sm: 300px;
   --#{$prefix}popup-max-width-md: 360px;
   --#{$prefix}popup-max-width-lg: 480px;
 
-  /* Surface & Color Tokens */
-  --#{$prefix}popup-bg: var(--#{$prefix}bg-surface-primary, #FFFFFF);
-  --#{$prefix}popup-title-color: var(--#{$prefix}text-primary, #111111);
-  --#{$prefix}popup-desc-color: var(--#{$prefix}text-secondary, #666666);
-  --#{$prefix}popup-backdrop-bg: rgba(0, 0, 0, 0.55);
+  /* Surface & Color Tokens (Using SCSS Primitives & Grays Map) */
+  --#{$prefix}popup-bg: var(--#{$prefix}bg-surface-primary, #{map-get($grays, "000")});
+  --#{$prefix}popup-title-color: var(--#{$prefix}text-primary, #{map-get($grays, "900")});
+  --#{$prefix}popup-desc-color: var(--#{$prefix}text-secondary, #{map-get($grays, "600")});
+  --#{$prefix}popup-backdrop-bg: #{rgba($atoll-black, 0.65)};
+  --#{$prefix}popup-shadow: 0 12px 32px #{rgba($atoll-black, 0.18)};
+  --#{$prefix}popup-scrollbar-thumb: #{rgba(map-get($grays, "1000"), 0.15)};
+  --#{$prefix}popup-scrollbar-thumb-hover: #{rgba(map-get($grays, "1000"), 0.3)};
 }
+
+/* Combined Dark Theme & Global Root variables */
+:root[data-#{$prefix}theme="dark"],
+[data-#{$prefix}theme="dark"],
+atoll-popup[data-#{$prefix}theme="dark"] {
+  --#{$prefix}popup-bg: var(--#{$prefix}bg-surface-primary, #{map-get($grays, "850")});
+  --#{$prefix}popup-title-color: var(--#{$prefix}text-primary, #{map-get($grays, "000")});
+  --#{$prefix}popup-desc-color: var(--#{$prefix}text-secondary, #{map-get($grays, "400")});
+  --#{$prefix}popup-backdrop-bg: #{rgba($atoll-black, 0.65)};
+  --#{$prefix}popup-shadow: 0 16px 40px #{rgba($atoll-black, 0.5)};
+  --#{$prefix}popup-scrollbar-thumb: #{rgba($atoll-white, 0.15)};
+  --#{$prefix}popup-scrollbar-thumb-hover: #{rgba($atoll-white, 0.3)};
+}
+
 
 /* -------------------------------------------------------------------------- */
 /* Bootstrap Modal Structural Overrides                                       */
@@ -25,31 +46,47 @@ atoll-popup {
 
 .atoll-popup-dialog {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  min-height: calc(100% - 3.5rem);
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: flex-start;
+  
+  /* Mobile Safety Bounds */
+  width: 100%;
+  width: calc(100% - #{map-get($spacers, 4)} * 2); 
+  
+  min-height: auto;
+  max-height: 85vh;
   margin: 1.75rem auto;
+  background-color: var(--#{$prefix}popup-bg);
+  border: none;
+  border-radius: var(--#{$prefix}popup-radius);
+  padding: var(--#{$prefix}popup-padding);
+  box-shadow: var(--#{$prefix}popup-shadow);
+  box-sizing: border-box;
+  text-align: center;
+  overflow: hidden;
 
+  /* Reset Bootstrap .modal-content so it doesn't override surface themes */
   .modal-content {
-    background-color: var(--#{$prefix}popup-bg);
-    border: none;
-    border-radius: var(--#{$prefix}popup-radius);
-    padding: var(--#{$prefix}popup-padding);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-    box-sizing: border-box;
-    text-align: center;
-    overflow: hidden;
-    max-height: calc(100vh - 48px);
     display: flex;
     flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    background-color: transparent !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: hidden;
   }
 }
 
 /* Scoped Modal Backdrop Override */
 .modal-backdrop.atoll-popup-backdrop {
   opacity: 1 !important;
-  background-color: var(--#{$prefix}popup-backdrop-bg);
-  backdrop-filter: blur(2px);
+  background-color: var(--#{$prefix}popup-backdrop-bg) !important;
+  -webkit-backdrop-filter: blur(4px) !important; /* iOS Safari support */
+  backdrop-filter: blur(4px) !important;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -60,35 +97,65 @@ atoll-popup {
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 16px;
+  margin-bottom: map-get($spacers, 4);
+  flex-shrink: 0;
 
   img, svg {
     max-width: 100%;
     height: auto;
   }
 
-  /* Hide by default unless heroIcon is present or slot="hero" has content */
   &:empty:not([data-has-icon="true"]) {
     display: none;
   }
 }
 
+/* Modal Header inside atoll-popup */
 .atoll-popup-header {
   flex-shrink: 0;
-  margin-bottom: 16px;
+  width: 100%;
 }
 
 .atoll-popup-body {
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  margin-bottom: 24px;
-  flex: 1;
+  gap: map-get($spacers, 2);
+  margin-bottom: map-get($spacers, 5);
+  flex: 1 1 auto;
+  min-height: 0;
   overflow-y: auto;
-}
+  text-align: left;
+  padding-right: map-get($spacers, 1);
 
-.atoll-popup-footer {
-  flex-shrink: 0;
+  /* Firefox Scrollbar Support */
+  scrollbar-width: thin;
+  scrollbar-color: var(--#{$prefix}popup-scrollbar-thumb) transparent;
+
+  /* Theme-aware custom scrollbar (WebKit) */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  &::-webkit-scrollbar-thumb {
+    background-color: var(--#{$prefix}popup-scrollbar-thumb);
+    border-radius: 10px;
+    &:hover {
+      background-color: var(--#{$prefix}popup-scrollbar-thumb-hover);
+    }
+  }
+
+  /* Accessibility Focus States */
+  &:focus {
+    outline: none;
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--#{$prefix}primary, #06C755);
+    outline-offset: -2px; 
+    border-radius: map-get($spacers, 1); 
+  }
 }
 
 .atoll-popup-title {
@@ -106,23 +173,24 @@ atoll-popup {
   color: var(--#{$prefix}popup-desc-color);
   line-height: 1.45;
   margin: 0;
+  flex-shrink: 0;
 }
 
 /* Action Area (Buttons) */
 .atoll-popup-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: map-get($spacers, 2);
   width: 100%;
+  flex-shrink: 0;
+  margin-top: auto;
 
-  /* Default horizontal row: force equal button widths */
   > atoll-button,
   > .atoll-btn {
     flex: 1;
     width: 100%;
   }
 
-  /* Vertical button stacking variant */
   &.atoll-popup-actions-stacked {
     flex-direction: column-reverse;
   }
@@ -134,7 +202,7 @@ atoll-popup {
 
 .atoll-popup-sm {
   max-width: var(--#{$prefix}popup-max-width-sm);
-  --#{$prefix}popup-padding: 20px;
+  --#{$prefix}popup-padding: #{map-get($spacers, 5)};
 }
 
 .atoll-popup-md {
@@ -143,26 +211,9 @@ atoll-popup {
 
 .atoll-popup-lg {
   max-width: var(--#{$prefix}popup-max-width-lg);
-  --#{$prefix}popup-padding: 32px;
+  --#{$prefix}popup-padding: #{map-get($spacers, 6)};
 
   .atoll-popup-title {
     font-size: var(--#{$prefix}font-size-title-2, 18px);
-  }
-}
-
-/* -------------------------------------------------------------------------- */
-/* Dark Mode Theme Overrides ([data-bs-theme="dark"])                         */
-/* -------------------------------------------------------------------------- */
-
-[data-bs-theme="dark"] {
-  .atoll-popup-dialog {
-    --#{$prefix}popup-bg: var(--#{$prefix}bg-surface-primary, #1F1F1F);
-    --#{$prefix}popup-title-color: var(--#{$prefix}text-primary, #FFFFFF);
-    --#{$prefix}popup-desc-color: var(--#{$prefix}text-secondary, #AAAAAA);
-    --#{$prefix}popup-backdrop-bg: rgba(0, 0, 0, 0.75);
-
-    .modal-content {
-      box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-    }
   }
 }

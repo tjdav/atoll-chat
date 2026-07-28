@@ -10,16 +10,15 @@
   gap: 16px;
   padding: 12px 24px;
   border-radius: 999px !important;
-  background-color: rgba(0, 0, 0, 0.45) !important;
-  backdrop-filter: blur(12px) !important;
+  background-color: rgba(17, 17, 17, 0.8) !important;
+  backdrop-filter: blur(15px);
   border: 1px solid rgba(255, 255, 255, 0.1) !important;
   z-index: 1040;
   align-items: center;
 }
 
 /* Standalone uniform circular buttons */
-.atoll-call-btn,
-.atoll-call-btn .atoll-btn {
+.atoll-call-btn {
   /* Semi-transparent dark or light white blur by default when active/on */
   background-color: rgba(255, 255, 255, 0.15) !important;
   color: #ffffff !important;
@@ -34,21 +33,20 @@
   &:active {
     background-color: rgba(255, 255, 255, 0.35) !important;
   }
-}
 
-.atoll-call-btn-danger,
-.atoll-call-btn-danger .atoll-btn {
-  background-color: #FF334B !important;
-  color: #ffffff !important;
-  border: none !important;
-  transition: background-color 0.15s ease, box-shadow 0.15s ease !important;
+  /* When the button is in danger / muted / end call state */
+  &.atoll-btn-danger,
+  &.btn-danger {
+    background-color: #FF334B !important;
+    color: #ffffff !important;
 
-  &:hover {
-    background-color: color-mix(in srgb, #FF334B 90%, #000000) !important;
-  }
+    &:hover {
+      background-color: color-mix(in srgb, #FF334B 90%, #000000) !important;
+    }
 
-  &:active {
-    background-color: color-mix(in srgb, #FF334B 80%, #000000) !important;
+    &:active {
+      background-color: color-mix(in srgb, #FF334B 80%, #000000) !important;
+    }
   }
 }
 
@@ -75,139 +73,5 @@
 .modal-backdrop.show {
   opacity: 1 !important;
   background-color: rgba(0, 0, 0, 0.65) !important;
-  backdrop-filter: blur(8px) !important;
-}
-
-/* ADSM Call Settings Modal - Always Dark Surface */
-.atoll-call-settings-modal {
-  color: #ffffff !important;
-
-  .modal-dialog {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: calc(100% - 3.5rem);
-    margin: 1.75rem auto;
-    max-width: 420px;
-    width: 100%;
-  }
-
-  .modal-content {
-    background-color: #1F1F1F !important;
-    border: 1px solid rgba(255, 255, 255, 0.08) !important;
-    border-radius: 20px !important;
-    padding: 20px 24px !important;
-    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5) !important;
-    box-sizing: border-box;
-    text-align: left;
-    overflow: hidden;
-  }
-
-  /* Category Section Headers & Spacing */
-  .settings-section-header {
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-    color: #999999 !important;
-    padding: 12px 0 6px 0;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    margin-bottom: 8px;
-  }
-
-  .settings-section-subheader {
-    font-size: 11px;
-    font-weight: 500;
-    letter-spacing: 0.03em;
-    text-transform: uppercase;
-    color: #888888 !important;
-    padding: 12px 0 4px 0;
-  }
-
-  /* List & Row Styling - Subtle Highlight, Green Checkmark */
-  .device-list {
-    background-color: rgba(255, 255, 255, 0.03) !important;
-    border-radius: 12px;
-    overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    padding: 0;
-    margin-bottom: 1rem;
-  }
-
-  .atoll-list-item {
-    background-color: transparent !important;
-    color: #e5e5e5 !important;
-    border-left: none !important; /* Ensure no heavy green bar on the left inside Settings choice lists */
-    border-bottom: 1px solid rgba(255, 255, 255, 0.04);
-    transition: background-color 0.15s ease, color 0.15s ease;
-
-    &:last-child {
-      border-bottom: none;
-    }
-
-    &:hover {
-      background-color: rgba(255, 255, 255, 0.03) !important;
-      color: #ffffff !important;
-    }
-
-    /* Selected state is represented by subtle dark row highlight and the green checkmark */
-    &.atoll-list-item-selected,
-    &.active {
-      background-color: rgba(255, 255, 255, 0.05) !important;
-      color: #ffffff !important;
-    }
-  }
-
-  .speaker-fallback-box {
-    background-color: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.05);
-    border-radius: 12px;
-    padding: 12px 16px;
-    font-size: 0.8125rem;
-    line-height: 1.4;
-    color: #888888;
-  }
-
-  /* Close "X" Button Header Alignment */
-  .atoll-popup-title {
-    font-size: 18px;
-    font-weight: 700;
-    color: #ffffff !important;
-    margin: 0;
-  }
-
-  /* Custom switch integration */
-  .form-switch {
-    .form-check-input {
-      cursor: pointer;
-      background-color: rgba(255, 255, 255, 0.15);
-      border-color: rgba(255, 255, 255, 0.2);
-
-      &:checked {
-        background-color: #06C755;
-        border-color: #06C755;
-      }
-    }
-  }
-}
-
-/* Mobile Viewports: ADSM Anchored Bottom Sheet */
-@media (max-width: 767.98px) {
-  .atoll-call-settings-modal {
-    .modal-dialog {
-      margin: 0 !important;
-      align-items: flex-end !important;
-      min-height: 100% !important;
-      max-width: 100% !important;
-      width: 100% !important;
-
-      .modal-content {
-        width: 100% !important;
-        border-radius: 20px 20px 0 0 !important;
-        padding: 20px 24px !important;
-        margin-bottom: 0 !important;
-        border-bottom: none !important;
-      }
-    }
-  }
+  backdrop-filter: blur(4px) !important;
 }

@@ -10,21 +10,31 @@
   >
     <div class="modal-dialog atoll-popup-dialog {{ dialogClasses }}">
       <div class="modal-content">
-        <!-- Header Zone -->
-        <div class="atoll-popup-header">
-          <!-- Optional Hero Graphic / Illustration Slot -->
-          <div ref="heroSlotWrapper" class="atoll-popup-hero" hidden="{{ hideHero }}">
-            <slot name="hero">
-              <atoll-icon name="{{ heroIcon }}" size="48"></atoll-icon>
-            </slot>
-          </div>
-
-          <h3 ref="modalTitle" id="{{ ref_modalTitle }}" class="atoll-popup-title">
-            {{ title }}
-          </h3>
+        <!-- Optional Hero Graphic / Illustration Slot -->
+        <div ref="heroSlotWrapper" class="atoll-popup-hero" hidden="{{ hideHero }}">
+          <slot name="hero">
+            <atoll-icon name="{{ heroIcon }}" size="48"></atoll-icon>
+          </slot>
         </div>
 
-        <!-- Body Zone -->
+        <!-- Modal Header -->
+        <div class="atoll-popup-header d-flex align-items-center justify-content-between mb-3" hidden="{{ hideHeader }}">
+          <h3 ref="modalTitle" id="{{ ref_modalTitle }}" class="atoll-popup-title mb-0">
+            {{ title }}
+          </h3>
+          <atoll-button 
+            ref="btnClose" 
+            icon-only="true" 
+            variant="ghost" 
+            size="md"
+            aria-label="Close"
+            hidden="{{ hideCloseBtn }}"
+          >
+            <atoll-icon name="close" size="24"></atoll-icon>
+          </atoll-button>
+        </div>
+
+        <!-- Popup Text Body -->
         <div class="atoll-popup-body">
           <p 
             ref="modalDesc" 
@@ -39,8 +49,8 @@
           <slot></slot>
         </div>
 
-        <!-- Footer Zone -->
-        <div class="atoll-popup-footer atoll-popup-actions {{ actionClasses }}">
+        <!-- Action Button Bar -->
+        <div class="atoll-popup-actions {{ actionClasses }}">
           <slot name="actions">
             <!-- Secondary / Cancel Button -->
             <atoll-button 
@@ -107,7 +117,8 @@
       hasSlottedHero: {
         type: Boolean,
         default: false
-      }
+      },
+      closeable: Boolean
     },
 
     getters: {
@@ -120,6 +131,10 @@
       hideSecondaryBtn: (state) => state.variant === 'alert' || !state.secondaryText,
 
       hidePrimaryBtn: (state) => !state.primaryText,
+
+      hideCloseBtn: (state) => !state.closeable,
+
+      hideHeader: (state) => !state.title,
 
       dialogClasses: (state) => {
         const classes = []
@@ -141,6 +156,7 @@
       const modalEl = refs('modalElement')
       const primaryBtn = refs('primaryBtn')
       const secondaryBtn = refs('secondaryBtn')
+      const closeBtn = refs('btnClose')
 
       let bsModalInstance = null
 
@@ -228,6 +244,15 @@
               detail: { variant: state.variant }
             })
           )
+          if (bsModalInstance) {
+            bsModalInstance.hide()
+          }
+        })
+      }
+
+      // Handle Close Button Click
+      if (closeBtn) {
+        closeBtn.addEventListener('click', () => {
           if (bsModalInstance) {
             bsModalInstance.hide()
           }
