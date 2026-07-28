@@ -7,7 +7,7 @@
   --#{$prefix}chip-height-lg: 38px;
 
   /* Default Surface Tokens */
-  --#{$prefix}chip-bg: var(--#{$prefix}bg-surface-secondary, #F2F2F2);
+  --#{$prefix}chip-bg: var(--#{$prefix}bg-surface-secondary, #F5F5F5);
   --#{$prefix}chip-color: var(--#{$prefix}text-primary, #111111);
   --#{$prefix}chip-border: transparent;
 }
@@ -152,22 +152,22 @@
 /* -------------------------------------------------------------------------- */
 
 .atoll-chip-secondary {
-  --#{$prefix}chip-bg: var(--#{$prefix}bg-surface-secondary, #F2F2F2);
+  --#{$prefix}chip-bg: var(--#{$prefix}bg-surface-secondary, #F5F5F5);
   --#{$prefix}chip-color: var(--#{$prefix}text-primary, #111111);
   --#{$prefix}chip-border: transparent;
 
   &:hover:not(.disabled) {
-    background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-secondary, #F2F2F2) 92%, #000000);
+    background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-secondary, #F5F5F5) 92%, #000000);
   }
 }
 
 .atoll-chip-outline {
   --#{$prefix}chip-bg: transparent;
   --#{$prefix}chip-color: var(--#{$prefix}text-primary, #111111);
-  --#{$prefix}chip-border: var(--#{$prefix}border-subtle, #E0E0E0);
+  --#{$prefix}chip-border: var(--#{$prefix}border-subtle, #E8E8E8);
 
   &:hover:not(.disabled) {
-    background-color: var(--#{$prefix}bg-surface-secondary, #F2F2F2);
+    background-color: var(--#{$prefix}bg-surface-secondary, #F5F5F5);
   }
 }
 
@@ -251,20 +251,20 @@
 
 [data-#{$prefix}theme="dark"] {
   .atoll-chip-secondary {
-    --#{$prefix}chip-bg: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
+    --#{$prefix}chip-bg: var(--#{$prefix}bg-surface-tertiary, #1F1F1F);
     --#{$prefix}chip-color: var(--#{$prefix}text-primary, #FFFFFF);
 
     &:hover:not(.disabled) {
-      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-tertiary, #2A2A2A) 88%, #FFFFFF);
+      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-tertiary, #1F1F1F) 88%, #FFFFFF);
     }
   }
 
   .atoll-chip-outline {
     --#{$prefix}chip-color: var(--#{$prefix}text-primary, #FFFFFF);
-    --#{$prefix}chip-border: var(--#{$prefix}border-strong, #3A3A3A);
+    --#{$prefix}chip-border: var(--#{$prefix}border-color-translucent, rgba(255, 255, 255, 0.15));
 
     &:hover:not(.disabled) {
-      background-color: var(--#{$prefix}bg-surface-secondary, #1F1F1F);
+      background-color: var(--#{$prefix}bg-surface-secondary, #161616);
     }
   }
 }

@@ -184,13 +184,13 @@
 
 [data-#{$prefix}theme="dark"] {
   .atoll-tooltip-bubble {
-    --#{$prefix}tooltip-bg: #2C2C2C;
+    --#{$prefix}tooltip-bg: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
     --#{$prefix}tooltip-color: #FFFFFF;
   }
 
   .atoll-tooltip-action {
     --#{$prefix}tooltip-bg: var(--#{$prefix}bg-surface-secondary, #1F1F1F);
     --#{$prefix}tooltip-color: var(--#{$prefix}text-primary, #FFFFFF);
-    --#{$prefix}tooltip-border: var(--#{$prefix}border-strong, #333333);
+    --#{$prefix}tooltip-border: var(--#{$prefix}border-color-translucent, rgba(255, 255, 255, 0.15));
   }
 }

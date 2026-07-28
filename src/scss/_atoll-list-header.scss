@@ -7,8 +7,8 @@
 
   --#{$prefix}list-header-bg: transparent;
   --#{$prefix}list-header-title-color: var(--#{$prefix}text-primary, #111111);
-  --#{$prefix}list-header-subtitle-color: var(--#{$prefix}text-secondary, #666666);
-  --#{$prefix}list-header-border: var(--#{$prefix}border-subtle, #EFEFEF);
+  --#{$prefix}list-header-subtitle-color: var(--#{$prefix}text-secondary, #555555);
+  --#{$prefix}list-header-border: var(--#{$prefix}border-subtle, #DFDFDF);
 }
 
 /* Base Header Container */
@@ -145,15 +145,15 @@
 [data-#{$prefix}theme="dark"] {
   .atoll-list-header {
     --#{$prefix}list-header-title-color: var(--#{$prefix}text-primary, #FFFFFF);
-    --#{$prefix}list-header-subtitle-color: var(--#{$prefix}text-secondary, #999999);
-    --#{$prefix}list-header-border: var(--#{$prefix}border-strong, #2A2A2A);
+    --#{$prefix}list-header-subtitle-color: var(--#{$prefix}text-secondary, #B0B0B0);
+    --#{$prefix}list-header-border: var(--#{$prefix}border-color-translucent, rgba(255, 255, 255, 0.1));
   }
 
   .atoll-list-header-card {
-    background-color: var(--#{$prefix}bg-surface-primary, #1A1A1A);
+    background-color: var(--#{$prefix}bg-surface-primary, #161616);
   }
 
   .atoll-list-header-accordion:hover {
-    background-color: var(--#{$prefix}bg-surface-secondary, #222222);
+    background-color: var(--#{$prefix}bg-surface-secondary, #1F1F1F);
   }
 }

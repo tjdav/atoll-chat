@@ -215,29 +215,29 @@
 
 [data-#{$prefix}theme="dark"] {
   .atoll-btn-secondary {
-    background-color: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
+    background-color: var(--#{$prefix}bg-surface-tertiary, #1F1F1F);
     color: var(--#{$prefix}text-primary, #FFFFFF);
 
     &:hover {
-      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-tertiary, #2A2A2A) 88%, #FFFFFF);
+      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-tertiary, #1F1F1F) 88%, #FFFFFF);
     }
 
     &:active {
-      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-tertiary, #2A2A2A) 78%, #FFFFFF);
+      background-color: color-mix(in srgb, var(--#{$prefix}bg-surface-tertiary, #1F1F1F) 78%, #FFFFFF);
     }
   }
 
   .atoll-btn-outline {
     background-color: transparent;
     color: var(--#{$prefix}text-primary, #FFFFFF);
-    border-color: var(--#{$prefix}border-strong, #3A3A3A);
+    border-color: var(--#{$prefix}border-color-translucent, rgba(255, 255, 255, 0.15));
 
     &:hover {
-      background-color: var(--#{$prefix}bg-surface-secondary, #1F1F1F);
+      background-color: var(--#{$prefix}bg-surface-secondary, #161616);
     }
 
     &:active {
-      background-color: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
+      background-color: var(--#{$prefix}bg-surface-tertiary, #1F1F1F);
     }
   }
 

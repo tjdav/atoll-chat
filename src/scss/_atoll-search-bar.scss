@@ -10,7 +10,7 @@
   --#{$prefix}search-bg: var(--#{$prefix}input-bg, #F5F5F5);
   --#{$prefix}search-bg-focus: var(--#{$prefix}input-bg, #F5F5F5);
   --#{$prefix}search-text: var(--#{$prefix}text-primary, #111111);
-  --#{$prefix}search-placeholder: var(--#{$prefix}text-tertiary, #999999);
+  --#{$prefix}search-placeholder: var(--#{$prefix}text-tertiary, #949494);
   --#{$prefix}search-border: transparent;
   --#{$prefix}search-border-focus: var(--#{$prefix}brand-primary, #06C755);
 }
@@ -167,10 +167,10 @@
 
 [data-#{$prefix}theme="dark"] {
   .atoll-search-bar-container {
-    --#{$prefix}search-bg: var(--#{$prefix}input-bg, #2A2A2A);
-    --#{$prefix}search-bg-focus: var(--#{$prefix}input-bg, #2A2A2A);
+    --#{$prefix}search-bg: var(--#{$prefix}input-bg, #1F1F1F);
+    --#{$prefix}search-bg-focus: var(--#{$prefix}input-bg, #1F1F1F);
     --#{$prefix}search-text: var(--#{$prefix}text-primary, #FFFFFF);
-    --#{$prefix}search-placeholder: var(--#{$prefix}text-tertiary, #777777);
+    --#{$prefix}search-placeholder: var(--#{$prefix}text-tertiary, #949494);
   }
 
   .atoll-search-bar-clear:hover {
