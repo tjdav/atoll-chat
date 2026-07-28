@@ -85,11 +85,11 @@ importers:
         specifier: ^26.1.0
         version: 26.1.1
       coralite:
-        specifier: ^0.43.2
-        version: 0.43.2(@noble/hashes@2.2.0)
+        specifier: ^0.43.3
+        version: 0.43.3(@noble/hashes@2.2.0)
       coralite-scripts:
-        specifier: ^0.43.2
-        version: 0.43.2(@noble/hashes@2.2.0)
+        specifier: ^0.43.3
+        version: 0.43.3(@noble/hashes@2.2.0)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -733,13 +733,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.43.2:
-    resolution: {integrity: sha512-37Z37Rnvhc5LjqwMub2RmBS/rxFe5MuOLIaHUFKqYUxpE25fw4DppSDoOYc+vtT8KqWlgn6yCeD7i0yLST65kA==}
+  coralite-scripts@0.43.3:
+    resolution: {integrity: sha512-zd/U7Vko5f1uzbml+ttzFI2yEEBLdtKJ1rkdCmZF85OM6Okgb//tXUpPqHgzbA+DA2CBYsX/mRiJCGKrMjOfNg==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  coralite@0.43.2:
-    resolution: {integrity: sha512-T9NenuVwV3vBYBokhQXKBnjVgqo1bBAb5OhGh6PgA5KP80qUhf3z18mZId9jyCK+RyCVhLUo4lGeR58PXTkvsg==}
+  coralite@0.43.3:
+    resolution: {integrity: sha512-NYoBsssXaW6CNldw25I3hME9tdQE1xrbhdpQShGQbMtyilibjzIBdT7iYpIPxuhxZCJwatEcRMoRVrXF6G4eJw==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -1360,8 +1360,8 @@ packages:
     resolution: {integrity: sha512-HeP7D2wyhkR+XaK6v4W8oRF62Dsz4flyuczALJp61GckGm42u1saSSJ/0auvcBqxs3jMRFEcPK34At/0JBKdOg==}
     engines: {node: '>=4'}
 
-  postcss@8.5.22:
-    resolution: {integrity: sha512-KBDEIpLrvpv16pp3K0Fw+UCoZfopFjjgeB+0tA/aaThfEE74kKDLrgg603YvOWJyg3+WYtyq3xYsQWsIyZlPqQ==}
+  postcss@8.5.23:
+    resolution: {integrity: sha512-g50586zr4bZmwFiTlflMu8E0bDTb5I5gertgwAKmsdUlTQIhZtunzUlD1WSzwcVWPoAVpsrA6vlfCD7oXvRwgg==}
     engines: {node: ^10 || ^12 || >=14}
 
   prelude-ls@1.2.1:
@@ -1438,8 +1438,8 @@ packages:
   safer-buffer@2.1.2:
     resolution: {integrity: sha512-YZo3K82SD7Riyi0E1EQPojLz7kpepnSQI9IyPbHHg1XXXevb5dJI7tpyN2ADxGcQbHG7vcyRHk0cbwqcQriUtg==}
 
-  sass@1.101.7:
-    resolution: {integrity: sha512-cDeUYU0dhwKVbpYg/ppsjyuoddxYhWlJOkRoI7+/iZsaSp7iowWDfm+tL2HcUafedWBDvbf/+hx0QRgKG4JSHA==}
+  sass@1.102.0:
+    resolution: {integrity: sha512-NSOyTnaQF7rTAEOtI2fwb386vL+akyiQLBZu8Na7hXCb+umJy0GAqlcMIaqACZ6Z1VgTBS4K9PG6B3IdjHGJsw==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -1690,8 +1690,8 @@ packages:
     resolution: {integrity: sha512-4LCcse/U2MHZ63HAJVE+v71o7yOdIe4cZ70Wpf8D/IyjDKYQLV5GD46B+hSTjJsvV5PztjvHoU580EftxjDZFQ==}
     engines: {node: '>=12.20'}
 
-  yoctocolors@2.1.2:
-    resolution: {integrity: sha512-CzhO+pFNo8ajLM2d2IW/R93ipy99LWjtwblvC1RsoSUMZgyLbYFr221TnSNT7GjGdYui6P459mw9JH/g/zW2ug==}
+  yoctocolors@2.2.0:
+    resolution: {integrity: sha512-xYqdZFUK/VYazNl/oCDYN+3WloWQwMfZxBoiNt6qNyk+xfOdi598muWE42rNZFp1kNOiqW936q5RhUdnpqElSg==}
     engines: {node: '>=18'}
 
   zxcvbn@4.4.2:
@@ -2173,25 +2173,25 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.43.2(@noble/hashes@2.2.0):
+  coralite-scripts@0.43.3(@noble/hashes@2.2.0):
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.43.2(@noble/hashes@2.2.0)
+      coralite: 0.43.3(@noble/hashes@2.2.0)
       cross-env: 10.1.0
       express: 5.2.1
       kleur: 4.1.5
       local-access: 1.1.0
       ora: 9.4.1
       portfinder: 1.0.38
-      postcss: 8.5.22
-      sass: 1.101.7
+      postcss: 8.5.23
+      sass: 1.102.0
     transitivePeerDependencies:
       - '@noble/hashes'
       - canvas
       - supports-color
 
-  coralite@0.43.2(@noble/hashes@2.2.0):
+  coralite@0.43.3(@noble/hashes@2.2.0):
     dependencies:
       acorn: 8.17.0
       acorn-walk: 8.3.5
@@ -2203,7 +2203,7 @@ snapshots:
       isomorphic-dompurify: 3.19.0(@noble/hashes@2.2.0)
       kleur: 4.1.5
       p-limit: 7.3.1
-      postcss: 8.5.22
+      postcss: 8.5.23
       postcss-selector-parser: 7.1.4
       serialize-javascript: 7.0.7
       xxhash-wasm: 1.1.0
@@ -2702,7 +2702,7 @@ snapshots:
   log-symbols@7.0.1:
     dependencies:
       is-unicode-supported: 2.1.0
-      yoctocolors: 2.1.2
+      yoctocolors: 2.2.0
 
   lru-cache@11.5.2: {}
 
@@ -2882,7 +2882,7 @@ snapshots:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
 
-  postcss@8.5.22:
+  postcss@8.5.23:
     dependencies:
       nanoid: 3.3.16
       picocolors: 1.1.1
@@ -2954,7 +2954,7 @@ snapshots:
 
   safer-buffer@2.1.2: {}
 
-  sass@1.101.7:
+  sass@1.102.0:
     dependencies:
       chokidar: 5.0.0
       immutable: 5.1.9
@@ -3212,6 +3212,6 @@ snapshots:
 
   yocto-queue@1.2.2: {}
 
-  yoctocolors@2.1.2: {}
+  yoctocolors@2.2.0: {}
 
   zxcvbn@4.4.2: {}
