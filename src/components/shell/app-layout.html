@@ -44,9 +44,6 @@
       </div>
     </div>
   </div>
-  <call-overlay data-atoll-theme="dark"></call-overlay>
-  <reaction-picker></reaction-picker>
-  <ui-avatar-editor></ui-avatar-editor>
 </template>
 
 <script type="module">
@@ -75,10 +72,10 @@
       hideLinkViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'links'),
       hideSettingsMain: (state) => !(state.currentAppView === 'settings')
     },
-    client: async ({ state, globalStore, eventBus, bootstrap, refs }) => {
+    client: ({ state, globalStore, eventBus, bootstrap, refs, root }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
-      const { Offcanvas } = await bootstrap
+      const { Offcanvas } = bootstrap
 
       state.activeSelectionId = $state.activeSelectionId
       state.activeSelectionType = $state.activeSelectionType
@@ -86,6 +83,14 @@
 
       const mobileNavEl = refs('mobileNav')
       const mobileNav = new Offcanvas(mobileNavEl)
+
+      const callOverlayElement = document.createElement('call-overlay')
+      const reactionPickerElement = document.createElement('reaction-picker')
+      const avatarEditorElement = document.createElement('ui-avatar-editor')
+
+      root.appendChild(callOverlayElement)
+      root.appendChild(reactionPickerElement)
+      root.appendChild(avatarEditorElement)
 
       $bus.on('ui:open_mobile_nav', () => {
         mobileNav.show()
