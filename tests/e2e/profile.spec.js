@@ -100,7 +100,7 @@ test.describe('Atoll Profile Component', () => {
     await expect(profile).toBeVisible()
 
     const circle = profile.locator('.atoll-profile-circle')
-    await expect(circle).toHaveClass(/atoll-profile-grid-4/)
+    await expect(circle).toHaveClass(/multiparty-4/)
 
     const fallbacks = profile.locator('[slot="image"] .atoll-profile-fallback')
     await expect(fallbacks).toHaveCount(2)
@@ -111,6 +111,26 @@ test.describe('Atoll Profile Component', () => {
     })
 
     await expect(fallbacks).toHaveCount(3)
+  })
+
+  test('should render dynamic initials and deterministic hashed color background', async ({ page }) => {
+    await page.evaluate(() => {
+      const el = document.createElement('atoll-profile')
+      el.id = 'profile-initials-test'
+      el.setAttribute('alt', 'John Doe')
+      document.body.appendChild(el)
+    })
+
+    const profile = page.locator('#profile-initials-test')
+    await expect(profile).toBeVisible()
+
+    const initials = profile.locator('.atoll-profile-initials')
+    await expect(initials).toBeVisible()
+    await expect(initials).toHaveText('JD')
+
+    const fallback = profile.locator('.atoll-profile-fallback')
+    const styleAttr = await fallback.getAttribute('style')
+    expect(styleAttr).toContain('background-color:')
   })
 
   test('should support active story ring and top/bottom overlays', async ({ page }) => {

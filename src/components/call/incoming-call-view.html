@@ -1,8 +1,6 @@
 <template id="incoming-call-view">
   <div class="incoming-view h-100 {{ incomingClass }} flex-column align-items-center justify-content-center">
-    <div class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-4 shadow" style="width: 120px; height: 120px; font-size: 3rem;">
-      {{ callerInitial }}
-    </div>
+    <atoll-profile ref="callerAvatar" size="3xl" ring class="mb-4 shadow" alt="{{ callerName }}"></atoll-profile>
     <h2 class="mb-2">{{ callerName }}</h2>
     <p class="text-light mb-5">{{ incomingCallTypeText }}</p>
     
@@ -34,10 +32,12 @@
         return hasVideo ? 'Incoming Video Call...' : 'Incoming Audio Call...'
       }
     },
-    client: ({ state, globalStore, eventBus, storage, refs, signal }) => {
+    client: ({ state, globalStore, eventBus, storage, pocketbase, refs, signal }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $storage } = storage
+      const { pb } = pocketbase || {}
+      const callerAvatar = refs('callerAvatar')
 
       state.callStatus = $state.callStatus
 
@@ -55,6 +55,9 @@
         if (!room_id) {
           state.callerName = 'Unknown Caller'
           state.callerInitial = '?'
+          if (callerAvatar) {
+            callerAvatar.removeAttribute('src')
+          }
           return
         }
 
@@ -63,7 +66,11 @@
           if (room) {
             const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
             if (!room.is_group && participants.length > 0) {
-              state.callerName = participants[0].name || participants[0].username
+              const p = participants[0]
+              state.callerName = p.name || p.username
+              if (callerAvatar && pb?.files && p.avatar) {
+                callerAvatar.setAttribute('src', pb.files.getURL(p, p.avatar, { thumb: '95x95' }))
+              }
             } else {
               state.callerName = room.name || 'Unknown Caller'
             }

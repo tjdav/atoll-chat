@@ -7,21 +7,22 @@
           alt="{{ computedAlt }}" 
           hidden="{{ hideImage }}" 
         />
-        <span class="atoll-profile-fallback" hidden="{{ hideFallback }}">
-          <atoll-icon name="user" size="{{ iconSize }}"></atoll-icon>
+        <span class="atoll-profile-fallback" hidden="{{ hideFallback }}" style="{{ fallbackStyle }}">
+          <span hidden="{{ hideInitials }}" class="atoll-profile-initials">{{ initials }}</span>
+          <atoll-icon hidden="{{ showInitials }}" name="user" size="{{ iconSize }}"></atoll-icon>
         </span>
       </slot>
     </div>
 
     <div class="atoll-profile-badge" hidden="{{ hideBadge }}">
       <slot name="badge">
-        <atoll-badge count="{{ badge }}" size="sm"></atoll-badge>
+        <atoll-badge ref="badgeElement" size="sm"></atoll-badge>
       </slot>
     </div>
 
     <div class="atoll-profile-icon" hidden="{{ hideOverlayIcon }}">
       <slot name="icon">
-        <atoll-icon name="{{ iconName }}" size="{{ overlayIconSize }}"></atoll-icon>
+        <atoll-icon ref="overlayIconElement"></atoll-icon>
       </slot>
     </div>
   </div>
@@ -33,6 +34,10 @@
   export default defineComponent({
     attributes: {
       src: {
+        type: String,
+        default: ''
+      },
+      name: {
         type: String,
         default: ''
       },
@@ -65,7 +70,67 @@
     },
 
     getters: {
-      computedAlt: (state) => state.alt || 'User profile',
+      computedAlt: (state) => state.alt || state.name || 'User profile',
+
+      initials: (state) => {
+        const str = state.name || state.alt
+        if (!str || str === 'User profile') {
+          return ''
+        }
+        const clean = str.trim()
+        const words = clean.split(/\s+/)
+        if (words.length >= 2 && words[0][0] && words[1][0]) {
+          return (words[0][0] + words[1][0]).toUpperCase()
+        }
+        return clean.slice(0, 2).toUpperCase()
+      },
+
+      showInitials: (state) => {
+        const str = state.name || state.alt
+        if (!str || str === 'User profile') {
+          return false
+        }
+        const clean = str.trim()
+        return clean.length > 0
+      },
+
+      hideInitials: (state) => {
+        const str = state.name || state.alt
+        if (!str || str === 'User profile') {
+          return true
+        }
+        const clean = str.trim()
+        return clean.length === 0
+      },
+
+      fallbackStyle: (state) => {
+        const seedStr = state.name || state.alt
+        if (seedStr && seedStr !== 'User profile') {
+          const palette = [
+            '#06C755',
+            '#15BD66',
+            '#19BFA1',
+            '#1CB8B8',
+            '#0093C4',
+            '#0279D4',
+            '#2F59CC',
+            '#4545D1',
+            '#6B3CC9',
+            '#AF36C7',
+            '#DE2C7F',
+            '#E5172F',
+            '#FF5E1F',
+            '#FCB321'
+          ]
+          let hash = 0
+          for (let i = 0; i < seedStr.length; i++) {
+            hash = seedStr.charCodeAt(i) + ((hash << 5) - hash)
+          }
+          const color = palette[Math.abs(hash) % palette.length]
+          return `background-color: ${color}; color: #FFFFFF;`
+        }
+        return ''
+      },
 
       hideImage: (state) => !state.src || state.hasError,
 
@@ -101,7 +166,7 @@
       gridClass: (state) => {
         if (state.type === 'multiparty') {
           const count = Math.min(Math.max(state.splitCount, 2), 4)
-          return `atoll-profile-grid-${count}`
+          return `multiparty-${count}`
         }
         return ''
       },
@@ -155,6 +220,38 @@
       updateSrc(state.src)
       observe('src', updateSrc)
 
+      const badgeEl = refs('badgeElement')
+      const overlayIconEl = refs('overlayIconElement')
+
+      const updateBadge = () => {
+        if (badgeEl) {
+          if (state.badge) {
+            badgeEl.setAttribute('count', state.badge)
+          } else {
+            badgeEl.removeAttribute('count')
+          }
+        }
+      }
+
+      const updateOverlayIcon = () => {
+        if (overlayIconEl) {
+          if (state.iconName) {
+            overlayIconEl.setAttribute('name', state.iconName)
+          } else {
+            overlayIconEl.removeAttribute('name')
+          }
+          if (state.overlayIconSize) {
+            overlayIconEl.setAttribute('size', state.overlayIconSize)
+          }
+        }
+      }
+
+      observe('badge', updateBadge)
+      observe('iconName', updateOverlayIcon)
+      observe('overlayIconSize', updateOverlayIcon)
+      updateBadge()
+      updateOverlayIcon()
+
       let disconnectMultiparty = null
 
       const handleMultiparty = () => {
@@ -176,15 +273,63 @@
             if (child.tagName === 'IMG' && !child.dataset.fallbackBound) {
               child.dataset.fallbackBound = 'true'
 
+              const getInitials = (str) => {
+                if (!str || str === 'User profile') {
+                  return ''
+                }
+                const clean = str.trim()
+                const words = clean.split(/\s+/)
+                if (words.length >= 2 && words[0][0] && words[1][0]) {
+                  return (words[0][0] + words[1][0]).toUpperCase()
+                }
+                return clean.slice(0, 2).toUpperCase()
+              }
+
+              const getDeterministicColor = (str) => {
+                const palette = [
+                  '#06C755',
+                  '#15BD66',
+                  '#19BFA1',
+                  '#1CB8B8',
+                  '#0093C4',
+                  '#0279D4',
+                  '#2F59CC',
+                  '#4545D1',
+                  '#6B3CC9',
+                  '#AF36C7',
+                  '#DE2C7F',
+                  '#E5172F',
+                  '#FF5E1F',
+                  '#FCB321'
+                ]
+                if (!str) {
+                  return palette[0]
+                }
+                let hash = 0
+                for (let i = 0; i < str.length; i++) {
+                  hash = str.charCodeAt(i) + ((hash << 5) - hash)
+                }
+                return palette[Math.abs(hash) % palette.length]
+              }
+
               const replaceWithFallback = () => {
                 const fallback = document.createElement('span')
                 fallback.className = 'atoll-profile-fallback'
-
-                const icon = document.createElement('atoll-icon')
-                icon.setAttribute('name', 'user')
-                icon.setAttribute('size', state.iconSize)
-
-                fallback.appendChild(icon)
+                const altText = child.alt || child.getAttribute('alt') || ''
+                const inits = getInitials(altText)
+                if (inits) {
+                  fallback.style.backgroundColor = getDeterministicColor(altText)
+                  fallback.style.color = '#FFFFFF'
+                  const initSpan = document.createElement('span')
+                  initSpan.className = 'atoll-profile-initials'
+                  initSpan.textContent = inits
+                  fallback.appendChild(initSpan)
+                } else {
+                  const icon = document.createElement('atoll-icon')
+                  icon.setAttribute('name', 'user')
+                  icon.setAttribute('size', state.iconSize)
+                  fallback.appendChild(icon)
+                }
                 child.replaceWith(fallback)
               }
 

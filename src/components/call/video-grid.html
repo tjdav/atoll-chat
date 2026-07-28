@@ -371,13 +371,13 @@
           `
         }
 
+        const avatarUrl = (p.avatar && pb?.files) ? pb.files.getURL(p, p.avatar, { thumb: isMini ? '50x50' : '87x87' }) : ''
+
         tile.innerHTML = `
           <video class="tile-video w-100 h-100 object-fit-cover d-none" autoplay playsinline ${p.isLocal ? 'muted' : ''}></video>
 
           <div class="tile-avatar-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white bg-dark">
-            <div class="avatar-large bg-primary rounded-circle d-flex align-items-center justify-content-center mb-2 shadow" style="width: ${isMini ? '50px' : '80px'}; height: ${isMini ? '50px' : '80px'}; font-size: ${isMini ? '1.5rem' : '2.2rem'};">
-              ${initial}
-            </div>
+            <atoll-profile size="${isMini ? 'md' : '2xl'}" src="${avatarUrl}" alt="${p.name}" class="mb-2 shadow"></atoll-profile>
             <div class="tile-avatar-name text-center px-2" style="font-size: ${isMini ? '0.8rem' : '1rem'};">${p.name}</div>
           </div>
 

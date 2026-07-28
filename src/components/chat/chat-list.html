@@ -132,49 +132,64 @@
         if (item.avatar) {
           try {
             const avatarData = typeof item.avatar === 'string' ? JSON.parse(item.avatar) : item.avatar
-            const avatar = document.createElement('ui-avatar')
-            avatar.setAttribute('slot', 'avatar')
-            avatar.setAttribute('name', roomName)
-            avatar.setAttribute('media-id', avatarData.media_id)
-            avatar.setAttribute('media-key', avatarData.key)
-            avatar.setAttribute('media-nonce', avatarData.nonce)
-            return avatar
+            const profile = document.createElement('atoll-profile')
+            profile.setAttribute('slot', 'avatar')
+            profile.setAttribute('size', 'md')
+            profile.setAttribute('alt', roomName)
+
+            const $media = utils?.$media
+            if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
+              $media.decrypt(avatarData, signal).then((url) => {
+                profile.setAttribute('src', url)
+              }).catch(err => {
+                console.error('[chat-list] Failed to decrypt room avatar:', err)
+              })
+            }
+            return profile
           } catch (err) {
             console.error('[chat-list] Failed to parse room avatar:', err)
           }
         }
         if (!item.is_group && participants.length > 0) {
           const otherUser = participants[0]
-          const avatar = document.createElement('ui-avatar')
-          avatar.setAttribute('slot', 'avatar')
-          avatar.setAttribute('name', otherUser.name || otherUser.username)
+          const profile = document.createElement('atoll-profile')
+          profile.setAttribute('slot', 'avatar')
+          profile.setAttribute('size', 'md')
+          profile.setAttribute('alt', otherUser.name || otherUser.username || roomName)
           if (otherUser.avatar) {
-            avatar.setAttribute('url', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '40x40' }))
+            profile.setAttribute('src', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '50x50' }))
           }
-          return avatar
+          return profile
         } else if (item.is_group && participants.length > 0) {
-          const group = document.createElement('ui-avatar-group')
-          group.setAttribute('slot', 'avatar')
-          const displayCount = Math.min(participants.length, 3)
+          const profile = document.createElement('atoll-profile')
+          profile.setAttribute('slot', 'avatar')
+          profile.setAttribute('type', 'multiparty')
+          profile.setAttribute('size', 'md')
+          const splitCount = Math.min(Math.max(participants.length, 2), 4)
+          profile.setAttribute('split-count', splitCount)
+
+          const slotDiv = document.createElement('div')
+          slotDiv.setAttribute('slot', 'image')
+
+          const displayCount = Math.min(participants.length, splitCount)
           for (let i = 0; i < displayCount; i++) {
             const p = participants[i]
-            const avatar = document.createElement('ui-avatar')
-            avatar.setAttribute('slot', 'avatar')
-            avatar.setAttribute('size', '28')
-            avatar.setAttribute('name', p.name || p.username)
             if (p.avatar) {
-              avatar.setAttribute('url', pb.files.getURL(p, p.avatar, { thumb: '28x28' }))
+              const img = document.createElement('img')
+              img.src = pb.files.getURL(p, p.avatar, { thumb: '40x40' })
+              img.alt = p.name || p.username || 'Member'
+              slotDiv.appendChild(img)
             }
-            group.appendChild(avatar)
           }
-          return group
+
+          profile.appendChild(slotDiv)
+          return profile
         }
-        const iconContainer = document.createElement('div')
-        iconContainer.setAttribute('slot', 'avatar')
-        iconContainer.className = 'avatar-circle d-flex align-items-center justify-content-center rounded-circle bg-primary'
-        iconContainer.style.width = '40px'; iconContainer.style.height = '40px'
-        iconContainer.innerHTML = '<i class="bi bi-chat-left-text fs-5"></i>'
-        return iconContainer
+        const profile = document.createElement('atoll-profile')
+        profile.setAttribute('slot', 'avatar')
+        profile.setAttribute('size', 'md')
+        profile.setAttribute('alt', roomName)
+        return profile
       }
 
       const updateItemAttributes = (el, data) => {
@@ -192,7 +207,7 @@
         const newAvatar = createAvatarComponent(data.item, data.roomName)
         if (!existingAvatar) {
           el.appendChild(newAvatar)
-        } else if (existingAvatar.tagName !== newAvatar.tagName || existingAvatar.getAttribute('media-id') !== newAvatar.getAttribute('media-id') || existingAvatar.getAttribute('url') !== newAvatar.getAttribute('url')) {
+        } else if (existingAvatar.tagName !== newAvatar.tagName || existingAvatar.getAttribute('src') !== newAvatar.getAttribute('src') || existingAvatar.getAttribute('type') !== newAvatar.getAttribute('type')) {
           existingAvatar.replaceWith(newAvatar)
         }
       }

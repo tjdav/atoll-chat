@@ -6,9 +6,7 @@
         <button class="btn btn-link link-body-emphasis ps-0 pe-2 d-sm-none atoll-touch-target" ref="btnBack">
           <i class="bi bi-chevron-left fs-4"></i>
         </button>
-        <div class="avatar-placeholder me-3 bg-primary-subtle text-primary rounded-circle d-flex align-items-center justify-content-center fw-bold" style="width: 40px; height: 40px;">
-          {{ roomInitial }}
-        </div>
+        <atoll-profile ref="headerAvatar" size="sm" class="d-inline-block me-3" alt="{{ roomName }}"></atoll-profile>
         <div>
           <h6 class="atoll-text-title-2 mb-0">{{ roomName }}</h6>
           <small class="text-muted opacity-75">{{ roomStatus }}</small>
@@ -81,13 +79,94 @@
     getters: {
       hideSidebar: (state) => !state.isRoomDetailsOpen
     },
-    client: async ({ refs, state, globalStore, storage, eventBus, webrtc: webrtcPluginContext }) => {
+    client: async ({ refs, state, globalStore, storage, pocketbase, utils, signal, eventBus, webrtc: webrtcPluginContext }) => {
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
       const { $webrtc } = webrtcPluginContext
+      const { pb } = pocketbase || {}
+      const headerAvatar = refs('headerAvatar')
 
       state.isRoomDetailsOpen = $state.isRoomDetailsOpen || false
+
+      const renderHeaderAvatar = (room, participants) => {
+        if (!headerAvatar || !room) {
+          return
+        }
+        const existingSlot = headerAvatar.querySelector('[slot="image"]')
+        if (existingSlot) {
+          existingSlot.remove()
+        }
+
+        if (room.avatar) {
+          try {
+            const avatarData = typeof room.avatar === 'string' ? JSON.parse(room.avatar) : room.avatar
+            headerAvatar.setAttribute('type', 'single')
+            headerAvatar.setAttribute('size', 'sm')
+            headerAvatar.setAttribute('name', state.roomName)
+            headerAvatar.setAttribute('alt', state.roomName)
+
+            const $media = utils?.$media
+            if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
+              $media.decrypt(avatarData, signal).then((url) => {
+                headerAvatar.setAttribute('src', url)
+              }).catch(err => {
+                console.error('[chat-view] Failed to decrypt room avatar:', err)
+                headerAvatar.removeAttribute('src')
+              })
+            }
+            return
+          } catch (err) {
+            console.error('[chat-view] Failed to parse room avatar:', err)
+          }
+        }
+
+        if (!room.is_group && participants.length > 0) {
+          const otherUser = participants[0]
+          const displayName = otherUser.name || otherUser.username || state.roomName
+          headerAvatar.setAttribute('type', 'single')
+          headerAvatar.setAttribute('size', 'sm')
+          headerAvatar.setAttribute('name', displayName)
+          headerAvatar.setAttribute('alt', displayName)
+          if (otherUser.avatar && pb?.files) {
+            headerAvatar.setAttribute('src', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '42x42' }))
+          } else {
+            headerAvatar.removeAttribute('src')
+          }
+        } else if (room.is_group && participants.length > 0) {
+          headerAvatar.setAttribute('type', 'multiparty')
+          headerAvatar.setAttribute('size', 'sm')
+          const splitCount = Math.min(Math.max(participants.length, 2), 4)
+          headerAvatar.setAttribute('split-count', splitCount)
+          headerAvatar.removeAttribute('src')
+
+          const slotDiv = document.createElement('div')
+          slotDiv.setAttribute('slot', 'image')
+
+          const displayCount = Math.min(participants.length, splitCount)
+          for (let i = 0; i < displayCount; i++) {
+            const p = participants[i]
+            const pName = p.name || p.username || 'Member'
+            if (p.avatar && pb?.files) {
+              const img = document.createElement('img')
+              img.src = pb.files.getURL(p, p.avatar, { thumb: '30x30' })
+              img.alt = pName
+              slotDiv.appendChild(img)
+            } else {
+              const img = document.createElement('img')
+              img.alt = pName
+              slotDiv.appendChild(img)
+            }
+          }
+          headerAvatar.appendChild(slotDiv)
+        } else {
+          headerAvatar.setAttribute('type', 'single')
+          headerAvatar.setAttribute('size', 'sm')
+          headerAvatar.setAttribute('name', state.roomName)
+          headerAvatar.setAttribute('alt', state.roomName)
+          headerAvatar.removeAttribute('src')
+        }
+      }
 
       const updateRoomInfo = async (room_id) => {
         if (!room_id || typeof room_id !== 'string' || $state.activeSelectionType !== 'chats') {
@@ -112,6 +191,8 @@
             } else {
               state.roomStatus = baseStatus
             }
+
+            renderHeaderAvatar(room, participants)
           }
         } catch (err) {
           console.error('[chat-view] Failed to load room info:', err)

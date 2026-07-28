@@ -234,18 +234,18 @@
         }
         avatarContainer.innerHTML = ''
 
-        const avatar = document.createElement('ui-avatar')
-        avatar.setAttribute('size', '44')
+        const avatar = document.createElement('atoll-profile')
+        avatar.setAttribute('size', 'sm')
 
         if (state.isAuthenticated && pb.authStore.model) {
           const user = pb.authStore.model
-          avatar.setAttribute('name', user.name || user.username)
+          avatar.setAttribute('alt', user.name || user.username || 'User profile')
           if (user.avatar) {
-            const avatarUrl = pb.files.getURL(user, user.avatar)
-            avatar.setAttribute('url', avatarUrl)
+            const avatarUrl = pb.files.getURL(user, user.avatar, { thumb: '42x42' })
+            avatar.setAttribute('src', avatarUrl)
           }
         } else {
-          avatar.setAttribute('name', 'Guest')
+          avatar.setAttribute('alt', 'Guest')
         }
 
         avatarContainer.appendChild(avatar)

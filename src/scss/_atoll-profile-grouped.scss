@@ -1,0 +1,26 @@
+/* -------------------------------------------------------------------------- */
+/* Grouped Variant (Overlapping Piled Profiles)                               */
+/* -------------------------------------------------------------------------- */
+
+.atoll-profile-grouped {
+  display: inline-flex;
+  align-items: center;
+
+  .atoll-profile-container {
+    /* Apply a thick cutout border so overlapping edges are separated cleanly */
+    border: 2px solid var(--#{$prefix}profile-cutout-border);
+    box-sizing: content-box; 
+    
+    /* Dynamically overlap based on the active size modifier */
+    &:not(:first-child) {
+      margin-left: calc(var(--#{$prefix}profile-size) * -0.28);
+    }
+  }
+  
+  /* Ensure the left-most avatar always sits visually on top of the pile */
+  .atoll-profile-container:nth-child(1) { z-index: 5; }
+  .atoll-profile-container:nth-child(2) { z-index: 4; }
+  .atoll-profile-container:nth-child(3) { z-index: 3; }
+  .atoll-profile-container:nth-child(4) { z-index: 2; }
+  .atoll-profile-container:nth-child(5) { z-index: 1; }
+}

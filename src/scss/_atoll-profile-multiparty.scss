@@ -1,0 +1,45 @@
+/* -------------------------------------------------------------------------- */
+/* Multiparty Variant (Grid Splits inside a single circle)                    */
+/* -------------------------------------------------------------------------- */
+
+.atoll-profile-multiparty {
+  .atoll-profile-circle {
+    display: grid;
+    /* Use the grid gap to create the hairline dividers */
+    gap: 1px; 
+    /* The gap reveals the container background, matching the surface cutout */
+    background-color: var(--#{$prefix}profile-cutout-border);
+  }
+
+  /* Reset fallback background for the individual grid cells */
+  .atoll-profile-img,
+  .atoll-profile-fallback {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    background-color: var(--#{$prefix}profile-fallback-bg);
+  }
+
+  /* 2 Users: Vertical split */
+  &.multiparty-2 .atoll-profile-circle {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  /* 3 Users: Left half, top-right quarter, bottom-right quarter */
+  &.multiparty-3 .atoll-profile-circle {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    
+    .atoll-profile-img:first-child,
+    .atoll-profile-fallback:first-child {
+      grid-row: 1 / span 2;
+    }
+  }
+
+  /* 4 Users: Four equal quadrants */
+  &.multiparty-4 .atoll-profile-circle {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}

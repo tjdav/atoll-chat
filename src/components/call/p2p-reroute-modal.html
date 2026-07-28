@@ -58,10 +58,11 @@
           btn.setAttribute('data-testid', `reroute-user-${p.username}`)
 
           // Render avatar
-          const avatar = document.createElement('ui-avatar')
-          avatar.setAttribute('name', p.name || p.username)
+          const avatar = document.createElement('atoll-profile')
+          avatar.setAttribute('size', 'xs')
+          avatar.setAttribute('alt', p.name || p.username || 'User profile')
           if (p.avatar) {
-            avatar.setAttribute('url', pb.files.getURL(p, p.avatar, { thumb: '32x32' }))
+            avatar.setAttribute('src', pb.files.getURL(p, p.avatar, { thumb: '32x32' }))
           }
 
           const label = document.createElement('span')

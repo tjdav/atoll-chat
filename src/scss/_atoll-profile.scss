@@ -48,7 +48,7 @@
 
   /* Support both direct children and slotted wrapped descendants */
   img,
-  slot[name="image"] > img {
+  slot[name="image"]>img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -64,6 +64,16 @@
   width: 100%;
   height: 100%;
   color: var(--#{$prefix}text-tertiary, #949494);
+}
+
+/* Initials Fallback Typography */
+.atoll-profile-initials {
+  font-weight: 700;
+  color: #FFFFFF;
+  text-transform: uppercase;
+  user-select: none;
+  line-height: 1;
+  font-family: var(--#{$prefix}font-sans-serif);
 }
 
 /* Story / Status Ring Area */
@@ -100,10 +110,10 @@
       grid-template-columns: 1fr 1fr;
       grid-template-rows: 1fr 1fr;
 
-      > img:first-child,
-      > .atoll-profile-fallback:first-child,
-      > slot[name="image"] > img:first-child,
-      > slot[name="image"] > .atoll-profile-fallback:first-child {
+      >img:first-child,
+      >.atoll-profile-fallback:first-child,
+      >slot[name="image"]>img:first-child,
+      >slot[name="image"]>.atoll-profile-fallback:first-child {
         grid-column: span 2;
       }
     }
@@ -115,7 +125,7 @@
     }
 
     img,
-    slot[name="image"] > img {
+    slot[name="image"]>img {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -166,14 +176,76 @@
 }
 
 /* Size Modifiers */
-.atoll-profile-2xs { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-2xs); }
-.atoll-profile-xs  { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-xs); }
-.atoll-profile-sm  { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-sm); }
-.atoll-profile-md  { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-md); }
-.atoll-profile-lg  { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-lg); }
-.atoll-profile-xl  { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-xl); }
-.atoll-profile-2xl { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-2xl); }
-.atoll-profile-3xl { --#{$prefix}profile-dim: var(--#{$prefix}profile-size-3xl); }
+.atoll-profile-2xs {
+  --#{$prefix}profile-dim: var(--#{$prefix}profile-size-2xs);
+
+  .atoll-profile-initials {
+    font-size: 11px;
+  }
+}
+
+.atoll-profile-xs {
+
+  --#{$prefix}profile-dim: var(--#{$prefix}profile-size-xs);
+
+  .atoll-profile-initials {
+    font-size: 12px;
+  }
+}
+
+.atoll-profile-sm {
+
+  --#{$prefix}profile-dim: var(--#{$prefix}profile-size-sm);
+
+  .atoll-profile-initials {
+    font-size: 15px;
+  }
+}
+
+.atoll-profile-md {
+
+  --#{$prefix}profile-dim: var(--#{$prefix}profile-size-md);
+
+  .atoll-profile-initials {
+    font-size: 18px;
+  }
+}
+
+.atoll-profile-lg {
+
+  --#{$prefix}profile-dim: var(--#{$prefix}profile-size-lg);
+
+  .atoll-profile-initials {
+    font-size: 20px;
+  }
+}
+
+.atoll-profile-xl {
+
+  --#{$prefix}profile-dim: var(--#{$prefix}profile-size-xl);
+
+  .atoll-profile-initials {
+    font-size: 22px;
+  }
+}
+
+.atoll-profile-2xl {
+
+  --#{$prefix}profile-dim: var(--#{$prefix}profile-size-2xl);
+
+  .atoll-profile-initials {
+    font-size: 30px;
+  }
+}
+
+.atoll-profile-3xl {
+
+  --#{$prefix}profile-dim: var(--#{$prefix}profile-size-3xl);
+
+  .atoll-profile-initials {
+    font-size: 34px;
+  }
+}
 
 /* Dark Mode Overrides ([data-atoll-theme="dark"]) */
 [data-#{$prefix}theme="dark"] {

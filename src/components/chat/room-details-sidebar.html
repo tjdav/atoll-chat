@@ -99,17 +99,12 @@
           const info = document.createElement('div')
           info.className = 'd-flex align-items-center'
 
-          const avatar = document.createElement('div')
-          avatar.className = 'member-avatar bg-primary-subtle text-primary overflow-hidden'
+          const avatar = document.createElement('atoll-profile')
+          avatar.setAttribute('size', 'xs')
+          avatar.setAttribute('alt', user.name || user.username || 'Member')
+          avatar.className = 'me-2 flex-shrink-0'
           if (user.avatar) {
-            const url = pb.files.getURL(user, user.avatar, { thumb: '32x32' })
-            avatar.innerHTML = ''
-            const img = document.createElement('img')
-            img.src = url
-            img.className = 'w-100 h-100 object-fit-cover'
-            avatar.appendChild(img)
-          } else {
-            avatar.textContent = (user.name || user.username).charAt(0).toUpperCase()
+            avatar.setAttribute('src', pb.files.getURL(user, user.avatar, { thumb: '32x32' }))
           }
 
           const nameWrapper = document.createElement('div')

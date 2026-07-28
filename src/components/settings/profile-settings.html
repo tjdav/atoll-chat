@@ -4,13 +4,8 @@
     <div class="card border-0 shadow-sm">
       <div class="card-body">
         <div class="d-flex align-items-center gap-4 mb-4">
-          <div class="position-relative cursor-pointer flex-shrink-0" ref="avatarContainer" style="width: 80px; height: 80px;" data-testid="avatarContainer">
-            <div ref="avatarPreview" class="avatar-circle w-100 h-100 d-flex align-items-center justify-content-center bg-primary-subtle text-primary fw-bold fs-3 overflow-hidden rounded-circle border">
-              {{ userInitial }}
-            </div>
-            <div class="position-absolute bottom-0 end-0 bg-primary text-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style="width: 24px; height: 24px; border: 2px solid white;">
-              <i class="bi bi-camera-fill small"></i>
-            </div>
+          <div class="position-relative cursor-pointer flex-shrink-0" ref="avatarContainer" data-testid="avatarContainer">
+            <atoll-profile ref="avatarProfile" size="2xl" icon-name="camera" alt="{{ displayName }}"></atoll-profile>
             <input type="file" class="d-none" ref="avatarInput" accept="image/*">
           </div>
           <div class="flex-grow-1">
@@ -51,7 +46,7 @@
       const nameInput = refs('nameInput')
       const avatarInput = refs('avatarInput')
       const avatarContainer = refs('avatarContainer')
-      const avatarPreview = refs('avatarPreview')
+      const avatarProfile = refs('avatarProfile')
       const btnSave = refs('btnSave')
 
       let pendingAvatarBlob = null
@@ -61,29 +56,20 @@
         const name = user?.name || user?.username || ''
         state.displayName = name
         state.userInitial = name.charAt(0).toUpperCase()
-  
+
         if (nameInput) {
           nameInput.value = state.displayName
         }
-  
-        if (avatarPreview) {
+
+        if (avatarProfile) {
           if (user?.avatar && !pendingAvatarBlob) {
             const avatarUrl = files.getUrl(user, user.avatar, { thumb: '100x100' })
-            avatarPreview.innerHTML = ''
-            const img = document.createElement('img')
-            img.src = avatarUrl
-            img.className = 'd-block w-100 h-100 object-fit-cover rounded-circle'
-            avatarPreview.appendChild(img)
+            avatarProfile.setAttribute('src', avatarUrl)
           } else if (pendingAvatarBlob) {
             const url = URL.createObjectURL(pendingAvatarBlob)
-            avatarPreview.innerHTML = ''
-            const img = document.createElement('img')
-            img.src = url
-            img.className = 'd-block w-100 h-100 object-fit-cover rounded-circle'
-            avatarPreview.appendChild(img)
+            avatarProfile.setAttribute('src', url)
           } else {
-            avatarPreview.innerHTML = ''
-            avatarPreview.textContent = state.userInitial
+            avatarProfile.removeAttribute('src')
           }
         }
       }
@@ -99,24 +85,26 @@
       nameInput.addEventListener('input', updateBtnState)
       nameInput.addEventListener('change', updateBtnState)
 
-      avatarContainer.onclick = () => avatarInput.click()
-  
-      avatarInput.onchange = (e) => {
-        const file = e.target.files[0]
-        if (file) {
-          $bus.emit('ui:open_avatar_editor', file)
+      if (avatarContainer) {
+        avatarContainer.onclick = () => avatarInput.click()
+      }
+
+      if (avatarInput) {
+        avatarInput.onchange = (e) => {
+          const file = e.target.files[0]
+          if (file) {
+            $bus.emit('ui:open_avatar_editor', file)
+          }
+          avatarInput.value = ''
         }
-        avatarInput.value = ''
       }
 
       $bus.on('ui:avatar_editor_applied', (blob) => {
         pendingAvatarBlob = blob
         const url = URL.createObjectURL(blob)
-        avatarPreview.innerHTML = ''
-        const img = document.createElement('img')
-        img.src = url
-        img.className = 'd-block w-100 h-100 object-fit-cover rounded-circle'
-        avatarPreview.appendChild(img)
+        if (avatarProfile) {
+          avatarProfile.setAttribute('src', url)
+        }
         updateBtnState()
       })
 
