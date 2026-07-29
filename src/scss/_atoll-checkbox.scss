@@ -1,0 +1,45 @@
+// src/scss/_atoll-checkbox.scss
+
+:root {
+  --#{$prefix}checkbox-size: 24px;
+  --#{$prefix}checkbox-border-color: var(--#{$prefix}border-color, #D4D4D4);
+  --#{$prefix}checkbox-bg-checked: var(--#{$prefix}brand-primary, #06C755);
+}
+
+.atoll-checkbox {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--#{$prefix}checkbox-size);
+  height: var(--#{$prefix}checkbox-size);
+  border-radius: 6px; // Smoothly rounded square
+  border: 1.5px solid var(--#{$prefix}checkbox-border-color);
+  background-color: transparent;
+  cursor: pointer;
+  box-sizing: border-box;
+  transition: all 0.15s ease-in-out;
+  user-select: none;
+  flex-shrink: 0;
+
+  .atoll-icon {
+    display: none; // Hidden by default when unchecked
+  }
+
+  &.checked {
+    background-color: var(--#{$prefix}checkbox-bg-checked);
+    border-color: var(--#{$prefix}checkbox-bg-checked);
+
+    .atoll-icon {
+      display: inline-flex;
+      --#{$prefix}icon-out-stroke: #FFFFFF !important;
+      --#{$prefix}icon-primary-color: #FFFFFF !important;
+      --#{$prefix}icon-inner-stroke: #FFFFFF !important;
+      color: #FFFFFF !important;
+    }
+  }
+
+  &.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+}

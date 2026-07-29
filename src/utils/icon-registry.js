@@ -13,6 +13,8 @@ import {
   DocumentsLinearIcon,
   DocumentsBoldIcon,
   EarthLinearIcon,
+  HamburgerMenuLinearIcon,
+  HamburgerMenuBoldIcon,
   EyeLinearIcon,
   EyeClosedLinearIcon,
   FileTextLinearIcon,
@@ -25,8 +27,9 @@ import {
   LogoutLinearIcon,
   MagnifierLinearIcon,
   MenuDotsLinearIcon,
-  MenuDotsBoldIcon,
   MicrophoneLinearIcon,
+  MinusCircleLinearIcon,
+  MinusCircleBoldIcon,
   MutedLinearIcon,
   PaperclipLinearIcon,
   PhoneLinearIcon,
@@ -91,9 +94,14 @@ export const SOLAR_ICON_MAP = {
     linear: LinkCircleLinearIcon,
     bold: LinkCircleBoldIcon
   },
-  'menu-dots': {
-    linear: MenuDotsLinearIcon,
-    bold: MenuDotsBoldIcon
+
+  'minus-circle': {
+    linear: MinusCircleLinearIcon,
+    bold: MinusCircleBoldIcon
+  },
+  'hamburger-menu': {
+    linear: HamburgerMenuLinearIcon,
+    bold: HamburgerMenuBoldIcon
   },
 
   // Core Navigation & Settings

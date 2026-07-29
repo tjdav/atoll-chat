@@ -2,7 +2,7 @@
 @import "theme/variables-primitives";
 
 // Rainbow & Bootstrap Variable Overrides ($primary, $theme-colors, etc.)
-@import "theme/variables-rainbow";
+@import "theme/variables-colours";
 
 // Breakpoints & Layout variables
 @import "theme/variables-layout";
@@ -27,16 +27,12 @@ $utilities: map-merge($utilities,
             (600: 600px,
               450: 450px,
               300: 300px)))),
-      "max-w": (
-        property: max-width,
+      "max-w": (property: max-width,
         class: max-w,
-        values: (
-          75: 75%,
+        values: (75: 75%,
           80: 80%,
           85: 85%,
-          100: 100%
-        )
-      ),
+          100: 100%)),
       "width": map-merge(map-get($utilities, "width"),
         (values: map-merge(map-get(map-get($utilities, "width"), "values"),
             ("250px": 250px,
@@ -145,6 +141,7 @@ $utilities: map-merge($utilities,
 @import "atoll-profile-grouped";
 @import "atoll-tooltip";
 @import "atoll-list";
+@import "atoll-checkbox";
 @import "atoll-popup";
 @import "auth";
 

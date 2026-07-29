@@ -5,36 +5,15 @@
     role="{{ itemRole }}"
     tabindex="{{ itemTabindex }}"
   >
-    <!-- 1. Contextual Action Zone (Dynamic Left) -->
-    <div class="atoll-list-item-contextual-zone">
-      <slot name="contextual-action">
-        <input 
-          type="checkbox" 
-          class="atoll-list-item-checkbox" 
-          ref="checkboxInput" 
-          checked="{{ isChecked }}"
-          aria-label="Select {{ title }}"
-          tabindex="-1"
-        />
-        <button 
-          type="button" 
-          class="atoll-list-item-delete-btn" 
-          ref="deleteButton"
-          aria-label="Delete {{ title }}"
-          tabindex="-1"
-        >
-          <atoll-icon name="minus-circle" size="20"></atoll-icon>
-        </button>
-      </slot>
-    </div>
-
-    <!-- 2. Leading Zone (Static Left) -->
+    <!-- 3-1. Left Area (Avatar, Thumbnail, Selection Control) -->
     <div class="atoll-list-item-left">
+      <atoll-checkbox ref="checkbox" hidden="{{ hideCheckbox }}" checked="{{ checked }}"></atoll-checkbox>
+      <atoll-icon ref="deleteIcon" name="minus-circle" size="24" color="var(--atoll-danger, #FF334B)" hidden="{{ hideDeleteIcon }}" class="atoll-list-item-delete-icon"></atoll-icon>
+      <slot name="leading"></slot>
       <slot name="left"></slot>
-      <slot name="avatar"></slot>
     </div>
 
-    <!-- 3. Content Body (Center Text Area) -->
+    <!-- 3-2. Center Text Area -->
     <div class="atoll-list-item-content">
       <div class="atoll-list-item-title-row">
         <span class="atoll-list-item-title">
@@ -42,31 +21,33 @@
         </span>
 
         <!-- Optional Top-Right Timestamp -->
-        <slot name="timestamp"></slot>
+        <span class="atoll-list-item-timestamp" hidden="{{ hideTimestamp }}">
+          {{ timestamp }}
+        </span>
       </div>
 
       <!-- Optional Subtitle / Description -->
-      <slot name="description"></slot>
+      <span class="atoll-list-item-description" hidden="{{ hideDescription }}">
+        {{ description }}
+      </span>
     </div>
 
-    <!-- 4. Trailing Zone (Static Right) -->
+    <!-- 3-3. Right Area (Switch, Badge, Chevron, Custom Action) -->
     <div class="atoll-list-item-right">
       <slot name="right"></slot>
 
       <!-- Unread Count Badge -->
-      <slot name="badge"></slot>
+      <atoll-badge hidden="{{ hideBadge }}" count="{{ badge }}" size="sm"></atoll-badge>
 
       <!-- Navigation Directional Chevron -->
-      <slot name="chevron"></slot>
-    </div>
+      <span class="atoll-list-item-chevron" hidden="{{ hideChevron }}">
+        <atoll-icon name="chevron-right" size="18"></atoll-icon>
+      </span>
 
-    <!-- 5. Reorder Zone (Dynamic Right) -->
-    <div class="atoll-list-item-reorder-zone">
-      <slot name="reorder-handle">
-        <span class="atoll-list-item-reorder-handle" ref="reorderHandle" aria-label="Reorder" tabindex="-1">
-          <atoll-icon name="hamburger-menu" size="20"></atoll-icon>
-        </span>
-      </slot>
+      <!-- Reorder Drag Handle -->
+      <span class="atoll-list-item-reorder" hidden="{{ hideReorderHandle }}">
+        <atoll-icon name="hamburger-menu" size="24" color="var(--atoll-text-secondary, #777777)"></atoll-icon>
+      </span>
     </div>
   </div>
 </template>
@@ -75,6 +56,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    dependencies: ['atoll-checkbox', 'atoll-icon'],
     attributes: {
       title: {
         type: String,
@@ -94,119 +76,44 @@
       },
       size: {
         type: String,
-        default: 'md' // 'sm' | 'md' | 'lg'
+        default: 'md'
       },
+      chevron: Boolean,
+      clickable: Boolean,
+      highlighted: Boolean,
+      disabled: Boolean,
+      selected: Boolean,
       mode: {
         type: String,
-        default: 'default' // 'default' | 'selection' | 'edit' | 'reorder'
+        default: 'default'
       },
-      checked: {
-        type: Boolean,
-        default: false
-      },
-      chevron: {
-        type: Boolean,
-        default: false
-      },
-      clickable: {
-        type: Boolean,
-        default: false
-      },
-      highlighted: {
-        type: Boolean,
-        default: false
-      },
-      disabled: {
-        type: Boolean,
-        default: false
-      },
-      selected: {
-        type: Boolean,
-        default: false
-      },
-      unread: {
-        type: Boolean,
-        default: false
-      }
-    },
-
-    slots: {
-      /**
-       * Dynamic slot evaluation for item unread badge.
-       * @param {Node[]} originalNodes - Slotted light DOM nodes.
-       * @param {Object} state - Component state.
-       * @returns {string|Node[]|null} Evaluated slot content.
-       */
-      badge (originalNodes, state) {
-        if (originalNodes && originalNodes.length > 0) {
-          return originalNodes
-        }
-        if (!state.badge || state.badge === '0') {
-          return null
-        }
-        return `<atoll-badge size="sm" count="${state.badge}"></atoll-badge>`
-      },
-
-      /**
-       * Dynamic slot evaluation for item navigation chevron.
-       * @param {Node[]} originalNodes - Slotted light DOM nodes.
-       * @param {Object} state - Component state.
-       * @returns {string|Node[]|null} Evaluated slot content.
-       */
-      chevron (originalNodes, state) {
-        if (originalNodes && originalNodes.length > 0) {
-          return originalNodes
-        }
-        if (!state.chevron || state.mode !== 'default') {
-          return null
-        }
-        return `<span class="atoll-list-item-chevron"><atoll-icon name="chevron-right" size="18"></atoll-icon></span>`
-      },
-
-      /**
-       * Dynamic slot evaluation for item timestamp.
-       * @param {Node[]} originalNodes - Slotted light DOM nodes.
-       * @param {Object} state - Component state.
-       * @returns {string|Node[]|null} Evaluated slot content.
-       */
-      timestamp (originalNodes, state) {
-        if (originalNodes && originalNodes.length > 0) {
-          return originalNodes
-        }
-        if (!state.timestamp) {
-          return null
-        }
-        return `<span class="atoll-list-item-timestamp">${state.timestamp}</span>`
-      },
-
-      /**
-       * Dynamic slot evaluation for item description / subtitle.
-       * @param {Node[]} originalNodes - Slotted light DOM nodes.
-       * @param {Object} state - Component state.
-       * @returns {string|Node[]|null} Evaluated slot content.
-       */
-      description (originalNodes, state) {
-        if (originalNodes && originalNodes.length > 0) {
-          return originalNodes
-        }
-        if (!state.description) {
-          return null
-        }
-        const extraClass = state.unread ? ' fw-bold' : ''
-        return `<small class="atoll-list-item-description text-truncate${extraClass}">${state.description}</small>`
+      checked: Boolean,
+      value: {
+        type: String,
+        default: ''
       }
     },
 
     getters: {
-      isChecked: (state) => (state.checked ? 'true' : null),
+      hideDescription: (state) => !state.description,
 
-      isClickable: (state) => state.clickable || state.chevron || state.mode === 'selection' || state.mode === 'edit',
+      hideTimestamp: (state) => !state.timestamp,
 
-      itemRole: (state) => (state.mode === 'selection' || state.isClickable ? 'button' : 'listitem'),
+      hideBadge: (state) => !state.badge || state.mode !== 'default',
+
+      hideChevron: (state) => !state.chevron || state.mode !== 'default',
+
+      hideCheckbox: (state) => state.mode !== 'selection',
+
+      hideDeleteIcon: (state) => state.mode !== 'edit',
+
+      hideReorderHandle: (state) => state.mode !== 'reorder',
+
+      isClickable: (state) => state.clickable || state.chevron || state.mode === 'selection',
+
+      itemRole: (state) => (state.isClickable ? 'button' : 'listitem'),
 
       itemTabindex: (state) => (state.isClickable && !state.disabled ? '0' : '-1'),
-
-      descriptionClasses: (state) => (state.unread ? 'fw-bold' : ''),
 
       itemClasses: (state) => {
         const classes = ['atoll-list-item']
@@ -215,14 +122,6 @@
           classes.push(`atoll-list-item-${state.size}`)
         } else {
           classes.push('atoll-list-item-md')
-        }
-
-        if (state.mode && state.mode !== 'default') {
-          classes.push(`atoll-list-item-mode-${state.mode}`)
-        }
-
-        if (state.checked) {
-          classes.push('atoll-list-item-checked')
         }
 
         if (state.isClickable) {
@@ -238,6 +137,9 @@
         if (state.disabled) {
           classes.push('disabled')
         }
+        if (state.mode && state.mode !== 'default') {
+          classes.push(`atoll-list-item-mode-${state.mode}`)
+        }
 
         return classes.join(' ')
       }
@@ -245,128 +147,47 @@
 
     client: ({ state, refs, root, observe }) => {
       const itemRoot = refs('itemRoot')
-      const deleteBtn = refs('deleteButton')
-      const checkboxInput = refs('checkboxInput')
+      const deleteIcon = refs('deleteIcon')
+      const checkbox = refs('checkbox')
 
-      const syncCheckedAttribute = (isChecked) => {
-        if (isChecked) {
-          root.setAttribute('checked', 'true')
-        } else {
-          root.removeAttribute('checked')
-        }
-        if (checkboxInput) {
-          checkboxInput.checked = isChecked
-        }
-      }
-
-      const handleTrigger = (event) => {
+      const handleTrigger = () => {
         if (state.disabled) {
           return
         }
 
         if (state.mode === 'selection') {
-          // In selection mode, tapping the row toggles the item's checked state
           state.checked = !state.checked
-          syncCheckedAttribute(state.checked)
-
           root.dispatchEvent(
-            new CustomEvent('atoll-item-selection-toggle', {
+            new CustomEvent('atoll-selection-change', {
               bubbles: true,
               composed: true,
-              detail: {
-                title: state.title,
-                checked: state.checked,
-                originalEvent: event
-              }
-            })
-          )
-
-          root.dispatchEvent(
-            new CustomEvent('atoll-item-click', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                title: state.title,
-                selected: state.selected,
-                checked: state.checked,
-                mode: state.mode,
-                originalEvent: event
-              }
+              detail: [
+                {
+                  checked: state.checked,
+                  value: state.value || state.title
+                }
+              ]
             })
           )
           return
         }
 
-        if (state.mode === 'edit') {
-          // In edit mode, tapping minus button or row triggers delete event
-          root.dispatchEvent(
-            new CustomEvent('atoll-item-delete-trigger', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                title: state.title,
-                originalEvent: event
-              }
-            })
-          )
-          return
-        }
-
-        // Default mode trigger
         root.dispatchEvent(
           new CustomEvent('atoll-item-click', {
             bubbles: true,
             composed: true,
             detail: {
               title: state.title,
-              selected: state.selected,
-              checked: state.checked,
-              mode: state.mode,
-              originalEvent: event
+              selected: state.selected
             }
           })
         )
       }
 
-      if (deleteBtn) {
-        deleteBtn.addEventListener('click', (event) => {
-          event.stopPropagation()
-          if (state.disabled) return
-          root.dispatchEvent(
-            new CustomEvent('atoll-item-delete-trigger', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                title: state.title,
-                originalEvent: event
-              }
-            })
-          )
-        })
-      }
-
-      if (checkboxInput) {
-        checkboxInput.addEventListener('change', (event) => {
-          event.stopPropagation()
-          state.checked = checkboxInput.checked
-          syncCheckedAttribute(state.checked)
-
-          root.dispatchEvent(
-            new CustomEvent('atoll-item-selection-toggle', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                title: state.title,
-                checked: state.checked,
-                originalEvent: event
-              }
-            })
-          )
-        })
-      }
-
       if (itemRoot) {
-        itemRoot.addEventListener('click', handleTrigger)
+        itemRoot.addEventListener('click', (e) => {
+          handleTrigger(e)
+        })
 
         itemRoot.addEventListener('keydown', (event) => {
           if (state.isClickable && (event.key === 'Enter' || event.key === ' ')) {
@@ -376,15 +197,75 @@
         })
       }
 
+      if (deleteIcon) {
+        deleteIcon.addEventListener('click', (e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          root.dispatchEvent(
+            new CustomEvent('atoll-item-action', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                action: 'delete',
+                value: state.value || state.title
+              }
+            })
+          )
+        })
+      }
+
+      if (checkbox) {
+        checkbox.addEventListener('change', (e) => {
+          e.stopPropagation()
+          state.checked = e.detail.checked
+          root.dispatchEvent(
+            new CustomEvent('atoll-selection-change', {
+              bubbles: true,
+              composed: true,
+              detail: [
+                {
+                  checked: state.checked,
+                  value: state.value || state.title
+                }
+              ]
+            })
+          )
+        })
+      }
+
+      // Expose properties on host element
+      Object.defineProperty(root, 'checked', {
+        get () {
+          return state.checked
+        },
+        set (val) {
+          state.checked = Boolean(val)
+        },
+        configurable: true
+      })
+
+      Object.defineProperty(root, 'mode', {
+        get () {
+          return state.mode
+        },
+        set (val) {
+          state.mode = val || 'default'
+        },
+        configurable: true
+      })
+
+      Object.defineProperty(root, 'value', {
+        get () {
+          return state.value
+        },
+        set (val) {
+          state.value = val || ''
+        },
+        configurable: true
+      })
+
       // Sync attribute changes dynamically
       if (observe) {
-        observe('checked', (val) => {
-          state.checked = val === 'true' || val === true || val === ''
-          syncCheckedAttribute(state.checked)
-        })
-        observe('mode', (val) => {
-          state.mode = val || 'default'
-        })
         observe('selected', (val) => {
           state.selected = val === 'true' || val === true || val === ''
         })
@@ -409,11 +290,14 @@
         observe('badge', (val) => {
           state.badge = val
         })
-        observe('chevron', (val) => {
-          state.chevron = val === 'true' || val === true || val === ''
+        observe('mode', (val) => {
+          state.mode = val || 'default'
         })
-        observe('unread', (val) => {
-          state.unread = val === 'true' || val === true || val === ''
+        observe('checked', (val) => {
+          state.checked = val === 'true' || val === true || val === ''
+        })
+        observe('value', (val) => {
+          state.value = val || ''
         })
       }
     }

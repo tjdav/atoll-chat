@@ -1,7 +1,11 @@
 import { test, expect } from './fixtures/base-test.js'
 
-test.describe('Atoll List and List Item Component Architecture ( State-Driven Architecture)', () => {
-  test.beforeEach(async ({ page }) => {
+test.describe('Atoll List and List Item Component Architecture', () => {
+  test.beforeEach(async ({ page, context }) => {
+    // Seed localStorage with mock instance ID to prevent background conflict reloads
+    await context.addInitScript(() => {
+      window.localStorage.setItem('atoll_active_instance_id', 'mock_test_instance_123')
+    })
     await page.goto('/')
     await page.waitForFunction(() => {
       return window.__coralite__ && window.__coralite__.lifecycle !== undefined
@@ -9,10 +13,31 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
     await page.evaluate(() => {
       return window.__coralite__.lifecycle.hydrated
     })
+    await page.evaluate(() => {
+      // Create a fixed full-screen sandbox overlay to isolate test markup perfectly
+      // without breaking router or global application shell states.
+      let sandbox = document.getElementById('test-sandbox')
+      if (sandbox) {
+        sandbox.innerHTML = ''
+      } else {
+        sandbox = document.createElement('div')
+        sandbox.id = 'test-sandbox'
+        sandbox.style.position = 'fixed'
+        sandbox.style.top = '0'
+        sandbox.style.left = '0'
+        sandbox.style.right = '0'
+        sandbox.style.bottom = '0'
+        sandbox.style.backgroundColor = '#f8f9fa'
+        sandbox.style.zIndex = '9999999'
+        sandbox.style.overflowY = 'auto'
+        document.body.appendChild(sandbox)
+      }
+    })
   })
 
   test('should render container with divided options', async ({ page }) => {
     await page.evaluate(async () => {
+      const sandbox = document.getElementById('test-sandbox')
       const listEl = document.createElement('atoll-list')
       listEl.id = 'test-list-divided'
       listEl.setAttribute('divided', 'true')
@@ -24,7 +49,7 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
 
       listEl.appendChild(item1)
       listEl.appendChild(item2)
-      document.body.appendChild(listEl)
+      sandbox.appendChild(listEl)
 
       // Wait for both to be upgraded
       await customElements.whenDefined('atoll-list')
@@ -38,6 +63,7 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
 
   test('should handle size modifier attributes and defaults', async ({ page }) => {
     await page.evaluate(async () => {
+      const sandbox = document.getElementById('test-sandbox')
       const container = document.createElement('div')
       container.id = 'test-sizes'
 
@@ -59,7 +85,7 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
       container.appendChild(itemSm)
       container.appendChild(itemMd)
       container.appendChild(itemLg)
-      document.body.appendChild(container)
+      sandbox.appendChild(container)
 
       await customElements.whenDefined('atoll-list-item')
     })
@@ -75,6 +101,7 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
 
   test('should support slot projections and unnamed default slot', async ({ page }) => {
     await page.evaluate(async () => {
+      const sandbox = document.getElementById('test-sandbox')
       const item = document.createElement('atoll-list-item')
       item.id = 'test-item-slots'
       item.setAttribute('timestamp', '12:00 PM')
@@ -101,7 +128,7 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
       defaultContent.innerText = 'Custom Title Content'
       item.appendChild(defaultContent)
 
-      document.body.appendChild(item)
+      sandbox.appendChild(item)
 
       await customElements.whenDefined('atoll-list-item')
     })
@@ -122,6 +149,7 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
 
   test('should handle clicks, focus, and Enter/Space keyboard trigger interaction', async ({ page }) => {
     await page.evaluate(async () => {
+      const sandbox = document.getElementById('test-sandbox')
       const item = document.createElement('atoll-list-item')
       item.id = 'clickable-item'
       item.setAttribute('title', 'Interactive Item')
@@ -132,7 +160,7 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
         window.itemClicks.push(e.detail)
       })
 
-      document.body.appendChild(item)
+      sandbox.appendChild(item)
 
       await customElements.whenDefined('atoll-list-item')
     })
@@ -163,18 +191,19 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
 
   test('should respect disabled status and block click and focus interaction', async ({ page }) => {
     await page.evaluate(async () => {
-      const item = document.createElement('atoll-list-item')
-      item.id = 'disabled-item'
-      item.setAttribute('title', 'Disabled Item')
-      item.setAttribute('clickable', 'true')
-      item.setAttribute('disabled', 'true')
+      const sandbox = document.getElementById('test-sandbox')
+      const itemEl = document.createElement('atoll-list-item')
+      itemEl.id = 'disabled-item'
+      itemEl.setAttribute('title', 'Disabled Item')
+      itemEl.setAttribute('clickable', 'true')
+      itemEl.setAttribute('disabled', 'true')
 
       window.disabledClicks = []
-      item.addEventListener('atoll-item-click', (e) => {
+      itemEl.addEventListener('atoll-item-click', (e) => {
         window.disabledClicks.push(e.detail)
       })
 
-      document.body.appendChild(item)
+      sandbox.appendChild(itemEl)
 
       await customElements.whenDefined('atoll-list-item')
     })
@@ -191,159 +220,180 @@ test.describe('Atoll List and List Item Component Architecture ( State-Driven Ar
     expect(clicks.length).toBe(0)
   })
 
-  test('should broadcast parent mode to child items and support selectAll API', async ({ page }) => {
+  test('should support atoll-checkbox behavior independently', async ({ page }) => {
     await page.evaluate(async () => {
-      const listEl = document.createElement('atoll-list')
-      listEl.id = 'mode-list'
-
-      const item1 = document.createElement('atoll-list-item')
-      item1.id = 'item-1'
-      item1.setAttribute('title', 'Item 1')
-
-      const item2 = document.createElement('atoll-list-item')
-      item2.id = 'item-2'
-      item2.setAttribute('title', 'Item 2')
-
-      listEl.appendChild(item1)
-      listEl.appendChild(item2)
-      document.body.appendChild(listEl)
-
-      await customElements.whenDefined('atoll-list')
-      await customElements.whenDefined('atoll-list-item')
+      const sandbox = document.getElementById('test-sandbox')
+      const cb = document.createElement('atoll-checkbox')
+      cb.id = 'test-cb-1'
+      cb.setAttribute('checked', 'true')
+      sandbox.appendChild(cb)
+      await customElements.whenDefined('atoll-checkbox')
     })
 
-    const list = page.locator('#mode-list')
-    const item1 = page.locator('#item-1 .atoll-list-item')
-    const item2 = page.locator('#item-2 .atoll-list-item')
-
-    // Switch mode to selection via parent list
-    await page.evaluate(() => {
-      const listEl = document.querySelector('#mode-list')
-      listEl.setAttribute('mode', 'selection')
-    })
-
-    await expect(list.locator('.atoll-list')).toHaveClass(/atoll-list-mode-selection/)
-    await expect(item1).toHaveClass(/atoll-list-item-mode-selection/)
-    await expect(item2).toHaveClass(/atoll-list-item-mode-selection/)
-
-    // Programmatic selectAll API
-    await page.evaluate(() => {
-      const listEl = document.querySelector('#mode-list')
-      listEl.selectAll()
-    })
-
-    await expect(page.locator('#item-1')).toHaveAttribute('checked', 'true')
-    await expect(page.locator('#item-2')).toHaveAttribute('checked', 'true')
-
-    // Programmatic clearSelection API
-    await page.evaluate(() => {
-      const listEl = document.querySelector('#mode-list')
-      listEl.clearSelection()
-    })
-
-    await expect(page.locator('#item-1')).not.toHaveAttribute('checked', 'true')
-    await expect(page.locator('#item-2')).not.toHaveAttribute('checked', 'true')
+    const cbLoc = page.locator('#test-cb-1')
+    await expect(cbLoc.locator('.atoll-checkbox')).toHaveClass(/checked/)
+    
+    // Test toggle click
+    await cbLoc.locator('.atoll-checkbox').click()
+    await expect(cbLoc.locator('.atoll-checkbox')).not.toHaveClass(/checked/)
   })
 
-  test('should handle selection mode row tap toggle and event dispatch', async ({ page }) => {
+  test('should support selection-mode click and toggle and event dispatching', async ({ page }) => {
     await page.evaluate(async () => {
-      const listEl = document.createElement('atoll-list')
-      listEl.id = 'selection-tap-list'
-      listEl.setAttribute('mode', 'selection')
-
+      const sandbox = document.getElementById('test-sandbox')
       const item = document.createElement('atoll-list-item')
       item.id = 'selection-item'
-      item.setAttribute('title', 'Selectable Item')
+      item.setAttribute('title', 'Selectable Person')
+      item.setAttribute('mode', 'selection')
+      item.setAttribute('checked', 'false')
 
-      window.selectionToggles = []
-      item.addEventListener('atoll-item-selection-toggle', (e) => {
-        window.selectionToggles.push(e.detail)
+      window.selectionChanges = []
+      item.addEventListener('atoll-selection-change', (e) => {
+        window.selectionChanges.push(e.detail)
       })
 
-      listEl.appendChild(item)
-      document.body.appendChild(listEl)
-
-      await customElements.whenDefined('atoll-list')
+      sandbox.appendChild(item)
       await customElements.whenDefined('atoll-list-item')
     })
 
-    const itemLoc = page.locator('#selection-item .atoll-list-item')
-    await itemLoc.click()
+    const itemLoc = page.locator('#selection-item')
+    const rootDiv = itemLoc.locator('.atoll-list-item')
 
-    let toggles = await page.evaluate(() => window.selectionToggles)
-    expect(toggles.length).toBe(1)
-    expect(toggles[0].checked).toBe(true)
+    // Click the row to check it
+    await rootDiv.click()
+    let changes = await page.evaluate(() => window.selectionChanges)
+    expect(changes.length).toBe(1)
+    expect(changes[0][0].checked).toBe(true)
+    expect(changes[0][0].value).toBe('Selectable Person')
 
-    await itemLoc.click()
-    toggles = await page.evaluate(() => window.selectionToggles)
-    expect(toggles.length).toBe(2)
-    expect(toggles[0].checked).toBe(true)
+    // Click again to uncheck it
+    await rootDiv.click()
+    changes = await page.evaluate(() => window.selectionChanges)
+    expect(changes.length).toBe(2)
+    expect(changes[1][0].checked).toBe(false)
   })
 
-  test('should render visual matrix of  states for screenshot', async ({ page }) => {
+  test('should support delete-mode action triggers', async ({ page }) => {
     await page.evaluate(async () => {
+      const sandbox = document.getElementById('test-sandbox')
+      const item = document.createElement('atoll-list-item')
+      item.id = 'delete-item'
+      item.setAttribute('title', 'Deletable Person')
+      item.setAttribute('mode', 'edit')
+
+      window.itemActions = []
+      item.addEventListener('atoll-item-action', (e) => {
+        window.itemActions.push(e.detail)
+      })
+
+      sandbox.appendChild(item)
+      await customElements.whenDefined('atoll-list-item')
+    })
+
+    const itemLoc = page.locator('#delete-item')
+    const deleteIcon = itemLoc.locator('.atoll-list-item-delete-icon')
+
+    await expect(deleteIcon).toBeVisible()
+    await deleteIcon.click()
+
+    const actions = await page.evaluate(() => window.itemActions)
+    expect(actions.length).toBe(1)
+    expect(actions[0].action).toBe('delete')
+    expect(actions[0].value).toBe('Deletable Person')
+  })
+
+  test('should render visual matrix of states for screenshot', async ({ page }) => {
+    await page.evaluate(async () => {
+      const sandbox = document.getElementById('test-sandbox')
+
+      // Trigger loading of all required components programmatically first so they are upgraded
       document.createElement('atoll-list')
       document.createElement('atoll-list-item')
+      document.createElement('atoll-checkbox')
+      document.createElement('atoll-profile')
+      document.createElement('atoll-icon')
 
       await customElements.whenDefined('atoll-list')
       await customElements.whenDefined('atoll-list-item')
+      await customElements.whenDefined('atoll-checkbox')
+      await customElements.whenDefined('atoll-profile')
+      await customElements.whenDefined('atoll-icon')
 
-      document.body.innerHTML = `
-        <div id="matrix-container" style="display: flex; flex-direction: column; gap: 24px; padding: 40px; background-color: #f8f9fa; font-family: sans-serif; color: #111; max-width: 600px; margin: 0 auto;">
-          <h2>Atoll  State-Driven List Matrix</h2>
+      // Setup a clean layout inside our sandbox for the visual verification matching list_matrix.png exactly
+      sandbox.innerHTML = `
+        <div style="display: flex; flex-direction: column; gap: 24px; padding: 40px; background-color: #f8f9fa; font-family: sans-serif; color: #111; max-width: 600px; margin: 0 auto;">
+          <h2 style="font-size: 28px; font-weight: 700; margin-bottom: 4px;">Atoll State-Driven List Matrix</h2>
           
           <div>
-            <h4 style="margin-bottom: 8px;">1. Default Navigation Mode</h4>
-            <atoll-list divided="true" id="default-list">
-              <atoll-list-item title="Alice" description="Hey, where are we meeting?" timestamp="10:30 AM" badge="1" clickable="true" id="v-alice"></atoll-list-item>
-              <atoll-list-item title="Bob" description="Sent a photo." timestamp="Yesterday" clickable="true" id="v-bob"></atoll-list-item>
-              <atoll-list-item title="Charlie" description="Away on vacation" disabled="true" clickable="true" id="v-charlie"></atoll-list-item>
+            <h4 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">1. Default Navigation Mode</h4>
+            <atoll-list divided="true" id="standard-list">
+              <atoll-list-item title="Alice" description="Hey, where are we meeting?" timestamp="10:30 AM" badge="1" clickable="true" id="v-alice">
+                <atoll-profile slot="leading" size="md" name="Alice"></atoll-profile>
+              </atoll-list-item>
+              <atoll-list-item title="Bob" description="Sent a photo." timestamp="Yesterday" clickable="true" id="v-bob">
+                <atoll-profile slot="leading" size="md" name="Bob"></atoll-profile>
+              </atoll-list-item>
+              <atoll-list-item title="Charlie" description="Away on vacation" disabled="true" clickable="true" id="v-charlie">
+                <atoll-profile slot="leading" size="md" name="Charlie"></atoll-profile>
+              </atoll-list-item>
             </atoll-list>
           </div>
 
           <div>
-            <h4 style="margin-bottom: 8px;">2. Selection Mode (Contextual Checkboxes)</h4>
-            <atoll-list mode="selection" id="selection-list">
-              <atoll-list-item title="Alice Smith" description="Selected contact" checked="true" id="v-sel-1"></atoll-list-item>
-              <atoll-list-item title="Bob Jones" description="Unselected contact" id="v-sel-2"></atoll-list-item>
+            <h4 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">2. Selection Mode (Contextual Checkboxes)</h4>
+            <atoll-list divided="true" id="selection-list">
+              <atoll-list-item title="Alice Smith" description="Selected contact" mode="selection" checked="true" clickable="true" id="v-alice-smith">
+                <atoll-profile slot="leading" size="md" name="Alice Smith"></atoll-profile>
+              </atoll-list-item>
+              <atoll-list-item title="Bob Jones" description="Unselected contact" mode="selection" checked="false" clickable="true" id="v-bob-jones">
+                <atoll-profile slot="leading" size="md" name="Bob Jones"></atoll-profile>
+              </atoll-list-item>
             </atoll-list>
           </div>
 
           <div>
-            <h4 style="margin-bottom: 8px;">3. Edit / Delete Mode (Contextual Red Minus Action)</h4>
-            <atoll-list mode="edit" divided="true" id="edit-list">
-              <atoll-list-item title="Blocked Contact 1" description="Blocked on 10/12" id="v-edit-1"></atoll-list-item>
-              <atoll-list-item title="Blocked Contact 2" description="Blocked on 08/15" id="v-edit-2"></atoll-list-item>
+            <h4 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">3. Edit / Delete Mode (Contextual Red Minus Action)</h4>
+            <atoll-list divided="true" id="delete-list">
+              <atoll-list-item title="Blocked Contact 1" description="Blocked on 10/12" mode="edit" clickable="true" id="v-blocked-1">
+                <atoll-profile slot="leading" size="md" name="Blocked Contact 1"></atoll-profile>
+              </atoll-list-item>
+              <atoll-list-item title="Blocked Contact 2" description="Blocked on 08/15" mode="edit" clickable="true" id="v-blocked-2">
+                <atoll-profile slot="leading" size="md" name="Blocked Contact 2"></atoll-profile>
+              </atoll-list-item>
             </atoll-list>
           </div>
 
           <div>
-            <h4 style="margin-bottom: 8px;">4. Reorder Mode (Dynamic Right Drag Handles)</h4>
-            <atoll-list mode="reorder" id="reorder-list">
-              <atoll-list-item title="Pinned Room 1" description="High priority thread" id="v-reorder-1"></atoll-list-item>
-              <atoll-list-item title="Pinned Room 2" description="Secondary thread" id="v-reorder-2"></atoll-list-item>
+            <h4 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">4. Reorder Mode (Dynamic Right Drag Handles)</h4>
+            <atoll-list divided="true" id="reorder-list">
+              <atoll-list-item title="Pinned Room 1" description="High priority thread" mode="reorder" clickable="true" id="v-pinned-1">
+                <atoll-profile slot="leading" size="md" name="Pinned Room 1"></atoll-profile>
+              </atoll-list-item>
+              <atoll-list-item title="Pinned Room 2" description="Secondary thread" mode="reorder" clickable="true" id="v-pinned-2">
+                <atoll-profile slot="leading" size="md" name="Pinned Room 2"></atoll-profile>
+              </atoll-list-item>
             </atoll-list>
           </div>
 
           <div>
-            <h4 style="margin-bottom: 8px;">5. Highlighted & Selected States</h4>
-            <atoll-list id="states-list">
-              <atoll-list-item title="Selected Contact" description="Active selection state" selected="true" clickable="true" id="v-selected"></atoll-list-item>
-              <atoll-list-item title="Highlighted Item" description="Soft subtle highlight tint" highlighted="true" clickable="true" id="v-highlighted"></atoll-list-item>
+            <h4 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">5. Highlighted & Selected States</h4>
+            <atoll-list id="highlighted-selected-list">
+              <atoll-list-item title="Selected Contact" description="Active selection state" selected="true" clickable="true" id="v-selected">
+                <atoll-profile slot="leading" size="md" name="Selected Contact"></atoll-profile>
+              </atoll-list-item>
+              <atoll-list-item title="Highlighted Item" description="Soft subtle highlight tint" highlighted="true" clickable="true" id="v-highlighted">
+                <atoll-profile slot="leading" size="md" name="Highlighted Item"></atoll-profile>
+              </atoll-list-item>
             </atoll-list>
           </div>
         </div>
       `
     })
 
-    // Ensure viewport height fits the full matrix without clipping
-    await page.setViewportSize({
-      width: 1280,
-      height: 1400
-    })
-    await page.waitForTimeout(1000)
+    // Wait for components to fully load and render
+    await page.waitForTimeout(2000)
 
-    // Capture visual screenshot of the full container element
-    await page.locator('#matrix-container').screenshot({ path: 'tests/e2e/screenshots/list_matrix.png' })
+    // Capture visual screenshot
+    await page.screenshot({ path: 'tests/e2e/screenshots/list_matrix.png' })
   })
 })

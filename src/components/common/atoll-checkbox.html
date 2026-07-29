@@ -1,0 +1,106 @@
+<template id="atoll-checkbox">
+  <div 
+    ref="checkboxRoot"
+    class="{{ checkboxClasses }}" 
+    role="checkbox" 
+    aria-checked="{{ ariaChecked }}" 
+    tabindex="{{ tabIndex }}"
+  >
+    <atoll-icon name="check" active="true" size="16"></atoll-icon>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      checked: Boolean,
+      disabled: Boolean
+    },
+
+    getters: {
+      ariaChecked: (state) => (state.checked ? 'true' : 'false'),
+      tabIndex: (state) => (state.disabled ? '-1' : '0'),
+      checkboxClasses: (state) => {
+        const classes = ['atoll-checkbox']
+        if (state.checked) {
+          classes.push('checked')
+        }
+        if (state.disabled) {
+          classes.push('disabled')
+        }
+        return classes.join(' ')
+      }
+    },
+
+    client: ({ state, refs, root, observe }) => {
+      const checkboxRoot = refs('checkboxRoot')
+
+      const toggle = () => {
+        if (state.disabled) {
+          return
+        }
+        state.checked = !state.checked
+
+        // Dispatch standard events for form binding compatibility
+        root.dispatchEvent(new CustomEvent('change', {
+          bubbles: true,
+          composed: true,
+          detail: { checked: state.checked }
+        }))
+        root.dispatchEvent(new CustomEvent('input', {
+          bubbles: true,
+          composed: true,
+          detail: { checked: state.checked }
+        }))
+      }
+
+      if (checkboxRoot) {
+        checkboxRoot.addEventListener('click', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          toggle()
+        })
+
+        checkboxRoot.addEventListener('keydown', (e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault()
+            e.stopPropagation()
+            toggle()
+          }
+        })
+      }
+
+      // Expose property on host element
+      Object.defineProperty(root, 'checked', {
+        get () {
+          return state.checked
+        },
+        set (val) {
+          state.checked = Boolean(val)
+        },
+        configurable: true
+      })
+
+      Object.defineProperty(root, 'disabled', {
+        get () {
+          return state.disabled
+        },
+        set (val) {
+          state.disabled = Boolean(val)
+        },
+        configurable: true
+      })
+
+      if (observe) {
+        observe('checked', (val) => {
+          state.checked = val === 'true' || val === true || val === ''
+        })
+        observe('disabled', (val) => {
+          state.disabled = val === 'true' || val === true || val === ''
+        })
+      }
+    }
+  })
+</script>

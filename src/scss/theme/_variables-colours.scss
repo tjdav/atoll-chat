@@ -1,6 +1,4 @@
-// scss/theme/_variables-rainbow.scss
-
-$atoll-rainbow: (
+$atoll-colours: (
   // Lime
   "lime-100": #9DE693,
   "lime-200": #8FDF81,
@@ -216,24 +214,24 @@ $atoll-rainbow: (
 );
 
 // Native Bootstrap Theme Colors Overrides
-$primary:   #06C755;
+$primary: #06C755;
 $secondary: #777777;
-$success:   #06C755;
-$info:      #4270ED;
-$warning:   #FF8A00;
-$danger:    #FF334B;
-$light:     #F5F5F5;
-$dark:      #111111;
+$success: #06C755;
+$info: #4270ED;
+$warning: #FF8A00;
+$danger: #FF334B;
+$light: #F5F5F5;
+$dark: #111111;
 
 $theme-colors: (
-  "primary":   $primary,
+  "primary": $primary,
   "secondary": $secondary,
-  "success":   $success,
-  "info":      $info,
-  "warning":   $warning,
-  "danger":    $danger,
-  "light":     $light,
-  "dark":      $dark,
-  "purple":    map-get($atoll-rainbow, "purple"),
-  "yellow":    map-get($atoll-rainbow, "yellow")
+  "success": $success,
+  "info": $info,
+  "warning": $warning,
+  "danger": $danger,
+  "light": $light,
+  "dark": $dark,
+  "purple": map-get($atoll-colours, "purple"),
+  "yellow": map-get($atoll-colours, "yellow")
 );
