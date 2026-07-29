@@ -76,7 +76,56 @@ The row component handles title fallbacks, unread badges, directional indicators
 
 ---
 
-## 3. Styling Architecture & Theme Variables (SCSS)
+## 3. Dynamic Computed Slots Architecture
+
+To eliminate unneeded DOM node allocations and avoid manual `hidden` DOM attribute manipulation, `<atoll-list-item>` utilizes **Coralite Computed Slots** (`slots: { ... }`) to conditionally construct and render slot content:
+
+```javascript
+export default defineComponent({
+  slots: {
+    /**
+     * Dynamic slot evaluation for unread count badge.
+     */
+    badge (originalNodes, state) {
+      if (originalNodes && originalNodes.length > 0) return originalNodes
+      if (!state.badge || state.badge === '0') return null
+      return `<atoll-badge size="sm" count="${state.badge}"></atoll-badge>`
+    },
+
+    /**
+     * Dynamic slot evaluation for navigation directional chevron.
+     */
+    chevron (originalNodes, state) {
+      if (originalNodes && originalNodes.length > 0) return originalNodes
+      if (!state.chevron) return null
+      return `<span class="atoll-list-item-chevron"><atoll-icon name="chevron-right" size="18"></atoll-icon></span>`
+    },
+
+    /**
+     * Dynamic slot evaluation for top-right timestamp.
+     */
+    timestamp (originalNodes, state) {
+      if (originalNodes && originalNodes.length > 0) return originalNodes
+      if (!state.timestamp) return null
+      return `<span class="atoll-list-item-timestamp">${state.timestamp}</span>`
+    },
+
+    /**
+     * Dynamic slot evaluation for item subtitle / description.
+     */
+    description (originalNodes, state) {
+      if (originalNodes && originalNodes.length > 0) return originalNodes
+      if (!state.description) return null
+      const extraClass = state.unread ? ' fw-bold' : ''
+      return `<small class="atoll-list-item-description text-truncate${extraClass}">${state.description}</small>`
+    }
+  }
+})
+```
+
+---
+
+## 4. Styling Architecture & Theme Variables (SCSS)
 
 All styles reside in `src/scss/_atoll-list.scss`. The stylesheet maps layout tokens, spacing grids, transitions, and dark theme support using Atoll's custom prefix variables:
 
