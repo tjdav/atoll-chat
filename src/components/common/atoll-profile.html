@@ -15,15 +15,11 @@
     </div>
 
     <div class="atoll-profile-badge" hidden="{{ hideBadge }}">
-      <slot name="badge">
-        <atoll-badge ref="badgeElement" size="sm"></atoll-badge>
-      </slot>
+      <slot name="badge"></slot>
     </div>
 
     <div class="atoll-profile-icon" hidden="{{ hideOverlayIcon }}">
-      <slot name="icon">
-        <atoll-icon ref="overlayIconElement"></atoll-icon>
-      </slot>
+      <slot name="icon"></slot>
     </div>
   </div>
 </template>
@@ -65,8 +61,48 @@
         type: Number,
         default: 1
       },
-      ring: Boolean,
-      hasError: Boolean
+      ring: {
+        type: Boolean,
+        default: false
+      },
+      hasError: {
+        type: Boolean,
+        default: false
+      }
+    },
+
+    slots: {
+      /**
+       * Dynamic slot evaluation for profile badge.
+       * @param {Node[]} originalNodes - Slotted light DOM nodes.
+       * @param {Object} state - Component state.
+       * @returns {string|Node[]|null} Evaluated slot content.
+       */
+      badge (originalNodes, state) {
+        if (!state.badge) {
+          return null
+        }
+        if (originalNodes && originalNodes.length > 0) {
+          return originalNodes
+        }
+        return `<atoll-badge size="sm" count="${state.badge}"></atoll-badge>`
+      },
+
+      /**
+       * Dynamic slot evaluation for overlay icon.
+       * @param {Node[]} originalNodes - Slotted light DOM nodes.
+       * @param {Object} state - Component state.
+       * @returns {string|Node[]|null} Evaluated slot content.
+       */
+      icon (originalNodes, state) {
+        if (!state.iconName) {
+          return null
+        }
+        if (originalNodes && originalNodes.length > 0) {
+          return originalNodes
+        }
+        return `<atoll-icon name="${state.iconName}" size="${state.overlayIconSize}"></atoll-icon>`
+      }
     },
 
     getters: {
@@ -97,10 +133,10 @@
       hideInitials: (state) => {
         const str = state.name || state.alt
         if (!str || str === 'User profile') {
-          return true
+          return 'true'
         }
         const clean = str.trim()
-        return clean.length === 0
+        return clean.length === 0 ? 'true' : null
       },
 
       fallbackStyle: (state) => {
@@ -132,13 +168,13 @@
         return ''
       },
 
-      hideImage: (state) => !state.src || state.hasError,
+      hideImage: (state) => (!state.src || state.hasError ? 'true' : null),
 
-      hideFallback: (state) => Boolean(state.src) && !state.hasError,
+      hideFallback: (state) => ((Boolean(state.src) && !state.hasError) || state.type === 'multiparty' ? 'true' : null),
 
-      hideBadge: (state) => !state.badge,
+      hideBadge: (state) => (!state.badge ? 'true' : null),
 
-      hideOverlayIcon: (state) => !state.iconName,
+      hideOverlayIcon: (state) => (!state.iconName ? 'true' : null),
 
       iconSize: (state) => {
         if (state.size === '2xs' || state.size === 'xs') {
@@ -220,38 +256,6 @@
       updateSrc(state.src)
       observe('src', updateSrc)
 
-      const badgeEl = refs('badgeElement')
-      const overlayIconEl = refs('overlayIconElement')
-
-      const updateBadge = () => {
-        if (badgeEl) {
-          if (state.badge) {
-            badgeEl.setAttribute('count', state.badge)
-          } else {
-            badgeEl.removeAttribute('count')
-          }
-        }
-      }
-
-      const updateOverlayIcon = () => {
-        if (overlayIconEl) {
-          if (state.iconName) {
-            overlayIconEl.setAttribute('name', state.iconName)
-          } else {
-            overlayIconEl.removeAttribute('name')
-          }
-          if (state.overlayIconSize) {
-            overlayIconEl.setAttribute('size', state.overlayIconSize)
-          }
-        }
-      }
-
-      observe('badge', updateBadge)
-      observe('iconName', updateOverlayIcon)
-      observe('overlayIconSize', updateOverlayIcon)
-      updateBadge()
-      updateOverlayIcon()
-
       let disconnectMultiparty = null
 
       const handleMultiparty = () => {
@@ -267,6 +271,16 @@
         const targetCount = Math.min(Math.max(state.splitCount, 2), 4)
 
         const syncImages = () => {
+          const defaultImg = container.querySelector('[ref="avatarImage"]')
+          if (defaultImg && !defaultImg.getAttribute('src')) {
+            defaultImg.remove()
+          }
+
+          const defaultFallback = container.querySelector('.atoll-profile-fallback')
+          if (defaultFallback && !defaultFallback.getAttribute('style') && !defaultFallback.children.length) {
+            defaultFallback.remove()
+          }
+
           const children = Array.from(container.children)
 
           children.forEach((child) => {
@@ -388,3 +402,9 @@
     }
   })
 </script>
+
+
+
+
+
+
