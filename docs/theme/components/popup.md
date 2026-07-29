@@ -140,7 +140,7 @@ All styles reside in `src/scss/_atoll-popup.scss` and override Bootstrap's modal
   <div class="mt-3">
     <atoll-input 
       label="Group Name" 
-      value="LINE Design System Team" 
+      value="Atoll Team" 
       clearable="true" 
       maxlength="30"
       show-counter="true"
