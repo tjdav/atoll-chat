@@ -202,7 +202,7 @@ test.describe('Atoll List and List Item Component Architecture', () => {
 
       // Setup a clean layout for the visual verification
       document.body.innerHTML = `
-        <div style="display: flex; flex-direction: column; gap: 24px; padding: 40px; background-color: #f8f9fa; font-family: sans-serif; color: #111; max-width: 600px; margin: 0 auto;">
+        <div id="matrix-container" style="display: flex; flex-direction: column; gap: 24px; padding: 40px; background-color: #f8f9fa; font-family: sans-serif; color: #111; max-width: 600px; margin: 0 auto;">
           <h2>Atoll List & List Item Component Matrix</h2>
           
           <div>
@@ -240,10 +240,11 @@ test.describe('Atoll List and List Item Component Architecture', () => {
       `
     })
 
-    // Wait for components to fully load and render
-    await page.waitForTimeout(2000)
+    // Ensure viewport height fits the full matrix without clipping
+    await page.setViewportSize({ width: 1280, height: 1200 })
+    await page.waitForTimeout(1000)
 
-    // Capture visual screenshot
-    await page.screenshot({ path: 'tests/e2e/screenshots/list_matrix.png' })
+    // Capture visual screenshot of the full container element
+    await page.locator('#matrix-container').screenshot({ path: 'tests/e2e/screenshots/list_matrix.png' })
   })
 })
