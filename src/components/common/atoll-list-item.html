@@ -5,9 +5,10 @@
     role="{{ itemRole }}"
     tabindex="{{ itemTabindex }}"
   >
-    <!-- 3-1. Left Area (Avatar, Thumbnail, Selection Control) -->
+    <!-- 3-1. Left Area (Avatar, Icon, Selection Control) -->
     <div class="atoll-list-item-left">
       <slot name="left"></slot>
+      <slot name="avatar"></slot>
     </div>
 
     <!-- 3-2. Center Text Area -->
@@ -18,28 +19,22 @@
         </span>
 
         <!-- Optional Top-Right Timestamp -->
-        <span class="atoll-list-item-timestamp" hidden="{{ hideTimestamp }}">
-          {{ timestamp }}
-        </span>
+        <slot name="timestamp"></slot>
       </div>
 
       <!-- Optional Subtitle / Description -->
-      <span class="atoll-list-item-description" hidden="{{ hideDescription }}">
-        {{ description }}
-      </span>
+      <slot name="description"></slot>
     </div>
 
-    <!-- 3-3. Right Area (Switch, Badge, Chevron, Custom Action) -->
+    <!-- 3-3. Right Area (Badge, Chevron, Dropdown Actions) -->
     <div class="atoll-list-item-right">
       <slot name="right"></slot>
 
       <!-- Unread Count Badge -->
-      <atoll-badge hidden="{{ hideBadge }}" count="{{ badge }}" size="sm"></atoll-badge>
+      <slot name="badge"></slot>
 
       <!-- Navigation Directional Chevron -->
-      <span class="atoll-list-item-chevron" hidden="{{ hideChevron }}">
-        <atoll-icon name="chevron-right" size="18"></atoll-icon>
-      </span>
+      <slot name="chevron"></slot>
     </div>
   </div>
 </template>
@@ -69,27 +64,107 @@
         type: String,
         default: 'md' // 'sm' | 'md' | 'lg'
       },
-      chevron: Boolean,
-      clickable: Boolean,
-      highlighted: Boolean,
-      disabled: Boolean,
-      selected: Boolean
+      chevron: {
+        type: Boolean,
+        default: false
+      },
+      clickable: {
+        type: Boolean,
+        default: false
+      },
+      highlighted: {
+        type: Boolean,
+        default: false
+      },
+      disabled: {
+        type: Boolean,
+        default: false
+      },
+      selected: {
+        type: Boolean,
+        default: false
+      },
+      unread: {
+        type: Boolean,
+        default: false
+      }
+    },
+
+    slots: {
+      /**
+       * Dynamic slot evaluation for item unread badge.
+       * @param {Node[]} originalNodes - Slotted light DOM nodes.
+       * @param {Object} state - Component state.
+       * @returns {string|Node[]|null} Evaluated slot content.
+       */
+      badge (originalNodes, state) {
+        if (originalNodes && originalNodes.length > 0) {
+          return originalNodes
+        }
+        if (!state.badge || state.badge === '0') {
+          return null
+        }
+        return `<atoll-badge size="sm" count="${state.badge}"></atoll-badge>`
+      },
+
+      /**
+       * Dynamic slot evaluation for item navigation chevron.
+       * @param {Node[]} originalNodes - Slotted light DOM nodes.
+       * @param {Object} state - Component state.
+       * @returns {string|Node[]|null} Evaluated slot content.
+       */
+      chevron (originalNodes, state) {
+        if (originalNodes && originalNodes.length > 0) {
+          return originalNodes
+        }
+        if (!state.chevron) {
+          return null
+        }
+        return `<span class="atoll-list-item-chevron"><atoll-icon name="chevron-right" size="18"></atoll-icon></span>`
+      },
+
+      /**
+       * Dynamic slot evaluation for item timestamp.
+       * @param {Node[]} originalNodes - Slotted light DOM nodes.
+       * @param {Object} state - Component state.
+       * @returns {string|Node[]|null} Evaluated slot content.
+       */
+      timestamp (originalNodes, state) {
+        if (originalNodes && originalNodes.length > 0) {
+          return originalNodes
+        }
+        if (!state.timestamp) {
+          return null
+        }
+        return `<span class="atoll-list-item-timestamp">${state.timestamp}</span>`
+      },
+
+      /**
+       * Dynamic slot evaluation for item description / subtitle.
+       * @param {Node[]} originalNodes - Slotted light DOM nodes.
+       * @param {Object} state - Component state.
+       * @returns {string|Node[]|null} Evaluated slot content.
+       */
+      description (originalNodes, state) {
+        if (originalNodes && originalNodes.length > 0) {
+          return originalNodes
+        }
+        if (!state.description) {
+          return null
+        }
+        const extraClass = state.unread ? ' fw-bold' : ''
+        return `<small class="atoll-list-item-description text-truncate${extraClass}">${state.description}</small>`
+      }
     },
 
     getters: {
-      hideDescription: (state) => !state.description,
-
-      hideTimestamp: (state) => !state.timestamp,
-
-      hideBadge: (state) => !state.badge,
-
-      hideChevron: (state) => !state.chevron,
-
       isClickable: (state) => state.clickable || state.chevron,
 
       itemRole: (state) => (state.isClickable ? 'button' : 'listitem'),
 
       itemTabindex: (state) => (state.isClickable && !state.disabled ? '0' : '-1'),
+
+      descriptionClasses: (state) => (state.unread ? 'fw-bold' : ''),
 
       itemClasses: (state) => {
         const classes = ['atoll-list-item']
@@ -132,7 +207,8 @@
             composed: true,
             detail: {
               title: state.title,
-              selected: state.selected
+              selected: state.selected,
+              originalEvent: event
             }
           })
         )
@@ -174,6 +250,12 @@
         })
         observe('badge', (val) => {
           state.badge = val
+        })
+        observe('chevron', (val) => {
+          state.chevron = val === 'true' || val === true || val === ''
+        })
+        observe('unread', (val) => {
+          state.unread = val === 'true' || val === true || val === ''
         })
       }
     }
