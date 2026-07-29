@@ -56,13 +56,13 @@ test.describe.serial('Group Audio and Video Calls', () => {
       await expect(alicePage.locator('chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
 
       // Assert and open group room for Bob
-      const bobGroupChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: groupRoomName }).first()
+      const bobGroupChat = bobPage.locator('chat-list atoll-list-item, chat-list .app-list-item').filter({ hasText: groupRoomName }).first()
       await expect(bobGroupChat).toBeVisible({ timeout: 15000 })
       await bobGroupChat.click()
       await expect(bobPage.locator('chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
 
       // Assert and open group room for Charlie
-      const charlieGroupChat = charliePage.locator('chat-list .app-list-item').filter({ hasText: groupRoomName }).first()
+      const charlieGroupChat = charliePage.locator('chat-list atoll-list-item, chat-list .app-list-item').filter({ hasText: groupRoomName }).first()
       await expect(charlieGroupChat).toBeVisible({ timeout: 15000 })
       await charlieGroupChat.click()
       await expect(charliePage.locator('chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
@@ -115,9 +115,9 @@ test.describe.serial('Group Audio and Video Calls', () => {
 
     await test.step('Alice ends group audio call for all users', async () => {
       await alicePage.locator('call-overlay .active-view [ref$="__btnEndCall"]').click()
-      await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible({ timeout: 10000 })
-      await expect(bobPage.locator('call-overlay .modal')).not.toBeVisible({ timeout: 10000 })
-      await expect(charliePage.locator('call-overlay .modal')).not.toBeVisible({ timeout: 10000 })
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible({ timeout: 10000 })
+      await expect(bobPage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible({ timeout: 10000 })
+      await expect(charliePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible({ timeout: 10000 })
     })
   })
 
@@ -197,7 +197,7 @@ test.describe.serial('Group Audio and Video Calls', () => {
 
     await test.step('Alice enters Picture-in-Picture mode during group video call', async () => {
       await alicePage.click('[ref$="__btnPip"]')
-      await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible()
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
       const pipWindow = alicePage.locator('[ref$="__pipWindow"]')
       await expect(pipWindow).toBeVisible()
     })
@@ -215,12 +215,12 @@ test.describe.serial('Group Audio and Video Calls', () => {
       const pipWindow = alicePage.locator('[ref$="__pipWindow"]')
       await pipWindow.hover()
       await alicePage.click('[ref$="__btnExpand"]')
-      await expect(alicePage.locator('call-overlay .modal')).toBeVisible()
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).toBeVisible()
 
       await alicePage.click('[ref$="__btnEndCall"]')
-      await expect(alicePage.locator('call-overlay .modal')).not.toBeVisible({ timeout: 10000 })
-      await expect(bobPage.locator('call-overlay .modal')).not.toBeVisible({ timeout: 10000 })
-      await expect(charliePage.locator('call-overlay .modal')).not.toBeVisible({ timeout: 10000 })
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible({ timeout: 10000 })
+      await expect(bobPage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible({ timeout: 10000 })
+      await expect(charliePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible({ timeout: 10000 })
     })
   })
 })

@@ -110,7 +110,7 @@ test.describe.serial('Calls', () => {
       }
       await expect(alicePage.locator('chat-view header h6')).toContainText('bob', { timeout: 15000 })
 
-      const bobChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+      const bobChat = bobPage.locator('chat-list atoll-list-item, chat-list .app-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChat).toBeVisible({ timeout: 15000 })
       await bobChat.click()
       await expect(bobPage.locator('chat-view header h6')).toContainText('alice', { timeout: 15000 })
@@ -378,11 +378,10 @@ test.describe.serial('Calls', () => {
       await btnSettings.click()
 
       // Assert Select a Microphone, Effects, and Select a Speaker headings exist
-      const settingsPopup = alicePage.locator('call-overlay [ref$="settingsPopup"]')
+      const settingsPopup = alicePage.locator('call-overlay [ref$="settingsPopup"] .modal')
       await expect(settingsPopup).toBeVisible()
 
-      // Take a screenshot for visual verification
-      await alicePage.screenshot({ path: '/app/verification-screenshot.png' })
+      await alicePage.screenshot({ path: 'tests/e2e/screenshots/verification-screenshot.png' })
 
       await expect(alicePage.locator('call-overlay .settings-section-header').filter({ hasText: 'AUDIO' })).toBeVisible()
       await expect(alicePage.locator('call-overlay .settings-section-subheader').filter({ hasText: 'Select a Microphone' })).toBeVisible()
