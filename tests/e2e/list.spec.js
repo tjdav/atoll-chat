@@ -244,6 +244,6 @@ test.describe('Atoll List and List Item Component Architecture', () => {
     await page.waitForTimeout(2000)
 
     // Capture visual screenshot
-    await page.screenshot({ path: '/home/jules/verification/screenshots/list_matrix.png' })
+    await page.screenshot({ path: 'tests/e2e/screenshots/list_matrix.png' })
   })
 })
