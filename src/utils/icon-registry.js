@@ -1,10 +1,8 @@
 // src/utils/icon-registry.js
 import {
-  createIcons,
   AddCircleLinearIcon,
   AltArrowDownLinearIcon,
   AltArrowLeftLinearIcon,
-  AltArrowRightLinearIcon,
   BellLinearIcon,
   CameraMinimalisticLinearIcon,
   CheckCircleLinearIcon,
@@ -168,17 +166,52 @@ export const SOLAR_ICON_MAP = {
   // Chevrons
   down: AltArrowDownLinearIcon,
   'chevron-down': AltArrowDownLinearIcon,
-  'chevron-left': AltArrowLeftLinearIcon,
-  'chevron-right': AltArrowRightLinearIcon
+  'chevron-left': AltArrowLeftLinearIcon
+}
+
+const defaultSvgAttrs = {
+  xmlns: 'http://www.w3.org/2000/svg',
+  width: '24',
+  height: '24',
+  viewBox: '0 0 24 24',
+  fill: 'none',
+  'stroke-width': '1.5'
+}
+
+function createSvgNode ([tag, attrs, children]) {
+  const el = document.createElementNS('http://www.w3.org/2000/svg', tag)
+  if (attrs) {
+    for (const key in attrs) {
+      el.setAttribute(key, String(attrs[key]))
+    }
+  }
+  if (children && children.length) {
+    for (const child of children) {
+      el.appendChild(createSvgNode(child))
+    }
+  }
+  return el
 }
 
 /**
- * Renders a Solar Single-Tone icon inside the target wrapper element using createIcons.
- * Supports active Outline vs. Solid state transitions natively.
+ * Creates a standalone SVG Element from a Solar Icon AST node.
+ * Does not query or affect any other DOM elements.
+ */
+export function createSvgElement (iconAst, customAttrs = {}) {
+  const attrs = {
+    ...defaultSvgAttrs,
+    ...customAttrs
+  }
+  return createSvgNode(['svg', attrs, iconAst])
+}
+
+/**
+ * Renders a Solar Single-Tone icon directly into the target wrapper element.
+ * Supports active Outline vs. Solid state transitions natively without global DOM scanning.
  * @param {HTMLElement} wrapper - Container element
  * @param {object} options - Icon render options
  * @param {string} options.name - Semantic icon identifier
- * @param {number} [options.size=24] - Icon display size in pixels
+ * @param {number|string} [options.size=24] - Icon display size in pixels
  * @param {string} [options.primaryColor] - Primary stroke/fill color
  * @param {string} [options.secondaryColor] - Secondary highlight color
  * @param {boolean} [options.active=false] - Whether the icon should render in its active/bold state
@@ -194,13 +227,13 @@ export function renderIcon (wrapper, {
     return
   }
   if (!name) {
-    wrapper.innerHTML = ''
+    wrapper.replaceChildren()
     return
   }
 
   let iconAst = SOLAR_ICON_MAP[name]
   if (!iconAst) {
-    wrapper.innerHTML = ''
+    wrapper.replaceChildren()
     return
   }
 
@@ -210,54 +243,29 @@ export function renderIcon (wrapper, {
   }
 
   if (!iconAst) {
-    wrapper.innerHTML = ''
+    wrapper.replaceChildren()
     return
   }
 
-  wrapper.innerHTML = `<i data-atoll-icon="${name}"></i>`
-
-  const attrs = {
-    class: 'atoll-icon-svg',
-    size: size
-  }
+  const sizePx = isNaN(Number(size)) ? size : `${size}px`
+  const styleParts = [`width: ${sizePx}`, `height: ${sizePx}`]
 
   if (primaryColor) {
-    attrs.color = primaryColor
+    styleParts.push(`color: ${primaryColor}`)
+    styleParts.push(`--atoll-icon-out-stroke: ${primaryColor}`)
+    styleParts.push(`--atoll-icon-primary-color: ${primaryColor}`)
   }
+
   if (secondaryColor) {
-    attrs['secondary-color'] = secondaryColor
+    styleParts.push(`--solar-secondary-color: ${secondaryColor}`)
+    styleParts.push(`--atoll-icon-secondary-color: ${secondaryColor}`)
   }
 
-  /* Use a Proxy as the icons dictionary to automatically resolve any rendered icon's AST
-     This prevents console warnings when multiple different icons exist on the page */
-  const iconsProxy = new Proxy({}, {
-    get (target, prop) {
-      if (typeof prop !== 'string') {
-        return undefined
-      }
-      const baseNameCamel = prop.endsWith('Icon') ? prop.slice(0, -4) : prop
-      const mapKey = Object.keys(SOLAR_ICON_MAP).find(k => {
-        return toPascalCase(k) === baseNameCamel
-      })
-
-      if (!mapKey) {
-        return undefined
-      }
-      let ast = SOLAR_ICON_MAP[mapKey]
-      if (ast && typeof ast === 'object' && !Array.isArray(ast) && !ast.node) {
-        return ast.linear
-      }
-      return ast
-    }
+  const svgEl = createSvgElement(iconAst, {
+    class: `solar solar-${name} atoll-icon-svg`,
+    style: styleParts.join('; '),
+    'aria-hidden': 'true'
   })
 
-  /* To ensure the specifically being rendered icon is resolved with the correct active/bold state: */
-  const solarKey = toPascalCase(name) + 'Icon'
-  iconsProxy[solarKey] = iconAst
-
-  createIcons({
-    icons: iconsProxy,
-    nameAttr: 'data-atoll-icon',
-    attrs
-  })
+  wrapper.replaceChildren(svgEl)
 }
