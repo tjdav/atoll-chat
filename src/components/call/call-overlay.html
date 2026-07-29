@@ -111,6 +111,8 @@
             source.appendChild(videoGrid)
           }
         }
+
+        $bus.emit('video-grid:sync')
       }
 
       // Sync local state with global state
