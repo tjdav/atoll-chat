@@ -112,11 +112,26 @@
       }
 
       // Observe attribute changes to update host visibility and accessibility
-      observe('count', updateAccessibility)
-      observe('maxCount', updateAccessibility)
-      observe('dot', updateAccessibility)
-      observe('label', updateAccessibility)
-      observe('showZero', updateAccessibility)
+      observe('count', (val) => {
+        state.count = (val === null || val === undefined || val === '') ? null : Number(val)
+        updateAccessibility()
+      })
+      observe('maxCount', (val) => {
+        state.maxCount = Number(val) || 99
+        updateAccessibility()
+      })
+      observe('dot', (val) => {
+        state.dot = val === 'true' || val === true || val === ''
+        updateAccessibility()
+      })
+      observe('label', (val) => {
+        state.label = val
+        updateAccessibility()
+      })
+      observe('showZero', (val) => {
+        state.showZero = val === 'true' || val === true || val === ''
+        updateAccessibility()
+      })
 
       updateAccessibility()
     }
