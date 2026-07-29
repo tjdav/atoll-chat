@@ -31,12 +31,23 @@
   /* Separator Lines Option */
   &.atoll-list-divided {
     .atoll-list-item:not(:last-child) {
-      border-bottom: 1px solid var(--#{$prefix}list-item-divider);
+      position: relative;
+
+      &::after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        right: 0;
+        left: calc(var(--#{$prefix}list-item-padding-x, 16px) + 50px + 12px);
+        height: 1px;
+        background-color: var(--#{$prefix}list-item-divider);
+        pointer-events: none;
+      }
     }
   }
 }
 
-/* Base List Item Component Host */
+/* Base List Item Component Host (5-Column Sliding Track) */
 .atoll-list-item {
   display: flex;
   align-items: center;
@@ -68,7 +79,25 @@
   }
 }
 
-/* 3-1. Left Area (Avatars, Thumbnails, Icons) */
+/* -------------------------------------------------------------------------- */
+/* 5-Column Track Zones                                                       */
+/* -------------------------------------------------------------------------- */
+
+/* 1. Contextual Action Zone (Dynamic Left) */
+.atoll-list-item-contextual-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.25s cubic-bezier(0.2, 0, 0, 1), max-width 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease, margin-right 0.25s cubic-bezier(0.2, 0, 0, 1);
+  margin-right: 0;
+}
+
+/* 2. Leading Zone (Static Left) */
 .atoll-list-item-left {
   display: flex;
   align-items: center;
@@ -76,7 +105,7 @@
   flex-shrink: 0;
 }
 
-/* 3-2. Center Text Area */
+/* 3. Content Body (Center Text Area) */
 .atoll-list-item-content {
   display: flex;
   flex-direction: column;
@@ -122,7 +151,7 @@
   white-space: nowrap;
 }
 
-/* 3-3. Right Area (Controls, Chevrons, Badges) */
+/* 4. Trailing Zone (Static Right) */
 .atoll-list-item-right {
   display: flex;
   align-items: center;
@@ -137,8 +166,115 @@
   color: var(--#{$prefix}text-tertiary, #999999);
 }
 
+/* 5. Reorder Zone (Dynamic Right) */
+.atoll-list-item-reorder-zone {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 0.25s cubic-bezier(0.2, 0, 0, 1), max-width 0.25s cubic-bezier(0.2, 0, 0, 1), opacity 0.2s ease, margin-left 0.25s cubic-bezier(0.2, 0, 0, 1);
+  margin-left: 0;
+}
+
 /* -------------------------------------------------------------------------- */
-/* State & Size Modifiers                                                     */
+/* State Modifiers                                                      */
+/* -------------------------------------------------------------------------- */
+
+/* Selection Mode Slide-In Rules */
+.atoll-list-item-mode-selection,
+.atoll-list-mode-selection .atoll-list-item {
+  .atoll-list-item-contextual-zone {
+    width: 32px;
+    max-width: 32px;
+    opacity: 1;
+    margin-right: 4px;
+    overflow: visible;
+  }
+
+  .atoll-list-item-checkbox {
+    display: inline-block;
+  }
+
+  .atoll-list-item-delete-btn {
+    display: none;
+  }
+}
+
+/* Edit / Delete Mode Slide-In Rules */
+.atoll-list-item-mode-edit,
+.atoll-list-mode-edit .atoll-list-item {
+  .atoll-list-item-contextual-zone {
+    width: 32px;
+    max-width: 32px;
+    opacity: 1;
+    margin-right: 4px;
+    overflow: visible;
+  }
+
+  .atoll-list-item-checkbox {
+    display: none;
+  }
+
+  .atoll-list-item-delete-btn {
+    display: inline-flex;
+  }
+}
+
+/* Reorder Mode Slide-In Rules */
+.atoll-list-item-mode-reorder,
+.atoll-list-mode-reorder .atoll-list-item {
+  .atoll-list-item-reorder-zone {
+    width: 32px;
+    max-width: 32px;
+    opacity: 1;
+    margin-left: 4px;
+    overflow: visible;
+  }
+}
+
+/* Styled  Controls */
+.atoll-list-item-checkbox {
+  width: 22px;
+  height: 22px;
+  cursor: pointer;
+  accent-color: var(--#{$prefix}brand-primary, #06C755);
+}
+
+.atoll-list-item-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--#{$prefix}danger, #FF3B30);
+  cursor: pointer;
+  border-radius: 50%;
+  transition: transform 0.15s ease;
+
+  &:hover {
+    transform: scale(1.15);
+  }
+}
+
+.atoll-list-item-reorder-handle {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--#{$prefix}text-tertiary, #999999);
+  cursor: grab;
+
+  &:active {
+    cursor: grabbing;
+  }
+}
+
+/* -------------------------------------------------------------------------- */
+/* Item Selection & Highlight Modifiers                                       */
 /* -------------------------------------------------------------------------- */
 
 .atoll-list-item-highlighted {
@@ -180,7 +316,7 @@
 }
 
 /* -------------------------------------------------------------------------- */
-/* Dark Mode Overrides ([data-atoll-theme="dark"])                                */
+/* Dark Mode Overrides ([data-atoll-theme="dark"])                           */
 /* -------------------------------------------------------------------------- */
 
 [data-#{$prefix}theme="dark"] {
