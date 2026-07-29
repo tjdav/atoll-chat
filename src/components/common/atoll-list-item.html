@@ -46,7 +46,7 @@
 
       <!-- Reorder Drag Handle -->
       <span class="atoll-list-item-reorder" hidden="{{ hideReorderHandle }}">
-        <atoll-icon name="hamburger-menu" size="24" color="var(--atoll-text-secondary, #777777)"></atoll-icon>
+        <atoll-icon name="reorder" size="24" color="var(--atoll-text-secondary, #777777)"></atoll-icon>
       </span>
     </div>
   </div>
@@ -95,19 +95,19 @@
     },
 
     getters: {
-      hideDescription: (state) => !state.description,
+      hideDescription: (state) => (!state.description ? 'true' : null),
 
-      hideTimestamp: (state) => !state.timestamp,
+      hideTimestamp: (state) => (!state.timestamp ? 'true' : null),
 
-      hideBadge: (state) => !state.badge || state.mode !== 'default',
+      hideBadge: (state) => (!state.badge || state.mode !== 'default' ? 'true' : null),
 
-      hideChevron: (state) => !state.chevron || state.mode !== 'default',
+      hideChevron: (state) => (!state.chevron || state.mode !== 'default' ? 'true' : null),
 
-      hideCheckbox: (state) => state.mode !== 'selection',
+      hideCheckbox: (state) => (state.mode === 'selection' ? null : 'true'),
 
-      hideDeleteIcon: (state) => state.mode !== 'edit',
+      hideDeleteIcon: (state) => (state.mode === 'edit' ? null : 'true'),
 
-      hideReorderHandle: (state) => state.mode !== 'reorder',
+      hideReorderHandle: (state) => (state.mode === 'reorder' ? null : 'true'),
 
       isClickable: (state) => state.clickable || state.chevron || state.mode === 'selection',
 

@@ -341,11 +341,11 @@ test.describe('Atoll List and List Item Component Architecture', () => {
 
           <div>
             <h4 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">2. Selection Mode (Contextual Checkboxes)</h4>
-            <atoll-list divided="true" id="selection-list">
-              <atoll-list-item title="Alice Smith" description="Selected contact" mode="selection" checked="true" clickable="true" id="v-alice-smith">
+            <atoll-list mode="selection" divided="true" id="selection-list">
+              <atoll-list-item title="Alice Smith" description="Selected contact" checked="true" clickable="true" id="v-alice-smith">
                 <atoll-profile slot="leading" size="md" name="Alice Smith"></atoll-profile>
               </atoll-list-item>
-              <atoll-list-item title="Bob Jones" description="Unselected contact" mode="selection" checked="false" clickable="true" id="v-bob-jones">
+              <atoll-list-item title="Bob Jones" description="Unselected contact" checked="false" clickable="true" id="v-bob-jones">
                 <atoll-profile slot="leading" size="md" name="Bob Jones"></atoll-profile>
               </atoll-list-item>
             </atoll-list>
@@ -353,11 +353,11 @@ test.describe('Atoll List and List Item Component Architecture', () => {
 
           <div>
             <h4 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">3. Edit / Delete Mode (Contextual Red Minus Action)</h4>
-            <atoll-list divided="true" id="delete-list">
-              <atoll-list-item title="Blocked Contact 1" description="Blocked on 10/12" mode="edit" clickable="true" id="v-blocked-1">
+            <atoll-list mode="edit" divided="true" id="delete-list">
+              <atoll-list-item title="Blocked Contact 1" description="Blocked on 10/12" clickable="true" id="v-blocked-1">
                 <atoll-profile slot="leading" size="md" name="Blocked Contact 1"></atoll-profile>
               </atoll-list-item>
-              <atoll-list-item title="Blocked Contact 2" description="Blocked on 08/15" mode="edit" clickable="true" id="v-blocked-2">
+              <atoll-list-item title="Blocked Contact 2" description="Blocked on 08/15" clickable="true" id="v-blocked-2">
                 <atoll-profile slot="leading" size="md" name="Blocked Contact 2"></atoll-profile>
               </atoll-list-item>
             </atoll-list>
@@ -365,11 +365,11 @@ test.describe('Atoll List and List Item Component Architecture', () => {
 
           <div>
             <h4 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">4. Reorder Mode (Dynamic Right Drag Handles)</h4>
-            <atoll-list divided="true" id="reorder-list">
-              <atoll-list-item title="Pinned Room 1" description="High priority thread" mode="reorder" clickable="true" id="v-pinned-1">
+            <atoll-list mode="reorder" divided="true" id="reorder-list">
+              <atoll-list-item title="Pinned Room 1" description="High priority thread" clickable="true" id="v-pinned-1">
                 <atoll-profile slot="leading" size="md" name="Pinned Room 1"></atoll-profile>
               </atoll-list-item>
-              <atoll-list-item title="Pinned Room 2" description="Secondary thread" mode="reorder" clickable="true" id="v-pinned-2">
+              <atoll-list-item title="Pinned Room 2" description="Secondary thread" clickable="true" id="v-pinned-2">
                 <atoll-profile slot="leading" size="md" name="Pinned Room 2"></atoll-profile>
               </atoll-list-item>
             </atoll-list>
@@ -390,10 +390,11 @@ test.describe('Atoll List and List Item Component Architecture', () => {
       `
     })
 
+    await page.setViewportSize({ width: 1280, height: 1400 })
     // Wait for components to fully load and render
     await page.waitForTimeout(2000)
 
-    // Capture visual screenshot
-    await page.screenshot({ path: 'tests/e2e/screenshots/list_matrix.png' })
+    // Capture visual screenshot of full matrix container
+    await page.locator('#test-sandbox > div').screenshot({ path: 'tests/e2e/screenshots/list_matrix.png' })
   })
 })

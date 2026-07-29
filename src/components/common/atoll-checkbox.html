@@ -1,28 +1,56 @@
 <template id="atoll-checkbox">
-  <div 
-    ref="checkboxRoot"
-    class="{{ checkboxClasses }}" 
-    role="checkbox" 
-    aria-checked="{{ ariaChecked }}" 
-    tabindex="{{ tabIndex }}"
-  >
-    <atoll-icon name="check" active="true" size="16"></atoll-icon>
-  </div>
+  <label class="{{ wrapperClasses }}" ref="checkboxRoot">
+    <input 
+      type="checkbox" 
+      class="atoll-checkbox-input visually-hidden" 
+      ref="nativeInput" 
+      checked="{{ isChecked }}"
+      disabled="{{ isDisabled }}"
+      aria-label="{{ checkboxAriaLabel }}"
+      tabindex="-1"
+    />
+    <atoll-icon 
+      name="{{ iconName }}" 
+      active="{{ isChecked }}" 
+      size="{{ iconSize }}" 
+      color="{{ iconColor }}"
+      class="atoll-checkbox-icon"
+    ></atoll-icon>
+  </label>
 </template>
 
 <script type="module">
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    dependencies: ['atoll-icon'],
     attributes: {
       checked: Boolean,
-      disabled: Boolean
+      disabled: Boolean,
+      size: {
+        type: Number,
+        default: 22
+      },
+      name: {
+        type: String,
+        default: 'check-circle'
+      },
+      label: {
+        type: String,
+        default: 'Toggle selection'
+      }
     },
 
     getters: {
+      isChecked: (state) => Boolean(state.checked),
+      isDisabled: (state) => Boolean(state.disabled),
       ariaChecked: (state) => (state.checked ? 'true' : 'false'),
       tabIndex: (state) => (state.disabled ? '-1' : '0'),
-      checkboxClasses: (state) => {
+      iconSize: (state) => state.size || 22,
+      iconName: (state) => state.name || 'check-circle',
+      checkboxAriaLabel: (state) => state.label || 'Toggle selection',
+      iconColor: (state) => (state.checked ? 'var(--atoll-brand-primary, #06C755)' : 'var(--atoll-border-color, #D4D4D4)'),
+      wrapperClasses: (state) => {
         const classes = ['atoll-checkbox']
         if (state.checked) {
           classes.push('checked')
@@ -36,14 +64,23 @@
 
     client: ({ state, refs, root, observe }) => {
       const checkboxRoot = refs('checkboxRoot')
+      const nativeInput = refs('nativeInput')
+
+      root.setAttribute('role', 'checkbox')
+      root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
+      root.setAttribute('tabindex', state.disabled ? '-1' : '0')
 
       const toggle = () => {
         if (state.disabled) {
           return
         }
         state.checked = !state.checked
+        root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
 
-        // Dispatch standard events for form binding compatibility
+        if (nativeInput) {
+          nativeInput.checked = state.checked
+        }
+
         root.dispatchEvent(new CustomEvent('change', {
           bubbles: true,
           composed: true,
@@ -62,15 +99,15 @@
           e.stopPropagation()
           toggle()
         })
-
-        checkboxRoot.addEventListener('keydown', (e) => {
-          if (e.key === ' ' || e.key === 'Enter') {
-            e.preventDefault()
-            e.stopPropagation()
-            toggle()
-          }
-        })
       }
+
+      root.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault()
+          e.stopPropagation()
+          toggle()
+        }
+      })
 
       // Expose property on host element
       Object.defineProperty(root, 'checked', {
@@ -79,6 +116,10 @@
         },
         set (val) {
           state.checked = Boolean(val)
+          root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
+          if (nativeInput) {
+            nativeInput.checked = state.checked
+          }
         },
         configurable: true
       })
@@ -89,6 +130,7 @@
         },
         set (val) {
           state.disabled = Boolean(val)
+          root.setAttribute('tabindex', state.disabled ? '-1' : '0')
         },
         configurable: true
       })
@@ -96,9 +138,14 @@
       if (observe) {
         observe('checked', (val) => {
           state.checked = val === 'true' || val === true || val === ''
+          root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
+          if (nativeInput) {
+            nativeInput.checked = state.checked
+          }
         })
         observe('disabled', (val) => {
           state.disabled = val === 'true' || val === true || val === ''
+          root.setAttribute('tabindex', state.disabled ? '-1' : '0')
         })
       }
     }

@@ -7,6 +7,8 @@ import {
   AltArrowRightLinearIcon,
   BellLinearIcon,
   CameraMinimalisticLinearIcon,
+  CheckCircleLinearIcon,
+  CheckCircleBoldIcon,
   CheckSquareLinearIcon,
   CheckSquareBoldIcon,
   CloseCircleLinearIcon,
@@ -35,6 +37,7 @@ import {
   PhoneLinearIcon,
   PlaylistMinimalistic2LinearIcon,
   PlaylistMinimalistic2BoldIcon,
+  Reorder2LinearIcon,
   SendSquareLinearIcon,
   SettingsLinearIcon,
   ShieldKeyholeLinearIcon,
@@ -44,7 +47,8 @@ import {
   VideocameraBoldIcon,
   VideocameraRecordLinearIcon,
   VideocameraRecordBoldIcon,
-  PipLinearIcon
+  PipLinearIcon,
+  Reorder2BoldIcon
 } from '@solar-icons/js'
 
 /**
@@ -95,15 +99,6 @@ export const SOLAR_ICON_MAP = {
     bold: LinkCircleBoldIcon
   },
 
-  'minus-circle': {
-    linear: MinusCircleLinearIcon,
-    bold: MinusCircleBoldIcon
-  },
-  'hamburger-menu': {
-    linear: HamburgerMenuLinearIcon,
-    bold: HamburgerMenuBoldIcon
-  },
-
   // Core Navigation & Settings
   music: {
     linear: PlaylistMinimalistic2LinearIcon,
@@ -138,6 +133,26 @@ export const SOLAR_ICON_MAP = {
   check: {
     linear: CheckSquareLinearIcon,
     bold: CheckSquareBoldIcon
+  },
+  'check-circle': {
+    linear: CheckCircleLinearIcon,
+    bold: CheckCircleBoldIcon
+  },
+  'minus-circle': {
+    linear: MinusCircleLinearIcon,
+    bold: MinusCircleBoldIcon
+  },
+  'circle-minus': {
+    linear: MinusCircleLinearIcon,
+    bold: MinusCircleBoldIcon
+  },
+  'hamburger-menu': {
+    linear: HamburgerMenuLinearIcon,
+    bold: HamburgerMenuBoldIcon
+  },
+  reorder: {
+    linear: Reorder2LinearIcon,
+    bold: Reorder2BoldIcon
   },
   mic: MicrophoneLinearIcon,
   'mic-off': MutedLinearIcon,
