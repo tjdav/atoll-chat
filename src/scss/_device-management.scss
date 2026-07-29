@@ -1,4 +1,4 @@
-/* Styling for ADSM minimalist overlay pattern and unified settings popup */
+/* Styling for  minimalist overlay pattern and unified settings popup */
 
 .control-bar {
   position: absolute;
@@ -60,9 +60,11 @@
   0% {
     box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.8);
   }
+
   50% {
     box-shadow: 0 0 0 6px rgba(6, 199, 85, 0.3);
   }
+
   100% {
     box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.8);
   }

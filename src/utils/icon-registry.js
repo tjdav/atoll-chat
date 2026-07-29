@@ -58,7 +58,7 @@ export function toPascalCase (str) {
 }
 
 /**
- * Solar Icon Registry Map matching ADSM Single-Tone state duality guidelines
+ * Solar Icon Registry Map matching single-tone state duality guidelines
  */
 export const SOLAR_ICON_MAP = {
   // Chat Input Actions (Static Controls)

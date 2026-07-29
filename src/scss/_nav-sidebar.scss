@@ -40,7 +40,7 @@
         padding-left: calc(0.5rem - 3px) !important;
       }
 
-      // Force ADSM active single-tone color override (Brand Green)
+      // Force active single-tone color override (Brand Green)
       .atoll-icon {
         --#{$prefix}icon-out-stroke: var(--#{$prefix}brand-primary, #06C755) !important;
         --#{$prefix}icon-out-fill: var(--#{$prefix}brand-primary, #06C755) !important;
