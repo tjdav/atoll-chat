@@ -34,10 +34,11 @@
     getters: {
       pipClass: (state) => (state.isPipMode ? 'is-pip' : '')
     },
-    client: ({ refs, state, eventBus, signal, globalStore, storage }) => {
+    client: ({ refs, state, eventBus, signal, globalStore, storage, pocketbase }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $storage } = storage
+      const { pb } = pocketbase
 
       state.currentPage = 1
       state.pinnedParticipantId = null
@@ -136,6 +137,20 @@
           })
         })
 
+        const hasRemoteInList = list.some(p => !p.isLocal)
+        if (!hasRemoteInList && ($state.callStatus === 'active' || $state.remoteStream)) {
+          list.push({
+            id: 'remote-user',
+            name: 'Remote Participant',
+            username: 'remote',
+            avatar: undefined,
+            isLocal: false,
+            isMuted: !$state.remoteStream || !$state.remoteStream.getAudioTracks().some(t => t.enabled),
+            isSpeaking: Boolean($state.isRemoteSpeaking),
+            isVideoEnabled: Boolean($state.hasRemoteVideo)
+          })
+        }
+
         state.participants = list
 
         const isMobile = window.innerWidth < 576
@@ -195,6 +210,7 @@
         const currentRailIds = railList.map(p => p.id).join(',')
 
         const needsReconstruct =
+          container.children.length === 0 ||
           currentLayoutMode !== lastLayoutMode ||
           currentHeroId !== lastHeroId ||
           currentDisplayIds !== lastDisplayIds ||
@@ -371,7 +387,14 @@
           `
         }
 
-        const avatarUrl = (p.avatar && pb?.files) ? pb.files.getURL(p, p.avatar, { thumb: isMini ? '50x50' : '87x87' }) : ''
+        let avatarUrl = ''
+        if (p.avatar) {
+          if (pb?.files) {
+            avatarUrl = pb.files.getURL(p, p.avatar, { thumb: isMini ? '50x50' : '87x87' })
+          } else {
+            avatarUrl = p.avatar
+          }
+        }
 
         tile.innerHTML = `
           <video class="tile-video w-100 h-100 object-fit-cover d-none" autoplay playsinline ${p.isLocal ? 'muted' : ''}></video>
@@ -532,7 +555,17 @@
         }
       })
 
-      if ($state.activeCallRoomId) {
+      $state.subscribe('callStatus', (status) => {
+        if (status === 'active' || status === 'idle') {
+          renderGrid()
+        }
+      })
+
+      $bus.on('video-grid:sync', () => {
+        renderGrid()
+      }, { signal })
+
+      if ($state.activeCallRoomId || $state.callStatus === 'active') {
         renderGrid()
       }
 
