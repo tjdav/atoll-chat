@@ -167,17 +167,26 @@ async function globalSetup () {
 
   console.log('--- Mock PocketBase Setup ---')
   const server = createServer()
-  await new Promise((resolve, reject) => {
-    server.listen(8090, '127.0.0.1', (err) => {
-      if (err) {
-        reject(err)
-      } else {
+  try {
+    await new Promise((resolve) => {
+      server.once('error', (err) => {
+        if (err.code === 'EADDRINUSE') {
+          console.log('Mock PocketBase server is already running on http://127.0.0.1:8090')
+          resolve()
+        } else {
+          console.warn('Mock PocketBase server error:', err.message)
+          resolve()
+        }
+      })
+      server.listen(8090, '127.0.0.1', () => {
+        console.log('Mock PocketBase server is running on http://127.0.0.1:8090')
         resolve()
-      }
+      })
     })
-  })
-  console.log('Mock PocketBase server is running on http://127.0.0.1:8090')
-  globalThis.__MOCK_PB_SERVER__ = server
+    globalThis.__MOCK_PB_SERVER__ = server
+  } catch (err) {
+    console.warn('Mock PB setup warning:', err.message)
+  }
 
   console.log('--- Coturn STUN/TURN Server Setup ---')
   globalThis.__COTURN_CONTAINER_USED__ = false
