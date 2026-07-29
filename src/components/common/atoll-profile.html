@@ -276,10 +276,13 @@
             defaultImg.remove()
           }
 
-          const defaultFallback = container.querySelector('.atoll-profile-fallback')
-          if (defaultFallback && !defaultFallback.getAttribute('style') && !defaultFallback.children.length) {
-            defaultFallback.remove()
-          }
+          // Clean up all default programmatically-created fallbacks
+          const allFallbacks = Array.from(container.querySelectorAll('.atoll-profile-fallback'))
+          allFallbacks.forEach(fb => {
+            if (!fb.getAttribute('style') && fb.querySelector('atoll-icon[name="user"]')) {
+              fb.remove()
+            }
+          })
 
           const children = Array.from(container.children)
 

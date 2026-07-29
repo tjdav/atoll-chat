@@ -5,22 +5,28 @@
 .atoll-profile-grouped {
   display: inline-flex;
   align-items: center;
+  flex-direction: row;
 
-  .atoll-profile-container {
-    /* Apply a thick cutout border so overlapping edges are separated cleanly */
-    border: 2px solid var(--#{$prefix}profile-cutout-border);
-    box-sizing: content-box; 
-    
-    /* Dynamically overlap based on the active size modifier */
-    &:not(:first-child) {
-      margin-left: calc(var(--#{$prefix}profile-size) * -0.28);
+  > atoll-profile,
+  > .atoll-profile {
+    margin-left: calc(var(--#{$prefix}profile-dim, var(--#{$prefix}profile-size-md)) * -0.26);
+    position: relative;
+
+    &:first-child {
+      margin-left: 0;
+    }
+
+    .atoll-profile-circle {
+      border: 2px solid var(--#{$prefix}profile-cutout-border);
+      box-sizing: content-box;
     }
   }
-  
+
   /* Ensure the left-most avatar always sits visually on top of the pile */
-  .atoll-profile-container:nth-child(1) { z-index: 5; }
-  .atoll-profile-container:nth-child(2) { z-index: 4; }
-  .atoll-profile-container:nth-child(3) { z-index: 3; }
-  .atoll-profile-container:nth-child(4) { z-index: 2; }
-  .atoll-profile-container:nth-child(5) { z-index: 1; }
+  @for $i from 1 through 20 {
+    > atoll-profile:nth-child(#{$i}),
+    > .atoll-profile:nth-child(#{$i}) {
+      z-index: #{21 - $i};
+    }
+  }
 }

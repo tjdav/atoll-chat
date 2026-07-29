@@ -32,7 +32,9 @@
     grid-template-rows: 1fr 1fr;
     
     .atoll-profile-img:first-child,
-    .atoll-profile-fallback:first-child {
+    .atoll-profile-fallback:first-child,
+    slot[name="image"] > *:first-child,
+    [slot="image"] > *:first-child {
       grid-row: 1 / span 2;
     }
   }
