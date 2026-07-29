@@ -25,6 +25,7 @@ import {
   LogoutLinearIcon,
   MagnifierLinearIcon,
   MenuDotsLinearIcon,
+  MenuDotsBoldIcon,
   MicrophoneLinearIcon,
   MutedLinearIcon,
   PaperclipLinearIcon,
@@ -89,6 +90,10 @@ export const SOLAR_ICON_MAP = {
   'menu-links': {
     linear: LinkCircleLinearIcon,
     bold: LinkCircleBoldIcon
+  },
+  'menu-dots': {
+    linear: MenuDotsLinearIcon,
+    bold: MenuDotsBoldIcon
   },
 
   // Core Navigation & Settings
