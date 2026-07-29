@@ -9,7 +9,11 @@
 
   export default defineComponent({
     attributes: {
-      divided: Boolean
+      divided: Boolean,
+      mode: {
+        type: String,
+        default: 'default' // 'default' | 'selection' | 'edit' | 'reorder'
+      }
     },
 
     getters: {
@@ -20,7 +24,92 @@
           classes.push('atoll-list-divided')
         }
 
+        if (state.mode && state.mode !== 'default') {
+          classes.push(`atoll-list-mode-${state.mode}`)
+        }
+
         return classes.join(' ')
+      }
+    },
+
+    client: ({ state, root, observe }) => {
+      // Sync list mode down to all child atoll-list-item components
+      const syncModeToChildren = (mode) => {
+        const items = root.querySelectorAll('atoll-list-item')
+        items.forEach(item => {
+          if (mode && mode !== 'default') {
+            item.setAttribute('mode', mode)
+          } else {
+            item.removeAttribute('mode')
+          }
+        })
+      }
+
+      // Initial sync
+      syncModeToChildren(state.mode)
+
+      // Observe mode attribute changes dynamically
+      if (observe) {
+        observe('mode', (newMode) => {
+          const prevMode = state.mode
+          const resolvedMode = newMode || 'default'
+          state.mode = resolvedMode
+          syncModeToChildren(resolvedMode)
+
+          root.dispatchEvent(
+            new CustomEvent('atoll-list-mode-change', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                mode: resolvedMode,
+                previousMode: prevMode
+              }
+            })
+          )
+        })
+      }
+
+      // Observe DOM child additions to automatically sync mode for dynamically added items
+      const mutObserver = new MutationObserver(() => {
+        if (state.mode && state.mode !== 'default') {
+          syncModeToChildren(state.mode)
+        }
+      })
+
+      mutObserver.observe(root, { childList: true, subtree: true })
+
+      // Public instance API methods on component root DOM element
+      root.setMode = (newMode) => {
+        state.mode = newMode || 'default'
+        if (state.mode !== 'default') {
+          root.setAttribute('mode', state.mode)
+        } else {
+          root.removeAttribute('mode')
+        }
+        syncModeToChildren(state.mode)
+      }
+
+      root.selectAll = () => {
+        const items = root.querySelectorAll('atoll-list-item')
+        items.forEach(item => {
+          item.setAttribute('checked', 'true')
+        })
+      }
+
+      root.clearSelection = () => {
+        const items = root.querySelectorAll('atoll-list-item')
+        items.forEach(item => {
+          item.removeAttribute('checked')
+        })
+      }
+
+      root.getSelectedItems = () => {
+        const items = Array.from(root.querySelectorAll('atoll-list-item'))
+        return items.filter(item => item.hasAttribute('checked') || item.checked)
+      }
+
+      return () => {
+        mutObserver.disconnect()
       }
     }
   })

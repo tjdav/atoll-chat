@@ -5,13 +5,36 @@
     role="{{ itemRole }}"
     tabindex="{{ itemTabindex }}"
   >
-    <!-- 3-1. Left Area (Avatar, Icon, Selection Control) -->
+    <!-- 1. Contextual Action Zone (Dynamic Left) -->
+    <div class="atoll-list-item-contextual-zone">
+      <slot name="contextual-action">
+        <input 
+          type="checkbox" 
+          class="atoll-list-item-checkbox" 
+          ref="checkboxInput" 
+          checked="{{ isChecked }}"
+          aria-label="Select {{ title }}"
+          tabindex="-1"
+        />
+        <button 
+          type="button" 
+          class="atoll-list-item-delete-btn" 
+          ref="deleteButton"
+          aria-label="Delete {{ title }}"
+          tabindex="-1"
+        >
+          <atoll-icon name="minus-circle" size="20"></atoll-icon>
+        </button>
+      </slot>
+    </div>
+
+    <!-- 2. Leading Zone (Static Left) -->
     <div class="atoll-list-item-left">
       <slot name="left"></slot>
       <slot name="avatar"></slot>
     </div>
 
-    <!-- 3-2. Center Text Area -->
+    <!-- 3. Content Body (Center Text Area) -->
     <div class="atoll-list-item-content">
       <div class="atoll-list-item-title-row">
         <span class="atoll-list-item-title">
@@ -26,7 +49,7 @@
       <slot name="description"></slot>
     </div>
 
-    <!-- 3-3. Right Area (Badge, Chevron, Dropdown Actions) -->
+    <!-- 4. Trailing Zone (Static Right) -->
     <div class="atoll-list-item-right">
       <slot name="right"></slot>
 
@@ -35,6 +58,15 @@
 
       <!-- Navigation Directional Chevron -->
       <slot name="chevron"></slot>
+    </div>
+
+    <!-- 5. Reorder Zone (Dynamic Right) -->
+    <div class="atoll-list-item-reorder-zone">
+      <slot name="reorder-handle">
+        <span class="atoll-list-item-reorder-handle" ref="reorderHandle" aria-label="Reorder" tabindex="-1">
+          <atoll-icon name="hamburger-menu" size="20"></atoll-icon>
+        </span>
+      </slot>
     </div>
   </div>
 </template>
@@ -63,6 +95,14 @@
       size: {
         type: String,
         default: 'md' // 'sm' | 'md' | 'lg'
+      },
+      mode: {
+        type: String,
+        default: 'default' // 'default' | 'selection' | 'edit' | 'reorder'
+      },
+      checked: {
+        type: Boolean,
+        default: false
       },
       chevron: {
         type: Boolean,
@@ -117,7 +157,7 @@
         if (originalNodes && originalNodes.length > 0) {
           return originalNodes
         }
-        if (!state.chevron) {
+        if (!state.chevron || state.mode !== 'default') {
           return null
         }
         return `<span class="atoll-list-item-chevron"><atoll-icon name="chevron-right" size="18"></atoll-icon></span>`
@@ -158,9 +198,11 @@
     },
 
     getters: {
-      isClickable: (state) => state.clickable || state.chevron,
+      isChecked: (state) => (state.checked ? 'true' : null),
 
-      itemRole: (state) => (state.isClickable ? 'button' : 'listitem'),
+      isClickable: (state) => state.clickable || state.chevron || state.mode === 'selection' || state.mode === 'edit',
+
+      itemRole: (state) => (state.mode === 'selection' || state.isClickable ? 'button' : 'listitem'),
 
       itemTabindex: (state) => (state.isClickable && !state.disabled ? '0' : '-1'),
 
@@ -173,6 +215,14 @@
           classes.push(`atoll-list-item-${state.size}`)
         } else {
           classes.push('atoll-list-item-md')
+        }
+
+        if (state.mode && state.mode !== 'default') {
+          classes.push(`atoll-list-item-mode-${state.mode}`)
+        }
+
+        if (state.checked) {
+          classes.push('atoll-list-item-checked')
         }
 
         if (state.isClickable) {
@@ -195,12 +245,74 @@
 
     client: ({ state, refs, root, observe }) => {
       const itemRoot = refs('itemRoot')
+      const deleteBtn = refs('deleteButton')
+      const checkboxInput = refs('checkboxInput')
+
+      const syncCheckedAttribute = (isChecked) => {
+        if (isChecked) {
+          root.setAttribute('checked', 'true')
+        } else {
+          root.removeAttribute('checked')
+        }
+        if (checkboxInput) {
+          checkboxInput.checked = isChecked
+        }
+      }
 
       const handleTrigger = (event) => {
         if (state.disabled) {
           return
         }
 
+        if (state.mode === 'selection') {
+          // In selection mode, tapping the row toggles the item's checked state
+          state.checked = !state.checked
+          syncCheckedAttribute(state.checked)
+
+          root.dispatchEvent(
+            new CustomEvent('atoll-item-selection-toggle', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                title: state.title,
+                checked: state.checked,
+                originalEvent: event
+              }
+            })
+          )
+
+          root.dispatchEvent(
+            new CustomEvent('atoll-item-click', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                title: state.title,
+                selected: state.selected,
+                checked: state.checked,
+                mode: state.mode,
+                originalEvent: event
+              }
+            })
+          )
+          return
+        }
+
+        if (state.mode === 'edit') {
+          // In edit mode, tapping minus button or row triggers delete event
+          root.dispatchEvent(
+            new CustomEvent('atoll-item-delete-trigger', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                title: state.title,
+                originalEvent: event
+              }
+            })
+          )
+          return
+        }
+
+        // Default mode trigger
         root.dispatchEvent(
           new CustomEvent('atoll-item-click', {
             bubbles: true,
@@ -208,10 +320,49 @@
             detail: {
               title: state.title,
               selected: state.selected,
+              checked: state.checked,
+              mode: state.mode,
               originalEvent: event
             }
           })
         )
+      }
+
+      if (deleteBtn) {
+        deleteBtn.addEventListener('click', (event) => {
+          event.stopPropagation()
+          if (state.disabled) return
+          root.dispatchEvent(
+            new CustomEvent('atoll-item-delete-trigger', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                title: state.title,
+                originalEvent: event
+              }
+            })
+          )
+        })
+      }
+
+      if (checkboxInput) {
+        checkboxInput.addEventListener('change', (event) => {
+          event.stopPropagation()
+          state.checked = checkboxInput.checked
+          syncCheckedAttribute(state.checked)
+
+          root.dispatchEvent(
+            new CustomEvent('atoll-item-selection-toggle', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                title: state.title,
+                checked: state.checked,
+                originalEvent: event
+              }
+            })
+          )
+        })
       }
 
       if (itemRoot) {
@@ -227,6 +378,13 @@
 
       // Sync attribute changes dynamically
       if (observe) {
+        observe('checked', (val) => {
+          state.checked = val === 'true' || val === true || val === ''
+          syncCheckedAttribute(state.checked)
+        })
+        observe('mode', (val) => {
+          state.mode = val || 'default'
+        })
         observe('selected', (val) => {
           state.selected = val === 'true' || val === true || val === ''
         })
