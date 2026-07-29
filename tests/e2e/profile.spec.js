@@ -31,7 +31,7 @@ test.describe('Atoll Profile Component', () => {
         document.body.appendChild(el)
       }, sizeName)
 
-      const profile = page.locator(`#profile-size-${sizeName} .atoll-profile`)
+      const profile = page.locator(`#profile-size-${sizeName}`).locator('.atoll-profile')
       await expect(profile).toBeVisible()
 
       const box = await profile.boundingBox()
@@ -146,7 +146,7 @@ test.describe('Atoll Profile Component', () => {
     const profile = page.locator('#profile-overlays-test')
     await expect(profile).toBeVisible()
 
-    const innerDiv = profile.locator('.atoll-profile')
+    const innerDiv = profile.locator('div.atoll-profile')
     await expect(innerDiv).toHaveClass(/atoll-profile-ring/)
 
     const badge = profile.locator('.atoll-profile-badge')
@@ -222,6 +222,27 @@ test.describe('Atoll Profile Component', () => {
       mp2.setAttribute('size', 'xl')
       const slot2 = document.createElement('div')
       slot2.setAttribute('slot', 'image')
+
+      const img2a = document.createElement('span')
+      img2a.className = 'atoll-profile-fallback'
+      img2a.style.backgroundColor = '#6B3CC9'
+      img2a.style.color = '#FFFFFF'
+      const icon2a = document.createElement('atoll-icon')
+      icon2a.setAttribute('name', 'user')
+      icon2a.setAttribute('size', '14')
+      img2a.appendChild(icon2a)
+
+      const img2b = document.createElement('span')
+      img2b.className = 'atoll-profile-fallback'
+      img2b.style.backgroundColor = '#0093C4'
+      img2b.style.color = '#FFFFFF'
+      const icon2b = document.createElement('atoll-icon')
+      icon2b.setAttribute('name', 'user')
+      icon2b.setAttribute('size', '14')
+      img2b.appendChild(icon2b)
+
+      slot2.appendChild(img2a)
+      slot2.appendChild(img2b)
       mp2.appendChild(slot2)
       multipartySection.appendChild(mp2)
 
@@ -231,6 +252,37 @@ test.describe('Atoll Profile Component', () => {
       mp3.setAttribute('size', 'xl')
       const slot3 = document.createElement('div')
       slot3.setAttribute('slot', 'image')
+
+      const img3a = document.createElement('span')
+      img3a.className = 'atoll-profile-fallback'
+      img3a.style.backgroundColor = '#0093C4'
+      img3a.style.color = '#FFFFFF'
+      const icon3a = document.createElement('atoll-icon')
+      icon3a.setAttribute('name', 'user')
+      icon3a.setAttribute('size', '14')
+      img3a.appendChild(icon3a)
+
+      const img3b = document.createElement('span')
+      img3b.className = 'atoll-profile-fallback'
+      img3b.style.backgroundColor = '#6B3CC9'
+      img3b.style.color = '#FFFFFF'
+      const icon3b = document.createElement('atoll-icon')
+      icon3b.setAttribute('name', 'user')
+      icon3b.setAttribute('size', '14')
+      img3b.appendChild(icon3b)
+
+      const img3c = document.createElement('span')
+      img3c.className = 'atoll-profile-fallback'
+      img3c.style.backgroundColor = '#15BD66'
+      img3c.style.color = '#FFFFFF'
+      const icon3c = document.createElement('atoll-icon')
+      icon3c.setAttribute('name', 'user')
+      icon3c.setAttribute('size', '14')
+      img3c.appendChild(icon3c)
+
+      slot3.appendChild(img3a)
+      slot3.appendChild(img3b)
+      slot3.appendChild(img3c)
       mp3.appendChild(slot3)
       multipartySection.appendChild(mp3)
 
@@ -240,6 +292,19 @@ test.describe('Atoll Profile Component', () => {
       mp4.setAttribute('size', 'xl')
       const slot4 = document.createElement('div')
       slot4.setAttribute('slot', 'image')
+
+      const colors4 = ['#6B3CC9', '#0093C4', '#15BD66', '#FCB321']
+      colors4.forEach((col) => {
+        const span = document.createElement('span')
+        span.className = 'atoll-profile-fallback'
+        span.style.backgroundColor = col
+        span.style.color = '#FFFFFF'
+        const ic = document.createElement('atoll-icon')
+        ic.setAttribute('name', 'user')
+        ic.setAttribute('size', '14')
+        span.appendChild(ic)
+        slot4.appendChild(span)
+      })
       mp4.appendChild(slot4)
       multipartySection.appendChild(mp4)
 
@@ -248,15 +313,18 @@ test.describe('Atoll Profile Component', () => {
       row.className = 'atoll-profile-group-row'
 
       const p1 = document.createElement('atoll-profile')
-      p1.setAttribute('size', 'sm')
+      p1.setAttribute('size', 'lg')
+      p1.setAttribute('name', 'Alice Smith')
       row.appendChild(p1)
 
       const p2 = document.createElement('atoll-profile')
-      p2.setAttribute('size', 'sm')
+      p2.setAttribute('size', 'lg')
+      p2.setAttribute('name', 'Bob Jones')
       row.appendChild(p2)
 
       const p3 = document.createElement('atoll-profile')
-      p3.setAttribute('size', 'sm')
+      p3.setAttribute('size', 'lg')
+      p3.setAttribute('name', 'Charlie Brown')
       row.appendChild(p3)
 
       groupedSection.appendChild(row)
