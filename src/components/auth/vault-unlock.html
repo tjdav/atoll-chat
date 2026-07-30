@@ -180,6 +180,9 @@
           avatarUrl = pb.files.getUrl(user, user.avatar)
         }
         avatarProfile.setAttribute('src', avatarUrl)
+        if (user.id) {
+          avatarProfile.setAttribute('user-id', user.id)
+        }
       }
 
       const updateStatus = (message) => {

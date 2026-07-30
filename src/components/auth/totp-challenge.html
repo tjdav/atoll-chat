@@ -2,7 +2,7 @@
   <div class="atoll-auth-card">
     <!-- Zone 2: Hero Greeting -->
     <div class="atoll-auth-hero-zone">
-      <atoll-profile size="3xl" class="d-inline-block mb-3"></atoll-profile>
+      <atoll-profile ref="avatarProfile" size="3xl" class="d-inline-block mb-3"></atoll-profile>
       <h3 class="mb-1">Two-Step Verification</h3>
       <p class="text-muted small">This device is unrecognized. Please enter the 6-digit code from your authenticator app to authorize this session.</p>
     </div>
@@ -55,6 +55,17 @@
       const btnVerify = refs('btnVerify') || root.querySelector('[ref*="btnVerify"]')
       const statusMsg = refs('statusMsg')
       const btnLogout = refs('btnLogout') || root.querySelector('[ref*="btnLogout"]')
+      const avatarProfile = refs('avatarProfile')
+
+      const user = pb?.authStore?.model
+      if (user && avatarProfile) {
+        if (user.id) {
+          avatarProfile.setAttribute('user-id', user.id)
+        }
+        if (user.avatar && pb?.files) {
+          avatarProfile.setAttribute('src', pb.files.getUrl(user, user.avatar))
+        }
+      }
 
       const updateStatus = (message) => {
         statusMsg.textContent = message

@@ -128,12 +128,18 @@
           headerAvatar.setAttribute('size', 'sm')
           headerAvatar.setAttribute('name', displayName)
           headerAvatar.setAttribute('alt', displayName)
+          if (otherUser.id) {
+            headerAvatar.setAttribute('user-id', otherUser.id)
+          } else {
+            headerAvatar.removeAttribute('user-id')
+          }
           if (otherUser.avatar && pb?.files) {
             headerAvatar.setAttribute('src', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '42x42' }))
           } else {
             headerAvatar.removeAttribute('src')
           }
         } else if (room.is_group && participants.length > 0) {
+          headerAvatar.removeAttribute('user-id')
           headerAvatar.setAttribute('type', 'multiparty')
           headerAvatar.setAttribute('size', 'sm')
           const splitCount = Math.min(Math.max(participants.length, 2), 4)
@@ -165,6 +171,7 @@
           headerAvatar.setAttribute('name', state.roomName)
           headerAvatar.setAttribute('alt', state.roomName)
           headerAvatar.removeAttribute('src')
+          headerAvatar.removeAttribute('user-id')
         }
       }
 

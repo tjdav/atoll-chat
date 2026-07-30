@@ -103,6 +103,9 @@
           avatar.setAttribute('size', 'xs')
           avatar.setAttribute('alt', user.name || user.username || 'Member')
           avatar.className = 'me-2 flex-shrink-0'
+          if (user.id) {
+            avatar.setAttribute('user-id', user.id)
+          }
           if (user.avatar) {
             avatar.setAttribute('src', pb.files.getURL(user, user.avatar, { thumb: '32x32' }))
           }

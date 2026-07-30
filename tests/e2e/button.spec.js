@@ -199,7 +199,7 @@ test.describe('Atoll Button Component', () => {
     })
 
     await page.evaluate(() => {
-      // 1. Valid Icon-Only button with aria-label
+      // Valid Icon-Only button with aria-label
       const btnValid = document.createElement('atoll-button')
       btnValid.id = 'icon-btn-valid'
       btnValid.setAttribute('icon-only', 'true')
@@ -207,14 +207,14 @@ test.describe('Atoll Button Component', () => {
       btnValid.innerHTML = '<atoll-icon name="search" size="24"></atoll-icon>'
       document.body.appendChild(btnValid)
 
-      // 2. Invalid Icon-Only button missing aria-label (should trigger warning)
+      // Invalid Icon-Only button missing aria-label (should trigger warning)
       const btnWarning = document.createElement('atoll-button')
       btnWarning.id = 'icon-btn-warn'
       btnWarning.setAttribute('icon-only', 'true')
       btnWarning.innerHTML = '<atoll-icon name="add" size="20"></atoll-icon>'
       document.body.appendChild(btnWarning)
 
-      // 3. Circular pill variant
+      // Circular pill variant
       const btnPill = document.createElement('atoll-button')
       btnPill.id = 'icon-btn-pill'
       btnPill.setAttribute('icon-only', 'true')

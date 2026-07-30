@@ -5,7 +5,7 @@
       <div class="card-body">
         <div class="d-flex align-items-center gap-4 mb-4">
           <div class="position-relative cursor-pointer flex-shrink-0" ref="avatarContainer" data-testid="avatarContainer">
-            <atoll-profile ref="avatarProfile" size="2xl" icon-name="camera" alt="{{ displayName }}"></atoll-profile>
+            <atoll-profile ref="avatarProfile" size="2xl" icon-name="camera" alt="{{ displayName }}" user-id="{{ currentUserId }}"></atoll-profile>
             <input type="file" class="d-none" ref="avatarInput" accept="image/*">
           </div>
           <div class="flex-grow-1">
@@ -30,6 +30,7 @@
   export default defineComponent({
     server: () => ({
       displayName: '',
+      currentUserId: '',
       userInitial: 'U',
       isSaving: false,
       hasChanges: false
@@ -38,10 +39,11 @@
       saveBtnDisabled: (state) => (!state.hasChanges || state.isSaving ? 'disabled' : ''),
       saveBtnText: (state) => (state.isSaving ? 'Saving...' : 'Save Changes')
     },
-    client: async ({ refs, state, globalStore, pocketbase, eventBus }) => {
+    client: async ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker }) => {
       const { $state } = globalStore
       const { records, files } = pocketbase
       const { $bus } = eventBus
+      const { $worker } = cryptoWorker || {}
 
       const nameInput = refs('nameInput')
       const avatarInput = refs('avatarInput')
@@ -56,6 +58,7 @@
         const name = user?.name || user?.username || ''
         state.displayName = name
         state.userInitial = name.charAt(0).toUpperCase()
+        state.currentUserId = user?.id || ''
 
         if (nameInput) {
           nameInput.value = state.displayName
@@ -124,9 +127,22 @@
 
           const updatedUser = await records.update('users', $state.currentUser.id, formData)
   
+          // Update main thread globalStore users map
+          $state.users = {
+            ...$state.users,
+            [updatedUser.id]: {
+              ...($state.users?.[updatedUser.id] || {}),
+              ...updatedUser
+            }
+          }
+
           $state.currentUser = {
             ...$state.currentUser,
             ...updatedUser
+          }
+
+          if ($worker) {
+            $worker.execute('worker:update_user_data', updatedUser).catch(console.error)
           }
 
           pendingAvatarBlob = null

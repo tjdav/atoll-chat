@@ -368,8 +368,6 @@
           tile.classList.add('speaking-border-blue')
         }
 
-        const initial = (p.name || '?').charAt(0).toUpperCase()
-
         let audioStatusHtml = ''
         if (p.isMuted) {
           audioStatusHtml = `
@@ -400,7 +398,7 @@
           <video class="tile-video w-100 h-100 object-fit-cover d-none" autoplay playsinline ${p.isLocal ? 'muted' : ''}></video>
 
           <div class="tile-avatar-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white bg-dark">
-            <atoll-profile size="${isMini ? 'md' : '2xl'}" src="${avatarUrl}" alt="${p.name}" class="mb-2 shadow"></atoll-profile>
+            <atoll-profile size="${isMini ? 'md' : '2xl'}" src="${avatarUrl}" alt="${p.name}" user-id="${p.id || ''}" class="mb-2 shadow"></atoll-profile>
             <div class="tile-avatar-name text-center px-2" style="font-size: ${isMini ? '0.8rem' : '1rem'};">${p.name}</div>
           </div>
 

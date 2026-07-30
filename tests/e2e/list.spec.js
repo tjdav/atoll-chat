@@ -14,9 +14,8 @@ test.describe('Atoll List and List Item Component Architecture', () => {
       return window.__coralite__.lifecycle.hydrated
     })
     await page.evaluate(() => {
-      // Create a fixed full-screen sandbox overlay to isolate test markup perfectly
-      // without breaking router or global application shell states.
       let sandbox = document.getElementById('test-sandbox')
+
       if (sandbox) {
         sandbox.innerHTML = ''
       } else {
@@ -232,7 +231,7 @@ test.describe('Atoll List and List Item Component Architecture', () => {
 
     const cbLoc = page.locator('#test-cb-1')
     await expect(cbLoc.locator('.atoll-checkbox')).toHaveClass(/checked/)
-    
+
     // Test toggle click
     await cbLoc.locator('.atoll-checkbox').click()
     await expect(cbLoc.locator('.atoll-checkbox')).not.toHaveClass(/checked/)
@@ -390,7 +389,10 @@ test.describe('Atoll List and List Item Component Architecture', () => {
       `
     })
 
-    await page.setViewportSize({ width: 1280, height: 1400 })
+    await page.setViewportSize({
+      width: 1280,
+      height: 1400
+    })
     // Wait for components to fully load and render
     await page.waitForTimeout(2000)
 

@@ -30,13 +30,9 @@ importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
 importScripts('/assets/url.js')
 
-const metadata = swSelf.metadata
 const sodium = swSelf.sodium
 
-/**
- * @param {any} event The installation event.
- */
-const onInstall = (event) => {
+const onInstall = () => {
   skipWaiting()
 }
 

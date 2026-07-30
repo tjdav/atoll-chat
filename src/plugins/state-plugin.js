@@ -14,6 +14,7 @@ export default function statePlugin (options = {}) {
       config: { initialState: options.initialState || {} },
       context: (pluginContext) => {
         const storeState = {
+          users: {},
           ...pluginContext.config.initialState,
           decryptionCache: new Map()
         }
@@ -76,6 +77,17 @@ export default function statePlugin (options = {}) {
               if (target[key] !== value) {
                 target[key] = value
                 notify(key, value)
+
+                if (key === 'currentUser' && value && value.id) {
+                  target.users = {
+                    ...(target.users || {}),
+                    [value.id]: {
+                      ...(target.users?.[value.id] || {}),
+                      ...value
+                    }
+                  }
+                  notify('users', target.users)
+                }
               }
               return true
             }

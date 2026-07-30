@@ -29,6 +29,10 @@
 
   export default defineComponent({
     attributes: {
+      userId: {
+        type: String,
+        default: ''
+      },
       src: {
         type: String,
         default: ''
@@ -228,7 +232,11 @@
       }
     },
 
-    client: ({ state, refs, root, observe }) => {
+    client: ({ state, refs, root, observe, globalStore, pocketbase, storage }) => {
+      const { $state } = globalStore || {}
+      const { pb } = pocketbase || {}
+      const { $storage } = storage || {}
+
       const img = refs('avatarImage')
 
       if (img) {
@@ -255,6 +263,134 @@
 
       updateSrc(state.src)
       observe('src', updateSrc)
+
+      // Real-time user profile state synchronization
+      const fetchingUserIds = new Set()
+
+      const fetchAndCacheUser = async (uid) => {
+        if (!uid || fetchingUserIds.has(uid)) {
+          return
+        }
+        fetchingUserIds.add(uid)
+
+        try {
+          let userRecord = null
+
+          // try local storage database rooms
+          if ($storage && typeof $storage.getAllRoomsSorted === 'function') {
+            const rooms = await $storage.getAllRoomsSorted()
+            for (const r of rooms) {
+              const found = r.participants?.find(p => p.id === uid)
+              if (found) {
+                userRecord = found
+                break
+              }
+            }
+          }
+
+          // try PocketBase fetch
+          if (!userRecord && pb) {
+            userRecord = await pb.collection('users').getOne(uid)
+          }
+
+          if (userRecord && $state) {
+            $state.users = {
+              ...$state.users,
+              [uid]: {
+                ...($state.users?.[uid] || {}),
+                ...userRecord
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[atoll-profile] Failed to fetch and cache user on-demand:', uid, err)
+        } finally {
+          fetchingUserIds.delete(uid)
+        }
+      }
+
+      const syncFromUserStore = (uid) => {
+        if (!uid || !$state) {
+          return
+        }
+
+        let user = $state.users?.[uid]
+        if (!user && $state.currentUser?.id === uid) {
+          user = $state.currentUser
+        }
+
+        if (user) {
+          let avatarUrl = ''
+          if (user.avatar) {
+            const filesService = pocketbase?.files || pb?.files
+            if (filesService) {
+              const getUrlFn = filesService.getUrl || filesService.getURL
+              if (typeof getUrlFn === 'function') {
+                avatarUrl = getUrlFn.call(filesService, user, user.avatar, { thumb: '100x100' })
+              }
+            }
+          }
+          const displayName = user.name || user.username || ''
+          state.src = avatarUrl
+          state.name = displayName
+          state.alt = displayName || 'User profile'
+        } else {
+          fetchAndCacheUser(uid).catch(console.error)
+        }
+      }
+
+      let unsubUsers = null
+      let unsubCurrentUser = null
+
+      if (state.userId) {
+        syncFromUserStore(state.userId)
+
+        if ($state) {
+          unsubUsers = $state.subscribe('users', (newUsers) => {
+            if (state.userId && newUsers?.[state.userId]) {
+              syncFromUserStore(state.userId)
+            }
+          })
+
+          unsubCurrentUser = $state.subscribe('currentUser', (newUser) => {
+            if (state.userId && newUser?.id === state.userId) {
+              syncFromUserStore(state.userId)
+            }
+          })
+        }
+      }
+
+      observe('userId', (newUserId) => {
+        if (newUserId) {
+          syncFromUserStore(newUserId)
+
+          if ($state) {
+            if (!unsubUsers) {
+              unsubUsers = $state.subscribe('users', (newUsers) => {
+                if (state.userId && newUsers?.[state.userId]) {
+                  syncFromUserStore(state.userId)
+                }
+              })
+            }
+            if (!unsubCurrentUser) {
+              unsubCurrentUser = $state.subscribe('currentUser', (newUser) => {
+                if (state.userId && newUser?.id === state.userId) {
+                  syncFromUserStore(state.userId)
+                }
+              })
+            }
+          }
+        } else {
+          if (unsubUsers) {
+            unsubUsers()
+            unsubUsers = null
+          }
+          if (unsubCurrentUser) {
+            unsubCurrentUser()
+            unsubCurrentUser = null
+          }
+        }
+      })
 
       let disconnectMultiparty = null
 
@@ -400,6 +536,12 @@
       return () => {
         if (disconnectMultiparty) {
           disconnectMultiparty()
+        }
+        if (unsubUsers) {
+          unsubUsers()
+        }
+        if (unsubCurrentUser) {
+          unsubCurrentUser()
         }
       }
     }

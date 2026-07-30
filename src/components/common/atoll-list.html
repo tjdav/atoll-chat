@@ -12,7 +12,8 @@
       divided: Boolean,
       mode: {
         type: String,
-        default: 'default' // 'default' | 'selection' | 'edit' | 'reorder'
+        // 'default' | 'selection' | 'edit' | 'reorder'
+        default: 'default'
       }
     },
 
@@ -76,7 +77,10 @@
         }
       })
 
-      mutObserver.observe(root, { childList: true, subtree: true })
+      mutObserver.observe(root, {
+        childList: true,
+        subtree: true
+      })
 
       // Public instance API methods on component root DOM element
       root.setMode = (newMode) => {

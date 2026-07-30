@@ -181,8 +181,27 @@ export default function syncPlugin () {
 
               // Subscribe to the users collection (for profile updates)
               await pb.collection('users').subscribe('*', async (e) => {
-                if (e.action === 'update') {
+                if ((e.action === 'update' || e.action === 'create') && e.record) {
+                  // Dispatch to background worker for local database cache update
                   $worker.execute('worker:update_user_data', e.record).catch(console.error)
+
+                  // Update main thread globalStore users map
+                  const { $state } = instanceContext.globalStore
+                  $state.users = {
+                    ...$state.users,
+                    [e.record.id]: {
+                      ...($state.users?.[e.record.id] || {}),
+                      ...e.record
+                    }
+                  }
+
+                  // Sync currentUser if matching ID
+                  if ($state.currentUser && $state.currentUser.id === e.record.id) {
+                    $state.currentUser = {
+                      ...$state.currentUser,
+                      ...e.record
+                    }
+                  }
                 }
               })
 

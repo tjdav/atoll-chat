@@ -135,7 +135,7 @@ test.describe('Atoll Popup / Modal Component', () => {
 
   test('should support heroIcon and slotted hero graphic', async ({ page }) => {
     await page.evaluate(() => {
-      // 1. With hero-icon attribute
+      // With hero-icon attribute
       const popupWithIcon = document.createElement('atoll-popup')
       popupWithIcon.id = 'popup-with-icon'
       popupWithIcon.setAttribute('hero-icon', 'settings')
@@ -143,7 +143,7 @@ test.describe('Atoll Popup / Modal Component', () => {
       popupWithIcon.setAttribute('open', 'true')
       document.body.appendChild(popupWithIcon)
 
-      // 2. With slotted hero
+      // With slotted hero
       const popupWithSlot = document.createElement('atoll-popup')
       popupWithSlot.id = 'popup-with-slot'
       popupWithSlot.setAttribute('title', 'Slotted Hero')

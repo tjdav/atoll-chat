@@ -159,6 +159,9 @@
           profile.setAttribute('size', 'md')
           profile.setAttribute('name', displayName)
           profile.setAttribute('alt', displayName)
+          if (otherUser.id) {
+            profile.setAttribute('user-id', otherUser.id)
+          }
           if (otherUser.avatar) {
             profile.setAttribute('src', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '50x50' }))
           }

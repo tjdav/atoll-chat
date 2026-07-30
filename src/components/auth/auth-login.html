@@ -94,12 +94,10 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, config, bootstrap, cryptoWorker, eventBus, utils, root }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, eventBus, utils, root }) => {
       const { pb } = pocketbase
       const { $storage } = storage
       const { $state } = globalStore
-      const { $config } = config
-      const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { $url } = utils
 
