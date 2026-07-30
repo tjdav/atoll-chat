@@ -1,0 +1,49 @@
+@include media-breakpoint-down(sm) {
+
+  .offcanvas,
+  .offcanvas-sm,
+  .offcanvas-md,
+  .offcanvas-lg,
+  .offcanvas-xl,
+  .offcanvas-xxl {
+    --#{$prefix}offcanvas-width: min(calc(100vw - 60px), 410px);
+    width: var(--#{$prefix}offcanvas-width);
+
+    &.show {
+      display: block !important;
+    }
+  }
+
+  // Mobile layout state overrides for offcanvas-sm navigation pane
+  .atoll-main-layout:not(.chat-active) .offcanvas-sm,
+  .layout-container:not(.chat-active) .offcanvas-sm {
+    transform: none !important;
+    visibility: visible !important;
+    position: relative !important;
+    z-index: 1 !important;
+    display: block !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  .atoll-main-layout:not(.chat-active) .offcanvas-backdrop,
+  .layout-container:not(.chat-active) .offcanvas-backdrop {
+    display: none !important;
+  }
+
+  .atoll-main-layout.chat-active .offcanvas-sm,
+  .layout-container.chat-active .offcanvas-sm {
+    background-color: var(--#{$prefix}tertiary-bg);
+  }
+}
+
+@media (min-width: 768px) {
+  .offcanvas-sm {
+    background-color: transparent !important;
+    border: none !important;
+
+    >.d-flex {
+      gap: 1rem !important;
+    }
+  }
+}

@@ -108,39 +108,6 @@ $prefix: "atoll-";
 
 // Mobile Responsive Layout Overrides
 @include media-breakpoint-down(sm) {
-  .mobile-nav-offcanvas {
-    width: calc(100vw - 60px); // Sidebar width (60px) + some of list pane
-    max-width: 410px; // 60px + 350px
-
-    &.show {
-      display: block !important;
-    }
-  }
-
-  // Hide the offcanvas-sm behavior when not in chat-active mode
-  // This ensures the "List View" (nav + list) is always visible on the main screen
-  .atoll-main-layout:not(.chat-active) .mobile-nav-offcanvas,
-  .layout-container:not(.chat-active) .mobile-nav-offcanvas {
-    transform: none !important;
-    visibility: visible !important;
-    position: relative !important;
-    z-index: 1 !important;
-    display: block !important;
-    width: 100% !important;
-    max-width: 100% !important;
-  }
-
-  .atoll-main-layout:not(.chat-active) .offcanvas-backdrop,
-  .layout-container:not(.chat-active) .offcanvas-backdrop {
-    display: none !important;
-  }
-
-  // When chat is active, the offcanvas should behave as a normal offcanvas
-  .atoll-main-layout.chat-active .mobile-nav-offcanvas,
-  .layout-container.chat-active .mobile-nav-offcanvas {
-    background-color: var(--#{$prefix}tertiary-bg);
-  }
-
   // Show Column 3 when active
   .atoll-chat-pane.chat-active,
   .detail-view.chat-active {
@@ -159,17 +126,6 @@ $prefix: "atoll-";
   .layout-container:not(.chat-active) .atoll-chat-pane,
   .layout-container:not(.chat-active) .detail-view {
     display: none !important;
-  }
-}
-
-@media (min-width: 768px) {
-  .mobile-nav-offcanvas {
-    background-color: transparent !important;
-    border: none !important;
-
-    > .d-flex {
-      gap: 1rem !important;
-    }
   }
 }
 

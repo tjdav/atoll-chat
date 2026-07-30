@@ -241,13 +241,13 @@ test.describe('User Settings & Profile', () => {
       await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
 
       // The mobile nav offcanvas (drawer) is initially visible
-      await expect(page.locator('.mobile-nav-offcanvas')).toBeVisible()
+      await expect(page.locator('.offcanvas-sm')).toBeVisible()
 
       // Tap on the Notifications category in settings-pane
       await page.locator('[data-testid="settings-pane-0__nav-notifications"]').click()
 
       // Tapping must emit ui:selection_made, which hides the mobile drawer offcanvas
-      await expect(page.locator('.mobile-nav-offcanvas')).not.toBeVisible()
+      await expect(page.locator('.offcanvas-sm')).not.toBeVisible()
 
       // The settings-main detail view should be visible now
       await expect(page.locator('settings-main')).toBeVisible()
@@ -256,7 +256,7 @@ test.describe('User Settings & Profile', () => {
       await page.locator('[data-testid="settings-main-0__settingsBackBtn"]').click()
 
       // The mobile drawer offcanvas is restored
-      await expect(page.locator('.mobile-nav-offcanvas')).toBeVisible()
+      await expect(page.locator('.offcanvas-sm')).toBeVisible()
     })
   })
 })
