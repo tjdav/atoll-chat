@@ -15,8 +15,7 @@ routerAdd('POST', '/api/custom/login', (e) => {
         timeout: 10
       })
       return res.statusCode === 200
-    } catch (err) {
-      console.error('[custom_auth.pb.js] Failed to verify ALTCHA:', err)
+    } catch {
       return false
     }
   }
@@ -35,19 +34,15 @@ routerAdd('POST', '/api/custom/login', (e) => {
   let record = null
   try {
     record = $app.findFirstRecordByFilter('users', 'email = {:identity} || username = {:identity}', { identity: data.identity })
-    console.log('[DEBUG LOGIN] Found record:', record ? record.get('username') : 'null')
-  } catch (err) {
-    console.log('[DEBUG LOGIN] findFirstRecordByFilter error:', err.message)
+  } catch {
     return e.json(400, { error: 'Invalid login credentials.' })
   }
 
   if (!record) {
-    console.log('[DEBUG LOGIN] No record found for identity:', data.identity)
     return e.json(400, { error: 'Invalid login credentials.' })
   }
 
   const validPassword = record.validatePassword(data.password)
-  console.log('[DEBUG LOGIN] isPasswordValid:', validPassword)
 
   if (!validPassword) {
     return e.json(400, { error: 'Invalid login credentials.' })
@@ -63,13 +58,11 @@ routerAdd('POST', '/api/custom/login', (e) => {
 
   try {
     const token = record.newAuthToken()
-    console.log('[DEBUG LOGIN] Token generated successfully:', token.slice(0, 10) + '...')
     return e.json(200, {
       token: token,
       record: record
     })
   } catch (err) {
-    console.log('[DEBUG LOGIN] Token generation or JSON error:', err.message)
     return e.json(500, { error: err.message })
   }
 })
@@ -89,8 +82,7 @@ routerAdd('POST', '/api/custom/register', (e) => {
         timeout: 10
       })
       return res.statusCode === 200
-    } catch (err) {
-      console.error('[custom_auth.pb.js] Failed to verify ALTCHA:', err)
+    } catch {
       return false
     }
   }
@@ -117,7 +109,6 @@ routerAdd('POST', '/api/custom/register', (e) => {
   }
 
   try {
-    console.log('[DEBUG REGISTER] Registering user:', data.username, data.email)
     const collection = $app.findCollectionByNameOrId('users')
     const record = new Record(collection)
     record.set('username', data.username)
@@ -129,7 +120,6 @@ routerAdd('POST', '/api/custom/register', (e) => {
     record.set('emailVisibility', true)
 
     $app.save(record)
-    console.log('[DEBUG REGISTER] User saved successfully. ID:', record.id)
     const token = record.newAuthToken()
     return e.json(201, {
       success: true,
@@ -137,7 +127,6 @@ routerAdd('POST', '/api/custom/register', (e) => {
       record: record
     })
   } catch (err) {
-    console.log('[DEBUG REGISTER] Save error:', err.message)
     return e.json(400, { error: err.message })
   }
 })
@@ -157,8 +146,7 @@ routerAdd('POST', '/api/custom/password-reset', (e) => {
         timeout: 10
       })
       return res.statusCode === 200
-    } catch (err) {
-      console.error('[custom_auth.pb.js] Failed to verify ALTCHA:', err)
+    } catch {
       return false
     }
   }
