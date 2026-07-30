@@ -1,8 +1,8 @@
 <template id="chat-list">
   <div class="chat-list h-100 overflow-y-auto" ref="root">
-    <div class="list-group list-group-spaced" ref="listGroup">
+    <atoll-list divided ref="listGroup" class="h-100 overflow-y-auto">
       <!-- Chat items will be rendered here via script -->
-    </div>
+    </atoll-list>
   </div>
 </template>
 
@@ -135,6 +135,7 @@
             const profile = document.createElement('atoll-profile')
             profile.setAttribute('slot', 'avatar')
             profile.setAttribute('size', 'md')
+            profile.setAttribute('name', roomName)
             profile.setAttribute('alt', roomName)
 
             const $media = utils?.$media
@@ -152,10 +153,12 @@
         }
         if (!item.is_group && participants.length > 0) {
           const otherUser = participants[0]
+          const displayName = otherUser.name || otherUser.username || roomName
           const profile = document.createElement('atoll-profile')
           profile.setAttribute('slot', 'avatar')
           profile.setAttribute('size', 'md')
-          profile.setAttribute('alt', otherUser.name || otherUser.username || roomName)
+          profile.setAttribute('name', displayName)
+          profile.setAttribute('alt', displayName)
           if (otherUser.avatar) {
             profile.setAttribute('src', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '50x50' }))
           }
@@ -174,10 +177,15 @@
           const displayCount = Math.min(participants.length, splitCount)
           for (let i = 0; i < displayCount; i++) {
             const p = participants[i]
+            const pName = p.name || p.username || 'Member'
             if (p.avatar) {
               const img = document.createElement('img')
               img.src = pb.files.getURL(p, p.avatar, { thumb: '40x40' })
-              img.alt = p.name || p.username || 'Member'
+              img.alt = pName
+              slotDiv.appendChild(img)
+            } else {
+              const img = document.createElement('img')
+              img.alt = pName
               slotDiv.appendChild(img)
             }
           }
@@ -188,6 +196,7 @@
         const profile = document.createElement('atoll-profile')
         profile.setAttribute('slot', 'avatar')
         profile.setAttribute('size', 'md')
+        profile.setAttribute('name', roomName)
         profile.setAttribute('alt', roomName)
         return profile
       }
@@ -242,14 +251,14 @@
 
       const updatingRooms = new Set()
       const handleUpdateInPlace = async (room_id) => {
-        if (!listGroup || updatingRooms.has(room_id) || !room_id) {
+        if (updatingRooms.has(room_id) || !room_id) {
           return
         }
         updatingRooms.add(room_id)
         try {
           const room = await $storage.getRoom(room_id)
           if (!room) {
-            const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)
+            const existingItem = (listGroup ? listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`) : null) || document.querySelector(`chat-list-item[room-id="${room_id}"]`)
             if (existingItem) {
               existingItem.remove()
             }
@@ -269,13 +278,13 @@
           }
           manager.loadedItems.unshift(data)
 
-          const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)
+          const existingItem = (listGroup ? listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`) : null) || document.querySelector(`chat-list-item[room-id="${room_id}"]`)
           if (existingItem) {
             updateItemAttributes(existingItem, data)
-            if (listGroup.firstElementChild !== existingItem) {
+            if (listGroup && listGroup.firstElementChild !== existingItem) {
               listGroup.prepend(existingItem)
             }
-          } else if (!$state.listSearchQuery) {
+          } else if (!$state.listSearchQuery && listGroup) {
             const emptyState = listGroup.querySelector('.text-body-secondary')
             if (emptyState && emptyState.textContent.includes('No chats found')) {
               emptyState.remove()
@@ -393,15 +402,26 @@
           return
         }
         try {
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
-          if (memberRecord) {
-            await pb.collection('room_members').delete(memberRecord.id, { requestKey: null })
+          try {
+            const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser?.id}"`, { requestKey: null })
+            if (memberRecord) {
+              await pb.collection('room_members').delete(memberRecord.id, { requestKey: null })
+            }
+          } catch (pbErr) {
+            console.warn('[chat-list] PocketBase member cleanup warning:', pbErr)
           }
+
           const room = await $storage.getRoom(room_id)
           if (!isGroup && room?.participants?.length <= 1) {
-            await pb.collection('rooms').delete(room_id, { requestKey: null })
+            try {
+              await pb.collection('rooms').delete(room_id, { requestKey: null })
+            } catch (rErr) {
+              console.warn('[chat-list] PocketBase room cleanup warning:', rErr)
+            }
           }
+
           await $worker.execute('worker:delete_local_room', { room_id })
+          await handleUpdateInPlace(room_id)
           $bus.emit('ui:show_toast', {
             message: isGroup ? 'Left group' : 'Chat deleted',
             type: 'success'

@@ -1,68 +1,49 @@
 <template id="chat-list-item">
-  <div ref="container" class="chat-list-item app-list-item position-relative {{ activeClass }}">
-    <div class="list-item-icon d-flex align-items-center justify-content-center flex-shrink-0">
-      <slot name="avatar"></slot>
-    </div>
-    <div class="text-truncate flex-grow-1">
-      <div class="atoll-text-title-3 text-truncate {{ unreadClass }}">
-        {{ roomName }}
-      </div>
-      <div class="d-flex align-items-center">
-        <small class="atoll-text-body-2 text-truncate flex-grow-1 text-body-secondary {{ unreadClass }}">
-          {{ previewText }}
-        </small>
-        <small class="atoll-text-caption-1 text-body-secondary ms-1 flex-shrink-0">
-          {{ relativeTime }}
-        </small>
-      </div>
-    </div>
-    <atoll-badge count="{{ unreadCount }}" variant="primary" class="position-absolute top-50 translate-middle-y bg-primary rounded-circle unread-badge" data-testid="unread-badge"></atoll-badge>
+  <atoll-list-item
+    ref="container"
+    selected="{{ isActive }}"
+    clickable
+    size="lg"
+    class="position-relative"
+  >
+    <slot name="avatar" slot="left"></slot>
 
-    <!-- Dropdown Menu -->
-    <div class="dropdown ms-2">
-      <button class="btn btn-link text-body-secondary p-0 opacity-0 group-hover-visible" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Chat actions">
-        <i class="bi bi-three-dots"></i>
-      </button>
-      <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-        <li class="{{ editRoomClass }}">
-          <a class="dropdown-item d-flex align-items-center gap-2" href="#" ref="btnEditRoom" data-testid="btn-edit-room">
-            <i class="bi bi-pencil"></i> Edit Room
-          </a>
-        </li>
-        <li>
-          <a class="dropdown-item d-flex align-items-center gap-2" href="#" ref="btnToggleRead" data-testid="btn-toggle-read">
-            <i class="bi {{ readIcon }}"></i> {{ readLabel }}
-          </a>
-        </li>
-        <li>
-          <a class="dropdown-item d-flex align-items-center gap-2" href="#" ref="btnToggleMute" data-testid="btn-toggle-mute">
-            <i class="bi {{ muteIcon }}"></i> {{ muteLabel }}
-          </a>
-        </li>
-        <li><hr class="dropdown-divider"></li>
-        <li>
-          <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="#" ref="btnDelete" data-testid="btn-delete-chat">
-            <i class="bi bi-trash"></i> {{ deleteLabel }}
-          </a>
-        </li>
-      </ul>
+    <div slot="right" class="d-flex align-items-center gap-2" ref="rightZone">
+      <atoll-badge ref="badgeComponent" size="sm" class="bg-primary rounded-circle"></atoll-badge>
+
+      <!-- Dropdown Menu -->
+      <div class="dropdown ms-2">
+        <button class="btn btn-link text-body-secondary p-0 opacity-0 group-hover-visible" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Chat actions">
+          <i class="bi bi-three-dots"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
+          <li class="{{ editRoomClass }}">
+            <a class="dropdown-item d-flex align-items-center gap-2" href="#" ref="btnEditRoom" data-testid="btn-edit-room">
+              <i class="bi bi-pencil"></i> Edit Room
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="#" ref="btnToggleRead" data-testid="btn-toggle-read">
+              <i class="bi {{ readIcon }}"></i> {{ readLabel }}
+            </a>
+          </li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2" href="#" ref="btnToggleMute" data-testid="btn-toggle-mute">
+              <i class="bi {{ muteIcon }}"></i> {{ muteLabel }}
+            </a>
+          </li>
+          <li><hr class="dropdown-divider"></li>
+          <li>
+            <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="#" ref="btnDelete" data-testid="btn-delete-chat">
+              <i class="bi bi-trash"></i> {{ deleteLabel }}
+            </a>
+          </li>
+        </ul>
+      </div>
     </div>
-  </div>
+  </atoll-list-item>
 </template>
 
-<style>
-  :host {
-    display: block;
-  }
-
-  .list-item-icon ::slotted(atoll-profile) {
-    margin: 0 !important;
-  }
-
-  .unread-badge {
-    right: 12px;
-  }
-</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -96,10 +77,54 @@
       deleteLabel: (state) => (state.isGroup ? 'Leave group' : 'Delete chat'),
       editRoomClass: (state) => (state.userRole === 'admin' ? '' : 'd-none')
     },
-    client: ({ refs, state, globalStore, eventBus, signal }) => {
+    client: ({ refs, state, globalStore, eventBus, signal, observe, root }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       const container = refs('container')
+      const badgeComp = refs('badgeComponent')
+
+      const updateBadge = () => {
+        if (badgeComp) {
+          if (state.isUnread) {
+            const countVal = (state.unreadCount && state.unreadCount > 0) ? state.unreadCount : 1
+            badgeComp.setAttribute('count', String(countVal))
+            badgeComp.removeAttribute('hidden')
+            badgeComp.removeAttribute('aria-hidden')
+          } else {
+            badgeComp.setAttribute('hidden', '')
+            badgeComp.setAttribute('aria-hidden', 'true')
+            badgeComp.removeAttribute('count')
+          }
+        }
+      }
+
+      const syncItemData = () => {
+        if (container) {
+          if (state.roomName) {
+            container.setAttribute('title', state.roomName)
+          } else {
+            container.removeAttribute('title')
+          }
+
+          if (state.previewText) {
+            container.setAttribute('description', state.previewText)
+          } else {
+            container.removeAttribute('description')
+          }
+
+          if (state.relativeTime) {
+            container.setAttribute('timestamp', state.relativeTime)
+          } else {
+            container.removeAttribute('timestamp')
+          }
+
+          if (state.isUnread) {
+            container.setAttribute('unread', 'true')
+          } else {
+            container.removeAttribute('unread')
+          }
+        }
+      }
 
       const syncActiveState = () => {
         state.isActive = $state.activeSelectionId === state.roomId && $state.activeSelectionType === 'chats'
@@ -109,17 +134,108 @@
       $state.subscribe('activeSelectionType', syncActiveState)
       syncActiveState()
 
+      const handleUnread = (val) => {
+        state.isUnread = val === 'true' || val === true || val === ''
+        syncItemData()
+        updateBadge()
+      }
+      observe('isUnread', handleUnread)
+      observe('is-unread', handleUnread)
+
+      const handleUnreadCount = (val) => {
+        state.unreadCount = Number(val) || 0
+        updateBadge()
+      }
+      observe('unreadCount', handleUnreadCount)
+      observe('unread-count', handleUnreadCount)
+
+      const handleRoomName = (val) => {
+        state.roomName = val
+        syncItemData()
+      }
+      observe('roomName', handleRoomName)
+      observe('room-name', handleRoomName)
+
+      const handlePreviewText = (val) => {
+        state.previewText = val
+        syncItemData()
+      }
+      observe('previewText', handlePreviewText)
+      observe('preview-text', handlePreviewText)
+
+      const handleRelativeTime = (val) => {
+        state.relativeTime = val
+        syncItemData()
+      }
+      observe('relativeTime', handleRelativeTime)
+      observe('relative-time', handleRelativeTime)
+
+      const handleRoomId = (val) => {
+        state.roomId = val
+      }
+      observe('roomId', handleRoomId)
+      observe('room-id', handleRoomId)
+
+      const handleIsGroup = (val) => {
+        state.isGroup = val === 'true' || val === true || val === ''
+      }
+      observe('isGroup', handleIsGroup)
+      observe('is-group', handleIsGroup)
+
+      const handleUserRole = (val) => {
+        state.userRole = val
+      }
+      observe('userRole', handleUserRole)
+      observe('user-role', handleUserRole)
+
+      const handleIsMuted = (val) => {
+        state.isMuted = val === 'true' || val === true || val === ''
+      }
+      observe('isMuted', handleIsMuted)
+      observe('is-muted', handleIsMuted)
+
+      updateBadge()
+      syncItemData()
+
       const emitBusAction = (name, detail = {}) => {
+        const targetRoomId = state.roomId || root.getAttribute('room-id')
         $bus.emit(name, {
-          room_id: state.roomId,
+          room_id: targetRoomId,
           ...detail
         })
+      }
+
+      const btnDropdownToggle = root.querySelector('button[aria-label="Chat actions"]')
+      const dropdownMenu = root.querySelector('.dropdown-menu')
+
+      const closeDropdown = () => {
+        if (dropdownMenu) {
+          dropdownMenu.classList.remove('show')
+        }
+        if (btnDropdownToggle) {
+          btnDropdownToggle.setAttribute('aria-expanded', 'false')
+        }
+      }
+
+      if (btnDropdownToggle && dropdownMenu) {
+        btnDropdownToggle.addEventListener('click', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          const isOpen = dropdownMenu.classList.contains('show')
+          if (isOpen) {
+            closeDropdown()
+          } else {
+            dropdownMenu.classList.add('show')
+            btnDropdownToggle.setAttribute('aria-expanded', 'true')
+          }
+        }, { signal })
       }
 
       const btnEditRoom = refs('btnEditRoom')
       if (btnEditRoom) {
         btnEditRoom.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
+          closeDropdown()
           emitBusAction('room:edit')
         }, { signal })
       }
@@ -128,6 +244,7 @@
       if (btnToggleRead) {
         btnToggleRead.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
+          closeDropdown()
           emitBusAction('room:toggle_read', { isUnread: state.isUnread })
         }, { signal })
       }
@@ -136,6 +253,7 @@
       if (btnToggleMute) {
         btnToggleMute.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
+          closeDropdown()
           emitBusAction('room:toggle_mute', { isMuted: state.isMuted })
         }, { signal })
       }
@@ -144,18 +262,24 @@
       if (btnDelete) {
         btnDelete.addEventListener('click', (e) => {
           e.preventDefault(); e.stopPropagation()
-          emitBusAction('room:delete', { isGroup: state.isGroup })
+          closeDropdown()
+          const isGroupVal = state.isGroup === true || state.isGroup === 'true'
+          emitBusAction('room:delete', { isGroup: isGroupVal })
         }, { signal })
       }
 
       if (container) {
-        container.addEventListener('click', (e) => {
-          if (e.target.closest('.dropdown')) {
+        const handleSelect = (e) => {
+          const target = e.target || e.detail?.originalEvent?.target
+          if (target && typeof target.closest === 'function' && target.closest('.dropdown')) {
             return
           }
           emitBusAction('room:select')
           $bus.emit('ui:selection_made')
-        }, { signal })
+        }
+
+        container.addEventListener('click', handleSelect, { signal })
+        container.addEventListener('atoll-item-click', handleSelect, { signal })
       }
     }
   })
