@@ -1,6 +1,8 @@
 // Enable Bootstrap CSS Grid
 $enable-cssgrid: true;
 
+$prefix: "atoll-";
+
 // Global Body Overrides
 $body-bg: map-get($grays, "100");
 $body-color: map-get($grays, "900");
@@ -16,8 +18,3 @@ $timeline-avatar-size: 28px;
 $timeline-avatar-margin: 8px;
 $timeline-reaction-size: 24px;
 $timeline-reaction-gutter: 48px;
-
-// Messenger-like colors (approximate) - updated to match the theme colors shared
-$messenger-blue: #06C755;
-$messenger-light-gray: #f5f5f5;
-$messenger-dark-gray: #1f1f1f;

@@ -1,14 +1,10 @@
-// scss/theme/_variables-primitives.scss
-
-$prefix: "atoll-";
-
 // Primary Brand Primitives
 $atoll-green-500: #06C755;
 $atoll-green-400: #4CC764;
 $atoll-green-600: #00A843;
 
-$atoll-white:    #FFFFFF;
-$atoll-black:    #000000;
+$atoll-white: #FFFFFF;
+$atoll-black: #000000;
 
 // The 20-Step Neutral Scale
 $grays: (
@@ -37,12 +33,19 @@ $spacer: 1rem; // 16px base
 
 $spacers: (
   0: 0,
-  1: 0.25rem, //  4px (Micro Offset)
-  2: 0.5rem,  //  8px (Base Spatial Unit)
-  3: 0.75rem, // 12px (Micro Gap)
-  4: 1rem,    // 16px (Standard Layout Margin)
-  5: 1.5rem,  // 24px (Container Padding)
-  6: 2rem,    // 32px (Section Gap)
-  7: 3rem,    // 48px (Control Bar Height)
-  8: 4rem     // 64px (Desktop Header Height)
+  1: 0.25rem,
+  //  4px (Micro Offset)
+  2: 0.5rem,
+  //  8px (Base Spatial Unit)
+  3: 0.75rem,
+  // 12px (Micro Gap)
+  4: 1rem,
+  // 16px (Standard Layout Margin)
+  5: 1.5rem,
+  // 24px (Container Padding)
+  6: 2rem,
+  // 32px (Section Gap)
+  7: 3rem,
+  // 48px (Control Bar Height)
+  8: 4rem // 64px (Desktop Header Height)
 );

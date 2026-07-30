@@ -226,6 +226,21 @@
         }
       }, { signal })
 
+      // Handle focus and blur to lock page jump and ensure message list matches virtual keyboard layout
+      messageInput.addEventListener('focus', () => {
+        window.scrollTo(0, 0)
+        // Trigger scroll immediately to start adjustment
+        $bus.emit('ui:scroll_to_bottom', { smooth: true })
+        // Trigger scroll again after layout & virtual keyboard slide transition is fully complete
+        setTimeout(() => {
+          window.scrollTo(0, 0)
+          $bus.emit('ui:scroll_to_bottom', { smooth: true })
+        }, 100)
+      }, { signal })
+
+      messageInput.addEventListener('blur', () => {
+        window.scrollTo(0, 0)
+      }, { signal })
 
       $bus.on('ui:focus_input', () => {
         if ($device.isTouch()) {

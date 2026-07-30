@@ -648,6 +648,21 @@
         })
       }
 
+      // Listen to visual viewport resize & scroll to dynamically adjust layout height and prevent scrolling shifts
+      const updateVisualViewportHeight = () => {
+        if (window.visualViewport) {
+          const height = window.visualViewport.height
+          document.documentElement.style.setProperty('--atoll-visual-viewport-height', `${height}px`)
+          window.scrollTo(0, 0)
+        }
+      }
+
+      if (window.visualViewport) {
+        window.visualViewport.addEventListener('resize', updateVisualViewportHeight)
+        window.visualViewport.addEventListener('scroll', updateVisualViewportHeight)
+        updateVisualViewportHeight()
+      }
+
       /* Initialize boot handshake */
       startBootHandshake().catch((err) => {
         console.error('[app-root] Boot handshake failed:', err)

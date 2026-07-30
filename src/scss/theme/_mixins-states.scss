@@ -1,27 +1,36 @@
-// scss/theme/_mixins-states.scss
-
 @use "sass:color";
 
 @function calculate-atoll-state($color, $state-type: "hover") {
   $lightness: color.get-lightness($color);
-  
-  @if $state-type == "hover" {
-    @if $lightness > 85% {
+
+  @if $state-type =="hover" {
+    @if $lightness >85% {
       @return color.adjust($color, $lightness: -6%);
-    } @else if $lightness < 20% {
+    }
+
+    @else if $lightness < 20% {
       @return color.adjust($color, $lightness: +12%);
-    } @else {
+    }
+
+    @else {
       @return color.adjust($color, $lightness: -8%);
     }
-  } @else if $state-type == "active" {
-    @if $lightness > 85% {
+  }
+
+  @else if $state-type =="active" {
+    @if $lightness >85% {
       @return color.adjust($color, $lightness: -12%);
-    } @else if $lightness < 20% {
+    }
+
+    @else if $lightness < 20% {
       @return color.adjust($color, $lightness: +20%);
-    } @else {
+    }
+
+    @else {
       @return color.adjust($color, $lightness: -15%);
     }
   }
+
   @return $color;
 }
 

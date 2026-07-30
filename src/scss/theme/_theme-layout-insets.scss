@@ -1,6 +1,6 @@
-// scss/theme/_theme-layout-insets.scss
-
 :root {
+  --atoll-visual-viewport-height: 100dvh;
+
   /* Safe Area Defaults (Fallback for Standard Desktop Web Browsers) */
   --atoll-safe-area-top: env(safe-area-inset-top, 0px);
   --atoll-safe-area-bottom: env(safe-area-inset-bottom, 0px);
