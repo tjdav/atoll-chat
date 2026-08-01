@@ -349,6 +349,133 @@ test.describe.serial('Calls', () => {
     })
   })
 
+  test('Multi-device call synchronization: secondary device de-escalation', async ({ browser, loginCustomPage }) => {
+    let bob2Context, bob2Page
+    await test.step('Configure Bob secondary context and page with media permissions', async () => {
+      bob2Context = await browser.newContext()
+      bob2Page = await bob2Context.newPage()
+      await bob2Context.grantPermissions(['camera', 'microphone'])
+    })
+
+    await test.step('Login Bob on secondary device', async () => {
+      await loginCustomPage(bob2Page, 'bob', 'Password123!', 'VaultPassword123!')
+    })
+
+    await test.step('Inject Web Audio mock on Bob secondary device', async () => {
+      await bob2Page.evaluate(() => {
+        if (window.__E2E_AUDIO_MOCK_INJECTED__) {
+          return
+        }
+        window.__E2E_AUDIO_MOCK_INJECTED__ = true
+
+        const originalGetUserMedia = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices)
+        navigator.mediaDevices.getUserMedia = async (constraints) => {
+          const stream = await originalGetUserMedia(constraints)
+          if (constraints && constraints.audio) {
+            try {
+              const AudioCtxClass = window.AudioContext || window.webkitAudioContext
+              const audioCtx = new AudioCtxClass()
+              if (audioCtx.state === 'suspended') {
+                audioCtx.resume().catch(() => {
+                })
+              }
+              const osc = audioCtx.createOscillator()
+              const gain = audioCtx.createGain()
+              const dest = audioCtx.createMediaStreamDestination()
+
+              osc.type = 'sine'
+              osc.frequency.value = 440
+              gain.gain.value = 0.5
+
+              osc.connect(gain)
+              gain.connect(dest)
+              try {
+                gain.connect(audioCtx.destination)
+              } catch {
+              }
+              osc.start()
+
+              const dummyAudio = new Audio()
+              dummyAudio.muted = true
+              dummyAudio.srcObject = dest.stream
+              dummyAudio.play().catch(() => {
+              })
+
+              const synthTrack = dest.stream.getAudioTracks()[0]
+              window.__E2E_AUDIO_CONTROLLER__ = {
+                audioCtx,
+                osc,
+                gain,
+                synthTrack,
+                setVolume: (val) => {
+                  if (audioCtx.state === 'suspended') {
+                    audioCtx.resume().catch(() => {
+                    })
+                  }
+                  gain.gain.setValueAtTime(val, audioCtx.currentTime)
+                }
+              }
+
+              const origTracks = stream.getAudioTracks()
+              if (origTracks.length > 0) {
+                stream.removeTrack(origTracks[0])
+              }
+              stream.addTrack(synthTrack)
+            } catch (err) {
+              console.warn('[E2E Audio Mock] Error wrapping audio track:', err)
+            }
+          }
+          return stream
+        }
+      })
+    })
+
+    await test.step('Open direct room with Alice on Bob secondary device', async () => {
+      const bob2Chat = bob2Page.locator('chat-list atoll-list-item, chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+      await expect(bob2Chat).toBeVisible({ timeout: 15000 })
+      await bob2Chat.click()
+      await expect(bob2Page.locator('chat-view header h6')).toContainText('alice', { timeout: 15000 })
+    })
+
+    await test.step('Alice initiates audio call', async () => {
+      await alicePage.locator('[data-testid="chat-view-0__btnAudioCall"]').click()
+    })
+
+    await test.step('Both Bob devices receive incoming call overlay', async () => {
+      const bob1IncomingView = bobPage.locator('call-overlay .incoming-view')
+      const bob2IncomingView = bob2Page.locator('call-overlay .incoming-view')
+      await expect(bob1IncomingView).toBeVisible({ timeout: 20000 })
+      await expect(bob2IncomingView).toBeVisible({ timeout: 20000 })
+    })
+
+    await test.step('Bob accepts call on Device 1', async () => {
+      await bobPage.getByRole('button', { name: 'Accept Call' }).click()
+    })
+
+    await test.step('Bob Device 1 transitions to active call', async () => {
+      await expect(bobPage.locator('call-overlay .active-view')).toBeVisible({ timeout: 15000 })
+    })
+
+    await test.step('Bob Device 2 dismisses modal and shows toast', async () => {
+      // Bob Device 2 should dismiss modal and go to idle
+      await expect(bob2Page.locator('call-overlay > [ref$="modal"]')).not.toBeVisible({ timeout: 15000 })
+      // Toast notification should be shown
+      await expect(bob2Page.locator('.toast-body')).toContainText('Call answered on another device', { timeout: 15000 })
+      // Take screenshot of Device 2 showing toast and idle background
+      await bob2Page.screenshot({ path: 'tests/e2e/screenshots/multi-device-deescalation.png' })
+    })
+
+    await test.step('Alice ends the call and both devices return to normal', async () => {
+      await alicePage.locator('call-overlay [ref$="btnEndCall"]').click()
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
+      await expect(bobPage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
+    })
+
+    await test.step('Clean up Bob secondary context', async () => {
+      await bob2Context?.close()
+    })
+  })
+
   test('In-Call Device Settings, Effects, and Loss Fail-Safe', async () => {
     await test.step('Alice initiates video call', async () => {
       await alicePage.locator('[data-testid="chat-view-0__btnVideoCall"]').click()

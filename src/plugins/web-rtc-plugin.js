@@ -328,8 +328,8 @@ export default function webrtcPlugin ({
               return
             }
 
-            // Sender filtering (except for call_end which should tear down state for everyone)
-            if (message.type !== 'call_end' && message.sender_id === globalState.currentUser?.id) {
+            // Sender filtering (except for call_end and call_answer which should tear down/de-escalate state for everyone)
+            if (!['call_end', 'call_answer'].includes(message.type) && message.sender_id === globalState.currentUser?.id) {
               return
             }
 
@@ -361,6 +361,21 @@ export default function webrtcPlugin ({
                 })
               } else if (message.type === 'call_answer') {
                 console.log(`[WebRTC] Received call_answer for room ${room_id}`)
+                if (globalState.callStatus === 'incoming' && globalState.activeCallRoomId === room_id) {
+                  console.log(`[WebRTC] Call for room ${room_id} answered on another device. De-escalating secondary device.`)
+                  teardownCall(room_id)
+                  $bus.emit('call:ended', { room_id })
+                  $bus.emit('ui:show_toast', {
+                    message: 'Call answered on another device',
+                    variant: 'primary'
+                  })
+                  globalState.set('callStatus', 'idle')
+                  globalState.activeCallRoomId = null
+                  globalState.remoteStream = null
+                  globalState.hasRemoteVideo = false
+                  globalState.localStream = null
+                  return
+                }
                 const pc = activeCalls.get(room_id)
                 if (pc) {
                   if (pc.signalingState === 'have-local-offer') {

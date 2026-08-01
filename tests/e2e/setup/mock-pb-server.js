@@ -503,9 +503,15 @@ export function createServer () {
       // Custom route for graceful server shutdown
       if (pathname === '/api/custom/shutdown' && req.method === 'POST') {
         res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ success: true, message: 'Server shutting down cleanly' }))
+        res.end(JSON.stringify({
+          success: true,
+          message: 'Server shutting down cleanly'
+        }))
         setTimeout(() => {
-          try { server.close() } catch {}
+          try {
+            server.close()
+          } catch {
+          }
         }, 100)
         return
       }
