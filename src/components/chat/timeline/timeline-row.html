@@ -1,5 +1,5 @@
 <template id="timeline-row">
-  <div class="w-100 {{ marginClass }}" ref="container">
+  <div class="container mx-auto {{ marginClass }}" ref="container">
     <!-- Sender Name (Received First in Block only) -->
     <div class="sender-name {{ senderNameDisplayClass }}">
       {{ senderName }}
@@ -7,13 +7,13 @@
 
     <div class="timeline-row-container {{ rowClass }}">
       <!-- Avatar Column (Received only) -->
-      <div class="avatar-col d-flex align-items-end {{ avatarColDisplayClass }}">
+      <div class="d-flex align-items-end {{ avatarColDisplayClass }}">
         <div ref="avatarContainer">
           <!-- Rendered in client block if showAvatar is true -->
         </div>
       </div>
 
-      <div class="message-bubble-column d-flex flex-column {{ alignmentClass }}">
+      <div class="d-flex flex-column {{ alignmentClass }}">
         <div class="position-relative d-flex flex-column {{ alignmentClass }}" ref="bubbleWrapper">
           <slot></slot>
           <div ref="reactionIcon" class="reaction-trigger-icon position-absolute d-none" style="cursor: pointer; z-index: 10;">
@@ -37,8 +37,8 @@
 
   export default defineComponent({
     attributes: {
-      isSent: String,
-      isLastInBlock: String,
+      isSent: Boolean,
+      isLastInBlock: Boolean,
       senderName: String,
       avatarUrl: String,
       avatarInitials: String,
@@ -48,23 +48,19 @@
     },
     getters: {
       rowClass: (state) => {
-        const isSent = state.isSent === 'true' || state.isSent === true
-        return isSent ? 'sent' : 'received'
+        return state.isSent ? 'sent' : 'received'
       },
       alignmentClass: (state) => {
-        const isSent = state.isSent === 'true' || state.isSent === true
-        return isSent ? 'align-items-end' : 'align-items-start'
+        return state.isSent ? 'align-items-end' : 'align-items-start'
       },
       senderNameDisplayClass: (state) => {
         return state.senderName ? 'd-block' : 'd-none'
       },
       avatarColDisplayClass: (state) => {
-        const isSent = state.isSent === 'true' || state.isSent === true
-        return isSent ? 'd-none' : 'd-flex'
+        return state.isSent ? 'd-none' : 'd-flex'
       },
       marginClass: (state) => {
-        const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
-        return isLastInBlock ? 'mb-3' : 'mb-0'
+        return state.isLastInBlock ? 'mb-3' : 'mb-0'
       }
     },
     client: ({ refs, state, globalStore, eventBus, signal }) => {
@@ -185,20 +181,23 @@
       }
       const cancelPress = () => clearTimeout(pressTimer)
 
-      bubbleWrapper.addEventListener('touchstart', startPress, { passive: true })
-      bubbleWrapper.addEventListener('touchend', cancelPress)
-      bubbleWrapper.addEventListener('touchmove', cancelPress)
-      bubbleWrapper.addEventListener('mousedown', startPress)
-      bubbleWrapper.addEventListener('mouseup', cancelPress)
-      bubbleWrapper.addEventListener('mouseleave', cancelPress)
+      bubbleWrapper.addEventListener('touchstart', startPress, {
+        signal,
+        passive: true
+      })
+      bubbleWrapper.addEventListener('touchend', cancelPress, { signal })
+      bubbleWrapper.addEventListener('touchmove', cancelPress, { signal })
+      bubbleWrapper.addEventListener('mousedown', startPress, { signal })
+      bubbleWrapper.addEventListener('mouseup', cancelPress, { signal })
+      bubbleWrapper.addEventListener('mouseleave', cancelPress, { signal })
 
       signal.addEventListener('abort', () => {
-        bubbleWrapper.removeEventListener('touchstart', startPress)
-        bubbleWrapper.removeEventListener('touchend', cancelPress)
-        bubbleWrapper.removeEventListener('touchmove', cancelPress)
-        bubbleWrapper.removeEventListener('mousedown', startPress)
-        bubbleWrapper.removeEventListener('mouseup', cancelPress)
-        bubbleWrapper.removeEventListener('mouseleave', cancelPress)
+        bubbleWrapper.removeEventListener('touchstart', startPress, { signal })
+        bubbleWrapper.removeEventListener('touchend', cancelPress, { signal })
+        bubbleWrapper.removeEventListener('touchmove', cancelPress, { signal })
+        bubbleWrapper.removeEventListener('mousedown', startPress, { signal })
+        bubbleWrapper.removeEventListener('mouseup', cancelPress, { signal })
+        bubbleWrapper.removeEventListener('mouseleave', cancelPress, { signal })
       })
     }
   })
