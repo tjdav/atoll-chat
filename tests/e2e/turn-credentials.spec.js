@@ -5,7 +5,7 @@ test.describe('TURN Credentials Endpoint', () => {
     const status = await page.evaluate(async () => {
       try {
         const tId = window.__playwright_test_id__
-        const res = await fetch('http://127.0.0.1:8090/api/turn-credentials', {
+        const res = await fetch('http://127.0.0.1:8091/api/turn-credentials', {
           headers: {
             'x-test-id': tId
           }
@@ -30,7 +30,7 @@ test.describe('TURN Credentials Endpoint', () => {
       const token = auth.token
       const tId = window.__playwright_test_id__
 
-      const res = await fetch('http://127.0.0.1:8090/api/turn-credentials', {
+      const res = await fetch('http://127.0.0.1:8091/api/turn-credentials', {
         headers: {
           Authorization: `Bearer ${token}`,
           'x-test-id': tId

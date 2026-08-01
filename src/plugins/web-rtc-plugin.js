@@ -14,6 +14,42 @@ export default function webrtcPlugin ({
     { urls: 'stun:global.stun.twilio.com:3478' }
   ]
 
+  const expandTurnServerUrls = (rawUrls) => {
+    if (!rawUrls || !Array.isArray(rawUrls) || rawUrls.length === 0) {
+      return []
+    }
+
+    const expanded = new Set()
+    rawUrls.forEach(url => {
+      const cleanUrl = url.trim()
+      if (!cleanUrl) {
+        return
+      }
+
+      if (cleanUrl.startsWith('stun:')) {
+        expanded.add(cleanUrl)
+        return
+      }
+
+      if (cleanUrl.startsWith('turn:') || cleanUrl.startsWith('turns:')) {
+        const baseUri = cleanUrl.replace(/^(turn:|turns:)/, '').split('?')[0]
+
+        expanded.add(`turns:${baseUri}?transport=tcp`)
+        expanded.add(`turns:${baseUri}?transport=udp`)
+        expanded.add(`turn:${baseUri}?transport=udp`)
+        expanded.add(`turn:${baseUri}?transport=tcp`)
+
+        if (baseUri.includes(':5349')) {
+          const fallback3478 = baseUri.replace(':5349', ':3478')
+          expanded.add(`turn:${fallback3478}?transport=udp`)
+          expanded.add(`turn:${fallback3478}?transport=tcp`)
+        }
+      }
+    })
+
+    return Array.from(expanded)
+  }
+
   const finalIceServers = localIceServer
     ? [
       ...defaultStun,
@@ -182,8 +218,9 @@ export default function webrtcPlugin ({
                 }
 
                 if (turnOnly.length > 0) {
+                  const expandedTurnUrls = expandTurnServerUrls(turnOnly)
                   dynamicIceServers.push({
-                    urls: turnOnly,
+                    urls: expandedTurnUrls,
                     username: credentialsResponse.username,
                     credential: credentialsResponse.password
                   })
@@ -234,6 +271,17 @@ export default function webrtcPlugin ({
                 }
               }, 500)
               candidateTimers.set(room_id, timer)
+            } else {
+              // End of candidates: flush remaining immediately
+              if (candidateTimers.has(room_id)) {
+                clearTimeout(candidateTimers.get(room_id))
+                candidateTimers.delete(room_id)
+              }
+              const candidates = candidateBuffers.get(room_id)
+              if (candidates && candidates.length > 0) {
+                candidateBuffers.set(room_id, [])
+                sendSignalingMessage(room_id, 'ice_candidate', { candidates })
+              }
             }
           }
 
