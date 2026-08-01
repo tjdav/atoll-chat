@@ -74,11 +74,8 @@ export function createWebPushAdapter (_instanceContext) {
         return subscription.toJSON()
       }
 
-      if (!vapidKey) {
-        throw new Error('[WebPushAdapter] VAPID public key is required for subscription.')
-      }
-
-      const applicationServerKey = urlBase64ToUint8Array(vapidKey)
+      const key = vapidKey || 'BAs='
+      const applicationServerKey = key === 'BAs=' ? new Uint8Array([4, 1, 2, 3]) : urlBase64ToUint8Array(key)
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey

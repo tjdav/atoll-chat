@@ -25,7 +25,7 @@
       permissionStatus: 'default'
     }),
     getters: {
-      notifChecked: (state) => (state.notificationsEnabled && state.permissionStatus === 'granted' ? 'checked' : ''),
+      notifChecked: (state) => (state.notificationsEnabled && state.permissionStatus !== 'denied' ? 'checked' : ''),
       permissionAlertClass: (state) => (state.permissionStatus === 'denied' ? 'd-flex' : 'd-none')
     },
     client: async ({ refs, state, globalStore, notifications, push, pocketbase }) => {
@@ -35,11 +35,11 @@
       const { pb } = pocketbase
 
       state.notificationsEnabled = $state.notificationsEnabled ?? true
-      state.permissionStatus = Notification.permission
+      state.permissionStatus = typeof Notification !== 'undefined' ? Notification.permission : 'default'
 
       const notifSwitch = refs('notifSwitch')
       if (notifSwitch) {
-        notifSwitch.checked = state.notificationsEnabled && state.permissionStatus === 'granted'
+        notifSwitch.checked = state.notificationsEnabled && state.permissionStatus !== 'denied'
   
         notifSwitch.addEventListener('change', async () => {
           if (notifSwitch.checked) {

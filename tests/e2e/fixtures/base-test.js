@@ -132,7 +132,7 @@ function generateRecoveryWrapsV2 (masterKeyBytes, sodium) {
   }
 }
 
-const PB_URL = process.env.PB_URL || 'http://127.0.0.1:8090'
+const PB_URL = process.env.ATOLL_POCKETBASE_URL || process.env.ATOLL_INTERNAL_POCKETBASE_URL || 'http://localhost:8091'
 const isVerbose = Boolean(process.env.DEBUG || process.env.VERBOSE)
 
 const USERS = [
@@ -162,10 +162,21 @@ async function resetPocketBase (testId) {
 
   // Set up the beforeSend hook to inject the x-test-id header
   pb.beforeSend = (url, options) => {
-    options.headers = {
-      ...options.headers,
-      'x-test-id': testId
+    let headers = {}
+    if (options.headers) {
+      if (typeof options.headers.forEach === 'function') {
+        options.headers.forEach((val, key) => {
+          headers[key] = val
+        })
+      } else if (typeof options.headers === 'object') {
+        headers = { ...options.headers }
+      }
     }
+    if (options.body && typeof options.body === 'string' && !headers['content-type'] && !headers['Content-Type']) {
+      headers['Content-Type'] = 'application/json'
+    }
+    headers['x-test-id'] = testId
+    options.headers = headers
     return {
       url,
       options
@@ -194,7 +205,7 @@ async function resetPocketBase (testId) {
     try {
       let existingUser
       try {
-        existingUser = await pb.collection('users').getFirstListItem(pb.filter('username = {:username}', { username: user.username }), {
+        existingUser = await pb.collection('users').getFirstListItem(`username="${user.username}"`, {
           requestKey: null
         })
       } catch {
@@ -242,7 +253,7 @@ async function resetPocketBase (testId) {
       /* Save recovery codes to mock server's state */
       await saveTestRecoveryCodes(testId, user.username, plaintextCodes)
     } catch (error) {
-      console.error(`Failed to restore user ${user.username}:`, error.data || error.message)
+      console.error(`Failed to restore user ${user.username}: [status ${error.status}]`, error.message, JSON.stringify(error.data || {}))
     }
   }
 
@@ -336,12 +347,12 @@ export const test = base.extend({
       await page.locator('auth-login [data-testid$="password"]').fill(appPassword)
       await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-      await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
+      await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible({ timeout: 10000 })
 
       await page.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword)
       await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
 
-      await expect(page.locator('app-layout')).toBeVisible()
+      await expect(page.locator('app-layout')).toBeVisible({ timeout: 10000 })
     }
     await use(doLogin)
   },

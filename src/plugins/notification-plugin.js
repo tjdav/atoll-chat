@@ -24,12 +24,48 @@ export default definePlugin({
           $state.messageSoundsEnabled = true
         }
 
-        $state.subscribe('isAuthenticated', async (isAuth) => {
-          if (isAuth && $state.notificationsEnabled !== false && 'Notification' in window && Notification.permission === 'default') {
+        $state.subscribe('isVaultUnlocked', async (unlocked) => {
+          if (!unlocked) {
+            return
+          }
+
+          if ($state.notificationsEnabled === undefined) {
+            $state.notificationsEnabled = true
+          }
+
+          if ($state.notificationsEnabled === false) {
+            return
+          }
+
+          const userModel = pb.authStore.record || pb.authStore.model
+          const userId = $state.currentUser?.id || userModel?.id
+          const storageKey = userId ? `atoll_notif_prompted_${userId}` : 'atoll_notif_prompted'
+          const alreadyPrompted = localStorage.getItem(storageKey) === 'true'
+
+          const needsPrompt = !alreadyPrompted || (typeof Notification !== 'undefined' && Notification.permission === 'default')
+
+          if (needsPrompt) {
             try {
-              await requestPermission()
-            } catch {
-              /* ignore user gesture restriction */
+              const push = instanceContext.push
+              const $push = push?.$push || push
+              const granted = await $push.requestPermission()
+
+              localStorage.setItem(storageKey, 'true')
+
+              if (granted) {
+                $state.notificationsEnabled = true
+                const token = await $push.register()
+                if (token && userModel) {
+                  await pb.collection('users').update(userModel.id, {
+                    push_subscription: token
+                  })
+                  console.log('[notification-plugin] Push registration successful on vault unlock:', token)
+                }
+              } else {
+                $state.notificationsEnabled = false
+              }
+            } catch (err) {
+              console.error('[notification-plugin] Failed to request permission on vault unlock:', err)
             }
           }
         })

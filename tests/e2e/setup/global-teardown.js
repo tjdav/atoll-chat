@@ -56,12 +56,6 @@ async function globalTeardown () {
     console.log('No active Mock PocketBase server found to teardown.')
   }
 
-  try {
-    execSync('fuser -k 8090/tcp || true', { stdio: 'ignore' })
-  } catch {
-    /* ignore */
-  }
-
   console.log('--- Coturn STUN/TURN Server Teardown ---')
   if (globalThis.__COTURN_CONTAINER_USED__) {
     try {

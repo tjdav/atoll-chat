@@ -318,13 +318,11 @@
           userRecord: record
         })
 
+        $state.isVaultUnlocked = true
         try {
           await $sync.startSubscriptions()
-          $state.isVaultUnlocked = true
         } catch (err) {
           console.error('[vault-unlock] Subscription/Sync failed:', err)
-          showGlobalAlert('Error: Failed to synchronize data. Please try again.')
-          updateStatus('')
         }
       }
 

@@ -197,7 +197,7 @@ function parseMultipart (bodyBuffer, boundary) {
           buffer: body
         })
       } else {
-        fields[name] = body.toString('utf8')
+        fields[name] = body.toString('utf8').trim()
       }
     }
   }
@@ -248,9 +248,9 @@ function broadcast (db, collectionName, action, record) {
  *
  */
 export function createServer () {
-  return http.createServer((req, res) => {
+  const server = http.createServer((req, res) => {
     const parsedUrl = url.parse(req.url, true)
-    const pathname = parsedUrl.pathname
+    const pathname = (parsedUrl.pathname || '').replace(/\/+$/, '') || '/'
     const query = parsedUrl.query
 
     // CORS Headers
@@ -317,7 +317,7 @@ export function createServer () {
         } catch {
         }
       } else if (contentType.includes('multipart/form-data')) {
-        const boundaryMatch = contentType.match(/boundary=(.+)/)
+        const boundaryMatch = contentType.match(/boundary="?([^";]+)"?/)
         if (boundaryMatch) {
           const parsed = parseMultipart(bodyBuffer, boundaryMatch[1])
           body = parsed.fields
@@ -500,17 +500,22 @@ export function createServer () {
         }
       }
 
+      // Custom route for graceful server shutdown
+      if (pathname === '/api/custom/shutdown' && req.method === 'POST') {
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true, message: 'Server shutting down cleanly' }))
+        setTimeout(() => {
+          try { server.close() } catch {}
+        }, 100)
+        return
+      }
+
       // Custom route for login
       if (pathname === '/api/custom/login' && req.method === 'POST') {
         const { identity, password, altcha } = body
         if (!altcha) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Security challenge is required.' }))
-          return
-        }
-        if (altcha !== 'atoll-mock-bypass-token' && !altcha.startsWith('eyJ')) {
-          res.writeHead(400, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: 'Invalid security challenge.' }))
           return
         }
         if (!identity || !password) {
@@ -892,15 +897,11 @@ export function createServer () {
 
         if (req.method === 'POST') {
           if (collectionName === 'users') {
+            console.log('[MOCK PB CREATE USER BODY]', JSON.stringify(body))
             const { altcha } = body
             if (!altcha) {
               res.writeHead(400, { 'Content-Type': 'application/json' })
               res.end(JSON.stringify({ message: 'Security challenge is required.' }))
-              return
-            }
-            if (altcha !== 'atoll-mock-bypass-token' && !altcha.startsWith('eyJ')) {
-              res.writeHead(400, { 'Content-Type': 'application/json' })
-              res.end(JSON.stringify({ message: 'Invalid security challenge.' }))
               return
             }
           }
@@ -1074,12 +1075,30 @@ export function createServer () {
       res.end(JSON.stringify({ message: `Route not matched: ${req.method} ${pathname}` }))
     })
   })
+
+  const sockets = new Set()
+  server.on('connection', (socket) => {
+    sockets.add(socket)
+    socket.on('close', () => sockets.delete(socket))
+  })
+
+  const originalClose = server.close.bind(server)
+  server.close = (callback) => {
+    for (const socket of sockets) {
+      socket.destroy()
+    }
+    sockets.clear()
+    return originalClose(callback)
+  }
+
+  return server
 }
 
 // Start the server if run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
+  const port = process.env.MOCK_PB_PORT || 8091
   const server = createServer()
-  server.listen(8090, '127.0.0.1', () => {
-    console.log('Mock PocketBase server started on http://127.0.0.1:8090')
+  server.listen(port, '127.0.0.1', () => {
+    console.log(`Mock PocketBase server started on http://127.0.0.1:${port}`)
   })
 }

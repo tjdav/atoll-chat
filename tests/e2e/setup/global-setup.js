@@ -156,34 +156,32 @@ function runDockerComposeUp () {
  * Set up mock PocketBase and start local coturn STUN/TURN server.
  */
 async function globalSetup () {
-  try {
-    execSync('fuser -k 8090/tcp || true', { stdio: 'ignore' })
-  } catch {
-    /* ignore */
-  }
-
   console.log('--- Ensuring E2E Test Video Fixture ---')
   ensureTestVideoExists()
 
   console.log('--- Mock PocketBase Setup ---')
+  const port = process.env.MOCK_PB_PORT || 8091
   const server = createServer()
   try {
-    await new Promise((resolve) => {
+    await new Promise((resolve, reject) => {
       server.once('error', (err) => {
+        try {
+          server.close()
+        } catch {
+        }
         if (err.code === 'EADDRINUSE') {
-          console.log('Mock PocketBase server is already running on http://127.0.0.1:8090')
+          console.log(`Mock PocketBase server is already running on http://127.0.0.1:${port}`)
           resolve()
         } else {
-          console.warn('Mock PocketBase server error:', err.message)
-          resolve()
+          reject(err)
         }
       })
-      server.listen(8090, '127.0.0.1', () => {
-        console.log('Mock PocketBase server is running on http://127.0.0.1:8090')
+      server.listen(port, '127.0.0.1', () => {
+        console.log(`Mock PocketBase server is running on http://127.0.0.1:${port}`)
+        globalThis.__MOCK_PB_SERVER__ = server
         resolve()
       })
     })
-    globalThis.__MOCK_PB_SERVER__ = server
   } catch (err) {
     console.warn('Mock PB setup warning:', err.message)
   }

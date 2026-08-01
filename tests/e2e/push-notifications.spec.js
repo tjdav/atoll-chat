@@ -53,7 +53,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     })
   })
 
-  test('should request push permissions and register when explicitly toggled in settings', async ({ page, loginApp }) => {
+  test('should request push permissions and register automatically on vault unlock', async ({ page, loginApp }) => {
     const logs = []
     page.on('console', msg => {
       logs.push(msg.text())
@@ -65,8 +65,17 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     /* Verify standard app-layout is visible */
     await expect(page.locator('app-layout')).toBeVisible()
 
-    /* Ensure no automatic push registration log exists on login when permission is default */
-    expect(logs.some(log => log.includes('[app-root] Silent push registration successful'))).toBe(false)
+    /* Assert that the push plugin requested permission and registered automatically on vault unlock */
+    let pushRegistered = false
+    for (let i = 0; i < 20; i++) {
+      if (logs.some(log => log.includes('[notification-plugin] Push registration successful on vault unlock') || log.includes('Push subscription updated on backend successfully') || log.includes('[browser-notifications] Push registration successful'))) {
+        pushRegistered = true
+        break
+      }
+      await page.waitForTimeout(500)
+    }
+
+    expect(pushRegistered).toBe(true)
 
     // Navigate to Settings
     await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
@@ -75,28 +84,10 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     // Tap on the Notifications category in settings-pane
     await page.locator('[data-testid="settings-pane-0__nav-notifications"]').click()
 
-    // Find and click/toggle the browser notifications switch
+    // Find browser notifications switch and assert it is checked by default
     const switchInput = page.locator('browser-notifications input[type="checkbox"]')
     await expect(switchInput).toBeVisible()
-    await expect(switchInput).not.toBeChecked()
-
-    // Toggle the switch to True
-    await switchInput.click()
-
-    // Assert that the switch is now checked
     await expect(switchInput).toBeChecked()
-
-    /* Assert that the push plugin requested permission and registered successfully */
-    let pushRegistered = false
-    for (let i = 0; i < 20; i++) {
-      if (logs.some(log => log.includes('[browser-notifications] Push registration successful') || log.includes('Push subscription updated on backend successfully'))) {
-        pushRegistered = true
-        break
-      }
-      await page.waitForTimeout(500)
-    }
-
-    expect(pushRegistered).toBe(true)
   })
 
   test('should dispatch and filter push notification recipients correctly when a message is sent', async ({ page, loginApp, request }) => {
@@ -112,7 +103,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     const headers = { 'x-test-id': testId }
 
     /* Set up other users' mock push subscriptions on the backend database */
-    await request.patch(`http://localhost:8090/api/collections/users/records/bob`, {
+    await request.patch(`http://localhost:8091/api/collections/users/records/bob`, {
       headers,
       data: {
         push_subscription: {
@@ -125,7 +116,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
       }
     })
 
-    await request.patch(`http://localhost:8090/api/collections/users/records/charlie`, {
+    await request.patch(`http://localhost:8091/api/collections/users/records/charlie`, {
       headers,
       data: {
         push_subscription: {
@@ -158,12 +149,12 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await expect(page.locator('chat-view')).toBeVisible()
 
     /* Mute Charlie inside the room members database for this testId to assert filtering */
-    const membersRes = await request.get(`http://localhost:8090/api/collections/room_members/records?filter=user_id="charlie"`, { headers })
+    const membersRes = await request.get(`http://localhost:8091/api/collections/room_members/records?filter=user_id="charlie"`, { headers })
     const membersData = await membersRes.json()
     const charlieMemberRecord = membersData.items[0]
     expect(charlieMemberRecord).toBeDefined()
 
-    await request.patch(`http://localhost:8090/api/collections/room_members/records/${charlieMemberRecord.id}`, {
+    await request.patch(`http://localhost:8091/api/collections/room_members/records/${charlieMemberRecord.id}`, {
       headers,
       data: { is_muted: true }
     })
@@ -179,7 +170,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     /* Fetch the last dispatched push notification from the mock backend API and assert properties */
     let pushPayload = null
     for (let i = 0; i < 10; i++) {
-      const res = await request.get(`http://localhost:8090/api/last-push`, { headers })
+      const res = await request.get(`http://localhost:8091/api/last-push`, { headers })
       const data = await res.json()
       if (data) {
         pushPayload = data
@@ -214,7 +205,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     const headers = { 'x-test-id': testId }
 
     /* Set up Bob with an "EXPIRED" push subscription endpoint on the backend database */
-    await request.patch(`http://localhost:8090/api/collections/users/records/bob`, {
+    await request.patch(`http://localhost:8091/api/collections/users/records/bob`, {
       headers,
       data: {
         push_subscription: {
@@ -252,7 +243,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     /* Wait for self-healing pruning webhook to be called in background and clean Bob's subscription */
     let pruned = false
     for (let i = 0; i < 20; i++) {
-      const res = await request.get(`http://localhost:8090/api/collections/users/records/bob`, { headers })
+      const res = await request.get(`http://localhost:8091/api/collections/users/records/bob`, { headers })
       const user = await res.json()
       if (user && user.push_subscription === null) {
         pruned = true
