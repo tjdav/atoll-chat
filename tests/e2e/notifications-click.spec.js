@@ -29,6 +29,18 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     // Assert that we are in settings and NOT in the room
     await expect(page.locator('settings-main')).toBeVisible()
 
+    // Spy on window.focus
+    await page.evaluate(() => {
+      window.__window_focused__ = false
+      const origFocus = window.focus
+      window.focus = function () {
+        window.__window_focused__ = true
+        if (typeof origFocus === 'function') {
+          origFocus.apply(this, arguments)
+        }
+      }
+    })
+
     // Dispatch real Service Worker NOTIFICATION_CLICKED message event
     await page.evaluate(({ roomId }) => {
       if ('serviceWorker' in navigator) {
@@ -44,7 +56,10 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
       }
     }, { roomId })
 
-    // Wait and assert that we navigated back to chats UI view
+    // Wait and assert that window.focus was called and we navigated back to chats UI view
+    const focusCalled = await page.evaluate(() => window.__window_focused__)
+    expect(focusCalled).toBe(true)
+
     await expect(page.locator('chat-view')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('settings-main')).not.toBeVisible()
   })

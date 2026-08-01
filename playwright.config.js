@@ -55,7 +55,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm run test:server',
     url: 'http://localhost:3000',
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     env: {
       LOCAL_ICE_SERVER: `turn:127.0.0.1:${process.env.TURN_PORT || 3478}`,
       ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS: '5000',

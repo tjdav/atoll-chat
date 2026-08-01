@@ -376,12 +376,19 @@ const onNotificationClick = (event) => {
 
     let activeClient = null
     for (const client of windowClients) {
-      activeClient = client
-      break
+      if (client.focused) {
+        activeClient = client
+        break
+      }
+    }
+    if (!activeClient && windowClients.length > 0) {
+      activeClient = windowClients[0]
     }
 
     if (activeClient) {
-      await activeClient.focus()
+      if (typeof activeClient.focus === 'function') {
+        await activeClient.focus()
+      }
       activeClient.postMessage({
         type: 'NOTIFICATION_CLICKED',
         payload: {

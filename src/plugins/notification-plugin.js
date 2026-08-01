@@ -81,6 +81,9 @@ export default definePlugin({
               if (event.data && event.data.type === 'NOTIFICATION_CLICKED') {
                 const { room_id, messageId } = event.data.payload || {}
                 if (room_id) {
+                  if (typeof window !== 'undefined' && typeof window.focus === 'function') {
+                    window.focus()
+                  }
                   $state.currentAppView = 'chats'
                   $state.activeSelectionType = 'chats'
                   $state.activeSelectionId = room_id
