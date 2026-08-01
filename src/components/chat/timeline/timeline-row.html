@@ -40,8 +40,10 @@
       isSent: Boolean,
       isLastInBlock: Boolean,
       senderName: String,
+      senderId: String,
       avatarUrl: String,
       avatarInitials: String,
+      seenUserIds: String,
       seenAvatars: String,
       messageId: String,
       localUuid: String
@@ -77,51 +79,66 @@
         avatarContainer.innerHTML = ''
         const isSent = state.isSent === 'true' || state.isSent === true
         const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
-  
+
         // In received blocks, we only show the avatar for the last message in the block
         if (isLastInBlock && !isSent) {
-          if (state.avatarUrl) {
-            const img = document.createElement('img')
-            img.src = state.avatarUrl
-            img.className = 'timeline-avatar'
-            avatarContainer.appendChild(img)
-          } else if (state.avatarInitials) {
-            const initials = document.createElement('div')
-            initials.className = 'timeline-avatar d-flex align-items-center justify-content-center bg-secondary text-white x-small'
-            initials.textContent = state.avatarInitials
-            avatarContainer.appendChild(initials)
+          const profile = document.createElement('atoll-profile')
+          profile.setAttribute('size', '2xs')
+          profile.className = 'timeline-avatar-profile'
+          if (state.senderId) {
+            profile.setAttribute('user-id', state.senderId)
           }
+          if (state.senderName) {
+            profile.setAttribute('name', state.senderName)
+            profile.setAttribute('alt', state.senderName)
+          }
+          if (state.avatarUrl) {
+            profile.setAttribute('src', state.avatarUrl)
+          }
+          avatarContainer.appendChild(profile)
         }
       }
 
       const updateSeen = () => {
         seenContainer.innerHTML = ''
+        const seenUserIds = state.seenUserIds ? state.seenUserIds.split(',').filter(id => id.trim() !== '') : []
+
+        if (seenUserIds.length > 0) {
+          seenUserIds.forEach(uid => {
+            const profile = document.createElement('atoll-profile')
+            profile.setAttribute('user-id', uid.trim())
+            profile.setAttribute('size', '2xs')
+            profile.className = 'seen-avatar-profile me-1'
+            seenContainer.appendChild(profile)
+          })
+          return
+        }
+
         if (!state.seenAvatars) {
           return
         }
-  
+
         const parts = state.seenAvatars.split(',').filter(p => p.trim() !== '')
         parts.forEach(p => {
           const trimmed = p.trim()
+          const profile = document.createElement('atoll-profile')
+          profile.setAttribute('size', '2xs')
+          profile.className = 'seen-avatar-profile me-1'
           if (trimmed.includes('.') || trimmed.includes('/') || trimmed.startsWith('data:')) {
-            const img = document.createElement('img')
-            img.src = trimmed
-            img.className = 'seen-avatar'
-            seenContainer.appendChild(img)
+            profile.setAttribute('src', trimmed)
           } else {
-            const initials = document.createElement('div')
-            initials.className = 'seen-avatar d-flex align-items-center justify-content-center bg-secondary text-white'
-            initials.style.fontSize = '8px'
-            initials.textContent = trimmed.substring(0, 1).toUpperCase()
-            seenContainer.appendChild(initials)
+            profile.setAttribute('name', trimmed)
           }
+          seenContainer.appendChild(profile)
         })
       }
 
       $state.subscribe('isSent', updateAvatar)
       $state.subscribe('isLastInBlock', updateAvatar)
+      $state.subscribe('senderId', updateAvatar)
       $state.subscribe('avatarUrl', updateAvatar)
       $state.subscribe('avatarInitials', updateAvatar)
+      $state.subscribe('seenUserIds', updateSeen)
       $state.subscribe('seenAvatars', updateSeen)
 
       updateAvatar()

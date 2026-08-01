@@ -287,6 +287,9 @@
             row.dataset.localUuid = message.local_uuid
             row.dataset.isSent = isSent
             row.dataset.senderId = message.sender_id
+            if (message.sender_id) {
+              row.setAttribute('sender-id', message.sender_id)
+            }
 
             const sender = participants.find(p => p.id === message.sender_id)
             if (!isSent && isFirstInBlock && sender) {
@@ -304,6 +307,9 @@
             // Seen Indicators
             const seenBy = participants.filter(p => p.id !== $state.currentUser?.id && p.last_read_message_id === message.id)
             if (seenBy.length > 0) {
+              const seenUserIds = seenBy.map(p => p.id).join(',')
+              row.setAttribute('seen-user-ids', seenUserIds)
+
               const seenAvatars = seenBy.map(p => {
                 if (p.avatar) {
                   return pb.files.getURL(p, p.avatar, { thumb: '16x16' })
