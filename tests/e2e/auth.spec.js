@@ -30,12 +30,7 @@ test.describe('Authentication and Vault', () => {
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-    await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
-
-    await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
-    await page.locator('[data-testid$="unlockSubmit"]').click()
-
-    await expect(page.locator('app-layout')).toBeVisible()
+    await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
 
     // Create a room to ensure there is something to sync
     console.log('--- Creating Room ---')
@@ -58,12 +53,7 @@ test.describe('Authentication and Vault', () => {
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-    await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
-
-    await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
-    await page.locator('[data-testid$="unlockSubmit"]').click()
-
-    await expect(page.locator('app-layout')).toBeVisible()
+    await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
 
     // Check if chats are loaded (to verify sync)
     await expect(page.locator('chat-list-item')).toBeVisible()

@@ -320,6 +320,14 @@
           purgeVaultKey()
 
           // Step 4: Flip UI State & Start Sync
+          $state.currentUser = {
+            ...record,
+            ...decryptedKeys
+          }
+          $bus.emit('auth:unlocked', {
+            keys: decryptedKeys,
+            userRecord: record
+          })
           $state.isAuthenticated = true
           $state.isVaultUnlocked = true
 
