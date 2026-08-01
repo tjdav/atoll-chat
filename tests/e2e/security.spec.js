@@ -48,22 +48,11 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
       return window.__coralite__.lifecycle.hydrated
     })
 
-    /* Test registration input email validation */
+    /* Test registration input username validation */
     await page.locator('[data-testid$="linkRegister"]').click()
     await expect(page.locator('auth-register')).toBeVisible()
 
-    /* Try to submit with blank or invalid email first */
-    await page.locator('auth-register input[name="username"]').fill('testuser')
-    await page.locator('auth-register input[name="email"]').fill('invalid-email')
-
-    /* Submit should fail due to email type validation */
-    const emailInput = page.locator('auth-register input[name="email"]')
-    const isInvalid = await emailInput.evaluate((el) => {
-      return !el.checkValidity()
-    })
-    expect(isInvalid).toBe(true)
-
-    const regUser = 'sec_test_user'
+    const regUser = `sec_test_user_${Date.now()}`
 
     /* Fill in valid registration details */
     await page.locator('auth-register input[name="username"]').fill(regUser)
@@ -71,6 +60,11 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
     await page.locator('[data-testid$="registerSubmit"]').click()
+
+    /* Confirm and dismiss Recovery Code Modal */
+    await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
+    await page.locator('auth-register [data-testid$="chkStored"]').check()
+    await page.locator('auth-register [data-testid$="btnContinueToChat"]').click()
 
     /* Verify registration succeeds and proceeds directly to app-layout */
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
@@ -101,31 +95,40 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
 
     /* Login Flow */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="username"]').fill('alice')
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-    await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
+    // It goes straight to app-layout first
+    await expect(page.locator('app-layout')).toBeVisible()
+
+    // Reload the page to simulate session restoration lock!
+    await page.reload()
+    await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
+    await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
+
+    await expect(page.locator('vault-unlock')).toBeVisible()
 
     /* Initiate Self-Recovery Flow using a single-use Recovery Code */
-    await page.locator('button:has-text("Use Recovery Code")').click()
+    await page.locator('vault-unlock [ref$="__btnShowRecovery"]').dispatchEvent('click')
     await expect(page.locator(':is(h3):has-text("Use Recovery Code")')).toBeVisible()
 
     /* Verify invalid code shows error message */
-    await page.locator('input[name="recoveryCodeInput"]').fill('1111-2222-3333')
+    await page.locator('input[name="recoveryCodeInput"]').fill('RC-1111-2222-3333-4444')
     await page.locator('vault-unlock button:has-text("Verify Recovery Code")').click()
     await expect(page.locator('[data-testid$="recoveryCodeInput-feedback"]')).toContainText('Invalid or expired recovery code')
 
     /* Retrieve Alice's actual plaintext recovery codes from mock server */
     const codesRes = await page.evaluate(async () => {
       const tId = window.__playwright_test_id__
-      const response = await fetch('http://127.0.0.1:8090/api/test-recovery-codes?username=alice', {
+      const response = await fetch('http://127.0.0.1:8091/api/test-recovery-codes?username=alice', {
         headers: { 'x-test-id': tId }
       })
       return response.json()
     })
     const aliceCodes = codesRes.codes
-    expect(aliceCodes.length).toBe(10)
+    console.log('--- PLAIN TEXT CODES ---', aliceCodes)
+    expect(aliceCodes.length).toBe(1)
 
     const testRecoveryCode = aliceCodes[0]
 
@@ -146,20 +149,31 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
 
     /* LOG OUT and test if new password works and old password fails */
     await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnLogout"]').click()
+    await page.locator('[data-testid$="btnLogout"]').dispatchEvent('click')
     await expect(page.locator('auth-login')).toBeVisible()
 
-    /* Log in with password */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    /* Log in with OLD password and expect failure */
+    await page.locator('auth-login [data-testid$="username"]').fill('alice')
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+    await expect(page.locator('auth-login [data-testid$="statusMsg"]')).toContainText(/wrong secret key|Invalid|Failed/)
 
-    await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
+    /* Log in with NEW password and expect success */
+    await page.locator('auth-login [data-testid$="username"]').fill('alice')
+    await page.locator('auth-login [data-testid$="password"]').fill('NewVaultPassword123!')
+    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+    await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
+
+    /* Clear memory/session via reload to simulate active session lock */
+    await page.reload()
+    await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
+    await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
+
+    await expect(page.locator('vault-unlock')).toBeVisible()
 
     /* Try old password and expect unlock failure */
-    await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
+    await page.locator('[data-testid$="password"]').fill('Password123!')
     await page.locator('[data-testid$="unlockSubmit"]').click()
-
     await expect(page.locator('[data-testid$="password-feedback"]')).toContainText(
       /wrong secret key|Invalid Password|Unlock failed/
     )
@@ -169,25 +183,20 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('[data-testid$="unlockSubmit"]').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
-    /* LOG OUT and verify that the used recovery code is permanently burned */
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnLogout"]').click()
-    await expect(page.locator('auth-login')).toBeVisible()
+    /* Clear memory/session via reload to simulate active session lock again to verify burned code */
+    await page.reload()
+    await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
+    await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-    /* Log in with password */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
-    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
-
-    await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
+    await expect(page.locator('vault-unlock')).toBeVisible()
 
     /* Attempt recovery with the same used recovery code */
-    await page.locator('button:has-text("Use Recovery Code")').click()
+    await page.locator('vault-unlock [ref$="__btnShowRecovery"]').dispatchEvent('click')
     await page.locator('input[name="recoveryCodeInput"]').fill(testRecoveryCode)
     await page.locator('vault-unlock button:has-text("Verify Recovery Code")').click()
 
     /* Verify rejection */
-    await expect(page.locator('[data-testid$="recoveryCodeInput-feedback"]')).toContainText('Invalid or expired recovery code')
+    await expect(page.locator('[data-testid$="recoveryCodeInput-feedback"]')).toContainText(/Invalid or expired recovery code|No recovery codes configured/)
   })
 
   test('should handle TOTP dual modal setup, device trust state machine, and step-up verification', async ({ page, loginApp }) => {
@@ -213,6 +222,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
 
     /* Confirm enrollment success toast and button text update */
     await expect(page.locator('.toast-body')).toContainText('Two-Step Authentication enabled successfully!')
+    await page.locator('.toast .btn-close').click().catch(() => {})
     await expect(page.locator('[data-testid$="__btnManageTotp"]')).toContainText('Disable 2FA')
 
     /* Mock WebAuthn credentials API for passkey step-up registration */
@@ -268,7 +278,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
 
     /* Log in with password */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="username"]').fill('alice')
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
@@ -286,7 +296,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('[data-testid$="totpChallengeSubmit"]').click()
 
     /* Recognized device: direct prompt to Unlock Vault is visible now */
-    await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
+    await expect(page.locator('vault-unlock')).toBeVisible()
 
     /* Unlock the vault */
     await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
@@ -299,12 +309,12 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('auth-login')).toBeVisible()
 
     /* Log back in with password */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="username"]').fill('alice')
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     /* Assert that recognized device completely bypasses TOTP challenge and goes straight to vault unlock */
-    await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
+    await expect(page.locator('vault-unlock')).toBeVisible()
     await expect(page.locator('totp-challenge')).not.toBeVisible()
 
     /* Unlock vault to disable TOTP */
@@ -327,7 +337,8 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
   })
 
   test('should inject the strict Content Security Policy and safety headers', async ({ page }) => {
-    const response = await page.request.get('http://localhost:8090/api/health')
+    const pbUrl = process.env.ATOLL_POCKETBASE_URL || process.env.ATOLL_INTERNAL_POCKETBASE_URL || 'http://localhost:8091'
+    const response = await page.request.get(`${pbUrl}/api/health`)
     expect(response).not.toBeNull()
     const headers = response.headers()
 

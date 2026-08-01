@@ -4,7 +4,7 @@
     <div class="atoll-auth-header-zone">
       <atoll-list-header variant="list">
         <div slot="leading">
-          <atoll-button type="button" variant="ghost" icon-only="true" ref="linkLogin">
+          <atoll-button type="button" variant="ghost" icon-only="true" ref="linkLogin" test-id="linkLogin">
             <atoll-icon name="chevron-left"></atoll-icon>
           </atoll-button>
         </div>
@@ -15,8 +15,10 @@
     <div class="atoll-auth-hero-zone">
       <h3 class="mb-1">Create Account</h3>
       <p class="text-muted small">Enter your details to join Atoll</p>
-      <div class="alert alert-warning text-start small p-2 mb-0 mt-2">
-        <strong>Zero-PII Warning:</strong> Your account has no email attached for privacy. If you lose your Master Password or Recovery Keys, your vault data cannot be recovered.
+      <div class="text-start small p-3 mb-0 mt-3 rounded" style="background-color: var(--atoll-warning-bg-subtle, #FFF8E1); border: 1px solid var(--atoll-warning-border, #FFE082); color: var(--atoll-text-primary, #212121);">
+        <div class="fw-bold mb-1">⚠️ No Email Recovery</div>
+        <div class="text-muted small mb-1" style="color: var(--atoll-text-secondary, #616161) !important;">Your account has no email attached for privacy.</div>
+        <div class="text-muted small" style="color: var(--atoll-text-secondary, #616161) !important;">Lost credentials cannot be recovered by admins.</div>
       </div>
     </div>
 
@@ -25,7 +27,7 @@
       <atoll-input 
         ref="username" 
         name="username"
-        label="Username" 
+        label="Username (Immutable)" 
         placeholder="Choose a username" 
         required="true" 
         autocomplete="username" 
@@ -84,6 +86,49 @@
     </form>
 
     <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
+
+    <!-- POST-REGISTRATION RECOVERY MODAL OVERLAY -->
+    <div ref="recoveryModal" class="position-absolute top-0 start-0 w-100 h-100 bg-body d-none flex-column p-4 justify-content-between" style="z-index: 1050; border-radius: inherit;">
+      <div class="d-flex flex-column align-items-center text-center my-auto w-100">
+        <div class="mb-3 text-warning">
+          <atoll-icon name="permissions" size="48"></atoll-icon>
+        </div>
+        <h4 class="mb-3">🔐 Save Your Emergency Recovery Code</h4>
+        <p class="text-muted small mb-4 px-2">
+          If you forget your Master Password, this code is the <strong>ONLY</strong> way to regain access to your encrypted vault.
+        </p>
+
+        <!-- Recovery Code Box -->
+        <div class="card bg-light border w-100 py-3 mb-4 font-monospace text-center fs-5 fw-bold text-primary select-all" ref="recoveryCodeBox" style="letter-spacing: 1px;">
+          RC-9K2F-8M11-3P7Q-4L90
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="d-flex gap-3 mb-4 w-100 px-2 justify-content-center">
+          <atoll-button type="button" variant="outline" class="flex-grow-1" ref="btnCopyCode" test-id="btnCopyCode">
+            <atoll-icon slot="leading" name="copy" size="18"></atoll-icon>
+            Copy Code
+          </atoll-button>
+          <atoll-button type="button" variant="outline" class="flex-grow-1" ref="btnDownloadCode" test-id="btnDownloadCode">
+            <atoll-icon slot="leading" name="download" size="18"></atoll-icon>
+            Download
+          </atoll-button>
+        </div>
+
+        <!-- Confirmation Checkbox -->
+        <div class="form-check text-start mb-4 w-100 px-3 py-2 rounded" style="background-color: var(--atoll-tertiary-bg, #f8f9fa);">
+          <input class="form-check-input ms-0 me-2" type="checkbox" id="chkStored" ref="chkStored" data-testid="chkStored">
+          <label class="form-check-label small fw-bold text-muted" for="chkStored">
+            I have stored this code in a safe place.
+          </label>
+        </div>
+      </div>
+
+      <!-- Continue Action -->
+      <div class="w-100">
+        <atoll-button type="button" variant="primary" block="true" ref="btnContinueToChat" test-id="btnContinueToChat" disabled="true">Continue to Chat</atoll-button>
+      </div>
+    </div>
   </div>
 </template>
 
@@ -110,6 +155,20 @@
       const strengthText = refs('strengthText')
       // eslint-disable-next-line no-unused-vars
       let zxcvbnScore = 0
+
+      const btnCopyCode = refs('btnCopyCode') || root.querySelector('[ref$="__btnCopyCode"]')
+      const btnDownloadCode = refs('btnDownloadCode') || root.querySelector('[ref$="__btnDownloadCode"]')
+      const chkStored = refs('chkStored') || root.querySelector('[ref$="__chkStored"]')
+      const btnContinueToChat = refs('btnContinueToChat') || root.querySelector('[ref$="__btnContinueToChat"]')
+      const recoveryModal = refs('recoveryModal') || root.querySelector('[ref$="__recoveryModal"]')
+      const recoveryCodeBox = refs('recoveryCodeBox') || root.querySelector('[ref$="__recoveryCodeBox"]')
+
+      let savedCode = ''
+      let isCheckboxChecked = false
+      let hasCopiedOrDownloaded = false
+      let pendingAuthData = null
+      let pendingDecryptedKeys = null
+      let pendingRecord = null
 
       let altchaWidget = null
       let registerSubmitPending = false
@@ -153,6 +212,10 @@
         })
       }
 
+      const passwordInputEl = refs('password') || root.querySelector('[ref="password"]')
+      const passwordConfirmInputEl = refs('passwordConfirm') || root.querySelector('[ref="passwordConfirm"]')
+      const invitationCodeInput = refs('invitationCode') || root.querySelector('[ref="invitationCode"]')
+
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
           const input = e.target.closest('atoll-input')
@@ -168,16 +231,17 @@
       registerInputReset(registerForm)
 
       const updateStrength = async () => {
-        const passwordInput = refs('password')
+        if (!passwordInputEl) {
+          return
+        }
         const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
-        const { score, width, colorClass, text } = await evaluatePasswordStrength(passwordInput.value, 8)
+        const { score, width, colorClass, text } = await evaluatePasswordStrength(passwordInputEl.value, 8)
         zxcvbnScore = score
         strengthBar.style.width = width
         strengthBar.className = colorClass
         strengthText.textContent = text
       }
 
-      const passwordInputEl = refs('password')
       if (passwordInputEl) {
         passwordInputEl.addEventListener('input', updateStrength)
       }
@@ -186,6 +250,124 @@
         linkLogin.addEventListener('click', (e) => {
           e.preventDefault()
           $state.authView = 'login'
+        })
+      }
+
+      const updateContinueButtonState = () => {
+        if (isCheckboxChecked || hasCopiedOrDownloaded) {
+          btnContinueToChat?.removeAttribute('disabled')
+        } else {
+          btnContinueToChat?.setAttribute('disabled', 'true')
+        }
+      }
+
+      if (btnCopyCode) {
+        btnCopyCode.addEventListener('click', async () => {
+          try {
+            await navigator.clipboard.writeText(savedCode)
+            $bus.emit('ui:show_toast', {
+              message: 'Recovery code copied to clipboard!',
+              type: 'success'
+            })
+            hasCopiedOrDownloaded = true
+            updateContinueButtonState()
+          } catch (err) {
+            console.error('Failed to copy code:', err)
+          }
+        })
+      }
+
+      if (btnDownloadCode) {
+        btnDownloadCode.addEventListener('click', () => {
+          const creationDate = new Date().toISOString().replace('T', ' ').substring(0, 19)
+          const fileContent = `============================================================
+ATOLL CHAT - EMERGENCY RECOVERY CODE
+============================================================
+Username: @${usernameInput.value.trim().toLowerCase()}
+Created: ${creationDate} UTC
+Recovery Code: ${savedCode}
+
+WARNING: This emergency recovery code is the ONLY way to regain
+access to your encrypted vault if you forget your Master Password.
+Atoll administrators cannot recover your credentials or vault.
+============================================================`
+
+          const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = 'atoll-recovery-code.txt'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          URL.revokeObjectURL(url)
+
+          hasCopiedOrDownloaded = true
+          updateContinueButtonState()
+        })
+      }
+
+      if (chkStored) {
+        chkStored.addEventListener('change', () => {
+          isCheckboxChecked = chkStored.checked
+          updateContinueButtonState()
+        })
+      }
+
+      if (btnContinueToChat) {
+        btnContinueToChat.addEventListener('click', async () => {
+          if (pendingDecryptedKeys && pendingRecord && pendingAuthData) {
+            $state.currentUser = {
+              ...pendingRecord,
+              ...pendingDecryptedKeys
+            }
+            $bus.emit('auth:unlocked', {
+              keys: pendingDecryptedKeys,
+              userRecord: pendingRecord
+            })
+            $state.isVaultUnlocked = true
+            pb.authStore.save(pendingAuthData.token, pendingRecord)
+          }
+
+          $state.isAuthenticated = true
+          if ($state.isVaultUnlocked) {
+            try {
+              await $sync.startSubscriptions()
+            } catch (syncErr) {
+              console.error('[auth-register] Subscription sync warning:', syncErr)
+            }
+          }
+        })
+      }
+
+      if (usernameInput) {
+        usernameInput.addEventListener('input', () => {
+          const val = usernameInput.value || ''
+          const canonical = val.trim().toLowerCase()
+          if (canonical) {
+            usernameInput.helperText = `Your unique username is permanently unique and immutable once created. It will be @${canonical}`
+          } else {
+            usernameInput.helperText = ''
+          }
+        })
+      }
+
+      if (invitationCodeInput) {
+        invitationCodeInput.addEventListener('input', (e) => {
+          const val = invitationCodeInput.value || ''
+          const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+          let raw = clean
+          if (raw.startsWith('INV')) {
+            raw = raw.slice(3)
+          }
+          let formatted = 'INV'
+          if (raw.length > 0) {
+            formatted += '-' + raw.substring(0, 4)
+          }
+          if (raw.length > 4) {
+            formatted += '-' + raw.substring(4, 8)
+          }
+          invitationCodeInput.value = formatted
         })
       }
 
@@ -256,20 +438,22 @@
         event.stopImmediatePropagation()
         showGlobalAlert('')
 
-        const passwordInput = refs('password')
-        const passwordConfirmInput = refs('passwordConfirm')
-
         // Clear all custom validities first
-        usernameInput.setCustomValidity('')
-        const actualInvitationCodeInput = refs('invitationCode') || root.querySelector('[ref="invitationCode"]')
-        if (actualInvitationCodeInput) {
-          actualInvitationCodeInput.setCustomValidity('')
+        if (usernameInput) {
+          usernameInput.setCustomValidity('')
         }
-        passwordInput.setCustomValidity('')
-        passwordConfirmInput.setCustomValidity('')
+        if (invitationCodeInput) {
+          invitationCodeInput.setCustomValidity('')
+        }
+        if (passwordInputEl) {
+          passwordInputEl.setCustomValidity('')
+        }
+        if (passwordConfirmInputEl) {
+          passwordConfirmInputEl.setCustomValidity('')
+        }
         updateStatus('')
 
-        const inputs = [usernameInput, actualInvitationCodeInput, passwordInput, passwordConfirmInput].filter(Boolean)
+        const inputs = [usernameInput, invitationCodeInput, passwordInputEl, passwordConfirmInputEl].filter(Boolean)
         let isValid = true
         inputs.forEach(input => {
           if (!input.checkValidity()) {
@@ -285,13 +469,15 @@
           return
         }
 
-        const username = usernameInput.value
-        const invitation_code = actualInvitationCodeInput ? actualInvitationCodeInput.value.trim() : ''
-        const password = passwordInput.value
-        const passwordConfirm = passwordConfirmInput.value
+        const username = usernameInput ? usernameInput.value : ''
+        const invitation_code = invitationCodeInput ? invitationCodeInput.value.trim() : ''
+        const password = passwordInputEl ? passwordInputEl.value : ''
+        const passwordConfirm = passwordConfirmInputEl ? passwordConfirmInputEl.value : ''
 
         if (password !== passwordConfirm) {
-          passwordConfirmInput.setCustomValidity('Passwords do not match')
+          if (passwordConfirmInputEl) {
+            passwordConfirmInputEl.setCustomValidity('Passwords do not match')
+          }
           updateValidationFeedback(registerForm)
           registerForm.classList.add('was-validated')
           return
@@ -371,6 +557,22 @@
 
           const vault_salt = sodium.to_base64(sodium.randombytes_buf(16), sodium.base64_variants.ORIGINAL)
 
+          // Generate single emergency recovery code
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+          const part = () => Array.from(crypto.getRandomValues(new Uint8Array(4)))
+            .map(b => chars[b % chars.length])
+            .join('')
+          const singleCode = `RC-${part()}-${part()}-${part()}-${part()}`
+
+          const codeHash = sodium.crypto_generichash(32, singleCode)
+          const recoveryNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+          const recoveryCiphertext = sodium.crypto_secretbox_easy(masterKeyBytes, recoveryNonce, codeHash)
+          const singleWrap = {
+            hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+            ciphertext: sodium.to_base64(recoveryCiphertext, sodium.base64_variants.ORIGINAL),
+            nonce: sodium.to_base64(recoveryNonce, sodium.base64_variants.ORIGINAL)
+          }
+
           const regRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/register`), {
             method: 'POST',
             headers: {
@@ -386,6 +588,7 @@
               public_sign_key,
               encrypted_master_keys,
               encrypted_private_keys,
+              recovery_wraps: [singleWrap],
               vault_salt
             })
           })
@@ -417,19 +620,14 @@
                 ...decryptedKeys,
                 id: record.id
               })
-              $state.currentUser = {
-                ...record,
-                ...decryptedKeys
-              }
-              $bus.emit('auth:unlocked', {
-                keys: decryptedKeys,
-                userRecord: record
-              })
-              $state.isVaultUnlocked = true
+  
+              // Populate pending variables to apply after they confirm
+              pendingAuthData = authData
+              pendingDecryptedKeys = decryptedKeys
+              pendingRecord = record
             }
           }
 
-          pb.authStore.save(authData.token, record)
           await $storage.saveConfigs([
             {
               key: 'pb_url',
@@ -437,21 +635,28 @@
             },
             {
               key: 'pb_token',
-              value: pb.authStore.token
+              value: authData.token
             }
           ])
 
           const { purgeVaultKey } = await import('../../utils/keys.js')
           purgeVaultKey()
 
-          $state.isAuthenticated = true
-          if ($state.isVaultUnlocked) {
-            try {
-              await $sync.startSubscriptions()
-            } catch (syncErr) {
-              console.error('[auth-register] Subscription sync warning:', syncErr)
-            }
+          // Show the Recovery Modal Overlay and do NOT set isAuthenticated yet!
+          savedCode = singleCode
+          console.log('--- MODAL REF CHECK ---', {
+            recoveryModal: recoveryModal ? 'found' : 'null',
+            recoveryCodeBox: recoveryCodeBox ? 'found' : 'null',
+            savedCode
+          })
+          if (recoveryCodeBox) {
+            recoveryCodeBox.textContent = singleCode
           }
+          if (recoveryModal) {
+            recoveryModal.classList.remove('d-none')
+            recoveryModal.classList.add('d-flex')
+          }
+          updateStatus('Account created! Please save your recovery code.')
         } catch (error) {
           console.error('Registration error:', error)
           pb.authStore.clear()

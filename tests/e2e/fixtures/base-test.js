@@ -95,7 +95,7 @@ function encryptMasterKeyWithKekV2 (masterKeyBytes, KEK, sodium) {
 }
 
 /**
- * Generates 10 recovery wraps.
+ * Generates a single high-entropy recovery wrap in the RC-XXXX-XXXX-XXXX-XXXX format.
  */
 function generateRecoveryWrapsV2 (masterKeyBytes, sodium) {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
@@ -103,20 +103,19 @@ function generateRecoveryWrapsV2 (masterKeyBytes, sodium) {
     .map(b => chars[b % chars.length])
     .join('')
 
+  const code = `RC-${part()}-${part()}-${part()}-${part()}`
   const wraps = []
-  const plaintextCodes = []
-  for (let i = 0; i < 10; i++) {
-    const code = `${part()}-${part()}-${part()}`
-    plaintextCodes.push(code)
-    const codeHash = sodium.crypto_generichash(32, code)
-    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-    const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
-    wraps.push({
-      hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
-      ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
-      nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
-    })
-  }
+  const plaintextCodes = [code]
+
+  const codeHash = sodium.crypto_generichash(32, code)
+  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+  const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
+  wraps.push({
+    hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+    ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+    nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+  })
+
   return {
     wraps,
     plaintextCodes
@@ -450,7 +449,7 @@ export const test = base.extend({
       await targetPage.locator('auth-login [data-testid$="password"]').fill(appPassword)
       await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-      await expect(targetPage.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible()
+      await expect(targetPage.locator('vault-unlock')).toBeVisible()
 
       await targetPage.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword)
       await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
