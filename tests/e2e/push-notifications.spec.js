@@ -254,4 +254,71 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
 
     expect(pruned).toBe(true)
   })
+
+  test('should mute notification and sound only when active chat is selected AND app is focused', async ({ page, loginApp }) => {
+    await loginApp('alice', 'Password123!', 'VaultPassword123!')
+    await expect(page.locator('app-layout')).toBeVisible()
+
+    /* Create a room with Bob */
+    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+    await page.locator('[data-testid$="search-result-bob"]').click()
+    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await expect(page.locator('chat-view')).toBeVisible()
+
+    const roomId = await page.evaluate(() => window.$state.activeSelectionId)
+    expect(roomId).toBeDefined()
+
+    /* Stub Notification class and document.hasFocus() to return true (app focused) */
+    await page.evaluate(() => {
+      window.__notif_dispatched__ = false
+      window.Notification = class extends EventTarget {
+        constructor (title, options) {
+          super()
+          window.__notif_dispatched__ = true
+        }
+
+        static permission = 'granted'
+      }
+      document.hasFocus = () => true
+    })
+
+    /* Simulate incoming message for active room when app IS focused */
+    await page.evaluate(({ roomId }) => {
+      window.$bus.emit('db:new_local_data', {
+        room_id: roomId,
+        message: {
+          id: 'msg-focus-1',
+          sender_id: 'bob',
+          type: 'text',
+          content: 'Message while focused'
+        }
+      })
+    }, { roomId })
+
+    const wasDispatchedWhenFocused = await page.evaluate(() => window.__notif_dispatched__)
+    expect(wasDispatchedWhenFocused).toBe(false)
+
+    /* Reset flag and stub document.hasFocus() to return false (app NOT focused) */
+    await page.evaluate(() => {
+      window.__notif_dispatched__ = false
+      document.hasFocus = () => false
+    })
+
+    /* Simulate incoming message for active room when app is NOT focused */
+    await page.evaluate(({ roomId }) => {
+      window.$bus.emit('db:new_local_data', {
+        room_id: roomId,
+        message: {
+          id: 'msg-unfocused-1',
+          sender_id: 'bob',
+          type: 'text',
+          content: 'Message while unfocused'
+        }
+      })
+    }, { roomId })
+
+    const wasDispatchedWhenUnfocused = await page.evaluate(() => window.__notif_dispatched__)
+    expect(wasDispatchedWhenUnfocused).toBe(true)
+  })
 })

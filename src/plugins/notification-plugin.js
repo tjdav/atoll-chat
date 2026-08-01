@@ -149,6 +149,16 @@ export default definePlugin({
             }
           }
 
+          const isChatActiveAndFocused = (roomId) => {
+            const isAppFocused = typeof document !== 'undefined' &&
+              document.hasFocus() &&
+              document.visibilityState === 'visible'
+
+            return isAppFocused &&
+              $state.currentAppView === 'chats' &&
+              $state.activeSelectionId === roomId
+          }
+
           const showNotification = async (payload) => {
             if (($state.notificationsEnabled ?? true) === false || Notification.permission !== 'granted') {
               return
@@ -159,9 +169,7 @@ export default definePlugin({
               return
             }
 
-            if (document.visibilityState === 'visible' &&
-                  $state.currentAppView === 'chats' &&
-                  $state.activeSelectionId === room_id) {
+            if (isChatActiveAndFocused(room_id)) {
               return
             }
 
@@ -271,9 +279,7 @@ export default definePlugin({
             }
 
             if ($state.messageSoundsEnabled && !isMuted) {
-              const isSuppressed = document.visibilityState === 'visible' &&
-                $state.currentAppView === 'chats' &&
-                $state.activeSelectionId === room_id
+              const isSuppressed = isChatActiveAndFocused(room_id)
 
               if (!isSuppressed) {
                 playMessageSound()
