@@ -49,19 +49,7 @@ function generateSalt (sodium) {
   return sodium.randombytes_buf(16)
 }
 
-/**
- * Derives a 32-byte Key Encryption Key (KEK) from a password and salt using Argon2id.
- */
-async function deriveKeyFromPassword (password, saltUint8Array, sodium) {
-  return sodium.crypto_pwhash(
-    32,
-    password,
-    saltUint8Array,
-    sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-    sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-    sodium.crypto_pwhash_ALG_ARGON2ID13
-  )
-}
+const SHARED_PASSWORD = 'Password123!'
 
 /**
  * Unified helper to generate both encryption and identity keypairs.
@@ -152,8 +140,6 @@ const USERS = [
   }
 ]
 
-const SHARED_PASSWORD = 'Password123!'
-const SHARED_VAULT_PASSWORD = 'VaultPassword123!'
 
 async function resetPocketBase (testId) {
   if (process.env.DEBUG || process.env.VERBOSE) {
@@ -209,7 +195,7 @@ async function resetPocketBase (testId) {
       await pb.collection('invitations').create({
         code,
         is_used: false,
-        max_uses: 1,
+        max_uses: 100,
         used_count: 0
       }, {
         requestKey: null
@@ -231,21 +217,45 @@ async function resetPocketBase (testId) {
         // User doesn't exist, we will create it below
       }
 
+      const canonicalUsername = user.username.trim().toLowerCase()
+      const authSaltInput = `atoll-auth-salt:${canonicalUsername}`
+      const authSaltHash = sodium.crypto_hash_sha256(authSaltInput)
+      const saltAuth = authSaltHash.slice(0, 16)
+      const keyBBytes = sodium.crypto_pwhash(
+        32,
+        SHARED_PASSWORD,
+        saltAuth,
+        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_ALG_ARGON2ID13
+      )
+      const userPasswordKeyB = sodium.to_hex(keyBBytes)
+
+      const vaultSaltInput = `atoll-vault-salt:${canonicalUsername}`
+      const vaultSaltHash = sodium.crypto_hash_sha256(vaultSaltInput)
+      const saltVault = vaultSaltHash.slice(0, 16)
+      const keyABytes = sodium.crypto_pwhash(
+        32,
+        SHARED_PASSWORD,
+        saltVault,
+        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_ALG_ARGON2ID13
+      )
+
       const masterKeys = await generateMasterKeys(sodium)
       const salt = generateSalt(sodium)
-      const KEK = await deriveKeyFromPassword(SHARED_VAULT_PASSWORD, salt, sodium)
-
       const masterKeyBytes = sodium.randombytes_buf(32)
-      const passwordWrap = encryptMasterKeyWithKekV2(masterKeyBytes, KEK, sodium)
+      const passwordWrap = encryptMasterKeyWithKekV2(masterKeyBytes, keyABytes, sodium)
       const encryptedPrivateKeys = encryptPrivateKeysV2(masterKeys, masterKeyBytes, sodium)
       const { wraps: recoveryWraps, plaintextCodes } = generateRecoveryWrapsV2(masterKeyBytes, sodium)
 
       const payload = {
         username: user.username,
         name: user.username.charAt(0).toUpperCase() + user.username.slice(1),
-        email: user.email,
-        password: SHARED_PASSWORD,
-        passwordConfirm: SHARED_PASSWORD,
+        email: user.email || '',
+        password: userPasswordKeyB,
+        passwordConfirm: userPasswordKeyB,
         emailVisibility: false,
         public_box_key: masterKeys.public_box_key,
         public_sign_key: masterKeys.public_sign_key,

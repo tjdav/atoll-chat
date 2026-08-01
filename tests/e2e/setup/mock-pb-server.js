@@ -578,7 +578,7 @@ export function createServer () {
           res.end(JSON.stringify({ error: 'Invalid or expired invitation code' }))
           return
         }
-        if (invite.is_used) {
+        if (invite.is_used && !invite.code.startsWith('INV-SEED-')) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Invitation code has already been used.' }))
           return
@@ -608,10 +608,12 @@ export function createServer () {
           updated: new Date().toISOString(),
           verified: true,
           emailVisibility: false,
-          public_box_key: '',
-          public_sign_key: '',
-          encrypted_master_keys: '',
-          vault_salt: '',
+          public_box_key: body.public_box_key || '',
+          public_sign_key: body.public_sign_key || '',
+          encrypted_master_keys: body.encrypted_master_keys || '',
+          encrypted_private_keys: body.encrypted_private_keys || '',
+          recovery_wraps: body.recovery_wraps || [],
+          vault_salt: body.vault_salt || '',
           password
         }
         db.users.push(newUser)

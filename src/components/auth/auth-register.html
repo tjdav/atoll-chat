@@ -318,7 +318,7 @@
           updateStatus('Checking availability...')
   
           const { deriveAuthAndVaultKeys } = await import('../../utils/keys.js')
-          const { _keyA, keyB, canonicalUsername } = await deriveAuthAndVaultKeys(username, password)
+          const { keyA, keyB, canonicalUsername } = await deriveAuthAndVaultKeys(username, password)
 
           const params = new URLSearchParams({
             username: canonicalUsername
@@ -336,6 +336,41 @@
 
           updateStatus('Creating account...')
 
+          const sodiumModule = await import('libsodium-wrappers-sumo')
+          const sodium = sodiumModule.default || sodiumModule
+          await sodium.ready
+
+          const { publicKey: pubBox, privateKey: privBox } = sodium.crypto_box_keypair()
+          const { publicKey: pubSign, privateKey: privSign } = sodium.crypto_sign_keypair()
+
+          const public_box_key = sodium.to_base64(pubBox, sodium.base64_variants.ORIGINAL)
+          const public_sign_key = sodium.to_base64(pubSign, sodium.base64_variants.ORIGINAL)
+          const private_box_key = sodium.to_base64(privBox, sodium.base64_variants.ORIGINAL)
+          const private_sign_key = sodium.to_base64(privSign, sodium.base64_variants.ORIGINAL)
+
+          const masterKeyBytes = sodium.randombytes_buf(32)
+
+          const masterKeyNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+          const keyABytes = keyA
+          const encryptedMasterKeyBytes = sodium.crypto_secretbox_easy(masterKeyBytes, masterKeyNonce, keyABytes)
+          const encrypted_master_keys = {
+            ciphertext: sodium.to_base64(encryptedMasterKeyBytes, sodium.base64_variants.ORIGINAL),
+            nonce: sodium.to_base64(masterKeyNonce, sodium.base64_variants.ORIGINAL)
+          }
+
+          const privKeyPlaintext = JSON.stringify({
+            private_box_key,
+            private_sign_key
+          })
+          const privKeyNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+          const encryptedPrivKeyBytes = sodium.crypto_secretbox_easy(privKeyPlaintext, privKeyNonce, masterKeyBytes)
+          const encrypted_private_keys = {
+            ciphertext: sodium.to_base64(encryptedPrivKeyBytes, sodium.base64_variants.ORIGINAL),
+            nonce: sodium.to_base64(privKeyNonce, sodium.base64_variants.ORIGINAL)
+          }
+
+          const vault_salt = sodium.to_base64(sodium.randombytes_buf(16), sodium.base64_variants.ORIGINAL)
+
           const regRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/register`), {
             method: 'POST',
             headers: {
@@ -346,7 +381,12 @@
               password: keyB,
               passwordConfirm: keyB,
               invitation_code,
-              altcha: currentPayload
+              altcha: currentPayload,
+              public_box_key,
+              public_sign_key,
+              encrypted_master_keys,
+              encrypted_private_keys,
+              vault_salt
             })
           })
 

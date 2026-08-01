@@ -14,8 +14,9 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     await page.locator('[data-testid$="linkRegister"]').click()
     await expect(page.locator('auth-register')).toBeVisible()
 
-    // Fill registration info
-    await page.locator('auth-register input[name="username"]').fill('thomas')
+    // Fill registration info with dynamic unique username
+    const testUsername = `altcha_user_${Date.now()}`
+    await page.locator('auth-register input[name="username"]').fill(testUsername)
     await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-1111')
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
@@ -39,6 +40,10 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     await page.evaluate(() => {
       const widget = document.querySelector('auth-register altcha-widget')
       if (widget) {
+        widget.value = 'atoll-mock-bypass-token'
+        widget.dispatchEvent(new CustomEvent('verified', {
+          detail: { payload: 'atoll-mock-bypass-token' }
+        }))
         widget.dispatchEvent(new CustomEvent('statechange', {
           detail: {
             state: 'verified',
@@ -52,7 +57,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     await page.locator('[data-testid$="registerSubmit"]').click()
 
     // Registration should succeed and transition directly to app-layout
-    await page.locator('app-layout').waitFor({ state: 'visible' })
+    await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
   })
 
   test('should display ALTCHA validation error inside ALTCHA widget and allow submit on login form', async ({ page }) => {
@@ -99,8 +104,8 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Submit login again
     await page.locator('[data-testid$="loginSubmit"]').click()
 
-    // Wait for vault unlock step to be reached
-    await page.locator(':is(h3):has-text("Unlock Your Vault")').waitFor({ state: 'visible' })
+    // Wait for app-layout step to be reached upon successful single-step login
+    await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
   })
 
 

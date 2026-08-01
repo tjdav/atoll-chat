@@ -420,13 +420,23 @@ async function handleEvent (event) {
       return
     }
 
+    const parseKey = (k) => {
+      if (typeof k !== 'string') {
+        return k
+      }
+      if (/^[0-9a-fA-F]{64}$/.test(k)) {
+        return sodium.from_hex(k)
+      }
+      return sodium.from_base64(k, sodium.base64_variants.ORIGINAL)
+    }
+
     // low-level libsodium primitives
     if (type === 'worker:crypto_secretbox_easy') {
       const { message, nonce, key } = payload
       const result = sodium.crypto_secretbox_easy(
         typeof message === 'string' ? message : new Uint8Array(message),
         typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
-        typeof key === 'string' ? sodium.from_base64(key, sodium.base64_variants.ORIGINAL) : key
+        parseKey(key)
       )
       self.postMessage({
         id,
@@ -441,7 +451,7 @@ async function handleEvent (event) {
       const result = sodium.crypto_secretbox_open_easy(
         typeof ciphertext === 'string' ? sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL) : new Uint8Array(ciphertext),
         typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
-        typeof key === 'string' ? sodium.from_base64(key, sodium.base64_variants.ORIGINAL) : key
+        parseKey(key)
       )
       self.postMessage({
         id,

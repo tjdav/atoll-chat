@@ -94,7 +94,13 @@ routerAdd('POST', '/api/custom/register', (e) => {
     password: '',
     passwordConfirm: '',
     altcha: '',
-    invitation_code: ''
+    invitation_code: '',
+    public_box_key: '',
+    public_sign_key: '',
+    encrypted_master_keys: null,
+    encrypted_private_keys: null,
+    recovery_wraps: null,
+    vault_salt: ''
   })
   e.bindBody(data)
 
@@ -156,6 +162,24 @@ routerAdd('POST', '/api/custom/register', (e) => {
     record.set('passwordConfirm', data.passwordConfirm)
     record.set('verified', true)
     record.set('emailVisibility', false)
+    if (data.public_box_key) {
+      record.set('public_box_key', data.public_box_key)
+    }
+    if (data.public_sign_key) {
+      record.set('public_sign_key', data.public_sign_key)
+    }
+    if (data.encrypted_master_keys) {
+      record.set('encrypted_master_keys', data.encrypted_master_keys)
+    }
+    if (data.encrypted_private_keys) {
+      record.set('encrypted_private_keys', data.encrypted_private_keys)
+    }
+    if (data.recovery_wraps) {
+      record.set('recovery_wraps', data.recovery_wraps)
+    }
+    if (data.vault_salt) {
+      record.set('vault_salt', data.vault_salt)
+    }
 
     $app.save(record)
 
