@@ -1,4 +1,7 @@
 import { test, expect } from './fixtures/base-test.js'
+import PocketBase from 'pocketbase'
+
+const PB_URL = process.env.ATOLL_POCKETBASE_URL || process.env.ATOLL_INTERNAL_POCKETBASE_URL || 'http://localhost:8091'
 
 test.describe('Authentication and Vault', () => {
   test('should login and unlock vault successfully', async ({ page, loginApp }) => {
@@ -23,7 +26,7 @@ test.describe('Authentication and Vault', () => {
 
     // login again
     console.log('--- Second Login ---')
-    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="username"]').fill('alice')
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
@@ -51,7 +54,7 @@ test.describe('Authentication and Vault', () => {
 
     // login again
     console.log('--- Third Login ---')
-    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="username"]').fill('alice')
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
@@ -64,5 +67,64 @@ test.describe('Authentication and Vault', () => {
 
     // Check if chats are loaded (to verify sync)
     await expect(page.locator('chat-list-item')).toBeVisible()
+  })
+
+  test('should fail registration with invalid invitation code', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('auth-login [data-testid$="linkRegister"]').click()
+    await expect(page.locator('auth-register')).toBeVisible()
+
+    await page.locator('auth-register [data-testid$="username"]').fill('newuser')
+    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-INVALID-CODE')
+    await page.locator('auth-register [data-testid$="password"]').fill('Password123!456')
+    await page.locator('auth-register [data-testid$="passwordConfirm"]').fill('Password123!456')
+    await page.locator('auth-register [data-testid$="registerSubmit"]').click()
+
+    // Should display error message
+    await expect(page.locator('auth-register [data-testid$="statusMsg"]')).toContainText('Invalid or expired invitation code')
+  })
+
+  test('should register successfully with valid invitation code and set up vault', async ({ page }) => {
+    await page.goto('/')
+    await page.locator('auth-login [data-testid$="linkRegister"]').click()
+    await expect(page.locator('auth-register')).toBeVisible()
+
+    await page.locator('auth-register [data-testid$="username"]').fill('sam')
+    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-1111')
+    await page.locator('auth-register [data-testid$="password"]').fill('Password123!456')
+    await page.locator('auth-register [data-testid$="passwordConfirm"]').fill('Password123!456')
+    await page.locator('auth-register [data-testid$="registerSubmit"]').click()
+
+    // Should successfully proceed directly into the application layout
+    await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
+  })
+
+  test('should enforce username immutability post-creation', async ({ loginApp }, testInfo) => {
+    await loginApp('alice', 'Password123!', 'VaultPassword123!')
+
+    // We check via the API directly using Node-level PocketBase client
+    const pb = new PocketBase(PB_URL)
+    pb.beforeSend = (url, options) => {
+      options.headers = options.headers || {}
+      options.headers['x-test-id'] = testInfo.testId
+      return {
+        url,
+        options
+      }
+    }
+
+    // Authenticate as alice using literal test password 'Password123!'
+    const authData = await pb.collection('users').authWithPassword('alice', 'Password123!')
+
+    let threwImmutabilityError = false
+    try {
+      await pb.collection('users').update(authData.record.id, {
+        username: 'alice_mutated'
+      })
+    } catch (err) {
+      threwImmutabilityError = err.message.includes('immutable') || err.status === 400
+    }
+
+    expect(threwImmutabilityError).toBe(true)
   })
 })

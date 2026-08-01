@@ -22,9 +22,9 @@ export default function pocketbase (options = {}) {
    */
   const createAuthApi = (pb) => ({
     /**
-     * Authenticates a user with identity and password.
+     * Authenticates a user with username and password.
      *
-     * @param {string} identity Username or email.
+     * @param {string} identity Username.
      * @param {string} password Account password.
      * @returns {Promise<RecordAuthResponse>} Auth response.
      */
@@ -35,7 +35,7 @@ export default function pocketbase (options = {}) {
     /**
      * Requests an OTP code.
      *
-     * @param {string} identity Username or email.
+     * @param {string} identity Username.
      * @returns {Promise<OTPResponse>} OTP challenge response.
      */
     async requestOTP (identity) {

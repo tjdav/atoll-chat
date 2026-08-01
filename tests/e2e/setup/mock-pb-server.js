@@ -216,6 +216,7 @@ function getDatabase (testId) {
       room_members: [],
       messages: [],
       media: [],
+      invitations: [],
       mediaFiles: {},
       sseClients: []
     }
@@ -338,22 +339,18 @@ export function createServer () {
       /* Mock Check Availability endpoint for tests */
       if (pathname === '/api/check-availability') {
         const username = query.username
-        const email = query.email
 
         let usernameExists = false
-        let emailExists = false
 
         if (username) {
-          usernameExists = db.users.some(u => u.username === username)
-        }
-        if (email) {
-          emailExists = db.users.some(u => u.email === email)
+          const usernameCanonical = username.trim().toLowerCase()
+          usernameExists = db.users.some(u => u.username === usernameCanonical)
         }
 
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({
           usernameExists,
-          emailExists
+          emailExists: false
         }))
         return
       }
@@ -529,13 +526,14 @@ export function createServer () {
           res.end(JSON.stringify({ error: 'Missing identity or password.' }))
           return
         }
-        let user = db.users.find(u => u.username === identity || u.email === identity)
+        const identityCanonical = identity.trim().toLowerCase()
+        let user = db.users.find(u => u.username === identityCanonical)
         if (!user) {
           user = {
-            id: 'usr_' + Math.random().toString(36).substring(2, 9),
-            username: identity.includes('@') ? identity.split('@')[0] : identity,
-            email: identity.includes('@') ? identity : `${identity}@example.com`,
-            name: identity.includes('@') ? identity.split('@')[0] : identity,
+            id: identityCanonical,
+            username: identityCanonical,
+            email: '',
+            name: identity,
             avatar: ''
           }
           db.users.push(user)
@@ -550,7 +548,7 @@ export function createServer () {
 
       // Custom route for register
       if (pathname === '/api/custom/register' && req.method === 'POST') {
-        const { username, email, password, passwordConfirm, altcha } = body
+        const { username, email, password, passwordConfirm, altcha, invitation_code } = body
         if (!altcha) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Security challenge is required.' }))
@@ -561,35 +559,55 @@ export function createServer () {
           res.end(JSON.stringify({ error: 'Invalid security challenge.' }))
           return
         }
-        if (!username || !email || !password || !passwordConfirm) {
+        if (!username || !password || !passwordConfirm) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Missing required registration fields.' }))
           return
         }
-        const usernameExists = db.users.some(u => u.username === username)
+
+        // Validate invitation code
+        if (!invitation_code) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invitation code is required.' }))
+          return
+        }
+
+        const invite = db.invitations.find(i => i.code === invitation_code)
+        if (!invite) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid or expired invitation code' }))
+          return
+        }
+        if (invite.is_used) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invitation code has already been used.' }))
+          return
+        }
+
+        const usernameCanonical = username.trim().toLowerCase()
+        const usernameExists = db.users.some(u => u.username === usernameCanonical)
         if (usernameExists) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Username is already taken' }))
           return
         }
-        const emailExists = db.users.some(u => u.email === email)
-        if (emailExists) {
-          res.writeHead(400, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: 'Email is already taken' }))
-          return
-        }
+
+        // Consume invitation code
+        invite.is_used = true
+        invite.used_by = usernameCanonical
+        invite.used_count = (invite.used_count || 0) + 1
 
         const newUser = {
-          id: username,
-          username,
+          id: usernameCanonical,
+          username: usernameCanonical,
           name: username,
-          email,
+          email: email || '',
           collectionId: 'users',
           collectionName: 'users',
           created: new Date().toISOString(),
           updated: new Date().toISOString(),
           verified: true,
-          emailVisibility: true,
+          emailVisibility: false,
           public_box_key: '',
           public_sign_key: '',
           encrypted_master_keys: '',
@@ -598,7 +616,7 @@ export function createServer () {
         }
         db.users.push(newUser)
 
-        logVerbose(`[MOCK PB] [${testId}] Custom Registered user: ${username}`)
+        logVerbose(`[MOCK PB] [${testId}] Custom Registered user: ${usernameCanonical}`)
         res.writeHead(201, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({
           success: true,
@@ -638,7 +656,8 @@ export function createServer () {
       // Auth with password
       if (pathname === '/api/collections/users/auth-with-password') {
         const { identity, password } = body
-        const user = db.users.find(u => u.username === identity || u.email === identity)
+        const identityCanonical = identity.trim().toLowerCase()
+        const user = db.users.find(u => u.username === identityCanonical)
         if (!user || password !== 'Password123!') {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ message: 'Invalid credentials.' }))
@@ -783,7 +802,7 @@ export function createServer () {
             const user = db.users.find(u => u.id === id)
             if (user) {
               user.push_subscription = null
-              console.log(`[MOCK PB] [${testId}] Pruned push_subscription for user: ${id}`)
+              console.log(`[MOCK PB] [${testId}] Stored push_subscription for user: ${id}`)
             } else {
               console.warn(`[MOCK PB] [${testId}] User not found to prune: ${id}`)
             }
@@ -1025,6 +1044,12 @@ export function createServer () {
           }
 
           const existing = list[index]
+          if (collectionName === 'users' && body.username && body.username !== existing.username) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ message: 'Username is immutable and cannot be changed.' }))
+            return
+          }
+
           const updatedRecord = {
             ...existing,
             ...body,

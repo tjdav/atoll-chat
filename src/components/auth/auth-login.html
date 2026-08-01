@@ -15,8 +15,8 @@
         <atoll-input 
           ref="identity" 
           name="identity"
-          label="Username or Email" 
-          placeholder="Enter username or email" 
+          label="Username" 
+          placeholder="Enter username" 
           required="true" 
           autocomplete="username" 
           test-id="username"
@@ -40,48 +40,7 @@
         <!-- Zone 4: Bottom Action Zone -->
         <div class="atoll-auth-bottom-zone">
           <atoll-button type="submit" variant="primary" block="true" ref="loginSubmit" test-id="loginSubmit">Log In</atoll-button>
-          <atoll-button type="button" variant="ghost" block="true" ref="linkForgotPassword">Forgot Password?</atoll-button>
           <atoll-button type="button" variant="ghost" block="true" ref="linkRegister" test-id="linkRegister">Don't have an account? Register</atoll-button>
-        </div>
-      </form>
-    </div>
-
-    <!-- FORGOT PASSWORD VIEW -->
-    <div ref="viewForgotPassword" class="d-none flex-column h-100">
-      <!-- Zone 1: Top Navigation (Header) -->
-      <div class="atoll-auth-header-zone">
-        <atoll-list-header variant="list" title="Reset Password">
-          <div slot="leading">
-            <atoll-button type="button" variant="ghost" icon-only="true" ref="btnBackToLogin">
-              <atoll-icon name="chevron-right" style="transform: rotate(180deg); display: inline-block;"></atoll-icon>
-            </atoll-button>
-          </div>
-        </atoll-list-header>
-      </div>
-
-      <!-- Zone 2: Hero Greeting -->
-      <div class="atoll-auth-hero-zone">
-        <h3 class="mb-1">Reset Password</h3>
-        <p class="text-muted small">Enter your email and solve the security challenge to request a password reset link.</p>
-      </div>
-
-      <!-- Zone 3: Form Input Zone -->
-      <form ref="forgotPasswordForm" class="atoll-auth-form-zone" novalidate>
-        <atoll-input 
-          ref="forgotEmail" 
-          name="forgotEmail"
-          type="email"
-          label="Email Address" 
-          placeholder="Enter email" 
-          required="true" 
-          autocomplete="email"
-        ></atoll-input>
-
-        <div class="d-flex justify-content-center" ref="forgotAltchaContainer"></div>
-
-        <!-- Zone 4: Bottom Action Zone -->
-        <div class="atoll-auth-bottom-zone">
-          <atoll-button type="submit" variant="primary" block="true" ref="forgotSubmit">Send Reset Link</atoll-button>
         </div>
       </form>
     </div>
@@ -94,11 +53,13 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, eventBus, utils, root }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, _root }) => {
       const { pb } = pocketbase
       const { $storage } = storage
       const { $state } = globalStore
       const { $bus } = eventBus
+      const { $sync } = realtimeSync
+      const { $worker } = cryptoWorker
       const { $url } = utils
 
       const loginForm = refs('loginForm')
@@ -106,20 +67,12 @@
       const altchaContainer = refs('altchaContainer')
       const identityInput = refs('identity')
       const passwordInput = refs('password')
-      const linkForgotPassword = refs('linkForgotPassword')
-
-      const forgotPasswordForm = refs('forgotPasswordForm')
-      const forgotEmailInput = refs('forgotEmail')
-      const forgotAltchaContainer = refs('forgotAltchaContainer')
-      const forgotSubmit = refs('forgotSubmit')
-      const btnBackToLogin = refs('btnBackToLogin') || root.querySelector('[ref*="btnBackToLogin"]')
 
       const linkRegister = refs('linkRegister')
       const statusMsg = refs('statusMsg')
 
       let activeAltchaWidget = null
       let loginSubmitPending = false
-      let forgotSubmitPending = false
       let altchaPayload = null
 
       const isTesting = import.meta.env.MODE === 'testing'
@@ -175,7 +128,6 @@
       }
 
       registerInputReset(loginForm)
-      registerInputReset(forgotPasswordForm)
 
       if (linkRegister) {
         linkRegister.addEventListener('click', (e) => {
@@ -233,16 +185,6 @@
                   bubbles: true
                 }))
               }
-            } else if (submitBtn === forgotSubmit && forgotSubmitPending) {
-              forgotSubmitPending = false
-              if (typeof forgotPasswordForm.requestSubmit === 'function') {
-                forgotPasswordForm.requestSubmit()
-              } else {
-                forgotPasswordForm.dispatchEvent(new Event('submit', {
-                  cancelable: true,
-                  bubbles: true
-                }))
-              }
             }
           } else if (state === 'unverified') {
             altchaPayload = null
@@ -252,7 +194,6 @@
             submitBtn.removeAttribute('loading')
             updateStatus('Security challenge failed. Please try again.', true)
             loginSubmitPending = false
-            forgotSubmitPending = false
           }
         })
 
@@ -262,44 +203,6 @@
 
       // Initialize Altcha on Login Form
       activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
-
-      if (linkForgotPassword) {
-        linkForgotPassword.addEventListener('click', (e) => {
-          e.preventDefault()
-          refs('viewLogin').classList.add('d-none')
-          refs('viewForgotPassword').classList.remove('d-none')
-          showGlobalAlert('')
-          updateStatus('')
-          activeAltchaWidget = renderAltcha(forgotAltchaContainer, forgotSubmit)
-        })
-      }
-
-      if (btnBackToLogin) {
-        btnBackToLogin.addEventListener('click', (e) => {
-          e.preventDefault()
-          refs('viewForgotPassword').classList.add('d-none')
-          refs('viewLogin').classList.remove('d-none')
-          showGlobalAlert('')
-          updateStatus('')
-          activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
-        })
-      }
-
-      const handleSuccessfulLogin = async () => {
-        await $storage.saveConfigs([
-          {
-            key: 'pb_url',
-            value: pb.baseUrl
-          },
-          {
-            key: 'pb_token',
-            value: pb.authStore.token
-          }
-        ])
-
-        updateStatus('Login successful! Checking vault...')
-        $state.isAuthenticated = true
-      }
 
       loginForm.addEventListener('submit', async (event) => {
         event.preventDefault()
@@ -318,8 +221,8 @@
           return
         }
 
-        const identity = identityInput.value
-        const password = passwordInput.value
+        const rawIdentity = identityInput.value
+        const rawPassword = passwordInput.value
 
         let currentPayload = altchaPayload
         if (activeAltchaWidget && activeAltchaWidget.value) {
@@ -337,18 +240,23 @@
           return
         }
 
+        const { deriveAuthAndVaultKeys, purgeVaultKey } = await import('../../utils/keys.js')
+
         try {
           loginForm.classList.remove('was-validated')
-          updateStatus('Logging in...')
+          updateStatus('Deriving encryption keys...')
 
+          const { keyA, keyB, canonicalUsername } = await deriveAuthAndVaultKeys(rawIdentity, rawPassword)
+
+          updateStatus('Logging in...')
           const loginRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/login`), {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              identity,
-              password,
+              identity: canonicalUsername,
+              password: keyB,
               altcha: currentPayload
             })
           })
@@ -359,88 +267,79 @@
           }
 
           const authData = await loginRes.json()
-  
-          // Authenticate SDK instance
-          pb.authStore.save(authData.token, authData.record)
+          const record = authData.record
 
-          await handleSuccessfulLogin()
+          // Step 1: Decrypt Vault Master Key (VMK) using Key A
+          updateStatus('Unlocking vault...')
+          const encryptedMasterKeys = record.encrypted_master_keys
+          const encryptedPrivateKeys = record.encrypted_private_keys
+
+          if (!encryptedMasterKeys || !encryptedPrivateKeys) {
+            throw new Error('Vault metadata missing from user account.')
+          }
+
+          const masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
+            ciphertext: encryptedMasterKeys.ciphertext,
+            nonce: encryptedMasterKeys.nonce,
+            key: keyA
+          })
+
+          if (!masterKey) {
+            throw new Error('Failed to decrypt vault with derived key.')
+          }
+
+          // Step 2: Decrypt private keypair with VMK
+          updateStatus('Decrypting private keys...')
+          const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
+            encrypted_private_keys: encryptedPrivateKeys,
+            master_key: masterKey
+          })
+
+          // Step 3: Strict Async Sequencing - Initialize Crypto Worker session
+          updateStatus('Initializing session...')
+          await $worker.execute('worker:set_token', { token: authData.token })
+          await $worker.execute('worker:init_keys', {
+            ...decryptedKeys,
+            id: record.id
+          })
+
+          // Authenticate SDK instance & persist config
+          pb.authStore.save(authData.token, record)
+          await $storage.saveConfigs([
+            {
+              key: 'pb_url',
+              value: pb.baseUrl
+            },
+            {
+              key: 'pb_token',
+              value: pb.authStore.token
+            }
+          ])
+
+          // Purge Key A & Key B from memory
+          purgeVaultKey()
+
+          // Step 4: Flip UI State & Start Sync
+          $state.isAuthenticated = true
+          $state.isVaultUnlocked = true
+
+          try {
+            await $sync.startSubscriptions()
+          } catch (syncErr) {
+            console.error('[auth-login] Subscription sync warning:', syncErr)
+          }
+
+          updateStatus('Login complete!')
         } catch (error) {
           console.error('Login error:', error)
+          // Zombie State Guard: Reset session on any vault decryption failure
+          pb.authStore.clear()
+          purgeVaultKey()
+          $state.isAuthenticated = false
+          $state.isVaultUnlocked = false
+
           updateStatus(error.message || 'Failed to log in', true)
           showGlobalAlert(error.message || 'Failed to log in')
-          if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
-            activeAltchaWidget.reset()
-          }
-        }
-      })
-
-      forgotPasswordForm.addEventListener('submit', async (event) => {
-        event.preventDefault()
-        event.stopImmediatePropagation()
-        showGlobalAlert('')
-
-        forgotEmailInput.setCustomValidity('')
-        updateStatus('')
-
-        updateValidationFeedback(forgotPasswordForm)
-
-        if (!forgotEmailInput.checkValidity()) {
-          event.stopPropagation()
-          forgotPasswordForm.classList.add('was-validated')
-          return
-        }
-
-        const email = forgotEmailInput.value
-
-        let currentPayload = altchaPayload
-        if (activeAltchaWidget && activeAltchaWidget.value) {
-          currentPayload = altchaPayload
-        }
-        if (isTesting && !currentPayload) {
-          currentPayload = 'atoll-mock-bypass-token'
-        }
-
-        if (!currentPayload) {
-          if (activeAltchaWidget) {
-            forgotSubmitPending = true
-            activeAltchaWidget.verify()
-          }
-          return
-        }
-
-        try {
-          forgotPasswordForm.classList.remove('was-validated')
-          updateStatus('Sending password reset request...')
-
-          const resetRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/password-reset`), {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-              email,
-              altcha: currentPayload
-            })
-          })
-
-          if (!resetRes.ok) {
-            const errData = await resetRes.json()
-            throw new Error(errData.error || 'Failed to send reset link')
-          }
-
-          updateStatus('If an account exists, a password reset link has been sent!')
-          $bus.emit('ui:show_toast', {
-            message: 'If an account exists, a password reset link has been sent!',
-            variant: 'success'
-          })
-          forgotEmailInput.value = ''
-          if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
-            activeAltchaWidget.reset()
-          }
-        } catch (error) {
-          console.error('Reset error:', error)
-          updateStatus(error.message || 'Failed to send reset link', true)
-          showGlobalAlert(error.message || 'Failed to send reset link')
           if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
             activeAltchaWidget.reset()
           }

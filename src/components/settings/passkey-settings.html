@@ -149,23 +149,23 @@
               type: 'success'
             })
           } else {
-            const KEK_Password = await $worker.execute('worker:derive_key_from_password', {
-              password,
-              salt: record.vault_salt
-            })
+            const { deriveAuthAndVaultKeys, purgeVaultKey } = await import('../../utils/keys.js')
+            const { keyA } = await deriveAuthAndVaultKeys(record.username, password)
 
             let masterKey
             try {
               masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
                 ciphertext: record.encrypted_master_keys.ciphertext,
                 nonce: record.encrypted_master_keys.nonce,
-                key: KEK_Password
+                key: keyA
               })
+              purgeVaultKey()
               if (!masterKey) {
-                throw new Error('Invalid Vault Password')
+                throw new Error('Invalid Master Password')
               }
             } catch (_err) {
-              throw new Error('Invalid Vault Password')
+              purgeVaultKey()
+              throw new Error('Invalid Master Password')
             }
 
             await biometric.storeMasterKey(masterKey, record.username, record.id)

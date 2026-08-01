@@ -42,14 +42,14 @@ test.describe('PoW CAPTCHA (ALTCHA) Integration', () => {
 
     // Fill in registration form
     await page.locator('auth-register input[name="username"]').fill('test_user_captcha')
-    await page.locator('auth-register input[name="email"]').fill('test_captcha@example.com')
+    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-2222')
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
 
     // Submit form
     await page.locator('[data-testid$="registerSubmit"]').click()
 
-    // Registration should succeed and proceed to vault-setup
-    await expect(page.locator('vault-setup')).toBeVisible({ timeout: 15000 })
+    // Registration should succeed and proceed directly to app-layout
+    await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
   })
 })

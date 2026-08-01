@@ -9,20 +9,6 @@ function generateSalt (sodium) {
 }
 
 /**
- * Derives a 32-byte Key Encryption Key (KEK) from a password and salt using Argon2id.
- */
-async function deriveKeyFromPassword (password, saltUint8Array, sodium) {
-  return sodium.crypto_pwhash(
-    32,
-    password,
-    saltUint8Array,
-    sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-    sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-    sodium.crypto_pwhash_ALG_ARGON2ID13
-  )
-}
-
-/**
  * Unified helper to generate both encryption and identity keypairs.
  */
 async function generateMasterKeys (sodium) {
@@ -54,11 +40,11 @@ function encryptPrivateKeys (privateKeys, masterKeyBytes, sodium) {
 }
 
 /**
- * Encrypts the Master Key using KEK.
+ * Encrypts the Master Key using Key A (derived via Argon2id).
  */
-function encryptMasterKeyWithKek (masterKeyBytes, KEK, sodium) {
+function encryptMasterKeyWithKek (masterKeyBytes, keyABytes, sodium) {
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-  const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, KEK)
+  const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, keyABytes)
   return {
     ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
     nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
@@ -66,31 +52,47 @@ function encryptMasterKeyWithKek (masterKeyBytes, KEK, sodium) {
 }
 
 /**
- * Generates 10 recovery wraps using the cryptographically secure RNG from libsodium.
+ * Helper to generate 10 formatted single-use recovery codes.
+ */
+function generateRawRecoveryCode (sodium) {
+  const bytes = sodium.randombytes_buf(12)
+  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  let raw = ''
+  for (let i = 0; i < bytes.length; i++) {
+    raw += chars[bytes[i] % chars.length]
+  }
+  return `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`
+}
+
+/**
+ * Generates recovery wraps encrypting the Master Key with 10 recovery codes.
  */
 function generateRecoveryWraps (masterKeyBytes, sodium) {
-  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-  const part = () => {
-    const bytes = sodium.randombytes_buf(4)
-    return Array.from(bytes)
-      .map(b => chars[b % chars.length])
-      .join('')
-  }
-
   const wraps = []
   const plaintextCodes = []
+
   for (let i = 0; i < 10; i++) {
-    const code = `${part()}-${part()}-${part()}`
+    const code = generateRawRecoveryCode(sodium)
     plaintextCodes.push(code)
-    const codeHash = sodium.crypto_generichash(32, code)
-    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-    const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
+
+    const codeSalt = sodium.randombytes_buf(16)
+    const codeKey = sodium.crypto_pwhash(
+      32,
+      code,
+      codeSalt,
+      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+      sodium.crypto_pwhash_ALG_ARGON2ID13
+    )
+
+    const wrapWrap = encryptMasterKeyWithKek(masterKeyBytes, codeKey, sodium)
     wraps.push({
-      hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
-      ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
-      nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+      salt: sodium.to_base64(codeSalt, sodium.base64_variants.ORIGINAL),
+      ciphertext: wrapWrap.ciphertext,
+      nonce: wrapWrap.nonce
     })
   }
+
   return {
     wraps,
     plaintextCodes
@@ -103,21 +105,17 @@ const ADMIN_PASSWORD = process.env.PB_ADMIN_PASSWORD || 'password123'
 
 const USERS = [
   {
-    username: 'alice',
-    email: 'alice@example.com'
+    username: 'alice'
   },
   {
-    username: 'bob',
-    email: 'bob@example.com'
+    username: 'bob'
   },
   {
-    username: 'charlie',
-    email: 'charlie@example.com'
+    username: 'charlie'
   }
 ]
 
 const SHARED_PASSWORD = 'Password123!'
-const SHARED_VAULT_PASSWORD = 'VaultPassword123!'
 
 async function provision () {
   await sodium.ready
@@ -138,13 +136,40 @@ async function provision () {
     try {
       console.log(`Creating user: ${user.username}...`)
 
-      // Generate keys and payload
+      const canonicalUsername = user.username.trim().toLowerCase()
+
+      // Compute Key B (Auth Credential) using Argon2id
+      const authSaltInput = `atoll-auth-salt:${canonicalUsername}`
+      const authSaltHash = sodium.crypto_hash_sha256(authSaltInput)
+      const saltAuth = authSaltHash.slice(0, 16)
+      const keyBBytes = sodium.crypto_pwhash(
+        32,
+        SHARED_PASSWORD,
+        saltAuth,
+        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_ALG_ARGON2ID13
+      )
+      const userPasswordKeyB = sodium.to_hex(keyBBytes)
+
+      // Compute Key A (Vault Key) using Argon2id
+      const vaultSaltInput = `atoll-vault-salt:${canonicalUsername}`
+      const vaultSaltHash = sodium.crypto_hash_sha256(vaultSaltInput)
+      const saltVault = vaultSaltHash.slice(0, 16)
+      const keyABytes = sodium.crypto_pwhash(
+        32,
+        SHARED_PASSWORD,
+        saltVault,
+        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_ALG_ARGON2ID13
+      )
+
+      // Generate master keys and encrypt VMK with Key A
       const masterKeys = await generateMasterKeys(sodium)
       const salt = generateSalt(sodium)
-      const KEK = await deriveKeyFromPassword(SHARED_VAULT_PASSWORD, salt, sodium)
-
       const masterKeyBytes = sodium.randombytes_buf(32)
-      const passwordWrap = encryptMasterKeyWithKek(masterKeyBytes, KEK, sodium)
+      const passwordWrap = encryptMasterKeyWithKek(masterKeyBytes, keyABytes, sodium)
       const encryptedPrivateKeys = encryptPrivateKeys(masterKeys, masterKeyBytes, sodium)
       const { wraps: recoveryWraps, plaintextCodes } = generateRecoveryWraps(masterKeyBytes, sodium)
 
@@ -155,10 +180,8 @@ async function provision () {
       const payload = {
         username: user.username,
         name: user.username.charAt(0).toUpperCase() + user.username.slice(1),
-        email: user.email,
-        password: SHARED_PASSWORD,
-        passwordConfirm: SHARED_PASSWORD,
-        emailVisibility: true,
+        password: userPasswordKeyB,
+        passwordConfirm: userPasswordKeyB,
         public_box_key: masterKeys.public_box_key,
         public_sign_key: masterKeys.public_sign_key,
         vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
@@ -178,22 +201,11 @@ async function provision () {
       }
 
       if (existingRecord) {
-        if (existingRecord.public_box_key && existingRecord.encrypted_master_keys) {
-          console.log(`User ${user.username} already exists with active vault keys. Preserving existing cryptographic keys...`)
-          await pb.collection('users').update(existingRecord.id, {
-            password: SHARED_PASSWORD,
-            passwordConfirm: SHARED_PASSWORD
-          }, {
-            requestKey: null
-          })
-          console.log(`User ${user.username} updated successfully (keys preserved).`)
-        } else {
-          console.log(`User ${user.username} already exists but missing keys. Setting vault keys...`)
-          await pb.collection('users').update(existingRecord.id, payload, {
-            requestKey: null
-          })
-          console.log(`User ${user.username} updated successfully.`)
-        }
+        console.log(`Updating existing user ${user.username} with Key A vault encryption...`)
+        await pb.collection('users').update(existingRecord.id, payload, {
+          requestKey: null
+        })
+        console.log(`User ${user.username} updated successfully.`)
       } else {
         await pb.collection('users').create(payload, {
           requestKey: null

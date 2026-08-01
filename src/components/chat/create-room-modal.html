@@ -31,7 +31,7 @@
             <div class="d-flex flex-wrap gap-2 mb-2" ref="selectedUsers"></div>
             <div class="input-group">
               <span class="input-group-text bg-body-tertiary border-end-0"><i class="bi bi-search"></i></span>
-              <input type="text" class="form-control border-start-0 ps-0" placeholder="Search by username or email..." ref="searchInput" data-testid="searchInput">
+              <input type="text" class="form-control border-start-0 ps-0" placeholder="Search by username..." ref="searchInput" data-testid="searchInput">
             </div>
           </div>
 
@@ -170,7 +170,7 @@
 
         try {
           const res = await pb.collection('users').getList(1, 5, {
-            filter: pb.filter('username ~ {:query} || email ~ {:query}', { query })
+            filter: pb.filter('username ~ {:query}', { query })
           })
           state.searchResults = res.items
           state.searchError = null

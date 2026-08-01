@@ -63,37 +63,19 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
     expect(isInvalid).toBe(true)
 
-    const regUser = 'testuser@example.com'
+    const regUser = 'sec_test_user'
 
     /* Fill in valid registration details */
-    await page.locator('auth-register input[name="email"]').fill(regUser)
+    await page.locator('auth-register input[name="username"]').fill(regUser)
+    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-1111')
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
     await page.locator('[data-testid$="registerSubmit"]').click()
 
-    /* Wait for Vault Setup screen to appear */
-    await expect(page.locator('vault-setup')).toBeVisible()
-
-    /* Configure Vault Password */
-    await page.locator('vault-setup input[name="password"]').fill('VaultPassword123!')
-    await page.locator('vault-setup input[name="passwordConfirm"]').fill('VaultPassword123!')
-    await page.locator('vault-setup button:has-text("Generate Vault Keys")').click()
-
-    /* Arrive at Step 2 of Vault Setup (Recovery Codes) */
-    const proceedBtn = page.locator('[data-testid$="vaultSetupProceed"]')
-    await expect(proceedBtn).toBeDisabled()
-
-    /* Click Copy button to simulate copying the recovery codes */
-    await page.locator('vault-setup button:has-text("Copy to Clipboard")').click()
-
-    /* Assert that Proceed button is now strictly enabled */
-    await expect(proceedBtn).toBeEnabled()
-
-    /* Click Proceed and verify successful navigation to dashboard layout */
-    await proceedBtn.click()
+    /* Verify registration succeeds and proceeds directly to app-layout */
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
-    /* Clear storage/logout and reload page to test full re-login and vault unlock */
+    /* Clear storage/logout and reload page to test full re-login and single-step unlock */
     await page.evaluate(() => window.localStorage.clear())
     await page.reload()
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
@@ -103,12 +85,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-    /* Verify vault-unlock screen appears and successfully unlocks with vault password */
-    await expect(page.locator('vault-unlock')).toBeVisible({ timeout: 15000 })
-    await page.locator('vault-unlock [data-testid$="password"]').fill('VaultPassword123!')
-    await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
-
-    /* Verify dashboard app-layout renders after unlocking */
+    /* Verify dashboard app-layout renders immediately after login */
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
   })
 

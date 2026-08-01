@@ -419,17 +419,12 @@
           } else {
             col.appendChild(document.createElement('auth-login'))
           }
-        } else {
-          /* User is authenticated. Check if device is trusted (2FA) */
+        } else if (!$state.isVaultUnlocked) {
+          /* Session restored on page refresh (or 2FA challenge required) */
           if (!isDeviceTrusted) {
             col.appendChild(document.createElement('totp-challenge'))
           } else {
-            const user = pb.authStore.model
-            if (user && user.public_box_key && user.encrypted_private_keys) {
-              col.appendChild(document.createElement('vault-unlock'))
-            } else {
-              col.appendChild(document.createElement('vault-setup'))
-            }
+            col.appendChild(document.createElement('vault-unlock'))
           }
         }
       }

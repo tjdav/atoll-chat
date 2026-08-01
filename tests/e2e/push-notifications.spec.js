@@ -273,13 +273,14 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await page.evaluate(() => {
       window.__notif_dispatched__ = false
       window.Notification = class extends EventTarget {
-        constructor (title, options) {
+        constructor () {
           super()
           window.__notif_dispatched__ = true
         }
 
         static permission = 'granted'
       }
+
       document.hasFocus = () => true
     })
 

@@ -12,9 +12,9 @@
 export function createAuthApi (pb) {
   return {
     /**
-     * Authenticates a user with identity (username or email) and password.
+     * Authenticates a user with username and password.
      *
-     * @param {string} identity Username or email address.
+     * @param {string} identity Username.
      * @param {string} password Account password.
      * @returns {Promise<RecordAuthResponse>} Auth response containing token and record.
      */
@@ -25,7 +25,7 @@ export function createAuthApi (pb) {
     /**
      * Requests a one-time password (OTP) for 2-step verification.
      *
-     * @param {string} identity User identity or email.
+     * @param {string} identity User username.
      * @returns {Promise<OTPResponse>} OTP challenge response containing otpId.
      */
     async requestOTP (identity) {

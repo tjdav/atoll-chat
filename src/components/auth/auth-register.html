@@ -15,6 +15,9 @@
     <div class="atoll-auth-hero-zone">
       <h3 class="mb-1">Create Account</h3>
       <p class="text-muted small">Enter your details to join Atoll</p>
+      <div class="alert alert-warning text-start small p-2 mb-0 mt-2">
+        <strong>Zero-PII Warning:</strong> Your account has no email attached for privacy. If you lose your Master Password or Recovery Keys, your vault data cannot be recovered.
+      </div>
     </div>
 
     <!-- Zone 3: Form Input Zone -->
@@ -31,15 +34,13 @@
       ></atoll-input>
 
       <atoll-input 
-        ref="email" 
-        name="email"
-        type="email"
-        label="Email" 
-        placeholder="Enter your email" 
+        ref="invitationCode" 
+        name="invitation_code"
+        label="Invitation Code" 
+        placeholder="Enter invitation code (e.g. INV-XXXX-XXXX)" 
         required="true" 
-        autocomplete="email" 
-        test-id="email"
-        feedback-test-id="email-feedback"
+        test-id="invitationCode"
+        feedback-test-id="invitation-code-feedback"
       ></atoll-input>
 
       <div>
@@ -53,6 +54,7 @@
           autocomplete="new-password" 
           test-id="password"
           feedback-test-id="password-feedback"
+          minlength="8"
         ></atoll-input>
         <div class="progress mt-2" style="height: 5px;">
           <div ref="strengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
@@ -70,6 +72,7 @@
         autocomplete="new-password" 
         test-id="passwordConfirm"
         feedback-test-id="password-confirm-feedback"
+        minlength="8"
       ></atoll-input>
 
       <div class="d-flex justify-content-center" ref="altchaContainer"></div>
@@ -88,20 +91,19 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, eventBus, utils, root }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, root }) => {
       const { pb } = pocketbase
       const { $url } = utils
       const { $storage } = storage
       const { $state } = globalStore
       const { $bus } = eventBus
+      const { $sync } = realtimeSync
+      const { $worker } = cryptoWorker
 
       const registerForm = refs('registerForm')
       const altchaContainer = refs('altchaContainer')
       const linkLogin = refs('linkLogin') || root.querySelector('[ref*="linkLogin"]')
       const usernameInput = refs('username')
-      const emailInput = refs('email')
-      const passwordInput = refs('password')
-      const passwordConfirmInput = refs('passwordConfirm')
       const btnSubmit = refs('btnSubmit')
       const statusMsg = refs('statusMsg')
       const strengthBar = refs('strengthBar')
@@ -166,6 +168,7 @@
       registerInputReset(registerForm)
 
       const updateStrength = async () => {
+        const passwordInput = refs('password')
         const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
         const { score, width, colorClass, text } = await evaluatePasswordStrength(passwordInput.value, 8)
         zxcvbnScore = score
@@ -174,7 +177,10 @@
         strengthText.textContent = text
       }
 
-      passwordInput.addEventListener('input', updateStrength)
+      const passwordInputEl = refs('password')
+      if (passwordInputEl) {
+        passwordInputEl.addEventListener('input', updateStrength)
+      }
 
       if (linkLogin) {
         linkLogin.addEventListener('click', (e) => {
@@ -245,35 +251,25 @@
         altchaContainer.appendChild(altchaWidget)
       }
 
-      const handleSuccessfulLogin = async () => {
-        await $storage.saveConfigs([
-          {
-            key: 'pb_url',
-            value: pb.baseUrl
-          },
-          {
-            key: 'pb_token',
-            value: pb.authStore.token
-          }
-        ])
-
-        updateStatus('Login successful! Loading secure vault setup...')
-        $state.isAuthenticated = true
-      }
-
       registerForm.addEventListener('submit', async (event) => {
         event.preventDefault()
         event.stopImmediatePropagation()
         showGlobalAlert('')
 
+        const passwordInput = refs('password')
+        const passwordConfirmInput = refs('passwordConfirm')
+
         // Clear all custom validities first
         usernameInput.setCustomValidity('')
-        emailInput.setCustomValidity('')
+        const actualInvitationCodeInput = refs('invitationCode') || root.querySelector('[ref="invitationCode"]')
+        if (actualInvitationCodeInput) {
+          actualInvitationCodeInput.setCustomValidity('')
+        }
         passwordInput.setCustomValidity('')
         passwordConfirmInput.setCustomValidity('')
         updateStatus('')
 
-        const inputs = [usernameInput, emailInput, passwordInput, passwordConfirmInput]
+        const inputs = [usernameInput, actualInvitationCodeInput, passwordInput, passwordConfirmInput].filter(Boolean)
         let isValid = true
         inputs.forEach(input => {
           if (!input.checkValidity()) {
@@ -290,7 +286,7 @@
         }
 
         const username = usernameInput.value
-        const email = emailInput.value
+        const invitation_code = actualInvitationCodeInput ? actualInvitationCodeInput.value.trim() : ''
         const password = passwordInput.value
         const passwordConfirm = passwordConfirmInput.value
 
@@ -321,23 +317,17 @@
           registerForm.classList.remove('was-validated')
           updateStatus('Checking availability...')
   
+          const { deriveAuthAndVaultKeys } = await import('../../utils/keys.js')
+          const { _keyA, keyB, canonicalUsername } = await deriveAuthAndVaultKeys(username, password)
+
           const params = new URLSearchParams({
-            username,
-            email
+            username: canonicalUsername
           })
   
           const availabilityRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/check-availability?${params}`)).then(r => r.json())
 
           if (availabilityRes.usernameExists) {
             usernameInput.setCustomValidity('Username is already taken')
-            updateValidationFeedback(registerForm)
-            registerForm.classList.add('was-validated')
-            updateStatus('')
-            return
-          }
-
-          if (availabilityRes.emailExists) {
-            emailInput.setCustomValidity('Email is already taken')
             updateValidationFeedback(registerForm)
             registerForm.classList.add('was-validated')
             updateStatus('')
@@ -352,10 +342,10 @@
               'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-              username,
-              email,
-              password,
-              passwordConfirm,
+              username: canonicalUsername,
+              password: keyB,
+              passwordConfirm: keyB,
+              invitation_code,
               altcha: currentPayload
             })
           })
@@ -367,11 +357,59 @@
 
           updateStatus('Logging you in...')
           const authData = await regRes.json()
+          const record = authData.record
 
-          pb.authStore.save(authData.token, authData.record)
-          await handleSuccessfulLogin()
+          // If record has vault keys, initialize crypto worker session immediately
+          if (record.encrypted_master_keys && record.encrypted_private_keys) {
+            const masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
+              ciphertext: record.encrypted_master_keys.ciphertext,
+              nonce: record.encrypted_master_keys.nonce,
+              key: keyA
+            })
+
+            if (masterKey) {
+              const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
+                encrypted_private_keys: record.encrypted_private_keys,
+                master_key: masterKey
+              })
+              await $worker.execute('worker:set_token', { token: authData.token })
+              await $worker.execute('worker:init_keys', {
+                ...decryptedKeys,
+                id: record.id
+              })
+              $state.isVaultUnlocked = true
+            }
+          }
+
+          pb.authStore.save(authData.token, record)
+          await $storage.saveConfigs([
+            {
+              key: 'pb_url',
+              value: pb.baseUrl
+            },
+            {
+              key: 'pb_token',
+              value: pb.authStore.token
+            }
+          ])
+
+          const { purgeVaultKey } = await import('../../utils/keys.js')
+          purgeVaultKey()
+
+          $state.isAuthenticated = true
+          if ($state.isVaultUnlocked) {
+            try {
+              await $sync.startSubscriptions()
+            } catch (syncErr) {
+              console.error('[auth-register] Subscription sync warning:', syncErr)
+            }
+          }
         } catch (error) {
           console.error('Registration error:', error)
+          pb.authStore.clear()
+          $state.isAuthenticated = false
+          $state.isVaultUnlocked = false
+
           updateStatus(error.message || 'Registration failed', true)
           showGlobalAlert(error.message || 'Registration failed')
           if (altchaWidget && typeof altchaWidget.reset === 'function') {

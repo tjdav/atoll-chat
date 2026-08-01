@@ -3,6 +3,9 @@ import PocketBase from 'pocketbase'
 import sodium from 'libsodium-wrappers-sumo'
 import http from 'http'
 
+const PB_URL = process.env.ATOLL_POCKETBASE_URL || process.env.ATOLL_INTERNAL_POCKETBASE_URL || 'http://localhost:8091'
+const mockPort = parseInt(new URL(PB_URL).port || '8091', 10)
+
 /**
  * Saves test recovery codes to the mock server using standard HTTP module.
  *
@@ -19,7 +22,7 @@ function saveTestRecoveryCodes (testId, username, codes) {
     })
     const req = http.request({
       hostname: '127.0.0.1',
-      port: 8090,
+      port: mockPort,
       path: '/api/set-test-recovery-codes',
       method: 'POST',
       headers: {
@@ -132,21 +135,20 @@ function generateRecoveryWrapsV2 (masterKeyBytes, sodium) {
   }
 }
 
-const PB_URL = process.env.ATOLL_POCKETBASE_URL || process.env.ATOLL_INTERNAL_POCKETBASE_URL || 'http://localhost:8091'
 const isVerbose = Boolean(process.env.DEBUG || process.env.VERBOSE)
 
 const USERS = [
   {
     username: 'alice',
-    email: 'alice@example.com'
+    email: ''
   },
   {
     username: 'bob',
-    email: 'bob@example.com'
+    email: ''
   },
   {
     username: 'charlie',
-    email: 'charlie@example.com'
+    email: ''
   }
 ]
 
@@ -184,7 +186,7 @@ async function resetPocketBase (testId) {
   }
 
   // clear transactional collections
-  const collectionsToClear = ['messages', 'rooms', 'room_members', 'media']
+  const collectionsToClear = ['messages', 'rooms', 'room_members', 'media', 'invitations']
   for (const collectionName of collectionsToClear) {
     try {
       const records = await pb.collection(collectionName).getFullList({
@@ -197,6 +199,23 @@ async function resetPocketBase (testId) {
       }
     } catch (error) {
       console.warn(`Failed to clear collection ${collectionName}:`, error.message)
+    }
+  }
+
+  // Seed default invitation codes
+  const defaultInvites = ['INV-SEED-1111', 'INV-SEED-2222', 'INV-SEED-3333', 'INV-SEED-4444', 'INV-SEED-5555']
+  for (const code of defaultInvites) {
+    try {
+      await pb.collection('invitations').create({
+        code,
+        is_used: false,
+        max_uses: 1,
+        used_count: 0
+      }, {
+        requestKey: null
+      })
+    } catch (error) {
+      console.warn(`Failed to seed invitation ${code}:`, error.message)
     }
   }
 
@@ -227,7 +246,7 @@ async function resetPocketBase (testId) {
         email: user.email,
         password: SHARED_PASSWORD,
         passwordConfirm: SHARED_PASSWORD,
-        emailVisibility: true,
+        emailVisibility: false,
         public_box_key: masterKeys.public_box_key,
         public_sign_key: masterKeys.public_sign_key,
         vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
@@ -342,17 +361,17 @@ export const test = base.extend({
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-      const emailOrUsername = username.includes('@') ? username : `${username}@example.com`
-      await page.locator('auth-login [data-testid$="username"]').fill(emailOrUsername)
+      await page.locator('auth-login [data-testid$="username"]').fill(username)
       await page.locator('auth-login [data-testid$="password"]').fill(appPassword)
       await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-      await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible({ timeout: 10000 })
+      const vaultUnlockLocator = page.locator('vault-unlock')
+      if (await vaultUnlockLocator.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await page.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword || appPassword)
+        await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+      }
 
-      await page.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword)
-      await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
-
-      await expect(page.locator('app-layout')).toBeVisible({ timeout: 10000 })
+      await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
     }
     await use(doLogin)
   },
@@ -365,7 +384,7 @@ export const test = base.extend({
         await route.fulfill({
           status: 200,
           contentType: 'application/javascript',
-          body: 'console.log("Mock SW for E2E tests");'
+          body: '// Dummy SW for testing\nself.addEventListener("install", () => self.skipWaiting());\nself.addEventListener("activate", () => self.clients.claim());'
         })
       })
 
@@ -417,8 +436,7 @@ export const test = base.extend({
       await targetPage.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle && window.__coralite__.lifecycle.hydrated)
 
       /* Login Flow */
-      const emailOrUsername = username.includes('@') ? username : `${username}@example.com`
-      await targetPage.locator('auth-login [data-testid$="username"]').fill(emailOrUsername)
+      await targetPage.locator('auth-login [data-testid$="username"]').fill(username)
       await targetPage.locator('auth-login [data-testid$="password"]').fill(appPassword)
       await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
 

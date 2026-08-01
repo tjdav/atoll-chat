@@ -7,7 +7,8 @@
       <div class="atoll-auth-hero-zone">
         <atoll-profile ref="avatarProfile" size="3xl" class="d-inline-block mb-3"></atoll-profile>
         <h3 class="mb-1">Unlock Your Vault</h3>
-        <p class="text-muted small">Your session is active, but your cryptographic keys are locked. Please enter your vault password to unlock them.</p>
+        <div ref="usernameBadge" class="text-center font-monospace fw-bold mb-2 text-primary fs-6"></div>
+        <p class="text-muted small">Your session is active. Enter your Master Password to unlock your data vault.</p>
       </div>
 
       <!-- Zone 3: Form Input Zone -->
@@ -185,6 +186,11 @@
         }
       }
 
+      const usernameBadge = refs('usernameBadge')
+      if (user && usernameBadge) {
+        usernameBadge.textContent = `@${user.username}`
+      }
+
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
@@ -360,18 +366,30 @@
             throw new Error('This account is using an outdated vault scheme. Please register a new account.')
           }
 
-          updateStatus('Deriving KEK...')
-          const KEK = await $worker.execute('worker:derive_key_from_password', {
-            password,
-            salt: saltBase64
-          })
+          updateStatus('Deriving Vault Key...')
+          const { deriveAuthAndVaultKeys, purgeVaultKey } = await import('../../utils/keys.js')
+          const { keyA } = await deriveAuthAndVaultKeys(record.username, password)
 
           updateStatus('Decrypting Master Key...')
-          const masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
+          let masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
             ciphertext: encryptedMasterKeys.ciphertext,
             nonce: encryptedMasterKeys.nonce,
-            key: KEK
+            key: keyA
           })
+
+          if (!masterKey && saltBase64) {
+            const KEK = await $worker.execute('worker:derive_key_from_password', {
+              password,
+              salt: saltBase64
+            })
+            masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
+              ciphertext: encryptedMasterKeys.ciphertext,
+              nonce: encryptedMasterKeys.nonce,
+              key: KEK
+            })
+          }
+
+          purgeVaultKey()
 
           if (!masterKey) {
             throw new Error('Invalid Vault Password')

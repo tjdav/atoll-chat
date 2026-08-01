@@ -31,9 +31,11 @@ routerAdd('POST', '/api/custom/login', (e) => {
     return e.json(400, { error: 'Missing identity or password.' })
   }
 
+  const identityCanonical = data.identity.trim().toLowerCase()
+
   let record = null
   try {
-    record = $app.findFirstRecordByFilter('users', 'email = {:identity} || username = {:identity}', { identity: data.identity })
+    record = $app.findFirstRecordByFilter('users', 'username = {:identity}', { identity: identityCanonical })
   } catch {
     return e.json(400, { error: 'Invalid login credentials.' })
   }
@@ -89,10 +91,10 @@ routerAdd('POST', '/api/custom/register', (e) => {
 
   const data = new DynamicModel({
     username: '',
-    email: '',
     password: '',
     passwordConfirm: '',
-    altcha: ''
+    altcha: '',
+    invitation_code: ''
   })
   e.bindBody(data)
 
@@ -104,22 +106,59 @@ routerAdd('POST', '/api/custom/register', (e) => {
     return e.json(400, { error: 'Invalid security challenge. Are you a bot?' })
   }
 
-  if (!data.username || !data.email || !data.password || !data.passwordConfirm) {
+  if (!data.username || !data.password || !data.passwordConfirm) {
     return e.json(400, { error: 'Missing required registration fields.' })
   }
+
+  const invitationCode = data.invitation_code || ''
+  if (!invitationCode) {
+    return e.json(400, { error: 'Invitation code is required.' })
+  }
+
+  // Phase 1: Verify Invitation Code is valid and unused
+  const invitationRecord = new DynamicModel({
+    id: '',
+    is_used: false,
+    expires_at: ''
+  })
+
+  try {
+    $app.db()
+      .select('id', 'is_used', 'expires_at')
+      .from('invitations')
+      .where($dbx.hashExp({ code: invitationCode }))
+      .limit(1)
+      .one(invitationRecord)
+  } catch (_err) {
+    return e.json(400, { error: 'Invalid invitation code.' })
+  }
+
+  if (invitationRecord.is_used) {
+    return e.json(400, { error: 'Invitation code has already been used.' })
+  }
+
+  if (invitationRecord.expires_at) {
+    const expiresTime = new Date(invitationRecord.expires_at).getTime()
+    if (expiresTime < Date.now()) {
+      return e.json(400, { error: 'Invitation code has expired.' })
+    }
+  }
+
+  const usernameCanonical = data.username.trim().toLowerCase()
 
   try {
     const collection = $app.findCollectionByNameOrId('users')
     const record = new Record(collection)
-    record.set('username', data.username)
-    record.set('email', data.email)
-    record.set('name', data.username)
+    record.set('username', usernameCanonical)
+    // Original casing preserved!
+    record.set('name', data.username.trim())
     record.set('password', data.password)
     record.set('passwordConfirm', data.passwordConfirm)
     record.set('verified', true)
-    record.set('emailVisibility', true)
+    record.set('emailVisibility', false)
 
     $app.save(record)
+
     const token = record.newAuthToken()
     return e.json(201, {
       success: true,
@@ -129,56 +168,4 @@ routerAdd('POST', '/api/custom/register', (e) => {
   } catch (err) {
     return e.json(400, { error: err.message })
   }
-})
-
-// Custom Password Reset Route
-routerAdd('POST', '/api/custom/password-reset', (e) => {
-  const verifyAltchaSolution = (altchaPayload) => {
-    const pushWorkerUrl = $os.getenv('ATOLL_PUSH_WORKER_URL') || 'http://localhost:3001'
-    try {
-      const res = $http.send({
-        url: pushWorkerUrl + '/altcha/verify',
-        method: 'POST',
-        body: JSON.stringify({ payload: altchaPayload }),
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 10
-      })
-      return res.statusCode === 200
-    } catch {
-      return false
-    }
-  }
-
-  const data = new DynamicModel({
-    email: '',
-    altcha: ''
-  })
-  e.bindBody(data)
-
-  if (!data.altcha) {
-    return e.json(400, { error: 'Security challenge is required.' })
-  }
-
-  if (!verifyAltchaSolution(data.altcha)) {
-    return e.json(400, { error: 'Invalid security challenge. Are you a bot?' })
-  }
-
-  if (!data.email) {
-    return e.json(400, { error: 'Email is required.' })
-  }
-
-  try {
-    const record = $app.findAuthRecordByEmail('users', data.email)
-    if (record) {
-      $mails.sendRecordPasswordReset($app, record)
-    }
-  } catch (_err) {
-    // Return 200 even if record not found to prevent user enumeration
-  }
-  return e.json(200, {
-    success: true,
-    message: 'Password reset email sent if account exists.'
-  })
 })

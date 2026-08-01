@@ -16,7 +16,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
 
     // Fill registration info
     await page.locator('auth-register input[name="username"]').fill('thomas')
-    await page.locator('auth-register input[name="email"]').fill('thomas@example.com')
+    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-1111')
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
 
@@ -31,11 +31,9 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Verify error status banner is displayed
     await expect(page.locator('auth-register [data-testid$="statusMsg"]')).toContainText('Security challenge failed')
 
-    // Ensure the username and email inputs do NOT have custom validity set
+    // Ensure the username input does NOT have custom validity set
     const usernameValidity = await page.locator('auth-register input[name="username"]').evaluate((el) => el.validationMessage)
-    const emailValidity = await page.locator('auth-register input[name="email"]').evaluate((el) => el.validationMessage)
     expect(usernameValidity).toBe('')
-    expect(emailValidity).toBe('')
 
     // Dispatch verified statechange to proceed
     await page.evaluate(() => {
@@ -53,8 +51,8 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Clicking submit again now that ALTCHA is verified should proceed successfully
     await page.locator('[data-testid$="registerSubmit"]').click()
 
-    // Registration should succeed and login programmatically, transitioning to Vault Setup
-    await page.locator('vault-setup').waitFor({ state: 'visible' })
+    // Registration should succeed and transition directly to app-layout
+    await page.locator('app-layout').waitFor({ state: 'visible' })
   })
 
   test('should display ALTCHA validation error inside ALTCHA widget and allow submit on login form', async ({ page }) => {
@@ -67,7 +65,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     })
 
     // Fill in valid login credentials
-    await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+    await page.locator('auth-login [data-testid$="username"]').fill('alice')
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
 
     // Dispatch error statechange on altcha-widget to test error state handling
@@ -81,7 +79,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Verify error status banner is displayed
     await expect(page.locator('auth-login [data-testid$="statusMsg"]')).toContainText('Security challenge failed')
 
-    // Ensure the email input does NOT have custom validity set
+    // Ensure the username input does NOT have custom validity set
     const emailValidity = await page.locator('auth-login [data-testid$="username"]').evaluate((el) => el.validationMessage)
     expect(emailValidity).toBe('')
 
@@ -122,7 +120,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
 
     // Fill short password (5 chars)
     await page.locator('auth-register input[name="username"]').fill('shortpassuser')
-    await page.locator('auth-register input[name="email"]').fill('shortpassuser@example.com')
+    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-1111')
     await page.locator('auth-register input[name="password"]').fill('12345')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('12345')
 
@@ -135,5 +133,3 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     await expect(feedback).toContainText('8 characters')
   })
 })
-
-

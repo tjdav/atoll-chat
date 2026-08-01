@@ -3,13 +3,9 @@
     <h6 class="text-uppercase text-muted fw-bold small mb-3">Account Information</h6>
     <div class="card border-0 shadow-sm">
       <div class="card-body">
-        <div class="mb-3">
+        <div class="mb-0">
           <label class="form-label small text-muted text-uppercase fw-bold">Username</label>
           <div class="form-control bg-body-tertiary">{{ username }}</div>
-        </div>
-        <div>
-          <label class="form-label small text-muted text-uppercase fw-bold">Email Address</label>
-          <div class="form-control bg-body-tertiary">{{ userEmail }}</div>
         </div>
       </div>
     </div>
@@ -21,8 +17,7 @@
 
   export default defineComponent({
     server: () => ({
-      username: 'User',
-      userEmail: ''
+      username: 'User'
     }),
     client: async ({ state, globalStore }) => {
       const { $state } = globalStore
@@ -30,7 +25,6 @@
       const loadUserData = () => {
         const user = $state.currentUser
         state.username = user?.username || 'User'
-        state.userEmail = user?.email || ''
       }
 
       loadUserData()
