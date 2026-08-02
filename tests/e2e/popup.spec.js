@@ -32,7 +32,7 @@ test.describe('Atoll Popup / Modal Component', () => {
     const actions = popupHost.locator('.atoll-popup-actions')
     await expect(actions).toHaveClass(/atoll-popup-actions-stacked/)
 
-    const primaryBtn = popupHost.locator('atoll-button[ref$="__primaryBtn"]')
+    const primaryBtn = popupHost.locator('atoll-button[ref$="primaryBtn"]')
     await expect(primaryBtn).toHaveAttribute('variant', 'danger')
   })
 
@@ -82,10 +82,10 @@ test.describe('Atoll Popup / Modal Component', () => {
     // Wait for open event
     await page.waitForFunction(() => window.__popupEvents.some(e => e.type === 'open'))
 
-    const primaryBtn = popupHost.locator('atoll-button[ref$="__primaryBtn"] button')
+    const primaryBtn = popupHost.locator('atoll-button[ref$="primaryBtn"] button')
     await primaryBtn.click()
 
-    const secondaryBtn = popupHost.locator('atoll-button[ref$="__secondaryBtn"] button')
+    const secondaryBtn = popupHost.locator('atoll-button[ref$="secondaryBtn"] button')
     await secondaryBtn.click()
 
     // Secondary button hide triggers close event

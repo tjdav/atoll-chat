@@ -11,11 +11,7 @@
     <div class="modal-dialog atoll-popup-dialog {{ dialogClasses }}">
       <div class="modal-content">
         <!-- Optional Hero Graphic / Illustration Slot -->
-        <div ref="heroSlotWrapper" class="atoll-popup-hero" hidden="{{ hideHero }}">
-          <slot name="hero">
-            <atoll-icon name="{{ heroIcon }}" size="48"></atoll-icon>
-          </slot>
-        </div>
+        <slot name="hero"></slot>
 
         <!-- Modal Header -->
         <div class="atoll-popup-header d-flex align-items-center justify-content-between mb-3" hidden="{{ hideHeader }}">
@@ -50,29 +46,7 @@
         </div>
 
         <!-- Action Button Bar -->
-        <div class="atoll-popup-actions {{ actionClasses }}">
-          <slot name="actions">
-            <!-- Secondary / Cancel Button -->
-            <atoll-button 
-              ref="secondaryBtn"
-              variant="secondary" 
-              size="md" 
-              hidden="{{ hideSecondaryBtn }}"
-            >
-              {{ secondaryText }}
-            </atoll-button>
-
-            <!-- Primary Action Button -->
-            <atoll-button 
-              ref="primaryBtn"
-              variant="{{ primaryVariant }}" 
-              size="md" 
-              hidden="{{ hidePrimaryBtn }}"
-            >
-              {{ primaryText }}
-            </atoll-button>
-          </slot>
-        </div>
+        <slot name="actions"></slot>
       </div>
     </div>
   </div>
@@ -116,23 +90,90 @@
       },
       stackedActions: Boolean,
       staticBackdrop: Boolean,
-      hasSlottedHero: {
-        type: Boolean,
-        default: false
-      },
       closeable: Boolean
+    },
+
+    slots: {
+      hero (nodes, state) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (state.heroIcon) {
+          const wrapper = document.createElement('div')
+          wrapper.className = 'atoll-popup-hero'
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', state.heroIcon)
+          icon.setAttribute('size', '48')
+          wrapper.appendChild(icon)
+          return [wrapper]
+        }
+
+        if (nodes && nodes.length > 0) {
+          const wrapper = document.createElement('div')
+          wrapper.className = 'atoll-popup-hero'
+          nodes.forEach(node => {
+            wrapper.appendChild(node)
+          })
+          return [wrapper]
+        }
+
+        return null
+      },
+
+      actions (nodes, state) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        const actionClasses = state.stackedActions ? 'atoll-popup-actions atoll-popup-actions-stacked' : 'atoll-popup-actions'
+
+        if (nodes && nodes.length > 0) {
+          const wrapper = document.createElement('div')
+          wrapper.className = actionClasses
+          nodes.forEach(node => {
+            wrapper.appendChild(node)
+          })
+          return [wrapper]
+        }
+
+        const hidePrimary = !state.primaryText
+        const hideSecondary = state.variant === 'alert' || !state.secondaryText
+
+        if (hidePrimary && hideSecondary) {
+          return null
+        }
+
+        const wrapper = document.createElement('div')
+        wrapper.className = actionClasses
+
+        if (!hideSecondary) {
+          const btn = document.createElement('atoll-button')
+          btn.setAttribute('ref', 'secondaryBtn')
+          btn.setAttribute('variant', 'secondary')
+          btn.setAttribute('size', 'md')
+          btn.textContent = state.secondaryText
+          wrapper.appendChild(btn)
+        }
+
+        if (!hidePrimary) {
+          const btn = document.createElement('atoll-button')
+          btn.setAttribute('ref', 'primaryBtn')
+          const primaryVariant = state.variant === 'danger' ? 'danger' : 'primary'
+          btn.setAttribute('variant', primaryVariant)
+          btn.setAttribute('size', 'md')
+          btn.textContent = state.primaryText
+          wrapper.appendChild(btn)
+        }
+
+        return [wrapper]
+      }
     },
 
     getters: {
       primaryVariant: (state) => (state.variant === 'danger' ? 'danger' : 'primary'),
 
-      hideHero: (state) => !state.heroIcon && !state.hasSlottedHero,
-
       hideDescription: (state) => !state.description,
-
-      hideSecondaryBtn: (state) => state.variant === 'alert' || !state.secondaryText,
-
-      hidePrimaryBtn: (state) => !state.primaryText,
 
       hideCloseBtn: (state) => !state.closeable,
 
@@ -148,31 +189,14 @@
         }
 
         return classes.join(' ')
-      },
-
-      actionClasses: (state) => (state.stackedActions ? 'atoll-popup-actions-stacked' : '')
+      }
     },
 
     client: ({ state, refs, root, observe, bootstrap }) => {
       const { Modal } = bootstrap
       const modalEl = refs('modalElement')
-      const primaryBtn = refs('primaryBtn')
-      const secondaryBtn = refs('secondaryBtn')
-      const closeBtn = refs('btnClose')
 
       let bsModalInstance = null
-
-      // Check for slotted hero content
-      const checkSlottedHero = () => {
-        state.hasSlottedHero = !!root.querySelector('[slot="hero"]')
-      }
-      checkSlottedHero()
-
-      const observer = new MutationObserver(checkSlottedHero)
-      observer.observe(root, {
-        childList: true,
-        subtree: true
-      })
 
       const applyBackdropClass = () => {
         const backdrops = document.querySelectorAll('.modal-backdrop')
@@ -218,45 +242,45 @@
             })
           )
         })
-      }
 
-      // Handle Primary Action Click
-      if (primaryBtn) {
-        primaryBtn.addEventListener('click', () => {
-          root.dispatchEvent(
-            new CustomEvent('atoll-popup-primary', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                variant: state.variant,
-                size: state.size
-              }
-            })
-          )
-        })
-      }
-
-      // Handle Secondary Action Click
-      if (secondaryBtn) {
-        secondaryBtn.addEventListener('click', () => {
-          root.dispatchEvent(
-            new CustomEvent('atoll-popup-secondary', {
-              bubbles: true,
-              composed: true,
-              detail: { variant: state.variant }
-            })
-          )
-          if (bsModalInstance) {
-            bsModalInstance.hide()
+        // Event delegation for primary, secondary, and close button clicks
+        modalEl.addEventListener('click', (e) => {
+          const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
+          if (!target) {
+            return
           }
-        })
-      }
 
-      // Handle Close Button Click
-      if (closeBtn) {
-        closeBtn.addEventListener('click', () => {
-          if (bsModalInstance) {
-            bsModalInstance.hide()
+          const refAttr = target.getAttribute('ref') || ''
+          const isPrimary = refAttr === 'primaryBtn' || refAttr.endsWith('__primaryBtn')
+          const isSecondary = refAttr === 'secondaryBtn' || refAttr.endsWith('__secondaryBtn')
+          const isClose = refAttr === 'btnClose' || refAttr.endsWith('__btnClose')
+
+          if (isPrimary) {
+            root.dispatchEvent(
+              new CustomEvent('atoll-popup-primary', {
+                bubbles: true,
+                composed: true,
+                detail: {
+                  variant: state.variant,
+                  size: state.size
+                }
+              })
+            )
+          } else if (isSecondary) {
+            root.dispatchEvent(
+              new CustomEvent('atoll-popup-secondary', {
+                bubbles: true,
+                composed: true,
+                detail: { variant: state.variant }
+              })
+            )
+            if (bsModalInstance) {
+              bsModalInstance.hide()
+            }
+          } else if (isClose) {
+            if (bsModalInstance) {
+              bsModalInstance.hide()
+            }
           }
         })
       }
@@ -285,10 +309,6 @@
       // Initial Sync if open attribute is set on mount
       if (state.open && bsModalInstance) {
         bsModalInstance.show()
-      }
-
-      return () => {
-        observer.disconnect()
       }
     }
   })
