@@ -49,6 +49,11 @@ test.describe('PoW CAPTCHA (ALTCHA) Integration', () => {
     // Submit form
     await page.locator('[data-testid$="registerSubmit"]').click()
 
+    /* Confirm and dismiss Recovery Code Modal */
+    await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
+    await page.locator('auth-register [data-testid$="chkStored"]').check()
+    await page.locator('auth-register [data-testid$="btnContinueToChat"]').click()
+
     // Registration should succeed and proceed directly to app-layout
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
   })
