@@ -53,6 +53,7 @@ atoll-popup[data-#{$prefix}theme="dark"] {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
+  pointer-events: auto;
 
   /* Mobile Safety Bounds */
   width: 100%;
