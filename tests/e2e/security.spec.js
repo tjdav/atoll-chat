@@ -201,7 +201,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
 
   test('should handle TOTP dual modal setup, device trust state machine, and step-up verification', async ({ page, loginApp }) => {
     /* Perform login for Alice */
-    await loginApp('alice', 'Password123!', 'VaultPassword123!')
+    await loginApp('alice', 'Password123!', 'Password123!')
 
     /* Open profile settings modal */
     await page.locator('[data-testid$="__profileBtn"]').click()
@@ -255,7 +255,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     expect(isTotpRequired).toBe(true)
 
     /* Input Vault Password and an invalid TOTP code */
-    await page.locator('[data-testid$="__vaultPasswordInput"]').fill('VaultPassword123!')
+    await page.locator('[data-testid$="__vaultPasswordInput"]').fill('Password123!')
     await totpStepUpInput.fill('000000')
     await page.locator('[data-testid$="__btnVerifyPassword"]').click()
     await expect(page.locator('[data-testid$="__verifyError"]')).toContainText('Invalid 2-step verification code.')
@@ -300,7 +300,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('vault-unlock')).toBeVisible()
 
     /* Unlock the vault */
-    await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
+    await page.locator('[data-testid$="password"]').fill('Password123!')
     await page.locator('[data-testid$="unlockSubmit"]').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
@@ -314,14 +314,9 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-    /* Assert that recognized device completely bypasses TOTP challenge and goes straight to vault unlock */
-    await expect(page.locator('vault-unlock')).toBeVisible()
+    /* Assert that recognized device completely bypasses TOTP challenge and goes straight to app-layout */
+    await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
     await expect(page.locator('totp-challenge')).not.toBeVisible()
-
-    /* Unlock vault to disable TOTP */
-    await page.locator('[data-testid$="password"]').fill('VaultPassword123!')
-    await page.locator('[data-testid$="unlockSubmit"]').click()
-    await expect(page.locator('app-layout')).toBeVisible()
 
     /* DISABLE TOTP */
     await page.locator('[data-testid$="__profileBtn"]').click()

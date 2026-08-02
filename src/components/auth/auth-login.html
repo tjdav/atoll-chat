@@ -269,6 +269,44 @@
           const authData = await loginRes.json()
           const record = authData.record
 
+          // Check if TOTP is enabled and device is untrusted
+          let isDeviceTrusted = false
+          if (record.totp_enabled) {
+            const localToken = localStorage.getItem('device_trust_token')
+            if (localToken) {
+              const msgUint8 = new TextEncoder().encode(localToken)
+              const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8)
+              const hashArray = Array.from(new Uint8Array(hashBuffer))
+              const hash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+              const hashes = record.trusted_device_hashes || []
+              isDeviceTrusted = hashes.includes(hash)
+            }
+          } else {
+            isDeviceTrusted = true
+          }
+
+          if (record.totp_enabled && !isDeviceTrusted) {
+            // Save authentication without unlocking the vault yet
+            pb.authStore.save(authData.token, record)
+            await $storage.saveConfigs([
+              {
+                key: 'pb_url',
+                value: pb.baseUrl
+              },
+              {
+                key: 'pb_token',
+                value: pb.authStore.token
+              }
+            ])
+            purgeVaultKey()
+
+            $state.currentUser = record
+            $state.isAuthenticated = true
+            $state.isVaultUnlocked = false
+            updateStatus('Please complete Two-Step Verification.')
+            return
+          }
+
           // Step 1: Decrypt Vault Master Key (VMK) using Key A
           updateStatus('Unlocking vault...')
           const encryptedMasterKeys = record.encrypted_master_keys
