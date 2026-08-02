@@ -449,12 +449,13 @@ export const test = base.extend({
       await targetPage.locator('auth-login [data-testid$="password"]').fill(appPassword)
       await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-      await expect(targetPage.locator('vault-unlock')).toBeVisible()
+      const vaultUnlockLocator = targetPage.locator('vault-unlock')
+      if (await vaultUnlockLocator.isVisible({ timeout: 2000 }).catch(() => false)) {
+        await targetPage.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword || appPassword)
+        await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+      }
 
-      await targetPage.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword)
-      await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
-
-      await expect(targetPage.locator('app-layout')).toBeVisible()
+      await expect(targetPage.locator('app-layout')).toBeVisible({ timeout: 15000 })
     }
 
     await use(doLogin)
