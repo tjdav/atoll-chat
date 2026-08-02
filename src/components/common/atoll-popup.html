@@ -9,6 +9,17 @@
     aria-describedby="{{ ref_modalDesc }}"
   >
     <div class="modal-dialog atoll-popup-dialog {{ dialogClasses }}">
+      <atoll-button 
+          ref="btnClose" 
+          icon-only="true" 
+          variant="ghost" 
+          size="md"
+          aria-label="Close"
+          hidden="{{ hideCloseBtn }}"
+          class="d-block position-absolute top-0 end-0"
+        >
+        <atoll-icon name="close" size="24"></atoll-icon>
+      </atoll-button>
       <div class="modal-content">
         <!-- Optional Hero Graphic / Illustration Slot -->
         <slot name="hero"></slot>
@@ -18,16 +29,6 @@
           <h3 ref="modalTitle" id="{{ ref_modalTitle }}" class="atoll-popup-title mb-0">
             {{ title }}
           </h3>
-          <atoll-button 
-            ref="btnClose" 
-            icon-only="true" 
-            variant="ghost" 
-            size="md"
-            aria-label="Close"
-            hidden="{{ hideCloseBtn }}"
-          >
-            <atoll-icon name="close" size="24"></atoll-icon>
-          </atoll-button>
         </div>
 
         <!-- Popup Text Body -->

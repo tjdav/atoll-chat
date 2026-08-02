@@ -148,7 +148,7 @@ test.describe('Atoll Popup / Modal Component', () => {
       popupWithSlot.id = 'popup-with-slot'
       popupWithSlot.setAttribute('title', 'Slotted Hero')
       popupWithSlot.setAttribute('open', 'true')
-      popupWithSlot.innerHTML = '<img slot="hero" src="test.png" id="slotted-img" />'
+      popupWithSlot.innerHTML = '<img slot="hero" src="/icon-192x192.png" id="slotted-img" />'
       document.body.appendChild(popupWithSlot)
     })
 
@@ -164,6 +164,53 @@ test.describe('Atoll Popup / Modal Component', () => {
 
     const heroWrapperSlot = withSlot.locator('.atoll-popup-hero')
     await expect(heroWrapperSlot).toBeVisible()
-    await expect(heroWrapperSlot.locator('#slotted-img')).toHaveAttribute('src', 'test.png')
+    await expect(heroWrapperSlot.locator('#slotted-img')).toHaveAttribute('src', '/icon-192x192.png')
+  })
+
+  test('should support closeable option showing close button', async ({ page }) => {
+    await page.evaluate(() => {
+      const popup = document.createElement('atoll-popup')
+      popup.id = 'test-popup-closeable'
+      popup.setAttribute('closeable', 'true')
+      popup.setAttribute('title', 'Closeable Dialog')
+      popup.setAttribute('open', 'true')
+      document.body.appendChild(popup)
+    })
+
+    const popupHost = page.locator('#test-popup-closeable')
+    const modal = popupHost.locator('.modal')
+    await expect(modal).toBeVisible()
+
+    const closeBtn = popupHost.locator('atoll-button[ref$="btnClose"]')
+    await expect(closeBtn).toBeVisible()
+
+    // Click the close button
+    await closeBtn.locator('button').click()
+
+    // Modal should be hidden
+    await expect(modal).not.toBeVisible()
+  })
+
+  test('should support closeable option showing close button without title', async ({ page }) => {
+    await page.evaluate(() => {
+      const popup = document.createElement('atoll-popup')
+      popup.id = 'test-popup-closeable-no-title'
+      popup.setAttribute('closeable', 'true')
+      popup.setAttribute('open', 'true')
+      document.body.appendChild(popup)
+    })
+
+    const popupHost = page.locator('#test-popup-closeable-no-title')
+    const modal = popupHost.locator('.modal')
+    await expect(modal).toBeVisible()
+
+    const closeBtn = popupHost.locator('atoll-button[ref$="btnClose"]')
+    await expect(closeBtn).toBeVisible()
+
+    // Click the close button
+    await closeBtn.locator('button').click()
+
+    // Modal should be hidden
+    await expect(modal).not.toBeVisible()
   })
 })

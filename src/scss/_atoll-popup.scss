@@ -53,11 +53,11 @@ atoll-popup[data-#{$prefix}theme="dark"] {
   flex-direction: column;
   align-items: stretch;
   justify-content: flex-start;
-  
+
   /* Mobile Safety Bounds */
   width: 100%;
-  width: calc(100% - #{map-get($spacers, 4)} * 2); 
-  
+  width: calc(100% - #{map-get($spacers, 4)} * 2);
+
   min-height: auto;
   max-height: 85vh;
   margin: 1.75rem auto;
@@ -89,7 +89,8 @@ atoll-popup[data-#{$prefix}theme="dark"] {
 .modal-backdrop.atoll-popup-backdrop {
   opacity: 1 !important;
   background-color: var(--#{$prefix}popup-backdrop-bg) !important;
-  -webkit-backdrop-filter: blur(4px) !important; /* iOS Safari support */
+  -webkit-backdrop-filter: blur(4px) !important;
+  /* iOS Safari support */
   backdrop-filter: blur(4px) !important;
 }
 
@@ -104,7 +105,8 @@ atoll-popup[data-#{$prefix}theme="dark"] {
   margin-bottom: map-get($spacers, 4);
   flex-shrink: 0;
 
-  img, svg {
+  img,
+  svg {
     max-width: 100%;
     height: auto;
   }
@@ -121,9 +123,10 @@ atoll-popup[data-#{$prefix}theme="dark"] {
     width: 64px;
     height: 64px;
     border-radius: 50%;
-    background-color: rgba(6, 199, 85, 0.1); /* Green tint */
+    background-color: rgba(6, 199, 85, 0.1);
+    /* Green tint */
     color: var(--#{$prefix}brand-primary, #06C755);
-    
+
     [data-#{$prefix}theme="dark"] & {
       background-color: rgba(6, 199, 85, 0.15);
     }
@@ -155,12 +158,15 @@ atoll-popup[data-#{$prefix}theme="dark"] {
   &::-webkit-scrollbar {
     width: 6px;
   }
+
   &::-webkit-scrollbar-track {
     background: transparent;
   }
+
   &::-webkit-scrollbar-thumb {
     background-color: var(--#{$prefix}popup-scrollbar-thumb);
     border-radius: 10px;
+
     &:hover {
       background-color: var(--#{$prefix}popup-scrollbar-thumb-hover);
     }
@@ -173,8 +179,8 @@ atoll-popup[data-#{$prefix}theme="dark"] {
 
   &:focus-visible {
     outline: 2px solid var(--#{$prefix}primary, #06C755);
-    outline-offset: -2px; 
-    border-radius: map-get($spacers, 1); 
+    outline-offset: -2px;
+    border-radius: map-get($spacers, 1);
   }
 }
 
@@ -205,8 +211,8 @@ atoll-popup[data-#{$prefix}theme="dark"] {
   flex-shrink: 0;
   margin-top: auto;
 
-  > atoll-button,
-  > .atoll-btn {
+  >atoll-button,
+  >.atoll-btn {
     flex: 1;
     width: 100%;
   }
