@@ -97,9 +97,9 @@ routerAdd('POST', '/api/custom/register', (e) => {
     invitation_code: '',
     public_box_key: '',
     public_sign_key: '',
-    encrypted_master_keys: null,
-    encrypted_private_keys: null,
-    recovery_wraps: null,
+    encrypted_master_keys: {},
+    encrypted_private_keys: {},
+    recovery_wraps: [],
     vault_salt: ''
   })
   e.bindBody(data)
@@ -182,6 +182,20 @@ routerAdd('POST', '/api/custom/register', (e) => {
     }
 
     $app.save(record)
+
+    // Phase 2: Consume the invitation code atomically after successful user creation
+    const updateResult = $app.db().newQuery(
+      'UPDATE invitations SET is_used = 1, used_by = {:userId}, used_count = used_count + 1 WHERE code = {:code} AND is_used = 0'
+    ).bind({
+      code: invitationCode,
+      userId: record.id
+    }).execute()
+
+    if (updateResult.rowsAffected() === 0) {
+      // Rollback
+      $app.delete(record)
+      return e.json(400, { error: 'Invitation code was redeemed by another user.' })
+    }
 
     const token = record.newAuthToken()
     return e.json(201, {

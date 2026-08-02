@@ -1,8 +1,10 @@
 // pb_hooks/invitation_check.pb.js
 
 onRecordCreateRequest((e) => {
-  // Superuser / System Bypass using e.hasSuperuserAuth()
-  if (!e.requestInfo || e.hasSuperuserAuth()) {
+  const info = e.requestInfo()
+
+  // Superuser / System Bypass
+  if (!info || e.hasSuperuserAuth()) {
     e.next()
     return
   }
@@ -17,8 +19,8 @@ onRecordCreateRequest((e) => {
 
   // Extract invitation_code
   let invitationCode = ''
-  if (e.requestInfo && e.requestInfo.data) {
-    invitationCode = e.requestInfo.data.invitation_code || ''
+  if (info && info.data) {
+    invitationCode = info.data.invitation_code || ''
   }
 
   if (!invitationCode) {
@@ -74,8 +76,10 @@ onRecordCreateRequest((e) => {
 }, 'users')
 
 onRecordUpdateRequest((e) => {
-  // Superuser / System Bypass using e.hasSuperuserAuth()
-  if (!e.requestInfo || e.hasSuperuserAuth()) {
+  const info = e.requestInfo()
+
+  // Superuser / System Bypass
+  if (!info || e.hasSuperuserAuth()) {
     e.next()
     return
   }

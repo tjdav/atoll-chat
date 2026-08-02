@@ -5,8 +5,13 @@
  * unless the requester is the owner of the record.
  */
 onRecordEnrich((e) => {
-  // Check if the user making the request is the owner of this specific record
-  const isOwner = e.requestInfo.auth && e.requestInfo.auth.id === e.record.id
+  let isOwner = false
+  try {
+    const info = e.requestInfo()
+    isOwner = info && info.auth && info.auth.id === e.record.id
+  } catch (_err) {
+    // ignore
+  }
 
   // scrub the encrypted vault from payload if requester is guest or different user
   if (!isOwner) {
