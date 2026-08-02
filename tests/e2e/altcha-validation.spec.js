@@ -56,6 +56,11 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Clicking submit again now that ALTCHA is verified should proceed successfully
     await page.locator('[data-testid$="registerSubmit"]').click()
 
+    // Confirm and dismiss Recovery Code Modal first
+    await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
+    await page.locator('auth-register [data-testid$="chkStored"]').check()
+    await page.locator('auth-register [data-testid$="btnContinueToChat"]').click()
+
     // Registration should succeed and transition directly to app-layout
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
   })
