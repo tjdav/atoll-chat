@@ -8,9 +8,7 @@
   >
     <span class="atoll-chip-content">
       <slot name="leading"></slot>
-      <span class="atoll-chip-label">
-        <slot></slot>
-      </span>
+      <slot></slot>
       <slot name="trailing"></slot>
     </span>
   </div>
@@ -35,6 +33,77 @@
       value: {
         type: String,
         default: ''
+      },
+      text: {
+        type: String,
+        default: ''
+      }
+    },
+
+    slots: {
+      leading (nodes) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (nodes && nodes.length > 0) {
+          const span = document.createElement('span')
+          span.className = 'atoll-chip-leading'
+          nodes.forEach(node => {
+            span.appendChild(node)
+          })
+          return [span]
+        }
+
+        return null
+      },
+
+      trailing (nodes) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (nodes && nodes.length > 0) {
+          const span = document.createElement('span')
+          span.className = 'atoll-chip-trailing'
+          nodes.forEach(node => {
+            span.appendChild(node)
+          })
+          return [span]
+        }
+
+        return null
+      },
+
+      default (nodes, state) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (state.text) {
+          const span = document.createElement('span')
+          span.className = 'atoll-chip-label'
+          span.textContent = state.text
+          return [span]
+        }
+
+        const hasContent = nodes && nodes.some(node => {
+          if (node.nodeType === 3) {
+            return node.nodeValue.trim().length > 0
+          }
+          return true
+        })
+
+        if (hasContent) {
+          const span = document.createElement('span')
+          span.className = 'atoll-chip-label'
+          nodes.forEach(node => {
+            span.appendChild(node)
+          })
+          return [span]
+        }
+
+        return null
       }
     },
 
@@ -75,7 +144,7 @@
       chipTabindex: (state) => (state.disabled ? '-1' : '0')
     },
 
-    client: ({ state, refs, root, observe }) => {
+    client: ({ state, refs, root, observe, signal }) => {
       const chip = refs('chipElement')
       let removeBtnEl = null
 
@@ -111,7 +180,7 @@
                   detail: { value: state.value }
                 })
               )
-            })
+            }, { signal })
           } else {
             // Update the icon size dynamically if size changes
             const icon = removeBtnEl.querySelector('atoll-icon')
@@ -137,7 +206,10 @@
         }
       }
 
-      root.addEventListener('click', preventClickWhenDisabled, { capture: true })
+      root.addEventListener('click', preventClickWhenDisabled, {
+        capture: true,
+        signal
+      })
 
       // Handle keyboard navigation (Enter / Space toggles or activates chip)
       if (chip) {
@@ -155,10 +227,10 @@
               removeBtnEl.click()
             }
           }
-        })
+        }, { signal })
 
         // Also add click listener to the inner chip element for consistency
-        chip.addEventListener('click', preventClickWhenDisabled)
+        chip.addEventListener('click', preventClickWhenDisabled, { signal })
       }
 
       // Observe reactive attribute updates
@@ -171,10 +243,7 @@
       syncRemoveButton()
 
       return () => {
-        root.removeEventListener('click', preventClickWhenDisabled, { capture: true })
-        if (chip) {
-          chip.removeEventListener('click', preventClickWhenDisabled)
-        }
+        /* Event listeners are automatically removed when using abort signal, but keeping cleanup return function consistent as optional extra safety. */
       }
     }
   })

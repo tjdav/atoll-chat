@@ -367,4 +367,41 @@ test.describe('Atoll Chip Component', () => {
     // Take screenshot
     await page.screenshot({ path: 'tests/e2e/screenshots/chip-verification.png' })
   })
+
+  test('should render text attribute correctly', async ({ page }) => {
+    await page.evaluate(() => {
+      const chip = document.createElement('atoll-chip')
+      chip.id = 'test-chip-text'
+      chip.setAttribute('text', 'Attribute Text')
+      document.body.appendChild(chip)
+    })
+
+    const chipHost = page.locator('#test-chip-text')
+    await expect(chipHost).toBeVisible()
+
+    const label = chipHost.locator('.atoll-chip-label')
+    // Wait for attachment and textContent verification
+    await expect(label).toBeAttached()
+    await expect(label).toHaveText('Attribute Text')
+  })
+
+  test('should prevent appending empty slots', async ({ page }) => {
+    await page.evaluate(() => {
+      const chip = document.createElement('atoll-chip')
+      chip.id = 'test-chip-empty'
+      document.body.appendChild(chip)
+    })
+
+    const chipHost = page.locator('#test-chip-empty')
+    await expect(chipHost).toBeVisible()
+
+    const label = chipHost.locator('.atoll-chip-label')
+    await expect(label).not.toBeAttached()
+
+    const leading = chipHost.locator('.atoll-chip-leading')
+    await expect(leading).not.toBeAttached()
+
+    const trailing = chipHost.locator('.atoll-chip-trailing')
+    await expect(trailing).not.toBeAttached()
+  })
 })
