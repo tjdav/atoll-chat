@@ -361,7 +361,7 @@ export default function webrtcPlugin ({
                 })
               } else if (message.type === 'call_answer') {
                 console.log(`[WebRTC] Received call_answer for room ${room_id}`)
-                if (globalState.callStatus === 'incoming' && globalState.activeCallRoomId === room_id) {
+                if (message.sender_id === globalState.currentUser?.id && globalState.callStatus === 'incoming' && globalState.activeCallRoomId === room_id) {
                   console.log(`[WebRTC] Call for room ${room_id} answered on another device. De-escalating secondary device.`)
                   teardownCall(room_id)
                   $bus.emit('call:ended', { room_id })
