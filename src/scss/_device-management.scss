@@ -77,3 +77,94 @@
   background-color: rgba(0, 0, 0, 0.65) !important;
   backdrop-filter: blur(4px) !important;
 }
+
+/* Card-based and Typography alignment for Device Settings popup */
+.atoll-call-settings-modal {
+  /* Aligns with ADSM: Close button, rounded corners */
+  .atoll-popup-dialog {
+    border-radius: 16px !important;
+    padding: 24px !important;
+
+    /* Close button standard interactive touch target styling */
+    #btnClose,
+    .btn-close,
+    [ref$="__btnClose"] {
+      border-radius: 50% !important;
+      background: transparent !important;
+      padding: 8px !important;
+      margin: 12px !important;
+      transition: background-color 0.2s;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.05) !important;
+      }
+    }
+  }
+
+  /* Bottom Actions buttons alignment - expand to full-width side-by-side */
+  .atoll-popup-actions {
+    display: flex !important;
+    justify-content: space-between !important;
+    gap: 12px !important;
+    margin-top: 16px !important;
+    width: 100% !important;
+
+    atoll-button,
+    .atoll-btn,
+    button {
+      flex: 1 1 50% !important;
+      width: 100% !important;
+      border-radius: 12px !important; /* Standard ADSM rounded corner radius */
+      font-weight: 500 !important;
+    }
+  }
+}
+
+/* Unified Card Container groupings */
+.settings-card-container {
+  background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
+  border: 1px solid var(--atoll-border-subtle, #E8E8E8);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 16px;
+
+  [data-atoll-theme="dark"] & {
+    background-color: var(--atoll-bg-surface-tertiary, #1F1F1F);
+    border-color: rgba(255, 255, 255, 0.08);
+  }
+}
+
+/* Typography Hierarchy & Header Polishing */
+.settings-section-header {
+  font-family: var(--atoll-font-sans-serif, sans-serif);
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  letter-spacing: 0.08em !important;
+  color: var(--atoll-text-secondary, #666666) !important;
+  text-transform: uppercase !important;
+  margin-bottom: 12px !important;
+}
+
+.settings-section-subheader {
+  font-family: var(--atoll-font-sans-serif, sans-serif);
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  color: var(--atoll-text-primary, #111111) !important;
+  margin-bottom: 8px !important;
+  margin-top: 12px !important;
+
+  &:first-of-type {
+    margin-top: 0 !important;
+  }
+}
+
+.speaker-fallback-box {
+  font-family: var(--atoll-font-sans-serif, sans-serif);
+  font-size: 12px !important;
+  color: var(--atoll-text-secondary, #666666);
+  line-height: 1.4;
+  padding: 8px 12px;
+  background-color: rgba(0, 0, 0, 0.03);
+  border-radius: 8px;
+  border-left: 3px solid #06C755;
+}

@@ -106,87 +106,90 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
   }
 
   const renderDeviceMenus = () => {
-    // Render Microphone list
-    const micContainer = getRef('micList')
-    if (micContainer) {
-      micContainer.innerHTML = ''
+    // Render Microphone Select
+    const micSelect = getRef('micSelect')
+    if (micSelect) {
+      const menu = micSelect.querySelector('.atoll-select-menu') || micSelect
+      menu.innerHTML = ''
       if (state.microphones.length === 0) {
-        micContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem; padding-left: 1rem;">No microphones found</div>`
+        const li = document.createElement('li')
+        const item = document.createElement('button')
+        item.type = 'button'
+        item.className = 'dropdown-item disabled'
+        item.textContent = 'No microphones found'
+        li.appendChild(item)
+        menu.appendChild(li)
+        micSelect.value = ''
       } else {
         state.microphones.forEach(mic => {
-          const item = document.createElement('atoll-list-item')
-          item.setAttribute('title', mic.label || 'Microphone (' + mic.deviceId.substring(0, 5) + ')')
-          item.setAttribute('clickable', 'true')
-          item.setAttribute('data-device-id', mic.deviceId)
-
-          if (state.activeMicId === mic.deviceId) {
-            item.setAttribute('selected', 'true')
-            const checkIcon = document.createElement('atoll-icon')
-            checkIcon.setAttribute('name', 'check')
-            checkIcon.setAttribute('active', 'true')
-            checkIcon.setAttribute('slot', 'right')
-            item.appendChild(checkIcon)
-          }
-
-          item.addEventListener('atoll-item-click', () => selectMicrophone(mic.deviceId))
-          micContainer.appendChild(item)
+          const li = document.createElement('li')
+          const item = document.createElement('button')
+          item.type = 'button'
+          item.className = 'dropdown-item'
+          item.setAttribute('data-value', mic.deviceId)
+          item.textContent = mic.label || 'Microphone (' + mic.deviceId.substring(0, 5) + ')'
+          li.appendChild(item)
+          menu.appendChild(li)
         })
+        micSelect.value = state.activeMicId
       }
     }
 
-    // Render Camera list
-    const camContainer = getRef('camList')
-    if (camContainer) {
-      camContainer.innerHTML = ''
+    // Render Camera Select
+    const camSelect = getRef('camSelect')
+    if (camSelect) {
+      const menu = camSelect.querySelector('.atoll-select-menu') || camSelect
+      menu.innerHTML = ''
       if (state.cameras.length === 0) {
-        camContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem; padding-left: 1rem;">No cameras found</div>`
+        const li = document.createElement('li')
+        const item = document.createElement('button')
+        item.type = 'button'
+        item.className = 'dropdown-item disabled'
+        item.textContent = 'No cameras found'
+        li.appendChild(item)
+        menu.appendChild(li)
+        camSelect.value = ''
       } else {
         state.cameras.forEach(cam => {
-          const item = document.createElement('atoll-list-item')
-          item.setAttribute('title', cam.label || 'Camera (' + cam.deviceId.substring(0, 5) + ')')
-          item.setAttribute('clickable', 'true')
-          item.setAttribute('data-device-id', cam.deviceId)
-
-          if (state.activeCamId === cam.deviceId) {
-            item.setAttribute('selected', 'true')
-            const checkIcon = document.createElement('atoll-icon')
-            checkIcon.setAttribute('name', 'check')
-            checkIcon.setAttribute('active', 'true')
-            checkIcon.setAttribute('slot', 'right')
-            item.appendChild(checkIcon)
-          }
-
-          item.addEventListener('atoll-item-click', () => selectCamera(cam.deviceId))
-          camContainer.appendChild(item)
+          const li = document.createElement('li')
+          const item = document.createElement('button')
+          item.type = 'button'
+          item.className = 'dropdown-item'
+          item.setAttribute('data-value', cam.deviceId)
+          item.textContent = cam.label || 'Camera (' + cam.deviceId.substring(0, 5) + ')'
+          li.appendChild(item)
+          menu.appendChild(li)
         })
+        camSelect.value = state.activeCamId
       }
     }
 
-    // Render Speaker list
-    const speakerContainer = getRef('speakerList')
-    if (speakerContainer && state.isSpeakerSelectionSupported) {
-      speakerContainer.innerHTML = ''
+    // Render Speaker Select
+    const speakerSelect = getRef('speakerSelect')
+    if (speakerSelect && state.isSpeakerSelectionSupported) {
+      const menu = speakerSelect.querySelector('.atoll-select-menu') || speakerSelect
+      menu.innerHTML = ''
       if (state.speakers.length === 0) {
-        speakerContainer.innerHTML = `<div class="p-2 text-muted" style="font-size: 0.8125rem; padding-left: 1rem;">No speakers found</div>`
+        const li = document.createElement('li')
+        const item = document.createElement('button')
+        item.type = 'button'
+        item.className = 'dropdown-item disabled'
+        item.textContent = 'No speakers found'
+        li.appendChild(item)
+        menu.appendChild(li)
+        speakerSelect.value = ''
       } else {
         state.speakers.forEach(speaker => {
-          const item = document.createElement('atoll-list-item')
-          item.setAttribute('title', speaker.label || 'Speaker (' + speaker.deviceId.substring(0, 5) + ')')
-          item.setAttribute('clickable', 'true')
-          item.setAttribute('data-device-id', speaker.deviceId)
-
-          if (state.activeSpeakerId === speaker.deviceId) {
-            item.setAttribute('selected', 'true')
-            const checkIcon = document.createElement('atoll-icon')
-            checkIcon.setAttribute('name', 'check')
-            checkIcon.setAttribute('active', 'true')
-            checkIcon.setAttribute('slot', 'right')
-            item.appendChild(checkIcon)
-          }
-
-          item.addEventListener('atoll-item-click', () => selectSpeaker(speaker.deviceId))
-          speakerContainer.appendChild(item)
+          const li = document.createElement('li')
+          const item = document.createElement('button')
+          item.type = 'button'
+          item.className = 'dropdown-item'
+          item.setAttribute('data-value', speaker.deviceId)
+          item.textContent = speaker.label || 'Speaker (' + speaker.deviceId.substring(0, 5) + ')'
+          li.appendChild(item)
+          menu.appendChild(li)
         })
+        speakerSelect.value = state.activeSpeakerId
       }
     }
   }
@@ -394,6 +397,28 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     })
   }
 
+  // Bind dropdown change events
+  const micSelect = getRef('micSelect')
+  if (micSelect) {
+    micSelect.addEventListener('atoll-change', (e) => {
+      selectMicrophone(e.detail.value)
+    })
+  }
+
+  const camSelect = getRef('camSelect')
+  if (camSelect) {
+    camSelect.addEventListener('atoll-change', (e) => {
+      selectCamera(e.detail.value)
+    })
+  }
+
+  const speakerSelect = getRef('speakerSelect')
+  if (speakerSelect) {
+    speakerSelect.addEventListener('atoll-change', (e) => {
+      selectSpeaker(e.detail.value)
+    })
+  }
+
   navigator.mediaDevices.addEventListener('devicechange', onDeviceChange)
   signal.addEventListener('abort', () => {
     navigator.mediaDevices.removeEventListener('devicechange', onDeviceChange)
@@ -405,6 +430,7 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
 
   return {
     enumerateAndBootDevices,
+    renderDeviceMenus,
     selectMicrophone,
     selectCamera,
     selectSpeaker,

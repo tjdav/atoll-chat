@@ -80,6 +80,7 @@
     title="Device Settings"
     size="md"
     primary-text="Done"
+    secondary-text="Cancel"
     static-backdrop="true"
     closeable="true"
   >
@@ -89,47 +90,51 @@
   <!-- Pre-rendered settings content to ensure 100% correct Coralite static template compilation and hydration -->
   <div ref="settingsContent" class="d-none">
     <div class="device-settings-popup-content text-start">
-      <!-- Audio Section -->
-      <div class="settings-section-header">AUDIO</div>
-      
-      <div class="settings-section-subheader">Select a Microphone</div>
-      <atoll-list class="device-list mb-3" ref="micList">
-        <!-- Generated mic <atoll-list-item>s -->
-      </atoll-list>
+      <!-- Card Section: Audio -->
+      <div class="settings-card-container mb-3">
+        <div class="settings-section-header">AUDIO</div>
+        
+        <div class="settings-section-subheader">Select a Microphone</div>
+        <div class="mb-3">
+          <atoll-select ref="micSelect" block="true" leading-icon="mic" placeholder="Select a Microphone"></atoll-select>
+        </div>
 
-      <div class="settings-section-subheader">Microphone Effects</div>
-      <atoll-list class="device-list mb-3">
-        <atoll-list-item title="Noise cancellation">
-          <div slot="right" class="form-check form-switch m-0">
-            <input class="form-check-input" type="checkbox" role="switch" ref="toggleNoiseCancellation" id="noise-cancellation-switch">
-          </div>
-        </atoll-list-item>
-      </atoll-list>
+        <div class="settings-section-subheader">Microphone Effects</div>
+        <atoll-list class="device-list mb-3">
+          <atoll-list-item title="Noise cancellation">
+            <div slot="right" class="form-check form-switch m-0">
+              <input class="form-check-input" type="checkbox" role="switch" ref="toggleNoiseCancellation" id="noise-cancellation-switch">
+            </div>
+          </atoll-list-item>
+        </atoll-list>
 
-      <div class="settings-section-subheader">Select a Speaker</div>
-      <atoll-list class="device-list mb-3" ref="speakerList">
-        <!-- Generated speaker <atoll-list-item> -->
-      </atoll-list>
-      <div class="speaker-fallback-box d-none mb-3" ref="speakerFallback">
-        Playing via system speaker. Use your phone's control panel or bluetooth settings to switch audio devices.
+        <div class="settings-section-subheader">Select a Speaker</div>
+        <div class="mb-3">
+          <atoll-select ref="speakerSelect" block="true" leading-icon="settings" placeholder="Select a Speaker"></atoll-select>
+        </div>
+        <div class="speaker-fallback-box d-none mb-3" ref="speakerFallback">
+          Playing via system speaker. Use your phone's control panel or bluetooth settings to switch audio devices.
+        </div>
       </div>
 
-      <!-- Video Section -->
-      <div class="settings-section-header mt-4">VIDEO</div>
+      <!-- Card Section: Video -->
+      <div class="settings-card-container">
+        <div class="settings-section-header">VIDEO</div>
 
-      <div class="settings-section-subheader">Select a Camera</div>
-      <atoll-list class="device-list mb-3" ref="camList">
-        <!-- Generated cam <atoll-list-item> -->
-      </atoll-list>
+        <div class="settings-section-subheader">Select a Camera</div>
+        <div class="mb-3">
+          <atoll-select ref="camSelect" block="true" leading-icon="videocam" placeholder="Select a Camera"></atoll-select>
+        </div>
 
-      <div class="settings-section-subheader">Video Effects</div>
-      <atoll-list class="device-list mb-3">
-        <atoll-list-item title="Background blur">
-          <div slot="right" class="form-check form-switch m-0">
-            <input class="form-check-input" type="checkbox" role="switch" ref="toggleBackgroundBlur" id="background-blur-switch">
-          </div>
-        </atoll-list-item>
-      </atoll-list>
+        <div class="settings-section-subheader">Video Effects</div>
+        <atoll-list class="device-list mb-3">
+          <atoll-list-item title="Background blur">
+            <div slot="right" class="form-check form-switch m-0">
+              <input class="form-check-input" type="checkbox" role="switch" ref="toggleBackgroundBlur" id="background-blur-switch">
+            </div>
+          </atoll-list-item>
+        </atoll-list>
+      </div>
     </div>
   </div>
 </template>
@@ -138,6 +143,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    dependencies: ['atoll-button', 'atoll-icon', 'atoll-popup', 'atoll-list', 'atoll-list-item', 'atoll-select'],
     server: () => ({
       callStatus: 'idle',
       isAudioEnabled: true,
@@ -178,11 +184,11 @@
       refs('btnEndCall')
       refs('settingsPopup')
       refs('settingsContent')
-      refs('micList')
+      refs('micSelect')
       refs('toggleNoiseCancellation')
-      refs('speakerList')
+      refs('speakerSelect')
       refs('speakerFallback')
-      refs('camList')
+      refs('camSelect')
       refs('toggleBackgroundBlur')
 
       const settingsPopup = refs('settingsPopup')
@@ -268,6 +274,9 @@
 
       refs('btnSettings').addEventListener('click', () => {
         moveContent()
+        if (deviceManager && typeof deviceManager.renderDeviceMenus === 'function') {
+          deviceManager.renderDeviceMenus()
+        }
         if (settingsPopup && typeof settingsPopup.show === 'function') {
           settingsPopup.show()
         }
@@ -275,6 +284,11 @@
 
       if (settingsPopup) {
         settingsPopup.addEventListener('atoll-popup-primary', () => {
+          if (typeof settingsPopup.hide === 'function') {
+            settingsPopup.hide()
+          }
+        })
+        settingsPopup.addEventListener('atoll-popup-secondary', () => {
           if (typeof settingsPopup.hide === 'function') {
             settingsPopup.hide()
           }

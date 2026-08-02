@@ -61,6 +61,9 @@
       color: var(--atoll-text-primary, #111111);
       border-radius: var(--atoll-radius-sm, 8px);
       cursor: pointer;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
 
       &:hover,
       &:focus {

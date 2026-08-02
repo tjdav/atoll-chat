@@ -11,7 +11,7 @@
     >
       <span class="atoll-select-label-group">
         <slot name="leading"></slot>
-        <span class="atoll-select-label">{{ selectedLabel }}</span>
+        <span ref="labelElement" class="atoll-select-label">{{ selectedLabel }}</span>
       </span>
       <slot name="trailing"></slot>
     </button>
@@ -27,6 +27,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    dependencies: ['atoll-icon'],
     attributes: {
       value: {
         type: String,
@@ -134,6 +135,17 @@
       }
       root.__initialized = true
 
+      // Self-healing pre-hydration attributes and programmatic properties
+      const preExistingValue = root.value !== undefined ? root.value : root.getAttribute('value')
+      if (preExistingValue !== undefined && preExistingValue !== null) {
+        state.value = String(preExistingValue)
+      }
+
+      const preExistingDisabled = root.disabled !== undefined ? root.disabled : root.hasAttribute('disabled')
+      if (preExistingDisabled !== undefined && preExistingDisabled !== null) {
+        state.disabled = Boolean(preExistingDisabled)
+      }
+
       const toggleBtn = refs('toggleElement')
       const menuEl = refs('menuElement')
       let bsDropdown = null
@@ -175,6 +187,13 @@
         })
 
         state.selectedLabelText = foundLabel || ''
+
+        // Imperative fallback to ensure the label element is updated instantly and reliably 
+        // bypassing any template interpolation/reconnection limitations
+        const labelEl = refs('labelElement') || root.querySelector('.atoll-select-label')
+        if (labelEl) {
+          labelEl.textContent = state.selectedLabelText || state.placeholder
+        }
       }
 
       // Option selection handler
