@@ -186,6 +186,7 @@ test.describe.serial('Calls', () => {
     await test.step('Toggle microphone mute', async () => {
       await aliceAudioBtn.click()
       await expect(aliceAudioBtn).toHaveAttribute('aria-pressed', 'true')
+      await expect(aliceAudioBtn.locator('atoll-icon')).toHaveAttribute('name', 'mic-off')
     })
 
     await test.step('Alice ends the call', async () => {
@@ -498,6 +499,10 @@ test.describe.serial('Calls', () => {
       await expect(btnToggleAudio).toHaveAttribute('aria-label', 'Mute Microphone')
       await expect(btnToggleVideo).toHaveAttribute('aria-label', 'Mute Video')
       await expect(btnSettings).toHaveAttribute('aria-label', 'Settings')
+
+      // Assert that the inner atoll-icon components have correct dynamic name attributes
+      await expect(btnToggleAudio.locator('atoll-icon')).toHaveAttribute('name', 'mic')
+      await expect(btnToggleVideo.locator('atoll-icon')).toHaveAttribute('name', 'videocam')
     })
 
     await test.step('Open Unified Device Settings popup and verify structure', async () => {

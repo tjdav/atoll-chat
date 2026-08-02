@@ -445,14 +445,17 @@ export const test = base.extend({
       await targetPage.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle && window.__coralite__.lifecycle.hydrated)
 
       /* Login Flow */
-      await targetPage.locator('auth-login [data-testid$="username"]').fill(username)
-      await targetPage.locator('auth-login [data-testid$="password"]').fill(appPassword)
-      await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
+      const isAlreadyLoggedIn = await targetPage.locator('app-layout').isVisible().catch(() => false)
+      if (!isAlreadyLoggedIn) {
+        await targetPage.locator('auth-login [data-testid$="username"]').fill(username)
+        await targetPage.locator('auth-login [data-testid$="password"]').fill(appPassword)
+        await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-      const vaultUnlockLocator = targetPage.locator('vault-unlock')
-      if (await vaultUnlockLocator.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await targetPage.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword || appPassword)
-        await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+        const vaultUnlockPasswordInput = targetPage.locator('vault-unlock [data-testid$="password"]')
+        if (await vaultUnlockPasswordInput.isVisible({ timeout: 2000 }).catch(() => false)) {
+          await vaultUnlockPasswordInput.fill(vaultPassword)
+          await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+        }
       }
 
       await expect(targetPage.locator('app-layout')).toBeVisible({ timeout: 15000 })

@@ -211,6 +211,23 @@
       state.isVideoEnabled = Boolean($state.isVideoEnabled)
       state.isLocalSpeaking = Boolean($state.isLocalSpeaking)
 
+      const syncIcons = () => {
+        const audioBtn = refs('btnToggleAudio')
+        const videoBtn = refs('btnToggleVideo')
+        if (audioBtn) {
+          const audioIcon = audioBtn.querySelector('atoll-icon')
+          if (audioIcon) {
+            audioIcon.setAttribute('name', state.isAudioEnabled ? 'mic' : 'mic-off')
+          }
+        }
+        if (videoBtn) {
+          const videoIcon = videoBtn.querySelector('atoll-icon')
+          if (videoIcon) {
+            videoIcon.setAttribute('name', state.isVideoEnabled ? 'videocam' : 'camera-off')
+          }
+        }
+      }
+
       $state.subscribe('callStatus', (val) => {
         state.callStatus = val
         if (val === 'active') {
@@ -222,11 +239,16 @@
 
       $state.subscribe('isAudioEnabled', (val) => {
         state.isAudioEnabled = Boolean(val)
+        syncIcons()
       })
 
       $state.subscribe('isVideoEnabled', (val) => {
         state.isVideoEnabled = Boolean(val)
+        syncIcons()
       })
+
+      // Set initial icons correctly on boot
+      syncIcons()
 
       $state.subscribe('isLocalSpeaking', (val) => {
         state.isLocalSpeaking = Boolean(val)
