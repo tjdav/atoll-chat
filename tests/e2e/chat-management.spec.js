@@ -31,7 +31,7 @@ test.describe('Chat Management', () => {
 
       const aliceStatusContainer = alicePage.locator('chat-view .message-status-container')
       await expect(aliceStatusContainer).toBeVisible({ timeout: 20000 })
-      await expect(aliceStatusContainer.locator('span')).toHaveText('Sent')
+      await expect(aliceStatusContainer.locator('[data-testid$="status-text"]')).toHaveText('Sent')
 
       const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChatListAlice).toBeVisible({ timeout: 30000 })
@@ -238,7 +238,7 @@ test.describe('Chat Management', () => {
       await expect(page.locator('timeline-row').last()).toContainText('Persistence message 29', { timeout: 20000 })
 
       // Wait for all message sends/sends-in-flight to complete
-      await expect(page.locator('message-timeline .message-status-container span')).toHaveText('Sent', { timeout: 20000 })
+      await expect(page.locator('message-timeline .message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 20000 })
 
       const timeline = page.locator('message-timeline .overflow-auto')
 

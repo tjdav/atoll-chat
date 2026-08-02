@@ -45,7 +45,7 @@ test.describe('Media & Attachments', () => {
         const cap = `S ${f.n}`
         await alicePage.fill('chat-view textarea', cap)
         await alicePage.click('chat-view [data-testid$="__sendButton"]')
-        await expect(alicePage.locator('chat-view .message-status-container span')).toHaveText('Sent', { timeout: 60000 })
+        await expect(alicePage.locator('chat-view .message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
         const row = bobPage.locator('timeline-row').filter({ hasText: f.n }).last()
         await expect(row).toBeVisible({ timeout: 60000 })
         await expect(row.locator(f.s).first()).toBeVisible({ timeout: 30000 })
@@ -112,7 +112,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid$="sendButton"]').click()
 
       // Wait for the message status to be 'Sent'
-      await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 60000 })
+      await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
 
       // Verify that timeline-item-voice is rendered
       const voicePlayer = page.locator('timeline-item-voice')
@@ -140,7 +140,7 @@ test.describe('Media & Attachments', () => {
       for (let i = 0; i < 2; i++) {
         await page.setInputFiles('[data-testid$="__fileInput"]', ip)
         await page.click('[data-testid$="__sendButton"]')
-        await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 20000 })
+        await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 20000 })
       }
       await page.locator('[data-testid="nav-sidebar-0__btnPictures"]').click()
       const cards = page.locator('media-grid-card')
@@ -153,7 +153,7 @@ test.describe('Media & Attachments', () => {
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
       await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
-      await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 20000 })
+      await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 20000 })
 
       await page.locator('[data-testid="nav-sidebar-0__btnPictures"]').click()
 
@@ -209,7 +209,7 @@ test.describe('Media & Attachments', () => {
       const dp = path.resolve('tests/e2e/fixtures/test-files/test.txt')
       await page.setInputFiles('[data-testid$="__fileInput"]', dp)
       await page.click('[data-testid$="__sendButton"]')
-      await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 30000 })
+      await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 30000 })
       await page.locator('[data-testid="nav-sidebar-0__btnDocuments"]').click()
       await expect(page.locator('[data-testid$="__document-list-group"] .list-group-item').filter({ hasText: 'test.txt' })).toBeVisible()
 
@@ -245,7 +245,7 @@ test.describe('Media & Attachments', () => {
       await page.click('[data-testid$="__sendButton"]')
 
       // Wait for the message status to be 'Sent'
-      await expect(page.locator('.message-status-container span').last()).toHaveText('Sent', { timeout: 60000 })
+      await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
 
       await page.locator('[data-testid="nav-sidebar-0__btnMusic"]').click()
       await page.locator('music-list .app-list-item').first().click()
