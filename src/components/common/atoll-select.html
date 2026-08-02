@@ -1,0 +1,260 @@
+<template id="atoll-select">
+  <div class="{{ selectContainerClasses }}">
+    <!-- Bootstrap Dropdown Toggle Button -->
+    <button 
+      ref="toggleElement"
+      type="button"
+      class="{{ toggleClasses }}"
+      data-bs-toggle="dropdown"
+      aria-expanded="false"
+      disabled="{{ isDisabled }}"
+    >
+      <span class="atoll-select-label-group">
+        <slot name="leading"></slot>
+        <span class="atoll-select-label">{{ selectedLabel }}</span>
+      </span>
+      <slot name="trailing"></slot>
+    </button>
+
+    <!-- Bootstrap Dropdown Menu Container -->
+    <ul ref="menuElement" class="dropdown-menu atoll-select-menu">
+      <slot></slot>
+    </ul>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    dependencies: ['atoll-icon'],
+    attributes: {
+      value: {
+        type: String,
+        default: ''
+      },
+      placeholder: {
+        type: String,
+        default: 'Select an option...'
+      },
+      size: {
+        type: String,
+        // 'sm' | 'md' | 'lg'
+        default: 'md'
+      },
+      variant: {
+        type: String,
+        default: 'secondary'
+      },
+      disabled: Boolean,
+      block: Boolean,
+      leadingIcon: {
+        type: String,
+        default: ''
+      }
+    },
+
+    slots: {
+      // Clean slot handling: returns null if no icon or slot nodes exist
+      leading (nodes, state) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (state.leadingIcon) {
+          const span = document.createElement('span')
+          span.className = 'atoll-select-leading'
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', state.leadingIcon)
+          icon.setAttribute('size', state.size === 'sm' ? '16' : '18')
+          span.appendChild(icon)
+          return [span]
+        }
+
+        if (nodes && nodes.length > 0) {
+          const span = document.createElement('span')
+          span.className = 'atoll-select-leading'
+          nodes.forEach(node => span.appendChild(node))
+          return [span]
+        }
+
+        return null
+      },
+
+      trailing (nodes, state) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (nodes && nodes.length > 0) {
+          const span = document.createElement('span')
+          span.className = 'atoll-select-trailing'
+          nodes.forEach(node => span.appendChild(node))
+          return [span]
+        }
+
+        // Default fallback caret icon when trailing slot is empty
+        const span = document.createElement('span')
+        span.className = 'atoll-select-trailing'
+        const icon = document.createElement('atoll-icon')
+        icon.setAttribute('name', 'chevron-down')
+        icon.setAttribute('size', state.size === 'sm' ? '14' : '16')
+        span.appendChild(icon)
+        return [span]
+      }
+    },
+
+    getters: {
+      selectContainerClasses: (state) => {
+        const classes = ['dropdown', 'atoll-select']
+        if (state.size) {
+          classes.push(`atoll-select-${state.size}`)
+        }
+        if (state.block) {
+          classes.push('w-100')
+        }
+        return classes.join(' ')
+      },
+
+      toggleClasses: (state) => {
+        const classes = ['btn', 'dropdown-toggle', 'atoll-select-toggle']
+        if (state.variant) {
+          classes.push(`btn-${state.variant}`)
+        }
+        return classes.join(' ')
+      },
+
+      isDisabled: (state) => Boolean(state.disabled),
+
+      selectedLabel: (state) => state.selectedLabelText || state.placeholder
+    },
+
+    client: ({ state, refs, root, observe, bootstrap, signal }) => {
+      if (root.__initialized) {
+        return
+      }
+      root.__initialized = true
+
+      const toggleBtn = refs('toggleElement')
+      const menuEl = refs('menuElement')
+      let bsDropdown = null
+
+      const { Dropdown } = bootstrap
+
+      // Initialize Bootstrap Dropdown Constructor
+      if (toggleBtn && typeof window !== 'undefined' && Dropdown) {
+        bsDropdown = new Dropdown(toggleBtn)
+      }
+
+      // Forward test-id / data-testid to inner toggle button
+      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
+      if (testId && toggleBtn) {
+        root.__testId = testId
+        toggleBtn.setAttribute('data-testid', testId)
+        root.removeAttribute('data-testid')
+        root.removeAttribute('test-id')
+      }
+
+      // Sync active state and selected label text from options in default slot
+      const updateSelectedLabel = () => {
+        if (!menuEl) {
+          return
+        }
+        const items = menuEl.querySelectorAll('.dropdown-item, [data-value]')
+        let foundLabel = ''
+
+        items.forEach((item) => {
+          const itemVal = item.getAttribute('data-value') || item.getAttribute('value') || item.textContent.trim()
+          if (itemVal === state.value) {
+            item.classList.add('active')
+            item.setAttribute('aria-selected', 'true')
+            foundLabel = item.textContent.trim()
+          } else {
+            item.classList.remove('active')
+            item.removeAttribute('aria-selected')
+          }
+        })
+
+        state.selectedLabelText = foundLabel || ''
+      }
+
+      // Option selection handler
+      const handleMenuClick = (event) => {
+        const item = event.target.closest('.dropdown-item, [data-value]')
+        if (!item || state.disabled) {
+          return
+        }
+
+        const selectedValue = item.getAttribute('data-value') || item.getAttribute('value') || item.textContent.trim()
+        const selectedLabel = item.textContent.trim()
+
+        state.value = selectedValue
+        updateSelectedLabel()
+
+        // Dispatch custom change event
+        root.dispatchEvent(
+          new CustomEvent('atoll-change', {
+            bubbles: true,
+            composed: true,
+            detail: {
+              value: selectedValue,
+              label: selectedLabel
+            }
+          })
+        )
+
+        // Close dropdown via Bootstrap instance
+        if (bsDropdown) {
+          bsDropdown.hide()
+        }
+      }
+
+      if (menuEl) {
+        menuEl.addEventListener('click', handleMenuClick, { signal })
+      }
+
+      // Observe value mutations
+      observe('value', updateSelectedLabel)
+      updateSelectedLabel()
+
+      // Define properties directly on custom element host
+      Object.defineProperty(root, 'disabled', {
+        get () {
+          return state.disabled
+        },
+        set (val) {
+          const isD = val === 'true' || val === true || val === ''
+          state.disabled = isD
+          if (isD) {
+            root.setAttribute('disabled', 'true')
+          } else {
+            root.removeAttribute('disabled')
+          }
+        },
+        configurable: true
+      })
+
+      Object.defineProperty(root, 'value', {
+        get () {
+          return state.value
+        },
+        set (val) {
+          state.value = String(val || '')
+          updateSelectedLabel()
+        },
+        configurable: true
+      })
+
+      // Public imperative API
+      root.focus = () => toggleBtn?.focus()
+      root.blur = () => toggleBtn?.blur()
+
+      // Clean up Bootstrap dropdown when component is aborted
+      signal.addEventListener('abort', () => {
+        if (bsDropdown) {
+          bsDropdown.dispose()
+        }
+      })
+    }
+  })
+</script>
