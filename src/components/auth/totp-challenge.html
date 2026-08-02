@@ -52,9 +52,9 @@
 
       const challengeForm = refs('challengeForm')
       const otpInput = refs('otpInput')
-      const btnVerify = refs('btnVerify') || root.querySelector('[ref*="btnVerify"]')
+      const btnVerify = refs('btnVerify')
       const statusMsg = refs('statusMsg')
-      const btnLogout = refs('btnLogout') || root.querySelector('[ref*="btnLogout"]')
+      const btnLogout = refs('btnLogout')
       const avatarProfile = refs('avatarProfile')
 
       const user = pb?.authStore?.model

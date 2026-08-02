@@ -155,22 +155,22 @@
       const passwordInput = refs('password')
       const vaultUsernameHidden = refs('vaultUsernameHidden')
       const statusMsg = refs('statusMsg')
-      const btnLogout = refs('btnLogout') || root.querySelector('[ref*="btnLogout"]')
-      const btnPasskey = refs('btnPasskey') || root.querySelector('[ref*="btnPasskey"]')
+      const btnLogout = refs('btnLogout')
+      const btnPasskey = refs('btnPasskey')
       const avatarProfile = refs('avatarProfile')
 
-      const btnShowRecovery = refs('btnShowRecovery') || root.querySelector('[ref*="btnShowRecovery"]')
-      const btnCancelRecovery = refs('btnCancelRecovery') || root.querySelector('[ref*="btnCancelRecovery"]')
+      const btnShowRecovery = refs('btnShowRecovery')
+      const btnCancelRecovery = refs('btnCancelRecovery')
       const recoveryForm = refs('recoveryForm')
-      const recoveryCodeInput = refs('recoveryCodeInput') || root.querySelector('[ref$="__recoveryCodeInput"]')
+      const recoveryCodeInput = refs('recoveryCodeInput')
 
       const newPasswordForm = refs('newPasswordForm')
       const newPasswordInput = refs('newPassword')
       const newPasswordConfirmInput = refs('newPasswordConfirm')
       const newStrengthBar = refs('newStrengthBar')
       const newStrengthText = refs('newStrengthText')
-      const btnSaveNewPassword = refs('btnSaveNewPassword') || root.querySelector('[ref*="btnSaveNewPassword"]')
-      const btnUnlockSubmit = refs('btnUnlockSubmit') || root.querySelector('[ref*="btnUnlockSubmit"]')
+      const btnSaveNewPassword = refs('btnSaveNewPassword')
+      const btnUnlockSubmit = refs('btnUnlockSubmit')
 
       let decryptedMasterKeyHex = null
       let matchedWrapIndex = -1

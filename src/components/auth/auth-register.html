@@ -154,7 +154,7 @@
 
       const registerForm = refs('registerForm')
       const altchaContainer = refs('altchaContainer')
-      const linkLogin = refs('linkLogin') || root.querySelector('[ref*="linkLogin"]')
+      const linkLogin = refs('linkLogin')
       const usernameInput = refs('username')
       const btnSubmit = refs('btnSubmit')
       const statusMsg = refs('statusMsg')
@@ -163,13 +163,13 @@
       // eslint-disable-next-line no-unused-vars
       let zxcvbnScore = 0
 
-      const btnCopyCode = refs('btnCopyCode') || root.querySelector('[ref="btnCopyCode"]') || root.querySelector('[ref$="__btnCopyCode"]')
-      const btnDownloadCode = refs('btnDownloadCode') || root.querySelector('[ref="btnDownloadCode"]') || root.querySelector('[ref$="__btnDownloadCode"]')
-      const chkStored = refs('chkStored') || root.querySelector('[ref="chkStored"]') || root.querySelector('[ref$="__chkStored"]')
-      const btnContinueToChat = refs('btnContinueToChat') || root.querySelector('[ref="btnContinueToChat"]') || root.querySelector('[ref$="__btnContinueToChat"]')
-      const recoveryModal = refs('recoveryModal') || root.querySelector('[ref="recoveryModal"]') || root.querySelector('[ref$="__recoveryModal"]')
-      const recoveryCodeBox = refs('recoveryCodeBox') || root.querySelector('[ref="recoveryCodeBox"]') || root.querySelector('[ref$="__recoveryCodeBox"]')
-      const recoveryContent = refs('recoveryContent') || root.querySelector('[ref="recoveryContent"]') || root.querySelector('[ref$="__recoveryContent"]')
+      const btnCopyCode = refs('btnCopyCode')
+      const btnDownloadCode = refs('btnDownloadCode')
+      const chkStored = refs('chkStored')
+      const btnContinueToChat = refs('btnContinueToChat')
+      const recoveryModal = refs('recoveryModal')
+      const recoveryCodeBox = refs('recoveryCodeBox')
+      const recoveryContent = refs('recoveryContent')
 
       console.log('--- EXPLICIT REF RESOLUTION ---', {
         btnCopyCode: !!btnCopyCode,
@@ -241,9 +241,9 @@
         })
       }
 
-      const passwordInputEl = refs('password') || root.querySelector('[ref="password"]')
-      const passwordConfirmInputEl = refs('passwordConfirm') || root.querySelector('[ref="passwordConfirm"]')
-      const invitationCodeInput = refs('invitationCode') || root.querySelector('[ref="invitationCode"]')
+      const passwordInputEl = refs('password')
+      const passwordConfirmInputEl = refs('passwordConfirm')
+      const invitationCodeInput = refs('invitationCode')
 
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
@@ -347,7 +347,7 @@ Atoll administrators cannot recover your credentials or vault.
         })
       }
 
-      const chkStoredLabel = refs('chkStoredLabel') || root.querySelector('[ref="chkStoredLabel"]') || root.querySelector('[ref$="__chkStoredLabel"]')
+      const chkStoredLabel = refs('chkStoredLabel')
       if (chkStored) {
         chkStored.addEventListener('change', (e) => {
           isCheckboxChecked = e.detail ? e.detail.checked : chkStored.checked
