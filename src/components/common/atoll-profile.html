@@ -15,18 +15,21 @@
     </div>
 
     <div class="atoll-profile-badge" hidden="{{ hideBadge }}">
-      <slot name="badge"></slot>
+      <slot name="badge">
+        <atoll-badge size="sm" count="{{ badge }}"></atoll-badge>
+      </slot>
     </div>
 
     <div class="atoll-profile-icon" hidden="{{ hideOverlayIcon }}">
-      <slot name="icon"></slot>
+      <slot name="icon">
+        <atoll-icon name="{{ iconName }}" size="{{ overlayIconSize }}"></atoll-icon>
+      </slot>
     </div>
   </div>
 </template>
 
 <script type="module">
   import { defineComponent } from 'coralite'
-
   export default defineComponent({
     attributes: {
       userId: {
@@ -89,6 +92,16 @@
         if (originalNodes && originalNodes.length > 0) {
           return originalNodes
         }
+  
+        if (document) {
+          const atollBadgeElement = document.createElement('atoll-badge')
+
+          atollBadgeElement.setAttribute('size', 'sm')
+          atollBadgeElement.setAttribute('count', state.badge)
+
+          return [atollBadgeElement]
+        }
+  
         return `<atoll-badge size="sm" count="${state.badge}"></atoll-badge>`
       },
 
@@ -105,6 +118,16 @@
         if (originalNodes && originalNodes.length > 0) {
           return originalNodes
         }
+
+        if (document) {
+          const atollIconElement = document.createElement('atoll-badge')
+
+          atollIconElement.setAttribute('size', state.overlayIconSize)
+          atollIconElement.setAttribute('name', state.iconName)
+
+          return [atollIconElement]
+        }
+
         return `<atoll-icon name="${state.iconName}" size="${state.overlayIconSize}"></atoll-icon>`
       }
     },
@@ -412,14 +435,6 @@
             defaultImg.remove()
           }
 
-          // Clean up all default programmatically-created fallbacks
-          const allFallbacks = Array.from(container.querySelectorAll('.atoll-profile-fallback'))
-          allFallbacks.forEach(fb => {
-            if (!fb.getAttribute('style') && fb.querySelector('atoll-icon[name="user"]')) {
-              fb.remove()
-            }
-          })
-
           const children = Array.from(container.children)
 
           children.forEach((child) => {
@@ -490,18 +505,35 @@
             }
           })
 
-          let currentCount = container.children.length
-          while (currentCount < targetCount) {
-            const fallback = document.createElement('span')
-            fallback.className = 'atoll-profile-fallback'
+          const defaultFallbacks = Array.from(container.querySelectorAll('.atoll-profile-fallback[data-default-fallback="true"]'))
+          const defaultCount = defaultFallbacks.length
 
-            const icon = document.createElement('atoll-icon')
-            icon.setAttribute('name', 'user')
-            icon.setAttribute('size', state.iconSize)
+          const nonDefaultChildren = Array.from(container.children).filter(child => {
+            return child.dataset.defaultFallback !== 'true'
+          })
+          const nonDefaultCount = nonDefaultChildren.length
 
-            fallback.appendChild(icon)
-            container.appendChild(fallback)
-            currentCount++
+          const neededDefaultCount = Math.max(0, targetCount - nonDefaultCount)
+
+          if (defaultCount > neededDefaultCount) {
+            const excessCount = defaultCount - neededDefaultCount
+            for (let i = 0; i < excessCount; i++) {
+              defaultFallbacks[i].remove()
+            }
+          } else if (defaultCount < neededDefaultCount) {
+            const missingCount = neededDefaultCount - defaultCount
+            for (let i = 0; i < missingCount; i++) {
+              const fallback = document.createElement('span')
+              fallback.className = 'atoll-profile-fallback'
+              fallback.dataset.defaultFallback = 'true'
+
+              const icon = document.createElement('atoll-icon')
+              icon.setAttribute('name', 'user')
+              icon.setAttribute('size', state.iconSize)
+
+              fallback.appendChild(icon)
+              container.appendChild(fallback)
+            }
           }
         }
 

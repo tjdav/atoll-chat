@@ -46,8 +46,10 @@ atoll-profile,
   align-items: center;
   justify-content: center;
 
-  slot[name="image"] {
-    display: contents;
+  slot[name="image"],
+  div[slot="image"],
+  [slot="image"] {
+    display: contents !important;
   }
 
   /* Support both direct children and slotted wrapped descendants */
@@ -119,10 +121,10 @@ atoll-profile,
       grid-template-columns: 1fr 1fr;
       grid-template-rows: 1fr;
 
-      > img,
-      > .atoll-profile-fallback,
-      slot[name="image"] > *,
-      [slot="image"] > * {
+      >img,
+      >.atoll-profile-fallback,
+      slot[name="image"]>*,
+      [slot="image"]>* {
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -135,27 +137,27 @@ atoll-profile,
       grid-template-columns: 1fr 1fr;
       grid-template-rows: 1fr 1fr;
 
-      > img:first-child,
-      > .atoll-profile-fallback:first-child,
-      slot[name="image"] > *:first-child,
-      [slot="image"] > *:first-child {
+      >img:first-child,
+      >.atoll-profile-fallback:first-child,
+      slot[name="image"]>*:first-child,
+      [slot="image"]>*:first-child {
         grid-row: 1 / span 2;
         grid-column: 1;
         height: 100%;
       }
 
-      > img:nth-child(2),
-      > .atoll-profile-fallback:nth-child(2),
-      slot[name="image"] > *:nth-child(2),
-      [slot="image"] > *:nth-child(2) {
+      >img:nth-child(2),
+      >.atoll-profile-fallback:nth-child(2),
+      slot[name="image"]>*:nth-child(2),
+      [slot="image"]>*:nth-child(2) {
         grid-row: 1;
         grid-column: 2;
       }
 
-      > img:nth-child(3),
-      > .atoll-profile-fallback:nth-child(3),
-      slot[name="image"] > *:nth-child(3),
-      [slot="image"] > *:nth-child(3) {
+      >img:nth-child(3),
+      >.atoll-profile-fallback:nth-child(3),
+      slot[name="image"]>*:nth-child(3),
+      [slot="image"]>*:nth-child(3) {
         grid-row: 2;
         grid-column: 2;
       }
@@ -167,10 +169,10 @@ atoll-profile,
       grid-template-columns: 1fr 1fr;
       grid-template-rows: 1fr 1fr;
 
-      > img,
-      > .atoll-profile-fallback,
-      slot[name="image"] > *,
-      [slot="image"] > * {
+      >img,
+      >.atoll-profile-fallback,
+      slot[name="image"]>*,
+      [slot="image"]>* {
         width: 100%;
         height: 100%;
         object-fit: cover;
@@ -179,8 +181,8 @@ atoll-profile,
 
     img,
     .atoll-profile-fallback,
-    slot[name="image"] > *,
-    [slot="image"] > * {
+    slot[name="image"]>*,
+    [slot="image"]>* {
       width: 100%;
       height: 100%;
       object-fit: cover;
@@ -194,9 +196,9 @@ atoll-profile,
   align-items: center;
   flex-direction: row;
 
-  > atoll-profile,
-  > .atoll-profile {
-    margin-left: -14px;
+  >atoll-profile,
+  >.atoll-profile {
+    margin-left: calc(var(--#{$prefix}profile-dim, var(--#{$prefix}profile-size-md)) * -0.26);
     position: relative;
 
     &:first-child {
@@ -211,9 +213,14 @@ atoll-profile,
 
   /* Reverse z-index order so left-most profile stays on top */
   @for $i from 1 through 20 {
-    > atoll-profile:nth-child(#{$i}),
-    > .atoll-profile:nth-child(#{$i}) {
+
+    >atoll-profile:nth-child(#{$i}),
+    >.atoll-profile:nth-child(#{$i}) {
       z-index: #{21 - $i};
+
+      .atoll-profile {
+        z-index: #{21 - $i};
+      }
     }
   }
 }
