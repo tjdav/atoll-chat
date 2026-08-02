@@ -47,7 +47,11 @@ import {
   VideocameraRecordLinearIcon,
   VideocameraRecordBoldIcon,
   PipLinearIcon,
-  Reorder2BoldIcon
+  Reorder2BoldIcon,
+  CopyLinearIcon,
+  CopyBoldIcon,
+  DownloadLinearIcon,
+  DownloadBoldIcon
 } from '@solar-icons/js'
 
 /**
@@ -122,6 +126,14 @@ export const SOLAR_ICON_MAP = {
 
   // Messaging & Actions
   add: AddCircleLinearIcon,
+  copy: {
+    linear: CopyLinearIcon,
+    bold: CopyBoldIcon
+  },
+  download: {
+    linear: DownloadLinearIcon,
+    bold: DownloadBoldIcon
+  },
   more: MenuDotsLinearIcon,
   lock: LockLinearIcon,
   'shield-lock': ShieldKeyholeLinearIcon,

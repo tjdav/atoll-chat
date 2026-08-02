@@ -92,46 +92,48 @@
       ref="recoveryModal"
       data-testid="recoveryModal"
       size="lg"
-      title="🔐 Save Your Emergency Recovery Code"
+      title="Save Your Emergency Recovery Code"
       description="If you forget your Master Password, this code is the ONLY way to regain access to your encrypted vault."
-      hero-icon="permissions"
       static-backdrop="true"
       primary-text=""
       secondary-text=""
     >
-      <!-- Content will be appended dynamically on mount to bypass Coralite slot limitations -->
+      <!-- Custom top icon/badge inside slots to bypass basic outline styling and render green-tint badge -->
+      <div slot="hero" class="atoll-icon-badge-green">
+        <atoll-icon name="permissions" size="32"></atoll-icon>
+      </div>
     </atoll-popup>
 
     <!-- Pre-rendered recovery modal content -->
     <div ref="recoveryContent" class="d-none w-100">
-      <!-- Recovery Code Box -->
-      <div class="card bg-light border w-100 py-3 mb-4 font-monospace text-center fs-5 fw-bold text-primary select-all" ref="recoveryCodeBox" style="letter-spacing: 1px;">
+      <!-- Recovery Code Box (Generic ADSM primitive) -->
+      <div class="atoll-code-block atoll-code-block-lg mb-3" ref="recoveryCodeBox">
         RC-9K2F-8M11-3P7Q-4L90
       </div>
 
       <!-- Action Buttons -->
       <div class="d-flex gap-3 mb-4 w-100 px-2 justify-content-center">
-        <atoll-button type="button" variant="outline" class="flex-grow-1" ref="btnCopyCode" test-id="btnCopyCode">
+        <atoll-button variant="secondary" size="md" class="flex-grow-1" ref="btnCopyCode" test-id="btnCopyCode">
           <atoll-icon slot="leading" name="copy" size="18"></atoll-icon>
           Copy Code
         </atoll-button>
-        <atoll-button type="button" variant="outline" class="flex-grow-1" ref="btnDownloadCode" test-id="btnDownloadCode">
+        <atoll-button variant="secondary" size="md" class="flex-grow-1" ref="btnDownloadCode" test-id="btnDownloadCode">
           <atoll-icon slot="leading" name="download" size="18"></atoll-icon>
           Download
         </atoll-button>
       </div>
 
       <!-- Confirmation Checkbox -->
-      <div class="form-check text-start mb-4 w-100 px-3 py-2 rounded" style="background-color: var(--atoll-tertiary-bg, #f8f9fa);">
-        <input class="form-check-input ms-0 me-2" type="checkbox" id="chkStored" ref="chkStored" data-testid="chkStored">
-        <label class="form-check-label small fw-bold text-muted" for="chkStored">
+      <div class="d-flex align-items-center text-start mb-4 w-100 px-3 py-2 rounded" style="background-color: var(--atoll-tertiary-bg, #f8f9fa);">
+        <atoll-checkbox class="me-2" ref="chkStored" data-testid="chkStored" size="20"></atoll-checkbox>
+        <span class="small fw-bold text-muted cursor-pointer" style="user-select: none;" ref="chkStoredLabel">
           I have stored this code in a safe place.
-        </label>
+        </span>
       </div>
 
       <!-- Continue Action -->
       <div class="w-100 mt-3">
-        <button type="button" class="atoll-btn atoll-btn-primary atoll-btn-block" ref="btnContinueToChat" data-testid="btnContinueToChat" disabled>Continue to Chat</button>
+        <atoll-button variant="primary" size="lg" block="true" ref="btnContinueToChat" test-id="btnContinueToChat" disabled="true">Continue to Chat</atoll-button>
       </div>
     </div>
   </div>
@@ -141,6 +143,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    dependencies: ['atoll-icon', 'atoll-checkbox', 'atoll-popup', 'atoll-button'],
     client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, root }) => {
       const { pb } = pocketbase
       const { $url } = utils
@@ -345,8 +348,16 @@ Atoll administrators cannot recover your credentials or vault.
         })
       }
 
+      const chkStoredLabel = refs('chkStoredLabel') || root.querySelector('[ref="chkStoredLabel"]') || root.querySelector('[ref$="__chkStoredLabel"]')
       if (chkStored) {
-        chkStored.addEventListener('change', () => {
+        chkStored.addEventListener('change', (e) => {
+          isCheckboxChecked = e.detail ? e.detail.checked : chkStored.checked
+          updateContinueButtonState()
+        })
+      }
+      if (chkStoredLabel && chkStored) {
+        chkStoredLabel.addEventListener('click', () => {
+          chkStored.checked = !chkStored.checked
           isCheckboxChecked = chkStored.checked
           updateContinueButtonState()
         })
@@ -354,11 +365,6 @@ Atoll administrators cannot recover your credentials or vault.
 
       if (btnContinueToChat) {
         btnContinueToChat.addEventListener('click', async () => {
-          console.log('--- btnContinueToChat CLICKED! ---', {
-            pendingDecryptedKeys: !!pendingDecryptedKeys,
-            pendingRecord: !!pendingRecord,
-            pendingAuthData: !!pendingAuthData
-          })
           if (pendingDecryptedKeys && pendingRecord && pendingAuthData) {
             $state.currentUser = {
               ...pendingRecord,

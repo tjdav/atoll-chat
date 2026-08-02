@@ -112,6 +112,22 @@ atoll-popup[data-#{$prefix}theme="dark"] {
   &:empty:not([data-has-icon="true"]) {
     display: none;
   }
+
+  /* Beautiful ADSM green-tinted circular badge */
+  .atoll-icon-badge-green {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: rgba(6, 199, 85, 0.1); /* Green tint */
+    color: var(--#{$prefix}brand-primary, #06C755);
+    
+    [data-#{$prefix}theme="dark"] & {
+      background-color: rgba(6, 199, 85, 0.15);
+    }
+  }
 }
 
 /* Modal Header inside atoll-popup */

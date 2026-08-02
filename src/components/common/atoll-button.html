@@ -20,6 +20,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    dependencies: ['atoll-icon'],
     attributes: {
       type: {
         type: String,
@@ -79,25 +80,45 @@
         return classes.join(' ')
       },
 
-      isDisabled: (state) => state.disabled || state.loading
+      isDisabled: (state) => Boolean(state.disabled || state.loading)
     },
 
     client: ({ state, refs, root, observe }) => {
+      if (root.__initialized) {
+        return
+      }
+      root.__initialized = true
       const btn = refs('btnElement')
       let spinnerEl = null
 
-      // Forward test-id / data-testid from host to the nested native button
-      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid')
+      // Forward test-id / data-testid from host to the nested native button, preserving across reconnects
+      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
   
-      if (testId && btn) {
-        btn.setAttribute('data-testid', testId)
+      if (testId) {
+        root.__testId = testId
+        if (btn) {
+          btn.setAttribute('data-testid', testId)
+        }
         root.removeAttribute('data-testid')
+        root.removeAttribute('test-id')
       }
 
       // Focus, blur, and click forwarding
       root.focus = () => btn?.focus()
       root.blur = () => btn?.blur()
       root.click = () => btn?.click()
+
+      const syncDisabledState = () => {
+        if (btn) {
+          const isD = Boolean(state.disabled || state.loading)
+          btn.disabled = isD
+          if (isD) {
+            btn.setAttribute('disabled', 'true')
+          } else {
+            btn.removeAttribute('disabled')
+          }
+        }
+      }
 
       // Imperatively create/destroy the spinner container and icon
       const syncLoadingState = () => {
@@ -137,6 +158,7 @@
           btn.removeAttribute('aria-busy')
           btn.removeAttribute('aria-disabled')
         }
+        syncDisabledState()
       }
 
       // Sync custom aria-label from host to the inner button
@@ -173,9 +195,32 @@
         })
       }
 
-      // Observe loading state mutations
+      // Observe loading and disabled state mutations
       observe('loading', syncLoadingState)
       observe('ariaLabel', syncAriaLabel)
+      if (observe) {
+        observe('disabled', (val) => {
+          state.disabled = val === 'true' || val === true || val === ''
+          syncDisabledState()
+        })
+      }
+
+      Object.defineProperty(root, 'disabled', {
+        get () {
+          return state.disabled
+        },
+        set (val) {
+          const isD = val === 'true' || val === true || val === ''
+          state.disabled = isD
+          if (isD) {
+            root.setAttribute('disabled', 'true')
+          } else {
+            root.removeAttribute('disabled')
+          }
+          syncDisabledState()
+        },
+        configurable: true
+      })
 
       // Initial execution
       syncLoadingState()

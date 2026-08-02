@@ -87,6 +87,7 @@ test.describe('Authentication and Vault', () => {
 
     /* Confirm and dismiss Recovery Code Modal */
     await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
+    await page.screenshot({ path: 'tests/e2e/screenshots/recovery-modal.png' })
     await page.locator('auth-register [data-testid$="chkStored"]').check()
     await page.locator('auth-register [data-testid$="btnContinueToChat"]').click()
 
