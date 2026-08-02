@@ -142,6 +142,37 @@ test.describe('Atoll Button Component', () => {
     await expect(label).toContainText('Main Text')
   })
 
+  test('should support leadingIcon, trailingIcon, and text attributes programmatically', async ({ page }) => {
+    await page.evaluate(() => {
+      const btn = document.createElement('atoll-button')
+      btn.id = 'test-btn-attr-slots'
+      btn.setAttribute('leading-icon', 'settings')
+      btn.setAttribute('trailing-icon', 'arrow-right')
+      btn.setAttribute('text', 'Attribute Text')
+      document.body.appendChild(btn)
+    })
+
+    const buttonHost = page.locator('#test-btn-attr-slots')
+    await expect(buttonHost).toBeVisible()
+
+    // Verify programmatically generated icons and text in slots
+    const leadingContainer = buttonHost.locator('.atoll-btn-leading')
+    await expect(leadingContainer).toBeVisible()
+    const leadingIcon = leadingContainer.locator('atoll-icon')
+    await expect(leadingIcon).toBeVisible()
+    await expect(leadingIcon).toHaveAttribute('name', 'settings')
+
+    const trailingContainer = buttonHost.locator('.atoll-btn-trailing')
+    await expect(trailingContainer).toBeVisible()
+    const trailingIcon = trailingContainer.locator('atoll-icon')
+    await expect(trailingIcon).toBeVisible()
+    await expect(trailingIcon).toHaveAttribute('name', 'arrow-right')
+
+    const label = buttonHost.locator('.atoll-btn-label')
+    await expect(label).toBeVisible()
+    await expect(label).toContainText('Attribute Text')
+  })
+
   test('should support dynamic imperative loading state', async ({ page }) => {
     await page.evaluate(() => {
       const btn = document.createElement('atoll-button')

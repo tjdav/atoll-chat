@@ -8,9 +8,7 @@
     <!-- Content Slot Container -->
     <span class="atoll-btn-content">
       <slot name="leading"></slot>
-      <span class="atoll-btn-label">
-        <slot></slot>
-      </span>
+      <slot></slot>
       <slot name="trailing"></slot>
     </span>
   </button>
@@ -42,6 +40,117 @@
       ariaLabel: {
         type: String,
         default: ''
+      },
+      leadingIcon: {
+        type: String,
+        default: ''
+      },
+      trailingIcon: {
+        type: String,
+        default: ''
+      },
+      text: {
+        type: String,
+        default: ''
+      }
+    },
+
+    slots: {
+      leading (nodes, state) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (state.leadingIcon) {
+          const span = document.createElement('span')
+          span.className = 'atoll-btn-leading'
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', state.leadingIcon)
+          const spinnerSizes = {
+            sm: '16',
+            md: '20',
+            lg: '24'
+          }
+          const iconSize = spinnerSizes[state.size] || '20'
+          icon.setAttribute('size', iconSize)
+          span.appendChild(icon)
+          return [span]
+        }
+
+        if (nodes && nodes.length > 0) {
+          const span = document.createElement('span')
+          span.className = 'atoll-btn-leading'
+          nodes.forEach(node => {
+            span.appendChild(node)
+          })
+          return [span]
+        }
+
+        return null
+      },
+
+      trailing (nodes, state) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (state.trailingIcon) {
+          const span = document.createElement('span')
+          span.className = 'atoll-btn-trailing'
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', state.trailingIcon)
+          const spinnerSizes = {
+            sm: '16',
+            md: '20',
+            lg: '24'
+          }
+          const iconSize = spinnerSizes[state.size] || '20'
+          icon.setAttribute('size', iconSize)
+          span.appendChild(icon)
+          return [span]
+        }
+
+        if (nodes && nodes.length > 0) {
+          const span = document.createElement('span')
+          span.className = 'atoll-btn-trailing'
+          nodes.forEach(node => {
+            span.appendChild(node)
+          })
+          return [span]
+        }
+
+        return null
+      },
+
+      default (nodes, state) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (state.text) {
+          const span = document.createElement('span')
+          span.className = 'atoll-btn-label'
+          span.textContent = state.text
+          return [span]
+        }
+
+        const hasContent = nodes && nodes.some(node => {
+          if (node.nodeType === 3) {
+            return node.nodeValue.trim().length > 0
+          }
+          return true
+        })
+
+        if (hasContent) {
+          const span = document.createElement('span')
+          span.className = 'atoll-btn-label'
+          nodes.forEach(node => {
+            span.appendChild(node)
+          })
+          return [span]
+        }
+
+        return null
       }
     },
 
