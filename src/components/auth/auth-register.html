@@ -143,7 +143,6 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    dependencies: ['atoll-icon', 'atoll-checkbox', 'atoll-popup', 'atoll-button'],
     client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, root }) => {
       const { pb } = pocketbase
       const { $url } = utils
