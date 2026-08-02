@@ -85,6 +85,11 @@ test.describe('Authentication and Vault', () => {
     await page.locator('auth-register [data-testid$="passwordConfirm"]').fill('Password123!456')
     await page.locator('auth-register [data-testid$="registerSubmit"]').click()
 
+    /* Confirm and dismiss Recovery Code Modal */
+    await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
+    await page.locator('auth-register [data-testid$="chkStored"]').check()
+    await page.locator('auth-register [data-testid$="btnContinueToChat"]').click()
+
     // Should successfully proceed directly into the application layout
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
   })

@@ -222,7 +222,8 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
 
     /* Confirm enrollment success toast and button text update */
     await expect(page.locator('.toast-body')).toContainText('Two-Step Authentication enabled successfully!')
-    await page.locator('.toast .btn-close').click().catch(() => {})
+    await page.locator('.toast .btn-close').click().catch(() => {
+    })
     await expect(page.locator('[data-testid$="__btnManageTotp"]')).toContainText('Disable 2FA')
 
     /* Mock WebAuthn credentials API for passkey step-up registration */

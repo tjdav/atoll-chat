@@ -87,46 +87,51 @@
 
     <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
 
-    <!-- POST-REGISTRATION RECOVERY MODAL OVERLAY -->
-    <div ref="recoveryModal" class="position-absolute top-0 start-0 w-100 h-100 bg-body d-none flex-column p-4 justify-content-between" style="z-index: 1050; border-radius: inherit;">
-      <div class="d-flex flex-column align-items-center text-center my-auto w-100">
-        <div class="mb-3 text-warning">
-          <atoll-icon name="permissions" size="48"></atoll-icon>
-        </div>
-        <h4 class="mb-3">🔐 Save Your Emergency Recovery Code</h4>
-        <p class="text-muted small mb-4 px-2">
-          If you forget your Master Password, this code is the <strong>ONLY</strong> way to regain access to your encrypted vault.
-        </p>
+    <!-- POST-REGISTRATION RECOVERY POPUP (lg atoll-popup) -->
+    <atoll-popup
+      ref="recoveryModal"
+      data-testid="recoveryModal"
+      size="lg"
+      title="🔐 Save Your Emergency Recovery Code"
+      description="If you forget your Master Password, this code is the ONLY way to regain access to your encrypted vault."
+      hero-icon="permissions"
+      static-backdrop="true"
+      primary-text=""
+      secondary-text=""
+    >
+      <!-- Content will be appended dynamically on mount to bypass Coralite slot limitations -->
+    </atoll-popup>
 
-        <!-- Recovery Code Box -->
-        <div class="card bg-light border w-100 py-3 mb-4 font-monospace text-center fs-5 fw-bold text-primary select-all" ref="recoveryCodeBox" style="letter-spacing: 1px;">
-          RC-9K2F-8M11-3P7Q-4L90
-        </div>
+    <!-- Pre-rendered recovery modal content -->
+    <div ref="recoveryContent" class="d-none w-100">
+      <!-- Recovery Code Box -->
+      <div class="card bg-light border w-100 py-3 mb-4 font-monospace text-center fs-5 fw-bold text-primary select-all" ref="recoveryCodeBox" style="letter-spacing: 1px;">
+        RC-9K2F-8M11-3P7Q-4L90
+      </div>
 
-        <!-- Action Buttons -->
-        <div class="d-flex gap-3 mb-4 w-100 px-2 justify-content-center">
-          <atoll-button type="button" variant="outline" class="flex-grow-1" ref="btnCopyCode" test-id="btnCopyCode">
-            <atoll-icon slot="leading" name="copy" size="18"></atoll-icon>
-            Copy Code
-          </atoll-button>
-          <atoll-button type="button" variant="outline" class="flex-grow-1" ref="btnDownloadCode" test-id="btnDownloadCode">
-            <atoll-icon slot="leading" name="download" size="18"></atoll-icon>
-            Download
-          </atoll-button>
-        </div>
+      <!-- Action Buttons -->
+      <div class="d-flex gap-3 mb-4 w-100 px-2 justify-content-center">
+        <atoll-button type="button" variant="outline" class="flex-grow-1" ref="btnCopyCode" test-id="btnCopyCode">
+          <atoll-icon slot="leading" name="copy" size="18"></atoll-icon>
+          Copy Code
+        </atoll-button>
+        <atoll-button type="button" variant="outline" class="flex-grow-1" ref="btnDownloadCode" test-id="btnDownloadCode">
+          <atoll-icon slot="leading" name="download" size="18"></atoll-icon>
+          Download
+        </atoll-button>
+      </div>
 
-        <!-- Confirmation Checkbox -->
-        <div class="form-check text-start mb-4 w-100 px-3 py-2 rounded" style="background-color: var(--atoll-tertiary-bg, #f8f9fa);">
-          <input class="form-check-input ms-0 me-2" type="checkbox" id="chkStored" ref="chkStored" data-testid="chkStored">
-          <label class="form-check-label small fw-bold text-muted" for="chkStored">
-            I have stored this code in a safe place.
-          </label>
-        </div>
+      <!-- Confirmation Checkbox -->
+      <div class="form-check text-start mb-4 w-100 px-3 py-2 rounded" style="background-color: var(--atoll-tertiary-bg, #f8f9fa);">
+        <input class="form-check-input ms-0 me-2" type="checkbox" id="chkStored" ref="chkStored" data-testid="chkStored">
+        <label class="form-check-label small fw-bold text-muted" for="chkStored">
+          I have stored this code in a safe place.
+        </label>
       </div>
 
       <!-- Continue Action -->
-      <div class="w-100">
-        <atoll-button type="button" variant="primary" block="true" ref="btnContinueToChat" test-id="btnContinueToChat" disabled="true">Continue to Chat</atoll-button>
+      <div class="w-100 mt-3">
+        <button type="button" class="atoll-btn atoll-btn-primary atoll-btn-block" ref="btnContinueToChat" data-testid="btnContinueToChat" disabled>Continue to Chat</button>
       </div>
     </div>
   </div>
@@ -156,12 +161,34 @@
       // eslint-disable-next-line no-unused-vars
       let zxcvbnScore = 0
 
-      const btnCopyCode = refs('btnCopyCode') || root.querySelector('[ref$="__btnCopyCode"]')
-      const btnDownloadCode = refs('btnDownloadCode') || root.querySelector('[ref$="__btnDownloadCode"]')
-      const chkStored = refs('chkStored') || root.querySelector('[ref$="__chkStored"]')
-      const btnContinueToChat = refs('btnContinueToChat') || root.querySelector('[ref$="__btnContinueToChat"]')
-      const recoveryModal = refs('recoveryModal') || root.querySelector('[ref$="__recoveryModal"]')
-      const recoveryCodeBox = refs('recoveryCodeBox') || root.querySelector('[ref$="__recoveryCodeBox"]')
+      const btnCopyCode = refs('btnCopyCode') || root.querySelector('[ref="btnCopyCode"]') || root.querySelector('[ref$="__btnCopyCode"]')
+      const btnDownloadCode = refs('btnDownloadCode') || root.querySelector('[ref="btnDownloadCode"]') || root.querySelector('[ref$="__btnDownloadCode"]')
+      const chkStored = refs('chkStored') || root.querySelector('[ref="chkStored"]') || root.querySelector('[ref$="__chkStored"]')
+      const btnContinueToChat = refs('btnContinueToChat') || root.querySelector('[ref="btnContinueToChat"]') || root.querySelector('[ref$="__btnContinueToChat"]')
+      const recoveryModal = refs('recoveryModal') || root.querySelector('[ref="recoveryModal"]') || root.querySelector('[ref$="__recoveryModal"]')
+      const recoveryCodeBox = refs('recoveryCodeBox') || root.querySelector('[ref="recoveryCodeBox"]') || root.querySelector('[ref$="__recoveryCodeBox"]')
+      const recoveryContent = refs('recoveryContent') || root.querySelector('[ref="recoveryContent"]') || root.querySelector('[ref$="__recoveryContent"]')
+
+      console.log('--- EXPLICIT REF RESOLUTION ---', {
+        btnCopyCode: !!btnCopyCode,
+        btnDownloadCode: !!btnDownloadCode,
+        chkStored: !!chkStored,
+        btnContinueToChat: !!btnContinueToChat,
+        recoveryModal: !!recoveryModal,
+        recoveryCodeBox: !!recoveryCodeBox,
+        recoveryContent: !!recoveryContent
+      })
+
+      const moveRecoveryContent = () => {
+        if (recoveryModal && recoveryContent) {
+          const popupBody = recoveryModal.querySelector('.atoll-popup-body')
+          if (popupBody && recoveryContent.parentNode !== popupBody) {
+            recoveryContent.classList.remove('d-none')
+            popupBody.appendChild(recoveryContent)
+          }
+        }
+      }
+      moveRecoveryContent()
 
       let savedCode = ''
       let isCheckboxChecked = false
@@ -254,10 +281,21 @@
       }
 
       const updateContinueButtonState = () => {
-        if (isCheckboxChecked || hasCopiedOrDownloaded) {
-          btnContinueToChat?.removeAttribute('disabled')
-        } else {
-          btnContinueToChat?.setAttribute('disabled', 'true')
+        const canContinue = isCheckboxChecked || hasCopiedOrDownloaded
+        console.log('--- updateContinueButtonState ---', {
+          isCheckboxChecked,
+          hasCopiedOrDownloaded,
+          canContinue,
+          btnContinueToChat: !!btnContinueToChat
+        })
+        if (btnContinueToChat) {
+          if (canContinue) {
+            btnContinueToChat.removeAttribute('disabled')
+            btnContinueToChat.disabled = false
+          } else {
+            btnContinueToChat.setAttribute('disabled', 'true')
+            btnContinueToChat.disabled = true
+          }
         }
       }
 
@@ -316,6 +354,11 @@ Atoll administrators cannot recover your credentials or vault.
 
       if (btnContinueToChat) {
         btnContinueToChat.addEventListener('click', async () => {
+          console.log('--- btnContinueToChat CLICKED! ---', {
+            pendingDecryptedKeys: !!pendingDecryptedKeys,
+            pendingRecord: !!pendingRecord,
+            pendingAuthData: !!pendingAuthData
+          })
           if (pendingDecryptedKeys && pendingRecord && pendingAuthData) {
             $state.currentUser = {
               ...pendingRecord,
@@ -337,6 +380,10 @@ Atoll administrators cannot recover your credentials or vault.
               console.error('[auth-register] Subscription sync warning:', syncErr)
             }
           }
+
+          if (recoveryModal) {
+            recoveryModal.removeAttribute('open')
+          }
         })
       }
 
@@ -353,7 +400,7 @@ Atoll administrators cannot recover your credentials or vault.
       }
 
       if (invitationCodeInput) {
-        invitationCodeInput.addEventListener('input', (e) => {
+        invitationCodeInput.addEventListener('input', (_) => {
           const val = invitationCodeInput.value || ''
           const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
           let raw = clean
@@ -653,8 +700,8 @@ Atoll administrators cannot recover your credentials or vault.
             recoveryCodeBox.textContent = singleCode
           }
           if (recoveryModal) {
-            recoveryModal.classList.remove('d-none')
-            recoveryModal.classList.add('d-flex')
+            moveRecoveryContent()
+            recoveryModal.setAttribute('open', 'true')
           }
           updateStatus('Account created! Please save your recovery code.')
         } catch (error) {

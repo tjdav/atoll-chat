@@ -2,6 +2,10 @@ atoll-popup {
   display: block !important;
 }
 
+atoll-popup[open] {
+  min-height: 1px;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Theme Tokens (CSS Custom Properties)                                       */
 /* -------------------------------------------------------------------------- */
