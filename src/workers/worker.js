@@ -439,8 +439,8 @@ async function handleEvent (event) {
         32,
         password,
         typeof salt === 'string' ? sodium.from_base64(salt, sodium.base64_variants.ORIGINAL) : salt,
-        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+        sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
+        sodium.crypto_pwhash_MEMLIMIT_SENSITIVE,
         sodium.crypto_pwhash_ALG_ARGON2ID13
       )
       self.postMessage({
@@ -812,223 +812,245 @@ async function sendMessage (rpcId, payload) {
       fileKeyBase64 = sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL)
       fileNonceBase64 = sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL)
 
-    if (transfer_mode === 'p2p') {
-      const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' })
-      await workerBridge.request('saveFile', [localUuid, encryptedBlob])
-      mediaId = localUuid
-    } else {
+      if (transfer_mode === 'p2p') {
+        const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' })
+        await workerBridge.request('saveFile', [localUuid, encryptedBlob])
+        mediaId = localUuid
+      } else {
       /** @type {WebWorkerBlobPart[]} */
-      const mainParts = [encryptedFile]
-      const mainBlob = new Blob(mainParts, { type: 'application/octet-stream' })
-      const mainFormData = new FormData()
-      mainFormData.append('file', mainBlob, 'encrypted.bin')
+        const mainParts = [encryptedFile]
+        const mainBlob = new Blob(mainParts, { type: 'application/octet-stream' })
+        const mainFormData = new FormData()
+        mainFormData.append('file', mainBlob, 'encrypted.bin')
 
-      const mainResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
-        method: 'POST',
-        headers,
-        body: mainFormData
-      })
-      if (!mainResponse.ok) {
-        throw new Error(`Failed to upload media: ${mainResponse.status}`)
-      }
-      const mainRecord = await mainResponse.json()
-      mediaId = mainRecord.id
-    }
-  }
-
-  // Construct Plaintext
-  const plaintextObj = {
-    local_uuid: localUuid,
-    type,
-    content,
-    candidate,
-    candidates,
-    media_types,
-    target_id,
-    p2pUuid,
-    timestamp: timestamp || Date.now()
-  }
-
-  if (type === 'link') {
-    plaintextObj.links = links
-  }
-
-  if (type === 'media') {
-    plaintextObj.media_id = mediaId
-    plaintextObj.file_key = fileKeyBase64
-    plaintextObj.file_nonce = fileNonceBase64
-    plaintextObj.filename = filename
-    plaintextObj.mime_type = mime_type
-    plaintextObj.waveform_data = waveform_data
-    plaintextObj.music_metadata = music_metadata
-    plaintextObj.album_art = albumArtInfo
-    plaintextObj.thumbnail = thumbnailInfo
-    plaintextObj.duration = duration
-    plaintextObj.transfer_mode = transfer_mode
-    plaintextObj.status = status || 'sent'
-
-    console.info('[worker] plaintextObj inside media block:', {
-      media_id: plaintextObj.media_id,
-      file_key: plaintextObj.file_key,
-      transfer_mode: plaintextObj.transfer_mode,
-      status: plaintextObj.status
-    })
-    console.info('[worker] local variables inside media block:', {
-      mediaId,
-      fileKeyBase64,
-      transfer_mode,
-      status
-    })
-  }
-
-  const plaintextStr = JSON.stringify(plaintextObj)
-
-  // Encrypt Message
-  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-  const ciphertextBuffer = sodium.crypto_secretbox_easy(plaintextStr, nonce, roomKey)
-  const ciphertextBase64 = sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL)
-  const nonceBase64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
-
-  // fetch causal link
-  const lastMsg = await workerBridge.request('getAbsoluteLatestMessage', [room_id])
-  const previousMsgId = lastMsg ? (lastMsg.id || lastMsg.local_uuid) : 'START'
-
-  // Sign Message
-  const validationString = `${room_id}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
-  const validationBuffer = new TextEncoder().encode(validationString)
-  privateSignKeyBuffer = sodium.from_base64(self.currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
-  const signatureBuffer = sodium.crypto_sign_detached(validationBuffer, privateSignKeyBuffer)
-
-  // Server upload
-  const uploadPayload = {
-    room_id: room_id,
-    sender_id: self.currentUserKeys.id,
-    epoch_id: latestEpochId,
-    payload: {
-      ciphertext: ciphertextBase64,
-      nonce: nonceBase64
-    },
-    signature: sodium.to_base64(signatureBuffer, sodium.base64_variants.ORIGINAL),
-    previous_msg_uuid: previousMsgId,
-    local_uuid: localUuid
-  }
-
-  const messageResponse = await fetchWithTimeout(`${baseUrl}/api/collections/messages/records`, {
-    method: 'POST',
-    headers: {
-      ...headers,
-      'Content-Type': 'application/json'
-    },
-    body: JSON.stringify(uploadPayload)
-  })
-
-  if (!messageResponse.ok) {
-    const errorData = await messageResponse.json()
-    throw new Error(`Failed to send message: ${messageResponse.status} ${JSON.stringify(errorData)}`)
-  }
-
-  const pbRecord = await messageResponse.json()
-
-  const isEphemeral = ['ice_candidate', 'call_offer', 'call_answer', 'call_end', 'p2p_transfer_request', 'p2p_accept', 'p2p_rejected', 'p2p_request_offer', 'p2p_offer', 'p2p_answer', 'p2p_ice_candidate'].includes(type) || payload.ephemeral
-
-  if (isEphemeral) {
-    self.postMessage({
-      type: 'db:new_local_data',
-      payload: {
-        room_id,
-        message: {
-          local_uuid: localUuid,
-          id: pbRecord.id,
-          room_id,
-          sender_id: self.currentUserKeys.id,
-          type,
-          content,
-          candidate,
-          candidates,
-          media_types,
-          target_id,
-          p2pUuid,
-          timestamp: timestamp || Date.now(),
-          ephemeral: true,
-          created_at: pbRecord.created
+        const mainResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
+          method: 'POST',
+          headers,
+          body: mainFormData
+        })
+        if (!mainResponse.ok) {
+          throw new Error(`Failed to upload media: ${mainResponse.status}`)
         }
+        const mainRecord = await mainResponse.json()
+        mediaId = mainRecord.id
       }
-    })
-  } else {
-    const updateData = {
-      id: pbRecord.id,
-      status: status || 'sent',
-      transfer_mode,
-      created_at: pbRecord.created
+    }
+
+    // Construct Plaintext
+    const plaintextObj = {
+      local_uuid: localUuid,
+      type,
+      content,
+      candidate,
+      candidates,
+      media_types,
+      target_id,
+      p2pUuid,
+      timestamp: timestamp || Date.now()
+    }
+
+    if (type === 'link') {
+      plaintextObj.links = links
     }
 
     if (type === 'media') {
-      updateData.media_id = mediaId || localUuid
-      updateData.file_key = fileKeyBase64
-      updateData.file_nonce = fileNonceBase64
-      updateData.filename = filename
-      updateData.mime_type = mime_type
-      updateData.album_art = albumArtInfo
-      updateData.thumbnail = thumbnailInfo
-      updateData.duration = duration
+      plaintextObj.media_id = mediaId
+      plaintextObj.file_key = fileKeyBase64
+      plaintextObj.file_nonce = fileNonceBase64
+      plaintextObj.filename = filename
+      plaintextObj.mime_type = mime_type
+      plaintextObj.waveform_data = waveform_data
+      plaintextObj.music_metadata = music_metadata
+      plaintextObj.album_art = albumArtInfo
+      plaintextObj.thumbnail = thumbnailInfo
+      plaintextObj.duration = duration
+      plaintextObj.transfer_mode = transfer_mode
+      plaintextObj.status = status || 'sent'
 
-      await workerBridge.request('saveAsset', [{
-        id: mediaId || localUuid,
-        media_id: mediaId || localUuid,
-        room_id,
-        message_id: localUuid,
-        filename,
-        mime_type,
-        file_key: fileKeyBase64,
-        file_nonce: fileNonceBase64,
-        created_at: pbRecord.created,
-        music_metadata,
-        album_art: albumArtInfo,
-        thumbnail: thumbnailInfo,
-        duration
-      }])
+      console.info('[worker] plaintextObj inside media block:', {
+        media_id: plaintextObj.media_id,
+        file_key: plaintextObj.file_key,
+        transfer_mode: plaintextObj.transfer_mode,
+        status: plaintextObj.status
+      })
+      console.info('[worker] local variables inside media block:', {
+        mediaId,
+        fileKeyBase64,
+        transfer_mode,
+        status
+      })
     }
 
-    let existing = null
-    if (type !== 'ice_candidate') {
-      existing = await workerBridge.request('getMessage', [localUuid])
-      if (existing) {
-        await workerBridge.request('updateMessage', [localUuid, updateData, room_id])
-      } else {
-        existing = {
-          local_uuid: localUuid,
-          room_id: room_id,
-          sender_id: self.currentUserKeys.id,
-          type,
-          content,
-          target_id,
-          ...updateData
+    const plaintextStr = JSON.stringify(plaintextObj)
+
+    // Encrypt Message
+    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+    const ciphertextBuffer = sodium.crypto_secretbox_easy(plaintextStr, nonce, roomKey)
+    const ciphertextBase64 = sodium.to_base64(ciphertextBuffer, sodium.base64_variants.ORIGINAL)
+    const nonceBase64 = sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+
+    // fetch causal link
+    const lastMsg = await workerBridge.request('getAbsoluteLatestMessage', [room_id])
+    const previousMsgId = lastMsg ? (lastMsg.id || lastMsg.local_uuid) : 'START'
+
+    // Sign Message
+    const validationString = `${room_id}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
+    const validationBuffer = new TextEncoder().encode(validationString)
+    privateSignKeyBuffer = sodium.from_base64(self.currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
+    const signatureBuffer = sodium.crypto_sign_detached(validationBuffer, privateSignKeyBuffer)
+
+    // Server upload
+    const uploadPayload = {
+      room_id: room_id,
+      sender_id: self.currentUserKeys.id,
+      epoch_id: latestEpochId,
+      payload: {
+        ciphertext: ciphertextBase64,
+        nonce: nonceBase64
+      },
+      signature: sodium.to_base64(signatureBuffer, sodium.base64_variants.ORIGINAL),
+      previous_msg_uuid: previousMsgId,
+      local_uuid: localUuid
+    }
+
+    const messageResponse = await fetchWithTimeout(`${baseUrl}/api/collections/messages/records`, {
+      method: 'POST',
+      headers: {
+        ...headers,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(uploadPayload)
+    })
+
+    if (!messageResponse.ok) {
+      const errorData = await messageResponse.json()
+      throw new Error(`Failed to send message: ${messageResponse.status} ${JSON.stringify(errorData)}`)
+    }
+
+    const pbRecord = await messageResponse.json()
+
+    const isEphemeral = ['ice_candidate', 'call_offer', 'call_answer', 'call_end', 'p2p_transfer_request', 'p2p_accept', 'p2p_rejected', 'p2p_request_offer', 'p2p_offer', 'p2p_answer', 'p2p_ice_candidate'].includes(type) || payload.ephemeral
+
+    if (isEphemeral) {
+      self.postMessage({
+        type: 'db:new_local_data',
+        payload: {
+          room_id,
+          message: {
+            local_uuid: localUuid,
+            id: pbRecord.id,
+            room_id,
+            sender_id: self.currentUserKeys.id,
+            type,
+            content,
+            candidate,
+            candidates,
+            media_types,
+            target_id,
+            p2pUuid,
+            timestamp: timestamp || Date.now(),
+            ephemeral: true,
+            created_at: pbRecord.created
+          }
         }
-        await workerBridge.request('saveMessage', [existing])
+      })
+    } else {
+      const updateData = {
+        id: pbRecord.id,
+        status: status || 'sent',
+        transfer_mode,
+        created_at: pbRecord.created
+      }
+
+      if (type === 'media') {
+        updateData.media_id = mediaId || localUuid
+        updateData.file_key = fileKeyBase64
+        updateData.file_nonce = fileNonceBase64
+        updateData.filename = filename
+        updateData.mime_type = mime_type
+        updateData.album_art = albumArtInfo
+        updateData.thumbnail = thumbnailInfo
+        updateData.duration = duration
+
+        await workerBridge.request('saveAsset', [{
+          id: mediaId || localUuid,
+          media_id: mediaId || localUuid,
+          room_id,
+          message_id: localUuid,
+          filename,
+          mime_type,
+          file_key: fileKeyBase64,
+          file_nonce: fileNonceBase64,
+          created_at: pbRecord.created,
+          music_metadata,
+          album_art: albumArtInfo,
+          thumbnail: thumbnailInfo,
+          duration
+        }])
+      }
+
+      let existing = null
+      if (type !== 'ice_candidate') {
+        existing = await workerBridge.request('getMessage', [localUuid])
+        if (existing) {
+          await workerBridge.request('updateMessage', [localUuid, updateData, room_id])
+        } else {
+          existing = {
+            local_uuid: localUuid,
+            room_id: room_id,
+            sender_id: self.currentUserKeys.id,
+            type,
+            content,
+            target_id,
+            ...updateData
+          }
+          await workerBridge.request('saveMessage', [existing])
+        }
       }
     }
-  }
 
-  self.postMessage({
-    id: rpcId,
-    type: 'worker:send_message',
-    result: {
-      success: true,
-      id: pbRecord.id
-    }
-  })
+    self.postMessage({
+      id: rpcId,
+      type: 'worker:send_message',
+      result: {
+        success: true,
+        id: pbRecord.id
+      }
+    })
   } finally {
-    if (roomKey && typeof roomKey.fill === 'function') roomKey.fill(0)
-    if (privateSignKeyBuffer && typeof privateSignKeyBuffer.fill === 'function') privateSignKeyBuffer.fill(0)
-    if (artKey && typeof artKey.fill === 'function') artKey.fill(0)
-    if (artNonce && typeof artNonce.fill === 'function') artNonce.fill(0)
-    if (thumbKey && typeof thumbKey.fill === 'function') thumbKey.fill(0)
-    if (thumbNonce && typeof thumbNonce.fill === 'function') thumbNonce.fill(0)
-    if (fileKey && typeof fileKey.fill === 'function') fileKey.fill(0)
-    if (fileNonce && typeof fileNonce.fill === 'function') fileNonce.fill(0)
-    if (artBuffer && typeof artBuffer.fill === 'function') artBuffer.fill(0)
-    if (thumbBuffer && typeof thumbBuffer.fill === 'function') thumbBuffer.fill(0)
-    if (fileBuffer && typeof fileBuffer.fill === 'function') fileBuffer.fill(0)
+    if (roomKey && typeof roomKey.fill === 'function') {
+      roomKey.fill(0)
+    }
+    if (privateSignKeyBuffer && typeof privateSignKeyBuffer.fill === 'function') {
+      privateSignKeyBuffer.fill(0)
+    }
+    if (artKey && typeof artKey.fill === 'function') {
+      artKey.fill(0)
+    }
+    if (artNonce && typeof artNonce.fill === 'function') {
+      artNonce.fill(0)
+    }
+    if (thumbKey && typeof thumbKey.fill === 'function') {
+      thumbKey.fill(0)
+    }
+    if (thumbNonce && typeof thumbNonce.fill === 'function') {
+      thumbNonce.fill(0)
+    }
+    if (fileKey && typeof fileKey.fill === 'function') {
+      fileKey.fill(0)
+    }
+    if (fileNonce && typeof fileNonce.fill === 'function') {
+      fileNonce.fill(0)
+    }
+    if (artBuffer && typeof artBuffer.fill === 'function') {
+      artBuffer.fill(0)
+    }
+    if (thumbBuffer && typeof thumbBuffer.fill === 'function') {
+      thumbBuffer.fill(0)
+    }
+    if (fileBuffer && typeof fileBuffer.fill === 'function') {
+      fileBuffer.fill(0)
+    }
   }
 }
 
@@ -1080,229 +1102,243 @@ async function processIncomingMessage (rpcId, record) {
 
     const { ciphertext, nonce } = payload
 
-  // Fetch Sender Key
-  let senderKeys = self.publicKeyCache.get(senderId)
-  if (!senderKeys || !senderKeys.public_sign_key) {
-    if (!baseUrl) {
-      throw new Error('Base URL not initialized')
+    // Fetch Sender Key
+    let senderKeys = self.publicKeyCache.get(senderId)
+    if (!senderKeys || !senderKeys.public_sign_key) {
+      if (!baseUrl) {
+        throw new Error('Base URL not initialized')
+      }
+      const headers = {}
+      if (self.authToken) {
+        headers.Authorization = self.authToken
+      }
+      const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${senderId}`, { headers })
+      if (!response.ok) {
+        throw new Error(`Failed to fetch sender public key (${senderId}): ${response.status} ${response.statusText}`)
+      }
+      const userRecord = await response.json()
+      senderKeys = {
+        ...(senderKeys || {}),
+        public_box_key: userRecord.public_box_key,
+        public_sign_key: userRecord.public_sign_key
+      }
+      self.publicKeyCache.set(senderId, senderKeys)
     }
-    const headers = {}
-    if (self.authToken) {
-      headers.Authorization = self.authToken
+
+    const publicSignKey = senderKeys.public_sign_key
+    if (!publicSignKey) {
+      throw new Error('Sender public sign key is missing')
     }
-    const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${senderId}`, { headers })
-    if (!response.ok) {
-      throw new Error(`Failed to fetch sender public key (${senderId}): ${response.status} ${response.statusText}`)
+
+    // Identity Verification (Ed25519)
+    signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
+    publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
+
+    const validationString = `${room_id}|${epochId}|${previousMsgUuid}|${ciphertext}|${nonce}`
+    validationBuffer = new TextEncoder().encode(validationString)
+
+    const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
+    if (!isValid) {
+      console.warn(`[worker] Skipping message processing in room ${room_id}: Signature forged or invalid`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Signature forged or invalid'
+        }
+      })
+      return
     }
-    const userRecord = await response.json()
-    senderKeys = {
-      ...(senderKeys || {}),
-      public_box_key: userRecord.public_box_key,
-      public_sign_key: userRecord.public_sign_key
+
+    // Symmetric Decryption (X25519)
+    const room = await workerBridge.request('getRoom', [room_id])
+    if (!room) {
+      console.warn(`[worker] Skipping message processing: Local room ${room_id} not found`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: `Local room ${room_id} not found`
+        }
+      })
+      return
     }
-    self.publicKeyCache.set(senderId, senderKeys)
-  }
 
-  const publicSignKey = senderKeys.public_sign_key
-  if (!publicSignKey) {
-    throw new Error('Sender public sign key is missing')
-  }
+    const activeEpoch = room.key_history?.find(h => h.epoch_id === epochId)
+    if (!activeEpoch) {
+      console.warn(`[worker] Skipping message processing: Missing cryptographic key for epoch ${epochId} in room ${room_id}`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Missing cryptographic key for this epoch.'
+        }
+      })
+      return
+    }
 
-  // Identity Verification (Ed25519)
-  signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
-  publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
+    ciphertextBuffer = sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL)
+    nonceBuffer = sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL)
+    epochKeyBuffer = sodium.from_base64(activeEpoch.key, sodium.base64_variants.ORIGINAL)
 
-  const validationString = `${room_id}|${epochId}|${previousMsgUuid}|${ciphertext}|${nonce}`
-  validationBuffer = new TextEncoder().encode(validationString)
+    try {
+      decryptedBuffer = sodium.crypto_secretbox_open_easy(ciphertextBuffer, nonceBuffer, epochKeyBuffer)
+    } catch (err) {
+      console.warn(`[worker] Decryption failed for message in room ${room_id}:`, err)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Decryption failed'
+        }
+      })
+      return
+    }
 
-  const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
-  if (!isValid) {
-    console.warn(`[worker] Skipping message processing in room ${room_id}: Signature forged or invalid`)
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_incoming_message',
-      result: {
-        success: false,
-        error: 'Signature forged or invalid'
+    if (!decryptedBuffer) {
+      console.warn(`[worker] Decryption failed (null result) for message in room ${room_id}`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Decryption failed (null result)'
+        }
+      })
+      return
+    }
+
+    const decryptedString = new TextDecoder().decode(decryptedBuffer)
+    const decryptedPayload = JSON.parse(decryptedString)
+    console.info('[worker] decryptedPayload:', decryptedPayload)
+    const { type, content, candidate, candidates, media_types, target_id, timestamp, p2pUuid } = decryptedPayload
+
+    // Storage and causal chain resolution.
+    const decryptedMessage = {
+      id,
+      local_uuid: decryptedPayload.local_uuid || id,
+      room_id: room_id,
+      sender_id: senderId,
+      type,
+      content,
+      candidate,
+      candidates,
+      media_types,
+      target_id,
+      timestamp,
+      status: decryptedPayload.status || 'sent',
+      transfer_mode: decryptedPayload.transfer_mode,
+      p2pUuid,
+      previous_msg_uuid: previousMsgUuid,
+      created_at: created,
+      ephemeral: decryptedPayload.ephemeral
+    }
+
+    const isIncomingEphemeral = [
+      'p2p_transfer_request',
+      'p2p_accept',
+      'p2p_rejected',
+      'p2p_request_offer',
+      'p2p_offer',
+      'p2p_answer',
+      'p2p_ice_candidate',
+      'ice_candidate',
+      'call_offer',
+      'call_answer',
+      'call_end'
+    ].includes(type) || decryptedPayload.ephemeral
+
+    if (isIncomingEphemeral) {
+      self.postMessage({
+        type: 'db:new_local_data',
+        payload: {
+          room_id,
+          message: decryptedMessage
+        }
+      })
+
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: { success: true }
+      })
+      return
+    }
+
+    // If media, extend the message with media metadata for easier rendering in the timeline
+    if (type === 'media') {
+      const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art, thumbnail, duration, transfer_mode } = decryptedPayload
+      decryptedMessage.media_id = media_id
+      decryptedMessage.file_key = file_key
+      decryptedMessage.file_nonce = file_nonce
+      decryptedMessage.filename = filename
+      decryptedMessage.mime_type = mime_type
+      decryptedMessage.waveform_data = waveform_data
+      decryptedMessage.music_metadata = music_metadata
+      decryptedMessage.album_art = album_art
+      decryptedMessage.thumbnail = thumbnail
+      decryptedMessage.duration = duration
+      decryptedMessage.transfer_mode = transfer_mode
+
+      if (transfer_mode !== 'p2p') {
+      // Also store in local_assets for the global archive
+        await workerBridge.request('saveAsset', [{
+          id: media_id,
+          media_id,
+          room_id: room_id,
+          message_id: decryptedMessage.local_uuid,
+          filename,
+          mime_type,
+          file_key,
+          file_nonce,
+          created_at: created,
+          music_metadata,
+          album_art,
+          thumbnail,
+          duration
+        }])
       }
-    })
-    return
-  }
+    }
 
-  // Symmetric Decryption (X25519)
-  const room = await workerBridge.request('getRoom', [room_id])
-  if (!room) {
-    console.warn(`[worker] Skipping message processing: Local room ${room_id} not found`)
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_incoming_message',
-      result: {
-        success: false,
-        error: `Local room ${room_id} not found`
-      }
-    })
-    return
-  }
+    if (type === 'link') {
+      decryptedMessage.links = decryptedPayload.links
+    }
 
-  const activeEpoch = room.key_history?.find(h => h.epoch_id === epochId)
-  if (!activeEpoch) {
-    console.warn(`[worker] Skipping message processing: Missing cryptographic key for epoch ${epochId} in room ${room_id}`)
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_incoming_message',
-      result: {
-        success: false,
-        error: 'Missing cryptographic key for this epoch.'
-      }
-    })
-    return
-  }
-
-  ciphertextBuffer = sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL)
-  nonceBuffer = sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL)
-  epochKeyBuffer = sodium.from_base64(activeEpoch.key, sodium.base64_variants.ORIGINAL)
-
-  try {
-    decryptedBuffer = sodium.crypto_secretbox_open_easy(ciphertextBuffer, nonceBuffer, epochKeyBuffer)
-  } catch (err) {
-    console.warn(`[worker] Decryption failed for message in room ${room_id}:`, err)
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_incoming_message',
-      result: {
-        success: false,
-        error: 'Decryption failed'
-      }
-    })
-    return
-  }
-
-  if (!decryptedBuffer) {
-    console.warn(`[worker] Decryption failed (null result) for message in room ${room_id}`)
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_incoming_message',
-      result: {
-        success: false,
-        error: 'Decryption failed (null result)'
-      }
-    })
-    return
-  }
-
-  const decryptedString = new TextDecoder().decode(decryptedBuffer)
-  const decryptedPayload = JSON.parse(decryptedString)
-  console.info('[worker] decryptedPayload:', decryptedPayload)
-  const { type, content, candidate, candidates, media_types, target_id, timestamp, p2pUuid } = decryptedPayload
-
-  // Storage and causal chain resolution.
-  const decryptedMessage = {
-    id,
-    local_uuid: decryptedPayload.local_uuid || id,
-    room_id: room_id,
-    sender_id: senderId,
-    type,
-    content,
-    candidate,
-    candidates,
-    media_types,
-    target_id,
-    timestamp,
-    status: decryptedPayload.status || 'sent',
-    transfer_mode: decryptedPayload.transfer_mode,
-    p2pUuid,
-    previous_msg_uuid: previousMsgUuid,
-    created_at: created,
-    ephemeral: decryptedPayload.ephemeral
-  }
-
-  const isIncomingEphemeral = [
-    'p2p_transfer_request',
-    'p2p_accept',
-    'p2p_rejected',
-    'p2p_request_offer',
-    'p2p_offer',
-    'p2p_answer',
-    'p2p_ice_candidate',
-    'ice_candidate',
-    'call_offer',
-    'call_answer',
-    'call_end'
-  ].includes(type) || decryptedPayload.ephemeral
-
-  if (isIncomingEphemeral) {
-    self.postMessage({
-      type: 'db:new_local_data',
-      payload: {
-        room_id,
-        message: decryptedMessage
-      }
-    })
+    if (type !== 'ice_candidate') {
+      await workerBridge.request('saveMessage', [decryptedMessage])
+    }
 
     self.postMessage({
       id: rpcId,
       type: 'worker:process_incoming_message',
       result: { success: true }
     })
-    return
-  }
-
-  // If media, extend the message with media metadata for easier rendering in the timeline
-  if (type === 'media') {
-    const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art, thumbnail, duration, transfer_mode } = decryptedPayload
-    decryptedMessage.media_id = media_id
-    decryptedMessage.file_key = file_key
-    decryptedMessage.file_nonce = file_nonce
-    decryptedMessage.filename = filename
-    decryptedMessage.mime_type = mime_type
-    decryptedMessage.waveform_data = waveform_data
-    decryptedMessage.music_metadata = music_metadata
-    decryptedMessage.album_art = album_art
-    decryptedMessage.thumbnail = thumbnail
-    decryptedMessage.duration = duration
-    decryptedMessage.transfer_mode = transfer_mode
-
-    if (transfer_mode !== 'p2p') {
-      // Also store in local_assets for the global archive
-      await workerBridge.request('saveAsset', [{
-        id: media_id,
-        media_id,
-        room_id: room_id,
-        message_id: decryptedMessage.local_uuid,
-        filename,
-        mime_type,
-        file_key,
-        file_nonce,
-        created_at: created,
-        music_metadata,
-        album_art,
-        thumbnail,
-        duration
-      }])
-    }
-  }
-
-  if (type === 'link') {
-    decryptedMessage.links = decryptedPayload.links
-  }
-
-  if (type !== 'ice_candidate') {
-    await workerBridge.request('saveMessage', [decryptedMessage])
-  }
-
-  self.postMessage({
-    id: rpcId,
-    type: 'worker:process_incoming_message',
-    result: { success: true }
-  })
   } finally {
-    if (signatureBuffer && typeof signatureBuffer.fill === 'function') signatureBuffer.fill(0)
-    if (publicSignKeyBuffer && typeof publicSignKeyBuffer.fill === 'function') publicSignKeyBuffer.fill(0)
-    if (validationBuffer && typeof validationBuffer.fill === 'function') validationBuffer.fill(0)
-    if (ciphertextBuffer && typeof ciphertextBuffer.fill === 'function') ciphertextBuffer.fill(0)
-    if (nonceBuffer && typeof nonceBuffer.fill === 'function') nonceBuffer.fill(0)
-    if (epochKeyBuffer && typeof epochKeyBuffer.fill === 'function') epochKeyBuffer.fill(0)
-    if (decryptedBuffer && typeof decryptedBuffer.fill === 'function') decryptedBuffer.fill(0)
+    if (signatureBuffer && typeof signatureBuffer.fill === 'function') {
+      signatureBuffer.fill(0)
+    }
+    if (publicSignKeyBuffer && typeof publicSignKeyBuffer.fill === 'function') {
+      publicSignKeyBuffer.fill(0)
+    }
+    if (validationBuffer && typeof validationBuffer.fill === 'function') {
+      validationBuffer.fill(0)
+    }
+    if (ciphertextBuffer && typeof ciphertextBuffer.fill === 'function') {
+      ciphertextBuffer.fill(0)
+    }
+    if (nonceBuffer && typeof nonceBuffer.fill === 'function') {
+      nonceBuffer.fill(0)
+    }
+    if (epochKeyBuffer && typeof epochKeyBuffer.fill === 'function') {
+      epochKeyBuffer.fill(0)
+    }
+    if (decryptedBuffer && typeof decryptedBuffer.fill === 'function') {
+      decryptedBuffer.fill(0)
+    }
   }
 }
 
@@ -1388,244 +1424,260 @@ async function processNewRoomKey (rpcId, payload) {
       updated
     } = payload
 
-  if (!encrypted_room_key || !wrapped_by) {
-    console.warn(`[worker] Skipping room key processing for room ${room_id} because encrypted_room_key or wrapped_by is empty.`)
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_new_room_key',
-      result: { success: true }
-    })
-    return
-  }
-
-  const effectiveEpochId = epoch_id || 1
-
-  if (!self.currentUserKeys || !self.currentUserKeys.private_box_key) {
-    throw new Error('User keys not initialized in worker')
-  }
-
-  // Fetch Inviter's Public Key
-  let inviterKeys = self.publicKeyCache.get(wrapped_by)
-  if (!inviterKeys || !inviterKeys.public_box_key) {
-    if (!baseUrl) {
-      throw new Error('Base URL not initialized')
+    if (!encrypted_room_key || !wrapped_by) {
+      console.warn(`[worker] Skipping room key processing for room ${room_id} because encrypted_room_key or wrapped_by is empty.`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_new_room_key',
+        result: { success: true }
+      })
+      return
     }
-    const headers = {}
-    if (self.authToken) {
-      headers.Authorization = self.authToken
+
+    const effectiveEpochId = epoch_id || 1
+
+    if (!self.currentUserKeys || !self.currentUserKeys.private_box_key) {
+      throw new Error('User keys not initialized in worker')
     }
-    try {
-      const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${wrapped_by}`, { headers })
-      if (!response.ok) {
-        console.warn(`[worker] Failed to fetch inviter public key (${wrapped_by}): ${response.status} ${response.statusText}`)
+
+    // Fetch Inviter's Public Key
+    let inviterKeys = self.publicKeyCache.get(wrapped_by)
+    if (!inviterKeys || !inviterKeys.public_box_key) {
+      if (!baseUrl) {
+        throw new Error('Base URL not initialized')
+      }
+      const headers = {}
+      if (self.authToken) {
+        headers.Authorization = self.authToken
+      }
+      try {
+        const response = await fetchWithTimeout(`${baseUrl}/api/collections/users/records/${wrapped_by}`, { headers })
+        if (!response.ok) {
+          console.warn(`[worker] Failed to fetch inviter public key (${wrapped_by}): ${response.status} ${response.statusText}`)
+          self.postMessage({
+            id: rpcId,
+            type: 'worker:process_new_room_key',
+            result: {
+              success: false,
+              error: 'Inviter public key not found'
+            }
+          })
+          return
+        }
+        const userRecord = await response.json()
+        inviterKeys = {
+          ...(inviterKeys || {}),
+          public_box_key: userRecord.public_box_key,
+          public_sign_key: userRecord.public_sign_key
+        }
+        self.publicKeyCache.set(wrapped_by, inviterKeys)
+      } catch (err) {
+        console.warn(`[worker] Error fetching inviter public key (${wrapped_by}):`, err)
         self.postMessage({
           id: rpcId,
           type: 'worker:process_new_room_key',
           result: {
             success: false,
-            error: 'Inviter public key not found'
+            error: err.message
           }
         })
         return
       }
-      const userRecord = await response.json()
-      inviterKeys = {
-        ...(inviterKeys || {}),
-        public_box_key: userRecord.public_box_key,
-        public_sign_key: userRecord.public_sign_key
-      }
-      self.publicKeyCache.set(wrapped_by, inviterKeys)
-    } catch (err) {
-      console.warn(`[worker] Error fetching inviter public key (${wrapped_by}):`, err)
+    }
+
+    const inviterPublicKey = inviterKeys.public_box_key
+    if (!inviterPublicKey) {
+      console.warn(`[worker] Inviter (${wrapped_by}) public box key is missing`)
       self.postMessage({
         id: rpcId,
         type: 'worker:process_new_room_key',
         result: {
           success: false,
-          error: err.message
+          error: 'Inviter public box key missing'
         }
       })
       return
     }
-  }
 
-  const inviterPublicKey = inviterKeys.public_box_key
-  if (!inviterPublicKey) {
-    console.warn(`[worker] Inviter (${wrapped_by}) public box key is missing`)
+    // Decrypt (Unwrap)
+    try {
+      encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key, sodium.base64_variants.ORIGINAL)
+      nonceBuffer = sodium.from_base64(key_nonce, sodium.base64_variants.ORIGINAL)
+      inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey, sodium.base64_variants.ORIGINAL)
+      userPrivateKeyBuffer = sodium.from_base64(self.currentUserKeys.private_box_key, sodium.base64_variants.ORIGINAL)
+
+      unwrappedKeyBuffer = sodium.crypto_box_open_easy(
+        encryptedRoomKeyBuffer,
+        nonceBuffer,
+        inviterPublicKeyBuffer,
+        userPrivateKeyBuffer
+      )
+    } catch (err) {
+      console.warn(`[worker] Failed to unwrap room key for room ${room_id}: Decryption error`, err)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_new_room_key',
+        result: {
+          success: false,
+          error: 'Failed to unwrap room key: Decryption error'
+        }
+      })
+      return
+    }
+
+    if (!unwrappedKeyBuffer || unwrappedKeyBuffer.length === 0) {
+      console.warn(`[worker] Failed to unwrap room key for room ${room_id}: Null result`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_new_room_key',
+        result: {
+          success: false,
+          error: 'Failed to unwrap room key: Null result'
+        }
+      })
+      return
+    }
+
+    // Fetch Room metadata and members from server
+    let roomMetadata = null
+    let isGroup = true
+    let participants = []
+    const headers = {}
+    if (self.authToken) {
+      headers.Authorization = self.authToken
+    }
+
+    // fetch room record
+    const roomResponse = await fetchWithTimeout(`${baseUrl}/api/collections/rooms/records/${room_id}`, { headers })
+    if (roomResponse.ok) {
+      const roomRecord = await roomResponse.json()
+      isGroup = roomRecord.is_group
+
+      if (roomRecord.encrypted_metadata && roomRecord.encrypted_metadata.ciphertext) {
+        metadataCiphertext = sodium.from_base64(roomRecord.encrypted_metadata.ciphertext, sodium.base64_variants.ORIGINAL)
+        metadataNonce = sodium.from_base64(roomRecord.encrypted_metadata.nonce, sodium.base64_variants.ORIGINAL)
+        try {
+          decryptedMetadataBuffer = sodium.crypto_secretbox_open_easy(metadataCiphertext, metadataNonce, unwrappedKeyBuffer)
+          if (decryptedMetadataBuffer) {
+            roomMetadata = JSON.parse(new TextDecoder().decode(decryptedMetadataBuffer))
+          }
+        } catch (err) {
+          console.error('Failed to decrypt room metadata:', err)
+        }
+      }
+    }
+
+    // Fetch Room members with user details
+    const membersUrl = `${baseUrl}/api/collections/room_members/records?filter=(room_id='${room_id}')&expand=user_id`
+    const membersResponse = await fetchWithTimeout(membersUrl, { headers })
+    if (membersResponse.ok) {
+      const membersData = await membersResponse.json()
+      participants = membersData.items.map(m => {
+        const u = m.expand?.user_id
+        return u
+          ? {
+            id: u.id,
+            username: u.username,
+            avatar: u.avatar,
+            collectionId: u.collectionId,
+            collectionName: u.collectionName,
+            last_read_message_id: m.last_read_message_id,
+            is_muted: m.is_muted
+          }
+          : null
+      }).filter(p => p !== null)
+    }
+
+    // epoch management and local storage
+    let room = await workerBridge.request('getRoom', [room_id])
+    if (!room) {
+      room = {
+        id: room_id,
+        is_group: isGroup,
+        name: roomMetadata?.name || '',
+        avatar: roomMetadata?.avatar || '',
+        participants: participants || [],
+        user_role: role,
+        key_history: [],
+        updated_at: updated
+      }
+    } else {
+      room.updated_at = updated || room.updated_at
+      room.user_role = role || room.user_role
+      if (roomMetadata?.name) {
+        room.name = roomMetadata.name
+      }
+      if (roomMetadata?.avatar) {
+        room.avatar = roomMetadata.avatar
+      }
+      if (participants && participants.length > 0) {
+        const existingParticipants = room.participants || []
+        const mergedMap = new Map()
+        for (const p of existingParticipants) {
+          if (p && p.id) {
+            mergedMap.set(p.id, p)
+          }
+        }
+        for (const p of participants) {
+          if (p && p.id) {
+            const existing = mergedMap.get(p.id)
+            mergedMap.set(p.id, {
+              ...existing,
+              ...p
+            })
+          }
+        }
+        room.participants = Array.from(mergedMap.values())
+      }
+    }
+
+    if (!room.key_history) {
+      room.key_history = []
+    }
+
+    // Use authoritative epoch_id from payload
+    const existingEpochIndex = room.key_history.findIndex(h => h.epoch_id === effectiveEpochId)
+    if (existingEpochIndex !== -1) {
+      room.key_history[existingEpochIndex].key = sodium.to_base64(unwrappedKeyBuffer, sodium.base64_variants.ORIGINAL)
+    } else {
+      room.key_history.push({
+        epoch_id: effectiveEpochId,
+        key: sodium.to_base64(unwrappedKeyBuffer, sodium.base64_variants.ORIGINAL)
+      })
+    }
+
+    await workerBridge.request('saveRoom', [room])
+
     self.postMessage({
       id: rpcId,
       type: 'worker:process_new_room_key',
-      result: {
-        success: false,
-        error: 'Inviter public box key missing'
-      }
+      result: { success: true }
     })
-    return
-  }
-
-  // Decrypt (Unwrap)
-  try {
-    encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key, sodium.base64_variants.ORIGINAL)
-    nonceBuffer = sodium.from_base64(key_nonce, sodium.base64_variants.ORIGINAL)
-    inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey, sodium.base64_variants.ORIGINAL)
-    userPrivateKeyBuffer = sodium.from_base64(self.currentUserKeys.private_box_key, sodium.base64_variants.ORIGINAL)
-
-    unwrappedKeyBuffer = sodium.crypto_box_open_easy(
-      encryptedRoomKeyBuffer,
-      nonceBuffer,
-      inviterPublicKeyBuffer,
-      userPrivateKeyBuffer
-    )
-  } catch (err) {
-    console.warn(`[worker] Failed to unwrap room key for room ${room_id}: Decryption error`, err)
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_new_room_key',
-      result: {
-        success: false,
-        error: 'Failed to unwrap room key: Decryption error'
-      }
-    })
-    return
-  }
-
-  if (!unwrappedKeyBuffer || unwrappedKeyBuffer.length === 0) {
-    console.warn(`[worker] Failed to unwrap room key for room ${room_id}: Null result`)
-    self.postMessage({
-      id: rpcId,
-      type: 'worker:process_new_room_key',
-      result: {
-        success: false,
-        error: 'Failed to unwrap room key: Null result'
-      }
-    })
-    return
-  }
-
-  // Fetch Room metadata and members from server
-  let roomMetadata = null
-  let isGroup = true
-  let participants = []
-  const headers = {}
-  if (self.authToken) {
-    headers.Authorization = self.authToken
-  }
-
-  // fetch room record
-  const roomResponse = await fetchWithTimeout(`${baseUrl}/api/collections/rooms/records/${room_id}`, { headers })
-  if (roomResponse.ok) {
-    const roomRecord = await roomResponse.json()
-    isGroup = roomRecord.is_group
-
-    if (roomRecord.encrypted_metadata && roomRecord.encrypted_metadata.ciphertext) {
-      metadataCiphertext = sodium.from_base64(roomRecord.encrypted_metadata.ciphertext, sodium.base64_variants.ORIGINAL)
-      metadataNonce = sodium.from_base64(roomRecord.encrypted_metadata.nonce, sodium.base64_variants.ORIGINAL)
-      try {
-        decryptedMetadataBuffer = sodium.crypto_secretbox_open_easy(metadataCiphertext, metadataNonce, unwrappedKeyBuffer)
-        if (decryptedMetadataBuffer) {
-          roomMetadata = JSON.parse(new TextDecoder().decode(decryptedMetadataBuffer))
-        }
-      } catch (err) {
-        console.error('Failed to decrypt room metadata:', err)
-      }
-    }
-  }
-
-  // Fetch Room members with user details
-  const membersUrl = `${baseUrl}/api/collections/room_members/records?filter=(room_id='${room_id}')&expand=user_id`
-  const membersResponse = await fetchWithTimeout(membersUrl, { headers })
-  if (membersResponse.ok) {
-    const membersData = await membersResponse.json()
-    participants = membersData.items.map(m => {
-      const u = m.expand?.user_id
-      return u
-        ? {
-          id: u.id,
-          username: u.username,
-          avatar: u.avatar,
-          collectionId: u.collectionId,
-          collectionName: u.collectionName,
-          last_read_message_id: m.last_read_message_id,
-          is_muted: m.is_muted
-        }
-        : null
-    }).filter(p => p !== null)
-  }
-
-  // epoch management and local storage
-  let room = await workerBridge.request('getRoom', [room_id])
-  if (!room) {
-    room = {
-      id: room_id,
-      is_group: isGroup,
-      name: roomMetadata?.name || '',
-      avatar: roomMetadata?.avatar || '',
-      participants: participants || [],
-      user_role: role,
-      key_history: [],
-      updated_at: updated
-    }
-  } else {
-    room.updated_at = updated || room.updated_at
-    room.user_role = role || room.user_role
-    if (roomMetadata?.name) {
-      room.name = roomMetadata.name
-    }
-    if (roomMetadata?.avatar) {
-      room.avatar = roomMetadata.avatar
-    }
-    if (participants && participants.length > 0) {
-      const existingParticipants = room.participants || []
-      const mergedMap = new Map()
-      for (const p of existingParticipants) {
-        if (p && p.id) {
-          mergedMap.set(p.id, p)
-        }
-      }
-      for (const p of participants) {
-        if (p && p.id) {
-          const existing = mergedMap.get(p.id)
-          mergedMap.set(p.id, {
-            ...existing,
-            ...p
-          })
-        }
-      }
-      room.participants = Array.from(mergedMap.values())
-    }
-  }
-
-  if (!room.key_history) {
-    room.key_history = []
-  }
-
-  // Use authoritative epoch_id from payload
-  const existingEpochIndex = room.key_history.findIndex(h => h.epoch_id === effectiveEpochId)
-  if (existingEpochIndex !== -1) {
-    room.key_history[existingEpochIndex].key = sodium.to_base64(unwrappedKeyBuffer, sodium.base64_variants.ORIGINAL)
-  } else {
-    room.key_history.push({
-      epoch_id: effectiveEpochId,
-      key: sodium.to_base64(unwrappedKeyBuffer, sodium.base64_variants.ORIGINAL)
-    })
-  }
-
-  await workerBridge.request('saveRoom', [room])
-
-  self.postMessage({
-    id: rpcId,
-    type: 'worker:process_new_room_key',
-    result: { success: true }
-  })
   } finally {
-    if (encryptedRoomKeyBuffer && typeof encryptedRoomKeyBuffer.fill === 'function') encryptedRoomKeyBuffer.fill(0)
-    if (nonceBuffer && typeof nonceBuffer.fill === 'function') nonceBuffer.fill(0)
-    if (inviterPublicKeyBuffer && typeof inviterPublicKeyBuffer.fill === 'function') inviterPublicKeyBuffer.fill(0)
-    if (userPrivateKeyBuffer && typeof userPrivateKeyBuffer.fill === 'function') userPrivateKeyBuffer.fill(0)
-    if (unwrappedKeyBuffer && typeof unwrappedKeyBuffer.fill === 'function') unwrappedKeyBuffer.fill(0)
-    if (metadataCiphertext && typeof metadataCiphertext.fill === 'function') metadataCiphertext.fill(0)
-    if (metadataNonce && typeof metadataNonce.fill === 'function') metadataNonce.fill(0)
-    if (decryptedMetadataBuffer && typeof decryptedMetadataBuffer.fill === 'function') decryptedMetadataBuffer.fill(0)
+    if (encryptedRoomKeyBuffer && typeof encryptedRoomKeyBuffer.fill === 'function') {
+      encryptedRoomKeyBuffer.fill(0)
+    }
+    if (nonceBuffer && typeof nonceBuffer.fill === 'function') {
+      nonceBuffer.fill(0)
+    }
+    if (inviterPublicKeyBuffer && typeof inviterPublicKeyBuffer.fill === 'function') {
+      inviterPublicKeyBuffer.fill(0)
+    }
+    if (userPrivateKeyBuffer && typeof userPrivateKeyBuffer.fill === 'function') {
+      userPrivateKeyBuffer.fill(0)
+    }
+    if (unwrappedKeyBuffer && typeof unwrappedKeyBuffer.fill === 'function') {
+      unwrappedKeyBuffer.fill(0)
+    }
+    if (metadataCiphertext && typeof metadataCiphertext.fill === 'function') {
+      metadataCiphertext.fill(0)
+    }
+    if (metadataNonce && typeof metadataNonce.fill === 'function') {
+      metadataNonce.fill(0)
+    }
+    if (decryptedMetadataBuffer && typeof decryptedMetadataBuffer.fill === 'function') {
+      decryptedMetadataBuffer.fill(0)
+    }
   }
 }
 

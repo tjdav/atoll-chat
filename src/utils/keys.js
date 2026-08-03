@@ -7,7 +7,8 @@ export function normalizeUsername (username) {
   if (!username) {
     return ''
   }
-  return username.trim().toLowerCase()
+
+  return username.normalize('NFC').trim().toLowerCase()
 }
 
 // In-memory cache for Key A (ephemeral RAM)
@@ -69,8 +70,8 @@ export async function deriveAuthAndVaultKeys (rawUsername, masterPassword) {
       32,
       masterPassword,
       saltAuth,
-      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+      sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
+      sodium.crypto_pwhash_MEMLIMIT_SENSITIVE,
       sodium.crypto_pwhash_ALG_ARGON2ID13
     )
     const keyB = sodium.to_hex(keyBBytes)
@@ -80,8 +81,8 @@ export async function deriveAuthAndVaultKeys (rawUsername, masterPassword) {
       32,
       masterPassword,
       saltVault,
-      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+      sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
+      sodium.crypto_pwhash_MEMLIMIT_SENSITIVE,
       sodium.crypto_pwhash_ALG_ARGON2ID13
     )
 

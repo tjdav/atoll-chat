@@ -10,7 +10,9 @@ test('keys utility tests', async (t) => {
     assert.ok(keyARef instanceof Uint8Array)
     let nonZeroCount = 0
     for (const b of keyARef) {
-      if (b !== 0) nonZeroCount++
+      if (b !== 0) {
+        nonZeroCount++
+      }
     }
     assert.ok(nonZeroCount > 0, 'Key should contain non-zero bytes initially')
 
@@ -31,6 +33,17 @@ test('keys utility tests', async (t) => {
     assert.strictEqual(normalizeUsername('alice'), 'alice')
     assert.strictEqual(normalizeUsername(''), '')
     assert.strictEqual(normalizeUsername(null), '')
+  })
+
+  await t.test('normalizeUsername handles Unicode NFC normalization correctly', () => {
+    // Decomposed unicode string: "u" followed by combining diaeresis "\u0308" (ü)
+    const decomposed = 'mu\u0308ller'
+    // Pre-composed unicode string: "ü" (\u00fc)
+    const precomposed = 'müller'
+
+    assert.strictEqual(normalizeUsername(decomposed), 'müller')
+    assert.strictEqual(normalizeUsername(precomposed), 'müller')
+    assert.strictEqual(normalizeUsername(decomposed), normalizeUsername(precomposed))
   })
 
   await t.test('deriveAuthAndVaultKeys is case resilient and produces identical keys', async () => {
