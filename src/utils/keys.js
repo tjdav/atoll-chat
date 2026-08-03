@@ -19,7 +19,7 @@ let ephemeralVaultKey = null
  */
 export function purgeVaultKey () {
   if (ephemeralVaultKey) {
-    if (typeof ephemeralVaultKey.fill === 'function') {
+    if (typeof ephemeralVaultKey.fill === 'function' && ephemeralVaultKey.byteLength > 0) {
       ephemeralVaultKey.fill(0)
     }
     ephemeralVaultKey = null
