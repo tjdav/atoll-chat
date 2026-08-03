@@ -188,9 +188,7 @@
 
         state.selectedLabelText = foundLabel || ''
 
-        // Imperative fallback to ensure the label element is updated instantly and reliably 
-        // bypassing any template interpolation/reconnection limitations
-        const labelEl = refs('labelElement') || root.querySelector('.atoll-select-label')
+        const labelEl = refs('labelElement')
         if (labelEl) {
           labelEl.textContent = state.selectedLabelText || state.placeholder
         }
