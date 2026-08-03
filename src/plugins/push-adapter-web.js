@@ -59,6 +59,10 @@ export function createWebPushAdapter (_instanceContext) {
      * @returns {Promise<Object|null>} The subscription payload, or null if unsupported.
      */
     async register (vapidKey) {
+      if (!vapidKey) {
+        throw new Error('[WebPushAdapter] VAPID public key is required for registration.')
+      }
+
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
         console.warn('[WebPushAdapter] Service workers or Push notifications are not supported.')
         return null
@@ -74,8 +78,7 @@ export function createWebPushAdapter (_instanceContext) {
         return subscription.toJSON()
       }
 
-      const key = vapidKey || 'BAs='
-      const applicationServerKey = key === 'BAs=' ? new Uint8Array([4, 1, 2, 3]) : urlBase64ToUint8Array(key)
+      const applicationServerKey = urlBase64ToUint8Array(vapidKey)
       subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
         applicationServerKey

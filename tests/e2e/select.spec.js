@@ -83,7 +83,10 @@ test.describe('Atoll Select Component', () => {
 
     // Event should be dispatched
     const eventDetail = await page.evaluate(() => window.__lastChange)
-    expect(eventDetail).toEqual({ value: '2', label: 'Option Two' })
+    expect(eventDetail).toEqual({
+      value: '2',
+      label: 'Option Two'
+    })
 
     // Value state should be updated
     const currentValue = await selectHost.evaluate((el) => el.value)
