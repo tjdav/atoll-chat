@@ -36,8 +36,9 @@
           return { items }
         },
         render: async (itemsToDisplay, query) => {
+          const gridWrapper = gridContainer.querySelector('.atoll-media-grid') || gridContainer
           if (itemsToDisplay.length === 0) {
-            gridContainer.innerHTML = `<div class="p-4 text-center text-body-secondary w-100" style="grid-column: span 3;">${query ? 'No matches found' : 'No pictures found'}</div>`
+            gridWrapper.innerHTML = `<div class="p-4 text-center text-body-secondary w-100" style="grid-column: span 3;">${query ? 'No matches found' : 'No pictures found'}</div>`
             return
           }
   
@@ -61,7 +62,7 @@
             card.setAttribute('file-nonce', item.file_nonce)
             fragment.appendChild(card)
           })
-          gridContainer.innerHTML = ''; gridContainer.appendChild(fragment)
+          gridWrapper.innerHTML = ''; gridWrapper.appendChild(fragment)
         }
       })
 
