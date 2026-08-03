@@ -31,7 +31,7 @@ function getTransferables (obj, seen = new Set()) {
           transferables.push(...getTransferables(val, seen))
         }
       }
-    } catch (_) {
+    } catch {
       // ignore non-serializable properties or errors
     }
   }
