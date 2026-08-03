@@ -39,7 +39,9 @@ test.describe('Authentication and Vault', () => {
     await page.locator('[data-testid$="search-result-bob"]').click()
     await page.locator('[data-testid$="btnCreate"]').click()
 
-    await expect(page.locator('chat-list-item')).toBeVisible()
+    // The modal only closes once the room has been created and cached
+    await expect(page.locator('create-room-modal')).toBeHidden({ timeout: 15000 })
+    await expect(page.locator('chat-list-item')).toBeVisible({ timeout: 15000 })
 
     // logout
     console.log('--- Logout 2 ---')
@@ -56,7 +58,7 @@ test.describe('Authentication and Vault', () => {
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
 
     // Check if chats are loaded (to verify sync)
-    await expect(page.locator('chat-list-item')).toBeVisible()
+    await expect(page.locator('chat-list-item')).toBeVisible({ timeout: 15000 })
   })
 
   test('should fail registration with invalid invitation code', async ({ page }) => {
