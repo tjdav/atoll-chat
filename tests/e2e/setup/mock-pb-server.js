@@ -261,33 +261,22 @@ export function createServer () {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-test-id')
     res.setHeader('Access-Control-Allow-Credentials', 'true')
 
-    // Content Security Policy and Safety Headers (simulating Goja csp.pb.js)
-    const pbUrl = process.env.ATOLL_POCKETBASE_URL || 'http://localhost:8090'
-    const pushUrl = process.env.ATOLL_PUSH_WORKER_URL || 'http://localhost:3001'
-    const isReportOnly = process.env.ATOLL_CSP_REPORT_ONLY === 'true'
-
-    const cspDirectives = [
-      "default-src 'none'",
-      "script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'",
-      `connect-src 'self' ${pbUrl} ${pushUrl} https: wss: ws: stun: turn: turns:`,
-      "worker-src 'self' blob:",
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: blob: https:",
-      "media-src 'self' blob:",
-      "font-src 'self' data:",
-      "manifest-src 'self'",
-      "base-uri 'self'",
-      "form-action 'self'"
-    ]
-
-    const cspHeaderName = isReportOnly ? 'Content-Security-Policy-Report-Only' : 'Content-Security-Policy'
-    if (isReportOnly) {
-      cspDirectives.push('report-uri /api/csp-report')
-    }
-
-    res.setHeader(cspHeaderName, cspDirectives.join('; '))
-    res.setHeader('X-Frame-Options', 'DENY')
+    // Content Security Policy and Safety Headers (simulating Goja security_headers.pb.js)
+    res.setHeader('Content-Security-Policy',
+      "default-src 'none'; " +
+      "script-src 'self' 'wasm-unsafe-eval'; " +
+      "style-src 'self' 'unsafe-inline'; " +
+      "img-src 'self' data: blob:; " +
+      "font-src 'self' data:; " +
+      "connect-src 'self' ws: wss:; " +
+      "worker-src 'self' blob:; " +
+      "frame-ancestors 'none'; " +
+      "base-uri 'self'; " +
+      "form-action 'self';"
+    )
     res.setHeader('X-Content-Type-Options', 'nosniff')
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
+    res.setHeader('X-Frame-Options', 'DENY')
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
 
     if (req.method === 'OPTIONS') {
