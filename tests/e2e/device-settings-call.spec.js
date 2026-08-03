@@ -313,7 +313,7 @@ test.describe.serial('Call Device Settings', () => {
       const micSelect = alicePage.locator('call-overlay [ref$="micSelect"]')
       const toggleBtn = micSelect.locator('button.atoll-select-toggle')
       await toggleBtn.click()
-      
+
       const secondaryMicOption = micSelect.locator('.dropdown-item[data-value="mic-2"]')
       await expect(secondaryMicOption).toBeVisible()
       await secondaryMicOption.click({ force: true })

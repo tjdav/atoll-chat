@@ -8,19 +8,6 @@
       </div>
     </div>
 
-    <!-- Top-Right Badge Overlay -->
-    <div class="atoll-media-badge" ref="badgeContainer">
-      <atoll-icon name="copy" size="18" hidden="{{ isNotAlbum }}"></atoll-icon>
-      <atoll-icon name="videocam" size="18" hidden="{{ isNotVideo }}"></atoll-icon>
-      <span class="gif-pill" hidden="{{ isNotGif }}">GIF</span>
-    </div>
-
-    <!-- Integrated Text Overlay (Bottom Gradient) -->
-    <div class="atoll-media-overlay" hidden="{{ hasNoText }}">
-      <div class="atoll-media-title" title="{{ title }}">{{ title }}</div>
-      <div class="atoll-media-subtitle" title="{{ subtitle }}" hidden="{{ hasNoSubtitle }}">{{ subtitle }}</div>
-    </div>
-
   </div>
 </template>
 
@@ -56,11 +43,6 @@
     getters: {
       aspectClass: (state) => `aspect-${state.aspectRatio || 'square'}`,
       selectedClass: (state) => (state.selected === 'true' || state.selected === true ? 'selected' : ''),
-      isNotAlbum: (state) => state.mediaType !== 'album',
-      isNotVideo: (state) => state.mediaType !== 'video',
-      isNotGif: (state) => state.mediaType !== 'gif',
-      hasNoText: (state) => !state.title && !state.subtitle,
-      hasNoSubtitle: (state) => !state.subtitle,
       placeholderIcon: (state) => {
         if (state.mediaType === 'video') {
           return 'videocam'
@@ -68,7 +50,7 @@
         return 'gallery'
       }
     },
-    client: ({ refs, state, storage, eventBus, signal, utils }) => {
+    client: ({ refs, state, storage, eventBus, signal, utils, observe }) => {
       const { $storage } = storage
       const { $bus } = eventBus
       const { $media } = utils
@@ -184,6 +166,97 @@
         }
       }
 
+      // Dynamic Overlay and Badge Management with Self-Healing DOM Cleanups
+      let badgeElement = null
+      let overlayElement = null
+
+      const updateBadge = () => {
+        if (card) {
+          const existing = card.querySelectorAll('.atoll-media-badge')
+          existing.forEach(el => el.remove())
+        }
+        badgeElement = null
+
+        const mediaType = state.mediaType
+        if (mediaType === 'album' || mediaType === 'video' || mediaType === 'gif') {
+          badgeElement = document.createElement('div')
+          badgeElement.className = 'atoll-media-badge'
+
+          if (mediaType === 'album') {
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'copy')
+            icon.setAttribute('size', '18')
+            badgeElement.appendChild(icon)
+          } else if (mediaType === 'video') {
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'videocam')
+            icon.setAttribute('size', '18')
+            badgeElement.appendChild(icon)
+          } else if (mediaType === 'gif') {
+            const span = document.createElement('span')
+            span.className = 'gif-pill'
+            span.textContent = 'GIF'
+            badgeElement.appendChild(span)
+          }
+
+          if (card) {
+            card.appendChild(badgeElement)
+          }
+        }
+      }
+
+      const updateOverlay = () => {
+        if (card) {
+          const existing = card.querySelectorAll('.atoll-media-overlay')
+          existing.forEach(el => el.remove())
+        }
+        overlayElement = null
+
+        const title = state.title
+        const subtitle = state.subtitle
+
+        if (title || subtitle) {
+          overlayElement = document.createElement('div')
+          overlayElement.className = 'atoll-media-overlay'
+
+          if (title) {
+            const titleEl = document.createElement('div')
+            titleEl.className = 'atoll-media-title'
+            titleEl.setAttribute('title', title)
+            titleEl.textContent = title
+            overlayElement.appendChild(titleEl)
+          }
+
+          if (subtitle) {
+            const subtitleEl = document.createElement('div')
+            subtitleEl.className = 'atoll-media-subtitle'
+            subtitleEl.setAttribute('title', subtitle)
+            subtitleEl.textContent = subtitle
+            overlayElement.appendChild(subtitleEl)
+          }
+
+          if (card) {
+            card.appendChild(overlayElement)
+          }
+        }
+      }
+
+      // Set up dynamic observers
+      if (observe) {
+        observe('mediaType', () => {
+          updateBadge()
+        })
+        observe('title', () => {
+          updateOverlay()
+        })
+        observe('subtitle', () => {
+          updateOverlay()
+        })
+      }
+
+      // Initial layout creation
+      updateBadge()
+      updateOverlay()
       renderPreview()
     }
   })
