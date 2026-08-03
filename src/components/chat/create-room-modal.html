@@ -59,11 +59,11 @@
     </div>
 
     <!-- Footer Actions Slot nested naturally -->
-    <div slot="actions" class="d-flex justify-content-end gap-2 mt-4">
-      <atoll-button ref="btnCancel" variant="secondary" size="md">
+    <div slot="actions" class="d-flex flex-column-reverse gap-2 mt-4 w-100">
+      <atoll-button ref="btnCancel" variant="ghost" size="md">
         Cancel
       </atoll-button>
-      <atoll-button ref="btnSubmit" variant="primary" size="md" disabled="{{ !hasSelectedUsers }}" data-testid="btnCreate">
+      <atoll-button ref="btnSubmit" variant="primary" size="md" data-testid="btnCreate">
         Create Room
       </atoll-button>
     </div>
@@ -101,7 +101,9 @@
       hasSelectedUsers: (state) => (state.selectedParticipants || []).length > 0,
       hideSelectedTokens: (state) => (state.selectedParticipants || []).length === 0
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, storage, _bootstrap, utils, cryptoWorker, signal }) => {
+    client: (context) => {
+      const { refs, state, pocketbase, eventBus, globalStore, storage, utils, cryptoWorker, signal } = context
+
       const { pb } = pocketbase
       const { $func, $crypto } = utils
       const { $worker } = cryptoWorker
@@ -420,40 +422,19 @@
         }
       }
 
-      if (btnCancel) {
-        btnCancel.addEventListener('click', close, { signal })
-      }
+      popupEl.addEventListener('click', async (e) => {
+        const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
+        if (!target) {
+          return
+        }
+        const refAttr = target.getAttribute('ref') || ''
+        const isSubmit = refAttr === 'btnSubmit' || refAttr.endsWith('__btnSubmit')
+        const isCancel = refAttr === 'btnCancel' || refAttr.endsWith('__btnCancel')
 
-      if (popupEl) {
-        popupEl.addEventListener('atoll-popup-close', () => {
-          state.roomName = ''
-          state.searchQuery = ''
-          state.searchResults = []
-          state.selectedParticipants = []
-          state.searchError = null
-          state.roomAvatar = null
-          if (searchBar) {
-            searchBar.value = ''
-          }
-          if (roomNameInput) {
-            roomNameInput.value = ''
-          }
-          if (avatarInput) {
-            avatarInput.value = ''
-          }
-          if (avatarPreview) {
-            avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
-          }
-          if (btnClearAvatar) {
-            btnClearAvatar.classList.add('d-none')
-          }
-          render()
-        }, { signal })
-      }
-
-      if (btnSubmit) {
-        btnSubmit.addEventListener('click', async () => {
-          if (state.isCreating) {
+        if (isCancel) {
+          close()
+        } else if (isSubmit) {
+          if (state.isCreating || state.disableSubmit || !state.hasSelectedUsers) {
             return
           }
 
@@ -485,8 +466,8 @@
               const avatarNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
               const encryptedAvatar = await $worker.execute('worker:crypto_secretbox_easy', {
                 message: fileBuffer,
-                nonce: avatarNonce,
-                key: avatarKey
+                nonce: avatarNonce.slice(0),
+                key: avatarKey.slice(0)
               })
 
               // Upload encrypted avatar to media collection
@@ -509,8 +490,8 @@
             const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
             const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
               message: metadata,
-              nonce: metadataNonce,
-              key: roomKey.slice()
+              nonce: metadataNonce.slice(0),
+              key: roomKey.slice(0)
             })
 
             const metadataPayload = {
@@ -523,8 +504,8 @@
             for (const participant of participants) {
               const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
               const encryptedKey = await $worker.execute('worker:crypto_box_easy', {
-                message: roomKey.slice(),
-                nonce,
+                message: roomKey.slice(0),
+                nonce: nonce.slice(0),
                 publicKey: participant.public_box_key,
                 privateKey: creator.private_box_key
               })
@@ -594,8 +575,33 @@
             state.isCreating = false
             render()
           }
-        }, { signal })
-      }
+        }
+      })
+
+      popupEl.addEventListener('atoll-popup-close', () => {
+        state.roomName = ''
+        state.searchQuery = ''
+        state.searchResults = []
+        state.selectedParticipants = []
+        state.searchError = null
+        state.roomAvatar = null
+        if (searchBar) {
+          searchBar.value = ''
+        }
+        if (roomNameInput) {
+          roomNameInput.value = ''
+        }
+        if (avatarInput) {
+          avatarInput.value = ''
+        }
+        if (avatarPreview) {
+          avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+        }
+        if (btnClearAvatar) {
+          btnClearAvatar.classList.add('d-none')
+        }
+        render()
+      }, { signal })
     }
   })
 </script>

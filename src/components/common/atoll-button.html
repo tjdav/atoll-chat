@@ -191,13 +191,33 @@
       isDisabled: (state) => Boolean(state.disabled || state.loading)
     },
 
-    client: ({ state, refs, root, observe }) => {
+    client: ({ state, refs, root, observe, signal }) => {
       if (root.__initialized) {
+        root._updateBtn(refs('btnElement'))
         return
       }
       root.__initialized = true
-      const btn = refs('btnElement')
+      let btn = refs('btnElement')
       let spinnerEl = null
+
+      root._updateBtn = (newBtn) => {
+        btn = newBtn
+        if (btn) {
+          const testId = root.__testId
+          if (testId) {
+            btn.setAttribute('data-testid', testId)
+          }
+          btn.addEventListener('click', (event) => {
+            if (state.disabled || state.loading) {
+              event.preventDefault()
+              event.stopImmediatePropagation()
+            }
+          }, { signal })
+          syncLoadingState()
+          syncAriaLabel()
+          syncAriaPressed()
+        }
+      }
 
       // Forward test-id / data-testid from host to the nested native button, preserving across reconnects
       const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
@@ -300,7 +320,7 @@
             event.preventDefault()
             event.stopImmediatePropagation()
           }
-        })
+        }, { signal })
       }
 
       // Observe loading and disabled state mutations

@@ -129,12 +129,12 @@
       }
     },
 
-    client: ({ state, refs, root, observe }) => {
+    client: ({ state, refs, root, observe, signal }) => {
       const input = refs('input')
       const clearBtn = refs('clearBtn')
       const cancelBtn = refs('cancelBtn')
 
-      // Forward data-testid attribute, preserving across reconnects
+      // Forward test-id / data-testid from host to the nested native input, preserving across reconnects
       const testId = root.getAttribute('data-testid') || root.__testId
       if (testId) {
         root.__testId = testId
@@ -155,22 +155,22 @@
       if (input) {
         input.addEventListener('focus', () => {
           state.isFocused = true
-        })
+        }, { signal })
 
         input.addEventListener('blur', () => {
           state.isFocused = false
-        })
+        }, { signal })
 
         input.addEventListener('input', () => {
           state.value = input.value
           dispatchEvents('input')
           dispatchEvents('change')
-        })
+        }, { signal })
 
         // Prevent native search event from bubbling and conflicting
         input.addEventListener('search', (event) => {
           event.stopPropagation()
-        })
+        }, { signal })
 
         input.addEventListener('keydown', (event) => {
           if (event.key === 'Enter') {
@@ -192,7 +192,7 @@
               input.blur()
             }
           }
-        })
+        }, { signal })
       }
 
       // Clear Button Trigger Handler (Touch-safe using pointerdown/mousedown with preventDefault)
@@ -208,8 +208,8 @@
           dispatchEvents('input')
           dispatchEvents('change')
         }
-        clearBtn.addEventListener('pointerdown', handleClear)
-        clearBtn.addEventListener('mousedown', handleClear)
+        clearBtn.addEventListener('pointerdown', handleClear, { signal })
+        clearBtn.addEventListener('mousedown', handleClear, { signal })
       }
 
       // Cancel Button Handler
@@ -231,7 +231,7 @@
               composed: true
             })
           )
-        })
+        }, { signal })
       }
 
       // Programmatic External Sync for value property/attribute
