@@ -91,7 +91,10 @@ self.postMessage = function (message, transferOrOptions) {
   }
   if (transferables.length > 0) {
     if (transferOrOptions && typeof transferOrOptions === 'object' && !Array.isArray(transferOrOptions)) {
-      nativePostMessage.call(self, message, { ...transferOrOptions, transfer: transferables })
+      nativePostMessage.call(self, message, {
+        ...transferOrOptions,
+        transfer: transferables
+      })
     } else {
       nativePostMessage.call(self, message, { transfer: transferables })
     }

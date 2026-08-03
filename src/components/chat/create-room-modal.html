@@ -101,14 +101,14 @@
       hasSelectedUsers: (state) => (state.selectedParticipants || []).length > 0,
       hideSelectedTokens: (state) => (state.selectedParticipants || []).length === 0
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, storage, bootstrap, utils, cryptoWorker, signal }) => {
+    client: ({ refs, state, pocketbase, eventBus, globalStore, storage, _bootstrap, utils, cryptoWorker, _signal }) => {
       const { pb } = pocketbase
       const { $func, $crypto } = utils
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $storage } = storage
-      
+  
       const popupEl = refs('popupEl')
       const searchBar = refs('searchBar')
       const roomNameInput = refs('roomNameInput')
@@ -122,7 +122,6 @@
       const roomAvatarContainer = refs('roomAvatarContainer')
       const btnCancel = refs('btnCancel')
       const btnSubmit = refs('btnSubmit')
-      const btnCreate = btnSubmit
 
       console.log('[create-room-modal-debug] Mount Resolved refs (Coralite 0.43.5):', {
         popupEl: !!popupEl,
@@ -207,10 +206,10 @@
             const textSpan = document.createTextNode(user.name || user.username)
             chip.appendChild(textSpan)
 
-            chip.addEventListener('atoll-chip-remove', (e) => {
+            chip.addEventListener('atoll-chip-remove', () => {
               state.selectedParticipants = state.selectedParticipants.filter(p => p.id !== user.id)
               render()
-            })
+            }, { signal })
 
             tokenContainer.appendChild(chip)
           })
@@ -271,7 +270,7 @@
                   searchBar.value = ''
                 }
                 render()
-              })
+              }, { signal })
 
               userList.appendChild(item)
             })
@@ -325,13 +324,13 @@
             render()
           }
           performSearch(state.searchQuery)
-        })
+        }, { signal })
 
         searchBar.addEventListener('cancel', () => {
           state.searchQuery = ''
           state.searchResults = []
           render()
-        })
+        }, { signal })
       }
 
       if (roomNameInput) {
@@ -422,7 +421,7 @@
       }
 
       if (btnCancel) {
-        btnCancel.addEventListener('click', close)
+        btnCancel.addEventListener('click', close, { signal })
       }
 
       if (popupEl) {
@@ -449,7 +448,7 @@
             btnClearAvatar.classList.add('d-none')
           }
           render()
-        })
+        }, { signal })
       }
 
       if (btnSubmit) {
@@ -511,7 +510,7 @@
             const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
               message: metadata,
               nonce: metadataNonce,
-              key: roomKey
+              key: roomKey.slice()
             })
 
             const metadataPayload = {
@@ -524,7 +523,7 @@
             for (const participant of participants) {
               const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
               const encryptedKey = await $worker.execute('worker:crypto_box_easy', {
-                message: roomKey,
+                message: roomKey.slice(),
                 nonce,
                 publicKey: participant.public_box_key,
                 privateKey: creator.private_box_key
@@ -595,7 +594,7 @@
             state.isCreating = false
             render()
           }
-        })
+        }, { signal })
       }
     }
   })

@@ -134,6 +134,16 @@
       const clearBtn = refs('clearBtn')
       const cancelBtn = refs('cancelBtn')
 
+      // Forward data-testid attribute, preserving across reconnects
+      const testId = root.getAttribute('data-testid') || root.__testId
+      if (testId) {
+        root.__testId = testId
+        if (input) {
+          input.setAttribute('data-testid', testId)
+        }
+        root.removeAttribute('data-testid')
+      }
+
       const dispatchEvents = (eventName) => {
         root.dispatchEvent(new Event(eventName, {
           bubbles: true,
