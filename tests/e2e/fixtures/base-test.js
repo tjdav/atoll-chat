@@ -2,6 +2,9 @@ import { test as base, expect } from '@playwright/test'
 import PocketBase from 'pocketbase'
 import sodium from 'libsodium-wrappers-sumo'
 import http from 'http'
+import { deriveAuthAndVaultKeys } from '../../../src/utils/keys.js'
+
+process.env.NODE_ENV = 'test'
 
 const PB_URL = process.env.ATOLL_POCKETBASE_URL || process.env.ATOLL_INTERNAL_POCKETBASE_URL || 'http://localhost:8091'
 const mockPort = parseInt(new URL(PB_URL).port || '8091', 10)
@@ -216,31 +219,7 @@ async function resetPocketBase (testId) {
         // User doesn't exist, we will create it below
       }
 
-      const canonicalUsername = user.username.trim().toLowerCase()
-      const authSaltInput = `atoll-auth-salt:${canonicalUsername}`
-      const authSaltHash = sodium.crypto_hash_sha256(authSaltInput)
-      const saltAuth = authSaltHash.slice(0, 16)
-      const keyBBytes = sodium.crypto_pwhash(
-        32,
-        SHARED_PASSWORD,
-        saltAuth,
-        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_ALG_ARGON2ID13
-      )
-      const userPasswordKeyB = sodium.to_hex(keyBBytes)
-
-      const vaultSaltInput = `atoll-vault-salt:${canonicalUsername}`
-      const vaultSaltHash = sodium.crypto_hash_sha256(vaultSaltInput)
-      const saltVault = vaultSaltHash.slice(0, 16)
-      const keyABytes = sodium.crypto_pwhash(
-        32,
-        SHARED_PASSWORD,
-        saltVault,
-        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_ALG_ARGON2ID13
-      )
+      const { keyA: keyABytes, keyB: userPasswordKeyB } = await deriveAuthAndVaultKeys(user.username, SHARED_PASSWORD)
 
       const masterKeys = await generateMasterKeys(sodium)
       const salt = generateSalt(sodium)

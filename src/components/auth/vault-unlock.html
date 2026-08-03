@@ -381,7 +381,7 @@
           updateStatus('Locating vault...')
           btnUnlockSubmit?.setAttribute('loading', 'true')
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
-          const { vault_salt: saltBase64, encrypted_master_keys: encryptedMasterKeys, encrypted_private_keys: encryptedPrivateKeys } = record
+          const { encrypted_master_keys: encryptedMasterKeys, encrypted_private_keys: encryptedPrivateKeys } = record
 
           if (!encryptedMasterKeys) {
             passwordInput.setCustomValidity('Error: Secure vault not found on server.')
@@ -402,23 +402,11 @@
           const { keyA } = await deriveAuthAndVaultKeys(record.username, password)
 
           updateStatus('Decrypting Master Key...')
-          let masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
+          const masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
             ciphertext: encryptedMasterKeys.ciphertext,
             nonce: encryptedMasterKeys.nonce,
             key: keyA
           })
-
-          if (!masterKey && saltBase64) {
-            const KEK = await $worker.execute('worker:derive_key_from_password', {
-              password,
-              salt: saltBase64
-            })
-            masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
-              ciphertext: encryptedMasterKeys.ciphertext,
-              nonce: encryptedMasterKeys.nonce,
-              key: KEK
-            })
-          }
 
           purgeVaultKey()
 

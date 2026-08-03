@@ -123,7 +123,6 @@ self.onmessage = (event) => {
     'worker:check_ready',
     'worker:test_rpc',
     'worker:generate_salt',
-    'worker:derive_key_from_password',
     'worker:process_incoming_message',
     'worker:decrypt_file',
     'worker:process_new_room_key',
@@ -430,24 +429,6 @@ async function handleEvent (event) {
         type,
         result: salt
       }, { transfer: [salt.buffer] })
-      return
-    }
-
-    if (type === 'worker:derive_key_from_password') {
-      const { password, salt } = payload
-      const KEK = await sodium.crypto_pwhash(
-        32,
-        password,
-        typeof salt === 'string' ? sodium.from_base64(salt, sodium.base64_variants.ORIGINAL) : salt,
-        sodium.crypto_pwhash_OPSLIMIT_SENSITIVE,
-        sodium.crypto_pwhash_MEMLIMIT_SENSITIVE,
-        sodium.crypto_pwhash_ALG_ARGON2ID13
-      )
-      self.postMessage({
-        id,
-        type,
-        result: KEK
-      }, { transfer: [KEK.buffer] })
       return
     }
 

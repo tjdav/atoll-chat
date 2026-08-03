@@ -1,5 +1,6 @@
 import sodium from 'libsodium-wrappers-sumo'
 import PocketBase from 'pocketbase'
+import { deriveAuthAndVaultKeys } from '../src/utils/keys.js'
 
 /**
  * Generates a 16-byte cryptographically secure salt using libsodium.
@@ -75,21 +76,14 @@ function generateRecoveryWraps (masterKeyBytes, sodium) {
     const code = generateRawRecoveryCode(sodium)
     plaintextCodes.push(code)
 
-    const codeSalt = sodium.randombytes_buf(16)
-    const codeKey = sodium.crypto_pwhash(
-      32,
-      code,
-      codeSalt,
-      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-      sodium.crypto_pwhash_ALG_ARGON2ID13
-    )
+    const codeHash = sodium.crypto_generichash(32, code)
+    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+    const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
 
-    const wrapWrap = encryptMasterKeyWithKek(masterKeyBytes, codeKey, sodium)
     wraps.push({
-      salt: sodium.to_base64(codeSalt, sodium.base64_variants.ORIGINAL),
-      ciphertext: wrapWrap.ciphertext,
-      nonce: wrapWrap.nonce
+      hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+      ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+      nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
     })
   }
 
@@ -136,34 +130,8 @@ async function provision () {
     try {
       console.log(`Creating user: ${user.username}...`)
 
-      const canonicalUsername = user.username.trim().toLowerCase()
-
-      // Compute Key B (Auth Credential) using Argon2id
-      const authSaltInput = `atoll-auth-salt:${canonicalUsername}`
-      const authSaltHash = sodium.crypto_hash_sha256(authSaltInput)
-      const saltAuth = authSaltHash.slice(0, 16)
-      const keyBBytes = sodium.crypto_pwhash(
-        32,
-        SHARED_PASSWORD,
-        saltAuth,
-        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_ALG_ARGON2ID13
-      )
-      const userPasswordKeyB = sodium.to_hex(keyBBytes)
-
-      // Compute Key A (Vault Key) using Argon2id
-      const vaultSaltInput = `atoll-vault-salt:${canonicalUsername}`
-      const vaultSaltHash = sodium.crypto_hash_sha256(vaultSaltInput)
-      const saltVault = vaultSaltHash.slice(0, 16)
-      const keyABytes = sodium.crypto_pwhash(
-        32,
-        SHARED_PASSWORD,
-        saltVault,
-        sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-        sodium.crypto_pwhash_ALG_ARGON2ID13
-      )
+      // Compute Key A and Key B using the single-pass derivation
+      const { keyA: keyABytes, keyB: userPasswordKeyB } = await deriveAuthAndVaultKeys(user.username, SHARED_PASSWORD)
 
       // Generate master keys and encrypt VMK with Key A
       const masterKeys = await generateMasterKeys(sodium)

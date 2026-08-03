@@ -1,5 +1,10 @@
 import { test } from 'node:test'
 import assert from 'node:assert'
+import sodium from 'libsodium-wrappers-sumo'
+
+// Set test environment explicitly
+process.env.NODE_ENV = 'test'
+
 import { normalizeUsername, deriveAuthAndVaultKeys, purgeVaultKey, getVaultKey } from '../../src/utils/keys.js'
 
 test('keys utility tests', async (t) => {
@@ -27,6 +32,7 @@ test('keys utility tests', async (t) => {
     // Verify global state reference is null
     assert.strictEqual(getVaultKey(), null)
   })
+
   await t.test('normalizeUsername trims and converts to lowercase', () => {
     assert.strictEqual(normalizeUsername('  Alice  '), 'alice')
     assert.strictEqual(normalizeUsername('ALICE'), 'alice')
@@ -66,5 +72,57 @@ test('keys utility tests', async (t) => {
     // Verify identical outputs regardless of original username casing and whitespace
     assert.strictEqual(res1.keyB, res2.keyB)
     assert.deepStrictEqual(res1.keyA, res2.keyA)
+  })
+
+  await t.test('deriveAuthAndVaultKeys uses correct single-pass parameters and zeroes seed', async () => {
+    await sodium.ready
+    const originalPwhash = sodium.crypto_pwhash
+    let pwhashCalls = []
+    sodium.crypto_pwhash = function (...args) {
+      pwhashCalls.push(args)
+      return originalPwhash.apply(this, args)
+    }
+
+    try {
+      const res = await deriveAuthAndVaultKeys('testuser', 'Password123!')
+      assert.strictEqual(pwhashCalls.length, 1, 'crypto_pwhash should be called exactly once')
+
+      const [outlen, passwd, , opslimit, memlimit] = pwhashCalls[0]
+      assert.strictEqual(outlen, 64, 'Output length must be 64 bytes')
+      assert.strictEqual(passwd, 'Password123!')
+      // In test mode (NODE_ENV=test), opslimit and memlimit should be 1 and 8MB respectively
+      assert.strictEqual(opslimit, 1, 'OPSLIMIT should be 1 in test mode')
+      assert.strictEqual(memlimit, 8388608, 'MEMLIMIT should be 8388608 in test mode')
+
+      // Verify that keyA and keyB are correctly sliced
+      assert.strictEqual(res.keyA.length, 32)
+      assert.strictEqual(res.keyB.length, 64)
+    } finally {
+      sodium.crypto_pwhash = originalPwhash
+    }
+  })
+
+  await t.test('deriveAuthAndVaultKeys uses production parameters when not in test environment', async () => {
+    await sodium.ready
+    const originalEnv = process.env.NODE_ENV
+    process.env.NODE_ENV = 'production'
+    const originalPwhash = sodium.crypto_pwhash
+    let pwhashCalls = []
+    sodium.crypto_pwhash = function (...args) {
+      pwhashCalls.push(args)
+      return originalPwhash.apply(this, args)
+    }
+
+    try {
+      await deriveAuthAndVaultKeys('produser', 'Password123!')
+      assert.strictEqual(pwhashCalls.length, 1)
+      const [outlen, , , opslimit, memlimit] = pwhashCalls[0]
+      assert.strictEqual(outlen, 64)
+      assert.strictEqual(opslimit, 3, 'OPSLIMIT should be 3 in production')
+      assert.strictEqual(memlimit, 134217728, 'MEMLIMIT should be 134217728 in production')
+    } finally {
+      sodium.crypto_pwhash = originalPwhash
+      process.env.NODE_ENV = originalEnv
+    }
   })
 })
