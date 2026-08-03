@@ -101,7 +101,7 @@
       hasSelectedUsers: (state) => (state.selectedParticipants || []).length > 0,
       hideSelectedTokens: (state) => (state.selectedParticipants || []).length === 0
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, storage, _bootstrap, utils, cryptoWorker, _signal }) => {
+    client: ({ refs, state, pocketbase, eventBus, globalStore, storage, _bootstrap, utils, cryptoWorker, signal }) => {
       const { pb } = pocketbase
       const { $func, $crypto } = utils
       const { $worker } = cryptoWorker
