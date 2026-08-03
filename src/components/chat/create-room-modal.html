@@ -1,51 +1,74 @@
 <template id="create-room-modal">
-  <div ref="roomModal" class="modal fade" tabindex="-1" aria-labelledby="{{ ref_modalTitle }}" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Create New Room</h5>
-          <button type="button" class="btn-close" ref="btnCloseTop" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3 {{ roomNameClass }}">
-            <label class="form-label fw-bold">Room Name</label>
-            <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput" data-testid="roomNameInput">
-          </div>
+  <atoll-popup 
+    ref="popupEl"
+    id="createRoomModal" 
+    title="Create New Room" 
+    size="md"
+    closeable
+  >
+    <!-- Form Body nested naturally -->
+    <div class="d-flex flex-column gap-3">
+      
+      <!-- Room Name (shown conditionally for group rooms) -->
+      <div class="mb-1 {{ roomNameClass }}" ref="roomNameContainer">
+        <label class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.05em;">Room Name</label>
+        <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput" data-testid="roomNameInput">
+      </div>
 
-          <div class="mb-3 {{ roomNameClass }}">
-            <label class="form-label fw-bold">Room Avatar (Optional)</label>
-            <div class="d-flex align-items-center gap-3">
-              <div class="room-avatar-preview bg-body-tertiary border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
-                <i class="bi bi-camera fs-3 text-muted"></i>
-              </div>
-              <div>
-                <input type="file" class="d-none" ref="avatarInput" accept="image/*">
-                <button type="button" class="btn btn-sm btn-outline-secondary" ref="btnSelectAvatar">Select Image</button>
-                <button type="button" class="btn btn-sm btn-link text-danger d-none" ref="btnClearAvatar">Clear</button>
-              </div>
-            </div>
+      <!-- Room Avatar (shown conditionally for group rooms) -->
+      <div class="mb-1 {{ roomNameClass }}" ref="roomAvatarContainer">
+        <label class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.05em;">Room Avatar (Optional)</label>
+        <div class="d-flex align-items-center gap-3">
+          <div class="room-avatar-preview bg-body-tertiary border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
+            <i class="bi bi-camera fs-3 text-muted"></i>
           </div>
-
-          <div class="mb-3">
-            <label class="form-label fw-bold">Participants</label>
-            <div class="d-flex flex-wrap gap-2 mb-2" ref="selectedUsers"></div>
-            <div class="input-group">
-              <span class="input-group-text bg-body-tertiary border-end-0"><i class="bi bi-search"></i></span>
-              <input type="text" class="form-control border-start-0 ps-0" placeholder="Search by username..." ref="searchInput" data-testid="searchInput">
-            </div>
+          <div>
+            <input type="file" class="d-none" ref="avatarInput" accept="image/*">
+            <button type="button" class="btn btn-sm btn-outline-secondary" ref="btnSelectAvatar">Select Image</button>
+            <button type="button" class="btn btn-sm btn-link text-danger d-none" ref="btnClearAvatar">Clear</button>
           </div>
-
-          <div class="search-results-container border rounded overflow-hidden" style="max-height: 200px; overflow-y: auto;" ref="searchResults"></div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-link text-decoration-none" ref="btnCancel">Cancel</button>
-          <button type="button" class="btn btn-primary" ref="btnCreate" disabled data-testid="btnCreate">Create Room</button>
         </div>
       </div>
-    </div>
-  </div>
-</template>
 
+      <!-- Selected Participant Chips Area -->
+      <div 
+        ref="tokenContainer"
+        class="atoll-token-container p-2 border rounded-3 d-flex flex-wrap gap-2 align-items-center" 
+        hidden="{{ hideSelectedTokens }}"
+      >
+        <slot name="tokens">
+          <!-- Dynamically rendered chips -->
+        </slot>
+      </div>
+
+      <!-- Integrated Search Bar -->
+      <atoll-search-bar 
+        ref="searchBar"
+        placeholder="Search by username..." 
+        size="md"
+        data-testid="searchInput"
+      ></atoll-search-bar>
+
+      <!-- Candidate Member Selection List -->
+      <div class="user-search-results overflow-y-auto" style="max-height: 240px;">
+        <atoll-list ref="userList" mode="selection" divided>
+          <!-- Dynamic search candidate items populated via script -->
+        </atoll-list>
+      </div>
+
+    </div>
+
+    <!-- Footer Actions Slot nested naturally -->
+    <div slot="actions" class="d-flex justify-content-end gap-2 mt-4">
+      <atoll-button ref="btnCancel" variant="secondary" size="md">
+        Cancel
+      </atoll-button>
+      <atoll-button ref="btnSubmit" variant="primary" size="md" disabled="{{ !hasSelectedUsers }}" data-testid="btnCreate">
+        Create Room
+      </atoll-button>
+    </div>
+  </atoll-popup>
+</template>
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -73,7 +96,10 @@
         }
         return true
       },
-      roomNameClass: (state) => (((state.selectedParticipants || []).length > 1) ? 'd-block' : 'd-none')
+      roomNameClass: (state) => (((state.selectedParticipants || []).length > 1) ? 'd-block' : 'd-none'),
+      disableSubmit: (state) => !state.canCreate || state.isCreating,
+      hasSelectedUsers: (state) => (state.selectedParticipants || []).length > 0,
+      hideSelectedTokens: (state) => (state.selectedParticipants || []).length === 0
     },
     client: ({ refs, state, pocketbase, eventBus, globalStore, storage, bootstrap, utils, cryptoWorker, signal }) => {
       const { pb } = pocketbase
@@ -82,78 +108,174 @@
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $storage } = storage
-      const { Modal } = bootstrap
-      const modalEl = refs('roomModal')
-      const modal = new Modal(modalEl)
-      const searchInput = refs('searchInput')
+      
+      const popupEl = refs('popupEl')
+      const searchBar = refs('searchBar')
       const roomNameInput = refs('roomNameInput')
-      const btnCreate = refs('btnCreate')
-      const selectedUsersContainer = refs('selectedUsers')
-      const searchResultsContainer = refs('searchResults')
+      const tokenContainer = refs('tokenContainer')
+      const userList = refs('userList')
       const avatarInput = refs('avatarInput')
       const avatarPreview = refs('avatarPreview')
       const btnSelectAvatar = refs('btnSelectAvatar')
       const btnClearAvatar = refs('btnClearAvatar')
+      const roomNameContainer = refs('roomNameContainer')
+      const roomAvatarContainer = refs('roomAvatarContainer')
+      const btnCancel = refs('btnCancel')
+      const btnSubmit = refs('btnSubmit')
+      const btnCreate = btnSubmit
+
+      console.log('[create-room-modal-debug] Mount Resolved refs (Coralite 0.43.5):', {
+        popupEl: !!popupEl,
+        searchBar: !!searchBar,
+        roomNameInput: !!roomNameInput,
+        tokenContainer: !!tokenContainer,
+        userList: !!userList,
+        avatarInput: !!avatarInput,
+        avatarPreview: !!avatarPreview,
+        btnSelectAvatar: !!btnSelectAvatar,
+        btnClearAvatar: !!btnClearAvatar,
+        roomNameContainer: !!roomNameContainer,
+        roomAvatarContainer: !!roomAvatarContainer,
+        btnCancel: !!btnCancel,
+        btnSubmit: !!btnSubmit
+      })
 
       const render = () => {
-        // UI logic utilizing state (getters are available on proxy in script)
-        btnCreate.disabled = !state.canCreate || state.isCreating
-        btnCreate.innerHTML = state.isCreating
-          ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Creating...'
-          : 'Create Room'
-
-        // Render lists
-        selectedUsersContainer.innerHTML = ''
-        state.selectedParticipants.forEach(user => {
-          const chip = document.createElement('div')
-          chip.className = 'user-chip'
-          chip.textContent = user.name || user.username
-          const closeBtn = document.createElement('button')
-          closeBtn.type = 'button'
-          closeBtn.className = 'btn-close'
-          closeBtn.onclick = () => {
-            state.selectedParticipants = state.selectedParticipants.filter(p => p.id !== user.id)
-            render()
-          }
-          chip.appendChild(closeBtn)
-          selectedUsersContainer.appendChild(chip)
-        })
-
-        searchResultsContainer.innerHTML = ''
-        if (state.searchError) {
-          const msg = document.createElement('div')
-          msg.className = 'p-3 text-center text-danger'
-          msg.textContent = state.searchError
-          searchResultsContainer.appendChild(msg)
-        } else if (state.searchResults.length === 0) {
-          const msg = document.createElement('div')
-          msg.className = 'p-3 text-center text-muted'
-          if (state.searchQuery && state.searchQuery.length >= 3) {
-            msg.textContent = 'No users found'
-          } else if (state.searchQuery) {
-            msg.textContent = 'Type at least 3 characters...'
+        // Handle dynamic group field visibility classes imperatively as fallback/safeguard
+        const showGroupFields = state.selectedParticipants.length > 1
+        if (roomNameContainer) {
+          if (showGroupFields) {
+            roomNameContainer.classList.remove('d-none')
+            roomNameContainer.classList.add('d-block')
           } else {
-            msg.textContent = 'Type to search users...'
+            roomNameContainer.classList.remove('d-block')
+            roomNameContainer.classList.add('d-none')
           }
-          searchResultsContainer.appendChild(msg)
-        } else {
-          state.searchResults.forEach(user => {
-            if (state.selectedParticipants.find(p => p.id === user.id)) {
-              return
+        }
+        if (roomAvatarContainer) {
+          if (showGroupFields) {
+            roomAvatarContainer.classList.remove('d-none')
+            roomAvatarContainer.classList.add('d-block')
+          } else {
+            roomAvatarContainer.classList.remove('d-block')
+            roomAvatarContainer.classList.add('d-none')
+          }
+        }
+
+        // Token container hidden state
+        if (tokenContainer) {
+          if (state.hideSelectedTokens) {
+            tokenContainer.setAttribute('hidden', 'true')
+          } else {
+            tokenContainer.removeAttribute('hidden')
+          }
+        }
+
+        // Submit button state and text
+        if (btnSubmit) {
+          // The "Create Room" action button remains disabled until at least one participant is selected.
+          btnSubmit.disabled = !state.hasSelectedUsers || state.disableSubmit
+          const labelEl = btnSubmit.querySelector('.atoll-btn-label') || btnSubmit
+          if (state.isCreating) {
+            btnSubmit.setAttribute('loading', 'true')
+            labelEl.textContent = 'Creating...'
+          } else {
+            btnSubmit.removeAttribute('loading')
+            labelEl.textContent = 'Create Room'
+          }
+        }
+
+        // Render participant tokens (chips)
+        if (tokenContainer) {
+          tokenContainer.innerHTML = ''
+          state.selectedParticipants.forEach(user => {
+            const chip = document.createElement('atoll-chip')
+            chip.setAttribute('variant', 'secondary')
+            chip.setAttribute('size', 'md')
+            chip.setAttribute('removable', 'true')
+            chip.setAttribute('value', user.id)
+
+            const profile = document.createElement('atoll-profile')
+            profile.setAttribute('slot', 'leading')
+            profile.setAttribute('size', 'xs')
+            profile.setAttribute('name', user.name || user.username)
+            if (user.avatar) {
+              profile.setAttribute('src', pb.files.getURL(user, user.avatar, { thumb: '40x40' }))
             }
-            const item = document.createElement('div')
-            item.className = 'search-result-item'
-            item.setAttribute('data-testid', 'search-result-' + user.username)
-            item.textContent = user.name ? `${user.name} (@${user.username})` : user.username
-            item.onclick = () => {
-              state.selectedParticipants = [...state.selectedParticipants, user]
-              state.searchQuery = ''
-              state.searchResults = []
-              searchInput.value = ''
+            chip.appendChild(profile)
+
+            const textSpan = document.createTextNode(user.name || user.username)
+            chip.appendChild(textSpan)
+
+            chip.addEventListener('atoll-chip-remove', (e) => {
+              state.selectedParticipants = state.selectedParticipants.filter(p => p.id !== user.id)
               render()
-            }
-            searchResultsContainer.appendChild(item)
+            })
+
+            tokenContainer.appendChild(chip)
           })
+        }
+
+        // Render candidate results list
+        if (userList) {
+          userList.innerHTML = ''
+          if (state.searchError) {
+            const msg = document.createElement('div')
+            msg.className = 'p-3 text-center text-danger'
+            msg.textContent = state.searchError
+            userList.appendChild(msg)
+          } else if (state.searchResults.length === 0) {
+            const msg = document.createElement('div')
+            msg.className = 'p-3 text-center text-muted small'
+            if (state.searchQuery && state.searchQuery.length >= 3) {
+              msg.textContent = 'No users found'
+            } else if (state.searchQuery) {
+              msg.textContent = 'Type at least 3 characters...'
+            } else {
+              msg.textContent = 'Type to search users...'
+            }
+            userList.appendChild(msg)
+          } else {
+            state.searchResults.forEach(user => {
+              const isSelected = state.selectedParticipants.find(p => p.id === user.id)
+              const item = document.createElement('atoll-list-item')
+              item.setAttribute('mode', 'selection')
+              item.setAttribute('title', user.name ? `${user.name} (@${user.username})` : user.username)
+              item.setAttribute('value', user.id)
+              item.setAttribute('data-testid', 'search-result-' + user.username)
+              if (isSelected) {
+                item.setAttribute('checked', 'true')
+              }
+
+              const profile = document.createElement('atoll-profile')
+              profile.setAttribute('slot', 'left')
+              profile.setAttribute('size', 'sm')
+              profile.setAttribute('name', user.name || user.username)
+              if (user.avatar) {
+                profile.setAttribute('src', pb.files.getURL(user, user.avatar, { thumb: '40x40' }))
+              }
+              item.appendChild(profile)
+
+              item.addEventListener('atoll-selection-change', (e) => {
+                const checked = e.detail[0]?.checked
+                if (checked) {
+                  if (!state.selectedParticipants.find(p => p.id === user.id)) {
+                    state.selectedParticipants = [...state.selectedParticipants, user]
+                  }
+                } else {
+                  state.selectedParticipants = state.selectedParticipants.filter(p => p.id !== user.id)
+                }
+                state.searchQuery = ''
+                state.searchResults = []
+                if (searchBar) {
+                  searchBar.value = ''
+                }
+                render()
+              })
+
+              userList.appendChild(item)
+            })
+          }
         }
       }
 
@@ -169,6 +291,14 @@
         }
 
         try {
+          if (typeof window !== 'undefined' && typeof window.__pbMockGetList === 'function') {
+            const res = await window.__pbMockGetList(query)
+            state.searchResults = res.items
+            state.searchError = null
+            render()
+            return
+          }
+
           const res = await pb.collection('users').getList(1, 5, {
             filter: pb.filter('username ~ {:query}', { query })
           })
@@ -186,19 +316,29 @@
         }
       }, 300)
 
-      searchInput.oninput = (e) => {
-        state.searchQuery = e.target.value
-        state.searchError = null
-        if (state.searchQuery.length < 3) {
+      if (searchBar) {
+        searchBar.addEventListener('input', () => {
+          state.searchQuery = searchBar.value || ''
+          state.searchError = null
+          if (state.searchQuery.length < 3) {
+            state.searchResults = []
+            render()
+          }
+          performSearch(state.searchQuery)
+        })
+
+        searchBar.addEventListener('cancel', () => {
+          state.searchQuery = ''
           state.searchResults = []
           render()
-        }
-        performSearch(state.searchQuery)
+        })
       }
 
-      roomNameInput.oninput = (e) => {
-        state.roomName = e.target.value
-        render()
+      if (roomNameInput) {
+        roomNameInput.oninput = (e) => {
+          state.roomName = e.target.value
+          render()
+        }
       }
 
       $bus.on('ui:open_create_room', () => {
@@ -208,52 +348,8 @@
         state.selectedParticipants = []
         state.searchError = null
         state.roomAvatar = null
-        searchInput.value = ''
-        roomNameInput.value = ''
-        avatarInput.value = ''
-        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
-        btnClearAvatar.classList.add('d-none')
-        render()
-        modal.show()
-      })
-
-      btnSelectAvatar.onclick = () => avatarInput.click()
-      avatarInput.onchange = (e) => {
-        const file = e.target.files[0]
-        if (file) {
-          state.roomAvatar = file
-          const reader = new FileReader()
-          reader.onload = (re) => {
-            avatarPreview.innerHTML = ''
-            const img = document.createElement('img')
-            img.src = re.target.result
-            img.className = 'w-100 h-100 object-fit-cover'
-            avatarPreview.appendChild(img)
-            btnClearAvatar.classList.remove('d-none')
-          }
-          reader.readAsDataURL(file)
-        }
-      }
-      btnClearAvatar.onclick = () => {
-        state.roomAvatar = null
-        avatarInput.value = ''
-        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
-        btnClearAvatar.classList.add('d-none')
-      }
-
-      const close = () => modal.hide()
-      refs('btnCloseTop').onclick = close
-      refs('btnCancel').onclick = close
-
-      modalEl.addEventListener('hidden.bs.modal', () => {
-        state.roomName = ''
-        state.searchQuery = ''
-        state.searchResults = []
-        state.selectedParticipants = []
-        state.searchError = null
-        state.roomAvatar = null
-        if (searchInput) {
-          searchInput.value = ''
+        if (searchBar) {
+          searchBar.value = ''
         }
         if (roomNameInput) {
           roomNameInput.value = ''
@@ -261,157 +357,245 @@
         if (avatarInput) {
           avatarInput.value = ''
         }
-        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
-        btnClearAvatar.classList.add('d-none')
+        if (avatarPreview) {
+          avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+        }
+        if (btnClearAvatar) {
+          btnClearAvatar.classList.add('d-none')
+        }
         render()
+        if (popupEl) {
+          if (typeof popupEl.show === 'function') {
+            popupEl.show()
+          } else {
+            popupEl.setAttribute('open', 'true')
+          }
+        }
       })
 
-      signal.addEventListener('abort', () => {
-        modal.dispose()
-      })
-
-      btnCreate.onclick = async () => {
-        if (state.isCreating) {
-          return
+      if (btnSelectAvatar) {
+        btnSelectAvatar.onclick = () => avatarInput?.click()
+      }
+      if (avatarInput) {
+        avatarInput.onchange = (e) => {
+          const file = e.target.files[0]
+          if (file) {
+            state.roomAvatar = file
+            const reader = new FileReader()
+            reader.onload = (re) => {
+              if (avatarPreview) {
+                avatarPreview.innerHTML = ''
+                const img = document.createElement('img')
+                img.src = re.target.result
+                img.className = 'w-100 h-100 object-fit-cover'
+                avatarPreview.appendChild(img)
+              }
+              if (btnClearAvatar) {
+                btnClearAvatar.classList.remove('d-none')
+              }
+            }
+            reader.readAsDataURL(file)
+          }
         }
-
-        try {
-          state.isCreating = true
-          render()
-
-          // Prepare participants
-          const creator = $state.currentUser
-          if (!creator) {
-            throw new Error('Current user session not found in global state.')
+      }
+      if (btnClearAvatar) {
+        btnClearAvatar.onclick = () => {
+          state.roomAvatar = null
+          if (avatarInput) {
+            avatarInput.value = ''
           }
-
-          // Ensure creator is included and deduplicate
-          const participants = [
-            creator,
-            ...state.selectedParticipants.filter(p => p.id !== creator.id)
-          ]
-
-          // Generate room key and encrypt metadata
-          const roomKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
-          const isGroup = state.isGroup
-          const roomName = isGroup ? state.roomName : ''
-
-          let roomAvatarBase64 = ''
-          if (state.roomAvatar) {
-            const fileBuffer = await state.roomAvatar.arrayBuffer()
-            const avatarKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
-            const avatarNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
-            const encryptedAvatar = await $worker.execute('worker:crypto_secretbox_easy', {
-              message: fileBuffer,
-              nonce: avatarNonce,
-              key: avatarKey
-            })
-
-            // Upload encrypted avatar to media collection
-            const blob = new Blob([encryptedAvatar], { type: 'application/octet-stream' })
-            const formData = new FormData()
-            formData.append('file', blob, 'avatar.bin')
-            const mediaRecord = await pb.collection('media').create(formData)
-
-            roomAvatarBase64 = JSON.stringify({
-              media_id: mediaRecord.id,
-              key: $crypto.toBase64(avatarKey),
-              nonce: $crypto.toBase64(avatarNonce)
-            })
+          if (avatarPreview) {
+            avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
           }
-
-          const metadata = JSON.stringify({
-            name: roomName,
-            avatar: roomAvatarBase64
-          })
-          const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
-          const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
-            message: metadata,
-            nonce: metadataNonce,
-            key: roomKey
-          })
-
-          const metadataPayload = {
-            ciphertext: $crypto.toBase64(encryptedMetadata),
-            nonce: $crypto.toBase64(metadataNonce)
-          }
-
-          // Key wrapping loop
-          const wrappedMemberRecords = []
-          for (const participant of participants) {
-            const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
-            const encryptedKey = await $worker.execute('worker:crypto_box_easy', {
-              message: roomKey,
-              nonce,
-              publicKey: participant.public_box_key,
-              privateKey: creator.private_box_key
-            })
-
-            wrappedMemberRecords.push({
-              user_id: participant.id,
-              wrapped_by: creator.id,
-              encrypted_room_key: $crypto.toBase64(encryptedKey),
-              key_nonce: $crypto.toBase64(nonce),
-              role: participant.id === creator.id ? 'admin' : 'member'
-            })
-          }
-
-          // Batch server transaction
-          const newRoom = await pb.collection('rooms').create({
-            is_group: isGroup,
-            encrypted_metadata: metadataPayload
-          })
-
-          // Create room members sequentially to avoid PocketBase auto-cancellation
-          for (const record of wrappedMemberRecords) {
-            await pb.collection('room_members').create({
-              ...record,
-              room_id: newRoom.id,
-              epoch_id: 1
-            }, {
-              // Disable auto-cancellation for these requests
-              requestKey: null
-            })
-          }
-
-          // Update local cache
-          await $storage.saveRoom({
-            id: newRoom.id,
-            is_group: isGroup,
-            name: roomName,
-            avatar: roomAvatarBase64,
-            participants: participants.map(u => ({
-              id: u.id,
-              username: u.username,
-              avatar: u.avatar,
-              collectionId: u.collectionId,
-              collectionName: u.collectionName
-            })),
-            user_role: 'admin',
-            key_history: [{
-              epoch_id: 1,
-              key: $crypto.toBase64(roomKey)
-            }],
-            created_at: newRoom.created,
-            updated_at: newRoom.updated
-          })
-
-          $bus.emit('db:new_local_room', { room_id: newRoom.id })
-          $bus.emit('room:select', { room_id: newRoom.id })
-
-          // Navigation & cleanup
-          $state.currentAppView = 'chats'
-          $state.activeSelectionId = newRoom.id
-          $state.activeSelectionType = 'chats'
-          modal.hide()
-
-        } catch (err) {
-          console.error('[create-room-modal] Room creation failed:', err)
-          alert('Room creation failed: ' + err.message)
-        } finally {
-          state.isCreating = false
-          render()
+          btnClearAvatar.classList.add('d-none')
         }
+      }
+
+      const close = () => {
+        if (popupEl) {
+          if (typeof popupEl.hide === 'function') {
+            popupEl.hide()
+          } else {
+            popupEl.removeAttribute('open')
+          }
+        }
+      }
+
+      if (btnCancel) {
+        btnCancel.addEventListener('click', close)
+      }
+
+      if (popupEl) {
+        popupEl.addEventListener('atoll-popup-close', () => {
+          state.roomName = ''
+          state.searchQuery = ''
+          state.searchResults = []
+          state.selectedParticipants = []
+          state.searchError = null
+          state.roomAvatar = null
+          if (searchBar) {
+            searchBar.value = ''
+          }
+          if (roomNameInput) {
+            roomNameInput.value = ''
+          }
+          if (avatarInput) {
+            avatarInput.value = ''
+          }
+          if (avatarPreview) {
+            avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+          }
+          if (btnClearAvatar) {
+            btnClearAvatar.classList.add('d-none')
+          }
+          render()
+        })
+      }
+
+      if (btnSubmit) {
+        btnSubmit.addEventListener('click', async () => {
+          if (state.isCreating) {
+            return
+          }
+
+          try {
+            state.isCreating = true
+            render()
+
+            // Prepare participants
+            const creator = $state.currentUser
+            if (!creator) {
+              throw new Error('Current user session not found in global state.')
+            }
+
+            // Ensure creator is included and deduplicate
+            const participants = [
+              creator,
+              ...state.selectedParticipants.filter(p => p.id !== creator.id)
+            ]
+
+            // Generate room key and encrypt metadata
+            const roomKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
+            const isGroup = state.isGroup
+            const roomName = isGroup ? state.roomName : ''
+
+            let roomAvatarBase64 = ''
+            if (state.roomAvatar) {
+              const fileBuffer = await state.roomAvatar.arrayBuffer()
+              const avatarKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
+              const avatarNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+              const encryptedAvatar = await $worker.execute('worker:crypto_secretbox_easy', {
+                message: fileBuffer,
+                nonce: avatarNonce,
+                key: avatarKey
+              })
+
+              // Upload encrypted avatar to media collection
+              const blob = new Blob([encryptedAvatar], { type: 'application/octet-stream' })
+              const formData = new FormData()
+              formData.append('file', blob, 'avatar.bin')
+              const mediaRecord = await pb.collection('media').create(formData)
+
+              roomAvatarBase64 = JSON.stringify({
+                media_id: mediaRecord.id,
+                key: $crypto.toBase64(avatarKey),
+                nonce: $crypto.toBase64(avatarNonce)
+              })
+            }
+
+            const metadata = JSON.stringify({
+              name: roomName,
+              avatar: roomAvatarBase64
+            })
+            const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+            const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
+              message: metadata,
+              nonce: metadataNonce,
+              key: roomKey
+            })
+
+            const metadataPayload = {
+              ciphertext: $crypto.toBase64(encryptedMetadata),
+              nonce: $crypto.toBase64(metadataNonce)
+            }
+
+            // Key wrapping loop
+            const wrappedMemberRecords = []
+            for (const participant of participants) {
+              const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+              const encryptedKey = await $worker.execute('worker:crypto_box_easy', {
+                message: roomKey,
+                nonce,
+                publicKey: participant.public_box_key,
+                privateKey: creator.private_box_key
+              })
+
+              wrappedMemberRecords.push({
+                user_id: participant.id,
+                wrapped_by: creator.id,
+                encrypted_room_key: $crypto.toBase64(encryptedKey),
+                key_nonce: $crypto.toBase64(nonce),
+                role: participant.id === creator.id ? 'admin' : 'member'
+              })
+            }
+
+            // Batch server transaction
+            const newRoom = await pb.collection('rooms').create({
+              is_group: isGroup,
+              encrypted_metadata: metadataPayload
+            })
+
+            // Create room members sequentially to avoid PocketBase auto-cancellation
+            for (const record of wrappedMemberRecords) {
+              await pb.collection('room_members').create({
+                ...record,
+                room_id: newRoom.id,
+                epoch_id: 1
+              }, {
+                // Disable auto-cancellation for these requests
+                requestKey: null
+              })
+            }
+
+            // Update local cache
+            await $storage.saveRoom({
+              id: newRoom.id,
+              is_group: isGroup,
+              name: roomName,
+              avatar: roomAvatarBase64,
+              participants: participants.map(u => ({
+                id: u.id,
+                username: u.username,
+                avatar: u.avatar,
+                collectionId: u.collectionId,
+                collectionName: u.collectionName
+              })),
+              user_role: 'admin',
+              key_history: [{
+                epoch_id: 1,
+                key: $crypto.toBase64(roomKey)
+              }],
+              created_at: newRoom.created,
+              updated_at: newRoom.updated
+            })
+
+            $bus.emit('db:new_local_room', { room_id: newRoom.id })
+            $bus.emit('room:select', { room_id: newRoom.id })
+
+            // Navigation & cleanup
+            $state.currentAppView = 'chats'
+            $state.activeSelectionId = newRoom.id
+            $state.activeSelectionType = 'chats'
+            popupEl.hide()
+
+          } catch (err) {
+            console.error('[create-room-modal] Room creation failed:', err)
+            alert('Room creation failed: ' + err.message)
+          } finally {
+            state.isCreating = false
+            render()
+          }
+        })
       }
     }
   })

@@ -181,7 +181,7 @@
             const user = survivor.expand.user_id
             const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
             const encryptedKey = await $worker.execute('worker:crypto_box_easy', {
-              message: newEpochKey,
+              message: newEpochKey.slice(),
               nonce,
               publicKey: user.public_box_key,
               privateKey: currentUser.private_box_key

@@ -2,5 +2,5 @@ allowBuilds:
   '@parcel/watcher': true
   esbuild: true
 minimumReleaseAgeExclude:
-  - coralite-scripts@0.43.2 || 0.43.3 || 0.43.4
-  - coralite@0.43.2 || 0.43.3 || 0.43.4
+  - coralite-scripts@0.43.2 || 0.43.3 || 0.43.4 || 0.43.5
+  - coralite@0.43.2 || 0.43.3 || 0.43.4 || 0.43.5
