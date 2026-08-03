@@ -1,0 +1,30 @@
+<template id="atoll-media-grid">
+  <div ref="grid" class="atoll-media-grid {{ gridClass }} {{ gapClass }}">
+    <slot></slot>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      columns: {
+        type: String,
+        default: '3'
+      },
+      gap: {
+        type: String,
+        default: 'xs'
+      },
+      aspectRatio: {
+        type: String,
+        default: 'square'
+      }
+    },
+    getters: {
+      gridClass: (state) => `atoll-media-grid-${state.columns || '3'}`,
+      gapClass: (state) => `atoll-media-gap-${state.gap || 'xs'}`
+    }
+  })
+</script>

@@ -1,0 +1,190 @@
+<template id="atoll-media-card">
+  <div ref="card" class="atoll-media-card {{ aspectClass }} {{ selectedClass }}" tabindex="0" role="button" aria-pressed="{{ selected }}">
+    
+    <!-- Image Preview Area -->
+    <div ref="mediaContainer" class="w-100 h-100 d-flex align-items-center justify-content-center overflow-hidden position-relative">
+      <div ref="placeholder" class="w-100 h-100 d-flex align-items-center justify-content-center bg-body-secondary text-body-secondary opacity-50">
+        <atoll-icon name="{{ placeholderIcon }}" size="40"></atoll-icon>
+      </div>
+    </div>
+
+    <!-- Top-Right Badge Overlay -->
+    <div class="atoll-media-badge" ref="badgeContainer">
+      <atoll-icon name="copy" size="18" hidden="{{ isNotAlbum }}"></atoll-icon>
+      <atoll-icon name="videocam" size="18" hidden="{{ isNotVideo }}"></atoll-icon>
+      <span class="gif-pill" hidden="{{ isNotGif }}">GIF</span>
+    </div>
+
+    <!-- Integrated Text Overlay (Bottom Gradient) -->
+    <div class="atoll-media-overlay" hidden="{{ hasNoText }}">
+      <div class="atoll-media-title" title="{{ title }}">{{ title }}</div>
+      <div class="atoll-media-subtitle" title="{{ subtitle }}" hidden="{{ hasNoSubtitle }}">{{ subtitle }}</div>
+    </div>
+
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      src: String,
+      title: String,
+      subtitle: String,
+      mediaType: {
+        type: String,
+        // image, album, video, gif
+        default: 'image'
+      },
+      selected: {
+        type: String,
+        default: 'false'
+      },
+      aspectRatio: {
+        type: String,
+        // square, rectangular
+        default: 'square'
+      },
+      assetId: String,
+      mediaId: String,
+      mimeType: String,
+      type: String,
+      fileKey: String,
+      fileNonce: String
+    },
+    getters: {
+      aspectClass: (state) => `aspect-${state.aspectRatio || 'square'}`,
+      selectedClass: (state) => (state.selected === 'true' || state.selected === true ? 'selected' : ''),
+      isNotAlbum: (state) => state.mediaType !== 'album',
+      isNotVideo: (state) => state.mediaType !== 'video',
+      isNotGif: (state) => state.mediaType !== 'gif',
+      hasNoText: (state) => !state.title && !state.subtitle,
+      hasNoSubtitle: (state) => !state.subtitle,
+      placeholderIcon: (state) => {
+        if (state.mediaType === 'video') {
+          return 'videocam'
+        }
+        return 'gallery'
+      }
+    },
+    client: ({ refs, state, storage, eventBus, signal, utils }) => {
+      const { $storage } = storage
+      const { $bus } = eventBus
+      const { $media } = utils
+      const card = refs('card')
+      const mediaContainer = refs('mediaContainer')
+      const placeholder = refs('placeholder')
+
+      const objectUrls = new Map()
+      const cleanupUrls = () => {
+        objectUrls.forEach(url => URL.revokeObjectURL(url))
+        objectUrls.clear()
+      }
+      signal.addEventListener('abort', cleanupUrls)
+
+      // Handle selection click / key down
+      const triggerSelect = () => {
+        // Dispatch the custom event atoll-media-select
+        const customEvent = new CustomEvent('atoll-media-select', {
+          bubbles: true,
+          composed: true,
+          detail: {
+            id: state.assetId,
+            mediaId: state.mediaId,
+            src: state.src,
+            title: state.title,
+            subtitle: state.subtitle,
+            mediaType: state.mediaType
+          }
+        })
+        card.dispatchEvent(customEvent)
+
+        // For backward compatibility and immediate router sync
+        if (state.assetId && state.type) {
+          $bus.emit('media:select', {
+            assetId: state.assetId,
+            type: state.type
+          })
+          $bus.emit('ui:selection_made')
+        }
+      }
+
+      if (card) {
+        card.onclick = (e) => {
+          e.preventDefault()
+          triggerSelect()
+        }
+
+        card.onkeydown = (e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault()
+            triggerSelect()
+          }
+        }
+      }
+
+      const renderPreview = async () => {
+        if (state.src) {
+          // If a static src URL is provided, display it directly
+          if (placeholder) {
+            placeholder.classList.add('d-none')
+          }
+          const img = document.createElement('img')
+          img.src = state.src
+          img.className = 'w-100 h-100'
+          img.style.objectFit = 'cover'
+          mediaContainer.innerHTML = ''
+          mediaContainer.appendChild(img)
+          return
+        }
+
+        if (!state.mediaId || !state.fileKey || !state.fileNonce || !mediaContainer) {
+          return
+        }
+
+        try {
+          const isVideoType = state.mediaType === 'video' || (state.mimeType || '').startsWith('video/')
+          const asset = await $storage.getAsset(state.assetId)
+          let objectUrl = null
+
+          if (isVideoType) {
+            if (asset?.thumbnail) {
+              objectUrl = await $media.decrypt(asset.thumbnail, signal)
+            } else {
+              throw new Error('Video thumbnail missing')
+            }
+          } else {
+            objectUrl = await $media.decrypt({
+              media_id: state.mediaId,
+              file_key: state.fileKey,
+              file_nonce: state.fileNonce,
+              mime_type: state.mimeType,
+              id: state.assetId
+            }, signal)
+          }
+
+          if (signal.aborted) {
+            return
+          }
+
+          objectUrls.set(state.assetId, objectUrl)
+
+          if (placeholder) {
+            placeholder.classList.add('d-none')
+          }
+          mediaContainer.innerHTML = ''
+          const img = document.createElement('img')
+          img.src = objectUrl
+          img.className = 'w-100 h-100'
+          img.style.objectFit = 'cover'
+          mediaContainer.appendChild(img)
+        } catch (err) {
+          console.error('[atoll-media-card] Decryption & Preview error:', err)
+        }
+      }
+
+      renderPreview()
+    }
+  })
+</script>

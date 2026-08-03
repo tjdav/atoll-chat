@@ -143,10 +143,10 @@ test.describe('Media & Attachments', () => {
         await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 20000 })
       }
       await page.locator('[data-testid="nav-sidebar-0__btnPictures"]').click()
-      const cards = page.locator('media-grid-card')
+      const cards = page.locator('atoll-media-card')
       await cards.first().click()
       await page.click('.carousel-control-next')
-      await expect(cards.nth(1).locator('.card')).toHaveClass(/is-active-card/)
+      await expect(cards.nth(1)).toHaveAttribute('selected', 'true')
     })
 
     test('carousel handles out-of-order type/id state transitions safely', async ({ page }) => {
@@ -157,7 +157,7 @@ test.describe('Media & Attachments', () => {
 
       await page.locator('[data-testid="nav-sidebar-0__btnPictures"]').click()
 
-      const cards = page.locator('media-grid-card')
+      const cards = page.locator('atoll-media-card')
       await expect(cards.first()).toBeVisible()
       await cards.first().click()
 

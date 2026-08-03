@@ -1,0 +1,113 @@
+/* ==========================================================================
+   ADSM Media Components (_atoll-media.scss)
+   ========================================================================== */
+
+.atoll-media-grid {
+  display: grid;
+  width: 100%;
+  
+  &.atoll-media-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  
+  &.atoll-media-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  &.atoll-media-gap-none {
+    gap: 0;
+  }
+
+  &.atoll-media-gap-xs {
+    gap: 2px; /* Ultra-tight ADSM grid gap */
+  }
+
+  &.atoll-media-gap-sm {
+    gap: 6px;
+  }
+}
+
+.atoll-media-card {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
+  cursor: pointer;
+  display: block;
+
+  &.aspect-square {
+    aspect-ratio: 1 / 1;
+  }
+
+  &.aspect-rectangular {
+    aspect-ratio: 4 / 3;
+  }
+
+  /* Image Area */
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+
+  /* Icon Area (Top-Right Badge) */
+  .atoll-media-badge {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    z-index: 2;
+    color: #FFFFFF;
+    filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.4));
+
+    .gif-pill {
+      background: rgba(0, 0, 0, 0.6);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 4px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #FFFFFF;
+    }
+  }
+
+  /* Text Area (Bottom Gradient Overlay) */
+  .atoll-media-overlay {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    padding: 16px 8px 6px 8px;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.75) 0%, rgba(0, 0, 0, 0) 100%);
+    color: #FFFFFF;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    z-index: 1;
+
+    .atoll-media-title {
+      font-size: 12px;
+      font-weight: 600;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .atoll-media-subtitle {
+      font-size: 11px;
+      opacity: 0.8;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  }
+
+  /* Selection Ring */
+  &[selected="true"],
+  &.selected {
+    outline: 2px solid var(--atoll-brand-primary, #06C755);
+    outline-offset: -2px;
+  }
+}
