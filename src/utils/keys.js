@@ -17,7 +17,12 @@ let ephemeralVaultKey = null
  *
  */
 export function purgeVaultKey () {
-  ephemeralVaultKey = null
+  if (ephemeralVaultKey) {
+    if (typeof ephemeralVaultKey.fill === 'function') {
+      ephemeralVaultKey.fill(0)
+    }
+    ephemeralVaultKey = null
+  }
 }
 
 /**
@@ -45,39 +50,66 @@ export async function deriveAuthAndVaultKeys (rawUsername, masterPassword) {
   const authSaltInput = `atoll-auth-salt:${canonicalUsername}`
   const vaultSaltInput = `atoll-vault-salt:${canonicalUsername}`
 
-  const authSaltHash = sodium.crypto_hash_sha256(authSaltInput)
-  const vaultSaltHash = sodium.crypto_hash_sha256(vaultSaltInput)
+  let authSaltHash = null
+  let vaultSaltHash = null
+  let saltAuth = null
+  let saltVault = null
+  let keyBBytes = null
+  let keyA = null
 
-  const saltAuth = authSaltHash.slice(0, 16)
-  const saltVault = vaultSaltHash.slice(0, 16)
+  try {
+    authSaltHash = sodium.crypto_hash_sha256(authSaltInput)
+    vaultSaltHash = sodium.crypto_hash_sha256(vaultSaltInput)
 
-  /* Derive Key B (Auth Credential) - 32-byte Argon2id output -> 64-char Hex string */
-  const keyBBytes = sodium.crypto_pwhash(
-    32,
-    masterPassword,
-    saltAuth,
-    sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-    sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-    sodium.crypto_pwhash_ALG_ARGON2ID13
-  )
-  const keyB = sodium.to_hex(keyBBytes)
+    saltAuth = authSaltHash.slice(0, 16)
+    saltVault = vaultSaltHash.slice(0, 16)
 
-  /* Derive Key A (Vault Key) - 32-byte Argon2id output (binary Uint8Array) */
-  const keyA = sodium.crypto_pwhash(
-    32,
-    masterPassword,
-    saltVault,
-    sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
-    sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
-    sodium.crypto_pwhash_ALG_ARGON2ID13
-  )
+    /* Derive Key B (Auth Credential) - 32-byte Argon2id output -> 64-char Hex string */
+    keyBBytes = sodium.crypto_pwhash(
+      32,
+      masterPassword,
+      saltAuth,
+      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+      sodium.crypto_pwhash_ALG_ARGON2ID13
+    )
+    const keyB = sodium.to_hex(keyBBytes)
 
-  // Cache Key A in RAM
-  ephemeralVaultKey = keyA
+    /* Derive Key A (Vault Key) - 32-byte Argon2id output (binary Uint8Array) */
+    keyA = sodium.crypto_pwhash(
+      32,
+      masterPassword,
+      saltVault,
+      sodium.crypto_pwhash_OPSLIMIT_INTERACTIVE,
+      sodium.crypto_pwhash_MEMLIMIT_INTERACTIVE,
+      sodium.crypto_pwhash_ALG_ARGON2ID13
+    )
 
-  return {
-    keyA,
-    keyB,
-    canonicalUsername
+    // Cache Key A in RAM
+    ephemeralVaultKey = keyA
+
+    return {
+      keyA,
+      keyB,
+      canonicalUsername
+    }
+  } finally {
+    // Explicitly zero out intermediate/transient buffers before returning
+    if (authSaltHash && typeof authSaltHash.fill === 'function') {
+      authSaltHash.fill(0)
+    }
+    if (vaultSaltHash && typeof vaultSaltHash.fill === 'function') {
+      vaultSaltHash.fill(0)
+    }
+    if (saltAuth && typeof saltAuth.fill === 'function') {
+      saltAuth.fill(0)
+    }
+    if (saltVault && typeof saltVault.fill === 'function') {
+      saltVault.fill(0)
+    }
+    if (keyBBytes && typeof keyBBytes.fill === 'function') {
+      keyBBytes.fill(0)
+    }
+    // We do NOT zero out keyA here because it is returned and cached in ephemeralVaultKey
   }
 }

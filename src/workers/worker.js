@@ -205,7 +205,16 @@ async function handleEvent (event) {
 
   try {
     if (type === 'worker:init_keys') {
-      self.currentUserKeys = payload
+      self.currentUserKeys = { ...payload }
+      if (payload.private_box_key) {
+        self.currentUserKeys.private_box_key_raw = sodium.from_base64(payload.private_box_key, sodium.base64_variants.ORIGINAL)
+      }
+      if (payload.private_sign_key) {
+        self.currentUserKeys.private_sign_key_raw = sodium.from_base64(payload.private_sign_key, sodium.base64_variants.ORIGINAL)
+      }
+      if (self.activeVmk) {
+        self.currentUserKeys.vmk = self.activeVmk
+      }
       self.isInitialized = true
       console.log('[worker] Keys initialized for user:', self.currentUserKeys.id)
       self.postMessage({
@@ -320,6 +329,8 @@ async function handleEvent (event) {
       const { encrypted_private_keys, master_key } = payload
       const masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
 
+      self.activeVmk = masterKeyBuffer
+
       const decrypted = sodium.crypto_secretbox_open_easy(
         sodium.from_base64(encrypted_private_keys.ciphertext, sodium.base64_variants.ORIGINAL),
         sodium.from_base64(encrypted_private_keys.nonce, sodium.base64_variants.ORIGINAL),
@@ -358,10 +369,30 @@ async function handleEvent (event) {
     }
 
     if (type === 'worker:wipe_keys') {
-      self.currentUserKeys = null
+      if (self.currentUserKeys) {
+        if (self.currentUserKeys.private_box_key_raw) {
+          self.currentUserKeys.private_box_key_raw.fill(0)
+        }
+        if (self.currentUserKeys.private_sign_key_raw) {
+          self.currentUserKeys.private_sign_key_raw.fill(0)
+        }
+        if (self.currentUserKeys.vmk) {
+          self.currentUserKeys.vmk.fill(0)
+        }
+        self.currentUserKeys = null
+      }
+      if (self.activeVmk) {
+        self.activeVmk.fill(0)
+        self.activeVmk = null
+      }
       self.isInitialized = false
       self.authToken = null
       self.publicKeyCache.clear()
+
+      if (globalThis.gc) {
+        globalThis.gc()
+      }
+
       self.postMessage({
         id,
         type,
@@ -398,7 +429,7 @@ async function handleEvent (event) {
         id,
         type,
         result: salt
-      })
+      }, { transfer: [salt.buffer] })
       return
     }
 
@@ -416,7 +447,7 @@ async function handleEvent (event) {
         id,
         type,
         result: KEK
-      })
+      }, { transfer: [KEK.buffer] })
       return
     }
 
@@ -442,7 +473,7 @@ async function handleEvent (event) {
         id,
         type,
         result
-      })
+      }, result && result.buffer ? { transfer: [result.buffer] } : undefined)
       return
     }
 
@@ -457,7 +488,7 @@ async function handleEvent (event) {
         id,
         type,
         result
-      })
+      }, result && result.buffer ? { transfer: [result.buffer] } : undefined)
       return
     }
 
@@ -473,7 +504,7 @@ async function handleEvent (event) {
         id,
         type,
         result
-      })
+      }, result && result.buffer ? { transfer: [result.buffer] } : undefined)
       return
     }
 
@@ -489,7 +520,7 @@ async function handleEvent (event) {
         id,
         type,
         result
-      })
+      }, result && result.buffer ? { transfer: [result.buffer] } : undefined)
       return
     }
 
@@ -503,7 +534,7 @@ async function handleEvent (event) {
         id,
         type,
         result
-      })
+      }, result && result.buffer ? { transfer: [result.buffer] } : undefined)
       return
     }
 
@@ -514,7 +545,7 @@ async function handleEvent (event) {
         id,
         type,
         result
-      })
+      }, { transfer: [result.buffer] })
       return
     }
 
@@ -635,138 +666,151 @@ async function fetchWithTimeout (resource, options = {}) {
 
 async function sendMessage (rpcId, payload) {
   console.info('[worker] Alice sendMessage payload:', payload)
-  const {
-    room_id,
-    localUuid,
-    type,
-    content,
-    file,
-    filename,
-    mime_type,
-    waveform_data,
-    music_metadata,
-    album_art_blob,
-    thumbnail_blob,
-    duration,
-    candidate,
-    candidates,
-    media_types,
-    target_id,
-    timestamp,
-    links,
-    media_id: existingMediaId,
-    file_key: existingFileKey,
-    file_nonce: existingFileNonce,
-    album_art: existingAlbumArt,
-    thumbnail: existingThumbnail,
-    transfer_mode,
-    status,
-    p2pUuid
-  } = payload
+  let roomKey = null
+  let privateSignKeyBuffer = null
+  let artKey = null
+  let artNonce = null
+  let thumbKey = null
+  let thumbNonce = null
+  let fileKey = null
+  let fileNonce = null
+  let artBuffer = null
+  let thumbBuffer = null
+  let fileBuffer = null
 
-  console.info('[worker] Alice sendMessage variables destructured:', {
-    type,
-    hasFile: !!file,
-    existingMediaId,
-    transfer_mode,
-    status
-  })
+  try {
+    const {
+      room_id,
+      localUuid,
+      type,
+      content,
+      file,
+      filename,
+      mime_type,
+      waveform_data,
+      music_metadata,
+      album_art_blob,
+      thumbnail_blob,
+      duration,
+      candidate,
+      candidates,
+      media_types,
+      target_id,
+      timestamp,
+      links,
+      media_id: existingMediaId,
+      file_key: existingFileKey,
+      file_nonce: existingFileNonce,
+      album_art: existingAlbumArt,
+      thumbnail: existingThumbnail,
+      transfer_mode,
+      status,
+      p2pUuid
+    } = payload
 
-  if (!self.currentUserKeys || !self.currentUserKeys.private_sign_key) {
-    throw new Error('User identity keys not found in worker')
-  }
+    console.info('[worker] Alice sendMessage variables destructured:', {
+      type,
+      hasFile: !!file,
+      existingMediaId,
+      transfer_mode,
+      status
+    })
 
-  const room = await workerBridge.request('getRoom', [room_id])
-  if (!room || !room.key_history || room.key_history.length === 0) {
-    throw new Error('Encryption keys not found for this room')
-  }
-
-  const latestKeyObj = room.key_history.reduce((prev, current) => {
-    const prevEpoch = parseInt(prev.epoch_id, 10)
-    const currEpoch = parseInt(current.epoch_id, 10)
-    return (prevEpoch > currEpoch) ? prev : current
-  })
-  const latestEpochId = latestKeyObj.epoch_id
-  const roomKey = sodium.from_base64(latestKeyObj.key, sodium.base64_variants.ORIGINAL)
-
-  // Handle Media Encryption & Upload
-  let mediaId = existingMediaId || null
-  let fileKeyBase64 = existingFileKey || null
-  let fileNonceBase64 = existingFileNonce || null
-  let albumArtInfo = existingAlbumArt || null
-  let thumbnailInfo = existingThumbnail || null
-
-  const headers = {}
-  if (self.authToken) {
-    headers.Authorization = self.authToken
-  }
-
-  if (type === 'media' && file && !mediaId) {
-    // Encrypt and upload album art if present
-    if (album_art_blob) {
-      const artBuffer = new Uint8Array(await album_art_blob.arrayBuffer())
-      const artKey = sodium.randombytes_buf(32)
-      const artNonce = sodium.randombytes_buf(24)
-      const encryptedArt = sodium.crypto_secretbox_easy(artBuffer, artNonce, artKey)
-
-      /** @type {WebWorkerBlobPart[]} */
-      const artParts = [encryptedArt]
-      const artBlob = new Blob(artParts, { type: 'application/octet-stream' })
-      const artFormData = new FormData()
-      artFormData.append('file', artBlob, 'album-art.bin')
-
-      const artResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
-        method: 'POST',
-        headers,
-        body: artFormData
-      })
-      if (artResponse.ok) {
-        const artRecord = await artResponse.json()
-        albumArtInfo = {
-          media_id: artRecord.id,
-          file_key: sodium.to_base64(artKey, sodium.base64_variants.ORIGINAL),
-          file_nonce: sodium.to_base64(artNonce, sodium.base64_variants.ORIGINAL)
-        }
-      }
+    if (!self.currentUserKeys || !self.currentUserKeys.private_sign_key) {
+      throw new Error('User identity keys not found in worker')
     }
 
-    // Encrypt and upload thumbnail if present
-    if (thumbnail_blob) {
-      const thumbBuffer = new Uint8Array(await thumbnail_blob.arrayBuffer())
-      const thumbKey = sodium.randombytes_buf(32)
-      const thumbNonce = sodium.randombytes_buf(24)
-      const encryptedThumb = sodium.crypto_secretbox_easy(thumbBuffer, thumbNonce, thumbKey)
-
-      /** @type {WebWorkerBlobPart[]} */
-      const thumbParts = [encryptedThumb]
-      const thumbBlob = new Blob(thumbParts, { type: 'application/octet-stream' })
-      const thumbFormData = new FormData()
-      thumbFormData.append('file', thumbBlob, 'thumbnail.bin')
-
-      const thumbResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
-        method: 'POST',
-        headers,
-        body: thumbFormData
-      })
-      if (thumbResponse.ok) {
-        const thumbRecord = await thumbResponse.json()
-        thumbnailInfo = {
-          media_id: thumbRecord.id,
-          file_key: sodium.to_base64(thumbKey, sodium.base64_variants.ORIGINAL),
-          file_nonce: sodium.to_base64(thumbNonce, sodium.base64_variants.ORIGINAL),
-          mime_type: 'image/webp'
-        }
-      }
+    const room = await workerBridge.request('getRoom', [room_id])
+    if (!room || !room.key_history || room.key_history.length === 0) {
+      throw new Error('Encryption keys not found for this room')
     }
 
-    // Encrypt and upload main file
-    const fileBuffer = new Uint8Array(await file.arrayBuffer())
-    const fileKey = sodium.randombytes_buf(32)
-    const fileNonce = sodium.randombytes_buf(24)
-    const encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, fileNonce, fileKey)
+    const latestKeyObj = room.key_history.reduce((prev, current) => {
+      const prevEpoch = parseInt(prev.epoch_id, 10)
+      const currEpoch = parseInt(current.epoch_id, 10)
+      return (prevEpoch > currEpoch) ? prev : current
+    })
+    const latestEpochId = latestKeyObj.epoch_id
+    roomKey = sodium.from_base64(latestKeyObj.key, sodium.base64_variants.ORIGINAL)
 
-    fileKeyBase64 = sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL)
-    fileNonceBase64 = sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL)
+    // Handle Media Encryption & Upload
+    let mediaId = existingMediaId || null
+    let fileKeyBase64 = existingFileKey || null
+    let fileNonceBase64 = existingFileNonce || null
+    let albumArtInfo = existingAlbumArt || null
+    let thumbnailInfo = existingThumbnail || null
+
+    const headers = {}
+    if (self.authToken) {
+      headers.Authorization = self.authToken
+    }
+
+    if (type === 'media' && file && !mediaId) {
+      // Encrypt and upload album art if present
+      if (album_art_blob) {
+        artBuffer = new Uint8Array(await album_art_blob.arrayBuffer())
+        artKey = sodium.randombytes_buf(32)
+        artNonce = sodium.randombytes_buf(24)
+        const encryptedArt = sodium.crypto_secretbox_easy(artBuffer, artNonce, artKey)
+
+        /** @type {WebWorkerBlobPart[]} */
+        const artParts = [encryptedArt]
+        const artBlob = new Blob(artParts, { type: 'application/octet-stream' })
+        const artFormData = new FormData()
+        artFormData.append('file', artBlob, 'album-art.bin')
+
+        const artResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
+          method: 'POST',
+          headers,
+          body: artFormData
+        })
+        if (artResponse.ok) {
+          const artRecord = await artResponse.json()
+          albumArtInfo = {
+            media_id: artRecord.id,
+            file_key: sodium.to_base64(artKey, sodium.base64_variants.ORIGINAL),
+            file_nonce: sodium.to_base64(artNonce, sodium.base64_variants.ORIGINAL)
+          }
+        }
+      }
+
+      // Encrypt and upload thumbnail if present
+      if (thumbnail_blob) {
+        thumbBuffer = new Uint8Array(await thumbnail_blob.arrayBuffer())
+        thumbKey = sodium.randombytes_buf(32)
+        thumbNonce = sodium.randombytes_buf(24)
+        const encryptedThumb = sodium.crypto_secretbox_easy(thumbBuffer, thumbNonce, thumbKey)
+
+        /** @type {WebWorkerBlobPart[]} */
+        const thumbParts = [encryptedThumb]
+        const thumbBlob = new Blob(thumbParts, { type: 'application/octet-stream' })
+        const thumbFormData = new FormData()
+        thumbFormData.append('file', thumbBlob, 'thumbnail.bin')
+
+        const thumbResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
+          method: 'POST',
+          headers,
+          body: thumbFormData
+        })
+        if (thumbResponse.ok) {
+          const thumbRecord = await thumbResponse.json()
+          thumbnailInfo = {
+            media_id: thumbRecord.id,
+            file_key: sodium.to_base64(thumbKey, sodium.base64_variants.ORIGINAL),
+            file_nonce: sodium.to_base64(thumbNonce, sodium.base64_variants.ORIGINAL),
+            mime_type: 'image/webp'
+          }
+        }
+      }
+
+      // Encrypt and upload main file
+      fileBuffer = new Uint8Array(await file.arrayBuffer())
+      fileKey = sodium.randombytes_buf(32)
+      fileNonce = sodium.randombytes_buf(24)
+      const encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, fileNonce, fileKey)
+
+      fileKeyBase64 = sodium.to_base64(fileKey, sodium.base64_variants.ORIGINAL)
+      fileNonceBase64 = sodium.to_base64(fileNonce, sodium.base64_variants.ORIGINAL)
 
     if (transfer_mode === 'p2p') {
       const encryptedBlob = new Blob([encryptedFile], { type: 'application/octet-stream' })
@@ -852,7 +896,7 @@ async function sendMessage (rpcId, payload) {
   // Sign Message
   const validationString = `${room_id}|${latestEpochId}|${previousMsgId}|${ciphertextBase64}|${nonceBase64}`
   const validationBuffer = new TextEncoder().encode(validationString)
-  const privateSignKeyBuffer = sodium.from_base64(self.currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
+  privateSignKeyBuffer = sodium.from_base64(self.currentUserKeys.private_sign_key, sodium.base64_variants.ORIGINAL)
   const signatureBuffer = sodium.crypto_sign_detached(validationBuffer, privateSignKeyBuffer)
 
   // Server upload
@@ -973,46 +1017,68 @@ async function sendMessage (rpcId, payload) {
       id: pbRecord.id
     }
   })
+  } finally {
+    if (roomKey && typeof roomKey.fill === 'function') roomKey.fill(0)
+    if (privateSignKeyBuffer && typeof privateSignKeyBuffer.fill === 'function') privateSignKeyBuffer.fill(0)
+    if (artKey && typeof artKey.fill === 'function') artKey.fill(0)
+    if (artNonce && typeof artNonce.fill === 'function') artNonce.fill(0)
+    if (thumbKey && typeof thumbKey.fill === 'function') thumbKey.fill(0)
+    if (thumbNonce && typeof thumbNonce.fill === 'function') thumbNonce.fill(0)
+    if (fileKey && typeof fileKey.fill === 'function') fileKey.fill(0)
+    if (fileNonce && typeof fileNonce.fill === 'function') fileNonce.fill(0)
+    if (artBuffer && typeof artBuffer.fill === 'function') artBuffer.fill(0)
+    if (thumbBuffer && typeof thumbBuffer.fill === 'function') thumbBuffer.fill(0)
+    if (fileBuffer && typeof fileBuffer.fill === 'function') fileBuffer.fill(0)
+  }
 }
 
 async function processIncomingMessage (rpcId, record) {
-  const {
-    id,
-    room_id,
-    epoch_id: epochId,
-    sender_id: senderId,
-    payload,
-    signature,
-    previous_msg_uuid: previousMsgUuid,
-    local_uuid: localUuid,
-    created
-  } = record
+  let signatureBuffer = null
+  let publicSignKeyBuffer = null
+  let validationBuffer = null
+  let ciphertextBuffer = null
+  let nonceBuffer = null
+  let epochKeyBuffer = null
+  let decryptedBuffer = null
 
-  // Anti-duplication: check if local_uuid already exists
-  if (localUuid) {
-    const exists = await workerBridge.request('getMessage', [localUuid])
-    if (exists) {
-      // If it exists and status is pending, update it to sent/delivered
-      if (exists.status === 'pending') {
-        await workerBridge.request('updateMessage', [localUuid, {
-          id,
-          status: 'sent'
-        }, room_id])
-      }
+  try {
+    const {
+      id,
+      room_id,
+      epoch_id: epochId,
+      sender_id: senderId,
+      payload,
+      signature,
+      previous_msg_uuid: previousMsgUuid,
+      local_uuid: localUuid,
+      created
+    } = record
 
-      self.postMessage({
-        id: rpcId,
-        type: 'worker:process_incoming_message',
-        result: {
-          success: true,
-          duplicated: true
+    // Anti-duplication: check if local_uuid already exists
+    if (localUuid) {
+      const exists = await workerBridge.request('getMessage', [localUuid])
+      if (exists) {
+        // If it exists and status is pending, update it to sent/delivered
+        if (exists.status === 'pending') {
+          await workerBridge.request('updateMessage', [localUuid, {
+            id,
+            status: 'sent'
+          }, room_id])
         }
-      })
-      return
-    }
-  }
 
-  const { ciphertext, nonce } = payload
+        self.postMessage({
+          id: rpcId,
+          type: 'worker:process_incoming_message',
+          result: {
+            success: true,
+            duplicated: true
+          }
+        })
+        return
+      }
+    }
+
+    const { ciphertext, nonce } = payload
 
   // Fetch Sender Key
   let senderKeys = self.publicKeyCache.get(senderId)
@@ -1043,11 +1109,11 @@ async function processIncomingMessage (rpcId, record) {
   }
 
   // Identity Verification (Ed25519)
-  const signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
-  const publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
+  signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
+  publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
 
   const validationString = `${room_id}|${epochId}|${previousMsgUuid}|${ciphertext}|${nonce}`
-  const validationBuffer = new TextEncoder().encode(validationString)
+  validationBuffer = new TextEncoder().encode(validationString)
 
   const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
   if (!isValid) {
@@ -1092,11 +1158,10 @@ async function processIncomingMessage (rpcId, record) {
     return
   }
 
-  const ciphertextBuffer = sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL)
-  const nonceBuffer = sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL)
-  const epochKeyBuffer = sodium.from_base64(activeEpoch.key, sodium.base64_variants.ORIGINAL)
+  ciphertextBuffer = sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL)
+  nonceBuffer = sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL)
+  epochKeyBuffer = sodium.from_base64(activeEpoch.key, sodium.base64_variants.ORIGINAL)
 
-  let decryptedBuffer
   try {
     decryptedBuffer = sodium.crypto_secretbox_open_easy(ciphertextBuffer, nonceBuffer, epochKeyBuffer)
   } catch (err) {
@@ -1230,6 +1295,15 @@ async function processIncomingMessage (rpcId, record) {
     type: 'worker:process_incoming_message',
     result: { success: true }
   })
+  } finally {
+    if (signatureBuffer && typeof signatureBuffer.fill === 'function') signatureBuffer.fill(0)
+    if (publicSignKeyBuffer && typeof publicSignKeyBuffer.fill === 'function') publicSignKeyBuffer.fill(0)
+    if (validationBuffer && typeof validationBuffer.fill === 'function') validationBuffer.fill(0)
+    if (ciphertextBuffer && typeof ciphertextBuffer.fill === 'function') ciphertextBuffer.fill(0)
+    if (nonceBuffer && typeof nonceBuffer.fill === 'function') nonceBuffer.fill(0)
+    if (epochKeyBuffer && typeof epochKeyBuffer.fill === 'function') epochKeyBuffer.fill(0)
+    if (decryptedBuffer && typeof decryptedBuffer.fill === 'function') decryptedBuffer.fill(0)
+  }
 }
 
 async function updateRoomMember (rpcId, record) {
@@ -1294,15 +1368,25 @@ async function updateUserData (rpcId, record) {
 }
 
 async function processNewRoomKey (rpcId, payload) {
-  const {
-    room_id,
-    wrapped_by,
-    encrypted_room_key,
-    key_nonce,
-    epoch_id,
-    role,
-    updated
-  } = payload
+  let encryptedRoomKeyBuffer = null
+  let nonceBuffer = null
+  let inviterPublicKeyBuffer = null
+  let userPrivateKeyBuffer = null
+  let unwrappedKeyBuffer = null
+  let metadataCiphertext = null
+  let metadataNonce = null
+  let decryptedMetadataBuffer = null
+
+  try {
+    const {
+      room_id,
+      wrapped_by,
+      encrypted_room_key,
+      key_nonce,
+      epoch_id,
+      role,
+      updated
+    } = payload
 
   if (!encrypted_room_key || !wrapped_by) {
     console.warn(`[worker] Skipping room key processing for room ${room_id} because encrypted_room_key or wrapped_by is empty.`)
@@ -1380,12 +1464,11 @@ async function processNewRoomKey (rpcId, payload) {
   }
 
   // Decrypt (Unwrap)
-  let unwrappedKeyBuffer
   try {
-    const encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key, sodium.base64_variants.ORIGINAL)
-    const nonceBuffer = sodium.from_base64(key_nonce, sodium.base64_variants.ORIGINAL)
-    const inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey, sodium.base64_variants.ORIGINAL)
-    const userPrivateKeyBuffer = sodium.from_base64(self.currentUserKeys.private_box_key, sodium.base64_variants.ORIGINAL)
+    encryptedRoomKeyBuffer = sodium.from_base64(encrypted_room_key, sodium.base64_variants.ORIGINAL)
+    nonceBuffer = sodium.from_base64(key_nonce, sodium.base64_variants.ORIGINAL)
+    inviterPublicKeyBuffer = sodium.from_base64(inviterPublicKey, sodium.base64_variants.ORIGINAL)
+    userPrivateKeyBuffer = sodium.from_base64(self.currentUserKeys.private_box_key, sodium.base64_variants.ORIGINAL)
 
     unwrappedKeyBuffer = sodium.crypto_box_open_easy(
       encryptedRoomKeyBuffer,
@@ -1435,10 +1518,10 @@ async function processNewRoomKey (rpcId, payload) {
     isGroup = roomRecord.is_group
 
     if (roomRecord.encrypted_metadata && roomRecord.encrypted_metadata.ciphertext) {
-      const metadataCiphertext = sodium.from_base64(roomRecord.encrypted_metadata.ciphertext, sodium.base64_variants.ORIGINAL)
-      const metadataNonce = sodium.from_base64(roomRecord.encrypted_metadata.nonce, sodium.base64_variants.ORIGINAL)
+      metadataCiphertext = sodium.from_base64(roomRecord.encrypted_metadata.ciphertext, sodium.base64_variants.ORIGINAL)
+      metadataNonce = sodium.from_base64(roomRecord.encrypted_metadata.nonce, sodium.base64_variants.ORIGINAL)
       try {
-        const decryptedMetadataBuffer = sodium.crypto_secretbox_open_easy(metadataCiphertext, metadataNonce, unwrappedKeyBuffer)
+        decryptedMetadataBuffer = sodium.crypto_secretbox_open_easy(metadataCiphertext, metadataNonce, unwrappedKeyBuffer)
         if (decryptedMetadataBuffer) {
           roomMetadata = JSON.parse(new TextDecoder().decode(decryptedMetadataBuffer))
         }
@@ -1534,6 +1617,16 @@ async function processNewRoomKey (rpcId, payload) {
     type: 'worker:process_new_room_key',
     result: { success: true }
   })
+  } finally {
+    if (encryptedRoomKeyBuffer && typeof encryptedRoomKeyBuffer.fill === 'function') encryptedRoomKeyBuffer.fill(0)
+    if (nonceBuffer && typeof nonceBuffer.fill === 'function') nonceBuffer.fill(0)
+    if (inviterPublicKeyBuffer && typeof inviterPublicKeyBuffer.fill === 'function') inviterPublicKeyBuffer.fill(0)
+    if (userPrivateKeyBuffer && typeof userPrivateKeyBuffer.fill === 'function') userPrivateKeyBuffer.fill(0)
+    if (unwrappedKeyBuffer && typeof unwrappedKeyBuffer.fill === 'function') unwrappedKeyBuffer.fill(0)
+    if (metadataCiphertext && typeof metadataCiphertext.fill === 'function') metadataCiphertext.fill(0)
+    if (metadataNonce && typeof metadataNonce.fill === 'function') metadataNonce.fill(0)
+    if (decryptedMetadataBuffer && typeof decryptedMetadataBuffer.fill === 'function') decryptedMetadataBuffer.fill(0)
+  }
 }
 
 readyPromise = init()

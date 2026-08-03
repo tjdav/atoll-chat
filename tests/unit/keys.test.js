@@ -1,8 +1,30 @@
 import { test } from 'node:test'
 import assert from 'node:assert'
-import { normalizeUsername, deriveAuthAndVaultKeys } from '../../src/utils/keys.js'
+import { normalizeUsername, deriveAuthAndVaultKeys, purgeVaultKey, getVaultKey } from '../../src/utils/keys.js'
 
 test('keys utility tests', async (t) => {
+  await t.test('purgeVaultKey zeroes out ephemeralVaultKey memory before nullification', async () => {
+    const res = await deriveAuthAndVaultKeys('Alice', 'Password123!')
+    const keyARef = res.keyA
+
+    assert.ok(keyARef instanceof Uint8Array)
+    let nonZeroCount = 0
+    for (const b of keyARef) {
+      if (b !== 0) nonZeroCount++
+    }
+    assert.ok(nonZeroCount > 0, 'Key should contain non-zero bytes initially')
+
+    // Call purgeVaultKey
+    purgeVaultKey()
+
+    // Under the hood, purgeVaultKey zeroes the Uint8Array
+    for (const b of keyARef) {
+      assert.strictEqual(b, 0, 'Byte should be zeroed out after purge')
+    }
+
+    // Verify global state reference is null
+    assert.strictEqual(getVaultKey(), null)
+  })
   await t.test('normalizeUsername trims and converts to lowercase', () => {
     assert.strictEqual(normalizeUsername('  Alice  '), 'alice')
     assert.strictEqual(normalizeUsername('ALICE'), 'alice')
