@@ -9,6 +9,38 @@ export default definePlugin({
   name: 'storage',
   client: {
     context: async (pluginContext) => {
+      function getTransferables (obj, seen = new Set()) {
+        if (!obj || typeof obj !== 'object') {
+          return []
+        }
+        if (seen.has(obj)) {
+          return []
+        }
+        seen.add(obj)
+
+        const transferables = []
+
+        if (obj instanceof ArrayBuffer) {
+          transferables.push(obj)
+        } else if (ArrayBuffer.isView(obj) && obj.buffer instanceof ArrayBuffer) {
+          transferables.push(obj.buffer)
+        } else {
+          try {
+            const keys = Object.keys(obj)
+            for (let i = 0; i < keys.length; i++) {
+              const val = obj[keys[i]]
+              if (val && typeof val === 'object') {
+                transferables.push(...getTransferables(val, seen))
+              }
+            }
+          } catch (_) {
+            // ignore non-serializable properties or errors
+          }
+        }
+
+        return Array.from(new Set(transferables))
+      }
+
       let resolvedAdapter = null
 
       const getAdapter = async () => {
@@ -75,11 +107,12 @@ export default definePlugin({
               }
 
               // Send back successful response
-              worker.postMessage({
+              const successMsg = {
                 type: 'STORAGE_RESPONSE',
                 requestId,
                 result
-              })
+              }
+              worker.postMessage(successMsg, getTransferables(successMsg))
 
               // Emit appropriate tracking events via global event bus ($bus) if database mutation was successful
               if (pluginContext.$bus) {
@@ -153,11 +186,12 @@ export default definePlugin({
               }
             } catch (err) {
               console.error(`[storage-plugin] Worker storage request failed: ${action}`, err)
-              worker.postMessage({
+              const errMsg = {
                 type: 'STORAGE_RESPONSE',
                 requestId,
                 error: err.message
-              })
+              }
+              worker.postMessage(errMsg, getTransferables(errMsg))
             }
           }
         })

@@ -7,6 +7,38 @@
 const pendingRequests = new Map()
 let requestIdCounter = 0
 
+function getTransferables (obj, seen = new Set()) {
+  if (!obj || typeof obj !== 'object') {
+    return []
+  }
+  if (seen.has(obj)) {
+    return []
+  }
+  seen.add(obj)
+
+  const transferables = []
+
+  if (obj instanceof ArrayBuffer) {
+    transferables.push(obj)
+  } else if (ArrayBuffer.isView(obj) && obj.buffer instanceof ArrayBuffer) {
+    transferables.push(obj.buffer)
+  } else {
+    try {
+      const keys = Object.keys(obj)
+      for (let i = 0; i < keys.length; i++) {
+        const val = obj[keys[i]]
+        if (val && typeof val === 'object') {
+          transferables.push(...getTransferables(val, seen))
+        }
+      }
+    } catch (_) {
+      // ignore non-serializable properties or errors
+    }
+  }
+
+  return Array.from(new Set(transferables))
+}
+
 self.workerBridge = {
   /**
    * Sends an asynchronous storage request to the main thread.
@@ -23,12 +55,22 @@ self.workerBridge = {
         reject
       })
 
-      self.postMessage({
+      const msg = {
         type: 'STORAGE_REQUEST',
         action,
         payload,
         requestId
-      }, transferables || [])
+      }
+      const collected = getTransferables(msg)
+      if (transferables && Array.isArray(transferables)) {
+        for (const t of transferables) {
+          if (t instanceof ArrayBuffer && !collected.includes(t)) {
+            collected.push(t)
+          }
+        }
+      }
+
+      self.postMessage(msg, collected)
     })
   }
 }

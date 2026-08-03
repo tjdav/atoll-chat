@@ -11,6 +11,38 @@ export default function workerPlugin ({ url = '/' } = {}) {
         url
       },
       context: (pluginContext) => {
+        function getTransferables (obj, seen = new Set()) {
+          if (!obj || typeof obj !== 'object') {
+            return []
+          }
+          if (seen.has(obj)) {
+            return []
+          }
+          seen.add(obj)
+
+          const transferables = []
+
+          if (obj instanceof ArrayBuffer) {
+            transferables.push(obj)
+          } else if (ArrayBuffer.isView(obj) && obj.buffer instanceof ArrayBuffer) {
+            transferables.push(obj.buffer)
+          } else {
+            try {
+              const keys = Object.keys(obj)
+              for (let i = 0; i < keys.length; i++) {
+                const val = obj[keys[i]]
+                if (val && typeof val === 'object') {
+                  transferables.push(...getTransferables(val, seen))
+                }
+              }
+            } catch (_) {
+              // ignore non-serializable properties or errors
+            }
+          }
+
+          return Array.from(new Set(transferables))
+        }
+
         // Phase 1: Global Setup
         const worker = new Worker('/worker.js')
         const pendingRequests = new Map()
@@ -29,10 +61,11 @@ export default function workerPlugin ({ url = '/' } = {}) {
 
             // Send worker:init message with baseUrl
             const baseUrl = pluginContext.config?.url || '/'
-            worker.postMessage({
+            const initMsg = {
               type: 'worker:init',
               payload: { baseUrl }
-            })
+            }
+            worker.postMessage(initMsg, getTransferables(initMsg))
 
             while (readyQueue.length > 0) {
               const { type, payload, resolve, reject, id } = readyQueue.shift()
@@ -40,11 +73,12 @@ export default function workerPlugin ({ url = '/' } = {}) {
                 resolve,
                 reject
               })
-              worker.postMessage({
+              const msg = {
                 id,
                 type,
                 payload
-              })
+              }
+              worker.postMessage(msg, getTransferables(msg))
             }
             return
           }
@@ -125,11 +159,12 @@ export default function workerPlugin ({ url = '/' } = {}) {
                   resolve,
                   reject
                 })
-                worker.postMessage({
+                const msg = {
                   id,
                   type,
                   payload
-                })
+                }
+                worker.postMessage(msg, getTransferables(msg))
               }
             })
           }

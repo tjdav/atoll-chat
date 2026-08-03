@@ -41,6 +41,65 @@ const rawSelf = self
 /** @type {WorkerScope} */
 const workerSelf = rawSelf
 
+function getTransferables (obj, seen = new Set()) {
+  if (!obj || typeof obj !== 'object') {
+    return []
+  }
+  if (seen.has(obj)) {
+    return []
+  }
+  seen.add(obj)
+
+  const transferables = []
+
+  if (obj instanceof ArrayBuffer) {
+    transferables.push(obj)
+  } else if (ArrayBuffer.isView(obj) && obj.buffer instanceof ArrayBuffer) {
+    transferables.push(obj.buffer)
+  } else {
+    try {
+      const keys = Object.keys(obj)
+      for (let i = 0; i < keys.length; i++) {
+        const val = obj[keys[i]]
+        if (val && typeof val === 'object') {
+          transferables.push(...getTransferables(val, seen))
+        }
+      }
+    } catch (_) {
+      // ignore non-serializable properties or errors
+    }
+  }
+
+  return Array.from(new Set(transferables))
+}
+
+const nativePostMessage = self.postMessage
+self.postMessage = function (message, transferOrOptions) {
+  const transferables = getTransferables(message)
+  let explicitTransfer = []
+  if (Array.isArray(transferOrOptions)) {
+    explicitTransfer = transferOrOptions
+  } else if (transferOrOptions && typeof transferOrOptions === 'object') {
+    if (Array.isArray(transferOrOptions.transfer)) {
+      explicitTransfer = transferOrOptions.transfer
+    }
+  }
+  for (const t of explicitTransfer) {
+    if (t instanceof ArrayBuffer && !transferables.includes(t)) {
+      transferables.push(t)
+    }
+  }
+  if (transferables.length > 0) {
+    if (transferOrOptions && typeof transferOrOptions === 'object' && !Array.isArray(transferOrOptions)) {
+      nativePostMessage.call(self, message, { ...transferOrOptions, transfer: transferables })
+    } else {
+      nativePostMessage.call(self, message, { transfer: transferables })
+    }
+  } else {
+    nativePostMessage.call(self, message, transferOrOptions)
+  }
+}
+
 /* global importScripts */
 importScripts('/assets/libsodium-sumo.js')
 importScripts('/assets/libsodium-wrappers.js')
