@@ -54,6 +54,38 @@ export default function pocketbase (options = {}) {
     },
 
     /**
+     * Sends custom POST request for password rotation.
+     */
+    async rotatePassword (newKeyBHash, newWrappedVMK, remainingWraps) {
+      return await pb.send('/api/custom/rotate_password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          newKeyBHash,
+          newWrappedVMK,
+          remainingWraps
+        })
+      })
+    },
+
+    /**
+     * Sends custom POST request for account recovery rate-limiting check.
+     */
+    async recoverAccount (username) {
+      return await pb.send('/api/custom/recover_account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username
+        })
+      })
+    },
+
+    /**
      * Clears authentication session tokens.
      */
     logout () {
@@ -311,6 +343,30 @@ export default function pocketbase (options = {}) {
           },
           async verifyOTP (otpId, code) {
             return await instance.collection('users').authWithOTP(otpId, code)
+          },
+          async rotatePassword (newKeyBHash, newWrappedVMK, remainingWraps) {
+            return await instance.send('/api/custom/rotate_password', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                newKeyBHash,
+                newWrappedVMK,
+                remainingWraps
+              })
+            })
+          },
+          async recoverAccount (username) {
+            return await instance.send('/api/custom/recover_account', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                username
+              })
+            })
           },
           logout () {
             instance.authStore.clear()

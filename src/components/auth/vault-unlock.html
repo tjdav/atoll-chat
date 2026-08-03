@@ -500,6 +500,10 @@
 
         try {
           recoveryForm.classList.remove('was-validated')
+          updateStatus('Verifying recovery limit...')
+          const username = pb.authStore.model ? pb.authStore.model.username : ''
+          await pocketbase.auth.recoverAccount(username)
+
           updateStatus('Fetching account details...')
           fetchedRecord = await pb.collection('users').getOne(pb.authStore.model.id)
           const { recovery_wraps: recoveryWraps, encrypted_private_keys: encryptedPrivateKeys } = fetchedRecord
@@ -655,12 +659,7 @@
           }
 
           updateStatus('Updating vault configuration on server...')
-          await pb.collection('users').update(fetchedRecord.id, {
-            password: newKeyB,
-            passwordConfirm: newKeyB,
-            encrypted_master_keys: newPasswordWrap,
-            recovery_wraps: remainingWraps
-          })
+          await pocketbase.auth.rotatePassword(newKeyB, newPasswordWrap, remainingWraps)
 
           /* Perform auth refresh to sync changes */
           const refreshedRecord = await pb.collection('users').authRefresh()

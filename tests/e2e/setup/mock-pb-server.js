@@ -644,12 +644,99 @@ export function createServer () {
         return
       }
 
+      // Custom route for recover account (rate limited)
+      if (pathname === '/api/custom/recover_account' && req.method === 'POST') {
+        const { username } = body
+        const ip = req.socket.remoteAddress || '127.0.0.1'
+        const now = Date.now()
+
+        db.recoveryAttempts = db.recoveryAttempts || {}
+
+        const ipKey = `recovery:ip:${ip}`
+        const userKey = username ? `recovery:user:${username.trim().toLowerCase()}` : ''
+
+        const ipAttempts = db.recoveryAttempts[ipKey] || []
+        const recentIpAttempts = ipAttempts.filter(t => now - t < 3600000)
+
+        if (recentIpAttempts.length >= 5) {
+          res.writeHead(429, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Too many recovery attempts. Please try again later.' }))
+          return
+        }
+
+        if (userKey) {
+          const userAttempts = db.recoveryAttempts[userKey] || []
+          const recentUserAttempts = userAttempts.filter(t => now - t < 3600000)
+
+          if (recentUserAttempts.length >= 5) {
+            res.writeHead(429, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Too many recovery attempts. Please try again later.' }))
+            return
+          }
+
+          recentUserAttempts.push(now)
+          db.recoveryAttempts[userKey] = recentUserAttempts
+        }
+
+        recentIpAttempts.push(now)
+        db.recoveryAttempts[ipKey] = recentIpAttempts
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true }))
+        return
+      }
+
+      // Custom route for rotate password
+      if (pathname === '/api/custom/rotate_password' && req.method === 'POST') {
+        const authHeader = req.headers.authorization || ''
+        const userId = getUserIdFromToken(authHeader)
+        const user = db.users.find(u => u.id === userId)
+
+        if (!user) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Unauthorized' }))
+          return
+        }
+
+        const { newKeyBHash, newWrappedVMK, remainingWraps } = body
+
+        if (!newKeyBHash || !newWrappedVMK) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Missing required rotation payload' }))
+          return
+        }
+
+        // Update in-memory mock database atomically
+        user.password = newKeyBHash
+        user.encrypted_master_keys = newWrappedVMK
+        if (remainingWraps !== undefined) {
+          user.recovery_wraps = remainingWraps
+        }
+        user.updated = new Date().toISOString()
+
+        broadcast(db, 'users', 'update', user)
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true }))
+        return
+      }
+
       // Auth with password
       if (pathname === '/api/collections/users/auth-with-password') {
         const { identity, password } = body
         const identityCanonical = identity.trim().toLowerCase()
         const user = db.users.find(u => u.username === identityCanonical)
-        if (!user || password !== 'Password123!') {
+
+        let isPasswordCorrect = false
+        if (user) {
+          if (password === 'Password123!') {
+            isPasswordCorrect = true
+          } else if (user.password && password === user.password) {
+            isPasswordCorrect = true
+          }
+        }
+
+        if (!user || !isPasswordCorrect) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ message: 'Invalid credentials.' }))
           return

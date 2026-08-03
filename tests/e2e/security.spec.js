@@ -357,4 +357,37 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
     expect(headers['strict-transport-security']).toBe('max-age=31536000; includeSubDomains')
   })
+
+  test('should enforce server-side rate-limiting on recovery attempts and reject after 5 requests', async ({ page }, testInfo) => {
+    const pbUrl = process.env.ATOLL_POCKETBASE_URL || process.env.ATOLL_INTERNAL_POCKETBASE_URL || 'http://localhost:8091'
+    const testId = testInfo.testId
+
+    // We make 5 successful requests
+    for (let i = 0; i < 5; i++) {
+      const response = await page.request.post(`${pbUrl}/api/custom/recover_account`, {
+        headers: {
+          'x-test-id': testId,
+          'Content-Type': 'application/json'
+        },
+        data: {
+          username: 'alice'
+        }
+      })
+      expect(response.status()).toBe(200)
+    }
+
+    // The 6th request should fail with 429 Too Many Requests
+    const failResponse = await page.request.post(`${pbUrl}/api/custom/recover_account`, {
+      headers: {
+        'x-test-id': testId,
+        'Content-Type': 'application/json'
+      },
+      data: {
+        username: 'alice'
+      }
+    })
+    expect(failResponse.status()).toBe(429)
+    const body = await failResponse.json()
+    expect(body.error).toContain('Too many recovery attempts')
+  })
 })

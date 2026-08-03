@@ -193,6 +193,30 @@ export default defineConfig({
                 async verifyOTP (otpId, code) {
                   return await instance.collection('users').authWithOTP(otpId, code)
                 },
+                async rotatePassword (newKeyBHash, newWrappedVMK, remainingWraps) {
+                  return await instance.send('/api/custom/rotate_password', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      newKeyBHash,
+                      newWrappedVMK,
+                      remainingWraps
+                    })
+                  })
+                },
+                async recoverAccount (username) {
+                  return await instance.send('/api/custom/recover_account', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                      username
+                    })
+                  })
+                },
                 logout () {
                   instance.authStore.clear()
                 },

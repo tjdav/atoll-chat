@@ -44,6 +44,46 @@ export function createAuthApi (pb) {
     },
 
     /**
+     * Sends custom POST request for password rotation.
+     *
+     * @param {string} newKeyBHash new password/Key_B.
+     * @param {object} newWrappedVMK newly wrapped VMK.
+     * @param {array} remainingWraps remaining recovery wraps.
+     * @returns {Promise<object>} response JSON.
+     */
+    async rotatePassword (newKeyBHash, newWrappedVMK, remainingWraps) {
+      return await pb.send('/api/custom/rotate_password', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          newKeyBHash,
+          newWrappedVMK,
+          remainingWraps
+        })
+      })
+    },
+
+    /**
+     * Sends custom POST request for account recovery rate-limiting check.
+     *
+     * @param {string} username Username or identity.
+     * @returns {Promise<object>} response JSON.
+     */
+    async recoverAccount (username) {
+      return await pb.send('/api/custom/recover_account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          username
+        })
+      })
+    },
+
+    /**
      * Clears current authentication state and removes stored tokens.
      */
     logout () {
