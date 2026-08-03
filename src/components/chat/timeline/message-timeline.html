@@ -63,7 +63,7 @@
           $state.scrollPositions = {}
         }
 
-        const isNearBottom = container.clientHeight > 0 && (container.scrollHeight - container.scrollTop - container.clientHeight < 50)
+        const isNearBottom = container.clientHeight > 0 && (container.scrollHeight - container.clientHeight > 100) && (container.scrollHeight - container.scrollTop - container.clientHeight < 50)
         const pos = isNearBottom ? -1 : container.scrollTop
   
         // Only save if it's the current room OR if we are explicitly told which room to save for

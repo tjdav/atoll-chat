@@ -26,29 +26,26 @@ test.describe('Messaging Features', () => {
       await expect(getBobChat()).toBeVisible({ timeout: 30000 })
 
       console.log('Toggling read status...')
-      await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
-      await getBobChat().locator('[data-testid$="btn-toggle-read"]').click()
+      await getBobChat().locator('atoll-list-item').click({ button: 'right' })
+      await page.locator('[data-testid="context-item-mark-as-unread"]').click()
 
       // Wait for success toast to ensure operation finished
       await expect(page.locator('.toast')).toContainText(/Marked as unread|Marked as read/, { timeout: 20000 })
 
       // Verification: Dropdown label should have flipped
-      await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
-      await expect(getBobChat().locator('[data-testid$="btn-toggle-read"]')).toContainText(/Mark as read|Mark as unread/, { timeout: 15000 })
+      await getBobChat().locator('atoll-list-item').click({ button: 'right' })
+      await expect(page.locator('[data-testid="context-item-mark-as-read"]')).toBeVisible({ timeout: 15000 })
+      // Dismiss context menu
+      await page.keyboard.press('Escape')
 
       console.log('Toggling mute status...')
-      const dropdownMenu = getBobChat().locator('.dropdown-menu')
-      if (!(await dropdownMenu.isVisible())) {
-        await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
-      }
-      await getBobChat().locator('[data-testid$="btn-toggle-mute"]').click()
+      await getBobChat().locator('atoll-list-item').click({ button: 'right' })
+      await page.locator('[data-testid="context-item-mute-notifications"]').click()
       await expect(page.locator('.toast')).toContainText('Notifications muted')
 
       page.once('dialog', dialog => dialog.accept())
-      if (!(await dropdownMenu.isVisible())) {
-        await getBobChat().getByLabel('Chat actions').evaluate(el => el.click())
-      }
-      await getBobChat().locator('[data-testid$="btn-delete-chat"]').click()
+      await getBobChat().locator('atoll-list-item').click({ button: 'right' })
+      await page.locator('[data-testid="context-item-delete-chat"]').click()
       await expect(page.locator('chat-list-item').filter({ hasText: 'Bob' })).toHaveCount(0)
     })
   })
@@ -233,9 +230,9 @@ test.describe('Messaging Features', () => {
       const msg = 'React ' + Date.now()
       await alicePage.fill('textarea', msg)
       await alicePage.click('[data-testid$="__sendButton"]')
-      const bobChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+      const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChat).toBeVisible({ timeout: 30000 })
-      await bobChat.click()
+      await bobChat.locator('atoll-list-item').click()
       const row = bobPage.locator('timeline-row').filter({ hasText: msg })
       await expect(row).toBeVisible({ timeout: 20000 })
       const uuid = await row.getAttribute('data-local-uuid')
@@ -268,10 +265,10 @@ test.describe('Messaging Features', () => {
       await page.locator('[data-testid$="btnCreate"]').click()
 
       // Wait for room to appear in list
-      await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible({ timeout: 15000 })
+      await expect(page.locator('chat-list chat-list-item:has-text("Project X")')).toBeVisible({ timeout: 15000 })
 
       await page.locator('list-pane [data-testid$="searchInput"]').locator('input[type="search"]').fill('Project')
-      await expect(page.locator('chat-list .app-list-item:has-text("Project X")')).toBeVisible()
+      await expect(page.locator('chat-list chat-list-item:has-text("Project X")')).toBeVisible()
 
       // Debounce sound
       const aliceContext = await browser.newContext()
@@ -391,8 +388,8 @@ test.describe('Messaging Features', () => {
       await expect(lastRow).toHaveClass(/opacity-75/)
 
       // Verify the global status indicator shows a clock icon
-      const statusIcon = page.locator('message-timeline .message-status-container i')
-      await expect(statusIcon).toHaveClass(/bi-clock/)
+      const statusIcon = page.locator('message-timeline .message-status-container atoll-icon')
+      await expect(statusIcon).toHaveAttribute('name', 'clock')
 
       // Transition back to online state
       await page.context().setOffline(false)
@@ -403,7 +400,7 @@ test.describe('Messaging Features', () => {
 
       // Verify the message is successfully flushed, sent to the server, and updated from "pending" to "sent" (no opacity-75 class, showing check icon)
       await expect(lastRow).not.toHaveClass(/opacity-75/, { timeout: 15000 })
-      await expect(statusIcon).toHaveClass(/bi-check/, { timeout: 15000 })
+      await expect(statusIcon).toHaveAttribute('name', 'check', { timeout: 15000 })
     })
   })
 

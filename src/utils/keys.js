@@ -19,7 +19,7 @@ let ephemeralVaultKey = null
  */
 export function purgeVaultKey () {
   if (ephemeralVaultKey) {
-    if (ephemeralVaultKey.byteLength > 0 && typeof ephemeralVaultKey.fill === 'function') {
+    if (typeof ephemeralVaultKey.fill === 'function') {
       ephemeralVaultKey.fill(0)
     }
     ephemeralVaultKey = null
@@ -61,8 +61,7 @@ export async function deriveAuthAndVaultKeys (rawUsername, masterPassword, optio
     masterSaltHash = sodium.crypto_hash_sha256(masterSaltInput)
     saltMaster = masterSaltHash.slice(0, 16)
 
-    const isTest = (typeof import.meta.env !== 'undefined' && import.meta.env.MODE === 'testing') ||
-                  (typeof process !== 'undefined' && process.env && (process.env.NODE_ENV === 'test' || process.env.NODE_ENV === 'testing'))
+    const isTest = typeof import.meta.env !== 'undefined' && import.meta.env.MODE === 'testing'
     const opslimit = options.opslimit ?? (isTest ? 1 : 3)
     const memlimit = options.memlimit ?? (isTest ? 8388608 : 134217728)
 

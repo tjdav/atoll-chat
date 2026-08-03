@@ -1,49 +1,28 @@
 <template id="chat-list-item">
   <atoll-list-item
     ref="container"
+    title="{{ roomName }}"
+    description="{{ previewText }}"
+    timestamp="{{ relativeTime }}"
+    badge="{{ unreadBadgeCount }}"
     selected="{{ isActive }}"
     clickable
     size="lg"
-    class="position-relative"
   >
+    <!-- Avatar / Profile Slot -->
     <slot name="avatar" slot="left"></slot>
 
-    <div slot="right" class="d-flex align-items-center gap-2" ref="rightZone">
-      <atoll-badge ref="badgeComponent" size="sm" class="bg-primary rounded-circle"></atoll-badge>
-
-      <!-- Dropdown Menu -->
-      <div class="dropdown ms-2">
-        <button class="btn btn-link text-body-secondary p-0 opacity-0 group-hover-visible" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Chat actions">
-          <i class="bi bi-three-dots"></i>
-        </button>
-        <ul class="dropdown-menu dropdown-menu-end shadow-sm">
-          <li class="{{ editRoomClass }}">
-            <a class="dropdown-item d-flex align-items-center gap-2" href="#" ref="btnEditRoom" data-testid="btn-edit-room">
-              <i class="bi bi-pencil"></i> Edit Room
-            </a>
-          </li>
-          <li>
-            <a class="dropdown-item d-flex align-items-center gap-2" href="#" ref="btnToggleRead" data-testid="btn-toggle-read">
-              <i class="bi {{ readIcon }}"></i> {{ readLabel }}
-            </a>
-          </li>
-          <li>
-            <a class="dropdown-item d-flex align-items-center gap-2" href="#" ref="btnToggleMute" data-testid="btn-toggle-mute">
-              <i class="bi {{ muteIcon }}"></i> {{ muteLabel }}
-            </a>
-          </li>
-          <li><hr class="dropdown-divider"></li>
-          <li>
-            <a class="dropdown-item d-flex align-items-center gap-2 text-danger" href="#" ref="btnDelete" data-testid="btn-delete-chat">
-              <i class="bi bi-trash"></i> {{ deleteLabel }}
-            </a>
-          </li>
-        </ul>
-      </div>
+    <!-- Status Indicators (Right Slot) -->
+    <div slot="right" class="d-flex align-items-center gap-1">
+      <atoll-icon 
+        hidden="{{ hideMuteIcon }}" 
+        name="bell-off" 
+        size="16" 
+        color="var(--atoll-text-tertiary, #999999)"
+      ></atoll-icon>
     </div>
   </atoll-list-item>
 </template>
-
 
 <script type="module">
   import { defineComponent } from 'coralite'
@@ -63,69 +42,79 @@
       userRole: String,
       isMuted: Boolean
     },
-    server: () => ({
-      isActive: false
-    }),
+
     getters: {
-      isRead: (state) => !state.isUnread,
-      unreadClass: (state) => (state.isUnread ? 'fw-bold' : ''),
-      activeClass: (state) => (state.isActive ? 'active' : ''),
-      readLabel: (state) => (state.isUnread ? 'Mark as read' : 'Mark as unread'),
-      readIcon: (state) => (state.isUnread ? 'bi-envelope-open' : 'bi-envelope'),
-      muteLabel: (state) => (state.isMuted ? 'Unmute notifications' : 'Mute notifications'),
-      muteIcon: (state) => (state.isMuted ? 'bi-bell' : 'bi-bell-slash'),
-      deleteLabel: (state) => (state.isGroup ? 'Leave group' : 'Delete chat'),
-      editRoomClass: (state) => (state.userRole === 'admin' ? '' : 'd-none')
+      unreadBadgeCount: (state) => {
+        const isUnread = state.isUnread === 'true' || state.isUnread === true || state.isUnread === ''
+        return isUnread ? String(state.unreadCount || 1) : ''
+      },
+      hideMuteIcon: (state) => {
+        const isMuted = state.isMuted === 'true' || state.isMuted === true || state.isMuted === ''
+        return !isMuted
+      }
     },
-    client: ({ refs, state, globalStore, eventBus, signal, observe, root }) => {
+
+    client: ({ refs, state, globalStore, eventBus, signal, root, observe }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       const container = refs('container')
-      const badgeComp = refs('badgeComponent')
 
-      const updateBadge = () => {
-        if (badgeComp) {
-          if (state.isUnread) {
-            const countVal = (state.unreadCount && state.unreadCount > 0) ? state.unreadCount : 1
-            badgeComp.setAttribute('count', String(countVal))
-            badgeComp.removeAttribute('hidden')
-            badgeComp.removeAttribute('aria-hidden')
-          } else {
-            badgeComp.setAttribute('hidden', '')
-            badgeComp.setAttribute('aria-hidden', 'true')
-            badgeComp.removeAttribute('count')
-          }
-        }
-      }
+      observe('roomName', (val) => {
+        state.roomName = val
+      })
+      observe('room-name', (val) => {
+        state.roomName = val
+      })
+      observe('previewText', (val) => {
+        state.previewText = val
+      })
+      observe('preview-text', (val) => {
+        state.previewText = val
+      })
+      observe('relativeTime', (val) => {
+        state.relativeTime = val
+      })
+      observe('relative-time', (val) => {
+        state.relativeTime = val
+      })
+      observe('roomId', (val) => {
+        state.roomId = val
+      })
+      observe('room-id', (val) => {
+        state.roomId = val
+      })
+      observe('isUnread', (val) => {
+        state.isUnread = val
+      })
+      observe('is-unread', (val) => {
+        state.isUnread = val
+      })
+      observe('unreadCount', (val) => {
+        state.unreadCount = val
+      })
+      observe('unread-count', (val) => {
+        state.unreadCount = val
+      })
+      observe('isMuted', (val) => {
+        state.isMuted = val
+      })
+      observe('is-muted', (val) => {
+        state.isMuted = val
+      })
+      observe('isGroup', (val) => {
+        state.isGroup = val
+      })
+      observe('is-group', (val) => {
+        state.isGroup = val
+      })
+      observe('userRole', (val) => {
+        state.userRole = val
+      })
+      observe('user-role', (val) => {
+        state.userRole = val
+      })
 
-      const syncItemData = () => {
-        if (container) {
-          if (state.roomName) {
-            container.setAttribute('title', state.roomName)
-          } else {
-            container.removeAttribute('title')
-          }
-
-          if (state.previewText) {
-            container.setAttribute('description', state.previewText)
-          } else {
-            container.removeAttribute('description')
-          }
-
-          if (state.relativeTime) {
-            container.setAttribute('timestamp', state.relativeTime)
-          } else {
-            container.removeAttribute('timestamp')
-          }
-
-          if (state.isUnread) {
-            container.setAttribute('unread', 'true')
-          } else {
-            container.removeAttribute('unread')
-          }
-        }
-      }
-
+      // Synchronize active selection state
       const syncActiveState = () => {
         state.isActive = $state.activeSelectionId === state.roomId && $state.activeSelectionType === 'chats'
       }
@@ -134,153 +123,64 @@
       $state.subscribe('activeSelectionType', syncActiveState)
       syncActiveState()
 
-      const handleUnread = (val) => {
-        state.isUnread = val === 'true' || val === true || val === ''
-        syncItemData()
-        updateBadge()
-      }
-      observe('isUnread', handleUnread)
-      observe('is-unread', handleUnread)
-
-      const handleUnreadCount = (val) => {
-        state.unreadCount = Number(val) || 0
-        updateBadge()
-      }
-      observe('unreadCount', handleUnreadCount)
-      observe('unread-count', handleUnreadCount)
-
-      const handleRoomName = (val) => {
-        state.roomName = val
-        syncItemData()
-      }
-      observe('roomName', handleRoomName)
-      observe('room-name', handleRoomName)
-
-      const handlePreviewText = (val) => {
-        state.previewText = val
-        syncItemData()
-      }
-      observe('previewText', handlePreviewText)
-      observe('preview-text', handlePreviewText)
-
-      const handleRelativeTime = (val) => {
-        state.relativeTime = val
-        syncItemData()
-      }
-      observe('relativeTime', handleRelativeTime)
-      observe('relative-time', handleRelativeTime)
-
-      const handleRoomId = (val) => {
-        state.roomId = val
-      }
-      observe('roomId', handleRoomId)
-      observe('room-id', handleRoomId)
-
-      const handleIsGroup = (val) => {
-        state.isGroup = val === 'true' || val === true || val === ''
-      }
-      observe('isGroup', handleIsGroup)
-      observe('is-group', handleIsGroup)
-
-      const handleUserRole = (val) => {
-        state.userRole = val
-      }
-      observe('userRole', handleUserRole)
-      observe('user-role', handleUserRole)
-
-      const handleIsMuted = (val) => {
-        state.isMuted = val === 'true' || val === true || val === ''
-      }
-      observe('isMuted', handleIsMuted)
-      observe('is-muted', handleIsMuted)
-
-      updateBadge()
-      syncItemData()
-
-      const emitBusAction = (name, detail = {}) => {
-        const targetRoomId = state.roomId || root.getAttribute('room-id')
-        $bus.emit(name, {
-          room_id: targetRoomId,
-          ...detail
-        })
-      }
-
-      const btnDropdownToggle = root.querySelector('button[aria-label="Chat actions"]')
-      const dropdownMenu = root.querySelector('.dropdown-menu')
-
-      const closeDropdown = () => {
-        if (dropdownMenu) {
-          dropdownMenu.classList.remove('show')
-        }
-        if (btnDropdownToggle) {
-          btnDropdownToggle.setAttribute('aria-expanded', 'false')
-        }
-      }
-
-      if (btnDropdownToggle && dropdownMenu) {
-        btnDropdownToggle.addEventListener('click', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          const isOpen = dropdownMenu.classList.contains('show')
-          if (isOpen) {
-            closeDropdown()
-          } else {
-            dropdownMenu.classList.add('show')
-            btnDropdownToggle.setAttribute('aria-expanded', 'true')
-          }
-        }, { signal })
-      }
-
-      const btnEditRoom = refs('btnEditRoom')
-      if (btnEditRoom) {
-        btnEditRoom.addEventListener('click', (e) => {
-          e.preventDefault(); e.stopPropagation()
-          closeDropdown()
-          emitBusAction('room:edit')
-        }, { signal })
-      }
-
-      const btnToggleRead = refs('btnToggleRead')
-      if (btnToggleRead) {
-        btnToggleRead.addEventListener('click', (e) => {
-          e.preventDefault(); e.stopPropagation()
-          closeDropdown()
-          emitBusAction('room:toggle_read', { isUnread: state.isUnread })
-        }, { signal })
-      }
-
-      const btnToggleMute = refs('btnToggleMute')
-      if (btnToggleMute) {
-        btnToggleMute.addEventListener('click', (e) => {
-          e.preventDefault(); e.stopPropagation()
-          closeDropdown()
-          emitBusAction('room:toggle_mute', { isMuted: state.isMuted })
-        }, { signal })
-      }
-
-      const btnDelete = refs('btnDelete')
-      if (btnDelete) {
-        btnDelete.addEventListener('click', (e) => {
-          e.preventDefault(); e.stopPropagation()
-          closeDropdown()
-          const isGroupVal = state.isGroup === true || state.isGroup === 'true'
-          emitBusAction('room:delete', { isGroup: isGroupVal })
-        }, { signal })
-      }
-
+      // Handle item click selection
       if (container) {
-        const handleSelect = (e) => {
-          const target = e.target || e.detail?.originalEvent?.target
-          if (target && typeof target.closest === 'function' && target.closest('.dropdown')) {
-            return
-          }
-          emitBusAction('room:select')
+        container.addEventListener('atoll-item-click', () => {
+          $bus.emit('room:select', { room_id: state.roomId })
           $bus.emit('ui:selection_made')
-        }
-
-        container.addEventListener('click', handleSelect, { signal })
-        container.addEventListener('atoll-item-click', handleSelect, { signal })
+        }, { signal })
       }
+
+      // Native Right-Click Context Menu Trigger
+      root.addEventListener('contextmenu', (e) => {
+        console.log('[chat-list-item] contextmenu event triggered on root!', {
+          clientX: e.clientX,
+          clientY: e.clientY,
+          roomId: state.roomId,
+          roomName: state.roomName
+        })
+        e.preventDefault()
+        const isUnreadVal = state.isUnread === 'true' || state.isUnread === true || state.isUnread === ''
+        const isMutedVal = state.isMuted === 'true' || state.isMuted === true || state.isMuted === ''
+        const isGroupVal = state.isGroup === 'true' || state.isGroup === true || state.isGroup === ''
+
+        $bus.emit('ui:show_context_menu', {
+          x: e.clientX,
+          y: e.clientY,
+          items: [
+            {
+              label: isUnreadVal ? 'Mark as read' : 'Mark as unread',
+              icon: isUnreadVal ? 'mail-open' : 'mail',
+              action: () => $bus.emit('room:toggle_read', {
+                room_id: state.roomId,
+                isUnread: isUnreadVal
+              })
+            },
+            {
+              label: isMutedVal ? 'Unmute notifications' : 'Mute notifications',
+              icon: isMutedVal ? 'bell' : 'bell-off',
+              action: () => $bus.emit('room:toggle_mute', {
+                room_id: state.roomId,
+                isMuted: isMutedVal
+              })
+            },
+            ...(state.userRole === 'admin' ? [{
+              label: 'Edit Room',
+              icon: 'edit',
+              action: () => $bus.emit('room:edit', { room_id: state.roomId })
+            }] : []),
+            {
+              label: isGroupVal ? 'Leave group' : 'Delete chat',
+              icon: 'trash',
+              danger: true,
+              action: () => $bus.emit('room:delete', {
+                room_id: state.roomId,
+                isGroup: isGroupVal
+              })
+            }
+          ]
+        })
+      }, { signal })
     }
   })
 </script>

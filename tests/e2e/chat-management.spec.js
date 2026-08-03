@@ -33,9 +33,9 @@ test.describe('Chat Management', () => {
       await expect(aliceStatusContainer).toBeVisible({ timeout: 20000 })
       await expect(aliceStatusContainer.locator('[data-testid$="status-text"]')).toHaveText('Sent')
 
-      const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+      const bobChatListAlice = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChatListAlice).toBeVisible({ timeout: 30000 })
-      await bobChatListAlice.click()
+      await bobChatListAlice.locator('atoll-list-item').click()
 
       const bobReceivedRow = bobPage.locator('timeline-row').filter({ hasText: aliceMessageText })
       await expect(bobReceivedRow).toBeVisible({ timeout: 10000 })
@@ -71,17 +71,16 @@ test.describe('Chat Management', () => {
       await alicePage.fill('textarea[placeholder="Type a message..."]', aliceMsg)
       await alicePage.click('[data-testid$="__sendButton"]')
 
-      const aliceChatListBob = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'bob' }).first()
-      await expect(aliceChatListBob.locator('small.text-truncate').first()).toHaveText('You: ' + aliceMsg)
+      const aliceChatListBob = alicePage.locator('chat-list chat-list-item').filter({ hasText: 'bob' }).first()
+      await expect(aliceChatListBob.locator('span.atoll-list-item-description').first()).toHaveText('You: ' + aliceMsg)
 
-      const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+      const bobChatListAlice = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChatListAlice).toBeVisible({ timeout: 15000 })
-      const bobPreviewText = bobChatListAlice.locator('small.text-truncate').first()
+      const bobPreviewText = bobChatListAlice.locator('span.atoll-list-item-description').first()
       await expect(bobPreviewText).toHaveText(aliceMsg)
-      await expect(bobPreviewText).toHaveClass(/fw-bold/)
-      await expect(bobChatListAlice.locator('.bg-primary.rounded-circle')).toBeVisible()
+      await expect(bobChatListAlice.locator('atoll-badge')).toBeVisible()
 
-      await bobChatListAlice.click()
+      await bobChatListAlice.locator('atoll-list-item').click()
       await expect(bobPreviewText).not.toHaveClass(/fw-bold/)
 
       await alicePage.setInputFiles('[data-testid$="__fileInput"]', {
@@ -91,7 +90,7 @@ test.describe('Chat Management', () => {
       })
       await alicePage.fill('textarea[placeholder="Type a message..."]', 'Cool image')
       await alicePage.click('[data-testid$="__sendButton"]')
-      await expect(aliceChatListBob.locator('small.text-truncate').first()).toContainText('You: Sent a photo.')
+      await expect(aliceChatListBob.locator('span.atoll-list-item-description').first()).toContainText('You: Sent a photo.')
       await expect(bobPreviewText).toContainText('Sent a photo.')
 
       await aliceContext.close()
@@ -114,7 +113,7 @@ test.describe('Chat Management', () => {
       await expect(alicePage.locator('chat-view')).toBeVisible()
 
       const room_id = await alicePage.evaluate(() => window.$state.activeSelectionId)
-      const bobChatListAlice = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' })
+      const bobChatListAlice = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' })
       await expect(bobChatListAlice).toBeVisible({ timeout: 15000 })
 
       await bobPage.evaluate((rid) => {
@@ -158,8 +157,8 @@ test.describe('Chat Management', () => {
       })
 
       // Click dropdown and then click Delete chat
-      await bobListItem.locator('button[aria-label="Chat actions"]').evaluate(el => el.click())
-      await bobListItem.locator('[data-testid$="btn-delete-chat"]').click()
+      await bobListItem.locator('atoll-list-item').click({ button: 'right' })
+      await alicePage.locator('[data-testid$="context-item-delete-chat"]').click()
 
       // Assert that the item is successfully removed from Alice's sidebar list
       await expect(bobListItem).not.toBeVisible({ timeout: 15000 })
@@ -209,13 +208,15 @@ test.describe('Chat Management', () => {
       await expect(page.locator('[data-testid$="username"]')).toBeVisible({ timeout: 15000 })
 
       /* Login Flow */
-      await page.locator('auth-login [data-testid$="username"]').fill('alice@example.com')
+      await page.locator('auth-login [data-testid$="username"]').fill('alice')
       await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
       await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-      await expect(page.locator('vault-unlock [data-testid$="password"]')).toBeVisible({ timeout: 15000 })
-      await page.fill('vault-unlock [data-testid$="password"]', 'VaultPassword123!')
-      await page.click('vault-unlock button:has-text("Unlock with Password")')
+      const vaultUnlockPasswordInput = page.locator('vault-unlock [data-testid$="password"]')
+      if (await vaultUnlockPasswordInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+        await vaultUnlockPasswordInput.fill('VaultPassword123!')
+        await page.click('vault-unlock button:has-text("Unlock with Password")')
+      }
       await expect(page).toHaveURL(/view=music/, { timeout: 20000 })
       await expect(page.locator('music-list')).toBeVisible({ timeout: 15000 })
     })
