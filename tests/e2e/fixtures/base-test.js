@@ -219,7 +219,11 @@ async function resetPocketBase (testId) {
         // User doesn't exist, we will create it below
       }
 
-      const { keyA: keyABytes, keyB: userPasswordKeyB } = await deriveAuthAndVaultKeys(user.username, SHARED_PASSWORD)
+      // Use the same Argon2id params the browser client uses in `testing` mode.
+      const { keyA: keyABytes, keyB: userPasswordKeyB } = await deriveAuthAndVaultKeys(user.username, SHARED_PASSWORD, {
+        opslimit: 1,
+        memlimit: 8388608
+      })
 
       const masterKeys = await generateMasterKeys(sodium)
       const salt = generateSalt(sodium)
