@@ -262,42 +262,56 @@
 
       refs('btnToggleAudio').addEventListener('click', () => {
         $bus.emit('call:toggle_audio_clicked')
-      })
+      }, { signal })
 
       refs('btnToggleVideo').addEventListener('click', () => {
         $bus.emit('call:toggle_video_clicked')
-      })
+      }, { signal })
 
       refs('btnPip').addEventListener('click', () => {
         $bus.emit('call:pip_clicked')
-      })
+      }, { signal })
+
+      let isSettingsSaved = false
 
       refs('btnSettings').addEventListener('click', () => {
+        isSettingsSaved = false
         moveContent()
+        if (deviceManager && typeof deviceManager.takeSnapshot === 'function') {
+          deviceManager.takeSnapshot()
+        }
         if (deviceManager && typeof deviceManager.renderDeviceMenus === 'function') {
           deviceManager.renderDeviceMenus()
         }
         if (settingsPopup && typeof settingsPopup.show === 'function') {
           settingsPopup.show()
         }
-      })
+      }, { signal })
 
       if (settingsPopup) {
         settingsPopup.addEventListener('atoll-popup-primary', () => {
+          isSettingsSaved = true
           if (typeof settingsPopup.hide === 'function') {
             settingsPopup.hide()
           }
-        })
+        }, { signal })
         settingsPopup.addEventListener('atoll-popup-secondary', () => {
+          isSettingsSaved = false
           if (typeof settingsPopup.hide === 'function') {
             settingsPopup.hide()
           }
-        })
+        }, { signal })
+        settingsPopup.addEventListener('atoll-popup-close', () => {
+          console.log('[call-control-bar] atoll-popup-close triggered. isSettingsSaved:', isSettingsSaved)
+          if (!isSettingsSaved && deviceManager && typeof deviceManager.rollback === 'function') {
+            deviceManager.rollback()
+          }
+        }, { signal })
       }
 
       refs('btnEndCall').addEventListener('click', () => {
         $bus.emit('call:end_clicked')
-      })
+      }, { signal })
     }
   })
 </script>

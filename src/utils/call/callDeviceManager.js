@@ -6,9 +6,7 @@
 /**
  *
  */
-export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, signal }) => {
-  const { $state } = globalStore
-  const { $bus } = eventBus
+export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, eventBus: { $bus }, signal }) => {
 
   const getRef = (name) => {
     const fromRefs = refs(name)
@@ -25,19 +23,12 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     return null
   }
 
-  // Capability Gating
-  state.isSpeakerSelectionSupported = typeof HTMLMediaElement.prototype.setSinkId !== 'undefined'
-  const speakerFallbackEl = getRef('speakerFallback')
-  if (!state.isSpeakerSelectionSupported && speakerFallbackEl) {
-    speakerFallbackEl.classList.remove('d-none')
-  }
-
   const requestTemporaryPermissions = async () => {
     if (window.__E2E_AUDIO_MOCK_INJECTED__) {
       console.log('[call-device-manager] E2E audio mock detected, skipping temporary permission stream.')
       return
     }
-    if (state.localStream && state.localStream.getTracks().length > 0) {
+    if ($state.localStream && $state.localStream.getTracks().length > 0) {
       console.log('[call-device-manager] Active localStream already exists, skipping temporary permission stream.')
       return
     }
@@ -199,7 +190,7 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     localStorage.setItem('atoll_active_microphone', deviceId)
     renderDeviceMenus()
 
-    if (state.callStatus !== 'active' || !state.localStream) {
+    if (state.callStatus !== 'active' || !$state.localStream) {
       return
     }
 
@@ -228,13 +219,13 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
         }
       }
 
-      const oldAudioTrack = state.localStream.getAudioTracks()[0]
+      const oldAudioTrack = $state.localStream.getAudioTracks()[0]
       if (oldAudioTrack) {
         oldAudioTrack.stop()
-        state.localStream.removeTrack(oldAudioTrack)
+        $state.localStream.removeTrack(oldAudioTrack)
       }
-      state.localStream.addTrack(newTrack)
-      $bus.emit('call:local_stream_available', { stream: state.localStream })
+      $state.localStream.addTrack(newTrack)
+      $bus.emit('call:local_stream_available', { stream: $state.localStream })
     } catch (err) {
       console.error('[call-device-manager] Failed to swap active audio track:', err)
     }
@@ -245,7 +236,7 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     localStorage.setItem('atoll_active_camera', deviceId)
     renderDeviceMenus()
 
-    if (state.callStatus !== 'active' || !state.localStream) {
+    if (state.callStatus !== 'active' || !$state.localStream) {
       return
     }
 
@@ -267,13 +258,13 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
         }
       }
 
-      const oldVideoTrack = state.localStream.getVideoTracks()[0]
+      const oldVideoTrack = $state.localStream.getVideoTracks()[0]
       if (oldVideoTrack) {
         oldVideoTrack.stop()
-        state.localStream.removeTrack(oldVideoTrack)
+        $state.localStream.removeTrack(oldVideoTrack)
       }
-      state.localStream.addTrack(newTrack)
-      $bus.emit('call:local_stream_available', { stream: state.localStream })
+      $state.localStream.addTrack(newTrack)
+      $bus.emit('call:local_stream_available', { stream: $state.localStream })
       applyLocalVideoEffects()
     } catch (err) {
       console.error('[call-device-manager] Failed to swap active video track:', err)
@@ -321,7 +312,96 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     }
   }
 
+  let snapshot = null
+
+  const takeSnapshot = () => {
+    snapshot = {
+      activeMicId: state.activeMicId,
+      activeCamId: state.activeCamId,
+      activeSpeakerId: state.activeSpeakerId,
+      isNoiseCancellationEnabled: state.isNoiseCancellationEnabled,
+      isBackgroundBlurEnabled: state.isBackgroundBlurEnabled
+    }
+    console.log('[call-device-manager] Snapshot captured:', snapshot)
+  }
+
+  const rollback = async () => {
+    if (!snapshot) {
+      return
+    }
+    console.log('[call-device-manager] Rolling back to snapshot:', snapshot)
+
+    const changedMic = state.activeMicId !== snapshot.activeMicId
+    const changedCam = state.activeCamId !== snapshot.activeCamId
+    const changedSpeaker = state.activeSpeakerId !== snapshot.activeSpeakerId
+    const changedNC = state.isNoiseCancellationEnabled !== snapshot.isNoiseCancellationEnabled
+    const changedBlur = state.isBackgroundBlurEnabled !== snapshot.isBackgroundBlurEnabled
+
+    state.activeMicId = snapshot.activeMicId
+    state.activeCamId = snapshot.activeCamId
+    state.activeSpeakerId = snapshot.activeSpeakerId
+    state.isNoiseCancellationEnabled = snapshot.isNoiseCancellationEnabled
+    state.isBackgroundBlurEnabled = snapshot.isBackgroundBlurEnabled
+
+    localStorage.setItem('atoll_active_microphone', state.activeMicId)
+    localStorage.setItem('atoll_active_camera', state.activeCamId)
+    localStorage.setItem('atoll_active_speaker', state.activeSpeakerId)
+    localStorage.setItem('atoll_noise_cancellation', state.isNoiseCancellationEnabled)
+    localStorage.setItem('atoll_background_blur', state.isBackgroundBlurEnabled)
+
+    // Sync UI components
+    const toggleNoiseCancellation = getRef('toggleNoiseCancellation')
+    if (toggleNoiseCancellation) {
+      toggleNoiseCancellation.checked = state.isNoiseCancellationEnabled
+    }
+    const toggleBackgroundBlur = getRef('toggleBackgroundBlur')
+    if (toggleBackgroundBlur) {
+      toggleBackgroundBlur.checked = state.isBackgroundBlurEnabled
+    }
+
+    renderDeviceMenus()
+
+    if (state.callStatus === 'active') {
+      if (changedMic || changedNC) {
+        await selectMicrophone(state.activeMicId)
+      }
+      if (changedCam) {
+        await selectCamera(state.activeCamId)
+      }
+      if (changedSpeaker) {
+        await selectSpeaker(state.activeSpeakerId)
+      }
+      if (changedBlur) {
+        applyLocalVideoEffects()
+      }
+    } else {
+      applyLocalVideoEffects()
+    }
+
+    snapshot = null
+  }
+
   const enumerateAndBootDevices = async () => {
+    // Capability Gating
+    state.isSpeakerSelectionSupported = typeof HTMLMediaElement.prototype.setSinkId !== 'undefined'
+    const speakerFallbackEl = getRef('speakerFallback')
+    const speakerSelectEl = getRef('speakerSelect')
+    if (!state.isSpeakerSelectionSupported) {
+      if (speakerFallbackEl) {
+        speakerFallbackEl.classList.remove('d-none')
+      }
+      if (speakerSelectEl) {
+        speakerSelectEl.classList.add('d-none')
+      }
+    } else {
+      if (speakerFallbackEl) {
+        speakerFallbackEl.classList.add('d-none')
+      }
+      if (speakerSelectEl) {
+        speakerSelectEl.classList.remove('d-none')
+      }
+    }
+
     await requestTemporaryPermissions()
     await fetchHardwareLists()
     await bootValidatePreferences()
@@ -434,6 +514,8 @@ export const createCallDeviceManager = ({ state, refs, globalStore, eventBus, si
     selectMicrophone,
     selectCamera,
     selectSpeaker,
-    applyLocalVideoEffects
+    applyLocalVideoEffects,
+    takeSnapshot,
+    rollback
   }
 }
