@@ -267,7 +267,7 @@ test.describe('Messaging Features', () => {
       // Wait for room to appear in list
       await expect(page.locator('chat-list chat-list-item:has-text("Project X")')).toBeVisible({ timeout: 15000 })
 
-      await page.locator('list-pane [data-testid$="searchInput"]').locator('input[type="search"]').fill('Project')
+      await page.locator('list-pane [data-testid$="searchInput"]').fill('Project')
       await expect(page.locator('chat-list chat-list-item:has-text("Project X")')).toBeVisible()
 
       // Debounce sound
