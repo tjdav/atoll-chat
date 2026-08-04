@@ -9,17 +9,6 @@
     aria-describedby="{{ ref_modalDesc }}"
   >
     <div class="modal-dialog atoll-popup-dialog {{ dialogClasses }}">
-      <atoll-button 
-          ref="btnClose" 
-          icon-only="true" 
-          variant="ghost" 
-          size="md"
-          aria-label="Close"
-          hidden="{{ hideCloseBtn }}"
-          class="d-block position-absolute top-0 end-0"
-        >
-        <atoll-icon name="close" size="24"></atoll-icon>
-      </atoll-button>
       <div class="modal-content">
         <!-- Optional Hero Graphic / Illustration Slot -->
         <slot name="hero"></slot>
@@ -91,7 +80,9 @@
       },
       stackedActions: Boolean,
       staticBackdrop: Boolean,
-      closeable: Boolean
+      disableBackdrop: Boolean,
+      disableKeyboard: Boolean,
+      disableFocus: Boolean
     },
 
     slots: {
@@ -176,8 +167,6 @@
 
       hideDescription: (state) => !state.description,
 
-      hideCloseBtn: (state) => !state.closeable,
-
       hideHeader: (state) => !state.title,
 
       dialogClasses: (state) => {
@@ -201,8 +190,9 @@
 
       // Initialize Bootstrap Modal Engine
       bsModalInstance = Modal.getOrCreateInstance(modalEl, {
-        backdrop: state.staticBackdrop ? 'static' : true,
-        keyboard: !state.staticBackdrop
+        backdrop: state.disableBackdrop || state.staticBackdrop ? 'static' : true,
+        keyboard: !state.disableKeyboard && !state.staticBackdrop && !state.disableBackdrop,
+        focus: !state.disableFocus
       })
 
       modalEl.addEventListener('show.bs.modal', () => {
@@ -234,7 +224,7 @@
         )
       }, { signal })
 
-      // Event delegation for primary, secondary, and close button clicks
+      // Event delegation for primary and secondary clicks
       modalEl.addEventListener('click', (e) => {
         const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
         if (!target) {
@@ -244,7 +234,6 @@
         const refAttr = target.getAttribute('ref') || ''
         const isPrimary = refAttr === 'primaryBtn' || refAttr.endsWith('__primaryBtn')
         const isSecondary = refAttr === 'secondaryBtn' || refAttr.endsWith('__secondaryBtn')
-        const isClose = refAttr === 'btnClose' || refAttr.endsWith('__btnClose')
 
         if (isPrimary) {
           root.dispatchEvent(
@@ -265,10 +254,6 @@
               detail: { variant: state.variant }
             })
           )
-          if (bsModalInstance) {
-            bsModalInstance.hide()
-          }
-        } else if (isClose) {
           if (bsModalInstance) {
             bsModalInstance.hide()
           }

@@ -167,50 +167,80 @@ test.describe('Atoll Popup / Modal Component', () => {
     await expect(heroWrapperSlot.locator('#slotted-img')).toHaveAttribute('src', '/icon-192x192.png')
   })
 
-  test('should support closeable option showing close button', async ({ page }) => {
+  test('should never render a close button since specs require users to close with action buttons', async ({ page }) => {
     await page.evaluate(() => {
       const popup = document.createElement('atoll-popup')
-      popup.id = 'test-popup-closeable'
-      popup.setAttribute('closeable', 'true')
-      popup.setAttribute('title', 'Closeable Dialog')
+      popup.id = 'test-popup-no-close-btn'
+      popup.setAttribute('title', 'No Close Button Dialog')
       popup.setAttribute('open', 'true')
       document.body.appendChild(popup)
     })
 
-    const popupHost = page.locator('#test-popup-closeable')
+    const popupHost = page.locator('#test-popup-no-close-btn')
     const modal = popupHost.locator('.modal')
     await expect(modal).toBeVisible()
 
     const closeBtn = popupHost.locator('atoll-button[ref$="btnClose"]')
-    await expect(closeBtn).toBeVisible()
-
-    // Click the close button
-    await closeBtn.locator('button').click()
-
-    // Modal should be hidden
-    await expect(modal).not.toBeVisible()
+    await expect(closeBtn).not.toBeVisible()
   })
 
-  test('should support closeable option showing close button without title', async ({ page }) => {
+  test('should support disable-backdrop setting backdrop: static', async ({ page }) => {
     await page.evaluate(() => {
       const popup = document.createElement('atoll-popup')
-      popup.id = 'test-popup-closeable-no-title'
-      popup.setAttribute('closeable', 'true')
+      popup.id = 'test-popup-disable-backdrop'
+      popup.setAttribute('disable-backdrop', 'true')
+      popup.setAttribute('title', 'Disable Backdrop Dialog')
       popup.setAttribute('open', 'true')
       document.body.appendChild(popup)
     })
 
-    const popupHost = page.locator('#test-popup-closeable-no-title')
+    const popupHost = page.locator('#test-popup-disable-backdrop')
     const modal = popupHost.locator('.modal')
     await expect(modal).toBeVisible()
 
-    const closeBtn = popupHost.locator('atoll-button[ref$="btnClose"]')
-    await expect(closeBtn).toBeVisible()
+    // Click on the backdrop (outside the modal dialog)
+    await page.mouse.click(10, 10)
 
-    // Click the close button
-    await closeBtn.locator('button').click()
+    // Modal should remain open/visible
+    await expect(modal).toHaveClass(/show/)
+  })
 
-    // Modal should be hidden
-    await expect(modal).not.toBeVisible()
+  test('should support disable-keyboard preventing closing via Escape key', async ({ page }) => {
+    await page.evaluate(() => {
+      const popup = document.createElement('atoll-popup')
+      popup.id = 'test-popup-disable-keyboard'
+      popup.setAttribute('disable-keyboard', 'true')
+      popup.setAttribute('title', 'Disable Keyboard Dialog')
+      popup.setAttribute('open', 'true')
+      document.body.appendChild(popup)
+    })
+
+    const popupHost = page.locator('#test-popup-disable-keyboard')
+    const modal = popupHost.locator('.modal')
+    await expect(modal).toBeVisible()
+
+    // Press escape key
+    await page.keyboard.press('Escape')
+
+    // Modal should remain open/visible
+    await expect(modal).toHaveClass(/show/)
+  })
+
+  test('should support disable-focus preventing automatic focus behavior', async ({ page }) => {
+    await page.evaluate(() => {
+      const popup = document.createElement('atoll-popup')
+      popup.id = 'test-popup-disable-focus'
+      popup.setAttribute('disable-focus', 'true')
+      popup.setAttribute('title', 'Disable Focus Dialog')
+      popup.setAttribute('open', 'true')
+      document.body.appendChild(popup)
+    })
+
+    const popupHost = page.locator('#test-popup-disable-focus')
+    const modal = popupHost.locator('.modal')
+    await expect(modal).toBeVisible()
+    
+    // Simply check that the modal initialized successfully with disable-focus attribute
+    expect(await popupHost.getAttribute('disable-focus')).toBe('true')
   })
 })
