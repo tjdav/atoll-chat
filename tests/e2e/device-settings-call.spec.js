@@ -242,14 +242,22 @@ test.describe.serial('Call Device Settings', () => {
       await expect(secondaryMicOption).toBeVisible()
       await secondaryMicOption.click({ force: true })
 
+      // Ensure dropdown closes so it doesn't overlap/intercept subsequent clicks
+      const micDropdownMenu = micSelect.locator('.dropdown-menu')
+      if (await micDropdownMenu.isVisible()) {
+        await toggleBtn.click()
+      }
+      await expect(micDropdownMenu).not.toBeVisible()
+
       // Check localStorage update
       const storedMicId = await alicePage.evaluate(() => localStorage.getItem('atoll_active_microphone'))
       expect(storedMicId).toBe('mic-2')
 
       // Verify Track Swap was triggered in WebRTC PeerConnection
-      const trackSwaps = await alicePage.evaluate(() => window.__E2E_TRACK_SWAPS__)
-      const micSwap = trackSwaps.find(swap => swap.kind === 'audio')
-      expect(micSwap).toBeDefined()
+      await expect.poll(async () => {
+        const trackSwaps = await alicePage.evaluate(() => window.__E2E_TRACK_SWAPS__)
+        return trackSwaps.find(swap => swap.kind === 'audio')
+      }).toBeDefined()
     })
 
     await test.step('Switch speaker via dropdown and verify setSinkId application', async () => {
@@ -318,6 +326,13 @@ test.describe.serial('Call Device Settings', () => {
       await expect(secondaryMicOption).toBeVisible()
       await secondaryMicOption.click({ force: true })
 
+      // Ensure dropdown closes so it doesn't overlap/intercept subsequent clicks
+      const micDropdownMenu = micSelect.locator('.dropdown-menu')
+      if (await micDropdownMenu.isVisible()) {
+        await toggleBtn.click()
+      }
+      await expect(micDropdownMenu).not.toBeVisible()
+
       const ncSwitch = alicePage.locator('call-overlay #noise-cancellation-switch')
       await ncSwitch.click({ force: true }) // turn off noise cancellation
 
@@ -375,14 +390,22 @@ test.describe.serial('Call Device Settings', () => {
       await expect(secondaryCamOption).toBeVisible()
       await secondaryCamOption.click({ force: true })
 
+      // Ensure dropdown closes so it doesn't overlap/intercept subsequent clicks
+      const camDropdownMenu = camSelect.locator('.dropdown-menu')
+      if (await camDropdownMenu.isVisible()) {
+        await toggleBtn.click()
+      }
+      await expect(camDropdownMenu).not.toBeVisible()
+
       // Check localStorage update
       const storedCamId = await alicePage.evaluate(() => localStorage.getItem('atoll_active_camera'))
       expect(storedCamId).toBe('cam-2')
 
       // Verify Track Swap was triggered in WebRTC PeerConnection for video
-      const trackSwaps = await alicePage.evaluate(() => window.__E2E_TRACK_SWAPS__)
-      const videoSwap = trackSwaps.find(swap => swap.kind === 'video')
-      expect(videoSwap).toBeDefined()
+      await expect.poll(async () => {
+        const trackSwaps = await alicePage.evaluate(() => window.__E2E_TRACK_SWAPS__)
+        return trackSwaps.find(swap => swap.kind === 'video')
+      }).toBeDefined()
     })
 
     await test.step('Toggle background blur and verify CSS filter application', async () => {
