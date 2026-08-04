@@ -3,13 +3,6 @@ chat-list-item {
 }
 
 .chat-list-item {
-  .avatar-circle {
-    border-radius: 50%;
-    background-color: var(--#{$prefix}primary);
-    color: var(--#{$prefix}body-bg);
-    font-weight: var(--#{$prefix}font-weight-bold);
-  }
-
   .group-avatar-container {
     background-color: transparent !important;
     overflow: visible;

@@ -36,7 +36,7 @@ test.describe('User Settings & Profile', () => {
       await page.locator('[data-testid="ui-avatar-editor-0__btnApply"]').click()
       await expect(page.locator('[data-testid="profile-settings-0__btnSave"]')).toBeEnabled()
       await page.locator('[data-testid="profile-settings-0__btnSave"]').click()
-      await expect(page.locator('.avatar-circle img')).toBeVisible()
+      await expect(page.locator('[data-testid$="avatarContainer"] atoll-profile img')).toBeVisible()
     })
 
     test('mobile touch editing of avatar (drag and pinch)', async ({ page }) => {
@@ -179,7 +179,7 @@ test.describe('User Settings & Profile', () => {
       await page.locator('[data-testid="ui-avatar-editor-0__btnApply"]').click()
       await expect(page.locator('[data-testid="profile-settings-0__btnSave"]')).toBeEnabled()
       await page.locator('[data-testid="profile-settings-0__btnSave"]').click()
-      await expect(page.locator('.avatar-circle img')).toBeVisible()
+      await expect(page.locator('[data-testid$="avatarContainer"] atoll-profile img')).toBeVisible()
     })
   })
 
@@ -214,7 +214,7 @@ test.describe('User Settings & Profile', () => {
       await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
 
       // Expect the first category (Account) to be active initially
-      await expect(page.locator('[data-testid="settings-pane-0__nav-account"]')).toHaveClass(/active/)
+      await expect(page.locator('[data-testid="settings-pane-0__nav-account"]')).toHaveAttribute('selected', 'true')
 
       // Scroll the container to the Profile section
       const scrollContainer = page.locator('[data-testid="settings-main-0__scrollContainer"]')
@@ -226,7 +226,7 @@ test.describe('User Settings & Profile', () => {
       })
 
       // Wait for Scrollspy to detect scroll and verify Profile is active
-      await expect(page.locator('[data-testid="settings-pane-0__nav-profile"]')).toHaveClass(/active/, { timeout: 5000 })
+      await expect(page.locator('[data-testid="settings-pane-0__nav-profile"]')).toHaveAttribute('selected', 'true', { timeout: 5000 })
     })
 
     test('mobile traversal - offcanvas drawer open/close behavior', async ({ page }) => {

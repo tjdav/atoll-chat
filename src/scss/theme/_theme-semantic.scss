@@ -81,7 +81,6 @@
   --#{$prefix}brand-subtle-bg: #0A2E16;
 
   // Override avatar text/initials contrast in dark mode subtle backgrounds to be white
-  .avatar-circle.bg-primary-subtle,
   .bg-primary-subtle.text-primary,
   .bg-primary-subtle .text-primary {
     color: #ffffff !important;

@@ -49,37 +49,30 @@
         modal = new Modal(shareModalEl)
       }
 
-      const getInitials = (name) => {
-        if (!name) {
-          return '?'
-        }
-        return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)
-      }
-
       const createAvatarEl = (room) => {
-        const div = document.createElement('div')
-        div.className = 'avatar-circle d-flex align-items-center justify-content-center w-40px h-40px flex-shrink-0'
-  
+        const profile = document.createElement('atoll-profile')
+        profile.setAttribute('size', 'sm')
 
-        // Simplified avatar logic for the modal
+        let roomName = room.name
         if (!room.is_group) {
-          const participants = room.participants || []
-          const otherUser = participants.find(p => p && (p.id ? p.id !== $state.currentUser?.id : p !== $state.currentUser?.id))
-  
-          if (otherUser && typeof otherUser === 'object' && otherUser.avatar) {
-            const avatarUrl = pb.files.getURL(otherUser, otherUser.avatar, { thumb: '40x40' })
-            const img = document.createElement('img')
-            img.src = avatarUrl
-            img.className = 'w-100 h-100 object-fit-cover rounded-circle'
-            div.appendChild(img)
-            return div
+          const otherUser = (room.participants || []).find(p => p && p.id !== $state.currentUser?.id)
+          roomName = otherUser ? (otherUser.name || otherUser.username) : 'Direct Message'
+          if (otherUser) {
+            profile.setAttribute('name', roomName)
+            profile.setAttribute('alt', roomName)
+            if (otherUser.id) {
+              profile.setAttribute('user-id', otherUser.id)
+            }
+            if (otherUser.avatar) {
+              profile.setAttribute('src', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '42x42' }))
+            }
           }
+        } else {
+          profile.setAttribute('name', roomName || 'Unnamed Room')
+          profile.setAttribute('alt', roomName || 'Unnamed Room')
         }
-  
-        const name = room.name || (!room.is_group ? (room.participants?.find(p => p.id !== $state.currentUser?.id)?.name || room.participants?.find(p => p.id !== $state.currentUser?.id)?.username) : '')
-        div.textContent = getInitials(name || 'Room')
-        div.classList.add('bg-primary-subtle', 'text-primary', 'rounded-circle')
-        return div
+
+        return profile
       }
 
       const renderRooms = () => {
