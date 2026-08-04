@@ -25,7 +25,7 @@
     </div>
 
     <!-- Seen Indicators -->
-    <div ref="seenContainer" class="seen-indicators px-2">
+    <div ref="seenContainer" class="seen-indicators px-2 d-flex {{ seenJustifyClass }}">
       <!-- Rendered in client block -->
     </div>
   </div>
@@ -63,6 +63,9 @@
       },
       marginClass: (state) => {
         return state.isLastInBlock ? 'mb-3' : 'mb-0'
+      },
+      seenJustifyClass: (state) => {
+        return state.isSent ? 'justify-content-end' : 'justify-content-start'
       }
     },
     client: ({ refs, state, globalStore, eventBus, signal }) => {
@@ -104,13 +107,16 @@
         const seenUserIds = state.seenUserIds ? state.seenUserIds.split(',').filter(id => id.trim() !== '') : []
 
         if (seenUserIds.length > 0) {
+          const groupRow = document.createElement('div')
+          groupRow.className = 'atoll-profile-group-row'
           seenUserIds.forEach(uid => {
             const profile = document.createElement('atoll-profile')
             profile.setAttribute('user-id', uid.trim())
             profile.setAttribute('size', '2xs')
-            profile.className = 'seen-avatar-profile me-1'
-            seenContainer.appendChild(profile)
+            profile.className = 'seen-avatar-profile'
+            groupRow.appendChild(profile)
           })
+          seenContainer.appendChild(groupRow)
           return
         }
 
@@ -119,18 +125,23 @@
         }
 
         const parts = state.seenAvatars.split(',').filter(p => p.trim() !== '')
-        parts.forEach(p => {
-          const trimmed = p.trim()
-          const profile = document.createElement('atoll-profile')
-          profile.setAttribute('size', '2xs')
-          profile.className = 'seen-avatar-profile me-1'
-          if (trimmed.includes('.') || trimmed.includes('/') || trimmed.startsWith('data:')) {
-            profile.setAttribute('src', trimmed)
-          } else {
-            profile.setAttribute('name', trimmed)
-          }
-          seenContainer.appendChild(profile)
-        })
+        if (parts.length > 0) {
+          const groupRow = document.createElement('div')
+          groupRow.className = 'atoll-profile-group-row'
+          parts.forEach(p => {
+            const trimmed = p.trim()
+            const profile = document.createElement('atoll-profile')
+            profile.setAttribute('size', '2xs')
+            profile.className = 'seen-avatar-profile'
+            if (trimmed.includes('.') || trimmed.includes('/') || trimmed.startsWith('data:')) {
+              profile.setAttribute('src', trimmed)
+            } else {
+              profile.setAttribute('name', trimmed)
+            }
+            groupRow.appendChild(profile)
+          })
+          seenContainer.appendChild(groupRow)
+        }
       }
 
       $state.subscribe('isSent', updateAvatar)

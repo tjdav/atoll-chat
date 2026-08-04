@@ -335,4 +335,40 @@ test.describe('Atoll Profile Component', () => {
       path: 'tests/e2e/screenshots/profile-verification.png'
     })
   })
+
+  test('should support grouped overlapping style inside timeline seenIndicators', async ({ page }) => {
+    // Inject a timeline-row element with seenUserIds / seenAvatars to verify its inner structure
+    await page.evaluate(() => {
+      document.body.innerHTML = ''
+      const row = document.createElement('timeline-row')
+      row.id = 'test-timeline-row'
+      row.setAttribute('is-sent', 'true')
+      row.setAttribute('seen-user-ids', 'uid1,uid2')
+      document.body.appendChild(row)
+    })
+
+    const row = page.locator('#test-timeline-row')
+    await expect(row).toBeVisible()
+
+    // Query seen indicators container
+    const seenContainer = row.locator('.seen-indicators')
+    await expect(seenContainer).toBeVisible()
+    await expect(seenContainer).toHaveClass(/d-flex/)
+    await expect(seenContainer).toHaveClass(/justify-content-end/)
+
+    // Ensure the profiles are nested inside an atoll-profile-group-row wrapper
+    const groupRow = seenContainer.locator('.atoll-profile-group-row')
+    await expect(groupRow).toBeVisible()
+
+    const profiles = groupRow.locator('atoll-profile')
+    await expect(profiles).toHaveCount(2)
+
+    // Now test a received message row (should justify-content-start)
+    await page.evaluate(() => {
+      const row = document.getElementById('test-timeline-row')
+      row.setAttribute('is-sent', 'false')
+    })
+
+    await expect(seenContainer).toHaveClass(/justify-content-start/)
+  })
 })
