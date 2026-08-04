@@ -198,6 +198,7 @@ atoll-profile,
 
   >atoll-profile,
   >.atoll-profile {
+    display: inline-block;
     margin-left: calc(var(--#{$prefix}profile-dim, var(--#{$prefix}profile-size-md)) * -0.26);
     position: relative;
 
