@@ -311,6 +311,27 @@ export const test = base.extend({
     await page.context().addInitScript((tId) => {
       window.__playwright_test_id__ = tId
 
+      // Intercept and bypass controllerchange to prevent unexpected reload race conditions in E2E tests
+      if ('serviceWorker' in navigator) {
+        const originalAddEventListener = navigator.serviceWorker.addEventListener
+        navigator.serviceWorker.addEventListener = function (type, listener, options) {
+          if (type === 'controllerchange') {
+            console.log('[E2E Mock] Bypassing controllerchange event listener to prevent unexpected reload')
+            return
+          }
+          return originalAddEventListener.call(this, type, listener, options)
+        }
+        Object.defineProperty(navigator.serviceWorker, 'oncontrollerchange', {
+          set () {
+            console.log('[E2E Mock] Bypassing oncontrollerchange setter to prevent unexpected reload')
+          },
+          get () {
+            return null
+          },
+          configurable: true
+        })
+      }
+
       const OriginalEventSource = window.EventSource
       window.EventSource = class extends OriginalEventSource {
         constructor (url, eventSourceInitDict) {
@@ -398,6 +419,27 @@ export const test = base.extend({
       /* Inject testId into the browser's window scope and override EventSource */
       await targetPage.context().addInitScript((tId) => {
         window.__playwright_test_id__ = tId
+
+        // Intercept and bypass controllerchange to prevent unexpected reload race conditions in E2E tests
+        if ('serviceWorker' in navigator) {
+          const originalAddEventListener = navigator.serviceWorker.addEventListener
+          navigator.serviceWorker.addEventListener = function (type, listener, options) {
+            if (type === 'controllerchange') {
+              console.log('[E2E Mock] Bypassing controllerchange event listener to prevent unexpected reload')
+              return
+            }
+            return originalAddEventListener.call(this, type, listener, options)
+          }
+          Object.defineProperty(navigator.serviceWorker, 'oncontrollerchange', {
+            set () {
+              console.log('[E2E Mock] Bypassing oncontrollerchange setter to prevent unexpected reload')
+            },
+            get () {
+              return null
+            },
+            configurable: true
+          })
+        }
 
         const OriginalEventSource = window.EventSource
         window.EventSource = class extends OriginalEventSource {
