@@ -533,7 +533,7 @@
           } else if (forceScrollToBottom) {
             scrollToBottom(true)
             forceScrollToBottom = false
-          } else if (!isRestorePending) {
+          } else if (!isRestorePending && messagesToRender.length > 0) {
             // New messages arrived, smooth scroll if we are already near bottom
             const isNearBottom = container.scrollHeight > container.clientHeight &&
                                  container.scrollHeight - container.scrollTop - container.clientHeight < 100
@@ -584,7 +584,7 @@
             return
           }
 
-          if (payload.message && payload.message.sender_id === $state.currentUser?.id) {
+          if (payload.message && payload.message.sender_id === $state.currentUser?.id && payload.message.status === 'pending') {
             forceScrollToBottom = true
           }
 

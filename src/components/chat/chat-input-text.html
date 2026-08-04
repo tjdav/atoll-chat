@@ -228,6 +228,9 @@
 
       // Handle focus and blur to lock page jump and ensure message list matches virtual keyboard layout
       messageInput.addEventListener('focus', () => {
+        if (!$device.isTouch()) {
+          return
+        }
         window.scrollTo(0, 0)
         // Trigger scroll immediately to start adjustment
         $bus.emit('ui:scroll_to_bottom', { smooth: true })
