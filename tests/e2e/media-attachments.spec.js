@@ -21,7 +21,7 @@ test.describe('Media & Attachments', () => {
       await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
       await alicePage.locator('[data-testid$="search-result-bob"]').click()
       await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
-      const bobChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+      const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChat).toBeVisible({ timeout: 30000 })
       await bobChat.click()
 
@@ -248,7 +248,7 @@ test.describe('Media & Attachments', () => {
       await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
 
       await page.locator('[data-testid="nav-sidebar-0__btnMusic"]').click()
-      await page.locator('music-list .app-list-item').first().click()
+      await page.locator('music-list music-list-item').first().click()
       await page.waitForTimeout(1000)
       await page.locator('audio-player-view .play-pause-btn').click()
       await expect(page.locator('audio-player-view .play-pause-btn i')).toHaveClass(/bi-pause-fill/, { timeout: 15000 })
