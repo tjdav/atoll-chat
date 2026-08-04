@@ -5,7 +5,7 @@ test.describe('Deep Linking & Universal Links', () => {
     /* Login as alice and create a room to get a valid room ID */
     const aliceContext = await browser.newContext()
     const alicePage = await aliceContext.newPage()
-    await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
+    await loginCustomPage(alicePage, 'alice', 'Password123!', 'Password123!')
 
     /* Create the room as alice, adding charlie instead of bob */
     await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
@@ -23,7 +23,7 @@ test.describe('Deep Linking & Universal Links', () => {
     /* Login as bob in a completely separate browser context */
     const bobContext = await browser.newContext()
     const bobPage = await bobContext.newPage()
-    await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
+    await loginCustomPage(bobPage, 'bob', 'Password123!', 'Password123!')
 
     /* Verify bob does not have this room yet */
     const roomItemLocator = bobPage.locator(`chat-list-item[room-id="${roomId}"]`)
@@ -38,8 +38,9 @@ test.describe('Deep Linking & Universal Links', () => {
     await bobPage.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
     /* Since this is a fresh page load, we must unlock Bob's vault to display the app UI */
-    await expect(bobPage.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible({ timeout: 15000 })
-    await bobPage.locator('[data-testid$="password"]').fill('VaultPassword123!')
+    await expect(bobPage.locator('vault-unlock')).toBeVisible({ timeout: 15000 })
+    await expect(bobPage.getByRole('heading', { name: 'Welcome Back' })).toBeVisible({ timeout: 15000 })
+    await bobPage.locator('[data-testid$="password"]').fill('Password123!')
     await bobPage.locator('[data-testid$="unlockSubmit"]').click()
 
     /* It should automatically join and select the room in the chat-list once the vault is unlocked */

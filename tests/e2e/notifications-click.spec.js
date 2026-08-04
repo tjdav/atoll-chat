@@ -10,7 +10,7 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
   })
 
   test('should navigate and scroll to message when a Service Worker notification is clicked (active app)', async ({ page, loginApp }) => {
-    await loginApp('alice', 'Password123!', 'VaultPassword123!')
+    await loginApp('alice', 'Password123!', 'Password123!')
     await expect(page.locator('app-layout')).toBeVisible()
 
     // Create a room to ensure a valid selected room exists
@@ -66,7 +66,7 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
 
   test('should navigate and scroll to message on cold boot when URL query parameters are present', async ({ page, loginApp }) => {
     // Perform successful login & unlock first to establish a valid room & message
-    await loginApp('alice', 'Password123!', 'VaultPassword123!')
+    await loginApp('alice', 'Password123!', 'Password123!')
     await expect(page.locator('app-layout')).toBeVisible()
 
     // Create a room with Bob
@@ -103,10 +103,11 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
     // Since the session is preserved, we should see the Unlock Vault page
-    await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('vault-unlock')).toBeVisible({ timeout: 15000 })
+    await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible({ timeout: 15000 })
 
     // Unlock the vault
-    await page.locator('vault-unlock input[data-testid$="password"]').fill('VaultPassword123!')
+    await page.locator('vault-unlock input[data-testid$="password"]').fill('Password123!')
     await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
 
     // Wait for the app-layout/chats view to load, and verify navigation & message visibility
