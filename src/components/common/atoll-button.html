@@ -40,6 +40,10 @@
         type: String,
         default: ''
       },
+      ariaPressed: {
+        type: String,
+        default: ''
+      },
       leadingIcon: {
         type: String,
         default: ''
@@ -57,7 +61,7 @@
     slots: {
       leading (nodes, state) {
         if (typeof document === 'undefined') {
-          return null
+          return undefined
         }
 
         if (state.leadingIcon) {
@@ -85,12 +89,12 @@
           return [span]
         }
 
-        return null
+        return undefined
       },
 
       trailing (nodes, state) {
         if (typeof document === 'undefined') {
-          return null
+          return undefined
         }
 
         if (state.trailingIcon) {
@@ -118,12 +122,12 @@
           return [span]
         }
 
-        return null
+        return undefined
       },
 
       default (nodes, state) {
         if (typeof document === 'undefined') {
-          return null
+          return undefined
         }
 
         if (state.text) {
@@ -149,7 +153,7 @@
           return [span]
         }
 
-        return null
+        return undefined
       }
     },
 
@@ -192,63 +196,22 @@
     },
 
     client: ({ state, refs, root, observe, signal }) => {
-      if (root.__initialized) {
-        root._updateBtn(refs('btnElement'))
-        return
-      }
-      root.__initialized = true
-      let btn = refs('btnElement')
+      const btn = refs('btnElement')
       let spinnerEl = null
 
-      root._updateBtn = (newBtn) => {
-        btn = newBtn
-        if (btn) {
-          const testId = root.__testId
-          if (testId) {
-            btn.setAttribute('data-testid', testId)
-          }
-          btn.addEventListener('click', (event) => {
-            if (state.disabled || state.loading) {
-              event.preventDefault()
-              event.stopImmediatePropagation()
-            }
-          }, { signal })
-          syncLoadingState()
-          syncAriaLabel()
-          syncAriaPressed()
+      btn.addEventListener('click', (event) => {
+        if (state.disabled || state.loading) {
+          event.preventDefault()
+          event.stopImmediatePropagation()
         }
-      }
-
-      // Forward test-id / data-testid from host to the nested native button, preserving across reconnects
-      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
-  
-      if (testId) {
-        root.__testId = testId
-        if (btn) {
-          btn.setAttribute('data-testid', testId)
-        }
-        root.removeAttribute('data-testid')
-        root.removeAttribute('test-id')
-      }
+      }, { signal })
 
       // Focus, blur, and click forwarding
       root.focus = () => btn?.focus()
       root.blur = () => btn?.blur()
       root.click = () => btn?.click()
 
-      const syncDisabledState = () => {
-        if (btn) {
-          const isD = Boolean(state.disabled || state.loading)
-          btn.disabled = isD
-          if (isD) {
-            btn.setAttribute('disabled', 'true')
-          } else {
-            btn.removeAttribute('disabled')
-          }
-        }
-      }
-
-      // Imperatively create/destroy the spinner container and icon
+      // Imperatively create/destroy the spinner container and icon, and set busy/disabled ARIA states
       const syncLoadingState = () => {
         if (state.loading) {
           if (!spinnerEl) {
@@ -274,27 +237,21 @@
           if (!btn.contains(spinnerEl)) {
             btn.insertBefore(spinnerEl, btn.firstChild)
           }
-
-          // Set accessibility attributes for loading
           btn.setAttribute('aria-busy', 'true')
           btn.setAttribute('aria-disabled', 'true')
         } else {
           if (spinnerEl && spinnerEl.parentNode) {
             spinnerEl.parentNode.removeChild(spinnerEl)
           }
-          // Remove or reset accessibility attributes
           btn.removeAttribute('aria-busy')
           btn.removeAttribute('aria-disabled')
         }
-        syncDisabledState()
       }
 
-      // Sync custom aria-label from host to the inner button
+      // Sync custom aria-label from state to the inner button
       const syncAriaLabel = () => {
-        // Check for host aria-label attribute or component ariaLabel attribute
-        const labelVal = state.ariaLabel || root.getAttribute('aria-label')
-        if (labelVal) {
-          btn.setAttribute('aria-label', labelVal)
+        if (state.ariaLabel) {
+          btn.setAttribute('aria-label', state.ariaLabel)
         } else {
           btn.removeAttribute('aria-label')
           if (state.iconOnly) {
@@ -303,70 +260,41 @@
         }
       }
 
-      // Sync custom aria-pressed from host to the inner button
+      // Sync custom aria-pressed from state to the inner button
       const syncAriaPressed = () => {
-        const pressedVal = root.getAttribute('aria-pressed')
-        if (pressedVal !== null) {
-          btn.setAttribute('aria-pressed', pressedVal)
+        if (state.ariaPressed) {
+          btn.setAttribute('aria-pressed', state.ariaPressed)
         } else {
           btn.removeAttribute('aria-pressed')
         }
       }
 
-      // Synchronize native click events
-      if (btn) {
-        btn.addEventListener('click', (event) => {
-          if (state.disabled || state.loading) {
-            event.preventDefault()
-            event.stopImmediatePropagation()
-          }
-        }, { signal })
-      }
-
-      // Observe loading and disabled state mutations
+      // Observe loading state mutations
       observe('loading', syncLoadingState)
-      observe('ariaLabel', syncAriaLabel)
-      if (observe) {
-        observe('disabled', (val) => {
-          state.disabled = val === 'true' || val === true || val === ''
-          syncDisabledState()
-        })
-      }
-
-      Object.defineProperty(root, 'disabled', {
-        get () {
-          return state.disabled
-        },
-        set (val) {
-          const isD = val === 'true' || val === true || val === ''
-          state.disabled = isD
-          if (isD) {
-            root.setAttribute('disabled', 'true')
-          } else {
-            root.removeAttribute('disabled')
+      observe('size', () => {
+        if (spinnerEl) {
+          const icon = spinnerEl.querySelector('atoll-icon')
+          if (icon) {
+            const spinnerSizes = {
+              sm: '16',
+              md: '20',
+              lg: '24'
+            }
+            const iconSize = spinnerSizes[state.size] || '20'
+            icon.setAttribute('size', iconSize)
           }
-          syncDisabledState()
-        },
-        configurable: true
+        }
       })
+
+      // Observe accessibility requirements reactively
+      observe('ariaLabel', syncAriaLabel)
+      observe('ariaPressed', syncAriaPressed)
+      observe('iconOnly', syncAriaLabel)
 
       // Initial execution
       syncLoadingState()
       syncAriaLabel()
       syncAriaPressed()
-
-      const observer = new MutationObserver(() => {
-        syncAriaLabel()
-        syncAriaPressed()
-      })
-      observer.observe(root, {
-        attributes: true,
-        attributeFilter: ['aria-label', 'aria-pressed']
-      })
-
-      return () => {
-        observer.disconnect()
-      }
     }
   })
 </script>
