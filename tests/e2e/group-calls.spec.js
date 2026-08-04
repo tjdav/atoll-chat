@@ -28,14 +28,14 @@ test.describe.serial('Group Audio and Video Calls', () => {
 
     await test.step('Setup group room for Alice, Bob, and Charlie', async () => {
       const groupRoomName = 'Group Call Dev Team'
-      const aliceGroupChat = alicePage.locator('chat-list .app-list-item').filter({ hasText: groupRoomName }).first()
+      const aliceGroupChat = alicePage.locator('chat-list chat-list-item').filter({ hasText: groupRoomName }).first()
       const roomExists = await aliceGroupChat.isVisible({ timeout: 1000 }).catch(() => false)
 
       if (roomExists) {
         await aliceGroupChat.click()
       } else {
         await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
-        await expect(alicePage.locator('create-room-modal')).toBeVisible()
+        await expect(alicePage.locator('create-room-modal input[data-testid$="searchInput"]')).toBeVisible()
 
         // Search and select Bob
         await alicePage.locator('[data-testid$="create-room-modal-0__searchInput"]').fill('bob')
@@ -56,13 +56,13 @@ test.describe.serial('Group Audio and Video Calls', () => {
       await expect(alicePage.locator('chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
 
       // Assert and open group room for Bob
-      const bobGroupChat = bobPage.locator('chat-list atoll-list-item, chat-list .app-list-item').filter({ hasText: groupRoomName }).first()
+      const bobGroupChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: groupRoomName }).first()
       await expect(bobGroupChat).toBeVisible({ timeout: 15000 })
       await bobGroupChat.click()
       await expect(bobPage.locator('chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
 
       // Assert and open group room for Charlie
-      const charlieGroupChat = charliePage.locator('chat-list atoll-list-item, chat-list .app-list-item').filter({ hasText: groupRoomName }).first()
+      const charlieGroupChat = charliePage.locator('chat-list chat-list-item').filter({ hasText: groupRoomName }).first()
       await expect(charlieGroupChat).toBeVisible({ timeout: 15000 })
       await charlieGroupChat.click()
       await expect(charliePage.locator('chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })

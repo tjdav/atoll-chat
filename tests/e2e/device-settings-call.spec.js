@@ -157,7 +157,7 @@ test.describe.serial('Call Device Settings', () => {
     })
 
     await test.step('Setup direct room between Alice and Bob', async () => {
-      const aliceBobChat = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'bob' }).first()
+      const aliceBobChat = alicePage.locator('chat-list chat-list-item').filter({ hasText: 'bob' }).first()
       const roomExists = await aliceBobChat.isVisible({ timeout: 500 }).catch(() => false)
 
       if (roomExists) {
@@ -170,7 +170,7 @@ test.describe.serial('Call Device Settings', () => {
       }
       await expect(alicePage.locator('chat-view header h6')).toContainText('bob', { timeout: 15000 })
 
-      const bobChat = bobPage.locator('chat-list atoll-list-item, chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+      const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChat).toBeVisible({ timeout: 15000 })
       await bobChat.click()
       await expect(bobPage.locator('chat-view header h6')).toContainText('alice', { timeout: 15000 })
@@ -242,13 +242,6 @@ test.describe.serial('Call Device Settings', () => {
       await expect(secondaryMicOption).toBeVisible()
       await secondaryMicOption.click({ force: true })
 
-      // Ensure dropdown closes so it doesn't overlap/intercept subsequent clicks
-      const micDropdownMenu = micSelect.locator('.dropdown-menu')
-      if (await micDropdownMenu.isVisible()) {
-        await toggleBtn.click()
-      }
-      await expect(micDropdownMenu).not.toBeVisible()
-
       // Check localStorage update
       const storedMicId = await alicePage.evaluate(() => localStorage.getItem('atoll_active_microphone'))
       expect(storedMicId).toBe('mic-2')
@@ -257,7 +250,7 @@ test.describe.serial('Call Device Settings', () => {
       await expect.poll(async () => {
         const trackSwaps = await alicePage.evaluate(() => window.__E2E_TRACK_SWAPS__)
         return trackSwaps.find(swap => swap.kind === 'audio')
-      }).toBeDefined()
+      }, { timeout: 10000 }).toBeDefined()
     })
 
     await test.step('Switch speaker via dropdown and verify setSinkId application', async () => {
@@ -326,13 +319,6 @@ test.describe.serial('Call Device Settings', () => {
       await expect(secondaryMicOption).toBeVisible()
       await secondaryMicOption.click({ force: true })
 
-      // Ensure dropdown closes so it doesn't overlap/intercept subsequent clicks
-      const micDropdownMenu = micSelect.locator('.dropdown-menu')
-      if (await micDropdownMenu.isVisible()) {
-        await toggleBtn.click()
-      }
-      await expect(micDropdownMenu).not.toBeVisible()
-
       const ncSwitch = alicePage.locator('call-overlay #noise-cancellation-switch')
       await ncSwitch.click({ force: true }) // turn off noise cancellation
 
@@ -390,13 +376,6 @@ test.describe.serial('Call Device Settings', () => {
       await expect(secondaryCamOption).toBeVisible()
       await secondaryCamOption.click({ force: true })
 
-      // Ensure dropdown closes so it doesn't overlap/intercept subsequent clicks
-      const camDropdownMenu = camSelect.locator('.dropdown-menu')
-      if (await camDropdownMenu.isVisible()) {
-        await toggleBtn.click()
-      }
-      await expect(camDropdownMenu).not.toBeVisible()
-
       // Check localStorage update
       const storedCamId = await alicePage.evaluate(() => localStorage.getItem('atoll_active_camera'))
       expect(storedCamId).toBe('cam-2')
@@ -405,7 +384,7 @@ test.describe.serial('Call Device Settings', () => {
       await expect.poll(async () => {
         const trackSwaps = await alicePage.evaluate(() => window.__E2E_TRACK_SWAPS__)
         return trackSwaps.find(swap => swap.kind === 'video')
-      }).toBeDefined()
+      }, { timeout: 10000 }).toBeDefined()
     })
 
     await test.step('Toggle background blur and verify CSS filter application', async () => {

@@ -97,7 +97,7 @@ test.describe.serial('Calls', () => {
 
     await test.step('Setup direct room between Alice and Bob', async () => {
       // Fast-timeout check to see if Bob's chat room is already in Alice's sidebar list
-      const aliceBobChat = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'bob' }).first()
+      const aliceBobChat = alicePage.locator('chat-list chat-list-item').filter({ hasText: 'bob' }).first()
       const roomExists = await aliceBobChat.isVisible({ timeout: 500 }).catch(() => false)
 
       if (roomExists) {
@@ -110,7 +110,7 @@ test.describe.serial('Calls', () => {
       }
       await expect(alicePage.locator('chat-view header h6')).toContainText('bob', { timeout: 15000 })
 
-      const bobChat = bobPage.locator('chat-list atoll-list-item, chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+      const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChat).toBeVisible({ timeout: 15000 })
       await bobChat.click()
       await expect(bobPage.locator('chat-view header h6')).toContainText('alice', { timeout: 15000 })
@@ -432,7 +432,7 @@ test.describe.serial('Calls', () => {
     })
 
     await test.step('Open direct room with Alice on Bob secondary device', async () => {
-      const bob2Chat = bob2Page.locator('chat-list atoll-list-item, chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+      const bob2Chat = bob2Page.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bob2Chat).toBeVisible({ timeout: 15000 })
       await bob2Chat.click()
       await expect(bob2Page.locator('chat-view header h6')).toContainText('alice', { timeout: 15000 })

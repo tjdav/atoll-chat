@@ -23,7 +23,7 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
       loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
     ])
 
-    const aliceChat = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'bob' }).first()
+    const aliceChat = alicePage.locator('chat-list chat-list-item').filter({ hasText: 'bob' }).first()
     if (!(await aliceChat.isVisible().catch(() => false))) {
       await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
       await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
@@ -31,11 +31,11 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
       await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
     }
 
-    const aliceChatSelect = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'bob' }).first()
+    const aliceChatSelect = alicePage.locator('chat-list chat-list-item').filter({ hasText: 'bob' }).first()
     await expect(aliceChatSelect).toBeVisible({ timeout: 30000 })
     await aliceChatSelect.click()
 
-    const bobChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'alice' }).first()
+    const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChat).toBeVisible({ timeout: 30000 })
     await bobChat.click()
 
@@ -58,7 +58,7 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
 
     const hasMediaUpload = await alicePage.evaluate(async () => {
       if (window.$state && window.$state.currentUser) {
-        const pbUrl = 'http://localhost:8090'
+        const pbUrl = 'http://localhost:8091'
         const response = await fetch(`${pbUrl}/api/collections/media/records`, {
           headers: {
             'x-test-id': window.__playwright_test_id__
@@ -100,12 +100,12 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
     await alicePage.locator('[data-testid$="roomNameInput"]').fill('Project X')
     await alicePage.locator('[data-testid$="btnCreate"]').click()
 
-    const aliceGroupChat = alicePage.locator('chat-list .app-list-item').filter({ hasText: 'Project X' }).first()
+    const aliceGroupChat = alicePage.locator('chat-list chat-list-item').filter({ hasText: 'Project X' }).first()
     await expect(aliceGroupChat).toBeVisible({ timeout: 30000 })
     await aliceGroupChat.click()
 
     // Wait for Bob to click the Project X group chat
-    const bobGroupChat = bobPage.locator('chat-list .app-list-item').filter({ hasText: 'Project X' }).first()
+    const bobGroupChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'Project X' }).first()
     await expect(bobGroupChat).toBeVisible({ timeout: 30000 })
     await bobGroupChat.click()
 
