@@ -62,7 +62,8 @@ export async function deriveAuthAndVaultKeys (rawUsername, masterPassword, optio
     saltMaster = masterSaltHash.slice(0, 16)
 
     const isTest = (typeof import.meta.env !== 'undefined' && import.meta.env.MODE === 'testing') ||
-                   (typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || process.env.PLAYWRIGHT_TEST))
+                   (typeof process !== 'undefined' && (process.env.NODE_ENV === 'test' || process.env.PLAYWRIGHT_TEST)) ||
+                   (typeof window !== 'undefined' && (window.__playwright_test_id__ || window.PLAYWRIGHT_TEST))
     const opslimit = options.opslimit ?? (isTest ? 1 : 3)
     const memlimit = options.memlimit ?? (isTest ? 8388608 : 134217728)
 

@@ -157,16 +157,15 @@
         bsDropdown = new Dropdown(toggleBtn)
       }
 
-      // Forward data-testid from host to the inner toggle button, preserving across reconnects
-      const testId = root.getAttribute('data-testid') || root.__testId
+      // Forward test-id / data-testid to inner toggle button
+      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
       if (testId && toggleBtn) {
         root.__testId = testId
         toggleBtn.setAttribute('data-testid', testId)
-        if (typeof requestAnimationFrame !== 'undefined') {
-          requestAnimationFrame(() => root.removeAttribute('data-testid'))
-        } else {
+        root.removeAttribute('test-id')
+        requestAnimationFrame(() => {
           root.removeAttribute('data-testid')
-        }
+        })
       }
 
       // Sync active state and selected label text from options in default slot

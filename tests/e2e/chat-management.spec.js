@@ -208,11 +208,11 @@ test.describe('Chat Management', () => {
       await expect(page.locator('[data-testid$="username"]')).toBeVisible({ timeout: 15000 })
 
       /* Login Flow */
-      await page.locator('auth-login [data-testid$="username"]').fill('alice')
-      await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+      await page.locator('auth-login input[data-testid$="username"]').fill('alice')
+      await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
       await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-      const vaultUnlockPasswordInput = page.locator('vault-unlock [data-testid$="password"]')
+      const vaultUnlockPasswordInput = page.locator('vault-unlock input[data-testid$="password"]')
       if (await vaultUnlockPasswordInput.isVisible({ timeout: 3000 }).catch(() => false)) {
         await vaultUnlockPasswordInput.fill('VaultPassword123!')
         await page.click('vault-unlock button:has-text("Unlock with Password")')

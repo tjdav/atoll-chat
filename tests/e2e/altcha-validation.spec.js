@@ -17,7 +17,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     // Fill registration info with dynamic unique username
     const testUsername = `altcha_user_${Date.now()}`
     await page.locator('auth-register input[name="username"]').fill(testUsername)
-    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-1111')
+    await page.locator('auth-register input[data-testid$="invitationCode"]').fill('INV-SEED-1111')
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
 
@@ -130,7 +130,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
 
     // Fill short password (5 chars)
     await page.locator('auth-register input[name="username"]').fill('shortpassuser')
-    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-1111')
+    await page.locator('auth-register input[data-testid$="invitationCode"]').fill('INV-SEED-1111')
     await page.locator('auth-register input[name="password"]').fill('12345')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('12345')
 

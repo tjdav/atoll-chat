@@ -430,11 +430,11 @@ export const test = base.extend({
       /* Login Flow */
       const isAlreadyLoggedIn = await targetPage.locator('app-layout').isVisible().catch(() => false)
       if (!isAlreadyLoggedIn) {
-        await targetPage.locator('auth-login [data-testid$="username"]').fill(username)
-        await targetPage.locator('auth-login [data-testid$="password"]').fill(appPassword)
+        await targetPage.locator('auth-login input[data-testid$="username"]').fill(username)
+        await targetPage.locator('auth-login input[data-testid$="password"]').fill(appPassword)
         await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
 
-        const vaultUnlockPasswordInput = targetPage.locator('vault-unlock [data-testid$="password"]')
+        const vaultUnlockPasswordInput = targetPage.locator('vault-unlock input[data-testid$="password"]')
         if (await vaultUnlockPasswordInput.isVisible({ timeout: 2000 }).catch(() => false)) {
           await vaultUnlockPasswordInput.fill(vaultPassword)
           await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()

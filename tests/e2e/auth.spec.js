@@ -35,7 +35,7 @@ test.describe('Authentication and Vault', () => {
     // Create a room to ensure there is something to sync
     console.log('--- Creating Room ---')
     await page.locator('[data-testid$="btnCreateRoom"]').click()
-    await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+    await page.locator('create-room-modal input[data-testid$="searchInput"]').fill('bob')
     await page.locator('[data-testid$="search-result-bob"]').click()
     await page.locator('[data-testid$="btnCreate"]').click()
 

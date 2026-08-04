@@ -176,16 +176,15 @@
       const clearBtn = refs('clearBtn')
       const passBtn = refs('passwordToggleBtn')
 
-      // Forward data-testid from host to the inner native input, preserving across reconnects
-      const testId = root.getAttribute('data-testid') || root.__testId
+      // Forward test-id / data-testid and standard attributes
+      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
       if (testId && input) {
         root.__testId = testId
         input.setAttribute('data-testid', testId)
-        if (typeof requestAnimationFrame !== 'undefined') {
-          requestAnimationFrame(() => root.removeAttribute('data-testid'))
-        } else {
+        root.removeAttribute('test-id')
+        requestAnimationFrame(() => {
           root.removeAttribute('data-testid')
-        }
+        })
       }
 
       const feedbackTestId = root.getAttribute('feedback-test-id')

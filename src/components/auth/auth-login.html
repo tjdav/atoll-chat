@@ -19,7 +19,7 @@
           placeholder="Enter username" 
           required="true" 
           autocomplete="username" 
-          data-testid="username"
+          test-id="username"
           feedback-test-id="identity-feedback"
         ></atoll-input>
 
@@ -31,7 +31,7 @@
           placeholder="Enter password" 
           required="true" 
           autocomplete="current-password" 
-          data-testid="password"
+          test-id="password"
           feedback-test-id="password-feedback"
         ></atoll-input>
 
@@ -39,8 +39,8 @@
 
         <!-- Zone 4: Bottom Action Zone -->
         <div class="atoll-auth-bottom-zone">
-          <atoll-button type="submit" variant="primary" block="true" ref="loginSubmit" data-testid="loginSubmit">Log In</atoll-button>
-          <atoll-button type="button" variant="ghost" block="true" ref="linkRegister" data-testid="linkRegister">Don't have an account? Register</atoll-button>
+          <atoll-button type="submit" variant="primary" block="true" ref="loginSubmit" test-id="loginSubmit">Log In</atoll-button>
+          <atoll-button type="button" variant="ghost" block="true" ref="linkRegister" test-id="linkRegister">Don't have an account? Register</atoll-button>
         </div>
       </form>
     </div>
@@ -75,7 +75,7 @@
       let loginSubmitPending = false
       let altchaPayload = null
 
-      const isTesting = import.meta.env.MODE === 'testing'
+      const isTesting = import.meta.env.MODE === 'testing' || (typeof window !== 'undefined' && (window.__playwright_test_id__ || window.PLAYWRIGHT_TEST))
 
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message

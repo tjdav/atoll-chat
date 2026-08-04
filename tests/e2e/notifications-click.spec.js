@@ -106,7 +106,7 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     await expect(page.locator(':is(h3):has-text("Unlock Your Vault")')).toBeVisible({ timeout: 15000 })
 
     // Unlock the vault
-    await page.locator('vault-unlock [data-testid$="password"]').fill('VaultPassword123!')
+    await page.locator('vault-unlock input[data-testid$="password"]').fill('VaultPassword123!')
     await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
 
     // Wait for the app-layout/chats view to load, and verify navigation & message visibility

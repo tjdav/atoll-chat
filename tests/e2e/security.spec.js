@@ -56,7 +56,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
 
     /* Fill in valid registration details */
     await page.locator('auth-register input[name="username"]').fill(regUser)
-    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-1111')
+    await page.locator('auth-register input[data-testid$="invitationCode"]').fill('INV-SEED-1111')
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
     await page.locator('[data-testid$="registerSubmit"]').click()
@@ -75,8 +75,8 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
 
     /* Log in with the newly registered user */
-    await page.locator('auth-login [data-testid$="username"]').fill(regUser)
-    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login input[data-testid$="username"]').fill(regUser)
+    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     /* Verify dashboard app-layout renders immediately after login */
@@ -95,8 +95,8 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
 
     /* Login Flow */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice')
-    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
+    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     // It goes straight to app-layout first
@@ -153,14 +153,14 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('auth-login')).toBeVisible()
 
     /* Log in with OLD password and expect failure */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice')
-    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
+    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
     await expect(page.locator('auth-login [data-testid$="statusMsg"]')).toContainText(/wrong secret key|Invalid|Failed/)
 
     /* Log in with NEW password and expect success */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice')
-    await page.locator('auth-login [data-testid$="password"]').fill('NewVaultPassword123!')
+    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
+    await page.locator('auth-login input[data-testid$="password"]').fill('NewVaultPassword123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
@@ -172,15 +172,15 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('vault-unlock')).toBeVisible()
 
     /* Try old password and expect unlock failure */
-    await page.locator('[data-testid$="password"]').fill('Password123!')
-    await page.locator('[data-testid$="unlockSubmit"]').click()
+    await page.locator('vault-unlock input[data-testid$="password"]').fill('Password123!')
+    await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
     await expect(page.locator('[data-testid$="password-feedback"]')).toContainText(
       /wrong secret key|Invalid Password|Unlock failed/
     )
 
     /* Try new password and expect unlock success */
-    await page.locator('[data-testid$="password"]').fill('NewVaultPassword123!')
-    await page.locator('[data-testid$="unlockSubmit"]').click()
+    await page.locator('vault-unlock input[data-testid$="password"]').fill('NewVaultPassword123!')
+    await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     /* Clear memory/session via reload to simulate active session lock again to verify burned code */
@@ -217,7 +217,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
 
     /* Generate and input current TOTP code */
     const totpCode = await getTotpCode(page, secret)
-    await page.locator('[data-testid$="__otpInput"]').fill(totpCode)
+    await page.locator('input[data-testid$="__otpInput"]').fill(totpCode)
     await page.locator('[data-testid$="__btnVerifyEnable"]').click()
 
     /* Confirm enrollment success toast and button text update */
@@ -247,7 +247,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('[data-testid$="__btnManagePasskey"]').click()
 
     /* Step-up modal is immediately mounted and halts UI. Verify TOTP step-up section is visible and required */
-    const totpStepUpInput = page.locator('[data-testid$="__totpStepUpInput"]')
+    const totpStepUpInput = page.locator('input[data-testid$="__totpStepUpInput"]')
     await expect(totpStepUpInput).toBeVisible()
     const isTotpRequired = await totpStepUpInput.evaluate((el) => {
       return el.hasAttribute('required')
@@ -255,7 +255,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     expect(isTotpRequired).toBe(true)
 
     /* Input Vault Password and an invalid TOTP code */
-    await page.locator('[data-testid$="__vaultPasswordInput"]').fill('Password123!')
+    await page.locator('input[data-testid$="__vaultPasswordInput"]').fill('Password123!')
     await totpStepUpInput.fill('000000')
     await page.locator('[data-testid$="__btnVerifyPassword"]').click()
     await expect(page.locator('[data-testid$="__verifyError"]')).toContainText('Invalid 2-step verification code.')
@@ -279,28 +279,28 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
 
     /* Log in with password */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice')
-    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
+    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     /* Assert that unrecognized device halts flow and mounts the TOTP challenge modal */
     await expect(page.locator('totp-challenge')).toBeVisible()
 
     /* Enter invalid TOTP code */
-    await page.locator('[data-testid$="totpChallengeInput"]').fill('000000')
+    await page.locator('input[data-testid$="totpChallengeInput"]').fill('000000')
     await page.locator('[data-testid$="totpChallengeSubmit"]').click()
     await expect(page.locator('[data-testid$="totpChallenge-feedback"]')).toContainText('Invalid verification code.')
 
     /* Enter valid TOTP code */
     const challengeCode = await getTotpCode(page, secret)
-    await page.locator('[data-testid$="totpChallengeInput"]').fill(challengeCode)
+    await page.locator('input[data-testid$="totpChallengeInput"]').fill(challengeCode)
     await page.locator('[data-testid$="totpChallengeSubmit"]').click()
 
     /* Recognized device: direct prompt to Unlock Vault is visible now */
     await expect(page.locator('vault-unlock')).toBeVisible()
 
     /* Unlock the vault */
-    await page.locator('[data-testid$="password"]').fill('Password123!')
+    await page.locator('vault-unlock input[data-testid$="password"]').fill('Password123!')
     await page.locator('[data-testid$="unlockSubmit"]').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
@@ -310,8 +310,8 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('auth-login')).toBeVisible()
 
     /* Log back in with password */
-    await page.locator('auth-login [data-testid$="username"]').fill('alice')
-    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
+    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     /* Assert that recognized device completely bypasses TOTP challenge and goes straight to app-layout */
@@ -325,7 +325,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
 
     /* Fill valid TOTP to disable */
     const disableCode = await getTotpCode(page, secret)
-    await page.locator('[data-testid$="__disableOtpInput"]').fill(disableCode)
+    await page.locator('input[data-testid$="__disableOtpInput"]').fill(disableCode)
     await page.locator('[data-testid$="__btnVerifyDisable"]').click()
 
     /* Toast confirmation */
