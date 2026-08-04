@@ -109,6 +109,13 @@ self.onmessage = async (event) => {
         type: 'media:get-metadata',
         result
       }, transferables)
+    } else if (type === 'video:evaluate') {
+      const result = await evaluateVideoCompression(payload.file, payload.maxServerUploadSizeBytes, payload.duration)
+      self.postMessage({
+        id,
+        type: 'video:evaluate',
+        result
+      })
     }
   } catch (error) {
     console.error(`[media-worker] Error (${type}):`, error)
@@ -117,6 +124,55 @@ self.onmessage = async (event) => {
       type,
       error: error.message
     })
+  }
+}
+
+async function evaluateVideoCompression (file, maxServerUploadSizeBytes = 26214400, givenDuration = 0) {
+  if (file.size <= maxServerUploadSizeBytes) {
+    return {
+      shouldCompress: false,
+      estimatedSizeBytes: file.size,
+      targetBitrate: 0,
+      useWebRTC: false
+    }
+  }
+
+  let duration = givenDuration
+  if (!duration || duration <= 0) {
+    try {
+      const input = new Input({
+        formats: SUPPORTED_FORMATS,
+        source: new BlobSource(file)
+      })
+      duration = await input.computeDuration()
+    } catch (durErr) {
+      console.warn('[media-worker] Failed to compute duration for evaluation:', durErr)
+    }
+  }
+
+  const originalBitrate = (duration > 0) ? (file.size * 8) / duration : 5_000_000
+  const targetVideoBitrate = Math.max(300_000, Math.min(Math.round(originalBitrate * 0.70), 1_500_000))
+  const audioBitrate = 128_000
+
+  const estimatedSizeBytes = Math.round(((targetVideoBitrate + audioBitrate) * duration) / 8) + 50_000
+  const canFitOnServer = estimatedSizeBytes <= maxServerUploadSizeBytes
+
+  console.log(`[media-worker] Evaluation for ${file.name}: Original size ${(file.size / 1e6).toFixed(2)}MB, Duration ${duration.toFixed(1)}s, Original Bitrate ${Math.round(originalBitrate / 1000)}kbps -> Target Bitrate ${Math.round(targetVideoBitrate / 1000)}kbps. Estimated Size: ${(estimatedSizeBytes / 1e6).toFixed(2)}MB (Limit: ${(maxServerUploadSizeBytes / 1e6).toFixed(2)}MB). CanFitOnServer: ${canFitOnServer}`)
+
+  if (canFitOnServer) {
+    return {
+      shouldCompress: true,
+      estimatedSizeBytes,
+      targetBitrate: targetVideoBitrate,
+      useWebRTC: false
+    }
+  } else {
+    return {
+      shouldCompress: false,
+      estimatedSizeBytes,
+      targetBitrate: 0,
+      useWebRTC: true
+    }
   }
 }
 
@@ -193,18 +249,32 @@ async function getMetadata (file, options = {}) {
 }
 
 async function compressVideo (file, options = {}, onProgress) {
-  const {
-    maxWidth = 1280,
-    maxHeight = 720,
-    bitrate = 2_000_000,
-    format = 'mp4',
-    codec = 'vp9'
-  } = options
-
   const input = new Input({
     formats: SUPPORTED_FORMATS,
     source: new BlobSource(file)
   })
+
+  let duration = options.duration || 0
+  if (!duration || duration <= 0) {
+    try {
+      duration = await input.computeDuration()
+    } catch (e) {
+      console.warn('[media-worker] Could not compute duration:', e)
+    }
+  }
+
+  let targetBitrate = options.bitrate
+  if (!targetBitrate) {
+    const originalBitrate = (duration > 0) ? (file.size * 8) / duration : 5_000_000
+    targetBitrate = Math.max(300_000, Math.min(Math.round(originalBitrate * 0.70), 1_500_000))
+  }
+
+  const {
+    maxWidth = 1280,
+    maxHeight = 720,
+    format = 'mp4',
+    codec = 'vp9'
+  } = options
 
   const outputFormat = format === 'webm' ? new WebMOutputFormat() : new Mp4OutputFormat()
 
@@ -221,7 +291,7 @@ async function compressVideo (file, options = {}, onProgress) {
       width: maxWidth,
       height: maxHeight,
       fit: 'contain',
-      bitrate
+      bitrate: targetBitrate
     }
   }
 

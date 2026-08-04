@@ -410,13 +410,23 @@
             }
             state.duration = result.duration
 
-            // Compress video
-            state.uploadStatus = 'Compressing video... 0%'
-            file = await $media.compressVideo(file, {
-              maxWidth: 1280,
-              maxHeight: 720,
-              bitrate: 2_000_000
+            // Evaluate video file size against ENV server limit
+            const maxServerUploadSizeBytes = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
+            const evalResult = await $media.evaluateVideo(file, {
+              duration: result.duration,
+              maxServerUploadSizeBytes
             })
+
+            if (evalResult.shouldCompress) {
+              state.uploadStatus = 'Compressing video for server upload... 0%'
+              file = await $media.compressVideo(file, {
+                duration: result.duration,
+                bitrate: evalResult.targetBitrate
+              })
+            } else if (evalResult.useWebRTC) {
+              console.log('[chat-input] Video exceeds server upload threshold even after estimated compression; WebRTC P2P fallback will be used.')
+              state.uploadStatus = 'Queued for P2P direct transfer (exceeds server limit)'
+            }
           } catch (err) {
             console.warn('[chat-input] Video processing failed, using original file:', err)
           } finally {

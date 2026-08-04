@@ -29,6 +29,7 @@ ATOLL_POCKETBASE_URL=http://localhost:8090
 
 # LOCAL_ICE_SERVER=turn:127.0.0.1:3478
 # ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS=1000
+# ATOLL_MAX_SERVER_UPLOAD_SIZE_BYTES=26214400
 
 # Mobile Deeplinking Manifests (Build-Time)
 ATOLL_IOS_TEAM_ID=TEAMID1234
@@ -109,6 +110,7 @@ ATOLL_INTERNAL_POCKETBASE_URL=http://127.0.0.1:8080
 | `ATOLL_VAPID_PUBLIC_KEY` | **`[BUILD & RUNTIME]`** | `BG6jbL6oHXUyR8...` | Valid 65-byte P-256 VAPID public key. Embedded into JS bundle at build-time for browser push subscriptions, and loaded at runtime by push-worker for VAPID headers. **Must be set as both Docker Build Arg AND Runtime Env.** | [coralite.config.js](/coralite.config.js), [pushPlugin](/src/plugins/push-plugin.js), [push-worker](/push-worker/index.js) |
 | `LOCAL_ICE_SERVER` | `[BUILD-TIME ONLY]` | None | Overrides the Ice Server configuration for local WebRTC calls. | [coralite.config.js](/coralite.config.js), [configPlugin](/src/plugins/config-plugin.js), [webrtcPlugin](/src/plugins/web-rtc-plugin.js) |
 | `ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS` | `[BUILD-TIME ONLY]` | `1000` | Minimum interval (in ms) required between playing notification sounds. | [coralite.config.js](/coralite.config.js), [configPlugin](/src/plugins/config-plugin.js) |
+| `ATOLL_MAX_SERVER_UPLOAD_SIZE_BYTES` | `[BUILD-TIME ONLY]` | `26214400` (25MB) | Maximum file size allowed for direct server upload before switching to WebRTC P2P or triggering conditional video compression. | [coralite.config.js](/coralite.config.js), [configPlugin](/src/plugins/config-plugin.js) |
 | `ATOLL_IOS_TEAM_ID` | `[BUILD-TIME ONLY]` | `TEAMID1234` | iOS Developer Team ID used to compile `apple-app-site-association`. | [deeplinkManifestPlugin](/src/plugins/deeplink-manifest-plugin.js) |
 | `ATOLL_IOS_APP_ID` | `[BUILD-TIME ONLY]` | `com.atoll.chat` | iOS App Bundle ID used to compile `apple-app-site-association`. | [deeplinkManifestPlugin](/src/plugins/deeplink-manifest-plugin.js) |
 | `ATOLL_ANDROID_PACKAGE_NAME` | `[BUILD-TIME ONLY]` | `com.atoll.chat` | Android package name used to compile `assetlinks.json`. | [deeplinkManifestPlugin](/src/plugins/deeplink-manifest-plugin.js) |

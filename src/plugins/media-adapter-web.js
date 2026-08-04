@@ -114,7 +114,6 @@ export function createWebMediaAdapter (instanceContext) {
       const { buffer, mimeType, extension } = await $mediaWorker.compress(file, {
         maxWidth: 1280,
         maxHeight: 720,
-        bitrate: 2_000_000,
         ...options
       })
 
@@ -128,6 +127,27 @@ export function createWebMediaAdapter (instanceContext) {
       }
 
       return new File([compressedBlob], newName, { type: mimeType })
+    },
+
+    /**
+     * Evaluates video file size against server upload threshold and computes estimated compressed size.
+     * @param {File} file - Original video file.
+     * @param {Object} options - Evaluation options (maxServerUploadSizeBytes, duration).
+     * @returns {Promise<{ shouldCompress: boolean, estimatedSizeBytes: number, targetBitrate: number, useWebRTC: boolean }>} Evaluation result.
+     */
+    evaluateVideo: async (file, options = {}) => {
+      const mediaWorkerPlugin = instanceContext.mediaWorker
+      if (!mediaWorkerPlugin) {
+        return {
+          shouldCompress: false,
+          estimatedSizeBytes: file.size,
+          targetBitrate: 0,
+          useWebRTC: file.size > (options.maxServerUploadSizeBytes || 26214400)
+        }
+      }
+
+      const $mediaWorker = mediaWorkerPlugin.$mediaWorker
+      return $mediaWorker.evaluateVideo(file, options)
     },
 
     /**

@@ -33,7 +33,7 @@ export default defineConfig({
   public: 'public',
   plugins: [
     configPlugin({
-      maxServerUploadSizeBytes: 26214400,
+      maxServerUploadSizeBytes: process.env.ATOLL_MAX_SERVER_UPLOAD_SIZE_BYTES ? parseInt(process.env.ATOLL_MAX_SERVER_UPLOAD_SIZE_BYTES, 10) : 26214400,
       webrtcChunkSizeBytes: 16384,
       localIceServer: process.env.LOCAL_ICE_SERVER,
       notificationSoundDebounceMs: process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS ? parseInt(process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS, 10) : 1000

@@ -8,7 +8,9 @@ import { definePlugin } from 'coralite'
  */
 export default function configPlugin (config = {}) {
   const mergedConfig = {
-    maxServerUploadSizeBytes: 26214400,
+    maxServerUploadSizeBytes: (typeof process !== 'undefined' && process.env?.ATOLL_MAX_SERVER_UPLOAD_SIZE_BYTES)
+      ? parseInt(process.env.ATOLL_MAX_SERVER_UPLOAD_SIZE_BYTES, 10)
+      : 26214400,
     webrtcChunkSizeBytes: 16384,
     notificationSoundDebounceMs: 1000,
     ...config

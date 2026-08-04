@@ -95,6 +95,26 @@ export default definePlugin({
               }
             })
           })
+        },
+
+        evaluateVideo: (file, options = {}) => {
+          return new Promise((resolve, reject) => {
+            const id = crypto.randomUUID()
+            pendingRequests.set(id, {
+              resolve,
+              reject
+            })
+
+            worker.postMessage({
+              id,
+              type: 'video:evaluate',
+              payload: {
+                file,
+                maxServerUploadSizeBytes: options.maxServerUploadSizeBytes,
+                duration: options.duration
+              }
+            })
+          })
         }
       }
 

@@ -40,6 +40,10 @@ export default definePlugin({
               const adapter = await getAdapter(instanceContext)
               return adapter.compressVideo(file, options)
             },
+            evaluateVideo: async (file, options) => {
+              const adapter = await getAdapter(instanceContext)
+              return adapter.evaluateVideo(file, options)
+            },
             extractThumbnail: async (file) => {
               const adapter = await getAdapter(instanceContext)
               return adapter.extractThumbnail(file)
