@@ -79,6 +79,14 @@
         default: 'Cancel'
       },
       stackedActions: Boolean,
+      actionsLayout: {
+        type: String,
+        default: 'horizontal'
+      },
+      tertiaryText: {
+        type: String,
+        default: ''
+      },
       staticBackdrop: Boolean,
       disableBackdrop: Boolean,
       disableKeyboard: Boolean,
@@ -118,7 +126,10 @@
           return undefined
         }
 
-        const actionClasses = state.stackedActions ? 'atoll-popup-actions atoll-popup-actions-stacked' : 'atoll-popup-actions'
+        const isVertical = !!state.tertiaryText || state.stackedActions || state.actionsLayout === 'vertical'
+        const actionClasses = isVertical
+          ? 'atoll-popup-actions atoll-popup-actions-vertical atoll-popup-actions-stacked'
+          : 'atoll-popup-actions atoll-popup-actions-horizontal'
 
         if (nodes && nodes.length > 0) {
           const wrapper = document.createElement('div')
@@ -131,31 +142,69 @@
 
         const hidePrimary = !state.primaryText
         const hideSecondary = state.variant === 'alert' || !state.secondaryText
+        const hideTertiary = !state.tertiaryText
 
-        if (hidePrimary && hideSecondary) {
+        if (hidePrimary && hideSecondary && hideTertiary) {
           return undefined
         }
 
         const wrapper = document.createElement('div')
         wrapper.className = actionClasses
 
-        if (!hideSecondary) {
-          const btn = document.createElement('atoll-button')
-          btn.setAttribute('ref', 'secondaryBtn')
-          btn.setAttribute('variant', 'secondary')
-          btn.setAttribute('size', 'md')
-          btn.textContent = state.secondaryText
-          wrapper.appendChild(btn)
-        }
+        if (isVertical) {
+          // Visual Order: Affirmative (Top) -> Tertiary (Mid) -> Dismissive (Bot)
+          if (!hidePrimary) {
+            const btn = document.createElement('atoll-button')
+            btn.setAttribute('ref', 'primaryBtn')
+            const primaryVariant = state.variant === 'danger' ? 'danger' : 'primary'
+            btn.setAttribute('variant', primaryVariant)
+            btn.setAttribute('size', 'md')
+            btn.setAttribute('block', 'true')
+            btn.textContent = state.primaryText
+            wrapper.appendChild(btn)
+          }
 
-        if (!hidePrimary) {
-          const btn = document.createElement('atoll-button')
-          btn.setAttribute('ref', 'primaryBtn')
-          const primaryVariant = state.variant === 'danger' ? 'danger' : 'primary'
-          btn.setAttribute('variant', primaryVariant)
-          btn.setAttribute('size', 'md')
-          btn.textContent = state.primaryText
-          wrapper.appendChild(btn)
+          if (!hideTertiary) {
+            const btn = document.createElement('atoll-button')
+            btn.setAttribute('ref', 'tertiaryBtn')
+            btn.setAttribute('variant', 'outline')
+            btn.setAttribute('size', 'md')
+            btn.setAttribute('block', 'true')
+            btn.textContent = state.tertiaryText
+            wrapper.appendChild(btn)
+          }
+
+          if (!hideSecondary) {
+            const btn = document.createElement('atoll-button')
+            btn.setAttribute('ref', 'secondaryBtn')
+            btn.setAttribute('variant', 'secondary')
+            btn.setAttribute('size', 'md')
+            btn.setAttribute('block', 'true')
+            btn.textContent = state.secondaryText
+            wrapper.appendChild(btn)
+          }
+        } else {
+          // Visual Order: Dismissive (Left) -> Affirmative (Right)
+          if (!hideSecondary) {
+            const btn = document.createElement('atoll-button')
+            btn.setAttribute('ref', 'secondaryBtn')
+            btn.setAttribute('variant', 'secondary')
+            btn.setAttribute('size', 'md')
+            btn.setAttribute('block', 'true')
+            btn.textContent = state.secondaryText
+            wrapper.appendChild(btn)
+          }
+
+          if (!hidePrimary) {
+            const btn = document.createElement('atoll-button')
+            btn.setAttribute('ref', 'primaryBtn')
+            const primaryVariant = state.variant === 'danger' ? 'danger' : 'primary'
+            btn.setAttribute('variant', primaryVariant)
+            btn.setAttribute('size', 'md')
+            btn.setAttribute('block', 'true')
+            btn.textContent = state.primaryText
+            wrapper.appendChild(btn)
+          }
         }
 
         return [wrapper]
@@ -234,6 +283,7 @@
         const refAttr = target.getAttribute('ref') || ''
         const isPrimary = refAttr === 'primaryBtn' || refAttr.endsWith('__primaryBtn')
         const isSecondary = refAttr === 'secondaryBtn' || refAttr.endsWith('__secondaryBtn')
+        const isTertiary = refAttr === 'tertiaryBtn' || refAttr.endsWith('__tertiaryBtn')
 
         if (isPrimary) {
           root.dispatchEvent(
@@ -257,6 +307,17 @@
           if (bsModalInstance) {
             bsModalInstance.hide()
           }
+        } else if (isTertiary) {
+          root.dispatchEvent(
+            new CustomEvent('atoll-popup-tertiary', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                variant: state.variant,
+                size: state.size
+              }
+            })
+          )
         }
       }, { signal })
 

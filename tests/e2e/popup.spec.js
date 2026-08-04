@@ -243,4 +243,123 @@ test.describe('Atoll Popup / Modal Component', () => {
     // Simply check that the modal initialized successfully with disable-focus attribute
     expect(await popupHost.getAttribute('disable-focus')).toBe('true')
   })
+
+  test('should support horizontal, vertical layout attributes, and tertiary-text with correct button ordering', async ({ page }) => {
+    // 1. Test 2-button horizontal layout (Default / "horizontal")
+    await page.evaluate(() => {
+      const popup = document.createElement('atoll-popup')
+      popup.id = 'popup-test-horizontal'
+      popup.setAttribute('actions-layout', 'horizontal')
+      popup.setAttribute('primary-text', 'OK')
+      popup.setAttribute('secondary-text', 'Cancel')
+      popup.setAttribute('title', 'Horizontal Layout')
+      document.body.appendChild(popup)
+    })
+
+    const popupHorizontal = page.locator('#popup-test-horizontal')
+    await expect(popupHorizontal).toBeAttached()
+
+    const actionsHorizontal = popupHorizontal.locator('.atoll-popup-actions')
+    await expect(actionsHorizontal).toHaveClass(/atoll-popup-actions-horizontal/)
+    
+    // In horizontal, secondBtn is on the left (first child), primaryBtn is on the right (second child)
+    const firstButtonH = actionsHorizontal.locator('atoll-button').nth(0)
+    const secondButtonH = actionsHorizontal.locator('atoll-button').nth(1)
+    await expect(firstButtonH).toHaveAttribute('ref', 'secondaryBtn')
+    await expect(secondButtonH).toHaveAttribute('ref', 'primaryBtn')
+
+    // 2. Test 2-button vertical layout ("vertical")
+    await page.evaluate(() => {
+      const popup = document.createElement('atoll-popup')
+      popup.id = 'popup-test-vertical'
+      popup.setAttribute('actions-layout', 'vertical')
+      popup.setAttribute('primary-text', 'OK')
+      popup.setAttribute('secondary-text', 'Cancel')
+      popup.setAttribute('title', 'Vertical Layout')
+      document.body.appendChild(popup)
+    })
+
+    const popupVertical = page.locator('#popup-test-vertical')
+    await expect(popupVertical).toBeAttached()
+
+    const actionsVertical = popupVertical.locator('.atoll-popup-actions')
+    await expect(actionsVertical).toHaveClass(/atoll-popup-actions-vertical/)
+
+    // In vertical, primaryBtn is on top (first child), secondaryBtn is beneath (second child)
+    const firstButtonV = actionsVertical.locator('atoll-button').nth(0)
+    const secondButtonV = actionsVertical.locator('atoll-button').nth(1)
+    await expect(firstButtonV).toHaveAttribute('ref', 'primaryBtn')
+    await expect(secondButtonV).toHaveAttribute('ref', 'secondaryBtn')
+
+    // 3. Test 3-button layout with tertiary-text (Forced Vertical)
+    await page.evaluate(() => {
+      const popup = document.createElement('atoll-popup')
+      popup.id = 'popup-test-tertiary'
+      popup.setAttribute('primary-text', 'Backup')
+      popup.setAttribute('tertiary-text', 'Later')
+      popup.setAttribute('secondary-text', 'Cancel')
+      popup.setAttribute('title', 'Three Buttons Stack')
+      document.body.appendChild(popup)
+    })
+
+    const popupTertiary = page.locator('#popup-test-tertiary')
+    await expect(popupTertiary).toBeAttached()
+
+    const actionsTertiary = popupTertiary.locator('.atoll-popup-actions')
+    await expect(actionsTertiary).toHaveClass(/atoll-popup-actions-vertical/)
+
+    // Stacking visual order is Affirmative -> Tertiary -> Dismissive
+    const firstButtonT = actionsTertiary.locator('atoll-button').nth(0)
+    const secondButtonT = actionsTertiary.locator('atoll-button').nth(1)
+    const thirdButtonT = actionsTertiary.locator('atoll-button').nth(2)
+    await expect(firstButtonT).toHaveAttribute('ref', 'primaryBtn')
+    await expect(secondButtonT).toHaveAttribute('ref', 'tertiaryBtn')
+    await expect(thirdButtonT).toHaveAttribute('ref', 'secondaryBtn')
+  })
+
+  test('should dispatch dedicated custom event when tertiary button is clicked, without closing modal', async ({ page }) => {
+    await page.evaluate(() => {
+      const popup = document.createElement('atoll-popup')
+      popup.id = 'popup-test-tertiary-events'
+      popup.setAttribute('variant', 'confirm')
+      popup.setAttribute('size', 'lg')
+      popup.setAttribute('primary-text', 'Backup')
+      popup.setAttribute('tertiary-text', 'Later')
+      popup.setAttribute('secondary-text', 'Cancel')
+      popup.setAttribute('title', 'Tertiary Event Test')
+      popup.setAttribute('open', 'true')
+
+      window.__popupTertiaryEvents = []
+      popup.addEventListener('atoll-popup-tertiary', (e) => {
+        window.__popupTertiaryEvents.push({
+          type: 'tertiary',
+          detail: e.detail
+        })
+      })
+
+      document.body.appendChild(popup)
+    })
+
+    const popupHost = page.locator('#popup-test-tertiary-events')
+    const modal = popupHost.locator('.modal')
+    await expect(modal).toBeVisible()
+
+    // Find and click the tertiary button
+    const tertiaryBtn = popupHost.locator('atoll-button[ref$="tertiaryBtn"] button')
+    await tertiaryBtn.click()
+
+    // Assert custom event was fired with correct details
+    await page.waitForFunction(() => window.__popupTertiaryEvents.length > 0)
+    const events = await page.evaluate(() => window.__popupTertiaryEvents)
+    expect(events[0]).toEqual({
+      type: 'tertiary',
+      detail: {
+        variant: 'confirm',
+        size: 'lg'
+      }
+    })
+
+    // Assert that the modal is still open
+    await expect(modal).toBeVisible()
+  })
 })
