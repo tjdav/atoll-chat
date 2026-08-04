@@ -239,7 +239,7 @@ test.describe('Atoll Popup / Modal Component', () => {
     const popupHost = page.locator('#test-popup-disable-focus')
     const modal = popupHost.locator('.modal')
     await expect(modal).toBeVisible()
-    
+
     // Simply check that the modal initialized successfully with disable-focus attribute
     expect(await popupHost.getAttribute('disable-focus')).toBe('true')
   })
