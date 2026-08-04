@@ -153,7 +153,7 @@
 
         state.participants = list
 
-        const isMobile = window.innerWidth < 576
+        const isMobile = window.innerWidth < 768
         let hero = null
         if (state.pinnedParticipantId) {
           hero = list.find(p => p.id === state.pinnedParticipantId)

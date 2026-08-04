@@ -105,7 +105,7 @@
 }
 
 // Mobile Responsive Layout Overrides
-@include media-breakpoint-down(sm) {
+@include media-breakpoint-down(md) {
 
   // Show Column 3 when active
   .atoll-chat-pane.chat-active,

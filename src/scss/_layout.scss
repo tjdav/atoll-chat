@@ -28,7 +28,7 @@
 }
 
 // Mobile Responsive Layout Overrides
-@include media-breakpoint-down(sm) {
+@include media-breakpoint-down(md) {
 
   // Hide Column 2 when Column 3 is active (handled by offcanvas usually, but for consistency)
   .layout-container.chat-active .contextual-list {

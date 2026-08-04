@@ -5,7 +5,7 @@
   flex-shrink: 0;
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
 
-  @include media-breakpoint-down(sm) {
+  @include media-breakpoint-down(md) {
     padding: 0.5rem !important;
     padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
   }

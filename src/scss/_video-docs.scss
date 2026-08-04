@@ -120,8 +120,8 @@
   }
 }
 
-// Mobile View Adaptation (Viewport below 576px)
-@media (max-width: 575.98px) {
+// Mobile View Adaptation (Viewport below 768px)
+@media (max-width: 767.98px) {
   .grid-container.layout-hero {
     flex-direction: column !important;
 
