@@ -55,26 +55,60 @@ export default definePlugin({
           toastEl.style.minWidth = '250px'
           document.body.appendChild(toastEl)
         }
-        toastEl.innerHTML = `
-          <div class="d-flex align-items-center justify-content-between mb-2">
-            <span class="fw-bold">${title}</span>
-            <span class="text-primary fw-bold">${percent}%</span>
-          </div>
-          <div class="progress" style="height: 6px;">
-            <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" role="progressbar" style="width: ${percent}%" aria-valuenow="${percent}" aria-valuemin="0" aria-valuemax="100"></div>
-          </div>
-        `
+
+        toastEl.innerHTML = ''
+
+        const header = document.createElement('div')
+        header.className = 'd-flex align-items-center justify-content-between mb-2'
+
+        const titleSpan = document.createElement('span')
+        titleSpan.className = 'fw-bold'
+        titleSpan.textContent = title
+
+        const percentSpan = document.createElement('span')
+        percentSpan.className = 'text-primary fw-bold'
+        percentSpan.textContent = `${percent}%`
+
+        header.appendChild(titleSpan)
+        header.appendChild(percentSpan)
+
+        const progressWrapper = document.createElement('div')
+        progressWrapper.className = 'progress'
+        progressWrapper.style.height = '6px'
+
+        const progressBar = document.createElement('div')
+        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary'
+        progressBar.setAttribute('role', 'progressbar')
+        progressBar.style.width = `${percent}%`
+        progressBar.setAttribute('aria-valuenow', percent)
+        progressBar.setAttribute('aria-valuemin', '0')
+        progressBar.setAttribute('aria-valuemax', '100')
+
+        progressWrapper.appendChild(progressBar)
+
+        toastEl.appendChild(header)
+        toastEl.appendChild(progressWrapper)
       }
 
       const removeProgressToast = (successMessage = null) => {
         if (toastEl) {
           if (successMessage) {
-            toastEl.innerHTML = `
-              <div class="d-flex align-items-center gap-2 text-success">
-                <i class="bi bi-check-circle-fill"></i>
-                <span class="fw-bold">${successMessage}</span>
-              </div>
-            `
+            toastEl.innerHTML = ''
+
+            const wrapper = document.createElement('div')
+            wrapper.className = 'd-flex align-items-center gap-2 text-success'
+
+            const icon = document.createElement('i')
+            icon.className = 'bi bi-check-circle-fill'
+
+            const span = document.createElement('span')
+            span.className = 'fw-bold'
+            span.textContent = successMessage
+
+            wrapper.appendChild(icon)
+            wrapper.appendChild(span)
+            toastEl.appendChild(wrapper)
+
             setTimeout(() => {
               if (toastEl) {
                 toastEl.remove()
