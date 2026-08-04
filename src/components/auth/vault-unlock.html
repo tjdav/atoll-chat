@@ -24,13 +24,13 @@
           placeholder="Enter Master Password" 
           required="true" 
           autocomplete="current-password"
-          test-id="password"
+          data-testid="password"
           feedback-test-id="password-feedback"
         ></atoll-input>
 
         <!-- Zone 4: Bottom Action Zone -->
         <div class="atoll-auth-bottom-zone text-center mt-3">
-          <atoll-button type="submit" variant="primary" block="true" ref="btnUnlockSubmit" test-id="unlockSubmit">Unlock Vault</atoll-button>
+          <atoll-button type="submit" variant="primary" block="true" ref="btnUnlockSubmit" data-testid="unlockSubmit">Unlock Vault</atoll-button>
           <atoll-button type="button" variant="outline" block="true" class="d-none mt-2" ref="btnPasskey">Unlock with Passkey</atoll-button>
           
           <div class="mt-3 mb-4">
@@ -72,7 +72,7 @@
           placeholder="RC-XXXX-XXXX-XXXX-XXXX" 
           required="true"
           class="text-center font-monospace fs-5"
-          test-id="recoveryCodeInput"
+          data-testid="recoveryCodeInput"
           feedback-test-id="recoveryCodeInput-feedback"
         ></atoll-input>
 
@@ -103,7 +103,7 @@
             required="true"
             minlength="12"
             autocomplete="new-password"
-            test-id="newPassword"
+            data-testid="newPassword"
             feedback-test-id="newPassword-feedback"
           ></atoll-input>
           <div class="progress mt-2" style="height: 5px;">
@@ -121,7 +121,7 @@
           required="true"
           minlength="12"
           autocomplete="new-password"
-          test-id="newPasswordConfirm"
+          data-testid="newPasswordConfirm"
           feedback-test-id="newPasswordConfirm-feedback"
         ></atoll-input>
 
@@ -140,7 +140,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, biometric, root }) => {
+    client: async ({ refs, pocketbase, eventBus, realtimeSync, globalStore, cryptoWorker, biometric, _root }) => {
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $sync } = realtimeSync

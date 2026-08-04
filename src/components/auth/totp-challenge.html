@@ -17,13 +17,13 @@
         required="true" 
         maxlength="6"
         pattern="\d{6}"
-        test-id="totpChallengeInput"
+        data-testid="totpChallengeInput"
         feedback-test-id="totpChallenge-feedback"
       ></atoll-input>
 
       <!-- Zone 4: Bottom Action Zone -->
       <div class="atoll-auth-bottom-zone">
-        <atoll-button type="submit" variant="primary" block="true" ref="btnVerify" test-id="totpChallengeSubmit">Verify Code</atoll-button>
+        <atoll-button type="submit" variant="primary" block="true" ref="btnVerify" data-testid="totpChallengeSubmit">Verify Code</atoll-button>
         <atoll-button type="button" variant="ghost" block="true" ref="btnLogout">Logout</atoll-button>
       </div>
     </form>
@@ -36,7 +36,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, eventBus, globalStore, totp, root }) => {
+    client: async ({ refs, pocketbase, eventBus, globalStore, totp }) => {
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)

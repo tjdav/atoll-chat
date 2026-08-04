@@ -26,8 +26,8 @@ test.describe('Authentication and Vault', () => {
 
     // login again
     console.log('--- Second Login ---')
-    await page.locator('auth-login [data-testid$="username"]').fill('alice')
-    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
+    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
@@ -51,8 +51,8 @@ test.describe('Authentication and Vault', () => {
 
     // login again
     console.log('--- Third Login ---')
-    await page.locator('auth-login [data-testid$="username"]').fill('alice')
-    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
+    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
     await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
@@ -66,10 +66,10 @@ test.describe('Authentication and Vault', () => {
     await page.locator('auth-login [data-testid$="linkRegister"]').click()
     await expect(page.locator('auth-register')).toBeVisible()
 
-    await page.locator('auth-register [data-testid$="username"]').fill('newuser')
-    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-INVALID-CODE')
-    await page.locator('auth-register [data-testid$="password"]').fill('Password123!456')
-    await page.locator('auth-register [data-testid$="passwordConfirm"]').fill('Password123!456')
+    await page.locator('auth-register input[data-testid$="username"]').fill('newuser')
+    await page.locator('auth-register input[data-testid$="invitationCode"]').fill('INV-INVALID-CODE')
+    await page.locator('auth-register input[data-testid$="password"]').fill('Password123!456')
+    await page.locator('auth-register input[data-testid$="passwordConfirm"]').fill('Password123!456')
     await page.locator('auth-register [data-testid$="registerSubmit"]').click()
 
     // Should display error message
@@ -81,10 +81,10 @@ test.describe('Authentication and Vault', () => {
     await page.locator('auth-login [data-testid$="linkRegister"]').click()
     await expect(page.locator('auth-register')).toBeVisible()
 
-    await page.locator('auth-register [data-testid$="username"]').fill('sam')
-    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-1111')
-    await page.locator('auth-register [data-testid$="password"]').fill('Password123!456')
-    await page.locator('auth-register [data-testid$="passwordConfirm"]').fill('Password123!456')
+    await page.locator('auth-register input[data-testid$="username"]').fill('sam')
+    await page.locator('auth-register input[data-testid$="invitationCode"]').fill('INV-SEED-1111')
+    await page.locator('auth-register input[data-testid$="password"]').fill('Password123!456')
+    await page.locator('auth-register input[data-testid$="passwordConfirm"]').fill('Password123!456')
     await page.locator('auth-register [data-testid$="registerSubmit"]').click()
 
     /* Confirm and dismiss Recovery Code Modal */

@@ -75,8 +75,8 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     })
 
     // Fill in valid login credentials
-    await page.locator('auth-login [data-testid$="username"]').fill('alice')
-    await page.locator('auth-login [data-testid$="password"]').fill('Password123!')
+    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
+    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
 
     // Dispatch error statechange on altcha-widget to test error state handling
     await page.evaluate(() => {
@@ -90,7 +90,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     await expect(page.locator('auth-login [data-testid$="statusMsg"]')).toContainText('Security challenge failed')
 
     // Ensure the username input does NOT have custom validity set
-    const emailValidity = await page.locator('auth-login [data-testid$="username"]').evaluate((el) => el.validationMessage)
+    const emailValidity = await page.locator('auth-login input[data-testid$="username"]').evaluate((el) => el.validationMessage)
     expect(emailValidity).toBe('')
 
     // Dispatch verified statechange to proceed successfully

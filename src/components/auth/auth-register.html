@@ -4,7 +4,7 @@
     <div class="atoll-auth-header-zone">
       <atoll-list-header variant="list">
         <div slot="leading">
-          <atoll-button type="button" variant="ghost" icon-only="true" ref="linkLogin" test-id="linkLogin">
+          <atoll-button type="button" variant="ghost" icon-only="true" ref="linkLogin" data-testid="linkLogin">
             <atoll-icon name="chevron-left"></atoll-icon>
           </atoll-button>
         </div>
@@ -31,7 +31,7 @@
         placeholder="Choose a username" 
         required="true" 
         autocomplete="username" 
-        test-id="username"
+        data-testid="username"
         feedback-test-id="username-feedback"
       ></atoll-input>
 
@@ -41,7 +41,7 @@
         label="Invitation Code" 
         placeholder="Enter invitation code (e.g. INV-XXXX-XXXX)" 
         required="true" 
-        test-id="invitationCode"
+        data-testid="invitationCode"
         feedback-test-id="invitation-code-feedback"
       ></atoll-input>
 
@@ -54,7 +54,7 @@
           placeholder="Enter Password" 
           required="true" 
           autocomplete="new-password" 
-          test-id="password"
+          data-testid="password"
           feedback-test-id="password-feedback"
           minlength="8"
         ></atoll-input>
@@ -72,7 +72,7 @@
         placeholder="Confirm Password" 
         required="true" 
         autocomplete="new-password" 
-        test-id="passwordConfirm"
+        data-testid="passwordConfirm"
         feedback-test-id="password-confirm-feedback"
         minlength="8"
       ></atoll-input>
@@ -81,7 +81,7 @@
 
       <!-- Zone 4: Bottom Action Zone -->
       <div class="atoll-auth-bottom-zone">
-        <atoll-button type="submit" variant="primary" block="true" ref="btnSubmit" test-id="registerSubmit">Register & Log In</atoll-button>
+        <atoll-button type="submit" variant="primary" block="true" ref="btnSubmit" data-testid="registerSubmit">Register & Log In</atoll-button>
       </div>
     </form>
 
@@ -113,11 +113,11 @@
 
       <!-- Action Buttons -->
       <div class="d-flex gap-3 mb-4 w-100 px-2 justify-content-center">
-        <atoll-button variant="secondary" size="md" class="flex-grow-1" ref="btnCopyCode" test-id="btnCopyCode">
+        <atoll-button variant="secondary" size="md" class="flex-grow-1" ref="btnCopyCode" data-testid="btnCopyCode">
           <atoll-icon slot="leading" name="copy" size="18"></atoll-icon>
           Copy Code
         </atoll-button>
-        <atoll-button variant="secondary" size="md" class="flex-grow-1" ref="btnDownloadCode" test-id="btnDownloadCode">
+        <atoll-button variant="secondary" size="md" class="flex-grow-1" ref="btnDownloadCode" data-testid="btnDownloadCode">
           <atoll-icon slot="leading" name="download" size="18"></atoll-icon>
           Download
         </atoll-button>
@@ -133,7 +133,7 @@
 
       <!-- Continue Action -->
       <div class="w-100 mt-3">
-        <atoll-button variant="primary" size="lg" block="true" ref="btnContinueToChat" test-id="btnContinueToChat" disabled="true">Continue to Chat</atoll-button>
+        <atoll-button variant="primary" size="lg" block="true" ref="btnContinueToChat" data-testid="btnContinueToChat" disabled="true">Continue to Chat</atoll-button>
       </div>
     </div>
   </div>
@@ -143,7 +143,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, root }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils }) => {
       const { pb } = pocketbase
       const { $url } = utils
       const { $storage } = storage

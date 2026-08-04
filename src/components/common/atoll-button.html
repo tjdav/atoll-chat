@@ -199,6 +199,18 @@
       const btn = refs('btnElement')
       let spinnerEl = null
 
+      // Forward data-testid from host to the inner native button, preserving across reconnects
+      const testId = root.getAttribute('data-testid') || root.__testId
+      if (testId && btn) {
+        root.__testId = testId
+        btn.setAttribute('data-testid', testId)
+        if (typeof requestAnimationFrame !== 'undefined') {
+          requestAnimationFrame(() => root.removeAttribute('data-testid'))
+        } else {
+          root.removeAttribute('data-testid')
+        }
+      }
+
       btn.addEventListener('click', (event) => {
         if (state.disabled || state.loading) {
           event.preventDefault()

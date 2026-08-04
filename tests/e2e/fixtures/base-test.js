@@ -353,13 +353,13 @@ export const test = base.extend({
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-      await page.locator('auth-login [data-testid$="username"]').fill(username)
-      await page.locator('auth-login [data-testid$="password"]').fill(appPassword)
+      await page.locator('auth-login input[data-testid$="username"]').fill(username)
+      await page.locator('auth-login input[data-testid$="password"]').fill(appPassword)
       await page.locator('auth-login [data-testid$="loginSubmit"]').click()
 
       const vaultUnlockLocator = page.locator('vault-unlock')
       if (await vaultUnlockLocator.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await page.locator('vault-unlock [data-testid$="password"]').fill(vaultPassword || appPassword)
+        await page.locator('vault-unlock input[data-testid$="password"]').fill(vaultPassword || appPassword)
         await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
       }
 
