@@ -87,7 +87,7 @@ atoll-popup[data-#{$prefix}theme="dark"] {
 }
 
 /* Scoped Modal Backdrop Override */
-.modal-backdrop.atoll-popup-backdrop {
+.modal-backdrop {
   opacity: 1 !important;
   background-color: var(--#{$prefix}popup-backdrop-bg) !important;
   -webkit-backdrop-filter: blur(4px) !important;

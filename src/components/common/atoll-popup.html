@@ -97,7 +97,7 @@
     slots: {
       hero (nodes, state) {
         if (typeof document === 'undefined') {
-          return null
+          return undefined
         }
 
         if (state.heroIcon) {
@@ -119,12 +119,12 @@
           return [wrapper]
         }
 
-        return null
+        return undefined
       },
 
       actions (nodes, state) {
         if (typeof document === 'undefined') {
-          return null
+          return undefined
         }
 
         const actionClasses = state.stackedActions ? 'atoll-popup-actions atoll-popup-actions-stacked' : 'atoll-popup-actions'
@@ -142,7 +142,7 @@
         const hideSecondary = state.variant === 'alert' || !state.secondaryText
 
         if (hidePrimary && hideSecondary) {
-          return null
+          return undefined
         }
 
         const wrapper = document.createElement('div')
@@ -193,47 +193,62 @@
       }
     },
 
-    client: ({ state, refs, root, observe, bootstrap }) => {
+    client: ({ state, refs, root, observe, bootstrap, signal }) => {
       const { Modal } = bootstrap
       const modalEl = refs('modalElement')
 
       let bsModalInstance = null
 
-      const applyBackdropClass = () => {
-        const backdrops = document.querySelectorAll('.modal-backdrop')
-        backdrops.forEach(backdrop => {
-          backdrop.classList.add('atoll-popup-backdrop')
-        })
-      }
+      // Initialize Bootstrap Modal Engine
+      bsModalInstance = Modal.getOrCreateInstance(modalEl, {
+        backdrop: state.staticBackdrop ? 'static' : true,
+        keyboard: !state.staticBackdrop
+      })
 
-      if (modalEl) {
-        // Initialize Bootstrap Modal Engine
-        bsModalInstance = Modal.getOrCreateInstance(modalEl, {
-          backdrop: state.staticBackdrop ? 'static' : true,
-          keyboard: !state.staticBackdrop
-        })
+      modalEl.addEventListener('show.bs.modal', () => {
+        state.open = true
+      }, { signal })
 
-        modalEl.addEventListener('show.bs.modal', () => {
-          state.open = true
-          setTimeout(applyBackdropClass, 0)
-        })
+      // Synchronize state when closed via backdrop click or Escape key
+      modalEl.addEventListener('hidden.bs.modal', () => {
+        state.open = false
+        root.dispatchEvent(
+          new CustomEvent('atoll-popup-close', {
+            bubbles: true,
+            composed: true,
+            detail: { variant: state.variant }
+          })
+        )
+      }, { signal })
 
-        // Synchronize state when closed via backdrop click or Escape key
-        modalEl.addEventListener('hidden.bs.modal', () => {
-          state.open = false
+      modalEl.addEventListener('shown.bs.modal', () => {
+        root.dispatchEvent(
+          new CustomEvent('atoll-popup-open', {
+            bubbles: true,
+            composed: true,
+            detail: {
+              variant: state.variant,
+              size: state.size
+            }
+          })
+        )
+      }, { signal })
+
+      // Event delegation for primary, secondary, and close button clicks
+      modalEl.addEventListener('click', (e) => {
+        const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
+        if (!target) {
+          return
+        }
+
+        const refAttr = target.getAttribute('ref') || ''
+        const isPrimary = refAttr === 'primaryBtn' || refAttr.endsWith('__primaryBtn')
+        const isSecondary = refAttr === 'secondaryBtn' || refAttr.endsWith('__secondaryBtn')
+        const isClose = refAttr === 'btnClose' || refAttr.endsWith('__btnClose')
+
+        if (isPrimary) {
           root.dispatchEvent(
-            new CustomEvent('atoll-popup-close', {
-              bubbles: true,
-              composed: true,
-              detail: { variant: state.variant }
-            })
-          )
-        })
-
-        modalEl.addEventListener('shown.bs.modal', () => {
-          applyBackdropClass()
-          root.dispatchEvent(
-            new CustomEvent('atoll-popup-open', {
+            new CustomEvent('atoll-popup-primary', {
               bubbles: true,
               composed: true,
               detail: {
@@ -242,49 +257,23 @@
               }
             })
           )
-        })
-
-        // Event delegation for primary, secondary, and close button clicks
-        modalEl.addEventListener('click', (e) => {
-          const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
-          if (!target) {
-            return
+        } else if (isSecondary) {
+          root.dispatchEvent(
+            new CustomEvent('atoll-popup-secondary', {
+              bubbles: true,
+              composed: true,
+              detail: { variant: state.variant }
+            })
+          )
+          if (bsModalInstance) {
+            bsModalInstance.hide()
           }
-
-          const refAttr = target.getAttribute('ref') || ''
-          const isPrimary = refAttr === 'primaryBtn' || refAttr.endsWith('__primaryBtn')
-          const isSecondary = refAttr === 'secondaryBtn' || refAttr.endsWith('__secondaryBtn')
-          const isClose = refAttr === 'btnClose' || refAttr.endsWith('__btnClose')
-
-          if (isPrimary) {
-            root.dispatchEvent(
-              new CustomEvent('atoll-popup-primary', {
-                bubbles: true,
-                composed: true,
-                detail: {
-                  variant: state.variant,
-                  size: state.size
-                }
-              })
-            )
-          } else if (isSecondary) {
-            root.dispatchEvent(
-              new CustomEvent('atoll-popup-secondary', {
-                bubbles: true,
-                composed: true,
-                detail: { variant: state.variant }
-              })
-            )
-            if (bsModalInstance) {
-              bsModalInstance.hide()
-            }
-          } else if (isClose) {
-            if (bsModalInstance) {
-              bsModalInstance.hide()
-            }
+        } else if (isClose) {
+          if (bsModalInstance) {
+            bsModalInstance.hide()
           }
-        })
-      }
+        }
+      }, { signal })
 
       // Reactive observer for [open] attribute
       observe('open', (isOpen) => {
