@@ -831,7 +831,6 @@ export function createServer () {
             const pruneReq = http.request(reqOpts, (pruneRes) => {
               pruneRes.on('data', () => {
               })
-              console.log(`[MOCK PB] [${testId}] Async pruning webhook returned status:`, pruneRes.statusCode)
             })
             pruneReq.on('error', (err) => {
               console.error('[MOCK PB] Failed to call prune webhook:', err)
@@ -861,13 +860,6 @@ export function createServer () {
         const expectedSecret = process.env.ATOLL_PUSH_WORKER_SECRET || 'test_secret_123'
         const reqSecret = req.headers['x-worker-token']
 
-        console.log('[MOCK PB WEBHOOK] Got request:', {
-          reqSecret,
-          expectedSecret,
-          body,
-          headers: req.headers
-        })
-
         if (reqSecret !== expectedSecret) {
           console.error('[MOCK PB WEBHOOK] Secret mismatch!', {
             reqSecret,
@@ -884,9 +876,9 @@ export function createServer () {
             const user = db.users.find(u => u.id === id)
             if (user) {
               user.push_subscription = null
-              console.log(`[MOCK PB] [${testId}] Stored push_subscription for user: ${id}`)
+              logVerbose(`[MOCK PB] [${testId}] Stored push_subscription for user: ${id}`)
             } else {
-              console.warn(`[MOCK PB] [${testId}] User not found to prune: ${id}`)
+              logVerbose(`[MOCK PB] [${testId}] User not found to prune: ${id}`)
             }
           })
         }
@@ -1004,7 +996,6 @@ export function createServer () {
 
         if (req.method === 'POST') {
           if (collectionName === 'users') {
-            console.log('[MOCK PB CREATE USER BODY]', JSON.stringify(body))
             const { altcha } = body
             if (!altcha) {
               res.writeHead(400, { 'Content-Type': 'application/json' })

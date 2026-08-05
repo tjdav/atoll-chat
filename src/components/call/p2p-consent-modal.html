@@ -1,28 +1,27 @@
 <template id="p2p-consent-modal">
-  <div ref="consentModal" class="modal fade" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Incoming File Transfer</h5>
-        </div>
-        <div class="modal-body text-center py-4">
-          <div class="mb-3">
-            <i class="bi bi-file-earmark-arrow-down fs-1 text-primary"></i>
-          </div>
-          <h6 class="fw-bold mb-2" ref="promptText">
-            Incoming transfer...
-          </h6>
-          <p class="text-muted small mb-0" ref="detailsText">
-            Size: --
-          </p>
-        </div>
-        <div class="modal-footer d-flex justify-content-center gap-3">
-          <button type="button" class="btn btn-danger px-4" ref="btnReject" data-testid="consent-btn-reject">Reject</button>
-          <button type="button" class="btn btn-success px-4" ref="btnAccept" data-testid="consent-btn-accept">Accept</button>
-        </div>
+  <atoll-popup 
+    ref="consentModal" 
+    title="Incoming File Transfer"
+    variant="confirm"
+    static-backdrop
+  >
+    <div class="text-center py-2">
+      <div class="mb-3">
+        <i class="bi bi-file-earmark-arrow-down fs-1 text-primary"></i>
       </div>
+      <h6 class="fw-bold mb-2" ref="promptText">
+        Incoming transfer...
+      </h6>
+      <p class="text-muted small mb-0" ref="detailsText">
+        Size: --
+      </p>
     </div>
-  </div>
+
+    <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-center gap-3">
+      <button type="button" class="btn btn-danger px-4" ref="btnReject" data-testid="consent-btn-reject">Reject</button>
+      <button type="button" class="btn btn-success px-4" ref="consent-btn-accept" data-testid="consent-btn-accept">Accept</button>
+    </div>
+  </atoll-popup>
 </template>
 
 <script type="module">
@@ -37,13 +36,11 @@
       roomId: '',
       senderId: ''
     }),
-    client: ({ state, refs, eventBus, pocketbase, storage, bootstrap, signal }) => {
+    client: ({ state, refs, root, eventBus, pocketbase, storage, signal }) => {
       const { $bus } = eventBus
       const { pb } = pocketbase
       const { $storage } = storage
-      const { Modal } = bootstrap
-      const modalEl = refs('consentModal')
-      const modal = new Modal(modalEl)
+      const modal = refs('consentModal')
 
       $bus.on('ui:prompt_p2p_consent', async (payload) => {
         console.info('[p2p-consent-modal] Bob received ui:prompt_p2p_consent payload:', payload)
@@ -79,30 +76,39 @@
         refs('detailsText').textContent = `${state.filename} (${state.fileSizeStr})`
 
         console.info('[p2p-consent-modal] Bob calling modal.show()')
-        modal.show()
+        if (modal) {
+          modal.show()
+        }
       })
 
-      refs('btnAccept').onclick = () => {
-        modal.hide()
-        $bus.emit('action:execute_p2p_accept', {
-          p2pUuid: state.p2pUuid,
-          roomId: state.roomId,
-          senderId: state.senderId
-        })
-      }
+      root.addEventListener('click', (e) => {
+        const acceptTarget = e.target.closest('[data-testid$="consent-btn-accept"]') || e.target.closest('[ref$="consent-btn-accept"]')
+        if (acceptTarget) {
+          if (modal) {
+            modal.hide()
+          }
 
-      refs('btnReject').onclick = () => {
-        modal.hide()
-        $bus.emit('action:execute_p2p_reject', {
-          p2pUuid: state.p2pUuid,
-          roomId: state.roomId,
-          senderId: state.senderId
-        })
-      }
+          $bus.emit('action:execute_p2p_accept', {
+            p2pUuid: state.p2pUuid,
+            roomId: state.roomId,
+            senderId: state.senderId
+          })
+          return
+        }
 
-      signal.addEventListener('abort', () => {
-        modal.dispose()
-      })
+        const rejectTarget = e.target.closest('[data-testid$="consent-btn-reject"]') || e.target.closest('[ref$="btnReject"]')
+        if (rejectTarget) {
+          if (modal) {
+            modal.hide()
+          }
+  
+          $bus.emit('action:execute_p2p_reject', {
+            p2pUuid: state.p2pUuid,
+            roomId: state.roomId,
+            senderId: state.senderId
+          })
+        }
+      }, { signal })
     }
   })
 </script>

@@ -393,35 +393,12 @@ test.describe('Atoll Popup / Modal Component', () => {
     await expect(offcanvas).toBeVisible()
     await expect(modal).toBeVisible()
 
-    // Assert that the inner modal element has been relocated to body to escape the offcanvas stacking context
-    const isDirectChildOfBody = await page.evaluate(() => {
-      const modalEl = document.querySelector('.modal')
-      return modalEl && modalEl.parentElement === document.body
+    // Assert that the popup remains in the DOM while escaping stacking context via Top Layer
+    const isTopLayerModal = await page.evaluate(() => {
+      const modalEl = document.querySelector('dialog.modal')
+      return modalEl && modalEl.open && modalEl.parentElement && modalEl.parentElement.tagName === 'ATOLL-POPUP'
     })
-    expect(isDirectChildOfBody).toBe(true)
-
-    // Assert the progressive z-indices are assigned correctly
-    // Since offcanvas was opened first (index 0), then modal was opened second (index 1)
-    // index 0 (offcanvas): backdrop z-index 1040, element z-index 1050
-    // index 1 (modal): backdrop z-index 1060, element z-index 1070
-    const zIndices = await page.evaluate(() => {
-      const offcanvasEl = document.getElementById('test-offcanvas')
-      const modalEl = document.querySelector('.modal')
-      
-      // Find backdrops
-      const modalBackdrop = document.querySelector('.modal-backdrop')
-      const offcanvasBackdrop = document.querySelector('.offcanvas-backdrop')
-
-      return {
-        offcanvas: window.getComputedStyle(offcanvasEl).zIndex,
-        modal: window.getComputedStyle(modalEl).zIndex,
-        modalBackdrop: modalBackdrop ? window.getComputedStyle(modalBackdrop).zIndex : null
-      }
-    })
-
-    expect(Number(zIndices.offcanvas)).toBe(1050)
-    expect(Number(zIndices.modal)).toBe(1070)
-    expect(Number(zIndices.modalBackdrop)).toBe(1060)
+    expect(isTopLayerModal).toBe(true)
 
     // Close the modal
     await page.evaluate(() => {

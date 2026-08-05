@@ -1,25 +1,21 @@
 <template id="p2p-reroute-modal">
-  <div ref="rerouteModal" class="modal fade" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Select Recipient</h5>
-          <button type="button" class="btn-close" ref="btnClose" aria-label="Close"></button>
-        </div>
-        <div class="modal-body p-0">
-          <div class="p-3 text-muted border-bottom text-center">
-            Files larger than 25MB cannot be uploaded to the group chat directly. Please select a participant to transfer the file to directly.
-          </div>
-          <div class="list-group list-group-flush" ref="listContainer" style="max-height: 300px; overflow-y: auto;">
-            <!-- Participants list will be rendered here -->
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-link text-decoration-none" ref="btnCancel">Cancel</button>
-        </div>
+  <atoll-popup 
+    ref="rerouteModal" 
+    title="Select Recipient"
+  >
+    <div>
+      <div class="p-2 text-muted border-bottom text-center small mb-3">
+        Files larger than 25MB cannot be uploaded to the group chat directly. Please select a participant to transfer the file to directly.
+      </div>
+      <div class="list-group list-group-flush" ref="listContainer" style="max-height: 300px; overflow-y: auto;">
+        <!-- Participants list will be rendered here -->
       </div>
     </div>
-  </div>
+
+    <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end">
+      <button type="button" class="btn btn-link text-decoration-none" ref="btnCancel">Cancel</button>
+    </div>
+  </atoll-popup>
 </template>
 
 <script type="module">
@@ -31,16 +27,19 @@
       activeRoom: null,
       participants: []
     }),
-    client: ({ state, refs, eventBus, globalStore, bootstrap, pocketbase, signal }) => {
+    client: ({ state, refs, eventBus, globalStore, pocketbase, signal }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
       const { pb } = pocketbase
-      const { Modal } = bootstrap
-      const modalEl = refs('rerouteModal')
-      const modal = new Modal(modalEl)
+      const modal = refs('rerouteModal')
+      const btnCancel = refs('btnCancel')
 
       const render = () => {
         const container = refs('listContainer')
+        if (!container) {
+          return
+        }
+
         container.innerHTML = ''
 
         if (state.participants.length === 0) {
@@ -76,7 +75,10 @@
           btn.appendChild(label)
 
           btn.onclick = () => {
-            modal.hide()
+            if (modal) {
+              modal.hide()
+            }
+  
             $bus.emit('action:execute_p2p_transfer', {
               file: state.activeFile,
               selectedUserId: p.id,
@@ -97,16 +99,18 @@
         state.participants = (payload.room?.participants || []).filter(p => p.id !== currentUserId)
 
         render()
-        modal.show()
+        if (modal) {
+          modal.show()
+        }
       })
 
-      const close = () => modal.hide()
-      refs('btnClose').onclick = close
-      refs('btnCancel').onclick = close
-
-      signal.addEventListener('abort', () => {
-        modal.dispose()
-      })
+      if (btnCancel) {
+        btnCancel.onclick = () => {
+          if (modal) {
+            modal.hide()
+          }
+        }
+      }
     }
   })
 </script>

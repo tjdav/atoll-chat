@@ -9,41 +9,36 @@
     </button>
   </div>
 
-  <!-- Password Verification Modal -->
-  <div class="modal fade" ref="verifyModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Verify Vault Password</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  <!-- Password Verification Popup -->
+  <atoll-popup
+    ref="verifyModal"
+    title="Verify Vault Password"
+  >
+    <div class="text-start">
+      <p class="small text-muted mb-4">To {{ passkeyActionVerb }} biometric unlock, please enter your current vault password to confirm your identity and access your cryptographic keys.</p>
+      <form ref="verifyForm">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Vault Password</label>
+          <input type="password" class="form-control" ref="vaultPasswordInput" data-testid="vaultPasswordInput" required placeholder="Enter Vault Password">
         </div>
-        <div class="modal-body">
-          <p class="small text-muted mb-4">To {{ passkeyActionVerb }} biometric unlock, please enter your current vault password to confirm your identity and access your cryptographic keys.</p>
-          <form ref="verifyForm">
-            <div class="mb-3">
-              <label class="form-label small fw-bold">Vault Password</label>
-              <input type="password" class="form-control" ref="vaultPasswordInput" data-testid="vaultPasswordInput" required placeholder="Enter Vault Password">
-            </div>
-            
-            <!-- TOTP Step-up Verification -->
-            <div class="mb-3 d-none" ref="totpStepUpSection">
-              <label class="form-label small fw-bold">2-Step Verification Code</label>
-              <input type="text" class="form-control text-center fs-5 font-monospace" ref="totpStepUpInput" data-testid="totpStepUpInput" placeholder="000000" maxlength="6" pattern="\d{6}">
-            </div>
+        
+        <!-- TOTP Step-up Verification -->
+        <div class="mb-3 d-none" ref="totpStepUpSection">
+          <label class="form-label small fw-bold">2-Step Verification Code</label>
+          <input type="text" class="form-control text-center fs-5 font-monospace" ref="totpStepUpInput" data-testid="totpStepUpInput" placeholder="000000" maxlength="6" pattern="\d{6}">
+        </div>
 
-            <div ref="verifyError" class="alert alert-danger d-none small p-2 mb-0" data-testid="verifyError"></div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-link text-decoration-none" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" ref="btnVerifyPassword" data-testid="btnVerifyPassword">
-            <span class="spinner-border spinner-border-sm d-none" ref="verifySpinner" role="status" aria-hidden="true"></span>
-            Verify & Continue
-          </button>
-        </div>
-      </div>
+        <div ref="verifyError" class="alert alert-danger d-none small p-2 mb-0" data-testid="verifyError"></div>
+      </form>
     </div>
-  </div>
+
+    <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end gap-2">
+      <button type="button" class="btn btn-primary" ref="btnVerifyPassword" data-testid="btnVerifyPassword">
+        <span class="spinner-border spinner-border-sm d-none" ref="verifySpinner" role="status" aria-hidden="true"></span>
+        Verify & Continue
+      </button>
+    </div>
+  </atoll-popup>
 </template>
 
 <script type="module">
@@ -58,9 +53,8 @@
     getters: {
       passkeyStatus: (state) => (state.hasPasskey ? 'Enabled on this device' : 'Disabled')
     },
-    client: async ({ refs, state, globalStore, bootstrap, pocketbase, cryptoWorker, eventBus, totp, biometric }) => {
+    client: async ({ refs, state, globalStore, pocketbase, cryptoWorker, eventBus, totp, biometric, signal }) => {
       const { $state } = globalStore
-      const { Modal } = await bootstrap
       const { pb } = pocketbase
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
@@ -79,8 +73,7 @@
       $state.subscribe('currentUser', updatePasskeyState)
 
       const btnManagePasskey = refs('btnManagePasskey')
-      const verifyModalEl = refs('verifyModal')
-      const verifyModal = new Modal(verifyModalEl)
+      const verifyModal = refs('verifyModal')
       const verifyForm = refs('verifyForm')
       const vaultPasswordInput = refs('vaultPasswordInput')
       const verifyError = refs('verifyError')
@@ -112,18 +105,23 @@
           totpStepUpInput.removeAttribute('required')
         }
 
-        verifyModal.show()
+        if (verifyModal) {
+          verifyModal.show()
+          setTimeout(() => vaultPasswordInput.focus(), 100)
+        }
       })
 
-      btnVerifyPassword.addEventListener('click', () => verifyForm.requestSubmit())
-
-      verifyForm.addEventListener('submit', async (e) => {
-        e.preventDefault()
+      const handleVerification = async () => {
         const password = vaultPasswordInput.value
   
         verifyError.classList.add('d-none')
-        btnVerifyPassword.disabled = true
-        verifySpinner.classList.remove('d-none')
+        if (btnVerifyPassword) {
+          btnVerifyPassword.disabled = true
+        }
+  
+        if (verifySpinner) {
+          verifySpinner.classList.remove('d-none')
+        }
 
         try {
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
@@ -143,7 +141,11 @@
           if (wasConfigured) {
             await biometric.deleteMasterKey(record.id)
             await updatePasskeyState()
-            verifyModal.hide()
+  
+            if (verifyModal) {
+              verifyModal.hide()
+            }
+
             $bus.emit('ui:show_toast', {
               message: 'Biometric unlock successfully disabled!',
               type: 'success'
@@ -170,7 +172,11 @@
 
             await biometric.storeMasterKey(masterKey, record.username, record.id)
             await updatePasskeyState()
-            verifyModal.hide()
+  
+            if (verifyModal) {
+              verifyModal.hide()
+            }
+
             $bus.emit('ui:show_toast', {
               message: 'Biometric unlock successfully enabled!',
               type: 'success'
@@ -181,10 +187,22 @@
           verifyError.textContent = error.message || 'Verification failed'
           verifyError.classList.remove('d-none')
         } finally {
-          btnVerifyPassword.disabled = false
-          verifySpinner.classList.add('d-none')
+          if (btnVerifyPassword) {
+            btnVerifyPassword.disabled = false
+          }
+
+          if (verifySpinner) {
+            verifySpinner.classList.add('d-none')
+          }
         }
-      })
+      }
+  
+      btnVerifyPassword.onclick = handleVerification
+
+      verifyForm.addEventListener('submit', (e) => {
+        e.preventDefault()
+        handleVerification()
+      }, { signal })
     }
   })
 </script>

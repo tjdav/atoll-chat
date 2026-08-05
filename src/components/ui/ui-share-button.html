@@ -3,51 +3,44 @@
     <i class="bi bi-share me-1"></i> Share
   </button>
 
-  <div ref="shareModal" class="modal fade" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Share to...</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body p-0">
-          <div class="list-group list-group-flush overflow-y-auto" style="max-height: 400px;" ref="roomList">
-            <!-- Rooms will be rendered here -->
-          </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-link text-decoration-none" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" ref="btnSend" disabled>Send</button>
-        </div>
-      </div>
+  <atoll-popup
+    ref="shareModal"
+    title="Share to..."
+  >
+    <div class="list-group list-group-flush overflow-y-auto text-start" style="max-height: 400px;" ref="roomList">
+      <!-- Rooms will be rendered here -->
     </div>
-  </div>
+
+    <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end gap-2">
+      <button type="button" class="btn btn-primary" ref="btnSend" disabled>Send</button>
+    </div>
+  </atoll-popup>
 </template>
 
 <script type="module">
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, storage, globalStore, eventBus, bootstrap, pocketbase, cryptoWorker, signal }) => {
+    client: ({ refs, root, storage, globalStore, eventBus, pocketbase, cryptoWorker, signal }) => {
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $worker } = cryptoWorker
       const { pb } = pocketbase
-      const { Modal } = bootstrap
 
-      const btnOpenShare = refs('btnOpenShare')
-      const shareModalEl = refs('shareModal')
+      const modal = refs('shareModal')
       const roomList = refs('roomList')
-      const btnSend = refs('btnSend')
+      const getBtnSend = () => refs('btnSend') || root.querySelector('[ref="btnSend"]') || root.querySelector('[ref$="btnSend"]')
 
-      let modal = null
       let selectedRoomIds = new Set()
       let loadedRooms = []
 
-      if (shareModalEl) {
-        modal = new Modal(shareModalEl)
+      const updateSendButton = () => {
+        const btn = getBtnSend()
+        if (btn) btn.disabled = selectedRoomIds.size === 0
       }
+
+      const getCurrentUserId = () => $state.currentUser?.id || pb?.authStore?.model?.id
 
       const createAvatarEl = (room) => {
         const profile = document.createElement('atoll-profile')
@@ -55,13 +48,14 @@
 
         let roomName = room.name
         if (!room.is_group) {
-          const otherUser = (room.participants || []).find(p => p && p.id !== $state.currentUser?.id)
+          const currentUserId = getCurrentUserId()
+          const otherUser = (room.participants || []).find(p => p && (p.id || p.user_id) !== currentUserId)
           roomName = otherUser ? (otherUser.name || otherUser.username) : 'Direct Message'
           if (otherUser) {
             profile.setAttribute('name', roomName)
             profile.setAttribute('alt', roomName)
-            if (otherUser.id) {
-              profile.setAttribute('user-id', otherUser.id)
+            if (otherUser.id || otherUser.user_id) {
+              profile.setAttribute('user-id', otherUser.id || otherUser.user_id)
             }
             if (otherUser.avatar) {
               profile.setAttribute('src', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '42x42' }))
@@ -76,11 +70,14 @@
       }
 
       const renderRooms = () => {
+        if (!roomList) return
         roomList.innerHTML = ''
         if (loadedRooms.length === 0) {
           roomList.innerHTML = '<div class="p-4 text-center text-muted">No rooms found</div>'
           return
         }
+
+        const currentUserId = getCurrentUserId()
 
         loadedRooms.forEach(room => {
           const label = document.createElement('label')
@@ -90,21 +87,26 @@
           checkbox.type = 'checkbox'
           checkbox.className = 'form-check-input flex-shrink-0'
           checkbox.checked = selectedRoomIds.has(room.id)
-          checkbox.onchange = () => {
+          const handleCheckChange = () => {
             if (checkbox.checked) {
               selectedRoomIds.add(room.id)
             } else {
               selectedRoomIds.delete(room.id)
             }
-            btnSend.disabled = selectedRoomIds.size === 0
+            updateSendButton()
           }
+          checkbox.onchange = handleCheckChange
+          checkbox.onclick = handleCheckChange
 
           const avatar = createAvatarEl(room)
   
-          let roomName = room.name
+          let roomName = ''
+          const participants = room.participants || []
           if (!room.is_group) {
-            const otherUser = (room.participants || []).find(p => p.id !== $state.currentUser?.id)
-            roomName = otherUser ? (otherUser.name || otherUser.username) : 'Direct Message'
+            const otherParticipants = participants.filter(p => p && (p.id || p.user_id) !== currentUserId)
+            roomName = otherParticipants.length > 0 ? (otherParticipants[0].name || otherParticipants[0].username) : (room.name || 'Direct Message')
+          } else {
+            roomName = room.name || 'Unnamed Group'
           }
 
           const nameSpan = document.createElement('span')
@@ -118,18 +120,7 @@
         })
       }
 
-      btnOpenShare.onclick = async () => {
-        selectedRoomIds.clear()
-        btnSend.disabled = true
-  
-        // Fetch rooms sorted by most recent
-        loadedRooms = await $storage.getAllRoomsSorted()
-  
-        renderRooms()
-        modal.show()
-      }
-
-      btnSend.onclick = async () => {
+      const sendShare = async () => {
         const id = $state.activeSelectionId
         const type = $state.activeSelectionType
 
@@ -137,8 +128,11 @@
           return
         }
 
-        btnSend.disabled = true
-        btnSend.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...'
+        const btn = getBtnSend()
+        if (btn) {
+          btn.disabled = true
+          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...'
+        }
 
         try {
           let shareParams = null
@@ -200,7 +194,7 @@
             type: 'success'
           })
 
-          modal.hide()
+          if (modal) modal.hide()
         } catch (err) {
           console.error('[share-button] Failed to share:', err)
           $bus.emit('ui:show_toast', {
@@ -208,16 +202,31 @@
             type: 'danger'
           })
         } finally {
-          btnSend.disabled = selectedRoomIds.size === 0
-          btnSend.innerHTML = 'Send'
+          const btnEnd = getBtnSend()
+          if (btnEnd) {
+            btnEnd.disabled = selectedRoomIds.size === 0
+            btnEnd.innerHTML = 'Send'
+          }
         }
       }
 
-      signal.addEventListener('abort', () => {
-        if (modal) {
-          modal.dispose()
+      root.addEventListener('click', async (e) => {
+        const sendTarget = e.target.closest('[ref="btnSend"]') || e.target.closest('[ref$="btnSend"]')
+        if (sendTarget) {
+          sendShare()
+          return
         }
-      })
+
+        const openTarget = e.target.closest('[ref="btnOpenShare"]') || e.target.closest('[ref$="btnOpenShare"]') || (e.target.tagName === 'BUTTON' && !e.target.closest('atoll-popup'))
+        if (openTarget) {
+          selectedRoomIds.clear()
+          updateSendButton()
+          if (modal) modal.show()
+
+          loadedRooms = await $storage.getAllRoomsSorted()
+          renderRooms()
+        }
+      }, { signal })
     }
   })
 </script>

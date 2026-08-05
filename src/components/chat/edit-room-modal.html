@@ -1,38 +1,31 @@
 <template id="edit-room-modal">
-  <div ref="editModal" class="modal fade" tabindex="-1" aria-labelledby="{{ ref_modalTitle }}" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Edit Room Details</h5>
-          <button type="button" class="btn-close" ref="btnCloseTop" aria-label="Close"></button>
-        </div>
-        <div class="modal-body">
-          <div class="mb-3">
-            <label class="form-label fw-bold">Room Name</label>
-            <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput">
-          </div>
+  <atoll-popup
+    ref="editModal"
+    title="Edit Room Details"
+    primary-text="Save Changes"
+    secondary-text="Cancel"
+  >
+    <div>
+      <div class="mb-3 text-start">
+        <label class="form-label fw-bold">Room Name</label>
+        <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput">
+      </div>
 
-          <div class="mb-3">
-            <label class="form-label fw-bold">Room Avatar</label>
-            <div class="d-flex align-items-center gap-3">
-              <div class="room-avatar-preview bg-body-tertiary border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
-                <i class="bi bi-camera fs-3 text-muted"></i>
-              </div>
-              <div>
-                <input type="file" class="d-none" ref="avatarInput" accept="image/*">
-                <button type="button" class="btn btn-sm btn-outline-secondary" ref="btnSelectAvatar">Change Image</button>
-                <button type="button" class="btn btn-sm btn-link text-danger d-none" ref="btnClearAvatar">Clear</button>
-              </div>
-            </div>
+      <div class="mb-3 text-start">
+        <label class="form-label fw-bold">Room Avatar</label>
+        <div class="d-flex align-items-center gap-3">
+          <div class="room-avatar-preview bg-body-tertiary border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
+            <i class="bi bi-camera fs-3 text-muted"></i>
           </div>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-link text-decoration-none" ref="btnCancel">Cancel</button>
-          <button type="button" class="btn btn-primary" ref="btnSave" disabled>Save Changes</button>
+          <div>
+            <input type="file" class="d-none" ref="avatarInput" accept="image/*">
+            <button type="button" class="btn btn-sm btn-outline-secondary" ref="btnSelectAvatar">Change Image</button>
+            <button type="button" class="btn btn-sm btn-link text-danger d-none" ref="btnClearAvatar">Clear</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </atoll-popup>
 </template>
 
 <script type="module">
@@ -53,29 +46,19 @@
         return (state.roomName || '').trim().length > 0
       }
     },
-    client: ({ refs, state, pocketbase, eventBus, storage, bootstrap, cryptoWorker, utils, signal }) => {
+    client: ({ refs, state, pocketbase, eventBus, storage, cryptoWorker, utils, signal }) => {
       const { pb } = pocketbase
       const { $crypto } = utils
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
       const { $storage } = storage
-      const { Modal } = bootstrap
-      const modalEl = refs('editModal')
-      const modal = new Modal(modalEl)
+      const modal = refs('editModal')
   
       const roomNameInput = refs('roomNameInput')
-      const btnSave = refs('btnSave')
       const avatarInput = refs('avatarInput')
       const avatarPreview = refs('avatarPreview')
       const btnSelectAvatar = refs('btnSelectAvatar')
       const btnClearAvatar = refs('btnClearAvatar')
-
-      const render = () => {
-        btnSave.disabled = !state.canSave
-        btnSave.innerHTML = state.isSaving
-          ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Saving...'
-          : 'Save Changes'
-      }
 
       $bus.on('ui:open_edit_room', async (room) => {
         state.activeRoom = room
@@ -117,13 +100,14 @@
           }
         }
 
-        render()
-        modal.show()
+        if (modal) {
+          modal.show()
+          setTimeout(() => roomNameInput.focus(), 100)
+        }
       })
 
       roomNameInput.oninput = (e) => {
         state.roomName = e.target.value
-        render()
       }
 
       btnSelectAvatar.onclick = () => avatarInput.click()
@@ -141,7 +125,6 @@
             btnClearAvatar.classList.remove('d-none')
           }
           reader.readAsDataURL(file)
-          render()
         }
       }
       btnClearAvatar.onclick = () => {
@@ -149,19 +132,13 @@
         avatarInput.value = ''
         avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
         btnClearAvatar.classList.add('d-none')
-        render()
       }
 
-      const close = () => modal.hide()
-      refs('btnCloseTop').onclick = close
-      refs('btnCancel').onclick = close
-
-      btnSave.onclick = async () => {
+      const saveChanges = async () => {
         if (!state.canSave) {
           return
         }
         state.isSaving = true
-        render()
 
         try {
           const room = state.activeRoom
@@ -223,19 +200,20 @@
           })
 
           $bus.emit('db:new_local_room', { room_id: room.id })
-          modal.hide()
+          if (modal) {
+            modal.hide()
+          }
         } catch (err) {
           console.error('[edit-room-modal] Save failed:', err)
           alert('Save failed: ' + err.message)
         } finally {
           state.isSaving = false
-          render()
         }
       }
 
-      signal.addEventListener('abort', () => {
-        modal.dispose()
-      })
+      if (modal) {
+        modal.addEventListener('atoll-popup-primary', saveChanges, { signal })
+      }
     }
   })
 </script>

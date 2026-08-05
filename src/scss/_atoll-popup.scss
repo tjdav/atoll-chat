@@ -29,9 +29,11 @@ dialog.atoll-popup-dialog-native {
   }
 
   &.atoll-popup-closing {
+    pointer-events: none !important;
     animation: atollPopupScaleOut 0.2s ease-in forwards !important;
 
     &::backdrop {
+      pointer-events: none !important;
       animation: atollPopupFadeOut 0.2s ease-in forwards !important;
     }
   }

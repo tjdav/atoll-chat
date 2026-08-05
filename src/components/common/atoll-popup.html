@@ -231,19 +231,29 @@
     client: ({ state, refs, root, observe, signal }) => {
       const dialogEl = refs('modalElement')
 
-      if (!dialogEl) return
+      if (root && root.host && root.host.hasAttribute('title')) {
+        state.title = root.host.getAttribute('title')
+      }
 
-      let isClosing = false
+      observe('title', (newVal) => {
+        state.title = newVal || ''
+      })
+
+      if (!dialogEl) {
+        return
+      }
 
       const showModal = () => {
         if (!dialogEl.open) {
           isClosing = false
           dialogEl.classList.remove('atoll-popup-closing')
+          dialogEl.classList.add('show')
           try {
             dialogEl.showModal()
-          } catch (e) {
+          } catch {
             // fallback if showModal is already open
           }
+
           document.body.classList.add('modal-open')
           state.open = true
           root.dispatchEvent(
@@ -260,30 +270,25 @@
       }
 
       const hideModal = () => {
-        if (!dialogEl.open || isClosing) return
-        isClosing = true
-        dialogEl.classList.add('atoll-popup-closing')
-
-        const finalizeClose = () => {
-          dialogEl.removeEventListener('animationend', finalizeClose)
-          dialogEl.classList.remove('atoll-popup-closing')
-          if (dialogEl.open) {
-            dialogEl.close()
-          }
-          document.body.classList.remove('modal-open')
-          state.open = false
-          isClosing = false
-          root.dispatchEvent(
-            new CustomEvent('atoll-popup-close', {
-              bubbles: true,
-              composed: true,
-              detail: { variant: state.variant }
-            })
-          )
+        if (!dialogEl.open && !state.open) {
+          return
         }
-
-        dialogEl.addEventListener('animationend', finalizeClose, { once: true })
-        setTimeout(finalizeClose, 250)
+  
+        isClosing = false
+        dialogEl.classList.remove('atoll-popup-closing')
+        dialogEl.classList.remove('show')
+        document.body.classList.remove('modal-open')
+        if (dialogEl.open) {
+          dialogEl.close()
+        }
+        state.open = false
+        root.dispatchEvent(
+          new CustomEvent('atoll-popup-close', {
+            bubbles: true,
+            composed: true,
+            detail: { variant: state.variant }
+          })
+        )
       }
 
       // Handle native Escape key (cancel event)
@@ -308,7 +313,9 @@
 
         // Event delegation for primary, secondary, tertiary buttons
         const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
-        if (!target) return
+        if (!target) {
+          return
+        }
 
         const refAttr = target.getAttribute('ref') || ''
         const isPrimary = refAttr === 'primaryBtn' || refAttr.endsWith('__primaryBtn')

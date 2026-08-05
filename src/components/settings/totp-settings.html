@@ -10,67 +10,58 @@
   </div>
 
   <!-- Enable TOTP Modal -->
-  <div class="modal fade" ref="setupModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Enable 2-Step Authentication</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-        </div>
-        <div class="modal-body text-center">
-          <p class="small text-muted mb-4">Scan this QR code with your authenticator app (such as Google Authenticator, Authy, or 1Password) to enroll.</p>
-          
-          <div class="mb-3 d-flex justify-content-center">
-            <img ref="qrImg" src="" alt="QR Code" class="img-fluid border p-2 bg-white" style="max-width: 200px; max-height: 200px;">
-          </div>
-
-          <div class="mb-4">
-            <span class="text-muted small d-block">Secret Key:</span>
-            <code class="fs-6 select-all" ref="secretText" data-testid="secretText"></code>
-          </div>
-
-          <form ref="verifyForm" class="text-start">
-            <div class="mb-3">
-              <label class="form-label small fw-bold">6-Digit Verification Code</label>
-              <input type="text" class="form-control text-center fs-4 font-monospace" ref="otpInput" data-testid="otpInput" required placeholder="000000" maxlength="6" pattern="\d{6}">
-            </div>
-            <div ref="verifyError" class="alert alert-danger d-none small p-2 mb-0"></div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-link text-decoration-none" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-primary" ref="btnVerifyEnable" data-testid="btnVerifyEnable">Verify & Enable</button>
-        </div>
+  <atoll-popup
+    ref="setupModal"
+    title="Enable 2-Step Authentication"
+  >
+    <div class="text-center">
+      <p class="small text-muted mb-4">Scan this QR code with your authenticator app (such as Google Authenticator, Authy, or 1Password) to enroll.</p>
+      
+      <div class="mb-3 d-flex justify-content-center">
+        <img ref="qrImg" src="" alt="QR Code" class="img-fluid border p-2 bg-white" style="max-width: 200px; max-height: 200px;">
       </div>
+
+      <div class="mb-4">
+        <span class="text-muted small d-block">Secret Key:</span>
+        <code class="fs-6 select-all" ref="secretText" data-testid="secretText"></code>
+      </div>
+
+      <form ref="verifyForm" class="text-start">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">6-Digit Verification Code</label>
+          <input type="text" class="form-control text-center fs-4 font-monospace" ref="otpInput" data-testid="otpInput" required placeholder="000000" maxlength="6" pattern="\d{6}">
+        </div>
+        <div ref="verifyError" class="alert alert-danger d-none small p-2 mb-0"></div>
+      </form>
     </div>
-  </div>
+
+    <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end gap-2">
+      <button type="button" class="btn btn-primary" ref="btnVerifyEnable" data-testid="btnVerifyEnable">Verify & Enable</button>
+    </div>
+  </atoll-popup>
 
   <!-- Disable TOTP Modal -->
-  <div class="modal fade" ref="disableModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-      <div class="modal-content">
-        <div class="modal-header">
-          <h5 class="modal-title">Disable 2-Step Authentication</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+  <atoll-popup
+    ref="disableModal"
+    title="Disable 2-Step Authentication"
+    variant="danger"
+  >
+    <div class="text-start">
+      <p class="small text-muted mb-4">To disable 2-step authentication, please enter the 6-digit verification code from your authenticator app.</p>
+      
+      <form ref="disableForm">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">6-Digit Verification Code</label>
+          <input type="text" class="form-control text-center fs-4 font-monospace" ref="disableOtpInput" data-testid="disableOtpInput" required placeholder="000000" maxlength="6" pattern="\d{6}">
         </div>
-        <div class="modal-body">
-          <p class="small text-muted mb-4">To disable 2-step authentication, please enter the 6-digit verification code from your authenticator app.</p>
-          
-          <form ref="disableForm">
-            <div class="mb-3">
-              <label class="form-label small fw-bold">6-Digit Verification Code</label>
-              <input type="text" class="form-control text-center fs-4 font-monospace" ref="disableOtpInput" data-testid="disableOtpInput" required placeholder="000000" maxlength="6" pattern="\d{6}">
-            </div>
-            <div ref="disableError" class="alert alert-danger d-none small p-2 mb-0"></div>
-          </form>
-        </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-link text-decoration-none" data-bs-dismiss="modal">Cancel</button>
-          <button type="button" class="btn btn-danger" ref="btnVerifyDisable" data-testid="btnVerifyDisable">Verify & Disable</button>
-        </div>
-      </div>
+        <div ref="disableError" class="alert alert-danger d-none small p-2 mb-0"></div>
+      </form>
     </div>
-  </div>
+
+    <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end gap-2">
+      <button type="button" class="btn btn-danger" ref="btnVerifyDisable" data-testid="btnVerifyDisable">Verify & Disable</button>
+    </div>
+  </atoll-popup>
 </template>
 
 <script type="module">
@@ -82,9 +73,8 @@
       totpActionLabel: 'Enable 2FA',
       totpStatus: 'Disabled'
     }),
-    client: async ({ refs, state, globalStore, bootstrap, pocketbase, eventBus, totp }) => {
+    client: async ({ refs, state, globalStore, pocketbase, eventBus, totp, signal }) => {
       const { $state } = globalStore
-      const { Modal } = await bootstrap
       const { pb } = pocketbase
       const { $bus } = eventBus
       const { $totp } = await totp
@@ -100,8 +90,7 @@
 
       const btnManageTotp = refs('btnManageTotp')
   
-      const setupModalEl = refs('setupModal')
-      const setupModal = new Modal(setupModalEl)
+      const setupModal = refs('setupModal')
       const qrImg = refs('qrImg')
       const secretText = refs('secretText')
       const verifyForm = refs('verifyForm')
@@ -109,8 +98,7 @@
       const verifyError = refs('verifyError')
       const btnVerifyEnable = refs('btnVerifyEnable')
 
-      const disableModalEl = refs('disableModal')
-      const disableModal = new Modal(disableModalEl)
+      const disableModal = refs('disableModal')
       const disableForm = refs('disableForm')
       const disableOtpInput = refs('disableOtpInput')
       const disableError = refs('disableError')
@@ -133,7 +121,10 @@
             const { default: QRCode } = await import('qrcode')
             const qrDataUrl = await QRCode.toDataURL(otpauthUri)
             qrImg.src = qrDataUrl
-            setupModal.show()
+            if (setupModal) {
+              setupModal.show()
+              setTimeout(() => otpInput.focus(), 100)
+            }
           } catch (err) {
             console.error('QR code generation failed:', err)
           }
@@ -141,14 +132,14 @@
           /* Disable Flow */
           disableOtpInput.value = ''
           disableError.classList.add('d-none')
-          disableModal.show()
+          if (disableModal) {
+            disableModal.show()
+            setTimeout(() => disableOtpInput.focus(), 100)
+          }
         }
       })
 
-      btnVerifyEnable.addEventListener('click', () => verifyForm.requestSubmit())
-
-      verifyForm.addEventListener('submit', async (e) => {
-        e.preventDefault()
+      const handleEnableSubmit = async () => {
         const code = otpInput.value.trim()
 
         verifyError.classList.add('d-none')
@@ -168,7 +159,7 @@
 
           await pb.collection('users').authRefresh()
           updateTotpState()
-          setupModal.hide()
+          if (setupModal) setupModal.hide()
 
           $bus.emit('ui:show_toast', {
             message: 'Two-Step Authentication enabled successfully!',
@@ -179,12 +170,9 @@
           verifyError.textContent = err.message || 'Verification failed.'
           verifyError.classList.remove('d-none')
         }
-      })
+      }
 
-      btnVerifyDisable.addEventListener('click', () => disableForm.requestSubmit())
-
-      disableForm.addEventListener('submit', async (e) => {
-        e.preventDefault()
+      const handleDisableSubmit = async () => {
         const code = disableOtpInput.value.trim()
 
         disableError.classList.add('d-none')
@@ -205,7 +193,7 @@
 
           await pb.collection('users').authRefresh()
           updateTotpState()
-          disableModal.hide()
+          if (disableModal) disableModal.hide()
 
           $bus.emit('ui:show_toast', {
             message: 'Two-Step Authentication disabled successfully.',
@@ -216,7 +204,27 @@
           disableError.textContent = err.message || 'Verification failed.'
           disableError.classList.remove('d-none')
         }
-      })
+      }
+
+      if (btnVerifyEnable) {
+        btnVerifyEnable.onclick = handleEnableSubmit
+      }
+      if (verifyForm) {
+        verifyForm.addEventListener('submit', (e) => {
+          e.preventDefault()
+          handleEnableSubmit()
+        }, { signal })
+      }
+
+      if (btnVerifyDisable) {
+        btnVerifyDisable.onclick = handleDisableSubmit
+      }
+      if (disableForm) {
+        disableForm.addEventListener('submit', (e) => {
+          e.preventDefault()
+          handleDisableSubmit()
+        }, { signal })
+      }
     }
   })
 </script>

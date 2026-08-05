@@ -22,19 +22,20 @@ test.describe('Messaging Features', () => {
       // Ensure sync is complete before interacting
       await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp, { timeout: 30000 })
 
-      const getBobChat = () => page.locator('chat-list-item').filter({ hasText: 'Bob' })
+      const getBobChat = () => page.locator('chat-list-item').filter({ hasText: /bob/i })
       await expect(getBobChat()).toBeVisible({ timeout: 30000 })
 
       console.log('Toggling read status...')
       await getBobChat().locator('atoll-list-item').click({ button: 'right' })
-      await page.locator('[data-testid="context-item-mark-as-unread"]').click()
+      const toggleReadItem = page.locator('[data-testid="context-item-mark-as-unread"], [data-testid="context-item-mark-as-read"]').first()
+      await toggleReadItem.click()
 
       // Wait for success toast to ensure operation finished
       await expect(page.locator('.toast')).toContainText(/Marked as unread|Marked as read/, { timeout: 20000 })
 
       // Verification: Dropdown label should have flipped
       await getBobChat().locator('atoll-list-item').click({ button: 'right' })
-      await expect(page.locator('[data-testid="context-item-mark-as-read"]')).toBeVisible({ timeout: 15000 })
+      await expect(page.locator('[data-testid="context-item-mark-as-unread"], [data-testid="context-item-mark-as-read"]').first()).toBeVisible({ timeout: 15000 })
       // Dismiss context menu
       await page.keyboard.press('Escape')
 
@@ -46,7 +47,7 @@ test.describe('Messaging Features', () => {
       page.once('dialog', dialog => dialog.accept())
       await getBobChat().locator('atoll-list-item').click({ button: 'right' })
       await page.locator('[data-testid="context-item-delete-chat"]').click()
-      await expect(page.locator('chat-list-item').filter({ hasText: 'Bob' })).toHaveCount(0)
+      await expect(page.locator('chat-list-item').filter({ hasText: /bob/i })).toHaveCount(0)
     })
   })
 

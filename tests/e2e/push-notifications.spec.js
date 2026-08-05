@@ -160,7 +160,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     })
 
     /* Send a text message in the room */
-    const chatInput = page.getByPlaceholder('Type a message...')
+    const chatInput = page.locator('chat-input-text textarea, chat-input textarea, textarea[placeholder*="message"]').first()
     await chatInput.fill('Hello push notifications!')
     await chatInput.press('Enter')
 
@@ -233,7 +233,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await expect(page.locator('chat-view')).toBeVisible()
 
     /* Send a text message in the room */
-    const chatInput = page.getByPlaceholder('Type a message...')
+    const chatInput = page.locator('chat-input-text textarea, chat-input textarea, textarea[placeholder*="message"]').first()
     await chatInput.fill('Prune this stale sub please!')
     await chatInput.press('Enter')
 
