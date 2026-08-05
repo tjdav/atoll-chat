@@ -158,12 +158,17 @@ test.describe('Chat Management', () => {
 
       // Open Room Settings sidebar
       await alicePage.locator('[ref$="btnDetails"] button').click()
+      await expect(alicePage.locator('[data-testid$="roomDetailsOffcanvas"]')).toBeVisible()
 
-      // Expand Privacy & Support accordion group
-      await alicePage.locator('[data-testid$="accordion-privacy-btn"]').click()
+      // Wait for room details to load completely (room name matches "bob")
+      await expect(alicePage.locator('[data-testid$="roomDetailsOffcanvas"] [ref$="roomNameText"]')).toHaveText('bob', { timeout: 15000 })
 
-      // Click Delete chat button inside the sidebar
-      await alicePage.locator('[data-testid$="btnDelete"]').click()
+      // Scroll the container to the bottom to make Delete chat fully visible
+      await alicePage.locator('room-details-sidebar .offcanvas-body .overflow-y-auto').evaluate(el => el.scrollTop = el.scrollHeight)
+
+      // Click Delete chat button inside the sidebar (Privacy & support is expanded by default)
+      const btnDelete = alicePage.locator('[data-testid$="btnDelete"]')
+      await btnDelete.click()
 
       // Assert that the item is successfully removed from Alice's sidebar list
       await expect(bobListItem).not.toBeVisible({ timeout: 15000 })

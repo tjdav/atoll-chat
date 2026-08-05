@@ -47,3 +47,21 @@
     }
   }
 }
+
+room-details-sidebar {
+  display: block !important;
+  height: 100% !important;
+  min-height: 0 !important;
+}
+
+.room-details-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.room-details-container .offcanvas-body {
+  flex: 1;
+  min-height: 0;
+}

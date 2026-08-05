@@ -15,9 +15,8 @@ test.describe('Chat View Theme System E2E', () => {
   })
 
   test('should apply and switch themes, updating computed colors on chat view container', async ({ page }) => {
-    // Open room details sidebar and customization accordion
+    // Open room details sidebar (Customisation section is expanded by default)
     await page.locator('[ref$="btnDetails"] button').click()
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
 
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
     const chatContainer = page.locator('[data-testid$="chat-view-container"]')
@@ -66,9 +65,8 @@ test.describe('Chat View Theme System E2E', () => {
   })
 
   test('should allow user to upload custom image, generate palette, adjust sliders, and persist custom theme', async ({ page }) => {
-    // Open room details sidebar and customization accordion
+    // Open room details sidebar (Customisation section is expanded by default)
     await page.locator('[ref$="btnDetails"] button').click()
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
 
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
     const chatContainer = page.locator('[data-testid$="chat-view-container"]')

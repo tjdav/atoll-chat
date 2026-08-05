@@ -1,5 +1,5 @@
 <template id="room-details-sidebar">
-  <div class="room-details-container d-flex flex-column h-100 bg-body">
+  <div class="room-details-container d-flex flex-column h-100 bg-body" style="display: flex !important; flex-direction: column !important; height: 100% !important; min-height: 0 !important; overflow: hidden !important;">
     <!-- Header -->
     <div class="offcanvas-header border-bottom py-3 px-4 d-flex justify-content-between align-items-center bg-body">
       <h5 class="offcanvas-title fw-bold d-flex align-items-center gap-2" id="roomDetailsOffcanvasLabel">
@@ -10,8 +10,8 @@
     </div>
 
     <!-- Scrollable Body Content -->
-    <div class="offcanvas-body p-0 d-flex flex-column bg-body-secondary" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5) !important;">
-      <div class="flex-grow-1 overflow-y-auto">
+    <div class="offcanvas-body p-0 d-flex flex-column bg-body-secondary" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5) !important; flex: 1 !important; min-height: 0 !important; overflow: hidden !important;">
+      <div class="flex-grow-1 overflow-y-auto" style="flex: 1 !important; min-height: 0 !important; overflow-y: auto !important;">
         
         <!-- Hero Header Section -->
         <div class="hero-header text-center py-4 px-3 bg-body border-bottom mb-3">
@@ -28,73 +28,73 @@
         </div>
 
         <!-- Accordion Settings groups -->
-        <div class="accordion accordion-flush" id="roomSettingsAccordion">
+        <div class="room-settings-groups d-flex flex-column gap-3 px-3 pb-3" id="roomSettingsAccordion">
           
           <!-- Group 1: Chat Customisation -->
-          <div class="accordion-item border-bottom">
-            <h2 class="accordion-header" id="headingCustomise">
-              <button class="accordion-button collapsed py-3 px-4 fw-bold text-uppercase fs-7 text-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseCustomise" aria-expanded="false" aria-controls="collapseCustomise" data-testid="accordion-customise-btn">
-                Customise chat
-              </button>
-            </h2>
-            <div id="collapseCustomise" class="accordion-collapse collapse" aria-labelledby="headingCustomise" data-bs-parent="#roomSettingsAccordion">
-              <div class="accordion-body p-0 bg-body">
-                <atoll-list divided="true">
-                  <atoll-list-item ref="btnChangeTheme" clickable="true" chevron="true" title="Change theme" data-testid="btnChangeTheme">
-                    <span slot="leading"><atoll-icon name="palette" size="20"></atoll-icon></span>
-                  </atoll-list-item>
-                  <atoll-list-item ref="btnEditNicknames" clickable="true" chevron="true" title="Edit nicknames" data-testid="btnEditNicknames">
-                    <span slot="leading"><atoll-icon name="Aa" size="20"></atoll-icon></span>
-                  </atoll-list-item>
-                  <atoll-list-item ref="btnEditRoom" clickable="true" chevron="true" title="Edit room" data-testid="btnEditRoom" hidden="{{ hideEditRoom }}">
-                    <span slot="leading"><atoll-icon name="edit" size="20"></atoll-icon></span>
-                  </atoll-list-item>
-                </atoll-list>
-              </div>
+          <div class="room-settings-card border rounded bg-body overflow-hidden shadow-sm">
+            <atoll-list-header 
+              variant="accordion" 
+              title="Customise chat" 
+              expanded="true" 
+              data-testid="accordion-customise-btn" 
+              ref="headerCustomise">
+            </atoll-list-header>
+            <div ref="collapseCustomise" id="collapseCustomise" class="collapse show" data-testid="collapse-customise">
+              <atoll-list divided="true">
+                <atoll-list-item ref="btnChangeTheme" clickable="true" chevron="true" title="Change theme" data-testid="btnChangeTheme">
+                  <span slot="leading"><atoll-icon name="palette" size="20"></atoll-icon></span>
+                </atoll-list-item>
+                <atoll-list-item ref="btnEditNicknames" clickable="true" chevron="true" title="Edit nicknames" data-testid="btnEditNicknames">
+                  <span slot="leading"><atoll-icon name="Aa" size="20"></atoll-icon></span>
+                </atoll-list-item>
+                <atoll-list-item ref="btnEditRoom" clickable="true" chevron="true" title="Edit room" data-testid="btnEditRoom" hidden="{{ hideEditRoom }}">
+                  <span slot="leading"><atoll-icon name="edit" size="20"></atoll-icon></span>
+                </atoll-list-item>
+              </atoll-list>
             </div>
           </div>
 
           <!-- Group 2: Privacy & Support -->
-          <div class="accordion-item border-bottom">
-            <h2 class="accordion-header" id="headingPrivacy">
-              <button class="accordion-button collapsed py-3 px-4 fw-bold text-uppercase fs-7 text-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapsePrivacy" aria-expanded="false" aria-controls="collapsePrivacy" data-testid="accordion-privacy-btn">
-                Privacy & support
-              </button>
-            </h2>
-            <div id="collapsePrivacy" class="accordion-collapse collapse" aria-labelledby="headingPrivacy" data-bs-parent="#roomSettingsAccordion">
-              <div class="accordion-body p-0 bg-body">
-                <atoll-list divided="true">
-                  <atoll-list-item ref="btnMuteNotifications" clickable="true" title="Mute notifications" data-testid="btnMuteNotifications">
-                    <span slot="leading"><atoll-icon name="bell" size="20"></atoll-icon></span>
-                    <span slot="right" class="badge rounded-pill px-2 py-1 fs-8" ref="muteStatusBadge" style="background-color: var(--atoll-brand-subtle-bg, #E6F9EE); color: var(--atoll-brand-primary, #06C755);">Off</span>
-                  </atoll-list-item>
-                  <atoll-list-item ref="btnReadReceipts" clickable="true" title="Read receipts" data-testid="btnReadReceipts">
-                    <span slot="leading"><atoll-icon name="eye" size="20"></atoll-icon></span>
-                    <span slot="right" class="text-secondary small me-2" ref="readReceiptsStatusText">On</span>
-                  </atoll-list-item>
-                  <atoll-list-item ref="btnBlock" clickable="true" title="Block" class="text-danger" data-testid="btnBlock">
-                    <span slot="leading"><atoll-icon name="block" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
-                  </atoll-list-item>
-                  <atoll-list-item ref="btnDelete" clickable="true" title="{{ deleteLabel }}" class="text-danger" data-testid="btnDelete">
-                    <span slot="leading"><atoll-icon name="trash" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
-                  </atoll-list-item>
-                </atoll-list>
-              </div>
+          <div class="room-settings-card border rounded bg-body overflow-hidden shadow-sm">
+            <atoll-list-header 
+              variant="accordion" 
+              title="Privacy & support" 
+              expanded="true" 
+              data-testid="accordion-privacy-btn" 
+              ref="headerPrivacy">
+            </atoll-list-header>
+            <div ref="collapsePrivacy" id="collapsePrivacy" class="collapse show" data-testid="collapse-privacy">
+              <atoll-list divided="true">
+                <atoll-list-item ref="btnMuteNotifications" clickable="true" title="Mute notifications" data-testid="btnMuteNotifications">
+                  <span slot="leading"><atoll-icon name="bell" size="20"></atoll-icon></span>
+                  <span slot="right" class="badge rounded-pill px-2 py-1 fs-8" ref="muteStatusBadge" style="background-color: var(--atoll-brand-subtle-bg, #E6F9EE); color: var(--atoll-brand-primary, #06C755);">Off</span>
+                </atoll-list-item>
+                <atoll-list-item ref="btnReadReceipts" clickable="true" title="Read receipts" data-testid="btnReadReceipts">
+                  <span slot="leading"><atoll-icon name="eye" size="20"></atoll-icon></span>
+                  <span slot="right" class="text-secondary small me-2" ref="readReceiptsStatusText">On</span>
+                </atoll-list-item>
+                <atoll-list-item ref="btnBlock" clickable="true" title="Block" class="text-danger" data-testid="btnBlock">
+                  <span slot="leading"><atoll-icon name="block" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
+                </atoll-list-item>
+                <atoll-list-item ref="btnDelete" clickable="true" title="{{ deleteLabel }}" class="text-danger" data-testid="btnDelete">
+                  <span slot="leading"><atoll-icon name="trash" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
+                </atoll-list-item>
+              </atoll-list>
             </div>
           </div>
 
           <!-- Group 3: Members -->
-          <div class="accordion-item border-bottom">
-            <h2 class="accordion-header" id="headingMembers">
-              <button class="accordion-button collapsed py-3 px-4 fw-bold text-uppercase fs-7 text-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMembers" aria-expanded="false" aria-controls="collapseMembers" data-testid="accordion-members-btn">
-                Members ({{ memberCount }})
-              </button>
-            </h2>
-            <div id="collapseMembers" class="accordion-collapse collapse" aria-labelledby="headingMembers" data-bs-parent="#roomSettingsAccordion">
-              <div class="accordion-body p-0 bg-body">
-                <div class="member-list list-group list-group-flush py-2" ref="memberList" data-testid="memberListContainer">
-                  <!-- Members rendered dynamically -->
-                </div>
+          <div class="room-settings-card border rounded bg-body overflow-hidden shadow-sm">
+            <atoll-list-header 
+              variant="accordion" 
+              title="Members ({{ memberCount }})" 
+              expanded="true" 
+              data-testid="accordion-members-btn" 
+              ref="headerMembers">
+            </atoll-list-header>
+            <div ref="collapseMembers" id="collapseMembers" class="collapse show" data-testid="collapse-members">
+              <div class="member-list list-group list-group-flush py-2" ref="memberList" data-testid="memberListContainer">
+                <!-- Members rendered dynamically -->
               </div>
             </div>
           </div>
@@ -391,10 +391,49 @@
         })
       }
 
+      // Independent toggling hook setup
+      const setupSectionToggle = (headerRef, collapseRef) => {
+        const headerEl = refs(headerRef)
+        const collapseEl = refs(collapseRef)
+        if (headerEl && collapseEl) {
+          headerEl.addEventListener('atoll-header-toggle', (e) => {
+            if (e.detail.expanded) {
+              collapseEl.classList.add('show')
+            } else {
+              collapseEl.classList.remove('show')
+            }
+          })
+        }
+      }
+
+      setupSectionToggle('headerCustomise', 'collapseCustomise')
+      setupSectionToggle('headerPrivacy', 'collapsePrivacy')
+      setupSectionToggle('headerMembers', 'collapseMembers')
+
+      const resetAccordionToExpanded = () => {
+        const sections = [
+          { header: 'headerCustomise', collapse: 'collapseCustomise' },
+          { header: 'headerPrivacy', collapse: 'collapsePrivacy' },
+          { header: 'headerMembers', collapse: 'collapseMembers' }
+        ]
+        sections.forEach(({ header, collapse }) => {
+          const headerEl = refs(header)
+          const collapseEl = refs(collapse)
+          if (headerEl) {
+            headerEl.setAttribute('expanded', 'true')
+          }
+          if (collapseEl) {
+            collapseEl.classList.add('show')
+          }
+        })
+      }
+
       // Initial load and event subscriptions
+      resetAccordionToExpanded()
       fetchRoomAndSettings()
 
       $state.subscribe('activeSelectionId', () => {
+        resetAccordionToExpanded()
         fetchRoomAndSettings()
       })
 

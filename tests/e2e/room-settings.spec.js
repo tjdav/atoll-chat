@@ -37,38 +37,46 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await expect(offcanvas).not.toBeVisible()
   })
 
-  test('should support collapsible accordion groups', async ({ page }) => {
+  test('should support collapsible accordion groups starting expanded by default and toggling independently', async ({ page }) => {
     // Open offcanvas
     await page.locator('[ref$="btnDetails"] button').click()
 
-    const customiseCollapse = page.locator('#collapseCustomise')
-    const privacyCollapse = page.locator('#collapsePrivacy')
-    const membersCollapse = page.locator('#collapseMembers')
+    const customiseCollapse = page.locator('[data-testid$="collapse-customise"]')
+    const privacyCollapse = page.locator('[data-testid$="collapse-privacy"]')
+    const membersCollapse = page.locator('[data-testid$="collapse-members"]')
 
-    // Verify initially collapsed
+    // Verify all 3 sections start expanded/visible by default
+    await expect(customiseCollapse).toBeVisible()
+    await expect(privacyCollapse).toBeVisible()
+    await expect(membersCollapse).toBeVisible()
+
+    // Collapse Customise Chat independently
+    await page.locator('[data-testid$="accordion-customise-btn"]').click()
     await expect(customiseCollapse).not.toBeVisible()
-    await expect(privacyCollapse).not.toBeVisible()
-    await expect(membersCollapse).not.toBeVisible()
+    // Verify other sections remain open/visible
+    await expect(privacyCollapse).toBeVisible()
+    await expect(membersCollapse).toBeVisible()
 
-    // Expand Customise Chat
+    // Expand Customise Chat back
     await page.locator('[data-testid$="accordion-customise-btn"]').click()
     await expect(customiseCollapse).toBeVisible()
 
-    // Expand Privacy & Support
+    // Collapse Privacy & Support independently
+    await page.locator('[data-testid$="accordion-privacy-btn"]').click()
+    await expect(privacyCollapse).not.toBeVisible()
+    // Verify other sections are not affected
+    await expect(customiseCollapse).toBeVisible()
+    await expect(membersCollapse).toBeVisible()
+
+    // Expand Privacy & Support back
     await page.locator('[data-testid$="accordion-privacy-btn"]').click()
     await expect(privacyCollapse).toBeVisible()
-
-    // Expand Members
-    await page.locator('[data-testid$="accordion-members-btn"]').click()
-    await expect(membersCollapse).toBeVisible()
-    await expect(page.locator('[data-testid$="memberListContainer"]')).toBeVisible()
   })
 
   test('should launch theme selection popup and apply custom gradients', async ({ page }) => {
     await page.locator('[ref$="btnDetails"] button').click()
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
 
-    // Open theme selector modal
+    // Open theme selector modal (Customise Chat is expanded by default)
     await page.locator('[data-testid$="btnChangeTheme"]').click()
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
     await expect(themeModal).toBeVisible()
@@ -88,9 +96,8 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
   test('should edit participant nicknames via nickname management inline form', async ({ page }) => {
     await page.locator('[ref$="btnDetails"] button').click()
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
 
-    // Open nicknames modal
+    // Open nicknames modal (Customise Chat is expanded by default)
     await page.locator('[data-testid$="btnEditNicknames"]').click()
     const nicknamesModal = page.locator('.modal').filter({ hasText: 'Nicknames' })
     await expect(nicknamesModal).toBeVisible()
@@ -119,9 +126,8 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
   test('should support privacy controls: read receipts and notifications mute toggle', async ({ page }) => {
     await page.locator('[ref$="btnDetails"] button').click()
-    await page.locator('[data-testid$="accordion-privacy-btn"]').click()
 
-    // 1. Mute notifications toggle
+    // 1. Mute notifications toggle (Privacy & support is expanded by default)
     const muteBadge = page.locator('[ref$="muteStatusBadge"]')
     await expect(muteBadge).toContainText('Off')
     await page.locator('[data-testid$="btnMuteNotifications"]').click()
@@ -136,9 +142,8 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
   test('should display warning and execute blocking flow on confirmation', async ({ page }) => {
     await page.locator('[ref$="btnDetails"] button').click()
-    await page.locator('[data-testid$="accordion-privacy-btn"]').click()
 
-    // Open block modal
+    // Open block modal (Privacy & support is expanded by default)
     await page.locator('[data-testid$="btnBlock"]').click()
     const blockModal = page.locator('.modal').filter({ hasText: 'Block User' })
     await expect(blockModal).toBeVisible()
@@ -162,10 +167,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     // Open Offcanvas
     await page.locator('[ref$="btnDetails"] button').click()
     
-    // Expand Customise Chat
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
-    
-    // Click Change theme
+    // Click Change theme (Customise Chat is expanded by default)
     await page.locator('[data-testid$="btnChangeTheme"]').click()
     
     // Select Ocean theme
