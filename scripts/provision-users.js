@@ -53,43 +53,39 @@ function encryptMasterKeyWithKek (masterKeyBytes, keyABytes, sodium) {
 }
 
 /**
- * Helper to generate 10 formatted single-use recovery codes.
+ * Helper to generate a single formatted emergency recovery code (RC-XXXX-XXXX-XXXX-XXXX).
  */
-function generateRawRecoveryCode (sodium) {
-  const bytes = sodium.randombytes_buf(12)
-  const chars = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-  let raw = ''
-  for (let i = 0; i < bytes.length; i++) {
-    raw += chars[bytes[i] % chars.length]
+function generateSingleRecoveryCode (sodium) {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+  const part = () => {
+    const bytes = sodium.randombytes_buf(4)
+    let str = ''
+    for (let i = 0; i < 4; i++) {
+      str += chars[bytes[i] % chars.length]
+    }
+    return str
   }
-  return `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}`
+  return `RC-${part()}-${part()}-${part()}-${part()}`
 }
 
 /**
- * Generates recovery wraps encrypting the Master Key with 10 recovery codes.
+ * Generates recovery wraps encrypting the Master Key with a single recovery code.
  */
 function generateRecoveryWraps (masterKeyBytes, sodium) {
-  const wraps = []
-  const plaintextCodes = []
+  const code = generateSingleRecoveryCode(sodium)
+  const codeHash = sodium.crypto_generichash(32, code)
+  const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+  const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
 
-  for (let i = 0; i < 10; i++) {
-    const code = generateRawRecoveryCode(sodium)
-    plaintextCodes.push(code)
-
-    const codeHash = sodium.crypto_generichash(32, code)
-    const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-    const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
-
-    wraps.push({
-      hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
-      ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
-      nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
-    })
+  const wrap = {
+    hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+    ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+    nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
   }
 
   return {
-    wraps,
-    plaintextCodes
+    wraps: [wrap],
+    plaintextCodes: [code]
   }
 }
 
@@ -141,7 +137,7 @@ async function provision () {
       const encryptedPrivateKeys = encryptPrivateKeys(masterKeys, masterKeyBytes, sodium)
       const { wraps: recoveryWraps, plaintextCodes } = generateRecoveryWraps(masterKeyBytes, sodium)
 
-      console.log(`Recovery codes for ${user.username}:`)
+      console.log(`Recovery code for ${user.username}:`)
       console.log(plaintextCodes.join('\n'))
       console.log('----------------------------------------')
 
