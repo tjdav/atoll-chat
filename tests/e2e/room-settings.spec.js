@@ -24,6 +24,9 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.locator('[ref$="btnDetails"] button').click()
     await expect(offcanvas).toBeVisible()
 
+    // Assert that title is Room Settings
+    await expect(offcanvas.locator('#roomDetailsOffcanvasLabel')).toContainText('Room Settings')
+
     // Hero section checks
     await expect(offcanvas.locator('atoll-profile[ref$="roomAvatar"]')).toBeVisible()
     await expect(offcanvas.locator('[ref$="roomNameText"]')).toContainText('bob')

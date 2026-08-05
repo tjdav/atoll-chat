@@ -130,57 +130,6 @@
           $bus.emit('ui:selection_made')
         }, { signal })
       }
-
-      // Native Right-Click Context Menu Trigger
-      root.addEventListener('contextmenu', (e) => {
-        console.log('[chat-list-item] contextmenu event triggered on root!', {
-          clientX: e.clientX,
-          clientY: e.clientY,
-          roomId: state.roomId,
-          roomName: state.roomName
-        })
-        e.preventDefault()
-        const isUnreadVal = state.isUnread === 'true' || state.isUnread === true || state.isUnread === ''
-        const isMutedVal = state.isMuted === 'true' || state.isMuted === true || state.isMuted === ''
-        const isGroupVal = state.isGroup === 'true' || state.isGroup === true || state.isGroup === ''
-
-        $bus.emit('ui:show_context_menu', {
-          x: e.clientX,
-          y: e.clientY,
-          items: [
-            {
-              label: isUnreadVal ? 'Mark as read' : 'Mark as unread',
-              icon: isUnreadVal ? 'mail-open' : 'mail',
-              action: () => $bus.emit('room:toggle_read', {
-                room_id: state.roomId,
-                isUnread: isUnreadVal
-              })
-            },
-            {
-              label: isMutedVal ? 'Unmute notifications' : 'Mute notifications',
-              icon: isMutedVal ? 'bell' : 'bell-off',
-              action: () => $bus.emit('room:toggle_mute', {
-                room_id: state.roomId,
-                isMuted: isMutedVal
-              })
-            },
-            ...(state.userRole === 'admin' ? [{
-              label: 'Edit Room',
-              icon: 'edit',
-              action: () => $bus.emit('room:edit', { room_id: state.roomId })
-            }] : []),
-            {
-              label: isGroupVal ? 'Leave group' : 'Delete chat',
-              icon: 'trash',
-              danger: true,
-              action: () => $bus.emit('room:delete', {
-                room_id: state.roomId,
-                isGroup: isGroupVal
-              })
-            }
-          ]
-        })
-      }, { signal })
     }
   })
 </script>

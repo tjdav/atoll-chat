@@ -129,7 +129,7 @@ test.describe('Chat Management', () => {
       await bobContext.close()
     })
 
-    test('should successfully delete a chat from the chat-list-item dropdown menu', async ({ browser, loginCustomPage }) => {
+    test('should successfully delete a chat from the Room Settings sidebar', async ({ browser, loginCustomPage }) => {
       const aliceContext = await browser.newContext()
       const alicePage = await aliceContext.newPage()
       const bobContext = await browser.newContext()
@@ -156,9 +156,14 @@ test.describe('Chat Management', () => {
         dialog.accept()
       })
 
-      // Click dropdown and then click Delete chat
-      await bobListItem.locator('atoll-list-item').click({ button: 'right' })
-      await alicePage.locator('[data-testid$="context-item-delete-chat"]').click()
+      // Open Room Settings sidebar
+      await alicePage.locator('[ref$="btnDetails"] button').click()
+
+      // Expand Privacy & Support accordion group
+      await alicePage.locator('[data-testid$="accordion-privacy-btn"]').click()
+
+      // Click Delete chat button inside the sidebar
+      await alicePage.locator('[data-testid$="btnDelete"]').click()
 
       // Assert that the item is successfully removed from Alice's sidebar list
       await expect(bobListItem).not.toBeVisible({ timeout: 15000 })

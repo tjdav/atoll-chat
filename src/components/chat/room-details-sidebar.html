@@ -2,7 +2,10 @@
   <div class="room-details-container d-flex flex-column h-100 bg-body">
     <!-- Header -->
     <div class="offcanvas-header border-bottom py-3 px-4 d-flex justify-content-between align-items-center bg-body">
-      <h5 class="offcanvas-title fw-bold" id="roomDetailsOffcanvasLabel">Room Details</h5>
+      <h5 class="offcanvas-title fw-bold d-flex align-items-center gap-2" id="roomDetailsOffcanvasLabel">
+        <atoll-icon name="settings" size="20"></atoll-icon>
+        Room Settings
+      </h5>
       <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close" ref="btnClose" data-testid="sidebar-close-btn"></button>
     </div>
 
@@ -43,6 +46,9 @@
                   <atoll-list-item ref="btnEditNicknames" clickable="true" chevron="true" title="Edit nicknames" data-testid="btnEditNicknames">
                     <span slot="leading"><atoll-icon name="Aa" size="20"></atoll-icon></span>
                   </atoll-list-item>
+                  <atoll-list-item ref="btnEditRoom" clickable="true" chevron="true" title="Edit room" data-testid="btnEditRoom" hidden="{{ hideEditRoom }}">
+                    <span slot="leading"><atoll-icon name="edit" size="20"></atoll-icon></span>
+                  </atoll-list-item>
                 </atoll-list>
               </div>
             </div>
@@ -68,6 +74,9 @@
                   </atoll-list-item>
                   <atoll-list-item ref="btnBlock" clickable="true" title="Block" class="text-danger" data-testid="btnBlock">
                     <span slot="leading"><atoll-icon name="block" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
+                  </atoll-list-item>
+                  <atoll-list-item ref="btnDelete" clickable="true" title="{{ deleteLabel }}" class="text-danger" data-testid="btnDelete">
+                    <span slot="leading"><atoll-icon name="trash" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
                   </atoll-list-item>
                 </atoll-list>
               </div>
@@ -123,11 +132,14 @@
       roomName: 'Unnamed Chat',
       roomTheme: 'classic',
       readReceipts: true,
-      nicknames: {}
+      nicknames: {},
+      isGroup: false
     }),
     getters: {
       memberCount: (state) => (state.members || []).length,
-      loadingClass: (state) => (state.isLoading ? 'd-flex' : 'd-none')
+      loadingClass: (state) => (state.isLoading ? 'd-flex' : 'd-none'),
+      hideEditRoom: (state) => !state.isAdmin,
+      deleteLabel: (state) => state.isGroup ? 'Leave group' : 'Delete chat'
     },
     client: ({ refs, state, pocketbase, eventBus, globalStore, storage, cryptoWorker, utils, signal }) => {
       const { pb } = pocketbase
@@ -159,6 +171,7 @@
           const room = await $storage.getRoom(room_id)
           if (room) {
             state.roomTheme = room.theme || 'classic'
+            state.isGroup = room.is_group === true || room.is_group === 'true'
 
             // Parse room name avatar
             const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
@@ -490,6 +503,25 @@
           if (modal && typeof modal.show === 'function') {
             modal.show()
           }
+        })
+      }
+
+      const btnEditRoom = refs('btnEditRoom')
+      if (btnEditRoom) {
+        btnEditRoom.addEventListener('click', () => {
+          const room_id = $state.activeSelectionId
+          $bus.emit('room:edit', { room_id })
+        })
+      }
+
+      const btnDelete = refs('btnDelete')
+      if (btnDelete) {
+        btnDelete.addEventListener('click', () => {
+          const room_id = $state.activeSelectionId
+          $bus.emit('room:delete', {
+            room_id,
+            isGroup: state.isGroup
+          })
         })
       }
     }
