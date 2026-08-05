@@ -26,6 +26,8 @@
   --atoll-chat-reaction-pill-border: var(--#{$prefix}border-color, #e0e0e0);
   --atoll-chat-reaction-pill-color: var(--#{$prefix}secondary-color, #777777);
 
+  --atoll-chat-input-container-bg-custom: rgba(255, 255, 255, 0.75);
+
   // Expanded CSS custom properties
   --atoll-chat-sent-status-color: var(--#{$prefix}text-tertiary, #999999);
   --atoll-chat-btn-attach-bg: transparent;
@@ -71,6 +73,8 @@
   --atoll-chat-reaction-pill-bg: var(--#{$prefix}secondary-bg, #1F1F1F);
   --atoll-chat-reaction-pill-border: var(--#{$prefix}border-color, #2A2A2A);
   --atoll-chat-reaction-pill-color: var(--#{$prefix}text-secondary, #B0B0B0);
+
+  --atoll-chat-input-container-bg-custom: rgba(31, 31, 31, 0.75);
 }
 
 // Generate Pre-compiled SCSS Themes for data-theme attribute
@@ -148,4 +152,54 @@
     background-color: var(--atoll-chat-bubble-received-bg) !important;
     color: var(--atoll-chat-bubble-received-color) !important;
   }
+
+  --atoll-chat-reaction-pill-bg: var(--atoll-chat-input-container-bg-custom, rgba(255, 255, 255, 0.75));
+  --atoll-chat-reaction-pill-border: var(--atoll-chat-attachment-card-border, rgba(0, 0, 0, 0.08));
+  --atoll-chat-reaction-pill-color: var(--atoll-chat-bubble-received-color, #111111);
+
+  --atoll-chat-date-separator-bg: var(--atoll-chat-input-container-bg-custom, rgba(255, 255, 255, 0.75));
+  --atoll-chat-date-separator-color: var(--atoll-chat-bubble-received-color, #111111);
+
+  // Styling chat-input container to be glassy blurred
+  chat-input .container {
+    background-color: var(--atoll-chat-input-container-bg-custom, rgba(255, 255, 255, 0.75)) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid var(--atoll-chat-attachment-card-border, rgba(0, 0, 0, 0.08)) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  // Waveform player background to be glassy blurred
+  .waveform-player {
+    background-color: var(--atoll-chat-input-container-bg-custom, rgba(255, 255, 255, 0.75)) !important;
+    backdrop-filter: blur(12px) !important;
+    -webkit-backdrop-filter: blur(12px) !important;
+    border: 1px solid var(--atoll-chat-attachment-card-border, rgba(0, 0, 0, 0.08)) !important;
+  }
+
+  // Accent alignment inside attachments and link previews
+  .file-icon-wrapper {
+    color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+  }
+  .btn-outline-primary {
+    color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+    border-color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+    &:hover {
+      background-color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+      color: #ffffff !important;
+    }
+  }
+  .link-preview-card .text-primary {
+    color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+  }
+}
+
+.file-attachment-container {
+  background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg)) !important;
+  border-color: var(--atoll-chat-attachment-card-border, var(--bs-border-color)) !important;
+}
+
+.link-preview-card {
+  background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg)) !important;
+  border-color: var(--atoll-chat-attachment-card-border, var(--bs-border-color)) !important;
 }
