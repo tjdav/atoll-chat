@@ -45,9 +45,9 @@ export function createWebStorageAdapter () {
 
         console.log('[WebStorageAdapter] Step A: before stores')
         try {
-          dbInstance.version(10).stores({
+          dbInstance.version(11).stores({
             local_rooms: 'id, is_group, updated_at',
-            local_messages: 'local_uuid, id, room_id, created_at, type, target_id',
+            local_messages: 'local_uuid, id, room_id, created_at, type, target_id, [room_id+created_at]',
             local_assets: 'id, room_id, message_id, mime_type, created_at',
             local_config: 'key',
             local_files: 'name'
