@@ -3,6 +3,7 @@
 
 // Rainbow & Bootstrap Variable Overrides ($primary, $theme-colors, etc.)
 @import "theme/variables-colours";
+@import "theme/atoll-chat-theme-variables";
 
 // Breakpoints & Layout variables
 @import "theme/variables-layout";
@@ -94,6 +95,7 @@ $utilities: map-merge($utilities,
 
 // Semantic Token Matrix ([data-atoll-theme="light"] / [data-#{$prefix}theme="dark"])
 @import "theme/theme-semantic";
+@import "theme/atoll-chat-theme";
 
 // Viewport Safe Area Layout Insets
 @import "theme/theme-layout-insets";

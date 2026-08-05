@@ -1,7 +1,7 @@
 .chat-input-container {
   @include transition(background-color 0.2s ease);
-  background-color: var(--#{$prefix}pane-bg) !important;
-  border-top: 1px solid var(--#{$prefix}border-color-translucent) !important;
+  background-color: var(--atoll-chat-input-container-bg) !important;
+  border-top: 1px solid var(--atoll-chat-input-container-border) !important;
   flex-shrink: 0;
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom)) !important;
 
@@ -29,12 +29,12 @@
       max-height: 200px;
       padding-right: 40px; // Space for emoji button
       border-radius: 20px;
-      background-color: var(--#{$prefix}input-bg) !important;
+      background-color: var(--atoll-chat-input-bg) !important;
       border: 1px solid transparent !important;
-      color: var(--#{$prefix}body-color) !important;
+      color: var(--atoll-chat-input-color) !important;
 
       &:focus {
-        background-color: var(--#{$prefix}input-bg) !important;
+        background-color: var(--atoll-chat-input-bg) !important;
         border-color: var(--#{$prefix}primary) !important;
         box-shadow: 0 0 0 0.25rem rgba(var(--#{$prefix}primary-rgb), 0.1) !important;
       }

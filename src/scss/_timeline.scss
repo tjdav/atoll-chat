@@ -22,15 +22,27 @@
   font-weight: var(--#{$prefix}font-weight-normal);
 }
 
-// Messenger-style rounded corners
+// Messenger-style rounded corners and theme variable styling
 .bubble-sent {
   border-radius: 1.25rem;
   align-self: flex-end;
+  background-color: var(--atoll-chat-bubble-sent-bg);
+  color: var(--atoll-chat-bubble-sent-color);
+
+  a {
+    color: var(--atoll-chat-bubble-sent-link-color, inherit);
+  }
 }
 
 .bubble-received {
   border-radius: 1.25rem;
   align-self: flex-start;
+  background-color: var(--atoll-chat-bubble-received-bg);
+  color: var(--atoll-chat-bubble-received-color);
+
+  a {
+    color: var(--atoll-chat-bubble-received-link-color, var(--#{$prefix}brand-primary));
+  }
 }
 
 timeline-row {
@@ -69,7 +81,7 @@ timeline-row {
 
 .sender-name {
   font-size: 0.75rem;
-  color: var(--bs-secondary-color);
+  color: var(--atoll-chat-sender-name-color);
   margin-left: calc($timeline-avatar-size + $timeline-avatar-margin);
   margin-bottom: 2px;
 }

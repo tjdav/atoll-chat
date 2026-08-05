@@ -14,7 +14,13 @@
   background-color: var(--#{$prefix}pane-bg) !important;
 }
 
-.chat-view-header, .sidebar-header {
+.chat-view-header {
+  border-bottom: 1px solid var(--atoll-chat-header-border, var(--#{$prefix}border-color-translucent)) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  background-color: var(--atoll-chat-header-bg, var(--#{$prefix}pane-bg)) !important;
+}
+
+.sidebar-header {
   border-bottom: 1px solid var(--#{$prefix}border-color-translucent) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
   background-color: var(--#{$prefix}pane-bg) !important;

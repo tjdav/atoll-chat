@@ -27,7 +27,7 @@
     },
     getters: {
       bubbleClass: (state) => {
-        return state.isSent ? 'bubble-sent text-bg-primary' : 'bubble-received bg-body-secondary'
+        return state.isSent ? 'bubble-sent' : 'bubble-received'
       },
       glowClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : ''),
       placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : '')

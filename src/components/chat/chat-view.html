@@ -1,5 +1,5 @@
 <template id="chat-view">
-  <div class="chat-view d-flex flex-column h-100 bg-body" ref="chatViewRoot" data-testid="chat-view-container">
+  <div class="chat-view d-flex flex-column h-100" ref="chatViewRoot" data-testid="chat-view-container">
     <!-- Chat Header -->
     <header class="app-header chat-view-header d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">
@@ -104,11 +104,11 @@
 
           <!-- Right Live Preview Window -->
           <div class="col-12 col-md-7 p-3 d-flex flex-column align-items-stretch" ref="themePreviewContainer" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); max-height: 380px; overflow-y: auto;">
-            <div class="preview-chat-window d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm" ref="previewChatWindow" style="min-height: 300px; background-color: var(--atoll-pane-bg, #FFFFFF); transition: background 0.3s ease;">
-              <div class="message-bubble bubble-received p-2 rounded-3 text-start align-self-start max-w-80 fs-7 shadow-sm" ref="previewBubbleIncoming" style="max-width: 80%; background-color: var(--atoll-bg-surface-tertiary, #EEEEEE);">
+            <div class="preview-chat-window chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm" ref="previewChatWindow" style="min-height: 300px; transition: background 0.3s ease;">
+              <div class="message-bubble bubble-received p-2 rounded-3 text-start align-self-start max-w-80 fs-7 shadow-sm" ref="previewBubbleIncoming" style="max-width: 80%;">
                 Hey! Check out this awesome chat theme.
               </div>
-              <div class="message-bubble bubble-sent text-bg-primary p-2 rounded-3 text-end align-self-end max-w-80 fs-7 shadow-sm" ref="previewBubbleOutgoing" style="max-width: 80%;">
+              <div class="message-bubble bubble-sent p-2 rounded-3 text-end align-self-end max-w-80 fs-7 shadow-sm" ref="previewBubbleOutgoing" style="max-width: 80%;">
                 Wow, this live preview looks amazing!
               </div>
             </div>
@@ -475,23 +475,10 @@
           }
         })
 
-        // Apply theme variables to Live Preview window
+        // Apply theme data-theme attribute to Live Preview window
         const previewWindow = themeModal.querySelector('.preview-chat-window, [ref$="previewChatWindow"]')
         if (previewWindow) {
-          previewWindow.removeAttribute('data-theme')
           previewWindow.setAttribute('data-theme', highlightedTheme)
-          
-          // Apply preview box visual variables directly
-          if (highlightedTheme === 'classic') {
-            previewWindow.style.background = 'var(--atoll-pane-bg, #FFFFFF)'
-            previewWindow.style.backgroundImage = 'none'
-          } else if (highlightedTheme === 'ocean') {
-            previewWindow.style.background = 'linear-gradient(135deg, #0f2027, #2c5364)'
-          } else if (highlightedTheme === 'forest') {
-            previewWindow.style.background = 'linear-gradient(135deg, #11998e, #38ef7d)'
-          } else if (highlightedTheme === 'sunset') {
-            previewWindow.style.background = 'linear-gradient(135deg, #f12711, #f5af19)'
-          }
         }
       }
 

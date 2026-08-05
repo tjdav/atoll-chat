@@ -1,0 +1,72 @@
+$prefix: "atoll-" !default;
+
+// Default Theme Palette Definitions & Pre-compiled Theme Maps for Chat View
+
+// Classic Theme Tokens (Referencing _variables-primitives.scss & _variables-colours.scss)
+$atoll-chat-theme-classic-sent-bg: $atoll-green-500 !default;
+$atoll-chat-theme-classic-sent-color: $atoll-white !default;
+$atoll-chat-theme-classic-received-bg: map-get($grays, "100") !default; // #F5F5F5
+$atoll-chat-theme-classic-received-color: map-get($grays, "900") !default; // #111111
+
+$atoll-chat-theme-classic-dark-bg: map-get($grays, "850") !default; // #1F1F1F
+$atoll-chat-theme-classic-dark-received-bg: map-get($grays, "800") !default; // #2A2A2A
+$atoll-chat-theme-classic-dark-received-color: $atoll-white !default;
+
+// Ocean Theme Tokens
+$atoll-chat-theme-ocean-bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364) !default;
+$atoll-chat-theme-ocean-sent-bg: #0083b0 !default;
+$atoll-chat-theme-ocean-received-bg: rgba(255, 255, 255, 0.15) !default;
+
+// Forest Theme Tokens
+$atoll-chat-theme-forest-bg-gradient: linear-gradient(135deg, #11998e, #38ef7d) !default;
+$atoll-chat-theme-forest-sent-bg: #11998e !default;
+$atoll-chat-theme-forest-received-bg: rgba(255, 255, 255, 0.2) !default;
+
+// Sunset Theme Tokens
+$atoll-chat-theme-sunset-bg-gradient: linear-gradient(135deg, #f12711, #f5af19) !default;
+$atoll-chat-theme-sunset-sent-bg: #f12711 !default;
+$atoll-chat-theme-sunset-received-bg: rgba(255, 255, 255, 0.25) !default;
+
+// Pre-compiled Theme Matrix Map
+$atoll-chat-themes: (
+  "classic": (
+    "bg": var(--#{$prefix}pane-bg, map-get($grays, "000")),
+    "bg-image": none,
+    "bubble-sent-bg": $atoll-chat-theme-classic-sent-bg,
+    "bubble-sent-color": $atoll-chat-theme-classic-sent-color,
+    "bubble-received-bg": var(--#{$prefix}bg-surface-tertiary, $atoll-chat-theme-classic-received-bg),
+    "bubble-received-color": var(--#{$prefix}text-primary, $atoll-chat-theme-classic-received-color)
+  ),
+  "classic-dark": (
+    "bg": $atoll-chat-theme-classic-dark-bg,
+    "bg-image": none,
+    "bubble-sent-bg": $atoll-chat-theme-classic-sent-bg,
+    "bubble-sent-color": $atoll-chat-theme-classic-sent-color,
+    "bubble-received-bg": $atoll-chat-theme-classic-dark-received-bg,
+    "bubble-received-color": $atoll-chat-theme-classic-dark-received-color
+  ),
+  "ocean": (
+    "bg": #0f2027,
+    "bg-image": $atoll-chat-theme-ocean-bg-gradient,
+    "bubble-sent-bg": $atoll-chat-theme-ocean-sent-bg,
+    "bubble-sent-color": #ffffff,
+    "bubble-received-bg": $atoll-chat-theme-ocean-received-bg,
+    "bubble-received-color": #ffffff
+  ),
+  "forest": (
+    "bg": #11998e,
+    "bg-image": $atoll-chat-theme-forest-bg-gradient,
+    "bubble-sent-bg": $atoll-chat-theme-forest-sent-bg,
+    "bubble-sent-color": #ffffff,
+    "bubble-received-bg": $atoll-chat-theme-forest-received-bg,
+    "bubble-received-color": #ffffff
+  ),
+  "sunset": (
+    "bg": #f12711,
+    "bg-image": $atoll-chat-theme-sunset-bg-gradient,
+    "bubble-sent-bg": $atoll-chat-theme-sunset-sent-bg,
+    "bubble-sent-color": #ffffff,
+    "bubble-received-bg": $atoll-chat-theme-sunset-received-bg,
+    "bubble-received-color": #ffffff
+  )
+) !default;
