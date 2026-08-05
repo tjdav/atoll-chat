@@ -1,5 +1,7 @@
 atoll-popup {
   display: block !important;
+  position: relative !important;
+  z-index: 1060 !important;
 
   .modal.show {
     display: flex !important;

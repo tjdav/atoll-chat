@@ -141,6 +141,11 @@ export const SOLAR_ICON_MAP = {
   close: CloseCircleLinearIcon,
   eye: EyeLinearIcon,
   'eye-off': EyeClosedLinearIcon,
+  palette: GalleryLinearIcon,
+  Aa: FileTextLinearIcon,
+  block: MinusCircleLinearIcon,
+  bell: BellLinearIcon,
+  edit: SettingsLinearIcon,
 
   // Call & Media Controls
   check: {

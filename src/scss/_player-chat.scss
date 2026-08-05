@@ -12,16 +12,60 @@
 .chat-view {
   height: 100%;
   background-color: var(--#{$prefix}pane-bg) !important;
+  @include transition(background 0.3s ease-in-out);
 
-  .sidebar-slide-over {
-    position: absolute;
-    top: 0;
-    right: 0;
-    bottom: 0;
-    width: 350px;
-    z-index: $zindex-offcanvas;
-    background-color: var(--#{$prefix}pane-bg) !important;
-    @include transition(transform 0.3s ease-in-out);
+  &[data-theme="ocean"] {
+    background: linear-gradient(135deg, #0f2027, #203a43, #2c5364) !important;
+    
+    .bubble-sent {
+      background-color: #0083b0 !important;
+      color: #ffffff !important;
+    }
+    .bubble-received {
+      background-color: rgba(255, 255, 255, 0.15) !important;
+      color: #ffffff !important;
+    }
+  }
+
+  &[data-theme="forest"] {
+    background: linear-gradient(135deg, #11998e, #38ef7d) !important;
+
+    .bubble-sent {
+      background-color: #11998e !important;
+      color: #ffffff !important;
+    }
+    .bubble-received {
+      background-color: rgba(255, 255, 255, 0.2) !important;
+      color: #ffffff !important;
+    }
+  }
+
+  &[data-theme="sunset"] {
+    background: linear-gradient(135deg, #f12711, #f5af19) !important;
+
+    .bubble-sent {
+      background-color: #f12711 !important;
+      color: #ffffff !important;
+    }
+    .bubble-received {
+      background-color: rgba(255, 255, 255, 0.25) !important;
+      color: #ffffff !important;
+    }
+  }
+
+  &[data-theme="ocean"],
+  &[data-theme="forest"],
+  &[data-theme="sunset"] {
+    .bubble-received,
+    .bubble-sent {
+      color: #ffffff !important;
+      .markdown-body {
+        color: #ffffff !important;
+        p, h1, h2, h3, span, div {
+          color: #ffffff !important;
+        }
+      }
+    }
   }
 
   .avatar-placeholder {
