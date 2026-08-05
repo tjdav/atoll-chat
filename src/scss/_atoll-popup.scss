@@ -303,3 +303,7 @@ atoll-popup[data-#{$prefix}theme="dark"] {
 .offcanvas {
   z-index: 1050 !important;
 }
+
+.theme-preview-section {
+  pointer-events: none;
+}

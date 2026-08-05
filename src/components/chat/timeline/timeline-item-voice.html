@@ -94,12 +94,12 @@
               const parsedSvg = doc.querySelector('svg')
               if (parsedSvg) {
                 parsedSvg.setAttribute('class', 'waveform-image text-primary')
-                parsedSvg.setAttribute('style', 'width: 100%; height: 100%; object-fit: fill;')
+                parsedSvg.setAttribute('style', 'width: 100%; height: 100%; object-fit: fill; fill: var(--atoll-chat-waveform-inactive, rgba(6, 199, 85, 0.2)); color: var(--atoll-chat-waveform-inactive, rgba(6, 199, 85, 0.2));')
                 waveEl = parsedSvg.cloneNode(true)
 
                 progressEl = parsedSvg.cloneNode(true)
                 progressEl.setAttribute('class', 'waveform-image text-primary')
-                progressEl.setAttribute('style', 'height: 100%; object-fit: fill; max-width: none;')
+                progressEl.setAttribute('style', 'height: 100%; object-fit: fill; max-width: none; fill: var(--atoll-chat-waveform-active, var(--bs-primary)); color: var(--atoll-chat-waveform-active, var(--bs-primary));')
               }
             } catch (err) {
               console.warn('[timeline-item-voice] Failed to parse inline SVG waveform, falling back to img:', err)

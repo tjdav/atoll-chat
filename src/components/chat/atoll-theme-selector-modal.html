@@ -1,107 +1,204 @@
 <template id="atoll-theme-selector-modal">
   <atoll-popup ref="themeModal" size="lg" title="Preview and select theme" primary-text="Select" secondary-text="Cancel" data-testid="themeSelectorModal">
-    <div class="container-fluid p-0">
-      <div class="row g-0" style="min-height: 380px;">
-        <!-- Left Theme List Navigation -->
-        <div class="col-12 col-md-5 border-end overflow-y-auto px-2" ref="themeListContainer" style="max-height: 380px;">
-          <atoll-list divided="true" ref="themeList">
-            <atoll-list-item ref="themeClassic" clickable="true" title="Classic" description="Standard layout & colors" data-theme-id="classic" data-testid="theme-classic-item">
-              <span slot="leading">
-                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background-color: var(--atoll-pane-bg, #FFFFFF);"></span>
-              </span>
-              <span slot="right" class="theme-check-icon d-none" ref="checkClassic" data-testid="checkClassic">
-                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
-              </span>
-            </atoll-list-item>
-            <atoll-list-item ref="themeOcean" clickable="true" title="Ocean" description="Deep blue gradients" data-theme-id="ocean" data-testid="theme-ocean-item">
-              <span slot="leading">
-                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #0f2027, #2c5364);"></span>
-              </span>
-              <span slot="right" class="theme-check-icon d-none" ref="checkOcean" data-testid="checkOcean">
-                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
-              </span>
-            </atoll-list-item>
-            <atoll-list-item ref="themeForest" clickable="true" title="Forest" description="Verdant emerald trees" data-theme-id="forest" data-testid="theme-forest-item">
-              <span slot="leading">
-                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #11998e, #38ef7d);"></span>
-              </span>
-              <span slot="right" class="theme-check-icon d-none" ref="checkForest" data-testid="checkForest">
-                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
-              </span>
-            </atoll-list-item>
-            <atoll-list-item ref="themeSunset" clickable="true" title="Sunset" description="Warm orange skies" data-theme-id="sunset" data-testid="theme-sunset-item">
-              <span slot="leading">
-                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #f12711, #f5af19);"></span>
-              </span>
-              <span slot="right" class="theme-check-icon d-none" ref="checkSunset" data-testid="checkSunset">
-                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
-              </span>
-            </atoll-list-item>
-            <!-- Custom Theme List Item -->
-            <atoll-list-item ref="themeCustom" clickable="true" title="Custom Theme" description="Upload image & generate palette" data-theme-id="custom" data-testid="theme-custom-item">
-              <span slot="leading">
-                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);"></span>
-              </span>
-              <span slot="right" class="theme-check-icon d-none" ref="checkCustom" data-testid="checkCustom">
-                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
-              </span>
-            </atoll-list-item>
-          </atoll-list>
+    <div class="atoll-theme-selector-wrapper d-flex flex-column gap-3 p-2">
+      <!-- Top Section: Theme Selection & Controls -->
+      <div class="theme-selection-section border-bottom pb-3" ref="themeListContainer">
+        <atoll-list divided="true" ref="themeList" class="d-flex flex-column gap-2">
+          <atoll-list-item ref="themeClassic" clickable="true" title="Classic" description="Standard layout & colors" data-theme-id="classic" data-testid="theme-classic-item">
+            <span slot="leading">
+              <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background-color: var(--atoll-pane-bg, #FFFFFF);"></span>
+            </span>
+            <span slot="right" class="theme-check-icon d-none" ref="checkClassic" data-testid="checkClassic">
+              <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+            </span>
+          </atoll-list-item>
+          <atoll-list-item ref="themeOcean" clickable="true" title="Ocean" description="Deep blue gradients" data-theme-id="ocean" data-testid="theme-ocean-item">
+            <span slot="leading">
+              <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #0f2027, #2c5364);"></span>
+            </span>
+            <span slot="right" class="theme-check-icon d-none" ref="checkOcean" data-testid="checkOcean">
+              <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+            </span>
+          </atoll-list-item>
+          <atoll-list-item ref="themeForest" clickable="true" title="Forest" description="Verdant emerald trees" data-theme-id="forest" data-testid="theme-forest-item">
+            <span slot="leading">
+              <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #11998e, #38ef7d);"></span>
+            </span>
+            <span slot="right" class="theme-check-icon d-none" ref="checkForest" data-testid="checkForest">
+              <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+            </span>
+          </atoll-list-item>
+          <atoll-list-item ref="themeSunset" clickable="true" title="Sunset" description="Warm orange skies" data-theme-id="sunset" data-testid="theme-sunset-item">
+            <span slot="leading">
+              <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #f12711, #f5af19);"></span>
+            </span>
+            <span slot="right" class="theme-check-icon d-none" ref="checkSunset" data-testid="checkSunset">
+              <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+            </span>
+          </atoll-list-item>
+          <!-- Custom Theme List Item -->
+          <atoll-list-item ref="themeCustom" clickable="true" title="Custom Theme" description="Upload image & generate palette" data-theme-id="custom" data-testid="theme-custom-item">
+            <span slot="leading">
+              <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);"></span>
+            </span>
+            <span slot="right" class="theme-check-icon d-none" ref="checkCustom" data-testid="checkCustom">
+              <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+            </span>
+          </atoll-list-item>
+        </atoll-list>
 
-          <!-- Custom Theme Control Settings panel -->
-          <div class="custom-theme-controls d-none p-3 pb-5 mt-2 border-top" ref="customThemeControls" data-testid="custom-theme-controls">
-            <div class="mb-3">
-              <label class="form-label small fw-bold">Upload Custom Image</label>
-              <input type="file" class="form-control form-control-sm" ref="imageUploader" accept="image/*" data-testid="custom-image-uploader">
+        <!-- Custom Theme Control Settings panel -->
+        <div class="custom-theme-controls d-none p-3 mt-2 border-top" ref="customThemeControls" data-testid="custom-theme-controls">
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Upload Custom Image</label>
+            <input type="file" class="form-control form-control-sm" ref="imageUploader" accept="image/*" data-testid="custom-image-uploader">
+          </div>
+
+          <div class="d-flex gap-2 mb-3">
+            <button type="button" class="btn btn-sm btn-outline-primary flex-grow-1" ref="btnGeneratePalette" data-testid="btn-generate-palette" disabled>Generate Palette</button>
+            <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" ref="btnRandomizeColors" data-testid="btn-randomize-colors" disabled>Randomize</button>
+          </div>
+
+          <div class="mb-3 d-none" ref="paletteContainer">
+            <label class="form-label small fw-bold">Active Palette</label>
+            <div class="d-flex flex-wrap gap-1" ref="swatchList" data-testid="swatch-list">
+              <!-- Dynamic swatches go here -->
             </div>
+          </div>
 
-            <div class="d-flex gap-2 mb-3">
-              <button type="button" class="btn btn-sm btn-outline-primary flex-grow-1" ref="btnGeneratePalette" data-testid="btn-generate-palette" disabled>Generate Palette</button>
-              <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" ref="btnRandomizeColors" data-testid="btn-randomize-colors" disabled>Randomize</button>
+          <div class="form-check form-switch mb-3">
+            <input class="form-check-input" type="checkbox" role="switch" ref="useBgImageToggle" id="useBgImageToggle" data-testid="use-bg-image-toggle">
+            <label class="form-check-label small fw-bold" for="useBgImageToggle">Use as background image</label>
+          </div>
+
+          <div class="mb-3 custom-bg-sliders d-none" ref="bgSlidersContainer" data-testid="bg-sliders-container">
+            <div class="mb-2">
+              <label class="form-label small d-flex justify-content-between">
+                <span>Background Blur</span>
+                <span ref="blurValueText">5px</span>
+              </label>
+              <input type="range" class="form-range" min="0" max="20" value="5" ref="blurSlider" data-testid="blur-slider">
             </div>
-
-            <div class="mb-3 d-none" ref="paletteContainer">
-              <label class="form-label small fw-bold">Active Palette</label>
-              <div class="d-flex flex-wrap gap-1" ref="swatchList" data-testid="swatch-list">
-                <!-- Dynamic swatches go here -->
-              </div>
-            </div>
-
-            <div class="form-check form-switch mb-3">
-              <input class="form-check-input" type="checkbox" role="switch" ref="useBgImageToggle" id="useBgImageToggle" data-testid="use-bg-image-toggle">
-              <label class="form-check-label small fw-bold" for="useBgImageToggle">Use as background image</label>
-            </div>
-
-            <div class="mb-3 custom-bg-sliders d-none" ref="bgSlidersContainer" data-testid="bg-sliders-container">
-              <div class="mb-2">
-                <label class="form-label small d-flex justify-content-between">
-                  <span>Background Blur</span>
-                  <span ref="blurValueText">5px</span>
-                </label>
-                <input type="range" class="form-range" min="0" max="20" value="5" ref="blurSlider" data-testid="blur-slider">
-              </div>
-              <div>
-                <label class="form-label small d-flex justify-content-between">
-                  <span>Background Dimming</span>
-                  <span ref="dimValueText">30%</span>
-                </label>
-                <input type="range" class="form-range" min="0" max="80" value="30" ref="dimSlider" data-testid="dim-slider">
-              </div>
+            <div>
+              <label class="form-label small d-flex justify-content-between">
+                <span>Background Dimming</span>
+                <span ref="dimValueText">30%</span>
+              </label>
+              <input type="range" class="form-range" min="0" max="80" value="30" ref="dimSlider" data-testid="dim-slider">
             </div>
           </div>
         </div>
+      </div>
 
-        <!-- Right Live Preview Window -->
-        <div class="col-12 col-md-7 p-3 d-flex flex-column align-items-stretch" ref="themePreviewContainer" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); max-height: 380px; overflow-y: auto;">
-          <div class="preview-chat-window chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm position-relative overflow-hidden" ref="previewChatWindow" style="min-height: 300px; transition: background 0.3s ease;">
-            <!-- Real-time Live Preview Bubble Styles and Background -->
-            <div class="message-bubble bubble-received p-2 rounded-3 text-start align-self-start max-w-80 fs-7 shadow-sm" ref="previewBubbleIncoming" style="max-width: 80%; z-index: 2;">
+      <!-- Bottom Section: Live Preview Section -->
+      <div class="theme-preview-section p-3 d-flex flex-column align-items-stretch" ref="themePreviewContainer" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); border-radius: 8px;">
+        <div class="preview-chat-window chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm position-relative overflow-hidden" ref="previewChatWindow" style="min-height: 220px; transition: background 0.3s ease;">
+          
+          <!-- Today Date Separator Badge -->
+          <div class="text-center my-2" style="z-index: 2;">
+            <span class="badge rounded-pill px-3 py-1 text-uppercase font-monospace" style="background-color: var(--atoll-chat-date-separator-bg, var(--atoll-bg-surface-tertiary, #EEEEEE)); color: var(--atoll-chat-date-separator-color, var(--atoll-secondary-color, #777777)); font-size: 0.7rem;">Today</span>
+          </div>
+
+          <!-- Received Bubble -->
+          <div class="align-self-start d-flex flex-column align-items-start gap-1" style="max-width: 80%; z-index: 2;">
+            <span class="x-small text-muted ps-2" style="color: var(--atoll-chat-sender-name-color, #777777);">Bob</span>
+            <div class="message-bubble bubble-received p-2 rounded-3 text-start shadow-sm" ref="previewBubbleIncoming">
               Hey! Check out this awesome chat theme.
-            </div>
-            <div class="message-bubble bubble-sent p-2 rounded-3 text-end align-self-end max-w-80 fs-7 shadow-sm" ref="previewBubbleOutgoing" style="max-width: 80%; z-index: 2;">
-              Wow, this live preview looks amazing!
+              <div class="reaction-pill d-inline-flex align-items-center gap-1 mt-1 px-2 py-0.5 rounded-pill border x-small" style="background-color: var(--atoll-chat-reaction-pill-bg, #FFFFFF); border-color: var(--atoll-chat-reaction-pill-border, #E0E0E0); color: var(--atoll-chat-reaction-pill-color, #777777);">
+                <span>👍</span><span class="fw-bold">1</span>
+              </div>
             </div>
           </div>
+
+          <!-- Animated Voice Note Item with SVG waveform preview -->
+          <div class="align-self-start d-flex flex-column align-items-start gap-1 my-1" style="max-width: 80%; z-index: 2;">
+            <div class="waveform-player" style="background-color: var(--atoll-chat-attachment-card-bg, #EEEEEE); border: 1px solid var(--atoll-chat-attachment-card-border, rgba(0,0,0,0.08)); border-radius: 24px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; width: 240px;">
+              <button type="button" class="play-pause-btn" style="border: none; background: var(--atoll-chat-waveform-active, var(--bs-primary, #06C755)); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-play-fill" style="color: #ffffff;"></i>
+              </button>
+              <div class="waveform-container" style="flex-grow: 1; height: 24px; display: flex; align-items: center; position: relative;" ref="previewWaveform">
+                <!-- Fallback Waveform Rectangles -->
+                <svg viewBox="0 0 100 24" style="width: 100%; height: 100%; fill: var(--atoll-chat-waveform-inactive, rgba(6,199,85,0.2));" class="preview-waveform-svg">
+                  <rect x="2" y="4" width="3" height="16" rx="1" />
+                  <rect x="7" y="6" width="3" height="12" rx="1" />
+                  <rect x="12" y="2" width="3" height="20" rx="1" />
+                  <rect x="17" y="5" width="3" height="14" rx="1" />
+                  <rect x="22" y="8" width="3" height="8" rx="1" />
+                  <rect x="27" y="3" width="3" height="18" rx="1" />
+                  <rect x="32" y="6" width="3" height="12" rx="1" />
+                  <rect x="37" y="4" width="3" height="16" rx="1" />
+                  <rect x="42" y="7" width="3" height="10" rx="1" />
+                  <rect x="47" y="2" width="3" height="20" rx="1" />
+                  <rect x="52" y="5" width="3" height="14" rx="1" />
+                  <rect x="57" y="8" width="3" height="8" rx="1" />
+                  <rect x="62" y="3" width="3" height="18" rx="1" />
+                  <rect x="67" y="6" width="3" height="12" rx="1" />
+                  <rect x="72" y="4" width="3" height="16" rx="1" />
+                  <rect x="77" y="7" width="3" height="10" rx="1" />
+                  <rect x="82" y="2" width="3" height="20" rx="1" />
+                  <rect x="87" y="5" width="3" height="14" rx="1" />
+                  <rect x="92" y="8" width="3" height="8" rx="1" />
+                </svg>
+                <div style="position: absolute; top: 0; left: 0; width: 45%; height: 100%; overflow: hidden;">
+                  <svg viewBox="0 0 100 24" style="width: 240px; height: 100%; fill: var(--atoll-chat-waveform-active, var(--bs-primary, #06C755));" class="preview-waveform-active-svg">
+                    <rect x="2" y="4" width="3" height="16" rx="1" />
+                    <rect x="7" y="6" width="3" height="12" rx="1" />
+                    <rect x="12" y="2" width="3" height="20" rx="1" />
+                    <rect x="17" y="5" width="3" height="14" rx="1" />
+                    <rect x="22" y="8" width="3" height="8" rx="1" />
+                    <rect x="27" y="3" width="3" height="18" rx="1" />
+                    <rect x="32" y="6" width="3" height="12" rx="1" />
+                    <rect x="37" y="4" width="3" height="16" rx="1" />
+                    <rect x="42" y="7" width="3" height="10" rx="1" />
+                    <rect x="47" y="2" width="3" height="20" rx="1" />
+                    <rect x="52" y="5" width="3" height="14" rx="1" />
+                    <rect x="57" y="8" width="3" height="8" rx="1" />
+                    <rect x="62" y="3" width="3" height="18" rx="1" />
+                    <rect x="67" y="6" width="3" height="12" rx="1" />
+                    <rect x="72" y="4" width="3" height="16" rx="1" />
+                    <rect x="77" y="7" width="3" height="10" rx="1" />
+                    <rect x="82" y="2" width="3" height="20" rx="1" />
+                    <rect x="87" y="5" width="3" height="14" rx="1" />
+                    <rect x="92" y="8" width="3" height="8" rx="1" />
+                  </svg>
+                </div>
+                <div style="position: absolute; top: 0; left: 45%; width: 2px; height: 100%; background-color: var(--atoll-chat-waveform-active, var(--bs-primary, #06C755));"></div>
+              </div>
+              <span class="x-small font-monospace" style="color: var(--atoll-chat-timestamp-color, #999999);">0:08</span>
+            </div>
+          </div>
+
+          <!-- Sent Bubble -->
+          <div class="align-self-end d-flex flex-column align-items-end gap-1" style="max-width: 80%; z-index: 2;">
+            <div class="message-bubble bubble-sent p-2 rounded-3 text-end shadow-sm" ref="previewBubbleOutgoing">
+              Wow, this live preview looks amazing!
+            </div>
+            <!-- Sent Status Indicator -->
+            <div class="d-flex align-items-center gap-1 mt-0.5 pe-1" style="color: var(--atoll-chat-sent-status-color, #999999);">
+              <span class="x-small">Sent</span>
+              <atoll-icon name="check" size="14" style="color: var(--atoll-chat-sent-status-color, #999999);"></atoll-icon>
+            </div>
+          </div>
+
+          <!-- Complete Chat Input Bar -->
+          <div class="mt-auto d-flex align-items-center gap-2 p-2 border-top" style="background-color: var(--atoll-chat-input-container-bg, #FFFFFF); border-top-color: var(--atoll-chat-input-container-border, rgba(0,0,0,0.08)) !important; z-index: 2; margin-top: 15px !important; border-radius: 8px;">
+            <button type="button" class="btn chat-input-btn-attach" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--atoll-chat-btn-attach-bg, transparent); color: var(--atoll-chat-btn-attach-color, #777777);">
+              <atoll-icon name="attach" size="16"></atoll-icon>
+            </button>
+            <div class="flex-grow-1" style="position: relative;">
+              <input type="text" class="form-control form-control-sm rounded-pill" placeholder="Type a message..." disabled style="background-color: var(--atoll-chat-input-bg, #F5F5F5); color: var(--atoll-chat-input-color, #111111); border: 1px solid transparent; padding-right: 32px; font-size: 0.8rem; height: 28px;">
+              <button type="button" class="btn p-0" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--atoll-chat-timestamp-color, #999999); background: none; border: none;">
+                <atoll-icon name="emoji" size="16"></atoll-icon>
+              </button>
+            </div>
+            <button type="button" class="btn chat-input-btn-voice" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--atoll-chat-btn-voice-bg, transparent); color: var(--atoll-chat-btn-voice-color, #777777);">
+              <atoll-icon name="mic" size="16"></atoll-icon>
+            </button>
+            <button type="button" class="btn chat-input-btn-send" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--atoll-chat-btn-send-bg, #06C755); color: var(--atoll-chat-btn-send-color, #FFFFFF);">
+              <atoll-icon name="send" size="16"></atoll-icon>
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
@@ -141,6 +238,19 @@
       let customReceivedBg = '#EEEEEE'
       let customReceivedColor = '#111111'
 
+      // Derivable sub-colors
+      let customSentStatusColor = '#999999'
+      let customBtnAttachBg = 'transparent'
+      let customBtnAttachColor = '#777777'
+      let customBtnVoiceBg = 'transparent'
+      let customBtnVoiceColor = '#777777'
+      let customBtnSendBg = '#06C755'
+      let customBtnSendColor = '#FFFFFF'
+      let customWaveformActive = '#06C755'
+      let customWaveformInactive = 'rgba(6, 199, 85, 0.2)'
+      let customAttachmentCardBg = '#EEEEEE'
+      let customAttachmentCardBorder = 'rgba(0, 0, 0, 0.08)'
+
       const customThemeControls = refs('customThemeControls')
       const imageUploader = refs('imageUploader')
       const btnGeneratePalette = refs('btnGeneratePalette')
@@ -176,6 +286,17 @@
           customSentColor = ct.sentColor || '#FFFFFF'
           customReceivedBg = ct.receivedBg || '#EEEEEE'
           customReceivedColor = ct.receivedColor || '#111111'
+          customSentStatusColor = ct.sentStatusColor || '#999999'
+          customBtnAttachBg = ct.btnAttachBg || 'transparent'
+          customBtnAttachColor = ct.btnAttachColor || '#777777'
+          customBtnVoiceBg = ct.btnVoiceBg || 'transparent'
+          customBtnVoiceColor = ct.btnVoiceColor || '#777777'
+          customBtnSendBg = ct.btnSendBg || '#06C755'
+          customBtnSendColor = ct.btnSendColor || '#FFFFFF'
+          customWaveformActive = ct.waveformActive || '#06C755'
+          customWaveformInactive = ct.waveformInactive || 'rgba(6, 199, 85, 0.2)'
+          customAttachmentCardBg = ct.attachmentCardBg || '#EEEEEE'
+          customAttachmentCardBorder = ct.attachmentCardBorder || 'rgba(0, 0, 0, 0.08)'
         } else {
           // Reset custom theme state if none exist
           customBgImage = null
@@ -187,6 +308,17 @@
           customSentColor = '#FFFFFF'
           customReceivedBg = '#EEEEEE'
           customReceivedColor = '#111111'
+          customSentStatusColor = '#999999'
+          customBtnAttachBg = 'transparent'
+          customBtnAttachColor = '#777777'
+          customBtnVoiceBg = 'transparent'
+          customBtnVoiceColor = '#777777'
+          customBtnSendBg = '#06C755'
+          customBtnSendColor = '#FFFFFF'
+          customWaveformActive = '#06C755'
+          customWaveformInactive = 'rgba(6, 199, 85, 0.2)'
+          customAttachmentCardBg = '#EEEEEE'
+          customAttachmentCardBorder = 'rgba(0, 0, 0, 0.08)'
         }
 
         // Apply state values to UI controls
@@ -315,9 +447,16 @@
             if (isSentSelection) {
               customSentBg = compliance.bgHex
               customSentColor = compliance.textColor
+              customBtnSendBg = compliance.bgHex
+              customBtnSendColor = compliance.textColor
+              customWaveformActive = compliance.bgHex
+              customWaveformInactive = hexToRgbaStr(compliance.bgHex, 0.2)
+              customSentStatusColor = compliance.bgHex
             } else {
               customReceivedBg = compliance.bgHex
               customReceivedColor = compliance.textColor
+              customAttachmentCardBg = compliance.bgHex
+              customAttachmentCardBorder = hexToRgbaStr(compliance.bgHex, 0.15)
             }
             renderPaletteSwatches()
             updateLivePreviewStyles()
@@ -325,6 +464,16 @@
 
           swatchList.appendChild(swatch)
         })
+      }
+
+      // Helper to generate rgba string from hex
+      const hexToRgbaStr = (hex, opacity) => {
+        const cleanHex = hex.replace('#', '')
+        const num = parseInt(cleanHex, 16)
+        const r = (num >> 16) & 255
+        const g = (num >> 8) & 255
+        const b = num & 255
+        return `rgba(${r}, ${g}, ${b}, ${opacity})`
       }
 
       // Live Preview custom style applicator
@@ -343,12 +492,36 @@
         previewBubbleIncoming.style.backgroundColor = ''
         previewBubbleIncoming.style.color = ''
 
-        // Dynamic background pseudo elements are hard to inline, so we use CSS Custom Properties on the element!
+        // Clear custom theme properties from live preview first
+        previewChatWindow.style.removeProperty('--atoll-chat-sent-status-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-btn-attach-bg')
+        previewChatWindow.style.removeProperty('--atoll-chat-btn-attach-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-btn-voice-bg')
+        previewChatWindow.style.removeProperty('--atoll-chat-btn-voice-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-btn-send-bg')
+        previewChatWindow.style.removeProperty('--atoll-chat-btn-send-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-waveform-active')
+        previewChatWindow.style.removeProperty('--atoll-chat-waveform-inactive')
+        previewChatWindow.style.removeProperty('--atoll-chat-attachment-card-bg')
+        previewChatWindow.style.removeProperty('--atoll-chat-attachment-card-border')
+
         if (highlightedTheme === 'custom') {
           previewBubbleOutgoing.style.backgroundColor = customSentBg
           previewBubbleOutgoing.style.color = customSentColor
           previewBubbleIncoming.style.backgroundColor = customReceivedBg
           previewBubbleIncoming.style.color = customReceivedColor
+
+          previewChatWindow.style.setProperty('--atoll-chat-sent-status-color', customSentStatusColor)
+          previewChatWindow.style.setProperty('--atoll-chat-btn-attach-bg', customBtnAttachBg)
+          previewChatWindow.style.setProperty('--atoll-chat-btn-attach-color', customBtnAttachColor)
+          previewChatWindow.style.setProperty('--atoll-chat-btn-voice-bg', customBtnVoiceBg)
+          previewChatWindow.style.setProperty('--atoll-chat-btn-voice-color', customBtnVoiceColor)
+          previewChatWindow.style.setProperty('--atoll-chat-btn-send-bg', customBtnSendBg)
+          previewChatWindow.style.setProperty('--atoll-chat-btn-send-color', customBtnSendColor)
+          previewChatWindow.style.setProperty('--atoll-chat-waveform-active', customWaveformActive)
+          previewChatWindow.style.setProperty('--atoll-chat-waveform-inactive', customWaveformInactive)
+          previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', customAttachmentCardBg)
+          previewChatWindow.style.setProperty('--atoll-chat-attachment-card-border', customAttachmentCardBorder)
 
           if (customUseBgImage && customBgImage) {
             previewChatWindow.style.setProperty('--atoll-chat-bg-image', `url(${customBgImage})`)
@@ -430,10 +603,17 @@
             const complianceSent = ensureWCAGContrast(customPalette[0], 4.5)
             customSentBg = complianceSent.bgHex
             customSentColor = complianceSent.textColor
+            customBtnSendBg = complianceSent.bgHex
+            customBtnSendColor = complianceSent.textColor
+            customWaveformActive = complianceSent.bgHex
+            customWaveformInactive = hexToRgbaStr(complianceSent.bgHex, 0.2)
+            customSentStatusColor = complianceSent.bgHex
 
             const complianceReceived = ensureWCAGContrast(customPalette[1], 4.5)
             customReceivedBg = complianceReceived.bgHex
             customReceivedColor = complianceReceived.textColor
+            customAttachmentCardBg = complianceReceived.bgHex
+            customAttachmentCardBorder = hexToRgbaStr(complianceReceived.bgHex, 0.15)
           }
 
           // Enable Custom Theme controls
@@ -474,10 +654,17 @@
             const complianceSent = ensureWCAGContrast(customPalette[0], 4.5)
             customSentBg = complianceSent.bgHex
             customSentColor = complianceSent.textColor
+            customBtnSendBg = complianceSent.bgHex
+            customBtnSendColor = complianceSent.textColor
+            customWaveformActive = complianceSent.bgHex
+            customWaveformInactive = hexToRgbaStr(complianceSent.bgHex, 0.2)
+            customSentStatusColor = complianceSent.bgHex
 
             const complianceReceived = ensureWCAGContrast(customPalette[1], 4.5)
             customReceivedBg = complianceReceived.bgHex
             customReceivedColor = complianceReceived.textColor
+            customAttachmentCardBg = complianceReceived.bgHex
+            customAttachmentCardBorder = hexToRgbaStr(complianceReceived.bgHex, 0.15)
           }
 
           renderPaletteSwatches()
@@ -509,10 +696,17 @@
         const complianceSent = ensureWCAGContrast(color1, 4.5)
         customSentBg = complianceSent.bgHex
         customSentColor = complianceSent.textColor
+        customBtnSendBg = complianceSent.bgHex
+        customBtnSendColor = complianceSent.textColor
+        customWaveformActive = complianceSent.bgHex
+        customWaveformInactive = hexToRgbaStr(complianceSent.bgHex, 0.2)
+        customSentStatusColor = complianceSent.bgHex
 
         const complianceReceived = ensureWCAGContrast(color2, 4.5)
         customReceivedBg = complianceReceived.bgHex
         customReceivedColor = complianceReceived.textColor
+        customAttachmentCardBg = complianceReceived.bgHex
+        customAttachmentCardBorder = hexToRgbaStr(complianceReceived.bgHex, 0.15)
 
         renderPaletteSwatches()
         updateLivePreviewStyles()
@@ -567,7 +761,18 @@
             bgBlur: customBgBlur,
             bgDim: customBgDim,
             useBgImage: customUseBgImage,
-            palette: customPalette
+            palette: customPalette,
+            sentStatusColor: customSentStatusColor,
+            btnAttachBg: customBtnAttachBg,
+            btnAttachColor: customBtnAttachColor,
+            btnVoiceBg: customBtnVoiceBg,
+            btnVoiceColor: customBtnVoiceColor,
+            btnSendBg: customBtnSendBg,
+            btnSendColor: customBtnSendColor,
+            waveformActive: customWaveformActive,
+            waveformInactive: customWaveformInactive,
+            attachmentCardBg: customAttachmentCardBg,
+            attachmentCardBorder: customAttachmentCardBorder
           } : (room.custom_theme || null)
 
           const metadata = JSON.stringify({

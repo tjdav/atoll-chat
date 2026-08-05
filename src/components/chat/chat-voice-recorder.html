@@ -99,22 +99,18 @@
           return null
         }
 
-        const canvas = document.createElement('canvas')
+        // Generate as inline SVG for robust dynamic styling!
         const height = 40
         const width = recordedAmplitudes.length * (barWidth + gap)
-        canvas.width = width
-        canvas.height = height
-        const ctx = canvas.getContext('2d')
-
-        ctx.fillStyle = '#007bff'
+        let paths = ''
         recordedAmplitudes.forEach((amp, i) => {
-          const barHeight = amp * height
+          const barHeight = Math.max(2, amp * height)
           const x = i * (barWidth + gap)
           const y = (height - barHeight) / 2
-          ctx.fillRect(x, y, barWidth, barHeight)
+          paths += `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="1"/>`
         })
 
-        return canvas.toDataURL('image/png')
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="fill: var(--atoll-chat-waveform-active, var(--bs-primary));">${paths}</svg>`
       }
 
       const startRecording = async () => {
@@ -178,11 +174,15 @@
   
             ctx2d.clearRect(0, 0, w, h)
   
+            // Compute current waveform theme color dynamically
+            const activeColor = window.getComputedStyle(canvasEl).getPropertyValue('--atoll-chat-waveform-active') || '#007bff'
+            const inactiveColor = window.getComputedStyle(canvasEl).getPropertyValue('--atoll-chat-waveform-inactive') || 'rgba(0, 123, 255, 0.15)'
+
             // Draw faint baseline
-            ctx2d.fillStyle = 'rgba(0, 123, 255, 0.15)'
+            ctx2d.fillStyle = inactiveColor
             ctx2d.fillRect(0, (h/2) - 1, w, 2)
 
-            ctx2d.fillStyle = '#007bff'
+            ctx2d.fillStyle = activeColor
             const maxVisibleBars = Math.floor(w / (barWidth + gap))
             const startIdx = Math.max(0, recordedAmplitudes.length - maxVisibleBars)
   

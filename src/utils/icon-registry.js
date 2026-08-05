@@ -51,7 +51,8 @@ import {
   CopyLinearIcon,
   CopyBoldIcon,
   DownloadLinearIcon,
-  DownloadBoldIcon
+  DownloadBoldIcon,
+  PlaneBoldIcon
 } from '@solar-icons/js'
 
 /**
@@ -72,7 +73,7 @@ export function toPascalCase (str) {
  */
 export const SOLAR_ICON_MAP = {
   // Chat Input Actions (Static Controls)
-  send: SendSquareLinearIcon,
+  send: PlaneBoldIcon,
   attach: PaperclipLinearIcon,
   emoji: SmileCircleLinearIcon,
 

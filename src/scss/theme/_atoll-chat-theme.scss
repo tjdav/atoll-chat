@@ -25,11 +25,35 @@
   --atoll-chat-reaction-pill-bg: var(--#{$prefix}body-bg, #ffffff);
   --atoll-chat-reaction-pill-border: var(--#{$prefix}border-color, #e0e0e0);
   --atoll-chat-reaction-pill-color: var(--#{$prefix}secondary-color, #777777);
+
+  // Expanded CSS custom properties
+  --atoll-chat-sent-status-color: var(--#{$prefix}text-tertiary, #999999);
+  --atoll-chat-btn-attach-bg: transparent;
+  --atoll-chat-btn-attach-color: var(--#{$prefix}secondary-color, #777777);
+  --atoll-chat-btn-voice-bg: transparent;
+  --atoll-chat-btn-voice-color: var(--#{$prefix}secondary-color, #777777);
+  --atoll-chat-btn-send-bg: var(--#{$prefix}brand-primary, #06C755);
+  --atoll-chat-btn-send-color: #ffffff;
+  --atoll-chat-waveform-active: var(--#{$prefix}brand-primary, #06C755);
+  --atoll-chat-waveform-inactive: rgba(6, 199, 85, 0.2);
+  --atoll-chat-attachment-card-bg: var(--#{$prefix}bg-surface-tertiary, #EEEEEE);
+  --atoll-chat-attachment-card-border: var(--#{$prefix}border-color-translucent, rgba(0, 0, 0, 0.08));
 }
 
 // Dark Mode Overrides for Classic / Default Theme
 [data-#{$prefix}theme="dark"],
 [data-bs-theme="dark"] {
+  --atoll-chat-sent-status-color: var(--#{$prefix}text-tertiary, #949494);
+  --atoll-chat-btn-attach-bg: transparent;
+  --atoll-chat-btn-attach-color: var(--#{$prefix}text-secondary, #B0B0B0);
+  --atoll-chat-btn-voice-bg: transparent;
+  --atoll-chat-btn-voice-color: var(--#{$prefix}text-secondary, #B0B0B0);
+  --atoll-chat-btn-send-bg: var(--#{$prefix}brand-primary, #06C755);
+  --atoll-chat-btn-send-color: #ffffff;
+  --atoll-chat-waveform-active: var(--#{$prefix}brand-primary, #06C755);
+  --atoll-chat-waveform-inactive: rgba(6, 199, 85, 0.25);
+  --atoll-chat-attachment-card-bg: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
+  --atoll-chat-attachment-card-border: var(--#{$prefix}border-color-translucent, rgba(255, 255, 255, 0.08));
   --atoll-chat-bg: var(--#{$prefix}pane-bg, #1F1F1F);
   --atoll-chat-header-bg: var(--#{$prefix}pane-bg, #1F1F1F);
   --atoll-chat-header-color: var(--#{$prefix}text-primary, #ffffff);
@@ -58,6 +82,17 @@
     --atoll-chat-bubble-sent-color: #{map-get($tokens, "bubble-sent-color")};
     --atoll-chat-bubble-received-bg: #{map-get($tokens, "bubble-received-bg")};
     --atoll-chat-bubble-received-color: #{map-get($tokens, "bubble-received-color")};
+    --atoll-chat-sent-status-color: #{map-get($tokens, "sent-status-color")};
+    --atoll-chat-btn-attach-bg: #{map-get($tokens, "btn-attach-bg")};
+    --atoll-chat-btn-attach-color: #{map-get($tokens, "btn-attach-color")};
+    --atoll-chat-btn-voice-bg: #{map-get($tokens, "btn-voice-bg")};
+    --atoll-chat-btn-voice-color: #{map-get($tokens, "btn-voice-color")};
+    --atoll-chat-btn-send-bg: #{map-get($tokens, "btn-send-bg")};
+    --atoll-chat-btn-send-color: #{map-get($tokens, "btn-send-color")};
+    --atoll-chat-waveform-active: #{map-get($tokens, "waveform-active")};
+    --atoll-chat-waveform-inactive: #{map-get($tokens, "waveform-inactive")};
+    --atoll-chat-attachment-card-bg: #{map-get($tokens, "attachment-card-bg")};
+    --atoll-chat-attachment-card-border: #{map-get($tokens, "attachment-card-border")};
   }
 }
 

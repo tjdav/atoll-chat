@@ -51,6 +51,51 @@
   }
 }
 
+.chat-input-btn-attach,
+.chat-input-btn-voice,
+.chat-input-btn-send {
+  &.atoll-btn,
+  & button {
+    border-radius: 50% !important;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: none !important;
+    transition: background-color 0.2s ease, color 0.2s ease, opacity 0.2s ease;
+
+    &:hover {
+      opacity: 0.9;
+    }
+    &:active {
+      opacity: 0.8;
+    }
+  }
+}
+
+.chat-input-btn-attach {
+  &.atoll-btn,
+  & button {
+    background-color: var(--atoll-chat-btn-attach-bg) !important;
+    color: var(--atoll-chat-btn-attach-color) !important;
+  }
+}
+
+.chat-input-btn-voice {
+  &.atoll-btn,
+  & button {
+    background-color: var(--atoll-chat-btn-voice-bg) !important;
+    color: var(--atoll-chat-btn-voice-color) !important;
+  }
+}
+
+.chat-input-btn-send {
+  &.atoll-btn,
+  & button {
+    background-color: var(--atoll-chat-btn-send-bg) !important;
+    color: var(--atoll-chat-btn-send-color) !important;
+  }
+}
+
 .recording-ui {
   animation: chatInputSlideUp 0.3s ease;
 }

@@ -5,9 +5,10 @@
     <!-- Attachment Button -->
     <atoll-button 
       icon-only="true" 
-      variant="ghost" 
+      variant="primary" 
       size="sm" 
       ref="attachButton" 
+      class="chat-input-btn-attach"
       title="Attach File" 
       aria-label="Attach File"
       disabled="{{ isDisabled }}"
@@ -41,9 +42,10 @@
 
     <atoll-button 
       icon-only="true" 
-      variant="ghost" 
+      variant="primary" 
       size="sm" 
       ref="micButton" 
+      class="chat-input-btn-voice"
       title="Voice message" 
       aria-label="Voice message"
       disabled="{{ isDisabled }}" 
@@ -58,6 +60,7 @@
       size="sm" 
       pill="true"
       ref="sendButton" 
+      class="chat-input-btn-send"
       aria-label="Send Message"
       disabled="{{ isDisabled }}" 
       data-testid="sendButton"

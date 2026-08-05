@@ -104,4 +104,8 @@ timeline-row {
 .message-status-container {
   margin-top: -12px;
   margin-bottom: 8px;
+  color: var(--atoll-chat-sent-status-color, var(--atoll-chat-timestamp-color)) !important;
+  span {
+    color: var(--atoll-chat-sent-status-color, var(--atoll-chat-timestamp-color)) !important;
+  }
 }
