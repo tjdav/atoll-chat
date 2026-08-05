@@ -18,18 +18,7 @@ export default defineConfig({
   globalTeardown: './tests/e2e/setup/global-teardown.js',
   use: {
     baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry',
-    permissions: ['clipboard-read', 'clipboard-write'],
-    launchOptions: {
-      executablePath: getExecutablePath('/usr/bin/google-chrome') || getExecutablePath('/usr/bin/chromium'),
-      args: [
-        '--use-fake-ui-for-media-stream',
-        '--use-fake-device-for-media-stream',
-        '--allow-loopback-in-peer-connection',
-        '--enforce-webrtc-ip-permission-check=false',
-        '--unlimited-storage'
-      ]
-    }
+    trace: 'on-first-retry'
   },
 
   projects: [
@@ -37,6 +26,7 @@ export default defineConfig({
       name: 'chromium',
       use: {
         ...devices['Desktop Chrome'],
+        permissions: ['clipboard-read', 'clipboard-write'],
         launchOptions: {
           executablePath: getExecutablePath('/usr/bin/google-chrome') || getExecutablePath('/usr/bin/chromium'),
           args: [
@@ -47,6 +37,23 @@ export default defineConfig({
             '--unlimited-storage',
             `--use-file-for-fake-video-capture=${path.join(import.meta.dirname, 'tests/e2e/fixtures/test-video.y4m')}`
           ]
+        }
+      }
+    },
+    {
+      name: 'firefox',
+      testMatch: /firefox-.*\.spec\.js$/,
+      use: {
+        ...devices['Desktop Firefox'],
+        launchOptions: {
+          firefoxUserPrefs: {
+            'media.navigator.permission.disabled': true,
+            'media.navigator.streams.fake': true,
+            'dom.webrtc.webrtc_recorder.enabled': true,
+            'dom.indexedDB.enabled': true,
+            'privacy.trackingprotection.enabled': false,
+            'privacy.trackingprotection.pbmode.enabled': false
+          }
         }
       }
     }

@@ -359,8 +359,10 @@ export const test = base.extend({
     })
 
     try {
-      const client = await page.context().newCDPSession(page)
-      await client.send('Network.setCacheDisabled', { cacheDisabled: true })
+      if (testInfo.project && testInfo.project.name === 'chromium') {
+        const client = await page.context().newCDPSession(page)
+        await client.send('Network.setCacheDisabled', { cacheDisabled: true })
+      }
     } catch (e) {
       console.warn('Could not disable cache via CDP:', e.message)
     }
@@ -470,20 +472,29 @@ export const test = base.extend({
       await targetPage.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle && window.__coralite__.lifecycle.hydrated)
 
       /* Login Flow */
-      const isAlreadyLoggedIn = await targetPage.locator('app-layout').isVisible().catch(() => false)
+      const isAlreadyLoggedIn = await targetPage.locator('app-layout').isVisible({ timeout: 2000 }).catch(() => false)
       if (!isAlreadyLoggedIn) {
-        await targetPage.locator('auth-login input[data-testid$="username"]').fill(username)
-        await targetPage.locator('auth-login input[data-testid$="password"]').fill(appPassword)
-        await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
+        const vaultUnlockInput = targetPage.locator('vault-unlock input[data-testid$="password"]')
+        const isVaultUnlockVisible = await vaultUnlockInput.isVisible({ timeout: 2000 }).catch(() => false)
 
-        const vaultUnlockPasswordInput = targetPage.locator('vault-unlock input[data-testid$="password"]')
-        if (await vaultUnlockPasswordInput.isVisible({ timeout: 2000 }).catch(() => false)) {
-          await vaultUnlockPasswordInput.fill(vaultPassword)
+        if (isVaultUnlockVisible) {
+          await vaultUnlockInput.fill(vaultPassword || appPassword)
           await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+        } else {
+          const usernameInput = targetPage.locator('auth-login input[data-testid$="username"]')
+          await expect(usernameInput).toBeVisible({ timeout: 20000 })
+          await usernameInput.fill(username)
+          await targetPage.locator('auth-login input[data-testid$="password"]').fill(appPassword)
+          await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
+
+          if (await vaultUnlockInput.isVisible({ timeout: 3000 }).catch(() => false)) {
+            await vaultUnlockInput.fill(vaultPassword || appPassword)
+            await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+          }
         }
       }
 
-      await expect(targetPage.locator('app-layout')).toBeVisible({ timeout: 15000 })
+      await expect(targetPage.locator('app-layout')).toBeVisible({ timeout: 20000 })
     }
 
     await use(doLogin)

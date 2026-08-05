@@ -50,7 +50,10 @@ export default definePlugin({
             },
             checkCompatibility: async (file) => {
               const adapter = await getAdapter(instanceContext)
-              return adapter.checkCompatibility ? adapter.checkCompatibility(file) : { requiresConversion: false, category: 'none' }
+              return adapter.checkCompatibility ? adapter.checkCompatibility(file) : {
+                requiresConversion: false,
+                category: 'none'
+              }
             },
             extractThumbnail: async (file) => {
               const adapter = await getAdapter(instanceContext)

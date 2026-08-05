@@ -30,9 +30,15 @@ if (fs.existsSync(indexHtmlPath)) {
     const replacement = `<script type="module" src="/assets/js/${bootstrapFilename}" integrity="${integrity}" crossorigin="anonymous" defer></script>`
     content = content.replace(match[0], replacement)
 
+    // Move <script type="importmap"> to the very top of <head> for Firefox ES module compliance
+    content = content.replace(/(<head.*?>)([\s\S]*?)(<script type="importmap">[\s\S]*?<\/script>)/i, '$1\n  $3$2')
+
     fs.writeFileSync(indexHtmlPath, content, 'utf8')
     console.log(`[Post-Build] Successfully extracted inline bootstrap script to /assets/js/${bootstrapFilename} and applied SRI (hash: ${integrity})!`)
   } else {
+    // Ensure importmap is moved even if no inline script was found
+    content = content.replace(/(<head.*?>)([\s\S]*?)(<script type="importmap">[\s\S]*?<\/script>)/i, '$1\n  $3$2')
+    fs.writeFileSync(indexHtmlPath, content, 'utf8')
     console.log('[Post-Build] No inline bootstrap script found in dist/index.html.')
   }
 } else {

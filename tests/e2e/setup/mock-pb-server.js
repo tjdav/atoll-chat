@@ -274,13 +274,17 @@ export function createServer () {
       "base-uri 'self'; " +
       "form-action 'self';"
     )
+    res.setHeader('Access-Control-Allow-Origin', origin || '*')
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Worker-Token, x-test-id')
+    res.setHeader('Access-Control-Allow-Credentials', 'true')
     res.setHeader('X-Content-Type-Options', 'nosniff')
     res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains')
     res.setHeader('X-Frame-Options', 'DENY')
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
 
     if (req.method === 'OPTIONS') {
-      res.writeHead(200)
+      res.writeHead(204)
       res.end()
       return
     }

@@ -6,18 +6,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, interactive-widget=resizes-content, viewport-fit=cover, maximum-scale=1.0, user-scalable=no">
   <title>Atoll - A secure, end-to-end encrypted messaging and media platform.</title>
 
+</head>
+
+<body>
   <!-- PWA Manifest -->
   <link rel="manifest" href="/manifest.json">
-
-  <!-- Browser Theme Color (Matches manifest & adapts dynamically) -->
-  <meta name="theme-color" content="#F5F5F5" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#111111" media="(prefers-color-scheme: dark)" />
-
-  <!-- iOS Support -->
   <link rel="apple-touch-icon" href="/icon-192x192.png">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="Atoll Chat">
+
+  <app-root></app-root>
 
   <!-- ALTCHA Captcha Web Component -->
   <script 
@@ -28,10 +24,6 @@
     async 
     defer
   ></script>
-</head>
-
-<body>
-  <app-root></app-root>
 
   <!-- Extracted Service Worker Registration -->
   <script 

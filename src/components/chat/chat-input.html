@@ -444,6 +444,7 @@
             }
           } catch (err) {
             console.warn('[chat-input] Video processing failed, using original file:', err)
+            state.uploadStatus = 'Ready to send (original format)'
           } finally {
             state.isCompressing = false
           }

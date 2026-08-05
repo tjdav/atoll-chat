@@ -261,7 +261,7 @@ test.describe('Atoll Popup / Modal Component', () => {
 
     const actionsHorizontal = popupHorizontal.locator('.atoll-popup-actions')
     await expect(actionsHorizontal).toHaveClass(/atoll-popup-actions-horizontal/)
-    
+
     // In horizontal, secondBtn is on the left (first child), primaryBtn is on the right (second child)
     const firstButtonH = actionsHorizontal.locator('atoll-button').nth(0)
     const secondButtonH = actionsHorizontal.locator('atoll-button').nth(1)

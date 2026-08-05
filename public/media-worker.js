@@ -336,25 +336,51 @@ async function compressVideo (file, options = {}, onProgress) {
     target: new BufferTarget()
   })
 
+  const videoConfig = {
+    width: maxWidth,
+    height: maxHeight,
+    fit: 'contain',
+    bitrate: targetBitrate
+  }
+
+  if (format === 'webm') {
+    videoConfig.codec = codec
+  }
+
   const conversionOptions = {
     input,
     output,
     tracks: 'primary',
-    video: {
-      width: maxWidth,
-      height: maxHeight,
-      fit: 'contain',
-      bitrate: targetBitrate
-    }
+    video: videoConfig
   }
 
   if (format === 'webm') {
-    conversionOptions.video.codec = codec
+    conversionOptions.audio = {
+      codec: 'opus',
+      bitrate: 128_000
+    }
   }
 
   const conversion = await Conversion.init(conversionOptions)
 
   if (!conversion.isValid) {
+    const videoTrackValid = !conversion.discardedTracks.some(t => t.track && t.track.kind === 'video')
+    if (videoTrackValid) {
+      console.warn('[media-worker] Audio track discarded in conversion; retrying video track only')
+      delete conversionOptions.audio
+      const videoOnlyConversion = await Conversion.init(conversionOptions)
+      if (videoOnlyConversion.isValid) {
+        if (onProgress) {
+          videoOnlyConversion.onProgress = (progress) => onProgress(Math.round(progress * 100))
+        }
+        await videoOnlyConversion.execute()
+        return {
+          buffer: new Uint8Array(output.target.buffer),
+          mimeType: outputFormat.mimeType,
+          extension: outputFormat.fileExtension
+        }
+      }
+    }
     throw new Error('Conversion not valid: ' + conversion.discardedTracks.map(t => t.reason).join(', '))
   }
 
