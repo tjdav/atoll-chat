@@ -18,12 +18,13 @@ export default definePlugin({
           if (pluginContext.$bus) {
             pluginContext.$bus.emit(type === 'video:progress' ? 'media:video_progress' : 'media:audio_progress', {
               id,
-              progress: payload.progress
+              progress: payload.progress,
+              status: payload.status
             })
           }
           const pending = pendingRequests.get(id)
           if (pending && pending.onProgress) {
-            pending.onProgress(payload.progress)
+            pending.onProgress(payload.progress, payload.status)
           }
           return
         }

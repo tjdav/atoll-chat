@@ -8,6 +8,8 @@
         is-video="{{ isVideo }}"
         thumbnail-url="{{ thumbnailPreviewUrl }}"
         is-custom="{{ isCustomCover }}"
+        is-compressing="{{ isCompressing }}"
+        progress="{{ progress }}"
       ></chat-attachment-preview>
     </div>
 
@@ -53,7 +55,8 @@
       isVideo: false,
       thumbnailPreviewUrl: '',
       isCustomCover: false,
-      autoExtractedThumbnailBlob: null
+      autoExtractedThumbnailBlob: null,
+      progress: 0
     }),
     getters: {
       attachmentPreviewClass: (state) => (state.hasFile ? 'd-block' : 'd-none'),
@@ -97,6 +100,7 @@
         state.isVideo = false
         state.isCustomCover = false
         state.autoExtractedThumbnailBlob = null
+        state.progress = 0
         revokePreviewUrl()
         currentMusicMetadata = null
         currentAlbumArtBlob = null
@@ -369,6 +373,14 @@
 
       $bus.on('ui:file_selected', async (payload) => {
         let file = payload.file
+        if (!file) {
+          return
+        }
+
+        state.selectedFile = file
+        state.fileName = file.name
+        state.hasFile = true
+        state.progress = 0
 
         // Check format compatibility for web playback across browsers and devices
         const compatibility = await $media.checkCompatibility(file)
@@ -399,6 +411,7 @@
           }
         } else if (file.type.startsWith('video/') || compatibility.category === 'video') {
           state.isCompressing = true
+          state.progress = 0
           state.uploadStatus = 'Processing video...'
           state.isVideo = true
           state.isCustomCover = false
@@ -428,7 +441,17 @@
                 : 'Compressing video for server upload... 0%'
               file = await $media.compressVideo(file, {
                 duration: result.duration,
-                bitrate: evalResult.targetBitrate || undefined
+                bitrate: evalResult.targetBitrate || undefined,
+                onProgress: (progress, status) => {
+                  state.progress = progress
+                  if (status) {
+                    state.uploadStatus = status
+                  } else {
+                    state.uploadStatus = compatibility.requiresConversion
+                      ? `Converting video to MP4... ${progress}%`
+                      : `Compressing video... ${progress}%`
+                  }
+                }
               })
             } else if (evalResult.useWebRTC) {
               console.log('[chat-input] Video exceeds server upload threshold even after estimated compression; WebRTC P2P fallback will be used.')
@@ -442,6 +465,7 @@
           }
         } else if (file.type.startsWith('audio/') || compatibility.category === 'audio') {
           state.isCompressing = true
+          state.progress = 0
           state.uploadStatus = 'Extracting metadata...'
           try {
             // Convert uncompressed or non-universal audio (WAV, FLAC) to MP4/AAC (.m4a)
@@ -471,11 +495,11 @@
 
         if (file.size > 100 * 1024 * 1024) {
           alert('File is too large. Maximum size is 100MB.')
+          resetUI()
           return
         }
         state.selectedFile = file
         state.fileName = file.name
-        state.hasFile = true
         state.uploadStatus = 'Ready to send'
       })
 

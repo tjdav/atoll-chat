@@ -22,8 +22,18 @@
       <i class="bi bi-file-earmark-arrow-up text-primary fs-4 me-2" hidden="{{ isGenericIconHidden }}"></i>
       
       <div>
-        <div class="small fw-bold text-truncate" style="max-width: 200px;">{{ fileName }}</div>
-        <div class="x-small text-muted">{{ uploadStatus }}</div>
+        <div class="small fw-bold text-truncate" style="max-width: 250px;">{{ fileName }}</div>
+        <div class="x-small text-muted text-truncate" style="max-width: 250px;">{{ uploadStatus }}</div>
+        
+        <!-- Progress Bar Indicator -->
+        <div class="progress mt-1" style="height: 6px; width: 100%; max-width: 250px;" hidden="{{ isProgressHidden }}">
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+               role="progressbar" 
+               style="{{ progressBarStyle }}" 
+               aria-valuenow="{{ progress }}" 
+               aria-valuemin="0" 
+               aria-valuemax="100"></div>
+        </div>
       </div>
     </div>
     <button class="btn btn-sm btn-link text-danger" ref="cancelFileButton" title="Cancel">
@@ -42,7 +52,9 @@
       uploadStatus: String,
       isVideo: Boolean,
       thumbnailUrl: String,
-      isCustom: Boolean
+      isCustom: Boolean,
+      isCompressing: Boolean,
+      progress: Number
     },
     getters: {
       isVideoHidden: (state) => !state.isVideo,
@@ -50,7 +62,9 @@
       isThumbnailHidden: (state) => !state.thumbnailUrl,
       isThumbnailVisibleHidden: (state) => !!state.thumbnailUrl,
       coverBtnText: (state) => (state.isCustom ? 'Remove Custom Cover' : 'Change Cover'),
-      coverBtnClass: (state) => (state.isCustom ? 'btn-danger' : 'btn-dark')
+      coverBtnClass: (state) => (state.isCustom ? 'btn-danger' : 'btn-dark'),
+      isProgressHidden: (state) => !state.isCompressing,
+      progressBarStyle: (state) => 'width: ' + Math.min(100, Math.max(0, Number(state.progress) || 0)) + '%'
     },
     client: ({ refs, state, eventBus, signal, observe }) => {
       const { $bus } = eventBus

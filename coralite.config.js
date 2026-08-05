@@ -151,6 +151,51 @@ export default defineConfig({
       pkg: 'bootstrap-icons',
       path: 'font/fonts/bootstrap-icons.woff2',
       dest: 'assets/css/fonts/bootstrap-icons.woff2'
+    },
+    {
+      pkg: '@ffmpeg/core',
+      path: 'dist/esm/ffmpeg-core.js',
+      dest: 'assets/ffmpeg-core.js'
+    },
+    {
+      pkg: '@ffmpeg/core',
+      path: 'dist/esm/ffmpeg-core.wasm',
+      dest: 'assets/ffmpeg-core.wasm'
+    },
+    {
+      pkg: '@ffmpeg/ffmpeg',
+      path: 'dist/esm/index.js',
+      dest: 'assets/ffmpeg/index.js'
+    },
+    {
+      pkg: '@ffmpeg/ffmpeg',
+      path: 'dist/esm/classes.js',
+      dest: 'assets/ffmpeg/classes.js'
+    },
+    {
+      pkg: '@ffmpeg/ffmpeg',
+      path: 'dist/esm/const.js',
+      dest: 'assets/ffmpeg/const.js'
+    },
+    {
+      pkg: '@ffmpeg/ffmpeg',
+      path: 'dist/esm/errors.js',
+      dest: 'assets/ffmpeg/errors.js'
+    },
+    {
+      pkg: '@ffmpeg/ffmpeg',
+      path: 'dist/esm/types.js',
+      dest: 'assets/ffmpeg/types.js'
+    },
+    {
+      pkg: '@ffmpeg/ffmpeg',
+      path: 'dist/esm/utils.js',
+      dest: 'assets/ffmpeg/utils.js'
+    },
+    {
+      pkg: '@ffmpeg/ffmpeg',
+      path: 'dist/esm/worker.js',
+      dest: 'assets/ffmpeg/worker.js'
     }
   ],
   testing: {

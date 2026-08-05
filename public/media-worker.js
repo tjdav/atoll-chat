@@ -82,8 +82,22 @@ self.onmessage = async (event) => {
                 })
               })
             } catch (av1Error) {
-              console.error('[media-worker] All video compression options failed:', av1Error)
-              throw av1Error
+              console.warn('[media-worker] All WebCodecs options failed. Initiating FFmpeg WASM fallback...', av1Error)
+              try {
+                result = await transcodeWithFFmpeg(payload.file, payload.options, (progress, status) => {
+                  self.postMessage({
+                    id,
+                    type: 'video:progress',
+                    payload: {
+                      progress,
+                      status
+                    }
+                  })
+                })
+              } catch (ffmpegError) {
+                console.error('[media-worker] FFmpeg WASM fallback failed:', ffmpegError)
+                throw ffmpegError
+              }
             }
           }
         }
@@ -254,22 +268,32 @@ async function getMetadata (file, options = {}) {
   }
 
   let thumbnail = null
-  if (file.type.startsWith('video/') && input && !options.skipThumbnail) {
-    try {
-      const videoTrack = await input.getPrimaryVideoTrack()
-      if (videoTrack) {
-        const sink = new CanvasSink(videoTrack, {
-          width: 1200,
-          height: 1200,
-          fit: 'contain'
-        })
-        const result = await sink.getCanvas(0)
-        if (result) {
-          thumbnail = await result.canvas.transferToImageBitmap()
+  if ((file.type.startsWith('video/') || (file.name && file.name.match(/\.(mkv|avi|mov|flv|wmv|ts|m2ts|3gp|ogv)$/i))) && !options.skipThumbnail) {
+    if (input) {
+      try {
+        const videoTrack = await input.getPrimaryVideoTrack()
+        if (videoTrack) {
+          const sink = new CanvasSink(videoTrack, {
+            width: 1200,
+            height: 1200,
+            fit: 'contain'
+          })
+          const result = await sink.getCanvas(0)
+          if (result) {
+            thumbnail = await result.canvas.transferToImageBitmap()
+          }
         }
+      } catch (thumbErr) {
+        console.warn('[media-worker] WebCodecs thumbnail extraction failed:', thumbErr)
       }
-    } catch (thumbErr) {
-      console.warn('[media-worker] Failed to extract video thumbnail:', thumbErr)
+    }
+    if (!thumbnail) {
+      try {
+        console.info('[media-worker] Attempting FFmpeg WASM thumbnail extraction fallback...')
+        thumbnail = await extractThumbnailWithFFmpeg(file)
+      } catch (ffmpegThumbErr) {
+        console.warn('[media-worker] FFmpeg WASM thumbnail extraction failed:', ffmpegThumbErr)
+      }
     }
   }
 
@@ -398,3 +422,146 @@ async function compressVideo (file, options = {}, onProgress) {
     extension: outputFormat.fileExtension
   }
 }
+
+let ffmpegInstance = null
+
+async function getFFmpegInstance () {
+  if (!ffmpegInstance) {
+    const { FFmpeg } = await import('/assets/ffmpeg/index.js')
+    ffmpegInstance = new FFmpeg()
+  }
+  if (!ffmpegInstance.loaded) {
+    await ffmpegInstance.load({
+      classWorkerURL: '/assets/ffmpeg/worker.js',
+      coreURL: '/assets/ffmpeg-core.js',
+      wasmURL: '/assets/ffmpeg-core.wasm'
+    })
+  }
+  return ffmpegInstance
+}
+
+async function transcodeWithFFmpeg (file, _options = {}, onProgress) {
+  if (onProgress) {
+    onProgress(0, 'Initializing FFmpeg WASM transcoder...')
+  }
+
+  const ffmpeg = await getFFmpegInstance()
+
+  const progressHandler = ({ progress }) => {
+    if (onProgress) {
+      const pct = Math.min(99, Math.max(1, Math.round(progress * 100)))
+      onProgress(pct, `Transcoding video with FFmpeg WASM... ${pct}%`)
+    }
+  }
+
+  ffmpeg.on('progress', progressHandler)
+
+  try {
+    const fileArrayBuffer = await file.arrayBuffer()
+    const inputData = new Uint8Array(fileArrayBuffer)
+
+    const lastDot = file.name ? file.name.lastIndexOf('.') : -1
+    const ext = lastDot !== -1 ? file.name.substring(lastDot) : '.mkv'
+    const timestamp = Date.now()
+    const inputName = `input_${timestamp}${ext}`
+    const outputName = `output_${timestamp}.mp4`
+
+    await ffmpeg.writeFile(inputName, inputData)
+
+    const execArgs = [
+      '-i',
+      inputName,
+      '-c:v',
+      'libx264',
+      '-preset',
+      'ultrafast',
+      '-crf',
+      '28',
+      '-vf',
+      'scale=trunc(oh*a/2)*2:720',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '128k',
+      '-movflags',
+      '+faststart',
+      outputName
+    ]
+
+    console.info(`[media-worker] Executing FFmpeg WASM command: ffmpeg ${execArgs.join(' ')}`)
+    const ret = await ffmpeg.exec(execArgs)
+
+    if (ret !== 0) {
+      throw new Error(`FFmpeg process exited with non-zero code (${ret})`)
+    }
+
+    const outputData = await ffmpeg.readFile(outputName)
+
+    try {
+      await ffmpeg.deleteFile(inputName)
+      await ffmpeg.deleteFile(outputName)
+    } catch (e) {
+      console.warn('[media-worker] Cleanup error (ignored):', e)
+    }
+
+    if (onProgress) {
+      onProgress(100, 'Video transcoding complete!')
+    }
+
+    return {
+      buffer: outputData,
+      mimeType: 'video/mp4',
+      extension: '.mp4'
+    }
+  } finally {
+    ffmpeg.off('progress', progressHandler)
+  }
+}
+
+async function extractThumbnailWithFFmpeg (file) {
+  const ffmpeg = await getFFmpegInstance()
+
+  try {
+    const fileArrayBuffer = await file.arrayBuffer()
+    const inputData = new Uint8Array(fileArrayBuffer)
+
+    const lastDot = file.name ? file.name.lastIndexOf('.') : -1
+    const ext = lastDot !== -1 ? file.name.substring(lastDot) : '.mkv'
+    const timestamp = Date.now()
+    const inputName = `thumb_in_${timestamp}${ext}`
+    const outputName = `thumb_out_${timestamp}.jpg`
+
+    await ffmpeg.writeFile(inputName, inputData)
+
+    const ret = await ffmpeg.exec([
+      '-ss',
+      '00:00:01',
+      '-i',
+      inputName,
+      '-vframes',
+      '1',
+      '-vf',
+      'scale=1200:-1',
+      outputName
+    ])
+
+    if (ret !== 0) {
+      throw new Error(`FFmpeg thumbnail process exited with code ${ret}`)
+    }
+
+    const outputData = await ffmpeg.readFile(outputName)
+
+    try {
+      await ffmpeg.deleteFile(inputName)
+      await ffmpeg.deleteFile(outputName)
+    } catch (_e) {
+    }
+
+    const blob = new Blob([outputData], { type: 'image/jpeg' })
+    return await createImageBitmap(blob)
+  } catch (err) {
+    console.warn('[media-worker] extractThumbnailWithFFmpeg failed:', err)
+    return null
+  }
+}
+
