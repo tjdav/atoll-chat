@@ -3,11 +3,13 @@ atoll-popup {
   position: relative !important;
   z-index: 1060 !important;
 
+  &:not([open]) {
+    pointer-events: none !important;
+  }
+
   .modal {
     &.fade {
-      display: flex !important;
-      align-items: center;
-      justify-content: center;
+      pointer-events: none;
 
       .atoll-popup-dialog {
         transform: scale(0.92);
@@ -21,6 +23,11 @@ atoll-popup {
       }
 
       &.show {
+        display: flex !important;
+        align-items: center;
+        justify-content: center;
+        pointer-events: auto;
+
         .atoll-popup-dialog {
           transform: scale(1);
           opacity: 1;
@@ -116,11 +123,13 @@ atoll-popup[data-#{$prefix}theme="dark"] {
 
 /* Scoped Modal Backdrop Override */
 .modal-backdrop {
-  opacity: 1 !important;
-  background-color: var(--#{$prefix}popup-backdrop-bg) !important;
-  -webkit-backdrop-filter: blur(4px) !important;
-  /* iOS Safari support */
-  backdrop-filter: blur(4px) !important;
+  &.show {
+    opacity: 1 !important;
+    background-color: var(--#{$prefix}popup-backdrop-bg) !important;
+    -webkit-backdrop-filter: blur(4px) !important;
+    /* iOS Safari support */
+    backdrop-filter: blur(4px) !important;
+  }
 }
 
 /* -------------------------------------------------------------------------- */
