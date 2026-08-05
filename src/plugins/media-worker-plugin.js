@@ -14,9 +14,9 @@ export default definePlugin({
       worker.onmessage = (event) => {
         const { id, type, result, error, payload } = event.data
 
-        if (type === 'video:progress') {
+        if (type === 'video:progress' || type === 'audio:progress') {
           if (pluginContext.$bus) {
-            pluginContext.$bus.emit('media:video_progress', {
+            pluginContext.$bus.emit(type === 'video:progress' ? 'media:video_progress' : 'media:audio_progress', {
               id,
               progress: payload.progress
             })
@@ -112,6 +112,27 @@ export default definePlugin({
                 file,
                 maxServerUploadSizeBytes: options.maxServerUploadSizeBytes,
                 duration: options.duration
+              }
+            })
+          })
+        },
+
+        convertAudio: (file, options = {}) => {
+          return new Promise((resolve, reject) => {
+            const { onProgress, ...workerOptions } = options
+            const id = crypto.randomUUID()
+            pendingRequests.set(id, {
+              resolve,
+              reject,
+              onProgress
+            })
+
+            worker.postMessage({
+              id,
+              type: 'audio:convert',
+              payload: {
+                file,
+                options: workerOptions
               }
             })
           })

@@ -367,15 +367,25 @@
         resetUI()
       })
 
-      // Listen for video compression progress
+      // Listen for video and audio compression progress
       $bus.on('media:video_progress', (payload) => {
         state.uploadStatus = `Compressing video... ${payload.progress}%`
+      })
+      $bus.on('media:audio_progress', (payload) => {
+        state.uploadStatus = `Converting audio... ${payload.progress}%`
       })
 
       $bus.on('ui:file_selected', async (payload) => {
         let file = payload.file
 
-        if (file.type.startsWith('image/')) {
+        // Check format compatibility for web playback across browsers and devices
+        const compatibility = await $media.checkCompatibility(file)
+        if (compatibility.requiresConversion) {
+          console.log(`[chat-input] Format compatibility check: ${compatibility.reason}`)
+          state.uploadStatus = `Converting ${compatibility.category} to web format...`
+        }
+
+        if (file.type.startsWith('image/') || compatibility.category === 'image') {
           state.isCompressing = true
           state.uploadStatus = 'Compressing image...'
           try {
@@ -386,14 +396,16 @@
               format: 'image/webp'
             })
             // Create a new File from the Blob to keep the original name (with new extension)
-            const newName = file.name.substring(0, file.name.lastIndexOf('.')) + '.webp'
+            const lastDot = file.name.lastIndexOf('.')
+            const baseName = lastDot !== -1 ? file.name.substring(0, lastDot) : file.name
+            const newName = baseName + '.webp'
             file = new File([compressedBlob], newName, { type: 'image/webp' })
           } catch (err) {
             console.warn('[chat-input] Image compression failed, using original file:', err)
           } finally {
             state.isCompressing = false
           }
-        } else if (file.type.startsWith('video/')) {
+        } else if (file.type.startsWith('video/') || compatibility.category === 'video') {
           state.isCompressing = true
           state.uploadStatus = 'Processing video...'
           state.isVideo = true
@@ -417,11 +429,14 @@
               maxServerUploadSizeBytes
             })
 
-            if (evalResult.shouldCompress) {
-              state.uploadStatus = 'Compressing video for server upload... 0%'
+            // If non-universal format (.mkv, .mov, .avi, .ts), always force transcoding to MP4 for web playback
+            if (compatibility.requiresConversion || evalResult.shouldCompress) {
+              state.uploadStatus = compatibility.requiresConversion
+                ? 'Converting video to MP4 for web playback... 0%'
+                : 'Compressing video for server upload... 0%'
               file = await $media.compressVideo(file, {
                 duration: result.duration,
-                bitrate: evalResult.targetBitrate
+                bitrate: evalResult.targetBitrate || undefined
               })
             } else if (evalResult.useWebRTC) {
               console.log('[chat-input] Video exceeds server upload threshold even after estimated compression; WebRTC P2P fallback will be used.')
@@ -432,10 +447,16 @@
           } finally {
             state.isCompressing = false
           }
-        } else if (file.type.startsWith('audio/')) {
+        } else if (file.type.startsWith('audio/') || compatibility.category === 'audio') {
           state.isCompressing = true
           state.uploadStatus = 'Extracting metadata...'
           try {
+            // Convert uncompressed or non-universal audio (WAV, FLAC) to MP4/AAC (.m4a)
+            if (compatibility.requiresConversion) {
+              state.uploadStatus = 'Converting audio to web format...'
+              file = await $media.convertAudio(file)
+            }
+
             const result = await $media.extractThumbnail(file)
             if (result) {
               currentMusicMetadata = result.metadata
@@ -443,7 +464,7 @@
               currentAlbumArtBlob = result.albumArt
             }
           } catch (metaErr) {
-            console.warn('[chat-input] Failed to extract metadata:', metaErr)
+            console.warn('[chat-input] Failed to extract metadata/convert audio:', metaErr)
           }
 
           state.uploadStatus = 'Generating waveform...'

@@ -44,6 +44,14 @@ export default definePlugin({
               const adapter = await getAdapter(instanceContext)
               return adapter.evaluateVideo(file, options)
             },
+            convertAudio: async (file, options) => {
+              const adapter = await getAdapter(instanceContext)
+              return adapter.convertAudio(file, options)
+            },
+            checkCompatibility: async (file) => {
+              const adapter = await getAdapter(instanceContext)
+              return adapter.checkCompatibility ? adapter.checkCompatibility(file) : { requiresConversion: false, category: 'none' }
+            },
             extractThumbnail: async (file) => {
               const adapter = await getAdapter(instanceContext)
               return adapter.extractThumbnail(file)

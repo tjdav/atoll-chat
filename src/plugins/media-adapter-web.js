@@ -1,3 +1,5 @@
+import { checkMediaCompatibility } from '../utils/media-compatibility.js'
+
 /**
  * Web Media Adapter Factory
  * Orchestrates WebCodecs video compression, metadata extraction (via Web Worker), and canvas image compression on the main thread.
@@ -92,6 +94,7 @@ export function createWebMediaAdapter (instanceContext) {
   }
 
   return {
+    checkCompatibility: (file) => checkMediaCompatibility(file),
     compressImage,
 
     /**
@@ -148,6 +151,32 @@ export function createWebMediaAdapter (instanceContext) {
 
       const $mediaWorker = mediaWorkerPlugin.$mediaWorker
       return $mediaWorker.evaluateVideo(file, options)
+    },
+
+    /**
+     * Converts raw or uncompressed audio files (WAV, FLAC) to universal MP4/AAC audio format.
+     * @param {File} file - Original audio file.
+     * @param {Object} options - Conversion options.
+     * @returns {Promise<File>} Converted web audio File.
+     */
+    convertAudio: async (file, options = {}) => {
+      const mediaWorkerPlugin = instanceContext.mediaWorker
+      if (!mediaWorkerPlugin) {
+        throw new Error('mediaWorker plugin not registered')
+      }
+
+      const $mediaWorker = mediaWorkerPlugin.$mediaWorker
+      const { buffer, mimeType, extension } = await $mediaWorker.convertAudio(file, options)
+      const blob = new Blob([buffer], { type: mimeType })
+      let newName = file.name
+      const lastDot = file.name.lastIndexOf('.')
+      if (lastDot !== -1) {
+        newName = file.name.substring(0, lastDot) + extension
+      } else {
+        newName = file.name + extension
+      }
+
+      return new File([blob], newName, { type: mimeType })
     },
 
     /**

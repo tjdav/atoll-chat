@@ -116,6 +116,19 @@ self.onmessage = async (event) => {
         type: 'video:evaluate',
         result
       })
+    } else if (type === 'audio:convert') {
+      const result = await convertAudioToUniversal(payload.file, payload.options, (progress) => {
+        self.postMessage({
+          id,
+          type: 'audio:progress',
+          payload: { progress }
+        })
+      })
+      self.postMessage({
+        id,
+        type: 'audio:convert',
+        result
+      }, [result.buffer.buffer])
     }
   } catch (error) {
     console.error(`[media-worker] Error (${type}):`, error)
@@ -124,6 +137,46 @@ self.onmessage = async (event) => {
       type,
       error: error.message
     })
+  }
+}
+
+async function convertAudioToUniversal (file, options = {}, onProgress) {
+  const input = new Input({
+    formats: SUPPORTED_FORMATS,
+    source: new BlobSource(file)
+  })
+
+  const outputFormat = new Mp4OutputFormat()
+  const output = new Output({
+    format: outputFormat,
+    target: new BufferTarget()
+  })
+
+  const conversion = await Conversion.init({
+    input,
+    output,
+    tracks: 'primary',
+    audio: {
+      bitrate: options.bitrate || 128_000
+    }
+  })
+
+  if (!conversion.isValid) {
+    throw new Error('Audio conversion not valid: ' + conversion.discardedTracks.map(t => t.reason).join(', '))
+  }
+
+  conversion.onProgress = (progress) => {
+    if (onProgress) {
+      onProgress(Math.round(progress * 100))
+    }
+  }
+
+  await conversion.execute()
+
+  return {
+    buffer: new Uint8Array(output.target.buffer),
+    mimeType: outputFormat.mimeType || 'audio/mp4',
+    extension: '.m4a'
   }
 }
 
