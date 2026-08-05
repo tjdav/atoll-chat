@@ -19,15 +19,15 @@ test.describe('Chat View Theme System E2E', () => {
     await page.locator('[ref$="btnDetails"] button').click()
     await page.locator('[data-testid$="accordion-customise-btn"]').click()
 
-    const themeModal = page.locator('[data-testid$="themeSelectorModal"]')
+    const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
     const chatContainer = page.locator('[data-testid$="chat-view-container"]')
 
     // Select Ocean Theme
     await page.locator('[data-testid$="btnChangeTheme"]').click()
-    await expect(themeModal.locator('.modal')).toBeVisible()
+    await expect(themeModal).toBeVisible()
     await page.locator('[data-testid$="theme-ocean-item"]').click()
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
-    await expect(themeModal.locator('.modal')).not.toBeVisible()
+    await expect(themeModal).not.toBeVisible()
 
     await expect(chatContainer).toHaveAttribute('data-theme', 'ocean')
     const oceanBgColor = await chatContainer.evaluate((el) => window.getComputedStyle(el).backgroundColor)
@@ -35,10 +35,10 @@ test.describe('Chat View Theme System E2E', () => {
 
     // Switch to Forest Theme
     await page.locator('[data-testid$="btnChangeTheme"]').click()
-    await expect(themeModal.locator('.modal')).toBeVisible()
+    await expect(themeModal).toBeVisible()
     await page.locator('[data-testid$="theme-forest-item"]').click()
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
-    await expect(themeModal.locator('.modal')).not.toBeVisible()
+    await expect(themeModal).not.toBeVisible()
 
     await expect(chatContainer).toHaveAttribute('data-theme', 'forest')
     const forestBgColor = await chatContainer.evaluate((el) => window.getComputedStyle(el).backgroundColor)
@@ -46,10 +46,10 @@ test.describe('Chat View Theme System E2E', () => {
 
     // Switch to Sunset Theme
     await page.locator('[data-testid$="btnChangeTheme"]').click()
-    await expect(themeModal.locator('.modal')).toBeVisible()
+    await expect(themeModal).toBeVisible()
     await page.locator('[data-testid$="theme-sunset-item"]').click()
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
-    await expect(themeModal.locator('.modal')).not.toBeVisible()
+    await expect(themeModal).not.toBeVisible()
 
     await expect(chatContainer).toHaveAttribute('data-theme', 'sunset')
     const sunsetBgColor = await chatContainer.evaluate((el) => window.getComputedStyle(el).backgroundColor)
@@ -57,10 +57,10 @@ test.describe('Chat View Theme System E2E', () => {
 
     // Switch back to Classic Theme
     await page.locator('[data-testid$="btnChangeTheme"]').click()
-    await expect(themeModal.locator('.modal')).toBeVisible()
+    await expect(themeModal).toBeVisible()
     await page.locator('[data-testid$="theme-classic-item"]').click()
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
-    await expect(themeModal.locator('.modal')).not.toBeVisible()
+    await expect(themeModal).not.toBeVisible()
 
     await expect(chatContainer).toHaveAttribute('data-theme', 'classic')
   })
@@ -70,12 +70,12 @@ test.describe('Chat View Theme System E2E', () => {
     await page.locator('[ref$="btnDetails"] button').click()
     await page.locator('[data-testid$="accordion-customise-btn"]').click()
 
-    const themeModal = page.locator('[data-testid$="themeSelectorModal"]')
+    const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
     const chatContainer = page.locator('[data-testid$="chat-view-container"]')
 
     // Open Theme selector modal
     await page.locator('[data-testid$="btnChangeTheme"]').click()
-    await expect(themeModal.locator('.modal')).toBeVisible()
+    await expect(themeModal).toBeVisible()
 
     // Select Custom Theme
     await page.locator('[data-testid$="theme-custom-item"]').click()
@@ -134,7 +134,7 @@ test.describe('Chat View Theme System E2E', () => {
 
     // Click select to apply and save
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
-    await expect(themeModal.locator('.modal')).not.toBeVisible()
+    await expect(themeModal).not.toBeVisible()
 
     // Take verification screenshot!
     await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })

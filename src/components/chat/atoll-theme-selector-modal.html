@@ -135,7 +135,7 @@
       let customPalette = []
       let customPaletteModeIdx = 0
       const paletteModes = ['vibrant', 'muted', 'pastel', 'deep']
-      
+  
       let customSentBg = '#06C755'
       let customSentColor = '#FFFFFF'
       let customReceivedBg = '#EEEEEE'
@@ -223,21 +223,24 @@
       // Listen for open event
       $bus.on('ui:open_theme_modal', showModal)
 
-      // Natively handle theme list item clicks using standard click event delegation
-      themeModal.addEventListener('click', (e) => {
-        const item = e.target.closest('atoll-list-item')
-        if (item) {
-          const themeId = item.getAttribute('data-theme-id')
-          if (themeId) {
-            highlightedTheme = themeId
-            updateThemeListHighlight()
+      const innerModal = themeModal.querySelector('.modal')
+      if (innerModal) {
+        innerModal.addEventListener('click', (e) => {
+          const item = e.target.closest('atoll-list-item')
+          if (item) {
+            const themeId = item.getAttribute('data-theme-id')
+            if (themeId) {
+              highlightedTheme = themeId
+              updateThemeListHighlight()
+            }
           }
-        }
-      })
+        })
+      }
 
       const updateThemeListHighlight = () => {
+        const modalContainer = innerModal || themeModal
         themes.forEach(tName => {
-          const checkRef = themeModal.querySelector(`[data-testid$="check${tName.charAt(0).toUpperCase() + tName.slice(1)}"]`)
+          const checkRef = modalContainer.querySelector(`[data-testid$="check${tName.charAt(0).toUpperCase() + tName.slice(1)}"]`)
           if (checkRef) {
             if (tName === highlightedTheme) {
               checkRef.classList.remove('d-none')
@@ -326,7 +329,9 @@
 
       // Live Preview custom style applicator
       const updateLivePreviewStyles = () => {
-        if (!previewChatWindow) return
+        if (!previewChatWindow) {
+          return
+        }
 
         // Clear inline custom styles first
         previewChatWindow.style.backgroundImage = ''
@@ -373,10 +378,15 @@
       // Handle image file uploads
       imageUploader.addEventListener('change', async (e) => {
         const file = e.target.files[0]
-        if (!file) return
+        if (!file) {
+          return
+        }
 
-        $bus.emit('ui:show_toast', { message: 'Analyzing image...', type: 'info' })
-        
+        $bus.emit('ui:show_toast', {
+          message: 'Analyzing image...',
+          type: 'info'
+        })
+  
         const reader = new FileReader()
         reader.onload = (event) => {
           offscreenImg.src = event.target.result
@@ -407,7 +417,7 @@
         const ctx = canvas.getContext('2d')
         if (ctx) {
           ctx.drawImage(offscreenImg, 0, 0, w, h)
-          
+  
           // Store compressed background JPEG
           customBgImage = canvas.toDataURL('image/jpeg', 0.7)
 
@@ -433,13 +443,18 @@
           renderPaletteSwatches()
           updateLivePreviewStyles()
 
-          $bus.emit('ui:show_toast', { message: 'Custom palette extracted successfully!', type: 'success' })
+          $bus.emit('ui:show_toast', {
+            message: 'Custom palette extracted successfully!',
+            type: 'success'
+          })
         }
       }
 
       // "Generate New Palette" Action Handler
       btnGeneratePalette.addEventListener('click', () => {
-        if (!customBgImage) return
+        if (!customBgImage) {
+          return
+        }
 
         // Cycle through our 4 distinct color extraction modes
         customPaletteModeIdx = (customPaletteModeIdx + 1) % paletteModes.length
@@ -468,13 +483,18 @@
           renderPaletteSwatches()
           updateLivePreviewStyles()
 
-          $bus.emit('ui:show_toast', { message: `Generated new ${mode} palette!`, type: 'info' })
+          $bus.emit('ui:show_toast', {
+            message: `Generated new ${mode} palette!`,
+            type: 'info'
+          })
         }
       })
 
       // "Randomize Colors" Action Handler
       btnRandomizeColors.addEventListener('click', () => {
-        if (!customPalette || customPalette.length < 2) return
+        if (!customPalette || customPalette.length < 2) {
+          return
+        }
 
         // Randomly pick two distinct colors from our active palette
         let idx1 = Math.floor(Math.random() * customPalette.length)
@@ -526,7 +546,10 @@
       // Primary Button Select event callback
       themeModal.addEventListener('atoll-popup-primary', async () => {
         const room_id = $state.activeSelectionId
-        $bus.emit('ui:show_toast', { message: 'Applying theme...', type: 'info' })
+        $bus.emit('ui:show_toast', {
+          message: 'Applying theme...',
+          type: 'info'
+        })
         try {
           const room = await $storage.getRoom(room_id)
           const roomKeyB64 = room.key_history?.find(h => h.epoch_id === 1)?.key
@@ -573,7 +596,10 @@
           room.custom_theme = customThemeObj
           await $storage.saveRoom(room)
 
-          $bus.emit('room:theme_updated', { room_id, theme: highlightedTheme })
+          $bus.emit('room:theme_updated', {
+            room_id,
+            theme: highlightedTheme
+          })
           $bus.emit('room:member_updated', { room_id })
           $bus.emit('db:new_local_room', { room_id })
           $bus.emit('ui:show_toast', {

@@ -67,8 +67,8 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
     // Open theme selector modal
     await page.locator('[data-testid$="btnChangeTheme"]').click()
-    const themeModal = page.locator('[data-testid$="themeSelectorModal"]')
-    await expect(themeModal.locator('.modal')).toBeVisible()
+    const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
+    await expect(themeModal).toBeVisible()
 
     // Highlight Ocean theme
     await page.locator('[data-testid$="theme-ocean-item"]').click()
@@ -76,7 +76,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
     // Save/Select Theme (Target inner button inside atoll-button wrapper)
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
-    await expect(themeModal.locator('.modal')).not.toBeVisible()
+    await expect(themeModal).not.toBeVisible()
 
     // Verify main chat view container has data-theme="ocean" applied
     const chatContainer = page.locator('[data-testid$="chat-view-container"]')
@@ -89,8 +89,8 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
     // Open nicknames modal
     await page.locator('[data-testid$="btnEditNicknames"]').click()
-    const nicknamesModal = page.locator('[data-testid$="nicknamesModal"]')
-    await expect(nicknamesModal.locator('.modal')).toBeVisible()
+    const nicknamesModal = page.locator('.modal').filter({ hasText: 'Nicknames' })
+    await expect(nicknamesModal).toBeVisible()
 
     // Highlight/click participant row (e.g. Bob or bob case-insensitively)
     const bobItem = nicknamesModal.locator('atoll-list-item').filter({ hasText: /bob/i })
@@ -107,7 +107,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
     // Save nicknames changes
     await nicknamesModal.locator('atoll-button[ref$="primaryBtn"] button').click()
-    await expect(nicknamesModal.locator('.modal')).not.toBeVisible()
+    await expect(nicknamesModal).not.toBeVisible()
 
     // Nickname is updated in room details text & chat view header!
     await expect(page.locator('[data-testid$="roomDetailsOffcanvas"] [ref$="roomNameText"]')).toContainText('Bobby')
@@ -137,15 +137,15 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
     // Open block modal
     await page.locator('[data-testid$="btnBlock"]').click()
-    const blockModal = page.locator('[data-testid$="userBlockModal"]')
-    await expect(blockModal.locator('.modal')).toBeVisible()
+    const blockModal = page.locator('.modal').filter({ hasText: 'Block User' })
+    await expect(blockModal).toBeVisible()
 
     // Verify bold section target user's name warning (matches case-insensitively)
     await expect(blockModal.locator('[data-testid$="blockTargetTitle"]')).toContainText(/Block bob\?/i)
 
     // Confirm Block
     await blockModal.locator('atoll-button[ref$="primaryBtn"] button').click()
-    await expect(blockModal.locator('.modal')).not.toBeVisible()
+    await expect(blockModal).not.toBeVisible()
 
     // Assert target user's ID is in blocked list
     const isBlocked = await page.evaluate(() => {
@@ -172,7 +172,8 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
 
     // Save Theme
-    await page.locator('[data-testid$="themeSelectorModal"] atoll-button[ref$="primaryBtn"] button').click()
+    const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
+    await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
 
     // Wait for the modal to close and the theme to apply
     await page.waitForTimeout(1000)
@@ -181,14 +182,15 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.locator('[data-testid$="btnEditNicknames"]').click()
     
     // Highlight Bob
-    await page.locator('[data-testid$="nicknamesModal"] atoll-list-item').filter({ hasText: /bob/i }).click()
+    const nicknamesModal = page.locator('.modal').filter({ hasText: 'Nicknames' })
+    await nicknamesModal.locator('atoll-list-item').filter({ hasText: /bob/i }).click()
     
     // Fill nickname
-    await page.locator('[data-testid$="nicknamesModal"] input[type="text"]').fill('Bobby')
-    await page.locator('[data-testid$="nicknamesModal"] button.btn-success').click()
+    await nicknamesModal.locator('input[type="text"]').fill('Bobby')
+    await nicknamesModal.locator('button.btn-success').click()
     
     // Save
-    await page.locator('[data-testid$="nicknamesModal"] atoll-button[ref$="primaryBtn"] button').click()
+    await nicknamesModal.locator('atoll-button[ref$="primaryBtn"] button').click()
 
     await page.waitForTimeout(1000)
   })
