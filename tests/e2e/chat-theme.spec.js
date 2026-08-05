@@ -127,15 +127,9 @@ test.describe('Chat View Theme System E2E', () => {
     const dimSlider = customControls.locator('[data-testid$="dim-slider"]')
     await dimSlider.fill('60')
 
-    // Take a screenshot of the open modal with live preview!
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification_modal.png' })
-
     // Click select to apply and save
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
     await expect(themeModal).not.toBeVisible()
-
-    // Take verification screenshot!
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
 
     // Verify custom theme attributes are applied on chatView container
     await expect(chatContainer).toHaveAttribute('data-theme', 'custom')

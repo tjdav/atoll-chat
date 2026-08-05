@@ -173,9 +173,6 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     // Select Ocean theme
     await page.locator('[data-testid$="theme-ocean-item"]').click()
 
-    // Take screenshot
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
-
     // Save Theme
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()

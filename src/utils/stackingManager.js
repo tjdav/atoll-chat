@@ -42,6 +42,11 @@ export function initStackingManager() {
   }
 
   const onShowModal = (modal) => {
+    // Ignore native <dialog> popups as native Top Layer handles stacking natively without DOM relocation
+    if (modal.tagName === 'DIALOG' || modal.closest('atoll-popup')) {
+      return
+    }
+
     // Check if this modal is nested inside an offcanvas or another modal
     const nestedParent = modal.parentElement?.closest('.offcanvas, .modal')
     if (nestedParent) {

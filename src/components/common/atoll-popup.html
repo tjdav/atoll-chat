@@ -1,10 +1,7 @@
 <template id="atoll-popup">
-  <div 
+  <dialog 
     ref="modalElement"
-    class="modal fade" 
-    tabindex="-1" 
-    role="dialog"
-    aria-modal="true"
+    class="modal atoll-popup-dialog-native {{ dialogClasses }}" 
     aria-labelledby="{{ ref_modalTitle }}"
     aria-describedby="{{ ref_modalDesc }}"
   >
@@ -39,7 +36,7 @@
         <slot name="actions"></slot>
       </div>
     </div>
-  </div>
+  </dialog>
 </template>
 
 <script type="module">
@@ -231,54 +228,87 @@
       }
     },
 
-    client: ({ state, refs, root, observe, bootstrap, signal }) => {
-      const { Modal } = bootstrap
-      const modalEl = refs('modalElement')
+    client: ({ state, refs, root, observe, signal }) => {
+      const dialogEl = refs('modalElement')
 
-      let bsModalInstance = null
+      if (!dialogEl) return
 
-      // Initialize Bootstrap Modal Engine
-      bsModalInstance = Modal.getOrCreateInstance(modalEl, {
-        backdrop: state.disableBackdrop || state.staticBackdrop ? 'static' : true,
-        keyboard: !state.disableKeyboard && !state.staticBackdrop && !state.disableBackdrop,
-        focus: !state.disableFocus
-      })
+      let isClosing = false
 
-      modalEl.addEventListener('show.bs.modal', () => {
-        state.open = true
+      const showModal = () => {
+        if (!dialogEl.open) {
+          isClosing = false
+          dialogEl.classList.remove('atoll-popup-closing')
+          try {
+            dialogEl.showModal()
+          } catch (e) {
+            // fallback if showModal is already open
+          }
+          document.body.classList.add('modal-open')
+          state.open = true
+          root.dispatchEvent(
+            new CustomEvent('atoll-popup-open', {
+              bubbles: true,
+              composed: true,
+              detail: {
+                variant: state.variant,
+                size: state.size
+              }
+            })
+          )
+        }
+      }
+
+      const hideModal = () => {
+        if (!dialogEl.open || isClosing) return
+        isClosing = true
+        dialogEl.classList.add('atoll-popup-closing')
+
+        const finalizeClose = () => {
+          dialogEl.removeEventListener('animationend', finalizeClose)
+          dialogEl.classList.remove('atoll-popup-closing')
+          if (dialogEl.open) {
+            dialogEl.close()
+          }
+          document.body.classList.remove('modal-open')
+          state.open = false
+          isClosing = false
+          root.dispatchEvent(
+            new CustomEvent('atoll-popup-close', {
+              bubbles: true,
+              composed: true,
+              detail: { variant: state.variant }
+            })
+          )
+        }
+
+        dialogEl.addEventListener('animationend', finalizeClose, { once: true })
+        setTimeout(finalizeClose, 250)
+      }
+
+      // Handle native Escape key (cancel event)
+      dialogEl.addEventListener('cancel', (e) => {
+        if (state.staticBackdrop || state.disableKeyboard) {
+          e.preventDefault()
+        } else {
+          e.preventDefault()
+          hideModal()
+        }
       }, { signal })
 
-      // Synchronize state when closed via backdrop click or Escape key
-      modalEl.addEventListener('hidden.bs.modal', () => {
-        state.open = false
-        root.dispatchEvent(
-          new CustomEvent('atoll-popup-close', {
-            bubbles: true,
-            composed: true,
-            detail: { variant: state.variant }
-          })
-        )
-      }, { signal })
-
-      modalEl.addEventListener('shown.bs.modal', () => {
-        root.dispatchEvent(
-          new CustomEvent('atoll-popup-open', {
-            bubbles: true,
-            composed: true,
-            detail: {
-              variant: state.variant,
-              size: state.size
-            }
-          })
-        )
-      }, { signal })
-
-      // Event delegation for primary and secondary clicks
-      modalEl.addEventListener('click', (e) => {
-        const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
-        if (!target) {
+      // Handle backdrop click detection and event delegation
+      dialogEl.addEventListener('click', (e) => {
+        // If click target is dialogEl itself (backdrop click)
+        if (e.target === dialogEl) {
+          if (!state.staticBackdrop && !state.disableBackdrop) {
+            hideModal()
+          }
           return
         }
+
+        // Event delegation for primary, secondary, tertiary buttons
+        const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
+        if (!target) return
 
         const refAttr = target.getAttribute('ref') || ''
         const isPrimary = refAttr === 'primaryBtn' || refAttr.endsWith('__primaryBtn')
@@ -304,9 +334,7 @@
               detail: { variant: state.variant }
             })
           )
-          if (bsModalInstance) {
-            bsModalInstance.hide()
-          }
+          hideModal()
         } else if (isTertiary) {
           root.dispatchEvent(
             new CustomEvent('atoll-popup-tertiary', {
@@ -323,28 +351,20 @@
 
       // Reactive observer for [open] attribute
       observe('open', (isOpen) => {
-        if (!bsModalInstance) {
-          return
-        }
-
         if (isOpen) {
-          bsModalInstance.show()
+          showModal()
         } else {
-          bsModalInstance.hide()
+          hideModal()
         }
       })
 
       // Expose public DOM interface methods on component host
-      root.show = () => {
-        state.open = true
-      }
-      root.hide = () => {
-        state.open = false
-      }
+      root.show = showModal
+      root.hide = hideModal
 
       // Initial Sync if open attribute is set on mount
-      if (state.open && bsModalInstance) {
-        bsModalInstance.show()
+      if (state.open) {
+        showModal()
       }
     }
   })
