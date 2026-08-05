@@ -20,6 +20,39 @@
 
   export default defineComponent({
     client: ({ globalStore, pocketbase, refs, signal, eventBus, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, webrtcTransfer, bootstrap, notifications }) => {
+      // Synchronously intercept modal/offcanvas events to buffer them until stackingManager.js is dynamically loaded
+      let stackingManagerInstance = null
+      const stackingManagerQueue = []
+
+      const handleStackingEvent = (type, target) => {
+        if (stackingManagerInstance) {
+          stackingManagerInstance.handle(type, target)
+        } else {
+          stackingManagerQueue.push({ type, target })
+        }
+      }
+
+      document.addEventListener('show.bs.modal', (e) => handleStackingEvent('show.bs.modal', e.target), { signal })
+      document.addEventListener('hidden.bs.modal', (e) => handleStackingEvent('hidden.bs.modal', e.target), { signal })
+      document.addEventListener('show.bs.offcanvas', (e) => handleStackingEvent('show.bs.offcanvas', e.target), { signal })
+      document.addEventListener('hidden.bs.offcanvas', (e) => handleStackingEvent('hidden.bs.offcanvas', e.target), { signal })
+
+      // Initialize Global Stacking & Dynamic Z-Index Manager dynamically
+      import('../../utils/stackingManager.js')
+        .then(({ initStackingManager }) => {
+          // Initialize but let our existing root handlers handle event buffering
+          stackingManagerInstance = initStackingManager(signal)
+          
+          // Process any events that fired before the import resolved
+          while (stackingManagerQueue.length > 0) {
+            const { type, target } = stackingManagerQueue.shift()
+            stackingManagerInstance.handle(type, target)
+          }
+        })
+        .catch(err => {
+          console.error('[app-root] Failed to load stacking manager:', err)
+        })
+
       /* SHA-256 Generator Helper */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)

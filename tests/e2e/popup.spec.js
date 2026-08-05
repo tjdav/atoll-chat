@@ -362,4 +362,82 @@ test.describe('Atoll Popup / Modal Component', () => {
     // Assert that the modal is still open
     await expect(modal).toBeVisible()
   })
+
+  test('should dynamically relocate nested modals to document.body and manage z-indices progressive stack ordering over offcanvas', async ({ page }) => {
+    // Set up a nested structure: a modal inside an offcanvas container
+    await page.evaluate(() => {
+      const offcanvas = document.createElement('div')
+      offcanvas.id = 'test-offcanvas'
+      offcanvas.className = 'offcanvas offcanvas-end show'
+      offcanvas.style.zIndex = '1050'
+
+      const popup = document.createElement('atoll-popup')
+      popup.id = 'nested-popup'
+      popup.setAttribute('title', 'Nested Dialog')
+      
+      offcanvas.appendChild(popup)
+      document.body.appendChild(offcanvas)
+
+      // Open the offcanvas (simulating offcanvas show event)
+      offcanvas.dispatchEvent(new CustomEvent('show.bs.offcanvas', { bubbles: true }))
+
+      // Open the modal popup
+      popup.setAttribute('open', 'true')
+    })
+
+    const offcanvas = page.locator('#test-offcanvas')
+    const popupHost = page.locator('#nested-popup')
+    const modal = page.locator('.modal')
+
+    await expect(offcanvas).toBeVisible()
+    await expect(modal).toBeVisible()
+
+    // Assert that the inner modal element has been relocated to body to escape the offcanvas stacking context
+    const isDirectChildOfBody = await page.evaluate(() => {
+      const modalEl = document.querySelector('.modal')
+      return modalEl && modalEl.parentElement === document.body
+    })
+    expect(isDirectChildOfBody).toBe(true)
+
+    // Assert the progressive z-indices are assigned correctly
+    // Since offcanvas was opened first (index 0), then modal was opened second (index 1)
+    // index 0 (offcanvas): backdrop z-index 1040, element z-index 1050
+    // index 1 (modal): backdrop z-index 1060, element z-index 1070
+    const zIndices = await page.evaluate(() => {
+      const offcanvasEl = document.getElementById('test-offcanvas')
+      const modalEl = document.querySelector('.modal')
+      
+      // Find backdrops
+      const modalBackdrop = document.querySelector('.modal-backdrop')
+      const offcanvasBackdrop = document.querySelector('.offcanvas-backdrop')
+
+      return {
+        offcanvas: window.getComputedStyle(offcanvasEl).zIndex,
+        modal: window.getComputedStyle(modalEl).zIndex,
+        modalBackdrop: modalBackdrop ? window.getComputedStyle(modalBackdrop).zIndex : null
+      }
+    })
+
+    expect(Number(zIndices.offcanvas)).toBe(1050)
+    expect(Number(zIndices.modal)).toBe(1070)
+    expect(Number(zIndices.modalBackdrop)).toBe(1060)
+
+    // Close the modal
+    await page.evaluate(() => {
+      const popup = document.getElementById('nested-popup')
+      popup.removeAttribute('open')
+    })
+
+    // Wait for the modal transition to finish and become hidden
+    await expect(modal).not.toBeVisible()
+    await page.waitForTimeout(500)
+
+    // Assert the modal is restored to its original parent (under #nested-popup custom host)
+    const isRestoredToParent = await page.evaluate(() => {
+      const modalEl = document.querySelector('#nested-popup .modal')
+      const host = document.getElementById('nested-popup')
+      return modalEl && modalEl.parentElement === host
+    })
+    expect(isRestoredToParent).toBe(true)
+  })
 })
