@@ -66,19 +66,17 @@
       const { ScrollSpy } = await bootstrap
 
       const btnBack = refs('btnBack')
-      if (btnBack) {
-        btnBack.addEventListener('click', () => {
-          $state.activeSelectionId = null
-          $state.activeSelectionType = null
-          $bus.emit('ui:open_mobile_nav')
-        })
-      }
+      btnBack.addEventListener('click', () => {
+        $state.activeSelectionId = null
+        $state.activeSelectionType = null
+        $bus.emit('ui:open_mobile_nav')
+      })
 
       const scrollEl = refs('scrollContainer')
       let spyInstance = null
 
       const initScrollSpy = () => {
-        if (scrollEl && document.querySelector('#settings-navbar')) {
+        if (document.querySelector('#settings-navbar')) {
           spyInstance = new ScrollSpy(scrollEl, {
             target: '#settings-navbar',
             offset: 30,
@@ -91,9 +89,6 @@
       setTimeout(initScrollSpy, 400)
 
       const handleScrollSync = () => {
-        if (!scrollEl) {
-          return
-        }
         if (spyInstance) {
           spyInstance.refresh()
         }
@@ -123,9 +118,7 @@
         })
       }
 
-      if (scrollEl) {
-        scrollEl.addEventListener('scroll', handleScrollSync, { passive: true })
-      }
+      scrollEl.addEventListener('scroll', handleScrollSync, { passive: true })
     }
   })
 </script>

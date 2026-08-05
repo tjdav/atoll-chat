@@ -115,13 +115,9 @@
         const password = vaultPasswordInput.value
   
         verifyError.classList.add('d-none')
-        if (btnVerifyPassword) {
-          btnVerifyPassword.disabled = true
-        }
+        btnVerifyPassword.disabled = true
   
-        if (verifySpinner) {
-          verifySpinner.classList.remove('d-none')
-        }
+        verifySpinner.classList.remove('d-none')
 
         try {
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
@@ -142,9 +138,7 @@
             await biometric.deleteMasterKey(record.id)
             await updatePasskeyState()
   
-            if (verifyModal) {
-              verifyModal.hide()
-            }
+            verifyModal.hide()
 
             $bus.emit('ui:show_toast', {
               message: 'Biometric unlock successfully disabled!',
@@ -173,9 +167,7 @@
             await biometric.storeMasterKey(masterKey, record.username, record.id)
             await updatePasskeyState()
   
-            if (verifyModal) {
-              verifyModal.hide()
-            }
+            verifyModal.hide()
 
             $bus.emit('ui:show_toast', {
               message: 'Biometric unlock successfully enabled!',
@@ -187,13 +179,9 @@
           verifyError.textContent = error.message || 'Verification failed'
           verifyError.classList.remove('d-none')
         } finally {
-          if (btnVerifyPassword) {
-            btnVerifyPassword.disabled = false
-          }
+          btnVerifyPassword.disabled = false
 
-          if (verifySpinner) {
-            verifySpinner.classList.add('d-none')
-          }
+          verifySpinner.classList.add('d-none')
         }
       }
   

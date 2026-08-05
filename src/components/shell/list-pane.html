@@ -38,31 +38,19 @@
         const searchContainer = refs('searchContainer')
         const searchInput = refs('searchInput')
 
-        if (!container) {
-          return
-        }
-
         // Update Title
-        if (titleRef) {
-          titleRef.textContent = view.charAt(0).toUpperCase() + view.slice(1)
-        }
+        titleRef.textContent = view.charAt(0).toUpperCase() + view.slice(1)
 
         // Update Create Room Button visibility
-        if (btnCreateRoom) {
-          btnCreateRoom.hidden = (view !== 'chats')
-        }
+        btnCreateRoom.hidden = (view !== 'chats')
 
         // Update Search visibility
         const searchableViews = ['chats', 'pictures', 'videos', 'music', 'documents', 'links']
-        if (searchContainer) {
-          searchContainer.hidden = !searchableViews.includes(view)
-        }
+        searchContainer.hidden = !searchableViews.includes(view)
 
         // Reset search on view change
         $state.listSearchQuery = ''
-        if (searchInput) {
-          searchInput.value = ''
-        }
+        searchInput.value = ''
 
         // Clear container
         container.innerHTML = ''
@@ -96,19 +84,15 @@
 
       // Handle Search Input
       const searchInput = refs('searchInput')
-      if (searchInput) {
-        searchInput.addEventListener('input', () => {
-          $state.listSearchQuery = searchInput.value.toLowerCase()
-        })
-      }
+      searchInput.addEventListener('input', () => {
+        $state.listSearchQuery = searchInput.value.toLowerCase()
+      })
 
       // Handle Create Room button click
       const btnCreateRoom = refs('btnCreateRoom')
-      if (btnCreateRoom) {
-        btnCreateRoom.addEventListener('click', () => {
-          $bus.emit('ui:open_create_room')
-        })
-      }
+      btnCreateRoom.addEventListener('click', () => {
+        $bus.emit('ui:open_create_room')
+      })
 
       // Reactivity to global state
       $state.subscribe('currentAppView', (val) => {

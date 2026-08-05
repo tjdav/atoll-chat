@@ -152,16 +152,14 @@
         }
       }
 
-      if (header) {
-        header.addEventListener('click', toggleAccordion)
+      header.addEventListener('click', toggleAccordion)
 
-        header.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            toggleAccordion()
-          }
-        })
-      }
+      header.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          toggleAccordion()
+        }
+      })
 
       // Observe the dynamic "expanded" attribute from parent updates
       observe('expanded', (val) => {

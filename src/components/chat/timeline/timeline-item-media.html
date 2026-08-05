@@ -28,20 +28,18 @@
 
       let lastCallId = 0
 
-      if (container) {
-        container.onclick = async () => {
-          if (!state.localUuid) {
-            return
-          }
-          const msg = await $storage.getMessage(state.localUuid)
-          if (!msg?.media_id) {
-            return
-          }
-          const targetView = (msg.mime_type || '').startsWith('image/') ? 'pictures' : 'videos'
-          $state.currentAppView = targetView
-          $state.activeSelectionType = targetView
-          $state.activeSelectionId = msg.media_id
+      container.onclick = async () => {
+        if (!state.localUuid) {
+          return
         }
+        const msg = await $storage.getMessage(state.localUuid)
+        if (!msg?.media_id) {
+          return
+        }
+        const targetView = (msg.mime_type || '').startsWith('image/') ? 'pictures' : 'videos'
+        $state.currentAppView = targetView
+        $state.activeSelectionType = targetView
+        $state.activeSelectionId = msg.media_id
       }
 
       const renderVideoPlaceholder = (duration = 0) => {

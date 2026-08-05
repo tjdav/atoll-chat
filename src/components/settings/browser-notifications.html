@@ -38,11 +38,10 @@
       state.permissionStatus = typeof Notification !== 'undefined' ? Notification.permission : 'default'
 
       const notifSwitch = refs('notifSwitch')
-      if (notifSwitch) {
-        notifSwitch.checked = state.notificationsEnabled && state.permissionStatus !== 'denied'
+      notifSwitch.checked = state.notificationsEnabled && state.permissionStatus !== 'denied'
   
-        notifSwitch.addEventListener('change', async () => {
-          if (notifSwitch.checked) {
+      notifSwitch.addEventListener('change', async () => {
+        if (notifSwitch.checked) {
             const granted = await $notifications.requestPermission()
             if (granted) {
               $state.notificationsEnabled = true
@@ -80,10 +79,9 @@
             } catch (err) {
               console.error('[browser-notifications] Failed to clear push subscription on disable:', err)
             }
-          }
-          state.permissionStatus = Notification.permission
-        })
-      }
+        }
+        state.permissionStatus = Notification.permission
+      })
     }
   })
 </script>

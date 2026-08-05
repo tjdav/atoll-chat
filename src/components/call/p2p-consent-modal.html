@@ -76,17 +76,13 @@
         refs('detailsText').textContent = `${state.filename} (${state.fileSizeStr})`
 
         console.info('[p2p-consent-modal] Bob calling modal.show()')
-        if (modal) {
-          modal.show()
-        }
+        modal.show()
       })
 
       root.addEventListener('click', (e) => {
         const acceptTarget = e.target.closest('[data-testid$="consent-btn-accept"]') || e.target.closest('[ref$="consent-btn-accept"]')
         if (acceptTarget) {
-          if (modal) {
-            modal.hide()
-          }
+          modal.hide()
 
           $bus.emit('action:execute_p2p_accept', {
             p2pUuid: state.p2pUuid,
@@ -98,9 +94,7 @@
 
         const rejectTarget = e.target.closest('[data-testid$="consent-btn-reject"]') || e.target.closest('[ref$="btnReject"]')
         if (rejectTarget) {
-          if (modal) {
-            modal.hide()
-          }
+          modal.hide()
   
           $bus.emit('action:execute_p2p_reject', {
             p2pUuid: state.p2pUuid,

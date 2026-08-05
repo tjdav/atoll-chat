@@ -261,7 +261,7 @@
         try {
           const room = await $storage.getRoom(room_id)
           if (!room) {
-            const existingItem = (listGroup ? listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`) : null) || document.querySelector(`chat-list-item[room-id="${room_id}"]`)
+            const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`) || document.querySelector(`chat-list-item[room-id="${room_id}"]`)
             if (existingItem) {
               existingItem.remove()
             }
@@ -281,13 +281,13 @@
           }
           manager.loadedItems.unshift(data)
 
-          const existingItem = (listGroup ? listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`) : null) || document.querySelector(`chat-list-item[room-id="${room_id}"]`)
+          const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`) || document.querySelector(`chat-list-item[room-id="${room_id}"]`)
           if (existingItem) {
             updateItemAttributes(existingItem, data)
-            if (listGroup && listGroup.firstElementChild !== existingItem) {
+            if (listGroup.firstElementChild !== existingItem) {
               listGroup.prepend(existingItem)
             }
-          } else if (!$state.listSearchQuery && listGroup) {
+          } else if (!$state.listSearchQuery) {
             const emptyState = listGroup.querySelector('.text-body-secondary')
             if (emptyState && emptyState.textContent.includes('No chats found')) {
               emptyState.remove()

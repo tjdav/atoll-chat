@@ -93,19 +93,17 @@
       const offcanvasEl = refs('roomDetailsOffcanvas')
       let bsOffcanvas = null
 
-      if (offcanvasEl) {
-        bsOffcanvas = new Offcanvas(offcanvasEl)
+      bsOffcanvas = new Offcanvas(offcanvasEl)
 
-        offcanvasEl.addEventListener('hide.bs.offcanvas', () => {
-          state.isRoomDetailsOpen = false
-          $state.isRoomDetailsOpen = false
-        })
+      offcanvasEl.addEventListener('hide.bs.offcanvas', () => {
+        state.isRoomDetailsOpen = false
+        $state.isRoomDetailsOpen = false
+      })
 
-        offcanvasEl.addEventListener('show.bs.offcanvas', () => {
-          state.isRoomDetailsOpen = true
-          $state.isRoomDetailsOpen = true
-        })
-      }
+      offcanvasEl.addEventListener('show.bs.offcanvas', () => {
+        state.isRoomDetailsOpen = true
+        $state.isRoomDetailsOpen = true
+      })
 
       state.isRoomDetailsOpen = $state.isRoomDetailsOpen || false
       if (state.isRoomDetailsOpen && bsOffcanvas) {
@@ -113,7 +111,7 @@
       }
 
       const renderHeaderAvatar = (room, participants) => {
-        if (!headerAvatar || !room) {
+        if (!room) {
           return
         }
         const existingSlot = headerAvatar.querySelector('[slot="image"]')
@@ -228,8 +226,7 @@
             }
 
             const chatViewRoot = refs('chatViewRoot')
-            if (chatViewRoot) {
-              if (room.theme) {
+            if (room.theme) {
                 chatViewRoot.setAttribute('data-theme', room.theme)
               } else {
                 chatViewRoot.removeAttribute('data-theme')
@@ -280,7 +277,6 @@
                 chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-bg')
                 chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-border')
               }
-            }
 
             renderHeaderAvatar(room, participants)
           }
@@ -362,12 +358,10 @@
       })
 
       const btnDetails = refs('btnDetails')
-      if (btnDetails) {
-        btnDetails.addEventListener('click', () => {
-          state.isRoomDetailsOpen = !state.isRoomDetailsOpen
-          $state.isRoomDetailsOpen = state.isRoomDetailsOpen
-        })
-      }
+      btnDetails.addEventListener('click', () => {
+        state.isRoomDetailsOpen = !state.isRoomDetailsOpen
+        $state.isRoomDetailsOpen = state.isRoomDetailsOpen
+      })
 
       $bus.on('ui:close_room_details', () => {
         state.isRoomDetailsOpen = false

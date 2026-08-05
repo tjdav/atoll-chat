@@ -76,7 +76,7 @@
 
       try {
         const { Toast } = bootstrap
-        if (toastEl && Toast) {
+        if (Toast) {
           toastInstance = new Toast(toastEl)
         }
       } catch (err) {
@@ -85,12 +85,8 @@
 
       $bus.on('ui:show_toast', ({ message, variant = 'primary', type = 'primary' }) => {
         const toastType = variant || type
-        if (toastBody) {
-          toastBody.textContent = message
-        }
-        if (toastEl) {
-          toastEl.className = `toast align-items-center text-white bg-${toastType} border-0 shadow`
-        }
+        toastBody.textContent = message
+        toastEl.className = `toast align-items-center text-white bg-${toastType} border-0 shadow`
         if (toastInstance) {
           toastInstance.show()
         }

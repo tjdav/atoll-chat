@@ -70,7 +70,6 @@
       }
 
       const renderRooms = () => {
-        if (!roomList) return
         roomList.innerHTML = ''
         if (loadedRooms.length === 0) {
           roomList.innerHTML = '<div class="p-4 text-center text-muted">No rooms found</div>'
@@ -194,7 +193,7 @@
             type: 'success'
           })
 
-          if (modal) modal.hide()
+          modal.hide()
         } catch (err) {
           console.error('[share-button] Failed to share:', err)
           $bus.emit('ui:show_toast', {
@@ -221,7 +220,7 @@
         if (openTarget) {
           selectedRoomIds.clear()
           updateSendButton()
-          if (modal) modal.show()
+          modal.show()
 
           loadedRooms = await $storage.getAllRoomsSorted()
           renderRooms()

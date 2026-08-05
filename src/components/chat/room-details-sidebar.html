@@ -186,8 +186,7 @@
 
             // Sync room avatar
             const roomAvatarComp = refs('roomAvatar')
-            if (roomAvatarComp) {
-              const existingImg = roomAvatarComp.querySelector('[slot="image"]')
+            const existingImg = roomAvatarComp.querySelector('[slot="image"]')
               if (existingImg) {
                 existingImg.remove()
               }
@@ -243,7 +242,6 @@
                 roomAvatarComp.setAttribute('name', state.roomName)
                 roomAvatarComp.setAttribute('alt', state.roomName)
               }
-            }
           }
 
           // Fetch members from server
@@ -260,15 +258,13 @@
           // Setup Mute status badge
           const isMuted = currentMember && currentMember.is_muted === true
           const muteStatusBadge = refs('muteStatusBadge')
-          if (muteStatusBadge) {
-            muteStatusBadge.textContent = isMuted ? 'On' : 'Off'
-            if (isMuted) {
-              muteStatusBadge.style.backgroundColor = 'var(--atoll-danger-subtle, #FFE5E8)'
-              muteStatusBadge.style.color = 'var(--atoll-danger, #FF334B)'
-            } else {
-              muteStatusBadge.style.backgroundColor = 'var(--atoll-brand-subtle-bg, #E6F9EE)'
-              muteStatusBadge.style.color = 'var(--atoll-brand-primary, #06C755)'
-            }
+          muteStatusBadge.textContent = isMuted ? 'On' : 'Off'
+          if (isMuted) {
+            muteStatusBadge.style.backgroundColor = 'var(--atoll-danger-subtle, #FFE5E8)'
+            muteStatusBadge.style.color = 'var(--atoll-danger, #FF334B)'
+          } else {
+            muteStatusBadge.style.backgroundColor = 'var(--atoll-brand-subtle-bg, #E6F9EE)'
+            muteStatusBadge.style.color = 'var(--atoll-brand-primary, #06C755)'
           }
 
           // Setup read receipts default
@@ -299,9 +295,7 @@
 
           // Sync read receipts status text
           const rrStatus = refs('readReceiptsStatusText')
-          if (rrStatus) {
-            rrStatus.textContent = state.readReceipts ? 'On' : 'Off'
-          }
+          rrStatus.textContent = state.readReceipts ? 'On' : 'Off'
 
           renderMembers()
         } catch (err) {
@@ -312,9 +306,6 @@
       }
 
       const renderMembers = () => {
-        if (!memberListContainer) {
-          return
-        }
         memberListContainer.innerHTML = ''
 
         state.members.forEach(member => {
@@ -451,40 +442,33 @@
 
       // Group 1: Chat Customisation Actions (Trigger local modals)
       const btnChangeTheme = refs('btnChangeTheme')
-      if (btnChangeTheme) {
-        btnChangeTheme.addEventListener('click', () => {
-          const modal = refs('themeSelectorModal')
-          if (modal && typeof modal.show === 'function') {
-            modal.show()
-          }
-        })
-      }
+      btnChangeTheme.addEventListener('click', () => {
+        const modal = refs('themeSelectorModal')
+        if (typeof modal.show === 'function') {
+          modal.show()
+        }
+      })
 
       const btnEditNicknames = refs('btnEditNicknames')
-      if (btnEditNicknames) {
-        btnEditNicknames.addEventListener('click', () => {
-          const modal = refs('nicknamesModal')
-          if (modal && typeof modal.show === 'function') {
-            modal.show()
-          }
-        })
-      }
+      btnEditNicknames.addEventListener('click', () => {
+        const modal = refs('nicknamesModal')
+        if (typeof modal.show === 'function') {
+          modal.show()
+        }
+      })
 
       // Group 2: Privacy & Support Actions
       const btnMuteNotifications = refs('btnMuteNotifications')
-      if (btnMuteNotifications) {
-        btnMuteNotifications.addEventListener('click', () => {
-          const room_id = $state.activeSelectionId
-          const me = state.members.find(m => m.user_id === $state.currentUser?.id)
-          const isMuted = me && me.is_muted === true
-          $bus.emit('room:toggle_mute', { room_id, isMuted })
-        })
-      }
+      btnMuteNotifications.addEventListener('click', () => {
+        const room_id = $state.activeSelectionId
+        const me = state.members.find(m => m.user_id === $state.currentUser?.id)
+        const isMuted = me && me.is_muted === true
+        $bus.emit('room:toggle_mute', { room_id, isMuted })
+      })
 
       const btnReadReceipts = refs('btnReadReceipts')
-      if (btnReadReceipts) {
-        btnReadReceipts.addEventListener('click', async () => {
-          state.readReceipts = !state.readReceipts
+      btnReadReceipts.addEventListener('click', async () => {
+        state.readReceipts = !state.readReceipts
           showLoading('Saving read receipts...')
           try {
             const room_id = $state.activeSelectionId
@@ -533,36 +517,29 @@
             hideLoading()
           }
         })
-      }
 
       const btnBlock = refs('btnBlock')
-      if (btnBlock) {
-        btnBlock.addEventListener('click', () => {
-          const modal = refs('blockModal')
-          if (modal && typeof modal.show === 'function') {
-            modal.show()
-          }
-        })
-      }
+      btnBlock.addEventListener('click', () => {
+        const modal = refs('blockModal')
+        if (typeof modal.show === 'function') {
+          modal.show()
+        }
+      })
 
       const btnEditRoom = refs('btnEditRoom')
-      if (btnEditRoom) {
-        btnEditRoom.addEventListener('click', () => {
-          const room_id = $state.activeSelectionId
-          $bus.emit('room:edit', { room_id })
-        })
-      }
+      btnEditRoom.addEventListener('click', () => {
+        const room_id = $state.activeSelectionId
+        $bus.emit('room:edit', { room_id })
+      })
 
       const btnDelete = refs('btnDelete')
-      if (btnDelete) {
-        btnDelete.addEventListener('click', () => {
-          const room_id = $state.activeSelectionId
-          $bus.emit('room:delete', {
-            room_id,
-            isGroup: state.isGroup
-          })
+      btnDelete.addEventListener('click', () => {
+        const room_id = $state.activeSelectionId
+        $bus.emit('room:delete', {
+          room_id,
+          isGroup: state.isGroup
         })
-      }
+      })
     }
   })
 </script>

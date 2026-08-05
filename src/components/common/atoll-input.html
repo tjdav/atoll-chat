@@ -178,7 +178,7 @@
 
       // Forward test-id / data-testid and standard attributes
       const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
-      if (testId && input) {
+      if (testId) {
         root.__testId = testId
         input.setAttribute('data-testid', testId)
         root.removeAttribute('test-id')
@@ -189,29 +189,27 @@
 
       const feedbackTestId = root.getAttribute('feedback-test-id')
       const footer = refs('footer')
-      if (feedbackTestId && footer) {
+      if (feedbackTestId) {
         footer.setAttribute('data-testid', feedbackTestId)
       }
 
       const attributesToForward = ['name', 'autocomplete', 'autofocus', 'minlength', 'pattern']
       attributesToForward.forEach(attrName => {
         const val = root.getAttribute(attrName)
-        if (val !== null && input) {
+        if (val !== null) {
           input.setAttribute(attrName, val)
         }
       })
 
       // Native validity and validation delegates
-      root.checkValidity = () => (input ? input.checkValidity() : true)
-      root.reportValidity = () => (input ? input.reportValidity() : true)
+      root.checkValidity = () => input.checkValidity()
+      root.reportValidity = () => input.reportValidity()
       root.setCustomValidity = (msg) => {
-        if (input) {
-          input.setCustomValidity(msg)
-        }
+        input.setCustomValidity(msg)
       }
       Object.defineProperty(root, 'validity', {
         get () {
-          return input ? input.validity : null
+          return input.validity
         },
         configurable: true
       })
@@ -248,8 +246,8 @@
       })
 
       // Focus / blur forwarding
-      root.focus = () => input?.focus()
-      root.blur = () => input?.blur()
+      root.focus = () => input.focus()
+      root.blur = () => input.blur()
 
       const dispatchEvents = () => {
         root.dispatchEvent(new Event('input', {
@@ -263,35 +261,27 @@
       }
 
       // Sync native user typing back to state and trigger form events
-      if (input) {
-        input.addEventListener('input', () => {
-          state.value = input.value
-          dispatchEvents()
-        })
-      }
+      input.addEventListener('input', () => {
+        state.value = input.value
+        dispatchEvents()
+      })
 
       // Clear button handler
-      if (clearBtn) {
-        clearBtn.addEventListener('click', () => {
-          state.value = ''
-          if (input) {
-            input.value = ''
-            input.focus()
-          }
-          dispatchEvents()
-        })
-      }
+      clearBtn.addEventListener('click', () => {
+        state.value = ''
+        input.value = ''
+        input.focus()
+        dispatchEvents()
+      })
 
       // Password visibility toggle handler
-      if (passBtn) {
-        passBtn.addEventListener('click', () => {
-          state.showPassword = !state.showPassword
-        })
-      }
+      passBtn.addEventListener('click', () => {
+        state.showPassword = !state.showPassword
+      })
 
       // Two-way sync: Update native input if value changes programmatically from outside
       observe('value', (newVal) => {
-        if (input && input.value !== (newVal || '')) {
+        if (input.value !== (newVal || '')) {
           input.value = newVal || ''
         }
       })

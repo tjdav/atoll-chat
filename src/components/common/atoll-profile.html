@@ -262,25 +262,21 @@
 
       const img = refs('avatarImage')
 
-      if (img) {
-        img.addEventListener('error', () => {
-          state.hasError = true
-        })
+      img.addEventListener('error', () => {
+        state.hasError = true
+      })
 
-        img.addEventListener('load', () => {
-          state.hasError = false
-        })
-      }
+      img.addEventListener('load', () => {
+        state.hasError = false
+      })
 
       const updateSrc = (newSrc) => {
-        if (img) {
-          if (newSrc) {
-            state.hasError = false
-            img.src = newSrc
-          } else {
-            state.hasError = true
-            img.removeAttribute('src')
-          }
+        if (newSrc) {
+          state.hasError = false
+          img.src = newSrc
+        } else {
+          state.hasError = true
+          img.removeAttribute('src')
         }
       }
 

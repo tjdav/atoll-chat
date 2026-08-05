@@ -183,54 +183,48 @@
         )
       }
 
-      if (itemRoot) {
-        itemRoot.addEventListener('click', (e) => {
-          handleTrigger(e)
-        })
+      itemRoot.addEventListener('click', (e) => {
+        handleTrigger(e)
+      })
 
-        itemRoot.addEventListener('keydown', (event) => {
-          if (state.isClickable && (event.key === 'Enter' || event.key === ' ')) {
-            event.preventDefault()
-            handleTrigger(event)
-          }
-        })
-      }
+      itemRoot.addEventListener('keydown', (event) => {
+        if (state.isClickable && (event.key === 'Enter' || event.key === ' ')) {
+          event.preventDefault()
+          handleTrigger(event)
+        }
+      })
 
-      if (deleteIcon) {
-        deleteIcon.addEventListener('click', (e) => {
-          e.stopPropagation()
-          e.preventDefault()
-          root.dispatchEvent(
-            new CustomEvent('atoll-item-action', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                action: 'delete',
+      deleteIcon.addEventListener('click', (e) => {
+        e.stopPropagation()
+        e.preventDefault()
+        root.dispatchEvent(
+          new CustomEvent('atoll-item-action', {
+            bubbles: true,
+            composed: true,
+            detail: {
+              action: 'delete',
+              value: state.value || state.title
+            }
+          })
+        )
+      })
+
+      checkbox.addEventListener('change', (e) => {
+        e.stopPropagation()
+        state.checked = e.detail.checked
+        root.dispatchEvent(
+          new CustomEvent('atoll-selection-change', {
+            bubbles: true,
+            composed: true,
+            detail: [
+              {
+                checked: state.checked,
                 value: state.value || state.title
               }
-            })
-          )
-        })
-      }
-
-      if (checkbox) {
-        checkbox.addEventListener('change', (e) => {
-          e.stopPropagation()
-          state.checked = e.detail.checked
-          root.dispatchEvent(
-            new CustomEvent('atoll-selection-change', {
-              bubbles: true,
-              composed: true,
-              detail: [
-                {
-                  checked: state.checked,
-                  value: state.value || state.title
-                }
-              ]
-            })
-          )
-        })
-      }
+            ]
+          })
+        )
+      })
 
       // Expose properties on host element
       Object.defineProperty(root, 'checked', {

@@ -38,11 +38,9 @@
         if (!other) return
 
         const blockTitle = refs('blockTargetTitle')
-        if (blockTitle) {
-          // Capitalize first character correctly
-          const otherName = other.name || other.username
-          blockTitle.textContent = `Block ${otherName}?`
-        }
+        // Capitalize first character correctly
+        const otherName = other.name || other.username
+        blockTitle.textContent = `Block ${otherName}?`
         blockModal.show()
       }
 

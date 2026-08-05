@@ -77,11 +77,9 @@
           audio.removeAttribute('src')
           audio.load()
         }
-        if (fallbackAudio) {
-          fallbackAudio.pause()
-          fallbackAudio.removeAttribute('src')
-          fallbackAudio.load()
-        }
+        fallbackAudio.pause()
+        fallbackAudio.removeAttribute('src')
+        fallbackAudio.load()
         if (resizeObserver) {
           resizeObserver.disconnect()
         }
@@ -357,9 +355,7 @@
         if (audio) {
           audio.volume = vol
         }
-        if (fallbackAudio) {
-          fallbackAudio.volume = vol
-        }
+        fallbackAudio.volume = vol
       })
 
       // Exclusive playback coordinator

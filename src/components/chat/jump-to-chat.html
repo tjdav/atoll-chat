@@ -14,8 +14,7 @@
       const { $state } = globalStore
       const btnJump = refs('btnJump')
 
-      if (btnJump) {
-        btnJump.onclick = async () => {
+      btnJump.onclick = async () => {
           const id = $state.activeSelectionId
           const type = $state.activeSelectionType
   
@@ -62,7 +61,6 @@
             console.error('[jump-to-chat] Error jumping to chat:', err)
           }
         }
-      }
     }
   })
 </script>

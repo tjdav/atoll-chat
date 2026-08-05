@@ -100,10 +100,8 @@
           }
         }
 
-        if (modal) {
-          modal.show()
-          setTimeout(() => roomNameInput.focus(), 100)
-        }
+        modal.show()
+        setTimeout(() => roomNameInput.focus(), 100)
       })
 
       roomNameInput.oninput = (e) => {
@@ -200,9 +198,7 @@
           })
 
           $bus.emit('db:new_local_room', { room_id: room.id })
-          if (modal) {
-            modal.hide()
-          }
+          modal.hide()
         } catch (err) {
           console.error('[edit-room-modal] Save failed:', err)
           alert('Save failed: ' + err.message)
@@ -211,9 +207,7 @@
         }
       }
 
-      if (modal) {
-        modal.addEventListener('atoll-popup-primary', saveChanges, { signal })
-      }
+      modal.addEventListener('atoll-popup-primary', saveChanges, { signal })
     }
   })
 </script>

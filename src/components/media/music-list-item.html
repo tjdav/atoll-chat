@@ -34,14 +34,12 @@
       const { $bus } = eventBus
       const btn = refs('btn')
 
-      if (btn) {
-        btn.onclick = () => {
-          $bus.emit('media:select', {
-            assetId: state.assetId,
-            type: 'music'
-          })
-          $bus.emit('ui:selection_made')
-        }
+      btn.onclick = () => {
+        $bus.emit('media:select', {
+          assetId: state.assetId,
+          type: 'music'
+        })
+        $bus.emit('ui:selection_made')
       }
     }
   })

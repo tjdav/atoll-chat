@@ -180,7 +180,7 @@
 
       // Hydrate user profile avatar if available
       const user = pb.authStore.model
-      if (user && avatarProfile) {
+      if (user) {
         let avatarUrl = ''
         if (user.avatar) {
           avatarUrl = pb.files.getUrl(user, user.avatar)
@@ -192,7 +192,7 @@
       }
 
       const usernameBadge = refs('usernameBadge')
-      if (user && usernameBadge) {
+      if (user) {
         usernameBadge.textContent = `@${user.username}`
       }
 
@@ -245,61 +245,56 @@
       registerInputReset(recoveryForm)
       registerInputReset(newPasswordForm)
 
-      if (recoveryCodeInput) {
-        recoveryCodeInput.addEventListener('input', () => {
-          const val = recoveryCodeInput.value || ''
-          const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-          let raw = clean
-          if (raw.startsWith('RC')) {
-            raw = raw.slice(2)
-          }
-          let formatted = 'RC'
-          if (raw.length > 0) {
-            formatted += '-' + raw.substring(0, 4)
-          }
-          if (raw.length > 4) {
-            formatted += '-' + raw.substring(4, 8)
-          }
-          if (raw.length > 8) {
-            formatted += '-' + raw.substring(8, 12)
-          }
-          if (raw.length > 12) {
-            formatted += '-' + raw.substring(12, 16)
-          }
-          recoveryCodeInput.value = formatted
-        })
-      }
+      recoveryCodeInput.addEventListener('input', () => {
+        const val = recoveryCodeInput.value || ''
+        const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+        let raw = clean
+        if (raw.startsWith('RC')) {
+          raw = raw.slice(2)
+        }
+        let formatted = 'RC'
+        if (raw.length > 0) {
+          formatted += '-' + raw.substring(0, 4)
+        }
+        if (raw.length > 4) {
+          formatted += '-' + raw.substring(4, 8)
+        }
+        if (raw.length > 8) {
+          formatted += '-' + raw.substring(8, 12)
+        }
+        if (raw.length > 12) {
+          formatted += '-' + raw.substring(12, 16)
+        }
+        recoveryCodeInput.value = formatted
+      })
 
-      if (btnLogout) {
-        btnLogout.addEventListener('click', (e) => {
-          e.preventDefault()
-          pb.authStore.clear()
-          $state.isAuthenticated = false
-          $state.isVaultUnlocked = false
-        })
-      }
+      btnLogout.addEventListener('click', (e) => {
+        e.preventDefault()
+        pb.authStore.clear()
+        $state.isAuthenticated = false
+        $state.isVaultUnlocked = false
+      })
 
       const checkBiometricSupport = async () => {
         const record = pb.authStore.model
         if (record && await biometric.isAvailable()) {
           const storedKey = localStorage.getItem(`atoll_vault_wrap_${record.id}`)
           if (storedKey || record.passkey_credential_id || record.encrypted_master_keys_passkey) {
-            btnPasskey?.classList.remove('d-none')
+            btnPasskey.classList.remove('d-none')
           } else {
-            btnPasskey?.classList.add('d-none')
+            btnPasskey.classList.add('d-none')
           }
         } else {
-          btnPasskey?.classList.add('d-none')
+          btnPasskey.classList.add('d-none')
         }
       }
 
       checkBiometricSupport()
-      setTimeout(() => passwordInput?.focus(), 50)
+      setTimeout(() => passwordInput.focus(), 50)
 
-      if (btnPasskey) {
-        btnPasskey.addEventListener('click', async () => {
-          try {
-            showGlobalAlert('')
+      btnPasskey.addEventListener('click', async () => {
+        try {
+          showGlobalAlert('')
             updateStatus('Authenticating via passkey/biometrics...')
             const record = pb.authStore.model
             if (!record) {
@@ -335,9 +330,8 @@
             updateStatus('')
           }
         })
-      }
 
-      if (pb.authStore.model && vaultUsernameHidden) {
+      if (pb.authStore.model) {
         vaultUsernameHidden.value = `${pb.authStore.model.username} - Vault`
       }
 
@@ -446,40 +440,34 @@
         }
       })
 
-      if (btnShowRecovery) {
-        btnShowRecovery.addEventListener('click', (e) => {
-          e.preventDefault()
-          viewPassword.classList.add('d-none')
-          viewPassword.classList.remove('d-flex')
-          viewRecovery.classList.remove('d-none')
-          viewRecovery.classList.add('d-flex')
-          updateStatus('')
-          showGlobalAlert('')
-          recoveryForm.classList.remove('was-validated')
-          if (recoveryCodeInput && typeof recoveryCodeInput.setCustomValidity === 'function') {
-            recoveryCodeInput.setCustomValidity('')
-          }
-          if (recoveryCodeInput) {
-            recoveryCodeInput.removeAttribute('invalid')
-            recoveryCodeInput.removeAttribute('error-message')
-          }
-        })
-      }
+      btnShowRecovery.addEventListener('click', (e) => {
+        e.preventDefault()
+        viewPassword.classList.add('d-none')
+        viewPassword.classList.remove('d-flex')
+        viewRecovery.classList.remove('d-none')
+        viewRecovery.classList.add('d-flex')
+        updateStatus('')
+        showGlobalAlert('')
+        recoveryForm.classList.remove('was-validated')
+        if (typeof recoveryCodeInput.setCustomValidity === 'function') {
+          recoveryCodeInput.setCustomValidity('')
+        }
+        recoveryCodeInput.removeAttribute('invalid')
+        recoveryCodeInput.removeAttribute('error-message')
+      })
 
-      if (btnCancelRecovery) {
-        btnCancelRecovery.addEventListener('click', () => {
-          viewRecovery.classList.add('d-none')
-          viewRecovery.classList.remove('d-flex')
-          viewPassword.classList.remove('d-none')
-          viewPassword.classList.add('d-flex')
-          updateStatus('')
-          showGlobalAlert('')
-          unlockForm.classList.remove('was-validated')
-          passwordInput.setCustomValidity('')
-          passwordInput.removeAttribute('invalid')
-          passwordInput.removeAttribute('error-message')
-        })
-      }
+      btnCancelRecovery.addEventListener('click', () => {
+        viewRecovery.classList.add('d-none')
+        viewRecovery.classList.remove('d-flex')
+        viewPassword.classList.remove('d-none')
+        viewPassword.classList.add('d-flex')
+        updateStatus('')
+        showGlobalAlert('')
+        unlockForm.classList.remove('was-validated')
+        passwordInput.setCustomValidity('')
+        passwordInput.removeAttribute('invalid')
+        passwordInput.removeAttribute('error-message')
+      })
 
       recoveryForm.addEventListener('submit', async (e) => {
         e.preventDefault()
@@ -566,15 +554,13 @@
           if (err.status && err.status >= 500) {
             showGlobalAlert(err.message || 'Recovery failed.')
           } else {
-            if (recoveryCodeInput) {
-              recoveryCodeInput.setAttribute('invalid', 'true')
-              recoveryCodeInput.setAttribute('error-message', err.message || 'Recovery failed.')
-              const innerInput = recoveryCodeInput.querySelector('input')
-              if (innerInput && typeof innerInput.setCustomValidity === 'function') {
-                innerInput.setCustomValidity(err.message || 'Recovery failed.')
-              } else if (typeof recoveryCodeInput.setCustomValidity === 'function') {
-                recoveryCodeInput.setCustomValidity(err.message || 'Recovery failed.')
-              }
+            recoveryCodeInput.setAttribute('invalid', 'true')
+            recoveryCodeInput.setAttribute('error-message', err.message || 'Recovery failed.')
+            const innerInput = recoveryCodeInput.querySelector('input')
+            if (innerInput && typeof innerInput.setCustomValidity === 'function') {
+              innerInput.setCustomValidity(err.message || 'Recovery failed.')
+            } else if (typeof recoveryCodeInput.setCustomValidity === 'function') {
+              recoveryCodeInput.setCustomValidity(err.message || 'Recovery failed.')
             }
             updateValidationFeedback(recoveryForm)
             recoveryForm.classList.add('was-validated')

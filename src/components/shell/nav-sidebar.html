@@ -221,17 +221,11 @@
 
       // Set up dropup trigger & dropdown initialization
       const profileBtn = refs('profileBtn')
-      let dropdownInstance = null
-      if (profileBtn) {
-        dropdownInstance = new Dropdown(profileBtn)
-      }
+      let dropdownInstance = new Dropdown(profileBtn)
 
       // Render profile avatar / fallback inside the dropup button
       const avatarContainer = refs('avatarContainer')
       const updateAvatar = () => {
-        if (!avatarContainer) {
-          return
-        }
         avatarContainer.innerHTML = ''
 
         const avatar = document.createElement('atoll-profile')
@@ -256,22 +250,20 @@
 
       // Button: Logout Action
       const btnLogout = refs('btnLogout')
-      if (btnLogout) {
-        btnLogout.addEventListener('click', async () => {
-          if (dropdownInstance) {
-            dropdownInstance.hide()
-          }
-          pb.authStore.clear()
-          $state.authView = 'login'
-          $bus.emit('auth:logout')
+      btnLogout.addEventListener('click', async () => {
+        if (dropdownInstance) {
+          dropdownInstance.hide()
+        }
+        pb.authStore.clear()
+        $state.authView = 'login'
+        $bus.emit('auth:logout')
 
-          try {
-            await $worker.execute('worker:wipe_keys')
-          } catch (err) {
-            console.warn('[nav-sidebar] Failed to wipe keys in worker:', err)
-          }
-        })
-      }
+        try {
+          await $worker.execute('worker:wipe_keys')
+        } catch (err) {
+          console.warn('[nav-sidebar] Failed to wipe keys in worker:', err)
+        }
+      })
 
       // Initialize renders
       updateAvatar()

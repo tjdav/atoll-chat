@@ -97,9 +97,7 @@
 
       // Sync initial global state
       state.currentMessageText = $state.currentMessageText || ''
-      if (messageInput) {
-        messageInput.value = state.currentMessageText
-      }
+      messageInput.value = state.currentMessageText
 
       const autoExpand = () => {
         messageInput.style.height = 'auto'

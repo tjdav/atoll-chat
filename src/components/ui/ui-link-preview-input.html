@@ -36,9 +36,7 @@
       const previewImg = refs('previewImg')
 
       const updateImage = () => {
-        if (previewImg) {
-          previewImg.src = state.image || ''
-        }
+        previewImg.src = state.image || ''
       }
 
       updateImage()

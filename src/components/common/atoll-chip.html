@@ -150,10 +150,6 @@
 
       // Imperatively sync the close/remove button when removable="true"
       const syncRemoveButton = () => {
-        if (!chip) {
-          return
-        }
-
         if (state.removable) {
           if (!removeBtnEl) {
             removeBtnEl = document.createElement('button')
@@ -212,26 +208,24 @@
       })
 
       // Handle keyboard navigation (Enter / Space toggles or activates chip)
-      if (chip) {
-        chip.addEventListener('keydown', (event) => {
-          if (state.disabled) {
-            return
-          }
+      chip.addEventListener('keydown', (event) => {
+        if (state.disabled) {
+          return
+        }
 
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            chip.click()
-          } else if ((event.key === 'Backspace' || event.key === 'Delete') && state.removable) {
-            event.preventDefault()
-            if (removeBtnEl) {
-              removeBtnEl.click()
-            }
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          chip.click()
+        } else if ((event.key === 'Backspace' || event.key === 'Delete') && state.removable) {
+          event.preventDefault()
+          if (removeBtnEl) {
+            removeBtnEl.click()
           }
-        }, { signal })
+        }
+      }, { signal })
 
-        // Also add click listener to the inner chip element for consistency
-        chip.addEventListener('click', preventClickWhenDisabled, { signal })
-      }
+      // Also add click listener to the inner chip element for consistency
+      chip.addEventListener('click', preventClickWhenDisabled, { signal })
 
       // Observe reactive attribute updates
       observe('removable', syncRemoveButton)

@@ -70,7 +70,7 @@
             offsetX = 0
             offsetY = 0
             draw()
-            if (modal) modal.show()
+            modal.show()
           }
           img.src = e.target.result
         }
@@ -191,7 +191,7 @@
             cropToSquare: false
           })
           $bus.emit('ui:avatar_editor_applied', blob)
-          if (modal) modal.hide()
+          modal.hide()
         } catch (err) {
           console.error('[avatar-editor] Compression failed:', err)
           alert('Failed to process image.')

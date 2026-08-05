@@ -129,12 +129,10 @@
 
       registerInputReset(loginForm)
 
-      if (linkRegister) {
-        linkRegister.addEventListener('click', (e) => {
-          e.preventDefault()
-          $state.authView = 'register'
-        })
-      }
+      linkRegister.addEventListener('click', (e) => {
+        e.preventDefault()
+        $state.authView = 'register'
+      })
 
       const renderAltcha = (container, submitBtn) => {
         container.innerHTML = ''

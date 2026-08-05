@@ -60,20 +60,16 @@
         state.userInitial = name.charAt(0).toUpperCase()
         state.currentUserId = user?.id || ''
 
-        if (nameInput) {
-          nameInput.value = state.displayName
-        }
+        nameInput.value = state.displayName
 
-        if (avatarProfile) {
-          if (user?.avatar && !pendingAvatarBlob) {
-            const avatarUrl = files.getUrl(user, user.avatar, { thumb: '100x100' })
-            avatarProfile.setAttribute('src', avatarUrl)
-          } else if (pendingAvatarBlob) {
-            const url = URL.createObjectURL(pendingAvatarBlob)
-            avatarProfile.setAttribute('src', url)
-          } else {
-            avatarProfile.removeAttribute('src')
-          }
+        if (user?.avatar && !pendingAvatarBlob) {
+          const avatarUrl = files.getUrl(user, user.avatar, { thumb: '100x100' })
+          avatarProfile.setAttribute('src', avatarUrl)
+        } else if (pendingAvatarBlob) {
+          const url = URL.createObjectURL(pendingAvatarBlob)
+          avatarProfile.setAttribute('src', url)
+        } else {
+          avatarProfile.removeAttribute('src')
         }
       }
 
@@ -88,26 +84,20 @@
       nameInput.addEventListener('input', updateBtnState)
       nameInput.addEventListener('change', updateBtnState)
 
-      if (avatarContainer) {
-        avatarContainer.onclick = () => avatarInput.click()
-      }
+      avatarContainer.onclick = () => avatarInput.click()
 
-      if (avatarInput) {
-        avatarInput.onchange = (e) => {
-          const file = e.target.files[0]
-          if (file) {
-            $bus.emit('ui:open_avatar_editor', file)
-          }
-          avatarInput.value = ''
+      avatarInput.onchange = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          $bus.emit('ui:open_avatar_editor', file)
         }
+        avatarInput.value = ''
       }
 
       $bus.on('ui:avatar_editor_applied', (blob) => {
         pendingAvatarBlob = blob
         const url = URL.createObjectURL(blob)
-        if (avatarProfile) {
-          avatarProfile.setAttribute('src', url)
-        }
+        avatarProfile.setAttribute('src', url)
         updateBtnState()
       })
 

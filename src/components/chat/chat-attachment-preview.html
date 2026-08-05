@@ -60,9 +60,7 @@
       const thumbnailImg = refs('thumbnailImg')
 
       const updateThumbnail = () => {
-        if (thumbnailImg) {
-          thumbnailImg.src = state.thumbnailUrl || ''
-        }
+        thumbnailImg.src = state.thumbnailUrl || ''
       }
 
       updateThumbnail()

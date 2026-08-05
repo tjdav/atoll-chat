@@ -182,12 +182,10 @@
       })
 
       const moveRecoveryContent = () => {
-        if (recoveryModal && recoveryContent) {
-          const popupBody = recoveryModal.querySelector('.atoll-popup-body')
-          if (popupBody && recoveryContent.parentNode !== popupBody) {
-            recoveryContent.classList.remove('d-none')
-            popupBody.appendChild(recoveryContent)
-          }
+        const popupBody = recoveryModal.querySelector('.atoll-popup-body')
+        if (popupBody && recoveryContent.parentNode !== popupBody) {
+          recoveryContent.classList.remove('d-none')
+          popupBody.appendChild(recoveryContent)
         }
       }
       moveRecoveryContent()
@@ -260,9 +258,6 @@
       registerInputReset(registerForm)
 
       const updateStrength = async () => {
-        if (!passwordInputEl) {
-          return
-        }
         const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
         const { score, width, colorClass, text } = await evaluatePasswordStrength(passwordInputEl.value, 8)
         zxcvbnScore = score
@@ -271,16 +266,12 @@
         strengthText.textContent = text
       }
 
-      if (passwordInputEl) {
-        passwordInputEl.addEventListener('input', updateStrength)
-      }
+      passwordInputEl.addEventListener('input', updateStrength)
 
-      if (linkLogin) {
-        linkLogin.addEventListener('click', (e) => {
-          e.preventDefault()
-          $state.authView = 'login'
-        })
-      }
+      linkLogin.addEventListener('click', (e) => {
+        e.preventDefault()
+        $state.authView = 'login'
+      })
 
       const updateContinueButtonState = () => {
         const canContinue = isCheckboxChecked || hasCopiedOrDownloaded
@@ -290,36 +281,31 @@
           canContinue,
           btnContinueToChat: !!btnContinueToChat
         })
-        if (btnContinueToChat) {
-          if (canContinue) {
-            btnContinueToChat.removeAttribute('disabled')
-            btnContinueToChat.disabled = false
-          } else {
-            btnContinueToChat.setAttribute('disabled', 'true')
-            btnContinueToChat.disabled = true
-          }
+        if (canContinue) {
+          btnContinueToChat.removeAttribute('disabled')
+          btnContinueToChat.disabled = false
+        } else {
+          btnContinueToChat.setAttribute('disabled', 'true')
+          btnContinueToChat.disabled = true
         }
       }
 
-      if (btnCopyCode) {
-        btnCopyCode.addEventListener('click', async () => {
-          try {
-            await navigator.clipboard.writeText(savedCode)
-            $bus.emit('ui:show_toast', {
-              message: 'Recovery code copied to clipboard!',
-              type: 'success'
-            })
-            hasCopiedOrDownloaded = true
-            updateContinueButtonState()
-          } catch (err) {
-            console.error('Failed to copy code:', err)
-          }
-        })
-      }
+      btnCopyCode.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(savedCode)
+          $bus.emit('ui:show_toast', {
+            message: 'Recovery code copied to clipboard!',
+            type: 'success'
+          })
+          hasCopiedOrDownloaded = true
+          updateContinueButtonState()
+        } catch (err) {
+          console.error('Failed to copy code:', err)
+        }
+      })
 
-      if (btnDownloadCode) {
-        btnDownloadCode.addEventListener('click', () => {
-          const creationDate = new Date().toISOString().replace('T', ' ').substring(0, 19)
+      btnDownloadCode.addEventListener('click', () => {
+        const creationDate = new Date().toISOString().replace('T', ' ').substring(0, 19)
           const fileContent = `============================================================
 ATOLL CHAT - EMERGENCY RECOVERY CODE
 ============================================================
@@ -345,26 +331,20 @@ Atoll administrators cannot recover your credentials or vault.
           hasCopiedOrDownloaded = true
           updateContinueButtonState()
         })
-      }
 
       const chkStoredLabel = refs('chkStoredLabel')
-      if (chkStored) {
-        chkStored.addEventListener('change', (e) => {
-          isCheckboxChecked = e.detail ? e.detail.checked : chkStored.checked
-          updateContinueButtonState()
-        })
-      }
-      if (chkStoredLabel && chkStored) {
-        chkStoredLabel.addEventListener('click', () => {
-          chkStored.checked = !chkStored.checked
-          isCheckboxChecked = chkStored.checked
-          updateContinueButtonState()
-        })
-      }
+      chkStored.addEventListener('change', (e) => {
+        isCheckboxChecked = e.detail ? e.detail.checked : chkStored.checked
+        updateContinueButtonState()
+      })
+      chkStoredLabel.addEventListener('click', () => {
+        chkStored.checked = !chkStored.checked
+        isCheckboxChecked = chkStored.checked
+        updateContinueButtonState()
+      })
 
-      if (btnContinueToChat) {
-        btnContinueToChat.addEventListener('click', async () => {
-          if (pendingDecryptedKeys && pendingRecord && pendingAuthData) {
+      btnContinueToChat.addEventListener('click', async () => {
+        if (pendingDecryptedKeys && pendingRecord && pendingAuthData) {
             $state.currentUser = {
               ...pendingRecord,
               ...pendingDecryptedKeys
@@ -386,14 +366,10 @@ Atoll administrators cannot recover your credentials or vault.
             }
           }
 
-          if (recoveryModal) {
-            recoveryModal.removeAttribute('open')
-          }
-        })
-      }
+        recoveryModal.removeAttribute('open')
+      })
 
-      if (usernameInput) {
-        usernameInput.addEventListener('input', () => {
+      usernameInput.addEventListener('input', () => {
           const val = usernameInput.value || ''
           const canonical = val.trim().toLowerCase()
           if (canonical) {
@@ -402,10 +378,8 @@ Atoll administrators cannot recover your credentials or vault.
             usernameInput.helperText = ''
           }
         })
-      }
 
-      if (invitationCodeInput) {
-        invitationCodeInput.addEventListener('input', (_) => {
+      invitationCodeInput.addEventListener('input', (_) => {
           const val = invitationCodeInput.value || ''
           const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
           let raw = clean
@@ -421,11 +395,8 @@ Atoll administrators cannot recover your credentials or vault.
           }
           invitationCodeInput.value = formatted
         })
-      }
 
-      if (altchaContainer) {
-  
-        btnSubmit.removeAttribute('loading')
+      btnSubmit.removeAttribute('loading')
         btnSubmit.removeAttribute('disabled')
 
         altchaWidget = document.createElement('altcha-widget')
@@ -483,7 +454,6 @@ Atoll administrators cannot recover your credentials or vault.
         })
 
         altchaContainer.appendChild(altchaWidget)
-      }
 
       registerForm.addEventListener('submit', async (event) => {
         event.preventDefault()
@@ -491,18 +461,10 @@ Atoll administrators cannot recover your credentials or vault.
         showGlobalAlert('')
 
         // Clear all custom validities first
-        if (usernameInput) {
-          usernameInput.setCustomValidity('')
-        }
-        if (invitationCodeInput) {
-          invitationCodeInput.setCustomValidity('')
-        }
-        if (passwordInputEl) {
-          passwordInputEl.setCustomValidity('')
-        }
-        if (passwordConfirmInputEl) {
-          passwordConfirmInputEl.setCustomValidity('')
-        }
+        usernameInput.setCustomValidity('')
+        invitationCodeInput.setCustomValidity('')
+        passwordInputEl.setCustomValidity('')
+        passwordConfirmInputEl.setCustomValidity('')
         updateStatus('')
 
         const inputs = [usernameInput, invitationCodeInput, passwordInputEl, passwordConfirmInputEl].filter(Boolean)
@@ -521,15 +483,13 @@ Atoll administrators cannot recover your credentials or vault.
           return
         }
 
-        const username = usernameInput ? usernameInput.value : ''
-        const invitation_code = invitationCodeInput ? invitationCodeInput.value.trim() : ''
-        const password = passwordInputEl ? passwordInputEl.value : ''
-        const passwordConfirm = passwordConfirmInputEl ? passwordConfirmInputEl.value : ''
+        const username = usernameInput.value
+        const invitation_code = invitationCodeInput.value.trim()
+        const password = passwordInputEl.value
+        const passwordConfirm = passwordConfirmInputEl.value
 
         if (password !== passwordConfirm) {
-          if (passwordConfirmInputEl) {
-            passwordConfirmInputEl.setCustomValidity('Passwords do not match')
-          }
+          passwordConfirmInputEl.setCustomValidity('Passwords do not match')
           updateValidationFeedback(registerForm)
           registerForm.classList.add('was-validated')
           return
@@ -701,13 +661,9 @@ Atoll administrators cannot recover your credentials or vault.
             recoveryCodeBox: recoveryCodeBox ? 'found' : 'null',
             savedCode
           })
-          if (recoveryCodeBox) {
-            recoveryCodeBox.textContent = singleCode
-          }
-          if (recoveryModal) {
-            moveRecoveryContent()
-            recoveryModal.setAttribute('open', 'true')
-          }
+          recoveryCodeBox.textContent = singleCode
+          moveRecoveryContent()
+          recoveryModal.setAttribute('open', 'true')
           updateStatus('Account created! Please save your recovery code.')
         } catch (error) {
           console.error('Registration error:', error)

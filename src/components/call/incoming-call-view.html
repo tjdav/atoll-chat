@@ -55,9 +55,7 @@
         if (!room_id) {
           state.callerName = 'Unknown Caller'
           state.callerInitial = '?'
-          if (callerAvatar) {
-            callerAvatar.removeAttribute('src')
-          }
+          callerAvatar.removeAttribute('src')
           return
         }
 
@@ -68,19 +66,15 @@
             if (!room.is_group && participants.length > 0) {
               const p = participants[0]
               state.callerName = p.name || p.username
-              if (callerAvatar) {
-                if (p.id) {
-                  callerAvatar.setAttribute('user-id', p.id)
-                }
-                if (pb?.files && p.avatar) {
-                  callerAvatar.setAttribute('src', pb.files.getURL(p, p.avatar, { thumb: '95x95' }))
-                }
+              if (p.id) {
+                callerAvatar.setAttribute('user-id', p.id)
+              }
+              if (pb?.files && p.avatar) {
+                callerAvatar.setAttribute('src', pb.files.getURL(p, p.avatar, { thumb: '95x95' }))
               }
             } else {
               state.callerName = room.name || 'Unknown Caller'
-              if (callerAvatar) {
-                callerAvatar.removeAttribute('user-id')
-              }
+              callerAvatar.removeAttribute('user-id')
             }
           } else {
             state.callerName = 'Unknown Caller'

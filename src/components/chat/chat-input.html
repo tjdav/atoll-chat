@@ -103,13 +103,9 @@
         currentAudioWaveformData = null
         $state.currentMessageText = ''
         const container = refs('voiceRecorderContainer')
-        if (container) {
-          container.innerHTML = ''
-        }
+        container.innerHTML = ''
         const linkContainer = refs('linkPreviewContainer')
-        if (linkContainer) {
-          linkContainer.innerHTML = ''
-        }
+        linkContainer.innerHTML = ''
       }
 
       const URL_REGEX = /(?:\[[^\]]+\]\((https?:\/\/[^\s)]+)\))|(?:^|\s)(https?:\/\/[^\s]+)(?=\s|$)/gi
@@ -150,24 +146,20 @@
 
           // Update UI
           const container = refs('linkPreviewContainer')
-          if (container) {
-            container.innerHTML = ''
-            state.pendingLinkData.forEach(data => {
-              const el = document.createElement('ui-link-preview-input')
-              el.setAttribute('title', data.title || '')
-              el.setAttribute('description', data.description || '')
-              el.setAttribute('image', data.image || '')
-              el.setAttribute('domain', data.domain || '')
-              el.setAttribute('url', data.url)
-              container.appendChild(el)
-            })
-          }
+          container.innerHTML = ''
+          state.pendingLinkData.forEach(data => {
+            const el = document.createElement('ui-link-preview-input')
+            el.setAttribute('title', data.title || '')
+            el.setAttribute('description', data.description || '')
+            el.setAttribute('image', data.image || '')
+            el.setAttribute('domain', data.domain || '')
+            el.setAttribute('url', data.url)
+            container.appendChild(el)
+          })
         } else {
           state.pendingLinkData = []
           const container = refs('linkPreviewContainer')
-          if (container) {
-            container.innerHTML = ''
-          }
+          container.innerHTML = ''
         }
       }, 500)
 
@@ -521,11 +513,9 @@
         state.pendingLinkData = state.pendingLinkData.filter(d => d.url !== url)
   
         const container = refs('linkPreviewContainer')
-        if (container) {
-          const el = container.querySelector(`ui-link-preview-input[url="${url}"]`)
-          if (el) {
-            el.remove()
-          }
+        const el = container.querySelector(`ui-link-preview-input[url="${url}"]`)
+        if (el) {
+          el.remove()
         }
       })
 

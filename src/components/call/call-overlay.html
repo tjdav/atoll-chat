@@ -82,10 +82,7 @@
         if (direct) {
           return direct
         }
-        if (modalEl) {
-          return modalEl.querySelector(`[ref="${name}"]`) || modalEl.querySelector(`[ref$="${name}"]`)
-        }
-        return null
+        return modalEl.querySelector(`[ref="${name}"]`) || modalEl.querySelector(`[ref$="${name}"]`)
       }
 
       const syncVideoGrid = () => {

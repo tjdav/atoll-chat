@@ -121,10 +121,8 @@
             const { default: QRCode } = await import('qrcode')
             const qrDataUrl = await QRCode.toDataURL(otpauthUri)
             qrImg.src = qrDataUrl
-            if (setupModal) {
-              setupModal.show()
-              setTimeout(() => otpInput.focus(), 100)
-            }
+            setupModal.show()
+            setTimeout(() => otpInput.focus(), 100)
           } catch (err) {
             console.error('QR code generation failed:', err)
           }
@@ -132,10 +130,8 @@
           /* Disable Flow */
           disableOtpInput.value = ''
           disableError.classList.add('d-none')
-          if (disableModal) {
-            disableModal.show()
-            setTimeout(() => disableOtpInput.focus(), 100)
-          }
+          disableModal.show()
+          setTimeout(() => disableOtpInput.focus(), 100)
         }
       })
 
@@ -159,7 +155,7 @@
 
           await pb.collection('users').authRefresh()
           updateTotpState()
-          if (setupModal) setupModal.hide()
+          setupModal.hide()
 
           $bus.emit('ui:show_toast', {
             message: 'Two-Step Authentication enabled successfully!',
@@ -193,7 +189,7 @@
 
           await pb.collection('users').authRefresh()
           updateTotpState()
-          if (disableModal) disableModal.hide()
+          disableModal.hide()
 
           $bus.emit('ui:show_toast', {
             message: 'Two-Step Authentication disabled successfully.',
@@ -206,25 +202,17 @@
         }
       }
 
-      if (btnVerifyEnable) {
-        btnVerifyEnable.onclick = handleEnableSubmit
-      }
-      if (verifyForm) {
-        verifyForm.addEventListener('submit', (e) => {
-          e.preventDefault()
-          handleEnableSubmit()
-        }, { signal })
-      }
+      btnVerifyEnable.onclick = handleEnableSubmit
+      verifyForm.addEventListener('submit', (e) => {
+        e.preventDefault()
+        handleEnableSubmit()
+      }, { signal })
 
-      if (btnVerifyDisable) {
-        btnVerifyDisable.onclick = handleDisableSubmit
-      }
-      if (disableForm) {
-        disableForm.addEventListener('submit', (e) => {
-          e.preventDefault()
-          handleDisableSubmit()
-        }, { signal })
-      }
+      btnVerifyDisable.onclick = handleDisableSubmit
+      disableForm.addEventListener('submit', (e) => {
+        e.preventDefault()
+        handleDisableSubmit()
+      }, { signal })
     }
   })
 </script>

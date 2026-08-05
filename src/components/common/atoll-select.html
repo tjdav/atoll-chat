@@ -27,7 +27,6 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    dependencies: ['atoll-icon'],
     attributes: {
       value: {
         type: String,
@@ -153,13 +152,13 @@
       const { Dropdown } = bootstrap
 
       // Initialize Bootstrap Dropdown Constructor
-      if (toggleBtn && typeof window !== 'undefined' && Dropdown) {
+      if (typeof window !== 'undefined' && Dropdown) {
         bsDropdown = new Dropdown(toggleBtn)
       }
 
       // Forward test-id / data-testid to inner toggle button
       const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
-      if (testId && toggleBtn) {
+      if (testId) {
         root.__testId = testId
         toggleBtn.setAttribute('data-testid', testId)
         root.removeAttribute('test-id')
@@ -170,9 +169,6 @@
 
       // Sync active state and selected label text from options in default slot
       const updateSelectedLabel = () => {
-        if (!menuEl) {
-          return
-        }
         const items = menuEl.querySelectorAll('.dropdown-item, [data-value]')
         let foundLabel = ''
 
@@ -191,9 +187,7 @@
         state.selectedLabelText = foundLabel || ''
 
         const labelEl = refs('labelElement')
-        if (labelEl) {
-          labelEl.textContent = state.selectedLabelText || state.placeholder
-        }
+        labelEl.textContent = state.selectedLabelText || state.placeholder
       }
 
       // Option selection handler

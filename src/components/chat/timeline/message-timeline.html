@@ -37,15 +37,13 @@
       let ephemeralMessages = []
 
       const scrollToBottom = (smooth = false) => {
-        if (container) {
-          if (smooth) {
-            container.scrollTo({
-              top: container.scrollHeight,
-              behavior: 'smooth'
-            })
-          } else {
-            container.scrollTop = container.scrollHeight
-          }
+        if (smooth) {
+          container.scrollTo({
+            top: container.scrollHeight,
+            behavior: 'smooth'
+          })
+        } else {
+          container.scrollTop = container.scrollHeight
         }
       }
 
@@ -55,7 +53,7 @@
         }
   
         const room_id = typeof idOrEvent === 'string' ? idOrEvent : $state.activeSelectionId
-        if (!room_id || typeof room_id !== 'string' || !container || container.clientHeight === 0 || container.scrollHeight <= container.clientHeight) {
+        if (!room_id || typeof room_id !== 'string' || container.clientHeight === 0 || container.scrollHeight <= container.clientHeight) {
           return
         }
 
@@ -513,7 +511,7 @@
             } else if (savedPos !== undefined && savedPos !== -1) {
               isRestorePending = true
               const restore = () => {
-                if (!container || room_id !== $state.activeSelectionId) {
+                if (room_id !== $state.activeSelectionId) {
                   isRestorePending = false
                   return
                 }

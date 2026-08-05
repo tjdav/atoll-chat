@@ -80,12 +80,8 @@
       const messageSoundSwitch = refs('messageSoundSwitch')
       const callSoundSwitch = refs('callSoundSwitch')
 
-      if (messageSoundSwitch) {
-        messageSoundSwitch.checked = state.messageSoundsEnabled
-      }
-      if (callSoundSwitch) {
-        callSoundSwitch.checked = state.callSoundsEnabled
-      }
+      messageSoundSwitch.checked = state.messageSoundsEnabled
+      callSoundSwitch.checked = state.callSoundsEnabled
 
       const refreshSoundInfo = async () => {
         const customMessage = await $storage.getConfigRecord('custom_message_sound')
@@ -99,19 +95,15 @@
 
       await refreshSoundInfo()
 
-      if (messageSoundSwitch) {
-        messageSoundSwitch.addEventListener('change', () => {
-          $state.messageSoundsEnabled = messageSoundSwitch.checked
-          state.messageSoundsEnabled = messageSoundSwitch.checked
-        })
-      }
+      messageSoundSwitch.addEventListener('change', () => {
+        $state.messageSoundsEnabled = messageSoundSwitch.checked
+        state.messageSoundsEnabled = messageSoundSwitch.checked
+      })
 
-      if (callSoundSwitch) {
-        callSoundSwitch.addEventListener('change', () => {
-          $state.callSoundsEnabled = callSoundSwitch.checked
-          state.callSoundsEnabled = callSoundSwitch.checked
-        })
-      }
+      callSoundSwitch.addEventListener('change', () => {
+        $state.callSoundsEnabled = callSoundSwitch.checked
+        state.callSoundsEnabled = callSoundSwitch.checked
+      })
 
       const playPreview = async (type) => {
         let audioSource = type === 'message' ? '/sounds/notification.mp3' : '/sounds/ringtone.mp3'

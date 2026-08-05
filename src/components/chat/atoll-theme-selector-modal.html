@@ -383,9 +383,7 @@
         })
 
         // Apply theme data-theme attribute to Live Preview window
-        if (previewChatWindow) {
-          previewChatWindow.setAttribute('data-theme', highlightedTheme)
-        }
+        previewChatWindow.setAttribute('data-theme', highlightedTheme)
 
         if (highlightedTheme === 'custom') {
           customThemeControls.classList.remove('d-none')
@@ -396,14 +394,12 @@
           }
           // Smoothly scroll the container to show custom options
           const themeListContainer = refs('themeListContainer')
-          if (themeListContainer) {
-            setTimeout(() => {
-              themeListContainer.scrollTo({
-                top: themeListContainer.scrollHeight,
-                behavior: 'smooth'
-              })
-            }, 100)
-          }
+          setTimeout(() => {
+            themeListContainer.scrollTo({
+              top: themeListContainer.scrollHeight,
+              behavior: 'smooth'
+            })
+          }, 100)
         } else {
           customThemeControls.classList.add('d-none')
           bgSlidersContainer.classList.add('d-none')
@@ -478,10 +474,6 @@
 
       // Live Preview custom style applicator
       const updateLivePreviewStyles = () => {
-        if (!previewChatWindow) {
-          return
-        }
-
         // Clear inline custom styles first
         previewChatWindow.style.backgroundImage = ''
         previewChatWindow.style.setProperty('--atoll-chat-bg-image', '')
@@ -526,12 +518,10 @@
           previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', customAttachmentCardBg)
           previewChatWindow.style.setProperty('--atoll-chat-attachment-card-border', customAttachmentCardBorder)
 
-          if (previewInputBar) {
-            previewInputBar.style.backgroundColor = 'var(--atoll-chat-input-container-bg-custom)'
-            previewInputBar.style.backdropFilter = 'blur(12px)'
-            previewInputBar.style.webkitBackdropFilter = 'blur(12px)'
-            previewInputBar.style.border = '1px solid var(--atoll-chat-attachment-card-border)'
-          }
+          previewInputBar.style.backgroundColor = 'var(--atoll-chat-input-container-bg-custom)'
+          previewInputBar.style.backdropFilter = 'blur(12px)'
+          previewInputBar.style.webkitBackdropFilter = 'blur(12px)'
+          previewInputBar.style.border = '1px solid var(--atoll-chat-attachment-card-border)'
 
           if (previewWaveformPlayer) {
             previewWaveformPlayer.style.backgroundColor = 'var(--atoll-chat-input-container-bg-custom)'
@@ -562,12 +552,10 @@
         } else {
           previewChatWindow.style.backgroundImage = ''
           previewChatWindow.style.backdropFilter = ''
-          if (previewInputBar) {
-            previewInputBar.style.backgroundColor = ''
-            previewInputBar.style.backdropFilter = ''
-            previewInputBar.style.webkitBackdropFilter = ''
-            previewInputBar.style.border = ''
-          }
+          previewInputBar.style.backgroundColor = ''
+          previewInputBar.style.backdropFilter = ''
+          previewInputBar.style.webkitBackdropFilter = ''
+          previewInputBar.style.border = ''
           if (previewWaveformPlayer) {
             previewWaveformPlayer.style.backgroundColor = ''
             previewWaveformPlayer.style.backdropFilter = ''

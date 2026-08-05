@@ -124,12 +124,10 @@
       syncActiveState()
 
       // Handle item click selection
-      if (container) {
-        container.addEventListener('atoll-item-click', () => {
-          $bus.emit('room:select', { room_id: state.roomId })
-          $bus.emit('ui:selection_made')
-        }, { signal })
-      }
+      container.addEventListener('atoll-item-click', () => {
+        $bus.emit('room:select', { room_id: state.roomId })
+        $bus.emit('ui:selection_made')
+      }, { signal })
     }
   })
 </script>

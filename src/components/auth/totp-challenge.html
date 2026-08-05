@@ -58,7 +58,7 @@
       const avatarProfile = refs('avatarProfile')
 
       const user = pb?.authStore?.model
-      if (user && avatarProfile) {
+      if (user) {
         if (user.id) {
           avatarProfile.setAttribute('user-id', user.id)
         }
@@ -108,17 +108,15 @@
         updateStatus('')
       })
 
-      if (btnLogout) {
-        btnLogout.addEventListener('click', () => {
-          if (auth) {
-            auth.logout()
-          } else {
-            pb.authStore.clear()
-          }
-          $state.isAuthenticated = false
-          $state.isVaultUnlocked = false
-        })
-      }
+      btnLogout.addEventListener('click', () => {
+        if (auth) {
+          auth.logout()
+        } else {
+          pb.authStore.clear()
+        }
+        $state.isAuthenticated = false
+        $state.isVaultUnlocked = false
+      })
 
       challengeForm.addEventListener('submit', async (e) => {
         e.preventDefault()
