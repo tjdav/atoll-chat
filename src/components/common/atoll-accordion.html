@@ -1,0 +1,47 @@
+<template id="atoll-accordion">
+  <div class="atoll-accordion" role="presentation">
+    <slot></slot>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      multiple: {
+        type: Boolean,
+        default: false
+      }
+    },
+
+    client: ({ state, root, observe }) => {
+      observe('multiple', (val) => {
+        state.multiple = val === 'true' || val === true || val === ''
+      })
+
+      // Coordinate nested accordion items if single-expansion (multiple="false") is active
+      const handleToggle = (event) => {
+        if (state.multiple) {
+          return
+        }
+
+        const toggledItem = event.target
+        if (toggledItem && toggledItem.tagName === 'ATOLL-ACCORDION-ITEM' && event.detail.expanded) {
+          const items = root.querySelectorAll('atoll-accordion-item')
+          items.forEach(item => {
+            if (item !== toggledItem) {
+              item.removeAttribute('expanded')
+            }
+          })
+        }
+      }
+
+      root.addEventListener('atoll-accordion-item-toggle', handleToggle)
+
+      return () => {
+        root.removeEventListener('atoll-accordion-item-toggle', handleToggle)
+      }
+    }
+  })
+</script>

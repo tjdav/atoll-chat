@@ -55,10 +55,10 @@ describe('Color Contrast and Conversion Utility', () => {
   test('ensureWCAGContrast lightness adjustments', () => {
     // A mid-light green like #06C755 might fail white text contrast
     const initialContrast = getContrastRatio('#06C755', '#FFFFFF')
-    
+
     // Ensure we can make it compliant with white or dark text
     const result = ensureWCAGContrast('#06C755', 4.5)
-    
+
     assert.ok(result.ratio >= 4.5, `Adjusted ratio (${result.ratio}) must be at least 4.5`)
     assert.ok(result.textColor === '#FFFFFF' || result.textColor === '#111111')
     assert.equal(typeof result.bgHex, 'string')

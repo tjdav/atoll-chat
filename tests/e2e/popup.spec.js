@@ -375,7 +375,7 @@ test.describe('Atoll Popup / Modal Component', () => {
       const popup = document.createElement('atoll-popup')
       popup.id = 'nested-popup'
       popup.setAttribute('title', 'Nested Dialog')
-      
+
       offcanvas.appendChild(popup)
       document.body.appendChild(offcanvas)
 

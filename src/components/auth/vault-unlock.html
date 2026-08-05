@@ -295,41 +295,41 @@
       btnPasskey.addEventListener('click', async () => {
         try {
           showGlobalAlert('')
-            updateStatus('Authenticating via passkey/biometrics...')
-            const record = pb.authStore.model
-            if (!record) {
-              throw new Error('User not logged in.')
-            }
-
-            const masterKey = await biometric.retrieveMasterKey(record.id, record)
-            if (!masterKey) {
-              throw new Error('Passkey authentication failed to retrieve Master Key.')
-            }
-
-            updateStatus('Decrypting private keys...')
-            const fetchedRecord = await pb.collection('users').getOne(record.id)
-            const encryptedVault = fetchedRecord.encrypted_master_keys_passkey || fetchedRecord.encrypted_private_keys
-
-            if (!encryptedVault) {
-              throw new Error('Secure vault not found on server.')
-            }
-
-            const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
-              encrypted_private_keys: encryptedVault,
-              master_key: masterKey
-            })
-
-            await completeUnlock(decryptedKeys, fetchedRecord)
-          } catch (error) {
-            console.error('Biometric unlock error:', error)
-            let errorMessage = 'Biometric unlock failed'
-            if (error.message) {
-              errorMessage = error.message
-            }
-            showGlobalAlert(errorMessage)
-            updateStatus('')
+          updateStatus('Authenticating via passkey/biometrics...')
+          const record = pb.authStore.model
+          if (!record) {
+            throw new Error('User not logged in.')
           }
-        })
+
+          const masterKey = await biometric.retrieveMasterKey(record.id, record)
+          if (!masterKey) {
+            throw new Error('Passkey authentication failed to retrieve Master Key.')
+          }
+
+          updateStatus('Decrypting private keys...')
+          const fetchedRecord = await pb.collection('users').getOne(record.id)
+          const encryptedVault = fetchedRecord.encrypted_master_keys_passkey || fetchedRecord.encrypted_private_keys
+
+          if (!encryptedVault) {
+            throw new Error('Secure vault not found on server.')
+          }
+
+          const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
+            encrypted_private_keys: encryptedVault,
+            master_key: masterKey
+          })
+
+          await completeUnlock(decryptedKeys, fetchedRecord)
+        } catch (error) {
+          console.error('Biometric unlock error:', error)
+          let errorMessage = 'Biometric unlock failed'
+          if (error.message) {
+            errorMessage = error.message
+          }
+          showGlobalAlert(errorMessage)
+          updateStatus('')
+        }
+      })
 
       if (pb.authStore.model) {
         vaultUsernameHidden.value = `${pb.authStore.model.username} - Vault`

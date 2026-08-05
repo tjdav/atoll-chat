@@ -1,0 +1,157 @@
+<template id="atoll-accordion-item">
+  <div class="atoll-accordion-item">
+    <!-- Accordion Header -->
+    <div 
+      ref="headerElement"
+      class="atoll-accordion-item-header d-flex align-items-center justify-content-between"
+      role="button"
+      tabindex="0"
+      aria-expanded="{{ isAriaExpanded }}"
+    >
+      <div class="atoll-accordion-item-header-left d-flex align-items-center">
+        <!-- Optional Left Icon -->
+        <span class="atoll-accordion-item-icon-wrapper" hidden="{{ hideIcon }}">
+          <atoll-icon ref="iconElement" name="{{ icon }}" size="20"></atoll-icon>
+        </span>
+
+        <!-- Title & Count Badge -->
+        <span class="atoll-accordion-item-title-text fw-bold">{{ title }}</span>
+        
+        <!-- LINE Accordion adjacent badge count -->
+        <span class="atoll-accordion-item-badge text-success fw-bold ms-2" hidden="{{ hideBadge }}">{{ badge }}</span>
+      </div>
+
+      <div class="atoll-accordion-item-header-right d-flex align-items-center">
+        <!-- Right side extra actions / text slots if any -->
+        <slot name="trailing"></slot>
+
+        <!-- Dynamic Chevron -->
+        <span class="atoll-accordion-item-chevron d-flex align-items-center justify-content-center">
+          <atoll-icon name="chevron-down" size="18"></atoll-icon>
+        </span>
+      </div>
+    </div>
+
+    <!-- Accordion Body Content Wrapper -->
+    <div 
+      ref="bodyElement"
+      class="atoll-accordion-item-body collapse {{ showBodyClass }}"
+    >
+      <div class="atoll-accordion-item-content">
+        <slot></slot>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    dependencies: ['atoll-icon'],
+    attributes: {
+      title: {
+        type: String,
+        default: ''
+      },
+      icon: {
+        type: String,
+        default: ''
+      },
+      badge: {
+        type: String,
+        default: ''
+      },
+      expanded: {
+        type: Boolean,
+        default: false
+      },
+      bodyTestid: {
+        type: String,
+        default: ''
+      }
+    },
+
+    getters: {
+      hideIcon: (state) => !state.icon,
+      hideBadge: (state) => !state.badge,
+      isAriaExpanded: (state) => (state.expanded ? 'true' : 'false'),
+      showBodyClass: (state) => (state.expanded ? 'show' : '')
+    },
+
+    client: ({ state, refs, root, observe, signal }) => {
+      const header = refs('headerElement')
+      const body = refs('bodyElement')
+
+      // Forward test-id / data-testid to inner header button for E2E testing
+      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
+      if (testId && header) {
+        root.__testId = testId
+        header.setAttribute('data-testid', testId)
+        root.removeAttribute('test-id')
+        requestAnimationFrame(() => {
+          root.removeAttribute('data-testid')
+        })
+      }
+
+      // Forward body-testid to bodyElement for collapse E2E assertions
+      const bodyTestid = root.getAttribute('body-testid') || state.bodyTestid
+      if (bodyTestid && body) {
+        body.setAttribute('data-testid', bodyTestid)
+        root.removeAttribute('body-testid')
+      }
+
+      const toggle = () => {
+        state.expanded = !state.expanded
+
+        // Dispatch events for coordinate triggers or E2E assertions
+        root.dispatchEvent(
+          new CustomEvent('atoll-accordion-item-toggle', {
+            bubbles: true,
+            composed: true,
+            detail: { expanded: state.expanded }
+          })
+        )
+
+        // Compatibility event to match old room-details-sidebar/atoll-header-toggle expectations
+        root.dispatchEvent(
+          new CustomEvent('atoll-header-toggle', {
+            bubbles: true,
+            composed: true,
+            detail: { expanded: state.expanded }
+          })
+        )
+      }
+
+      if (header) {
+        header.addEventListener('click', toggle, { signal })
+
+        header.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault()
+            toggle()
+          }
+        }, { signal })
+      }
+
+      // Synchronize dynamic attributes
+      observe('expanded', (val) => {
+        state.expanded = val === 'true' || val === true || val === ''
+        if (state.expanded) {
+          body?.classList.add('show')
+          header?.setAttribute('aria-expanded', 'true')
+        } else {
+          body?.classList.remove('show')
+          header?.setAttribute('aria-expanded', 'false')
+        }
+      })
+
+      observe('icon', (val) => {
+        const iconEl = refs('iconElement')
+        if (iconEl && val) {
+          iconEl.setAttribute('name', val)
+        }
+      })
+    }
+  })
+</script>

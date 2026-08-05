@@ -42,43 +42,43 @@
   
       notifSwitch.addEventListener('change', async () => {
         if (notifSwitch.checked) {
-            const granted = await $notifications.requestPermission()
-            if (granted) {
-              $state.notificationsEnabled = true
-              state.notificationsEnabled = true
+          const granted = await $notifications.requestPermission()
+          if (granted) {
+            $state.notificationsEnabled = true
+            state.notificationsEnabled = true
 
-              // Generate the VAPID subscription and save/PATCH it in PocketBase
-              try {
-                const token = await $push.register()
-                if (token && pb.authStore.model) {
-                  await pb.collection('users').update(pb.authStore.model.id, {
-                    push_subscription: token
-                  })
-                  console.log('[browser-notifications] Push registration successful, transmitting token to backend:', token)
-                }
-              } catch (err) {
-                console.error('[browser-notifications] Failed to register push subscription on toggle:', err)
-              }
-            } else {
-              notifSwitch.checked = false
-              $state.notificationsEnabled = false
-              state.notificationsEnabled = false
-            }
-          } else {
-            $state.notificationsEnabled = false
-            state.notificationsEnabled = false
-
-            // Nullify the push subscription on backend
+            // Generate the VAPID subscription and save/PATCH it in PocketBase
             try {
-              if (pb.authStore.model) {
+              const token = await $push.register()
+              if (token && pb.authStore.model) {
                 await pb.collection('users').update(pb.authStore.model.id, {
-                  push_subscription: null
+                  push_subscription: token
                 })
-                console.log('[browser-notifications] Push subscription disabled/removed on backend successfully.')
+                console.log('[browser-notifications] Push registration successful, transmitting token to backend:', token)
               }
             } catch (err) {
-              console.error('[browser-notifications] Failed to clear push subscription on disable:', err)
+              console.error('[browser-notifications] Failed to register push subscription on toggle:', err)
             }
+          } else {
+            notifSwitch.checked = false
+            $state.notificationsEnabled = false
+            state.notificationsEnabled = false
+          }
+        } else {
+          $state.notificationsEnabled = false
+          state.notificationsEnabled = false
+
+          // Nullify the push subscription on backend
+          try {
+            if (pb.authStore.model) {
+              await pb.collection('users').update(pb.authStore.model.id, {
+                push_subscription: null
+              })
+              console.log('[browser-notifications] Push subscription disabled/removed on backend successfully.')
+            }
+          } catch (err) {
+            console.error('[browser-notifications] Failed to clear push subscription on disable:', err)
+          }
         }
         state.permissionStatus = Notification.permission
       })

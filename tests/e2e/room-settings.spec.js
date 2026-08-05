@@ -1,4 +1,5 @@
 import { test, expect } from './fixtures/base-test.js'
+import fs from 'fs'
 
 test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
   test.beforeEach(async ({ page, loginCustomPage }) => {
@@ -111,7 +112,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     const inlineInput = nicknamesModal.locator('input[type="text"]')
     await expect(inlineInput).toBeVisible()
     await inlineInput.fill('Bobby')
-    
+
     // Click the inline confirm button (success button with check icon)
     await nicknamesModal.locator('button.btn-success').click()
 
@@ -166,10 +167,10 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
   test('generate verification screenshot and video', async ({ page }) => {
     // Open Offcanvas
     await page.locator('[ref$="btnDetails"] button').click()
-    
+
     // Click Change theme (Customise Chat is expanded by default)
     await page.locator('[data-testid$="btnChangeTheme"]').click()
-    
+
     // Select Ocean theme
     await page.locator('[data-testid$="theme-ocean-item"]').click()
 
@@ -179,18 +180,18 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
     // Wait for the modal to close and the theme to apply
     await page.waitForTimeout(1000)
-    
+
     // Click edit nicknames
     await page.locator('[data-testid$="btnEditNicknames"]').click()
-    
+
     // Highlight Bob
     const nicknamesModal = page.locator('.modal').filter({ hasText: 'Nicknames' })
     await nicknamesModal.locator('atoll-list-item').filter({ hasText: /bob/i }).click()
-    
+
     // Fill nickname
     await nicknamesModal.locator('input[type="text"]').fill('Bobby')
     await nicknamesModal.locator('button.btn-success').click()
-    
+
     // Save
     await nicknamesModal.locator('atoll-button[ref$="primaryBtn"] button').click()
 

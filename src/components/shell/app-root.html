@@ -28,7 +28,10 @@
         if (stackingManagerInstance) {
           stackingManagerInstance.handle(type, target)
         } else {
-          stackingManagerQueue.push({ type, target })
+          stackingManagerQueue.push({
+            type,
+            target
+          })
         }
       }
 
@@ -42,7 +45,7 @@
         .then(({ initStackingManager }) => {
           // Initialize but let our existing root handlers handle event buffering
           stackingManagerInstance = initStackingManager(signal)
-          
+  
           // Process any events that fired before the import resolved
           while (stackingManagerQueue.length > 0) {
             const { type, target } = stackingManagerQueue.shift()

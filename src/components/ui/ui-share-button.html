@@ -37,7 +37,9 @@
 
       const updateSendButton = () => {
         const btn = getBtnSend()
-        if (btn) btn.disabled = selectedRoomIds.size === 0
+        if (btn) {
+          btn.disabled = selectedRoomIds.size === 0
+        }
       }
 
       const getCurrentUserId = () => $state.currentUser?.id || pb?.authStore?.model?.id

@@ -562,29 +562,29 @@
 
       const paginationControlsEl = refs('paginationControls')
       paginationControlsEl.addEventListener('click', (e) => {
-          const btnNext = e.target.closest('[ref$="btnNextPage"]') || e.target.closest('.btn-next-page')
-          const btnPrev = e.target.closest('[ref$="btnPrevPage"]') || e.target.closest('.btn-prev-page')
+        const btnNext = e.target.closest('[ref$="btnNextPage"]') || e.target.closest('.btn-next-page')
+        const btnPrev = e.target.closest('[ref$="btnPrevPage"]') || e.target.closest('.btn-prev-page')
 
-          if (btnNext) {
-            e.preventDefault()
-            e.stopPropagation()
-            const totalCount = state.participants ? state.participants.length : 0
-            const totalPages = Math.ceil(totalCount / 49)
-            if (state.currentPage < totalPages) {
-              state.currentPage++
-              renderGrid()
-            }
+        if (btnNext) {
+          e.preventDefault()
+          e.stopPropagation()
+          const totalCount = state.participants ? state.participants.length : 0
+          const totalPages = Math.ceil(totalCount / 49)
+          if (state.currentPage < totalPages) {
+            state.currentPage++
+            renderGrid()
           }
+        }
 
-          if (btnPrev) {
-            e.preventDefault()
-            e.stopPropagation()
-            if (state.currentPage > 1) {
-              state.currentPage--
-              renderGrid()
-            }
+        if (btnPrev) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (state.currentPage > 1) {
+            state.currentPage--
+            renderGrid()
           }
-        })
+        }
+      })
 
       const checkPip = () => {
         let el = refs('gridContainer')

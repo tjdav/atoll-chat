@@ -227,56 +227,56 @@
 
             const chatViewRoot = refs('chatViewRoot')
             if (room.theme) {
-                chatViewRoot.setAttribute('data-theme', room.theme)
-              } else {
-                chatViewRoot.removeAttribute('data-theme')
-              }
+              chatViewRoot.setAttribute('data-theme', room.theme)
+            } else {
+              chatViewRoot.removeAttribute('data-theme')
+            }
 
-              // Apply custom theme CSS properties
-              if (room.theme === 'custom' && room.custom_theme) {
-                const ct = room.custom_theme
-                chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-bg', ct.sentBg || '#06C755')
-                chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-color', ct.sentColor || '#FFFFFF')
-                chatViewRoot.style.setProperty('--atoll-chat-bubble-received-bg', ct.receivedBg || '#EEEEEE')
-                chatViewRoot.style.setProperty('--atoll-chat-bubble-received-color', ct.receivedColor || '#111111')
-                chatViewRoot.style.setProperty('--atoll-chat-bg-image', ct.useBgImage && ct.bgImage ? `url(${ct.bgImage})` : 'none')
-                chatViewRoot.style.setProperty('--atoll-chat-bg-blur', `${ct.bgBlur || 0}px`)
-                chatViewRoot.style.setProperty('--atoll-chat-bg-dim', `${(ct.bgDim !== undefined ? ct.bgDim : 30) / 100}`)
+            // Apply custom theme CSS properties
+            if (room.theme === 'custom' && room.custom_theme) {
+              const ct = room.custom_theme
+              chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-bg', ct.sentBg || '#06C755')
+              chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-color', ct.sentColor || '#FFFFFF')
+              chatViewRoot.style.setProperty('--atoll-chat-bubble-received-bg', ct.receivedBg || '#EEEEEE')
+              chatViewRoot.style.setProperty('--atoll-chat-bubble-received-color', ct.receivedColor || '#111111')
+              chatViewRoot.style.setProperty('--atoll-chat-bg-image', ct.useBgImage && ct.bgImage ? `url(${ct.bgImage})` : 'none')
+              chatViewRoot.style.setProperty('--atoll-chat-bg-blur', `${ct.bgBlur || 0}px`)
+              chatViewRoot.style.setProperty('--atoll-chat-bg-dim', `${(ct.bgDim !== undefined ? ct.bgDim : 30) / 100}`)
 
-                // Set newly expanded custom theme variables on chatViewRoot
-                chatViewRoot.style.setProperty('--atoll-chat-sent-status-color', ct.sentStatusColor || ct.sentBg || '#06C755')
-                chatViewRoot.style.setProperty('--atoll-chat-btn-attach-bg', ct.btnAttachBg || 'transparent')
-                chatViewRoot.style.setProperty('--atoll-chat-btn-attach-color', ct.btnAttachColor || ct.sentBg || '#06C755')
-                chatViewRoot.style.setProperty('--atoll-chat-btn-voice-bg', ct.btnVoiceBg || 'transparent')
-                chatViewRoot.style.setProperty('--atoll-chat-btn-voice-color', ct.btnVoiceColor || ct.sentBg || '#06C755')
-                chatViewRoot.style.setProperty('--atoll-chat-btn-send-bg', ct.btnSendBg || ct.sentBg || '#06C755')
-                chatViewRoot.style.setProperty('--atoll-chat-btn-send-color', ct.btnSendColor || '#FFFFFF')
-                chatViewRoot.style.setProperty('--atoll-chat-waveform-active', ct.waveformActive || ct.sentBg || '#06C755')
-                chatViewRoot.style.setProperty('--atoll-chat-waveform-inactive', ct.waveformInactive || 'rgba(6, 199, 85, 0.2)')
-                chatViewRoot.style.setProperty('--atoll-chat-attachment-card-bg', ct.attachmentCardBg || ct.receivedBg || '#EEEEEE')
-                chatViewRoot.style.setProperty('--atoll-chat-attachment-card-border', ct.attachmentCardBorder || 'rgba(0, 0, 0, 0.08)')
-              } else {
-                // Clear inline custom theme properties
-                chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-bg')
-                chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-color')
-                chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-bg')
-                chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-color')
-                chatViewRoot.style.removeProperty('--atoll-chat-bg-image')
-                chatViewRoot.style.removeProperty('--atoll-chat-bg-blur')
-                chatViewRoot.style.removeProperty('--atoll-chat-bg-dim')
+              // Set newly expanded custom theme variables on chatViewRoot
+              chatViewRoot.style.setProperty('--atoll-chat-sent-status-color', ct.sentStatusColor || ct.sentBg || '#06C755')
+              chatViewRoot.style.setProperty('--atoll-chat-btn-attach-bg', ct.btnAttachBg || 'transparent')
+              chatViewRoot.style.setProperty('--atoll-chat-btn-attach-color', ct.btnAttachColor || ct.sentBg || '#06C755')
+              chatViewRoot.style.setProperty('--atoll-chat-btn-voice-bg', ct.btnVoiceBg || 'transparent')
+              chatViewRoot.style.setProperty('--atoll-chat-btn-voice-color', ct.btnVoiceColor || ct.sentBg || '#06C755')
+              chatViewRoot.style.setProperty('--atoll-chat-btn-send-bg', ct.btnSendBg || ct.sentBg || '#06C755')
+              chatViewRoot.style.setProperty('--atoll-chat-btn-send-color', ct.btnSendColor || '#FFFFFF')
+              chatViewRoot.style.setProperty('--atoll-chat-waveform-active', ct.waveformActive || ct.sentBg || '#06C755')
+              chatViewRoot.style.setProperty('--atoll-chat-waveform-inactive', ct.waveformInactive || 'rgba(6, 199, 85, 0.2)')
+              chatViewRoot.style.setProperty('--atoll-chat-attachment-card-bg', ct.attachmentCardBg || ct.receivedBg || '#EEEEEE')
+              chatViewRoot.style.setProperty('--atoll-chat-attachment-card-border', ct.attachmentCardBorder || 'rgba(0, 0, 0, 0.08)')
+            } else {
+              // Clear inline custom theme properties
+              chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-bg')
+              chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-color')
+              chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-bg')
+              chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-color')
+              chatViewRoot.style.removeProperty('--atoll-chat-bg-image')
+              chatViewRoot.style.removeProperty('--atoll-chat-bg-blur')
+              chatViewRoot.style.removeProperty('--atoll-chat-bg-dim')
 
-                chatViewRoot.style.removeProperty('--atoll-chat-sent-status-color')
-                chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-bg')
-                chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-color')
-                chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-bg')
-                chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-color')
-                chatViewRoot.style.removeProperty('--atoll-chat-btn-send-bg')
-                chatViewRoot.style.removeProperty('--atoll-chat-btn-send-color')
-                chatViewRoot.style.removeProperty('--atoll-chat-waveform-active')
-                chatViewRoot.style.removeProperty('--atoll-chat-waveform-inactive')
-                chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-bg')
-                chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-border')
-              }
+              chatViewRoot.style.removeProperty('--atoll-chat-sent-status-color')
+              chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-bg')
+              chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-color')
+              chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-bg')
+              chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-color')
+              chatViewRoot.style.removeProperty('--atoll-chat-btn-send-bg')
+              chatViewRoot.style.removeProperty('--atoll-chat-btn-send-color')
+              chatViewRoot.style.removeProperty('--atoll-chat-waveform-active')
+              chatViewRoot.style.removeProperty('--atoll-chat-waveform-inactive')
+              chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-bg')
+              chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-border')
+            }
 
             renderHeaderAvatar(room, participants)
           }

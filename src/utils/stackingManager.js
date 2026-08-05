@@ -2,10 +2,10 @@
  * Global Stacking Context & Dynamic Z-Index Manager
  * Manages the z-index stack for Bootstrap modals and offcanvas components.
  * Relocates nested modals to document.body to escape parent stacking contexts.
- * 
+ *
  * @returns {object} The manager control interface containing handle(type, target).
  */
-export function initStackingManager() {
+export function initStackingManager () {
   const activeStack = []
   const originalPlacements = new WeakMap()
 
@@ -122,11 +122,16 @@ export function initStackingManager() {
   }
 
   return {
-    handle(type, target) {
-      if (type === 'show.bs.modal') onShowModal(target)
-      else if (type === 'hidden.bs.modal') onHiddenModal(target)
-      else if (type === 'show.bs.offcanvas') onShowOffcanvas(target)
-      else if (type === 'hidden.bs.offcanvas') onHiddenOffcanvas(target)
+    handle (type, target) {
+      if (type === 'show.bs.modal') {
+        onShowModal(target)
+      } else if (type === 'hidden.bs.modal') {
+        onHiddenModal(target)
+      } else if (type === 'show.bs.offcanvas') {
+        onShowOffcanvas(target)
+      } else if (type === 'hidden.bs.offcanvas') {
+        onHiddenOffcanvas(target)
+      }
     }
   }
 }

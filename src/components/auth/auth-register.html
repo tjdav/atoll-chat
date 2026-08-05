@@ -306,7 +306,7 @@
 
       btnDownloadCode.addEventListener('click', () => {
         const creationDate = new Date().toISOString().replace('T', ' ').substring(0, 19)
-          const fileContent = `============================================================
+        const fileContent = `============================================================
 ATOLL CHAT - EMERGENCY RECOVERY CODE
 ============================================================
 Username: @${usernameInput.value.trim().toLowerCase()}
@@ -318,19 +318,19 @@ access to your encrypted vault if you forget your Master Password.
 Atoll administrators cannot recover your credentials or vault.
 ============================================================`
 
-          const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' })
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = 'atoll-recovery-code.txt'
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          URL.revokeObjectURL(url)
+        const blob = new Blob([fileContent], { type: 'text/plain;charset=utf-8' })
+        const url = URL.createObjectURL(blob)
+        const link = document.createElement('a')
+        link.href = url
+        link.download = 'atoll-recovery-code.txt'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        URL.revokeObjectURL(url)
 
-          hasCopiedOrDownloaded = true
-          updateContinueButtonState()
-        })
+        hasCopiedOrDownloaded = true
+        updateContinueButtonState()
+      })
 
       const chkStoredLabel = refs('chkStoredLabel')
       chkStored.addEventListener('change', (e) => {
@@ -345,115 +345,115 @@ Atoll administrators cannot recover your credentials or vault.
 
       btnContinueToChat.addEventListener('click', async () => {
         if (pendingDecryptedKeys && pendingRecord && pendingAuthData) {
-            $state.currentUser = {
-              ...pendingRecord,
-              ...pendingDecryptedKeys
-            }
-            $bus.emit('auth:unlocked', {
-              keys: pendingDecryptedKeys,
-              userRecord: pendingRecord
-            })
-            $state.isVaultUnlocked = true
-            pb.authStore.save(pendingAuthData.token, pendingRecord)
+          $state.currentUser = {
+            ...pendingRecord,
+            ...pendingDecryptedKeys
           }
+          $bus.emit('auth:unlocked', {
+            keys: pendingDecryptedKeys,
+            userRecord: pendingRecord
+          })
+          $state.isVaultUnlocked = true
+          pb.authStore.save(pendingAuthData.token, pendingRecord)
+        }
 
-          $state.isAuthenticated = true
-          if ($state.isVaultUnlocked) {
-            try {
-              await $sync.startSubscriptions()
-            } catch (syncErr) {
-              console.error('[auth-register] Subscription sync warning:', syncErr)
-            }
+        $state.isAuthenticated = true
+        if ($state.isVaultUnlocked) {
+          try {
+            await $sync.startSubscriptions()
+          } catch (syncErr) {
+            console.error('[auth-register] Subscription sync warning:', syncErr)
           }
+        }
 
         recoveryModal.removeAttribute('open')
       })
 
       usernameInput.addEventListener('input', () => {
-          const val = usernameInput.value || ''
-          const canonical = val.trim().toLowerCase()
-          if (canonical) {
-            usernameInput.helperText = `Your unique username is permanently unique and immutable once created. It will be @${canonical}`
-          } else {
-            usernameInput.helperText = ''
-          }
-        })
+        const val = usernameInput.value || ''
+        const canonical = val.trim().toLowerCase()
+        if (canonical) {
+          usernameInput.helperText = `Your unique username is permanently unique and immutable once created. It will be @${canonical}`
+        } else {
+          usernameInput.helperText = ''
+        }
+      })
 
       invitationCodeInput.addEventListener('input', (_) => {
-          const val = invitationCodeInput.value || ''
-          const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
-          let raw = clean
-          if (raw.startsWith('INV')) {
-            raw = raw.slice(3)
-          }
-          let formatted = 'INV'
-          if (raw.length > 0) {
-            formatted += '-' + raw.substring(0, 4)
-          }
-          if (raw.length > 4) {
-            formatted += '-' + raw.substring(4, 8)
-          }
-          invitationCodeInput.value = formatted
-        })
+        const val = invitationCodeInput.value || ''
+        const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+        let raw = clean
+        if (raw.startsWith('INV')) {
+          raw = raw.slice(3)
+        }
+        let formatted = 'INV'
+        if (raw.length > 0) {
+          formatted += '-' + raw.substring(0, 4)
+        }
+        if (raw.length > 4) {
+          formatted += '-' + raw.substring(4, 8)
+        }
+        invitationCodeInput.value = formatted
+      })
 
       btnSubmit.removeAttribute('loading')
-        btnSubmit.removeAttribute('disabled')
+      btnSubmit.removeAttribute('disabled')
 
-        altchaWidget = document.createElement('altcha-widget')
-        altchaWidget.setAttribute('display', 'invisible')
-        altchaWidget.setAttribute('auto', 'off')
-        altchaWidget.style.width = '100%'
-        altchaWidget.style.maxWidth = '100%'
+      altchaWidget = document.createElement('altcha-widget')
+      altchaWidget.setAttribute('display', 'invisible')
+      altchaWidget.setAttribute('auto', 'off')
+      altchaWidget.style.width = '100%'
+      altchaWidget.style.maxWidth = '100%'
   
-        const configObj = {}
-        if (isTesting) {
-          altchaWidget.setAttribute('test', 'true')
-          configObj.test = true
-        } else {
-          altchaWidget.setAttribute('challenge', pb.buildURL('/api/altcha/challenge'))
-          configObj.challenge = pb.buildURL('/api/altcha/challenge')
-        }
-        altchaWidget.setAttribute('configuration', JSON.stringify(configObj))
+      const configObj = {}
+      if (isTesting) {
+        altchaWidget.setAttribute('test', 'true')
+        configObj.test = true
+      } else {
+        altchaWidget.setAttribute('challenge', pb.buildURL('/api/altcha/challenge'))
+        configObj.challenge = pb.buildURL('/api/altcha/challenge')
+      }
+      altchaWidget.setAttribute('configuration', JSON.stringify(configObj))
 
-        altchaWidget.addEventListener('verified', (ev) => {
-          altchaPayload = ev.detail?.payload || null
-          console.log('[ALTCHA REGISTER DEBUG] verified event payload:', altchaPayload)
-        })
+      altchaWidget.addEventListener('verified', (ev) => {
+        altchaPayload = ev.detail?.payload || null
+        console.log('[ALTCHA REGISTER DEBUG] verified event payload:', altchaPayload)
+      })
 
-        altchaWidget.addEventListener('statechange', (ev) => {
-          const state = ev.detail?.state
-          console.log('[ALTCHA REGISTER DEBUG]', 'state:', state, 'value:', altchaWidget.value, 'payload:', ev.detail?.payload)
-          if (state === 'verifying') {
-            altchaPayload = null
-            btnSubmit.setAttribute('loading', 'true')
-          } else if (state === 'verified') {
-            if (ev.detail?.payload) {
-              altchaPayload = ev.detail.payload
-            }
-            btnSubmit.removeAttribute('loading')
-            if (registerSubmitPending) {
-              registerSubmitPending = false
-              if (typeof registerForm.requestSubmit === 'function') {
-                registerForm.requestSubmit()
-              } else {
-                registerForm.dispatchEvent(new Event('submit', {
-                  cancelable: true,
-                  bubbles: true
-                }))
-              }
-            }
-          } else if (state === 'unverified') {
-            altchaPayload = null
-            btnSubmit.removeAttribute('loading')
-          } else if (state === 'error') {
-            altchaPayload = null
-            btnSubmit.removeAttribute('loading')
-            updateStatus('Security challenge failed. Please try again.', true)
-            registerSubmitPending = false
+      altchaWidget.addEventListener('statechange', (ev) => {
+        const state = ev.detail?.state
+        console.log('[ALTCHA REGISTER DEBUG]', 'state:', state, 'value:', altchaWidget.value, 'payload:', ev.detail?.payload)
+        if (state === 'verifying') {
+          altchaPayload = null
+          btnSubmit.setAttribute('loading', 'true')
+        } else if (state === 'verified') {
+          if (ev.detail?.payload) {
+            altchaPayload = ev.detail.payload
           }
-        })
+          btnSubmit.removeAttribute('loading')
+          if (registerSubmitPending) {
+            registerSubmitPending = false
+            if (typeof registerForm.requestSubmit === 'function') {
+              registerForm.requestSubmit()
+            } else {
+              registerForm.dispatchEvent(new Event('submit', {
+                cancelable: true,
+                bubbles: true
+              }))
+            }
+          }
+        } else if (state === 'unverified') {
+          altchaPayload = null
+          btnSubmit.removeAttribute('loading')
+        } else if (state === 'error') {
+          altchaPayload = null
+          btnSubmit.removeAttribute('loading')
+          updateStatus('Security challenge failed. Please try again.', true)
+          registerSubmitPending = false
+        }
+      })
 
-        altchaContainer.appendChild(altchaWidget)
+      altchaContainer.appendChild(altchaWidget)
 
       registerForm.addEventListener('submit', async (event) => {
         event.preventDefault()

@@ -8,7 +8,7 @@
  * @param {string} hex
  * @returns {number[]}
  */
-export function hexToRgb(hex) {
+export function hexToRgb (hex) {
   let cleanHex = hex.replace(/^#/, '')
   if (cleanHex.length === 3) {
     cleanHex = cleanHex.split('').map(c => c + c).join('')
@@ -28,7 +28,7 @@ export function hexToRgb(hex) {
  * @param {number} b
  * @returns {string}
  */
-export function rgbToHex(r, g, b) {
+export function rgbToHex (r, g, b) {
   const clamp = (val) => Math.max(0, Math.min(255, Math.round(val)))
   const cr = clamp(r).toString(16).padStart(2, '0')
   const cg = clamp(g).toString(16).padStart(2, '0')
@@ -43,7 +43,7 @@ export function rgbToHex(r, g, b) {
  * @param {number} b (0-255)
  * @returns {number[]} [h (0-360), s (0-100), l (0-100)]
  */
-export function rgbToHsl(r, g, b) {
+export function rgbToHsl (r, g, b) {
   const rNorm = r / 255
   const gNorm = g / 255
   const bNorm = b / 255
@@ -80,7 +80,7 @@ export function rgbToHsl(r, g, b) {
  * @param {number} l (0-100)
  * @returns {number[]} [r, g, b] (0-255)
  */
-export function hslToRgb(h, s, l) {
+export function hslToRgb (h, s, l) {
   const hNorm = h / 360
   const sNorm = s / 100
   const lNorm = l / 100
@@ -94,11 +94,21 @@ export function hslToRgb(h, s, l) {
     const p = 2 * lNorm - q
     const hue2rgb = (t) => {
       let tNorm = t
-      if (tNorm < 0) tNorm += 1
-      if (tNorm > 1) tNorm -= 1
-      if (tNorm < 1 / 6) return p + (q - p) * 6 * tNorm
-      if (tNorm < 1 / 2) return q
-      if (tNorm < 2 / 3) return p + (q - p) * (2 / 3 - tNorm) * 6
+      if (tNorm < 0) {
+        tNorm += 1
+      }
+      if (tNorm > 1) {
+        tNorm -= 1
+      }
+      if (tNorm < 1 / 6) {
+        return p + (q - p) * 6 * tNorm
+      }
+      if (tNorm < 1 / 2) {
+        return q
+      }
+      if (tNorm < 2 / 3) {
+        return p + (q - p) * (2 / 3 - tNorm) * 6
+      }
       return p
     }
     r = hue2rgb(hNorm + 1 / 3)
@@ -121,7 +131,7 @@ export function hslToRgb(h, s, l) {
  * @param {number} b
  * @returns {number}
  */
-export function getRelativeLuminance(r, g, b) {
+export function getRelativeLuminance (r, g, b) {
   const parseChannel = (c) => {
     const s = c / 255
     return s <= 0.04045 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4)
@@ -136,7 +146,7 @@ export function getRelativeLuminance(r, g, b) {
  * @param {string|number[]} color2
  * @returns {number}
  */
-export function getContrastRatio(color1, color2) {
+export function getContrastRatio (color1, color2) {
   const rgb1 = typeof color1 === 'string' ? hexToRgb(color1) : color1
   const rgb2 = typeof color2 === 'string' ? hexToRgb(color2) : color2
 
@@ -157,7 +167,7 @@ export function getContrastRatio(color1, color2) {
  * @param {number} minRatio
  * @returns {string} hex representation of the adjusted background color
  */
-export function adjustLightnessForContrast(bgHex, textColor, minRatio = 4.5) {
+export function adjustLightnessForContrast (bgHex, textColor, minRatio = 4.5) {
   const rgb = hexToRgb(bgHex)
   const [h, s, l] = rgbToHsl(rgb[0], rgb[1], rgb[2])
 
@@ -196,7 +206,7 @@ export function adjustLightnessForContrast(bgHex, textColor, minRatio = 4.5) {
  * @param {number} minRatio
  * @returns {{ bgHex: string, textColor: string, ratio: number }}
  */
-export function ensureWCAGContrast(bgHex, minRatio = 4.5) {
+export function ensureWCAGContrast (bgHex, minRatio = 4.5) {
   const whiteContrast = getContrastRatio(bgHex, '#FFFFFF')
   const darkContrast = getContrastRatio(bgHex, '#111111')
 
@@ -209,7 +219,11 @@ export function ensureWCAGContrast(bgHex, minRatio = 4.5) {
     currentRatio = getContrastRatio(adjustedBg, textColor)
   }
 
-  return { bgHex: adjustedBg, textColor, ratio: currentRatio }
+  return {
+    bgHex: adjustedBg,
+    textColor,
+    ratio: currentRatio
+  }
 }
 
 /**
@@ -219,10 +233,10 @@ export function ensureWCAGContrast(bgHex, minRatio = 4.5) {
  * @param {string} mode ('vibrant', 'muted', 'pastel', 'deep')
  * @returns {string[]} array of 6-8 hex colors
  */
-export function generateImagePalettes(imgElement, mode = 'vibrant') {
+export function generateImagePalettes (imgElement, mode = 'vibrant') {
   let canvas
   const hasCanvas = typeof HTMLCanvasElement !== 'undefined'
-  
+
   if (hasCanvas && imgElement instanceof HTMLCanvasElement) {
     canvas = imgElement
   } else if (typeof document !== 'undefined') {
@@ -273,7 +287,11 @@ export function generateImagePalettes(imgElement, mode = 'vibrant') {
         const b = pixels[idx + 2]
         const a = pixels[idx + 3]
         if (a >= 200) { // skip highly transparent pixels
-          colors.push({ r, g, b })
+          colors.push({
+            r,
+            g,
+            b
+          })
         }
       }
     }
@@ -287,7 +305,12 @@ export function generateImagePalettes(imgElement, mode = 'vibrant') {
   const converted = colors.map(rgb => {
     const [h, s, l] = rgbToHsl(rgb.r, rgb.g, rgb.b)
     const hex = rgbToHex(rgb.r, rgb.g, rgb.b)
-    return { h, s, l, hex }
+    return {
+      h,
+      s,
+      l,
+      hex
+    }
   })
 
   // Filter and sort based on active mode
@@ -318,7 +341,9 @@ export function generateImagePalettes(imgElement, mode = 'vibrant') {
   // Select 6-8 distinct colors (by checking hue / hex distance)
   const result = []
   for (const item of filtered) {
-    if (result.length >= 8) break
+    if (result.length >= 8) {
+      break
+    }
     const isDistinct = result.every(resColor => {
       const rgb1 = hexToRgb(resColor)
       const rgb2 = hexToRgb(item.hex)
@@ -337,7 +362,9 @@ export function generateImagePalettes(imgElement, mode = 'vibrant') {
   // If we still don't have enough, relax distance check or pad with remaining
   if (result.length < 6) {
     for (const item of filtered) {
-      if (result.length >= 8) break
+      if (result.length >= 8) {
+        break
+      }
       if (!result.includes(item.hex)) {
         result.push(item.hex)
       }
@@ -348,7 +375,9 @@ export function generateImagePalettes(imgElement, mode = 'vibrant') {
   while (result.length < 6) {
     const fallback = getFallbackPalette(mode)
     for (const fbColor of fallback) {
-      if (result.length >= 6) break
+      if (result.length >= 6) {
+        break
+      }
       if (!result.includes(fbColor)) {
         result.push(fbColor)
       }
@@ -363,7 +392,7 @@ export function generateImagePalettes(imgElement, mode = 'vibrant') {
  * @param {string} mode
  * @returns {string[]}
  */
-function getFallbackPalette(mode) {
+function getFallbackPalette (mode) {
   if (mode === 'vibrant') {
     return ['#FF3B30', '#FF9500', '#FFCC00', '#4CD964', '#5AC8FA', '#007AFF', '#5856D6', '#FF2D55']
   } else if (mode === 'muted') {

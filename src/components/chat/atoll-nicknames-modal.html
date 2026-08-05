@@ -28,7 +28,9 @@
       const showModal = async () => {
         const room_id = $state.activeSelectionId
         const room = await $storage.getRoom(room_id)
-        if (!room) return
+        if (!room) {
+          return
+        }
 
         tempNicknames = { ...(room.nicknames || {}) }
         const members = await pb.collection('room_members').getFullList({
@@ -55,7 +57,9 @@
 
       const renderNicknameModalRows = (participants, currentNicknames) => {
         const list = nicknameModal.querySelector('[ref$="nicknameList"], [data-testid$="nicknameList"]')
-        if (!list) return
+        if (!list) {
+          return
+        }
         list.innerHTML = ''
 
         participants.forEach(p => {
@@ -138,7 +142,7 @@
                 commitValue()
               }
             }
-          };
+          }
 
           pencil.onclick = (e) => {
             e.stopPropagation()
@@ -154,7 +158,10 @@
 
       nicknameModal.addEventListener('atoll-popup-primary', async () => {
         const room_id = $state.activeSelectionId
-        $bus.emit('ui:show_toast', { message: 'Saving nicknames...', type: 'info' })
+        $bus.emit('ui:show_toast', {
+          message: 'Saving nicknames...',
+          type: 'info'
+        })
         try {
           const room = await $storage.getRoom(room_id)
           const roomKeyB64 = room?.key_history?.find(h => h.epoch_id === 1)?.key

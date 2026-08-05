@@ -32,10 +32,14 @@
       const showModal = async () => {
         const room_id = $state.activeSelectionId
         const room = await $storage.getRoom(room_id)
-        if (!room) return
+        if (!room) {
+          return
+        }
 
         const other = room.participants?.find(p => p.id !== $state.currentUser?.id)
-        if (!other) return
+        if (!other) {
+          return
+        }
 
         const blockTitle = refs('blockTargetTitle')
         // Capitalize first character correctly
@@ -59,12 +63,19 @@
       blockModal.addEventListener('atoll-popup-primary', async () => {
         const room_id = $state.activeSelectionId
         const room = await $storage.getRoom(room_id)
-        if (!room) return
+        if (!room) {
+          return
+        }
 
         const other = room.participants?.find(p => p.id !== $state.currentUser?.id)
-        if (!other) return
+        if (!other) {
+          return
+        }
 
-        $bus.emit('ui:show_toast', { message: 'Blocking user...', type: 'info' })
+        $bus.emit('ui:show_toast', {
+          message: 'Blocking user...',
+          type: 'info'
+        })
         try {
           const blockedUsers = Array.from($state.currentUser.blocked_users || [])
           if (!blockedUsers.includes(other.id)) {
@@ -77,8 +88,11 @@
 
           $state.currentUser = updatedUser
           const otherName = other.name || other.username
-          
-          $bus.emit('user:blocked', { targetUserId: other.id, targetUsername: otherName })
+  
+          $bus.emit('user:blocked', {
+            targetUserId: other.id,
+            targetUsername: otherName
+          })
           blockModal.hide()
         } catch (err) {
           console.error('[atoll-block-modal] Block user failed:', err)

@@ -1,0 +1,95 @@
+// src/scss/_atoll-accordion.scss
+
+.atoll-accordion {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+}
+
+.atoll-accordion-item {
+  display: flex;
+  flex-direction: column;
+  border-bottom: 1px solid var(--atoll-border-subtle, #EFEFEF);
+  background-color: var(--atoll-bg-surface-primary, #FFFFFF);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.atoll-accordion-item-header {
+  padding: 12px 16px;
+  cursor: pointer;
+  user-select: none;
+  transition: background-color 0.15s ease-in-out;
+
+  &:hover {
+    background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
+  }
+
+  &:focus-visible {
+    outline: 2px solid var(--atoll-brand-primary, #06C755);
+    outline-offset: -2px;
+  }
+}
+
+.atoll-accordion-item-icon-wrapper {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 12px;
+  color: var(--atoll-text-secondary, #111111);
+}
+
+.atoll-accordion-item-title-text {
+  font-size: var(--atoll-font-size-body-2, 14px);
+  color: var(--atoll-text-primary, #111111);
+}
+
+.atoll-accordion-item-badge {
+  font-size: var(--atoll-font-size-body-2, 14px);
+  color: var(--atoll-brand-primary, #06C755) !important;
+}
+
+.atoll-accordion-item-chevron {
+  color: var(--atoll-text-secondary, #B0B0B0);
+  transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.atoll-accordion-item-header[aria-expanded="true"] {
+  .atoll-accordion-item-chevron {
+    transform: rotate(180deg);
+  }
+}
+
+.atoll-accordion-item-body {
+  transition: height 0.2s ease-in-out;
+
+  &.collapse:not(.show) {
+    display: none;
+  }
+}
+
+.atoll-accordion-item-content {
+  background-color: var(--atoll-bg-surface-primary, #FFFFFF);
+}
+
+/* Dark theme overrides */
+[data-atoll-theme="dark"] {
+  .atoll-accordion-item {
+    border-bottom: 1px solid var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
+    background-color: var(--atoll-bg-surface-primary, #161616);
+  }
+
+  .atoll-accordion-item-header:hover {
+    background-color: var(--atoll-bg-surface-secondary, #1F1F1F);
+  }
+
+  .atoll-accordion-item-title-text {
+    color: var(--atoll-text-primary, #FFFFFF);
+  }
+
+  .atoll-accordion-item-content {
+    background-color: var(--atoll-bg-surface-primary, #161616);
+  }
+}

@@ -28,78 +28,86 @@
         </div>
 
         <!-- Accordion Settings groups -->
-        <div class="room-settings-groups d-flex flex-column gap-3 px-3 pb-3" id="roomSettingsAccordion">
+        <atoll-accordion multiple="true" class="room-settings-groups d-flex flex-column px-3 pb-3" id="roomSettingsAccordion">
           
           <!-- Group 1: Chat Customisation -->
-          <div class="room-settings-card border rounded bg-body overflow-hidden shadow-sm">
-            <atoll-list-header 
-              variant="accordion" 
-              title="Customise chat" 
-              expanded="true" 
-              data-testid="accordion-customise-btn" 
-              ref="headerCustomise">
-            </atoll-list-header>
-            <div ref="collapseCustomise" id="collapseCustomise" class="collapse show" data-testid="collapse-customise">
-              <atoll-list divided="true">
-                <atoll-list-item ref="btnChangeTheme" clickable="true" chevron="true" title="Change theme" data-testid="btnChangeTheme">
-                  <span slot="leading"><atoll-icon name="palette" size="20"></atoll-icon></span>
-                </atoll-list-item>
-                <atoll-list-item ref="btnEditNicknames" clickable="true" chevron="true" title="Edit nicknames" data-testid="btnEditNicknames">
-                  <span slot="leading"><atoll-icon name="Aa" size="20"></atoll-icon></span>
-                </atoll-list-item>
-                <atoll-list-item ref="btnEditRoom" clickable="true" chevron="true" title="Edit room" data-testid="btnEditRoom" hidden="{{ hideEditRoom }}">
-                  <span slot="leading"><atoll-icon name="edit" size="20"></atoll-icon></span>
-                </atoll-list-item>
-              </atoll-list>
-            </div>
-          </div>
+          <atoll-accordion-item 
+            title="Customise chat" 
+            icon="palette"
+            expanded="true" 
+            data-testid="accordion-customise-btn" 
+            body-testid="collapse-customise"
+            ref="headerCustomise"
+            class="room-settings-card overflow-hidden"
+          >
+            <atoll-list divided="true">
+              <atoll-list-item ref="btnChangeTheme" clickable="true" chevron="true" title="Change theme" data-testid="btnChangeTheme">
+                <span slot="leading"><atoll-icon name="palette" size="20"></atoll-icon></span>
+              </atoll-list-item>
+              <atoll-list-item ref="btnEditNicknames" clickable="true" chevron="true" title="Edit nicknames" data-testid="btnEditNicknames">
+                <span slot="leading"><atoll-icon name="Aa" size="20"></atoll-icon></span>
+              </atoll-list-item>
+              <atoll-list-item ref="btnEditRoom" clickable="true" chevron="true" title="Edit room" data-testid="btnEditRoom" hidden="{{ hideEditRoom }}">
+                <span slot="leading"><atoll-icon name="edit" size="20"></atoll-icon></span>
+              </atoll-list-item>
+            </atoll-list>
+          </atoll-accordion-item>
 
           <!-- Group 2: Privacy & Support -->
-          <div class="room-settings-card border rounded bg-body overflow-hidden shadow-sm">
-            <atoll-list-header 
-              variant="accordion" 
-              title="Privacy & support" 
-              expanded="true" 
-              data-testid="accordion-privacy-btn" 
-              ref="headerPrivacy">
-            </atoll-list-header>
-            <div ref="collapsePrivacy" id="collapsePrivacy" class="collapse show" data-testid="collapse-privacy">
-              <atoll-list divided="true">
-                <atoll-list-item ref="btnMuteNotifications" clickable="true" title="Mute notifications" data-testid="btnMuteNotifications">
-                  <span slot="leading"><atoll-icon name="bell" size="20"></atoll-icon></span>
-                  <span slot="right" class="badge rounded-pill px-2 py-1 fs-8" ref="muteStatusBadge" style="background-color: var(--atoll-brand-subtle-bg, #E6F9EE); color: var(--atoll-brand-primary, #06C755);">Off</span>
-                </atoll-list-item>
-                <atoll-list-item ref="btnReadReceipts" clickable="true" title="Read receipts" data-testid="btnReadReceipts">
-                  <span slot="leading"><atoll-icon name="eye" size="20"></atoll-icon></span>
-                  <span slot="right" class="text-secondary small me-2" ref="readReceiptsStatusText">On</span>
-                </atoll-list-item>
-                <atoll-list-item ref="btnBlock" clickable="true" title="Block" class="text-danger" data-testid="btnBlock">
-                  <span slot="leading"><atoll-icon name="block" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
-                </atoll-list-item>
-                <atoll-list-item ref="btnDelete" clickable="true" title="{{ deleteLabel }}" class="text-danger" data-testid="btnDelete">
-                  <span slot="leading"><atoll-icon name="trash" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
-                </atoll-list-item>
-              </atoll-list>
-            </div>
-          </div>
+          <atoll-accordion-item 
+            title="Privacy & support" 
+            icon="bell"
+            expanded="true" 
+            data-testid="accordion-privacy-btn" 
+            body-testid="collapse-privacy"
+            ref="headerPrivacy"
+            class="room-settings-card overflow-hidden"
+          >
+            <atoll-list divided="true">
+              <atoll-list-item ref="btnMuteNotifications" clickable="true" title="Mute notifications" data-testid="btnMuteNotifications">
+                <span slot="leading"><atoll-icon name="bell" size="20"></atoll-icon></span>
+                <div slot="right" class="d-flex align-items-center gap-2">
+                  <span class="d-none" ref="muteStatusBadge">Off</span>
+                  <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" ref="muteStatusSwitch" data-testid="mute-switch" style="pointer-events: none;">
+                  </div>
+                </div>
+              </atoll-list-item>
+              <atoll-list-item ref="btnReadReceipts" clickable="true" title="Read receipts" data-testid="btnReadReceipts">
+                <span slot="leading"><atoll-icon name="eye" size="20"></atoll-icon></span>
+                <div slot="right" class="d-flex align-items-center gap-2">
+                  <span class="d-none" ref="readReceiptsStatusText">On</span>
+                  <div class="form-check form-switch m-0">
+                    <input class="form-check-input" type="checkbox" role="switch" ref="readReceiptsSwitch" data-testid="read-receipts-switch" style="pointer-events: none;">
+                  </div>
+                </div>
+              </atoll-list-item>
+              <atoll-list-item ref="btnBlock" clickable="true" title="Block" class="text-danger" data-testid="btnBlock">
+                <span slot="leading"><atoll-icon name="block" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
+              </atoll-list-item>
+              <atoll-list-item ref="btnDelete" clickable="true" title="{{ deleteLabel }}" class="text-danger" data-testid="btnDelete">
+                <span slot="leading"><atoll-icon name="trash" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
+              </atoll-list-item>
+            </atoll-list>
+          </atoll-accordion-item>
 
           <!-- Group 3: Members -->
-          <div class="room-settings-card border rounded bg-body overflow-hidden shadow-sm">
-            <atoll-list-header 
-              variant="accordion" 
-              title="Members ({{ memberCount }})" 
-              expanded="true" 
-              data-testid="accordion-members-btn" 
-              ref="headerMembers">
-            </atoll-list-header>
-            <div ref="collapseMembers" id="collapseMembers" class="collapse show" data-testid="collapse-members">
-              <div class="member-list list-group list-group-flush py-2" ref="memberList" data-testid="memberListContainer">
-                <!-- Members rendered dynamically -->
-              </div>
+          <atoll-accordion-item 
+            title="Members" 
+            icon="user"
+            badge="{{ memberCount }}"
+            expanded="true" 
+            data-testid="accordion-members-btn" 
+            body-testid="collapse-members"
+            ref="headerMembers"
+            class="room-settings-card overflow-hidden"
+          >
+            <div class="member-list list-group list-group-flush py-2" ref="memberList" data-testid="memberListContainer">
+              <!-- Members rendered dynamically -->
             </div>
-          </div>
+          </atoll-accordion-item>
 
-        </div>
+        </atoll-accordion>
 
       </div>
     </div>
@@ -139,7 +147,7 @@
       memberCount: (state) => (state.members || []).length,
       loadingClass: (state) => (state.isLoading ? 'd-flex' : 'd-none'),
       hideEditRoom: (state) => !state.isAdmin,
-      deleteLabel: (state) => state.isGroup ? 'Leave group' : 'Delete chat'
+      deleteLabel: (state) => (state.isGroup ? 'Leave group' : 'Delete chat')
     },
     client: ({ refs, state, pocketbase, eventBus, globalStore, storage, cryptoWorker, utils, signal }) => {
       const { pb } = pocketbase
@@ -187,61 +195,61 @@
             // Sync room avatar
             const roomAvatarComp = refs('roomAvatar')
             const existingImg = roomAvatarComp.querySelector('[slot="image"]')
-              if (existingImg) {
-                existingImg.remove()
-              }
-              if (room.avatar) {
-                try {
-                  const avatarData = typeof room.avatar === 'string' ? JSON.parse(room.avatar) : room.avatar
-                  roomAvatarComp.setAttribute('type', 'single')
-                  roomAvatarComp.setAttribute('size', '3xl')
-                  roomAvatarComp.setAttribute('name', state.roomName)
-                  roomAvatarComp.setAttribute('alt', state.roomName)
-                  const $media = utils?.$media
-                  if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
-                    $media.decrypt(avatarData, signal).then((url) => {
-                      roomAvatarComp.setAttribute('src', url)
-                    }).catch(err => {
-                      console.error('[sidebar] Failed to decrypt room avatar:', err)
-                    })
-                  }
-                } catch (e) {
-                  console.error('Failed to parse avatar:', e)
-                }
-              } else if (!room.is_group && participants.length > 0) {
-                const other = participants[0]
-                roomAvatarComp.setAttribute('type', 'single')
-                roomAvatarComp.setAttribute('size', '3xl')
-                roomAvatarComp.setAttribute('name', other.name || other.username)
-                roomAvatarComp.setAttribute('alt', other.name || other.username)
-                if (other.avatar) {
-                  roomAvatarComp.setAttribute('src', pb.files.getURL(other, other.avatar, { thumb: '100x100' }))
-                }
-              } else if (room.is_group && participants.length > 0) {
-                roomAvatarComp.setAttribute('type', 'multiparty')
-                roomAvatarComp.setAttribute('size', '3xl')
-                const splitCount = Math.min(Math.max(participants.length, 2), 4)
-                roomAvatarComp.setAttribute('split-count', splitCount)
-
-                const slotDiv = document.createElement('div')
-                slotDiv.setAttribute('slot', 'image')
-                const displayCount = Math.min(participants.length, splitCount)
-                for (let i = 0; i < displayCount; i++) {
-                  const p = participants[i]
-                  const img = document.createElement('img')
-                  img.alt = p.name || p.username || 'Member'
-                  if (p.avatar) {
-                    img.src = pb.files.getURL(p, p.avatar, { thumb: '50x50' })
-                  }
-                  slotDiv.appendChild(img)
-                }
-                roomAvatarComp.appendChild(slotDiv)
-              } else {
+            if (existingImg) {
+              existingImg.remove()
+            }
+            if (room.avatar) {
+              try {
+                const avatarData = typeof room.avatar === 'string' ? JSON.parse(room.avatar) : room.avatar
                 roomAvatarComp.setAttribute('type', 'single')
                 roomAvatarComp.setAttribute('size', '3xl')
                 roomAvatarComp.setAttribute('name', state.roomName)
                 roomAvatarComp.setAttribute('alt', state.roomName)
+                const $media = utils?.$media
+                if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
+                  $media.decrypt(avatarData, signal).then((url) => {
+                    roomAvatarComp.setAttribute('src', url)
+                  }).catch(err => {
+                    console.error('[sidebar] Failed to decrypt room avatar:', err)
+                  })
+                }
+              } catch (e) {
+                console.error('Failed to parse avatar:', e)
               }
+            } else if (!room.is_group && participants.length > 0) {
+              const other = participants[0]
+              roomAvatarComp.setAttribute('type', 'single')
+              roomAvatarComp.setAttribute('size', '3xl')
+              roomAvatarComp.setAttribute('name', other.name || other.username)
+              roomAvatarComp.setAttribute('alt', other.name || other.username)
+              if (other.avatar) {
+                roomAvatarComp.setAttribute('src', pb.files.getURL(other, other.avatar, { thumb: '100x100' }))
+              }
+            } else if (room.is_group && participants.length > 0) {
+              roomAvatarComp.setAttribute('type', 'multiparty')
+              roomAvatarComp.setAttribute('size', '3xl')
+              const splitCount = Math.min(Math.max(participants.length, 2), 4)
+              roomAvatarComp.setAttribute('split-count', splitCount)
+
+              const slotDiv = document.createElement('div')
+              slotDiv.setAttribute('slot', 'image')
+              const displayCount = Math.min(participants.length, splitCount)
+              for (let i = 0; i < displayCount; i++) {
+                const p = participants[i]
+                const img = document.createElement('img')
+                img.alt = p.name || p.username || 'Member'
+                if (p.avatar) {
+                  img.src = pb.files.getURL(p, p.avatar, { thumb: '50x50' })
+                }
+                slotDiv.appendChild(img)
+              }
+              roomAvatarComp.appendChild(slotDiv)
+            } else {
+              roomAvatarComp.setAttribute('type', 'single')
+              roomAvatarComp.setAttribute('size', '3xl')
+              roomAvatarComp.setAttribute('name', state.roomName)
+              roomAvatarComp.setAttribute('alt', state.roomName)
+            }
           }
 
           // Fetch members from server
@@ -266,6 +274,8 @@
             muteStatusBadge.style.backgroundColor = 'var(--atoll-brand-subtle-bg, #E6F9EE)'
             muteStatusBadge.style.color = 'var(--atoll-brand-primary, #06C755)'
           }
+          const muteStatusSwitch = refs('muteStatusSwitch')
+          muteStatusSwitch.checked = isMuted
 
           // Setup read receipts default
           state.readReceipts = true
@@ -293,9 +303,11 @@
             }
           }
 
-          // Sync read receipts status text
+          // Sync read receipts status text and switch
           const rrStatus = refs('readReceiptsStatusText')
           rrStatus.textContent = state.readReceipts ? 'On' : 'Off'
+          const readReceiptsSwitch = refs('readReceiptsSwitch')
+          readReceiptsSwitch.checked = state.readReceipts
 
           renderMembers()
         } catch (err) {
@@ -310,7 +322,9 @@
 
         state.members.forEach(member => {
           const user = member.expand?.user_id
-          if (!user) return
+          if (!user) {
+            return
+          }
           const isCurrentUser = user.id === $state.currentUser.id
 
           const item = document.createElement('div')
@@ -368,7 +382,9 @@
 
       const handleKickUser = async (member) => {
         const user = member.expand?.user_id
-        if (!user) return
+        if (!user) {
+          return
+        }
         const userName = user.name || user.username
         if (!confirm(`Are you sure you want to remove ${userName} from the room? This will rotate all cryptographic keys.`)) {
           return
@@ -382,39 +398,13 @@
         })
       }
 
-      // Independent toggling hook setup
-      const setupSectionToggle = (headerRef, collapseRef) => {
-        const headerEl = refs(headerRef)
-        const collapseEl = refs(collapseRef)
-        if (headerEl && collapseEl) {
-          headerEl.addEventListener('atoll-header-toggle', (e) => {
-            if (e.detail.expanded) {
-              collapseEl.classList.add('show')
-            } else {
-              collapseEl.classList.remove('show')
-            }
-          })
-        }
-      }
-
-      setupSectionToggle('headerCustomise', 'collapseCustomise')
-      setupSectionToggle('headerPrivacy', 'collapsePrivacy')
-      setupSectionToggle('headerMembers', 'collapseMembers')
-
+      // Custom coordinate logic for new accordions if resetting to expanded on room/selection updates
       const resetAccordionToExpanded = () => {
-        const sections = [
-          { header: 'headerCustomise', collapse: 'collapseCustomise' },
-          { header: 'headerPrivacy', collapse: 'collapsePrivacy' },
-          { header: 'headerMembers', collapse: 'collapseMembers' }
-        ]
-        sections.forEach(({ header, collapse }) => {
-          const headerEl = refs(header)
-          const collapseEl = refs(collapse)
+        const sections = ['headerCustomise', 'headerPrivacy', 'headerMembers']
+        sections.forEach(refName => {
+          const headerEl = refs(refName)
           if (headerEl) {
             headerEl.setAttribute('expanded', 'true')
-          }
-          if (collapseEl) {
-            collapseEl.classList.add('show')
           }
         })
       }
@@ -444,7 +434,7 @@
       const btnChangeTheme = refs('btnChangeTheme')
       btnChangeTheme.addEventListener('click', () => {
         const modal = refs('themeSelectorModal')
-        if (typeof modal.show === 'function') {
+        if (modal && typeof modal.show === 'function') {
           modal.show()
         }
       })
@@ -452,7 +442,7 @@
       const btnEditNicknames = refs('btnEditNicknames')
       btnEditNicknames.addEventListener('click', () => {
         const modal = refs('nicknamesModal')
-        if (typeof modal.show === 'function') {
+        if (modal && typeof modal.show === 'function') {
           modal.show()
         }
       })
@@ -463,65 +453,90 @@
         const room_id = $state.activeSelectionId
         const me = state.members.find(m => m.user_id === $state.currentUser?.id)
         const isMuted = me && me.is_muted === true
-        $bus.emit('room:toggle_mute', { room_id, isMuted })
+  
+        // Toggle locally immediately for rapid visual feedback
+        const muteStatusSwitch = refs('muteStatusSwitch')
+        if (muteStatusSwitch) {
+          muteStatusSwitch.checked = !isMuted
+        }
+        const muteStatusBadge = refs('muteStatusBadge')
+        if (muteStatusBadge) {
+          muteStatusBadge.textContent = !isMuted ? 'On' : 'Off'
+        }
+
+        $bus.emit('room:toggle_mute', {
+          room_id,
+          isMuted
+        })
       })
 
       const btnReadReceipts = refs('btnReadReceipts')
       btnReadReceipts.addEventListener('click', async () => {
         state.readReceipts = !state.readReceipts
-          showLoading('Saving read receipts...')
-          try {
-            const room_id = $state.activeSelectionId
-            const room = await $storage.getRoom(room_id)
-            const roomKeyB64 = room?.key_history?.find(h => h.epoch_id === 1)?.key
-            if (!roomKeyB64) {
-              throw new Error('Room secret key not found locally')
-            }
 
-            const payloadStr = JSON.stringify({
-              nicknames: state.nicknames,
-              read_receipts: state.readReceipts
-            })
+        // Update switch and text immediately for rapid feedback
+        const readReceiptsSwitch = refs('readReceiptsSwitch')
+        if (readReceiptsSwitch) {
+          readReceiptsSwitch.checked = state.readReceipts
+        }
+        const rrStatus = refs('readReceiptsStatusText')
+        if (rrStatus) {
+          rrStatus.textContent = state.readReceipts ? 'On' : 'Off'
+        }
 
-            const nonceBytes = await $worker.execute('worker:randombytes_buf', { length: 24 })
-            const encryptedBytes = await $worker.execute('worker:crypto_secretbox_easy', {
-              message: payloadStr,
-              nonce: nonceBytes.slice(),
-              key: roomKeyB64
-            })
-
-            const encryptedPayload = {
-              ciphertext: $crypto.toBase64(encryptedBytes),
-              nonce: $crypto.toBase64(nonceBytes)
-            }
-
-            const memberRecord = await pb.collection('room_members').getFirstListItem(
-              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
-            )
-
-            await pb.collection('room_members').update(memberRecord.id, {
-              settings: encryptedPayload
-            })
-
-            room.read_receipts = state.readReceipts
-            await $storage.saveRoom(room)
-
-            $bus.emit('room:member_updated', { room_id })
-            $bus.emit('ui:show_toast', {
-              message: state.readReceipts ? 'Read receipts enabled' : 'Read receipts disabled',
-              type: 'success'
-            })
-          } catch (e) {
-            console.error('[sidebar] Failed to save read receipts:', e)
-          } finally {
-            hideLoading()
+        showLoading('Saving read receipts...')
+        try {
+          const room_id = $state.activeSelectionId
+          const room = await $storage.getRoom(room_id)
+          const roomKeyB64 = room?.key_history?.find(h => h.epoch_id === 1)?.key
+          if (!roomKeyB64) {
+            throw new Error('Room secret key not found locally')
           }
-        })
+
+          const payloadStr = JSON.stringify({
+            nicknames: state.nicknames,
+            read_receipts: state.readReceipts
+          })
+
+          const nonceBytes = await $worker.execute('worker:randombytes_buf', { length: 24 })
+          const encryptedBytes = await $worker.execute('worker:crypto_secretbox_easy', {
+            message: payloadStr,
+            nonce: nonceBytes.slice(),
+            key: roomKeyB64
+          })
+
+          const encryptedPayload = {
+            ciphertext: $crypto.toBase64(encryptedBytes),
+            nonce: $crypto.toBase64(nonceBytes)
+          }
+
+          const memberRecord = await pb.collection('room_members').getFirstListItem(
+            `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+          )
+
+          await pb.collection('room_members').update(memberRecord.id, {
+            settings: encryptedPayload
+          })
+
+          room.read_receipts = state.readReceipts
+          await $storage.saveRoom(room)
+
+          $bus.emit('room:member_updated', { room_id })
+          $bus.emit('ui:show_toast', {
+            message: state.readReceipts ? 'Read receipts enabled' : 'Read receipts disabled',
+            type: 'success'
+          })
+        } catch (e) {
+          console.error('[sidebar] Failed to save read receipts:', e)
+        } finally {
+          hideLoading()
+        }
+      })
 
       const btnBlock = refs('btnBlock')
       btnBlock.addEventListener('click', () => {
         const modal = refs('blockModal')
-        if (typeof modal.show === 'function') {
+        if (modal && typeof modal.show === 'function') {
           modal.show()
         }
       })

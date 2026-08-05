@@ -239,9 +239,9 @@
         state.title = newVal || ''
       })
 
+
       const showModal = () => {
         if (!dialogEl.open) {
-          isClosing = false
           dialogEl.classList.remove('atoll-popup-closing')
           dialogEl.classList.add('show')
           try {
@@ -270,7 +270,6 @@
           return
         }
   
-        isClosing = false
         dialogEl.classList.remove('atoll-popup-closing')
         dialogEl.classList.remove('show')
         document.body.classList.remove('modal-open')
