@@ -27,6 +27,7 @@ test.describe('Atoll Popup / Modal Component', () => {
     await expect(popupHost).toBeAttached()
 
     const dialog = popupHost.locator('.atoll-popup-dialog')
+    await expect(dialog).toHaveClass(/modal-dialog-centered/)
     await expect(dialog).toHaveClass(/atoll-popup-lg/)
 
     const actions = popupHost.locator('.atoll-popup-actions')
