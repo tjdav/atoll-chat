@@ -60,3 +60,57 @@
     --atoll-chat-bubble-received-color: #{map-get($tokens, "bubble-received-color")};
   }
 }
+
+// Custom Theme Style Overrides
+.chat-view[data-theme="custom"] {
+  position: relative;
+  overflow: hidden;
+  background-color: var(--atoll-chat-bg, #ffffff);
+
+  &::before {
+    content: "";
+    position: absolute;
+    top: calc(var(--atoll-chat-bg-blur, 0px) * -2);
+    left: calc(var(--atoll-chat-bg-blur, 0px) * -2);
+    right: calc(var(--atoll-chat-bg-blur, 0px) * -2);
+    bottom: calc(var(--atoll-chat-bg-blur, 0px) * -2);
+    background-image: var(--atoll-chat-bg-image, none);
+    background-size: cover;
+    background-position: center;
+    filter: blur(var(--atoll-chat-bg-blur, 0px));
+    z-index: 0;
+    pointer-events: none;
+    transition: filter 0.3s ease, background-image 0.3s ease;
+  }
+
+  &::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, var(--atoll-chat-bg-dim, 0));
+    z-index: 1;
+    pointer-events: none;
+    transition: background-color 0.3s ease;
+  }
+
+  > header,
+  > .flex-grow-1,
+  > chat-input {
+    position: relative;
+    z-index: 2;
+  }
+
+  // Set message bubbles to inherit custom variables correctly
+  .bubble-sent {
+    background-color: var(--atoll-chat-bubble-sent-bg) !important;
+    color: var(--atoll-chat-bubble-sent-color) !important;
+  }
+
+  .bubble-received {
+    background-color: var(--atoll-chat-bubble-received-bg) !important;
+    color: var(--atoll-chat-bubble-received-color) !important;
+  }
+}

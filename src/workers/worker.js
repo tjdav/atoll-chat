@@ -1639,6 +1639,8 @@ async function processNewRoomKey (rpcId, payload) {
         is_group: isGroup,
         name: roomMetadata?.name || '',
         avatar: roomMetadata?.avatar || '',
+        theme: roomMetadata?.theme || 'classic',
+        custom_theme: roomMetadata?.custom_theme || null,
         participants: participants || [],
         user_role: role,
         key_history: [],
@@ -1652,6 +1654,12 @@ async function processNewRoomKey (rpcId, payload) {
       }
       if (roomMetadata?.avatar) {
         room.avatar = roomMetadata.avatar
+      }
+      if (roomMetadata?.theme !== undefined) {
+        room.theme = roomMetadata.theme
+      }
+      if (roomMetadata?.custom_theme !== undefined) {
+        room.custom_theme = roomMetadata.custom_theme
       }
       if (participants && participants.length > 0) {
         const existingParticipants = room.participants || []

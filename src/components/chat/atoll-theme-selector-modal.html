@@ -3,7 +3,7 @@
     <div class="container-fluid p-0">
       <div class="row g-0" style="min-height: 380px;">
         <!-- Left Theme List Navigation -->
-        <div class="col-12 col-md-5 border-end overflow-y-auto px-2" style="max-height: 380px;">
+        <div class="col-12 col-md-5 border-end overflow-y-auto px-2" ref="themeListContainer" style="max-height: 380px;">
           <atoll-list divided="true" ref="themeList">
             <atoll-list-item ref="themeClassic" clickable="true" title="Classic" description="Standard layout & colors" data-theme-id="classic" data-testid="theme-classic-item">
               <span slot="leading">
@@ -37,16 +37,68 @@
                 <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
               </span>
             </atoll-list-item>
+            <!-- Custom Theme List Item -->
+            <atoll-list-item ref="themeCustom" clickable="true" title="Custom Theme" description="Upload image & generate palette" data-theme-id="custom" data-testid="theme-custom-item">
+              <span slot="leading">
+                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);"></span>
+              </span>
+              <span slot="right" class="theme-check-icon d-none" ref="checkCustom" data-testid="checkCustom">
+                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+              </span>
+            </atoll-list-item>
           </atoll-list>
+
+          <!-- Custom Theme Control Settings panel -->
+          <div class="custom-theme-controls d-none p-3 pb-5 mt-2 border-top" ref="customThemeControls" data-testid="custom-theme-controls">
+            <div class="mb-3">
+              <label class="form-label small fw-bold">Upload Custom Image</label>
+              <input type="file" class="form-control form-control-sm" ref="imageUploader" accept="image/*" data-testid="custom-image-uploader">
+            </div>
+
+            <div class="d-flex gap-2 mb-3">
+              <button type="button" class="btn btn-sm btn-outline-primary flex-grow-1" ref="btnGeneratePalette" data-testid="btn-generate-palette" disabled>Generate Palette</button>
+              <button type="button" class="btn btn-sm btn-outline-secondary flex-grow-1" ref="btnRandomizeColors" data-testid="btn-randomize-colors" disabled>Randomize</button>
+            </div>
+
+            <div class="mb-3 d-none" ref="paletteContainer">
+              <label class="form-label small fw-bold">Active Palette</label>
+              <div class="d-flex flex-wrap gap-1" ref="swatchList" data-testid="swatch-list">
+                <!-- Dynamic swatches go here -->
+              </div>
+            </div>
+
+            <div class="form-check form-switch mb-3">
+              <input class="form-check-input" type="checkbox" role="switch" ref="useBgImageToggle" id="useBgImageToggle" data-testid="use-bg-image-toggle">
+              <label class="form-check-label small fw-bold" for="useBgImageToggle">Use as background image</label>
+            </div>
+
+            <div class="mb-3 custom-bg-sliders d-none" ref="bgSlidersContainer" data-testid="bg-sliders-container">
+              <div class="mb-2">
+                <label class="form-label small d-flex justify-content-between">
+                  <span>Background Blur</span>
+                  <span ref="blurValueText">5px</span>
+                </label>
+                <input type="range" class="form-range" min="0" max="20" value="5" ref="blurSlider" data-testid="blur-slider">
+              </div>
+              <div>
+                <label class="form-label small d-flex justify-content-between">
+                  <span>Background Dimming</span>
+                  <span ref="dimValueText">30%</span>
+                </label>
+                <input type="range" class="form-range" min="0" max="80" value="30" ref="dimSlider" data-testid="dim-slider">
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Right Live Preview Window -->
         <div class="col-12 col-md-7 p-3 d-flex flex-column align-items-stretch" ref="themePreviewContainer" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); max-height: 380px; overflow-y: auto;">
-          <div class="preview-chat-window chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm" ref="previewChatWindow" style="min-height: 300px; transition: background 0.3s ease;">
-            <div class="message-bubble bubble-received p-2 rounded-3 text-start align-self-start max-w-80 fs-7 shadow-sm" ref="previewBubbleIncoming" style="max-width: 80%;">
+          <div class="preview-chat-window chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm position-relative overflow-hidden" ref="previewChatWindow" style="min-height: 300px; transition: background 0.3s ease;">
+            <!-- Real-time Live Preview Bubble Styles and Background -->
+            <div class="message-bubble bubble-received p-2 rounded-3 text-start align-self-start max-w-80 fs-7 shadow-sm" ref="previewBubbleIncoming" style="max-width: 80%; z-index: 2;">
               Hey! Check out this awesome chat theme.
             </div>
-            <div class="message-bubble bubble-sent p-2 rounded-3 text-end align-self-end max-w-80 fs-7 shadow-sm" ref="previewBubbleOutgoing" style="max-width: 80%;">
+            <div class="message-bubble bubble-sent p-2 rounded-3 text-end align-self-end max-w-80 fs-7 shadow-sm" ref="previewBubbleOutgoing" style="max-width: 80%; z-index: 2;">
               Wow, this live preview looks amazing!
             </div>
           </div>
@@ -62,7 +114,8 @@
   export default defineComponent({
     server: () => ({}),
     getters: {},
-    client: ({ refs, globalStore, storage, pocketbase, utils, signal, eventBus, cryptoWorker }) => {
+    client: async ({ refs, globalStore, storage, pocketbase, utils, signal, eventBus, cryptoWorker }) => {
+      const { ensureWCAGContrast, generateImagePalettes } = await import('../../utils/color-contrast.js')
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -72,11 +125,88 @@
 
       const themeModal = refs('themeModal')
       let highlightedTheme = 'classic'
-      const themes = ['classic', 'ocean', 'forest', 'sunset']
+      const themes = ['classic', 'ocean', 'forest', 'sunset', 'custom']
+
+      // Custom theme state variables
+      let customBgImage = null // base64 string of compressed JPEG (max 800px, 70% quality)
+      let customBgBlur = 5
+      let customBgDim = 30
+      let customUseBgImage = false
+      let customPalette = []
+      let customPaletteModeIdx = 0
+      const paletteModes = ['vibrant', 'muted', 'pastel', 'deep']
+      
+      let customSentBg = '#06C755'
+      let customSentColor = '#FFFFFF'
+      let customReceivedBg = '#EEEEEE'
+      let customReceivedColor = '#111111'
+
+      const customThemeControls = refs('customThemeControls')
+      const imageUploader = refs('imageUploader')
+      const btnGeneratePalette = refs('btnGeneratePalette')
+      const btnRandomizeColors = refs('btnRandomizeColors')
+      const paletteContainer = refs('paletteContainer')
+      const swatchList = refs('swatchList')
+      const useBgImageToggle = refs('useBgImageToggle')
+      const bgSlidersContainer = refs('bgSlidersContainer')
+      const blurSlider = refs('blurSlider')
+      const dimSlider = refs('dimSlider')
+      const blurValueText = refs('blurValueText')
+      const dimValueText = refs('dimValueText')
+      const previewChatWindow = refs('previewChatWindow')
+      const previewBubbleIncoming = refs('previewBubbleIncoming')
+      const previewBubbleOutgoing = refs('previewBubbleOutgoing')
+
+      // Create an offscreen image object to parse uploaded files
+      const offscreenImg = new Image()
 
       const showModal = async () => {
         const room = await $storage.getRoom($state.activeSelectionId)
         highlightedTheme = room?.theme || 'classic'
+
+        // Hydrate from existing custom theme settings if they exist
+        if (room?.custom_theme) {
+          const ct = room.custom_theme
+          customBgImage = ct.bgImage || null
+          customBgBlur = ct.bgBlur !== undefined ? ct.bgBlur : 5
+          customBgDim = ct.bgDim !== undefined ? ct.bgDim : 30
+          customUseBgImage = !!ct.useBgImage
+          customPalette = ct.palette || []
+          customSentBg = ct.sentBg || '#06C755'
+          customSentColor = ct.sentColor || '#FFFFFF'
+          customReceivedBg = ct.receivedBg || '#EEEEEE'
+          customReceivedColor = ct.receivedColor || '#111111'
+        } else {
+          // Reset custom theme state if none exist
+          customBgImage = null
+          customBgBlur = 5
+          customBgDim = 30
+          customUseBgImage = false
+          customPalette = []
+          customSentBg = '#06C755'
+          customSentColor = '#FFFFFF'
+          customReceivedBg = '#EEEEEE'
+          customReceivedColor = '#111111'
+        }
+
+        // Apply state values to UI controls
+        blurSlider.value = customBgBlur
+        blurValueText.textContent = `${customBgBlur}px`
+        dimSlider.value = customBgDim
+        dimValueText.textContent = `${customBgDim}%`
+        useBgImageToggle.checked = customUseBgImage
+
+        if (customBgImage) {
+          btnGeneratePalette.removeAttribute('disabled')
+          btnRandomizeColors.removeAttribute('disabled')
+          renderPaletteSwatches()
+        } else {
+          btnGeneratePalette.setAttribute('disabled', 'true')
+          btnRandomizeColors.setAttribute('disabled', 'true')
+          paletteContainer.classList.add('d-none')
+          swatchList.innerHTML = ''
+        }
+
         updateThemeListHighlight()
         themeModal.show()
       }
@@ -118,12 +248,282 @@
         })
 
         // Apply theme data-theme attribute to Live Preview window
-        const previewWindow = themeModal.querySelector('.preview-chat-window, [ref$="previewChatWindow"]')
-        if (previewWindow) {
-          previewWindow.setAttribute('data-theme', highlightedTheme)
+        if (previewChatWindow) {
+          previewChatWindow.setAttribute('data-theme', highlightedTheme)
+        }
+
+        if (highlightedTheme === 'custom') {
+          customThemeControls.classList.remove('d-none')
+          if (customUseBgImage) {
+            bgSlidersContainer.classList.remove('d-none')
+          } else {
+            bgSlidersContainer.classList.add('d-none')
+          }
+          // Smoothly scroll the container to show custom options
+          const themeListContainer = refs('themeListContainer')
+          if (themeListContainer) {
+            setTimeout(() => {
+              themeListContainer.scrollTo({
+                top: themeListContainer.scrollHeight,
+                behavior: 'smooth'
+              })
+            }, 100)
+          }
+        } else {
+          customThemeControls.classList.add('d-none')
+          bgSlidersContainer.classList.add('d-none')
+        }
+
+        updateLivePreviewStyles()
+      }
+
+      // Render the custom palette colors as clickable color swatches
+      const renderPaletteSwatches = () => {
+        if (!customPalette || customPalette.length === 0) {
+          paletteContainer.classList.add('d-none')
+          swatchList.innerHTML = ''
+          return
+        }
+
+        paletteContainer.classList.remove('d-none')
+        swatchList.innerHTML = ''
+
+        customPalette.forEach(hex => {
+          const swatch = document.createElement('div')
+          swatch.style.width = '28px'
+          swatch.style.height = '28px'
+          swatch.style.borderRadius = '4px'
+          swatch.style.backgroundColor = hex
+          swatch.style.cursor = 'pointer'
+          swatch.style.border = '2px solid transparent'
+          swatch.title = hex
+          swatch.setAttribute('data-color', hex)
+          swatch.className = 'palette-swatch shadow-sm'
+
+          if (hex === customSentBg || hex === customReceivedBg) {
+            swatch.style.borderColor = '#000000'
+          }
+
+          // Clicking a swatch opens a small selection prompt or alternates Sent/Received selection
+          swatch.addEventListener('click', () => {
+            // Alternate applying to Sent and Received for fun custom customization
+            const isSentSelection = confirm(`Apply ${hex} to Sent bubble? (Cancel applies to Received bubble)`)
+            const compliance = ensureWCAGContrast(hex, 4.5)
+            if (isSentSelection) {
+              customSentBg = compliance.bgHex
+              customSentColor = compliance.textColor
+            } else {
+              customReceivedBg = compliance.bgHex
+              customReceivedColor = compliance.textColor
+            }
+            renderPaletteSwatches()
+            updateLivePreviewStyles()
+          })
+
+          swatchList.appendChild(swatch)
+        })
+      }
+
+      // Live Preview custom style applicator
+      const updateLivePreviewStyles = () => {
+        if (!previewChatWindow) return
+
+        // Clear inline custom styles first
+        previewChatWindow.style.backgroundImage = ''
+        previewChatWindow.style.setProperty('--atoll-chat-bg-image', '')
+        previewChatWindow.style.setProperty('--atoll-chat-bg-blur', '')
+        previewChatWindow.style.setProperty('--atoll-chat-bg-dim', '')
+        previewBubbleOutgoing.style.backgroundColor = ''
+        previewBubbleOutgoing.style.color = ''
+        previewBubbleIncoming.style.backgroundColor = ''
+        previewBubbleIncoming.style.color = ''
+
+        // Dynamic background pseudo elements are hard to inline, so we use CSS Custom Properties on the element!
+        if (highlightedTheme === 'custom') {
+          previewBubbleOutgoing.style.backgroundColor = customSentBg
+          previewBubbleOutgoing.style.color = customSentColor
+          previewBubbleIncoming.style.backgroundColor = customReceivedBg
+          previewBubbleIncoming.style.color = customReceivedColor
+
+          if (customUseBgImage && customBgImage) {
+            previewChatWindow.style.setProperty('--atoll-chat-bg-image', `url(${customBgImage})`)
+            previewChatWindow.style.setProperty('--atoll-chat-bg-blur', `${customBgBlur}px`)
+            previewChatWindow.style.setProperty('--atoll-chat-bg-dim', `${customBgDim / 100}`)
+
+            // Set background inline using a generated dynamic linear-gradient or background rules for preview rendering
+            // To emulate the pseudo-element in SCSS without actual pseudo element support on inline styles,
+            // we can render a dedicated background image style on the preview window.
+            previewChatWindow.style.backgroundImage = `linear-gradient(rgba(0,0,0, ${customBgDim / 100}), rgba(0,0,0, ${customBgDim / 100})), url(${customBgImage})`
+            previewChatWindow.style.backgroundSize = 'cover'
+            previewChatWindow.style.backgroundPosition = 'center'
+            // Applying CSS filter on background requires a backdrop-filter or styling.
+            // Since it's a live preview, we can apply backdrop blur to a pseudo element if defined,
+            // or we can apply it via backdrop-filter directly on the preview layout window for simplicity.
+            previewChatWindow.style.backdropFilter = `blur(${customBgBlur}px)`
+          } else {
+            previewChatWindow.style.backgroundImage = ''
+            previewChatWindow.style.backdropFilter = ''
+          }
+        } else {
+          previewChatWindow.style.backgroundImage = ''
+          previewChatWindow.style.backdropFilter = ''
         }
       }
 
+      // Handle image file uploads
+      imageUploader.addEventListener('change', async (e) => {
+        const file = e.target.files[0]
+        if (!file) return
+
+        $bus.emit('ui:show_toast', { message: 'Analyzing image...', type: 'info' })
+        
+        const reader = new FileReader()
+        reader.onload = (event) => {
+          offscreenImg.src = event.target.result
+        }
+        reader.readAsDataURL(file)
+      })
+
+      // Offscreen image load event handler
+      offscreenImg.onload = () => {
+        // Create canvas to scale and extract palette
+        const canvas = document.createElement('canvas')
+        const maxDim = 800
+        let w = offscreenImg.width
+        let h = offscreenImg.height
+
+        if (w > maxDim || h > maxDim) {
+          if (w > h) {
+            h = Math.round((h * maxDim) / w)
+            w = maxDim
+          } else {
+            w = Math.round((w * maxDim) / h)
+            h = maxDim
+          }
+        }
+
+        canvas.width = w
+        canvas.height = h
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(offscreenImg, 0, 0, w, h)
+          
+          // Store compressed background JPEG
+          customBgImage = canvas.toDataURL('image/jpeg', 0.7)
+
+          // Extract initial Vibrant palette
+          customPaletteModeIdx = 0
+          customPalette = generateImagePalettes(canvas, 'vibrant')
+
+          // Setup initial Sent and Received bubble colors
+          if (customPalette && customPalette.length >= 2) {
+            const complianceSent = ensureWCAGContrast(customPalette[0], 4.5)
+            customSentBg = complianceSent.bgHex
+            customSentColor = complianceSent.textColor
+
+            const complianceReceived = ensureWCAGContrast(customPalette[1], 4.5)
+            customReceivedBg = complianceReceived.bgHex
+            customReceivedColor = complianceReceived.textColor
+          }
+
+          // Enable Custom Theme controls
+          btnGeneratePalette.removeAttribute('disabled')
+          btnRandomizeColors.removeAttribute('disabled')
+
+          renderPaletteSwatches()
+          updateLivePreviewStyles()
+
+          $bus.emit('ui:show_toast', { message: 'Custom palette extracted successfully!', type: 'success' })
+        }
+      }
+
+      // "Generate New Palette" Action Handler
+      btnGeneratePalette.addEventListener('click', () => {
+        if (!customBgImage) return
+
+        // Cycle through our 4 distinct color extraction modes
+        customPaletteModeIdx = (customPaletteModeIdx + 1) % paletteModes.length
+        const mode = paletteModes[customPaletteModeIdx]
+
+        // Sample offscreenImg using offscreen canvas representation
+        const canvas = document.createElement('canvas')
+        canvas.width = 100
+        canvas.height = 100
+        const ctx = canvas.getContext('2d')
+        if (ctx) {
+          ctx.drawImage(offscreenImg, 0, 0, 100, 100)
+          customPalette = generateImagePalettes(canvas, mode)
+
+          // Setup compliant Sent and Received colors from the new palette
+          if (customPalette && customPalette.length >= 2) {
+            const complianceSent = ensureWCAGContrast(customPalette[0], 4.5)
+            customSentBg = complianceSent.bgHex
+            customSentColor = complianceSent.textColor
+
+            const complianceReceived = ensureWCAGContrast(customPalette[1], 4.5)
+            customReceivedBg = complianceReceived.bgHex
+            customReceivedColor = complianceReceived.textColor
+          }
+
+          renderPaletteSwatches()
+          updateLivePreviewStyles()
+
+          $bus.emit('ui:show_toast', { message: `Generated new ${mode} palette!`, type: 'info' })
+        }
+      })
+
+      // "Randomize Colors" Action Handler
+      btnRandomizeColors.addEventListener('click', () => {
+        if (!customPalette || customPalette.length < 2) return
+
+        // Randomly pick two distinct colors from our active palette
+        let idx1 = Math.floor(Math.random() * customPalette.length)
+        let idx2 = Math.floor(Math.random() * customPalette.length)
+        while (idx1 === idx2 && customPalette.length > 1) {
+          idx2 = Math.floor(Math.random() * customPalette.length)
+        }
+
+        const color1 = customPalette[idx1]
+        const color2 = customPalette[idx2]
+
+        const complianceSent = ensureWCAGContrast(color1, 4.5)
+        customSentBg = complianceSent.bgHex
+        customSentColor = complianceSent.textColor
+
+        const complianceReceived = ensureWCAGContrast(color2, 4.5)
+        customReceivedBg = complianceReceived.bgHex
+        customReceivedColor = complianceReceived.textColor
+
+        renderPaletteSwatches()
+        updateLivePreviewStyles()
+      })
+
+      // Toggle Custom Background Image Switch
+      useBgImageToggle.addEventListener('change', (e) => {
+        customUseBgImage = e.target.checked
+        if (customUseBgImage) {
+          bgSlidersContainer.classList.remove('d-none')
+        } else {
+          bgSlidersContainer.classList.add('d-none')
+        }
+        updateLivePreviewStyles()
+      })
+
+      // Background Blur slider update
+      blurSlider.addEventListener('input', (e) => {
+        customBgBlur = parseInt(e.target.value)
+        blurValueText.textContent = `${customBgBlur}px`
+        updateLivePreviewStyles()
+      })
+
+      // Background Dimming slider update
+      dimSlider.addEventListener('input', (e) => {
+        customBgDim = parseInt(e.target.value)
+        dimValueText.textContent = `${customBgDim}%`
+        updateLivePreviewStyles()
+      })
+
+      // Primary Button Select event callback
       themeModal.addEventListener('atoll-popup-primary', async () => {
         const room_id = $state.activeSelectionId
         $bus.emit('ui:show_toast', { message: 'Applying theme...', type: 'info' })
@@ -134,10 +534,24 @@
             throw new Error('Room secret key not found locally')
           }
 
+          // Create the dynamic custom theme data block to sync via Room Metadata
+          const customThemeObj = highlightedTheme === 'custom' ? {
+            sentBg: customSentBg,
+            sentColor: customSentColor,
+            receivedBg: customReceivedBg,
+            receivedColor: customReceivedColor,
+            bgImage: customBgImage,
+            bgBlur: customBgBlur,
+            bgDim: customBgDim,
+            useBgImage: customUseBgImage,
+            palette: customPalette
+          } : (room.custom_theme || null)
+
           const metadata = JSON.stringify({
             name: room.name,
             avatar: room.avatar || '',
-            theme: highlightedTheme
+            theme: highlightedTheme,
+            custom_theme: customThemeObj
           })
 
           const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
@@ -156,6 +570,7 @@
           })
 
           room.theme = highlightedTheme
+          room.custom_theme = customThemeObj
           await $storage.saveRoom(room)
 
           $bus.emit('room:theme_updated', { room_id, theme: highlightedTheme })

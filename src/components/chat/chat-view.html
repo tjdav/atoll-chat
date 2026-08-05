@@ -233,6 +233,27 @@
               } else {
                 chatViewRoot.removeAttribute('data-theme')
               }
+
+              // Apply custom theme CSS properties
+              if (room.theme === 'custom' && room.custom_theme) {
+                const ct = room.custom_theme
+                chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-bg', ct.sentBg || '#06C755')
+                chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-color', ct.sentColor || '#FFFFFF')
+                chatViewRoot.style.setProperty('--atoll-chat-bubble-received-bg', ct.receivedBg || '#EEEEEE')
+                chatViewRoot.style.setProperty('--atoll-chat-bubble-received-color', ct.receivedColor || '#111111')
+                chatViewRoot.style.setProperty('--atoll-chat-bg-image', ct.useBgImage && ct.bgImage ? `url(${ct.bgImage})` : 'none')
+                chatViewRoot.style.setProperty('--atoll-chat-bg-blur', `${ct.bgBlur || 0}px`)
+                chatViewRoot.style.setProperty('--atoll-chat-bg-dim', `${(ct.bgDim !== undefined ? ct.bgDim : 30) / 100}`)
+              } else {
+                // Clear inline custom theme properties
+                chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-bg')
+                chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-color')
+                chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-bg')
+                chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-color')
+                chatViewRoot.style.removeProperty('--atoll-chat-bg-image')
+                chatViewRoot.style.removeProperty('--atoll-chat-bg-blur')
+                chatViewRoot.style.removeProperty('--atoll-chat-bg-dim')
+              }
             }
 
             renderHeaderAvatar(room, participants)
