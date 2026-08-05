@@ -60,88 +60,6 @@
       <room-details-sidebar></room-details-sidebar>
     </div>
 
-    <!-- Theme Selector Modal -->
-    <atoll-popup ref="themeModal" size="lg" title="Preview and select theme" primary-text="Select" secondary-text="Cancel" data-testid="themeSelectorModal">
-      <div class="container-fluid p-0">
-        <div class="row g-0" style="min-height: 380px;">
-          <!-- Left Theme List Navigation -->
-          <div class="col-12 col-md-5 border-end overflow-y-auto px-2" style="max-height: 380px;">
-            <atoll-list divided="true" ref="themeList">
-              <atoll-list-item ref="themeClassic" clickable="true" title="Classic" description="Standard layout & colors" data-theme-id="classic" data-testid="theme-classic-item">
-                <span slot="leading">
-                  <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background-color: var(--atoll-pane-bg, #FFFFFF);"></span>
-                </span>
-                <span slot="right" class="theme-check-icon d-none" ref="checkClassic" data-testid="checkClassic">
-                  <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
-                </span>
-              </atoll-list-item>
-              <atoll-list-item ref="themeOcean" clickable="true" title="Ocean" description="Deep blue gradients" data-theme-id="ocean" data-testid="theme-ocean-item">
-                <span slot="leading">
-                  <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #0f2027, #2c5364);"></span>
-                </span>
-                <span slot="right" class="theme-check-icon d-none" ref="checkOcean" data-testid="checkOcean">
-                  <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
-                </span>
-              </atoll-list-item>
-              <atoll-list-item ref="themeForest" clickable="true" title="Forest" description="Verdant emerald trees" data-theme-id="forest" data-testid="theme-forest-item">
-                <span slot="leading">
-                  <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #11998e, #38ef7d);"></span>
-                </span>
-                <span slot="right" class="theme-check-icon d-none" ref="checkForest" data-testid="checkForest">
-                  <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
-                </span>
-              </atoll-list-item>
-              <atoll-list-item ref="themeSunset" clickable="true" title="Sunset" description="Warm orange skies" data-theme-id="sunset" data-testid="theme-sunset-item">
-                <span slot="leading">
-                  <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #f12711, #f5af19);"></span>
-                </span>
-                <span slot="right" class="theme-check-icon d-none" ref="checkSunset" data-testid="checkSunset">
-                  <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
-                </span>
-              </atoll-list-item>
-            </atoll-list>
-          </div>
-
-          <!-- Right Live Preview Window -->
-          <div class="col-12 col-md-7 p-3 d-flex flex-column align-items-stretch" ref="themePreviewContainer" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); max-height: 380px; overflow-y: auto;">
-            <div class="preview-chat-window chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm" ref="previewChatWindow" style="min-height: 300px; transition: background 0.3s ease;">
-              <div class="message-bubble bubble-received p-2 rounded-3 text-start align-self-start max-w-80 fs-7 shadow-sm" ref="previewBubbleIncoming" style="max-width: 80%;">
-                Hey! Check out this awesome chat theme.
-              </div>
-              <div class="message-bubble bubble-sent p-2 rounded-3 text-end align-self-end max-w-80 fs-7 shadow-sm" ref="previewBubbleOutgoing" style="max-width: 80%;">
-                Wow, this live preview looks amazing!
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </atoll-popup>
-
-    <!-- Nicknames Management Modal -->
-    <atoll-popup ref="nicknameModal" size="md" title="Nicknames" primary-text="Save" secondary-text="Cancel" data-testid="nicknamesModal">
-      <div class="nickname-list-container overflow-y-auto px-2" style="max-height: 350px;">
-        <atoll-list divided="true" ref="nicknameList" data-testid="nicknameList">
-          <!-- Dynamic row injection -->
-        </atoll-list>
-      </div>
-    </atoll-popup>
-
-    <!-- Block Confirmation Modal -->
-    <atoll-popup ref="blockModal" size="md" variant="danger" title="Block User" primary-text="Block" secondary-text="Cancel" data-testid="userBlockModal">
-      <div class="text-center mb-3">
-        <div class="d-inline-flex p-3 rounded-circle bg-danger-subtle text-danger mb-3">
-          <atoll-icon name="block" size="48" color="var(--atoll-danger, #FF334B)"></atoll-icon>
-        </div>
-        <h5 class="fw-bold mb-3" ref="blockTargetTitle" data-testid="blockTargetTitle">Block user?</h5>
-      </div>
-      <p class="fs-7 text-secondary mb-3">Please carefully review the scope of this action:</p>
-      <ul class="text-start fs-7 text-secondary ps-3 mb-0">
-        <li class="mb-2"><strong>No Messages or Calls:</strong> They will be completely unable to send you direct messages or initiate direct voice/video calls.</li>
-        <li class="mb-2"><strong>Private Action:</strong> The target user will not receive any notification that they have been blocked.</li>
-        <li class="mb-2"><strong>Group Chats:</strong> You will still co-exist in shared group chats, but you will not receive direct notifications from them.</li>
-      </ul>
-    </atoll-popup>
-
     <!-- Chat Input -->
     <chat-input></chat-input>
   </div>
@@ -168,8 +86,6 @@
       const { $bus } = eventBus
       const { $webrtc } = webrtcPluginContext
       const { pb } = pocketbase || {}
-      const { $worker } = cryptoWorker
-      const { $crypto } = utils
       const headerAvatar = refs('headerAvatar')
 
       const { Offcanvas } = bootstrap
@@ -349,9 +265,41 @@
         updateRoomInfo($state.activeSelectionId)
       })
 
+      $bus.on('room:theme_updated', (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId) {
+          updateRoomInfo($state.activeSelectionId)
+        }
+      })
+
+      $bus.on('room:nicknames_updated', (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId) {
+          updateRoomInfo($state.activeSelectionId)
+        }
+      })
+
       $bus.on('room:member_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           updateRoomInfo($state.activeSelectionId)
+        }
+      })
+
+      $bus.on('user:blocked', (payload) => {
+        if (payload) {
+          // Close details sidebar
+          state.isRoomDetailsOpen = false
+          $state.isRoomDetailsOpen = false
+          if (bsOffcanvas) {
+            bsOffcanvas.hide()
+          }
+
+          $bus.emit('ui:show_toast', {
+            message: `${payload.targetUsername} blocked successfully`,
+            type: 'success'
+          })
+
+          // Refresh active room info & timeline
+          updateRoomInfo($state.activeSelectionId)
+          $bus.emit('db:new_local_data', { room_id: $state.activeSelectionId })
         }
       })
 
@@ -430,343 +378,6 @@
 
       refs('btnAudioCall').addEventListener('click', () => initiateCall(false))
       refs('btnVideoCall').addEventListener('click', () => initiateCall(true))
-
-      // ==========================================
-      // MODAL CONTROLLERS & EVENT BUS LISTENERS
-      // ==========================================
-      const themeModal = refs('themeModal')
-      const nicknameModal = refs('nicknameModal')
-      const blockModal = refs('blockModal')
-
-      let highlightedTheme = 'classic'
-      let tempNicknames = {}
-
-      // 1. Theme selection modal handlers
-      $bus.on('ui:open_theme_modal', async () => {
-        const room = await $storage.getRoom($state.activeSelectionId)
-        highlightedTheme = room?.theme || 'classic'
-        updateThemeListHighlight()
-        themeModal.show()
-      })
-
-      const themes = ['classic', 'ocean', 'forest', 'sunset']
-
-      // Natively handle theme list item clicks using standard click event delegation
-      themeModal.addEventListener('click', (e) => {
-        const item = e.target.closest('atoll-list-item')
-        if (item) {
-          const themeId = item.getAttribute('data-theme-id')
-          if (themeId) {
-            highlightedTheme = themeId
-            updateThemeListHighlight()
-          }
-        }
-      })
-
-      const updateThemeListHighlight = () => {
-        themes.forEach(tName => {
-          const checkRef = themeModal.querySelector(`[data-testid$="check${tName.charAt(0).toUpperCase() + tName.slice(1)}"]`)
-          if (checkRef) {
-            if (tName === highlightedTheme) {
-              checkRef.classList.remove('d-none')
-            } else {
-              checkRef.classList.add('d-none')
-            }
-          }
-        })
-
-        // Apply theme data-theme attribute to Live Preview window
-        const previewWindow = themeModal.querySelector('.preview-chat-window, [ref$="previewChatWindow"]')
-        if (previewWindow) {
-          previewWindow.setAttribute('data-theme', highlightedTheme)
-        }
-      }
-
-      themeModal.addEventListener('atoll-popup-primary', async () => {
-        const room_id = $state.activeSelectionId
-        $bus.emit('ui:show_toast', { message: 'Applying theme...', type: 'info' })
-        try {
-          const room = await $storage.getRoom(room_id)
-          const roomKeyB64 = room.key_history?.find(h => h.epoch_id === 1)?.key
-          if (!roomKeyB64) {
-            throw new Error('Room secret key not found locally')
-          }
-
-          const metadata = JSON.stringify({
-            name: room.name,
-            avatar: room.avatar || '',
-            theme: highlightedTheme
-          })
-
-          const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
-          const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
-            message: metadata,
-            nonce: metadataNonce.slice(),
-            key: roomKeyB64
-          })
-
-          await pb.collection('rooms').update(room.id, {
-            theme: highlightedTheme,
-            encrypted_metadata: {
-              ciphertext: $crypto.toBase64(encryptedMetadata),
-              nonce: $crypto.toBase64(metadataNonce)
-            }
-          })
-
-          room.theme = highlightedTheme
-          await $storage.saveRoom(room)
-
-          state.roomTheme = highlightedTheme
-          await updateRoomInfo(room_id)
-          $bus.emit('room:member_updated', { room_id })
-          $bus.emit('db:new_local_room', { room_id })
-          $bus.emit('ui:show_toast', {
-            message: `Theme updated to ${highlightedTheme}`,
-            type: 'success'
-          })
-          themeModal.hide()
-        } catch (err) {
-          console.error('[chat-view] Failed to save theme:', err)
-          alert('Failed to save theme: ' + err.message)
-        }
-      })
-
-      // 2. Nicknames Modal Trigger and row rendering
-      $bus.on('ui:open_nicknames_modal', async () => {
-        const room_id = $state.activeSelectionId
-        const room = await $storage.getRoom(room_id)
-        if (!room) return
-
-        tempNicknames = { ...(room.nicknames || {}) }
-        const members = await pb.collection('room_members').getFullList({
-          filter: pb.filter('room_id = {:room_id}', { room_id }),
-          expand: 'user_id'
-        })
-
-        const participants = members.map(m => m.expand?.user_id).filter(Boolean)
-        renderNicknameModalRows(participants, tempNicknames)
-        nicknameModal.show()
-      })
-
-      const renderNicknameModalRows = (participants, currentNicknames) => {
-        const list = nicknameModal.querySelector('[ref$="nicknameList"], [data-testid$="nicknameList"]')
-        if (!list) return
-        list.innerHTML = ''
-
-        participants.forEach(p => {
-          const item = document.createElement('atoll-list-item')
-          item.setAttribute('clickable', 'true')
-          item.className = 'w-100 py-2 border-bottom'
-
-          const avatar = document.createElement('atoll-profile')
-          avatar.setAttribute('size', 'xs')
-          avatar.setAttribute('slot', 'leading')
-          avatar.className = 'me-2 flex-shrink-0'
-          if (p.avatar) {
-            avatar.setAttribute('src', pb.files.getURL(p, p.avatar, { thumb: '32x32' }))
-          }
-          avatar.setAttribute('name', p.name || p.username)
-          item.appendChild(avatar)
-
-          const contentWrapper = document.createElement('div')
-          contentWrapper.className = 'w-100 d-flex flex-column align-items-start px-2'
-
-          const originalName = document.createElement('div')
-          originalName.className = 'fw-bold fs-7 text-primary-emphasis'
-          originalName.textContent = p.name || p.username
-          contentWrapper.appendChild(originalName)
-
-          const nicknameDisplay = document.createElement('div')
-          nicknameDisplay.className = 'text-secondary fs-7'
-          const activeNick = currentNicknames[p.id] || ''
-          nicknameDisplay.textContent = activeNick || 'Set nickname'
-          contentWrapper.appendChild(nicknameDisplay)
-
-          item.appendChild(contentWrapper)
-
-          // Edit Pencil Icon (Trailing)
-          const pencil = document.createElement('span')
-          pencil.setAttribute('slot', 'right')
-          pencil.className = 'cursor-pointer p-1 me-2'
-          pencil.innerHTML = '<i class="bi bi-pencil fs-6 text-muted"></i>'
-          item.appendChild(pencil)
-
-          const toggleInlineEdit = () => {
-            item.innerHTML = '' // Clear and insert input
-            item.appendChild(avatar)
-
-            const inputWrapper = document.createElement('div')
-            inputWrapper.className = 'w-100 d-flex align-items-center gap-2 px-2'
-
-            const input = document.createElement('input')
-            input.type = 'text'
-            input.className = 'form-control form-control-sm'
-            input.value = activeNick
-            input.placeholder = 'Enter nickname'
-            inputWrapper.appendChild(input)
-
-            const confirmBtn = document.createElement('button')
-            confirmBtn.type = 'button'
-            confirmBtn.className = 'btn btn-sm btn-success p-1 d-flex align-items-center justify-content-center'
-            confirmBtn.style.borderRadius = '6px'
-            confirmBtn.innerHTML = '<i class="bi bi-check fs-6"></i>'
-            inputWrapper.appendChild(confirmBtn)
-
-            item.appendChild(inputWrapper)
-            input.focus()
-
-            const commitValue = () => {
-              const newVal = input.value.trim()
-              currentNicknames[p.id] = newVal
-              // Re-render modal rows
-              renderNicknameModalRows(participants, currentNicknames)
-            }
-
-            confirmBtn.onclick = (e) => {
-              e.stopPropagation()
-              commitValue()
-            }
-
-            input.onkeydown = (e) => {
-              if (e.key === 'Enter') {
-                e.stopPropagation()
-                commitValue()
-              }
-            }
-          };
-
-          pencil.onclick = (e) => {
-            e.stopPropagation()
-            toggleInlineEdit()
-          }
-          item.onclick = () => {
-            toggleInlineEdit()
-          }
-
-          list.appendChild(item)
-        })
-      }
-
-      nicknameModal.addEventListener('atoll-popup-primary', async () => {
-        const room_id = $state.activeSelectionId
-        $bus.emit('ui:show_toast', { message: 'Saving nicknames...', type: 'info' })
-        try {
-          const room = await $storage.getRoom(room_id)
-          const roomKeyB64 = room?.key_history?.find(h => h.epoch_id === 1)?.key
-          if (!roomKeyB64) {
-            throw new Error('Room secret key not found locally')
-          }
-
-          const memberRecord = await pb.collection('room_members').getFirstListItem(
-            `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
-          )
-
-          let read_receipts = true
-          // Decrypt existing settings to preserve read_receipts
-          if (memberRecord.settings && memberRecord.settings.ciphertext) {
-            try {
-              const decryptedBytes = await $worker.execute('worker:crypto_secretbox_open_easy', {
-                ciphertext: memberRecord.settings.ciphertext,
-                nonce: memberRecord.settings.nonce,
-                key: roomKeyB64
-              })
-              if (decryptedBytes) {
-                const settingsObj = JSON.parse(new TextDecoder().decode(decryptedBytes))
-                read_receipts = settingsObj.read_receipts !== false
-              }
-            } catch (decErr) {
-              console.warn('[chat-view] Preserving read receipts read failed:', decErr)
-            }
-          }
-
-          const payloadStr = JSON.stringify({
-            nicknames: tempNicknames,
-            read_receipts
-          })
-
-          const nonceBytes = await $worker.execute('worker:randombytes_buf', { length: 24 })
-          const encryptedBytes = await $worker.execute('worker:crypto_secretbox_easy', {
-            message: payloadStr,
-            nonce: nonceBytes.slice(),
-            key: roomKeyB64
-          })
-
-          const encryptedPayload = {
-            ciphertext: $crypto.toBase64(encryptedBytes),
-            nonce: $crypto.toBase64(nonceBytes)
-          }
-
-          await pb.collection('room_members').update(memberRecord.id, {
-            settings: encryptedPayload
-          })
-
-          // Save locally
-          room.nicknames = tempNicknames
-          room.read_receipts = read_receipts
-          await $storage.saveRoom(room)
-
-          await updateRoomInfo(room_id)
-          $bus.emit('room:member_updated', { room_id })
-          $bus.emit('ui:show_toast', {
-            message: 'Nicknames saved successfully',
-            type: 'success'
-          })
-          nicknameModal.hide()
-        } catch (e) {
-          console.error('[chat-view] Failed to save nicknames:', e)
-          alert('Save failed: ' + e.message)
-        }
-      })
-
-      // 3. Block User Modal Trigger
-      $bus.on('ui:open_block_modal', async () => {
-        const room_id = $state.activeSelectionId
-        const room = await $storage.getRoom(room_id)
-        if (!room) return
-
-        const other = room.participants?.find(p => p.id !== $state.currentUser?.id)
-        if (!other) return
-
-        const blockTitle = refs('blockTargetTitle')
-        if (blockTitle) {
-          // Capitalize first character correctly
-          const otherName = other.name || other.username
-          blockTitle.textContent = `Block ${otherName}?`
-        }
-        blockModal.show()
-      })
-
-      blockModal.addEventListener('atoll-popup-primary', async () => {
-        const room_id = $state.activeSelectionId
-        const room = await $storage.getRoom(room_id)
-        if (!room) return
-
-        const other = room.participants?.find(p => p.id !== $state.currentUser?.id)
-        if (!other) return
-
-        $bus.emit('ui:show_toast', { message: 'Blocking user...', type: 'info' })
-        try {
-          const blockedUsers = Array.from($state.currentUser.blocked_users || [])
-          if (!blockedUsers.includes(other.id)) {
-            blockedUsers.push(other.id)
-          }
-
-          const updatedUser = await pb.collection('users').update($state.currentUser.id, {
-            blocked_users: blockedUsers
-          })
-
-          $state.currentUser = updatedUser
-          const otherName = other.name || other.username
-          $bus.emit('ui:show_toast', {
-            message: `${otherName} blocked successfully`,
-            type: 'success'
-          })
-          blockModal.hide()
-        } catch (err) {
-          console.error('[chat-view] Block user failed:', err)
-          alert('Block user failed: ' + err.message)
-        }
-      })
     }
   })
 </script>

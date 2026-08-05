@@ -1,0 +1,92 @@
+<template id="atoll-block-modal">
+  <atoll-popup ref="blockModal" size="md" variant="danger" title="Block User" primary-text="Block" secondary-text="Cancel" data-testid="userBlockModal">
+    <div class="text-center mb-3">
+      <div class="d-inline-flex p-3 rounded-circle bg-danger-subtle text-danger mb-3">
+        <atoll-icon name="block" size="48" color="var(--atoll-danger, #FF334B)"></atoll-icon>
+      </div>
+      <h5 class="fw-bold mb-3" ref="blockTargetTitle" data-testid="blockTargetTitle">Block user?</h5>
+    </div>
+    <p class="fs-7 text-secondary mb-3">Please carefully review the scope of this action:</p>
+    <ul class="text-start fs-7 text-secondary ps-3 mb-0">
+      <li class="mb-2"><strong>No Messages or Calls:</strong> They will be completely unable to send you direct messages or initiate direct voice/video calls.</li>
+      <li class="mb-2"><strong>Private Action:</strong> The target user will not receive any notification that they have been blocked.</li>
+      <li class="mb-2"><strong>Group Chats:</strong> You will still co-exist in shared group chats, but you will not receive direct notifications from them.</li>
+    </ul>
+  </atoll-popup>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({}),
+    getters: {},
+    client: ({ refs, globalStore, storage, pocketbase, signal, eventBus }) => {
+      const { $state } = globalStore
+      const { $storage } = storage
+      const { $bus } = eventBus
+      const { pb } = pocketbase || {}
+
+      const blockModal = refs('blockModal')
+
+      const showModal = async () => {
+        const room_id = $state.activeSelectionId
+        const room = await $storage.getRoom(room_id)
+        if (!room) return
+
+        const other = room.participants?.find(p => p.id !== $state.currentUser?.id)
+        if (!other) return
+
+        const blockTitle = refs('blockTargetTitle')
+        if (blockTitle) {
+          // Capitalize first character correctly
+          const otherName = other.name || other.username
+          blockTitle.textContent = `Block ${otherName}?`
+        }
+        blockModal.show()
+      }
+
+      const hideModal = () => {
+        blockModal.hide()
+      }
+
+      // Expose public methods
+      const root = refs('blockModal').parentElement
+      root.show = showModal
+      root.hide = hideModal
+
+      // Listen for open event
+      $bus.on('ui:open_block_modal', showModal)
+
+      blockModal.addEventListener('atoll-popup-primary', async () => {
+        const room_id = $state.activeSelectionId
+        const room = await $storage.getRoom(room_id)
+        if (!room) return
+
+        const other = room.participants?.find(p => p.id !== $state.currentUser?.id)
+        if (!other) return
+
+        $bus.emit('ui:show_toast', { message: 'Blocking user...', type: 'info' })
+        try {
+          const blockedUsers = Array.from($state.currentUser.blocked_users || [])
+          if (!blockedUsers.includes(other.id)) {
+            blockedUsers.push(other.id)
+          }
+
+          const updatedUser = await pb.collection('users').update($state.currentUser.id, {
+            blocked_users: blockedUsers
+          })
+
+          $state.currentUser = updatedUser
+          const otherName = other.name || other.username
+          
+          $bus.emit('user:blocked', { targetUserId: other.id, targetUsername: otherName })
+          blockModal.hide()
+        } catch (err) {
+          console.error('[atoll-block-modal] Block user failed:', err)
+          alert('Block user failed: ' + err.message)
+        }
+      })
+    }
+  })
+</script>

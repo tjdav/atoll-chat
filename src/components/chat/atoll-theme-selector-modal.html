@@ -1,0 +1,176 @@
+<template id="atoll-theme-selector-modal">
+  <atoll-popup ref="themeModal" size="lg" title="Preview and select theme" primary-text="Select" secondary-text="Cancel" data-testid="themeSelectorModal">
+    <div class="container-fluid p-0">
+      <div class="row g-0" style="min-height: 380px;">
+        <!-- Left Theme List Navigation -->
+        <div class="col-12 col-md-5 border-end overflow-y-auto px-2" style="max-height: 380px;">
+          <atoll-list divided="true" ref="themeList">
+            <atoll-list-item ref="themeClassic" clickable="true" title="Classic" description="Standard layout & colors" data-theme-id="classic" data-testid="theme-classic-item">
+              <span slot="leading">
+                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background-color: var(--atoll-pane-bg, #FFFFFF);"></span>
+              </span>
+              <span slot="right" class="theme-check-icon d-none" ref="checkClassic" data-testid="checkClassic">
+                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+              </span>
+            </atoll-list-item>
+            <atoll-list-item ref="themeOcean" clickable="true" title="Ocean" description="Deep blue gradients" data-theme-id="ocean" data-testid="theme-ocean-item">
+              <span slot="leading">
+                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #0f2027, #2c5364);"></span>
+              </span>
+              <span slot="right" class="theme-check-icon d-none" ref="checkOcean" data-testid="checkOcean">
+                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+              </span>
+            </atoll-list-item>
+            <atoll-list-item ref="themeForest" clickable="true" title="Forest" description="Verdant emerald trees" data-theme-id="forest" data-testid="theme-forest-item">
+              <span slot="leading">
+                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #11998e, #38ef7d);"></span>
+              </span>
+              <span slot="right" class="theme-check-icon d-none" ref="checkForest" data-testid="checkForest">
+                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+              </span>
+            </atoll-list-item>
+            <atoll-list-item ref="themeSunset" clickable="true" title="Sunset" description="Warm orange skies" data-theme-id="sunset" data-testid="theme-sunset-item">
+              <span slot="leading">
+                <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #f12711, #f5af19);"></span>
+              </span>
+              <span slot="right" class="theme-check-icon d-none" ref="checkSunset" data-testid="checkSunset">
+                <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
+              </span>
+            </atoll-list-item>
+          </atoll-list>
+        </div>
+
+        <!-- Right Live Preview Window -->
+        <div class="col-12 col-md-7 p-3 d-flex flex-column align-items-stretch" ref="themePreviewContainer" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); max-height: 380px; overflow-y: auto;">
+          <div class="preview-chat-window chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm" ref="previewChatWindow" style="min-height: 300px; transition: background 0.3s ease;">
+            <div class="message-bubble bubble-received p-2 rounded-3 text-start align-self-start max-w-80 fs-7 shadow-sm" ref="previewBubbleIncoming" style="max-width: 80%;">
+              Hey! Check out this awesome chat theme.
+            </div>
+            <div class="message-bubble bubble-sent p-2 rounded-3 text-end align-self-end max-w-80 fs-7 shadow-sm" ref="previewBubbleOutgoing" style="max-width: 80%;">
+              Wow, this live preview looks amazing!
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </atoll-popup>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({}),
+    getters: {},
+    client: ({ refs, globalStore, storage, pocketbase, utils, signal, eventBus, cryptoWorker }) => {
+      const { $state } = globalStore
+      const { $storage } = storage
+      const { $bus } = eventBus
+      const { pb } = pocketbase || {}
+      const { $worker } = cryptoWorker
+      const { $crypto } = utils
+
+      const themeModal = refs('themeModal')
+      let highlightedTheme = 'classic'
+      const themes = ['classic', 'ocean', 'forest', 'sunset']
+
+      const showModal = async () => {
+        const room = await $storage.getRoom($state.activeSelectionId)
+        highlightedTheme = room?.theme || 'classic'
+        updateThemeListHighlight()
+        themeModal.show()
+      }
+
+      const hideModal = () => {
+        themeModal.hide()
+      }
+
+      // Expose public methods
+      const root = refs('themeModal').parentElement
+      root.show = showModal
+      root.hide = hideModal
+
+      // Listen for open event
+      $bus.on('ui:open_theme_modal', showModal)
+
+      // Natively handle theme list item clicks using standard click event delegation
+      themeModal.addEventListener('click', (e) => {
+        const item = e.target.closest('atoll-list-item')
+        if (item) {
+          const themeId = item.getAttribute('data-theme-id')
+          if (themeId) {
+            highlightedTheme = themeId
+            updateThemeListHighlight()
+          }
+        }
+      })
+
+      const updateThemeListHighlight = () => {
+        themes.forEach(tName => {
+          const checkRef = themeModal.querySelector(`[data-testid$="check${tName.charAt(0).toUpperCase() + tName.slice(1)}"]`)
+          if (checkRef) {
+            if (tName === highlightedTheme) {
+              checkRef.classList.remove('d-none')
+            } else {
+              checkRef.classList.add('d-none')
+            }
+          }
+        })
+
+        // Apply theme data-theme attribute to Live Preview window
+        const previewWindow = themeModal.querySelector('.preview-chat-window, [ref$="previewChatWindow"]')
+        if (previewWindow) {
+          previewWindow.setAttribute('data-theme', highlightedTheme)
+        }
+      }
+
+      themeModal.addEventListener('atoll-popup-primary', async () => {
+        const room_id = $state.activeSelectionId
+        $bus.emit('ui:show_toast', { message: 'Applying theme...', type: 'info' })
+        try {
+          const room = await $storage.getRoom(room_id)
+          const roomKeyB64 = room.key_history?.find(h => h.epoch_id === 1)?.key
+          if (!roomKeyB64) {
+            throw new Error('Room secret key not found locally')
+          }
+
+          const metadata = JSON.stringify({
+            name: room.name,
+            avatar: room.avatar || '',
+            theme: highlightedTheme
+          })
+
+          const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+          const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
+            message: metadata,
+            nonce: metadataNonce.slice(),
+            key: roomKeyB64
+          })
+
+          await pb.collection('rooms').update(room.id, {
+            theme: highlightedTheme,
+            encrypted_metadata: {
+              ciphertext: $crypto.toBase64(encryptedMetadata),
+              nonce: $crypto.toBase64(metadataNonce)
+            }
+          })
+
+          room.theme = highlightedTheme
+          await $storage.saveRoom(room)
+
+          $bus.emit('room:theme_updated', { room_id, theme: highlightedTheme })
+          $bus.emit('room:member_updated', { room_id })
+          $bus.emit('db:new_local_room', { room_id })
+          $bus.emit('ui:show_toast', {
+            message: `Theme updated to ${highlightedTheme}`,
+            type: 'success'
+          })
+          themeModal.hide()
+        } catch (err) {
+          console.error('[atoll-theme-selector-modal] Failed to save theme:', err)
+          alert('Failed to save theme: ' + err.message)
+        }
+      })
+    }
+  })
+</script>

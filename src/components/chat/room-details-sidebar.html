@@ -102,6 +102,11 @@
         <div class="small fw-bold">{{ loadingMessage }}</div>
       </div>
     </div>
+
+    <!-- Standalone Modal Components -->
+    <atoll-theme-selector-modal ref="themeSelectorModal"></atoll-theme-selector-modal>
+    <atoll-nicknames-modal ref="nicknamesModal"></atoll-nicknames-modal>
+    <atoll-block-modal ref="blockModal"></atoll-block-modal>
   </div>
 </template>
 
@@ -386,18 +391,30 @@
         }
       })
 
-      // Group 1: Chat Customisation Actions (Trigger global modals)
+      $bus.on('room:nicknames_updated', (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId) {
+          fetchRoomAndSettings()
+        }
+      })
+
+      // Group 1: Chat Customisation Actions (Trigger local modals)
       const btnChangeTheme = refs('btnChangeTheme')
       if (btnChangeTheme) {
         btnChangeTheme.addEventListener('click', () => {
-          $bus.emit('ui:open_theme_modal')
+          const modal = refs('themeSelectorModal')
+          if (modal && typeof modal.show === 'function') {
+            modal.show()
+          }
         })
       }
 
       const btnEditNicknames = refs('btnEditNicknames')
       if (btnEditNicknames) {
         btnEditNicknames.addEventListener('click', () => {
-          $bus.emit('ui:open_nicknames_modal')
+          const modal = refs('nicknamesModal')
+          if (modal && typeof modal.show === 'function') {
+            modal.show()
+          }
         })
       }
 
@@ -469,7 +486,10 @@
       const btnBlock = refs('btnBlock')
       if (btnBlock) {
         btnBlock.addEventListener('click', () => {
-          $bus.emit('ui:open_block_modal')
+          const modal = refs('blockModal')
+          if (modal && typeof modal.show === 'function') {
+            modal.show()
+          }
         })
       }
     }

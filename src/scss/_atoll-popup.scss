@@ -295,3 +295,11 @@ atoll-popup[data-#{$prefix}theme="dark"] {
     font-size: var(--#{$prefix}font-size-title-2, 18px);
   }
 }
+
+/* Stacking context overrides when modals are nested inside offcanvas */
+.modal-backdrop {
+  z-index: 1040 !important;
+}
+.offcanvas {
+  z-index: 1050 !important;
+}

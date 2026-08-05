@@ -1,0 +1,227 @@
+<template id="atoll-nicknames-modal">
+  <atoll-popup ref="nicknameModal" size="md" title="Nicknames" primary-text="Save" secondary-text="Cancel" data-testid="nicknamesModal">
+    <div class="nickname-list-container overflow-y-auto px-2" style="max-height: 350px;">
+      <atoll-list divided="true" ref="nicknameList" data-testid="nicknameList">
+        <!-- Dynamic row injection -->
+      </atoll-list>
+    </div>
+  </atoll-popup>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({}),
+    getters: {},
+    client: ({ refs, globalStore, storage, pocketbase, utils, signal, eventBus, cryptoWorker }) => {
+      const { $state } = globalStore
+      const { $storage } = storage
+      const { $bus } = eventBus
+      const { pb } = pocketbase || {}
+      const { $worker } = cryptoWorker
+      const { $crypto } = utils
+
+      const nicknameModal = refs('nicknameModal')
+      let tempNicknames = {}
+
+      const showModal = async () => {
+        const room_id = $state.activeSelectionId
+        const room = await $storage.getRoom(room_id)
+        if (!room) return
+
+        tempNicknames = { ...(room.nicknames || {}) }
+        const members = await pb.collection('room_members').getFullList({
+          filter: pb.filter('room_id = {:room_id}', { room_id }),
+          expand: 'user_id'
+        })
+
+        const participants = members.map(m => m.expand?.user_id).filter(Boolean)
+        renderNicknameModalRows(participants, tempNicknames)
+        nicknameModal.show()
+      }
+
+      const hideModal = () => {
+        nicknameModal.hide()
+      }
+
+      // Expose public methods
+      const root = refs('nicknameModal').parentElement
+      root.show = showModal
+      root.hide = hideModal
+
+      // Listen for open event
+      $bus.on('ui:open_nicknames_modal', showModal)
+
+      const renderNicknameModalRows = (participants, currentNicknames) => {
+        const list = nicknameModal.querySelector('[ref$="nicknameList"], [data-testid$="nicknameList"]')
+        if (!list) return
+        list.innerHTML = ''
+
+        participants.forEach(p => {
+          const item = document.createElement('atoll-list-item')
+          item.setAttribute('clickable', 'true')
+          item.className = 'w-100 py-2 border-bottom'
+
+          const avatar = document.createElement('atoll-profile')
+          avatar.setAttribute('size', 'xs')
+          avatar.setAttribute('slot', 'leading')
+          avatar.className = 'me-2 flex-shrink-0'
+          if (p.avatar) {
+            avatar.setAttribute('src', pb.files.getURL(p, p.avatar, { thumb: '32x32' }))
+          }
+          avatar.setAttribute('name', p.name || p.username)
+          item.appendChild(avatar)
+
+          const contentWrapper = document.createElement('div')
+          contentWrapper.className = 'w-100 d-flex flex-column align-items-start px-2'
+
+          const originalName = document.createElement('div')
+          originalName.className = 'fw-bold fs-7 text-primary-emphasis'
+          originalName.textContent = p.name || p.username
+          contentWrapper.appendChild(originalName)
+
+          const nicknameDisplay = document.createElement('div')
+          nicknameDisplay.className = 'text-secondary fs-7'
+          const activeNick = currentNicknames[p.id] || ''
+          nicknameDisplay.textContent = activeNick || 'Set nickname'
+          contentWrapper.appendChild(nicknameDisplay)
+
+          item.appendChild(contentWrapper)
+
+          // Edit Pencil Icon (Trailing)
+          const pencil = document.createElement('span')
+          pencil.setAttribute('slot', 'right')
+          pencil.className = 'cursor-pointer p-1 me-2'
+          pencil.innerHTML = '<i class="bi bi-pencil fs-6 text-muted"></i>'
+          item.appendChild(pencil)
+
+          const toggleInlineEdit = () => {
+            item.innerHTML = '' // Clear and insert input
+            item.appendChild(avatar)
+
+            const inputWrapper = document.createElement('div')
+            inputWrapper.className = 'w-100 d-flex align-items-center gap-2 px-2'
+
+            const input = document.createElement('input')
+            input.type = 'text'
+            input.className = 'form-control form-control-sm'
+            input.value = activeNick
+            input.placeholder = 'Enter nickname'
+            inputWrapper.appendChild(input)
+
+            const confirmBtn = document.createElement('button')
+            confirmBtn.type = 'button'
+            confirmBtn.className = 'btn btn-sm btn-success p-1 d-flex align-items-center justify-content-center'
+            confirmBtn.style.borderRadius = '6px'
+            confirmBtn.innerHTML = '<i class="bi bi-check fs-6"></i>'
+            inputWrapper.appendChild(confirmBtn)
+
+            item.appendChild(inputWrapper)
+            input.focus()
+
+            const commitValue = () => {
+              const newVal = input.value.trim()
+              currentNicknames[p.id] = newVal
+              // Re-render modal rows
+              renderNicknameModalRows(participants, currentNicknames)
+            }
+
+            confirmBtn.onclick = (e) => {
+              e.stopPropagation()
+              commitValue()
+            }
+
+            input.onkeydown = (e) => {
+              if (e.key === 'Enter') {
+                e.stopPropagation()
+                commitValue()
+              }
+            }
+          };
+
+          pencil.onclick = (e) => {
+            e.stopPropagation()
+            toggleInlineEdit()
+          }
+          item.onclick = () => {
+            toggleInlineEdit()
+          }
+
+          list.appendChild(item)
+        })
+      }
+
+      nicknameModal.addEventListener('atoll-popup-primary', async () => {
+        const room_id = $state.activeSelectionId
+        $bus.emit('ui:show_toast', { message: 'Saving nicknames...', type: 'info' })
+        try {
+          const room = await $storage.getRoom(room_id)
+          const roomKeyB64 = room?.key_history?.find(h => h.epoch_id === 1)?.key
+          if (!roomKeyB64) {
+            throw new Error('Room secret key not found locally')
+          }
+
+          const memberRecord = await pb.collection('room_members').getFirstListItem(
+            `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+          )
+
+          let read_receipts = true
+          // Decrypt existing settings to preserve read_receipts
+          if (memberRecord.settings && memberRecord.settings.ciphertext) {
+            try {
+              const decryptedBytes = await $worker.execute('worker:crypto_secretbox_open_easy', {
+                ciphertext: memberRecord.settings.ciphertext,
+                nonce: memberRecord.settings.nonce,
+                key: roomKeyB64
+              })
+              if (decryptedBytes) {
+                const settingsObj = JSON.parse(new TextDecoder().decode(decryptedBytes))
+                read_receipts = settingsObj.read_receipts !== false
+              }
+            } catch (decErr) {
+              console.warn('[atoll-nicknames-modal] Preserving read receipts read failed:', decErr)
+            }
+          }
+
+          const payloadStr = JSON.stringify({
+            nicknames: tempNicknames,
+            read_receipts
+          })
+
+          const nonceBytes = await $worker.execute('worker:randombytes_buf', { length: 24 })
+          const encryptedBytes = await $worker.execute('worker:crypto_secretbox_easy', {
+            message: payloadStr,
+            nonce: nonceBytes.slice(),
+            key: roomKeyB64
+          })
+
+          const encryptedPayload = {
+            ciphertext: $crypto.toBase64(encryptedBytes),
+            nonce: $crypto.toBase64(nonceBytes)
+          }
+
+          await pb.collection('room_members').update(memberRecord.id, {
+            settings: encryptedPayload
+          })
+
+          // Save locally
+          room.nicknames = tempNicknames
+          room.read_receipts = read_receipts
+          await $storage.saveRoom(room)
+
+          $bus.emit('room:nicknames_updated', { room_id })
+          $bus.emit('room:member_updated', { room_id })
+          $bus.emit('ui:show_toast', {
+            message: 'Nicknames saved successfully',
+            type: 'success'
+          })
+          nicknameModal.hide()
+        } catch (e) {
+          console.error('[atoll-nicknames-modal] Failed to save nicknames:', e)
+          alert('Save failed: ' + e.message)
+        }
+      })
+    }
+  })
+</script>
