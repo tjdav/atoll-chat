@@ -37,7 +37,7 @@
   }
 
   &[has-reactions="true"] {
-    .timeline-row-container {
+    .atoll-chat-timeline-row-container {
       margin-bottom: 14px;
     }
   }
@@ -66,7 +66,7 @@
   margin-bottom: 2px;
 }
 
-.timeline-row-container {
+.atoll-chat-timeline-row-container {
   display: grid;
   grid-template-columns: $timeline-avatar-size 1fr;
   column-gap: $timeline-avatar-margin;

@@ -179,7 +179,7 @@
 
           // Update status of already rendered messages
           messages.forEach(m => {
-            const row = container.querySelector(`timeline-row[data-local-uuid="${m.local_uuid}"]`)
+            const row = container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${m.local_uuid}"]`)
             if (row) {
               if (m.id && !row.dataset.messageId) {
                 row.dataset.messageId = m.id
@@ -208,7 +208,7 @@
           let messagesToRender = messages
 
           // prevent duplicate appending if multiple calls overlap
-          const existingElements = Array.from(container.querySelectorAll('timeline-row, timeline-system-message'))
+          const existingElements = Array.from(container.querySelectorAll('atoll-chat-timeline-row, atoll-chat-timeline-system-message'))
           const existingIds = new Set()
           existingElements.forEach(el => {
             if (el.dataset.messageId) {
@@ -230,7 +230,7 @@
 
           // Before appending, update the previously last message's styling
           if (lastRenderedMessageId && messagesToRender.length > 0) {
-            const prevLastRow = container.querySelector(`timeline-row[data-message-id="${lastRenderedMessageId}"], timeline-row[data-local-uuid="${lastRenderedMessageId}"]`)
+            const prevLastRow = container.querySelector(`atoll-chat-timeline-row[data-message-id="${lastRenderedMessageId}"], atoll-chat-timeline-row[data-local-uuid="${lastRenderedMessageId}"]`)
             if (prevLastRow) {
               const firstNew = messagesToRender[0]
               const prevMsg = messages.find(m => (m.id && m.id === lastRenderedMessageId) || (m.local_uuid && m.local_uuid === lastRenderedMessageId))
@@ -680,14 +680,14 @@
         }
 
         let targetEl = container.querySelector(`#timeline-item-${messageId}`) ||
-                       container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
-                       container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
+                       container.querySelector(`atoll-chat-timeline-row[data-message-id="${messageId}"]`) ||
+                       container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${messageId}"]`)
   
         if (!targetEl) {
           await renderTimeline()
           targetEl = container.querySelector(`#timeline-item-${messageId}`) ||
-                     container.querySelector(`timeline-row[data-message-id="${messageId}"]`) ||
-                     container.querySelector(`timeline-row[data-local-uuid="${messageId}"]`)
+                     container.querySelector(`atoll-chat-timeline-row[data-message-id="${messageId}"]`) ||
+                     container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${messageId}"]`)
         }
 
         if (targetEl) {
