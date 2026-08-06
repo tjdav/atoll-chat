@@ -88,21 +88,25 @@
           const nicknameDisplay = document.createElement('div')
           nicknameDisplay.className = 'text-secondary fs-7'
           const activeNick = currentNicknames[p.id] || ''
-          nicknameDisplay.textContent = activeNick || 'Set nickname'
-          contentWrapper.appendChild(nicknameDisplay)
+          contentWrapper.className = 'w-100 d-flex align-items-center'
 
-          item.appendChild(contentWrapper)
+          const span = document.createElement('span')
+          span.className = 'fw-bold flex-grow-1'
+          span.textContent = currentNick || (p.name || p.username)
 
           // Edit Pencil Icon (Trailing)
-          const pencil = document.createElement('span')
-          pencil.setAttribute('slot', 'right')
-          pencil.className = 'cursor-pointer p-1 me-2'
-          pencil.innerHTML = '<i class="bi bi-pencil fs-6 text-muted"></i>'
-          item.appendChild(pencil)
+          const pencil = document.createElement('button')
+          pencil.className = 'btn btn-sm btn-link text-muted p-0 me-2'
+          pencil.title = 'Edit nickname'
+          pencil.innerHTML = '<atoll-icon name="pencil" size="16" class="text-muted"></atoll-icon>'
+
+          contentWrapper.appendChild(avatar)
+          contentWrapper.appendChild(span)
+          contentWrapper.appendChild(pencil)
+          item.appendChild(contentWrapper)
 
           const toggleInlineEdit = () => {
             item.innerHTML = '' // Clear and insert input
-            item.appendChild(avatar)
 
             const inputWrapper = document.createElement('div')
             inputWrapper.className = 'w-100 d-flex align-items-center gap-2 px-2'
@@ -110,15 +114,13 @@
             const input = document.createElement('input')
             input.type = 'text'
             input.className = 'form-control form-control-sm'
-            input.value = activeNick
+            input.value = currentNick
             input.placeholder = 'Enter nickname'
             inputWrapper.appendChild(input)
 
             const confirmBtn = document.createElement('button')
-            confirmBtn.type = 'button'
-            confirmBtn.className = 'btn btn-sm btn-success p-1 d-flex align-items-center justify-content-center'
-            confirmBtn.style.borderRadius = '6px'
-            confirmBtn.innerHTML = '<i class="bi bi-check fs-6"></i>'
+            confirmBtn.className = 'btn btn-sm btn-primary'
+            confirmBtn.innerHTML = '<atoll-icon name="check" size="16"></atoll-icon>'
             inputWrapper.appendChild(confirmBtn)
 
             item.appendChild(inputWrapper)

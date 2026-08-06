@@ -188,15 +188,13 @@
         const btnWrapper = document.createElement('div')
         btnWrapper.className = 'd-grid gap-2'
 
-        const downloadBtn = document.createElement('a')
-        downloadBtn.className = 'btn btn-primary btn-lg download-btn'
-        downloadBtn.href = '#'
+        const downloadBtn = document.createElement('atoll-button')
+        downloadBtn.setAttribute('variant', 'primary')
+        downloadBtn.setAttribute('size', 'lg')
+        downloadBtn.setAttribute('leading-icon', 'download')
+        downloadBtn.className = 'download-btn'
+        downloadBtn.textContent = 'Download Document'
 
-        const btnIcon = document.createElement('i')
-        btnIcon.className = 'bi bi-download me-2'
-
-        downloadBtn.appendChild(btnIcon)
-        downloadBtn.appendChild(document.createTextNode(' Download Document'))
         btnWrapper.appendChild(downloadBtn)
         card.appendChild(btnWrapper)
   

@@ -107,8 +107,10 @@
             img.alt = 'Preview'
             imgContainer.replaceChildren(img)
           } catch {
-            const icon = document.createElement('i')
-            icon.className = 'bi bi-link-45deg fs-1 text-secondary opacity-25'
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'link')
+            icon.setAttribute('size', '48')
+            icon.className = 'text-secondary opacity-25'
             imgContainer.replaceChildren(icon)
           }
         } else if (link.image) {
@@ -119,8 +121,10 @@
           img.alt = 'Preview'
           imgContainer.replaceChildren(img)
         } else {
-          const icon = document.createElement('i')
-          icon.className = 'bi bi-link-45deg fs-1 text-secondary opacity-25'
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', 'link')
+          icon.setAttribute('size', '48')
+          icon.className = 'text-secondary opacity-25'
           imgContainer.replaceChildren(icon)
         }
       }
@@ -137,9 +141,7 @@
                 <h4 class="card-title fw-bold mb-2 link-title"></h4>
                 <p class="text-muted mb-4 link-summary"></p>
                 <div class="d-grid">
-                  <a href="#" target="_blank" class="btn btn-primary link-visit-btn">
-                    <i class="bi bi-box-arrow-up-right me-2"></i> Visit Website
-                  </a>
+                  <atoll-button variant="primary" leading-icon="link" class="link-visit-btn">Visit Website</atoll-button>
                 </div>
               </div>
             </div>

@@ -67,7 +67,7 @@
           playBtn.className = 'play-pause-btn'
           playBtn.setAttribute('type', 'button')
           playBtn.setAttribute('aria-label', 'Play voice message')
-          playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
+          playBtn.innerHTML = '<atoll-icon name="play" size="18" color="#ffffff"></atoll-icon>'
           const waveContainer = document.createElement('div')
           waveContainer.className = 'waveform-container'
 
@@ -154,15 +154,15 @@
 
           audio.oncanplaythrough = () => $bus.emit('ui:media_loaded')
           audio.ontimeupdate = updateProgress
-          audio.onplay = () => {
-            playBtn.innerHTML = '<i class="bi bi-pause-fill"></i>'
-          }
-          audio.onpause = () => {
-            playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
-          }
-          audio.onended = () => {
-            audio.currentTime = 0; updateProgress(); playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
-          }
+          audio.addEventListener('play', () => {
+            playBtn.innerHTML = '<atoll-icon name="pause" size="18" color="#ffffff"></atoll-icon>'
+          })
+          audio.addEventListener('pause', () => {
+            playBtn.innerHTML = '<atoll-icon name="play" size="18" color="#ffffff"></atoll-icon>'
+          })
+          audio.addEventListener('ended', () => {
+            audio.currentTime = 0; updateProgress(); playBtn.innerHTML = '<atoll-icon name="play" size="18" color="#ffffff"></atoll-icon>'
+          })
 
           playBtn.onclick = (e) => {
             e.stopPropagation()
@@ -294,7 +294,7 @@
           }
           console.error('[atoll-chat-timeline-item-voice] Error:', err)
           loading.innerHTML = `
-            <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+            <atoll-icon name="warning" size="24" color="var(--bs-warning)"></atoll-icon>
             <div class="x-small ms-2">Failed to load audio</div>
           `
         }

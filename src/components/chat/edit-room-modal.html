@@ -15,7 +15,7 @@
         <label class="form-label fw-bold">Room Avatar</label>
         <div class="d-flex align-items-center gap-3">
           <div class="room-avatar-preview bg-body-tertiary border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
-            <i class="bi bi-camera fs-3 text-muted"></i>
+            <atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>
           </div>
           <div>
             <input type="file" class="d-none" ref="avatarInput" accept="image/*">
@@ -36,15 +36,11 @@
       roomName: '',
       roomAvatar: null,
       isSaving: false,
-      activeRoom: null
+      activeRoom: null,
+      roomId: null
     }),
     getters: {
-      canSave: (state) => {
-        if (state.isSaving || !state.activeRoom) {
-          return false
-        }
-        return (state.roomName || '').trim().length > 0
-      }
+      canSave: (state) => Boolean(state.roomName.trim()) && !state.isSaving
     },
     client: ({ refs, state, pocketbase, eventBus, storage, cryptoWorker, utils, signal }) => {
       const { pb } = pocketbase
@@ -60,14 +56,18 @@
       const btnSelectAvatar = refs('btnSelectAvatar')
       const btnClearAvatar = refs('btnClearAvatar')
 
-      $bus.on('ui:open_edit_room', async (room) => {
+      $bus.on('ui:open_edit_room_modal', async (room) => {
+        if (!room) {
+          return
+        }
+        state.roomId = room.id
         state.activeRoom = room
         state.roomName = room.name || ''
         state.roomAvatar = null
         roomNameInput.value = state.roomName
   
         // Initial Avatar Preview
-        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+        avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
         btnClearAvatar.classList.add('d-none')
   
         if (room.avatar) {
@@ -128,7 +128,7 @@
       btnClearAvatar.onclick = () => {
         state.roomAvatar = 'CLEAR'
         avatarInput.value = ''
-        avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+        avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
         btnClearAvatar.classList.add('d-none')
       }
 

@@ -1,17 +1,13 @@
 <template id="atoll-chat-voice-recorder">
   <div class="atoll-chat-voice-recorder-ui d-flex align-items-center gap-2">
-    <button class="btn btn-link text-danger p-1" ref="discardButton" title="Discard" data-testid="discardButton">
-      <i class="bi bi-trash fs-4"></i>
-    </button>
+    <atoll-button variant="ghost" leading-icon="trash" icon-only="true" ref="discardButton" title="Discard" data-testid="discardButton"></atoll-button>
     
     <div class="atoll-chat-recording-controls flex-grow-1 d-flex align-items-center bg-body-tertiary rounded-pill px-3 py-1 border">
-      <button class="btn btn-sm btn-light rounded-circle me-2" ref="pauseResumeButton" data-testid="pauseResumeButton">
-        <i class="bi {{ pauseResumeIcon }}"></i>
-      </button>
+      <atoll-button variant="secondary" icon-only="true" pill="true" size="sm" ref="pauseResumeButton" data-testid="pauseResumeButton">
+        <atoll-icon name="{{ pauseResumeIcon }}" size="18"></atoll-icon>
+      </atoll-button>
 
-      <button class="btn btn-sm btn-link text-primary me-2 {{ redoClass }}" ref="redoButton" title="Restart" data-testid="redoButton">
-        <i class="bi bi-arrow-counterclockwise fs-5"></i>
-      </button>
+      <atoll-button variant="ghost" leading-icon="restart" icon-only="true" size="sm" ref="redoButton" title="Restart" data-testid="redoButton" class="{{ redoClass }}"></atoll-button>
 
       <div class="atoll-chat-recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 32px;">
         <canvas ref="visualizerCanvas" width="400" height="32" class="w-100 h-100"></canvas>
@@ -19,14 +15,10 @@
 
       <span class="atoll-chat-recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
 
-      <button class="btn btn-sm btn-link text-secondary ms-2 {{ redoClass }}" ref="resumeMicButton" title="Add more" data-testid="resumeMicButton">
-        <i class="bi bi-mic-fill"></i>
-      </button>
+      <atoll-button variant="ghost" leading-icon="mic" icon-only="true" size="sm" ref="resumeMicButton" title="Add more" data-testid="resumeMicButton" class="{{ redoClass }}"></atoll-button>
     </div>
 
-    <button class="btn btn-primary btn-circle" ref="sendVoiceButton" data-testid="sendVoiceButton">
-      <i class="bi bi-send-fill" style="transform: rotate(-45deg); margin-left: 3px;"></i>
-    </button>
+    <atoll-button variant="primary" leading-icon="send" icon-only="true" pill="true" ref="sendVoiceButton" data-testid="sendVoiceButton"></atoll-button>
   </div>
 </template>
 
@@ -40,7 +32,7 @@
       recordingDuration: 0
     }),
     getters: {
-      pauseResumeIcon: (state) => (state.isPaused ? 'bi-play-fill' : 'bi-pause-fill'),
+      pauseResumeIcon: (state) => (state.isPaused ? 'play' : 'pause'),
       redoClass: (state) => (state.isPaused ? '' : 'd-none'),
       formattedDuration: (state) => {
         const mins = Math.floor(state.recordingDuration / 60)

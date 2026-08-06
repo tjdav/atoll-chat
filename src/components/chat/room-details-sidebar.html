@@ -391,7 +391,8 @@
             removeBtn.style.width = '32px'
             removeBtn.style.height = '32px'
             removeBtn.style.borderRadius = '50%'
-            removeBtn.innerHTML = '<i class="bi bi-person-x fs-5"></i>'
+            removeBtn.title = 'Remove member'
+            removeBtn.innerHTML = '<atoll-icon name="block" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon>'
             removeBtn.title = 'Remove member'
             removeBtn.onclick = () => handleKickUser(member)
             item.appendChild(removeBtn)

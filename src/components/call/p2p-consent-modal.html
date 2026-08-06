@@ -6,8 +6,8 @@
     static-backdrop
   >
     <div class="text-center py-2">
-      <div class="mb-3">
-        <i class="bi bi-file-earmark-arrow-down fs-1 text-primary"></i>
+      <div class="mb-3 d-flex align-items-center justify-content-center">
+        <atoll-icon name="download" size="48" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
       </div>
       <h6 class="fw-bold mb-2" ref="promptText">
         Incoming transfer...
@@ -18,8 +18,8 @@
     </div>
 
     <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-center gap-3">
-      <button type="button" class="btn btn-danger px-4" ref="btnReject" data-testid="consent-btn-reject">Reject</button>
-      <button type="button" class="btn btn-success px-4" ref="consent-btn-accept" data-testid="consent-btn-accept">Accept</button>
+      <atoll-button type="button" variant="danger" ref="btnReject" data-testid="consent-btn-reject">Reject</atoll-button>
+      <atoll-button type="button" variant="primary" ref="consent-btn-accept" data-testid="consent-btn-accept">Accept</atoll-button>
     </div>
   </atoll-popup>
 </template>

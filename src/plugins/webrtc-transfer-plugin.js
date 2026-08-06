@@ -98,8 +98,10 @@ export default definePlugin({
             const wrapper = document.createElement('div')
             wrapper.className = 'd-flex align-items-center gap-2 text-success'
 
-            const icon = document.createElement('i')
-            icon.className = 'bi bi-check-circle-fill'
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'check-circle')
+            icon.setAttribute('size', '18')
+            icon.setAttribute('color', 'var(--bs-success)')
 
             const span = document.createElement('span')
             span.className = 'fw-bold'

@@ -11,14 +11,12 @@
   
   <div id="{{ ref_messageSoundControls }}" class="mb-4 {{ messageSoundControlsClass }}">
     <div class="d-flex gap-2 align-items-center mb-2">
-      <button class="btn btn-sm btn-outline-secondary" ref="btnPreviewMessage">
-        <i class="bi bi-play-fill"></i> Preview
-      </button>
-      <label class="btn btn-sm btn-outline-primary position-relative mb-0">
-        <i class="bi bi-upload"></i> Custom Sound
+      <atoll-button variant="secondary" size="sm" leading-icon="play" ref="btnPreviewMessage">Preview</atoll-button>
+      <atoll-button variant="outline" size="sm" leading-icon="download" class="position-relative">
+        Custom Sound
         <input type="file" ref="fileMessageSound" class="position-absolute start-0 top-0 w-100 h-100 opacity-0" accept="audio/mpeg,audio/wav,audio/ogg">
-      </label>
-      <button class="btn btn-sm btn-link text-danger p-0 ms-2 {{ resetMessageSoundClass }}" ref="btnResetMessageSound">Reset to default</button>
+      </atoll-button>
+      <atoll-button variant="ghost" size="sm" ref="btnResetMessageSound" class="{{ resetMessageSoundClass }}">Reset to default</atoll-button>
     </div>
     <div class="small text-muted">{{ messageSoundName }}</div>
   </div>
@@ -35,14 +33,12 @@
 
   <div id="{{ ref_callSoundControls }}" class="{{ callSoundControlsClass }}">
     <div class="d-flex gap-2 align-items-center mb-2">
-      <button class="btn btn-sm btn-outline-secondary" ref="btnPreviewCall">
-        <i class="bi bi-play-fill"></i> Preview
-      </button>
-      <label class="btn btn-sm btn-outline-primary position-relative mb-0">
-        <i class="bi bi-upload"></i> Custom Sound
+      <atoll-button variant="secondary" size="sm" leading-icon="play" ref="btnPreviewCall">Preview</atoll-button>
+      <atoll-button variant="outline" size="sm" leading-icon="download" class="position-relative">
+        Custom Sound
         <input type="file" ref="fileCallSound" class="position-absolute start-0 top-0 w-100 h-100 opacity-0" accept="audio/mpeg,audio/wav,audio/ogg">
-      </label>
-      <button class="btn btn-sm btn-link text-danger p-0 ms-2 {{ resetCallSoundClass }}" ref="btnResetCallSound">Reset to default</button>
+      </atoll-button>
+      <atoll-button variant="ghost" size="sm" ref="btnResetCallSound" class="{{ resetCallSoundClass }}">Reset to default</atoll-button>
     </div>
     <div class="small text-muted">{{ callSoundName }}</div>
   </div>

@@ -275,9 +275,9 @@
           <div class="d-flex justify-content-center align-items-center h-100 overflow-hidden position-relative">
             <div class="video-placeholder flex-grow-1 w-100 h-100 d-flex flex-column align-items-center justify-content-center position-relative">
               <img class="thumbnail-img position-absolute top-0 start-0 w-100 h-100 object-fit-contain opacity-50" style="z-index: 1;">
-              <button class="btn btn-primary rounded-circle d-flex align-items-center justify-content-center mb-3 btn-big-play position-relative" style="width: 120px; height: 120px; z-index: 2;">
-                <i class="bi bi-play-fill" style="font-size: 4rem;"></i>
-              </button>
+              <atoll-button variant="primary" icon-only="true" pill="true" class="btn-big-play position-relative mb-3" style="width: 120px; height: 120px; z-index: 2;">
+                <atoll-icon name="play" size="64" color="#ffffff"></atoll-icon>
+              </atoll-button>
               <div class="text-white opacity-50 position-relative play-text" style="z-index: 2;">Click to Play</div>
             </div>
             <div class="video-loading position-absolute top-50 start-50 translate-middle d-flex flex-column align-items-center justify-content-center d-none" style="z-index: 3;">
@@ -287,9 +287,9 @@
               <div class="text-white fw-bold shadow-sm">Decrypting Video...</div>
             </div>
             <div class="video-error flex-grow-1 w-100 h-100 d-flex flex-column align-items-center justify-content-center d-none p-4 text-center" style="z-index: 4; background: rgba(0,0,0,0.7);">
-              <i class="bi bi-exclamation-triangle text-danger mb-3" style="font-size: 3rem;"></i>
+              <atoll-icon name="warning" size="48" color="var(--atoll-danger, #FF334B)" class="mb-3"></atoll-icon>
               <div class="text-white mb-3 error-text"></div>
-              <button class="btn btn-outline-light btn-retry">Retry</button>
+              <atoll-button variant="outline" class="btn-retry">Retry</atoll-button>
             </div>
             <div class="video-container flex-grow-1 w-100 h-100 d-flex align-items-center justify-content-center d-none"></div>
           </div>

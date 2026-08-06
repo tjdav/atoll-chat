@@ -1,7 +1,5 @@
 <template id="ui-share-button">
-  <button ref="btnOpenShare" class="btn btn-primary btn-sm rounded-pill px-3 ms-2">
-    <i class="bi bi-share me-1"></i> Share
-  </button>
+  <atoll-button variant="primary" size="sm" pill="true" leading-icon="send" ref="btnOpenShare" class="ms-2">Share</atoll-button>
 
   <atoll-popup
     ref="shareModal"
@@ -12,7 +10,7 @@
     </div>
 
     <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end gap-2">
-      <button type="button" class="btn btn-primary" ref="btnSend" disabled>Send</button>
+      <atoll-button type="button" variant="primary" ref="btnSend" disabled="true">Send</atoll-button>
     </div>
   </atoll-popup>
 </template>

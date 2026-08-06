@@ -7,9 +7,9 @@
 
     <!-- Pagination controls -->
     <div ref="paginationControls" class="pagination-controls position-absolute start-50 translate-middle-x rounded-pill px-3 py-1 text-white d-none align-items-center" style="bottom: 100px !important; z-index: 9999; background: rgba(0,0,0,0.85);">
-      <button ref="btnPrevPage" class="btn btn-link text-white p-0 me-2 btn-prev-page" style="text-decoration: none;"><i class="bi bi-chevron-left"></i></button>
+      <atoll-button variant="ghost" leading-icon="chevron-left" icon-only="true" ref="btnPrevPage" class="btn-prev-page"></atoll-button>
       <span ref="pageInfo">Page 1 of 1</span>
-      <button ref="btnNextPage" class="btn btn-link text-white p-0 ms-2 btn-next-page" style="text-decoration: none;"><i class="bi bi-chevron-right"></i></button>
+      <atoll-button variant="ghost" leading-icon="chevron-right" icon-only="true" ref="btnNextPage" class="btn-next-page"></atoll-button>
     </div>
   </div>
 </template>
@@ -159,13 +159,6 @@
           hero = speakingRemote || list.find(p => !p.isLocal) || list[0]
         }
 
-        console.log('[video-grid] renderGrid state:', {
-          pinnedParticipantId: state.pinnedParticipantId,
-          isMobile,
-          listLength: list.length,
-          hero: hero ? hero.name : null
-        })
-
         const itemsPerPage = 49
         const totalPages = Math.ceil(list.length / itemsPerPage)
         if (state.currentPage > totalPages) {
@@ -269,7 +262,7 @@
                 if (!audioContainer.querySelector('.muted-audio')) {
                   audioContainer.innerHTML = `
                     <div class="audio-status-icon muted-audio d-flex align-items-center justify-content-center bg-white rounded-circle text-dark" style="width: 32px; height: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-                      <i class="bi bi-mic-mute-fill text-danger" style="font-size: 16px;"></i>
+                      <atoll-icon name="mic-off" size="18" color="var(--atoll-danger, #FF334B)"></atoll-icon>
                     </div>
                   `
                 }
@@ -293,10 +286,10 @@
             // Update pin/unpin button icon and title state
             const pinBtn = tile.querySelector('.pin-btn')
             if (pinBtn) {
-              const pinIcon = pinBtn.querySelector('.bi')
+              const pinIcon = pinBtn.querySelector('atoll-icon')
               if (pinIcon) {
                 const isPinned = state.pinnedParticipantId === p.id
-                pinIcon.className = `bi ${isPinned ? 'bi-pin-fill' : 'bi-pin-angle-fill'} text-white`
+                pinIcon.setAttribute('name', isPinned ? 'pin' : 'unpin')
               }
               pinBtn.setAttribute('title', state.pinnedParticipantId === p.id ? 'Unpin Participant' : 'Pin Participant')
             }
@@ -365,7 +358,7 @@
         if (p.isMuted) {
           audioStatusHtml = `
             <div class="audio-status-icon muted-audio d-flex align-items-center justify-content-center bg-white rounded-circle text-dark" style="width: 32px; height: 32px; box-shadow: 0 2px 4px rgba(0,0,0,0.2);">
-              <i class="bi bi-mic-mute-fill text-danger" style="font-size: 16px;"></i>
+              <atoll-icon name="mic-off" size="18" color="var(--atoll-danger, #FF334B)"></atoll-icon>
             </div>
           `
         } else if (p.isSpeaking) {

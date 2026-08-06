@@ -510,14 +510,12 @@
           setupDiv.className = 'card shadow-sm p-4 text-center'
           setupDiv.style.maxWidth = '400px'
           setupDiv.innerHTML = `
-            <div class="mb-3 text-danger">
-              <i class="bi bi-wifi-off" style="font-size: 3rem;"></i>
+            <div class="mb-3 text-danger d-flex align-items-center justify-content-center">
+              <atoll-icon name="permissions" size="48" color="var(--atoll-danger, #FF334B)"></atoll-icon>
             </div>
             <h4 class="card-title mb-2">Connection Required</h4>
             <p class="card-text text-muted">Atoll needs to connect to the server once to initialize your secure environment.</p>
-            <button class="btn btn-primary w-100 mt-2" onclick="window.location.reload()">
-              <i class="bi bi-arrow-clockwise me-1"></i> Retry Connection
-            </button>
+            <atoll-button variant="primary" block="true" leading-icon="restart" onclick="window.location.reload()">Retry Connection</atoll-button>
           `
           container.appendChild(setupDiv)
           return

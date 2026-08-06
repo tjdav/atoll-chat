@@ -143,16 +143,6 @@ export default defineConfig({
       dest: 'assets/register-sw.js'
     },
     {
-      pkg: 'bootstrap-icons',
-      path: 'font/fonts/bootstrap-icons.woff',
-      dest: 'assets/css/fonts/bootstrap-icons.woff'
-    },
-    {
-      pkg: 'bootstrap-icons',
-      path: 'font/fonts/bootstrap-icons.woff2',
-      dest: 'assets/css/fonts/bootstrap-icons.woff2'
-    },
-    {
       pkg: '@ffmpeg/core',
       path: 'dist/esm/ffmpeg-core.js',
       dest: 'assets/ffmpeg-core.js'

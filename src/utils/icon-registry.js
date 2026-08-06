@@ -52,7 +52,13 @@ import {
   CopyBoldIcon,
   DownloadLinearIcon,
   DownloadBoldIcon,
-  PlaneBoldIcon
+  PlaneBoldIcon,
+  TrashBinMinimalisticLinearIcon,
+  RestartLinearIcon,
+  PlayLinearIcon,
+  PauseLinearIcon,
+  DangerLinearIcon,
+  PenLinearIcon
 } from '@solar-icons/js'
 
 /**
@@ -183,6 +189,14 @@ export const SOLAR_ICON_MAP = {
   },
   'camera-off': CameraMinimalisticLinearIcon,
   pip: PipLinearIcon,
+
+  trash: TrashBinMinimalisticLinearIcon,
+  restart: RestartLinearIcon,
+  play: PlayLinearIcon,
+  pause: PauseLinearIcon,
+  warning: DangerLinearIcon,
+  pencil: PenLinearIcon,
+  camera: CameraMinimalisticLinearIcon,
 
   // Chevrons
   down: AltArrowDownLinearIcon,

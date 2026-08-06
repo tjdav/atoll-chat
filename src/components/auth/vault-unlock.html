@@ -8,7 +8,7 @@
         <atoll-profile ref="avatarProfile" size="lg" class="d-inline-block mb-2"></atoll-profile>
         <h4 class="mb-1 text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Welcome Back</h4>
         <div ref="usernameBadge" class="text-center font-monospace fw-bold mb-1 text-primary fs-5"></div>
-        <p class="text-success small mb-3"><i class="bi bi-shield-check me-1"></i> Active Session</p>
+        <p class="text-success small mb-3 d-flex align-items-center justify-content-center gap-1"><atoll-icon name="shield-lock" size="16" color="var(--bs-success)"></atoll-icon> Active Session</p>
       </div>
 
       <!-- Zone 3: Form Input Zone -->
@@ -50,9 +50,7 @@
       <div class="atoll-auth-header-zone">
         <atoll-list-header variant="list" title="Recover Vault">
           <div slot="leading">
-            <atoll-button type="button" variant="ghost" icon-only="true" ref="btnCancelRecovery">
-              <atoll-icon name="chevron-right" style="transform: rotate(180deg); display: inline-block;"></atoll-icon>
-            </atoll-button>
+            <atoll-button type="button" variant="ghost" leading-icon="chevron-left" icon-only="true" ref="btnCancelRecovery"></atoll-button>
           </div>
         </atoll-list-header>
       </div>

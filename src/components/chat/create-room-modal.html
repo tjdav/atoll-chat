@@ -19,7 +19,7 @@
         <label class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.05em;">Room Avatar (Optional)</label>
         <div class="d-flex align-items-center gap-3">
           <div class="room-avatar-preview bg-body-tertiary border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
-            <i class="bi bi-camera fs-3 text-muted"></i>
+            <atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>
           </div>
           <div>
             <input type="file" class="d-none" ref="avatarInput" accept="image/*">
@@ -350,7 +350,7 @@
           avatarInput.value = ''
         }
         if (avatarPreview) {
-          avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+          avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
         }
         if (btnClearAvatar) {
           btnClearAvatar.classList.add('d-none')
@@ -397,7 +397,7 @@
             avatarInput.value = ''
           }
           if (avatarPreview) {
-            avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+            avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
           }
           btnClearAvatar.classList.add('d-none')
         }
@@ -589,7 +589,7 @@
           avatarInput.value = ''
         }
         if (avatarPreview) {
-          avatarPreview.innerHTML = '<i class="bi bi-camera fs-3 text-muted"></i>'
+          avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
         }
         if (btnClearAvatar) {
           btnClearAvatar.classList.add('d-none')

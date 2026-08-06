@@ -5,12 +5,8 @@
     <p class="text-light mb-5">{{ incomingCallTypeText }}</p>
     
     <div class="d-flex gap-4">
-      <button ref="btnAccept" class="btn btn-success btn-lg rounded-circle p-3 shadow" title="Accept Call" aria-label="Accept Call">
-        <i class="bi bi-telephone-fill fs-3"></i>
-      </button>
-      <button ref="btnReject" class="btn btn-danger btn-lg rounded-circle p-3 shadow" title="Reject Call" aria-label="Reject Call">
-        <i class="bi bi-telephone-x-fill fs-3"></i>
-      </button>
+      <atoll-button variant="primary" leading-icon="phone" icon-only="true" pill="true" size="lg" ref="btnAccept" title="Accept Call" aria-label="Accept Call"></atoll-button>
+      <atoll-button variant="danger" leading-icon="phone-hangup" icon-only="true" pill="true" size="lg" ref="btnReject" title="Reject Call" aria-label="Reject Call"></atoll-button>
     </div>
   </div>
 </template>

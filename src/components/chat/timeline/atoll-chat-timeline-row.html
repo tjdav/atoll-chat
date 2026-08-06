@@ -16,9 +16,9 @@
       <div class="d-flex flex-column {{ alignmentClass }}">
         <div class="position-relative d-flex flex-column {{ alignmentClass }}" ref="bubbleWrapper">
           <slot></slot>
-          <div ref="reactionIcon" class="reaction-trigger-icon position-absolute d-none" style="cursor: pointer; z-index: 10;">
-            <i class="bi bi-emoji-smile text-muted"></i>
-          </div>
+          <button type="button" class="btn btn-sm btn-link text-body-secondary p-1 me-1 rounded-circle d-flex align-items-center justify-content-center border-0" ref="addReactionBtn" title="Add reaction" data-testid="addReactionBtn" aria-label="Add reaction">
+            <atoll-icon name="emoji" size="18" class="text-muted"></atoll-icon>
+          </button>
         </div>
         <div ref="reactionsContainer"></div>
       </div>
@@ -75,7 +75,7 @@
       const avatarContainer = refs('avatarContainer')
       const seenContainer = refs('seenContainer')
       const bubbleWrapper = refs('bubbleWrapper')
-      const reactionIcon = refs('reactionIcon')
+      const reactionBtn = refs('addReactionBtn')
       const reactionsContainer = refs('reactionsContainer')
 
       const updateAvatar = () => {
@@ -185,14 +185,16 @@
       const getMsgId = () => state.messageId || state.localUuid
 
       // Hover is handled by CSS, but we need click for picker
-      reactionIcon.onclick = (e) => {
-        e.stopPropagation()
-        const rect = reactionIcon.getBoundingClientRect()
-        $bus.emit('ui:show_reaction_picker', {
-          x: rect.left,
-          y: rect.bottom + 5,
-          targetId: getMsgId()
-        })
+      if (reactionBtn) {
+        reactionBtn.onclick = (e) => {
+          e.stopPropagation()
+          const rect = reactionBtn.getBoundingClientRect()
+          $bus.emit('ui:show_reaction_picker', {
+            x: rect.left,
+            y: rect.bottom + 5,
+            targetId: getMsgId()
+          })
+        }
       }
 
       // Long-press for mobile

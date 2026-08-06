@@ -9,16 +9,14 @@
     </div>
     
     <div ref="content" class="d-none w-100 d-flex align-items-center">
-      <div class="atoll-chat-file-icon-wrapper me-3 fs-2 text-primary">
-        <i ref="fileIcon" class="bi bi-file-earmark"></i>
+      <div class="atoll-chat-file-icon-wrapper me-3 text-primary d-flex align-items-center justify-content-center">
+        <atoll-icon ref="fileIcon" name="document" size="24"></atoll-icon>
       </div>
       <div class="flex-grow-1 overflow-hidden">
         <div ref="fileName" class="atoll-chat-file-name fw-bold small text-truncate mb-0"></div>
         <div ref="fileSize" class="atoll-chat-file-size x-small mb-0"></div>
       </div>
-      <a ref="downloadLink" href="#" class="btn btn-sm btn-outline-primary ms-2" title="Download">
-        <i class="bi bi-download"></i>
-      </a>
+      <atoll-button variant="outline" size="sm" leading-icon="download" icon-only="true" ref="downloadBtn" title="Download"></atoll-button>
     </div>
   </div>
 </template>
@@ -45,44 +43,10 @@
       const content = refs('content')
       const fileNameEl = refs('fileName')
       const fileSizeEl = refs('fileSize')
-      const downloadLink = refs('downloadLink')
+      const downloadBtn = refs('downloadBtn')
       const fileIcon = refs('fileIcon')
 
       let lastCallId = 0
-
-      const getFileIcon = (mimeType) => {
-        if (!mimeType) {
-          return 'bi-file-earmark'
-        }
-        if (mimeType.includes('pdf')) {
-          return 'bi-file-earmark-pdf'
-        }
-        if (mimeType.includes('word') || mimeType.includes('officedocument.wordprocessingml')) {
-          return 'bi-file-earmark-word'
-        }
-        if (mimeType.includes('excel') || mimeType.includes('officedocument.spreadsheetml')) {
-          return 'bi-file-earmark-excel'
-        }
-        if (mimeType.includes('powerpoint') || mimeType.includes('officedocument.presentationml')) {
-          return 'bi-file-earmark-ppt'
-        }
-        if (mimeType.includes('zip') || mimeType.includes('rar') || mimeType.includes('tar') || mimeType.includes('compressed')) {
-          return 'bi-file-earmark-zip'
-        }
-        if (mimeType.includes('text')) {
-          return 'bi-file-earmark-text'
-        }
-        if (mimeType.includes('image')) {
-          return 'bi-file-earmark-image'
-        }
-        if (mimeType.includes('video')) {
-          return 'bi-file-earmark-play'
-        }
-        if (mimeType.includes('audio')) {
-          return 'bi-file-earmark-music'
-        }
-        return 'bi-file-earmark'
-      }
 
       const renderFile = (objectUrl, mimeType, filename) => {
         if (!objectUrl) {
@@ -95,9 +59,20 @@
 
         fileNameEl.textContent = filename || 'Attachment'
         fileSizeEl.textContent = mimeType || 'Unknown Type'
-        fileIcon.className = `bi ${getFileIcon(mimeType)}`
-        downloadLink.href = objectUrl
-        downloadLink.download = filename || 'attachment'
+        if (fileIcon) {
+          fileIcon.setAttribute('name', 'document')
+        }
+
+        if (downloadBtn) {
+          downloadBtn.onclick = (e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            const a = document.createElement('a')
+            a.href = objectUrl
+            a.download = filename || 'attachment'
+            a.click()
+          }
+        }
   
         $bus.emit('ui:media_loaded')
       }
@@ -186,7 +161,7 @@
           }
           console.error('[atoll-chat-timeline-item-file] Error:', err)
           loading.innerHTML = `
-            <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
+            <atoll-icon name="warning" size="24" color="var(--bs-warning)"></atoll-icon>
             <div class="x-small ms-2">Failed to load file</div>
           `
         }
