@@ -30,6 +30,8 @@
   --atoll-chat-input-backdrop-filter: none;
   --atoll-chat-input-bg: var(--#{$prefix}input-bg, #F5F5F5);
   --atoll-chat-input-color: var(--#{$prefix}body-color, #111111);
+  --atoll-chat-input-placeholder-color: var(--#{$prefix}text-secondary, #595959);
+  --atoll-chat-input-emoji-color: var(--#{$prefix}text-secondary, #595959);
 
   --atoll-chat-date-separator-bg: var(--#{$prefix}bg-surface-tertiary, #EEEEEE);
   --atoll-chat-date-separator-color: var(--#{$prefix}secondary-color, #777777);
@@ -102,6 +104,8 @@
   --atoll-chat-input-backdrop-filter: none;
   --atoll-chat-input-bg: var(--#{$prefix}input-bg, #2A2A2A);
   --atoll-chat-input-color: var(--#{$prefix}body-color, #ffffff);
+  --atoll-chat-input-placeholder-color: var(--#{$prefix}text-secondary, #B0B0B0);
+  --atoll-chat-input-emoji-color: var(--#{$prefix}text-secondary, #B0B0B0);
 
   --atoll-chat-date-separator-bg: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
   --atoll-chat-date-separator-color: var(--#{$prefix}text-secondary, #B0B0B0);
@@ -150,6 +154,8 @@
     --atoll-chat-input-backdrop-filter: none;
     --atoll-chat-input-bg: var(--#{$prefix}input-bg, #2A2A2A);
     --atoll-chat-input-color: var(--#{$prefix}body-color, #ffffff);
+    --atoll-chat-input-placeholder-color: var(--#{$prefix}text-secondary, #B0B0B0);
+    --atoll-chat-input-emoji-color: var(--#{$prefix}text-secondary, #B0B0B0);
 
     --atoll-chat-date-separator-bg: var(--#{$prefix}bg-surface-tertiary, #2A2A2A);
     --atoll-chat-date-separator-color: var(--#{$prefix}text-secondary, #B0B0B0);
@@ -186,6 +192,8 @@
     --atoll-chat-input-backdrop-filter: #{map-get($tokens, "header-backdrop-filter")};
     --atoll-chat-input-bg: #{map-get($tokens, "input-bg")};
     --atoll-chat-input-color: #{map-get($tokens, "input-color")};
+    --atoll-chat-input-placeholder-color: #{map-get($tokens, "input-placeholder-color")};
+    --atoll-chat-input-emoji-color: #{map-get($tokens, "input-emoji-color")};
 
     --atoll-chat-bubble-sent-bg: #{map-get($tokens, "bubble-sent-bg")};
     --atoll-chat-bubble-sent-color: #{map-get($tokens, "bubble-sent-color")};
@@ -269,7 +277,7 @@
 
   .chat-input-container {
     background-color: var(--atoll-chat-header-bg) !important;
-    border-top: 1px solid var(--atoll-chat-header-border, transparent) !important;
+    border: 1px solid var(--atoll-chat-header-border, transparent) !important;
     backdrop-filter: var(--atoll-chat-header-backdrop-filter, none) !important;
     -webkit-backdrop-filter: var(--atoll-chat-header-backdrop-filter, none) !important;
   }

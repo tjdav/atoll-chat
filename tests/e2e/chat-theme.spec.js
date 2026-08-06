@@ -34,7 +34,6 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
 
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
     const chatContainer = page.locator('[data-testid$="chat-view-container"]')
-    const headerSubtitle = page.locator('.chat-view-header-subtitle')
     const fileCard = page.locator('.file-attachment-container').first()
     const fileName = fileCard.locator('.file-name')
     const fileSize = fileCard.locator('.file-attachment-size')
@@ -46,6 +45,8 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     await page.locator('[data-testid$="theme-ocean-item"]').click()
     const previewWindow = themeModal.locator('[ref$="previewChatWindow"]')
     await expect(previewWindow).toHaveAttribute('data-theme', 'ocean')
+
+    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
 
     // Apply Ocean Theme
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
