@@ -249,7 +249,7 @@
               item.addEventListener('atoll-selection-change', (e) => {
                 const checked = e.detail[0]?.checked
                 if (checked) {
-                  if (!state.selectedParticipants.find(p => p.id === user.id)) {
+                  if (user.id !== $state.currentUser?.id && !state.selectedParticipants.find(p => p.id === user.id)) {
                     state.selectedParticipants = [...state.selectedParticipants, user]
                   }
                 } else {
@@ -281,18 +281,20 @@
         }
 
         try {
+          const currentUserId = $state.currentUser?.id
+          let items = []
+
           if (typeof window !== 'undefined' && typeof window.__pbMockGetList === 'function') {
             const res = await window.__pbMockGetList(query)
-            state.searchResults = res.items
-            state.searchError = null
-            render()
-            return
+            items = res.items || []
+          } else {
+            const res = await pb.collection('users').getList(1, 10, {
+              filter: pb.filter('username ~ {:query} && id != {:currentUserId}', { query, currentUserId })
+            })
+            items = res.items || []
           }
 
-          const res = await pb.collection('users').getList(1, 5, {
-            filter: pb.filter('username ~ {:query}', { query })
-          })
-          state.searchResults = res.items
+          state.searchResults = items.filter(u => u.id !== currentUserId)
           state.searchError = null
           render()
         } catch (err) {
