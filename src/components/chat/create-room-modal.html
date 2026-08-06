@@ -84,17 +84,7 @@
     }),
     getters: {
       isGroup: (state) => (state.selectedParticipants || []).length > 1,
-      canCreate: (state) => {
-        const p = state.selectedParticipants || []
-        if (p.length === 0) {
-          return false
-        }
-        const isGroup = p.length > 1
-        if (isGroup) {
-          return (state.roomName || '').trim().length > 0
-        }
-        return true
-      },
+      canCreate: (state) => (state.selectedParticipants || []).length > 0,
       roomNameClass: (state) => (((state.selectedParticipants || []).length > 1) ? 'd-block' : 'd-none'),
       disableSubmit: (state) => !state.canCreate || state.isCreating,
       hasSelectedUsers: (state) => (state.selectedParticipants || []).length > 0,
@@ -456,7 +446,10 @@
             // Generate room key and encrypt metadata
             const roomKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
             const isGroup = state.isGroup
-            const roomName = isGroup ? state.roomName : ''
+            let roomName = isGroup ? (state.roomName || '').trim() : ''
+            if (isGroup && !roomName) {
+              roomName = state.selectedParticipants.map(p => p.name || p.username).join(', ')
+            }
 
             let roomAvatarBase64 = ''
             if (state.roomAvatar) {
