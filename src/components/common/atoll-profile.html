@@ -1,6 +1,6 @@
 <template id="atoll-profile">
   <div class="{{ profileClasses }}" role="img" aria-label="{{ computedAlt }}">
-    <div class="atoll-profile-circle {{ gridClass }}">
+    <div class="atoll-profile-circle {{ gridClass }}" style="{{ circleStyle }}">
       <slot name="image">
         <img 
           ref="avatarImage" 
@@ -73,6 +73,14 @@
         default: false
       },
       hasError: {
+        type: Boolean,
+        default: false
+      },
+      palette: {
+        type: String,
+        default: ''
+      },
+      hasProjectedImage: {
         type: Boolean,
         default: false
       }
@@ -195,9 +203,9 @@
         return ''
       },
 
-      hideImage: (state) => (!state.src || state.hasError ? 'true' : null),
+      hideImage: (state) => (state.palette || state.hasProjectedImage === 'true' || state.hasProjectedImage === true || !state.src || state.hasError ? 'true' : null),
 
-      hideFallback: (state) => ((Boolean(state.src) && !state.hasError) || state.type === 'multiparty' ? 'true' : null),
+      hideFallback: (state) => (state.palette || state.hasProjectedImage === 'true' || state.hasProjectedImage === true || (Boolean(state.src) && !state.hasError) || state.type === 'multiparty' ? 'true' : null),
 
       hideBadge: (state) => (!state.badge ? 'true' : null),
 
@@ -252,6 +260,43 @@
         }
 
         return classes.join(' ')
+      },
+
+      circleStyle: (state) => {
+        const hasPalette = state.palette === 'true' || state.palette === true || (typeof state.palette === 'string' && state.palette.length > 0)
+        if (hasPalette) {
+          let seedStr = ''
+          if (typeof state.palette === 'string' && state.palette !== 'true') {
+            seedStr = state.palette
+          } else {
+            seedStr = state.name || state.alt || ''
+          }
+          if (seedStr && seedStr !== 'User profile') {
+            const palette = [
+              '#06C755',
+              '#15BD66',
+              '#19BFA1',
+              '#1CB8B8',
+              '#0093C4',
+              '#0279D4',
+              '#2F59CC',
+              '#4545D1',
+              '#6B3CC9',
+              '#AF36C7',
+              '#DE2C7F',
+              '#E5172F',
+              '#FF5E1F',
+              '#FCB321'
+            ]
+            let hash = 0
+            for (let i = 0; i < seedStr.length; i++) {
+              hash = seedStr.charCodeAt(i) + ((hash << 5) - hash)
+            }
+            const color = palette[Math.abs(hash) % palette.length]
+            return `--atoll-profile-placeholder-bg: ${color}; background-color: ${color}; color: #FFFFFF;`
+          }
+        }
+        return ''
       }
     },
 
@@ -262,15 +307,18 @@
 
       const img = refs('avatarImage')
 
-      img.addEventListener('error', () => {
-        state.hasError = true
-      })
+      if (img) {
+        img.addEventListener('error', () => {
+          state.hasError = true
+        })
 
-      img.addEventListener('load', () => {
-        state.hasError = false
-      })
+        img.addEventListener('load', () => {
+          state.hasError = false
+        })
+      }
 
       const updateSrc = (newSrc) => {
+        if (!img) return
         if (newSrc) {
           state.hasError = false
           img.src = newSrc
@@ -280,8 +328,44 @@
         }
       }
 
-      updateSrc(state.src)
+      if (state.src) {
+        updateSrc(state.src)
+      }
       observe('src', updateSrc)
+
+      // Self-cleaning slot default contents: completely remove standard img and fallback span when a custom slot="image" node is projected
+      const cleanDefaultSlot = () => {
+        const hasImageSlot = root.querySelector('[slot="image"]') !== null
+        if (hasImageSlot) {
+          state.hasProjectedImage = true
+
+          const circle = root.querySelector('.atoll-profile-circle')
+          if (circle) {
+            const defaultImg = circle.querySelector('img[ref="avatarImage"]') || circle.querySelector('img')
+            if (defaultImg && !defaultImg.getAttribute('slot')) {
+              defaultImg.style.setProperty('display', 'none', 'important')
+              defaultImg.setAttribute('hidden', 'true')
+            }
+            const defaultFallback = circle.querySelector('.atoll-profile-fallback')
+            if (defaultFallback) {
+              defaultFallback.style.setProperty('display', 'none', 'important')
+              defaultFallback.setAttribute('hidden', 'true')
+            }
+          }
+        }
+      }
+      cleanDefaultSlot()
+      requestAnimationFrame(cleanDefaultSlot)
+      setTimeout(cleanDefaultSlot, 50)
+
+      if (observe) {
+        observe('palette', (val) => {
+          state.palette = val
+        })
+        observe('hasProjectedImage', (val) => {
+          state.hasProjectedImage = val === 'true' || val === true
+        })
+      }
 
       // Real-time user profile state synchronization
       const fetchingUserIds = new Set()
@@ -575,9 +659,3 @@
     }
   })
 </script>
-
-
-
-
-
-

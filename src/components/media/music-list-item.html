@@ -1,14 +1,24 @@
 <template id="music-list-item">
-  <button type="button" ref="btn" class="music-list-item-btn {{ activeClass }} border-0 w-100 text-start bg-transparent">
-    <div class="list-item-icon d-flex align-items-center justify-content-center">
-      <i class="bi bi-music-note fs-5"></i>
+  <atoll-list-item
+    ref="container"
+    title="{{ filename }}"
+    description="{{ descriptionText }}"
+    selected="{{ isSelected }}"
+    clickable
+    size="md"
+  >
+    <!-- Circular Profile icon inside leading/left slot using optional palette attribute -->
+    <atoll-profile slot="leading" size="md" palette="true" name="{{ filename }}" has-projected-image="true">
+      <div slot="image" class="w-100 h-100 d-flex align-items-center justify-content-center">
+        <atoll-icon name="music" size="24" color="#FFFFFF"></atoll-icon>
+      </div>
+    </atoll-profile>
+
+    <!-- Custom Right Action (bi-play-circle matched standard) -->
+    <div slot="right" class="d-flex align-items-center">
+      <atoll-icon name="more" size="20" color="var(--atoll-text-secondary, #777777)"></atoll-icon>
     </div>
-    <div class="text-truncate flex-grow-1">
-      <div class="fw-bold text-truncate">{{ roomName }}</div>
-      <small class="text-body-secondary d-block text-truncate">{{ timestamp }}</small>
-    </div>
-    <i class="bi bi-play-circle fs-4 ms-auto text-body-secondary opacity-50"></i>
-  </button>
+  </atoll-list-item>
 </template>
 
 <style>
@@ -23,24 +33,45 @@
   export default defineComponent({
     attributes: {
       assetId: String,
+      filename: String,
       roomName: String,
       timestamp: String,
       isActive: String
     },
     getters: {
-      activeClass: (state) => (state.isActive === 'true' ? 'active' : '')
+      isSelected: (state) => (state.isActive === 'true' || state.isActive === true),
+      descriptionText: (state) => `${state.roomName} • ${state.timestamp}`
     },
-    client: ({ refs, state, eventBus }) => {
+    client: ({ refs, state, eventBus, signal, observe }) => {
       const { $bus } = eventBus
-      const btn = refs('btn')
+      const container = refs('container')
 
-      btn.onclick = () => {
+      observe('filename', (val) => {
+        state.filename = val
+      })
+      observe('roomName', (val) => {
+        state.roomName = val
+      })
+      observe('room-name', (val) => {
+        state.roomName = val
+      })
+      observe('timestamp', (val) => {
+        state.timestamp = val
+      })
+      observe('isActive', (val) => {
+        state.isActive = val
+      })
+      observe('is-active', (val) => {
+        state.isActive = val
+      })
+
+      container.addEventListener('atoll-item-click', () => {
         $bus.emit('media:select', {
           assetId: state.assetId,
           type: 'music'
         })
         $bus.emit('ui:selection_made')
-      }
+      }, { signal })
     }
   })
 </script>

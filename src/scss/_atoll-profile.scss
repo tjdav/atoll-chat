@@ -71,6 +71,10 @@ atoll-profile,
   height: 100%;
   color: var(--#{$prefix}text-tertiary, #949494);
 
+  &[hidden] {
+    display: none !important;
+  }
+
   atoll-icon,
   .atoll-icon {
     display: inline-flex;

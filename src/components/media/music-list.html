@@ -1,8 +1,8 @@
 <template id="music-list">
   <div class="music-list h-100 overflow-y-auto" ref="scrollRoot">
-    <div class="list-group list-group-spaced" ref="listGroup">
+    <atoll-list divided ref="listGroup" data-testid="music-list-group">
       <!-- Music will be rendered here -->
-    </div>
+    </atoll-list>
   </div>
 </template>
 
@@ -46,8 +46,9 @@
           return { items }
         },
         render: async (itemsToDisplay, query) => {
+          const groupContainer = listGroup.querySelector('.atoll-list') || listGroup
           if (itemsToDisplay.length === 0) {
-            listGroup.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No music found'}</div>`
+            groupContainer.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No music found'}</div>`
             return
           }
           const fragment = document.createDocumentFragment()
@@ -56,11 +57,12 @@
             const listItem = document.createElement('music-list-item')
             listItem.setAttribute('asset-id', asset.id)
             listItem.setAttribute('room-name', roomName)
+            listItem.setAttribute('filename', asset.filename || 'Unnamed Audio')
             listItem.setAttribute('timestamp', timestamp)
             listItem.setAttribute('is-active', isActive.toString())
             fragment.appendChild(listItem)
           }
-          listGroup.innerHTML = ''; listGroup.appendChild(fragment)
+          groupContainer.innerHTML = ''; groupContainer.appendChild(fragment)
         }
       })
 

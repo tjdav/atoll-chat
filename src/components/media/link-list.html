@@ -1,8 +1,8 @@
 <template id="link-list">
   <div class="link-list h-100 overflow-y-auto" ref="scrollRoot">
-    <div class="list-group list-group-spaced" ref="listGroup" data-testid="link-list-group">
+    <atoll-list divided ref="listGroup" data-testid="link-list-group">
       <!-- Links will be rendered here -->
-    </div>
+    </atoll-list>
   </div>
 </template>
 
@@ -73,29 +73,56 @@
           return { items }
         },
         render: async (itemsToDisplay, query) => {
+          const groupContainer = listGroup.querySelector('.atoll-list') || listGroup
           if (itemsToDisplay.length === 0) {
-            listGroup.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No links found'}</div>`
+            groupContainer.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No links found'}</div>`
             return
           }
           const fragment = document.createDocumentFragment()
           itemsToDisplay.forEach(({ link, selectionId, roomName, senderName }) => {
-            const btn = document.createElement('button')
-            btn.type = 'button'
             const isActive = selectionId === $state.activeSelectionId && $state.activeSelectionType === 'links'
-            btn.className = `list-group-item border-0 w-100 text-start bg-transparent ${isActive ? 'active' : ''}`
             const domainStr = link.domain ? `${link.domain} • ` : ''
-            btn.innerHTML = `<div class="list-item-icon d-flex align-items-center justify-content-center"><i class="bi bi-link-45deg fs-5"></i></div><div class="text-truncate flex-grow-1"><div class="fw-bold text-truncate"></div><small class="text-body-secondary d-block text-truncate"></small></div><i class="bi bi-chevron-right ms-auto text-body-secondary opacity-50"></i>`
-            btn.querySelector('.fw-bold').textContent = link.title || link.url || 'Untitled Link'
-            btn.querySelector('small').textContent = `${domainStr}${senderName} in ${roomName}`
-            btn.onclick = () => {
+            const linkTitle = link.title || link.url || 'Untitled Link'
+
+            const listItem = document.createElement('atoll-list-item')
+            listItem.setAttribute('title', linkTitle)
+            listItem.setAttribute('description', `${domainStr}${senderName} in ${roomName}`)
+            listItem.setAttribute('selected', isActive.toString())
+            listItem.setAttribute('clickable', 'true')
+            listItem.setAttribute('chevron', 'true')
+            listItem.setAttribute('size', 'md')
+
+            // Create circular avatar/profile slot using optional palette attribute and explicit projection binding
+            const profile = document.createElement('atoll-profile')
+            profile.setAttribute('slot', 'leading')
+            profile.setAttribute('size', 'md')
+            profile.setAttribute('palette', 'true')
+            profile.setAttribute('name', linkTitle)
+            profile.setAttribute('has-projected-image', 'true')
+
+            const iconContainer = document.createElement('div')
+            iconContainer.setAttribute('slot', 'image')
+            iconContainer.className = 'w-100 h-100 d-flex align-items-center justify-content-center'
+
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'link')
+            icon.setAttribute('size', '24')
+            icon.setAttribute('color', '#FFFFFF')
+
+            iconContainer.appendChild(icon)
+            profile.appendChild(iconContainer)
+            listItem.appendChild(profile)
+
+            listItem.addEventListener('atoll-item-click', () => {
               $state.activeSelectionType = 'links'
               $state.activeSelectionId = selectionId
               $bus.emit('ui:selection_made')
               debouncedRender()
-            }
-            fragment.appendChild(btn)
+            })
+
+            fragment.appendChild(listItem)
           })
-          listGroup.innerHTML = ''; listGroup.appendChild(fragment)
+          groupContainer.innerHTML = ''; groupContainer.appendChild(fragment)
         }
       })
 

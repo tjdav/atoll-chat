@@ -1,8 +1,8 @@
 <template id="document-list">
   <div class="document-list h-100 overflow-y-auto" ref="scrollRoot">
-    <div class="list-group list-group-spaced" ref="listGroup" data-testid="document-list-group">
+    <atoll-list divided ref="listGroup" data-testid="document-list-group">
       <!-- Documents will be rendered here -->
-    </div>
+    </atoll-list>
   </div>
 </template>
 
@@ -45,52 +45,56 @@
           return { items }
         },
         render: async (itemsToDisplay, query) => {
+          const groupContainer = listGroup.querySelector('.atoll-list') || listGroup
           if (itemsToDisplay.length === 0) {
-            listGroup.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No documents found'}</div>`
+            groupContainer.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No documents found'}</div>`
             return
           }
           const fragment = document.createDocumentFragment()
           itemsToDisplay.forEach(({ item, roomName, timestamp }) => {
-            const btn = document.createElement('button')
-            btn.type = 'button'
             const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'documents'
-            btn.className = `list-group-item border-0 w-100 text-start bg-transparent ${isActive ? 'active' : ''}`
+            const filename = item.filename || 'Unnamed File'
 
-            const iconDiv = document.createElement('div')
-            iconDiv.className = 'list-item-icon d-flex align-items-center justify-content-center'
-  
-            const icon = document.createElement('i')
-            icon.className = 'bi bi-file-earmark-fill fs-5'
-            iconDiv.appendChild(icon)
-            btn.appendChild(iconDiv)
+            const listItem = document.createElement('atoll-list-item')
+            listItem.setAttribute('title', filename)
+            listItem.setAttribute('description', `${roomName} • ${timestamp}`)
+            listItem.setAttribute('selected', isActive.toString())
+            listItem.setAttribute('clickable', 'true')
+            listItem.setAttribute('size', 'md')
 
-            const textDiv = document.createElement('div')
-            textDiv.className = 'text-truncate flex-grow-1'
+            // Create circular avatar/profile slot using optional palette attribute and explicit projection binding
+            const profile = document.createElement('atoll-profile')
+            profile.setAttribute('slot', 'leading')
+            profile.setAttribute('size', 'md')
+            profile.setAttribute('palette', 'true')
+            profile.setAttribute('name', filename)
+            profile.setAttribute('has-projected-image', 'true')
 
-            const titleDiv = document.createElement('div')
-            titleDiv.className = 'fw-bold text-truncate'
-            titleDiv.textContent = item.filename || 'Unnamed File'
-            textDiv.appendChild(titleDiv)
+            const iconContainer = document.createElement('div')
+            iconContainer.setAttribute('slot', 'image')
+            iconContainer.className = 'w-100 h-100 d-flex align-items-center justify-content-center'
 
-            const subDiv = document.createElement('small')
-            subDiv.className = 'text-body-secondary d-block text-truncate'
-            subDiv.textContent = `${roomName} • ${timestamp}`
-            textDiv.appendChild(subDiv)
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'document')
+            icon.setAttribute('size', '24')
+            icon.setAttribute('color', '#FFFFFF')
 
-            btn.appendChild(textDiv)
+            iconContainer.appendChild(icon)
+            profile.appendChild(iconContainer)
+            listItem.appendChild(profile)
 
-            const chevron = document.createElement('i')
-            chevron.className = 'bi bi-chevron-right ms-auto text-body-secondary opacity-50'
-            btn.appendChild(chevron)
+            listItem.setAttribute('chevron', 'true')
 
-            btn.onclick = () => {
-              $state.activeSelectionId = item.id; $state.activeSelectionType = 'documents'
+            listItem.addEventListener('atoll-item-click', () => {
+              $state.activeSelectionId = item.id
+              $state.activeSelectionType = 'documents'
               $bus.emit('ui:selection_made')
               debouncedRender()
-            }
-            fragment.appendChild(btn)
+            })
+
+            fragment.appendChild(listItem)
           })
-          listGroup.innerHTML = ''; listGroup.appendChild(fragment)
+          groupContainer.innerHTML = ''; groupContainer.appendChild(fragment)
         }
       })
 

@@ -211,7 +211,10 @@ test.describe('Media & Attachments', () => {
       await page.click('[data-testid$="__sendButton"]')
       await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 30000 })
       await page.locator('[data-testid="nav-sidebar-0__btnDocuments"]').click()
-      await expect(page.locator('[data-testid$="__document-list-group"] .list-group-item').filter({ hasText: 'test.txt' })).toBeVisible()
+      await expect(page.locator('[data-testid$="__document-list-group"] .atoll-list-item').filter({ hasText: 'test.txt' })).toBeVisible()
+
+      // Capture screenshot of Document List
+      await page.screenshot({ path: 'tests/e2e/screenshots/document_list.png' })
 
       await page.route('**/api/link-extraction*', async r => {
         await r.fulfill({
@@ -229,7 +232,10 @@ test.describe('Media & Attachments', () => {
       await page.waitForTimeout(1000)
       await page.click('[data-testid$="__sendButton"]')
       await page.locator('[data-testid="nav-sidebar-0__btnLinks"]').click()
-      await expect(page.locator('[data-testid$="__link-list-group"] .list-group-item')).toContainText('PB')
+      await expect(page.locator('[data-testid$="__link-list-group"] .atoll-list-item')).toContainText('PB')
+
+      // Capture screenshot of Link List
+      await page.screenshot({ path: 'tests/e2e/screenshots/link_list.png' })
     })
   })
 
@@ -250,6 +256,10 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid="nav-sidebar-0__btnMusic"]').click()
       await page.locator('music-list music-list-item').first().click()
       await page.waitForTimeout(1000)
+
+      // Capture screenshot of Music List
+      await page.screenshot({ path: 'tests/e2e/screenshots/music_list.png' })
+
       await page.locator('audio-player-view .play-pause-btn').click()
       await expect(page.locator('audio-player-view .play-pause-btn i')).toHaveClass(/bi-pause-fill/, { timeout: 15000 })
     })
