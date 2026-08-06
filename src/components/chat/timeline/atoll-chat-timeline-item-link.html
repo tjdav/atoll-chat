@@ -1,5 +1,5 @@
-<template id="timeline-item-link">
-  <a id="timeline-item-{{ localUuid }}" href="{{ urlHref }}" target="_blank" class="link-preview-card mw-450 shadow-sm mb-1">
+<template id="atoll-chat-timeline-item-link">
+  <a id="timeline-item-{{ localUuid }}" href="{{ urlHref }}" target="_blank" class="atoll-chat-link-preview mw-450 shadow-sm mb-1">
     <div class="preview-image-col {{ imageDisplayClass }}">
       <div ref="imageContainer" class="h-100">
         <!-- Decrypted image will be appended here -->
@@ -135,7 +135,7 @@
           if (err.name === 'AbortError') {
             return
           }
-          console.error('[timeline-item-link] Failed to decrypt preview image:', err)
+          console.error('[atoll-chat-timeline-item-link] Failed to decrypt preview image:', err)
         }
       }
 

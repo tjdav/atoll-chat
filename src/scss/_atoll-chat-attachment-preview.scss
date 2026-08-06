@@ -1,0 +1,15 @@
+.atoll-chat-attachment-preview {
+  background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg)) !important;
+  border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color)) !important;
+  backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
+  -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
+
+  .atoll-chat-attachment-preview-name {
+    color: var(--atoll-chat-header-color, inherit) !important;
+  }
+
+  .atoll-chat-attachment-preview-status {
+    color: var(--atoll-chat-header-color, inherit) !important;
+    opacity: 1 !important;
+  }
+}

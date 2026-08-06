@@ -1,8 +1,8 @@
-<template id="chat-input">
-  <div class="chat-input-container container mx-auto mb-3">
+<template id="atoll-chat-input">
+  <div class="container mx-auto py-3 rounded-pill mb-3">
     <!-- Attachment Preview Bar -->
     <div class="{{ attachmentPreviewClass }}">
-      <chat-attachment-preview 
+      <atoll-chat-attachment-preview 
         file-name="{{ fileName }}" 
         upload-status="{{ uploadStatus }}"
         is-video="{{ isVideo }}"
@@ -10,7 +10,7 @@
         is-custom="{{ isCustomCover }}"
         is-compressing="{{ isCompressing }}"
         progress="{{ progress }}"
-      ></chat-attachment-preview>
+      ></atoll-chat-attachment-preview>
     </div>
 
     <!-- Link Preview Bar -->
@@ -20,11 +20,11 @@
 
     <!-- Normal Input Mode -->
     <div class="{{ inputGroupClass }}" data-testid="chat-input-wrapper">
-      <chat-input-text
+      <atoll-chat-input-text
         is-sending="{{ isSending }}"
         is-uploading="{{ isUploading }}"
         is-compressing="{{ isCompressing }}"
-      ></chat-input-text>
+      ></atoll-chat-input-text>
     </div>
 
     <!-- Recording Mode -->
@@ -144,7 +144,7 @@
                 }]
               }
             } catch (err) {
-              console.warn('[chat-input] Failed to fetch link preview for:', url, err)
+              console.warn('[atoll-chat-input] Failed to fetch link preview for:', url, err)
             }
           }
 
@@ -172,7 +172,7 @@
       })
 
       const dispatchMessage = async (params) => {
-        console.info('[chat-input] dispatchMessage params:', params)
+        console.info('[atoll-chat-input] dispatchMessage params:', params)
         const localUuid = crypto.randomUUID()
         const room_id = $state.activeSelectionId
 
@@ -222,7 +222,7 @@
           if (params.file || params.thumbnail_blob || params.album_art_blob) {
             await $storage.saveFile(localUuid, params)
           }
-          console.log('[chat-input] Offline: Queued message locally', { localUuid })
+          console.log('[atoll-chat-input] Offline: Queued message locally', { localUuid })
           return {
             success: true,
             queued: true,
@@ -232,7 +232,7 @@
         }
 
         // Dispatch to worker
-        console.log('[chat-input] Dispatching worker:send_message to worker', { localUuid })
+        console.log('[atoll-chat-input] Dispatching worker:send_message to worker', { localUuid })
         const result = await $worker.execute('worker:send_message', {
           room_id,
           localUuid,
@@ -248,7 +248,7 @@
           return
         }
 
-        console.log('[chat-input] sendMessage triggered', {
+        console.log('[atoll-chat-input] sendMessage triggered', {
           hasText: !!$state.currentMessageText,
           hasBlob: !!recordedBlob
         })
@@ -264,7 +264,7 @@
 
         try {
           if (file) {
-            console.log('[chat-input] Processing file message')
+            console.log('[atoll-chat-input] Processing file message')
             state.isUploading = true
             state.uploadStatus = 'Processing file...'
 
@@ -274,7 +274,7 @@
 
             const maxServerUpload = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
             const isP2P = file.size > maxServerUpload
-            console.info('[chat-input] P2P check:', {
+            console.info('[atoll-chat-input] P2P check:', {
               isP2P,
               fileSize: file.size,
               maxServerUpload
@@ -286,7 +286,7 @@
               const participantsCount = room?.participants?.length || 0
 
               if (participantsCount > 2) {
-                console.info('[chat-input] P2P file size exceeds limit in group. Prompting reroute...')
+                console.info('[atoll-chat-input] P2P file size exceeds limit in group. Prompting reroute...')
                 state.isSending = false
                 state.isUploading = false
                 state.uploadStatus = ''
@@ -299,7 +299,7 @@
               } else {
                 const recipient = room?.participants?.find(p => p.id !== $state.currentUser?.id)
                 if (recipient) {
-                  console.info(`[chat-input] P2P file size exceeds limit in DM. Initiating ephemeral transfer to ${recipient.id}...`)
+                  console.info(`[atoll-chat-input] P2P file size exceeds limit in DM. Initiating ephemeral transfer to ${recipient.id}...`)
                   state.isSending = false
                   state.isUploading = false
                   state.uploadStatus = ''
@@ -327,11 +327,11 @@
               duration: state.duration,
               timestamp: Date.now()
             }
-            console.info('[chat-input] payloadToDispatch:', payloadToDispatch)
+            console.info('[atoll-chat-input] payloadToDispatch:', payloadToDispatch)
             await dispatchMessage(payloadToDispatch)
           } else if (state.pendingLinkData.length > 0) {
             // Link Preview Flow
-            console.log('[chat-input] Processing link message')
+            console.log('[atoll-chat-input] Processing link message')
             await dispatchMessage({
               type: 'link',
               content: text,
@@ -340,7 +340,7 @@
             })
           } else {
             // Standard Text Flow
-            console.log('[chat-input] Processing text message')
+            console.log('[atoll-chat-input] Processing text message')
             await dispatchMessage({
               type: 'text',
               content: text,
@@ -351,7 +351,7 @@
           resetUI()
           $bus.emit('ui:focus_input')
         } catch (err) {
-          console.error('[chat-input] Failed to send:', err)
+          console.error('[atoll-chat-input] Failed to send:', err)
           alert('Failed to send: ' + err.message)
           state.isSending = false
           state.isUploading = false
@@ -385,7 +385,7 @@
         // Check format compatibility for web playback across browsers and devices
         const compatibility = await $media.checkCompatibility(file)
         if (compatibility.requiresConversion) {
-          console.log(`[chat-input] Format compatibility check: ${compatibility.reason}`)
+          console.log(`[atoll-chat-input] Format compatibility check: ${compatibility.reason}`)
           state.uploadStatus = `Converting ${compatibility.category} to web format...`
         }
 
@@ -405,7 +405,7 @@
             const newName = baseName + '.webp'
             file = new File([compressedBlob], newName, { type: 'image/webp' })
           } catch (err) {
-            console.warn('[chat-input] Image compression failed, using original file:', err)
+            console.warn('[atoll-chat-input] Image compression failed, using original file:', err)
           } finally {
             state.isCompressing = false
           }
@@ -454,11 +454,11 @@
                 }
               })
             } else if (evalResult.useWebRTC) {
-              console.log('[chat-input] Video exceeds server upload threshold even after estimated compression; WebRTC P2P fallback will be used.')
+              console.log('[atoll-chat-input] Video exceeds server upload threshold even after estimated compression; WebRTC P2P fallback will be used.')
               state.uploadStatus = 'Queued for P2P direct transfer (exceeds server limit)'
             }
           } catch (err) {
-            console.warn('[chat-input] Video processing failed, using original file:', err)
+            console.warn('[atoll-chat-input] Video processing failed, using original file:', err)
             state.uploadStatus = 'Ready to send (original format)'
           } finally {
             state.isCompressing = false
@@ -481,14 +481,14 @@
               currentAlbumArtBlob = result.albumArt
             }
           } catch (metaErr) {
-            console.warn('[chat-input] Failed to extract metadata/convert audio:', metaErr)
+            console.warn('[atoll-chat-input] Failed to extract metadata/convert audio:', metaErr)
           }
 
           state.uploadStatus = 'Generating waveform...'
           try {
             currentAudioWaveformData = await utils.$media.generateWaveform(file)
           } catch (waveErr) {
-            console.warn('[chat-input] Failed to generate waveform:', waveErr)
+            console.warn('[atoll-chat-input] Failed to generate waveform:', waveErr)
           }
           state.isCompressing = false
         }
@@ -508,7 +508,7 @@
         const container = refs('voiceRecorderContainer')
 
         container.innerHTML = ''
-        const el = document.createElement('chat-voice-recorder')
+        const el = document.createElement('atoll-chat-voice-recorder')
         container.appendChild(el)
       })
 
@@ -568,7 +568,7 @@
           state.thumbnailPreviewUrl = URL.createObjectURL(compressed)
           state.uploadStatus = 'Custom cover applied'
         } catch (err) {
-          console.error('[chat-input] Failed to process custom cover:', err)
+          console.error('[atoll-chat-input] Failed to process custom cover:', err)
           alert('Failed to process custom cover: ' + err.message)
         } finally {
           state.isCompressing = false

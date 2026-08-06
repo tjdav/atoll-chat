@@ -1,5 +1,5 @@
-<template id="message-reactions">
-  <div ref="container" class="message-reactions-wrapper">
+<template id="atoll-chat-atoll-chat-message-reactions">
+  <div ref="container" class="atoll-chat-atoll-chat-reactions">
     <!-- Messenger style consolidated pill -->
   </div>
 </template>
@@ -30,7 +30,7 @@
       signal.addEventListener('abort', cleanupTooltips)
 
       const updateHasReactionsAttribute = (hasReactions) => {
-        const host = container.getRootNode().host || container.closest('message-reactions')
+        const host = container.getRootNode().host || container.closest('atoll-chat-message-reactions')
         if (host) {
           const currentHasReactions = host.getAttribute('has-reactions') === 'true'
           if (currentHasReactions !== hasReactions) {
@@ -41,14 +41,14 @@
             }
           }
 
-          let parentRow = host.closest('timeline-row')
+          let parentRow = host.closest('atoll-chat-timeline-row')
           if (!parentRow) {
             let current = host
             while (current) {
               const root = current.getRootNode()
               if (root && root.host) {
                 current = root.host
-                if (current.tagName.toLowerCase() === 'timeline-row') {
+                if (current.tagName.toLowerCase() === 'atoll-chat-timeline-row') {
                   parentRow = current
                   break
                 }
@@ -72,7 +72,7 @@
       }
 
       const loadReactions = async () => {
-        const host = container.getRootNode().host || container.closest('message-reactions')
+        const host = container.getRootNode().host || container.closest('atoll-chat-message-reactions')
         const msgId = state.messageId || host?.getAttribute('message-id')
         const localUuid = state.localUuid || host?.getAttribute('local-uuid')
   
@@ -147,14 +147,14 @@
         updateHasReactionsAttribute(true)
   
         const pill = document.createElement('div')
-        pill.className = 'reaction-consolidated-pill'
+        pill.className = 'atoll-chat-reaction-consolidated-pill'
   
         const emojiList = document.createElement('div')
-        emojiList.className = 'reaction-emoji-list'
+        emojiList.className = 'atoll-chat-reaction-emoji-list'
   
         emojiEntries.forEach(([emoji]) => {
           const span = document.createElement('span')
-          span.className = 'reaction-emoji-item'
+          span.className = 'atoll-chat-reaction-emoji-item'
           span.textContent = emoji
           emojiList.appendChild(span)
         })
@@ -163,7 +163,7 @@
   
         if (totalCount > 1) {
           const countSpan = document.createElement('span')
-          countSpan.className = 'reaction-count'
+          countSpan.className = 'atoll-chat-reaction-count'
           countSpan.textContent = totalCount
           pill.appendChild(countSpan)
         }
@@ -196,7 +196,7 @@
 
         pill.onclick = (e) => {
           e.stopPropagation()
-          const host = container.getRootNode().host || container.closest('message-reactions')
+          const host = container.getRootNode().host || container.closest('atoll-chat-message-reactions')
           const currentId = state.messageId || host?.getAttribute('message-id') || state.localUuid || host?.getAttribute('local-uuid')
   
           if (emojiEntries.length === 1) {
@@ -234,7 +234,7 @@
   
       $bus.on('db:new_local_data', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
-          const host = container.getRootNode().host || container.closest('message-reactions')
+          const host = container.getRootNode().host || container.closest('atoll-chat-message-reactions')
           const currentMsgId = state.messageId || host?.getAttribute('message-id')
           const currentLocalUuid = state.localUuid || host?.getAttribute('local-uuid')
   

@@ -1,4 +1,4 @@
-<template id="message-timeline">
+<template id="atoll-chat-timeline">
   <div ref="timelineContainer" class="flex-grow-1 overflow-auto p-3 d-flex flex-column h-100">
     <div class="mt-auto text-center text-muted p-5" ref="emptyState">
       <atoll-icon name="shield-lock" size="xl" class="mb-3 d-block"></atoll-icon>
@@ -187,7 +187,7 @@
               }
 
               // Propagate status to children
-              row.querySelectorAll('timeline-item-text, timeline-item-media, timeline-item-voice, timeline-item-file, timeline-item-link').forEach(child => {
+              row.querySelectorAll('atoll-chat-timeline-item-text, atoll-chat-timeline-item-media, atoll-chat-timeline-item-voice, atoll-chat-timeline-item-file, atoll-chat-timeline-item-link').forEach(child => {
                 if (child.getAttribute('status') !== m.status) {
                   child.setAttribute('status', m.status)
                 }
@@ -271,7 +271,7 @@
             }
 
             if (showSeparator) {
-              const sep = document.createElement('timeline-date-separator')
+              const sep = document.createElement('atoll-chat-timeline-date-separator')
               sep.setAttribute('timestamp', message.created_at)
               container.appendChild(sep)
             }
@@ -279,7 +279,7 @@
             const isLastInBlock = !nextMessage || nextMessage.sender_id !== message.sender_id
             const isFirstInBlock = !prevMessage || prevMessage.sender_id !== message.sender_id || showSeparator
   
-            const row = document.createElement('timeline-row')
+            const row = document.createElement('atoll-chat-timeline-row')
             row.setAttribute('is-sent', isSent)
             row.setAttribute('is-first-in-block', isFirstInBlock)
             row.setAttribute('is-last-in-block', isLastInBlock)
@@ -331,14 +331,14 @@
             // Project content into slot
             if (message.type === 'media' && (message.file_key || message.status === 'pending')) {
               if (message.mime_type?.startsWith('audio/')) {
-                const player = document.createElement('timeline-item-voice')
+                const player = document.createElement('atoll-chat-timeline-item-voice')
                 player.setAttribute('local-uuid', message.local_uuid)
                 player.setAttribute('status', message.status)
                 player.setAttribute('is-sent', isSent)
                 row.appendChild(player)
 
                 if (message.content) {
-                  const text = document.createElement('timeline-item-text')
+                  const text = document.createElement('atoll-chat-timeline-item-text')
                   text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
@@ -346,14 +346,14 @@
                   row.appendChild(text)
                 }
               } else if (message.mime_type?.startsWith('image/') || message.mime_type?.startsWith('video/')) {
-                const preview = document.createElement('timeline-item-media')
+                const preview = document.createElement('atoll-chat-timeline-item-media')
                 preview.setAttribute('local-uuid', message.local_uuid)
                 preview.setAttribute('status', message.status)
                 preview.setAttribute('is-sent', isSent)
                 row.appendChild(preview)
   
                 if (message.content) {
-                  const text = document.createElement('timeline-item-text')
+                  const text = document.createElement('atoll-chat-timeline-item-text')
                   text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
@@ -362,14 +362,14 @@
                 }
               } else {
                 // Generic file
-                const fileComp = document.createElement('timeline-item-file')
+                const fileComp = document.createElement('atoll-chat-timeline-item-file')
                 fileComp.setAttribute('local-uuid', message.local_uuid)
                 fileComp.setAttribute('status', message.status)
                 fileComp.setAttribute('is-sent', isSent)
                 row.appendChild(fileComp)
 
                 if (message.content) {
-                  const text = document.createElement('timeline-item-text')
+                  const text = document.createElement('atoll-chat-timeline-item-text')
                   text.setAttribute('local-uuid', message.local_uuid)
                   text.setAttribute('content', message.content)
                   text.setAttribute('is-sent', isSent)
@@ -379,13 +379,13 @@
               }
             } else if (message.type === 'media') {
               // Encrypted but key missing placeholder
-              const text = document.createElement('timeline-item-text')
+              const text = document.createElement('atoll-chat-timeline-item-text')
               text.setAttribute('local-uuid', message.local_uuid)
               text.setAttribute('content', '🔒 Encrypted Attachment')
               text.setAttribute('is-sent', isSent)
               row.appendChild(text)
             } else if (['call_offer', 'call_answer', 'call_end'].includes(message.type)) {
-              const systemMsg = document.createElement('timeline-system-message')
+              const systemMsg = document.createElement('atoll-chat-timeline-system-message')
               systemMsg.setAttribute('type', message.type)
               if (message.id) {
                 systemMsg.setAttribute('message-id', message.id)
@@ -404,7 +404,7 @@
             } else if (message.type === 'link') {
               if (message.links && Array.from(message.links).length > 0) {
                 message.links.forEach((link, idx) => {
-                  const preview = document.createElement('timeline-item-link')
+                  const preview = document.createElement('atoll-chat-timeline-item-link')
                   // Use unique identifier if multiple links exist
                   preview.setAttribute('local-uuid', message.local_uuid)
                   preview.setAttribute('link-index', idx)
@@ -418,7 +418,7 @@
                 })
               } else if (message.link_title) {
                 // Fallback for old single-link messages
-                const preview = document.createElement('timeline-item-link')
+                const preview = document.createElement('atoll-chat-timeline-item-link')
                 preview.setAttribute('local-uuid', message.local_uuid)
                 preview.setAttribute('url', message.content)
                 preview.setAttribute('title', message.link_title || '')
@@ -429,7 +429,7 @@
               }
 
               if (message.content) {
-                const text = document.createElement('timeline-item-text')
+                const text = document.createElement('atoll-chat-timeline-item-text')
                 text.setAttribute('local-uuid', message.local_uuid)
                 text.setAttribute('content', message.content)
                 text.setAttribute('is-sent', isSent)
@@ -437,7 +437,7 @@
                 row.appendChild(text)
               }
             } else {
-              const text = document.createElement('timeline-item-text')
+              const text = document.createElement('atoll-chat-timeline-item-text')
               text.setAttribute('local-uuid', message.local_uuid)
               text.setAttribute('content', message.content || '')
               text.setAttribute('is-sent', isSent)
@@ -465,9 +465,9 @@
 
           // sort messages chronologically if we added something new
           if (messagesToRender.length > 0) {
-            const children = Array.from(container.children).filter(el => el.tagName === 'TIMELINE-ROW' ||
-              el.tagName === 'TIMELINE-SYSTEM-MESSAGE' ||
-              el.tagName === 'TIMELINE-DATE-SEPARATOR'
+            const children = Array.from(container.children).filter(el => el.tagName === 'ATOLL-CHAT-TIMELINE-ROW' ||
+              el.tagName === 'ATOLL-CHAT-TIMELINE-SYSTEM-MESSAGE' ||
+              el.tagName === 'ATOLL-CHAT-TIMELINE-DATE-SEPARATOR'
             )
   
             // create timestamp lookup map
@@ -485,7 +485,7 @@
             // Map elements to their timestamps for sorting
             const elementData = children.map(el => {
               let timestamp = 0
-              if (el.tagName === 'TIMELINE-DATE-SEPARATOR') {
+              if (el.tagName === 'ATOLL-CHAT-TIMELINE-DATE-SEPARATOR') {
                 timestamp = new Date(el.getAttribute('timestamp')).getTime()
               } else {
                 timestamp = timestampMap.get(el.dataset.localUuid) || timestampMap.get(el.dataset.messageId) || 0
@@ -551,7 +551,7 @@
             }
           }
         } catch (err) {
-          console.error('[message-timeline] Failed to render timeline:', err)
+          console.error('[atoll-chat-timeline] Failed to render timeline:', err)
         }
       }
 
@@ -635,7 +635,7 @@
         }
 
         if (!targetId || !content) {
-          console.warn('[message-timeline] Invalid reaction payload:', payload)
+          console.warn('[atoll-chat-timeline] Invalid reaction payload:', payload)
           return
         }
 

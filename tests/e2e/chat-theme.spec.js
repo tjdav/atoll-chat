@@ -12,20 +12,20 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     await page.locator('[data-testid$="search-result-bob"]').click()
     await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
-    await expect(page.locator('chat-view')).toBeVisible()
+    await expect(page.locator('atoll-chat-view')).toBeVisible()
   })
 
   test('should apply themes and verify chat-view header, chat-input, file card, and date separator component styling uniformity', async ({ page }) => {
     // Populate timeline with sent text, file attachment, and date separator
     await page.fill('textarea', 'Hello theme test message')
     await page.keyboard.press('Enter')
-    await expect(page.locator('message-timeline .bubble-sent').first()).toBeVisible()
+    await expect(page.locator('atoll-chat-timeline .atoll-chat-bubble-sent').first()).toBeVisible()
 
     const docPath = path.resolve('tests/e2e/fixtures/test-files/test.doc')
     await page.setInputFiles('[data-testid$="__fileInput"]', docPath)
-    await expect(page.locator('chat-attachment-preview .attachment-preview-status')).toContainText('Ready to send', { timeout: 30000 })
+    await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 30000 })
     await page.locator('[data-testid$="sendButton"]').click()
-    await expect(page.locator('message-timeline .file-attachment-container').first()).toBeVisible({ timeout: 30000 })
+    await expect(page.locator('atoll-chat-timeline .atoll-chat-file-attachment').first()).toBeVisible({ timeout: 30000 })
 
     // Open room details sidebar via icon-only room settings button
     const roomSettingsBtn = page.locator('[data-testid$="btnRoomSettings"]')
@@ -34,9 +34,9 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
 
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
     const chatContainer = page.locator('[data-testid$="chat-view-container"]')
-    const fileCard = page.locator('.file-attachment-container').first()
-    const fileName = fileCard.locator('.file-name')
-    const fileSize = fileCard.locator('.file-attachment-size')
+    const fileCard = page.locator('.atoll-chat-file-attachment').first()
+    const fileName = fileCard.locator('.atoll-chat-file-name')
+    const fileSize = fileCard.locator('.atoll-chat-file-size')
 
     // Select Ocean Theme in modal
     await page.locator('[data-testid$="btnChangeTheme"]').click()
@@ -46,8 +46,6 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     const previewWindow = themeModal.locator('[ref$="previewChatWindow"]')
     await expect(previewWindow).toHaveAttribute('data-theme', 'ocean')
 
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
-
     // Apply Ocean Theme
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
     await expect(themeModal).not.toBeVisible()
@@ -56,12 +54,12 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     await expect(chatContainer).toHaveAttribute('data-theme', 'ocean')
 
     const componentStyles = await chatContainer.evaluate((el) => {
-      const headerEl = el.querySelector('.chat-view-header')
-      const inputEl = el.querySelector('.chat-input-container')
-      const subtitleEl = el.querySelector('.chat-view-header-subtitle')
-      const dateSepContainer = el.querySelector('.date-separator')
-      const fileNameEl = el.querySelector('.file-attachment-container .file-name')
-      const fileSizeEl = el.querySelector('.file-attachment-size')
+      const headerEl = el.querySelector('.atoll-chat-view-header')
+      const inputEl = el.querySelector('.atoll-chat-input-container')
+      const subtitleEl = el.querySelector('.atoll-chat-view-header-subtitle')
+      const dateSepContainer = el.querySelector('.atoll-chat-date-separator')
+      const fileNameEl = el.querySelector('.atoll-chat-file-attachment .atoll-chat-file-name')
+      const fileSizeEl = el.querySelector('.atoll-chat-file-size')
 
       const headerStyle = headerEl ? window.getComputedStyle(headerEl) : null
       const inputStyle = inputEl ? window.getComputedStyle(inputEl) : null
@@ -101,12 +99,12 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
 
     await expect(chatContainer).toHaveAttribute('data-theme', 'forest')
     const forestComponentStyles = await chatContainer.evaluate((el) => {
-      const headerEl = el.querySelector('.chat-view-header')
-      const inputEl = el.querySelector('.chat-input-container')
-      const fileCardEl = el.querySelector('.file-attachment-container')
+      const headerEl = el.querySelector('.atoll-chat-view-header')
+      const inputEl = el.querySelector('.atoll-chat-input-container')
+      const fileCardEl = el.querySelector('.atoll-chat-file-attachment')
       return {
         headerBg: headerEl ? window.getComputedStyle(headerEl).getPropertyValue('background-color') : '',
-        inputBg: inputEl ? window.getComputedStyle(inputEl).getPropertyValue('background-color') : '',
+        inputBg: inputStyle ? inputStyle.getPropertyValue('background-color') : '',
         fileCardBg: fileCardEl ? window.getComputedStyle(fileCardEl).getPropertyValue('background-color') : ''
       }
     })

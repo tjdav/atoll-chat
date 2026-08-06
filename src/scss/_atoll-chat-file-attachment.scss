@@ -1,0 +1,23 @@
+// src/scss/_atoll-chat-file-attachment.scss
+
+.atoll-chat-file-attachment {
+  display: flex;
+  align-items: center;
+  background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg));
+  border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color));
+  backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
+  -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
+
+  .file-name {
+    color: var(--atoll-chat-header-color, inherit) !important;
+  }
+
+  .file-attachment-size {
+    color: var(--atoll-chat-header-color, inherit) !important;
+    opacity: 0.85 !important;
+  }
+
+  .file-icon-wrapper {
+    color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+  }
+}

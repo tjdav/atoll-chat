@@ -1,7 +1,7 @@
-<template id="chat-view">
-  <div class="chat-view d-flex flex-column h-100" ref="chatViewRoot" data-testid="chat-view-container">
+<template id="atoll-chat-view">
+  <div class="atoll-chat-view d-flex flex-column h-100" ref="chatViewRoot" data-testid="chat-view-container">
     <!-- Chat Header -->
-    <header class="app-header chat-view-header d-flex justify-content-between align-items-center">
+    <header class="app-header atoll-chat-view-header d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">
         <button class="btn btn-link link-body-emphasis ps-0 pe-2 d-md-none atoll-touch-target" ref="btnBack">
           <i class="bi bi-chevron-left fs-4"></i>
@@ -9,7 +9,7 @@
         <atoll-profile ref="headerAvatar" size="sm" class="d-inline-block me-3" alt="{{ roomName }}"></atoll-profile>
         <div>
           <h6 class="atoll-text-title-2 mb-0">{{ roomName }}</h6>
-          <small class="chat-view-header-subtitle mb-0">{{ roomStatus }}</small>
+          <small class="atoll-chat-view-header-subtitle mb-0">{{ roomStatus }}</small>
         </div>
       </div>
       <div class="d-flex gap-2">
@@ -55,7 +55,7 @@
     <!-- Main Content Area -->
     <div class="flex-grow-1 position-relative overflow-hidden">
       <!-- Message Timeline -->
-      <message-timeline></message-timeline>
+      <atoll-chat-timeline></atoll-chat-timeline>
     </div>
 
     <!-- Room Details Sidebar (Bootstrap Offcanvas drawer) -->
@@ -64,7 +64,7 @@
     </div>
 
     <!-- Chat Input -->
-    <chat-input></chat-input>
+    <atoll-chat-input></atoll-chat-input>
   </div>
 </template>
 
@@ -134,13 +134,13 @@
               $media.decrypt(avatarData, signal).then((url) => {
                 headerAvatar.setAttribute('src', url)
               }).catch(err => {
-                console.error('[chat-view] Failed to decrypt room avatar:', err)
+                console.error('[atoll-chat-view] Failed to decrypt room avatar:', err)
                 headerAvatar.removeAttribute('src')
               })
             }
             return
           } catch (err) {
-            console.error('[chat-view] Failed to parse room avatar:', err)
+            console.error('[atoll-chat-view] Failed to parse room avatar:', err)
           }
         }
 
@@ -293,7 +293,7 @@
             renderHeaderAvatar(room, participants)
           }
         } catch (err) {
-          console.error('[chat-view] Failed to load room info:', err)
+          console.error('[atoll-chat-view] Failed to load room info:', err)
         }
       }
 
@@ -391,27 +391,27 @@
 
         let localStream = null
         try {
-          console.log('[chat-view] Requesting media permissions (audio and video)...')
+          console.log('[atoll-chat-view] Requesting media permissions (audio and video)...')
           localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
             video
           })
-          console.log('[chat-view] Media permissions granted')
+          console.log('[atoll-chat-view] Media permissions granted')
         } catch (err) {
-          console.warn('[chat-view] Failed to get audio and video, trying audio-only fallback:', err)
+          console.warn('[atoll-chat-view] Failed to get audio and video, trying audio-only fallback:', err)
           if (video) {
             try {
               localStream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
                 video: false
               })
-              console.log('[chat-view] Audio-only fallback media permissions granted')
+              console.log('[atoll-chat-view] Audio-only fallback media permissions granted')
             } catch (fallbackErr) {
-              console.error('[chat-view] Both audio/video and audio-only media requests failed:', fallbackErr)
+              console.error('[atoll-chat-view] Both audio/video and audio-only media requests failed:', fallbackErr)
               return
             }
           } else {
-            console.error('[chat-view] Failed to initiate audio call:', err)
+            console.error('[atoll-chat-view] Failed to initiate audio call:', err)
             return
           }
         }
@@ -425,7 +425,7 @@
   
           await $webrtc.initiateCall($state.activeCallRoomId, localStream)
         } catch (err) {
-          console.error('[chat-view] Failed to initiate call:', err)
+          console.error('[atoll-chat-view] Failed to initiate call:', err)
         }
       }
 

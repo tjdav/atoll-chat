@@ -1,0 +1,10 @@
+.atoll-chat-link-preview {
+  background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg)) !important;
+  border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color)) !important;
+  backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
+  -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
+
+  .text-primary {
+    color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+  }
+}

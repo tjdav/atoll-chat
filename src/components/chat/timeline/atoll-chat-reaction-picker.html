@@ -1,5 +1,5 @@
-<template id="reaction-picker">
-  <div ref="container" class="reaction-picker shadow border rounded bg-body" hidden style="position: fixed; z-index: 2000; width: 350px; height: 400px; max-width: 90vw;">
+<template id="atoll-chat-atoll-chat-reaction-picker">
+  <div ref="container" class="atoll-chat-reaction-picker shadow border rounded bg-body" hidden style="position: fixed; z-index: 2000; width: 350px; height: 400px; max-width: 90vw;">
     <div ref="pickerContainer" style="width: 100%; height: 100%;"></div>
   </div>
 </template>
@@ -24,13 +24,13 @@
           return
         }
   
-        console.log('[reaction-picker] Initializing picker')
+        console.log('[atoll-chat-reaction-picker] Initializing picker')
         picker = await $emojiPicker.createPicker({})
         picker.classList.add('light')
         pickerContainer.appendChild(picker)
   
         picker.addEventListener('emoji-click', (event) => {
-          console.log('[reaction-picker] Emoji clicked:', event.detail.unicode)
+          console.log('[atoll-chat-reaction-picker] Emoji clicked:', event.detail.unicode)
           if (currentTargetId === 'CHAT_INPUT') {
             $bus.emit('ui:emoji_selected', {
               emoji: event.detail.unicode
@@ -50,7 +50,7 @@
 
       const show = async (payload) => {
         const { x, y, targetId } = payload
-        console.log('[reaction-picker] show called', payload)
+        console.log('[atoll-chat-reaction-picker] show called', payload)
         currentTargetId = targetId
   
         await initPicker()
@@ -77,7 +77,7 @@
         if (rect.top < 0) {
           container.style.top = '10px'
         }
-        console.log('[reaction-picker] Picker visible at', container.style.left, container.style.top)
+        console.log('[atoll-chat-reaction-picker] Picker visible at', container.style.left, container.style.top)
       }
 
       const hide = () => {

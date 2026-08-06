@@ -1,4 +1,4 @@
-<template id="timeline-item-media">
+<template id="atoll-chat-timeline-item-media">
   <div id="timeline-item-{{ localUuid }}" ref="container" class="media-preview-container rounded-3 overflow-hidden mb-1 position-relative" style="min-height: 200px; min-width: 250px;">
     <div ref="loading" class="{{ loadingClass }} w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center" style="background: var(--bs-tertiary-bg);">
       <div class="placeholder col-8 mb-2" style="height: 24px;"></div>
@@ -146,7 +146,7 @@
       const loadMedia = async () => {
         const callId = ++lastCallId
         try {
-          console.info('[timeline-item-media] loadMedia start', {
+          console.info('[atoll-chat-timeline-item-media] loadMedia start', {
             localUuid: state.localUuid,
             status: state.status
           })
@@ -154,7 +154,7 @@
             return
           }
           const testMsg = await $storage.getMessage(state.localUuid)
-          console.info('[timeline-item-media] testMsg from DB:', testMsg)
+          console.info('[atoll-chat-timeline-item-media] testMsg from DB:', testMsg)
 
           // synchronous cache check
           const cached = state.localUuid ? $state.decryptionCache.get(state.localUuid) : null
@@ -219,7 +219,7 @@
           if (err.name === 'AbortError') {
             return
           }
-          console.error('[timeline-item-media] Error:', err)
+          console.error('[atoll-chat-timeline-item-media] Error:', err)
           loading.innerHTML = `
             <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
             <div class="x-small mt-1">Failed to load</div>

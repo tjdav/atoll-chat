@@ -1,7 +1,7 @@
-<template id="timeline-row">
-  <div class="container mx-auto {{ marginClass }}" ref="container">
+<template id="atoll-chat-timeline-row">
+  <div class="container mx-auto atoll-chat-timeline-row {{ marginClass }}" ref="container">
     <!-- Sender Name (Received First in Block only) -->
-    <div class="sender-name {{ senderNameDisplayClass }}">
+    <div class="atoll-chat-sender-name {{ senderNameDisplayClass }}">
       {{ senderName }}
     </div>
 
@@ -167,7 +167,7 @@
   
         if (msgId || localUuid) {
           reactionsContainer.innerHTML = ''
-          const reactions = document.createElement('message-reactions')
+          const reactions = document.createElement('atoll-chat-message-reactions')
           if (msgId) {
             reactions.setAttribute('message-id', msgId)
           }

@@ -112,19 +112,27 @@ $utilities: map-merge($utilities,
 @import "theme/layout";
 
 @import "display";
-@import "timeline";
-@import "waveform";
-@import "link-preview";
 @import "markdown";
+
+// Atoll Chat View Component Partials
+@import "atoll-chat-view";
+@import "atoll-chat-header";
+@import "atoll-chat-timeline";
+@import "atoll-chat-bubbles";
+@import "atoll-chat-date-separator";
+@import "atoll-chat-system-message";
+@import "atoll-chat-reactions";
+@import "atoll-chat-file-attachment";
+@import "atoll-chat-waveform-player";
+@import "atoll-chat-link-preview";
+@import "atoll-chat-input";
+@import "atoll-chat-attachment-preview";
 
 // New component-level partials
 @import "nav-sidebar";
 @import "app-list";
 @import "chat-list";
 @import "pip-video";
-@import "player-chat";
-@import "chat-input";
-@import "timeline-custom";
 @import "media-components";
 @import "atoll-media";
 @import "ui-panes";

@@ -14,15 +14,6 @@
   background-color: var(--#{$prefix}pane-bg) !important;
 }
 
-.chat-view-header {
-  border-bottom: 1px solid var(--atoll-chat-header-border, var(--#{$prefix}border-color-translucent)) !important;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  background-color: var(--atoll-chat-header-bg, var(--#{$prefix}pane-bg)) !important;
-  backdrop-filter: var(--atoll-chat-header-backdrop-filter, none);
-  -webkit-backdrop-filter: var(--atoll-chat-header-backdrop-filter, none);
-  color: var(--atoll-chat-header-color, inherit);
-}
-
 .sidebar-header {
   border-bottom: 1px solid var(--#{$prefix}border-color-translucent) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);

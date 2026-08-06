@@ -22,7 +22,7 @@
         </div>
       </div>
       <div class="h-100" hidden="{{ hideChatView }}">
-        <chat-view></chat-view>
+        <atoll-chat-view></atoll-chat-view>
       </div>
       <div class="h-100" hidden="{{ hideImageViewer }}">
         <image-viewer></image-viewer>
@@ -85,7 +85,7 @@
       const mobileNav = new Offcanvas(mobileNavEl)
 
       const callOverlayElement = document.createElement('call-overlay')
-      const reactionPickerElement = document.createElement('reaction-picker')
+      const reactionPickerElement = document.createElement('atoll-chat-reaction-picker')
       const avatarEditorElement = document.createElement('ui-avatar-editor')
 
       root.appendChild(callOverlayElement)

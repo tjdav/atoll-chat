@@ -92,19 +92,19 @@
 
       <!-- Bottom Section: Live Preview Section -->
       <div class="theme-preview-section p-3 d-flex flex-column align-items-stretch" ref="themePreviewContainer" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); border-radius: 8px;">
-        <div class="preview-chat-window chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm position-relative overflow-hidden" ref="previewChatWindow" style="min-height: 220px; transition: background 0.3s ease;">
+        <div class="preview-chat-window atoll-chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm position-relative overflow-hidden" ref="previewChatWindow" style="min-height: 220px; transition: background 0.3s ease;">
           
           <!-- Today Date Separator Badge -->
-          <div class="text-center my-2 date-separator" style="z-index: 2; margin: 5px 0;">
+          <div class="text-center my-2 atoll-chat-date-separator" style="z-index: 2; margin: 5px 0;">
             <span class="badge rounded-pill px-3 py-1 text-uppercase font-monospace" style="font-size: 0.7rem; font-weight: 500;">Today</span>
           </div>
 
           <!-- Received Bubble -->
           <div class="align-self-start d-flex flex-column align-items-start gap-1" style="max-width: 80%; z-index: 2;">
             <span class="x-small text-muted ps-2" style="color: var(--atoll-chat-sender-name-color, #777777);">Bob</span>
-            <div class="message-bubble bubble-received p-2 rounded-3 text-start shadow-sm" ref="previewBubbleIncoming" style="position: relative;">
+            <div class="message-bubble atoll-chat-bubble-received p-2 rounded-3 text-start shadow-sm" ref="previewBubbleIncoming" style="position: relative;">
               Hey! Check out this awesome chat theme.
-              <div class="reaction-pill reaction-consolidated-pill d-inline-flex align-items-center gap-1 mt-1 px-2 py-0.5 rounded-pill border x-small" style="margin: 4px 0 0 0; font-size: 0.7rem;">
+              <div class="atoll-chat-reaction-pill atoll-chat-reaction-consolidated-pill d-inline-flex align-items-center gap-1 mt-1 px-2 py-0.5 rounded-pill border x-small" style="margin: 4px 0 0 0; font-size: 0.7rem;">
                 <span>👍</span><span class="fw-bold">1</span>
               </div>
             </div>
@@ -112,7 +112,7 @@
 
           <!-- Animated Voice Note Item with SVG waveform preview -->
           <div class="align-self-start d-flex flex-column align-items-start gap-1 my-1" style="max-width: 80%; z-index: 2;">
-            <div class="waveform-player" style="border-radius: 24px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; width: 240px; height: 48px;">
+            <div class="atoll-chat-waveform-player" style="border-radius: 24px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; width: 240px; height: 48px;">
               <button type="button" class="play-pause-btn" aria-label="Play audio preview" style="border: none; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                 <i class="bi bi-play-fill" style="color: #ffffff;"></i>
               </button>
@@ -170,7 +170,7 @@
 
           <!-- Sent Bubble -->
           <div class="align-self-end d-flex flex-column align-items-end gap-1" style="max-width: 80%; z-index: 2;">
-            <div class="message-bubble bubble-sent p-2 rounded-3 text-end shadow-sm" ref="previewBubbleOutgoing">
+            <div class="message-bubble atoll-chat-bubble-sent p-2 rounded-3 text-end shadow-sm" ref="previewBubbleOutgoing">
               Wow, this live preview looks amazing!
             </div>
             <!-- Sent Status Indicator -->
@@ -181,20 +181,20 @@
           </div>
 
           <!-- Complete Chat Input Bar -->
-          <div ref="previewInputBar" class="chat-input-container mt-auto d-flex align-items-center gap-2 p-2 border-top" style="z-index: 2; margin-top: 15px !important; border-radius: 8px;">
-            <button type="button" class="btn chat-input-btn-attach" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+          <div ref="previewInputBar" class="atoll-chat-input-container mt-auto d-flex align-items-center gap-2 p-2 border-top" style="z-index: 2; margin-top: 15px !important; border-radius: 8px;">
+            <button type="button" class="btn atoll-chat-input-btn-attach" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
               <atoll-icon name="attach" size="16"></atoll-icon>
             </button>
             <div class="flex-grow-1" style="position: relative;">
-              <input type="text" class="form-control form-control-sm rounded-pill chat-input-preview-field" placeholder="Type a message..." disabled style="background-color: var(--atoll-chat-input-bg, #F5F5F5); color: var(--atoll-chat-input-color, #111111); border: 1px solid transparent; padding-right: 32px; font-size: 0.8rem; height: 28px;">
-              <button type="button" class="btn p-0 chat-input-btn-emoji" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--atoll-chat-input-emoji-color, var(--atoll-chat-timestamp-color, #999999)); background: none; border: none;">
+              <input type="text" class="form-control form-control-sm rounded-pill" placeholder="Type a message..." disabled style="background-color: var(--atoll-chat-input-bg, #F5F5F5); color: var(--atoll-chat-input-color, #111111); border: 1px solid transparent; padding-right: 32px; font-size: 0.8rem; height: 28px;">
+              <button type="button" class="btn p-0" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--atoll-chat-timestamp-color, #999999); background: none; border: none;">
                 <atoll-icon name="emoji" size="16"></atoll-icon>
               </button>
             </div>
-            <button type="button" class="btn chat-input-btn-voice" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+            <button type="button" class="btn atoll-chat-input-btn-voice" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
               <atoll-icon name="mic" size="16"></atoll-icon>
             </button>
-            <button type="button" class="btn chat-input-btn-send" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+            <button type="button" class="btn atoll-chat-input-btn-send" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
               <atoll-icon name="send" size="16"></atoll-icon>
             </button>
           </div>
@@ -237,11 +237,7 @@
           'waveform-active': 'var(--atoll-brand-primary, #06C755)',
           'waveform-inactive': 'rgba(6, 199, 85, 0.2)',
           'attachment-card-bg': 'var(--atoll-bg-surface-tertiary, #EEEEEE)',
-          'attachment-card-border': 'rgba(0, 0, 0, 0.08)',
-          'input-bg': 'var(--atoll-input-bg, #F5F5F5)',
-          'input-color': 'var(--atoll-body-color, #111111)',
-          'input-placeholder-color': 'var(--atoll-text-secondary, #595959)',
-          'input-emoji-color': 'var(--atoll-text-secondary, #595959)'
+          'attachment-card-border': 'rgba(0, 0, 0, 0.08)'
         },
         ocean: {
           'sent-status-color': 'rgba(255, 255, 255, 0.7)',
@@ -254,11 +250,7 @@
           'waveform-active': '#0083b0',
           'waveform-inactive': 'rgba(0, 131, 176, 0.25)',
           'attachment-card-bg': '#142830',
-          'attachment-card-border': 'rgba(255, 255, 255, 0.15)',
-          'input-bg': 'rgba(255, 255, 255, 0.12)',
-          'input-color': '#ffffff',
-          'input-placeholder-color': 'rgba(255, 255, 255, 0.65)',
-          'input-emoji-color': 'rgba(255, 255, 255, 0.65)'
+          'attachment-card-border': 'rgba(255, 255, 255, 0.15)'
         },
         forest: {
           'sent-status-color': 'rgba(255, 255, 255, 0.7)',
@@ -271,11 +263,7 @@
           'waveform-active': '#11998e',
           'waveform-inactive': 'rgba(17, 153, 142, 0.25)',
           'attachment-card-bg': '#0C3328',
-          'attachment-card-border': 'rgba(255, 255, 255, 0.15)',
-          'input-bg': 'rgba(255, 255, 255, 0.14)',
-          'input-color': '#ffffff',
-          'input-placeholder-color': 'rgba(255, 255, 255, 0.65)',
-          'input-emoji-color': 'rgba(255, 255, 255, 0.65)'
+          'attachment-card-border': 'rgba(255, 255, 255, 0.15)'
         },
         sunset: {
           'sent-status-color': 'rgba(255, 255, 255, 0.7)',
@@ -288,11 +276,7 @@
           'waveform-active': '#f12711',
           'waveform-inactive': 'rgba(241, 39, 17, 0.25)',
           'attachment-card-bg': '#2C1014',
-          'attachment-card-border': 'rgba(255, 255, 255, 0.15)',
-          'input-bg': 'rgba(255, 255, 255, 0.14)',
-          'input-color': '#ffffff',
-          'input-placeholder-color': 'rgba(255, 255, 255, 0.65)',
-          'input-emoji-color': 'rgba(255, 255, 255, 0.65)'
+          'attachment-card-border': 'rgba(255, 255, 255, 0.15)'
         }
       }
 
@@ -322,10 +306,6 @@
       let customWaveformInactive = 'rgba(6, 199, 85, 0.2)'
       let customAttachmentCardBg = '#EEEEEE'
       let customAttachmentCardBorder = 'rgba(0, 0, 0, 0.08)'
-      let customInputBg = '#F5F5F5'
-      let customInputColor = '#111111'
-      let customInputPlaceholderColor = '#595959'
-      let customInputEmojiColor = '#595959'
 
       const customThemeControls = refs('customThemeControls')
       const imageUploader = refs('imageUploader')
@@ -373,10 +353,6 @@
           customWaveformInactive = ct.waveformInactive || 'rgba(6, 199, 85, 0.2)'
           customAttachmentCardBg = ct.attachmentCardBg || '#EEEEEE'
           customAttachmentCardBorder = ct.attachmentCardBorder || 'rgba(0, 0, 0, 0.08)'
-          customInputBg = ct.inputBg || '#F5F5F5'
-          customInputColor = ct.inputColor || '#111111'
-          customInputPlaceholderColor = ct.inputPlaceholderColor || '#595959'
-          customInputEmojiColor = ct.inputEmojiColor || '#595959'
         } else {
           // Reset custom theme state if none exist
           customBgImage = null
@@ -399,10 +375,6 @@
           customWaveformInactive = 'rgba(6, 199, 85, 0.2)'
           customAttachmentCardBg = '#EEEEEE'
           customAttachmentCardBorder = 'rgba(0, 0, 0, 0.08)'
-          customInputBg = '#F5F5F5'
-          customInputColor = '#111111'
-          customInputPlaceholderColor = '#595959'
-          customInputEmojiColor = '#595959'
         }
 
         // Apply state values to UI controls
@@ -527,11 +499,17 @@
             if (isSentSelection) {
               customSentBg = compliance.bgHex
               customSentColor = compliance.textColor
+              customBtnSendBg = compliance.bgHex
+              customBtnSendColor = compliance.textColor
+              customWaveformActive = compliance.bgHex
+              customWaveformInactive = hexToRgbaStr(compliance.bgHex, 0.2)
+              customSentStatusColor = compliance.bgHex
             } else {
               customReceivedBg = compliance.bgHex
               customReceivedColor = compliance.textColor
+              customAttachmentCardBg = compliance.bgHex
+              customAttachmentCardBorder = hexToRgbaStr(compliance.bgHex, 0.15)
             }
-            updateCustomDerivedColors()
             renderPaletteSwatches()
             updateLivePreviewStyles()
           })
@@ -548,25 +526,6 @@
         const g = (num >> 8) & 255
         const b = num & 255
         return `rgba(${r}, ${g}, ${b}, ${opacity})`
-      }
-
-      const updateCustomDerivedColors = () => {
-        customBtnSendBg = customSentBg
-        customBtnSendColor = customSentColor
-        customWaveformActive = customSentBg
-        customWaveformInactive = hexToRgbaStr(customSentBg, 0.2)
-        customSentStatusColor = customSentBg
-
-        customBtnAttachColor = customReceivedColor
-        customBtnVoiceColor = customReceivedColor
-        customBtnAttachBg = 'transparent'
-        customBtnVoiceBg = 'transparent'
-        customInputBg = customReceivedBg
-        customInputColor = customReceivedColor
-        customInputPlaceholderColor = customReceivedColor === '#FFFFFF' ? '#B0B0B0' : '#595959'
-        customInputEmojiColor = customReceivedColor === '#FFFFFF' ? '#B0B0B0' : '#595959'
-        customAttachmentCardBg = customReceivedBg
-        customAttachmentCardBorder = hexToRgbaStr(customReceivedBg, 0.15)
       }
 
       // Live Preview custom style applicator
@@ -601,10 +560,6 @@
         previewChatWindow.style.removeProperty('--atoll-chat-waveform-inactive')
         previewChatWindow.style.removeProperty('--atoll-chat-attachment-card-bg')
         previewChatWindow.style.removeProperty('--atoll-chat-attachment-card-border')
-        previewChatWindow.style.removeProperty('--atoll-chat-input-bg')
-        previewChatWindow.style.removeProperty('--atoll-chat-input-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-input-placeholder-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-input-emoji-color')
 
         // Clear extra variables in live preview
         previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-bg')
@@ -629,10 +584,6 @@
           previewChatWindow.style.setProperty('--atoll-chat-waveform-inactive', customWaveformInactive)
           previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', customAttachmentCardBg)
           previewChatWindow.style.setProperty('--atoll-chat-attachment-card-border', customAttachmentCardBorder)
-          previewChatWindow.style.setProperty('--atoll-chat-input-bg', customInputBg)
-          previewChatWindow.style.setProperty('--atoll-chat-input-color', customInputColor)
-          previewChatWindow.style.setProperty('--atoll-chat-input-placeholder-color', customInputPlaceholderColor)
-          previewChatWindow.style.setProperty('--atoll-chat-input-emoji-color', customInputEmojiColor)
 
           if (customUseBgImage && customBgImage) {
             previewChatWindow.style.setProperty('--atoll-chat-bg-image', `url(${customBgImage})`)
@@ -663,10 +614,6 @@
             previewChatWindow.style.setProperty('--atoll-chat-waveform-inactive', tokens['waveform-inactive'])
             previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', tokens['attachment-card-bg'])
             previewChatWindow.style.setProperty('--atoll-chat-attachment-card-border', tokens['attachment-card-border'])
-            previewChatWindow.style.setProperty('--atoll-chat-input-bg', tokens['input-bg'])
-            previewChatWindow.style.setProperty('--atoll-chat-input-color', tokens['input-color'])
-            previewChatWindow.style.setProperty('--atoll-chat-input-placeholder-color', tokens['input-placeholder-color'])
-            previewChatWindow.style.setProperty('--atoll-chat-input-emoji-color', tokens['input-emoji-color'])
           }
         }
       }
@@ -726,12 +673,17 @@
             const complianceSent = ensureWCAGContrast(customPalette[0], 4.5)
             customSentBg = complianceSent.bgHex
             customSentColor = complianceSent.textColor
+            customBtnSendBg = complianceSent.bgHex
+            customBtnSendColor = complianceSent.textColor
+            customWaveformActive = complianceSent.bgHex
+            customWaveformInactive = hexToRgbaStr(complianceSent.bgHex, 0.2)
+            customSentStatusColor = complianceSent.bgHex
 
             const complianceReceived = ensureWCAGContrast(customPalette[1], 4.5)
             customReceivedBg = complianceReceived.bgHex
             customReceivedColor = complianceReceived.textColor
-
-            updateCustomDerivedColors()
+            customAttachmentCardBg = complianceReceived.bgHex
+            customAttachmentCardBorder = hexToRgbaStr(complianceReceived.bgHex, 0.15)
           }
 
           // Enable Custom Theme controls
@@ -772,12 +724,17 @@
             const complianceSent = ensureWCAGContrast(customPalette[0], 4.5)
             customSentBg = complianceSent.bgHex
             customSentColor = complianceSent.textColor
+            customBtnSendBg = complianceSent.bgHex
+            customBtnSendColor = complianceSent.textColor
+            customWaveformActive = complianceSent.bgHex
+            customWaveformInactive = hexToRgbaStr(complianceSent.bgHex, 0.2)
+            customSentStatusColor = complianceSent.bgHex
 
             const complianceReceived = ensureWCAGContrast(customPalette[1], 4.5)
             customReceivedBg = complianceReceived.bgHex
             customReceivedColor = complianceReceived.textColor
-
-            updateCustomDerivedColors()
+            customAttachmentCardBg = complianceReceived.bgHex
+            customAttachmentCardBorder = hexToRgbaStr(complianceReceived.bgHex, 0.15)
           }
 
           renderPaletteSwatches()
@@ -809,12 +766,17 @@
         const complianceSent = ensureWCAGContrast(color1, 4.5)
         customSentBg = complianceSent.bgHex
         customSentColor = complianceSent.textColor
+        customBtnSendBg = complianceSent.bgHex
+        customBtnSendColor = complianceSent.textColor
+        customWaveformActive = complianceSent.bgHex
+        customWaveformInactive = hexToRgbaStr(complianceSent.bgHex, 0.2)
+        customSentStatusColor = complianceSent.bgHex
 
         const complianceReceived = ensureWCAGContrast(color2, 4.5)
         customReceivedBg = complianceReceived.bgHex
         customReceivedColor = complianceReceived.textColor
-
-        updateCustomDerivedColors()
+        customAttachmentCardBg = complianceReceived.bgHex
+        customAttachmentCardBorder = hexToRgbaStr(complianceReceived.bgHex, 0.15)
 
         renderPaletteSwatches()
         updateLivePreviewStyles()
@@ -880,11 +842,7 @@
             waveformActive: customWaveformActive,
             waveformInactive: customWaveformInactive,
             attachmentCardBg: customAttachmentCardBg,
-            attachmentCardBorder: customAttachmentCardBorder,
-            inputBg: customInputBg,
-            inputColor: customInputColor,
-            inputPlaceholderColor: customInputPlaceholderColor,
-            inputEmojiColor: customInputEmojiColor
+            attachmentCardBorder: customAttachmentCardBorder
           } : (room.custom_theme || null)
 
           const metadata = JSON.stringify({

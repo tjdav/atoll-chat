@@ -1,4 +1,4 @@
-<template id="timeline-item-voice">
+<template id="atoll-chat-timeline-item-voice">
   <div id="timeline-item-{{ localUuid }}" ref="container" class="voice-message-container p-1 position-relative" style="min-width: 250px;">
     <div ref="loading" class="{{ loadingClass }} d-flex align-items-center p-3 w-100">
         <div class="placeholder rounded-circle me-3" style="width: 32px; height: 32px;"></div>
@@ -47,7 +47,7 @@
         }
 
         // Deduplication check
-        const existing = container.querySelectorAll('.waveform-player, audio')
+        const existing = container.querySelectorAll('.atoll-chat-waveform-player, audio')
         if (existing.length > 0) {
           const existingAudio = container.querySelector('audio')
           if (existingAudio && (existingAudio.src === objectUrl || existingAudio.src.endsWith(objectUrl))) {
@@ -62,7 +62,7 @@
 
         if (waveformData) {
           const player = document.createElement('div')
-          player.className = 'waveform-player'
+          player.className = 'atoll-chat-waveform-player'
           const playBtn = document.createElement('button')
           playBtn.className = 'play-pause-btn'
           playBtn.setAttribute('type', 'button')
@@ -104,7 +104,7 @@
                 progressEl.setAttribute('style', 'height: 100%; object-fit: fill; max-width: none; fill: var(--atoll-chat-waveform-active, var(--bs-primary)); color: var(--atoll-chat-waveform-active, var(--bs-primary));')
               }
             } catch (err) {
-              console.warn('[timeline-item-voice] Failed to parse inline SVG waveform, falling back to img:', err)
+              console.warn('[atoll-chat-timeline-item-voice] Failed to parse inline SVG waveform, falling back to img:', err)
             }
           }
 
@@ -172,7 +172,7 @@
             if (audio.paused) {
               audio.play().catch(err => {
                 if (err.name !== 'AbortError') {
-                  console.warn('[timeline-item-voice] Playback failed:', err)
+                  console.warn('[atoll-chat-timeline-item-voice] Playback failed:', err)
                 }
               })
             } else {
@@ -292,7 +292,7 @@
           if (err.name === 'AbortError') {
             return
           }
-          console.error('[timeline-item-voice] Error:', err)
+          console.error('[atoll-chat-timeline-item-voice] Error:', err)
           loading.innerHTML = `
             <i class="bi bi-exclamation-triangle fs-4 text-warning"></i>
             <div class="x-small ms-2">Failed to load audio</div>

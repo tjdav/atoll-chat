@@ -1,4 +1,4 @@
-<template id="chat-voice-recorder">
+<template id="atoll-chat-voice-recorder">
   <div class="recording-ui d-flex align-items-center gap-2">
     <button class="btn btn-link text-danger p-1" ref="discardButton" title="Discard" data-testid="discardButton">
       <i class="bi bi-trash fs-4"></i>
@@ -252,7 +252,7 @@
           state.recordingDuration = 0
           startTimer()
         } catch (err) {
-          console.error('[chat-voice-recorder] Failed to start recording:', err)
+          console.error('[atoll-chat-voice-recorder] Failed to start recording:', err)
           alert('Microphone access denied or unavailable.')
           $bus.emit('ui:voice_discarded')
         }

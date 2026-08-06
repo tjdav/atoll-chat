@@ -1,4 +1,4 @@
-<template id="timeline-item-text">
+<template id="atoll-chat-timeline-item-text">
   <div id="timeline-item-{{ localUuid }}" class="message-bubble atoll-text-body-1 {{ bubbleClass }} d-flex align-items-center">
     <span class="{{ glowClass }} flex-grow-1">
       <div ref="markdownBody" class="markdown-body {{ placeholderClass }}"></div>
@@ -27,7 +27,7 @@
     },
     getters: {
       bubbleClass: (state) => {
-        return state.isSent ? 'bubble-sent' : 'bubble-received'
+        return state.isSent ? 'atoll-chat-bubble-sent' : 'atoll-chat-bubble-received'
       },
       glowClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : ''),
       placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : '')
@@ -51,7 +51,7 @@
             $bus.emit('ui:media_loaded')
           }
         } catch (err) {
-          console.error('[timeline-item-text] Render error:', err)
+          console.error('[atoll-chat-timeline-item-text] Render error:', err)
           markdownBody.textContent = state.content
         }
       }

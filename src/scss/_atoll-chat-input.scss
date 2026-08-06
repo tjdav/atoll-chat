@@ -1,0 +1,16 @@
+.atoll-chat-input-container {
+  background-color: var(--atoll-chat-input-container-bg, var(--bs-body-bg)) !important;
+  border: 1px solid var(--atoll-chat-input-container-border, transparent) !important;
+  backdrop-filter: var(--atoll-chat-input-backdrop-filter, none) !important;
+  -webkit-backdrop-filter: var(--atoll-chat-input-backdrop-filter, none) !important;
+
+  textarea,
+  input {
+    background-color: var(--atoll-chat-input-bg) !important;
+    color: var(--atoll-chat-input-color) !important;
+
+    &::placeholder {
+      color: var(--atoll-chat-input-placeholder-color) !important;
+    }
+  }
+}
