@@ -26,8 +26,23 @@ import markdownPlugin from './src/plugins/markdown-plugin.js'
 import deeplinkPlugin from './src/plugins/deeplink-plugin.js'
 import deeplinkManifestPlugin from './src/plugins/deeplink-manifest-plugin.js'
 import pkg from './package.json' with { type: 'json' }
+import os from 'os'
 
-const pocketbaseBaseUrl = process.env.ATOLL_POCKETBASE_URL || 'http://localhost:8090'
+function getLocalIpAddress () {
+  const interfaces = os.networkInterfaces()
+  for (const name of Object.keys(interfaces)) {
+    if (name.includes('docker') || name.includes('br-') || name.includes('veth')) continue
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        return iface.address
+      }
+    }
+  }
+  return '127.0.0.1'
+}
+
+const localIp = getLocalIpAddress()
+const pocketbaseBaseUrl = process.env.ATOLL_POCKETBASE_URL || `http://${localIp}:8090`
 
 export default defineConfig({
   public: 'public',

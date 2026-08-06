@@ -1,0 +1,6 @@
+{
+  "appId": "com.atollchat.app",
+  "appName": "Atoll Chat",
+  "webDir": "dist",
+  "bundledWebRuntime": false
+}
