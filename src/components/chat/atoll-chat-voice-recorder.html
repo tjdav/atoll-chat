@@ -1,10 +1,10 @@
 <template id="atoll-chat-voice-recorder">
-  <div class="recording-ui d-flex align-items-center gap-2">
+  <div class="atoll-chat-voice-recorder-ui d-flex align-items-center gap-2">
     <button class="btn btn-link text-danger p-1" ref="discardButton" title="Discard" data-testid="discardButton">
       <i class="bi bi-trash fs-4"></i>
     </button>
     
-    <div class="recording-controls flex-grow-1 d-flex align-items-center bg-body-tertiary rounded-pill px-3 py-1 border">
+    <div class="atoll-chat-recording-controls flex-grow-1 d-flex align-items-center bg-body-tertiary rounded-pill px-3 py-1 border">
       <button class="btn btn-sm btn-light rounded-circle me-2" ref="pauseResumeButton" data-testid="pauseResumeButton">
         <i class="bi {{ pauseResumeIcon }}"></i>
       </button>
@@ -13,11 +13,11 @@
         <i class="bi bi-arrow-counterclockwise fs-5"></i>
       </button>
 
-      <div class="recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 32px;">
+      <div class="atoll-chat-recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 32px;">
         <canvas ref="visualizerCanvas" width="400" height="32" class="w-100 h-100"></canvas>
       </div>
 
-      <span class="recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
+      <span class="atoll-chat-recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
 
       <button class="btn btn-sm btn-link text-secondary ms-2 {{ redoClass }}" ref="resumeMicButton" title="Add more" data-testid="resumeMicButton">
         <i class="bi bi-mic-fill"></i>

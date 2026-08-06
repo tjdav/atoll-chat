@@ -1,12 +1,13 @@
 <template id="atoll-chat-input-text">
-  <div class="d-flex align-items-end atoll-chat-input-text">
+  <div class="d-flex gap-2 align-items-center atoll-chat-input-text">
     <input type="file" ref="fileInput" class="d-none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz" data-testid="fileInput">
     
     <!-- Attachment Button -->
     <atoll-button 
       icon-only="true" 
       variant="primary" 
-      size="sm" 
+      size="sm"
+      pill="true"
       ref="attachButton" 
       class="atoll-chat-input-btn-attach"
       title="Attach File" 
@@ -16,11 +17,11 @@
       <atoll-icon name="attach" size="20"></atoll-icon>
     </atoll-button>
 
-    <div class="input-wrapper">
+    <div class="position-relative flex-grow-1">
       <textarea
         id="{{ ref_messageInput }}"
         ref="messageInput"
-        class="form-control"
+        class="form-control rounded-pill w-100 pe-6"
         placeholder="Type a message..."
         rows="1"
         disabled="{{ isDisabled }}"
@@ -29,8 +30,9 @@
       <atoll-button 
         icon-only="true" 
         variant="ghost" 
-        size="sm" 
-        class="emoji-button" 
+        size="sm"
+        pill="true"
+        class="d-inline-block atoll-chat-emoji-button position-absolute top-50 end-0 translate-middle-y me-1" 
         ref="emojiButton" 
         title="Emojis" 
         aria-label="Select Emoji"
@@ -44,6 +46,7 @@
       icon-only="true" 
       variant="primary" 
       size="sm" 
+      pill="true"
       ref="micButton" 
       class="atoll-chat-input-btn-voice"
       title="Voice message" 
