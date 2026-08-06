@@ -189,6 +189,8 @@ self.onmessage = (event) => {
     'worker:decrypt_file',
     'worker:process_new_room_key',
     'room:member_updated',
+    'room:settings_updated',
+    'room:state_updated',
     'worker:delete_local_room',
     'worker:generate_master_keys',
     'worker:encrypt_master_key_with_kek',
@@ -658,6 +660,16 @@ async function handleEvent (event) {
 
     if (type === 'room:member_updated') {
       await updateRoomMember(id, payload)
+      return
+    }
+
+    if (type === 'room:settings_updated') {
+      await updateRoomSettings(id, payload)
+      return
+    }
+
+    if (type === 'room:state_updated') {
+      await updateRoomState(id, payload)
       return
     }
 
@@ -1404,6 +1416,66 @@ async function updateRoomMember (rpcId, record) {
   })
 }
 
+async function updateRoomSettings (rpcId, record) {
+  const { room_id, user_id, is_muted } = record
+
+  await workerBridge.request('updateRoomMemberState', [
+    room_id,
+    user_id,
+    {
+      is_muted: is_muted === true
+    }
+  ])
+
+  // Also decrypt and update settings (read_receipts, nicknames) locally on the room object!
+  const room = await workerBridge.request('getRoom', [room_id])
+  if (room && record.settings && record.settings.ciphertext) {
+    const roomKeyB64 = room?.key_history?.find(h => h.epoch_id === 1)?.key
+    if (roomKeyB64) {
+      try {
+        const ciphertextBytes = sodium.from_base64(record.settings.ciphertext, sodium.base64_variants.ORIGINAL)
+        const nonceBytes = sodium.from_base64(record.settings.nonce, sodium.base64_variants.ORIGINAL)
+        const roomKeyBytes = sodium.from_base64(roomKeyB64, sodium.base64_variants.ORIGINAL)
+        const decryptedBytes = sodium.crypto_secretbox_open_easy(ciphertextBytes, nonceBytes, roomKeyBytes)
+        if (decryptedBytes) {
+          const decodedStr = new TextDecoder().decode(decryptedBytes)
+          const settingsObj = JSON.parse(decodedStr)
+          room.nicknames = settingsObj.nicknames || {}
+          room.read_receipts = settingsObj.read_receipts !== false
+          await workerBridge.request('saveRoom', [room])
+        }
+      } catch (e) {
+        console.error('[worker] Failed to decrypt settings in live update:', e)
+      }
+    }
+  }
+
+  self.postMessage({
+    id: rpcId,
+    type: 'room:settings_updated_RPC',
+    result: { success: true }
+  })
+}
+
+async function updateRoomState (rpcId, record) {
+  const { room_id, user_id, last_read_message_id, is_typing } = record
+
+  await workerBridge.request('updateRoomMemberState', [
+    room_id,
+    user_id,
+    {
+      last_read_message_id,
+      is_typing: is_typing === true
+    }
+  ])
+
+  self.postMessage({
+    id: rpcId,
+    type: 'room:state_updated_RPC',
+    result: { success: true }
+  })
+}
+
 async function deleteLocalRoom (rpcId, payload) {
   const { room_id } = payload
   await workerBridge.request('deleteRoomData', [room_id])
@@ -1444,6 +1516,79 @@ async function updateUserData (rpcId, record) {
     type: 'worker:update_user_data',
     result: { success: true }
   })
+}
+
+async function fetchRoomSettingsAndStates (room_id, unwrappedKeyBuffer) {
+  let is_muted = false
+  let nicknames = {}
+  let read_receipts = true
+  const memberStates = {} // maps user_id -> { last_read_message_id, is_typing }
+
+  const currentUserId = self.currentUserKeys?.id
+  const headers = {}
+  if (self.authToken) {
+    headers.Authorization = self.authToken
+  }
+
+  // 1. Fetch current user's room_settings
+  if (currentUserId) {
+    try {
+      const filterStr = `room_id='${room_id}' && user_id='${currentUserId}'`
+      const settingsUrl = `${baseUrl}/api/collections/room_settings/records?filter=${encodeURIComponent(filterStr)}`
+      const res = await fetchWithTimeout(settingsUrl, { headers })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.items && data.items.length > 0) {
+          const item = data.items[0]
+          is_muted = item.is_muted === true
+          if (item.settings && item.settings.ciphertext && unwrappedKeyBuffer) {
+            try {
+              const ciphertextBytes = sodium.from_base64(item.settings.ciphertext, sodium.base64_variants.ORIGINAL)
+              const nonceBytes = sodium.from_base64(item.settings.nonce, sodium.base64_variants.ORIGINAL)
+              const decryptedBytes = sodium.crypto_secretbox_open_easy(ciphertextBytes, nonceBytes, unwrappedKeyBuffer)
+              if (decryptedBytes) {
+                const decodedStr = new TextDecoder().decode(decryptedBytes)
+                const settingsObj = JSON.parse(decodedStr)
+                nicknames = settingsObj.nicknames || {}
+                read_receipts = settingsObj.read_receipts !== false
+              }
+            } catch (e) {
+              console.error('[worker] Failed to decrypt settings:', e)
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('[worker] Failed to fetch settings:', err)
+    }
+  }
+
+  // 2. Fetch room_member_states for all users in room
+  try {
+    const filterStr = `room_id='${room_id}'`
+    const statesUrl = `${baseUrl}/api/collections/room_member_states/records?filter=${encodeURIComponent(filterStr)}`
+    const res = await fetchWithTimeout(statesUrl, { headers })
+    if (res.ok) {
+      const data = await res.json()
+      if (data.items) {
+        data.items.forEach(item => {
+          memberStates[item.user_id] = {
+            last_read_message_id: item.last_read_message_id || null,
+            is_typing: item.is_typing === true
+          }
+        })
+      }
+    }
+  } catch (err) {
+    console.warn('[worker] Failed to fetch member states:', err)
+  }
+
+  return {
+    is_muted,
+    nicknames,
+    read_receipts,
+    memberStates
+  }
 }
 
 async function processNewRoomKey (rpcId, payload) {
@@ -1610,6 +1755,10 @@ async function processNewRoomKey (rpcId, payload) {
       }
     }
 
+    // Fetch settings and states
+    const settingsAndStates = await fetchRoomSettingsAndStates(room_id, unwrappedKeyBuffer)
+    const currentUserId = self.currentUserKeys?.id
+
     // Fetch Room members with user details
     const membersUrl = `${baseUrl}/api/collections/room_members/records?filter=(room_id='${room_id}')&expand=user_id`
     const membersResponse = await fetchWithTimeout(membersUrl, { headers })
@@ -1617,17 +1766,18 @@ async function processNewRoomKey (rpcId, payload) {
       const membersData = await membersResponse.json()
       participants = membersData.items.map(m => {
         const u = m.expand?.user_id
-        return u
-          ? {
-            id: u.id,
-            username: u.username,
-            avatar: u.avatar,
-            collectionId: u.collectionId,
-            collectionName: u.collectionName,
-            last_read_message_id: m.last_read_message_id,
-            is_muted: m.is_muted
-          }
-          : null
+        if (!u) return null
+        const stateInfo = settingsAndStates.memberStates[u.id] || {}
+        return {
+          id: u.id,
+          username: u.username,
+          avatar: u.avatar,
+          collectionId: u.collectionId,
+          collectionName: u.collectionName,
+          last_read_message_id: stateInfo.last_read_message_id || null,
+          is_typing: stateInfo.is_typing === true,
+          is_muted: u.id === currentUserId ? settingsAndStates.is_muted : false
+        }
       }).filter(p => p !== null)
     }
 
@@ -1644,11 +1794,15 @@ async function processNewRoomKey (rpcId, payload) {
         participants: participants || [],
         user_role: role,
         key_history: [],
-        updated_at: updated
+        updated_at: updated,
+        read_receipts: settingsAndStates.read_receipts,
+        nicknames: settingsAndStates.nicknames
       }
     } else {
       room.updated_at = updated || room.updated_at
       room.user_role = role || room.user_role
+      room.read_receipts = settingsAndStates.read_receipts
+      room.nicknames = settingsAndStates.nicknames
       if (roomMetadata?.name) {
         room.name = roomMetadata.name
       }

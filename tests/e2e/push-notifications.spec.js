@@ -154,9 +154,13 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     const charlieMemberRecord = membersData.items[0]
     expect(charlieMemberRecord).toBeDefined()
 
-    await request.patch(`http://localhost:8091/api/collections/room_members/records/${charlieMemberRecord.id}`, {
+    await request.post(`http://localhost:8091/api/collections/room_settings/records`, {
       headers,
-      data: { is_muted: true }
+      data: {
+        room_id: charlieMemberRecord.room_id,
+        user_id: 'charlie',
+        is_muted: true
+      }
     })
 
     /* Send a text message in the room */
@@ -258,6 +262,9 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
   test('should mute notification and sound only when active chat is selected AND app is focused', async ({ page, loginApp }) => {
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
     await expect(page.locator('app-layout')).toBeVisible()
+
+    // Ensure sync is complete before interacting
+    await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp, { timeout: 30000 })
 
     /* Create a room with Bob */
     await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()

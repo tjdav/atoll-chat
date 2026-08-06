@@ -79,8 +79,24 @@ onRecordCreateRequest((e) => {
       continue
     }
 
-    // Filter out muted members
-    const isMuted = member.get('is_muted')
+    // Filter out muted members (query room_settings)
+    let isMuted = false
+    try {
+      const settingsRecords = $app.findRecordsByFilter(
+        'room_settings',
+        'room_id = {:roomId} && user_id = {:userId}',
+        '-created',
+        1,
+        0,
+        { roomId: roomId, userId: userId }
+      )
+      if (settingsRecords.length > 0) {
+        isMuted = settingsRecords[0].get('is_muted') === true
+      }
+    } catch (err) {
+      // Ignore filter error, treat as not muted
+    }
+
     if (isMuted === true) {
       continue
     }

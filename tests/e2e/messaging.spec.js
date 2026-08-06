@@ -18,35 +18,30 @@ test.describe('Messaging Features', () => {
       await page.locator('[data-testid$="btnCreate"]').click()
     })
 
-    test('mark as unread, mute, delete', async ({ page }) => {
+    test('mute and delete room via room settings offcanvas', async ({ page }) => {
       // Ensure sync is complete before interacting
       await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp, { timeout: 30000 })
 
       const getBobChat = () => page.locator('chat-list-item').filter({ hasText: /bob/i })
       await expect(getBobChat()).toBeVisible({ timeout: 30000 })
+      await getBobChat().click()
 
-      console.log('Toggling read status...')
-      await getBobChat().locator('atoll-list-item').click({ button: 'right' })
-      const toggleReadItem = page.locator('[data-testid="context-item-mark-as-unread"], [data-testid="context-item-mark-as-read"]').first()
-      await toggleReadItem.click()
-
-      // Wait for success toast to ensure operation finished
-      await expect(page.locator('.toast')).toContainText(/Marked as unread|Marked as read/, { timeout: 20000 })
-
-      // Verification: Dropdown label should have flipped
-      await getBobChat().locator('atoll-list-item').click({ button: 'right' })
-      await expect(page.locator('[data-testid="context-item-mark-as-unread"], [data-testid="context-item-mark-as-read"]').first()).toBeVisible({ timeout: 15000 })
-      // Dismiss context menu
-      await page.keyboard.press('Escape')
+      console.log('Opening Room Settings offcanvas...')
+      await page.locator('[ref$="btnDetails"] button').click()
+      const offcanvas = page.locator('[data-testid$="roomDetailsOffcanvas"]')
+      await expect(offcanvas).toBeVisible()
+      await expect(offcanvas.locator('[ref$="roomNameText"]')).toContainText('bob')
 
       console.log('Toggling mute status...')
-      await getBobChat().locator('atoll-list-item').click({ button: 'right' })
-      await page.locator('[data-testid="context-item-mute-notifications"]').click()
-      await expect(page.locator('.toast')).toContainText('Notifications muted')
+      const muteBadge = page.locator('[ref$="muteStatusBadge"]')
+      await expect(muteBadge).toContainText('Off')
+      await page.locator('[data-testid$="btnMuteNotifications"]').getByRole('button').click()
+      await expect(muteBadge).toContainText('On')
 
+      console.log('Deleting chat...')
       page.once('dialog', dialog => dialog.accept())
-      await getBobChat().locator('atoll-list-item').click({ button: 'right' })
-      await page.locator('[data-testid="context-item-delete-chat"]').click()
+      await page.locator('.overflow-y-auto').first().evaluate(el => el.scrollTop = el.scrollHeight)
+      await page.locator('[data-testid$="btnDelete"]').getByRole('button').click()
       await expect(page.locator('chat-list-item').filter({ hasText: /bob/i })).toHaveCount(0)
     })
   })

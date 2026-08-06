@@ -169,17 +169,20 @@
             throw new Error('Room secret key not found locally')
           }
 
-          const memberRecord = await pb.collection('room_members').getFirstListItem(
-            `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
-          )
+          let settingsRecord = null
+          try {
+            settingsRecord = await pb.collection('room_settings').getFirstListItem(
+              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+            )
+          } catch (e) {}
 
           let read_receipts = true
           // Decrypt existing settings to preserve read_receipts
-          if (memberRecord.settings && memberRecord.settings.ciphertext) {
+          if (settingsRecord && settingsRecord.settings && settingsRecord.settings.ciphertext) {
             try {
               const decryptedBytes = await $worker.execute('worker:crypto_secretbox_open_easy', {
-                ciphertext: memberRecord.settings.ciphertext,
-                nonce: memberRecord.settings.nonce,
+                ciphertext: settingsRecord.settings.ciphertext,
+                nonce: settingsRecord.settings.nonce,
                 key: roomKeyB64
               })
               if (decryptedBytes) {
@@ -208,9 +211,18 @@
             nonce: $crypto.toBase64(nonceBytes)
           }
 
-          await pb.collection('room_members').update(memberRecord.id, {
-            settings: encryptedPayload
-          })
+          if (settingsRecord) {
+            await pb.collection('room_settings').update(settingsRecord.id, {
+              settings: encryptedPayload
+            })
+          } else {
+            await pb.collection('room_settings').create({
+              room_id,
+              user_id: $state.currentUser.id,
+              is_muted: false,
+              settings: encryptedPayload
+            })
+          }
 
           // Save locally
           room.nicknames = tempNicknames

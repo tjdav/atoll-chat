@@ -317,11 +317,22 @@
           me.last_read_message_id = latestMsg.id
           await $storage.saveRoom(room)
           try {
-            const memberRecord = await pb.collection('room_members')
-              .getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
-  
-            if (memberRecord) {
-              await pb.collection('room_members').update(memberRecord.id, { last_read_message_id: latestMsg.id }, { requestKey: null })
+            let stateRecord = null
+            try {
+              stateRecord = await pb.collection('room_member_states').getFirstListItem(
+                `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+              )
+            } catch (e) {}
+
+            if (stateRecord) {
+              await pb.collection('room_member_states').update(stateRecord.id, { last_read_message_id: latestMsg.id }, { requestKey: null })
+            } else {
+              await pb.collection('room_member_states').create({
+                room_id,
+                user_id: $state.currentUser.id,
+                last_read_message_id: latestMsg.id,
+                is_typing: false
+              }, { requestKey: null })
             }
           } catch (err) {
             console.error('[chat-list] Failed to update read status:', err)
@@ -358,9 +369,22 @@
         me.last_read_message_id = newLastReadId
         await $storage.saveRoom(room)
         try {
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
-          if (memberRecord) {
-            await pb.collection('room_members').update(memberRecord.id, { last_read_message_id: newLastReadId }, { requestKey: null })
+          let stateRecord = null
+          try {
+            stateRecord = await pb.collection('room_member_states').getFirstListItem(
+              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+            )
+          } catch (e) {}
+
+          if (stateRecord) {
+            await pb.collection('room_member_states').update(stateRecord.id, { last_read_message_id: newLastReadId }, { requestKey: null })
+          } else {
+            await pb.collection('room_member_states').create({
+              room_id,
+              user_id: $state.currentUser.id,
+              last_read_message_id: newLastReadId,
+              is_typing: false
+            }, { requestKey: null })
           }
         } catch (err) {
           console.error('[chat-list] Failed to toggle read status:', err)
@@ -385,9 +409,21 @@
         me.is_muted = newMuteStatus
         await $storage.saveRoom(room)
         try {
-          const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
-          if (memberRecord) {
-            await pb.collection('room_members').update(memberRecord.id, { is_muted: newMuteStatus }, { requestKey: null })
+          let settingsRecord = null
+          try {
+            settingsRecord = await pb.collection('room_settings').getFirstListItem(
+              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+            )
+          } catch (e) {}
+
+          if (settingsRecord) {
+            await pb.collection('room_settings').update(settingsRecord.id, { is_muted: newMuteStatus }, { requestKey: null })
+          } else {
+            await pb.collection('room_settings').create({
+              room_id,
+              user_id: $state.currentUser.id,
+              is_muted: newMuteStatus
+            }, { requestKey: null })
           }
         } catch (err) {
           console.error('[chat-list] Failed to toggle mute status:', err)

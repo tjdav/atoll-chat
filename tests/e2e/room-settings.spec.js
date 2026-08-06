@@ -164,6 +164,47 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     expect(isBlocked).toBe(true)
   })
 
+  test('should update is_typing in room_member_states when typing in message textarea', async ({ page, request }) => {
+    // Fill text in textarea
+    const chatInput = page.locator('chat-input-text textarea, chat-input textarea, textarea[placeholder*="message"]').first()
+    await chatInput.fill('Hi Bob, I am typing!')
+
+    // Wait for the state to propagate to server
+    const testId = await page.evaluate(() => window.__playwright_test_id__ || 'default')
+    const headers = { 'x-test-id': testId }
+
+    // Check room_member_states on the mock server
+    let stateRecord = null
+    for (let i = 0; i < 15; i++) {
+      const res = await request.get(`http://localhost:8091/api/collections/room_member_states/records`, { headers })
+      const data = await res.json()
+      stateRecord = data.items.find(item => item.user_id === 'alice' && item.is_typing === true)
+      if (stateRecord) {
+        break
+      }
+      await page.waitForTimeout(300)
+    }
+    expect(stateRecord).toBeDefined()
+    expect(stateRecord.is_typing).toBe(true)
+
+    // Clear textarea
+    await chatInput.fill('')
+    
+    // Check room_member_states on the mock server to be false
+    let isTypingFalse = false
+    for (let i = 0; i < 15; i++) {
+      const res = await request.get(`http://localhost:8091/api/collections/room_member_states/records`, { headers })
+      const data = await res.json()
+      const rec = data.items.find(item => item.user_id === 'alice')
+      if (rec && rec.is_typing === false) {
+        isTypingFalse = true
+        break
+      }
+      await page.waitForTimeout(300)
+    }
+    expect(isTypingFalse).toBe(true)
+  })
+
   test('generate verification screenshot and video', async ({ page }) => {
     // Open Offcanvas
     await page.locator('[ref$="btnDetails"] button').click()
@@ -196,5 +237,6 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await nicknamesModal.locator('atoll-button[ref$="primaryBtn"] button').click()
 
     await page.waitForTimeout(1000)
+    await page.screenshot({ path: 'room-settings-screenshot.png' })
   })
 })

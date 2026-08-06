@@ -215,6 +215,9 @@ export function createWebStorageAdapter () {
           if (memberState.is_muted !== undefined) {
             room.participants[pIndex].is_muted = memberState.is_muted
           }
+          if (memberState.is_typing !== undefined) {
+            room.participants[pIndex].is_typing = memberState.is_typing
+          }
           await dbInstance.local_rooms.put(room)
         }
       }

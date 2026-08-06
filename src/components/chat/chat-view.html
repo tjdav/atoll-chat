@@ -218,7 +218,17 @@
             }
             state.roomInitial = state.roomName.charAt(0).toUpperCase()
   
+            const typingParticipants = participants.filter(p => p.is_typing === true)
             let baseStatus = room.is_group ? 'Group Chat' : 'Private'
+            if (typingParticipants.length > 0) {
+              if (room.is_group) {
+                const names = typingParticipants.map(p => state.nicknames[p.id] || p.name || p.username).join(', ')
+                baseStatus = `${names} ${typingParticipants.length === 1 ? 'is' : 'are'} typing...`
+              } else {
+                baseStatus = 'typing...'
+              }
+            }
+
             if ($state.callStatus && $state.callStatus !== 'idle' && $state.activeCallRoomId === room_id) {
               state.roomStatus = $state.callStatus === 'active' ? 'In Call' : 'Calling...'
             } else {

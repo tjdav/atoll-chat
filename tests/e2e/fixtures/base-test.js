@@ -174,7 +174,7 @@ async function resetPocketBase (testId) {
   }
 
   // clear transactional collections
-  const collectionsToClear = ['messages', 'rooms', 'room_members', 'media', 'invitations']
+  const collectionsToClear = ['messages', 'rooms', 'room_members', 'room_settings', 'room_member_states', 'media', 'invitations']
   for (const collectionName of collectionsToClear) {
     try {
       const records = await pb.collection(collectionName).getFullList({

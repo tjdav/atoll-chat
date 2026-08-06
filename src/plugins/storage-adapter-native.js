@@ -252,6 +252,9 @@ export function createNativeStorageAdapter () {
           if (memberState.is_muted !== undefined) {
             room.participants[pIndex].is_muted = memberState.is_muted
           }
+          if (memberState.is_typing !== undefined) {
+            room.participants[pIndex].is_typing = memberState.is_typing
+          }
           localRooms.set(roomId, room)
           persistToLocalStorage('rooms', roomId, room)
         }

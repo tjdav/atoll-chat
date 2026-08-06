@@ -214,6 +214,8 @@ function getDatabase (testId) {
       users: [],
       rooms: [],
       room_members: [],
+      room_settings: [],
+      room_member_states: [],
       messages: [],
       media: [],
       invitations: [],
@@ -1044,7 +1046,8 @@ export function createServer () {
               if (member.role === 'kicked') {
                 continue
               }
-              if (member.is_muted === true) {
+              const settingsRecord = db.room_settings.find(s => s.room_id === roomId && s.user_id === userId)
+              if (settingsRecord && settingsRecord.is_muted === true) {
                 continue
               }
               const user = db.users.find(u => u.id === userId)

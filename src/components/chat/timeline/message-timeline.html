@@ -83,16 +83,26 @@
         }
         seenTimeout = setTimeout(async () => {
           try {
-            const members = await pb.collection('room_members').getList(1, 1, {
-              filter: `room_id = "${room_id}" && user_id = "${$state.currentUser.id}"`
-            })
-            if (members.items.length > 0) {
-              const member = members.items[0]
-              if (member.last_read_message_id !== messageId) {
-                await pb.collection('room_members').update(member.id, {
+            let stateRecord = null
+            try {
+              stateRecord = await pb.collection('room_member_states').getFirstListItem(
+                `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+              )
+            } catch (e) {}
+
+            if (stateRecord) {
+              if (stateRecord.last_read_message_id !== messageId) {
+                await pb.collection('room_member_states').update(stateRecord.id, {
                   last_read_message_id: messageId
                 })
               }
+            } else {
+              await pb.collection('room_member_states').create({
+                room_id,
+                user_id: $state.currentUser.id,
+                last_read_message_id: messageId,
+                is_typing: false
+              })
             }
           } catch (err) {
             console.error('Failed to update seen status:', err)

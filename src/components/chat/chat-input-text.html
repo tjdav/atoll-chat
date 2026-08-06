@@ -88,10 +88,12 @@
       sendIconClass: (state) => (state.isCompressing ? 'd-none' : ''),
       spinnerClass: (state) => (state.isCompressing ? '' : 'd-none')
     },
-    client: ({ refs, state, globalStore, eventBus, signal, utils }) => {
+    client: ({ refs, state, globalStore, eventBus, signal, utils, storage, pocketbase }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $device } = utils
+      const { $storage } = storage
+      const { pb } = pocketbase
       const messageInput = refs('messageInput')
       const emojiButton = refs('emojiButton')
 
@@ -104,10 +106,85 @@
         messageInput.style.height = messageInput.scrollHeight + 'px'
       }
 
+      let isLocalTyping = false
+      let typingTimeout = null
+
+      const setServerTyping = async (isTyping) => {
+        const room_id = $state.activeSelectionId
+        if (!room_id) return
+
+        try {
+          const room = await $storage.getRoom(room_id)
+          if (!room || room.read_receipts === false) {
+            return
+          }
+
+          let stateRecord = null
+          try {
+            stateRecord = await pb.collection('room_member_states').getFirstListItem(
+              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+            )
+          } catch (e) {}
+
+          if (stateRecord) {
+            if (stateRecord.is_typing !== isTyping) {
+              await pb.collection('room_member_states').update(stateRecord.id, {
+                is_typing: isTyping
+              }, { requestKey: null })
+            }
+          } else {
+            await pb.collection('room_member_states').create({
+              room_id,
+              user_id: $state.currentUser.id,
+              last_read_message_id: null,
+              is_typing: isTyping
+            }, { requestKey: null })
+          }
+        } catch (err) {
+          console.warn('[chat-input-text] Failed to update typing state on server:', err)
+        }
+      }
+
+      const handleTypingActivity = () => {
+        const text = messageInput.value.trim()
+        if (text.length > 0) {
+          if (!isLocalTyping) {
+            isLocalTyping = true
+            setServerTyping(true)
+          }
+          if (typingTimeout) {
+            clearTimeout(typingTimeout)
+          }
+          typingTimeout = setTimeout(() => {
+            isLocalTyping = false
+            setServerTyping(false)
+          }, 3000)
+        } else {
+          if (isLocalTyping) {
+            isLocalTyping = false
+            if (typingTimeout) {
+              clearTimeout(typingTimeout)
+            }
+            setServerTyping(false)
+          }
+        }
+      }
+
+      const resetTyping = () => {
+        if (isLocalTyping) {
+          isLocalTyping = false
+          if (typingTimeout) {
+            clearTimeout(typingTimeout)
+          }
+          setServerTyping(false)
+        }
+      }
+
       messageInput.addEventListener('input', () => {
         $state.currentMessageText = messageInput.value
         state.currentMessageText = messageInput.value
         autoExpand()
+        handleTypingActivity()
       }, { signal })
 
       // Handle paste: convert HTML to Markdown
@@ -187,6 +264,7 @@
       }, { signal })
 
       refs('sendButton').addEventListener('click', () => {
+        resetTyping()
         $bus.emit('ui:send_clicked')
       }, { signal })
 
@@ -223,6 +301,7 @@
       messageInput.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
           e.preventDefault()
+          resetTyping()
           $bus.emit('ui:send_clicked')
         }
       }, { signal })

@@ -167,15 +167,26 @@ export default function syncPlugin () {
                   if (e.record.user_id === pb.authStore.model.id) {
                     // Own key update/invite
                     $worker.execute('worker:process_new_room_key', e.record).catch(console.error)
-                  } else {
-                    // Other member update (likely seen status)
-                    $worker.execute('room:member_updated', e.record).catch(console.error)
                   }
                 } else if (e.action === 'delete') {
                   if (e.record.user_id === pb.authStore.model.id) {
                     // User was removed from a room or deleted the chat
                     $worker.execute('worker:delete_local_room', { room_id: e.record.room_id }).catch(console.error)
                   }
+                }
+              })
+
+              // Subscribe to the room settings collection
+              await pb.collection('room_settings').subscribe('*', async (e) => {
+                if (e.action === 'create' || e.action === 'update') {
+                  $worker.execute('room:settings_updated', e.record).catch(console.error)
+                }
+              })
+
+              // Subscribe to the room member states collection
+              await pb.collection('room_member_states').subscribe('*', async (e) => {
+                if (e.action === 'create' || e.action === 'update') {
+                  $worker.execute('room:state_updated', e.record).catch(console.error)
                 }
               })
 

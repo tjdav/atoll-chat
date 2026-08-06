@@ -177,12 +177,13 @@
         try {
           // Fetch room
           const room = await $storage.getRoom(room_id)
+          let participants = []
           if (room) {
             state.roomTheme = room.theme || 'classic'
             state.isGroup = room.is_group === true || room.is_group === 'true'
 
             // Parse room name avatar
-            const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
+            participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
             if (!room.is_group && participants.length > 0) {
               const other = participants[0]
               // Check local nicknames first
@@ -263,8 +264,19 @@
           const currentMember = members.find(m => m.user_id === currentUser.id)
           state.isAdmin = currentMember && currentMember.role === 'admin'
 
+          // Fetch private room_settings
+          let settingsRecord = null
+          try {
+            settingsRecord = await pb.collection('room_settings').getFirstListItem(
+              pb.filter('room_id = {:room_id} && user_id = {:user_id}', { room_id, user_id: currentUser.id }),
+              { requestKey: null }
+            )
+          } catch (e) {
+            // Lazy creation on-demand
+          }
+
           // Setup Mute status badge
-          const isMuted = currentMember && currentMember.is_muted === true
+          const isMuted = settingsRecord && settingsRecord.is_muted === true
           const muteStatusBadge = refs('muteStatusBadge')
           muteStatusBadge.textContent = isMuted ? 'On' : 'Off'
           if (isMuted) {
@@ -281,14 +293,14 @@
           state.readReceipts = true
           state.nicknames = {}
 
-          // Decrypt settings from server
-          if (currentMember && currentMember.settings && currentMember.settings.ciphertext) {
+          // Decrypt settings from room_settings
+          if (settingsRecord && settingsRecord.settings && settingsRecord.settings.ciphertext) {
             const roomKeyB64 = room?.key_history?.find(h => h.epoch_id === 1)?.key
             if (roomKeyB64) {
               try {
                 const decryptedBytes = await $worker.execute('worker:crypto_secretbox_open_easy', {
-                  ciphertext: currentMember.settings.ciphertext,
-                  nonce: currentMember.settings.nonce,
+                  ciphertext: settingsRecord.settings.ciphertext,
+                  nonce: settingsRecord.settings.nonce,
                   key: roomKeyB64
                 })
                 if (decryptedBytes) {
@@ -296,6 +308,12 @@
                   const settingsObj = JSON.parse(decodedStr)
                   state.nicknames = settingsObj.nicknames || {}
                   state.readReceipts = settingsObj.read_receipts !== false
+
+                  // Update room name with decrypted nickname immediately
+                  if (!state.isGroup && participants.length > 0) {
+                    const other = participants[0]
+                    state.roomName = state.nicknames[other.id] || other.name || other.username
+                  }
                 }
               } catch (e) {
                 console.error('[sidebar] Failed to decrypt member settings:', e)
@@ -451,11 +469,10 @@
       const btnMuteNotifications = refs('btnMuteNotifications')
       btnMuteNotifications.addEventListener('click', () => {
         const room_id = $state.activeSelectionId
-        const me = state.members.find(m => m.user_id === $state.currentUser?.id)
-        const isMuted = me && me.is_muted === true
+        const muteStatusSwitch = refs('muteStatusSwitch')
+        const isMuted = muteStatusSwitch ? muteStatusSwitch.checked : false
   
         // Toggle locally immediately for rapid visual feedback
-        const muteStatusSwitch = refs('muteStatusSwitch')
         if (muteStatusSwitch) {
           muteStatusSwitch.checked = !isMuted
         }
@@ -510,13 +527,25 @@
             nonce: $crypto.toBase64(nonceBytes)
           }
 
-          const memberRecord = await pb.collection('room_members').getFirstListItem(
-            `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
-          )
+          let settingsRecord = null
+          try {
+            settingsRecord = await pb.collection('room_settings').getFirstListItem(
+              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+            )
+          } catch (e) {}
 
-          await pb.collection('room_members').update(memberRecord.id, {
-            settings: encryptedPayload
-          })
+          if (settingsRecord) {
+            await pb.collection('room_settings').update(settingsRecord.id, {
+              settings: encryptedPayload
+            })
+          } else {
+            await pb.collection('room_settings').create({
+              room_id,
+              user_id: $state.currentUser.id,
+              is_muted: false,
+              settings: encryptedPayload
+            })
+          }
 
           room.read_receipts = state.readReceipts
           await $storage.saveRoom(room)
