@@ -11,6 +11,10 @@
   border-radius: $card-border-radius;
   background-color: $card-bg;
 
+  .text-primary {
+    color: var(--atoll-chat-waveform-active, #047835) !important;
+  }
+
   &:hover {
     transform: translateY(-1px);
     background-color: rgba($black, 0.02) !important;

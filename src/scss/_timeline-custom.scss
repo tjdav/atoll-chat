@@ -58,8 +58,11 @@
   justify-content: center;
   gap: 4px;
   padding: 2px 8px;
-  background-color: var(--atoll-chat-reaction-pill-bg);
-  border: 1px solid var(--atoll-chat-reaction-pill-border);
+  background-color: var(--atoll-chat-reaction-pill-bg) !important;
+  border: 1px solid var(--atoll-chat-reaction-pill-border) !important;
+  color: var(--atoll-chat-reaction-pill-color) !important;
+  backdrop-filter: var(--atoll-chat-reaction-pill-backdrop-filter, none);
+  -webkit-backdrop-filter: var(--atoll-chat-reaction-pill-backdrop-filter, none);
   border-radius: 20px;
   box-shadow: var(--#{$prefix}box-shadow-sm);
   cursor: pointer;
@@ -93,7 +96,7 @@
 }
 
 .reaction-count {
-  color: var(--atoll-chat-reaction-pill-color);
+  color: var(--atoll-chat-reaction-pill-color) !important;
   font-weight: 600;
   font-size: 0.75rem;
   margin-left: 2px;
@@ -118,7 +121,15 @@
   align-items: center;
   justify-content: center;
   font-size: 0.75rem;
-  color: var(--atoll-chat-date-separator-color);
+  color: var(--atoll-chat-date-separator-color) !important;
   margin: 20px 0;
   font-weight: 500;
+
+  .badge {
+    background-color: var(--atoll-chat-date-separator-bg) !important;
+    border: 1px solid var(--atoll-chat-date-separator-border, transparent) !important;
+    color: var(--atoll-chat-date-separator-color) !important;
+    backdrop-filter: var(--atoll-chat-date-separator-backdrop-filter, none);
+    -webkit-backdrop-filter: var(--atoll-chat-date-separator-backdrop-filter, none);
+  }
 }

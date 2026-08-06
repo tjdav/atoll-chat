@@ -268,7 +268,10 @@
           let settingsRecord = null
           try {
             settingsRecord = await pb.collection('room_settings').getFirstListItem(
-              pb.filter('room_id = {:room_id} && user_id = {:user_id}', { room_id, user_id: currentUser.id }),
+              pb.filter('room_id = {:room_id} && user_id = {:user_id}', {
+                room_id,
+                user_id: currentUser.id
+              }),
               { requestKey: null }
             )
           } catch (e) {
@@ -532,7 +535,8 @@
             settingsRecord = await pb.collection('room_settings').getFirstListItem(
               `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
             )
-          } catch (e) {}
+          } catch (e) {
+          }
 
           if (settingsRecord) {
             await pb.collection('room_settings').update(settingsRecord.id, {

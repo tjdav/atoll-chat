@@ -1,5 +1,5 @@
 <template id="chat-attachment-preview">
-  <div class="attachment-preview p-2 mb-2 bg-body-tertiary rounded d-flex align-items-center justify-content-between border">
+  <div class="attachment-preview p-2 mb-2 rounded d-flex align-items-center justify-content-between border">
     <div class="d-flex align-items-center">
       <!-- Video Cover Thumbnail Container -->
       <div class="position-relative me-2 bg-dark rounded border d-flex align-items-center justify-content-center" hidden="{{ isVideoHidden }}" style="width: 100px; height: 100px; overflow: hidden; flex-shrink: 0;">
@@ -22,8 +22,8 @@
       <i class="bi bi-file-earmark-arrow-up text-primary fs-4 me-2" hidden="{{ isGenericIconHidden }}"></i>
       
       <div>
-        <div class="small fw-bold text-truncate" style="max-width: 250px;">{{ fileName }}</div>
-        <div class="x-small text-muted text-truncate" style="max-width: 250px;">{{ uploadStatus }}</div>
+        <div class="small fw-bold text-truncate attachment-preview-name" style="max-width: 250px;">{{ fileName }}</div>
+        <div class="x-small attachment-preview-status text-truncate" style="max-width: 250px;">{{ uploadStatus }}</div>
         
         <!-- Progress Bar Indicator -->
         <div class="progress mt-1" style="height: 6px; width: 100%; max-width: 250px;" hidden="{{ isProgressHidden }}">

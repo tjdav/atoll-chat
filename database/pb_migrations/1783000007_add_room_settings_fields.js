@@ -36,28 +36,19 @@ migrate((app) => {
   // Rollback logic
   const rooms = app.findCollectionByNameOrId('rooms')
   if (rooms) {
-    const f = rooms.fields.getByName('theme')
-    if (f) {
-      rooms.fields.remove(f)
-      app.save(rooms)
-    }
+    rooms.fields.removeByName('theme')
+    app.save(rooms)
   }
 
   const roomMembers = app.findCollectionByNameOrId('room_members')
   if (roomMembers) {
-    const f = roomMembers.fields.getByName('settings')
-    if (f) {
-      roomMembers.fields.remove(f)
-      app.save(roomMembers)
-    }
+    roomMembers.fields.removeByName('settings')
+    app.save(roomMembers)
   }
 
   const users = app.findCollectionByNameOrId('users')
   if (users) {
-    const f = users.fields.getByName('blocked_users')
-    if (f) {
-      users.fields.remove(f)
-      app.save(users)
-    }
+    users.fields.removeByName('blocked_users')
+    app.save(users)
   }
 })

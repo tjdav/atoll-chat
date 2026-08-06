@@ -1,5 +1,5 @@
 <template id="file-attachment">
-  <div class="file-attachment-container p-2 mb-1 border rounded bg-body-tertiary d-flex align-items-center" style="min-width: 250px; max-width: 350px;">
+  <div class="file-attachment-container p-2 mb-1 border rounded d-flex align-items-center" style="min-width: 250px; max-width: 350px;">
     <div ref="loading" class="{{ loadingClass }} d-flex align-items-center w-100">
       <div class="placeholder rounded me-2" style="width: 40px; height: 40px;"></div>
       <div class="flex-grow-1">
@@ -13,8 +13,8 @@
         <i ref="fileIcon" class="bi bi-file-earmark"></i>
       </div>
       <div class="flex-grow-1 overflow-hidden">
-        <div ref="fileName" class="fw-bold small text-truncate mb-0"></div>
-        <div ref="fileSize" class="x-small text-muted"></div>
+        <div ref="fileName" class="file-name fw-bold small text-truncate mb-0"></div>
+        <div ref="fileSize" class="file-attachment-size x-small mb-0"></div>
       </div>
       <a ref="downloadLink" href="#" class="btn btn-sm btn-outline-primary ms-2" title="Download">
         <i class="bi bi-download"></i>

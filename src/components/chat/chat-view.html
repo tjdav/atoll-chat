@@ -9,7 +9,7 @@
         <atoll-profile ref="headerAvatar" size="sm" class="d-inline-block me-3" alt="{{ roomName }}"></atoll-profile>
         <div>
           <h6 class="atoll-text-title-2 mb-0">{{ roomName }}</h6>
-          <small class="text-muted opacity-75">{{ roomStatus }}</small>
+          <small class="chat-view-header-subtitle mb-0">{{ roomStatus }}</small>
         </div>
       </div>
       <div class="d-flex gap-2">
@@ -39,13 +39,15 @@
         </atoll-button>
         <atoll-button 
           ref="btnDetails"
-          variant="outline" 
-          size="sm" 
+          icon-only="true"
+          variant="secondary" 
+          size="md" 
           pill="true"
+          title="Room Settings"
+          aria-label="Room Settings"
+          data-testid="btnRoomSettings"
         >
-          <span slot="leading"><atoll-icon name="settings" size="16"></atoll-icon></span>
-          <span class="d-md-none">Settings</span>
-          <span class="d-none d-md-inline">Room Settings</span>
+          <atoll-icon name="settings" size="24"></atoll-icon>
         </atoll-button>
       </div>
     </header>

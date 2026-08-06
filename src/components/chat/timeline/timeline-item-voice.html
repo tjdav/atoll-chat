@@ -65,6 +65,8 @@
           player.className = 'waveform-player'
           const playBtn = document.createElement('button')
           playBtn.className = 'play-pause-btn'
+          playBtn.setAttribute('type', 'button')
+          playBtn.setAttribute('aria-label', 'Play voice message')
           playBtn.innerHTML = '<i class="bi bi-play-fill"></i>'
           const waveContainer = document.createElement('div')
           waveContainer.className = 'waveform-container'

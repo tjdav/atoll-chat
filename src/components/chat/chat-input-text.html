@@ -111,7 +111,9 @@
 
       const setServerTyping = async (isTyping) => {
         const room_id = $state.activeSelectionId
-        if (!room_id) return
+        if (!room_id) {
+          return
+        }
 
         try {
           const room = await $storage.getRoom(room_id)
@@ -124,7 +126,8 @@
             stateRecord = await pb.collection('room_member_states').getFirstListItem(
               `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
             )
-          } catch (e) {}
+          } catch (e) {
+          }
 
           if (stateRecord) {
             if (stateRecord.is_typing !== isTyping) {

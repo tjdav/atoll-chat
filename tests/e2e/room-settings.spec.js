@@ -189,7 +189,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
     // Clear textarea
     await chatInput.fill('')
-    
+
     // Check room_member_states on the mock server to be false
     let isTypingFalse = false
     for (let i = 0; i < 15; i++) {

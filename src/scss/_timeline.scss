@@ -28,9 +28,13 @@
   align-self: flex-end;
   background-color: var(--atoll-chat-bubble-sent-bg);
   color: var(--atoll-chat-bubble-sent-color);
+  border: 1px solid var(--atoll-chat-bubble-sent-border, transparent) !important;
+  backdrop-filter: var(--atoll-chat-bubble-sent-backdrop-filter, none);
+  -webkit-backdrop-filter: var(--atoll-chat-bubble-sent-backdrop-filter, none);
 
-  a {
-    color: var(--atoll-chat-bubble-sent-link-color, inherit);
+  a, .markdown-body a {
+    color: var(--atoll-chat-bubble-sent-link-color, #ffffff) !important;
+    text-decoration: underline;
   }
 }
 
@@ -39,9 +43,13 @@
   align-self: flex-start;
   background-color: var(--atoll-chat-bubble-received-bg);
   color: var(--atoll-chat-bubble-received-color);
+  border: 1px solid var(--atoll-chat-bubble-received-border, transparent) !important;
+  backdrop-filter: var(--atoll-chat-bubble-received-backdrop-filter, none);
+  -webkit-backdrop-filter: var(--atoll-chat-bubble-received-backdrop-filter, none);
 
-  a {
-    color: var(--atoll-chat-bubble-received-link-color, var(--#{$prefix}brand-primary));
+  a, .markdown-body a {
+    color: var(--atoll-chat-bubble-received-link-color, #047835) !important;
+    text-decoration: underline;
   }
 }
 

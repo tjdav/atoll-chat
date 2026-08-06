@@ -88,12 +88,15 @@ onRecordCreateRequest((e) => {
         '-created',
         1,
         0,
-        { roomId: roomId, userId: userId }
+        {
+          roomId: roomId,
+          userId: userId
+        }
       )
       if (settingsRecords.length > 0) {
         isMuted = settingsRecords[0].get('is_muted') === true
       }
-    } catch (err) {
+    } catch {
       // Ignore filter error, treat as not muted
     }
 

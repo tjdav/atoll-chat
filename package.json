@@ -37,6 +37,7 @@
     "test:plugins": "coralite validate-plugins --coverage"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.61.0",
     "@stylistic/eslint-plugin": "^5.9.0",
     "@types/node": "^26.1.0",

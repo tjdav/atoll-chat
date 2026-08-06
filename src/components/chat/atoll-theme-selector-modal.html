@@ -95,16 +95,16 @@
         <div class="preview-chat-window chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm position-relative overflow-hidden" ref="previewChatWindow" style="min-height: 220px; transition: background 0.3s ease;">
           
           <!-- Today Date Separator Badge -->
-          <div class="text-center my-2" style="z-index: 2;">
-            <span class="badge rounded-pill px-3 py-1 text-uppercase font-monospace" style="background-color: var(--atoll-chat-date-separator-bg, var(--atoll-bg-surface-tertiary, #EEEEEE)); color: var(--atoll-chat-date-separator-color, var(--atoll-secondary-color, #777777)); font-size: 0.7rem;">Today</span>
+          <div class="text-center my-2 date-separator" style="z-index: 2; margin: 5px 0;">
+            <span class="badge rounded-pill px-3 py-1 text-uppercase font-monospace" style="font-size: 0.7rem; font-weight: 500;">Today</span>
           </div>
 
           <!-- Received Bubble -->
           <div class="align-self-start d-flex flex-column align-items-start gap-1" style="max-width: 80%; z-index: 2;">
             <span class="x-small text-muted ps-2" style="color: var(--atoll-chat-sender-name-color, #777777);">Bob</span>
-            <div class="message-bubble bubble-received p-2 rounded-3 text-start shadow-sm" ref="previewBubbleIncoming">
+            <div class="message-bubble bubble-received p-2 rounded-3 text-start shadow-sm" ref="previewBubbleIncoming" style="position: relative;">
               Hey! Check out this awesome chat theme.
-              <div class="reaction-pill d-inline-flex align-items-center gap-1 mt-1 px-2 py-0.5 rounded-pill border x-small" style="background-color: var(--atoll-chat-reaction-pill-bg, #FFFFFF); border-color: var(--atoll-chat-reaction-pill-border, #E0E0E0); color: var(--atoll-chat-reaction-pill-color, #777777);">
+              <div class="reaction-pill reaction-consolidated-pill d-inline-flex align-items-center gap-1 mt-1 px-2 py-0.5 rounded-pill border x-small" style="margin: 4px 0 0 0; font-size: 0.7rem;">
                 <span>👍</span><span class="fw-bold">1</span>
               </div>
             </div>
@@ -112,8 +112,8 @@
 
           <!-- Animated Voice Note Item with SVG waveform preview -->
           <div class="align-self-start d-flex flex-column align-items-start gap-1 my-1" style="max-width: 80%; z-index: 2;">
-            <div class="waveform-player" style="background-color: var(--atoll-chat-attachment-card-bg, #EEEEEE); border: 1px solid var(--atoll-chat-attachment-card-border, rgba(0,0,0,0.08)); border-radius: 24px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; width: 240px;">
-              <button type="button" class="play-pause-btn" style="border: none; background: var(--atoll-chat-waveform-active, var(--bs-primary, #06C755)); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+            <div class="waveform-player" style="border-radius: 24px; padding: 6px 12px; display: flex; align-items: center; gap: 8px; width: 240px; height: 48px;">
+              <button type="button" class="play-pause-btn" aria-label="Play audio preview" style="border: none; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                 <i class="bi bi-play-fill" style="color: #ffffff;"></i>
               </button>
               <div class="waveform-container" style="flex-grow: 1; height: 24px; display: flex; align-items: center; position: relative;" ref="previewWaveform">
@@ -181,8 +181,8 @@
           </div>
 
           <!-- Complete Chat Input Bar -->
-          <div ref="previewInputBar" class="mt-auto d-flex align-items-center gap-2 p-2 border-top" style="background-color: var(--atoll-chat-input-container-bg, #FFFFFF); border-top-color: var(--atoll-chat-input-container-border, rgba(0,0,0,0.08)) !important; z-index: 2; margin-top: 15px !important; border-radius: 8px;">
-            <button type="button" class="btn chat-input-btn-attach" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--atoll-chat-btn-attach-bg, transparent); color: var(--atoll-chat-btn-attach-color, #777777);">
+          <div ref="previewInputBar" class="chat-input-container mt-auto d-flex align-items-center gap-2 p-2 border-top" style="z-index: 2; margin-top: 15px !important; border-radius: 8px;">
+            <button type="button" class="btn chat-input-btn-attach" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
               <atoll-icon name="attach" size="16"></atoll-icon>
             </button>
             <div class="flex-grow-1" style="position: relative;">
@@ -191,10 +191,10 @@
                 <atoll-icon name="emoji" size="16"></atoll-icon>
               </button>
             </div>
-            <button type="button" class="btn chat-input-btn-voice" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--atoll-chat-btn-voice-bg, transparent); color: var(--atoll-chat-btn-voice-color, #777777);">
+            <button type="button" class="btn chat-input-btn-voice" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
               <atoll-icon name="mic" size="16"></atoll-icon>
             </button>
-            <button type="button" class="btn chat-input-btn-send" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center; background-color: var(--atoll-chat-btn-send-bg, #06C755); color: var(--atoll-chat-btn-send-color, #FFFFFF);">
+            <button type="button" class="btn chat-input-btn-send" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
               <atoll-icon name="send" size="16"></atoll-icon>
             </button>
           </div>
@@ -223,6 +223,62 @@
       const themeModal = refs('themeModal')
       let highlightedTheme = 'classic'
       const themes = ['classic', 'ocean', 'forest', 'sunset', 'custom']
+
+      // Structured Token Definitions for Predefined themes to synchronize live preview perfectly
+      const preDefinedThemeTokens = {
+        classic: {
+          'sent-status-color': 'var(--atoll-text-tertiary, #999999)',
+          'btn-attach-bg': 'transparent',
+          'btn-attach-color': 'var(--atoll-secondary-color, #777777)',
+          'btn-voice-bg': 'transparent',
+          'btn-voice-color': 'var(--atoll-secondary-color, #777777)',
+          'btn-send-bg': 'var(--atoll-brand-primary, #06C755)',
+          'btn-send-color': '#ffffff',
+          'waveform-active': 'var(--atoll-brand-primary, #06C755)',
+          'waveform-inactive': 'rgba(6, 199, 85, 0.2)',
+          'attachment-card-bg': 'var(--atoll-bg-surface-tertiary, #EEEEEE)',
+          'attachment-card-border': 'rgba(0, 0, 0, 0.08)'
+        },
+        ocean: {
+          'sent-status-color': 'rgba(255, 255, 255, 0.7)',
+          'btn-attach-bg': 'rgba(255, 255, 255, 0.1)',
+          'btn-attach-color': '#ffffff',
+          'btn-voice-bg': 'rgba(255, 255, 255, 0.1)',
+          'btn-voice-color': '#ffffff',
+          'btn-send-bg': '#0083b0',
+          'btn-send-color': '#ffffff',
+          'waveform-active': '#0083b0',
+          'waveform-inactive': 'rgba(0, 131, 176, 0.25)',
+          'attachment-card-bg': '#142830',
+          'attachment-card-border': 'rgba(255, 255, 255, 0.15)'
+        },
+        forest: {
+          'sent-status-color': 'rgba(255, 255, 255, 0.7)',
+          'btn-attach-bg': 'rgba(255, 255, 255, 0.1)',
+          'btn-attach-color': '#ffffff',
+          'btn-voice-bg': 'rgba(255, 255, 255, 0.1)',
+          'btn-voice-color': '#ffffff',
+          'btn-send-bg': '#11998e',
+          'btn-send-color': '#ffffff',
+          'waveform-active': '#11998e',
+          'waveform-inactive': 'rgba(17, 153, 142, 0.25)',
+          'attachment-card-bg': '#0C3328',
+          'attachment-card-border': 'rgba(255, 255, 255, 0.15)'
+        },
+        sunset: {
+          'sent-status-color': 'rgba(255, 255, 255, 0.7)',
+          'btn-attach-bg': 'rgba(255, 255, 255, 0.1)',
+          'btn-attach-color': '#ffffff',
+          'btn-voice-bg': 'rgba(255, 255, 255, 0.1)',
+          'btn-voice-color': '#ffffff',
+          'btn-send-bg': '#f12711',
+          'btn-send-color': '#ffffff',
+          'waveform-active': '#f12711',
+          'waveform-inactive': 'rgba(241, 39, 17, 0.25)',
+          'attachment-card-bg': '#2C1014',
+          'attachment-card-border': 'rgba(255, 255, 255, 0.15)'
+        }
+      }
 
       // Custom theme state variables
       let customBgImage = null
@@ -474,11 +530,19 @@
 
       // Live Preview custom style applicator
       const updateLivePreviewStyles = () => {
+        // Synchronize data-theme attribute on preview chat window with highlightedTheme
+        if (highlightedTheme) {
+          previewChatWindow.setAttribute('data-theme', highlightedTheme)
+        } else {
+          previewChatWindow.removeAttribute('data-theme')
+        }
+
         // Clear inline custom styles first
         previewChatWindow.style.backgroundImage = ''
         previewChatWindow.style.setProperty('--atoll-chat-bg-image', '')
         previewChatWindow.style.setProperty('--atoll-chat-bg-blur', '')
         previewChatWindow.style.setProperty('--atoll-chat-bg-dim', '')
+  
         previewBubbleOutgoing.style.backgroundColor = ''
         previewBubbleOutgoing.style.color = ''
         previewBubbleIncoming.style.backgroundColor = ''
@@ -497,8 +561,11 @@
         previewChatWindow.style.removeProperty('--atoll-chat-attachment-card-bg')
         previewChatWindow.style.removeProperty('--atoll-chat-attachment-card-border')
 
-        const previewInputBar = refs('previewInputBar')
-        const previewWaveformPlayer = previewChatWindow.querySelector('.waveform-player')
+        // Clear extra variables in live preview
+        previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-bg')
+        previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-bubble-received-bg')
+        previewChatWindow.style.removeProperty('--atoll-chat-bubble-received-color')
 
         if (highlightedTheme === 'custom') {
           previewBubbleOutgoing.style.backgroundColor = customSentBg
@@ -518,49 +585,35 @@
           previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', customAttachmentCardBg)
           previewChatWindow.style.setProperty('--atoll-chat-attachment-card-border', customAttachmentCardBorder)
 
-          previewInputBar.style.backgroundColor = 'var(--atoll-chat-input-container-bg-custom)'
-          previewInputBar.style.backdropFilter = 'blur(12px)'
-          previewInputBar.style.webkitBackdropFilter = 'blur(12px)'
-          previewInputBar.style.border = '1px solid var(--atoll-chat-attachment-card-border)'
-
-          if (previewWaveformPlayer) {
-            previewWaveformPlayer.style.backgroundColor = 'var(--atoll-chat-input-container-bg-custom)'
-            previewWaveformPlayer.style.backdropFilter = 'blur(12px)'
-            previewWaveformPlayer.style.webkitBackdropFilter = 'blur(12px)'
-            previewWaveformPlayer.style.border = '1px solid var(--atoll-chat-attachment-card-border)'
-          }
-
           if (customUseBgImage && customBgImage) {
             previewChatWindow.style.setProperty('--atoll-chat-bg-image', `url(${customBgImage})`)
             previewChatWindow.style.setProperty('--atoll-chat-bg-blur', `${customBgBlur}px`)
             previewChatWindow.style.setProperty('--atoll-chat-bg-dim', `${customBgDim / 100}`)
 
             // Set background inline using a generated dynamic linear-gradient or background rules for preview rendering
-            // To emulate the pseudo-element in SCSS without actual pseudo element support on inline styles,
-            // we can render a dedicated background image style on the preview window.
             previewChatWindow.style.backgroundImage = `linear-gradient(rgba(0,0,0, ${customBgDim / 100}), rgba(0,0,0, ${customBgDim / 100})), url(${customBgImage})`
             previewChatWindow.style.backgroundSize = 'cover'
             previewChatWindow.style.backgroundPosition = 'center'
-            // Applying CSS filter on background requires a backdrop-filter or styling.
-            // Since it's a live preview, we can apply backdrop blur to a pseudo element if defined,
-            // or we can apply it via backdrop-filter directly on the preview layout window for simplicity.
             previewChatWindow.style.backdropFilter = `blur(${customBgBlur}px)`
           } else {
             previewChatWindow.style.backgroundImage = ''
             previewChatWindow.style.backdropFilter = ''
           }
         } else {
-          previewChatWindow.style.backgroundImage = ''
-          previewChatWindow.style.backdropFilter = ''
-          previewInputBar.style.backgroundColor = ''
-          previewInputBar.style.backdropFilter = ''
-          previewInputBar.style.webkitBackdropFilter = ''
-          previewInputBar.style.border = ''
-          if (previewWaveformPlayer) {
-            previewWaveformPlayer.style.backgroundColor = ''
-            previewWaveformPlayer.style.backdropFilter = ''
-            previewWaveformPlayer.style.webkitBackdropFilter = ''
-            previewWaveformPlayer.style.border = ''
+          // It's a pre-defined theme (classic, ocean, forest, sunset)
+          const tokens = preDefinedThemeTokens[highlightedTheme]
+          if (tokens) {
+            previewChatWindow.style.setProperty('--atoll-chat-sent-status-color', tokens['sent-status-color'])
+            previewChatWindow.style.setProperty('--atoll-chat-btn-attach-bg', tokens['btn-attach-bg'])
+            previewChatWindow.style.setProperty('--atoll-chat-btn-attach-color', tokens['btn-attach-color'])
+            previewChatWindow.style.setProperty('--atoll-chat-btn-voice-bg', tokens['btn-voice-bg'])
+            previewChatWindow.style.setProperty('--atoll-chat-btn-voice-color', tokens['btn-voice-color'])
+            previewChatWindow.style.setProperty('--atoll-chat-btn-send-bg', tokens['btn-send-bg'])
+            previewChatWindow.style.setProperty('--atoll-chat-btn-send-color', tokens['btn-send-color'])
+            previewChatWindow.style.setProperty('--atoll-chat-waveform-active', tokens['waveform-active'])
+            previewChatWindow.style.setProperty('--atoll-chat-waveform-inactive', tokens['waveform-inactive'])
+            previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', tokens['attachment-card-bg'])
+            previewChatWindow.style.setProperty('--atoll-chat-attachment-card-border', tokens['attachment-card-border'])
           }
         }
       }

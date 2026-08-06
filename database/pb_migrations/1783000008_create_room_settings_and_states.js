@@ -19,7 +19,7 @@ migrate((app) => {
   settingsCollection.updateRule = '@request.auth.id != "" && user_id = @request.auth.id'
   settingsCollection.deleteRule = '@request.auth.id != "" && user_id = @request.auth.id'
   settingsCollection.indexes = [
-    "CREATE UNIQUE INDEX idx_room_settings_user_room ON room_settings (room_id, user_id)"
+    'CREATE UNIQUE INDEX idx_room_settings_user_room ON room_settings (room_id, user_id)'
   ]
 
   if (!settingsCollection.fields.getByName('room_id')) {
@@ -69,7 +69,7 @@ migrate((app) => {
   statesCollection.updateRule = '@request.auth.id != "" && user_id = @request.auth.id'
   statesCollection.deleteRule = '@request.auth.id != "" && user_id = @request.auth.id'
   statesCollection.indexes = [
-    "CREATE UNIQUE INDEX idx_room_member_states_user_room ON room_member_states (room_id, user_id)"
+    'CREATE UNIQUE INDEX idx_room_member_states_user_room ON room_member_states (room_id, user_id)'
   ]
 
   if (!statesCollection.fields.getByName('room_id')) {
@@ -110,34 +110,43 @@ migrate((app) => {
   // Remove is_muted, settings, last_read_message_id fields from room_members
   const roomMembers = app.findCollectionByNameOrId('room_members')
   if (roomMembers) {
-    const f1 = roomMembers.fields.getByName('is_muted')
-    if (f1) roomMembers.fields.remove(f1)
-    const f2 = roomMembers.fields.getByName('settings')
-    if (f2) roomMembers.fields.remove(f2)
-    const f3 = roomMembers.fields.getByName('last_read_message_id')
-    if (f3) roomMembers.fields.remove(f3)
+    roomMembers.fields.removeByName('is_muted')
+    roomMembers.fields.removeByName('settings')
+    roomMembers.fields.removeByName('last_read_message_id')
     app.save(roomMembers)
   }
 }, (app) => {
   // Rollback logic
   try {
     const settingsCollection = app.findCollectionByNameOrId('room_settings')
-    if (settingsCollection) app.delete(settingsCollection)
-  } catch (e) {}
+    if (settingsCollection) {
+      app.delete(settingsCollection)
+    }
+  } catch {
+  }
 
   try {
     const statesCollection = app.findCollectionByNameOrId('room_member_states')
-    if (statesCollection) app.delete(statesCollection)
-  } catch (e) {}
+    if (statesCollection) {
+      app.delete(statesCollection)
+    }
+  } catch {
+  }
 
   const roomMembers = app.findCollectionByNameOrId('room_members')
   if (roomMembers) {
     const messages = app.findCollectionByNameOrId('messages')
     if (!roomMembers.fields.getByName('is_muted')) {
-      roomMembers.fields.add(new BoolField({ name: 'is_muted', required: false }))
+      roomMembers.fields.add(new BoolField({
+        name: 'is_muted',
+        required: false
+      }))
     }
     if (!roomMembers.fields.getByName('settings')) {
-      roomMembers.fields.add(new JSONField({ name: 'settings', required: false }))
+      roomMembers.fields.add(new JSONField({
+        name: 'settings',
+        required: false
+      }))
     }
     if (!roomMembers.fields.getByName('last_read_message_id') && messages) {
       roomMembers.fields.add(new RelationField({

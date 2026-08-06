@@ -174,7 +174,8 @@
             settingsRecord = await pb.collection('room_settings').getFirstListItem(
               `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
             )
-          } catch (e) {}
+          } catch {
+          }
 
           let read_receipts = true
           // Decrypt existing settings to preserve read_receipts

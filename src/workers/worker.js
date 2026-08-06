@@ -1765,18 +1765,21 @@ async function processNewRoomKey (rpcId, payload) {
     if (membersResponse.ok) {
       const membersData = await membersResponse.json()
       participants = membersData.items.map(m => {
-        const u = m.expand?.user_id
-        if (!u) return null
+        const user = m.expand?.user_id
+        if (!user) {
+          return null
+        }
+
         const stateInfo = settingsAndStates.memberStates[u.id] || {}
         return {
-          id: u.id,
-          username: u.username,
-          avatar: u.avatar,
-          collectionId: u.collectionId,
-          collectionName: u.collectionName,
+          id: user.id,
+          username: user.username,
+          avatar: user.avatar,
+          collectionId: user.collectionId,
+          collectionName: user.collectionName,
           last_read_message_id: stateInfo.last_read_message_id || null,
           is_typing: stateInfo.is_typing === true,
-          is_muted: u.id === currentUserId ? settingsAndStates.is_muted : false
+          is_muted: user.id === currentUserId ? settingsAndStates.is_muted : false
         }
       }).filter(p => p !== null)
     }
