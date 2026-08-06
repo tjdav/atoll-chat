@@ -1770,7 +1770,7 @@ async function processNewRoomKey (rpcId, payload) {
           return null
         }
 
-        const stateInfo = settingsAndStates.memberStates[u.id] || {}
+        const stateInfo = settingsAndStates.memberStates[user.id] || {}
         return {
           id: user.id,
           username: user.username,

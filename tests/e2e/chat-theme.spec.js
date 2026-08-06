@@ -16,7 +16,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
   })
 
   test('should apply themes and verify chat-view header, chat-input, file card, and date separator component styling uniformity', async ({ page }) => {
-    // 1. Populate timeline with sent text, file attachment, and date separator
+    // Populate timeline with sent text, file attachment, and date separator
     await page.fill('textarea', 'Hello theme test message')
     await page.keyboard.press('Enter')
     await expect(page.locator('message-timeline .bubble-sent').first()).toBeVisible()
@@ -28,7 +28,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     await expect(page.locator('message-timeline .file-attachment-container').first()).toBeVisible({ timeout: 30000 })
 
     // Open room details sidebar via icon-only room settings button
-    const roomSettingsBtn = page.locator('[ref$="btnDetails"] button')
+    const roomSettingsBtn = page.locator('[data-testid$="btnRoomSettings"]')
     await expect(roomSettingsBtn).toBeVisible({ timeout: 15000 })
     await roomSettingsBtn.click()
 
@@ -39,7 +39,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     const fileName = fileCard.locator('.file-name')
     const fileSize = fileCard.locator('.file-attachment-size')
 
-    // 2. Select Ocean Theme in modal
+    // Select Ocean Theme in modal
     await page.locator('[data-testid$="btnChangeTheme"]').click()
     await expect(themeModal).toBeVisible()
 
@@ -53,7 +53,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
 
     // Assert live chat view container attributes and component styling equality
     await expect(chatContainer).toHaveAttribute('data-theme', 'ocean')
-    
+
     const componentStyles = await chatContainer.evaluate((el) => {
       const headerEl = el.querySelector('.chat-view-header')
       const inputEl = el.querySelector('.chat-input-container')
@@ -90,7 +90,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     await expect(fileName).toBeVisible()
     await expect(fileSize).toBeVisible()
 
-    // 3. Switch to Forest Theme
+    // Switch to Forest Theme
     await page.locator('[data-testid$="btnChangeTheme"]').click()
     await expect(themeModal).toBeVisible()
     await page.locator('[data-testid$="theme-forest-item"]').click()
@@ -102,14 +102,17 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     const forestComponentStyles = await chatContainer.evaluate((el) => {
       const headerEl = el.querySelector('.chat-view-header')
       const inputEl = el.querySelector('.chat-input-container')
+      const fileCardEl = el.querySelector('.file-attachment-container')
       return {
         headerBg: headerEl ? window.getComputedStyle(headerEl).getPropertyValue('background-color') : '',
-        inputBg: inputEl ? window.getComputedStyle(inputEl).getPropertyValue('background-color') : ''
+        inputBg: inputEl ? window.getComputedStyle(inputEl).getPropertyValue('background-color') : '',
+        fileCardBg: fileCardEl ? window.getComputedStyle(fileCardEl).getPropertyValue('background-color') : ''
       }
     })
+    console.log('--- FOREST STYLES ---', forestComponentStyles)
     expect(forestComponentStyles.inputBg).toBe(forestComponentStyles.headerBg)
 
-    // 4. Switch back to Classic Theme
+    // Switch back to Classic Theme
     await page.locator('[data-testid$="btnChangeTheme"]').click()
     await expect(themeModal).toBeVisible()
     await page.locator('[data-testid$="theme-classic-item"]').click()
@@ -122,7 +125,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
 
   test('should allow user to upload custom image, generate palette, adjust sliders, and persist custom theme', async ({ page }) => {
     // Open room details sidebar via icon-only room settings button
-    const roomSettingsBtn = page.locator('[ref$="btnDetails"] button')
+    const roomSettingsBtn = page.locator('[data-testid$="btnRoomSettings"]')
     await expect(roomSettingsBtn).toBeVisible({ timeout: 15000 })
     await roomSettingsBtn.click()
 

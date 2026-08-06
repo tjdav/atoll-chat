@@ -12,6 +12,13 @@ $atoll-chat-theme-classic-dark-bg: map-get($grays, "850") !default; // #1F1F1F
 $atoll-chat-theme-classic-dark-received-bg: map-get($grays, "800") !default; // #2A2A2A
 $atoll-chat-theme-classic-dark-received-color: $atoll-white !default;
 
+// Header Button Theme Values
+$atoll-chat-header-btn-bg-light: var(--#{$prefix}bg-surface-tertiary, #E8E8E8) !default;
+$atoll-chat-header-btn-bg-dark: #1F1F1F !default;
+$atoll-chat-header-btn-bg-glass: rgba(255, 255, 255, 0.15) !default;
+$atoll-chat-header-btn-hover-bg-glass: rgba(255, 255, 255, 0.25) !default;
+$atoll-chat-header-btn-active-bg-glass: rgba(255, 255, 255, 0.35) !default;
+
 // Ocean Theme Tokens
 $atoll-chat-theme-ocean-bg-gradient: linear-gradient(135deg, #0f2027, #203a43, #2c5364) !default;
 $atoll-chat-theme-ocean-sent-bg: #0083b0 !default;
@@ -37,6 +44,9 @@ $atoll-chat-themes: (
     "header-subtitle-color": #595959,
     "header-border": var(--#{$prefix}border-color-translucent, rgba(0, 0, 0, 0.08)),
     "header-backdrop-filter": none,
+    "header-btn-bg": $atoll-chat-header-btn-bg-light,
+    "header-btn-hover-bg": rgba(0, 0, 0, 0.08),
+    "header-btn-active-bg": rgba(0, 0, 0, 0.16),
     "input-container-bg": var(--#{$prefix}pane-bg, map-get($grays, "000")),
     "input-container-border": var(--#{$prefix}border-color-translucent, rgba(0, 0, 0, 0.08)),
     "input-backdrop-filter": none,
@@ -80,6 +90,9 @@ $atoll-chat-themes: (
     "header-subtitle-color": #B0B0B0,
     "header-border": var(--#{$prefix}border-color-translucent, rgba(255, 255, 255, 0.08)),
     "header-backdrop-filter": none,
+    "header-btn-bg": $atoll-chat-header-btn-bg-dark,
+    "header-btn-hover-bg": rgba(255, 255, 255, 0.08),
+    "header-btn-active-bg": rgba(255, 255, 255, 0.16),
     "input-container-bg": $atoll-chat-theme-classic-dark-bg,
     "input-container-border": var(--#{$prefix}border-color-translucent, rgba(255, 255, 255, 0.08)),
     "input-backdrop-filter": none,
@@ -122,8 +135,11 @@ $atoll-chat-themes: (
     "header-subtitle-color": rgba(255, 255, 255, 0.85),
     "header-border": rgba(255, 255, 255, 0.15),
     "header-backdrop-filter": blur(16px),
+    "header-btn-bg": $atoll-chat-header-btn-bg-glass,
+    "header-btn-hover-bg": $atoll-chat-header-btn-hover-bg-glass,
+    "header-btn-active-bg": $atoll-chat-header-btn-active-bg-glass,
     "input-container-bg": rgba(15, 32, 39, 0.75),
-    "input-container-border": rgba(255, 255, 255, 0.15),
+    "input-container-border": rgba(15, 32, 39, 0.75),
     "input-backdrop-filter": blur(16px),
     "input-bg": rgba(255, 255, 255, 0.12),
     "input-color": #ffffff,
@@ -164,8 +180,11 @@ $atoll-chat-themes: (
     "header-subtitle-color": rgba(255, 255, 255, 0.85),
     "header-border": rgba(255, 255, 255, 0.18),
     "header-backdrop-filter": blur(16px),
+    "header-btn-bg": $atoll-chat-header-btn-bg-glass,
+    "header-btn-hover-bg": $atoll-chat-header-btn-hover-bg-glass,
+    "header-btn-active-bg": $atoll-chat-header-btn-active-bg-glass,
     "input-container-bg": rgba(10, 45, 35, 0.70),
-    "input-container-border": rgba(255, 255, 255, 0.18),
+    "input-container-border": rgba(10, 45, 35, 0.70),
     "input-backdrop-filter": blur(16px),
     "input-bg": rgba(255, 255, 255, 0.14),
     "input-color": #ffffff,
@@ -206,8 +225,11 @@ $atoll-chat-themes: (
     "header-subtitle-color": rgba(255, 255, 255, 0.85),
     "header-border": rgba(255, 255, 255, 0.2),
     "header-backdrop-filter": blur(16px),
+    "header-btn-bg": $atoll-chat-header-btn-bg-glass,
+    "header-btn-hover-bg": $atoll-chat-header-btn-hover-bg-glass,
+    "header-btn-active-bg": $atoll-chat-header-btn-active-bg-glass,
     "input-container-bg": rgba(40, 10, 15, 0.65),
-    "input-container-border": rgba(255, 255, 255, 0.2),
+    "input-container-border": rgba(40, 10, 15, 0.65),
     "input-backdrop-filter": blur(16px),
     "input-bg": rgba(255, 255, 255, 0.14),
     "input-color": #ffffff,
