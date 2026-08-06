@@ -1,35 +1,37 @@
 <template id="atoll-chat-input">
-  <div class="container mx-auto py-3 rounded-pill mb-3">
-    <!-- Attachment Preview Bar -->
-    <div class="{{ attachmentPreviewClass }}">
-      <atoll-chat-attachment-preview 
-        file-name="{{ fileName }}" 
-        upload-status="{{ uploadStatus }}"
-        is-video="{{ isVideo }}"
-        thumbnail-url="{{ thumbnailPreviewUrl }}"
-        is-custom="{{ isCustomCover }}"
-        is-compressing="{{ isCompressing }}"
-        progress="{{ progress }}"
-      ></atoll-chat-attachment-preview>
-    </div>
+  <div class="container mx-auto mb-3">
+    <div class="atoll-chat-input-container py-3 px-4 rounded-3">
+      <!-- Attachment Preview Bar -->
+      <div class="{{ attachmentPreviewClass }}">
+        <atoll-chat-attachment-preview 
+          file-name="{{ fileName }}" 
+          upload-status="{{ uploadStatus }}"
+          is-video="{{ isVideo }}"
+          thumbnail-url="{{ thumbnailPreviewUrl }}"
+          is-custom="{{ isCustomCover }}"
+          is-compressing="{{ isCompressing }}"
+          progress="{{ progress }}"
+        ></atoll-chat-attachment-preview>
+      </div>
 
-    <!-- Link Preview Bar -->
-    <div class="{{ linkPreviewClass }}" ref="linkPreviewContainer">
-      <!-- link-preview-input will be mounted here -->
-    </div>
+      <!-- Link Preview Bar -->
+      <div class="{{ linkPreviewClass }}" ref="linkPreviewContainer">
+        <!-- link-preview-input will be mounted here -->
+      </div>
 
-    <!-- Normal Input Mode -->
-    <div class="{{ inputGroupClass }}" data-testid="chat-input-wrapper">
-      <atoll-chat-input-text
-        is-sending="{{ isSending }}"
-        is-uploading="{{ isUploading }}"
-        is-compressing="{{ isCompressing }}"
-      ></atoll-chat-input-text>
-    </div>
+      <!-- Normal Input Mode -->
+      <div class="{{ inputGroupClass }}" data-testid="chat-input-wrapper">
+        <atoll-chat-input-text
+          is-sending="{{ isSending }}"
+          is-uploading="{{ isUploading }}"
+          is-compressing="{{ isCompressing }}"
+        ></atoll-chat-input-text>
+      </div>
 
-    <!-- Recording Mode -->
-    <div ref="voiceRecorderContainer" class="{{ recordingUIClass }}">
-      <!-- chat-voice-recorder will be mounted here -->
+      <!-- Recording Mode -->
+      <div ref="voiceRecorderContainer" class="{{ recordingUIClass }}">
+        <!-- chat-voice-recorder will be mounted here -->
+      </div>
     </div>
   </div>
 </template>

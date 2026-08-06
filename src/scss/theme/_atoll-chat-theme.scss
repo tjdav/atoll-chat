@@ -449,7 +449,7 @@
   --atoll-chat-header-btn-active-bg: rgba(255, 255, 255, 0.35);
 
   // Styling atoll-chat-input container to be glassy blurred
-  atoll-chat-input .container {
+  .atoll-chat-input-container {
     background-color: var(--atoll-chat-input-container-bg-custom, rgba(255, 255, 255, 0.75)) !important;
     backdrop-filter: blur(12px) !important;
     -webkit-backdrop-filter: blur(12px) !important;
