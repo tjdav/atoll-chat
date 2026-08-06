@@ -82,6 +82,8 @@ export default function syncPlugin () {
                 keyResults.forEach((res, idx) => {
                   if (res.status === 'rejected') {
                     console.warn(`[sync-plugin] Failed to process room key for record ${missedKeys[idx]?.id}:`, res.reason)
+                  } else if (res.value && res.value.success === false) {
+                    console.warn(`[sync-plugin] Room key unwrapping failed for room ${missedKeys[idx]?.room_id}:`, res.value.error)
                   }
                 })
 

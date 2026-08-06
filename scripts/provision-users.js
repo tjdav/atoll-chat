@@ -165,8 +165,27 @@ async function provision () {
       }
 
       if (existingRecord) {
-        console.log(`Updating existing user ${user.username} with Key A vault encryption...`)
-        await pb.collection('users').update(existingRecord.id, payload, {
+        console.log(`Updating existing user ${user.username}...`)
+        const updatePayload = {
+          username: user.username,
+          name: user.username.charAt(0).toUpperCase() + user.username.slice(1),
+          password: userPasswordKeyB,
+          passwordConfirm: userPasswordKeyB
+        }
+        // Only assign new keys if the user lacks cryptographic keys
+        if (!existingRecord.public_box_key || !existingRecord.encrypted_private_keys) {
+          Object.assign(updatePayload, {
+            public_box_key: masterKeys.public_box_key,
+            public_sign_key: masterKeys.public_sign_key,
+            vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
+            encrypted_master_keys: passwordWrap,
+            encrypted_private_keys: encryptedPrivateKeys,
+            recovery_wraps: recoveryWraps
+          })
+        } else {
+          console.log(`Preserving existing E2EE keys for user ${user.username}.`)
+        }
+        await pb.collection('users').update(existingRecord.id, updatePayload, {
           requestKey: null
         })
         console.log(`User ${user.username} updated successfully.`)

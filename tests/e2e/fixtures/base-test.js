@@ -252,7 +252,29 @@ async function resetPocketBase (testId) {
       }
 
       if (existingUser) {
-        await pb.collection('users').update(existingUser.id, payload, {
+        const updatePayload = {
+          username: user.username,
+          name: user.username.charAt(0).toUpperCase() + user.username.slice(1),
+          email: user.email || '',
+          password: userPasswordKeyB,
+          passwordConfirm: userPasswordKeyB,
+          emailVisibility: false,
+          altcha: 'atoll-mock-bypass-token'
+        }
+        if (!existingUser.public_box_key || !existingUser.encrypted_private_keys) {
+          Object.assign(updatePayload, {
+            public_box_key: masterKeys.public_box_key,
+            public_sign_key: masterKeys.public_sign_key,
+            vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
+            encrypted_master_keys: passwordWrap,
+            encrypted_private_keys: encryptedPrivateKeys,
+            recovery_wraps: recoveryWraps,
+            passkey_credential_id: '',
+            passkey_prf_salt: '',
+            encrypted_master_keys_passkey: null
+          })
+        }
+        await pb.collection('users').update(existingUser.id, updatePayload, {
           requestKey: null
         })
       } else {
