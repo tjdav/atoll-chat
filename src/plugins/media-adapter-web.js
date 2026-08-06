@@ -98,6 +98,33 @@ export function createWebMediaAdapter (instanceContext) {
     compressImage,
 
     /**
+     * Compresses or converts an animated GIF file via mediaWorker if available, or returns original file.
+     * @param {File} file - Original animated GIF file.
+     * @param {Object} options - Compression options.
+     * @returns {Promise<File>} Resolves to compressed File or original GIF File.
+     */
+    compressGif: async (file, options = {}) => {
+      const mediaWorkerPlugin = instanceContext.mediaWorker
+      if (mediaWorkerPlugin && mediaWorkerPlugin.$mediaWorker && mediaWorkerPlugin.$mediaWorker.isSupported()) {
+        try {
+          const { buffer, mimeType, extension } = await mediaWorkerPlugin.$mediaWorker.compress(file, {
+            maxWidth: 1200,
+            maxHeight: 1200,
+            ...options
+          })
+          const compressedBlob = new Blob([buffer], { type: mimeType })
+          const lastDot = file.name.lastIndexOf('.')
+          const baseName = lastDot !== -1 ? file.name.substring(0, lastDot) : file.name
+          const newName = baseName + extension
+          return new File([compressedBlob], newName, { type: mimeType })
+        } catch {
+          return file
+        }
+      }
+      return file
+    },
+
+    /**
      * Compresses a video file using the media-worker-plugin (mediaWorker plugin context).
      * @param {File} file - The original video file.
      * @param {Object} options - Compression options.

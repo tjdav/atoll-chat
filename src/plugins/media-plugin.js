@@ -36,6 +36,10 @@ export default definePlugin({
               const adapter = await getAdapter(instanceContext)
               return adapter.compressImage(source, options)
             },
+            compressGif: async (file, options) => {
+              const adapter = await getAdapter(instanceContext)
+              return adapter.compressGif ? adapter.compressGif(file, options) : file
+            },
             compressVideo: async (file, options) => {
               const adapter = await getAdapter(instanceContext)
               return adapter.compressVideo(file, options)

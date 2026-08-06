@@ -1,6 +1,6 @@
 <template id="atoll-chat-input">
   <div class="container mx-auto mb-3">
-    <div class="atoll-chat-input-container py-3 px-4 rounded-3">
+    <div class="atoll-chat-input-container py-3 px-4 rounded-5">
       <!-- Attachment Preview Bar -->
       <div class="{{ attachmentPreviewClass }}">
         <atoll-chat-attachment-preview 
@@ -391,7 +391,23 @@
           state.uploadStatus = `Converting ${compatibility.category} to web format...`
         }
 
-        if (file.type.startsWith('image/') || compatibility.category === 'image') {
+        const isGif = (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'))
+
+        if (isGif) {
+          if (file.size > 15 * 1024 * 1024) {
+            state.isCompressing = true
+            state.uploadStatus = 'Compressing animated GIF...'
+            try {
+              file = await $media.compressGif(file)
+            } catch (err) {
+              console.warn('[atoll-chat-input] Animated GIF compression failed, preserving original file:', err)
+            } finally {
+              state.isCompressing = false
+            }
+          } else {
+            console.log('[atoll-chat-input] Animated GIF under 15MB; preserving native animated GIF file')
+          }
+        } else if (file.type.startsWith('image/') || compatibility.category === 'image') {
           state.isCompressing = true
           state.uploadStatus = 'Compressing image...'
           try {
