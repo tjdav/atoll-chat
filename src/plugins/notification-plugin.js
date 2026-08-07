@@ -163,7 +163,8 @@ export default definePlugin({
           }
 
           const showNotification = async (payload) => {
-            if (($state.notificationsEnabled ?? true) === false || Notification.permission !== 'granted') {
+            const isSupported = typeof Notification !== 'undefined'
+            if (($state.notificationsEnabled ?? true) === false || !isSupported || Notification.permission !== 'granted') {
               return
             }
 
@@ -293,7 +294,14 @@ export default definePlugin({
 
         const requestPermission = async () => {
           if (!('Notification' in window)) {
-            console.warn('This browser does not support notifications.')
+            let isNative = false
+            const { Capacitor } = await import('@capacitor/core')
+            isNative = Capacitor.isNativePlatform()
+
+            if (isNative) {
+              return true
+            }
+
             return false
           }
 

@@ -1,17 +1,23 @@
-<template id="browser-notifications">
+<template id="notifications-settings">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-      <h6 class="mb-0">Browser Notifications</h6>
+      <h6 class="mb-0">Notifications</h6>
       <p class="text-muted small mb-0">Get alerted when new messages arrive.</p>
     </div>
     <div class="form-check form-switch">
-      <input class="form-check-input" type="checkbox" role="switch" ref="notifSwitch" checked="{{ notifChecked }}">
+      <input class="form-check-input" type="checkbox" role="switch" ref="notifSwitch" checked="{{ notifChecked }}" disabled="{{ notifDisabled }}">
     </div>
   </div>
   <div class="alert alert-warning align-items-center {{ permissionAlertClass }}" role="alert">
     <atoll-icon name="warning" size="18" color="var(--bs-warning)" class="me-2"></atoll-icon>
     <div class="small">
       Notifications are blocked by your browser. Please enable them in your browser settings to use this feature.
+    </div>
+  </div>
+  <div class="alert alert-danger align-items-center {{ supportAlertClass }}" role="alert">
+    <atoll-icon name="warning" size="18" color="var(--bs-danger)" class="me-2"></atoll-icon>
+    <div class="small">
+      Notifications are not supported by this browser.
     </div>
   </div>
 </template>
@@ -22,20 +28,29 @@
   export default defineComponent({
     server: () => ({
       notificationsEnabled: true,
-      permissionStatus: 'default'
+      permissionStatus: 'default',
+      isSupported: true,
+      isNative: false
     }),
     getters: {
       notifChecked: (state) => (state.notificationsEnabled && state.permissionStatus !== 'denied' ? 'checked' : ''),
-      permissionAlertClass: (state) => (state.permissionStatus === 'denied' ? 'd-flex' : 'd-none')
+      permissionAlertClass: (state) => (state.permissionStatus === 'denied' && state.isSupported ? 'd-flex' : 'd-none'),
+      supportAlertClass: (state) => (!state.isSupported && !state.isNative ? 'd-flex' : 'd-none'),
+      notifDisabled: (state) => (!state.isSupported && !state.isNative ? 'disabled' : '')
     },
     client: async ({ refs, state, globalStore, notifications, push, pocketbase }) => {
       const { $state } = globalStore
       const { $notifications } = notifications
       const { $push } = push
       const { pb } = pocketbase
+      const { Capacitor } = await import('@capacitor/core')
 
+      const isNative = Capacitor.isNativePlatform()
+      
+      state.isNative = isNative
+      state.isSupported = typeof Notification !== 'undefined'
       state.notificationsEnabled = $state.notificationsEnabled ?? true
-      state.permissionStatus = typeof Notification !== 'undefined' ? Notification.permission : 'default'
+      state.permissionStatus = state.isSupported ? Notification.permission : (isNative ? 'granted' : 'default')
 
       const notifSwitch = refs('notifSwitch')
       notifSwitch.checked = state.notificationsEnabled && state.permissionStatus !== 'denied'
@@ -47,17 +62,12 @@
             $state.notificationsEnabled = true
             state.notificationsEnabled = true
 
-            // Generate the VAPID subscription and save/PATCH it in PocketBase
-            try {
-              const token = await $push.register()
-              if (token && pb.authStore.model) {
-                await pb.collection('users').update(pb.authStore.model.id, {
-                  push_subscription: token
-                })
-                console.log('[browser-notifications] Push registration successful, transmitting token to backend:', token)
-              }
-            } catch (err) {
-              console.error('[browser-notifications] Failed to register push subscription on toggle:', err)
+            // Generate the VAPID subscription/token and save/PATCH it in PocketBase
+            const token = await $push.register()
+            if (token && pb.authStore.model) {
+              await pb.collection('users').update(pb.authStore.model.id, {
+                push_subscription: token
+              })
             }
           } else {
             notifSwitch.checked = false
@@ -69,18 +79,13 @@
           state.notificationsEnabled = false
 
           // Nullify the push subscription on backend
-          try {
-            if (pb.authStore.model) {
-              await pb.collection('users').update(pb.authStore.model.id, {
-                push_subscription: null
-              })
-              console.log('[browser-notifications] Push subscription disabled/removed on backend successfully.')
-            }
-          } catch (err) {
-            console.error('[browser-notifications] Failed to clear push subscription on disable:', err)
+          if (pb.authStore.model) {
+            await pb.collection('users').update(pb.authStore.model.id, {
+              push_subscription: null
+            })
           }
         }
-        state.permissionStatus = Notification.permission
+        state.permissionStatus = state.isSupported ? Notification.permission : (isNative ? 'granted' : 'default')
       })
     }
   })

@@ -80,7 +80,7 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     expect(roomId).toBeDefined()
 
     // Send a text message in the room
-    const chatInput = page.getByPlaceholder('Type a message...')
+    const chatInput = page.locator('atoll-chat-input-text textarea, atoll-chat-input textarea, textarea[placeholder*="message"]').first()
     await chatInput.fill('Cold boot test message')
     await chatInput.press('Enter')
     await expect(page.locator('atoll-chat-timeline')).toContainText('Cold boot test message')

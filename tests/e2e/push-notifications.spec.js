@@ -68,7 +68,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     /* Assert that the push plugin requested permission and registered automatically on vault unlock */
     let pushRegistered = false
     for (let i = 0; i < 20; i++) {
-      if (logs.some(log => log.includes('[notification-plugin] Push registration successful on vault unlock') || log.includes('Push subscription updated on backend successfully') || log.includes('[browser-notifications] Push registration successful'))) {
+      if (logs.some(log => log.includes('[notification-plugin] Push registration successful on vault unlock') || log.includes('Push subscription updated on backend successfully') || log.includes('[notifications-settings] Push registration successful'))) {
         pushRegistered = true
         break
       }
@@ -85,7 +85,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await page.locator('[data-testid="settings-pane-0__nav-notifications"]').click()
 
     // Find browser notifications switch and assert it is checked by default
-    const switchInput = page.locator('browser-notifications input[type="checkbox"]')
+    const switchInput = page.locator('notifications-settings input[type="checkbox"]')
     await expect(switchInput).toBeVisible()
     await expect(switchInput).toBeChecked()
   })
@@ -326,7 +326,8 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
       })
     }, { roomId })
 
-    const wasDispatchedWhenUnfocused = await page.evaluate(() => window.__notif_dispatched__)
-    expect(wasDispatchedWhenUnfocused).toBe(true)
+    await expect.poll(async () => {
+      return await page.evaluate(() => window.__notif_dispatched__)
+    }).toBe(true)
   })
 })

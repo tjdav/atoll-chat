@@ -70,10 +70,9 @@ export default function bootstrapScriptPlugin () {
         }
 
         // Remove any previously injected or hardcoded asset script tags to avoid duplication
-        content = content.replace(/<script[^>]*src=["'](?:\.|\/)?\/?assets\/altcha\.js["'][^>]*>(?:[\s\S]*?<\/script>)?/gi, '')
-        content = content.replace(/<script[^>]*src=["']\/?assets\/register-sw\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
-        content = content.replace(/<script[^>]*src=["']\.\/assets\/js\/bootstrap-app\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
-        content = content.replace(/<script[^>]*src=["']\/assets\/js\/bootstrap-app\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
+        content = content.replace(/<script[^>]*src=["'](?:\.\/)?\/?assets\/altcha\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
+        content = content.replace(/<script[^>]*src=["'](?:\.\/)?\/?assets\/register-sw\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
+        content = content.replace(/<script[^>]*src=["'](?:\.\/)?\/?assets\/js\/bootstrap-app\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
 
         // Compute dynamic SRI for altcha.js if present
         const altchaPath = join(outputDir, 'assets', 'altcha.js')

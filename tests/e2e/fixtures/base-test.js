@@ -310,7 +310,7 @@ export const test = base.extend({
       await route.fulfill({
         status: 200,
         contentType: 'application/javascript',
-        body: 'console.log("Mock SW for E2E tests");'
+        body: '// Dummy SW for testing\nself.addEventListener("install", () => self.skipWaiting());\nself.addEventListener("activate", () => self.clients.claim());'
       })
     })
 
@@ -349,6 +349,15 @@ export const test = base.extend({
           },
           get () {
             return null
+          },
+          configurable: true
+        })
+
+        // Mock navigator.serviceWorker.ready to resolve immediately to a mock registration
+        const mockRegistration = Object.create(window.ServiceWorkerRegistration?.prototype || Object.prototype)
+        Object.defineProperty(navigator.serviceWorker, 'ready', {
+          get () {
+            return Promise.resolve(mockRegistration)
           },
           configurable: true
         })
@@ -460,6 +469,15 @@ export const test = base.extend({
             },
             get () {
               return null
+            },
+            configurable: true
+          })
+
+          // Mock navigator.serviceWorker.ready to resolve immediately to a mock registration
+          const mockRegistration = Object.create(window.ServiceWorkerRegistration?.prototype || Object.prototype)
+          Object.defineProperty(navigator.serviceWorker, 'ready', {
+            get () {
+              return Promise.resolve(mockRegistration)
             },
             configurable: true
           })
