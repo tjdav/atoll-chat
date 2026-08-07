@@ -271,12 +271,21 @@
         $state.isVaultUnlocked = false
       })
 
+      let autoBiometricAttempted = false
+
       const checkBiometricSupport = async () => {
         const record = pb.authStore.model
         if (record && await biometric.isAvailable()) {
           const storedKey = localStorage.getItem(`atoll_vault_wrap_${record.id}`)
           if (storedKey || record.passkey_credential_id || record.encrypted_master_keys_passkey) {
             btnPasskey.classList.remove('d-none')
+
+            if (!autoBiometricAttempted) {
+              autoBiometricAttempted = true
+              setTimeout(() => {
+                btnPasskey.click()
+              }, 300)
+            }
           } else {
             btnPasskey.classList.add('d-none')
           }

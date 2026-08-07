@@ -1,0 +1,15 @@
+{
+	"appId": "com.atollchat.app",
+	"appName": "Atoll Chat",
+	"webDir": "dist",
+	"bundledWebRuntime": false,
+	"server": {
+		"androidScheme": "https"
+	},
+	"packageClassList": [
+		"AppPlugin",
+		"FilesystemPlugin",
+		"CAPNetworkPlugin",
+		"NativeBiometricPlugin"
+	]
+}

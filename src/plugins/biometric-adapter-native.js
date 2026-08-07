@@ -30,7 +30,7 @@ function base64ToUint8Array (base64) {
 }
 
 /**
- * Creates a NativeBiometricAdapter instance.
+ * Creates a NativeBiometricAdapter instance using @capgo/capacitor-native-biometric.
  *
  * @param {Object} [_instanceContext] - Optional instance context.
  * @returns {Object} The NativeBiometricAdapter instance.
@@ -40,32 +40,50 @@ export function createNativeBiometricAdapter (_instanceContext) {
     /**
      * Checks if biometric authentication is available on the device.
      *
-     * @returns {Promise<boolean>} Resolves to true for the stub.
+     * @returns {Promise<boolean>} Resolves to true if available.
      */
     isAvailable: async () => {
-      return true
+      const { NativeBiometric } = await import('@capgo/capacitor-native-biometric')
+      const result = await NativeBiometric.isAvailable()
+
+      return !!(result && result.isAvailable)
     },
 
     /**
-     * Stub implementation to simulate storing a master key in secure enclave.
+     * Stores a master key securely in the device's Keychain (iOS) or Keystore (Android).
      *
      * @param {Uint8Array} key - The raw 256-bit AES Master Key.
-     * @param {string} _username - The username of the logged-in user.
+     * @param {string} username - The username of the logged-in user.
      * @param {string} userId - The unique identifier of the logged-in user.
      * @returns {Promise<void>}
      */
-    storeMasterKey: async (key, _username, userId) => {
-      console.info('[NativeBiometricAdapter] Bypassing native secure storage for now')
-      const b64 = uint8ArrayToBase64(key)
-      const payload = {
-        mockSecureEnclave: true,
-        key: b64
+    storeMasterKey: async (key, username, userId) => {
+      console.info('[NativeBiometricAdapter] Storing master key securely.')
+      try {
+        const { NativeBiometric, AccessControl } = await import('@capgo/capacitor-native-biometric')
+        const b64 = uint8ArrayToBase64(key)
+
+        await NativeBiometric.setCredentials({
+          username: username || userId,
+          password: b64,
+          server: `atoll-chat-vault-${userId}`,
+          accessControl: AccessControl.BIOMETRY_ANY
+        })
+
+        // Save a dummy payload in localStorage to indicate biometric unlock is enabled for this user.
+        const payload = {
+          mockSecureEnclave: false,
+          userId
+        }
+        localStorage.setItem(`atoll_vault_wrap_${userId}`, JSON.stringify(payload))
+      } catch (err) {
+        console.error('[NativeBiometricAdapter] storeMasterKey error:', err)
+        throw err
       }
-      localStorage.setItem(`atoll_vault_wrap_${userId}`, JSON.stringify(payload))
     },
 
     /**
-     * Stub implementation to simulate retrieving a master key from secure enclave.
+     * Retrieves the securely stored master key after prompting biometric authentication.
      *
      * @param {string} userId - The unique identifier of the logged-in user.
      * @returns {Promise<Uint8Array>} Resolves to the decrypted AES Master Key.
@@ -76,17 +94,43 @@ export function createNativeBiometricAdapter (_instanceContext) {
         throw new Error('No biometric vault wrap found for this user.')
       }
 
-      const { key } = JSON.parse(rawData)
-      return base64ToUint8Array(key)
+      try {
+        const { NativeBiometric } = await import('@capgo/capacitor-native-biometric')
+        const credentials = await NativeBiometric.getSecureCredentials({
+          server: `atoll-chat-vault-${userId}`,
+          reason: 'Unlock your secure vault',
+          title: 'Verify Identity',
+          subtitle: 'Scan your fingerprint to unlock Atoll Chat',
+          description: 'This decrypts your zero-knowledge master key.',
+          negativeButtonText: 'Cancel'
+        })
+
+        if (!credentials || !credentials.password) {
+          throw new Error('Biometric retrieval failed or was canceled.')
+        }
+
+        return base64ToUint8Array(credentials.password)
+      } catch (err) {
+        console.error('[NativeBiometricAdapter] retrieveMasterKey error:', err)
+        throw err
+      }
     },
 
     /**
-     * Clears the encrypted biometric wrap from localStorage.
+     * Clears the securely stored master key and local indicator.
      *
      * @param {string} userId - The unique identifier of the logged-in user.
      * @returns {Promise<void>}
      */
     deleteMasterKey: async (userId) => {
+      try {
+        const { NativeBiometric } = await import('@capgo/capacitor-native-biometric')
+        await NativeBiometric.deleteCredentials({
+          server: `atoll-chat-vault-${userId}`
+        })
+      } catch (err) {
+        console.warn('[NativeBiometricAdapter] deleteMasterKey failed:', err)
+      }
       localStorage.removeItem(`atoll_vault_wrap_${userId}`)
     }
   }

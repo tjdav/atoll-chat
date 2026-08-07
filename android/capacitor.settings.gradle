@@ -10,3 +10,6 @@ project(':capacitor-filesystem').projectDir = new File('../node_modules/.pnpm/@c
 
 include ':capacitor-network'
 project(':capacitor-network').projectDir = new File('../node_modules/.pnpm/@capacitor+network@8.0.1_@capacitor+core@8.4.2/node_modules/@capacitor/network/android')
+
+include ':capgo-capacitor-native-biometric'
+project(':capgo-capacitor-native-biometric').projectDir = new File('../node_modules/.pnpm/@capgo+capacitor-native-biometric@8.6.3_@capacitor+core@8.4.2/node_modules/@capgo/capacitor-native-biometric/android')

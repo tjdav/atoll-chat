@@ -18,8 +18,14 @@
       <p class="small text-muted mb-4">To {{ passkeyActionVerb }} biometric unlock, please enter your current vault password to confirm your identity and access your cryptographic keys.</p>
       <form ref="verifyForm">
         <div class="mb-3">
-          <label class="form-label small fw-bold">Vault Password</label>
-          <input type="password" class="form-control" ref="vaultPasswordInput" data-testid="vaultPasswordInput" required placeholder="Enter Vault Password">
+          <atoll-input
+            ref="vaultPasswordInput"
+            type="password"
+            label="Vault Password"
+            placeholder="Enter Vault Password"
+            required="true"
+            data-testid="vaultPasswordInput"
+          ></atoll-input>
         </div>
         
         <!-- TOTP Step-up Verification -->
@@ -33,10 +39,13 @@
     </div>
 
     <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end gap-2">
-      <button type="button" class="btn btn-primary" ref="btnVerifyPassword" data-testid="btnVerifyPassword">
+      <atoll-button type="button" variant="secondary" ref="btnCancelVerify" data-testid="btnCancelVerify">
+        Cancel
+      </atoll-button>
+      <atoll-button type="button" variant="primary" ref="btnVerifyPassword" data-testid="btnVerifyPassword">
         <span class="spinner-border spinner-border-sm d-none" ref="verifySpinner" role="status" aria-hidden="true"></span>
         Verify & Continue
-      </button>
+      </atoll-button>
     </div>
   </atoll-popup>
 </template>
@@ -78,7 +87,7 @@
       const vaultPasswordInput = refs('vaultPasswordInput')
       const verifyError = refs('verifyError')
       const btnVerifyPassword = refs('btnVerifyPassword')
-      const verifySpinner = refs('verifySpinner')
+      const btnCancelVerify = refs('btnCancelVerify')
 
       const totpStepUpSection = refs('totpStepUpSection')
       const totpStepUpInput = refs('totpStepUpInput')
@@ -105,11 +114,13 @@
           totpStepUpInput.removeAttribute('required')
         }
 
-        if (verifyModal) {
-          verifyModal.show()
-          setTimeout(() => vaultPasswordInput.focus(), 100)
-        }
+        verifyModal.show()
+        setTimeout(() => vaultPasswordInput.focus(), 100)
       })
+
+      btnCancelVerify.addEventListener('click', () => {
+        verifyModal.hide()
+      }, { signal })
 
       const handleVerification = async () => {
         const password = vaultPasswordInput.value
@@ -185,11 +196,19 @@
         }
       }
   
-      btnVerifyPassword.onclick = handleVerification
+      btnVerifyPassword.addEventListener('click', handleVerification, { signal })
 
       verifyForm.addEventListener('submit', (e) => {
         e.preventDefault()
         handleVerification()
+      }, { signal })
+
+      // Pressing enter should submit the form
+      vaultPasswordInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+          e.preventDefault()
+          handleVerification()
+        }
       }, { signal })
     }
   })
