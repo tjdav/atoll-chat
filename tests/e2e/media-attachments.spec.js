@@ -62,7 +62,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const vp = path.join(__dirname, 'fixtures', 'test-files', 'test.mp4')
       await page.setInputFiles('[data-testid$="__fileInput"]', vp)
-      await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
       await page.locator('[data-testid$="sendButton"]').click()
       await expect(page.locator('atoll-chat-timeline-row img').first()).toBeVisible({ timeout: 15000 })
     })
@@ -76,7 +76,7 @@ test.describe('Media & Attachments', () => {
 
       const vp = path.join(__dirname, 'fixtures', 'test-files', 'test.mp4')
       await page.setInputFiles('[data-testid$="__fileInput"]', vp)
-      await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
 
       // Verify the Change Cover button exists
       const changeCoverBtn = page.locator('[data-testid$="__btn-change-cover"]')
@@ -88,14 +88,14 @@ test.describe('Media & Attachments', () => {
       await page.setInputFiles('[data-testid$="__cover-file-input"]', customCoverPath)
 
       // Verify custom cover application
-      await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Custom cover applied', { timeout: 15000 })
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Custom cover applied', { timeout: 15000 })
       await expect(changeCoverBtn).toHaveText('Remove Custom Cover')
 
       // Click to remove custom cover
       await changeCoverBtn.click()
 
       // Should revert back to "Ready to send" or standard auto-thumbnail status
-      await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 15000 })
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 15000 })
       await expect(changeCoverBtn).toHaveText('Change Cover')
     })
 
@@ -108,7 +108,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const ap = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
       await page.setInputFiles('[data-testid$="__fileInput"]', ap)
-      await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
       await page.locator('[data-testid$="sendButton"]').click()
 
       // Wait for the message status to be 'Sent'

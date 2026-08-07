@@ -24,7 +24,7 @@ test.describe('Firefox Video Sharing & Conversion E2E Tests', () => {
     await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(videoPath)
 
     // Verify UI status reaches Ready to send (either converted or original format fallback)
-    await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 30000 })
+    await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 30000 })
 
     await page.fill('atoll-chat-view textarea', 'Firefox video test')
     await page.click('atoll-chat-view [data-testid$="__sendButton"]')

@@ -35,7 +35,7 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     await alicePage.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(mkvPath)
 
     // Verify UI status displays format conversion readiness
-    await expect(alicePage.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 60000 })
+    await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 60000 })
 
     await alicePage.fill('atoll-chat-view textarea', 'Sending converted video test.mp4')
     await alicePage.click('atoll-chat-view [data-testid$="__sendButton"]')
@@ -63,7 +63,7 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     const tiffPath = path.join(TEST_FILES_DIR, 'test.tiff')
     await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(tiffPath)
 
-    await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 60000 })
+    await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 60000 })
 
     await page.fill('atoll-chat-view textarea', 'Sending converted image test.webp')
     await page.click('atoll-chat-view [data-testid$="__sendButton"]')
@@ -87,7 +87,7 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     const wavPath = path.join(TEST_FILES_DIR, 'test.wav')
     await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(wavPath)
 
-    await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 60000 })
+    await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 60000 })
 
     await page.fill('atoll-chat-view textarea', 'Sending converted audio test.m4a')
     await page.click('atoll-chat-view [data-testid$="__sendButton"]')
