@@ -43,7 +43,6 @@
         Cancel
       </atoll-button>
       <atoll-button type="button" variant="primary" ref="btnVerifyPassword" data-testid="btnVerifyPassword">
-        <span class="spinner-border spinner-border-sm d-none" ref="verifySpinner" role="status" aria-hidden="true"></span>
         Verify & Continue
       </atoll-button>
     </div>
@@ -126,9 +125,7 @@
         const password = vaultPasswordInput.value
   
         verifyError.classList.add('d-none')
-        btnVerifyPassword.disabled = true
-  
-        verifySpinner.classList.remove('d-none')
+        btnVerifyPassword.setAttribute('loading', 'true')
 
         try {
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
@@ -190,9 +187,7 @@
           verifyError.textContent = error.message || 'Verification failed'
           verifyError.classList.remove('d-none')
         } finally {
-          btnVerifyPassword.disabled = false
-
-          verifySpinner.classList.add('d-none')
+          btnVerifyPassword.removeAttribute('loading')
         }
       }
   

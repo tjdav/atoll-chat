@@ -32,10 +32,9 @@ function base64ToUint8Array (base64) {
 /**
  * Creates a NativeBiometricAdapter instance using @capgo/capacitor-native-biometric.
  *
- * @param {Object} [_instanceContext] - Optional instance context.
  * @returns {Object} The NativeBiometricAdapter instance.
  */
-export function createNativeBiometricAdapter (_instanceContext) {
+export function createNativeBiometricAdapter () {
   return {
     /**
      * Checks if biometric authentication is available on the device.
@@ -44,6 +43,10 @@ export function createNativeBiometricAdapter (_instanceContext) {
      */
     isAvailable: async () => {
       const { NativeBiometric } = await import('@capgo/capacitor-native-biometric')
+
+      if (!NativeBiometric) {
+        return false
+      }
       const result = await NativeBiometric.isAvailable()
 
       return !!(result && result.isAvailable)
@@ -61,6 +64,10 @@ export function createNativeBiometricAdapter (_instanceContext) {
       console.info('[NativeBiometricAdapter] Storing master key securely.')
       try {
         const { NativeBiometric, AccessControl } = await import('@capgo/capacitor-native-biometric')
+
+        if (!NativeBiometric) {
+          throw new Error('Biometric plugin not available')
+        }
         const b64 = uint8ArrayToBase64(key)
 
         await NativeBiometric.setCredentials({
@@ -90,12 +97,18 @@ export function createNativeBiometricAdapter (_instanceContext) {
      */
     retrieveMasterKey: async (userId) => {
       const rawData = localStorage.getItem(`atoll_vault_wrap_${userId}`)
+
       if (!rawData) {
         throw new Error('No biometric vault wrap found for this user.')
       }
 
       try {
         const { NativeBiometric } = await import('@capgo/capacitor-native-biometric')
+
+        if (!NativeBiometric) {
+          throw new Error('Biometric plugin not available')
+        }
+
         const credentials = await NativeBiometric.getSecureCredentials({
           server: `atoll-chat-vault-${userId}`,
           reason: 'Unlock your secure vault',
@@ -125,6 +138,11 @@ export function createNativeBiometricAdapter (_instanceContext) {
     deleteMasterKey: async (userId) => {
       try {
         const { NativeBiometric } = await import('@capgo/capacitor-native-biometric')
+
+        if (!NativeBiometric) {
+          throw new Error('Biometric plugin not available')
+        }
+
         await NativeBiometric.deleteCredentials({
           server: `atoll-chat-vault-${userId}`
         })
