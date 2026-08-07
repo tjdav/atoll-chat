@@ -203,9 +203,9 @@ test.describe('Atoll Button Component', () => {
     const spinner = innerBtn.locator('.atoll-btn-spinner')
     await expect(spinner).toBeVisible()
 
-    const spinnerIcon = spinner.locator('atoll-icon')
-    await expect(spinnerIcon).toBeVisible()
-    await expect(spinnerIcon).toHaveAttribute('name', 'settings')
+    const spinnerBorder = spinner.locator('.spinner-border')
+    await expect(spinnerBorder).toBeVisible()
+    await expect(spinnerBorder).toHaveAttribute('role', 'status')
 
     // Disable loading
     await page.evaluate(() => {

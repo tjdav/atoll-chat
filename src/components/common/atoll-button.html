@@ -55,6 +55,14 @@
       text: {
         type: String,
         default: ''
+      },
+      spinnerVariant: {
+        type: String,
+        default: ''
+      },
+      spinnerPlacement: {
+        type: String,
+        default: 'center'
       }
     },
 
@@ -185,7 +193,7 @@
         if (state.pill) {
           classes.push('atoll-btn-pill')
         }
-        if (state.loading) {
+        if (state.loading && state.spinnerPlacement === 'center') {
           classes.push('atoll-btn-loading')
         }
 
@@ -222,38 +230,56 @@
       root.blur = () => btn?.blur()
       root.click = () => btn?.click()
 
-      // Imperatively create/destroy the spinner container and icon, and set busy/disabled ARIA states
+      // Imperatively create/destroy the spinner container using Bootstrap spinner component
       const syncLoadingState = () => {
+        if (spinnerEl && spinnerEl.parentNode) {
+          spinnerEl.parentNode.removeChild(spinnerEl)
+        }
+
         if (state.loading) {
-          if (!spinnerEl) {
-            spinnerEl = document.createElement('span')
+          spinnerEl = document.createElement('span')
+          
+          const placement = state.spinnerPlacement || 'center'
+          if (placement === 'center') {
             spinnerEl.className = 'atoll-btn-spinner'
+          } else {
+            spinnerEl.className = `atoll-btn-spinner-inline atoll-btn-spinner-${placement}`
+          }
 
-            // Create icon imperatively using string literal with hyphen
-            const icon = document.createElement('atoll-icon')
-            icon.setAttribute('name', 'restart')
-  
-            // Determined by Resolved Spinner Sizing Scale: sm: 16, md: 20, lg: 24
-            const spinnerSizes = {
-              sm: '16',
-              md: '20',
-              lg: '24'
+          // Create Bootstrap spinner-border
+          const borderEl = document.createElement('span')
+          borderEl.className = 'spinner-border spinner-border-sm'
+
+          // Add variant class if spinnerVariant is set (e.g. text-light, text-dark, text-primary)
+          if (state.spinnerVariant) {
+            borderEl.classList.add(`text-${state.spinnerVariant}`)
+          }
+
+          borderEl.setAttribute('role', 'status')
+          borderEl.setAttribute('aria-hidden', 'true')
+
+          spinnerEl.appendChild(borderEl)
+
+          // Insert spinner at appropriate location
+          if (placement === 'center') {
+            if (!btn.contains(spinnerEl)) {
+              btn.insertBefore(spinnerEl, btn.firstChild)
             }
-            const iconSize = spinnerSizes[state.size] || '20'
-            icon.setAttribute('size', iconSize)
-
-            spinnerEl.appendChild(icon)
+          } else if (placement === 'leading') {
+            const contentContainer = btn.querySelector('.atoll-btn-content')
+            if (contentContainer) {
+              contentContainer.insertBefore(spinnerEl, contentContainer.firstChild)
+            }
+          } else if (placement === 'trailing') {
+            const contentContainer = btn.querySelector('.atoll-btn-content')
+            if (contentContainer) {
+              contentContainer.appendChild(spinnerEl)
+            }
           }
 
-          if (!btn.contains(spinnerEl)) {
-            btn.insertBefore(spinnerEl, btn.firstChild)
-          }
           btn.setAttribute('aria-busy', 'true')
           btn.setAttribute('aria-disabled', 'true')
         } else {
-          if (spinnerEl && spinnerEl.parentNode) {
-            spinnerEl.parentNode.removeChild(spinnerEl)
-          }
           btn.removeAttribute('aria-busy')
           btn.removeAttribute('aria-disabled')
         }
@@ -282,20 +308,9 @@
 
       // Observe loading state mutations
       observe('loading', syncLoadingState)
-      observe('size', () => {
-        if (spinnerEl) {
-          const icon = spinnerEl.querySelector('atoll-icon')
-          if (icon) {
-            const spinnerSizes = {
-              sm: '16',
-              md: '20',
-              lg: '24'
-            }
-            const iconSize = spinnerSizes[state.size] || '20'
-            icon.setAttribute('size', iconSize)
-          }
-        }
-      })
+      observe('spinnerPlacement', syncLoadingState)
+      observe('spinnerVariant', syncLoadingState)
+      observe('size', syncLoadingState)
 
       // Observe accessibility requirements reactively
       observe('ariaLabel', syncAriaLabel)
