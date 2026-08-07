@@ -57,7 +57,7 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
     const textMsg = 'Hello Bob, testing accessibility text message ' + Date.now()
     await alicePage.fill('textarea', textMsg)
     await alicePage.click('[data-testid$="__sendButton"]')
-    await expect(alicePage.locator('atoll-chat-timeline .bubble-sent').first()).toBeVisible({ timeout: 15000 })
+    await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-bubble-sent').first()).toBeVisible({ timeout: 15000 })
 
     // Bob opens the room with Alice
     const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'Alice' }).first()
@@ -68,26 +68,26 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
     // Message type 2: Text Received Message (Bob sends to Alice)
     await bobPage.fill('textarea', 'Hi Alice, receiving text message for contrast audit')
     await bobPage.click('[data-testid$="__sendButton"]')
-    await expect(alicePage.locator('atoll-chat-timeline .bubble-received').first()).toBeVisible({ timeout: 20000 })
+    await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-bubble-received').first()).toBeVisible({ timeout: 20000 })
 
     // Message type 3: Voice / Audio Waveform Player (Alice uploads test.mp3)
     const audioPath = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
     await alicePage.setInputFiles('[data-testid$="__fileInput"]', audioPath)
-    await expect(alicePage.locator('chat-attachment-preview .attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
+    await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
     await alicePage.locator('[data-testid$="sendButton"]').click()
-    await expect(alicePage.locator('atoll-chat-timeline .waveform-player').first()).toBeVisible({ timeout: 60000 })
+    await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-waveform-player').first()).toBeVisible({ timeout: 60000 })
 
     // Message type 4: File Attachment Card (Alice uploads test.doc)
     const filePath = path.resolve('tests/e2e/fixtures/test-files/test.doc')
     await alicePage.setInputFiles('[data-testid$="__fileInput"]', filePath)
-    await expect(alicePage.locator('chat-attachment-preview .attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
+    await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
     await alicePage.locator('[data-testid$="sendButton"]').click()
-    await expect(alicePage.locator('atoll-chat-timeline .file-attachment-container').first()).toBeVisible({ timeout: 60000 })
+    await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-file-attachment').first()).toBeVisible({ timeout: 60000 })
 
     // Message type 5: Link Preview Card (Alice sends link)
     await alicePage.fill('textarea', 'Check out https://example.com for documentation')
     await alicePage.click('[data-testid$="__sendButton"]')
-    await expect(alicePage.locator('atoll-chat-timeline .bubble-sent').last()).toBeVisible({ timeout: 15000 })
+    await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-bubble-sent').last()).toBeVisible({ timeout: 15000 })
 
     // Message type 6: Reaction Pill (Bob reacts to Alice's text message)
     const rowOnBob = bobPage.locator('atoll-chat-timeline-row').filter({ hasText: textMsg })
@@ -179,7 +179,7 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
 
       // Wait for layout/style computation to apply the theme's background color on the file card
       if (selectorId !== 'classic') {
-        const fileCard = alicePage.locator('.file-attachment-container').first()
+        const fileCard = alicePage.locator('.atoll-chat-file-attachment').first()
         await expect(fileCard).not.toHaveCSS('background-color', 'rgb(245, 245, 245)', { timeout: 15000 })
         await expect(fileCard).not.toHaveCSS('background-color', 'rgba(0, 0, 0, 0)', { timeout: 15000 })
       }

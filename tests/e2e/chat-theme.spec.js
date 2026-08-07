@@ -102,6 +102,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
       const headerEl = el.querySelector('.atoll-chat-view-header')
       const inputEl = el.querySelector('.atoll-chat-input-container')
       const fileCardEl = el.querySelector('.atoll-chat-file-attachment')
+      const inputStyle = inputEl ? window.getComputedStyle(inputEl) : null
       return {
         headerBg: headerEl ? window.getComputedStyle(headerEl).getPropertyValue('background-color') : '',
         inputBg: inputStyle ? inputStyle.getPropertyValue('background-color') : '',
