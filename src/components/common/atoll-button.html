@@ -4,6 +4,9 @@
     type="{{ type }}" 
     class="{{ btnClasses }}" 
     disabled="{{ isDisabled }}"
+    aria-label="{{ ariaLabel }}"
+    aria-pressed="{{ ariaPressed }}"
+    title="{{ title }}"
   >
     <!-- Content Slot Container -->
     <span class="atoll-btn-content">
@@ -53,6 +56,10 @@
         default: ''
       },
       text: {
+        type: String,
+        default: ''
+      },
+      title: {
         type: String,
         default: ''
       },
@@ -285,42 +292,25 @@
         }
       }
 
-      // Sync custom aria-label from state to the inner button
-      const syncAriaLabel = () => {
-        if (state.ariaLabel) {
-          btn.setAttribute('aria-label', state.ariaLabel)
-        } else {
-          btn.removeAttribute('aria-label')
-          if (state.iconOnly) {
-            console.warn('[atoll-button] icon-only buttons require an aria-label attribute for accessibility.')
-          }
+      // Icon-only buttons should expose an accessible name — dev-time a11y warning
+      // (a side effect that a getter/template binding can't express).
+      const warnMissingAriaLabel = () => {
+        if (state.iconOnly && !state.ariaLabel) {
+          console.warn('[atoll-button] icon-only buttons require an aria-label attribute for accessibility.')
         }
       }
+      observe('iconOnly', warnMissingAriaLabel)
+      warnMissingAriaLabel()
 
-      // Sync custom aria-pressed from state to the inner button
-      const syncAriaPressed = () => {
-        if (state.ariaPressed) {
-          btn.setAttribute('aria-pressed', state.ariaPressed)
-        } else {
-          btn.removeAttribute('aria-pressed')
-        }
-      }
-
-      // Observe loading state mutations
+      // The loading spinner is imperative DOM (created/destroyed/positioned inside the
+      // <button>), so it can't be a template binding or getter and must be observed.
       observe('loading', syncLoadingState)
       observe('spinnerPlacement', syncLoadingState)
       observe('spinnerVariant', syncLoadingState)
       observe('size', syncLoadingState)
 
-      // Observe accessibility requirements reactively
-      observe('ariaLabel', syncAriaLabel)
-      observe('ariaPressed', syncAriaPressed)
-      observe('iconOnly', syncAriaLabel)
-
       // Initial execution
       syncLoadingState()
-      syncAriaLabel()
-      syncAriaPressed()
     }
   })
 </script>
