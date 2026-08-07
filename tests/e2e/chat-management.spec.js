@@ -18,18 +18,18 @@ test.describe('Chat Management', () => {
       await alicePage.locator('[data-testid$="search-result-bob"]').click()
       await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
-      await expect(alicePage.locator('chat-view')).toBeVisible()
-      await expect(alicePage.locator('chat-view header h6')).toContainText('bob')
+      await expect(alicePage.locator('atoll-chat-view')).toBeVisible()
+      await expect(alicePage.locator('atoll-chat-view header h6')).toContainText('bob')
 
       const aliceMessageText = 'Hello Bob ' + Date.now()
       await alicePage.fill('textarea[placeholder="Type a message..."]', aliceMessageText)
       await expect(alicePage.locator('[data-testid$="__sendButton"]')).toBeEnabled()
       await alicePage.click('[data-testid$="__sendButton"]')
 
-      const aliceMessageRow = alicePage.locator('timeline-row').filter({ hasText: aliceMessageText })
+      const aliceMessageRow = alicePage.locator('atoll-chat-timeline-row').filter({ hasText: aliceMessageText })
       await expect(aliceMessageRow).toBeVisible()
 
-      const aliceStatusContainer = alicePage.locator('chat-view .message-status-container')
+      const aliceStatusContainer = alicePage.locator('atoll-chat-view .atoll-chat-message-status-container')
       await expect(aliceStatusContainer).toBeVisible({ timeout: 20000 })
       await expect(aliceStatusContainer.locator('[data-testid$="status-text"]')).toHaveText('Sent')
 
@@ -37,15 +37,15 @@ test.describe('Chat Management', () => {
       await expect(bobChatListAlice).toBeVisible({ timeout: 30000 })
       await bobChatListAlice.locator('atoll-list-item').click()
 
-      const bobReceivedRow = bobPage.locator('timeline-row').filter({ hasText: aliceMessageText })
+      const bobReceivedRow = bobPage.locator('atoll-chat-timeline-row').filter({ hasText: aliceMessageText })
       await expect(bobReceivedRow).toBeVisible({ timeout: 10000 })
 
       const bobReplyText = 'Hello Alice ' + Date.now()
       await bobPage.fill('textarea[placeholder="Type a message..."]', bobReplyText)
       await bobPage.click('[data-testid$="__sendButton"]')
 
-      await expect(bobPage.locator('timeline-row').filter({ hasText: bobReplyText })).toBeVisible()
-      await expect(alicePage.locator('timeline-row').filter({ hasText: bobReplyText })).toBeVisible({ timeout: 20000 })
+      await expect(bobPage.locator('atoll-chat-timeline-row').filter({ hasText: bobReplyText })).toBeVisible()
+      await expect(alicePage.locator('atoll-chat-timeline-row').filter({ hasText: bobReplyText })).toBeVisible({ timeout: 20000 })
 
       await aliceContext.close()
       await bobContext.close()
@@ -110,7 +110,7 @@ test.describe('Chat Management', () => {
       await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
       await alicePage.locator('[data-testid$="search-result-bob"]').click()
       await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
-      await expect(alicePage.locator('chat-view')).toBeVisible()
+      await expect(alicePage.locator('atoll-chat-view')).toBeVisible()
 
       const room_id = await alicePage.evaluate(() => window.$state.activeSelectionId)
       const bobChatListAlice = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' })
@@ -144,7 +144,7 @@ test.describe('Chat Management', () => {
       await alicePage.locator('[data-testid$="search-result-bob"]').click()
       await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
-      await expect(alicePage.locator('chat-view')).toBeVisible()
+      await expect(alicePage.locator('atoll-chat-view')).toBeVisible()
 
       // Bob's chat list item should be visible for Alice
       const bobListItem = alicePage.locator('chat-list chat-list-item').filter({ hasText: 'bob' }).first()
@@ -236,7 +236,7 @@ test.describe('Chat Management', () => {
       await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
       await page.locator('[data-testid$="search-result-bob"]').click()
       await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
-      await expect(page.locator('chat-view')).toBeVisible()
+      await expect(page.locator('atoll-chat-view')).toBeVisible()
 
       const input = page.locator('textarea[placeholder="Type a message..."]')
       for (let i = 0; i < 30; i++) {
@@ -246,12 +246,12 @@ test.describe('Chat Management', () => {
       }
 
       // Wait for all messages to be rendered
-      await expect(page.locator('timeline-row').last()).toContainText('Persistence message 29', { timeout: 20000 })
+      await expect(page.locator('atoll-chat-timeline-row').last()).toContainText('Persistence message 29', { timeout: 20000 })
 
       // Wait for all message sends/sends-in-flight to complete
-      await expect(page.locator('message-timeline .message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 20000 })
+      await expect(page.locator('atoll-chat-timeline .atoll-chat-message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 20000 })
 
-      const timeline = page.locator('message-timeline .overflow-auto')
+      const timeline = page.locator('atoll-chat-timeline .overflow-auto')
 
       // Scroll to TOP
       await timeline.evaluate(el => el.scrollTop = 0)
@@ -268,7 +268,7 @@ test.describe('Chat Management', () => {
         const data = await page.evaluate(() => {
           const state = window.$state
           return {
-            scrollTop: document.querySelector('message-timeline .overflow-auto')?.scrollTop,
+            scrollTop: document.querySelector('atoll-chat-timeline .overflow-auto')?.scrollTop,
             scrollPositions: state ? state.scrollPositions : undefined,
             activeSelectionId: state ? state.activeSelectionId : undefined
           }

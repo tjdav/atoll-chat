@@ -32,19 +32,19 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
 
     // Attach non-universal video (test.mkv)
     const mkvPath = path.join(TEST_FILES_DIR, 'test.mkv')
-    await alicePage.locator('chat-view [data-testid$="__fileInput"]').setInputFiles(mkvPath)
+    await alicePage.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(mkvPath)
 
     // Verify UI status displays format conversion readiness
     await expect(alicePage.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 60000 })
 
-    await alicePage.fill('chat-view textarea', 'Sending converted video test.mp4')
-    await alicePage.click('chat-view [data-testid$="__sendButton"]')
+    await alicePage.fill('atoll-chat-view textarea', 'Sending converted video test.mp4')
+    await alicePage.click('atoll-chat-view [data-testid$="__sendButton"]')
 
     // Verify Alice's message status turns to Sent
-    await expect(alicePage.locator('chat-view .message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
+    await expect(alicePage.locator('atoll-chat-view .atoll-chat-message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
 
     // Verify Bob receives converted video message ending in .mp4
-    const bobMessageRow = bobPage.locator('timeline-row').filter({ hasText: 'test.mp4' }).last()
+    const bobMessageRow = bobPage.locator('atoll-chat-timeline-row').filter({ hasText: 'test.mp4' }).last()
     await expect(bobMessageRow).toBeVisible({ timeout: 60000 })
 
     await aliceContext.close()
@@ -61,17 +61,17 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
     const tiffPath = path.join(TEST_FILES_DIR, 'test.tiff')
-    await page.locator('chat-view [data-testid$="__fileInput"]').setInputFiles(tiffPath)
+    await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(tiffPath)
 
     await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 60000 })
 
-    await page.fill('chat-view textarea', 'Sending converted image test.webp')
-    await page.click('chat-view [data-testid$="__sendButton"]')
+    await page.fill('atoll-chat-view textarea', 'Sending converted image test.webp')
+    await page.click('atoll-chat-view [data-testid$="__sendButton"]')
 
-    await expect(page.locator('chat-view .message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
+    await expect(page.locator('atoll-chat-view .atoll-chat-message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
 
     // Verify converted .webp image renders in timeline
-    const sentImageRow = page.locator('timeline-row').filter({ hasText: 'test.webp' }).last()
+    const sentImageRow = page.locator('atoll-chat-timeline-row').filter({ hasText: 'test.webp' }).last()
     await expect(sentImageRow).toBeVisible({ timeout: 60000 })
   })
 
@@ -85,17 +85,17 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
     const wavPath = path.join(TEST_FILES_DIR, 'test.wav')
-    await page.locator('chat-view [data-testid$="__fileInput"]').setInputFiles(wavPath)
+    await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(wavPath)
 
     await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 60000 })
 
-    await page.fill('chat-view textarea', 'Sending converted audio test.m4a')
-    await page.click('chat-view [data-testid$="__sendButton"]')
+    await page.fill('atoll-chat-view textarea', 'Sending converted audio test.m4a')
+    await page.click('atoll-chat-view [data-testid$="__sendButton"]')
 
-    await expect(page.locator('chat-view .message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
+    await expect(page.locator('atoll-chat-view .atoll-chat-message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
 
     // Verify converted .m4a audio message sends and renders timeline row
-    const sentAudioRow = page.locator('timeline-row').filter({ hasText: 'test.m4a' }).last()
+    const sentAudioRow = page.locator('atoll-chat-timeline-row').filter({ hasText: 'test.m4a' }).last()
     await expect(sentAudioRow).toBeVisible({ timeout: 60000 })
   })
 

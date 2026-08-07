@@ -146,7 +146,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
     /* Wait for room list to update and room to be selected */
-    await expect(page.locator('chat-view')).toBeVisible()
+    await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     /* Mute Charlie inside the room members database for this testId to assert filtering */
     const membersRes = await request.get(`http://localhost:8091/api/collections/room_members/records?filter=user_id="charlie"`, { headers })
@@ -164,12 +164,12 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     })
 
     /* Send a text message in the room */
-    const chatInput = page.locator('chat-input-text textarea, chat-input textarea, textarea[placeholder*="message"]').first()
+    const chatInput = page.locator('atoll-chat-input-text textarea, atoll-chat-input textarea, textarea[placeholder*="message"]').first()
     await chatInput.fill('Hello push notifications!')
     await chatInput.press('Enter')
 
     /* Confirm message is rendered in timeline */
-    await expect(page.locator('message-timeline')).toContainText('Hello push notifications!')
+    await expect(page.locator('atoll-chat-timeline')).toContainText('Hello push notifications!')
 
     /* Fetch the last dispatched push notification from the mock backend API and assert properties */
     let pushPayload = null
@@ -234,15 +234,15 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
     /* Wait for room list to update and room to be selected */
-    await expect(page.locator('chat-view')).toBeVisible()
+    await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     /* Send a text message in the room */
-    const chatInput = page.locator('chat-input-text textarea, chat-input textarea, textarea[placeholder*="message"]').first()
+    const chatInput = page.locator('atoll-chat-input-text textarea, atoll-chat-input textarea, textarea[placeholder*="message"]').first()
     await chatInput.fill('Prune this stale sub please!')
     await chatInput.press('Enter')
 
     /* Confirm message is instantly rendered in timeline (verifying non-blocking/asynchronous transaction finish) */
-    await expect(page.locator('message-timeline')).toContainText('Prune this stale sub please!')
+    await expect(page.locator('atoll-chat-timeline')).toContainText('Prune this stale sub please!')
 
     /* Wait for self-healing pruning webhook to be called in background and clean Bob's subscription */
     let pruned = false
@@ -271,7 +271,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
     await page.locator('[data-testid$="search-result-bob"]').click()
     await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
-    await expect(page.locator('chat-view')).toBeVisible()
+    await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     const roomId = await page.evaluate(() => window.$state.activeSelectionId)
     expect(roomId).toBeDefined()

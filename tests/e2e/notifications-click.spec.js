@@ -18,9 +18,9 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
     await page.locator('[data-testid$="search-result-bob"]').click()
     await page.locator('[data-testid$="btnCreate"]').click()
-    await expect(page.locator('chat-view')).toBeVisible()
+    await expect(page.locator('atoll-chat-view')).toBeVisible()
 
-    const roomId = await page.locator('chat-view').getAttribute('data-room-id') || await page.evaluate(() => window.$state.activeSelectionId)
+    const roomId = await page.locator('atoll-chat-view').getAttribute('data-room-id') || await page.evaluate(() => window.$state.activeSelectionId)
     expect(roomId).toBeDefined()
 
     await page.locator('[data-testid$="profileBtn"]').click()
@@ -60,7 +60,7 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     const focusCalled = await page.evaluate(() => window.__window_focused__)
     expect(focusCalled).toBe(true)
 
-    await expect(page.locator('chat-view')).toBeVisible({ timeout: 5000 })
+    await expect(page.locator('atoll-chat-view')).toBeVisible({ timeout: 5000 })
     await expect(page.locator('settings-main')).not.toBeVisible()
   })
 
@@ -74,7 +74,7 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
     await page.locator('[data-testid$="search-result-bob"]').click()
     await page.locator('[data-testid$="btnCreate"]').click()
-    await expect(page.locator('chat-view')).toBeVisible()
+    await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     const roomId = await page.evaluate(() => window.$state.activeSelectionId)
     expect(roomId).toBeDefined()
@@ -83,10 +83,10 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     const chatInput = page.getByPlaceholder('Type a message...')
     await chatInput.fill('Cold boot test message')
     await chatInput.press('Enter')
-    await expect(page.locator('message-timeline')).toContainText('Cold boot test message')
+    await expect(page.locator('atoll-chat-timeline')).toContainText('Cold boot test message')
 
     // Wait until the message has been fully synced and assigned its database ID
-    const lastRow = page.locator('timeline-row').last()
+    const lastRow = page.locator('atoll-chat-timeline-row').last()
     await expect(lastRow).toHaveAttribute('data-message-id', /.+/)
     const messageId = await lastRow.getAttribute('data-message-id')
 
@@ -112,7 +112,7 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
 
     // Wait for the app-layout/chats view to load, and verify navigation & message visibility
     await expect(page.locator('app-layout')).toBeVisible()
-    await expect(page.locator('chat-view')).toBeVisible({ timeout: 10000 })
-    await expect(page.locator(`timeline-row[data-message-id="${messageId}"]`)).toBeVisible()
+    await expect(page.locator('atoll-chat-view')).toBeVisible({ timeout: 10000 })
+    await expect(page.locator(`atoll-chat-timeline-row[data-message-id="${messageId}"]`)).toBeVisible()
   })
 })

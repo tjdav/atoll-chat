@@ -28,25 +28,25 @@ test.describe('Media & Attachments', () => {
       const files = [
         {
           n: 'test.png',
-          s: 'timeline-item-media img'
+          s: 'atoll-chat-timeline-item-media img'
         },
         {
           n: 'test.mp4',
-          s: 'timeline-item-media img'
+          s: 'atoll-chat-timeline-item-media img'
         },
         {
           n: 'test.docx',
-          s: 'timeline-item-file'
+          s: 'atoll-chat-timeline-item-file'
         }
       ]
       for (const f of files) {
         const fp = path.resolve(`tests/e2e/fixtures/test-files/${f.n}`)
-        await alicePage.locator('chat-view [data-testid$="__fileInput"]').setInputFiles(fp)
+        await alicePage.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(fp)
         const cap = `S ${f.n}`
-        await alicePage.fill('chat-view textarea', cap)
-        await alicePage.click('chat-view [data-testid$="__sendButton"]')
-        await expect(alicePage.locator('chat-view .message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
-        const row = bobPage.locator('timeline-row').filter({ hasText: f.n }).last()
+        await alicePage.fill('atoll-chat-view textarea', cap)
+        await alicePage.click('atoll-chat-view [data-testid$="__sendButton"]')
+        await expect(alicePage.locator('atoll-chat-view .atoll-chat-message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
+        const row = bobPage.locator('atoll-chat-timeline-row').filter({ hasText: f.n }).last()
         await expect(row).toBeVisible({ timeout: 60000 })
         await expect(row.locator(f.s).first()).toBeVisible({ timeout: 30000 })
       }
@@ -64,7 +64,7 @@ test.describe('Media & Attachments', () => {
       await page.setInputFiles('[data-testid$="__fileInput"]', vp)
       await expect(page.locator('chat-attachment-preview .x-small.text-muted')).toContainText('Ready to send', { timeout: 45000 })
       await page.locator('[data-testid$="sendButton"]').click()
-      await expect(page.locator('timeline-row img').first()).toBeVisible({ timeout: 15000 })
+      await expect(page.locator('atoll-chat-timeline-row img').first()).toBeVisible({ timeout: 15000 })
     })
 
     test('custom video cover selection and removal', async ({ page, loginCustomPage }) => {
@@ -112,10 +112,10 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid$="sendButton"]').click()
 
       // Wait for the message status to be 'Sent'
-      await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
 
-      // Verify that timeline-item-voice is rendered
-      const voicePlayer = page.locator('timeline-item-voice')
+      // Verify that atoll-chat-timeline-item-voice is rendered
+      const voicePlayer = page.locator('atoll-chat-timeline-item-voice')
       await expect(voicePlayer).toBeVisible({ timeout: 15000 })
 
       // Verify that the custom waveform player is visible (instead of standard <audio controls>)
@@ -140,7 +140,7 @@ test.describe('Media & Attachments', () => {
       for (let i = 0; i < 2; i++) {
         await page.setInputFiles('[data-testid$="__fileInput"]', ip)
         await page.click('[data-testid$="__sendButton"]')
-        await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 20000 })
+        await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 20000 })
       }
       await page.locator('[data-testid="nav-sidebar-0__btnPictures"]').click()
       const cards = page.locator('atoll-media-card')
@@ -153,7 +153,7 @@ test.describe('Media & Attachments', () => {
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
       await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
-      await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 20000 })
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 20000 })
 
       await page.locator('[data-testid="nav-sidebar-0__btnPictures"]').click()
 
@@ -163,7 +163,7 @@ test.describe('Media & Attachments', () => {
 
       await page.locator('[data-testid="nav-sidebar-0__btnChats"]').click()
 
-      const chatImg = page.locator('timeline-item-media img').first()
+      const chatImg = page.locator('atoll-chat-timeline-item-media img').first()
       await expect(chatImg).toBeVisible()
       await chatImg.click()
 
@@ -176,11 +176,11 @@ test.describe('Media & Attachments', () => {
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
       await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
-      const img = page.locator('timeline-item-media img').first()
+      const img = page.locator('atoll-chat-timeline-item-media img').first()
       await expect(img).toBeVisible({ timeout: 15000 })
       await img.click()
       await page.click('image-viewer jump-to-chat button')
-      await expect(page.locator('chat-view')).toBeVisible()
+      await expect(page.locator('atoll-chat-view')).toBeVisible()
     })
 
     test('media preview hover overlay and max-width', async ({ page }) => {
@@ -188,7 +188,7 @@ test.describe('Media & Attachments', () => {
       await page.setInputFiles('[data-testid$="__fileInput"]', ip)
       await page.click('[data-testid$="__sendButton"]')
 
-      const img = page.locator('timeline-item-media img').first()
+      const img = page.locator('atoll-chat-timeline-item-media img').first()
       await expect(img).toBeVisible({ timeout: 30000 })
 
       const container = page.locator('.media-preview-container').first()
@@ -209,7 +209,7 @@ test.describe('Media & Attachments', () => {
       const dp = path.resolve('tests/e2e/fixtures/test-files/test.txt')
       await page.setInputFiles('[data-testid$="__fileInput"]', dp)
       await page.click('[data-testid$="__sendButton"]')
-      await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 30000 })
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 30000 })
       await page.locator('[data-testid="nav-sidebar-0__btnDocuments"]').click()
       await expect(page.locator('[data-testid$="__document-list-group"] .atoll-list-item').filter({ hasText: 'test.txt' })).toBeVisible()
 
@@ -251,7 +251,7 @@ test.describe('Media & Attachments', () => {
       await page.click('[data-testid$="__sendButton"]')
 
       // Wait for the message status to be 'Sent'
-      await expect(page.locator('.message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
 
       await page.locator('[data-testid="nav-sidebar-0__btnMusic"]').click()
       await page.locator('music-list music-list-item').first().click()

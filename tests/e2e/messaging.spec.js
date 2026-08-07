@@ -66,9 +66,9 @@ test.describe('Messaging Features', () => {
         await alicePage.waitForTimeout(100)
       }
       // Ensure messages are rendered
-      await expect(alicePage.locator('timeline-row').last()).toContainText('Msg 24', { timeout: 20000 })
+      await expect(alicePage.locator('atoll-chat-timeline-row').last()).toContainText('Msg 24', { timeout: 20000 })
 
-      const timeline = alicePage.locator('message-timeline div.overflow-auto').first()
+      const timeline = alicePage.locator('atoll-chat-timeline div.overflow-auto').first()
       await timeline.evaluate(el => el.scrollTop = 0)
       // Wait for debounce and scroll to settle
       await alicePage.waitForTimeout(1000)
@@ -93,7 +93,7 @@ test.describe('Messaging Features', () => {
       await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
       await page.locator('[data-testid$="search-result-bob"]').click()
       await page.locator('[data-testid$="btnCreate"]').click()
-      await expect(page.locator('chat-view')).toBeVisible()
+      await expect(page.locator('atoll-chat-view')).toBeVisible()
 
       await page.evaluate(async () => {
         const room_id = window.$state.activeSelectionId
@@ -127,8 +127,8 @@ test.describe('Messaging Features', () => {
           message: msg1
         })
       })
-      await expect(page.locator('timeline-row').first()).toContainText('Old')
-      await expect(page.locator('timeline-row').last()).toContainText('New')
+      await expect(page.locator('atoll-chat-timeline-row').first()).toContainText('Old')
+      await expect(page.locator('atoll-chat-timeline-row').last()).toContainText('New')
     })
 
     test('message bubble roundness strategy', async ({ page, loginApp }) => {
@@ -138,7 +138,7 @@ test.describe('Messaging Features', () => {
       await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
       await page.locator('[data-testid$="search-result-bob"]').click()
       await page.locator('[data-testid$="btnCreate"]').click()
-      await expect(page.locator('chat-view')).toBeVisible()
+      await expect(page.locator('atoll-chat-view')).toBeVisible()
 
       // Send 3 consecutive text messages
       const textarea = page.locator('textarea[placeholder="Type a message..."]')
@@ -154,7 +154,7 @@ test.describe('Messaging Features', () => {
       await page.keyboard.press('Enter')
       await page.waitForTimeout(1000)
 
-      const rows = page.locator('timeline-row')
+      const rows = page.locator('atoll-chat-timeline-row')
       await expect(rows).toHaveCount(3)
 
       // The first should be is-first-in-block="true" and is-last-in-block="false"
@@ -182,7 +182,7 @@ test.describe('Messaging Features', () => {
       const md = '# H1\n## H2\n**B**\n*I*\n- L\n> Q\n`C`\n\n| T | H |\n|---|---|\n| R | V |\n\n[G](https://google.com)'
       await page.fill('textarea', md)
       await page.click('[data-testid$="__sendButton"]')
-      const row = page.locator('timeline-row').filter({ hasText: 'H1' })
+      const row = page.locator('atoll-chat-timeline-row').filter({ hasText: 'H1' })
       await expect(row.locator('h1')).toHaveText('H1')
       await expect(row.locator('h2')).toHaveText('H2')
       await expect(row.locator('strong')).toHaveText('B')
@@ -206,7 +206,7 @@ test.describe('Messaging Features', () => {
       await page.locator('ui-link-preview-input').first().locator('button[title="Dismiss preview"]').click()
       await expect(page.locator('ui-link-preview-input')).toHaveCount(1)
       await page.click('[data-testid$="__sendButton"]')
-      await expect(page.locator('timeline-item-link')).toHaveCount(1)
+      await expect(page.locator('atoll-chat-timeline-item-link')).toHaveCount(1)
     })
   })
 
@@ -229,7 +229,7 @@ test.describe('Messaging Features', () => {
       const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChat).toBeVisible({ timeout: 30000 })
       await bobChat.locator('atoll-list-item').click()
-      const row = bobPage.locator('timeline-row').filter({ hasText: msg })
+      const row = bobPage.locator('atoll-chat-timeline-row').filter({ hasText: msg })
       await expect(row).toBeVisible({ timeout: 20000 })
       const uuid = await row.getAttribute('data-local-uuid')
       await bobPage.evaluate(({ uuid }) => {
@@ -241,10 +241,10 @@ test.describe('Messaging Features', () => {
           }
         })
       }, { uuid })
-      await expect(row.locator('.reaction-consolidated-pill')).toBeVisible({ timeout: 15000 })
-      const alicePill = alicePage.locator('timeline-row').filter({ hasText: msg }).locator('.reaction-consolidated-pill')
+      await expect(row.locator('.atoll-chat-reaction-consolidated-pill')).toBeVisible({ timeout: 15000 })
+      const alicePill = alicePage.locator('atoll-chat-timeline-row').filter({ hasText: msg }).locator('.atoll-chat-reaction-consolidated-pill')
       await alicePill.click()
-      await expect(alicePill.locator('.reaction-count')).toHaveText('2', { timeout: 15000 })
+      await expect(alicePill.locator('.atoll-chat-reaction-count')).toHaveText('2', { timeout: 15000 })
       await aliceContext.close()
       await bobContext.close()
     })
@@ -318,7 +318,7 @@ test.describe('Messaging Features', () => {
       await page.locator('[data-testid$="search-result-bob"]').click()
       await page.locator('[data-testid$="btnCreate"]').click()
 
-      await expect(page.locator('chat-view')).toBeVisible({ timeout: 15000 })
+      await expect(page.locator('atoll-chat-view')).toBeVisible({ timeout: 15000 })
 
       const textarea = page.locator('textarea[placeholder="Type a message..."]')
       await expect(textarea).toBeVisible()
@@ -355,7 +355,7 @@ test.describe('Messaging Features', () => {
       await page.locator('[data-testid$="search-result-bob"]').click()
       await page.locator('[data-testid$="btnCreate"]').click()
 
-      await expect(page.locator('chat-view')).toBeVisible({ timeout: 15000 })
+      await expect(page.locator('atoll-chat-view')).toBeVisible({ timeout: 15000 })
 
       // Send an initial online message to trigger and cache all dynamic components
       const textarea = page.locator('textarea[placeholder="Type a message..."]')
@@ -379,12 +379,12 @@ test.describe('Messaging Features', () => {
       await page.keyboard.press('Enter')
 
       // Verify the message immediately appears on the timeline with the "pending" visual treatment (opacity-75 class)
-      const lastRow = page.locator('timeline-row').last()
+      const lastRow = page.locator('atoll-chat-timeline-row').last()
       await expect(lastRow).toContainText('Offline message!')
       await expect(lastRow).toHaveClass(/opacity-75/)
 
       // Verify the global status indicator shows a clock icon
-      const statusIcon = page.locator('message-timeline .message-status-container atoll-icon')
+      const statusIcon = page.locator('atoll-chat-timeline .atoll-chat-message-status-container atoll-icon')
       await expect(statusIcon).toHaveAttribute('name', 'clock')
 
       // Transition back to online state

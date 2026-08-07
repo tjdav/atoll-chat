@@ -40,10 +40,10 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
     await bobChat.click()
 
     const fp = path.resolve('tests/e2e/fixtures/test-files/test.png')
-    await alicePage.locator('chat-view [data-testid$="fileInput"]').setInputFiles(fp)
+    await alicePage.locator('atoll-chat-view [data-testid$="fileInput"]').setInputFiles(fp)
 
-    await alicePage.fill('chat-view textarea', 'Sending heavy image P2P')
-    await alicePage.click('chat-view [data-testid$="sendButton"]')
+    await alicePage.fill('atoll-chat-view textarea', 'Sending heavy image P2P')
+    await alicePage.click('atoll-chat-view [data-testid$="sendButton"]')
 
     // Bob should see the consent modal appear
     const acceptBtn = bobPage.locator('[data-testid*="consent-btn-accept"]')
@@ -111,10 +111,10 @@ test.describe('P2P WebRTC Media Transfer Fallback', () => {
 
     // Attach heavy file in Group Chat
     const fp = path.resolve('tests/e2e/fixtures/test-files/test.png')
-    await alicePage.locator('chat-view [data-testid$="fileInput"]').setInputFiles(fp)
+    await alicePage.locator('atoll-chat-view [data-testid$="fileInput"]').setInputFiles(fp)
 
-    await alicePage.fill('chat-view textarea', 'Sending heavy image in Group')
-    await alicePage.click('chat-view [data-testid$="sendButton"]')
+    await alicePage.fill('atoll-chat-view textarea', 'Sending heavy image in Group')
+    await alicePage.click('atoll-chat-view [data-testid$="sendButton"]')
 
     // Alice should see the reroute modal and Bob in the list
     const bobRerouteOption = alicePage.locator('[data-testid*="reroute-user-bob"]')

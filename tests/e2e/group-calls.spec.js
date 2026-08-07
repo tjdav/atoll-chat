@@ -53,19 +53,19 @@ test.describe.serial('Group Audio and Video Calls', () => {
       }
 
       // Assert Alice has entered group room
-      await expect(alicePage.locator('chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
+      await expect(alicePage.locator('atoll-chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
 
       // Assert and open group room for Bob
       const bobGroupChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: groupRoomName }).first()
       await expect(bobGroupChat).toBeVisible({ timeout: 15000 })
       await bobGroupChat.click()
-      await expect(bobPage.locator('chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
+      await expect(bobPage.locator('atoll-chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
 
       // Assert and open group room for Charlie
       const charlieGroupChat = charliePage.locator('chat-list chat-list-item').filter({ hasText: groupRoomName }).first()
       await expect(charlieGroupChat).toBeVisible({ timeout: 15000 })
       await charlieGroupChat.click()
-      await expect(charliePage.locator('chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
+      await expect(charliePage.locator('atoll-chat-view header h6')).toContainText(groupRoomName, { timeout: 15000 })
     })
   })
 
@@ -204,11 +204,11 @@ test.describe.serial('Group Audio and Video Calls', () => {
 
     await test.step('Alice sends text message in group chat while in PiP mode', async () => {
       const msg = 'Group call active! Message from PiP.'
-      await alicePage.fill('chat-input textarea', msg)
+      await alicePage.fill('atoll-chat-input textarea', msg)
       await alicePage.keyboard.press('Enter')
-      await expect(alicePage.locator('message-timeline')).toContainText(msg)
-      await expect(bobPage.locator('message-timeline')).toContainText(msg)
-      await expect(charliePage.locator('message-timeline')).toContainText(msg)
+      await expect(alicePage.locator('atoll-chat-timeline')).toContainText(msg)
+      await expect(bobPage.locator('atoll-chat-timeline')).toContainText(msg)
+      await expect(charliePage.locator('atoll-chat-timeline')).toContainText(msg)
     })
 
     await test.step('Alice expands back from PiP to full video overlay and ends call', async () => {

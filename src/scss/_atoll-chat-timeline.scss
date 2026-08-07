@@ -108,7 +108,7 @@
   box-shadow: var(--#{$prefix}box-shadow-sm);
 }
 
-.message-status-container {
+.atoll-chat-message-status-container {
   margin-top: -12px;
   margin-bottom: 8px;
   color: var(--atoll-chat-sent-status-color, var(--atoll-chat-timestamp-color)) !important;

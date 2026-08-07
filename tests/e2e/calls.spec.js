@@ -108,12 +108,12 @@ test.describe.serial('Calls', () => {
         await alicePage.locator('[data-testid$="search-result-bob"]').click()
         await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       }
-      await expect(alicePage.locator('chat-view header h6')).toContainText('bob', { timeout: 15000 })
+      await expect(alicePage.locator('atoll-chat-view header h6')).toContainText('bob', { timeout: 15000 })
 
       const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChat).toBeVisible({ timeout: 15000 })
       await bobChat.click()
-      await expect(bobPage.locator('chat-view header h6')).toContainText('alice', { timeout: 15000 })
+      await expect(bobPage.locator('atoll-chat-view header h6')).toContainText('alice', { timeout: 15000 })
     })
   })
 
@@ -124,7 +124,7 @@ test.describe.serial('Calls', () => {
 
   test('Audio Call between Alice and Bob', async () => {
     await test.step('Alice initiates audio call', async () => {
-      await alicePage.locator('[data-testid="chat-view-0__btnAudioCall"]').click()
+      await alicePage.locator('[data-testid$="btnAudioCall"]').click()
     })
 
     await test.step('Bob receives incoming audio call overlay', async () => {
@@ -147,8 +147,8 @@ test.describe.serial('Calls', () => {
       await expect(bobPage.locator('video-grid .grid-tile').first()).toBeVisible({ timeout: 10000 })
 
       // Verify that call status is displayed in the chat view header
-      await expect(alicePage.locator('chat-view header small')).toHaveText('In Call')
-      await expect(bobPage.locator('chat-view header small')).toHaveText('In Call')
+      await expect(alicePage.locator('atoll-chat-view header small')).toHaveText('In Call')
+      await expect(bobPage.locator('atoll-chat-view header small')).toHaveText('In Call')
     })
 
     const aliceAudioBtn = alicePage.getByRole('button', { name: 'Mute Microphone' })
@@ -195,19 +195,19 @@ test.describe.serial('Calls', () => {
       await expect(bobPage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
 
       // Verify that call status reverts back to Private
-      await expect(alicePage.locator('chat-view header small')).toHaveText('Private')
-      await expect(bobPage.locator('chat-view header small')).toHaveText('Private')
+      await expect(alicePage.locator('atoll-chat-view header small')).toHaveText('Private')
+      await expect(bobPage.locator('atoll-chat-view header small')).toHaveText('Private')
 
       // Verify timeline system messages for calls exist
-      await expect(alicePage.locator('timeline-system-message').filter({ hasText: 'Audio Call' })).toBeVisible()
-      await expect(alicePage.locator('timeline-system-message').filter({ hasText: 'Call joined' })).toBeVisible()
-      await expect(alicePage.locator('timeline-system-message').filter({ hasText: 'Call ended' })).toBeVisible()
+      await expect(alicePage.locator('atoll-chat-timeline-system-message').filter({ hasText: 'Audio Call' })).toBeVisible()
+      await expect(alicePage.locator('atoll-chat-timeline-system-message').filter({ hasText: 'Call joined' })).toBeVisible()
+      await expect(alicePage.locator('atoll-chat-timeline-system-message').filter({ hasText: 'Call ended' })).toBeVisible()
     })
   })
 
   test('Video Call with PiP and Messaging', async () => {
     await test.step('Alice initiates video call', async () => {
-      await alicePage.locator('[data-testid="chat-view-0__btnVideoCall"]').click()
+      await alicePage.locator('[data-testid$="btnVideoCall"]').click()
     })
 
     await test.step('Bob receives incoming video call overlay and accepts', async () => {
@@ -334,9 +334,9 @@ test.describe.serial('Calls', () => {
 
     await test.step('Alice sends text message while in PiP', async () => {
       const msg = 'Still here in PiP!'
-      await alicePage.fill('chat-input textarea', msg)
+      await alicePage.fill('atoll-chat-input textarea', msg)
       await alicePage.keyboard.press('Enter')
-      await expect(alicePage.locator('message-timeline')).toContainText(msg)
+      await expect(alicePage.locator('atoll-chat-timeline')).toContainText(msg)
     })
 
     await test.step('Alice expands back to full screen from PiP and ends call', async () => {
@@ -435,11 +435,11 @@ test.describe.serial('Calls', () => {
       const bob2Chat = bob2Page.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bob2Chat).toBeVisible({ timeout: 15000 })
       await bob2Chat.click()
-      await expect(bob2Page.locator('chat-view header h6')).toContainText('alice', { timeout: 15000 })
+      await expect(bob2Page.locator('atoll-chat-view header h6')).toContainText('alice', { timeout: 15000 })
     })
 
     await test.step('Alice initiates audio call', async () => {
-      await alicePage.locator('[data-testid="chat-view-0__btnAudioCall"]').click()
+      await alicePage.locator('[data-testid$="btnAudioCall"]').click()
     })
 
     await test.step('Both Bob devices receive incoming call overlay', async () => {
@@ -479,7 +479,7 @@ test.describe.serial('Calls', () => {
 
   test('In-Call Device Settings, Effects, and Loss Fail-Safe', async () => {
     await test.step('Alice initiates video call', async () => {
-      await alicePage.locator('[data-testid="chat-view-0__btnVideoCall"]').click()
+      await alicePage.locator('[data-testid$="btnVideoCall"]').click()
     })
 
     await test.step('Bob receives incoming video call overlay and accepts', async () => {

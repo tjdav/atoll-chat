@@ -15,7 +15,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     await expect(page.locator('atoll-chat-view')).toBeVisible()
   })
 
-  test('should apply themes and verify chat-view header, chat-input, file card, and date separator component styling uniformity', async ({ page }) => {
+  test('should apply themes and verify atoll-chat-view header, atoll-chat-input, file card, and date separator component styling uniformity', async ({ page }) => {
     // Populate timeline with sent text, file attachment, and date separator
     await page.fill('textarea', 'Hello theme test message')
     await page.keyboard.press('Enter')
@@ -33,7 +33,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     await roomSettingsBtn.click()
 
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
-    const chatContainer = page.locator('[data-testid$="chat-view-container"]')
+    const chatContainer = page.locator('[data-testid$="atoll-chat-view-container"]')
     const fileCard = page.locator('.atoll-chat-file-attachment').first()
     const fileName = fileCard.locator('.atoll-chat-file-name')
     const fileSize = fileCard.locator('.atoll-chat-file-size')
@@ -81,7 +81,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     expect(componentStyles.oceanBgImage).toContain('gradient')
     expect(componentStyles.headerBlur).toContain('blur(16px)')
     expect(componentStyles.inputBlur).toContain('blur(16px)')
-    // Verify chat-input background equals chat-view-header background
+    // Verify atoll-chat-input background equals atoll-chat-view-header background
     expect(componentStyles.inputBg).toBe(componentStyles.headerBg)
     // Verify date separator container is transparent (no block background)
     expect(['rgba(0, 0, 0, 0)', 'transparent']).toContain(componentStyles.dateSepBg)
@@ -129,7 +129,7 @@ test.describe('Chat View Theme System & Component Verification E2E', () => {
     await roomSettingsBtn.click()
 
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
-    const chatContainer = page.locator('[data-testid$="chat-view-container"]')
+    const chatContainer = page.locator('[data-testid$="atoll-chat-view-container"]')
 
     // Open Theme selector modal
     await page.locator('[data-testid$="btnChangeTheme"]').click()

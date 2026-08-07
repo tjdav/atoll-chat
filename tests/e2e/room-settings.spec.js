@@ -13,8 +13,8 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.locator('[data-testid$="search-result-bob"]').click()
     await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
 
-    await expect(page.locator('chat-view')).toBeVisible()
-    await expect(page.locator('chat-view header h6')).toContainText('bob')
+    await expect(page.locator('atoll-chat-view')).toBeVisible()
+    await expect(page.locator('atoll-chat-view header h6')).toContainText('bob')
   })
 
   test('should open and close the native Bootstrap Offcanvas drawer smoothly', async ({ page }) => {
@@ -91,7 +91,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await expect(themeModal).not.toBeVisible()
 
     // Verify main chat view container has data-theme="ocean" applied
-    const chatContainer = page.locator('[data-testid$="chat-view-container"]')
+    const chatContainer = page.locator('[data-testid$="atoll-chat-view-container"]')
     await expect(chatContainer).toHaveAttribute('data-theme', 'ocean')
   })
 
@@ -122,7 +122,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
     // Nickname is updated in room details text & chat view header!
     await expect(page.locator('[data-testid$="roomDetailsOffcanvas"] [ref$="roomNameText"]')).toContainText('Bobby')
-    await expect(page.locator('chat-view header h6')).toContainText('Bobby')
+    await expect(page.locator('atoll-chat-view header h6')).toContainText('Bobby')
   })
 
   test('should support privacy controls: read receipts and notifications mute toggle', async ({ page }) => {
@@ -166,7 +166,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
   test('should update is_typing in room_member_states when typing in message textarea', async ({ page, request }) => {
     // Fill text in textarea
-    const chatInput = page.locator('chat-input-text textarea, chat-input textarea, textarea[placeholder*="message"]').first()
+    const chatInput = page.locator('atoll-chat-input-text textarea, atoll-chat-input textarea, textarea[placeholder*="message"]').first()
     await chatInput.fill('Hi Bob, I am typing!')
 
     // Wait for the state to propagate to server

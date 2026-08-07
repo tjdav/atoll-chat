@@ -17,7 +17,7 @@ test.describe('Voice Recording', () => {
 
   test('should record and send a voice message', async ({ page }) => {
     // Click mic button to start recording mode
-    await page.locator('[data-testid="chat-input-text-0__btn-mic-toggle"]').click()
+    await page.locator('[data-testid="atoll-chat-input-text-0__btn-mic-toggle"]').click()
 
     // Check if recorder is visible
     await expect(page.locator('chat-voice-recorder')).toBeVisible()
@@ -32,6 +32,6 @@ test.describe('Voice Recording', () => {
     await expect(page.locator('chat-voice-recorder')).not.toBeVisible()
 
     // verify message appeared in timeline with interactive waveform
-    await expect(page.locator('message-timeline .timeline-row-container .waveform-player').last()).toBeVisible({ timeout: 30000 })
+    await expect(page.locator('atoll-chat-timeline .atoll-chat-timeline-row-container .waveform-player').last()).toBeVisible({ timeout: 30000 })
   })
 })

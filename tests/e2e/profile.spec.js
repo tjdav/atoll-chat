@@ -337,17 +337,17 @@ test.describe('Atoll Profile Component', () => {
   })
 
   test('should support grouped overlapping style inside timeline seenIndicators', async ({ page }) => {
-    // Inject a timeline-row element with seenUserIds / seenAvatars to verify its inner structure
+    // Inject a atoll-chat-timeline-row element with seenUserIds / seenAvatars to verify its inner structure
     await page.evaluate(() => {
       document.body.innerHTML = ''
-      const row = document.createElement('timeline-row')
-      row.id = 'test-timeline-row'
+      const row = document.createElement('atoll-chat-timeline-row')
+      row.id = 'test-atoll-chat-timeline-row'
       row.setAttribute('is-sent', 'true')
       row.setAttribute('seen-user-ids', 'uid1,uid2')
       document.body.appendChild(row)
     })
 
-    const row = page.locator('#test-timeline-row')
+    const row = page.locator('#test-atoll-chat-timeline-row')
     await expect(row).toBeVisible()
 
     // Query seen indicators container
@@ -365,7 +365,7 @@ test.describe('Atoll Profile Component', () => {
 
     // Now test a received message row (should justify-content-start)
     await page.evaluate(() => {
-      const row = document.getElementById('test-timeline-row')
+      const row = document.getElementById('test-atoll-chat-timeline-row')
       row.setAttribute('is-sent', 'false')
     })
 
