@@ -277,7 +277,7 @@ const run = async () => {
       console.log('Starting local PocketBase binary on port 8090...')
       pbProcess = spawn(localBinary, [
         'serve',
-        '--http=127.0.0.1:8090',
+        '--http=0.0.0.0:8090',
         '--dir=pb_data',
         '--hooksDir=database/pb_hooks',
         '--migrationsDir=database/pb_migrations'
