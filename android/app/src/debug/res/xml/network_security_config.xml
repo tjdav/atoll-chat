@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+    <!-- Debug-only override (src/debug): also trust the bundled dev CA so the
+         locally self-signed HTTPS backend (https://192.168.1.64:3443) works on
+         device. This file is packaged ONLY into debug builds; release builds
+         use src/main and do NOT trust the dev CA. -->
+    <base-config cleartextTrafficPermitted="true">
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+            <certificates src="@raw/dev_cert" />
+        </trust-anchors>
+    </base-config>
+    <debug-overrides>
+        <trust-anchors>
+            <certificates src="system" />
+            <certificates src="user" />
+            <certificates src="@raw/dev_cert" />
+        </trust-anchors>
+    </debug-overrides>
+</network-security-config>

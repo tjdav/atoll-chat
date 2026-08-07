@@ -322,11 +322,24 @@ export default function pocketbase (options = {}) {
     },
     client: {
       config: {
-        url
+        url,
+        appUrl: options.appUrl || ''
       },
       context: async (pluginContext) => {
         const { default: PocketBase } = await import('pocketbase')
-        const pb = new PocketBase(pluginContext.config.url)
+        let targetUrl = pluginContext.config.url || '/'
+        const isNative = typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()
+
+        if (isNative) {
+          const appUrl = pluginContext.config.appUrl
+          if (appUrl) {
+            targetUrl = appUrl
+          } else if (targetUrl === '/' || targetUrl.startsWith('http:') || targetUrl.includes('localhost') || targetUrl.includes('127.0.0.1')) {
+            targetUrl = targetUrl.replace(/^http:\/\//, 'https://').replace(/:8090$/, ':3443')
+          }
+        }
+
+        const pb = new PocketBase(targetUrl)
         pb.autoCancellation(false)
 
         const originalBuildURL = pb.buildURL.bind(pb)

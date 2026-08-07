@@ -29,10 +29,19 @@ import bootstrapScriptPlugin from './src/plugins/bootstrap-script-plugin.js'
 import pkg from './package.json' with { type: 'json' }
 import os from 'os'
 
+// Load .env for build-time configuration
+try {
+  process.loadEnvFile('.env')
+} catch {
+}
+
 function getLocalIpAddress () {
   const interfaces = os.networkInterfaces()
   for (const name of Object.keys(interfaces)) {
-    if (name.includes('docker') || name.includes('br-') || name.includes('veth')) continue
+    if (name.includes('docker') || name.includes('br-') || name.includes('veth')) {
+      continue
+    }
+
     for (const iface of interfaces[name]) {
       if (iface.family === 'IPv4' && !iface.internal) {
         return iface.address
@@ -54,7 +63,10 @@ export default defineConfig({
       localIceServer: process.env.LOCAL_ICE_SERVER,
       notificationSoundDebounceMs: process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS ? parseInt(process.env.ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS, 10) : 1000
     }),
-    pocketbasePlugin({ baseUrl: pocketbaseBaseUrl }),
+    pocketbasePlugin({
+      baseUrl: pocketbaseBaseUrl,
+      appUrl: process.env.ATOLL_APP_URL || ''
+    }),
     eventBus,
     statePlugin({
       initialState: {
