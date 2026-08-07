@@ -41,12 +41,63 @@ export async function loadComponent (componentName, mocks = {}) {
   // Recursively load and register dependencies
   if (spec.dependencies && Array.isArray(spec.dependencies)) {
     for (const dep of spec.dependencies) {
-      await loadComponent(dep, mocks)
+      try {
+        await loadComponent(dep, mocks)
+      } catch (err) {
+        // Ignore third-party non-Coralite custom elements (e.g. altcha-widget)
+      }
     }
   }
 
   // Create and define client context getter to expose global plugins/stores (like $state, pocketbase)
   const defaultMocks = {
+    utils: {
+      $url: {
+        normalizeUrl: (url) => url
+      },
+      $time: {
+        formatRelative: () => ''
+      }
+    },
+    eventBus: {
+      $bus: {
+        emit: () => {},
+        on: () => {},
+        off: () => {}
+      }
+    },
+    router: {
+      $url: {
+        normalizeUrl: (url) => url
+      }
+    },
+    deeplink: {
+      $url: {
+        normalizeUrl: (url) => url
+      }
+    },
+    deeplinkManifest: {
+      $url: {
+        normalizeUrl: (url) => url
+      }
+    },
+    sync: {
+      $sync: {
+        startSubscriptions: async () => {},
+        stopSubscriptions: async () => {}
+      }
+    },
+    realtimeSync: {
+      $sync: {
+        startSubscriptions: async () => {},
+        stopSubscriptions: async () => {}
+      }
+    },
+    cryptoWorker: {
+      $worker: {
+        execute: async () => {}
+      }
+    },
     globalStore: {
       $state: {
         isAuthenticated: false,
@@ -54,14 +105,15 @@ export async function loadComponent (componentName, mocks = {}) {
         currentUser: null,
         users: {},
         subscribe: (_key, _cb) => {
-          // No-op fallback
-          return () => {
-          }
+          return () => {}
         }
       }
     },
     pocketbase: {
-      pb: null,
+      pb: {
+        baseUrl: '/',
+        buildURL: (path) => path
+      },
       files: {
         getUrl: () => '',
         getURL: () => ''

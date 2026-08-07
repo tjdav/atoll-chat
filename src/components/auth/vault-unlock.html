@@ -7,8 +7,7 @@
       <div class="atoll-auth-hero-zone text-center">
         <atoll-profile ref="avatarProfile" size="lg" class="d-inline-block mb-2"></atoll-profile>
         <h4 class="mb-1 text-muted small text-uppercase fw-bold" style="letter-spacing: 1px;">Welcome Back</h4>
-        <div ref="usernameBadge" class="text-center font-monospace fw-bold mb-1 text-primary fs-5"></div>
-        <p class="text-success small mb-3 d-flex align-items-center justify-content-center gap-1"><atoll-icon name="shield-lock" size="16" color="var(--bs-success)"></atoll-icon> Active Session</p>
+        <div ref="usernameBadge" class="text-center font-monospace fw-bold mb-1 fs-5"></div>
       </div>
 
       <!-- Zone 3: Form Input Zone -->
@@ -190,9 +189,8 @@
       }
 
       const usernameBadge = refs('usernameBadge')
-      if (user) {
-        usernameBadge.textContent = `@${user.username}`
-      }
+
+      usernameBadge.textContent = `@${user.username}`
 
       const updateStatus = (message) => {
         statusMsg.textContent = message

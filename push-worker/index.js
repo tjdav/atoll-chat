@@ -40,10 +40,12 @@ const server = http.createServer((req, res) => {
   // ALTCHA Challenge Generation
   if (req.method === 'GET' && req.url === '/altcha/challenge') {
     const cost = parseInt(process.env.ATOLL_ALTCHA_COST, 10) || (process.env.NODE_ENV === 'production' ? 5000 : 1000)
+    const maxCost = Math.max(cost, 1000)
     createChallenge({
       algorithm: 'PBKDF2/SHA-256',
-      cost: cost,
-      counter: randomInt(5000, 10000),
+      cost: maxCost,
+      max: maxCost,
+      counter: randomInt(1, Math.min(maxCost, 500)),
       deriveKey,
       hmacSignatureSecret: hmacKeySecret
     }).then(challenge => {

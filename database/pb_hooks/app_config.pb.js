@@ -30,7 +30,6 @@ onBootstrap((e) => {
     const appUrl = getEnv('ATOLL_APP_URL')
     if (appUrl) {
       meta.appURL = appUrl
-      meta.appUrl = appUrl
     }
 
     e.app.save(settings)

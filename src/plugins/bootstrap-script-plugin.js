@@ -81,7 +81,7 @@ export default function bootstrapScriptPlugin () {
         if (existsSync(altchaPath)) {
           const altchaContent = await readFile(altchaPath, 'utf8')
           const altchaSri = getSriHash(altchaContent)
-          altchaTag = `\n  <script type="module" src="./assets/altcha.js" integrity="${altchaSri}" crossorigin="anonymous" async defer></script>`
+          altchaTag = `\n  <script type="module" src="./assets/altcha.js" integrity="${altchaSri}" crossorigin="anonymous"></script>`
         }
 
         // Compute dynamic SRI for register-sw.js if present

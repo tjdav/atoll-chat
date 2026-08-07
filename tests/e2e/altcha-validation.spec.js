@@ -1,6 +1,17 @@
 import { test, expect } from './fixtures/base-test.js'
 
 test.describe('ALTCHA Security Challenge and Global Error UI Verification', () => {
+  test('should render ALTCHA widget with test mode enabled in test environment', async ({ page }) => {
+    await page.goto('/')
+    await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
+    await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
+
+    const altchaWidget = page.locator('auth-login altcha-widget')
+    await expect(altchaWidget).toBeAttached()
+    await expect(altchaWidget).toHaveAttribute('test', 'true')
+    await expect(altchaWidget).toHaveAttribute('auto', 'onload')
+  })
+
   test('should display ALTCHA validation error inside ALTCHA widget and allow submit on registration form', async ({ page }) => {
     await page.goto('/')
     await page.waitForFunction(() => {

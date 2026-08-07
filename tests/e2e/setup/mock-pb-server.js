@@ -266,7 +266,7 @@ export function createServer () {
     // Content Security Policy and Safety Headers (simulating Goja security_headers.pb.js)
     res.setHeader('Content-Security-Policy',
       "default-src 'none'; " +
-      "script-src 'self' 'wasm-unsafe-eval'; " +
+      "script-src 'self' 'wasm-unsafe-eval' blob:; " +
       "style-src 'self' 'unsafe-inline'; " +
       "img-src 'self' data: blob:; " +
       "font-src 'self' data:; " +

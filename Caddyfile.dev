@@ -1,0 +1,27 @@
+https://:3443 {
+    tls /etc/caddy/certs/dev-cert.pem /etc/caddy/certs/dev-key.pem
+
+    # Proxy PocketBase API and Admin Dashboard directly on port 3443 for Same-Origin access
+    @pocketbase path /api* /_*
+    handle @pocketbase {
+        reverse_proxy pocketbase-dev:8090
+    }
+
+    # Proxy all web app requests to Coralite Dev Server
+    handle {
+        reverse_proxy host.docker.internal:3000
+    }
+}
+
+https://:8443 {
+    tls /etc/caddy/certs/dev-cert.pem /etc/caddy/certs/dev-key.pem
+
+    header {
+        Access-Control-Allow-Origin "{header.origin}"
+        Access-Control-Allow-Methods "GET, POST, PUT, PATCH, DELETE, OPTIONS"
+        Access-Control-Allow-Headers "Authorization, Content-Type, X-Requested-With"
+        Access-Control-Allow-Credentials "true"
+    }
+
+    reverse_proxy pocketbase-dev:8090
+}

@@ -25,6 +25,7 @@ import networkPlugin from './src/plugins/network-plugin.js'
 import markdownPlugin from './src/plugins/markdown-plugin.js'
 import deeplinkPlugin from './src/plugins/deeplink-plugin.js'
 import deeplinkManifestPlugin from './src/plugins/deeplink-manifest-plugin.js'
+import bootstrapScriptPlugin from './src/plugins/bootstrap-script-plugin.js'
 import pkg from './package.json' with { type: 'json' }
 import os from 'os'
 
@@ -110,7 +111,8 @@ export default defineConfig({
     serviceWorkerPlugin({
       name: pkg.name,
       version: pkg.version
-    })
+    }),
+    bootstrapScriptPlugin()
   ],
   output: 'dist',
   pages: 'src/pages',

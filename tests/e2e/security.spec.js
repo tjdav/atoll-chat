@@ -341,7 +341,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     expect(headers['content-security-policy']).toBeDefined()
     const csp = headers['content-security-policy']
     expect(csp).toContain("default-src 'none'")
-    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval'")
+    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' blob:")
     expect(csp).not.toContain("script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'")
     expect(csp).toContain("worker-src 'self' blob:")
     expect(csp).toContain("style-src 'self' 'unsafe-inline'")

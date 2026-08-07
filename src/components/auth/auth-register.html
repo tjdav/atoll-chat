@@ -396,42 +396,59 @@ Atoll administrators cannot recover your credentials or vault.
         invitationCodeInput.value = formatted
       })
 
+      const getAltchaPayload = (widget) => {
+        if (altchaPayload) return altchaPayload
+        if (!widget) return null
+        if (widget.value) return widget.value
+        if (typeof widget.getAttribute === 'function' && widget.getAttribute('value')) {
+          return widget.getAttribute('value')
+        }
+        const hiddenInput = widget.querySelector ? widget.querySelector('input[name="altcha"]') : null
+        if (hiddenInput && hiddenInput.value) {
+          return hiddenInput.value
+        }
+        return null
+      }
+
       btnSubmit.removeAttribute('loading')
       btnSubmit.removeAttribute('disabled')
 
       altchaWidget = document.createElement('altcha-widget')
-      altchaWidget.setAttribute('display', 'invisible')
-      altchaWidget.setAttribute('auto', 'off')
-      altchaWidget.style.width = '100%'
-      altchaWidget.style.maxWidth = '100%'
-  
+      const challengeUrl = pb.buildURL('/api/altcha/challenge')
       const configObj = {}
+
       if (isTesting) {
         altchaWidget.setAttribute('test', 'true')
         configObj.test = true
       } else {
-        altchaWidget.setAttribute('challenge', pb.buildURL('/api/altcha/challenge'))
-        configObj.challenge = pb.buildURL('/api/altcha/challenge')
+        altchaWidget.setAttribute('challenge', challengeUrl)
+        configObj.challenge = challengeUrl
       }
+      altchaWidget.setAttribute('display', 'invisible')
+      altchaWidget.setAttribute('auto', 'onload')
+      altchaWidget.style.width = '100%'
+      altchaWidget.style.maxWidth = '100%'
       altchaWidget.setAttribute('configuration', JSON.stringify(configObj))
 
       altchaWidget.addEventListener('verified', (ev) => {
-        altchaPayload = ev.detail?.payload || null
+        altchaPayload = ev.detail?.payload || altchaWidget.value || null
         console.log('[ALTCHA REGISTER DEBUG] verified event payload:', altchaPayload)
       })
 
       altchaWidget.addEventListener('statechange', (ev) => {
         const state = ev.detail?.state
-        console.log('[ALTCHA REGISTER DEBUG]', 'state:', state, 'value:', altchaWidget.value, 'payload:', ev.detail?.payload)
+        const resolvedPayload = ev.detail?.payload || altchaWidget.value || null
+        if (resolvedPayload) {
+          altchaPayload = resolvedPayload
+        }
+        console.log('[ALTCHA REGISTER DEBUG]', 'state:', state, 'value:', altchaWidget.value, 'payload:', resolvedPayload)
         if (state === 'verifying') {
-          altchaPayload = null
-          btnSubmit.setAttribute('loading', 'true')
-        } else if (state === 'verified') {
-          if (ev.detail?.payload) {
-            altchaPayload = ev.detail.payload
-          }
-          btnSubmit.removeAttribute('loading')
           if (registerSubmitPending) {
+            btnSubmit.setAttribute('loading', 'true')
+          }
+        } else if (state === 'verified') {
+          if (registerSubmitPending) {
+            btnSubmit.removeAttribute('loading')
             registerSubmitPending = false
             if (typeof registerForm.requestSubmit === 'function') {
               registerForm.requestSubmit()
@@ -444,7 +461,9 @@ Atoll administrators cannot recover your credentials or vault.
           }
         } else if (state === 'unverified') {
           altchaPayload = null
-          btnSubmit.removeAttribute('loading')
+          if (!registerSubmitPending) {
+            btnSubmit.removeAttribute('loading')
+          }
         } else if (state === 'error') {
           altchaPayload = null
           btnSubmit.removeAttribute('loading')
@@ -495,19 +514,23 @@ Atoll administrators cannot recover your credentials or vault.
           return
         }
 
-        let currentPayload = altchaPayload
-        if (altchaWidget && altchaWidget.value) {
-          currentPayload = altchaWidget.value
-        }
+        let currentPayload = getAltchaPayload(altchaWidget)
         if (isTesting && !currentPayload) {
           currentPayload = 'atoll-mock-bypass-token'
         }
 
+        console.log('[ALTCHA REGISTER ATTEMPT]', {
+          altchaPayload,
+          resolvedPayload: currentPayload,
+          widgetValue: altchaWidget?.value,
+          hiddenInputValue: altchaWidget?.querySelector?.('input[name="altcha"]')?.value
+        })
+
         if (!currentPayload) {
-          if (altchaWidget) {
-            registerSubmitPending = true
-            altchaWidget.verify()
-          }
+          console.log('[ALTCHA REGISTER PENDING] Verification pending. Form submission queued.')
+          registerSubmitPending = true
+          btnSubmit.setAttribute('loading', 'true')
+          updateStatus('Verifying security challenge...')
           return
         }
 

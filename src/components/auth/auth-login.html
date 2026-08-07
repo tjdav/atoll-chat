@@ -134,46 +134,63 @@
         $state.authView = 'register'
       })
 
+      const getAltchaPayload = (widget) => {
+        if (altchaPayload) return altchaPayload
+        if (!widget) return null
+        if (widget.value) return widget.value
+        if (typeof widget.getAttribute === 'function' && widget.getAttribute('value')) {
+          return widget.getAttribute('value')
+        }
+        const hiddenInput = widget.querySelector ? widget.querySelector('input[name="altcha"]') : null
+        if (hiddenInput && hiddenInput.value) {
+          return hiddenInput.value
+        }
+        return null
+      }
+
       const renderAltcha = (container, submitBtn) => {
         container.innerHTML = ''
         altchaPayload = null
-  
+
         submitBtn.removeAttribute('loading')
         submitBtn.removeAttribute('disabled')
 
         const widget = document.createElement('altcha-widget')
-        widget.setAttribute('display', 'invisible')
-        widget.setAttribute('auto', 'off')
-        widget.style.width = '100%'
-        widget.style.maxWidth = '100%'
-  
+        const challengeUrl = pb.buildURL('/api/altcha/challenge')
         const configObj = {}
+
         if (isTesting) {
           widget.setAttribute('test', 'true')
           configObj.test = true
         } else {
-          widget.setAttribute('challenge', pb.buildURL('/api/altcha/challenge'))
-          configObj.challenge = pb.buildURL('/api/altcha/challenge')
+          widget.setAttribute('challenge', challengeUrl)
+          configObj.challenge = challengeUrl
         }
+        widget.setAttribute('display', 'invisible')
+        widget.setAttribute('auto', 'onload')
+        widget.style.width = '100%'
+        widget.style.maxWidth = '100%'
         widget.setAttribute('configuration', JSON.stringify(configObj))
 
         widget.addEventListener('verified', (ev) => {
-          altchaPayload = ev.detail?.payload || null
+          altchaPayload = ev.detail?.payload || widget.value || null
           console.log('[ALTCHA DEBUG] verified event payload:', altchaPayload)
         })
 
         widget.addEventListener('statechange', (ev) => {
           const state = ev.detail?.state
-          console.log('[ALTCHA DEBUG]', 'state:', state, 'value:', widget.value, 'payload:', ev.detail?.payload)
+          const resolvedPayload = ev.detail?.payload || widget.value || null
+          if (resolvedPayload) {
+            altchaPayload = resolvedPayload
+          }
+          console.log('[ALTCHA DEBUG]', 'state:', state, 'value:', widget.value, 'payload:', resolvedPayload)
           if (state === 'verifying') {
-            altchaPayload = null
-            submitBtn.setAttribute('loading', 'true')
-          } else if (state === 'verified') {
-            if (ev.detail?.payload) {
-              altchaPayload = ev.detail.payload
+            if (loginSubmitPending) {
+              submitBtn.setAttribute('loading', 'true')
             }
-            submitBtn.removeAttribute('loading')
+          } else if (state === 'verified') {
             if (submitBtn === loginSubmit && loginSubmitPending) {
+              submitBtn.removeAttribute('loading')
               loginSubmitPending = false
               if (typeof loginForm.requestSubmit === 'function') {
                 loginForm.requestSubmit()
@@ -186,7 +203,9 @@
             }
           } else if (state === 'unverified') {
             altchaPayload = null
-            submitBtn.removeAttribute('loading')
+            if (!loginSubmitPending) {
+              submitBtn.removeAttribute('loading')
+            }
           } else if (state === 'error') {
             altchaPayload = null
             submitBtn.removeAttribute('loading')
@@ -199,44 +218,48 @@
         return widget
       }
 
-      // Initialize Altcha on Login Form
-      activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
+    // Initialize Altcha on Login Form
+    activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
 
-      loginForm.addEventListener('submit', async (event) => {
-        event.preventDefault()
-        event.stopImmediatePropagation()
-        showGlobalAlert('')
+    loginForm.addEventListener('submit', async (event) => {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+      showGlobalAlert('')
 
-        identityInput.setCustomValidity('')
-        passwordInput.setCustomValidity('')
-        updateStatus('')
+      identityInput.setCustomValidity('')
+      passwordInput.setCustomValidity('')
+      updateStatus('')
 
-        updateValidationFeedback(loginForm)
+      updateValidationFeedback(loginForm)
 
-        if (!identityInput.checkValidity() || !passwordInput.checkValidity()) {
-          event.stopPropagation()
-          loginForm.classList.add('was-validated')
-          return
-        }
+      if (!identityInput.checkValidity() || !passwordInput.checkValidity()) {
+        event.stopPropagation()
+        loginForm.classList.add('was-validated')
+        return
+      }
 
-        const rawIdentity = identityInput.value
-        const rawPassword = passwordInput.value
+      const rawIdentity = identityInput.value
+      const rawPassword = passwordInput.value
 
-        let currentPayload = altchaPayload
-        if (activeAltchaWidget && activeAltchaWidget.value) {
-          currentPayload = activeAltchaWidget.value
-        }
-        if (isTesting && !currentPayload) {
-          currentPayload = 'atoll-mock-bypass-token'
-        }
+      let currentPayload = getAltchaPayload(activeAltchaWidget)
+      if (isTesting && !currentPayload) {
+        currentPayload = 'atoll-mock-bypass-token'
+      }
 
-        if (!currentPayload) {
-          if (activeAltchaWidget) {
-            loginSubmitPending = true
-            activeAltchaWidget.verify()
-          }
-          return
-        }
+      console.log('[ALTCHA LOGIN ATTEMPT]', {
+        altchaPayload,
+        resolvedPayload: currentPayload,
+        widgetValue: activeAltchaWidget?.value,
+        hiddenInputValue: activeAltchaWidget?.querySelector?.('input[name="altcha"]')?.value
+      })
+
+      if (!currentPayload) {
+        console.log('[ALTCHA LOGIN PENDING] Verification pending. Form submission queued.')
+        loginSubmitPending = true
+        loginSubmit.setAttribute('loading', 'true')
+        updateStatus('Verifying security challenge...')
+        return
+      }
 
         const { deriveAuthAndVaultKeys, purgeVaultKey } = await import('../../utils/keys.js')
 

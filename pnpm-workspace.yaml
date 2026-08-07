@@ -3,5 +3,5 @@ allowBuilds:
   esbuild: true
   sharp: true
 minimumReleaseAgeExclude:
-  - coralite-scripts@0.43.2 || 0.43.3 || 0.43.4 || 0.43.5 || 0.43.6
-  - coralite@0.43.2 || 0.43.3 || 0.43.4 || 0.43.5 || 0.43.6
+  - coralite-scripts@0.43.2 || 0.43.3 || 0.43.4 || 0.43.5 || 0.43.6 || 0.44.0
+  - coralite@0.43.2 || 0.43.3 || 0.43.4 || 0.43.5 || 0.43.6 || 0.44.0

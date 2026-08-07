@@ -2,6 +2,19 @@ import { spawn, execSync } from 'child_process'
 import http from 'http'
 import fs from 'fs'
 import path from 'path'
+import { networkInterfaces } from 'os'
+
+function getLocalIp () {
+  const interfaces = networkInterfaces()
+  for (const name of Object.keys(interfaces)) {
+    for (const net of interfaces[name]) {
+      if (net.family === 'IPv4' && !net.internal) {
+        return net.address
+      }
+    }
+  }
+  return 'localhost'
+}
 
 let isTearingDown = false
 let appProcess = null
@@ -215,7 +228,7 @@ const run = async () => {
 
     try {
       console.log('Cleaning up any existing/conflicting Docker containers...')
-      runCommandSilently('docker rm -f atoll-pocketbase-dev atoll-coturn')
+      runCommandSilently('docker rm -f atoll-pocketbase-dev atoll-coturn atoll-caddy-dev')
 
       console.log('Attempting to spin up dev services via Docker Compose...')
       const env = {
@@ -342,7 +355,48 @@ const run = async () => {
       console.error('Failed to provision test users:', err.message)
     }
 
+// Print the HTTPS dev links box (Android/iOS need TLS via Caddy)
+function printDevLinks (localIp) {
+  const PAD = 2
+  const title = '🔒 Atoll HTTPS Dev Links (Caddy TLS Proxy)'
+  const rows = [
+    `🌐  Web App  ·  Local     https://localhost:3443`,
+    `🌐  Web App  ·  Network   https://${localIp}:3443`,
+    `🗄️  Admin    ·  Local     https://localhost:8443/_/`,
+    `🗄️  Admin    ·  Network   https://${localIp}:8443/_/`,
+    '',
+    'ℹ️  HTTPS (via Caddy TLS) is required by Android /',
+    '    iOS to reach your local dev server.'
+  ]
+
+  // Approximate terminal display width (emoji/CJK ~ 2 cols, VS16 = 0)
+  const width = (s) => [...s].reduce((w, ch) => {
+    const cp = ch.codePointAt(0)
+    if (cp === 0xfe0f) return w // variation selector: zero-width
+    return w + (cp > 0x2fff ? 2 : 1)
+  }, 0)
+
+  const innerWidth = Math.max(...rows.map(r => width(r)), width(title))
+  const total = innerWidth + PAD * 2
+  const ruler = '─'.repeat(total)
+  const blank = '│' + ' '.repeat(total) + '│'
+  const line = (s, pad = PAD) =>
+    '│' + ' '.repeat(pad) + s + ' '.repeat(Math.max(0, total - pad - width(s))) + '│'
+
+  console.log('')
+  console.log('┌' + ruler + '┐')
+  console.log(line(title, Math.floor((total - width(title)) / 2)))
+  console.log(blank)
+  for (const r of rows) {
+    console.log(r === '' ? blank : line(r))
+  }
+  console.log('└' + ruler + '┘')
+  console.log('')
+}
+
     console.log('\n--- Starting Application ---')
+    const localIp = getLocalIp()
+    printDevLinks(localIp)
     const appEnv = {
       ...process.env,
       ATOLL_PUSH_WORKER_URL: 'http://localhost:3001',
