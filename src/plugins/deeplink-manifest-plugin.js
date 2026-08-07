@@ -64,8 +64,6 @@ export default function (config) {
         const destAssetlinksPath = join(wellKnownDir, 'assetlinks.json')
         await writeFile(destAssetlinksPath, JSON.stringify(assetlinksContent, null, 2))
         app.trackOutputFile(destAssetlinksPath)
-
-        console.info('[DeepLink Manifest Plugin] Successfully generated AASA and assetlinks.json')
       }
     }
   })
