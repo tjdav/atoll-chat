@@ -3,12 +3,13 @@ import { definePlugin } from 'coralite'
 /**
  *
  */
-export default function workerPlugin ({ url = '/' } = {}) {
+export default function workerPlugin ({ url = '/', appUrl = '' } = {}) {
   return definePlugin({
     name: 'cryptoWorker',
     client: {
       config: {
-        url
+        url,
+        appUrl
       },
       context: (pluginContext) => {
         function getTransferables (obj, seen = new Set()) {
@@ -60,7 +61,15 @@ export default function workerPlugin ({ url = '/' } = {}) {
             isReady = true
 
             // Send worker:init message with baseUrl
-            const baseUrl = pluginContext.config?.url || '/'
+            const cfg = pluginContext.config || {}
+            let baseUrl = cfg.url || '/'
+            if (typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) {
+              if (cfg.appUrl) {
+                baseUrl = cfg.appUrl
+              } else if (baseUrl === '/' || baseUrl.startsWith('http:') || baseUrl.includes('localhost') || baseUrl.includes('127.0.0.1')) {
+                baseUrl = baseUrl.replace(/^http:\/\//, 'https://').replace(/:8090$/, ':3443')
+              }
+            }
             const initMsg = {
               type: 'worker:init',
               payload: { baseUrl }

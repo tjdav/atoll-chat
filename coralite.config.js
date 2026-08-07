@@ -94,7 +94,10 @@ export default defineConfig({
     }),
     storagePlugin,
     utilsPlugin,
-    cryptoPlugin({ url: pocketbaseBaseUrl }),
+    cryptoPlugin({
+      url: pocketbaseBaseUrl,
+      appUrl: process.env.ATOLL_APP_URL || ''
+    }),
     mediaWorkerPlugin,
     mediaPlugin,
     syncPlugin(),
