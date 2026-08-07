@@ -153,7 +153,7 @@
 
       // Initialize Bootstrap Dropdown Constructor
       if (typeof window !== 'undefined' && Dropdown) {
-        bsDropdown = new Dropdown(toggleBtn)
+        bsDropdown = Dropdown.getOrCreateInstance(toggleBtn)
       }
 
       // Forward test-id / data-testid to inner toggle button
@@ -203,6 +203,12 @@
         state.value = selectedValue
         updateSelectedLabel()
 
+
+        const activeDropdown = Dropdown.getOrCreateInstance(toggleBtn)
+        if (activeDropdown) {
+          activeDropdown.hide()
+        }
+
         // Dispatch custom change event
         root.dispatchEvent(
           new CustomEvent('atoll-change', {
@@ -214,11 +220,6 @@
             }
           })
         )
-
-        // Close dropdown via Bootstrap instance
-        if (bsDropdown) {
-          bsDropdown.hide()
-        }
       }
 
       if (menuEl) {
