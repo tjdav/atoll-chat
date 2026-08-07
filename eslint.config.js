@@ -243,6 +243,7 @@ export default [
   {
     ignores: [
       '**/dist/',
+      '**/public/',
       '**/.history/',
       '**/playwright-report/',
       '**/test-results/',
