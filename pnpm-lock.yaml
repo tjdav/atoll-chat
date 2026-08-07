@@ -20,6 +20,9 @@ importers:
       '@capacitor/network':
         specifier: ^8.0.1
         version: 8.0.1(@capacitor/core@8.4.2)
+      '@capgo/capacitor-native-biometric':
+        specifier: ^8.6.3
+        version: 8.6.3(@capacitor/core@8.4.2)
       '@ffmpeg/core':
         specifier: ^0.12.10
         version: 0.12.10
@@ -207,6 +210,11 @@ packages:
 
   '@capacitor/synapse@1.0.4':
     resolution: {integrity: sha512-/C1FUo8/OkKuAT4nCIu/34ny9siNHr9qtFezu4kxm6GY1wNFxrCFWjfYx5C1tUhVGz3fxBABegupkpjXvjCHrw==}
+
+  '@capgo/capacitor-native-biometric@8.6.3':
+    resolution: {integrity: sha512-R0Q1fdhz2EZl22ANaLtt8yuaJ6E+uJwU+cXaTSbm9QzCb99TTtUWLMchsX0Eb/4h2pJh5oDab4kQYD4mEOmsaA==}
+    peerDependencies:
+      '@capacitor/core': '>=8.0.0'
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -3173,6 +3181,10 @@ snapshots:
       '@capacitor/core': 8.4.2
 
   '@capacitor/synapse@1.0.4': {}
+
+  '@capgo/capacitor-native-biometric@8.6.3(@capacitor/core@8.4.2)':
+    dependencies:
+      '@capacitor/core': 8.4.2
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
