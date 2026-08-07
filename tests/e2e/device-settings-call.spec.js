@@ -320,10 +320,12 @@ test.describe.serial('Call Device Settings', () => {
       await secondaryMicOption.click({ force: true })
 
       const ncSwitch = alicePage.locator('call-overlay #noise-cancellation-switch')
-      await ncSwitch.click({ force: true }) // turn off noise cancellation
+      // turn off noise cancellation
+      await ncSwitch.click({ force: true })
 
       const blurSwitch = alicePage.locator('call-overlay #background-blur-switch')
-      await blurSwitch.click({ force: true }) // turn on background blur
+      // turn on background blur
+      await blurSwitch.click({ force: true })
 
       // Click Cancel button inside settings popup to trigger rollback
       const cancelBtn = alicePage.getByRole('button', { name: 'Cancel' })
@@ -376,6 +378,9 @@ test.describe.serial('Call Device Settings', () => {
       await expect(secondaryCamOption).toBeVisible()
       await secondaryCamOption.click({ force: true })
 
+      // Ensure camera dropdown menu is closed to prevent overlapping issues
+      await expect(camSelect.locator('.atoll-select-menu')).not.toBeVisible()
+
       // Check localStorage update
       const storedCamId = await alicePage.evaluate(() => localStorage.getItem('atoll_active_camera'))
       expect(storedCamId).toBe('cam-2')
@@ -390,7 +395,7 @@ test.describe.serial('Call Device Settings', () => {
     await test.step('Toggle background blur and verify CSS filter application', async () => {
       const blurSwitch = alicePage.locator('call-overlay #background-blur-switch')
       await expect(blurSwitch).not.toBeChecked()
-      await blurSwitch.click({ force: true })
+      await blurSwitch.click()
       await expect(blurSwitch).toBeChecked()
 
       // Verify CSS blur filter is applied to Alice's local preview element
