@@ -3,7 +3,7 @@
     <viewer-header 
       title="Document Details" 
       subtitle="{{ fileName }}" 
-      icon="bi-file-earmark-fill"
+      icon="document"
       theme="light">
     </viewer-header>
 
@@ -66,31 +66,6 @@
         }
       }
       signal.addEventListener('abort', cleanup)
-
-      const getFileIcon = (mimeType) => {
-        if (!mimeType) {
-          return 'bi-file-earmark-fill'
-        }
-        if (mimeType.includes('pdf')) {
-          return 'bi-file-earmark-pdf-fill'
-        }
-        if (mimeType.includes('word')) {
-          return 'bi-file-earmark-word-fill'
-        }
-        if (mimeType.includes('excel')) {
-          return 'bi-file-earmark-excel-fill'
-        }
-        if (mimeType.includes('powerpoint')) {
-          return 'bi-file-earmark-ppt-fill'
-        }
-        if (mimeType.includes('zip') || mimeType.includes('compressed')) {
-          return 'bi-file-earmark-zip-fill'
-        }
-        if (mimeType.includes('text')) {
-          return 'bi-file-earmark-text-fill'
-        }
-        return 'bi-file-earmark-fill'
-      }
 
       const decryptAndLoad = async (item, container) => {
         if (objectUrls.has(item.id)) {
@@ -168,10 +143,10 @@
         const iconWrapper = document.createElement('div')
         iconWrapper.className = 'mb-4'
   
-        const icon = document.createElement('i')
-        const iconClass = getFileIcon(item.mime_type)
-        icon.className = `bi ${iconClass} text-primary`
-        icon.style.fontSize = '5rem'
+        const icon = document.createElement('atoll-icon')
+        icon.setAttribute('name', 'document')
+        icon.setAttribute('size', '80')
+        icon.setAttribute('color', 'var(--atoll-brand-primary, #06C755)')
         iconWrapper.appendChild(icon)
         card.appendChild(iconWrapper)
 

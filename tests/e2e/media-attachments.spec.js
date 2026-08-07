@@ -42,6 +42,7 @@ test.describe('Media & Attachments', () => {
       for (const f of files) {
         const fp = path.resolve(`tests/e2e/fixtures/test-files/${f.n}`)
         await alicePage.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(fp)
+        await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
         const cap = `S ${f.n}`
         await alicePage.fill('atoll-chat-view textarea', cap)
         await alicePage.click('atoll-chat-view [data-testid$="__sendButton"]')
@@ -119,7 +120,7 @@ test.describe('Media & Attachments', () => {
       await expect(voicePlayer).toBeVisible({ timeout: 15000 })
 
       // Verify that the custom waveform player is visible (instead of standard <audio controls>)
-      await expect(voicePlayer.locator('.waveform-player')).toBeVisible({ timeout: 15000 })
+      await expect(voicePlayer.locator('.atoll-chat-waveform-player')).toBeVisible({ timeout: 15000 })
 
       // verify that the waveform contains svg elements for background and progress
       await expect(voicePlayer.locator('.waveform-container svg')).toHaveCount(2, { timeout: 15000 })
@@ -202,7 +203,7 @@ test.describe('Media & Attachments', () => {
       await page.waitForTimeout(500)
 
       await expect(overlay).toBeVisible()
-      await expect(overlay.locator('i.bi-zoom-in')).toBeVisible()
+      await expect(overlay.locator('atoll-icon[name="search"]')).toBeVisible()
     })
 
     test('aggregate documents and links', async ({ page }) => {
@@ -261,7 +262,7 @@ test.describe('Media & Attachments', () => {
       await page.screenshot({ path: 'tests/e2e/screenshots/music_list.png' })
 
       await page.locator('audio-player-view .play-pause-btn').click()
-      await expect(page.locator('audio-player-view .play-pause-btn i')).toHaveClass(/bi-pause-fill/, { timeout: 15000 })
+      await expect(page.locator('audio-player-view .play-pause-btn atoll-icon')).toHaveAttribute('name', 'pause', { timeout: 15000 })
     })
   })
 })
