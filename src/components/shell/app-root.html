@@ -726,6 +726,33 @@
         $state.currentUser = null
         $state.isAuthenticated = false
         $state.isVaultUnlocked = false
+
+        if ($state.decryptionCache && $state.decryptionCache.forEach) {
+          $state.decryptionCache.forEach((cached) => {
+            if (!cached) {
+              return
+            }
+
+            try {
+              if (typeof cached === 'string') {
+                if (cached.startsWith('blob:')) {
+                  URL.revokeObjectURL(cached)
+                }
+              } else {
+                if (cached.blobUrl && typeof cached.blobUrl === 'string' && cached.blobUrl.startsWith('blob:')) {
+                  URL.revokeObjectURL(cached.blobUrl)
+                }
+                if (cached.thumbnailBlobUrl && typeof cached.thumbnailBlobUrl === 'string' && cached.thumbnailBlobUrl.startsWith('blob:')) {
+                  URL.revokeObjectURL(cached.thumbnailBlobUrl)
+                }
+              }
+            } catch (err) {
+              console.warn('[app-root] Failed to revoke cached object URL:', err)
+            }
+          })
+          
+          $state.decryptionCache.clear()
+        }
       })
 
       $bus.on('auth:totp_passed', () => {

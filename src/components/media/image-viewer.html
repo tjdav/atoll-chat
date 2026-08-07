@@ -63,15 +63,6 @@
           carouselInstance.dispose()
           carouselInstance = null
         }
-  
-        loadedItems.forEach(item => {
-          const cacheKey = item.message_id || item.id || item.media_id
-          const cached = $state.decryptionCache.get(cacheKey)
-          if (cached && cached.blobUrl) {
-            URL.revokeObjectURL(cached.blobUrl)
-            $state.decryptionCache.delete(cacheKey)
-          }
-        })
       }
 
       signal.addEventListener('abort', cleanup)
@@ -97,22 +88,12 @@
         const cleanupThreshold = BUFFER_SIZE + CLEANUP_MARGIN
         for (let i = 0; i < loadedItems.length; i++) {
           if (i < currentIndex - cleanupThreshold || i > currentIndex + cleanupThreshold) {
-            const item = loadedItems[i]
-            const cacheKey = item.message_id || item.id || item.media_id
-            if ($state.decryptionCache.has(cacheKey)) {
-              const cached = $state.decryptionCache.get(cacheKey)
-              if (cached && cached.blobUrl) {
-                URL.revokeObjectURL(cached.blobUrl)
-                $state.decryptionCache.delete(cacheKey)
-
-                const container = carouselInner.children[i]
-                if (container) {
-                  const img = container.querySelector('img')
-                  if (img) {
-                    img.removeAttribute('src')
-                    img.classList.add('d-none')
-                  }
-                }
+            const container = carouselInner.children[i]
+            if (container) {
+              const img = container.querySelector('img')
+              if (img) {
+                img.removeAttribute('src')
+                img.classList.add('d-none')
               }
             }
           }

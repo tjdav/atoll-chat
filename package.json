@@ -3,7 +3,7 @@
   "private": true,
   "type": "module",
   "license": "AGPL-3.0-only",
-  "version": "0.2.13",
+  "version": "0.2.15",
   "keywords": [
     "chat",
     "real-time",
@@ -39,6 +39,7 @@
     "test:plugins": "coralite validate-plugins --coverage"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@capacitor/android": "^8.5.0",
     "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^8.5.0",

@@ -114,7 +114,7 @@ test.describe('Media & Attachments', () => {
       // Wait for the message status to be 'Sent'
       await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
 
-      // Verify that atoll-chat-timeline-item-voice is rendered
+      // Verify that timeline-item-voice is rendered
       const voicePlayer = page.locator('atoll-chat-timeline-item-voice')
       await expect(voicePlayer).toBeVisible({ timeout: 15000 })
 

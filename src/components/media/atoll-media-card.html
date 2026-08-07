@@ -60,7 +60,6 @@
 
       const objectUrls = new Map()
       const cleanupUrls = () => {
-        objectUrls.forEach(url => URL.revokeObjectURL(url))
         objectUrls.clear()
       }
       signal.addEventListener('abort', cleanupUrls)

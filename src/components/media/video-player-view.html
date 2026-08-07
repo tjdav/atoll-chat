@@ -75,17 +75,6 @@
           carouselInstance.dispose()
           carouselInstance = null
         }
-  
-        loadedItems.forEach(item => {
-          if (item.thumbnail) {
-            const cacheKey = item.thumbnail.message_id || item.thumbnail.id || item.thumbnail.media_id
-            const cached = $state.decryptionCache.get(cacheKey)
-            if (cached && cached.blobUrl) {
-              URL.revokeObjectURL(cached.blobUrl)
-              $state.decryptionCache.delete(cacheKey)
-            }
-          }
-        })
       }
 
       signal.addEventListener('abort', cleanup)
@@ -111,23 +100,11 @@
         const cleanupThreshold = BUFFER_SIZE + CLEANUP_MARGIN
         for (let i = 0; i < loadedItems.length; i++) {
           if (i < currentIndex - cleanupThreshold || i > currentIndex + cleanupThreshold) {
-            const item = loadedItems[i]
-            if (item.thumbnail) {
-              const cacheKey = item.thumbnail.message_id || item.thumbnail.id || item.thumbnail.media_id
-              if ($state.decryptionCache.has(cacheKey)) {
-                const cached = $state.decryptionCache.get(cacheKey)
-                if (cached && cached.blobUrl) {
-                  URL.revokeObjectURL(cached.blobUrl)
-                  $state.decryptionCache.delete(cacheKey)
-
-                  const container = carouselInner.children[i]
-                  if (container) {
-                    const img = container.querySelector('.thumbnail-img')
-                    if (img) {
-                      img.removeAttribute('src')
-                    }
-                  }
-                }
+            const container = carouselInner.children[i]
+            if (container) {
+              const img = container.querySelector('.thumbnail-img')
+              if (img) {
+                img.removeAttribute('src')
               }
             }
           }
