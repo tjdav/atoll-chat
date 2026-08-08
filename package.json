@@ -28,7 +28,7 @@
     "test:server": "cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" coralite-scripts test",
     "build": "coralite-scripts build",
     "build:android": "pnpm run build && pnpm exec cap sync android && cd android && ./gradlew assembleDebug",
-    "build:android:release": "pnpm run build && pnpm exec cap sync android && cd android && ./gradlew assembleRelease",
+    "build:android:release": "cross-env NODE_ENV=production pnpm run build && pnpm exec cap sync android && cd android && ./gradlew assembleRelease",
     "lint:types": "pnpm exec tsc --noEmit",
     "lint:format": "eslint --cache --fix .",
     "test:unit": "node --experimental-vm-modules --import ./tests/unit/helpers/dom-setup.js --test",

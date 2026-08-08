@@ -36,6 +36,7 @@ pb_data/
 pb_data_test/
 pb_data_template/
 .env
+.env.production
 .coralite
 
 # Test

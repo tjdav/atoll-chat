@@ -29,7 +29,15 @@ import bootstrapScriptPlugin from './src/plugins/bootstrap-script-plugin.js'
 import pkg from './package.json' with { type: 'json' }
 import os from 'os'
 
-// Load .env for build-time configuration
+// Load .env files for build-time configuration
+if (process.env.NODE_ENV === 'production') {
+  try {
+    process.loadEnvFile('.env.production')
+  } catch {
+    console.warn('Warning: .env.production file was not found, falling back to .env')
+  }
+}
+
 try {
   process.loadEnvFile('.env')
 } catch {
