@@ -40,7 +40,7 @@ test.describe('Audio Waveform Playback Progress Smoothness', () => {
 
     const widthStyle = await progress.getAttribute('style')
     expect(widthStyle).not.toBeNull()
-    
+
     // Width should have updated as audio plays smoothly
     expect(widthStyle).toContain('width:')
   })

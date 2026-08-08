@@ -1,5 +1,6 @@
 import { Capacitor } from '@capacitor/core'
 import { Filesystem, Directory } from '@capacitor/filesystem'
+import { checkMediaCompatibility } from '../utils/media-compatibility.js'
 
 /**
  * Helper to convert Blob/File to Base64.
@@ -74,11 +75,60 @@ async function saveToCacheAndGetUri (file, ext = '.mp4') {
 /**
  * Native Media Adapter Factory
  * Executes native-hardware accelerated media compression and thumbnail extraction via AtollMediaPlugin.
- * @param {Object} _instanceContext - The instance context containing other plugins.
+ * @param {Object} instanceContext - The instance context containing other plugins.
  * @returns {Object} The Native Media Adapter.
  */
-export function createNativeMediaAdapter (_instanceContext) {
+export function createNativeMediaAdapter (instanceContext) {
   return {
+    checkCompatibility: (file) => checkMediaCompatibility(file),
+
+    /**
+     * Evaluates video file size against server upload threshold and computes estimated compressed size.
+     * @param {File} file - Original video file.
+     * @param {Object} options - Evaluation options (maxServerUploadSizeBytes, duration).
+     * @returns {Promise<{ shouldCompress: boolean, estimatedSizeBytes: number, targetBitrate: number, useWebRTC: boolean }>} Evaluation result.
+     */
+    evaluateVideo: async (file, options = {}) => {
+      const mediaWorkerPlugin = instanceContext.mediaWorker
+      if (!mediaWorkerPlugin) {
+        return {
+          shouldCompress: false,
+          estimatedSizeBytes: file.size,
+          targetBitrate: 0,
+          useWebRTC: file.size > (options.maxServerUploadSizeBytes || 26214400)
+        }
+      }
+
+      const $mediaWorker = mediaWorkerPlugin.$mediaWorker
+      return $mediaWorker.evaluateVideo(file, options)
+    },
+
+    /**
+     * Converts raw or uncompressed audio files (WAV, FLAC) to universal MP4/AAC audio format.
+     * @param {File} file - Original audio file.
+     * @param {Object} options - Conversion options.
+     * @returns {Promise<File>} Converted web audio File.
+     */
+    convertAudio: async (file, options = {}) => {
+      const mediaWorkerPlugin = instanceContext.mediaWorker
+      if (!mediaWorkerPlugin) {
+        throw new Error('mediaWorker plugin not registered')
+      }
+
+      const $mediaWorker = mediaWorkerPlugin.$mediaWorker
+      const { buffer, mimeType, extension } = await $mediaWorker.convertAudio(file, options)
+      const blob = new Blob([buffer], { type: mimeType })
+      let newName = file.name
+      const lastDot = file.name.lastIndexOf('.')
+      if (lastDot !== -1) {
+        newName = file.name.substring(0, lastDot) + extension
+      } else {
+        newName = file.name + extension
+      }
+
+      return new File([blob], newName, { type: mimeType })
+    },
+
     /**
      * Compresses an image. Left as a stub for native since browsers handle Canvas beautifully.
      * @param {File|Blob} source - The source image or Blob.
