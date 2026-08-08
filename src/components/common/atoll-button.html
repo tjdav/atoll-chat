@@ -231,7 +231,10 @@
           event.preventDefault()
           event.stopImmediatePropagation()
         }
-      }, { capture: true, signal })
+      }, {
+        capture: true,
+        signal
+      })
 
       btn.addEventListener('click', (event) => {
         if (state.disabled || state.loading) {

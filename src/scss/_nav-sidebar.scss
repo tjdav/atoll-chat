@@ -6,7 +6,7 @@
   overflow: visible !important;
 
   @include media-breakpoint-down(md) {
-    padding: 0.75rem 0.2rem;
+    padding: calc(0.75rem + var(--atoll-safe-area-top, 0px)) 0.2rem 0.75rem 0.2rem !important;
   }
 
   .nav-link {

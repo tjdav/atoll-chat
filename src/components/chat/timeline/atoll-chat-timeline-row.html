@@ -247,7 +247,10 @@
 
       bubbleWrapper.addEventListener('click', handleBubbleClick, { signal })
       document.addEventListener('click', handleDocumentClick, { signal })
-      document.addEventListener('touchstart', handleDocumentClick, { signal, passive: true })
+      document.addEventListener('touchstart', handleDocumentClick, {
+        signal,
+        passive: true
+      })
 
       // Long-press for mobile
       let pressTimer

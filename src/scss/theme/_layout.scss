@@ -142,3 +142,30 @@
 [hidden] {
   display: none !important;
 }
+
+.offline-banner {
+  @include media-breakpoint-down(md) {
+    padding-top: calc(0.25rem + var(--atoll-safe-area-top, 0px)) !important;
+    padding-bottom: 0.25rem !important;
+  }
+}
+
+// Double padding mitigation when offline banner is visible:
+@include media-breakpoint-down(md) {
+  body:has(ui-offline-banner .offline-banner:not([hidden])) {
+    .app-header {
+      height: $app-header-height !important;
+      min-height: $app-header-height !important;
+      padding-top: 0px !important;
+    }
+
+    viewer-header header,
+    .viewer-header header {
+      padding-top: 1rem !important;
+    }
+
+    .nav-sidebar {
+      padding-top: 0.75rem !important;
+    }
+  }
+}

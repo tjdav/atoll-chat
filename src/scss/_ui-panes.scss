@@ -6,6 +6,19 @@
   padding: 0 $app-item-padding-x;
   background-color: transparent !important;
   z-index: 10;
+
+  @include media-breakpoint-down(md) {
+    height: calc(#{$app-header-height} + var(--atoll-safe-area-top, 0px)) !important;
+    min-height: calc(#{$app-header-height} + var(--atoll-safe-area-top, 0px)) !important;
+    padding-top: var(--atoll-safe-area-top, 0px) !important;
+  }
+}
+
+viewer-header header,
+.viewer-header header {
+  @include media-breakpoint-down(md) {
+    padding-top: calc(1rem + var(--atoll-safe-area-top, 0px)) !important;
+  }
 }
 
 .list-pane-header {

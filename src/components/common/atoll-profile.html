@@ -399,7 +399,9 @@
               }
             }
           }
-          if (shouldCheck) break
+          if (shouldCheck) {
+            break
+          }
         }
         if (shouldCheck) {
           checkAndRelocateImageSlot()
@@ -412,7 +414,10 @@
           }
         }
       })
-      rootObserver.observe(root, { childList: true, subtree: true })
+      rootObserver.observe(root, {
+        childList: true,
+        subtree: true
+      })
 
       if (observe) {
         observe('palette', (val) => {
