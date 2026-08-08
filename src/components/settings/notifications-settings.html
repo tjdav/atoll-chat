@@ -46,7 +46,7 @@
       const { Capacitor } = await import('@capacitor/core')
 
       const isNative = Capacitor.isNativePlatform()
-      
+  
       state.isNative = isNative
       state.isSupported = typeof Notification !== 'undefined'
       state.notificationsEnabled = $state.notificationsEnabled ?? true

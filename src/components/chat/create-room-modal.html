@@ -289,7 +289,10 @@
             items = res.items || []
           } else {
             const res = await pb.collection('users').getList(1, 10, {
-              filter: pb.filter('username ~ {:query} && id != {:currentUserId}', { query, currentUserId })
+              filter: pb.filter('username ~ {:query} && id != {:currentUserId}', {
+                query,
+                currentUserId
+              })
             })
             items = res.items || []
           }

@@ -397,9 +397,18 @@ Atoll administrators cannot recover your credentials or vault.
       })
 
       const getAltchaPayload = (widget) => {
-        if (altchaPayload) return altchaPayload
-        if (!widget) return null
-        if (widget.value) return widget.value
+        if (altchaPayload) {
+          return altchaPayload
+        }
+
+        if (!widget) {
+          return null
+        }
+
+        if (widget.value) {
+          return widget.value
+        }
+        
         if (typeof widget.getAttribute === 'function' && widget.getAttribute('value')) {
           return widget.getAttribute('value')
         }

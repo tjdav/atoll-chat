@@ -2,7 +2,7 @@ import { definePlugin } from 'coralite'
 
 /**
  * Notification Plugin for Atoll Chat
- * Handles browser notifications for new messages.
+ * Handles browser and native local notifications for new messages.
  */
 export default definePlugin({
   name: 'notifications',
@@ -19,6 +19,8 @@ export default definePlugin({
         const { config } = instanceContext
         const { $push } = instanceContext.push
 
+        let LocalNotifications = null
+
         const init = () => {
           if (isInitialized) {
             return
@@ -31,6 +33,41 @@ export default definePlugin({
           if ($state.messageSoundsEnabled === undefined) {
             $state.messageSoundsEnabled = true
           }
+
+          const setupLocalNotifications = async () => {
+            try {
+              const { Capacitor } = await import('@capacitor/core')
+              if (Capacitor.isNativePlatform()) {
+                const module = await import('@capacitor/local-notifications').catch(() => null)
+                LocalNotifications = module ? module.LocalNotifications : null
+                if (LocalNotifications) {
+                  // Register the native local notification click/action listener
+                  await LocalNotifications.addListener('localNotificationActionPerformed', (action) => {
+                    const extra = action.notification.extra || {}
+                    const roomId = extra.room_id
+                    const messageId = extra.messageId
+                    if (roomId) {
+                      if (typeof window !== 'undefined' && typeof window.focus === 'function') {
+                        window.focus()
+                      }
+                      $state.currentAppView = 'chats'
+                      $state.activeSelectionType = 'chats'
+                      $state.activeSelectionId = roomId
+
+                      if (messageId) {
+                        setTimeout(() => {
+                          $bus.emit('message:scroll_to', { messageId })
+                        }, 250)
+                      }
+                    }
+                  })
+                }
+              }
+            } catch (err) {
+              console.error('[notification-plugin] Failed to load/setup LocalNotifications:', err)
+            }
+          }
+          setupLocalNotifications()
 
           $state.subscribe('isVaultUnlocked', async (unlocked) => {
             if (!unlocked) {
@@ -163,17 +200,16 @@ export default definePlugin({
           }
 
           const showNotification = async (payload) => {
-            const isSupported = typeof Notification !== 'undefined'
-            if (($state.notificationsEnabled ?? true) === false || !isSupported || Notification.permission !== 'granted') {
-              return
-            }
-
             const { room_id, message } = payload
             if (!message || message.sender_id === $state.currentUser?.id) {
               return
             }
 
             if (isChatActiveAndFocused(room_id)) {
+              return
+            }
+
+            if (($state.notificationsEnabled ?? true) === false) {
               return
             }
 
@@ -223,6 +259,34 @@ export default definePlugin({
 
               if (body.length > 160) {
                 body = body.substring(0, 157) + '...'
+              }
+
+              // Try Native Local Notification first if available
+              if (LocalNotifications) {
+                try {
+                  await LocalNotifications.schedule({
+                    notifications: [
+                      {
+                        title,
+                        body,
+                        id: Date.now() % 100000,
+                        extra: {
+                          room_id,
+                          messageId: message.id || message.local_uuid
+                        }
+                      }
+                    ]
+                  })
+                } catch (err) {
+                  console.error('[notification-plugin] Failed to schedule native local notification:', err)
+                }
+                return
+              }
+
+              // Otherwise, fall back to standard Web browser Notification
+              const isSupported = typeof Notification !== 'undefined'
+              if (!isSupported || Notification.permission !== 'granted') {
+                return
               }
 
               const options = {
@@ -293,15 +357,22 @@ export default definePlugin({
         }
 
         const requestPermission = async () => {
-          if (!('Notification' in window)) {
-            let isNative = false
-            const { Capacitor } = await import('@capacitor/core')
-            isNative = Capacitor.isNativePlatform()
-
-            if (isNative) {
-              return true
+          const { Capacitor } = await import('@capacitor/core')
+          if (Capacitor.isNativePlatform()) {
+            try {
+              const module = await import('@capacitor/local-notifications').catch(() => null)
+              const localNotif = module ? module.LocalNotifications : LocalNotifications
+              if (localNotif) {
+                const status = await localNotif.requestPermissions()
+                return status.display === 'granted'
+              }
+            } catch (err) {
+              console.error('[notification-plugin] Failed to request native local notification permissions:', err)
             }
+            return true
+          }
 
+          if (!('Notification' in window)) {
             return false
           }
 

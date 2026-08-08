@@ -318,7 +318,9 @@
       }
 
       const updateSrc = (newSrc) => {
-        if (!img) return
+        if (!img) {
+          return
+        }
         if (newSrc) {
           state.hasError = false
           img.src = newSrc

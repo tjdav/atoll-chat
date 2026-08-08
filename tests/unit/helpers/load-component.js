@@ -61,9 +61,12 @@ export async function loadComponent (componentName, mocks = {}) {
     },
     eventBus: {
       $bus: {
-        emit: () => {},
-        on: () => {},
-        off: () => {}
+        emit: () => {
+        },
+        on: () => {
+        },
+        off: () => {
+        }
       }
     },
     router: {
@@ -83,19 +86,24 @@ export async function loadComponent (componentName, mocks = {}) {
     },
     sync: {
       $sync: {
-        startSubscriptions: async () => {},
-        stopSubscriptions: async () => {}
+        startSubscriptions: async () => {
+        },
+        stopSubscriptions: async () => {
+        }
       }
     },
     realtimeSync: {
       $sync: {
-        startSubscriptions: async () => {},
-        stopSubscriptions: async () => {}
+        startSubscriptions: async () => {
+        },
+        stopSubscriptions: async () => {
+        }
       }
     },
     cryptoWorker: {
       $worker: {
-        execute: async () => {}
+        execute: async () => {
+        }
       }
     },
     globalStore: {
@@ -105,7 +113,8 @@ export async function loadComponent (componentName, mocks = {}) {
         currentUser: null,
         users: {},
         subscribe: (_key, _cb) => {
-          return () => {}
+          return () => {
+          }
         }
       }
     },

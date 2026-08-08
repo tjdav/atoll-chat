@@ -53,7 +53,10 @@ describe('Atoll Button Component', () => {
     el.addEventListener('click', () => {
       hostClicked = true
     })
-    el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    el.dispatchEvent(new MouseEvent('click', {
+      bubbles: true,
+      cancelable: true
+    }))
     assert.equal(hostClicked, false, 'Click event on host element should be intercepted when disabled')
   })
 
@@ -78,7 +81,7 @@ describe('Atoll Button Component', () => {
 
     const spinner = button.querySelector('.atoll-btn-spinner')
     assert.ok(spinner, 'Spinner wrapper should exist')
-    
+
     const border = spinner.querySelector('.spinner-border')
     assert.ok(border, 'Spinner border should exist inside wrapper')
     assert.ok(border.className.includes('spinner-border-sm'), 'Should have small spinner border class')
