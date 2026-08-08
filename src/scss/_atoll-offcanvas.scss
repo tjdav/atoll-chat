@@ -14,6 +14,30 @@
     }
   }
 
+  .offcanvas-start,
+  div[ref="mobileNav"] {
+    --#{$prefix}offcanvas-width: 100vw !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+  }
+
+  .offcanvas-start,
+  .offcanvas-sm,
+  div[ref="mobileNav"] {
+
+    .atoll-sidebar-pane,
+    .contextual-list {
+      width: calc(100vw - #{$app-sidebar-width}) !important;
+      max-width: calc(100vw - #{$app-sidebar-width}) !important;
+      min-width: 0 !important;
+    }
+  }
+
+  .offcanvas,
+  .offcanvas-sm {
+    transition: transform 0.3s ease-in-out !important;
+  }
+
   // Mobile layout state overrides for offcanvas-sm navigation pane
   .atoll-main-layout:not(.chat-active) .offcanvas-sm,
   .layout-container:not(.chat-active) .offcanvas-sm {
@@ -45,6 +69,17 @@
     >.d-flex {
       gap: 1rem !important;
     }
+  }
+}
+
+#roomDetailsOffcanvas,
+div[ref="roomDetailsOffcanvas"] {
+
+  &.showing,
+  &.show,
+  &.hiding {
+    display: flex !important;
+    flex-direction: column !important;
   }
 }
 

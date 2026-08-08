@@ -101,6 +101,7 @@
 .atoll-badge-container {
   position: relative;
   display: inline-flex;
+  overflow: visible !important;
 }
 
 .atoll-badge-positioned {

@@ -84,6 +84,37 @@
       const mobileNavEl = refs('mobileNav')
       const mobileNav = new Offcanvas(mobileNavEl)
 
+      // Swipe to close left offcanvas (swipe left)
+      let touchStartX = 0
+      let touchStartY = 0
+      let touchEndX = 0
+      let touchEndY = 0
+
+      mobileNavEl.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length > 0) {
+          touchStartX = e.touches[0].clientX
+          touchStartY = e.touches[0].clientY
+          touchEndX = touchStartX
+          touchEndY = touchStartY
+        }
+      }, { passive: true })
+
+      mobileNavEl.addEventListener('touchmove', (e) => {
+        if (e.touches && e.touches.length > 0) {
+          touchEndX = e.touches[0].clientX
+          touchEndY = e.touches[0].clientY
+        }
+      }, { passive: true })
+
+      mobileNavEl.addEventListener('touchend', () => {
+        const deltaX = touchEndX - touchStartX
+        const deltaY = touchEndY - touchStartY
+        // Swipe left (negative deltaX) of at least 50px with dominant horizontal gesture
+        if (deltaX <= -50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+          mobileNav.hide()
+        }
+      }, { passive: true })
+
       const callOverlayElement = document.createElement('call-overlay')
       const reactionPickerElement = document.createElement('atoll-chat-reaction-picker')
       const avatarEditorElement = document.createElement('ui-avatar-editor')

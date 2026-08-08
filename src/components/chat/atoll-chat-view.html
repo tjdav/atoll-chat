@@ -57,7 +57,7 @@
     </div>
 
     <!-- Room Details Sidebar (Bootstrap Offcanvas drawer) -->
-    <div class="offcanvas offcanvas-end shadow-lg" tabindex="-1" ref="roomDetailsOffcanvas" id="roomDetailsOffcanvas" aria-labelledby="roomDetailsOffcanvasLabel" data-testid="roomDetailsOffcanvas" style="display: flex !important; flex-direction: column !important;">
+    <div class="offcanvas offcanvas-end shadow-lg" tabindex="-1" ref="roomDetailsOffcanvas" id="roomDetailsOffcanvas" aria-labelledby="roomDetailsOffcanvasLabel" data-testid="roomDetailsOffcanvas">
       <room-details-sidebar style="display: flex !important; flex-direction: column !important; height: 100% !important; min-height: 0 !important; flex-grow: 1 !important;"></room-details-sidebar>
     </div>
 
@@ -94,6 +94,37 @@
       let bsOffcanvas = null
 
       bsOffcanvas = new Offcanvas(offcanvasEl)
+
+      // Swipe to close right offcanvas (swipe right)
+      let rTouchStartX = 0
+      let rTouchStartY = 0
+      let rTouchEndX = 0
+      let rTouchEndY = 0
+
+      offcanvasEl.addEventListener('touchstart', (e) => {
+        if (e.touches && e.touches.length > 0) {
+          rTouchStartX = e.touches[0].clientX
+          rTouchStartY = e.touches[0].clientY
+          rTouchEndX = rTouchStartX
+          rTouchEndY = rTouchStartY
+        }
+      }, { passive: true })
+
+      offcanvasEl.addEventListener('touchmove', (e) => {
+        if (e.touches && e.touches.length > 0) {
+          rTouchEndX = e.touches[0].clientX
+          rTouchEndY = e.touches[0].clientY
+        }
+      }, { passive: true })
+
+      offcanvasEl.addEventListener('touchend', () => {
+        const deltaX = rTouchEndX - rTouchStartX
+        const deltaY = rTouchEndY - rTouchStartY
+        // Swipe right (positive deltaX) of at least 50px with dominant horizontal gesture
+        if (deltaX >= 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+          bsOffcanvas.hide()
+        }
+      }, { passive: true })
 
       offcanvasEl.addEventListener('hide.bs.offcanvas', () => {
         state.isRoomDetailsOpen = false

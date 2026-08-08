@@ -3,9 +3,10 @@
   transition: width 0.2s ease-in-out;
   border-right: none !important;
   background-color: var(--#{$prefix}body-bg) !important;
+  overflow: visible !important;
 
   @include media-breakpoint-down(md) {
-    padding: 0 0.2rem;
+    padding: 0.75rem 0.2rem;
   }
 
   .nav-link {
@@ -16,6 +17,7 @@
     padding: 0.75rem !important;
     background-color: transparent;
     border-left: 3px solid transparent;
+    overflow: visible !important;
 
     @include media-breakpoint-down(md) {
       padding: 0.5rem !important;
