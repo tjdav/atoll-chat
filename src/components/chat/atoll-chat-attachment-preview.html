@@ -52,6 +52,7 @@
       thumbnailUrl: String,
       isCustom: Boolean,
       isCompressing: Boolean,
+      isUploading: Boolean,
       progress: Number
     },
     getters: {
@@ -61,7 +62,7 @@
       isThumbnailVisibleHidden: (state) => !!state.thumbnailUrl,
       coverBtnText: (state) => (state.isCustom ? 'Remove Custom Cover' : 'Change Cover'),
       coverBtnClass: (state) => (state.isCustom ? 'btn-danger' : 'btn-dark'),
-      isProgressHidden: (state) => !state.isCompressing,
+      isProgressHidden: (state) => !(state.isCompressing || state.isUploading),
       progressBarStyle: (state) => 'width: ' + Math.min(100, Math.max(0, Number(state.progress) || 0)) + '%'
     },
     client: ({ refs, state, eventBus, signal, observe }) => {

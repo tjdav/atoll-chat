@@ -10,6 +10,7 @@
           thumbnail-url="{{ thumbnailPreviewUrl }}"
           is-custom="{{ isCustomCover }}"
           is-compressing="{{ isCompressing }}"
+          is-uploading="{{ isUploading }}"
           progress="{{ progress }}"
         ></atoll-chat-attachment-preview>
       </div>
@@ -268,7 +269,32 @@
           if (file) {
             console.log('[atoll-chat-input] Processing file message')
             state.isUploading = true
-            state.uploadStatus = 'Processing file...'
+            state.progress = 100
+
+            // Determine appropriate sending label based on file details
+            let label = 'Sending file...'
+            const isGif = (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'))
+            if (isGif) {
+              label = 'Sending animated GIF...'
+            } else if (file.type.startsWith('image/')) {
+              label = 'Sending image...'
+            } else if (file.type.startsWith('video/')) {
+              label = 'Sending video...'
+            } else if (file.type.startsWith('audio/') || recordedBlob) {
+              label = 'Sending audio...'
+            } else {
+              // Try checking compatibility category if available
+              const compatibility = await $media.checkCompatibility(file)
+              if (compatibility.category === 'image') {
+                label = 'Sending image...'
+              } else if (compatibility.category === 'video') {
+                label = 'Sending video...'
+              } else if (compatibility.category === 'audio') {
+                label = 'Sending audio...'
+              }
+            }
+
+            state.uploadStatus = label
 
             let musicMetadata = currentMusicMetadata
             let albumArtBlob = currentAlbumArtBlob
