@@ -16,7 +16,7 @@
       <div class="d-flex flex-column {{ alignmentClass }}">
         <div class="position-relative d-flex flex-column {{ alignmentClass }}" ref="bubbleWrapper">
           <slot></slot>
-          <button type="button" class="btn btn-sm btn-link text-body-secondary p-1 me-1 rounded-circle d-flex align-items-center justify-content-center border-0" ref="addReactionBtn" title="Add reaction" data-testid="addReactionBtn" aria-label="Add reaction">
+          <button type="button" class="btn btn-sm btn-link text-body-secondary p-1 me-1 rounded-circle d-flex align-items-center justify-content-center border-0 reaction-trigger-icon" ref="addReactionBtn" title="Add reaction" data-testid="addReactionBtn" aria-label="Add reaction">
             <atoll-icon name="emoji" size="18" class="text-muted"></atoll-icon>
           </button>
         </div>
@@ -194,8 +194,60 @@
             y: rect.bottom + 5,
             targetId: getMsgId()
           })
+          container.classList.remove('show-reaction-btn')
         }
       }
+
+      // Tap-to-toggle reaction button next to message bubble on mobile/touch
+      const isInteractive = (target) => {
+        let current = target
+        while (current && current !== bubbleWrapper) {
+          const tag = current.tagName?.toLowerCase()
+          if (tag === 'a' || tag === 'button' || tag === 'input' || tag === 'audio' || tag === 'video') {
+            return true
+          }
+          if (current.classList?.contains('atoll-chat-waveform-player') ||
+              current.classList?.contains('media-preview-container') ||
+              current.classList?.contains('file-attachment-container')) {
+            return true
+          }
+          current = current.parentElement
+        }
+        return false
+      }
+
+      const handleBubbleClick = (e) => {
+        if (isInteractive(e.target)) {
+          return
+        }
+        e.stopPropagation()
+
+        const isShown = container.classList.contains('show-reaction-btn')
+
+        // Hide other rows' reaction buttons
+        document.querySelectorAll('.show-reaction-btn').forEach(row => {
+          if (row !== container) {
+            row.classList.remove('show-reaction-btn')
+          }
+        })
+
+        if (isShown) {
+          container.classList.remove('show-reaction-btn')
+        } else {
+          container.classList.add('show-reaction-btn')
+        }
+      }
+
+      const handleDocumentClick = (e) => {
+        if (container.contains(e.target)) {
+          return
+        }
+        container.classList.remove('show-reaction-btn')
+      }
+
+      bubbleWrapper.addEventListener('click', handleBubbleClick, { signal })
+      document.addEventListener('click', handleDocumentClick, { signal })
+      document.addEventListener('touchstart', handleDocumentClick, { signal, passive: true })
 
       // Long-press for mobile
       let pressTimer
@@ -228,6 +280,9 @@
         bubbleWrapper.removeEventListener('mousedown', startPress, { signal })
         bubbleWrapper.removeEventListener('mouseup', cancelPress, { signal })
         bubbleWrapper.removeEventListener('mouseleave', cancelPress, { signal })
+        bubbleWrapper.removeEventListener('click', handleBubbleClick, { signal })
+        document.removeEventListener('click', handleDocumentClick, { signal })
+        document.removeEventListener('touchstart', handleDocumentClick, { signal })
       })
     }
   })
