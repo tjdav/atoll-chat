@@ -235,8 +235,5 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
 
     // Save
     await nicknamesModal.locator('atoll-button[ref$="primaryBtn"] button').click()
-
-    await page.waitForTimeout(1000)
-    await page.screenshot({ path: 'room-settings-screenshot.png' })
   })
 })
