@@ -75,7 +75,7 @@
 
         <!-- Zone 4: Bottom Action Zone -->
         <div class="atoll-auth-bottom-zone">
-          <atoll-button type="submit" variant="primary" block="true">Verify Recovery Code</atoll-button>
+          <atoll-button type="submit" variant="primary" block="true" ref="btnVerifyRecovery">Verify Recovery Code</atoll-button>
         </div>
       </form>
     </div>
@@ -160,6 +160,7 @@
       const btnCancelRecovery = refs('btnCancelRecovery')
       const recoveryForm = refs('recoveryForm')
       const recoveryCodeInput = refs('recoveryCodeInput')
+      const btnVerifyRecovery = refs('btnVerifyRecovery')
 
       const newPasswordForm = refs('newPasswordForm')
       const newPasswordInput = refs('newPassword')
@@ -379,6 +380,11 @@
           unlockForm.classList.remove('was-validated')
           updateStatus('Locating vault...')
           btnUnlockSubmit?.setAttribute('loading', 'true')
+          passwordInput.setAttribute('disabled', 'true')
+          btnPasskey.setAttribute('disabled', 'true')
+          btnShowRecovery.classList.add('pe-none')
+          btnLogout.classList.add('pe-none')
+
           const record = await pb.collection('users').getOne(pb.authStore.model.id)
           const { encrypted_master_keys: encryptedMasterKeys, encrypted_private_keys: encryptedPrivateKeys } = record
 
@@ -388,6 +394,10 @@
             unlockForm.classList.add('was-validated')
             updateStatus('')
             btnUnlockSubmit?.removeAttribute('loading')
+            passwordInput.removeAttribute('disabled')
+            btnPasskey.removeAttribute('disabled')
+            btnShowRecovery.classList.remove('pe-none')
+            btnLogout.classList.remove('pe-none')
             return
           }
 
@@ -424,6 +434,10 @@
         } catch (error) {
           console.error('Unlock error:', error)
           btnUnlockSubmit?.removeAttribute('loading')
+          passwordInput.removeAttribute('disabled')
+          btnPasskey.removeAttribute('disabled')
+          btnShowRecovery.classList.remove('pe-none')
+          btnLogout.classList.remove('pe-none')
           let errorMessage = 'Unlock failed'
   
           if (error.message && error.message.includes('decrypt')) {
@@ -494,6 +508,10 @@
         try {
           recoveryForm.classList.remove('was-validated')
           updateStatus('Verifying recovery limit...')
+          btnVerifyRecovery?.setAttribute('loading', 'true')
+          recoveryCodeInput.setAttribute('disabled', 'true')
+          btnCancelRecovery.setAttribute('disabled', 'true')
+
           const username = pb.authStore.model ? pb.authStore.model.username : ''
           await pocketbase.auth.recoverAccount(username)
 
@@ -542,6 +560,10 @@
           })
 
           /* Transition to new password setup */
+        btnVerifyRecovery?.removeAttribute('loading')
+        recoveryCodeInput.removeAttribute('disabled')
+        btnCancelRecovery.removeAttribute('disabled')
+
           viewRecovery.classList.add('d-none')
           viewRecovery.classList.remove('d-flex')
           viewNewPassword.classList.remove('d-none')
@@ -556,6 +578,10 @@
           newPasswordConfirmInput.removeAttribute('error-message')
         } catch (err) {
           console.error('Recovery failed:', err)
+          btnVerifyRecovery?.removeAttribute('loading')
+          recoveryCodeInput.removeAttribute('disabled')
+          btnCancelRecovery.removeAttribute('disabled')
+
           if (err.status && err.status >= 500) {
             showGlobalAlert(err.message || 'Recovery failed.')
           } else {
@@ -633,6 +659,8 @@
           newPasswordForm.classList.remove('was-validated')
           updateStatus('Deriving new vault password...')
           btnSaveNewPassword?.setAttribute('loading', 'true')
+          newPasswordInput.setAttribute('disabled', 'true')
+          newPasswordConfirmInput.setAttribute('disabled', 'true')
 
           const { deriveAuthAndVaultKeys } = await import('../../utils/keys.js')
           const { keyA: newKeyA, keyB: newKeyB } = await deriveAuthAndVaultKeys(fetchedRecord.username, newPassword)
@@ -657,9 +685,13 @@
 
           await completeUnlock(decryptedKeysLocal, refreshedRecord.record)
           btnSaveNewPassword?.removeAttribute('loading')
+          newPasswordInput.removeAttribute('disabled')
+          newPasswordConfirmInput.removeAttribute('disabled')
         } catch (err) {
           console.error('Password rotation failed:', err)
           btnSaveNewPassword?.removeAttribute('loading')
+          newPasswordInput.removeAttribute('disabled')
+          newPasswordConfirmInput.removeAttribute('disabled')
           showGlobalAlert(err.message || 'Password rotation failed.')
           updateStatus('')
         }

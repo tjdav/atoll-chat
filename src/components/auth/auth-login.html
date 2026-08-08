@@ -259,10 +259,15 @@
           hiddenInputValue: activeAltchaWidget?.querySelector?.('input[name="altcha"]')?.value
         })
 
+        // Immediately set loading and disable inputs/links
+        loginSubmit.setAttribute('loading', 'true')
+        identityInput.setAttribute('disabled', 'true')
+        passwordInput.setAttribute('disabled', 'true')
+        linkRegister.setAttribute('disabled', 'true')
+
         if (!currentPayload) {
           console.log('[ALTCHA LOGIN PENDING] Verification pending. Form submission queued.')
           loginSubmitPending = true
-          loginSubmit.setAttribute('loading', 'true')
           updateStatus('Verifying security challenge...')
           return
         }
@@ -410,6 +415,12 @@
           purgeVaultKey()
           $state.isAuthenticated = false
           $state.isVaultUnlocked = false
+
+          // Re-enable elements on error
+          loginSubmit.removeAttribute('loading')
+          identityInput.removeAttribute('disabled')
+          passwordInput.removeAttribute('disabled')
+          linkRegister.removeAttribute('disabled')
 
           updateStatus(error.message || 'Failed to log in', true)
           showGlobalAlert(error.message || 'Failed to log in')

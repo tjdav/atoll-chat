@@ -408,7 +408,7 @@ Atoll administrators cannot recover your credentials or vault.
         if (widget.value) {
           return widget.value
         }
-  
+        
         if (typeof widget.getAttribute === 'function' && widget.getAttribute('value')) {
           return widget.getAttribute('value')
         }
@@ -535,10 +535,17 @@ Atoll administrators cannot recover your credentials or vault.
           hiddenInputValue: altchaWidget?.querySelector?.('input[name="altcha"]')?.value
         })
 
+        // Immediately set loading and disable inputs/links
+        btnSubmit.setAttribute('loading', 'true')
+        usernameInput.setAttribute('disabled', 'true')
+        invitationCodeInput.setAttribute('disabled', 'true')
+        passwordInputEl.setAttribute('disabled', 'true')
+        passwordConfirmInputEl.setAttribute('disabled', 'true')
+        linkLogin.setAttribute('disabled', 'true')
+
         if (!currentPayload) {
           console.log('[ALTCHA REGISTER PENDING] Verification pending. Form submission queued.')
           registerSubmitPending = true
-          btnSubmit.setAttribute('loading', 'true')
           updateStatus('Verifying security challenge...')
           return
         }
@@ -702,6 +709,14 @@ Atoll administrators cannot recover your credentials or vault.
           pb.authStore.clear()
           $state.isAuthenticated = false
           $state.isVaultUnlocked = false
+
+          // Re-enable elements on error
+          btnSubmit.removeAttribute('loading')
+          usernameInput.removeAttribute('disabled')
+          invitationCodeInput.removeAttribute('disabled')
+          passwordInputEl.removeAttribute('disabled')
+          passwordConfirmInputEl.removeAttribute('disabled')
+          linkLogin.removeAttribute('disabled')
 
           updateStatus(error.message || 'Registration failed', true)
           showGlobalAlert(error.message || 'Registration failed')
