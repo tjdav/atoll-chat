@@ -5,9 +5,20 @@
   background-color: var(--atoll-chat-bg);
   background-image: var(--atoll-chat-bg-image);
   @include transition(background 0.3s ease-in-out);
+  position: relative;
 
   .avatar-placeholder {
     font-size: 1.2rem;
+  }
+
+  atoll-chat-input {
+    display: block !important;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    pointer-events: none;
   }
 }
 

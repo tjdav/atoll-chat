@@ -7,6 +7,11 @@
   overflow-y: auto;
 }
 
+.atoll-chat-timeline-container {
+  // Apply generous bottom padding standard so scrolling content goes underneath input overlays safely
+  padding-bottom: var(--atoll-chat-timeline-padding-bottom, 120px) !important;
+}
+
 .atoll-chat-timeline-row {
   display: block;
 
@@ -14,10 +19,12 @@
     &[is-first-in-block="true"][is-last-in-block="false"] .message-bubble {
       border-bottom-right-radius: 0.25rem;
     }
+
     &[is-first-in-block="false"][is-last-in-block="false"] .message-bubble {
       border-top-right-radius: 0.25rem;
       border-bottom-right-radius: 0.25rem;
     }
+
     &[is-first-in-block="false"][is-last-in-block="true"] .message-bubble {
       border-top-right-radius: 0.25rem;
     }
@@ -27,10 +34,12 @@
     &[is-first-in-block="true"][is-last-in-block="false"] .message-bubble {
       border-bottom-left-radius: 0.25rem;
     }
+
     &[is-first-in-block="false"][is-last-in-block="false"] .message-bubble {
       border-top-left-radius: 0.25rem;
       border-bottom-left-radius: 0.25rem;
     }
+
     &[is-first-in-block="false"][is-last-in-block="true"] .message-bubble {
       border-top-left-radius: 0.25rem;
     }
@@ -125,6 +134,7 @@
   margin-top: -12px;
   margin-bottom: 8px;
   color: var(--atoll-chat-sent-status-color, var(--atoll-chat-timestamp-color)) !important;
+
   span {
     color: var(--atoll-chat-sent-status-color, var(--atoll-chat-timestamp-color)) !important;
   }

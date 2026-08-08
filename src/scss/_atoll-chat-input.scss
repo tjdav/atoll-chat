@@ -1,8 +1,11 @@
 .atoll-chat-input-container {
   background-color: var(--atoll-chat-input-container-bg, var(--bs-body-bg)) !important;
   border: 1px solid var(--atoll-chat-input-container-border, transparent) !important;
-  backdrop-filter: var(--atoll-chat-input-backdrop-filter, none) !important;
-  -webkit-backdrop-filter: var(--atoll-chat-input-backdrop-filter, none) !important;
+  
+  // Backdrop filter blur and translucent overlay standard across all themes (configurable via CSS variable)
+  backdrop-filter: var(--atoll-chat-input-backdrop-filter, blur(12px)) !important;
+  -webkit-backdrop-filter: var(--atoll-chat-input-backdrop-filter, blur(12px)) !important;
+  pointer-events: auto; // Restore interaction for input component internal elements
 
   textarea,
   input {
