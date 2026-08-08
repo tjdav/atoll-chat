@@ -338,10 +338,10 @@
       // Self-cleaning slot default contents: completely remove standard img and fallback span when a custom slot="image" node is projected
       const cleanDefaultSlot = () => {
         const hasImageSlot = root.querySelector('[slot="image"]') !== null
+        const circle = root.querySelector('.atoll-profile-circle')
         if (hasImageSlot) {
           state.hasProjectedImage = true
 
-          const circle = root.querySelector('.atoll-profile-circle')
           if (circle) {
             const defaultImg = circle.querySelector('img[ref="avatarImage"]') || circle.querySelector('img')
             if (defaultImg && !defaultImg.getAttribute('slot')) {
@@ -354,11 +354,65 @@
               defaultFallback.setAttribute('hidden', 'true')
             }
           }
+        } else {
+          state.hasProjectedImage = false
+
+          if (circle) {
+            const defaultImg = circle.querySelector('img[ref="avatarImage"]') || circle.querySelector('img')
+            if (defaultImg && !defaultImg.getAttribute('slot')) {
+              defaultImg.style.removeProperty('display')
+            }
+            const defaultFallback = circle.querySelector('.atoll-profile-fallback')
+            if (defaultFallback) {
+              defaultFallback.style.removeProperty('display')
+            }
+          }
         }
       }
-      cleanDefaultSlot()
-      requestAnimationFrame(cleanDefaultSlot)
-      setTimeout(cleanDefaultSlot, 50)
+
+      const circle = root.querySelector('.atoll-profile-circle')
+
+      const checkAndRelocateImageSlot = () => {
+        const slotImg = root.querySelector('[slot="image"]')
+        if (slotImg && circle && slotImg.parentElement !== circle) {
+          circle.appendChild(slotImg)
+        }
+        cleanDefaultSlot()
+      }
+
+      checkAndRelocateImageSlot()
+
+      const rootObserver = new MutationObserver((mutations) => {
+        let shouldCheck = false
+        for (const mutation of mutations) {
+          if (mutation.type === 'childList') {
+            for (const node of mutation.addedNodes) {
+              if (node.nodeType === Node.ELEMENT_NODE && (node.getAttribute('slot') === 'image' || node.querySelector('[slot="image"]'))) {
+                shouldCheck = true
+                break
+              }
+            }
+            for (const node of mutation.removedNodes) {
+              if (node.nodeType === Node.ELEMENT_NODE && (node.getAttribute('slot') === 'image' || node.querySelector('[slot="image"]'))) {
+                shouldCheck = true
+                break
+              }
+            }
+          }
+          if (shouldCheck) break
+        }
+        if (shouldCheck) {
+          checkAndRelocateImageSlot()
+          if (state.type === 'multiparty') {
+            if (disconnectMultiparty) {
+              disconnectMultiparty()
+              disconnectMultiparty = null
+            }
+            handleMultiparty()
+          }
+        }
+      })
+      rootObserver.observe(root, { childList: true, subtree: true })
 
       if (observe) {
         observe('palette', (val) => {
@@ -584,6 +638,10 @@
               }
 
               child.addEventListener('error', replaceWithFallback)
+
+              if (!child.getAttribute('src') || child.getAttribute('src') === '') {
+                replaceWithFallback()
+              }
             }
           })
 
@@ -648,6 +706,9 @@
       })
 
       return () => {
+        if (rootObserver) {
+          rootObserver.disconnect()
+        }
         if (disconnectMultiparty) {
           disconnectMultiparty()
         }
