@@ -1,5 +1,3 @@
-import { mkdir, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
 import { definePlugin } from 'coralite'
 
 /**
@@ -25,9 +23,6 @@ export default function (config) {
           return
         }
 
-        const wellKnownDir = join(outputDir, '.well-known')
-        await mkdir(wellKnownDir, { recursive: true })
-
         const iosTeamId = config?.iosTeamId || process.env.ATOLL_IOS_TEAM_ID || 'TEAMID1234'
         const iosAppId = config?.iosAppId || process.env.ATOLL_IOS_APP_ID || 'com.atoll.chat'
         const aasaContent = {
@@ -44,9 +39,7 @@ export default function (config) {
           }
         }
 
-        const destAasaPath = join(wellKnownDir, 'apple-app-site-association')
-        await writeFile(destAasaPath, JSON.stringify(aasaContent, null, 2))
-        app.trackOutputFile(destAasaPath)
+        await app.writeFile('.well-known/apple-app-site-association', JSON.stringify(aasaContent, null, 2))
 
         const packageName = config?.androidPackageName || process.env.ATOLL_ANDROID_PACKAGE_NAME || 'com.atoll.chat'
         const fingerprint = config?.androidCertFingerprint || process.env.ATOLL_ANDROID_CERT_FINGERPRINT || 'FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C'
@@ -61,9 +54,7 @@ export default function (config) {
           }
         ]
 
-        const destAssetlinksPath = join(wellKnownDir, 'assetlinks.json')
-        await writeFile(destAssetlinksPath, JSON.stringify(assetlinksContent, null, 2))
-        app.trackOutputFile(destAssetlinksPath)
+        await app.writeFile('.well-known/assetlinks.json', JSON.stringify(assetlinksContent, null, 2))
       }
     }
   })

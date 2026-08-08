@@ -59,10 +59,7 @@ export default function (config) {
             `importScripts('$1?v=${version}')`
           )
 
-          const destSwPath = join(outputDir, 'sw.js')
-          await mkdir(dirname(destSwPath), { recursive: true })
-          await writeFile(destSwPath, swContent)
-          app.trackOutputFile(destSwPath)
+          await app.writeFile('sw.js', swContent)
         } catch (err) {
           console.error('[serviceWorker plugin] Failed to process sw.js:', err)
         }
@@ -81,10 +78,7 @@ export default function (config) {
             `importScripts('$1?v=${version}')`
           )
 
-          const destWorkerPath = join(outputDir, 'worker.js')
-          await mkdir(dirname(destWorkerPath), { recursive: true })
-          await writeFile(destWorkerPath, workerContent)
-          app.trackOutputFile(destWorkerPath)
+          await app.writeFile('worker.js', workerContent)
         } catch (err) {
           console.error('[serviceWorker plugin] Failed to process worker.js:', err)
         }

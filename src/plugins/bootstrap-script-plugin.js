@@ -1,4 +1,4 @@
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile, readdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import crypto from 'node:crypto'
 import { existsSync } from 'node:fs'
@@ -47,6 +47,21 @@ export default function bootstrapScriptPlugin () {
         const bootstrapFilename = 'bootstrap-app.js'
         let bootstrapSri = ''
 
+        // Find the active coralite-runtime file
+        const assetsJsDir = join(outputDir, 'assets', 'js')
+        let runtimeFilename = ''
+        if (existsSync(assetsJsDir)) {
+          try {
+            const files = await readdir(assetsJsDir)
+            const runtimeFile = files.find(f => f.startsWith('coralite-runtime-') && f.endsWith('.js'))
+            if (runtimeFile) {
+              runtimeFilename = runtimeFile
+            }
+          } catch (err) {
+            console.error('[bootstrapScriptExtractor] Failed to read assets/js directory:', err)
+          }
+        }
+
         if (inlineMatch) {
           const inlineScript = inlineMatch[1]
 
@@ -59,12 +74,26 @@ export default function bootstrapScriptPlugin () {
         } else {
           const bootstrapFullPath = join(outputDir, 'assets', 'js', bootstrapFilename)
           if (existsSync(bootstrapFullPath)) {
-            app.trackOutputFile(bootstrapFullPath)
             try {
-              const scriptContent = await readFile(bootstrapFullPath, 'utf8')
+              let scriptContent = await readFile(bootstrapFullPath, 'utf8')
+              if (runtimeFilename) {
+                const updatedContent = scriptContent.replace(
+                  /\/assets\/js\/coralite-runtime-[\w-]+\.js/g,
+                  `/assets/js/${runtimeFilename}`
+                )
+                if (updatedContent !== scriptContent) {
+                  scriptContent = updatedContent
+                  await app.writeFile(`assets/js/${bootstrapFilename}`, scriptContent)
+                } else {
+                  app.trackOutputFile(bootstrapFullPath)
+                }
+              } else {
+                app.trackOutputFile(bootstrapFullPath)
+              }
               bootstrapSri = getSriHash(scriptContent)
-            } catch {
-              /* ignore */
+            } catch (err) {
+              console.error('[bootstrapScriptExtractor] Failed to update bootstrap-app.js:', err)
+              app.trackOutputFile(bootstrapFullPath)
             }
           }
         }
