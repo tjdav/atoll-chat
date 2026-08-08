@@ -560,9 +560,9 @@
       })
 
       // Reconnection verification and conflict resolution
-      const handleReconnectionHandshake = async () => {
+      const handleReconnectionHandshake = async (prefetchedMetadata = null) => {
         console.log('[app-root] Reconnection detected. Fetching app metadata in background...')
-        const metadata = await fetchServerMetadata()
+        const metadata = prefetchedMetadata || await fetchServerMetadata()
         if (!metadata) {
           console.warn('[app-root] Reconnection verification fetch failed. Remaining in offline state.')
           return
@@ -617,6 +617,52 @@
         console.log('[app-root] Reconnection verification successful. Instance ID matches.')
       }
 
+      let reconnectPollInterval = null
+
+      const startReconnectPolling = () => {
+        if (reconnectPollInterval) {
+          return
+        }
+        console.log('[app-root] Starting reconnection polling...')
+        reconnectPollInterval = setInterval(async () => {
+          if (!$state.isOnline) {
+            console.log('[app-root] Polling reconnect check...')
+            await attemptReconnect(false)
+          } else {
+            stopReconnectPolling()
+          }
+        }, 5000)
+      }
+
+      const stopReconnectPolling = () => {
+        if (reconnectPollInterval) {
+          clearInterval(reconnectPollInterval)
+          reconnectPollInterval = null
+          console.log('[app-root] Reconnection polling stopped.')
+        }
+      }
+
+      const attemptReconnect = async (isManual = false) => {
+        console.log('[app-root] Attempting to reconnect to backend (manual:', isManual, ')...')
+        const metadata = await fetchServerMetadata()
+        if (metadata) {
+          await handleReconnectionHandshake(metadata)
+          $bus.emit('app:reconnected')
+          if (isManual) {
+            $bus.emit('ui:show_toast', {
+              message: 'Connected to server!',
+              variant: 'success'
+            })
+          }
+        } else if (isManual) {
+          console.warn('[app-root] Manual reconnect attempt failed: backend still unreachable.')
+          $bus.emit('ui:show_toast', {
+            message: 'Could not connect to server. Please try again.',
+            variant: 'danger'
+          })
+        }
+      }
+
       // Network status listener
       $bus.on('app:network_change', (payload) => {
         console.log('[app-root] Network status changed:', payload)
@@ -630,6 +676,11 @@
       window.addEventListener('online', () => {
         handleReconnectionHandshake().catch(console.error)
       }, { signal })
+
+      $bus.on('app:request_reconnect', async () => {
+        console.log('[app-root] Manual reconnect request received.')
+        await attemptReconnect(true)
+      })
 
       // Auth lifecycle management
       $bus.on('auth:unlocked', ({ keys, userRecord }) => {
@@ -825,6 +876,9 @@
         if (val) {
           console.log('[app-root] Network is back online. Triggering flushQueue.')
           flushQueue().catch(console.error)
+          stopReconnectPolling()
+        } else {
+          startReconnectPolling()
         }
       })
     }

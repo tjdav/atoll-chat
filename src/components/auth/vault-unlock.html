@@ -313,7 +313,18 @@
           }
 
           updateStatus('Decrypting private keys...')
-          const fetchedRecord = await pb.collection('users').getOne(record.id)
+          let fetchedRecord
+          try {
+            fetchedRecord = await pb.collection('users').getOne(record.id)
+          } catch (err) {
+            console.warn('[vault-unlock] Failed to fetch latest user record for biometric unlock. Using cached record.', err)
+            fetchedRecord = pb.authStore.model
+          }
+
+          if (!fetchedRecord) {
+            throw new Error('User record not found.')
+          }
+
           const encryptedVault = fetchedRecord.encrypted_master_keys_passkey || fetchedRecord.encrypted_private_keys
 
           if (!encryptedVault) {
@@ -380,12 +391,19 @@
           unlockForm.classList.remove('was-validated')
           updateStatus('Locating vault...')
           btnUnlockSubmit?.setAttribute('loading', 'true')
-          passwordInput.setAttribute('disabled', 'true')
-          btnPasskey.setAttribute('disabled', 'true')
-          btnShowRecovery.classList.add('pe-none')
-          btnLogout.classList.add('pe-none')
+          
+          let record
+          try {
+            record = await pb.collection('users').getOne(pb.authStore.model.id)
+          } catch (err) {
+            console.warn('[vault-unlock] Failed to fetch latest user record from server. Using cached record.', err)
+            record = pb.authStore.model
+          }
 
-          const record = await pb.collection('users').getOne(pb.authStore.model.id)
+          if (!record) {
+            throw new Error('User record not found. Please log out and log in again.')
+          }
+
           const { encrypted_master_keys: encryptedMasterKeys, encrypted_private_keys: encryptedPrivateKeys } = record
 
           if (!encryptedMasterKeys) {

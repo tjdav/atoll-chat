@@ -419,69 +419,83 @@ Atoll administrators cannot recover your credentials or vault.
         return null
       }
 
-      btnSubmit.removeAttribute('loading')
-      btnSubmit.removeAttribute('disabled')
+      const renderAltcha = () => {
+        altchaContainer.innerHTML = ''
+        altchaPayload = null
 
-      altchaWidget = document.createElement('altcha-widget')
-      const challengeUrl = pb.buildURL('/api/altcha/challenge')
-      const configObj = {}
+        btnSubmit.removeAttribute('loading')
+        btnSubmit.removeAttribute('disabled')
 
-      if (isTesting) {
-        altchaWidget.setAttribute('test', 'true')
-        configObj.test = true
-      } else {
-        altchaWidget.setAttribute('challenge', challengeUrl)
-        configObj.challenge = challengeUrl
-      }
-      altchaWidget.setAttribute('display', 'invisible')
-      altchaWidget.setAttribute('auto', 'onload')
-      altchaWidget.style.width = '100%'
-      altchaWidget.style.maxWidth = '100%'
-      altchaWidget.setAttribute('configuration', JSON.stringify(configObj))
+        const widget = document.createElement('altcha-widget')
+        const challengeUrl = pb.buildURL('/api/altcha/challenge')
+        const configObj = {}
 
-      altchaWidget.addEventListener('verified', (ev) => {
-        altchaPayload = ev.detail?.payload || altchaWidget.value || null
-        console.log('[ALTCHA REGISTER DEBUG] verified event payload:', altchaPayload)
-      })
-
-      altchaWidget.addEventListener('statechange', (ev) => {
-        const state = ev.detail?.state
-        const resolvedPayload = ev.detail?.payload || altchaWidget.value || null
-        if (resolvedPayload) {
-          altchaPayload = resolvedPayload
+        if (isTesting) {
+          widget.setAttribute('test', 'true')
+          configObj.test = true
+        } else {
+          widget.setAttribute('challenge', challengeUrl)
+          configObj.challenge = challengeUrl
         }
-        console.log('[ALTCHA REGISTER DEBUG]', 'state:', state, 'value:', altchaWidget.value, 'payload:', resolvedPayload)
-        if (state === 'verifying') {
-          if (registerSubmitPending) {
-            btnSubmit.setAttribute('loading', 'true')
+        widget.setAttribute('display', 'invisible')
+        widget.setAttribute('auto', 'onload')
+        widget.style.width = '100%'
+        widget.style.maxWidth = '100%'
+        widget.setAttribute('configuration', JSON.stringify(configObj))
+
+        widget.addEventListener('verified', (ev) => {
+          altchaPayload = ev.detail?.payload || widget.value || null
+          console.log('[ALTCHA REGISTER DEBUG] verified event payload:', altchaPayload)
+        })
+
+        widget.addEventListener('statechange', (ev) => {
+          const state = ev.detail?.state
+          const resolvedPayload = ev.detail?.payload || widget.value || null
+          if (resolvedPayload) {
+            altchaPayload = resolvedPayload
           }
-        } else if (state === 'verified') {
-          if (registerSubmitPending) {
-            btnSubmit.removeAttribute('loading')
-            registerSubmitPending = false
-            if (typeof registerForm.requestSubmit === 'function') {
-              registerForm.requestSubmit()
-            } else {
-              registerForm.dispatchEvent(new Event('submit', {
-                cancelable: true,
-                bubbles: true
-              }))
+          console.log('[ALTCHA REGISTER DEBUG]', 'state:', state, 'value:', widget.value, 'payload:', resolvedPayload)
+          if (state === 'verifying') {
+            if (registerSubmitPending) {
+              btnSubmit.setAttribute('loading', 'true')
             }
-          }
-        } else if (state === 'unverified') {
-          altchaPayload = null
-          if (!registerSubmitPending) {
+          } else if (state === 'verified') {
+            if (registerSubmitPending) {
+              btnSubmit.removeAttribute('loading')
+              registerSubmitPending = false
+              if (typeof registerForm.requestSubmit === 'function') {
+                registerForm.requestSubmit()
+              } else {
+                registerForm.dispatchEvent(new Event('submit', {
+                  cancelable: true,
+                  bubbles: true
+                }))
+              }
+            }
+          } else if (state === 'unverified') {
+            altchaPayload = null
+            if (!registerSubmitPending) {
+              btnSubmit.removeAttribute('loading')
+            }
+          } else if (state === 'error') {
+            altchaPayload = null
             btnSubmit.removeAttribute('loading')
+            updateStatus('Security challenge failed. Please try again.', true)
+            registerSubmitPending = false
           }
-        } else if (state === 'error') {
-          altchaPayload = null
-          btnSubmit.removeAttribute('loading')
-          updateStatus('Security challenge failed. Please try again.', true)
-          registerSubmitPending = false
-        }
-      })
+        })
 
-      altchaContainer.appendChild(altchaWidget)
+        altchaContainer.appendChild(widget)
+        return widget
+      }
+
+      // Initialize Altcha on Register Form
+      altchaWidget = renderAltcha()
+
+      $bus.on('app:reconnected', () => {
+        console.log('[auth-register] App reconnected. Reloading Altcha widget...')
+        altchaWidget = renderAltcha()
+      })
 
       registerForm.addEventListener('submit', async (event) => {
         event.preventDefault()

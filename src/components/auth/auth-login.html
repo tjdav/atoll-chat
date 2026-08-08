@@ -227,6 +227,11 @@
       // Initialize Altcha on Login Form
       activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
 
+      $bus.on('app:reconnected', () => {
+        console.log('[auth-login] App reconnected. Reloading Altcha widget...')
+        activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
+      })
+
       loginForm.addEventListener('submit', async (event) => {
         event.preventDefault()
         event.stopImmediatePropagation()

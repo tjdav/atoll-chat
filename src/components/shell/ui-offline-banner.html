@@ -1,6 +1,7 @@
 <template id="ui-offline-banner">
-  <div class="offline-banner text-center py-1 fw-semibold text-white" style="background-color: #df4759; font-size: 0.85rem;" hidden="{{ isOnline }}">
-    <atoll-icon name="permissions" size="16" class="me-1"></atoll-icon> Waiting for network...
+  <div class="offline-banner text-center py-1 fw-semibold text-white d-flex align-items-center justify-content-center gap-2" style="background-color: #df4759; font-size: 0.85rem;" hidden="{{ isOnline }}">
+    <span><atoll-icon name="permissions" size="16" class="me-1"></atoll-icon> Waiting for network...</span>
+    <atoll-button ref="retryBtn" size="sm" variant="ghost" class="text-white border-white py-0 px-2" style="font-size: 0.75rem; height: auto;" test-id="offline-banner-retry">Retry</atoll-button>
   </div>
 </template>
 
@@ -11,14 +12,22 @@
     server: () => ({
       isOnline: true
     }),
-    client: ({ state, globalStore }) => {
+    client: ({ state, globalStore, refs, eventBus }) => {
       const { $state } = globalStore
+      const { $bus } = eventBus
 
       state.isOnline = $state.isOnline !== false
 
       $state.subscribe('isOnline', (val) => {
         state.isOnline = val !== false
       })
+
+      const retryBtn = refs('retryBtn')
+      if (retryBtn) {
+        retryBtn.addEventListener('click', () => {
+          $bus.emit('app:request_reconnect')
+        })
+      }
     }
   })
 </script>
