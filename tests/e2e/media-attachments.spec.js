@@ -206,6 +206,48 @@ test.describe('Media & Attachments', () => {
       await expect(overlay.locator('atoll-icon[name="search"]')).toBeVisible()
     })
 
+    test('video player auto-play and hover overlay play icon', async ({ page }) => {
+      const vp = path.resolve('tests/e2e/fixtures/test-files/test.mp4')
+      await page.setInputFiles('[data-testid$="__fileInput"]', vp)
+      await page.click('[data-testid$="__sendButton"]')
+
+      const videoTimelineItem = page.locator('atoll-chat-timeline-item-media').first()
+      await expect(videoTimelineItem).toBeVisible({ timeout: 45000 })
+
+      const img = videoTimelineItem.locator('img')
+      await expect(img).toBeVisible({ timeout: 45000 })
+
+      // Hover overlay check: icon should be 'play' for video
+      const container = page.locator('.media-preview-container').first()
+      const overlay = container.locator('.media-hover-overlay')
+      await expect(overlay).toBeAttached()
+
+      await container.hover()
+      await page.waitForTimeout(500)
+
+      await expect(overlay).toBeVisible()
+      await expect(overlay.locator('atoll-icon[name="play"]')).toBeVisible()
+
+      // Click video timeline item
+      await videoTimelineItem.click()
+
+      // Should transition to video-player-view
+      const videoPlayerView = page.locator('video-player-view')
+      await expect(videoPlayerView).toBeVisible({ timeout: 30000 })
+
+      // Video container inside active item should be visible (not hidden with d-none)
+      const activeItem = videoPlayerView.locator('.carousel-item.active')
+      const videoContainer = activeItem.locator('.video-container')
+      await expect(videoContainer).not.toHaveClass(/d-none/, { timeout: 30000 })
+
+      // Capture screenshot to verify visually
+      await page.screenshot({ path: 'tests/e2e/screenshots/video_player_autoplay.png' })
+
+      // Assert video is actually playing (not paused)
+      const isPaused = await videoPlayerView.locator('video').evaluate(el => el.paused)
+      expect(isPaused).toBe(false)
+    })
+
     test('aggregate documents and links', async ({ page }) => {
       const dp = path.resolve('tests/e2e/fixtures/test-files/test.txt')
       await page.setInputFiles('[data-testid$="__fileInput"]', dp)

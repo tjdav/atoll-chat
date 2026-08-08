@@ -342,6 +342,13 @@
 
         const activeIndex = loadedItems.findIndex(i => i.id === actualActiveId)
         manageBuffer(activeIndex)
+
+        if (isValidActive) {
+          const activeItem = loadedItems[activeIndex]
+          if (activeItem) {
+            playLocalMedia(activeItem)
+          }
+        }
   
         carouselInstance = new Carousel(carouselEl, {
           interval: false,
@@ -404,6 +411,10 @@
         const index = loadedItems.findIndex(i => i.id === id)
         if (index !== -1) {
           carouselInstance?.to(index)
+          const activeItem = loadedItems[index]
+          if (activeItem) {
+            playLocalMedia(activeItem)
+          }
         } else {
           initCarousel()
         }

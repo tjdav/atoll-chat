@@ -102,9 +102,11 @@
           if (!container.querySelector('.media-hover-overlay')) {
             const hoverOverlay = document.createElement('div')
             hoverOverlay.className = 'media-hover-overlay'
+            const isVideo = (mimeType || '').startsWith('video/')
+            const iconName = isVideo ? 'play' : 'search'
             hoverOverlay.innerHTML = `
               <div class="media-hover-icon d-flex align-items-center justify-content-center">
-                <atoll-icon name="search" size="18"></atoll-icon>
+                <atoll-icon name="${iconName}" size="18"></atoll-icon>
               </div>
             `
             container.appendChild(hoverOverlay)
