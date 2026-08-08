@@ -391,7 +391,7 @@
           unlockForm.classList.remove('was-validated')
           updateStatus('Locating vault...')
           btnUnlockSubmit?.setAttribute('loading', 'true')
-          
+  
           let record
           try {
             record = await pb.collection('users').getOne(pb.authStore.model.id)
@@ -578,9 +578,9 @@
           })
 
           /* Transition to new password setup */
-        btnVerifyRecovery?.removeAttribute('loading')
-        recoveryCodeInput.removeAttribute('disabled')
-        btnCancelRecovery.removeAttribute('disabled')
+          btnVerifyRecovery?.removeAttribute('loading')
+          recoveryCodeInput.removeAttribute('disabled')
+          btnCancelRecovery.removeAttribute('disabled')
 
           viewRecovery.classList.add('d-none')
           viewRecovery.classList.remove('d-flex')

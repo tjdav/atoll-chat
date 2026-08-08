@@ -181,7 +181,7 @@
           }
 
           audio.oncanplaythrough = () => $bus.emit('ui:media_loaded')
-          
+  
           audio.addEventListener('play', () => {
             playBtn.innerHTML = '<atoll-icon name="pause" size="18" color="#ffffff"></atoll-icon>'
             startUpdateLoop()
