@@ -71,7 +71,17 @@
       let progressEl = null
       let resizeObserver = null
 
+      let updateFrameId = null
+
+      const stopUpdateLoop = () => {
+        if (updateFrameId) {
+          cancelAnimationFrame(updateFrameId)
+          updateFrameId = null
+        }
+      }
+
       const cleanup = () => {
+        stopUpdateLoop()
         if (audio) {
           audio.pause()
           audio.removeAttribute('src')
@@ -109,16 +119,42 @@
         timeDisplay.textContent = formatTime(audio.currentTime)
       }
 
-      audio.ontimeupdate = updateProgress
+      const tick = () => {
+        updateProgress()
+        if (audio && !audio.paused && !audio.ended) {
+          updateFrameId = requestAnimationFrame(tick)
+        } else {
+          updateFrameId = null
+        }
+      }
+
+      const startUpdateLoop = () => {
+        if (!updateFrameId && audio && !audio.paused && !audio.ended) {
+          updateFrameId = requestAnimationFrame(tick)
+        }
+      }
 
       audio.onplay = () => {
         state.playbackStatus = 'playing'
         updatePlaybackUI()
+        startUpdateLoop()
+      }
+
+      audio.onplaying = () => {
+        state.playbackStatus = 'playing'
+        updatePlaybackUI()
+        startUpdateLoop()
+      }
+
+      audio.ontimeupdate = () => {
+        updateProgress()
+        startUpdateLoop()
       }
 
       audio.onpause = () => {
         state.playbackStatus = 'paused'
         updatePlaybackUI()
+        stopUpdateLoop()
       }
 
       audio.onended = () => {
@@ -126,11 +162,13 @@
         updateProgress()
         state.playbackStatus = 'paused'
         updatePlaybackUI()
+        stopUpdateLoop()
       }
 
       audio.oncanplaythrough = () => {
         if (state.playbackStatus === 'loading') {
           state.playbackStatus = 'playing'
+          startUpdateLoop()
         }
         updatePlaybackUI()
       }

@@ -41,7 +41,7 @@
         }
       }
 
-      const renderAudio = (objectUrl, waveformData) => {
+      const renderAudio = (objectUrl, waveformData, duration = 0) => {
         if (!objectUrl) {
           return
         }
@@ -140,11 +140,24 @@
           audio.hidden = true
           container.appendChild(audio)
 
+          let updateFrameId = null
+
+          const stopUpdateLoop = () => {
+            if (updateFrameId) {
+              cancelAnimationFrame(updateFrameId)
+              updateFrameId = null
+            }
+          }
+
           const updateProgress = () => {
             if (!audio) {
               return
             }
-            const percent = (audio.currentTime / audio.duration) * 100
+            let dur = audio.duration
+            if (!dur || isNaN(dur) || dur === Infinity) {
+              dur = duration
+            }
+            const percent = dur ? (audio.currentTime / dur) * 100 : 0
             progressContainer.style.width = `${percent}%`
             seeker.style.left = `${percent}%`
             const mins = Math.floor(audio.currentTime / 60)
@@ -152,16 +165,43 @@
             timeDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
           }
 
+          const tick = () => {
+            updateProgress()
+            if (audio && !audio.paused && !audio.ended) {
+              updateFrameId = requestAnimationFrame(tick)
+            } else {
+              updateFrameId = null
+            }
+          }
+
+          const startUpdateLoop = () => {
+            if (!updateFrameId && audio && !audio.paused && !audio.ended) {
+              updateFrameId = requestAnimationFrame(tick)
+            }
+          }
+
           audio.oncanplaythrough = () => $bus.emit('ui:media_loaded')
-          audio.ontimeupdate = updateProgress
+          
           audio.addEventListener('play', () => {
             playBtn.innerHTML = '<atoll-icon name="pause" size="18" color="#ffffff"></atoll-icon>'
+            startUpdateLoop()
+          })
+          audio.addEventListener('playing', () => {
+            startUpdateLoop()
+          })
+          audio.addEventListener('timeupdate', () => {
+            updateProgress()
+            startUpdateLoop()
           })
           audio.addEventListener('pause', () => {
             playBtn.innerHTML = '<atoll-icon name="play" size="18" color="#ffffff"></atoll-icon>'
+            stopUpdateLoop()
           })
           audio.addEventListener('ended', () => {
-            audio.currentTime = 0; updateProgress(); playBtn.innerHTML = '<atoll-icon name="play" size="18" color="#ffffff"></atoll-icon>'
+            audio.currentTime = 0
+            updateProgress()
+            playBtn.innerHTML = '<atoll-icon name="play" size="18" color="#ffffff"></atoll-icon>'
+            stopUpdateLoop()
           })
 
           playBtn.onclick = (e) => {
@@ -182,12 +222,16 @@
 
           waveContainer.onclick = (e) => {
             e.stopPropagation()
-            if (!audio || isNaN(audio.duration)) {
+            let dur = audio ? audio.duration : 0
+            if (!dur || isNaN(dur) || dur === Infinity) {
+              dur = duration
+            }
+            if (!audio || !dur) {
               return
             }
             const rect = waveContainer.getBoundingClientRect()
             const percent = (e.clientX - rect.left) / rect.width
-            audio.currentTime = percent * audio.duration
+            audio.currentTime = percent * dur
             updateProgress()
           }
 
@@ -224,7 +268,7 @@
             if (callId !== lastCallId || signal.aborted) {
               return
             }
-            renderAudio(objectUrl, message?.waveform_data)
+            renderAudio(objectUrl, message?.waveform_data, message?.duration || 0)
           }
 
           // async lifecycle: fetch from DB and decrypt
@@ -286,7 +330,7 @@
           if (callId !== lastCallId || signal.aborted) {
             return
           }
-          renderAudio(objectUrl, message?.waveform_data)
+          renderAudio(objectUrl, message?.waveform_data, message?.duration || 0)
 
         } catch (err) {
           if (err.name === 'AbortError') {

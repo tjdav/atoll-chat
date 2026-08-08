@@ -4,6 +4,18 @@ const window = new Window({
   url: 'http://localhost'
 })
 
+// Polyfill ResizeObserver for unit tests if not present
+if (window.ResizeObserver === undefined) {
+  window.ResizeObserver = class ResizeObserver {
+    observe () {
+    }
+    unobserve () {
+    }
+    disconnect () {
+    }
+  }
+}
+
 const props = [
   'window',
   'document',
@@ -25,7 +37,8 @@ const props = [
   'cancelAnimationFrame',
   'DOMParser',
   'Blob',
-  'FileReader'
+  'FileReader',
+  'ResizeObserver'
 ]
 
 for (const prop of props) {
