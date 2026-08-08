@@ -47,6 +47,14 @@ describe('Atoll Button Component', () => {
 
     button.click()
     assert.equal(clicked, false, 'Click event should not propagate when button is disabled')
+
+    // Click host element directly to ensure capturing-phase interception works
+    let hostClicked = false
+    el.addEventListener('click', () => {
+      hostClicked = true
+    })
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    assert.equal(hostClicked, false, 'Click event on host element should be intercepted when disabled')
   })
 
   test('should support dynamic Bootstrap spinner loading state and variant', async () => {

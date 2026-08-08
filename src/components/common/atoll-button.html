@@ -225,6 +225,14 @@
         })
       }
 
+      // Intercept clicks on the root custom element host during capture phase if disabled/loading
+      root.addEventListener('click', (event) => {
+        if (state.disabled || state.loading) {
+          event.preventDefault()
+          event.stopImmediatePropagation()
+        }
+      }, { capture: true, signal })
+
       btn.addEventListener('click', (event) => {
         if (state.disabled || state.loading) {
           event.preventDefault()
