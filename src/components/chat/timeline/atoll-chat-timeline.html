@@ -519,6 +519,37 @@
             if ($state.isJumpingToMessage) {
               // Skip scroll restoration if we are jumping to a specific message
               isRestorePending = false
+              const jumpId = $state.jumpToMessageId
+              if (jumpId) {
+                const scrollAndCleanup = () => {
+                  const targetEl = container.querySelector(`#timeline-item-${jumpId}`) ||
+                                   container.querySelector(`atoll-chat-timeline-row[data-message-id="${jumpId}"]`) ||
+                                   container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${jumpId}"]`)
+                  if (targetEl) {
+                    targetEl.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'center'
+                    })
+                    $state.isJumpingToMessage = false
+                    $state.jumpToMessageId = null
+                  } else {
+                    requestAnimationFrame(() => {
+                      const retryEl = container.querySelector(`#timeline-item-${jumpId}`) ||
+                                      container.querySelector(`atoll-chat-timeline-row[data-message-id="${jumpId}"]`) ||
+                                      container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${jumpId}"]`)
+                      if (retryEl) {
+                        retryEl.scrollIntoView({
+                          behavior: 'smooth',
+                          block: 'center'
+                        })
+                      }
+                      $state.isJumpingToMessage = false
+                      $state.jumpToMessageId = null
+                    })
+                  }
+                }
+                requestAnimationFrame(scrollAndCleanup)
+              }
             } else if (savedPos !== undefined && savedPos !== -1) {
               isRestorePending = true
               const restore = () => {

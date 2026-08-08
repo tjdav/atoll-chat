@@ -1,20 +1,36 @@
 <template id="jump-to-chat">
-  <button ref="btnJump" class="btn btn-primary btn-sm rounded-pill px-3">
-    <atoll-icon name="menu-links" size="16" class="me-1"></atoll-icon> Jump to Chat
-  </button>
+  <atoll-button variant="primary" size="sm" pill="true" leading-icon="chat" ref="btnJump">
+    <span class="atoll-btn-text">Jump to Chat</span>
+  </atoll-button>
 </template>
 
 <script type="module">
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, storage, globalStore, eventBus }) => {
+    client: ({ refs, storage, globalStore, eventBus, signal }) => {
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const btnJump = refs('btnJump')
 
-      btnJump.onclick = async () => {
+      // Media query to dynamically set icon-only on mobile/tablet view
+      const mediaQuery = window.matchMedia('(max-width: 767.98px)')
+      const updateIconOnly = (e) => {
+        if (e.matches) {
+          btnJump.setAttribute('icon-only', 'true')
+        } else {
+          btnJump.removeAttribute('icon-only')
+        }
+      }
+      mediaQuery.addEventListener('change', updateIconOnly)
+      updateIconOnly(mediaQuery)
+
+      signal.addEventListener('abort', () => {
+        mediaQuery.removeEventListener('change', updateIconOnly)
+      })
+
+      btnJump.addEventListener('click', async () => {
         const id = $state.activeSelectionId
         const type = $state.activeSelectionType
   
@@ -43,6 +59,7 @@
 
           if (room_id && messageId) {
             $state.isJumpingToMessage = true
+            $state.jumpToMessageId = messageId
             $state.currentAppView = 'chats'
             $state.activeSelectionId = room_id
             $state.activeSelectionType = 'chats'
@@ -60,7 +77,7 @@
         } catch (err) {
           console.error('[jump-to-chat] Error jumping to chat:', err)
         }
-      }
+      }, { signal })
     }
   })
 </script>

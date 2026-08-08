@@ -58,7 +58,9 @@ import {
   PlayLinearIcon,
   PauseLinearIcon,
   DangerLinearIcon,
-  PenLinearIcon
+  PenLinearIcon,
+  ChatRoundLineLinearIcon,
+  ChatRoundLineBoldIcon
 } from '@solar-icons/js'
 
 /**
@@ -107,6 +109,10 @@ export const SOLAR_ICON_MAP = {
   'menu-links': {
     linear: LinkCircleLinearIcon,
     bold: LinkCircleBoldIcon
+  },
+  chat: {
+    linear: ChatRoundLineLinearIcon,
+    bold: ChatRoundLineBoldIcon
   },
 
   // Core Navigation & Settings

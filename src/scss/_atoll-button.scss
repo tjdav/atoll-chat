@@ -301,6 +301,10 @@
     display: contents; // Preserves child element rendering (like default slot icons) while removing layout wrapper boundaries
   }
 
+  .atoll-btn-text {
+    display: none !important;
+  }
+
   /* ------------------------------------------------------------------------ */
   /* Size Scale Override for 1:1 Aspect Ratio                                 */
   /* ------------------------------------------------------------------------ */

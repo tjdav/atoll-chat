@@ -1,5 +1,7 @@
 <template id="ui-share-button">
-  <atoll-button variant="primary" size="sm" pill="true" leading-icon="send" ref="btnOpenShare" class="ms-2">Share</atoll-button>
+  <atoll-button variant="primary" size="sm" pill="true" leading-icon="send" ref="btnOpenShare" class="ms-2">
+    <span class="atoll-btn-text">Share</span>
+  </atoll-button>
 
   <atoll-popup
     ref="shareModal"
@@ -28,15 +30,42 @@
 
       const modal = refs('shareModal')
       const roomList = refs('roomList')
-      const getBtnSend = () => refs('btnSend') || root.querySelector('[ref="btnSend"]') || root.querySelector('[ref$="btnSend"]')
+      const btnOpenShare = refs('btnOpenShare')
+      const getBtnSend = () => {
+        const cached = refs('btnSend')
+        if (cached && document.body.contains(cached)) {
+          return cached
+        }
+        return modal.querySelector('[ref="btnSend"]') || modal.querySelector('[ref$="btnSend"]') || document.querySelector('[ref$="btnSend"]')
+      }
 
       let selectedRoomIds = new Set()
       let loadedRooms = []
 
+      // Media query to dynamically set icon-only on mobile/tablet view
+      const mediaQuery = window.matchMedia('(max-width: 767.98px)')
+      const updateIconOnly = (e) => {
+        if (e.matches) {
+          btnOpenShare.setAttribute('icon-only', 'true')
+        } else {
+          btnOpenShare.removeAttribute('icon-only')
+        }
+      }
+      mediaQuery.addEventListener('change', updateIconOnly)
+      updateIconOnly(mediaQuery)
+
+      signal.addEventListener('abort', () => {
+        mediaQuery.removeEventListener('change', updateIconOnly)
+      })
+
       const updateSendButton = () => {
         const btn = getBtnSend()
         if (btn) {
-          btn.disabled = selectedRoomIds.size === 0
+          if (selectedRoomIds.size === 0) {
+            btn.setAttribute('disabled', 'true')
+          } else {
+            btn.removeAttribute('disabled')
+          }
         }
       }
 
@@ -129,8 +158,8 @@
 
         const btn = getBtnSend()
         if (btn) {
-          btn.disabled = true
-          btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Sending...'
+          btn.setAttribute('disabled', 'true')
+          btn.setAttribute('loading', 'true')
         }
 
         try {
@@ -203,19 +232,17 @@
         } finally {
           const btnEnd = getBtnSend()
           if (btnEnd) {
-            btnEnd.disabled = selectedRoomIds.size === 0
-            btnEnd.innerHTML = 'Send'
+            btnEnd.removeAttribute('loading')
+            if (selectedRoomIds.size === 0) {
+              btnEnd.setAttribute('disabled', 'true')
+            } else {
+              btnEnd.removeAttribute('disabled')
+            }
           }
         }
       }
 
       root.addEventListener('click', async (e) => {
-        const sendTarget = e.target.closest('[ref="btnSend"]') || e.target.closest('[ref$="btnSend"]')
-        if (sendTarget) {
-          sendShare()
-          return
-        }
-
         const openTarget = e.target.closest('[ref="btnOpenShare"]') || e.target.closest('[ref$="btnOpenShare"]') || (e.target.tagName === 'BUTTON' && !e.target.closest('atoll-popup'))
         if (openTarget) {
           selectedRoomIds.clear()
@@ -224,6 +251,14 @@
 
           loadedRooms = await $storage.getAllRoomsSorted()
           renderRooms()
+        }
+      }, { signal })
+
+      // Catch click event on relocated popup Send button
+      modal.addEventListener('click', (e) => {
+        const sendTarget = e.target.closest('[ref="btnSend"]') || e.target.closest('[ref$="btnSend"]')
+        if (sendTarget) {
+          sendShare()
         }
       }, { signal })
     }
