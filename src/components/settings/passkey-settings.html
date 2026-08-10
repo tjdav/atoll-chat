@@ -4,9 +4,13 @@
       <h6 class="mb-0">Biometric Unlock</h6>
       <p class="text-muted small mb-0">{{ passkeyStatus }}</p>
     </div>
-    <button class="btn btn-outline-primary btn-sm" ref="btnManagePasskey" data-testid="btnManagePasskey">
-      {{ passkeyActionLabel }}
-    </button>
+    <atoll-button
+      ref="btnManagePasskey"
+      data-testid="btnManagePasskey"
+      variant="outline-primary"
+      size="sm"
+      text="{{ passkeyActionLabel }}"
+    ></atoll-button>
   </div>
 
   <!-- Password Verification Popup -->
@@ -68,6 +72,12 @@
       const { $bus } = eventBus
       const { $totp } = await totp
 
+      /**
+       * Updates the state of the biometric unlock based on whether the local vault wrap key is stored.
+       * Bridges the state to the server variables which are bound to the template.
+       *
+       * @returns {Promise<void>} Resolves when the local state has been updated.
+       */
       const updatePasskeyState = async () => {
         const userId = pb.authStore.model?.id
         const storedKey = userId ? localStorage.getItem(`atoll_vault_wrap_${userId}`) : null
@@ -91,9 +101,15 @@
       const totpStepUpSection = refs('totpStepUpSection')
       const totpStepUpInput = refs('totpStepUpInput')
 
+      /**
+       * Checks if biometric capability is available on the current device.
+       * If biometrics are unsupported, disables the manage button and updates the status label.
+       *
+       * @returns {Promise<void>} Resolves after the biometric support check completes.
+       */
       const checkBiometricSupport = async () => {
         if (!await biometric.isAvailable()) {
-          btnManagePasskey.disabled = true
+          btnManagePasskey.setAttribute('disabled', 'true')
           state.passkeyActionLabel = 'Biometrics Unsupported'
         }
       }
@@ -115,16 +131,29 @@
 
         verifyModal.show()
         setTimeout(() => vaultPasswordInput.focus(), 100)
-      })
+      }, { signal })
 
       btnCancelVerify.addEventListener('click', () => {
         verifyModal.hide()
       }, { signal })
 
+      /**
+       * Validates user password, verifies 2-step TOTP if required,
+       * and toggles biometric state (stores or deletes the Master Key).
+       * Automatically disables interactive inputs and buttons during processing.
+       *
+       * @returns {Promise<void>} Resolves on successful validation and state toggling.
+       * @throws {Error} Re-throws unexpected database, network, or system failures.
+       */
       const handleVerification = async () => {
         const password = vaultPasswordInput.value
   
         verifyError.classList.add('d-none')
+
+        // Disable elements to prevent duplicate submission and concurrent click events
+        vaultPasswordInput.setAttribute('disabled', 'true')
+        totpStepUpInput.setAttribute('disabled', 'true')
+        btnCancelVerify.setAttribute('disabled', 'true')
         btnVerifyPassword.setAttribute('loading', 'true')
 
         try {
@@ -167,7 +196,7 @@
               if (!masterKey) {
                 throw new Error('Invalid Master Password')
               }
-            } catch (_err) {
+            } catch {
               purgeVaultKey()
               throw new Error('Invalid Master Password')
             }
@@ -183,10 +212,19 @@
             })
           }
         } catch (error) {
-          console.error('Biometric management error:', error)
-          verifyError.textContent = error.message || 'Verification failed'
-          verifyError.classList.remove('d-none')
+          const expectedMessages = ['Invalid 2-step verification code.', 'Invalid Master Password']
+          if (expectedMessages.includes(error.message)) {
+            verifyError.textContent = error.message
+            verifyError.classList.remove('d-none')
+          } else {
+            verifyError.textContent = 'An unexpected system error occurred. Please try again.'
+            verifyError.classList.remove('d-none')
+            throw error
+          }
         } finally {
+          vaultPasswordInput.removeAttribute('disabled')
+          totpStepUpInput.removeAttribute('disabled')
+          btnCancelVerify.removeAttribute('disabled')
           btnVerifyPassword.removeAttribute('loading')
         }
       }
