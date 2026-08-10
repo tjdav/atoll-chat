@@ -1,25 +1,46 @@
 // database/pb_hooks/custom_auth.pb.js
 
-// Custom Login Route
-routerAdd('POST', '/api/custom/login', (e) => {
-  const verifyAltchaSolution = (altchaPayload) => {
-    const pushWorkerUrl = $os.getenv('ATOLL_PUSH_WORKER_URL') || 'http://localhost:3001'
-    try {
-      const res = $http.send({
-        url: pushWorkerUrl + '/altcha/verify',
-        method: 'POST',
-        body: JSON.stringify({ payload: altchaPayload }),
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 10
-      })
-      return res.statusCode === 200
-    } catch {
-      return false
-    }
-  }
+/**
+ * Verifies the Altcha security challenge solution with the push worker.
+ *
+ * @param {string} altchaPayload - The Altcha challenge payload to verify.
+ * @throws {Error} If the push worker URL is missing or the network request fails unexpectedly.
+ * @returns {boolean} True if the challenge is solved successfully; false otherwise.
+ */
+const verifyAltchaSolution = (altchaPayload) => {
+  const pushWorkerUrl = $os.getenv('ATOLL_PUSH_WORKER_URL') || 'http://localhost:3001'
+  try {
+    const res = $http.send({
+      url: pushWorkerUrl + '/altcha/verify',
+      method: 'POST',
+      body: JSON.stringify({ payload: altchaPayload }),
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      timeout: 10
+    })
 
+    if (res.statusCode >= 500) {
+      throw new Error('Push worker returned server error status: ' + res.statusCode)
+    }
+
+    return res.statusCode === 200
+  } catch (err) {
+    $app.logger().error('[verifyAltchaSolution] Altcha verification request failed', 'error', err.message || String(err))
+    throw err
+  }
+}
+
+/**
+ * POST /api/custom/login
+ *
+ * Authenticates a user using their username/identity and password,
+ * while verifying an Altcha security challenge.
+ *
+ * @param {core.RequestEvent} e - The PocketBase router context event object.
+ * @returns {void}
+ */
+routerAdd('POST', '/api/custom/login', (e) => {
   const data = new DynamicModel({
     identity: '',
     password: '',
@@ -33,17 +54,12 @@ routerAdd('POST', '/api/custom/login', (e) => {
 
   const identityCanonical = data.identity.trim().toLowerCase()
 
-  let record = null
-  try {
-    record = $app.findFirstRecordByFilter('users', 'username = {:identity}', { identity: identityCanonical })
-  } catch {
+  const records = $app.findRecordsByFilter('users', 'username = {:identity}', '', 1, 0, { identity: identityCanonical })
+  if (records.length === 0) {
     return e.json(400, { error: 'Invalid login credentials.' })
   }
 
-  if (!record) {
-    return e.json(400, { error: 'Invalid login credentials.' })
-  }
-
+  const record = records[0]
   const validPassword = record.validatePassword(data.password)
 
   if (!validPassword) {
@@ -54,8 +70,12 @@ routerAdd('POST', '/api/custom/login', (e) => {
     return e.json(400, { error: 'Security challenge is required.' })
   }
 
-  if (!verifyAltchaSolution(data.altcha)) {
-    return e.json(400, { error: 'Invalid security challenge. Are you a bot?' })
+  try {
+    if (!verifyAltchaSolution(data.altcha)) {
+      return e.json(400, { error: 'Invalid security challenge. Are you a bot?' })
+    }
+  } catch (err) {
+    return e.json(500, { error: 'Security verification failed: ' + err.message })
   }
 
   try {
@@ -69,26 +89,17 @@ routerAdd('POST', '/api/custom/login', (e) => {
   }
 })
 
-// Custom Register Route
+/**
+ * POST /api/custom/register
+ *
+ * Registers a new user with an unused, valid invitation code,
+ * verifies an Altcha security challenge, and dynamically assigns
+ * standard or owner role based on user count.
+ *
+ * @param {core.RequestEvent} e - The PocketBase router context event object.
+ * @returns {void}
+ */
 routerAdd('POST', '/api/custom/register', (e) => {
-  const verifyAltchaSolution = (altchaPayload) => {
-    const pushWorkerUrl = $os.getenv('ATOLL_PUSH_WORKER_URL') || 'http://localhost:3001'
-    try {
-      const res = $http.send({
-        url: pushWorkerUrl + '/altcha/verify',
-        method: 'POST',
-        body: JSON.stringify({ payload: altchaPayload }),
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        timeout: 10
-      })
-      return res.statusCode === 200
-    } catch {
-      return false
-    }
-  }
-
   const data = new DynamicModel({
     username: '',
     password: '',
@@ -108,8 +119,12 @@ routerAdd('POST', '/api/custom/register', (e) => {
     return e.json(400, { error: 'Security challenge is required.' })
   }
 
-  if (!verifyAltchaSolution(data.altcha)) {
-    return e.json(400, { error: 'Invalid security challenge. Are you a bot?' })
+  try {
+    if (!verifyAltchaSolution(data.altcha)) {
+      return e.json(400, { error: 'Invalid security challenge. Are you a bot?' })
+    }
+  } catch (err) {
+    return e.json(500, { error: 'Security verification failed: ' + err.message })
   }
 
   if (!data.username || !data.password || !data.passwordConfirm) {
@@ -122,29 +137,20 @@ routerAdd('POST', '/api/custom/register', (e) => {
   }
 
   // Phase 1: Verify Invitation Code is valid and unused
-  const invitationRecord = new DynamicModel({
-    id: '',
-    is_used: false,
-    expires_at: ''
-  })
-
-  try {
-    $app.db()
-      .select('id', 'is_used', 'expires_at')
-      .from('invitations')
-      .where($dbx.hashExp({ code: invitationCode }))
-      .limit(1)
-      .one(invitationRecord)
-  } catch (_err) {
+  const invitations = $app.findRecordsByFilter('invitations', 'code = {:code}', '', 1, 0, { code: invitationCode })
+  if (invitations.length === 0) {
     return e.json(400, { error: 'Invalid invitation code.' })
   }
 
-  if (invitationRecord.is_used) {
+  const invitationRecord = invitations[0]
+
+  if (invitationRecord.get('is_used')) {
     return e.json(400, { error: 'Invitation code has already been used.' })
   }
 
-  if (invitationRecord.expires_at) {
-    const expiresTime = new Date(invitationRecord.expires_at).getTime()
+  const expiresAt = invitationRecord.get('expires_at')
+  if (expiresAt) {
+    const expiresTime = new Date(expiresAt).getTime()
     if (expiresTime < Date.now()) {
       return e.json(400, { error: 'Invitation code has expired.' })
     }
