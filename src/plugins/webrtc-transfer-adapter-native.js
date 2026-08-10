@@ -2,12 +2,30 @@
  * Native P2P WebRTC Transfer Adapter.
  * Integrates RTCPeerConnection with @capacitor/filesystem to read files chunk-by-chunk.
  */
+
+/**
+ * Creates an instance of the Native P2P WebRTC Transfer Adapter.
+ *
+ * @returns {object} The native WebRTC transfer adapter instance.
+ */
 export function createNativeRTCTransferAdapter () {
   const sessions = new Map()
 
   return {
     sessions,
 
+    /**
+     * Creates and initializes a new WebRTC transfer session.
+     *
+     * @param {string} localUuid - Unique identifier for the transfer session.
+     * @param {boolean} isSender - Whether this instance is the sender.
+     * @param {function} onSignal - Callback triggered when signaling events occur.
+     * @param {function} onProgress - Callback triggered with transfer progress percent.
+     * @param {function} onComplete - Callback triggered when the transfer completes successfully.
+     * @param {function} onError - Callback triggered when an error occurs during transfer.
+     * @param {Array<object>} iceServers - List of ICE/STUN/TURN servers to use.
+     * @returns {object} The created transfer session configuration object.
+     */
     createSession: (localUuid, isSender, onSignal, onProgress, onComplete, onError, iceServers) => {
       const pc = new RTCPeerConnection({ iceServers })
 
@@ -41,24 +59,27 @@ export function createNativeRTCTransferAdapter () {
         session.dc = dc
         dc.binaryType = 'arraybuffer'
 
-        dc.onopen = () => {
-          console.info(`[WebRTC-Native-P2P] DataChannel opened for ${localUuid}`)
-        }
 
         dc.onmessage = async (event) => {
           if (typeof event.data === 'string') {
-            try {
-              const msg = JSON.parse(event.data)
-              if (msg.type === 'start') {
-                session.totalBytes = msg.size
-                session.filename = msg.filename
-                session.mimeType = msg.mimeType
-                session.chunks = []
-                session.receivedBytes = 0
-                console.info(`[WebRTC-Native-P2P] Incoming transfer started: ${session.filename} (${session.totalBytes} bytes)`)
+            const dataStr = event.data.trim()
+            if (dataStr.startsWith('{') && dataStr.endsWith('}')) {
+              try {
+                const msg = JSON.parse(dataStr)
+                if (msg.type === 'start') {
+                  session.totalBytes = msg.size
+                  session.filename = msg.filename
+                  session.mimeType = msg.mimeType
+                  session.chunks = []
+                  session.receivedBytes = 0
+                }
+              } catch (err) {
+                if (onError) {
+                  onError(err)
+                } else {
+                  throw err
+                }
               }
-            } catch (err) {
-              console.error('[WebRTC-Native-P2P] Failed to parse string message:', err)
             }
           } else {
             session.chunks.push(event.data)
@@ -70,7 +91,6 @@ export function createNativeRTCTransferAdapter () {
             }
 
             if (session.receivedBytes >= session.totalBytes && session.totalBytes > 0) {
-              console.info(`[WebRTC-Native-P2P] Transfer complete for ${localUuid}`)
               const blob = new Blob(session.chunks, { type: session.mimeType })
               dc.close()
               pc.close()
@@ -83,13 +103,11 @@ export function createNativeRTCTransferAdapter () {
         }
 
         dc.onclose = () => {
-          console.info(`[WebRTC-Native-P2P] DataChannel closed for ${localUuid}`)
           pc.close()
           sessions.delete(localUuid)
         }
 
         dc.onerror = (err) => {
-          console.error(`[WebRTC-Native-P2P] DataChannel error for ${localUuid}:`, err)
           pc.close()
           sessions.delete(localUuid)
           if (onError) {
@@ -110,6 +128,15 @@ export function createNativeRTCTransferAdapter () {
       return session
     },
 
+    /**
+     * Starts an outgoing file transfer session.
+     *
+     * @param {string} localUuid - Unique identifier for the transfer session.
+     * @param {File|Blob|string} file - The file/blob to transfer, or filepath string if native.
+     * @param {number} [chunkSizeBytes=16384] - Size of each chunk to send in bytes.
+     * @throws {Error} If no active data channel exists for the transfer session.
+     * @returns {Promise<void>} Resolves when the transfer is successfully initiated.
+     */
     startOutgoing: async (localUuid, file, chunkSizeBytes) => {
       const session = sessions.get(localUuid)
       if (!session || !session.dc) {
@@ -134,12 +161,12 @@ export function createNativeRTCTransferAdapter () {
       let Filesystem = null
       let Directory = null
 
-      try {
-        const capFs = await import('@capacitor/filesystem')
+      // Optional native-only imports use .catch() promise chain to prevent bundler unresolved import failures.
+      const capFs = await import('@capacitor/filesystem').catch(() => null)
+
+      if (capFs) {
         Filesystem = capFs.Filesystem
         Directory = capFs.Directory
-      } catch (_err) {
-        console.warn('[WebRTC-Native-P2P] Capacitor Filesystem not available, falling back to Blob slicing')
       }
 
       if (Filesystem && Directory && typeof file === 'string') {
