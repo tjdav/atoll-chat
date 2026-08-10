@@ -81,7 +81,7 @@
     }),
     getters: {
     },
-    client: async ({ refs, state, globalStore, storage, pocketbase, utils, signal, eventBus, webrtc: webrtcPluginContext, bootstrap, cryptoWorker }) => {
+    client: async ({ refs, state, globalStore, storage, pocketbase, utils, signal, eventBus, webrtc: webrtcPluginContext, bootstrap }) => {
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -91,9 +91,7 @@
 
       const { Offcanvas } = bootstrap
       const offcanvasEl = refs('roomDetailsOffcanvas')
-      let bsOffcanvas = null
-
-      bsOffcanvas = new Offcanvas(offcanvasEl)
+      let bsOffcanvas = new Offcanvas(offcanvasEl)
 
       // Swipe to close right offcanvas (swipe right)
       let rTouchStartX = 0
@@ -141,6 +139,12 @@
         bsOffcanvas.show()
       }
 
+      /**
+       * Renders the room header avatar, including decryption of single avatar and generation of multiparty avatars.
+       * @param {Object} room - The active room object.
+       * @param {Array<Object>} participants - List of participants in the room.
+       * @returns {void}
+       */
       const renderHeaderAvatar = (room, participants) => {
         if (!room) {
           return
@@ -162,14 +166,13 @@
             if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
               $media.decrypt(avatarData, signal).then((url) => {
                 headerAvatar.setAttribute('src', url)
-              }).catch(err => {
-                console.error('[atoll-chat-view] Failed to decrypt room avatar:', err)
+              }).catch(() => {
                 headerAvatar.removeAttribute('src')
               })
             }
             return
-          } catch (err) {
-            console.error('[atoll-chat-view] Failed to parse room avatar:', err)
+          } catch {
+            // Proceed with fallback single or multiparty rendering on parsing error
           }
         }
 
@@ -227,6 +230,12 @@
         }
       }
 
+      /**
+       * Fetches active room details from storage and updates the component's state, theme, and headers.
+       * @param {string} room_id - The active room's identifier.
+       * @returns {Promise<void>}
+       * @throws {Error} If retrieval or custom theme application fails.
+       */
       const updateRoomInfo = async (room_id) => {
         if (!room_id || typeof room_id !== 'string' || $state.activeSelectionType !== 'chats') {
           return
@@ -322,48 +331,48 @@
             renderHeaderAvatar(room, participants)
           }
         } catch (err) {
-          console.error('[atoll-chat-view] Failed to load room info:', err)
+          throw err
         }
       }
 
       // Initial load
-      updateRoomInfo($state.activeSelectionId)
+      updateRoomInfo($state.activeSelectionId).catch(() => {})
 
       // Watch for room changes
       $state.subscribe('activeSelectionId', (val) => {
-        updateRoomInfo(val)
+        updateRoomInfo(val).catch(() => {})
         // Close details when switching rooms
         state.isRoomDetailsOpen = false
         $state.isRoomDetailsOpen = false
       })
 
       $state.subscribe('activeSelectionType', () => {
-        updateRoomInfo($state.activeSelectionId)
+        updateRoomInfo($state.activeSelectionId).catch(() => {})
       })
 
       $state.subscribe('callStatus', () => {
-        updateRoomInfo($state.activeSelectionId)
+        updateRoomInfo($state.activeSelectionId).catch(() => {})
       })
 
       $state.subscribe('activeCallRoomId', () => {
-        updateRoomInfo($state.activeSelectionId)
+        updateRoomInfo($state.activeSelectionId).catch(() => {})
       })
 
       $bus.on('room:theme_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
-          updateRoomInfo($state.activeSelectionId)
+          updateRoomInfo($state.activeSelectionId).catch(() => {})
         }
       })
 
       $bus.on('room:nicknames_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
-          updateRoomInfo($state.activeSelectionId)
+          updateRoomInfo($state.activeSelectionId).catch(() => {})
         }
       })
 
       $bus.on('room:member_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
-          updateRoomInfo($state.activeSelectionId)
+          updateRoomInfo($state.activeSelectionId).catch(() => {})
         }
       })
 
@@ -372,9 +381,7 @@
           // Close details sidebar
           state.isRoomDetailsOpen = false
           $state.isRoomDetailsOpen = false
-          if (bsOffcanvas) {
-            bsOffcanvas.hide()
-          }
+          bsOffcanvas.hide()
 
           $bus.emit('ui:show_toast', {
             message: `${payload.targetUsername} blocked successfully`,
@@ -382,19 +389,17 @@
           })
 
           // Refresh active room info & timeline
-          updateRoomInfo($state.activeSelectionId)
+          updateRoomInfo($state.activeSelectionId).catch(() => {})
           $bus.emit('db:new_local_data', { room_id: $state.activeSelectionId })
         }
       })
 
       $state.subscribe('isRoomDetailsOpen', (val) => {
         state.isRoomDetailsOpen = val
-        if (bsOffcanvas) {
-          if (val) {
-            bsOffcanvas.show()
-          } else {
-            bsOffcanvas.hide()
-          }
+        if (val) {
+          bsOffcanvas.show()
+        } else {
+          bsOffcanvas.hide()
         }
       })
 
@@ -413,6 +418,12 @@
         $bus.emit('ui:open_mobile_nav')
       })
 
+      /**
+       * Initiates an E2E media call (audio and optionally video) in the current room.
+       * @param {boolean} [video=true] - Whether video streaming is requested.
+       * @returns {Promise<void>}
+       * @throws {Error} Re-throws unexpected signaling, network, or hardware errors.
+       */
       const initiateCall = async (video = true) => {
         if ($state.callStatus !== 'idle') {
           return
@@ -420,28 +431,22 @@
 
         let localStream = null
         try {
-          console.log('[atoll-chat-view] Requesting media permissions (audio and video)...')
           localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
             video
           })
-          console.log('[atoll-chat-view] Media permissions granted')
         } catch (err) {
-          console.warn('[atoll-chat-view] Failed to get audio and video, trying audio-only fallback:', err)
           if (video) {
             try {
               localStream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
                 video: false
               })
-              console.log('[atoll-chat-view] Audio-only fallback media permissions granted')
-            } catch (fallbackErr) {
-              console.error('[atoll-chat-view] Both audio/video and audio-only media requests failed:', fallbackErr)
+            } catch {
               return
             }
           } else {
-            console.error('[atoll-chat-view] Failed to initiate audio call:', err)
-            return
+            throw err
           }
         }
 
@@ -454,12 +459,12 @@
   
           await $webrtc.initiateCall($state.activeCallRoomId, localStream)
         } catch (err) {
-          console.error('[atoll-chat-view] Failed to initiate call:', err)
+          throw err
         }
       }
 
-      refs('btnAudioCall').addEventListener('click', () => initiateCall(false))
-      refs('btnVideoCall').addEventListener('click', () => initiateCall(true))
+      refs('btnAudioCall').addEventListener('click', () => initiateCall(false).catch(() => {}))
+      refs('btnVideoCall').addEventListener('click', () => initiateCall(true).catch(() => {}))
     }
   })
 </script>

@@ -111,167 +111,144 @@
       const btnClearAvatar = refs('btnClearAvatar')
       const roomNameContainer = refs('roomNameContainer')
       const roomAvatarContainer = refs('roomAvatarContainer')
-      const btnCancel = refs('btnCancel')
       const btnSubmit = refs('btnSubmit')
 
-      console.log('[create-room-modal-debug] Mount Resolved refs (Coralite 0.43.5):', {
-        popupEl: !!popupEl,
-        searchBar: !!searchBar,
-        roomNameInput: !!roomNameInput,
-        tokenContainer: !!tokenContainer,
-        userList: !!userList,
-        avatarInput: !!avatarInput,
-        avatarPreview: !!avatarPreview,
-        btnSelectAvatar: !!btnSelectAvatar,
-        btnClearAvatar: !!btnClearAvatar,
-        roomNameContainer: !!roomNameContainer,
-        roomAvatarContainer: !!roomAvatarContainer,
-        btnCancel: !!btnCancel,
-        btnSubmit: !!btnSubmit
-      })
-
+      /**
+       * Imperatively updates the component's interactive UI controls, token list, and user list.
+       * Relying strictly on the template contract.
+       * @returns {void}
+       */
       const render = () => {
         // Handle dynamic group field visibility classes imperatively as fallback/safeguard
         const showGroupFields = state.selectedParticipants.length > 1
-        if (roomNameContainer) {
-          if (showGroupFields) {
-            roomNameContainer.classList.remove('d-none')
-            roomNameContainer.classList.add('d-block')
-          } else {
-            roomNameContainer.classList.remove('d-block')
-            roomNameContainer.classList.add('d-none')
-          }
-        }
-        if (roomAvatarContainer) {
-          if (showGroupFields) {
-            roomAvatarContainer.classList.remove('d-none')
-            roomAvatarContainer.classList.add('d-block')
-          } else {
-            roomAvatarContainer.classList.remove('d-block')
-            roomAvatarContainer.classList.add('d-none')
-          }
+        if (showGroupFields) {
+          roomNameContainer.classList.remove('d-none')
+          roomNameContainer.classList.add('d-block')
+          roomAvatarContainer.classList.remove('d-none')
+          roomAvatarContainer.classList.add('d-block')
+        } else {
+          roomNameContainer.classList.remove('d-block')
+          roomNameContainer.classList.add('d-none')
+          roomAvatarContainer.classList.remove('d-block')
+          roomAvatarContainer.classList.add('d-none')
         }
 
         // Token container hidden state
-        if (tokenContainer) {
-          if (state.hideSelectedTokens) {
-            tokenContainer.setAttribute('hidden', 'true')
-          } else {
-            tokenContainer.removeAttribute('hidden')
-          }
+        if (state.hideSelectedTokens) {
+          tokenContainer.setAttribute('hidden', 'true')
+        } else {
+          tokenContainer.removeAttribute('hidden')
         }
 
         // Submit button state and text
-        if (btnSubmit) {
-          // The "Create Room" action button remains disabled until at least one participant is selected.
-          btnSubmit.disabled = !state.hasSelectedUsers || state.disableSubmit
-          const labelEl = btnSubmit.querySelector('.atoll-btn-label') || btnSubmit
-          if (state.isCreating) {
-            btnSubmit.setAttribute('loading', 'true')
-            labelEl.textContent = 'Creating...'
-          } else {
-            btnSubmit.removeAttribute('loading')
-            labelEl.textContent = 'Create Room'
-          }
+        // The "Create Room" action button remains disabled until at least one participant is selected.
+        btnSubmit.disabled = !state.hasSelectedUsers || state.disableSubmit
+        const labelEl = btnSubmit.querySelector('.atoll-btn-label') || btnSubmit
+        if (state.isCreating) {
+          btnSubmit.setAttribute('loading', 'true')
+          labelEl.textContent = 'Creating...'
+        } else {
+          btnSubmit.removeAttribute('loading')
+          labelEl.textContent = 'Create Room'
         }
 
         // Render participant tokens (chips)
-        if (tokenContainer) {
-          tokenContainer.innerHTML = ''
-          state.selectedParticipants.forEach(user => {
-            const chip = document.createElement('atoll-chip')
-            chip.setAttribute('variant', 'secondary')
-            chip.setAttribute('size', 'md')
-            chip.setAttribute('removable', 'true')
-            chip.setAttribute('value', user.id)
+        tokenContainer.innerHTML = ''
+        state.selectedParticipants.forEach(user => {
+          const chip = document.createElement('atoll-chip')
+          chip.setAttribute('variant', 'secondary')
+          chip.setAttribute('size', 'md')
+          chip.setAttribute('removable', 'true')
+          chip.setAttribute('value', user.id)
+
+          const profile = document.createElement('atoll-profile')
+          profile.setAttribute('slot', 'leading')
+          profile.setAttribute('size', 'xs')
+          profile.setAttribute('name', user.name || user.username)
+          if (user.avatar) {
+            profile.setAttribute('src', pb.files.getURL(user, user.avatar, { thumb: '40x40' }))
+          }
+          chip.appendChild(profile)
+
+          const textSpan = document.createTextNode(user.name || user.username)
+          chip.appendChild(textSpan)
+
+          chip.addEventListener('atoll-chip-remove', () => {
+            state.selectedParticipants = state.selectedParticipants.filter(p => p.id !== user.id)
+            render()
+          }, { signal })
+
+          tokenContainer.appendChild(chip)
+        })
+
+        // Render candidate results list
+        userList.innerHTML = ''
+        if (state.searchError) {
+          const msg = document.createElement('div')
+          msg.className = 'p-3 text-center text-danger'
+          msg.textContent = state.searchError
+          userList.appendChild(msg)
+        } else if (state.searchResults.length === 0) {
+          const msg = document.createElement('div')
+          msg.className = 'p-3 text-center text-muted small'
+          if (state.searchQuery && state.searchQuery.length >= 3) {
+            msg.textContent = 'No users found'
+          } else if (state.searchQuery) {
+            msg.textContent = 'Type at least 3 characters...'
+          } else {
+            msg.textContent = 'Type to search users...'
+          }
+          userList.appendChild(msg)
+        } else {
+          state.searchResults.forEach(user => {
+            const isSelected = state.selectedParticipants.find(p => p.id === user.id)
+            const item = document.createElement('atoll-list-item')
+            item.setAttribute('mode', 'selection')
+            item.setAttribute('title', user.name ? `${user.name} (@${user.username})` : user.username)
+            item.setAttribute('value', user.id)
+            item.setAttribute('data-testid', 'search-result-' + user.username)
+            if (isSelected) {
+              item.setAttribute('checked', 'true')
+            }
 
             const profile = document.createElement('atoll-profile')
-            profile.setAttribute('slot', 'leading')
-            profile.setAttribute('size', 'xs')
+            profile.setAttribute('slot', 'left')
+            profile.setAttribute('size', 'sm')
             profile.setAttribute('name', user.name || user.username)
             if (user.avatar) {
               profile.setAttribute('src', pb.files.getURL(user, user.avatar, { thumb: '40x40' }))
             }
-            chip.appendChild(profile)
+            item.appendChild(profile)
 
-            const textSpan = document.createTextNode(user.name || user.username)
-            chip.appendChild(textSpan)
-
-            chip.addEventListener('atoll-chip-remove', () => {
-              state.selectedParticipants = state.selectedParticipants.filter(p => p.id !== user.id)
+            item.addEventListener('atoll-selection-change', (e) => {
+              const checked = e.detail[0]?.checked
+              if (checked) {
+                if (user.id !== $state.currentUser?.id && !state.selectedParticipants.find(p => p.id === user.id)) {
+                  state.selectedParticipants = [...state.selectedParticipants, user]
+                }
+              } else {
+                state.selectedParticipants = state.selectedParticipants.filter(p => p.id !== user.id)
+              }
+              state.searchQuery = ''
+              state.searchResults = []
+              searchBar.value = ''
               render()
             }, { signal })
 
-            tokenContainer.appendChild(chip)
+            userList.appendChild(item)
           })
-        }
-
-        // Render candidate results list
-        if (userList) {
-          userList.innerHTML = ''
-          if (state.searchError) {
-            const msg = document.createElement('div')
-            msg.className = 'p-3 text-center text-danger'
-            msg.textContent = state.searchError
-            userList.appendChild(msg)
-          } else if (state.searchResults.length === 0) {
-            const msg = document.createElement('div')
-            msg.className = 'p-3 text-center text-muted small'
-            if (state.searchQuery && state.searchQuery.length >= 3) {
-              msg.textContent = 'No users found'
-            } else if (state.searchQuery) {
-              msg.textContent = 'Type at least 3 characters...'
-            } else {
-              msg.textContent = 'Type to search users...'
-            }
-            userList.appendChild(msg)
-          } else {
-            state.searchResults.forEach(user => {
-              const isSelected = state.selectedParticipants.find(p => p.id === user.id)
-              const item = document.createElement('atoll-list-item')
-              item.setAttribute('mode', 'selection')
-              item.setAttribute('title', user.name ? `${user.name} (@${user.username})` : user.username)
-              item.setAttribute('value', user.id)
-              item.setAttribute('data-testid', 'search-result-' + user.username)
-              if (isSelected) {
-                item.setAttribute('checked', 'true')
-              }
-
-              const profile = document.createElement('atoll-profile')
-              profile.setAttribute('slot', 'left')
-              profile.setAttribute('size', 'sm')
-              profile.setAttribute('name', user.name || user.username)
-              if (user.avatar) {
-                profile.setAttribute('src', pb.files.getURL(user, user.avatar, { thumb: '40x40' }))
-              }
-              item.appendChild(profile)
-
-              item.addEventListener('atoll-selection-change', (e) => {
-                const checked = e.detail[0]?.checked
-                if (checked) {
-                  if (user.id !== $state.currentUser?.id && !state.selectedParticipants.find(p => p.id === user.id)) {
-                    state.selectedParticipants = [...state.selectedParticipants, user]
-                  }
-                } else {
-                  state.selectedParticipants = state.selectedParticipants.filter(p => p.id !== user.id)
-                }
-                state.searchQuery = ''
-                state.searchResults = []
-                if (searchBar) {
-                  searchBar.value = ''
-                }
-                render()
-              }, { signal })
-
-              userList.appendChild(item)
-            })
-          }
         }
       }
 
       // Initial render
       render()
 
+      /**
+       * Searches for users in PocketBase matching the input search string.
+       * @param {string} query - The search text.
+       * @returns {Promise<void>}
+       * @throws {Error} Re-throws non-abort network and PocketBase failures.
+       */
       const performSearch = $func.debounce(async (query) => {
         if (!query || query.length < 3) {
           state.searchResults = []
@@ -304,36 +281,32 @@
           if (err.isAbort) {
             return
           }
-          console.error('[create-room-modal] Search failed:', err)
           state.searchError = 'Search failed. Please try again.'
           state.searchResults = []
           render()
+          throw err
         }
       }, 300)
 
-      if (searchBar) {
-        searchBar.addEventListener('input', () => {
-          state.searchQuery = searchBar.value || ''
-          state.searchError = null
-          if (state.searchQuery.length < 3) {
-            state.searchResults = []
-            render()
-          }
-          performSearch(state.searchQuery)
-        }, { signal })
-
-        searchBar.addEventListener('cancel', () => {
-          state.searchQuery = ''
+      searchBar.addEventListener('input', () => {
+        state.searchQuery = searchBar.value || ''
+        state.searchError = null
+        if (state.searchQuery.length < 3) {
           state.searchResults = []
           render()
-        }, { signal })
-      }
-
-      if (roomNameInput) {
-        roomNameInput.oninput = (e) => {
-          state.roomName = e.target.value
-          render()
         }
+        performSearch(state.searchQuery)
+      }, { signal })
+
+      searchBar.addEventListener('cancel', () => {
+        state.searchQuery = ''
+        state.searchResults = []
+        render()
+      }, { signal })
+
+      roomNameInput.oninput = (e) => {
+        state.roomName = e.target.value
+        render()
       }
 
       $bus.on('ui:open_create_room', () => {
@@ -343,76 +316,52 @@
         state.selectedParticipants = []
         state.searchError = null
         state.roomAvatar = null
-        if (searchBar) {
-          searchBar.value = ''
-        }
-        if (roomNameInput) {
-          roomNameInput.value = ''
-        }
-        if (avatarInput) {
-          avatarInput.value = ''
-        }
-        if (avatarPreview) {
-          avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
-        }
-        if (btnClearAvatar) {
-          btnClearAvatar.classList.add('d-none')
-        }
+        searchBar.value = ''
+        roomNameInput.value = ''
+        avatarInput.value = ''
+        avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
+        btnClearAvatar.classList.add('d-none')
         render()
-        if (popupEl) {
-          if (typeof popupEl.show === 'function') {
-            popupEl.show()
-          } else {
-            popupEl.setAttribute('open', 'true')
-          }
+        if (typeof popupEl.show === 'function') {
+          popupEl.show()
+        } else {
+          popupEl.setAttribute('open', 'true')
         }
       })
 
-      if (btnSelectAvatar) {
-        btnSelectAvatar.onclick = () => avatarInput?.click()
-      }
-      if (avatarInput) {
-        avatarInput.onchange = (e) => {
-          const file = e.target.files[0]
-          if (file) {
-            state.roomAvatar = file
-            const reader = new FileReader()
-            reader.onload = (re) => {
-              if (avatarPreview) {
-                avatarPreview.innerHTML = ''
-                const img = document.createElement('img')
-                img.src = re.target.result
-                img.className = 'w-100 h-100 object-fit-cover'
-                avatarPreview.appendChild(img)
-              }
-              if (btnClearAvatar) {
-                btnClearAvatar.classList.remove('d-none')
-              }
-            }
-            reader.readAsDataURL(file)
+      btnSelectAvatar.onclick = () => avatarInput.click()
+      avatarInput.onchange = (e) => {
+        const file = e.target.files[0]
+        if (file) {
+          state.roomAvatar = file
+          const reader = new FileReader()
+          reader.onload = (re) => {
+            avatarPreview.innerHTML = ''
+            const img = document.createElement('img')
+            img.src = re.target.result
+            img.className = 'w-100 h-100 object-fit-cover'
+            avatarPreview.appendChild(img)
+            btnClearAvatar.classList.remove('d-none')
           }
+          reader.readAsDataURL(file)
         }
       }
-      if (btnClearAvatar) {
-        btnClearAvatar.onclick = () => {
-          state.roomAvatar = null
-          if (avatarInput) {
-            avatarInput.value = ''
-          }
-          if (avatarPreview) {
-            avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
-          }
-          btnClearAvatar.classList.add('d-none')
-        }
+      btnClearAvatar.onclick = () => {
+        state.roomAvatar = null
+        avatarInput.value = ''
+        avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
+        btnClearAvatar.classList.add('d-none')
       }
 
+      /**
+       * Closes the active popup modal dialog.
+       * @returns {void}
+       */
       const close = () => {
-        if (popupEl) {
-          if (typeof popupEl.hide === 'function') {
-            popupEl.hide()
-          } else {
-            popupEl.removeAttribute('open')
-          }
+        if (typeof popupEl.hide === 'function') {
+          popupEl.hide()
+        } else {
+          popupEl.removeAttribute('open')
         }
       }
 
@@ -566,8 +515,8 @@
             popupEl.hide()
 
           } catch (err) {
-            console.error('[create-room-modal] Room creation failed:', err)
             alert('Room creation failed: ' + err.message)
+            throw err
           } finally {
             state.isCreating = false
             render()
@@ -582,21 +531,11 @@
         state.selectedParticipants = []
         state.searchError = null
         state.roomAvatar = null
-        if (searchBar) {
-          searchBar.value = ''
-        }
-        if (roomNameInput) {
-          roomNameInput.value = ''
-        }
-        if (avatarInput) {
-          avatarInput.value = ''
-        }
-        if (avatarPreview) {
-          avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
-        }
-        if (btnClearAvatar) {
-          btnClearAvatar.classList.add('d-none')
-        }
+        searchBar.value = ''
+        roomNameInput.value = ''
+        avatarInput.value = ''
+        avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
+        btnClearAvatar.classList.add('d-none')
         render()
       }, { signal })
     }
