@@ -46,7 +46,16 @@ export default function pushPlugin (options = {}) {
               return resolvedAdapter
             }
           } catch (err) {
-            if (err instanceof Error && err.code !== 'ERR_MODULE_NOT_FOUND' && !err.message.includes('Cannot find module') && !err.message.includes('Failed to resolve')) {
+            if (err instanceof Error) {
+              const isExpectedModuleNotFound =
+                err.code === 'ERR_MODULE_NOT_FOUND' ||
+                err.message.includes('Cannot find module') ||
+                err.message.includes('Failed to resolve')
+
+              if (!isExpectedModuleNotFound) {
+                throw err
+              }
+            } else {
               throw err
             }
           }
@@ -69,6 +78,7 @@ export default function pushPlugin (options = {}) {
              * Prompts the user for push notification permission.
              *
              * @returns {Promise<boolean>} Resolves to true if permission was granted.
+             * @throws {Error} Re-throws unexpected platform or network failures.
              */
             async requestPermission () {
               const adapter = await getAdapter(instanceContext)
@@ -79,6 +89,7 @@ export default function pushPlugin (options = {}) {
              * Registers the push token or web push subscription object.
              *
              * @returns {Promise<Object|string|null>} Resolves to the registration payload.
+             * @throws {Error} Re-throws unexpected platform or registration failures.
              */
             async register () {
               const adapter = await getAdapter(instanceContext)

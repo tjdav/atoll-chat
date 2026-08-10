@@ -3,6 +3,7 @@
  *
  * @param {string} base64String - The URL-safe Base64 VAPID public key.
  * @returns {Uint8Array} The converted Uint8Array.
+ * @throws {Error} Re-throws unexpected formatting errors.
  */
 function urlBase64ToUint8Array (base64String) {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4)
@@ -15,10 +16,6 @@ function urlBase64ToUint8Array (base64String) {
 
   for (let i = 0; i < rawData.length; ++i) {
     outputArray[i] = rawData.charCodeAt(i)
-  }
-
-  if (outputArray.length !== 65 || outputArray[0] !== 4) {
-    console.error(`[WebPushAdapter] Invalid VAPID public key format. Expected 65-byte uncompressed P-256 key starting with 0x04 (got ${outputArray.length} bytes, first byte: 0x${outputArray[0]?.toString(16)}).`)
   }
 
   return outputArray
@@ -36,10 +33,10 @@ export function createWebPushAdapter (_instanceContext) {
      * Prompts the browser for Notification permissions.
      *
      * @returns {Promise<boolean>} Resolves to true if granted, false otherwise.
+     * @throws {Error} Re-throws unexpected exceptions during permission requests.
      */
     async requestPermission () {
       if (!('Notification' in window)) {
-        console.warn('[WebPushAdapter] This browser does not support notifications.')
         return false
       }
       if (Notification.permission === 'granted') {
@@ -57,6 +54,7 @@ export function createWebPushAdapter (_instanceContext) {
      *
      * @param {string} vapidKey - The VAPID public key.
      * @returns {Promise<Object|null>} The subscription payload, or null if unsupported.
+     * @throws {Error} Throws an error if VAPID public key is missing, or unexpected registration issues occur.
      */
     async register (vapidKey) {
       if (!vapidKey) {
@@ -64,7 +62,6 @@ export function createWebPushAdapter (_instanceContext) {
       }
 
       if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
-        console.warn('[WebPushAdapter] Service workers or Push notifications are not supported.')
         return null
       }
 

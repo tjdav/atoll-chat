@@ -10,9 +10,9 @@ export function createNativePushAdapter (_instanceContext) {
      * Stubs the notification permission request for native environments.
      *
      * @returns {Promise<boolean>} Resolves to true.
+     * @throws {Error} Stubbed method - never throws under normal conditions.
      */
     async requestPermission () {
-      console.info('[NativePushAdapter] Requesting native push notification permissions (stubbed).')
       return true
     },
 
@@ -20,10 +20,9 @@ export function createNativePushAdapter (_instanceContext) {
      * Stubs native push registration. Returns a mock device token.
      *
      * @returns {Promise<string>} A mock native device token.
+     * @throws {Error} Stubbed method - never throws under normal conditions.
      */
     async register () {
-      console.info('[NativePushAdapter] Registering with FCM/APNs gateway (stubbed).')
-
       /*
        * ARCHITECTURAL BOUNDARY WARNING:
        * In a full-production native application (iOS/Android), when the mobile WebView is
