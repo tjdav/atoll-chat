@@ -95,16 +95,16 @@
       // Check if user is owner to show administration sections
       const authRecord = pb.authStore.record
       if (authRecord) {
-        try {
-          const trustList = await pb.collection('user_trust').getFullList({
-            filter: `user = "${authRecord.id}"`
-          }).catch(() => [])
+        pb.collection('user_trust').getFullList({
+          filter: `user = "${authRecord.id}"`
+        }).then((trustList) => {
           const trustRec = trustList[0]
           if (trustRec && trustRec.tier === 'owner') {
             adminContentGroup.classList.remove('d-none')
           }
-        } catch (_) {
-        }
+        }).catch(() => {
+          // Fail safely: do not show admin content if the lookup fails or throws
+        })
       }
 
       const btnBack = refs('btnBack')
