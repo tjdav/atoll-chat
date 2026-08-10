@@ -7,6 +7,11 @@ import { definePlugin } from 'coralite'
 export default definePlugin({
   name: 'notifications',
   client: {
+    /**
+     * Set up the initial client context for notifications.
+     *
+     * @returns {function(Object): Object} Resolver function for instance-specific notification operations.
+     */
     context: () => {
       let lastSoundPlayTime = 0
       let isInitialized = false
@@ -21,6 +26,12 @@ export default definePlugin({
 
         let LocalNotifications = null
 
+        /**
+         * Initializes the notification plugin by setting up default state,
+         * listening to new message events, and setting up local/native notifications.
+         *
+         * @returns {void}
+         */
         const init = () => {
           if (isInitialized) {
             return
@@ -34,6 +45,13 @@ export default definePlugin({
             $state.messageSoundsEnabled = true
           }
 
+          /**
+           * Sets up the Native Local Notifications listener and handles user clicks
+           * to redirect them to the active room.
+           *
+           * @returns {Promise<void>}
+           * @throws {Error} Re-throws unexpected module load or platform setup failures.
+           */
           const setupLocalNotifications = async () => {
             try {
               const { Capacitor } = await import('@capacitor/core')
@@ -64,7 +82,18 @@ export default definePlugin({
                 }
               }
             } catch (err) {
-              console.error('[notification-plugin] Failed to load/setup LocalNotifications:', err)
+              if (err instanceof Error) {
+                const isExpectedModuleNotFound =
+                  err.code === 'ERR_MODULE_NOT_FOUND' ||
+                  err.message.includes('Cannot find module') ||
+                  err.message.includes('Failed to resolve')
+
+                if (!isExpectedModuleNotFound) {
+                  throw err
+                }
+              } else {
+                throw err
+              }
             }
           }
           setupLocalNotifications()
@@ -102,13 +131,12 @@ export default definePlugin({
                     await pb.collection('users').update(userModel.id, {
                       push_subscription: token
                     })
-                    console.log('[notification-plugin] Push registration successful on vault unlock:', token)
                   }
                 } else {
                   $state.notificationsEnabled = false
                 }
               } catch (err) {
-                console.error('[notification-plugin] Failed to request permission on vault unlock:', err)
+                throw err
               }
             }
           })
@@ -133,29 +161,32 @@ export default definePlugin({
             })
           }
 
-          try {
-            const params = new URLSearchParams(window.location.search)
-            const urlMessageId = params.get('messageId')
-            const urlRoomId = params.get('id')
-            if (urlMessageId && urlRoomId) {
-              let unSub
-              unSub = $state.subscribe('isVaultUnlocked', (unlocked) => {
-                if (unlocked) {
-                  setTimeout(() => {
-                    $bus.emit('message:scroll_to', { messageId: urlMessageId })
-                  }, 1500)
-                  if (unSub) {
-                    unSub()
-                  } else {
-                    setTimeout(() => unSub(), 0)
-                  }
+          const params = new URLSearchParams(window.location.search)
+          const urlMessageId = params.get('messageId')
+          const urlRoomId = params.get('id')
+          if (urlMessageId && urlRoomId) {
+            let unSub
+            unSub = $state.subscribe('isVaultUnlocked', (unlocked) => {
+              if (unlocked) {
+                setTimeout(() => {
+                  $bus.emit('message:scroll_to', { messageId: urlMessageId })
+                }, 1500)
+                if (unSub) {
+                  unSub()
+                } else {
+                  setTimeout(() => unSub(), 0)
                 }
-              })
-            }
-          } catch (err) {
-            console.error('[notification-plugin] Failed to parse URL messageId:', err)
+              }
+            })
           }
 
+          /**
+           * Debounces and plays the designated message received sound,
+           * supporting browser-enforced interaction policies gracefully.
+           *
+           * @returns {Promise<void>}
+           * @throws {Error} Re-throws unexpected media file or system playback failures.
+           */
           const playMessageSound = async () => {
             if (($state.messageSoundsEnabled ?? true) === false) {
               return
@@ -185,10 +216,28 @@ export default definePlugin({
                 audio.onended = () => URL.revokeObjectURL(audioSource)
               }
             } catch (err) {
-              console.error('[notification-plugin] Failed to play message sound:', err)
+              if (err instanceof Error) {
+                const isExpectedMediaError =
+                  err.name === 'NotAllowedError' ||
+                  err.name === 'AbortError' ||
+                  err.message.includes('play() can only be initiated by a user gesture') ||
+                  err.message.includes('user gesture')
+
+                if (!isExpectedMediaError) {
+                  throw err
+                }
+              } else {
+                throw err
+              }
             }
           }
 
+          /**
+           * Checks whether the application is focused and the given room is actively opened.
+           *
+           * @param {string} roomId - The ID of the room to verify.
+           * @returns {boolean} True if the chat is both active and focused.
+           */
           const isChatActiveAndFocused = (roomId) => {
             const isAppFocused = typeof document !== 'undefined' &&
               document.hasFocus() &&
@@ -199,6 +248,16 @@ export default definePlugin({
               $state.activeSelectionId === roomId
           }
 
+          /**
+           * Prepares the message parameters (sender, room type, content preview)
+           * and dispatches a native local notification or fallback standard browser Notification.
+           *
+           * @param {Object} payload - The message payload object.
+           * @param {string} payload.room_id - The ID of the chat room.
+           * @param {Object} payload.message - The incoming message details.
+           * @returns {Promise<void>}
+           * @throws {Error} Re-throws unexpected system or notification scheduling exceptions.
+           */
           const showNotification = async (payload) => {
             const { room_id, message } = payload
             if (!message || message.sender_id === $state.currentUser?.id) {
@@ -263,23 +322,19 @@ export default definePlugin({
 
               // Try Native Local Notification first if available
               if (LocalNotifications) {
-                try {
-                  await LocalNotifications.schedule({
-                    notifications: [
-                      {
-                        title,
-                        body,
-                        id: Date.now() % 100000,
-                        extra: {
-                          room_id,
-                          messageId: message.id || message.local_uuid
-                        }
+                await LocalNotifications.schedule({
+                  notifications: [
+                    {
+                      title,
+                      body,
+                      id: Date.now() % 100000,
+                      extra: {
+                        room_id,
+                        messageId: message.id || message.local_uuid
                       }
-                    ]
-                  })
-                } catch (err) {
-                  console.error('[notification-plugin] Failed to schedule native local notification:', err)
-                }
+                    }
+                  ]
+                })
                 return
               }
 
@@ -319,7 +374,7 @@ export default definePlugin({
                 notification.close()
               }
             } catch (err) {
-              console.error('[notification-plugin] Failed to show notification:', err)
+              throw err
             }
           }
 
@@ -356,6 +411,12 @@ export default definePlugin({
           })
         }
 
+        /**
+         * Requests native or browser push/local notification permissions from the user.
+         *
+         * @returns {Promise<boolean>} True if the permission request was successful/granted.
+         * @throws {Error} Re-throws unexpected system, plugin, or permission exceptions.
+         */
         const requestPermission = async () => {
           const { Capacitor } = await import('@capacitor/core')
           if (Capacitor.isNativePlatform()) {
@@ -367,7 +428,18 @@ export default definePlugin({
                 return status.display === 'granted'
               }
             } catch (err) {
-              console.error('[notification-plugin] Failed to request native local notification permissions:', err)
+              if (err instanceof Error) {
+                const isExpectedModuleNotFound =
+                  err.code === 'ERR_MODULE_NOT_FOUND' ||
+                  err.message.includes('Cannot find module') ||
+                  err.message.includes('Failed to resolve')
+
+                if (!isExpectedModuleNotFound) {
+                  throw err
+                }
+              } else {
+                throw err
+              }
             }
             return true
           }

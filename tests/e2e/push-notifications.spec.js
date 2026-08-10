@@ -53,24 +53,28 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     })
   })
 
-  test('should request push permissions and register automatically on vault unlock', async ({ page, loginApp }) => {
-    const logs = []
-    page.on('console', msg => {
-      logs.push(msg.text())
-    })
-
+  test('should request push permissions and register automatically on vault unlock', async ({ page, loginApp, request }) => {
     /* Perform successful login & unlock */
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
     /* Verify standard app-layout is visible */
     await expect(page.locator('app-layout')).toBeVisible()
 
+    const testId = await page.evaluate(() => {
+      return window.__playwright_test_id__ || 'default'
+    })
+    const headers = { 'x-test-id': testId }
+
     /* Assert that the push plugin requested permission and registered automatically on vault unlock */
     let pushRegistered = false
     for (let i = 0; i < 20; i++) {
-      if (logs.some(log => log.includes('[notification-plugin] Push registration successful on vault unlock') || log.includes('Push subscription updated on backend successfully') || log.includes('[notifications-settings] Push registration successful'))) {
-        pushRegistered = true
-        break
+      const res = await request.get(`http://localhost:8091/api/collections/users/records/alice`, { headers })
+      if (res.ok()) {
+        const user = await res.json()
+        if (user && user.push_subscription) {
+          pushRegistered = true
+          break
+        }
       }
       await page.waitForTimeout(500)
     }
