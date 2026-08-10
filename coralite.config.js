@@ -359,13 +359,28 @@ export default defineConfig({
                 }
               })
 
-              return () => ({
+              const contextObj = {
                 pb,
                 auth: createAuthApi(pb),
                 records: createRecordApi(pb),
                 realtime: createRealtimeApi(pb),
                 files: createFileApi(pb)
+              }
+
+              const proxyContext = new Proxy(contextObj, {
+                get (target, prop) {
+                  if (prop in target) {
+                    return target[prop]
+                  }
+                  const val = pb[prop]
+                  if (typeof val === 'function') {
+                    return val.bind(pb)
+                  }
+                  return val
+                }
               })
+
+              return () => proxyContext
             }
           }
         }

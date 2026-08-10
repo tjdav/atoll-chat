@@ -453,15 +453,28 @@ export default function pocketbase (options = {}) {
         const realtime = createRealtimeApi(pb)
         const files = createFileApi(pb)
 
-        return () => {
-          return {
-            pb,
-            auth,
-            records,
-            realtime,
-            files
-          }
+        const contextObj = {
+          pb,
+          auth,
+          records,
+          realtime,
+          files
         }
+
+        const proxyContext = new Proxy(contextObj, {
+          get (target, prop) {
+            if (prop in target) {
+              return target[prop]
+            }
+            const val = pb[prop]
+            if (typeof val === 'function') {
+              return val.bind(pb)
+            }
+            return val
+          }
+        })
+
+        return () => proxyContext
       }
     }
   })

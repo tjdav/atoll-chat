@@ -127,6 +127,23 @@ export default function bootstrapScriptPlugin () {
           bootstrapTag = `\n  <script type="module" src="./assets/js/${bootstrapFilename}" integrity="${bootstrapSri}" crossorigin="anonymous" defer></script>`
         }
 
+        const instanceIdFix = `\n  <script>
+    (function () {
+      window.__coralite_instanceCounters = window.__coralite_instanceCounters || {}
+      document.querySelectorAll('[data-cid]').forEach(function (el) {
+        const cid = el.getAttribute('data-cid')
+        if (cid) {
+          const parts = cid.split('-')
+          const num = parseInt(parts.pop(), 10)
+          const prefix = parts.join('-')
+          if (prefix && !isNaN(num)) {
+            window.__coralite_instanceCounters[prefix] = Math.max(window.__coralite_instanceCounters[prefix] || 0, num + 1)
+          }
+        }
+      })
+    })()
+  </script>`
+
         // Ensure relative favicon link exists in <head>
         if (!content.includes('rel="icon"')) {
           content = content.replace(/<\/head>/i, '  <link rel="icon" type="image/x-icon" href="./favicon.ico">\n</head>')
@@ -135,7 +152,7 @@ export default function bootstrapScriptPlugin () {
         }
 
         // Inject asset scripts right before </body>
-        const injectedScripts = `${altchaTag}${swTag}${bootstrapTag}\n</body>`
+        const injectedScripts = `${instanceIdFix}${altchaTag}${swTag}${bootstrapTag}\n</body>`
         content = content.replace(/<\/body>/i, injectedScripts)
 
         // Ensure importmap is moved to top of head for Firefox ES module compliance
