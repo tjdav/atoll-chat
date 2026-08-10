@@ -1,5 +1,9 @@
 // src/scss/_atoll-list-header.scss
 
+atoll-list-header {
+  display: block;
+}
+
 :root {
   --#{$prefix}list-header-height-sm: 36px;
   --#{$prefix}list-header-height-md: 44px;
