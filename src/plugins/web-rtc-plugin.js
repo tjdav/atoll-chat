@@ -1,8 +1,12 @@
 import { definePlugin } from 'coralite'
 
 /**
- * WebRTC Manager Plugin for Atoll Chat.
+ * Defines and exports the WebRTC Manager Plugin for Atoll Chat.
  * Orchestrates P2P connections using the E2EE message pipeline for signaling.
+ *
+ * @param {Object} [options={}] - Configuration options for the plugin.
+ * @param {Array<RTCIceServer>} [options.iceServers] - Default ICE/STUN/TURN servers.
+ * @returns {import('coralite').CoralitePlugin} The registered Coralite WebRTC plugin.
  */
 export default function webrtcPlugin ({
   iceServers
@@ -14,6 +18,12 @@ export default function webrtcPlugin ({
     { urls: 'stun:global.stun.twilio.com:3478' }
   ]
 
+  /**
+   * Expands turn or turns server URLs with TCP and UDP transport protocols.
+   *
+   * @param {string[]} rawUrls - The list of unexpanded TURN server URL strings.
+   * @returns {string[]} The list of expanded TURN server URL strings with explicit transports.
+   */
   const expandTurnServerUrls = (rawUrls) => {
     if (!rawUrls || !Array.isArray(rawUrls) || rawUrls.length === 0) {
       return []
@@ -91,8 +101,14 @@ export default function webrtcPlugin ({
         let globalWorker = null
         let isSignalingSetup = false
 
+        /**
+         * Cleanly tears down any active WebRTC call for a specific room.
+         * Closes peer connections, stops media tracks, and resets global call states.
+         *
+         * @param {string} room_id - The ID of the room to tear down.
+         * @returns {void}
+         */
         const teardownCall = (room_id) => {
-          console.log(`[WebRTC] Tearing down call for room ${room_id}`)
           if (globalState && globalState.activeCallRoomId === room_id) {
             globalState.remoteStream = null
             globalState.hasRemoteVideo = false
@@ -102,14 +118,12 @@ export default function webrtcPlugin ({
             // Stop all senders
             pc.getSenders().forEach(sender => {
               if (sender.track) {
-                console.log(`[WebRTC] Stopping sender track: ${sender.track.kind}`)
                 sender.track.stop()
               }
             })
             // Stop all receivers
             pc.getReceivers().forEach(receiver => {
               if (receiver.track) {
-                console.log(`[WebRTC] Stopping receiver track: ${receiver.track.kind}`)
                 receiver.track.stop()
               }
             })
@@ -120,7 +134,6 @@ export default function webrtcPlugin ({
             pc.onconnectionstatechange = null
             pc.close()
             activeCalls.delete(room_id)
-            console.log(`[WebRTC] PeerConnection closed and removed for room ${room_id}`)
           }
           if (typeof window !== 'undefined') {
             window.__E2E_PEER_CONNECTION__ = null
@@ -147,31 +160,52 @@ export default function webrtcPlugin ({
           }
         })
 
+        /**
+         * Replays and applies any queued/pending ICE candidates to an active RTCPeerConnection.
+         *
+         * @param {string} room_id - The ID of the room.
+         * @param {RTCPeerConnection} pc - The active peer connection.
+         * @returns {Promise<void>}
+         * @throws {Error} Re-throws unexpected non-WebRTC failures.
+         */
         const applyPendingCandidates = async (room_id, pc) => {
           const candidates = pendingCandidates.get(room_id)
           if (!candidates || candidates.length === 0) {
             return
           }
 
-          console.log(`[WebRTC] Replaying ${candidates.length} pending candidates for room ${room_id}`)
           while (candidates.length > 0) {
             const candidate = candidates.shift()
             try {
               await pc.addIceCandidate(new RTCIceCandidate(candidate))
             } catch (err) {
-              console.error(`[WebRTC] Failed to add replayed ICE candidate:`, err)
+              if (err instanceof Error && (
+                err.name === 'InvalidStateError' ||
+                err.name === 'OperationError' ||
+                err.name === 'TypeError'
+              )) {
+                continue
+              }
+              throw err
             }
           }
           pendingCandidates.delete(room_id)
         }
 
+        /**
+         * Sends a WebRTC signaling message via the background message worker.
+         *
+         * @param {string} room_id - The ID of the room.
+         * @param {string} type - The signaling message type (e.g., 'call_offer', 'call_answer', 'ice_candidate', 'call_end').
+         * @param {Object} [payload={}] - Additional payload details for the message.
+         * @returns {Promise<void>}
+         * @throws {Error} Re-throws unexpected non-worker/non-network failures.
+         */
         const sendSignalingMessage = async (room_id, type, payload = {}) => {
           if (!globalWorker) {
-            console.error('[WebRTC] Cannot send signaling message: worker not initialized')
             return
           }
           const localUuid = crypto.randomUUID()
-          console.log(`[WebRTC] Sending signaling message: ${type} for room ${room_id}`)
           try {
             await globalWorker.execute('worker:send_message', {
               room_id,
@@ -181,17 +215,34 @@ export default function webrtcPlugin ({
               timestamp: Date.now()
             })
           } catch (err) {
-            console.warn(`[WebRTC] Non-fatal error sending signaling message (${type}):`, err)
+            if (err instanceof Error && (
+              err.message.includes('worker') ||
+              err.message.includes('closed') ||
+              err.message.includes('network') ||
+              err.message.includes('timeout')
+            )) {
+              return
+            }
+            throw err
           }
         }
 
+        /**
+         * Configures and sets up a new RTCPeerConnection for a room, including optional
+         * media stream tracks and dynamic TURN credentials lookup.
+         *
+         * @param {string} room_id - The ID of the room.
+         * @param {MediaStream} mediaStream - The local audio/video media stream.
+         * @param {Object} $state - The reactive global store state.
+         * @param {Object} pb - The PocketBase client context.
+         * @returns {Promise<RTCPeerConnection>} Resolves to the initialized peer connection.
+         * @throws {Error} Re-throws unexpected non-network failures.
+         */
         const setupPeerConnection = async (room_id, mediaStream, $state, pb) => {
           if (activeCalls.has(room_id)) {
-            console.warn(`[WebRTC] PeerConnection already exists for room ${room_id}, closing old one.`)
             teardownCall(room_id)
           }
 
-          console.log(`[WebRTC] Setting up PeerConnection for room ${room_id}`)
           let dynamicIceServers = rtcConfig.iceServers
 
           if (!localIceServer) {
@@ -199,7 +250,6 @@ export default function webrtcPlugin ({
               { urls: 'stun:stun.l.google.com:19302' }
             ]
             try {
-              console.log('[WebRTC] Fetching dynamic TURN credentials from PocketBase')
               const credentialsResponse = await pb.send('/api/turn-credentials', {
                 method: 'GET'
               })
@@ -229,8 +279,19 @@ export default function webrtcPlugin ({
                 dynamicIceServers = defaultStun
               }
             } catch (err) {
-              console.warn('[WebRTC] Failed to fetch dynamic TURN credentials, falling back to STUN-only:', err)
-              dynamicIceServers = defaultStun
+              if (err instanceof Error && (
+                err.name === 'ClientResponseError' ||
+                err.message.includes('network') ||
+                err.message.includes('Failed to fetch') ||
+                err.message.includes('Fetch') ||
+                err.status === 401 ||
+                err.status === 404 ||
+                err.status === 500
+              )) {
+                dynamicIceServers = defaultStun
+              } else {
+                throw err
+              }
             }
           }
 
@@ -248,7 +309,7 @@ export default function webrtcPlugin ({
             mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
           }
           pc.oniceconnectionstatechange = () => {
-            console.log(`[WebRTC] ICE Connection State changed for room ${room_id}: ${pc.iceConnectionState}`)
+            // ICE Connection State changed handler
           }
 
           pc.onicecandidate = (event) => {
@@ -302,7 +363,6 @@ export default function webrtcPlugin ({
             })
           }
           pc.onconnectionstatechange = () => {
-            console.log(`[WebRTC] Connection State changed for room ${room_id}: ${pc.connectionState}`)
             if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
               teardownCall(room_id)
               $bus.emit('call:ended', { room_id })
@@ -312,6 +372,14 @@ export default function webrtcPlugin ({
           return pc
         }
 
+        /**
+         * Initializes database-event listeners for WebRTC signaling messages.
+         * Subscribes to and handles incoming offers, answers, candidates, and call closures.
+         *
+         * @param {Object} $worker - The background crypto/message worker execution context.
+         * @param {Object} $state - The reactive global store state.
+         * @returns {void}
+         */
         const setupSignalingListeners = ($worker, $state) => {
           if (isSignalingSetup) {
             return
@@ -320,10 +388,8 @@ export default function webrtcPlugin ({
           globalWorker = $worker
           globalState = $state
 
-          console.log('[WebRTC] Initializing global signaling listener')
-
           $bus.on('db:new_local_data', async (payload) => {
-            const { room_id: room_id, message: message } = payload
+            const { room_id, message } = payload
             if (!message) {
               return
             }
@@ -352,7 +418,6 @@ export default function webrtcPlugin ({
 
             try {
               if (message.type === 'call_offer') {
-                console.log(`[WebRTC] Received call_offer for room ${room_id}`)
                 $bus.emit('call:incoming', {
                   room_id,
                   offer: message.content,
@@ -360,9 +425,7 @@ export default function webrtcPlugin ({
                   media_types: message.media_types
                 })
               } else if (message.type === 'call_answer') {
-                console.log(`[WebRTC] Received call_answer for room ${room_id}`)
                 if (message.sender_id === globalState.currentUser?.id && globalState.callStatus === 'incoming' && globalState.activeCallRoomId === room_id) {
-                  console.log(`[WebRTC] Call for room ${room_id} answered on another device. De-escalating secondary device.`)
                   teardownCall(room_id)
                   $bus.emit('call:ended', { room_id })
                   $bus.emit('ui:show_toast', {
@@ -380,16 +443,12 @@ export default function webrtcPlugin ({
                 if (pc) {
                   if (pc.signalingState === 'have-local-offer') {
                     await pc.setRemoteDescription(new RTCSessionDescription(message.content))
-                    console.log(`[WebRTC] Remote description set for room ${room_id}`)
                     await applyPendingCandidates(room_id, pc)
-                  } else {
-                    console.warn(`[WebRTC] PC in state ${pc.signalingState}, skipping setRemoteDescription`)
                   }
                 }
               } else if (message.type === 'ice_candidate') {
                 const pc = activeCalls.get(room_id)
                 const candidates = message.candidates || (message.candidate ? [message.candidate] : [])
-                console.log(`[WebRTC] Received ${candidates.length} ICE candidates for room ${room_id}`)
 
                 for (const candidate of candidates) {
                   if (pc && pc.remoteDescription && pc.remoteDescription.type) {
@@ -402,12 +461,19 @@ export default function webrtcPlugin ({
                   }
                 }
               } else if (message.type === 'call_end') {
-                console.log(`[WebRTC] Received call_end for room ${room_id}`)
                 teardownCall(room_id)
                 $bus.emit('call:ended', { room_id })
               }
             } catch (err) {
-              console.error(`[WebRTC] Error handling signaling message (${message.type}):`, err)
+              if (err instanceof Error && (
+                err.name === 'InvalidStateError' ||
+                err.name === 'OperationError' ||
+                err.name === 'TypeError' ||
+                err.message.includes('RTCPeerConnection')
+              )) {
+                return
+              }
+              throw err
             }
           })
         }
@@ -420,6 +486,13 @@ export default function webrtcPlugin ({
 
           return {
             $webrtc: {
+              /**
+               * Initiates an outgoing WebRTC call.
+               *
+               * @param {string} room_id - The ID of the room to call.
+               * @param {MediaStream} mediaStream - The local media stream tracks to send.
+               * @returns {Promise<void>}
+               */
               initiateCall: async (room_id, mediaStream) => {
                 const pc = await setupPeerConnection(room_id, mediaStream, $state, pb)
                 const offer = await pc.createOffer()
@@ -430,6 +503,15 @@ export default function webrtcPlugin ({
                   media_types: hasVideo ? ['audio', 'video'] : ['audio']
                 })
               },
+
+              /**
+               * Answers an incoming WebRTC call.
+               *
+               * @param {string} room_id - The ID of the room.
+               * @param {MediaStream} mediaStream - The local media stream tracks to send.
+               * @param {RTCSessionDescriptionInit} remoteOffer - The remote caller's SDP offer.
+               * @returns {Promise<void>}
+               */
               answerCall: async (room_id, mediaStream, remoteOffer) => {
                 const pc = await setupPeerConnection(room_id, mediaStream, $state, pb)
                 await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer))
@@ -438,6 +520,13 @@ export default function webrtcPlugin ({
                 await pc.setLocalDescription(answer)
                 await sendSignalingMessage(room_id, 'call_answer', { content: answer })
               },
+
+              /**
+               * Terminate/end an active call.
+               *
+               * @param {string} room_id - The ID of the room.
+               * @returns {Promise<void>}
+               */
               endCall: async (room_id) => {
                 teardownCall(room_id)
                 await sendSignalingMessage(room_id, 'call_end')
