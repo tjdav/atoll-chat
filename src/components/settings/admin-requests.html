@@ -1,0 +1,153 @@
+<template id="admin-requests">
+  <div class="admin-requests">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="fw-bold mb-3">Pending Invite Requests</h5>
+        <p class="text-muted small">Justification reasons below are securely decrypted on-the-fly locally in your browser sandbox using your private vault keys (Zero-Knowledge).</p>
+
+        <div class="alert alert-info d-none" ref="decryptionStatus">
+          <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+          Decrypting justification notes locally using Web Worker cryptography sandbox...
+        </div>
+
+        <div class="list-group list-group-flush mt-4" ref="requestsList" data-testid="requestsList">
+          <div class="text-center py-4 text-muted">No pending invite requests.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: async ({ refs, pocketbase, globalStore }) => {
+      const pb = pocketbase
+      const { $state } = globalStore
+      const requestsList = refs('requestsList')
+      const decryptionStatus = refs('decryptionStatus')
+
+      const loadRequests = async () => {
+        try {
+          // Fetch all pending invite requests (no query limit)
+          const list = await pb.collection('invite_requests').getFullList({
+            filter: 'status = "pending"',
+            sort: 'created',
+            expand: 'requester'
+          }).catch(() => [])
+
+          requestsList.innerHTML = ''
+
+          if (list.length === 0) {
+            requestsList.innerHTML = '<div class="text-center py-4 text-muted">No pending invite requests.</div>'
+            return
+          }
+
+          decryptionStatus.classList.remove('d-none')
+
+          // Extract the user's public/private box keys to open sealed boxes
+          const privateBoxKey = $state.currentUserKeys?.private_box_key
+          const publicBoxKey = pb.authStore.record?.public_box_key
+
+          for (const req of list) {
+            const requester = req.expand?.requester || {}
+            const initials = (requester.name || requester.username || 'U').substring(0, 2).toUpperCase()
+            const requestedCount = req.requested_count || 1
+            const cipherText = req.encrypted_reason || ''
+
+            let decryptedReason = '[Decryption failed: keys missing or incompatible]'
+
+            if (privateBoxKey && publicBoxKey && cipherText) {
+              try {
+                // Call crypto worker to decrypt sealed box locally
+                decryptedReason = await $state.cryptoWorker.request('worker:crypto_box_seal_open', {
+                  ciphertext: cipherText,
+                  publicKey: publicBoxKey,
+                  privateKey: privateBoxKey
+                })
+              } catch (err) {
+                console.error('[admin-requests] Local decryption error:', err)
+                decryptedReason = '[Failed to decrypt reason: invalid asymmetric ciphertext]'
+              }
+            }
+
+            const itemDiv = document.createElement('div')
+            itemDiv.className = 'list-group-item border-0 px-0 py-3 mb-3 border-bottom'
+            itemDiv.setAttribute('data-request-id', req.id)
+
+            itemDiv.innerHTML = `
+              <div class="d-flex align-items-start justify-content-between">
+                <div class="d-flex align-items-start">
+                  <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-secondary fw-bold me-3" style="width: 40px; height: 40px;">
+                    ${initials}
+                  </div>
+                  <div>
+                    <h6 class="fw-bold mb-1">${requester.name || 'Anonymous Requester'} <span class="text-muted small">@${requester.username || ''}</span></h6>
+                    <div class="badge bg-primary-subtle text-primary text-uppercase mb-2">${requestedCount} Credits Requested</div>
+                    <div class="p-2 bg-light rounded text-dark text-sm border font-monospace text-wrap" style="max-width: 500px; white-space: pre-wrap;">
+                      ${decryptedReason}
+                    </div>
+                  </div>
+                </div>
+                <div class="d-flex gap-2">
+                  <atoll-button variant="success" class="btn-grant" data-testid="btnGrant-${req.id}">Grant</atoll-button>
+                  <atoll-button variant="danger" class="btn-reject" data-testid="btnReject-${req.id}">Reject</atoll-button>
+                </div>
+              </div>
+            `
+
+            const btnGrant = itemDiv.querySelector('.btn-grant')
+            const btnReject = itemDiv.querySelector('.btn-reject')
+
+            btnGrant.addEventListener('click', async () => {
+              try {
+                btnGrant.setAttribute('loading', 'true')
+                await pb.send('/api/custom/admin/requests/resolve', {
+                  method: 'POST',
+                  body: {
+                    requestId: req.id,
+                    status: 'approved'
+                  }
+                })
+                await loadRequests()
+              } catch (err) {
+                alert(err.message || 'Failed to resolve request.')
+              } finally {
+                btnGrant.removeAttribute('loading')
+              }
+            })
+
+            btnReject.addEventListener('click', async () => {
+              try {
+                btnReject.setAttribute('loading', 'true')
+                await pb.send('/api/custom/admin/requests/resolve', {
+                  method: 'POST',
+                  body: {
+                    requestId: req.id,
+                    status: 'rejected'
+                  }
+                })
+                await loadRequests()
+              } catch (err) {
+                alert(err.message || 'Failed to reject request.')
+              } finally {
+                btnReject.removeAttribute('loading')
+              }
+            })
+
+            requestsList.appendChild(itemDiv)
+          }
+
+          decryptionStatus.classList.add('d-none')
+        } catch (err) {
+          console.error('[admin-requests] Fetch/render requests error:', err)
+          requestsList.innerHTML = `<div class="text-center py-4 text-danger">Failed to load requests: ${err.message}</div>`
+          decryptionStatus.classList.add('d-none')
+        }
+      }
+
+      await loadRequests()
+    }
+  })
+</script>

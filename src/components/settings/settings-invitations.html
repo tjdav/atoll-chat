@@ -1,0 +1,258 @@
+<template id="settings-invitations">
+  <div class="settings-invitations">
+    <div class="card border-0 shadow-sm mb-4">
+      <div class="card-body">
+        <h5 class="fw-bold mb-3">Your Quota & Privileges</h5>
+        <div class="d-flex align-items-center mb-3">
+          <div class="bg-primary-subtle text-primary p-3 rounded-circle me-3 d-flex align-items-center justify-content-center" style="width: 50px; height: 50px;">
+            <atoll-icon name="key" size="24"></atoll-icon>
+          </div>
+          <div>
+            <div class="text-muted small">Invite Quota Remaining</div>
+            <h3 class="fw-bold mb-0" ref="quotaValue">--</h3>
+          </div>
+        </div>
+
+        <div class="alert alert-warning d-none" ref="revokedAlert">
+          <atoll-icon name="info" size="18" class="me-2"></atoll-icon>
+          Your invite generation privileges have been suspended by an administrator.
+        </div>
+
+        <div class="alert alert-danger d-none" ref="strictAlert">
+          <atoll-icon name="info" size="18" class="me-2"></atoll-icon>
+          Instance invitation generation is currently in strict/owner-only mode.
+        </div>
+
+        <div class="mt-4">
+          <atoll-button variant="primary" ref="btnGenerateInvite" data-testid="btnGenerateInvite">Generate Invitation Link</atoll-button>
+        </div>
+
+        <!-- Generated Invitation Result Modal/Box -->
+        <div class="mt-3 p-3 bg-light rounded d-none" ref="inviteResultBox">
+          <span class="text-muted small d-block mb-1">Generated Invite Code:</span>
+          <div class="d-flex align-items-center justify-content-between bg-white border rounded p-2 mb-2">
+            <code class="fw-bold fs-5 text-primary" ref="generatedCode" data-testid="generatedCode">INV-XXXX-YYYY</code>
+            <atoll-button variant="ghost" ref="btnCopyCode" icon-only="true" leading-icon="copy" data-testid="btnCopyCode"></atoll-button>
+          </div>
+          <span class="text-muted small d-block">Max uses: <span ref="maxUsesCount">3</span>. Copy and share this code with friends to let them register!</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Invite Request Panel -->
+    <div class="card border-0 shadow-sm d-none" ref="requestQuotaCard">
+      <div class="card-body">
+        <h5 class="fw-bold mb-3">Request Invite Quota</h5>
+        <p class="text-muted small">Your quota is currently 0. You can submit a request to the instance administrator for additional invite credits. Your justification note will be encrypted with the owner's public key (Zero-Knowledge) and will not leak plaintext to any server.</p>
+
+        <form ref="requestQuotaForm">
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Requested Credits Count</label>
+            <atoll-select ref="requestedCountSelect" data-testid="requestedCountSelect">
+              <option value="1">1 Credit</option>
+              <option value="2" selected>2 Credits</option>
+              <option value="5">5 Credits</option>
+              <option value="10">10 Credits</option>
+            </atoll-select>
+          </div>
+
+          <div class="mb-3">
+            <label class="form-label small fw-bold">Justification / Reason (Zero-Knowledge Encrypted)</label>
+            <textarea class="form-control" rows="3" ref="requestReasonTextarea" required placeholder="Describe why you need invitations..." data-testid="requestReasonTextarea"></textarea>
+          </div>
+
+          <div class="alert alert-success d-none" ref="requestSuccessAlert" data-testid="requestSuccessAlert">
+            <atoll-icon name="check-circle" size="18" class="me-2"></atoll-icon>
+            Invite request submitted successfully!
+          </div>
+
+          <div class="alert alert-danger d-none" ref="requestErrorAlert">
+            <atoll-icon name="danger" size="18" class="me-2"></atoll-icon>
+            <span ref="requestErrorText">Failed to submit request.</span>
+          </div>
+
+          <div class="d-grid mt-4">
+            <atoll-button variant="primary" type="submit" ref="btnSubmitRequest" data-testid="btnSubmitRequest">Submit Sealed Request</atoll-button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: async ({ refs, globalStore, pocketbase }) => {
+      const { $state } = globalStore
+      const pb = pocketbase
+
+      const quotaValue = refs('quotaValue')
+      const revokedAlert = refs('revokedAlert')
+      const strictAlert = refs('strictAlert')
+      const btnGenerateInvite = refs('btnGenerateInvite')
+      const inviteResultBox = refs('inviteResultBox')
+      const generatedCode = refs('generatedCode')
+      const btnCopyCode = refs('btnCopyCode')
+      const maxUsesCount = refs('maxUsesCount')
+
+      const requestQuotaCard = refs('requestQuotaCard')
+      const requestQuotaForm = refs('requestQuotaForm')
+      const requestedCountSelect = refs('requestedCountSelect')
+      const requestReasonTextarea = refs('requestReasonTextarea')
+      const requestSuccessAlert = refs('requestSuccessAlert')
+      const requestErrorAlert = refs('requestErrorAlert')
+      const requestErrorText = refs('requestErrorText')
+      const btnSubmitRequest = refs('btnSubmitRequest')
+
+      let currentQuota = 0
+      let isOwner = false
+      let isRevoked = false
+      let currentInviteMode = 'delegated'
+
+      const fetchStatus = async () => {
+        try {
+          // Fetch governance configuration
+          const metaRes = await pb.send('/api/custom/admin/overview', { method: 'GET' }).catch(() => null)
+          if (metaRes) {
+            currentInviteMode = metaRes.metadata?.invite_mode || 'delegated'
+
+            if (currentInviteMode === 'strict') {
+              strictAlert.classList.remove('d-none')
+            } else {
+              strictAlert.classList.add('d-none')
+            }
+          }
+
+          // Fetch active user trust parameters
+          const authRecord = pb.authStore.record
+          if (authRecord) {
+            // Check fallback logic endpoints
+            const trustList = await pb.collection('user_trust').getFullList({
+              filter: `user = "${authRecord.id}"`
+            }).catch(() => [])
+
+            let trustRec = trustList[0]
+            if (!trustRec) {
+              // Hit custom route or lazy seeding by querying stats or generating fake request to trigger pb_hooks fallback
+              await pb.send('/api/custom/owner/public-key', { method: 'GET' }).catch(() => null)
+              const updatedTrust = await pb.collection('user_trust').getFullList({
+                filter: `user = "${authRecord.id}"`
+              }).catch(() => [])
+              trustRec = updatedTrust[0]
+            }
+
+            if (trustRec) {
+              currentQuota = trustRec.invite_quota || 0
+              isOwner = trustRec.tier === 'owner'
+              isRevoked = !!trustRec.invites_revoked
+
+              quotaValue.textContent = isOwner ? 'Unlimited (Owner)' : currentQuota
+
+              if (isRevoked) {
+                revokedAlert.classList.remove('d-none')
+                btnGenerateInvite.setAttribute('disabled', 'true')
+              } else {
+                revokedAlert.classList.add('d-none')
+                btnGenerateInvite.removeAttribute('disabled')
+              }
+
+              // Show request quota form if quota is 0, user is not owner, and requests are allowed
+              const allowRequests = !metaRes || metaRes.metadata?.allow_quota_requests !== false
+              if (currentQuota === 0 && !isOwner && !isRevoked && allowRequests) {
+                requestQuotaCard.classList.remove('d-none')
+              } else {
+                requestQuotaCard.classList.add('d-none')
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[settings-invitations] Fetch status error:', err)
+        }
+      }
+
+      await fetchStatus()
+
+      // Wire up the generate invitation button
+      btnGenerateInvite.addEventListener('click', async () => {
+        try {
+          btnGenerateInvite.setAttribute('loading', 'true')
+          const res = await pb.send('/api/custom/invites/generate', { method: 'POST' })
+  
+          generatedCode.textContent = res.code
+          maxUsesCount.textContent = res.max_uses || 3
+          inviteResultBox.classList.remove('d-none')
+
+          // Refetch to adjust quota display
+          await fetchStatus()
+        } catch (err) {
+          alert(err.message || 'Failed to generate invitation link.')
+        } finally {
+          btnGenerateInvite.removeAttribute('loading')
+        }
+      })
+
+      // Wire up the copy-to-clipboard button
+      btnCopyCode.addEventListener('click', () => {
+        navigator.clipboard.writeText(generatedCode.textContent)
+        const prevIcon = btnCopyCode.getAttribute('leading-icon')
+        btnCopyCode.setAttribute('leading-icon', 'check')
+        setTimeout(() => {
+          btnCopyCode.setAttribute('leading-icon', prevIcon)
+        }, 1500)
+      })
+
+      // Submit the sealed zero-knowledge quota request
+      requestQuotaForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        requestSuccessAlert.classList.add('d-none')
+        requestErrorAlert.classList.add('d-none')
+
+        const count = requestedCountSelect.value
+        const reason = requestReasonTextarea.value.trim()
+
+        if (!reason) {
+          return
+        }
+
+        try {
+          btnSubmitRequest.setAttribute('loading', 'true')
+
+          // A. Fetch Instance Owner's public key
+          const pubKeyRes = await pb.send('/api/custom/owner/public-key', { method: 'GET' })
+          const ownerPubKey = pubKeyRes.ownerPublicKey
+
+          if (!ownerPubKey) {
+            throw new Error('Could not retrieve instance owner public key.')
+          }
+
+          // B. Execute libsodium.crypto_box_seal inside worker
+          const sealedReason = await $state.cryptoWorker.request('worker:crypto_box_seal', {
+            message: reason,
+            publicKey: ownerPubKey
+          })
+
+          // C. Submit to PocketBase custom endpoint
+          await pb.send('/api/custom/invites/request', {
+            method: 'POST',
+            body: {
+              requested_count: parseInt(count, 10),
+              encrypted_reason: sealedReason
+            }
+          })
+
+          requestSuccessAlert.classList.remove('d-none')
+          requestReasonTextarea.value = ''
+  
+          await fetchStatus()
+        } catch (err) {
+          requestErrorText.textContent = err.message || 'Failed to submit sealed request.'
+          requestErrorAlert.classList.remove('d-none')
+        } finally {
+          btnSubmitRequest.removeAttribute('loading')
+        }
+      })
+    }
+  })
+</script>

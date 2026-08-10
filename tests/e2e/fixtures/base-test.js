@@ -251,6 +251,7 @@ async function resetPocketBase (testId) {
         altcha: 'atoll-mock-bypass-token'
       }
 
+      let pbUser
       if (existingUser) {
         const updatePayload = {
           username: user.username,
@@ -274,11 +275,27 @@ async function resetPocketBase (testId) {
             encrypted_master_keys_passkey: null
           })
         }
-        await pb.collection('users').update(existingUser.id, updatePayload, {
+        pbUser = await pb.collection('users').update(existingUser.id, updatePayload, {
           requestKey: null
         })
       } else {
-        await pb.collection('users').create(payload, {
+        pbUser = await pb.collection('users').create(payload, {
+          requestKey: null
+        })
+      }
+
+      // Seed the trust record for testing when it does not already exist
+      const existingTrust = await pb.collection('user_trust').getFullList({
+        filter: `user = "${pbUser.id}"`
+      })
+
+      if (existingTrust.length === 0) {
+        await pb.collection('user_trust').create({
+          user: pbUser.id,
+          tier: user.username === 'alice' ? 'owner' : 'standard',
+          invite_quota: user.username === 'alice' ? 999999 : 0,
+          invites_revoked: false
+        }, {
           requestKey: null
         })
       }

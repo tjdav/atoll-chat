@@ -219,6 +219,9 @@ function getDatabase (testId) {
       messages: [],
       media: [],
       invitations: [],
+      app_metadata: [],
+      user_trust: [],
+      invite_requests: [],
       mediaFiles: {},
       sseClients: []
     }
@@ -359,6 +362,214 @@ export function createServer () {
           salt: '0123456789abcdef',
           signature: 'mock-signature'
         }))
+        return
+      }
+
+      // Custom Administration & Governance API Endpoints for testing
+
+      // GET /api/custom/admin/overview
+      if (pathname === '/api/custom/admin/overview' && req.method === 'GET') {
+        const authHeader = req.headers.authorization || ''
+        const userId = getUserIdFromToken(authHeader)
+        if (!userId) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Unauthorized' }))
+          return
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          metadata: {
+            invite_mode: db.invite_mode || 'delegated',
+            default_trusted_quota: db.default_trusted_quota || 5,
+            max_uses_per_invite: db.max_uses_per_invite || 3,
+            allow_quota_requests: db.allow_quota_requests !== false
+          },
+          stats: {
+            totalUsers: db.users.length,
+            activeRooms: db.rooms.length,
+            activeInvitations: db.invitations.length,
+            pendingInviteRequests: (db.invite_requests || []).filter(r => r.status === 'pending').length
+          }
+        }))
+        return
+      }
+
+      // POST /api/custom/admin/settings
+      if (pathname === '/api/custom/admin/settings' && req.method === 'POST') {
+        const { invite_mode, default_trusted_quota, max_uses_per_invite, allow_quota_requests } = body
+        if (invite_mode) {
+          db.invite_mode = invite_mode
+        }
+        if (default_trusted_quota !== undefined) {
+          db.default_trusted_quota = default_trusted_quota
+        }
+        if (max_uses_per_invite !== undefined) {
+          db.max_uses_per_invite = max_uses_per_invite
+        }
+        if (allow_quota_requests !== undefined) {
+          db.allow_quota_requests = allow_quota_requests
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true }))
+        return
+      }
+
+      // POST /api/custom/admin/users/trust
+      if (pathname === '/api/custom/admin/users/trust' && req.method === 'POST') {
+        const { userId, tier, invite_quota, invites_revoked } = body
+        db.user_trust = db.user_trust || []
+        let trust = db.user_trust.find(t => t.user === userId)
+        if (!trust) {
+          trust = {
+            id: 'trust_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10),
+            user: userId,
+            tier: 'standard',
+            invite_quota: 0,
+            invites_revoked: false
+          }
+          db.user_trust.push(trust)
+        }
+        if (tier) {
+          trust.tier = tier
+        }
+        if (invite_quota !== undefined) {
+          trust.invite_quota = invite_quota
+        }
+        if (invites_revoked !== undefined) {
+          trust.invites_revoked = invites_revoked
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true }))
+        return
+      }
+
+      // POST /api/custom/admin/requests/resolve
+      if (pathname === '/api/custom/admin/requests/resolve' && req.method === 'POST') {
+        const { requestId, status } = body
+        db.invite_requests = db.invite_requests || []
+        const reqRec = db.invite_requests.find(r => r.id === requestId)
+        if (reqRec) {
+          reqRec.status = status
+          if (status === 'approved') {
+            db.user_trust = db.user_trust || []
+            let trust = db.user_trust.find(t => t.user === reqRec.requester)
+            if (!trust) {
+              trust = {
+                id: 'trust_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10),
+                user: reqRec.requester,
+                tier: 'standard',
+                invite_quota: 0,
+                invites_revoked: false
+              }
+              db.user_trust.push(trust)
+            }
+            trust.invite_quota = (trust.invite_quota || 0) + (reqRec.requested_count || 1)
+          }
+        }
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true }))
+        return
+      }
+
+      // GET /api/custom/owner/public-key
+      if (pathname === '/api/custom/owner/public-key' && req.method === 'GET') {
+        const authHeader = req.headers.authorization || ''
+        const userId = getUserIdFromToken(authHeader)
+        if (!userId) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Unauthorized' }))
+          return
+        }
+
+        db.user_trust = db.user_trust || []
+        let ownerTrust = db.user_trust.find(t => t.tier === 'owner')
+        let ownerUser
+        if (ownerTrust) {
+          ownerUser = db.users.find(u => u.id === ownerTrust.user)
+        } else {
+          ownerUser = db.users[0]
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          ownerPublicKey: ownerUser ? (ownerUser.public_box_key || '') : ''
+        }))
+        return
+      }
+
+      // POST /api/custom/invites/generate
+      if (pathname === '/api/custom/invites/generate' && req.method === 'POST') {
+        const authHeader = req.headers.authorization || ''
+        const userId = getUserIdFromToken(authHeader)
+        if (!userId) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Unauthorized' }))
+          return
+        }
+
+        function randSeg (len) {
+          const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+          let res = ''
+          for (let i = 0; i < len; i++) {
+            res += chars.charAt(Math.floor(Math.random() * chars.length))
+          }
+          return res
+        }
+        const code = `INV-${randSeg(4)}-${randSeg(4)}`
+
+        const newInvite = {
+          id: 'inv_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10),
+          code: code,
+          is_used: false,
+          max_uses: db.max_uses_per_invite || 3,
+          used_count: 0
+        }
+        db.invitations.push(newInvite)
+
+        // Deduct from quota if standard
+        db.user_trust = db.user_trust || []
+        const trust = db.user_trust.find(t => t.user === userId)
+        if (trust && trust.tier !== 'owner' && trust.invite_quota > 0) {
+          trust.invite_quota -= 1
+        }
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({
+          code: code,
+          max_uses: db.max_uses_per_invite || 3
+        }))
+        return
+      }
+
+      // POST /api/custom/invites/request
+      if (pathname === '/api/custom/invites/request' && req.method === 'POST') {
+        const authHeader = req.headers.authorization || ''
+        const userId = getUserIdFromToken(authHeader)
+        if (!userId) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Unauthorized' }))
+          return
+        }
+
+        const { requested_count, encrypted_reason } = body
+        db.invite_requests = db.invite_requests || []
+        const reqId = 'req_' + crypto.randomUUID().replace(/-/g, '').slice(0, 10)
+        const newReq = {
+          id: reqId,
+          requester: userId,
+          requested_count: requested_count || 1,
+          encrypted_reason: encrypted_reason || '',
+          status: 'pending',
+          created: new Date().toISOString(),
+          updated: new Date().toISOString()
+        }
+        db.invite_requests.push(newReq)
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify({ success: true }))
         return
       }
 

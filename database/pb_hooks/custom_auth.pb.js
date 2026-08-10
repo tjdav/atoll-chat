@@ -153,6 +153,15 @@ routerAdd('POST', '/api/custom/register', (e) => {
   const usernameCanonical = data.username.trim().toLowerCase()
 
   try {
+    /* Determine user count before creating new user; failures propagate so a
+       database error is never mistaken for an empty instance. */
+    const countResult = new DynamicModel({ count: 0 })
+    $app.db()
+      .select('count(*) as count')
+      .from('users')
+      .one(countResult)
+    const userCount = countResult.count
+
     const collection = $app.findCollectionByNameOrId('users')
     const record = new Record(collection)
     record.set('username', usernameCanonical)
@@ -196,6 +205,21 @@ routerAdd('POST', '/api/custom/register', (e) => {
       $app.delete(record)
       return e.json(400, { error: 'Invitation code was redeemed by another user.' })
     }
+
+    // Phase 3: Create trust record for newly registered user
+    const trustColl = $app.findCollectionByNameOrId('user_trust')
+    const trustRecord = new Record(trustColl)
+    trustRecord.set('user', record.id)
+    if (userCount === 0) {
+      // First registered user gets owner status with a large invite quota
+      trustRecord.set('tier', 'owner')
+      trustRecord.set('invite_quota', 999999)
+    } else {
+      trustRecord.set('tier', 'standard')
+      trustRecord.set('invite_quota', 0)
+    }
+    trustRecord.set('invites_revoked', false)
+    $app.save(trustRecord)
 
     const token = record.newAuthToken()
     return e.json(201, {

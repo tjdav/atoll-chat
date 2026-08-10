@@ -1,0 +1,236 @@
+<template id="admin-trust-matrix">
+  <div class="admin-trust-matrix">
+    <div class="card border-0 shadow-sm">
+      <div class="card-body">
+        <h5 class="fw-bold mb-3">User Trust & Delegated Quota Matrix</h5>
+        <p class="text-muted small">Promote standard accounts to trusted tiers, revoke/grant invite generation privileges, or adjust quotas manually.</p>
+
+        <div class="table-responsive mt-4">
+          <table class="table table-align-middle border-0 small">
+            <thead class="table-light">
+              <tr>
+                <th>User / Display Name</th>
+                <th>Username</th>
+                <th>Trust Tier</th>
+                <th>Invite Quota</th>
+                <th>Privileges</th>
+                <th class="text-end">Actions</th>
+              </tr>
+            </thead>
+            <tbody ref="usersTableBody" data-testid="usersTableBody">
+              <tr>
+                <td colspan="6" class="text-center py-4 text-muted">Loading user database...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: async ({ refs, pocketbase }) => {
+      const pb = pocketbase
+      const usersTableBody = refs('usersTableBody')
+
+      function badgeClassForTier (tier) {
+        if (tier === 'owner') {
+          return 'bg-danger text-white'
+        }
+        if (tier === 'trusted') {
+          return 'bg-success text-white'
+        }
+        return 'bg-secondary text-white'
+      }
+
+      const loadUsers = async () => {
+        try {
+          // Fetch users list and their trust records
+          const usersList = await pb.collection('users').getFullList({
+            sort: 'created'
+          })
+
+          const trustList = await pb.collection('user_trust').getFullList().catch(() => [])
+          const trustMap = new Map()
+          trustList.forEach(t => trustMap.set(t.user, t))
+
+          usersTableBody.innerHTML = ''
+
+          if (usersList.length === 0) {
+            usersTableBody.innerHTML = '<tr><td colspan="6" class="text-center py-4 text-muted">No users found.</td></tr>'
+            return
+          }
+
+          usersList.forEach(user => {
+            let trust = trustMap.get(user.id)
+            if (!trust) {
+              // Standard defaults
+              trust = {
+                tier: 'standard',
+                invite_quota: 0,
+                invites_revoked: false
+              }
+            }
+
+            const tr = document.createElement('tr')
+            tr.setAttribute('data-user-id', user.id)
+
+            // Left display name & avatar template fallback
+            const initials = (user.name || user.username || 'U').substring(0, 2).toUpperCase()
+            const tierBadgeClass = badgeClassForTier(trust.tier)
+
+            tr.innerHTML = `
+              <td>
+                <div class="d-flex align-items-center">
+                  <div class="rounded-circle bg-light d-flex align-items-center justify-content-center text-secondary fw-bold me-2 small" style="width: 32px; height: 32px;">
+                    ${initials}
+                  </div>
+                  <span class="fw-bold">${user.name || 'Anonymous User'}</span>
+                </div>
+              </td>
+              <td><code>@${user.username}</code></td>
+              <td><span class="badge ${tierBadgeClass} text-uppercase small">${trust.tier}</span></td>
+              <td>
+                <div class="d-flex align-items-center gap-1">
+                  <input type="number" class="form-control form-control-sm quota-input" style="width: 70px;" value="${trust.invite_quota || 0}" min="0">
+                  <button class="btn btn-sm btn-outline-secondary btn-apply-quota" title="Apply Quota"><atoll-icon name="check" size="14"></atoll-icon></button>
+                </div>
+              </td>
+              <td>
+                <div class="form-check form-switch">
+                  <input class="form-check-input revoke-switch" type="checkbox" ${trust.invites_revoked ? 'checked' : ''}>
+                  <span class="text-muted text-xs ms-1">${trust.invites_revoked ? 'Suspended' : 'Active'}</span>
+                </div>
+              </td>
+              <td class="text-end">
+                <div class="dropdown">
+                  <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">Manage</button>
+                  <ul class="dropdown-menu dropdown-menu-end small">
+                    <li><a class="dropdown-item btn-promote-trusted" href="#">Promote to Trusted</a></li>
+                    <li><a class="dropdown-item btn-demote-standard" href="#">Demote to Standard</a></li>
+                    <li><a class="dropdown-item text-danger btn-make-owner" href="#">Make Owner</a></li>
+                  </ul>
+                </div>
+              </td>
+            `
+
+            // Select inputs/buttons
+            const quotaInput = tr.querySelector('.quota-input')
+            const btnApplyQuota = tr.querySelector('.btn-apply-quota')
+            const revokeSwitch = tr.querySelector('.revoke-switch')
+            const btnPromote = tr.querySelector('.btn-promote-trusted')
+            const btnDemote = tr.querySelector('.btn-demote-standard')
+            const btnMakeOwner = tr.querySelector('.btn-make-owner')
+
+            // Apply Quota Action
+            btnApplyQuota.addEventListener('click', async () => {
+              const quotaVal = parseInt(quotaInput.value, 10)
+              try {
+                btnApplyQuota.disabled = true
+                await pb.send('/api/custom/admin/users/trust', {
+                  method: 'POST',
+                  body: {
+                    userId: user.id,
+                    invite_quota: quotaVal
+                  }
+                })
+                await loadUsers()
+              } catch (err) {
+                alert(err.message || 'Failed to update quota.')
+              } finally {
+                btnApplyQuota.disabled = false
+              }
+            })
+
+            // Toggles Invites Suspended Switch
+            revokeSwitch.addEventListener('change', async () => {
+              try {
+                revokeSwitch.disabled = true
+                await pb.send('/api/custom/admin/users/trust', {
+                  method: 'POST',
+                  body: {
+                    userId: user.id,
+                    invites_revoked: revokeSwitch.checked
+                  }
+                })
+                await loadUsers()
+              } catch (err) {
+                alert(err.message || 'Failed to toggle privileges.')
+              } finally {
+                revokeSwitch.disabled = false
+              }
+            })
+
+            // Promote Trusted
+            btnPromote.addEventListener('click', async (e) => {
+              e.preventDefault()
+              try {
+                await pb.send('/api/custom/admin/users/trust', {
+                  method: 'POST',
+                  body: {
+                    userId: user.id,
+                    // Default starting credits for trusted accounts
+                    tier: 'trusted',
+                    invite_quota: 5
+                  }
+                })
+                await loadUsers()
+              } catch (err) {
+                alert(err.message)
+              }
+            })
+
+            // Demote Standard
+            btnDemote.addEventListener('click', async (e) => {
+              e.preventDefault()
+              try {
+                await pb.send('/api/custom/admin/users/trust', {
+                  method: 'POST',
+                  body: {
+                    userId: user.id,
+                    tier: 'standard'
+                  }
+                })
+                await loadUsers()
+              } catch (err) {
+                alert(err.message)
+              }
+            })
+
+            // Make Owner
+            btnMakeOwner.addEventListener('click', async (e) => {
+              e.preventDefault()
+              if (!confirm('Are you absolutely sure you want to promote this user to Owner? They will have full administrative access to governance controls.')) {
+                return
+              }
+              try {
+                await pb.send('/api/custom/admin/users/trust', {
+                  method: 'POST',
+                  body: {
+                    userId: user.id,
+                    tier: 'owner',
+                    invite_quota: 999999
+                  }
+                })
+                await loadUsers()
+              } catch (err) {
+                alert(err.message)
+              }
+            })
+
+            usersTableBody.appendChild(tr)
+          })
+        } catch (err) {
+          console.error('[admin-trust-matrix] Fetch trust matrix error:', err)
+          usersTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load user matrix: ${err.message}</td></tr>`
+        }
+      }
+
+      await loadUsers()
+    }
+  })
+</script>

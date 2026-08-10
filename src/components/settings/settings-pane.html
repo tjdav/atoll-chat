@@ -38,7 +38,49 @@
         >
           <atoll-icon slot="left" name="permissions" size="20"></atoll-icon>
         </atoll-list-item>
+
+        <atoll-list-item 
+          title="Invitations" 
+          href="#section-invitations" 
+          clickable="true" 
+          data-testid="nav-invitations"
+        >
+          <atoll-icon slot="left" name="key" size="20"></atoll-icon>
+        </atoll-list-item>
       </atoll-list>
+
+      <!-- ADMINISTRATION Section Header and sub-menu (Only rendered for owner tier) -->
+      <div ref="adminGroup" class="d-none mt-4">
+        <h6 class="text-uppercase text-muted fw-bold small px-3 mb-2">Administration</h6>
+        <atoll-list id="admin-settings-navbar" class="shadow-sm rounded border bg-body">
+          <atoll-list-item 
+            title="Overview & Settings" 
+            href="#section-admin-overview" 
+            clickable="true" 
+            data-testid="nav-admin-overview"
+          >
+            <atoll-icon slot="left" name="setting-two" size="20"></atoll-icon>
+          </atoll-list-item>
+
+          <atoll-list-item 
+            title="User Trust Matrix" 
+            href="#section-admin-trust" 
+            clickable="true" 
+            data-testid="nav-admin-trust"
+          >
+            <atoll-icon slot="left" name="user" size="20"></atoll-icon>
+          </atoll-list-item>
+
+          <atoll-list-item 
+            title="Invite Requests" 
+            href="#section-admin-requests" 
+            clickable="true" 
+            data-testid="nav-admin-requests"
+          >
+            <atoll-icon slot="left" name="remind" size="20"></atoll-icon>
+          </atoll-list-item>
+        </atoll-list>
+      </div>
     </div>
   </div>
 </template>
@@ -47,34 +89,57 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ eventBus, globalStore }) => {
+    client: async ({ eventBus, globalStore, pocketbase, refs }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
+      const pb = pocketbase
+      const adminGroup = refs('adminGroup')
 
-      const items = document.querySelectorAll('#settings-navbar atoll-list-item')
-      items.forEach(item => {
+      // Check if user is owner
+      const authRecord = pb.authStore.record
+      if (authRecord) {
+        try {
+          const trustList = await pb.collection('user_trust').getFullList({
+            filter: `user = "${authRecord.id}"`
+          }).catch(() => [])
+          const trustRec = trustList[0]
+          if (trustRec && trustRec.tier === 'owner') {
+            adminGroup.classList.remove('d-none')
+          }
+        } catch (_) {
+        }
+      }
+
+      const syncNavbarSelections = (item, allNavbarItems) => {
+        const targetId = item.getAttribute('href')
+
+        /* Set active selection to trigger detail view on mobile */
+        $state.activeSelectionType = 'settings'
+        $state.activeSelectionId = targetId
+
+        $bus.emit('ui:selection_made')
+
+        // Update selection highlights manually
+        allNavbarItems.forEach(i => i.setAttribute('selected', 'false'))
+        item.setAttribute('selected', 'true')
+
+        const targetEl = document.querySelector(targetId)
+        if (targetEl) {
+          targetEl.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          })
+        }
+      }
+
+      const allItems = []
+      document.querySelectorAll('#settings-navbar atoll-list-item').forEach(i => allItems.push(i))
+      document.querySelectorAll('#admin-settings-navbar atoll-list-item').forEach(i => allItems.push(i))
+
+      allItems.forEach(item => {
         item.addEventListener('atoll-item-click', (e) => {
           e.preventDefault()
-
-          const targetId = item.getAttribute('href')
-
-          /* Set active selection to trigger detail view on mobile */
-          $state.activeSelectionType = 'settings'
-          $state.activeSelectionId = targetId
-
-          $bus.emit('ui:selection_made')
-
-          // Update selection highlights manually
-          items.forEach(i => i.setAttribute('selected', 'false'))
-          item.setAttribute('selected', 'true')
-
-          const targetEl = document.querySelector(targetId)
-          if (targetEl) {
-            targetEl.scrollIntoView({
-              behavior: 'smooth',
-              block: 'start'
-            })
-          }
+          syncNavbarSelections(item, allItems)
         })
       })
     }

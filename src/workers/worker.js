@@ -196,7 +196,9 @@ self.onmessage = (event) => {
     'worker:encrypt_master_key_with_kek',
     'worker:encrypt_master_key_with_code',
     'worker:decrypt_master_key_with_code',
-    'worker:decrypt_vault'
+    'worker:decrypt_vault',
+    'worker:crypto_box_seal',
+    'worker:crypto_box_seal_open'
   ]
 
   if (parallelTasks.includes(type)) {
@@ -482,6 +484,39 @@ async function handleEvent (event) {
         type,
         payload,
         result: 'ACK'
+      })
+      return
+    }
+
+    if (type === 'worker:crypto_box_seal') {
+      const { message, publicKey } = payload
+      const msgBytes = typeof message === 'string' ? new TextEncoder().encode(message) : new Uint8Array(message)
+      const pubKeyBytes = typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey
+
+      const ciphertext = sodium.crypto_box_seal(msgBytes, pubKeyBytes)
+      const result = sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL)
+
+      self.postMessage({
+        id,
+        type,
+        result
+      })
+      return
+    }
+
+    if (type === 'worker:crypto_box_seal_open') {
+      const { ciphertext, publicKey, privateKey } = payload
+      const cipherBytes = typeof ciphertext === 'string' ? sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL) : new Uint8Array(ciphertext)
+      const pubKeyBytes = typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey
+      const privKeyBytes = typeof privateKey === 'string' ? sodium.from_base64(privateKey, sodium.base64_variants.ORIGINAL) : privateKey
+
+      const decrypted = sodium.crypto_box_seal_open(cipherBytes, pubKeyBytes, privKeyBytes)
+      const result = sodium.to_string(decrypted)
+
+      self.postMessage({
+        id,
+        type,
+        result
       })
       return
     }

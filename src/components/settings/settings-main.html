@@ -47,6 +47,33 @@
               </div>
             </div>
 
+            <!-- Section: Invitations -->
+            <div id="section-invitations" class="mb-5">
+              <h6 class="text-uppercase text-muted fw-bold small mb-3">Invitations</h6>
+              <settings-invitations></settings-invitations>
+            </div>
+
+            <!-- Section: Administration Group (rendered for owner tier) -->
+            <div ref="adminContentGroup" class="d-none">
+              <!-- Section: Admin Overview -->
+              <div id="section-admin-overview" class="mb-5">
+                <h6 class="text-uppercase text-muted fw-bold small mb-3">Administration: Overview</h6>
+                <admin-overview></admin-overview>
+              </div>
+
+              <!-- Section: Admin Trust Matrix -->
+              <div id="section-admin-trust" class="mb-5">
+                <h6 class="text-uppercase text-muted fw-bold small mb-3">Administration: User Trust Matrix</h6>
+                <admin-trust-matrix></admin-trust-matrix>
+              </div>
+
+              <!-- Section: Admin Requests -->
+              <div id="section-admin-requests" class="mb-5">
+                <h6 class="text-uppercase text-muted fw-bold small mb-3">Administration: Invite Requests</h6>
+                <admin-requests></admin-requests>
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
@@ -58,10 +85,27 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, eventBus, bootstrap, globalStore }) => {
+    client: async ({ refs, eventBus, bootstrap, globalStore, pocketbase }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
       const { ScrollSpy } = await bootstrap
+      const pb = pocketbase
+      const adminContentGroup = refs('adminContentGroup')
+
+      // Check if user is owner to show administration sections
+      const authRecord = pb.authStore.record
+      if (authRecord) {
+        try {
+          const trustList = await pb.collection('user_trust').getFullList({
+            filter: `user = "${authRecord.id}"`
+          }).catch(() => [])
+          const trustRec = trustList[0]
+          if (trustRec && trustRec.tier === 'owner') {
+            adminContentGroup.classList.remove('d-none')
+          }
+        } catch (_) {
+        }
+      }
 
       const btnBack = refs('btnBack')
       btnBack.addEventListener('click', () => {
@@ -92,7 +136,16 @@
         }
 
         // Supplementary high-reliability active class sync
-        const sections = ['#section-account', '#section-profile', '#section-notifications', '#section-security']
+        const sections = [
+          '#section-account',
+          '#section-profile',
+          '#section-notifications',
+          '#section-security',
+          '#section-invitations',
+          '#section-admin-overview',
+          '#section-admin-trust',
+          '#section-admin-requests'
+        ]
         let activeId = sections[0]
 
         for (const id of sections) {
@@ -106,7 +159,7 @@
           }
         }
 
-        const links = document.querySelectorAll('#settings-navbar atoll-list-item')
+        const links = document.querySelectorAll('#settings-navbar atoll-list-item, #admin-settings-navbar atoll-list-item')
         links.forEach(link => {
           if (link.getAttribute('href') === activeId) {
             link.setAttribute('selected', 'true')
