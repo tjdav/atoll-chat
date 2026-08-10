@@ -7,12 +7,13 @@ describe('Atoll Passkey Settings Component', () => {
 
   beforeEach(async () => {
     document.body.innerHTML = ''
-    
+
     const mockGlobalStore = {
       $state: {
         subscribe: (key, cb) => {
           // Dummy subscriber
-          return () => {}
+          return () => {
+          }
         }
       }
     }
@@ -37,8 +38,10 @@ describe('Atoll Passkey Settings Component', () => {
 
     const mockBiometric = {
       isAvailable: async () => true,
-      storeMasterKey: async () => {},
-      deleteMasterKey: async () => {}
+      storeMasterKey: async () => {
+      },
+      deleteMasterKey: async () => {
+      }
     }
 
     tagName = await loadComponent('passkey-settings', {
@@ -60,7 +63,7 @@ describe('Atoll Passkey Settings Component', () => {
 
     const btnManage = el.querySelector('[data-testid="btnManagePasskey"]')
     assert.ok(btnManage, 'Manage button should be rendered')
-    
+
     // Check text content of button label
     const label = btnManage.querySelector('.atoll-btn-label')
     assert.ok(label, 'Label should exist inside the button')
