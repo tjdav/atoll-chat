@@ -10,21 +10,50 @@ export function createAudioSpeakerDetector ({
   let audioCtx = null
   const activeMonitors = new Map()
 
+  const isExpectedAudioException = (err) => {
+    if (!err) {
+      return false
+    }
+
+    const name = err.name || ''
+    return err instanceof DOMException ||
+      name === 'InvalidStateError' ||
+      name === 'NotSupportedError' ||
+      name === 'InvalidAccessError' ||
+      name === 'SecurityError'
+  }
+
   const getAudioContext = () => {
+    if (typeof window === 'undefined') {
+      return null
+    }
     if (!audioCtx || audioCtx.state === 'closed') {
       const AudioCtxClass = window.AudioContext || window.webkitAudioContext
       if (AudioCtxClass) {
-        audioCtx = new AudioCtxClass()
+        try {
+          audioCtx = new AudioCtxClass()
+        } catch (err) {
+          if (isExpectedAudioException(err)) {
+            return null
+          }
+          throw err
+        }
       }
     }
     if (audioCtx && audioCtx.state === 'suspended') {
-      audioCtx.resume().catch((err) => console.warn('[audioSpeakerDetector] Failed to resume AudioContext:', err))
+      audioCtx.resume().catch(() => {
+        // Safe return as resume is a secondary promise state operation and can fail closed
+      })
     }
     return audioCtx
   }
 
   const attachStream = (stream, participantId = 'local') => {
-    if (!stream || !stream.getAudioTracks || stream.getAudioTracks().length === 0) {
+    if (!stream || typeof stream.getAudioTracks !== 'function') {
+      return null
+    }
+    const tracks = stream.getAudioTracks()
+    if (!Array.isArray(tracks) || tracks.length === 0) {
       return null
     }
 
@@ -70,7 +99,8 @@ export function createAudioSpeakerDetector ({
         }
         const rms = Math.sqrt(sum / pcmData.length)
 
-        const isAudioActive = stream.getAudioTracks().some(t => t.enabled && t.readyState === 'live')
+        const currentTracks = typeof stream.getAudioTracks === 'function' ? stream.getAudioTracks() : []
+        const isAudioActive = Array.isArray(currentTracks) && currentTracks.some(t => t && t.enabled && t.readyState === 'live')
         const rawSpeaking = isAudioActive && rms >= threshold
 
         if (rawSpeaking) {
@@ -78,6 +108,7 @@ export function createAudioSpeakerDetector ({
             clearTimeout(monitor.hangoverTimer)
             monitor.hangoverTimer = null
           }
+
           if (!monitor.isSpeaking) {
             monitor.isSpeaking = true
             if (onSpeakingChange) {
@@ -111,8 +142,10 @@ export function createAudioSpeakerDetector ({
       sampleVolume()
       return streamId
     } catch (err) {
-      console.error('[audioSpeakerDetector] Error attaching stream:', err)
-      return null
+      if (isExpectedAudioException(err)) {
+        return null
+      }
+      throw err
     }
   }
 
@@ -125,13 +158,19 @@ export function createAudioSpeakerDetector ({
     if (monitor.animFrameId) {
       cancelAnimationFrame(monitor.animFrameId)
     }
+
     if (monitor.hangoverTimer) {
       clearTimeout(monitor.hangoverTimer)
     }
+
     try {
-      monitor.source.disconnect()
-    } catch {
-      /* Safe ignore */
+      if (monitor.source && typeof monitor.source.disconnect === 'function') {
+        monitor.source.disconnect()
+      }
+    } catch (err) {
+      if (!isExpectedAudioException(err)) {
+        throw err
+      }
     }
 
     if (monitor.isSpeaking && onSpeakingChange) {
@@ -149,8 +188,10 @@ export function createAudioSpeakerDetector ({
   const destroy = () => {
     activeMonitors.forEach((_, streamId) => detachStream(streamId))
     activeMonitors.clear()
+
     if (audioCtx) {
       audioCtx.close().catch(() => {
+        // Safe return on teardown
       })
       audioCtx = null
     }
