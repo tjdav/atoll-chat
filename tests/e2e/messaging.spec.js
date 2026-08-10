@@ -424,9 +424,9 @@ test.describe('Messaging Features', () => {
       // Wait a moment for async execution
       await page.waitForTimeout(2000)
 
-      // Ensure that our concurrency guard message was printed in console
-      const reuseLogs = consoleLogs.filter(log => log.includes('[sync-plugin] Catch-up synchronization already in progress. Reusing existing promise.'))
-      expect(reuseLogs.length).toBeGreaterThanOrEqual(1)
+      // Ensure that our concurrency guard was triggered and catchUpPromise was reused
+      const isReused = await page.evaluate(() => window.__sync_reused__)
+      expect(isReused).toBe(true)
 
       // Ensure catch-up is done and no errors were thrown
       await page.waitForFunction(() => !window.$state.isCatchingUp, { timeout: 15000 })
