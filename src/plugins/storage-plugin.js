@@ -9,6 +9,15 @@ export default definePlugin({
   name: 'storage',
   client: {
     context: async (pluginContext) => {
+      /**
+       * Traverses an object deeply to identify and gather all transferable objects
+       * (e.g. ArrayBuffer, TypedArray buffers) to optimize postMessage operations.
+       *
+       * @param {*} obj - The target object to scan.
+       * @param {Set<*>} [seen=new Set()] - A set used to prevent cyclic references during traversal.
+       * @returns {Array<ArrayBuffer>} An array containing unique transferable objects.
+       * @throws {TypeError} Re-throws unexpected type errors not related to non-serializable properties.
+       */
       function getTransferables (obj, seen = new Set()) {
         if (!obj || typeof obj !== 'object') {
           return []
@@ -33,8 +42,14 @@ export default definePlugin({
                 transferables.push(...getTransferables(val, seen))
               }
             }
-          } catch (_) {
-            // ignore non-serializable properties or errors
+          } catch (err) {
+            /* Re-throw unexpected system or network errors.
+               Ignore only expected TypeErrors or SecurityErrors (non-serializable/restricted properties),
+               returning whatever transferables we have already gathered up to this point. */
+            if (err instanceof TypeError || (err instanceof Error && err.name === 'SecurityError')) {
+              return Array.from(new Set(transferables))
+            }
+            throw err
           }
         }
 
@@ -43,6 +58,14 @@ export default definePlugin({
 
       let resolvedAdapter = null
 
+      /**
+       * Dynamically loads and instantiates the platform-appropriate storage adapter.
+       * Attempts to load the NativeStorageAdapter on native Capacitor platforms,
+       * and falls back to WebStorageAdapter if on web or if native loading fails.
+       *
+       * @returns {Promise<Object>} Resolves to the initialized storage adapter.
+       * @throws {Error} Re-throws unexpected load errors not related to missing Capacitor packages.
+       */
       const getAdapter = async () => {
         if (resolvedAdapter) {
           return resolvedAdapter
@@ -51,24 +74,35 @@ export default definePlugin({
         try {
           const { Capacitor } = await import('@capacitor/core')
           if (Capacitor.isNativePlatform()) {
-            console.info('[storage-plugin] Native platform detected. Loading NativeStorageAdapter.')
             const { createNativeStorageAdapter } = await import('./storage-adapter-native.js')
             resolvedAdapter = createNativeStorageAdapter()
             await resolvedAdapter.initialize()
             return resolvedAdapter
           }
-        } catch (_err) {
-          // Fall back gracefully to WebStorageAdapter
+        } catch (err) {
+          /* Fall back gracefully to WebStorageAdapter if Capacitor packages are not found or loaded.
+             Unexpected or critical exceptions (not related to missing module resolution) should be re-thrown. */
+          const isExpected = err instanceof Error && (
+            err.message?.includes('Cannot find module') ||
+            err.message?.includes('import') ||
+            err.message?.includes('Capacitor')
+          )
+          if (!isExpected) {
+            throw err
+          }
         }
 
-        console.info('[storage-plugin] Web platform detected. Loading WebStorageAdapter.')
         const { createWebStorageAdapter } = await import('./storage-adapter-web.js')
         resolvedAdapter = createWebStorageAdapter()
         let activeId = null
         if (typeof localStorage !== 'undefined') {
           try {
             activeId = localStorage.getItem('atoll_active_instance_id')
-          } catch {
+          } catch (err) {
+            // Fail safe and default to null if localStorage is inaccessible (e.g. SecurityError in iframe)
+            if (err instanceof Error && err.name !== 'SecurityError') {
+              throw err
+            }
           }
         }
         if (activeId) {
@@ -86,7 +120,12 @@ export default definePlugin({
 
       const registeredWorkers = new Set()
 
-      // Register incoming message bridge handler for a worker
+      /**
+       * Registers a web or service worker to listen for storage requests
+       * and bridges requests back to the platform storage adapter.
+       *
+       * @param {Object} worker - The worker instance to register.
+       */
       pluginContext.registerStorageWorker = (worker) => {
         if (registeredWorkers.has(worker)) {
           return
@@ -185,11 +224,10 @@ export default definePlugin({
                 }
               }
             } catch (err) {
-              console.error(`[storage-plugin] Worker storage request failed: ${action}`, err)
               const errMsg = {
                 type: 'STORAGE_RESPONSE',
                 requestId,
-                error: err.message
+                error: err instanceof Error ? err.message : String(err)
               }
               worker.postMessage(errMsg, getTransferables(errMsg))
             }
@@ -207,7 +245,14 @@ export default definePlugin({
                 // Forward the push record to the worker decryption pipeline
                 await cryptoWorkerPlugin.$worker.execute('worker:process_incoming_message', event.data.payload)
               } catch (err) {
-                console.error('[storage-plugin] Failed to decrypt SW forwarded push event:', err)
+                // Re-throw unexpected errors to avoid swallowing, or propagate via Event Bus
+                if (pluginContext.$bus) {
+                  pluginContext.$bus.emit('push:decryption_error', {
+                    error: err instanceof Error ? err.message : String(err)
+                  })
+                } else {
+                  throw err
+                }
               }
             }
           }
