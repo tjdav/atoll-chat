@@ -4,10 +4,30 @@
  */
 
 /**
+ * Factory function to create and manage the Call Device Manager.
+ * Handles audio/video hardware enumeration, hot-swapping, device loss fail-safes,
+ * and media effect settings (noise cancellation, background blur).
  *
+ * @param {Object} options - Configuration and context properties.
+ * @param {Object} options.state - Component local reactive state.
+ * @param {Function} options.refs - Component template reference locator function.
+ * @param {Object} options.globalStore - Global application state store container.
+ * @param {Object} options.globalStore.$state - Reactive global state instance.
+ * @param {Object} options.eventBus - Global communication bus container.
+ * @param {Object} options.eventBus.$bus - Event bus instance to publish and subscribe to events.
+ * @param {AbortSignal} options.signal - Abort signal to handle lifecycle cleanup.
+ * @returns {Object} Public interface methods for call hardware control.
+ * @throws {Error} Re-throws unexpected system errors.
  */
 export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, eventBus: { $bus }, signal }) => {
 
+  /**
+   * Helper function to find a ref either directly from component refs or via call-overlay fallback query.
+   *
+   * @param {string} name - The ref name to locate.
+   * @returns {HTMLElement} The located HTML element.
+   * @throws {Error} If the ref is missing under contract expectations.
+   */
   const getRef = (name) => {
     const fromRefs = refs(name)
     if (fromRefs) {
@@ -15,58 +35,86 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
     }
     const overlay = document.querySelector('call-overlay')
     if (overlay) {
-      if (overlay.shadowRoot) {
-        return overlay.shadowRoot.querySelector(`[ref="${name}"]`) || overlay.shadowRoot.querySelector(`#${name}`)
+      const root = overlay.shadowRoot || overlay
+      const queryResult = root.querySelector(`[ref="${name}"]`) || root.querySelector(`#${name}`)
+      if (queryResult) {
+        return queryResult
       }
-      return overlay.querySelector(`[ref="${name}"]`) || overlay.querySelector(`#${name}`)
     }
-    return null
+    throw new Error(`Ref "${name}" not found in template or overlay context.`)
   }
 
+  /**
+   * Request temporary permissions by spawning a temporary stream and immediately stopping it.
+   * This forces the browser/OS to prompt the user for camera and microphone access.
+   *
+   * @returns {Promise<void>} Resolves when the permission check has run.
+   * @throws {Error} Re-throws unexpected non-media-related errors.
+   */
   const requestTemporaryPermissions = async () => {
     if (window.__E2E_AUDIO_MOCK_INJECTED__) {
-      console.log('[call-device-manager] E2E audio mock detected, skipping temporary permission stream.')
       return
     }
     if ($state.localStream && $state.localStream.getTracks().length > 0) {
-      console.log('[call-device-manager] Active localStream already exists, skipping temporary permission stream.')
       return
     }
     try {
-      console.log('[call-device-manager] Spawning temporary media stream to prompt native OS permissions...')
       const tempStream = await navigator.mediaDevices.getUserMedia({
         audio: true,
         video: true
       })
       tempStream.getTracks().forEach(track => track.stop())
-      console.log('[call-device-manager] Temporary permission granted and tracks stopped.')
     } catch (err) {
-      console.warn('[call-device-manager] Temporary permission stream failed, attempting audio-only...', err)
-      try {
-        const tempAudio = await navigator.mediaDevices.getUserMedia({ audio: true })
-        tempAudio.getTracks().forEach(track => track.stop())
-      } catch (audioErr) {
-        console.error('[call-device-manager] Permanent permission failure or user denied access:', audioErr)
+      if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'SecurityError' || err.name === 'AbortError' || err.name === 'TypeError')) {
+        try {
+          const tempAudio = await navigator.mediaDevices.getUserMedia({ audio: true })
+          tempAudio.getTracks().forEach(track => track.stop())
+        } catch (audioErr) {
+          if (audioErr && (audioErr.name === 'NotAllowedError' || audioErr.name === 'NotFoundError' || audioErr.name === 'OverconstrainedError' || audioErr.name === 'SecurityError' || audioErr.name === 'AbortError' || audioErr.name === 'TypeError')) {
+            $bus.emit('ui:show_toast', {
+              message: 'Microphone or camera permission was denied or devices were not found.',
+              type: 'danger'
+            })
+            return
+          }
+          throw audioErr
+        }
+        return
       }
+      throw err
     }
   }
 
+  /**
+   * Fetches the available hardware list of microphones, cameras, and speakers from navigator.mediaDevices.
+   *
+   * @returns {Promise<void>}
+   * @throws {Error} Re-throws unexpected non-media errors.
+   */
   const fetchHardwareLists = async () => {
     try {
       const devices = await navigator.mediaDevices.enumerateDevices()
       state.microphones = devices.filter(d => d.kind === 'audioinput')
       state.cameras = devices.filter(d => d.kind === 'videoinput')
       state.speakers = devices.filter(d => d.kind === 'audiooutput')
-      console.log('[call-device-manager] Enumerate devices successful:', {
-        mics: state.microphones.length,
-        cams: state.cameras.length,
-        speakers: state.speakers.length
-      })
     } catch (err) {
-      console.error('[call-device-manager] Failed to enumerate hardware devices:', err)
+      if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'SecurityError' || err.name === 'AbortError')) {
+        $bus.emit('ui:show_toast', {
+          message: 'Failed to access hardware devices for listing.',
+          type: 'danger'
+        })
+        return
+      }
+      throw err
     }
   }
 
+  /**
+   * Validates stored device preferences in localStorage against current available hardware lists.
+   * If stored devices are missing or unplugged, resets active devices to safe defaults.
+   *
+   * @returns {Promise<void>}
+   */
   const bootValidatePreferences = async () => {
     const storedMic = localStorage.getItem('atoll_active_microphone')
     const storedCam = localStorage.getItem('atoll_active_camera')
@@ -96,70 +144,72 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
     }
   }
 
+  /**
+   * Renders microphones, cameras, and speakers into their respective Atoll select menus.
+   * Automatically updates active selections and manages disabled default states.
+   *
+   * @returns {void}
+   */
   const renderDeviceMenus = () => {
     // Render Microphone Select
     const micSelect = getRef('micSelect')
-    if (micSelect) {
-      const menu = micSelect.querySelector('.atoll-select-menu') || micSelect
-      menu.innerHTML = ''
-      if (state.microphones.length === 0) {
+    const micMenu = micSelect.querySelector('.atoll-select-menu') || micSelect
+    micMenu.innerHTML = ''
+    if (state.microphones.length === 0) {
+      const li = document.createElement('li')
+      const item = document.createElement('button')
+      item.type = 'button'
+      item.className = 'dropdown-item disabled'
+      item.textContent = 'No microphones found'
+      li.appendChild(item)
+      micMenu.appendChild(li)
+      micSelect.value = ''
+    } else {
+      state.microphones.forEach(mic => {
         const li = document.createElement('li')
         const item = document.createElement('button')
         item.type = 'button'
-        item.className = 'dropdown-item disabled'
-        item.textContent = 'No microphones found'
+        item.className = 'dropdown-item'
+        item.setAttribute('data-value', mic.deviceId)
+        item.textContent = mic.label || 'Microphone (' + mic.deviceId.substring(0, 5) + ')'
         li.appendChild(item)
-        menu.appendChild(li)
-        micSelect.value = ''
-      } else {
-        state.microphones.forEach(mic => {
-          const li = document.createElement('li')
-          const item = document.createElement('button')
-          item.type = 'button'
-          item.className = 'dropdown-item'
-          item.setAttribute('data-value', mic.deviceId)
-          item.textContent = mic.label || 'Microphone (' + mic.deviceId.substring(0, 5) + ')'
-          li.appendChild(item)
-          menu.appendChild(li)
-        })
-        micSelect.value = state.activeMicId
-      }
+        micMenu.appendChild(li)
+      })
+      micSelect.value = state.activeMicId
     }
 
     // Render Camera Select
     const camSelect = getRef('camSelect')
-    if (camSelect) {
-      const menu = camSelect.querySelector('.atoll-select-menu') || camSelect
-      menu.innerHTML = ''
-      if (state.cameras.length === 0) {
+    const camMenu = camSelect.querySelector('.atoll-select-menu') || camSelect
+    camMenu.innerHTML = ''
+    if (state.cameras.length === 0) {
+      const li = document.createElement('li')
+      const item = document.createElement('button')
+      item.type = 'button'
+      item.className = 'dropdown-item disabled'
+      item.textContent = 'No cameras found'
+      li.appendChild(item)
+      camMenu.appendChild(li)
+      camSelect.value = ''
+    } else {
+      state.cameras.forEach(cam => {
         const li = document.createElement('li')
         const item = document.createElement('button')
         item.type = 'button'
-        item.className = 'dropdown-item disabled'
-        item.textContent = 'No cameras found'
+        item.className = 'dropdown-item'
+        item.setAttribute('data-value', cam.deviceId)
+        item.textContent = cam.label || 'Camera (' + cam.deviceId.substring(0, 5) + ')'
         li.appendChild(item)
-        menu.appendChild(li)
-        camSelect.value = ''
-      } else {
-        state.cameras.forEach(cam => {
-          const li = document.createElement('li')
-          const item = document.createElement('button')
-          item.type = 'button'
-          item.className = 'dropdown-item'
-          item.setAttribute('data-value', cam.deviceId)
-          item.textContent = cam.label || 'Camera (' + cam.deviceId.substring(0, 5) + ')'
-          li.appendChild(item)
-          menu.appendChild(li)
-        })
-        camSelect.value = state.activeCamId
-      }
+        camMenu.appendChild(li)
+      })
+      camSelect.value = state.activeCamId
     }
 
     // Render Speaker Select
     const speakerSelect = getRef('speakerSelect')
-    if (speakerSelect && state.isSpeakerSelectionSupported) {
-      const menu = speakerSelect.querySelector('.atoll-select-menu') || speakerSelect
-      menu.innerHTML = ''
+    if (state.isSpeakerSelectionSupported) {
+      const speakerMenu = speakerSelect.querySelector('.atoll-select-menu') || speakerSelect
+      speakerMenu.innerHTML = ''
       if (state.speakers.length === 0) {
         const li = document.createElement('li')
         const item = document.createElement('button')
@@ -167,7 +217,7 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
         item.className = 'dropdown-item disabled'
         item.textContent = 'No speakers found'
         li.appendChild(item)
-        menu.appendChild(li)
+        speakerMenu.appendChild(li)
         speakerSelect.value = ''
       } else {
         state.speakers.forEach(speaker => {
@@ -178,13 +228,21 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
           item.setAttribute('data-value', speaker.deviceId)
           item.textContent = speaker.label || 'Speaker (' + speaker.deviceId.substring(0, 5) + ')'
           li.appendChild(item)
-          menu.appendChild(li)
+          speakerMenu.appendChild(li)
         })
         speakerSelect.value = state.activeSpeakerId
       }
     }
   }
 
+  /**
+   * Sets the active microphone to the specified deviceId, updates localStorage, and hot-swaps
+   * the audio track in the active WebRTC localStream.
+   *
+   * @param {string} deviceId - The device ID of the target microphone.
+   * @returns {Promise<void>}
+   * @throws {Error} Re-throws unexpected non-media errors.
+   */
   const selectMicrophone = async (deviceId) => {
     state.activeMicId = deviceId
     localStorage.setItem('atoll_active_microphone', deviceId)
@@ -215,7 +273,6 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
         const audioSender = senders.find(s => s.track && s.track.kind === 'audio')
         if (audioSender) {
           await audioSender.replaceTrack(newTrack)
-          console.log('[call-device-manager] Active WebRTC audio track swapped successfully.')
         }
       }
 
@@ -227,10 +284,25 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
       $state.localStream.addTrack(newTrack)
       $bus.emit('call:local_stream_available', { stream: $state.localStream })
     } catch (err) {
-      console.error('[call-device-manager] Failed to swap active audio track:', err)
+      if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'SecurityError' || err.name === 'AbortError' || err.name === 'TypeError')) {
+        $bus.emit('ui:show_toast', {
+          message: 'Failed to access or swap to the selected microphone.',
+          type: 'danger'
+        })
+        return
+      }
+      throw err
     }
   }
 
+  /**
+   * Sets the active camera to the specified deviceId, updates localStorage, and hot-swaps
+   * the video track in the active WebRTC localStream.
+   *
+   * @param {string} deviceId - The device ID of the target camera.
+   * @returns {Promise<void>}
+   * @throws {Error} Re-throws unexpected non-media errors.
+   */
   const selectCamera = async (deviceId) => {
     state.activeCamId = deviceId
     localStorage.setItem('atoll_active_camera', deviceId)
@@ -254,7 +326,6 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
         const videoSender = senders.find(s => s.track && s.track.kind === 'video')
         if (videoSender) {
           await videoSender.replaceTrack(newTrack)
-          console.log('[call-device-manager] Active WebRTC video track swapped successfully.')
         }
       }
 
@@ -267,10 +338,25 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
       $bus.emit('call:local_stream_available', { stream: $state.localStream })
       applyLocalVideoEffects()
     } catch (err) {
-      console.error('[call-device-manager] Failed to swap active video track:', err)
+      if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'SecurityError' || err.name === 'AbortError' || err.name === 'TypeError')) {
+        $bus.emit('ui:show_toast', {
+          message: 'Failed to access or swap to the selected camera.',
+          type: 'danger'
+        })
+        return
+      }
+      throw err
     }
   }
 
+  /**
+   * Sets the active speaker to the specified deviceId, updates localStorage, and applies
+   * the speaker sink ID to all remote video elements on supported browsers.
+   *
+   * @param {string} deviceId - The device ID of the target speaker.
+   * @returns {Promise<void>}
+   * @throws {Error} Re-throws unexpected non-media errors.
+   */
   const selectSpeaker = async (deviceId) => {
     if (!state.isSpeakerSelectionSupported) {
       return
@@ -280,16 +366,27 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
     renderDeviceMenus()
 
     const remoteVideos = document.querySelectorAll('video-grid video')
-    remoteVideos.forEach(async (video) => {
+    for (const video of remoteVideos) {
       try {
         await video.setSinkId(deviceId)
-        console.log(`[call-device-manager] Speaker sink ID set successfully to: ${deviceId}`)
       } catch (err) {
-        console.error('[call-device-manager] Failed to set speaker sink ID:', err)
+        if (err && (err.name === 'NotFoundError' || err.name === 'NotAllowedError' || err.name === 'SecurityError' || err.name === 'AbortError')) {
+          $bus.emit('ui:show_toast', {
+            message: 'Failed to set speaker output device on some video elements.',
+            type: 'warning'
+          })
+          continue
+        }
+        throw err
       }
-    })
+    }
   }
 
+  /**
+   * Applies CSS visual filters (such as background blur) to the local video element.
+   *
+   * @returns {void}
+   */
   const applyLocalVideoEffects = () => {
     const videoGrid = document.querySelector('video-grid') || getRef('videoGrid')
     if (!videoGrid) {
@@ -300,20 +397,26 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
     const localTile = videoGrid.querySelector(`[data-participant-id="${me.id}"]`)
       || videoGrid.querySelector('.grid-tile')
 
-    if (localTile) {
-      const videoEl = localTile.querySelector('.tile-video') || localTile.querySelector('video')
-      if (videoEl) {
-        if (state.isBackgroundBlurEnabled) {
-          videoEl.style.filter = 'blur(10px)'
-        } else {
-          videoEl.style.filter = ''
-        }
-      }
+    if (!localTile) {
+      return
     }
+
+    const videoEl = localTile.querySelector('.tile-video') || localTile.querySelector('video')
+    if (!videoEl) {
+      return
+    }
+
+    videoEl.style.filter = state.isBackgroundBlurEnabled ? 'blur(10px)' : ''
   }
 
   let snapshot = null
 
+  /**
+   * Takes a snapshot of the current active device IDs and effect settings
+   * to allow rolling back to these states if the user cancels or discards settings changes.
+   *
+   * @returns {void}
+   */
   const takeSnapshot = () => {
     snapshot = {
       activeMicId: state.activeMicId,
@@ -322,14 +425,19 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
       isNoiseCancellationEnabled: state.isNoiseCancellationEnabled,
       isBackgroundBlurEnabled: state.isBackgroundBlurEnabled
     }
-    console.log('[call-device-manager] Snapshot captured:', snapshot)
   }
 
+  /**
+   * Reverts active device settings and effects back to the states recorded in the snapshot.
+   * Automatically updates localStorage and triggers necessary track swaps on active streams.
+   *
+   * @returns {Promise<void>}
+   * @throws {Error} Re-throws unexpected exceptions during device rollback.
+   */
   const rollback = async () => {
     if (!snapshot) {
       return
     }
-    console.log('[call-device-manager] Rolling back to snapshot:', snapshot)
 
     const changedMic = state.activeMicId !== snapshot.activeMicId
     const changedCam = state.activeCamId !== snapshot.activeCamId
@@ -351,13 +459,10 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
 
     // Sync UI components
     const toggleNoiseCancellation = getRef('toggleNoiseCancellation')
-    if (toggleNoiseCancellation) {
-      toggleNoiseCancellation.checked = state.isNoiseCancellationEnabled
-    }
+    toggleNoiseCancellation.checked = state.isNoiseCancellationEnabled
+
     const toggleBackgroundBlur = getRef('toggleBackgroundBlur')
-    if (toggleBackgroundBlur) {
-      toggleBackgroundBlur.checked = state.isBackgroundBlurEnabled
-    }
+    toggleBackgroundBlur.checked = state.isBackgroundBlurEnabled
 
     renderDeviceMenus()
 
@@ -381,25 +486,26 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
     snapshot = null
   }
 
+  /**
+   * Performs the initial enumeration and boot validation sequence: determines browser
+   * compatibility, prompts user media permissions, fetches hardware lists, loads/validates
+   * storage preferences, and updates UI layouts.
+   *
+   * @returns {Promise<void>}
+   * @throws {Error} Re-throws unexpected exceptions during device bootstrap.
+   */
   const enumerateAndBootDevices = async () => {
     // Capability Gating
     state.isSpeakerSelectionSupported = typeof HTMLMediaElement.prototype.setSinkId !== 'undefined'
     const speakerFallbackEl = getRef('speakerFallback')
     const speakerSelectEl = getRef('speakerSelect')
+
     if (!state.isSpeakerSelectionSupported) {
-      if (speakerFallbackEl) {
-        speakerFallbackEl.classList.remove('d-none')
-      }
-      if (speakerSelectEl) {
-        speakerSelectEl.classList.add('d-none')
-      }
+      speakerFallbackEl.classList.remove('d-none')
+      speakerSelectEl.classList.add('d-none')
     } else {
-      if (speakerFallbackEl) {
-        speakerFallbackEl.classList.add('d-none')
-      }
-      if (speakerSelectEl) {
-        speakerSelectEl.classList.remove('d-none')
-      }
+      speakerFallbackEl.classList.add('d-none')
+      speakerSelectEl.classList.remove('d-none')
     }
 
     await requestTemporaryPermissions()
@@ -409,8 +515,13 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
     applyLocalVideoEffects()
   }
 
+  /**
+   * Listens for hardware device hot-swapping events. When an active microphone is unplugged mid-call,
+   * performs a safe fallback: stops local audio tracks, updates state to disabled, and alerts the user.
+   *
+   * @returns {Promise<void>}
+   */
   const onDeviceChange = async () => {
-    console.log('[call-device-manager] Global media device change event triggered.')
     const oldMics = [...state.microphones]
     await fetchHardwareLists()
     renderDeviceMenus()
@@ -421,8 +532,6 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
 
     const currentActiveMicStillExists = state.microphones.some(m => m.deviceId === state.activeMicId)
     if (oldMics.length > 0 && !currentActiveMicStillExists) {
-      console.warn('[call-device-manager] Active microphone unplugged mid-call! Fail-safe executing...')
-
       const localStream = $state.localStream || state.localStream
       if (localStream) {
         const tracks = localStream.getAudioTracks()
@@ -452,52 +561,42 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
     }
   }
 
-  // Bind effect switches if refs exist
+  // Bind effect switches
   const toggleNoiseCancellation = getRef('toggleNoiseCancellation')
-  if (toggleNoiseCancellation) {
-    state.isNoiseCancellationEnabled = localStorage.getItem('atoll_noise_cancellation') !== 'false'
-    toggleNoiseCancellation.checked = state.isNoiseCancellationEnabled
-    toggleNoiseCancellation.addEventListener('change', (e) => {
-      state.isNoiseCancellationEnabled = e.target.checked
-      localStorage.setItem('atoll_noise_cancellation', state.isNoiseCancellationEnabled)
-      if (state.callStatus === 'active') {
-        selectMicrophone(state.activeMicId)
-      }
-    })
-  }
+  state.isNoiseCancellationEnabled = localStorage.getItem('atoll_noise_cancellation') !== 'false'
+  toggleNoiseCancellation.checked = state.isNoiseCancellationEnabled
+  toggleNoiseCancellation.addEventListener('change', (e) => {
+    state.isNoiseCancellationEnabled = e.target.checked
+    localStorage.setItem('atoll_noise_cancellation', state.isNoiseCancellationEnabled)
+    if (state.callStatus === 'active') {
+      selectMicrophone(state.activeMicId)
+    }
+  })
 
   const toggleBackgroundBlur = getRef('toggleBackgroundBlur')
-  if (toggleBackgroundBlur) {
-    state.isBackgroundBlurEnabled = localStorage.getItem('atoll_background_blur') === 'true'
-    toggleBackgroundBlur.checked = state.isBackgroundBlurEnabled
-    toggleBackgroundBlur.addEventListener('change', (e) => {
-      state.isBackgroundBlurEnabled = e.target.checked
-      localStorage.setItem('atoll_background_blur', state.isBackgroundBlurEnabled)
-      applyLocalVideoEffects()
-    })
-  }
+  state.isBackgroundBlurEnabled = localStorage.getItem('atoll_background_blur') === 'true'
+  toggleBackgroundBlur.checked = state.isBackgroundBlurEnabled
+  toggleBackgroundBlur.addEventListener('change', (e) => {
+    state.isBackgroundBlurEnabled = e.target.checked
+    localStorage.setItem('atoll_background_blur', state.isBackgroundBlurEnabled)
+    applyLocalVideoEffects()
+  })
 
   // Bind dropdown change events
   const micSelect = getRef('micSelect')
-  if (micSelect) {
-    micSelect.addEventListener('atoll-change', (e) => {
-      selectMicrophone(e.detail.value)
-    })
-  }
+  micSelect.addEventListener('atoll-change', (e) => {
+    selectMicrophone(e.detail.value)
+  })
 
   const camSelect = getRef('camSelect')
-  if (camSelect) {
-    camSelect.addEventListener('atoll-change', (e) => {
-      selectCamera(e.detail.value)
-    })
-  }
+  camSelect.addEventListener('atoll-change', (e) => {
+    selectCamera(e.detail.value)
+  })
 
   const speakerSelect = getRef('speakerSelect')
-  if (speakerSelect) {
-    speakerSelect.addEventListener('atoll-change', (e) => {
-      selectSpeaker(e.detail.value)
-    })
-  }
+  speakerSelect.addEventListener('atoll-change', (e) => {
+    selectSpeaker(e.detail.value)
+  })
 
   navigator.mediaDevices.addEventListener('devicechange', onDeviceChange)
   signal.addEventListener('abort', () => {
