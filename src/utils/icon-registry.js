@@ -3,6 +3,9 @@ import {
   AddCircleLinearIcon,
   AltArrowDownLinearIcon,
   AltArrowLeftLinearIcon,
+  AltArrowRightLinearIcon,
+  PinLinearIcon,
+  PinBoldIcon,
   BellLinearIcon,
   CameraMinimalisticLinearIcon,
   CheckCircleLinearIcon,
@@ -207,7 +210,12 @@ export const SOLAR_ICON_MAP = {
   // Chevrons
   down: AltArrowDownLinearIcon,
   'chevron-down': AltArrowDownLinearIcon,
-  'chevron-left': AltArrowLeftLinearIcon
+  'chevron-left': AltArrowLeftLinearIcon,
+  'chevron-right': AltArrowRightLinearIcon,
+  pin: {
+    linear: PinLinearIcon,
+    bold: PinBoldIcon
+  }
 }
 
 const defaultSvgAttrs = {

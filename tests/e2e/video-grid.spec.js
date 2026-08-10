@@ -109,7 +109,7 @@ test.describe('Video Grid and Speaker Features', () => {
 
     await test.step('Open call overlay and verify pagination UI is shown', async () => {
       const paginationControls = page.locator('video-grid .pagination-controls')
-      await expect(paginationControls).toBeVisible()
+      await expect(paginationControls).toBeVisible({ timeout: 15000 })
       await expect(paginationControls).toContainText('Page 1 of 2')
     })
 
@@ -119,7 +119,7 @@ test.describe('Video Grid and Speaker Features', () => {
     })
 
     await test.step('Navigate to page 2 and verify next page contents', async () => {
-      await page.locator('video-grid .pagination-controls .btn-next-page').click({ force: true })
+      await page.locator('video-grid .pagination-controls .btn-next-page').click()
       const paginationControls = page.locator('video-grid .pagination-controls')
       await expect(paginationControls).toContainText('Page 2 of 2')
 

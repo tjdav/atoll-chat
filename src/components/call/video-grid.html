@@ -49,6 +49,10 @@
       let lastDisplayIds = ''
       let lastRailIds = ''
 
+      /**
+       * Determines active call participants list and triggers grid UI updates.
+       * @returns {Promise<void>}
+       */
       const renderGrid = async () => {
         const roomId = $state.activeCallRoomId
         let rawParticipants = []
@@ -62,13 +66,20 @@
               rawParticipants = room.participants || []
             }
           } catch (err) {
-            console.error('[video-grid] Failed to get room participants:', err)
+            if (err && err.status !== 404 && err.message !== 'Record not found') {
+              throw err
+            }
           }
         }
 
         updateGridWithParticipants(rawParticipants)
       }
 
+      /**
+       * Calculates participant tile pagination ranges and constructs layout containers.
+       * @param {Array<object>} rawParticipants - Raw collection of current call users.
+       * @returns {void}
+       */
       const updateGridWithParticipants = (rawParticipants) => {
         const container = refs('gridContainer')
 
@@ -285,14 +296,10 @@
 
             // Update pin/unpin button icon and title state
             const pinBtn = tile.querySelector('.pin-btn')
-            if (pinBtn) {
-              const pinIcon = pinBtn.querySelector('atoll-icon')
-              if (pinIcon) {
-                const isPinned = state.pinnedParticipantId === p.id
-                pinIcon.setAttribute('name', isPinned ? 'pin' : 'unpin')
-              }
-              pinBtn.setAttribute('title', state.pinnedParticipantId === p.id ? 'Unpin Participant' : 'Pin Participant')
-            }
+            const pinIcon = pinBtn.querySelector('atoll-icon')
+            const isPinned = state.pinnedParticipantId === p.id
+            pinIcon.setAttribute('active', isPinned ? 'true' : 'false')
+            pinBtn.setAttribute('title', isPinned ? 'Unpin Participant' : 'Pin Participant')
 
             // Update video element srcObject safely without resetting active/playing streams
             const videoEl = tile.querySelector('.tile-video')
@@ -312,8 +319,8 @@
               if (stream) {
                 if (videoEl.srcObject !== stream) {
                   videoEl.srcObject = stream
-                  videoEl.play().catch(err => {
-                    console.warn('[video-grid] Inline play failed:', err)
+                  videoEl.play().catch(() => {
+                    return
                   })
                 }
                 if (p.isVideoEnabled) {
@@ -343,6 +350,12 @@
         }
       }
 
+      /**
+       * Instantiates a dynamic tile node element for a single participant.
+       * @param {object} p - Participant state object.
+       * @param {boolean} [isMini=false] - Whether to render in miniature size mode.
+       * @returns {HTMLElement} Custom formatted tile node element.
+       */
       const createTile = (p, isMini = false) => {
         const tile = document.createElement('div')
         tile.className = `grid-tile position-relative rounded overflow-hidden shadow bg-dark d-flex align-items-center justify-content-center ${isMini ? 'mini-tile' : ''}`
@@ -380,6 +393,8 @@
           }
         }
 
+        const isPinned = state.pinnedParticipantId === p.id
+
         tile.innerHTML = `
           <video class="tile-video w-100 h-100 object-fit-cover d-none" autoplay playsinline ${p.isLocal ? 'muted' : ''}></video>
 
@@ -392,8 +407,8 @@
             ${audioStatusHtml}
           </div>
 
-          <button class="pin-btn btn btn-dark btn-sm rounded-circle position-absolute top-0 start-0 m-2" style="z-index: 16; width: 32px; height: 32px; padding: 0; opacity: 0.8; background: rgba(0,0,0,0.6);" title="${state.pinnedParticipantId === p.id ? 'Unpin Participant' : 'Pin Participant'}">
-            <i class="bi ${state.pinnedParticipantId === p.id ? 'bi-pin-fill' : 'bi-pin-angle-fill'} text-white"></i>
+          <button class="pin-btn btn btn-dark btn-sm rounded-circle position-absolute top-0 start-0 m-2" style="z-index: 16; width: 32px; height: 32px; padding: 0; opacity: 0.8; background: rgba(0,0,0,0.6);" title="${isPinned ? 'Unpin Participant' : 'Pin Participant'}">
+            <atoll-icon name="pin" size="18" active="${isPinned ? 'true' : 'false'}" color="white"></atoll-icon>
           </button>
 
           <div class="participant-label position-absolute bottom-0 start-0 w-100 p-2 text-white" style="background: linear-gradient(transparent, rgba(0,0,0,0.7)); z-index: 12; pointer-events: none;">
@@ -418,8 +433,8 @@
 
         if (stream) {
           videoEl.srcObject = stream
-          videoEl.play().catch(err => {
-            console.warn('[video-grid] Inline play failed:', err)
+          videoEl.play().catch(() => {
+            return
           })
           if (p.isVideoEnabled) {
             videoEl.classList.remove('d-none')
@@ -437,10 +452,6 @@
         const pinBtn = tile.querySelector('.pin-btn')
         pinBtn.addEventListener('click', (e) => {
           e.stopPropagation()
-          console.log('[video-grid] pin button clicked:', {
-            id: p.id,
-            currentPin: state.pinnedParticipantId
-          })
           if (state.pinnedParticipantId === p.id) {
             state.pinnedParticipantId = null
           } else {
@@ -452,6 +463,11 @@
         return tile
       }
 
+      /**
+       * Calculates responsive grid gridTemplateColumns and gap coordinates.
+       * @param {number} count - Count of elements inside the container.
+       * @returns {void}
+       */
       const layoutGrid = (count) => {
         const container = refs('gridContainer')
         if (count === 0) {
@@ -579,6 +595,10 @@
         }
       })
 
+      /**
+       * Determines if picture-in-picture mode layout constraint needs to be activated.
+       * @returns {void}
+       */
       const checkPip = () => {
         let el = refs('gridContainer')
         let isPip = false
@@ -602,6 +622,10 @@
       })
       signal.addEventListener('abort', () => observer.disconnect())
 
+      /**
+       * Triggers grid layout recalibration on browser resize.
+       * @returns {void}
+       */
       const onResize = () => {
         renderGrid()
       }

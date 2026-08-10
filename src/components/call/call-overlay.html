@@ -69,6 +69,12 @@
 
       const { playRingtone, stopRingtone } = await import('../../utils/call/callSoundManager.js')
 
+      /**
+       * Toggles bootstrap call overlay visibility on the viewport.
+       * @param {string} status - Active call overlay state (idle, active, incoming).
+       * @param {boolean} isPip - Indicates if picture-in-picture mode is active.
+       * @returns {void}
+       */
       const updateModalVisibility = (status, isPip) => {
         if (status !== 'idle' && !isPip) {
           modal.show()
@@ -77,6 +83,11 @@
         }
       }
 
+      /**
+       * Resolves element reference within the modal root or shadow root tree.
+       * @param {string} name - Element reference tag key.
+       * @returns {HTMLElement|null} Element node or null.
+       */
       const getElementRef = (name) => {
         const direct = refs(name)
         if (direct) {
@@ -85,6 +96,10 @@
         return modalEl.querySelector(`[ref="${name}"]`) || modalEl.querySelector(`[ref$="${name}"]`)
       }
 
+      /**
+       * Synchronizes parent target mounts for the persistent video grid component.
+       * @returns {void}
+       */
       const syncVideoGrid = () => {
         const videoGrid = getElementRef('videoGrid')
         const pipVideo = getElementRef('pipVideo')
@@ -119,6 +134,10 @@
 
       updateModalVisibility(state.callStatus, state.isPipMode)
 
+      /**
+       * Disposes of active hardware track streams completely.
+       * @returns {void}
+       */
       const stopTracks = () => {
         if (state.localStream) {
           state.localStream.getTracks().forEach(track => track.stop())
@@ -126,6 +145,11 @@
         }
       }
 
+      /**
+       * Infers current track enablement states back to the reactive state model.
+       * @param {MediaStream} stream - Active input media stream.
+       * @returns {void}
+       */
       const updateTrackStates = (stream) => {
         if (!stream) {
           return
@@ -139,6 +163,10 @@
         $state.isVideoEnabled = hasVideo
       }
 
+      /**
+       * Tears down active WebRTC signaling streams and resets viewport overlays.
+       * @returns {Promise<void>}
+       */
       const endCall = async () => {
         if ($state.activeCallRoomId) {
           await $webrtc.endCall($state.activeCallRoomId)
@@ -156,6 +184,10 @@
         $state.isVideoEnabled = true
       }
 
+      /**
+       * Toggles audio tracks enablement state on the active local stream.
+       * @returns {void}
+       */
       const toggleAudio = () => {
         if (state.localStream) {
           const tracks = state.localStream.getAudioTracks()
@@ -170,6 +202,10 @@
         }
       }
 
+      /**
+       * Toggles video tracks enablement state on the active local stream.
+       * @returns {void}
+       */
       const toggleVideo = () => {
         if (state.localStream) {
           const tracks = state.localStream.getVideoTracks()
@@ -210,7 +246,6 @@
         }
 
         if ($state.callStatus !== 'idle') {
-          console.warn('[call-overlay] Ignoring incoming call, already in a call.')
           return
         }
 
@@ -295,34 +330,27 @@
 
       // Subcomponent Action Event Listeners
       $bus.on('call:accept_clicked', async () => {
-        console.log('[call-overlay] Accept button clicked')
         let localStream = null
         const hasVideoOffer = state.incomingMediaTypes && state.incomingMediaTypes.includes('video')
 
         try {
-          console.log('[call-overlay] Requesting media permissions (audio and video)...')
           localStream = await navigator.mediaDevices.getUserMedia({
             audio: true,
             video: hasVideoOffer
           })
-          console.log('[call-overlay] Media permissions granted')
-        } catch (err) {
-          console.warn('[call-overlay] Failed to get audio and video, trying audio-only fallback:', err)
+        } catch {
           if (hasVideoOffer) {
             try {
               localStream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
                 video: false
               })
-              console.log('[call-overlay] Audio-only fallback media permissions granted')
-            } catch (fallbackErr) {
-              console.error('[call-overlay] Both audio/video and audio-only media requests failed:', fallbackErr)
-              endCall()
+            } catch {
+              await endCall()
               return
             }
           } else {
-            console.error('[call-overlay] Failed to accept audio call:', err)
-            endCall()
+            await endCall()
             return
           }
         }
@@ -332,16 +360,12 @@
           $state.localStream = localStream
           updateTrackStates(localStream)
 
-          console.log('[call-overlay] Setting call status to active')
           $state.set('callStatus', 'active')
           $bus.emit('call:local_stream_available', { stream: localStream })
 
-          console.log('[call-overlay] Answering call via WebRTC plugin...')
           await $webrtc.answerCall($state.activeCallRoomId, localStream, state.remoteOffer)
-          console.log('[call-overlay] answerCall initiated successfully')
-        } catch (err) {
-          console.error('[call-overlay] Failed to answer call:', err)
-          endCall()
+        } catch {
+          await endCall()
         }
       }, { signal })
 

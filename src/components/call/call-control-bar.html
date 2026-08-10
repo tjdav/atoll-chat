@@ -192,6 +192,10 @@
       const settingsPopup = refs('settingsPopup')
       const settingsContent = refs('settingsContent')
 
+      /**
+       * Relocates pre-rendered settings content into the unified Device Settings drawer.
+       * @returns {void}
+       */
       const moveContent = () => {
         const popupBody = settingsPopup.querySelector('.atoll-popup-body')
         if (popupBody && settingsContent.parentNode !== popupBody) {
@@ -213,17 +217,17 @@
       state.isVideoEnabled = Boolean($state.isVideoEnabled)
       state.isLocalSpeaking = Boolean($state.isLocalSpeaking)
 
+      /**
+       * Synchronizes interactive control button states with their active template icons.
+       * @returns {void}
+       */
       const syncIcons = () => {
         const audioBtn = refs('btnToggleAudio')
         const videoBtn = refs('btnToggleVideo')
         const audioIcon = audioBtn.querySelector('atoll-icon')
-        if (audioIcon) {
-          audioIcon.setAttribute('name', state.isAudioEnabled ? 'mic' : 'mic-off')
-        }
+        audioIcon.setAttribute('name', state.isAudioEnabled ? 'mic' : 'mic-off')
         const videoIcon = videoBtn.querySelector('atoll-icon')
-        if (videoIcon) {
-          videoIcon.setAttribute('name', state.isVideoEnabled ? 'videocam' : 'camera-off')
-        }
+        videoIcon.setAttribute('name', state.isVideoEnabled ? 'videocam' : 'camera-off')
       }
 
       $state.subscribe('callStatus', (val) => {
@@ -269,32 +273,21 @@
       refs('btnSettings').addEventListener('click', () => {
         isSettingsSaved = false
         moveContent()
-        if (deviceManager && typeof deviceManager.takeSnapshot === 'function') {
-          deviceManager.takeSnapshot()
-        }
-        if (deviceManager && typeof deviceManager.renderDeviceMenus === 'function') {
-          deviceManager.renderDeviceMenus()
-        }
-        if (typeof settingsPopup.show === 'function') {
-          settingsPopup.show()
-        }
+        deviceManager.takeSnapshot()
+        deviceManager.renderDeviceMenus()
+        settingsPopup.show()
       }, { signal })
 
       settingsPopup.addEventListener('atoll-popup-primary', () => {
         isSettingsSaved = true
-        if (typeof settingsPopup.hide === 'function') {
-          settingsPopup.hide()
-        }
+        settingsPopup.hide()
       }, { signal })
       settingsPopup.addEventListener('atoll-popup-secondary', () => {
         isSettingsSaved = false
-        if (typeof settingsPopup.hide === 'function') {
-          settingsPopup.hide()
-        }
+        settingsPopup.hide()
       }, { signal })
       settingsPopup.addEventListener('atoll-popup-close', () => {
-        console.log('[call-control-bar] atoll-popup-close triggered. isSettingsSaved:', isSettingsSaved)
-        if (!isSettingsSaved && deviceManager && typeof deviceManager.rollback === 'function') {
+        if (!isSettingsSaved) {
           deviceManager.rollback()
         }
       }, { signal })
