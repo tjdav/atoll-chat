@@ -85,10 +85,10 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, eventBus, bootstrap, globalStore, pocketbase }) => {
+    client: ({ refs, eventBus, bootstrap, globalStore, pocketbase, root, signal }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { ScrollSpy } = await bootstrap
+      const { ScrollSpy } = bootstrap
       const pb = pocketbase
       const adminContentGroup = refs('adminContentGroup')
 
@@ -112,7 +112,7 @@
         $state.activeSelectionId = null
         $state.activeSelectionType = null
         $bus.emit('ui:open_mobile_nav')
-      })
+      }, { signal })
 
       const scrollEl = refs('scrollContainer')
       let spyInstance = null
@@ -149,7 +149,7 @@
         let activeId = sections[0]
 
         for (const id of sections) {
-          const el = document.querySelector(id)
+          const el = root.querySelector(id)
           if (el) {
             const rect = el.getBoundingClientRect()
             const parentRect = scrollEl.getBoundingClientRect()
@@ -159,17 +159,21 @@
           }
         }
 
-        const links = document.querySelectorAll('#settings-navbar atoll-list-item, #admin-settings-navbar atoll-list-item')
-        links.forEach(link => {
-          if (link.getAttribute('href') === activeId) {
-            link.setAttribute('selected', 'true')
-          } else {
-            link.setAttribute('selected', 'false')
-          }
-        })
+        $bus.emit('settings:section_active', { activeId })
       }
 
-      scrollEl.addEventListener('scroll', handleScrollSync, { passive: true })
+      scrollEl.addEventListener('scroll', handleScrollSync, { passive: true, signal })
+
+      // Listen for the custom scroll-to-section event from settings-pane
+      $bus.on('settings:scroll_to_section', ({ targetId }) => {
+        const targetEl = root.querySelector(targetId)
+        if (targetEl) {
+          targetEl.scrollIntoView({
+            behavior: 'smooth',
+            block: 'start'
+          })
+        }
+      }, { signal })
     }
   })
 </script>

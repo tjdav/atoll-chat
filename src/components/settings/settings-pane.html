@@ -89,59 +89,109 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ eventBus, globalStore, pocketbase, refs }) => {
+    client: async ({ eventBus, globalStore, pocketbase, refs, root, signal }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
       const pb = pocketbase
       const adminGroup = refs('adminGroup')
 
-      // Check if user is owner
-      const authRecord = pb.authStore.record
-      if (authRecord) {
+      /**
+       * Checks if the currently authenticated user has the 'owner' tier trust level.
+       *
+       * @param {Object} pbClient - Pocketbase instance client.
+       * @param {string} userId - The identifier of the user to check.
+       * @returns {Promise<boolean>} True if the user is verified as an owner, false otherwise.
+       * @throws {Error} Propagates unexpected PocketBase or network failures.
+       */
+      async function checkUserOwnerTier (pbClient, userId) {
+        if (!pbClient || !userId) {
+          return false
+        }
+
         try {
-          const trustList = await pb.collection('user_trust').getFullList({
-            filter: `user = "${authRecord.id}"`
-          }).catch(() => [])
+          const trustList = await pbClient.collection('user_trust').getFullList({
+            filter: `user = "${userId}"`
+          })
           const trustRec = trustList[0]
-          if (trustRec && trustRec.tier === 'owner') {
-            adminGroup.classList.remove('d-none')
+          return !!(trustRec && trustRec.tier === 'owner')
+        } catch (err) {
+          if (err && typeof err === 'object' && 'status' in err) {
+            const status = err.status
+            if (status === 404 || status === 403 || status === 401) {
+              return false
+            }
           }
-        } catch (_) {
+          throw err
         }
       }
 
+      // Check if user is owner safely
+      const authRecord = pb.authStore.record
+      if (authRecord) {
+        try {
+          const isOwner = await checkUserOwnerTier(pb, authRecord.id)
+          if (isOwner) {
+            adminGroup.classList.remove('d-none')
+          }
+        } catch (err) {
+          // Fail closed safely without exposing or elevating rights
+          adminGroup.classList.add('d-none')
+          // Propagate the unexpected system error as requested by rules
+          throw err
+        }
+      }
+
+      /**
+       * Synchronizes navbar selection highlights and fires event to scroll
+       * the selected setting main section into view.
+       *
+       * @param {HTMLElement} item - The clicked navbar list item element.
+       * @param {HTMLElement[]} allNavbarItems - Array of all settings navbar elements.
+       */
       const syncNavbarSelections = (item, allNavbarItems) => {
-        const targetId = item.getAttribute('href')
+        try {
+          const targetId = item.getAttribute('href')
 
-        /* Set active selection to trigger detail view on mobile */
-        $state.activeSelectionType = 'settings'
-        $state.activeSelectionId = targetId
+          /* Set active selection to trigger detail view on mobile */
+          $state.activeSelectionType = 'settings'
+          $state.activeSelectionId = targetId
 
-        $bus.emit('ui:selection_made')
+          $bus.emit('ui:selection_made')
 
-        // Update selection highlights manually
-        allNavbarItems.forEach(i => i.setAttribute('selected', 'false'))
-        item.setAttribute('selected', 'true')
+          // Update selection highlights manually
+          allNavbarItems.forEach(i => i.setAttribute('selected', 'false'))
+          item.setAttribute('selected', 'true')
 
-        const targetEl = document.querySelector(targetId)
-        if (targetEl) {
-          targetEl.scrollIntoView({
-            behavior: 'smooth',
-            block: 'start'
-          })
+          // Emit custom event rather than querying other component elements directly
+          $bus.emit('settings:scroll_to_section', { targetId })
+        } catch (err) {
+          // Re-throw unexpected runtime errors
+          throw err
         }
       }
 
       const allItems = []
-      document.querySelectorAll('#settings-navbar atoll-list-item').forEach(i => allItems.push(i))
-      document.querySelectorAll('#admin-settings-navbar atoll-list-item').forEach(i => allItems.push(i))
+      // Restrict DOM lookup within the component's root to preserve component boundaries
+      root.querySelectorAll('#settings-navbar atoll-list-item').forEach(i => allItems.push(i))
+      root.querySelectorAll('#admin-settings-navbar atoll-list-item').forEach(i => allItems.push(i))
 
       allItems.forEach(item => {
         item.addEventListener('atoll-item-click', (e) => {
           e.preventDefault()
           syncNavbarSelections(item, allItems)
-        })
+        }, { signal })
       })
+
+      // Sync active selection on scroll event from settings-main
+      $bus.on('settings:section_active', ({ activeId }) => {
+        allItems.forEach(link => {
+          if (link.getAttribute('href') === activeId) {
+            link.setAttribute('selected', 'true')
+          } else {
+            link.setAttribute('selected', 'false')
+          }
+        })
+      }, { signal })
     }
   })
 </script>
