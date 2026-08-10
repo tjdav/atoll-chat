@@ -1,7 +1,7 @@
 <template id="app-layout">
   <div class="atoll-main-layout {{ layoutClasses }}">
     <!-- Mobile Nav Offcanvas -->
-    <div class="offcanvas-sm offcanvas-start h-100" tabindex="-1" ref="mobileNav">
+    <div class="offcanvas-sm offcanvas-start h-100" tabindex="-1" ref="mobileNav" data-testid="mobileNav">
       <div class="d-flex h-100">
         <!-- Column 1: Navigation Sidebar -->
         <nav-sidebar></nav-sidebar>
@@ -138,8 +138,8 @@
       })
       $state.subscribe('activeSelectionId', (val) => {
         state.activeSelectionId = val
-        // Close offcanvas when selection changes on mobile
-        if (window.innerWidth < 768) {
+        // Close offcanvas when selection changes on mobile, except when navigating via sidebar tabs
+        if (window.innerWidth < 768 && !$state.isSidebarNavigating) {
           mobileNav.hide()
         }
       })

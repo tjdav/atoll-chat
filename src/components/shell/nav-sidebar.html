@@ -192,6 +192,9 @@
               return
             }
 
+            // Set transient flag to prevent closing offcanvas on mobile during view switch
+            $state.isSidebarNavigating = true
+
             if (!$state.lastSelections) {
               $state.lastSelections = {}
             }
@@ -215,6 +218,10 @@
               $state.activeSelectionId = null
               $state.activeSelectionType = null
             }
+
+            setTimeout(() => {
+              $state.isSidebarNavigating = false
+            }, 0)
           })
         }
       })

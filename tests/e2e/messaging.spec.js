@@ -342,6 +342,44 @@ test.describe('Messaging Features', () => {
       // Verify that the input loses focus (textarea.blur() was triggered)
       await expect(textarea).not.toBeFocused({ timeout: 5000 })
     })
+
+    test('should show the chat list first on mobile when clicking the chat icon, rather than jumping straight to the chat view', async ({ page, loginApp }) => {
+      test.slow()
+
+      await loginApp('alice', 'Password123!', 'VaultPassword123!')
+
+      // Create a room
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
+
+      await expect(page.locator('atoll-chat-view')).toBeVisible({ timeout: 15000 })
+
+      // Open the mobile navigation offcanvas first by clicking back button in header
+      await page.locator('[data-testid$="chatBackBtn"]').click()
+
+      // Open profile dropdown and navigate to Settings on mobile
+      await page.locator('[data-testid$="profileBtn"]').click()
+      await page.locator('[data-testid$="btnSettings"]').click()
+
+      // Verify settings list pane is loaded and mobileNav is visible
+      await expect(page.locator('settings-pane')).toBeVisible()
+      await expect(page.locator('[data-testid$="mobileNav"]')).toBeVisible()
+
+      // Click the chats button in the sidebar on mobile
+      await page.locator('[data-testid$="btnChats"]').click()
+
+      // Verify that mobileNav (the offcanvas list pane) is STILL visible
+      await expect(page.locator('[data-testid$="mobileNav"]')).toBeVisible()
+
+      // Click on the chat-list-item in the list pane
+      await page.locator('chat-list-item').first().click()
+
+      // Verify that mobileNav is now hidden and we navigated to the chat view
+      await expect(page.locator('[data-testid$="mobileNav"]')).toBeHidden()
+      await expect(page.locator('atoll-chat-view')).toBeVisible()
+    })
   })
 
   test.describe('Network Resiliency & Offline Queuing', () => {
