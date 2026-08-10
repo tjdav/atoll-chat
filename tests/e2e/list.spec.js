@@ -302,7 +302,7 @@ test.describe('Atoll List and List Item Component Architecture', () => {
   })
 
   test('should render visual matrix of states for screenshot', async ({ page }) => {
-    await page.evaluate(async () => {
+    await page.evaluate(() => {
       const sandbox = document.getElementById('test-sandbox')
 
       // Trigger loading of all required components programmatically first so they are upgraded
@@ -311,12 +311,6 @@ test.describe('Atoll List and List Item Component Architecture', () => {
       document.createElement('atoll-checkbox')
       document.createElement('atoll-profile')
       document.createElement('atoll-icon')
-
-      await customElements.whenDefined('atoll-list')
-      await customElements.whenDefined('atoll-list-item')
-      await customElements.whenDefined('atoll-checkbox')
-      await customElements.whenDefined('atoll-profile')
-      await customElements.whenDefined('atoll-icon')
 
       // Setup a clean layout inside our sandbox for the visual verification matching list_matrix.png exactly
       sandbox.innerHTML = `
@@ -388,6 +382,13 @@ test.describe('Atoll List and List Item Component Architecture', () => {
         </div>
       `
     })
+
+    // Wait for all custom elements to be registered in the browser context robustly using Playwright's waitForFunction
+    await page.waitForFunction(() => customElements.get('atoll-list'))
+    await page.waitForFunction(() => customElements.get('atoll-list-item'))
+    await page.waitForFunction(() => customElements.get('atoll-checkbox'))
+    await page.waitForFunction(() => customElements.get('atoll-profile'))
+    await page.waitForFunction(() => customElements.get('atoll-icon'))
 
     await page.setViewportSize({
       width: 1280,
