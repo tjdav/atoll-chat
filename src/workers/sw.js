@@ -32,6 +32,11 @@ importScripts('/assets/url.js')
 
 const sodium = swSelf.sodium
 
+/**
+ * Handles the service worker install event.
+ * Forces the waiting service worker to become the active service worker.
+ * @returns {void}
+ */
 const onInstall = () => {
   skipWaiting()
 }
@@ -40,16 +45,16 @@ const onInstall = () => {
 addEventListener('install', onInstall)
 
 /**
- * @param {any} event The activation event.
+ * Handles the service worker activation event.
+ * Clears old caches and claims active clients.
+ * @param {ExtendableEvent} event - The activate event.
+ * @returns {void}
  */
 const onActivate = (event) => {
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
-        cacheNames.map((cacheName) => {
-          console.log('Deleting cache:', cacheName)
-          return caches.delete(cacheName)
-        })
+        cacheNames.map((cacheName) => caches.delete(cacheName))
       ).then(() => {
         return clients.claim()
       })
@@ -61,20 +66,30 @@ const onActivate = (event) => {
 addEventListener('activate', onActivate)
 
 /**
+ * Determines whether a given string is a standard, parseable JSON structure.
+ * @param {string} str - The string to analyze.
+ * @returns {boolean} True if the string is formatted as standard JSON.
+ */
+function isJSONString (str) {
+  if (!str) {
+    return false
+  }
+  const trimmed = str.trim()
+  return (trimmed.startsWith('{') && trimmed.endsWith('}')) || (trimmed.startsWith('[') && trimmed.endsWith(']'))
+}
+
+/**
  * Opens connection to IndexedDB.
  * @returns {Promise<any>} Opened DB instance.
+ * @throws {Error} If the database is not found or fails to open.
  */
 async function openDB () {
   let dbName = null
   if (typeof indexedDB !== 'undefined' && typeof indexedDB.databases === 'function') {
-    try {
-      const dbs = await indexedDB.databases()
-      const atollDb = dbs.find(d => d.name && d.name.startsWith('atoll_data_'))
-      if (atollDb) {
-        dbName = atollDb.name
-      }
-    } catch (e) {
-      console.warn('[SW] failed to enumerate databases', e)
+    const dbs = await indexedDB.databases()
+    const atollDb = dbs.find(d => d.name && d.name.startsWith('atoll_data_'))
+    if (atollDb) {
+      dbName = atollDb.name
     }
   }
   if (!dbName) {
@@ -93,6 +108,7 @@ async function openDB () {
  * @param {string} storeName Object store name.
  * @param {any} key The key.
  * @returns {Promise<any>} The record value.
+ * @throws {DOMException} If the transaction or request fails.
  */
 function getFromStore (db, storeName, key) {
   return new Promise((resolve, reject) => {
@@ -110,6 +126,7 @@ function getFromStore (db, storeName, key) {
  * @param {string} storeName Object store name.
  * @param {any} value Value to store.
  * @returns {Promise<any>} Response.
+ * @throws {DOMException} If the transaction or request fails.
  */
 function putIntoStore (db, storeName, value) {
   return new Promise((resolve, reject) => {
@@ -122,10 +139,14 @@ function putIntoStore (db, storeName, value) {
 }
 
 /**
+ * Handles incoming push notifications by fetching message records,
+ * decrypting their contents when necessary, and displaying them to the user.
  * @param {any} event The push event.
+ * @returns {void}
  */
 const onPush = (event) => {
   event.waitUntil((async () => {
+    let record = null
     try {
       // Open native IndexedDB connection
       const db = await openDB()
@@ -145,27 +166,18 @@ const onPush = (event) => {
 
       let pushData = null
       if (event.data) {
-        try {
-          pushData = event.data.json()
-        } catch {
-          /* If parsing raw JSON fails, leave as null */
+        const textData = event.data.text()
+        if (isJSONString(textData)) {
+          pushData = JSON.parse(textData)
         }
       }
 
-      let record = null
-
       if (pushData && pushData.message_id) {
-        try {
-          const response = await fetch(swSelf.normalizeUrl(`${pbUrl}/api/collections/messages/records/${pushData.message_id}`), {
-            headers: { Authorization: pbToken }
-          })
-          if (response.ok) {
-            record = await response.json()
-          } else {
-            console.warn(`[SW] Failed to fetch message ${pushData.message_id} specifically, trying fallback.`)
-          }
-        } catch (fetchErr) {
-          console.warn('[SW] Exception while fetching specific message_id, trying fallback.', fetchErr)
+        const response = await fetch(swSelf.normalizeUrl(`${pbUrl}/api/collections/messages/records/${pushData.message_id}`), {
+          headers: { Authorization: pbToken }
+        })
+        if (response.ok) {
+          record = await response.json()
         }
       }
 
@@ -204,7 +216,6 @@ const onPush = (event) => {
       const activeClient = windowClients.find(c => c.visibilityState === 'visible') || windowClients[0]
 
       if (isAppFocused) {
-        console.log('[SW] App is focused. Suppressing OS push notification.')
         if (activeClient) {
           activeClient.postMessage({
             type: 'PUSH_RECEIVED',
@@ -215,7 +226,6 @@ const onPush = (event) => {
       }
 
       if (activeClient) {
-        console.log('[SW] Active window found. Forwarding push record to main thread.')
         activeClient.postMessage({
           type: 'PUSH_RECEIVED',
           payload: record
@@ -316,7 +326,7 @@ const onPush = (event) => {
       }
 
       // Determine notification content
-      let senderName = 'New Message'
+      const senderName = 'New Message'
       let notificationBody = ''
 
       if (plaintextObj.type === 'text') {
@@ -341,9 +351,8 @@ const onPush = (event) => {
       })
 
     } catch (err) {
-      console.error('Push Error:', err)
       // Fallback to generic notification
-      return registration.showNotification('atoll chat', {
+      await registration.showNotification('atoll chat', {
         body: 'You have a new secure message.',
         icon: '/icon-192x192.png',
         tag: 'atoll-chat-msg',
@@ -352,6 +361,7 @@ const onPush = (event) => {
           messageId: record.id
         } : undefined
       })
+      throw err
     }
   })())
 }
@@ -359,7 +369,10 @@ const onPush = (event) => {
 addEventListener('push', onPush)
 
 /**
+ * Handles click events on displayed notifications by focusing the active app
+ * window or opening a new chat window corresponding to the notification's room.
  * @param {any} event The notification click event.
+ * @returns {void}
  */
 const onNotificationClick = (event) => {
   event.notification.close()
