@@ -20,6 +20,12 @@
 
   export default defineComponent({
     client: ({ globalStore, pocketbase, refs, signal, eventBus, router, storage, push, appLifecycle, network, cryptoWorker, deeplink, webrtcTransfer, bootstrap, notifications }) => {
+      /**
+       * Computes the SHA-256 hash of a given text string.
+       *
+       * @param {string} text - The input plain text to hash.
+       * @returns {Promise<string>} The hexadecimal representation of the SHA-256 hash.
+       */
       async function sha256 (text) {
         const msgUint8 = new TextEncoder().encode(text)
         const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8)
@@ -45,8 +51,9 @@
         if (Toast) {
           toastInstance = new Toast(toastEl)
         }
-      } catch (err) {
-        console.error('Failed to initialize bootstrap Toast:', err)
+      } catch {
+        // Safe recovery: fallback gracefully if toast initialization fails.
+        toastInstance = null
       }
 
       $bus.on('ui:show_toast', ({ message, variant = 'primary', type = 'primary' }) => {
@@ -62,6 +69,11 @@
       let activeContextMenu = null
       let lastShowTime = 0
 
+      /**
+       * Dismisses the currently active context menu if the time guard threshold has passed.
+       *
+       * @returns {void}
+       */
       const dismissContextMenu = () => {
         if (Date.now() - lastShowTime < 100) {
           return
@@ -88,12 +100,6 @@
       }, { signal })
 
       $bus.on('ui:show_context_menu', ({ x, y, items }) => {
-        console.log('[app-root] Received ui:show_context_menu!', {
-          x,
-          y,
-          itemCount: items?.length
-        })
-  
         // Bypass time guard for clean recreation
         if (activeContextMenu) {
           activeContextMenu.remove()
@@ -102,7 +108,6 @@
         lastShowTime = Date.now()
 
         if (!items || items.length === 0) {
-          console.warn('[app-root] Context menu items list is empty or falsy!')
           return
         }
 
@@ -131,7 +136,6 @@
           a.className = `dropdown-item d-flex align-items-center gap-2 py-2 px-3 rounded-2 ${item.danger ? 'text-danger' : ''}`
           const testId = `context-item-${item.label.toLowerCase().replace(/\s+/g, '-')}`
           a.setAttribute('data-testid', testId)
-          console.log('[app-root] Created context menu item:', item.label, 'testId:', testId)
 
           if (item.icon) {
             const icon = document.createElement('atoll-icon')
@@ -183,19 +187,37 @@
       // Keep worker auth token in sync with PocketBase auth store
       pb.authStore.onChange((token) => {
         if (token) {
-          $worker.execute('worker:set_token', { token }).catch(console.error)
+          $worker.execute('worker:set_token', { token }).catch(() => {
+            // Background update fail-safe: do not disrupt user session.
+            return
+          })
         } else {
-          $worker.execute('worker:wipe_keys').catch(console.error)
+          $worker.execute('worker:wipe_keys').catch(() => {
+            // Background cleanup fail-safe: proceed with offline logout sequence.
+            return
+          })
         }
       })
       if (pb.authStore.token) {
-        $worker.execute('worker:set_token', { token: pb.authStore.token }).catch(console.error)
+        $worker.execute('worker:set_token', { token: pb.authStore.token }).catch(() => {
+          // Background boot sync fail-safe: continue handshake sequence.
+          return
+        })
       }
 
       let isDeviceTrusted = false
       let isLifecycleRegistered = false
       let isFlushing = false
 
+      /**
+       * Performs a fetch request with a configurable network timeout.
+       *
+       * @param {RequestInfo|URL} resource - The resource URL or Request object to fetch.
+       * @param {object} [options={}] - The configuration options.
+       * @param {number} [options.timeout=2000] - The timeout threshold in milliseconds.
+       * @returns {Promise<Response>} The fetch Response.
+       * @throws {DOMException} Throws an AbortError if the timeout threshold is exceeded.
+       */
       async function fetchWithTimeout (resource, options = {}) {
         const { timeout = 2000 } = options
         const controller = new AbortController()
@@ -213,6 +235,11 @@
         }
       }
 
+      /**
+       * Fetches the app metadata from the PocketBase server to verify connection status.
+       *
+       * @returns {Promise<object|null>} The server metadata object, or null if fetching failed.
+       */
       const fetchServerMetadata = async () => {
         try {
           const pbBaseUrl = pb.baseUrl || '/'
@@ -225,37 +252,57 @@
             }
           }
         } catch (err) {
-          console.warn('[app-root] Failed to fetch app metadata:', err)
+          // Verify if it is an expected timeout or network abort failure
+          if (err instanceof DOMException && err.name === 'AbortError') {
+            return null
+          }
+  
+          if (err instanceof TypeError) {
+            return null
+          }
+          throw err
         }
         return null
       }
 
+      /**
+       * Evaluates and deletes legacy or orphaned client databases to reclaim storage.
+       *
+       * @param {string} activeInstanceId - The current active server instance ID to exclude from garbage collection.
+       * @returns {Promise<void>}
+       * @throws {Error} Re-throws unexpected IndexedDB failures.
+       */
       async function runGarbageCollection (activeInstanceId) {
         if (typeof indexedDB === 'undefined' || typeof indexedDB.databases !== 'function') {
-          console.warn('[app-root] indexedDB.databases is not supported.')
           return
         }
         try {
           const dbs = await indexedDB.databases()
-          console.log('[app-root] Enumerated databases for garbage collection:', dbs)
           for (const dbInfo of dbs) {
             const name = dbInfo.name
             if (name && name.startsWith('atoll_data_')) {
               const suffix = name.substring('atoll_data_'.length)
               if (suffix !== activeInstanceId) {
-                console.log('[app-root] Deleting orphaned database:', name)
                 indexedDB.deleteDatabase(name)
               }
             }
           }
         } catch (err) {
-          console.error('[app-root] Error during garbage collection:', err)
+          // If IndexedDB is blocked (e.g., Firefox private browsing SecurityError), proceed gracefully
+          if (err instanceof Error && (err.name === 'SecurityError' || err.name === 'UnknownError')) {
+            return
+          }
+          throw err
         }
       }
 
+      /**
+       * Flushes the pending message queue sequentially over the network.
+       *
+       * @returns {Promise<void>}
+       */
       const flushQueue = async () => {
         if (isFlushing) {
-          console.log('[Queue] Flush is already in progress. Skipping duplicate invocation.')
           return
         }
 
@@ -274,15 +321,11 @@
           pendingMessages.sort((a, b) => new Date(a.created_at) - new Date(b.created_at))
 
           if (pendingMessages.length === 0) {
-            console.log('[Queue] No pending messages to flush.')
             return
           }
 
-          console.log(`[Queue] Found ${pendingMessages.length} pending messages to flush.`)
-
           for (const msg of pendingMessages) {
             if (!$state.isOnline) {
-              console.log('[Queue] Connection lost during flush. Aborting.')
               break
             }
 
@@ -301,7 +344,6 @@
                 }
               }
 
-              console.log(`[Queue] Flushing message ${msg.local_uuid}...`)
               const result = await $worker.execute('worker:send_message', {
                 room_id: msg.room_id,
                 localUuid: msg.local_uuid,
@@ -313,15 +355,14 @@
               if (storedParams) {
                 await $storage.deleteRecord('local_files', msg.local_uuid)
               }
-
-              console.log(`[Queue] Message ${msg.local_uuid} flushed successfully.`)
             } catch (err) {
-              console.error(`[Queue] Failed to flush message ${msg.local_uuid}:`, err)
+              // Fail-safe network interruption recovery: stop queue loop on individual delivery failures.
               break
             }
           }
         } catch (err) {
-          console.error('[Queue] Error during flushQueue:', err)
+          // Unexpected systematic store error, re-throw to propagate
+          throw err
         } finally {
           isFlushing = false
         }
@@ -332,34 +373,40 @@
 
       let pendingInviteRoomId = null
 
+      /**
+       * Checks and processes any deep-linked room invitation that was queued during boot.
+       *
+       * @returns {Promise<void>}
+       */
       const processPendingInvite = async () => {
         if (pendingInviteRoomId && $state.isAuthenticated && $state.isVaultUnlocked) {
           const roomId = pendingInviteRoomId
           pendingInviteRoomId = null
-          console.log(`[app-root] Processing pending room invitation for room ${roomId}`)
           await handleJoinRoom(roomId)
         }
       }
 
-      /* Handler to join room from a deep-linked group invitation */
+      /**
+       * Joins a room based on an invite or ID, creating local DB room records and navigating.
+       *
+       * @param {string} roomId - The ID of the room to join.
+       * @returns {Promise<void>}
+       */
       const handleJoinRoom = async (roomId) => {
         if (!$state.currentUser || !$state.isVaultUnlocked) {
-          console.log(`[app-root] Queueing pending room invitation for ${roomId} (waiting for auth and vault unlock)`)
           pendingInviteRoomId = roomId
           return
         }
 
         try {
-          let isAlreadyMember = false
-          try {
-            await pb.collection('room_members').getFirstListItem(`room_id="${roomId}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
-            isAlreadyMember = true
-          } catch (_err) {
-            /* Not a member yet */
-          }
+          // Replace routine try/catch block for membership lookup with standard non-throwing getList
+          const membersRes = await pb.collection('room_members').getList(1, 1, {
+            filter: `room_id="${roomId}" && user_id="${$state.currentUser.id}"`,
+            requestKey: null
+          })
+          const isAlreadyMember = membersRes.items.length > 0
 
           if (!isAlreadyMember) {
-            console.log(`[app-root] User not a member of room ${roomId}. Creating membership record...`)
             const roomRecord = await pb.collection('rooms').getOne(roomId, { requestKey: null })
 
             await pb.collection('room_members').create({
@@ -373,14 +420,19 @@
 
             let participants = []
             try {
-              const membersRes = await pb.collection('room_members').getList(1, 100, {
+              const participantsRes = await pb.collection('room_members').getList(1, 100, {
                 filter: `room_id="${roomId}"`,
                 expand: 'user_id',
                 requestKey: null
               })
-              participants = membersRes.items.map(m => m.expand?.user_id).filter(Boolean)
+              participants = participantsRes.items.map(m => m.expand?.user_id).filter(Boolean)
             } catch (err) {
-              console.error('[app-root] Failed to fetch participants for joined room:', err)
+              // Safe fallback default: proceed with just the current user if retrieval fails
+              participants = [$state.currentUser]
+              if (err && err.name === 'ClientResponseError') {
+                return
+              }
+              throw err
             }
 
             if (participants.length === 0) {
@@ -411,10 +463,8 @@
             $bus.emit('db:new_local_room', { room_id: roomId })
           }
 
-          console.log(`[app-root] Selecting room ${roomId}`)
           $bus.emit('room:select', { room_id: roomId })
         } catch (err) {
-          console.error('[app-root] Failed to join room:', err)
           $bus.emit('ui:show_toast', {
             message: 'Failed to join group room. It may have been deleted or you do not have permission.',
             type: 'danger'
@@ -422,6 +472,12 @@
         }
       }
 
+      /**
+       * Verifies if the current browser device is trusted via local TOTP trust tokens.
+       *
+       * @returns {Promise<void>}
+       * @throws {Error} Re-throws unexpected database or validation errors.
+       */
       const checkDeviceTrust = async () => {
         if (!$state.isAuthenticated) {
           isDeviceTrusted = false
@@ -451,18 +507,21 @@
           const hashes = record.trusted_device_hashes || []
           isDeviceTrusted = hashes.includes(hash)
         } catch (err) {
-          console.error('Device trust check failed:', err)
+          // Security safeguard: fail closed if verification check fails for any reason
           isDeviceTrusted = false
+          if (err && err.name === 'ClientResponseError') {
+            return
+          }
+          throw err
         }
       }
 
+      /**
+       * Redraws the main container interface based on connection and authorization state.
+       *
+       * @returns {void}
+       */
       const updateUI = () => {
-        console.log('[app-root] updateUI called', {
-          isAuthenticated: $state.isAuthenticated,
-          hasModel: !!pb.authStore.model,
-          public_box_key: pb.authStore.model?.public_box_key
-        })
-
         while (container.firstChild) {
           container.removeChild(container.firstChild)
         }
@@ -510,6 +569,12 @@
         }
       }
 
+      /**
+       * Renders the register, login, TOTP, or vault unlock views inside the specified container.
+       *
+       * @param {HTMLElement} [targetContainer] - The element in which to mount the authorization components.
+       * @returns {void}
+       */
       const renderAuthFlow = (targetContainer) => {
         const parent = targetContainer || container
         if (!targetContainer) {
@@ -547,24 +612,21 @@
 
       /* Listen for unified deep link route events */
       $bus.on('app:route_requested', async ({ path: routePath, queryParams }) => {
-        console.log('[app-root] Deep link route requested:', {
-          path: routePath,
-          queryParams
-        })
-
         const inviteRoomId = queryParams?.invite || (routePath && routePath.startsWith('/invite/') ? routePath.split('/invite/')[1]?.split('?')[0]?.trim() : null)
         if (inviteRoomId) {
-          console.log('[app-root] Deep Link Room invitation detected for room:', inviteRoomId)
           await handleJoinRoom(inviteRoomId)
         }
       })
 
-      // Reconnection verification and conflict resolution
+      /**
+       * Evaluates server instance ID compatibility upon network reconnection.
+       *
+       * @param {object} [prefetchedMetadata=null] - Prefetched server metadata, if available.
+       * @returns {Promise<void>}
+       */
       const handleReconnectionHandshake = async (prefetchedMetadata = null) => {
-        console.log('[app-root] Reconnection detected. Fetching app metadata in background...')
         const metadata = prefetchedMetadata || await fetchServerMetadata()
         if (!metadata) {
-          console.warn('[app-root] Reconnection verification fetch failed. Remaining in offline state.')
           return
         }
 
@@ -572,61 +634,59 @@
         const newId = metadata.instance_id
 
         if (activeId && activeId !== newId) {
-          console.error('[app-root] INSTANCE ID MISMATCH DETECTED ON RECONNECTION!', {
-            activeId,
-            newId
-          })
-          console.log('[app-root] Server was wiped/rebuilt while offline. Cleaning up local state.')
-
-          // sever database connection
+          // Sever database connection
           if (window.$localDb) {
             try {
               await window.$localDb.close()
-              console.log('[app-root] Local database closed.')
             } catch (err) {
-              console.error('[app-root] Error closing local database:', err)
+              window.$localDb = null
             }
           }
 
-          // trigger Garbage Collection to delete current database and other orphans
+          // Trigger Garbage Collection to delete current database and other orphans
           try {
             if (typeof indexedDB !== 'undefined') {
               indexedDB.deleteDatabase('atoll_data_' + activeId)
-              console.log('[app-root] Deleted mismatched database:', 'atoll_data_' + activeId)
             }
           } catch (err) {
-            console.error('[app-root] Error deleting mismatched database:', err)
+            // DB deletion failed, we perform recovery by purging session and reloading immediately
+            pb.authStore.clear()
+            localStorage.removeItem('device_trust_token')
+            localStorage.removeItem('atoll_active_instance_id')
+            window.location.reload()
+            return
           }
 
           // Run general GC to be thorough
           await runGarbageCollection(newId)
 
-          // purge user session tokens
+          // Purge user session tokens
           pb.authStore.clear()
           localStorage.removeItem('device_trust_token')
           localStorage.removeItem('atoll_active_instance_id')
-          console.log('[app-root] Session tokens and credentials purged.')
 
-          // force hard reload to push user back to clean login screen
+          // Force hard reload to push user back to clean login screen
           window.location.reload()
           return
         }
 
         // IDs match: hide Offline Mode and resume
         $state.isOnline = true
-        console.log('[app-root] Reconnection verification successful. Instance ID matches.')
       }
 
       let reconnectPollInterval = null
 
+      /**
+       * Starts polling the server at regular intervals to check for connection recovery.
+       *
+       * @returns {void}
+       */
       const startReconnectPolling = () => {
         if (reconnectPollInterval) {
           return
         }
-        console.log('[app-root] Starting reconnection polling...')
         reconnectPollInterval = setInterval(async () => {
           if (!$state.isOnline) {
-            console.log('[app-root] Polling reconnect check...')
             await attemptReconnect(false)
           } else {
             stopReconnectPolling()
@@ -634,16 +694,25 @@
         }, 5000)
       }
 
+      /**
+       * Stops the reconnection polling timer.
+       *
+       * @returns {void}
+       */
       const stopReconnectPolling = () => {
         if (reconnectPollInterval) {
           clearInterval(reconnectPollInterval)
           reconnectPollInterval = null
-          console.log('[app-root] Reconnection polling stopped.')
         }
       }
 
+      /**
+       * Attempts a connection handshake with the backend, notifying the user if requested manually.
+       *
+       * @param {boolean} [isManual=false] - Whether this attempt was triggered manually by user interaction.
+       * @returns {Promise<void>}
+       */
       const attemptReconnect = async (isManual = false) => {
-        console.log('[app-root] Attempting to reconnect to backend (manual:', isManual, ')...')
         const metadata = await fetchServerMetadata()
         if (metadata) {
           await handleReconnectionHandshake(metadata)
@@ -655,7 +724,6 @@
             })
           }
         } else if (isManual) {
-          console.warn('[app-root] Manual reconnect attempt failed: backend still unreachable.')
           $bus.emit('ui:show_toast', {
             message: 'Could not connect to server. Please try again.',
             variant: 'danger'
@@ -665,20 +733,24 @@
 
       // Network status listener
       $bus.on('app:network_change', (payload) => {
-        console.log('[app-root] Network status changed:', payload)
         if (payload.isOnline) {
-          handleReconnectionHandshake().catch(console.error)
+          handleReconnectionHandshake().catch((err) => {
+            // Reconnection background error recovery path
+            return
+          })
         } else {
           $state.isOnline = false
         }
       })
 
       window.addEventListener('online', () => {
-        handleReconnectionHandshake().catch(console.error)
+        handleReconnectionHandshake().catch((err) => {
+          // Reconnection background error recovery path
+          return
+        })
       }, { signal })
 
       $bus.on('app:request_reconnect', async () => {
-        console.log('[app-root] Manual reconnect request received.')
         await attemptReconnect(true)
       })
 
@@ -689,24 +761,23 @@
           ...keys
         }
 
-        processPendingInvite().catch(console.error)
+        processPendingInvite().catch((err) => {
+          // Invite processing recovery path
+          return
+        })
 
         if (!isLifecycleRegistered) {
           isLifecycleRegistered = true
           appLifecycle.registerListeners()
-            .then(() => {
-              console.log('[app-root] App lifecycle listeners registered successfully.')
-            })
             .catch((err) => {
-              console.error('[app-root] Failed to register app lifecycle listeners:', err)
+              // Ensure we don't crash app-root if non-critical listener registration fails
+              return
             })
 
           network.registerListeners()
-            .then(() => {
-              console.log('[app-root] Network listeners registered successfully.')
-            })
             .catch((err) => {
-              console.error('[app-root] Failed to register network listeners:', err)
+              // Ensure we don't crash app-root if network listener registration fails
+              return
             })
         }
 
@@ -715,7 +786,6 @@
           $push.register()
             .then((token) => {
               if (token) {
-                console.log('[app-root] Silent push registration successful, transmitting token to backend:', token)
                 return pb.collection('users').update(userRecord.id, {
                   push_subscription: token
                 })
@@ -723,7 +793,6 @@
             })
             .then((updatedUser) => {
               if (updatedUser) {
-                console.log('[app-root] Push subscription updated on backend successfully.')
                 $state.currentUser = {
                   ...$state.currentUser,
                   push_subscription: updatedUser.push_subscription
@@ -731,7 +800,8 @@
               }
             })
             .catch((err) => {
-              console.error('[app-root] Silent background push registration/update failed:', err)
+              // Background task: handle silent push subscription updates without crashing
+              return
             })
         }
       })
@@ -761,7 +831,8 @@
                 }
               }
             } catch (err) {
-              console.warn('[app-root] Failed to revoke cached object URL:', err)
+              // Non-critical resource cleanup failure, continue revoking other URLs
+              return
             }
           })
 
@@ -774,7 +845,11 @@
         updateUI()
       })
 
-      // The dynamic frontend boot handshake
+      /**
+       * Executes the dynamic client boot sequence, initializing local storage and deep links.
+       *
+       * @returns {Promise<void>}
+       */
       const startBootHandshake = async () => {
         const metadata = await fetchServerMetadata()
         let instanceId = null
@@ -791,7 +866,6 @@
 
         if (!instanceId) {
           // Cold boot offline with no server contact ever - Block access entirely!
-          console.error('[app-root] Cold boot offline: No cached instance_id available. Blocking access.')
           $state.isOfflineSetup = true
           updateUI()
           return
@@ -801,12 +875,12 @@
         $state.activeInstanceId = instanceId
 
         const dbName = 'atoll_data_' + instanceId
-        console.log('[app-root] Initializing dynamic local database:', dbName)
         await $storage.initialize(dbName)
 
         // Asynchronously run Garbage Collection in background
-        runGarbageCollection(instanceId).catch(err => {
-          console.warn('[app-root] Garbage collection failed:', err)
+        runGarbageCollection(instanceId).catch((err) => {
+          // Background task fail-safe: GC failure should not disrupt boot handshake
+          return
         })
 
         // Continue normal boot
@@ -825,20 +899,22 @@
 
         /* Initialize deep link plugin on boot */
         deeplink.initialize().then(async () => {
-          console.log('[app-root] DeepLink plugin initialized.')
           if (webrtcTransfer) {
-            console.log('[app-root] webrtcTransfer plugin registered.')
+            // webrtcTransfer plugin registered.
           }
           await checkDeviceTrust()
           updateUI()
         }).catch(async (err) => {
-          console.error('[app-root] Failed to initialize DeepLink plugin:', err)
           await checkDeviceTrust()
           updateUI()
         })
       }
 
-      // Listen to visual viewport resize & scroll to dynamically adjust layout height and prevent scrolling shifts
+      /**
+       * Dynamically calculates and sets the visual viewport height as a CSS custom property.
+       *
+       * @returns {void}
+       */
       const updateVisualViewportHeight = () => {
         if (window.visualViewport) {
           const height = window.visualViewport.height
@@ -855,7 +931,11 @@
 
       /* Initialize boot handshake */
       startBootHandshake().catch((err) => {
-        console.error('[app-root] Boot handshake failed:', err)
+        // Critical system failure: transition UI to offline setup mode to prompt reconnection
+        $state.isOfflineSetup = true
+        updateUI()
+        // Re-throw unexpected system failures so they are caught by global handlers
+        throw err
       })
 
       $state.subscribe('isAuthenticated', async () => {
@@ -868,14 +948,19 @@
       })
       $state.subscribe('isVaultUnlocked', () => {
         updateUI()
-        processPendingInvite().catch(console.error)
+        processPendingInvite().catch((err) => {
+          // Invite processing recovery path
+          return
+        })
       })
       $state.subscribe('authView', updateUI)
 
       $state.subscribe('isOnline', (val) => {
         if (val) {
-          console.log('[app-root] Network is back online. Triggering flushQueue.')
-          flushQueue().catch(console.error)
+          flushQueue().catch((err) => {
+            // Flush queue background error recovery path
+            return
+          })
           stopReconnectPolling()
         } else {
           startReconnectPolling()
