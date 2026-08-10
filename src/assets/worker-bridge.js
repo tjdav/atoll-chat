@@ -7,6 +7,15 @@
 const pendingRequests = new Map()
 let requestIdCounter = 0
 
+/**
+ * Traverses an object or array to extract all transferable objects (ArrayBuffer or ArrayBuffer views).
+ * Safely handles circular references and ignores non-serializable properties or expected errors.
+ *
+ * @param {any} obj The input object or array to extract transferables from.
+ * @param {Set<any>} [seen] A set containing already visited objects to prevent infinite recursion.
+ * @returns {ArrayBuffer[]} An array of extracted ArrayBuffer transferable objects.
+ * @throws {Error} Re-throws unexpected critical system errors that are not standard property access or type errors.
+ */
 function getTransferables (obj, seen = new Set()) {
   if (!obj || typeof obj !== 'object') {
     return []
@@ -31,8 +40,12 @@ function getTransferables (obj, seen = new Set()) {
           transferables.push(...getTransferables(val, seen))
         }
       }
-    } catch {
-      // ignore non-serializable properties or errors
+    } catch (err) {
+      // Handle standard expected errors when attempting to serialize or access non-serializable properties/proxies.
+      if (err instanceof TypeError || err.name === 'SecurityError' || err.name === 'TypeError') {
+        return transferables
+      }
+      throw err
     }
   }
 
