@@ -1,3 +1,5 @@
+import { readFile } from 'node:fs/promises'
+import { join } from 'node:path'
 import { definePlugin } from 'coralite'
 
 /**
@@ -6,6 +8,24 @@ import { definePlugin } from 'coralite'
  */
 export default definePlugin({
   name: 'mediaWorker',
+  server: {
+    onAfterBuild: async ({ app }) => {
+      const projectRoot = process.cwd()
+      const outputDir = app.options.output
+
+      if (!outputDir) {
+        return
+      }
+
+      try {
+        const srcPath = join(projectRoot, 'src', 'assets', 'media-worker.js')
+        const content = await readFile(srcPath, 'utf-8')
+        await app.writeFile('media-worker.js', content)
+      } catch (err) {
+        throw err
+      }
+    }
+  },
   client: {
     context: (pluginContext) => {
       const worker = new Worker('/media-worker.js', { type: 'module' })
@@ -42,7 +62,6 @@ export default definePlugin({
       }
 
       worker.onerror = (error) => {
-        console.error('[media-worker-plugin] Worker Error:', error)
         for (const [id, { reject }] of pendingRequests) {
           reject(new Error('Media worker crashed'))
           pendingRequests.delete(id)
