@@ -1,49 +1,55 @@
 import { Dexie } from 'dexie'
 
 /**
- * Web Storage Adapter for Atoll Chat.
+ * Factory function to create a platform-agnostic web storage adapter.
  * Standardizes Dexie/IndexedDB operations under a unified interface.
- */
-
-/**
  *
+ * @returns {Object} An object containing all the storage adapter interface methods.
  */
 export function createWebStorageAdapter () {
+  /**
+   * The active Dexie database instance.
+   * @type {Dexie|null}
+   */
   let dbInstance = null
 
   return {
     /**
      * Initializes the Dexie database and opens the connection.
+     *
+     * @param {string} [customDbName] - An optional custom database name.
+     * @returns {Promise<Dexie|null>} Resolves with the Dexie instance or null if deferred.
+     * @throws {Error} Re-throws unexpected errors that occur during database initialization or localStorage retrieval.
      */
     initialize: async (customDbName) => {
       let activeId = null
       if (typeof localStorage !== 'undefined') {
         try {
           activeId = localStorage.getItem('atoll_active_instance_id')
-        } catch {
+        } catch (err) {
+          const isExpected = err instanceof Error && (
+            err.name === 'SecurityError' ||
+            err.name === 'NotAllowedError' ||
+            err.message.includes('localStorage')
+          )
+          if (!isExpected) {
+            throw err
+          }
         }
       }
       const name = customDbName || (activeId ? 'atoll_data_' + activeId : null)
       if (!name) {
-        console.log('[WebStorageAdapter] Deferring database initialization until instance ID or custom DB name is set.')
         return null
       }
-      console.log('[WebStorageAdapter] initialize starting for:', name)
       if (dbInstance) {
         if (dbInstance.name === name) {
-          console.log('[WebStorageAdapter] Already initialized to:', name)
           return dbInstance
         }
-        console.log('[WebStorageAdapter] Closing existing db:', dbInstance.name)
         await dbInstance.close()
-        console.log('[WebStorageAdapter] Existing db closed')
       }
 
       try {
         dbInstance = new Dexie(name)
-        console.log('[WebStorageAdapter] Dexie instance created for:', name)
-
-        console.log('[WebStorageAdapter] Step A: before stores')
         try {
           dbInstance.version(11).stores({
             local_rooms: 'id, is_group, updated_at',
@@ -52,16 +58,27 @@ export function createWebStorageAdapter () {
             local_config: 'key',
             local_files: 'name'
           })
-        } catch (schemaErr) {
-          console.warn('[WebStorageAdapter] Version schema warning:', schemaErr)
+        } catch (err) {
+          if (err instanceof Error) {
+            throw err
+          }
+          throw new Error(String(err))
         }
 
-        console.log('[WebStorageAdapter] Step B: before open')
         await dbInstance.open()
-        console.log('[WebStorageAdapter] Step C: after open')
       } catch (err) {
-        console.error('[WebStorageAdapter] Error opening db:', err)
-        // If IndexedDB fails to open in restricted browser contexts (e.g. headless Firefox), construct dummy fallback tables
+        // If IndexedDB fails to open in restricted browser contexts (e.g. headless Firefox), construct dummy fallback flags
+        const isExpected = err instanceof Error && (
+          err.name === 'SecurityError' ||
+          err.name === 'OpenFailedError' ||
+          err.name === 'VersionError' ||
+          err.name === 'UnknownError' ||
+          err.message.includes('IndexedDB') ||
+          err.message.includes('open')
+        )
+        if (!isExpected) {
+          throw err
+        }
         if (dbInstance) {
           dbInstance._hasOpenError = true
         }
@@ -77,6 +94,11 @@ export function createWebStorageAdapter () {
 
     /**
      * Low-level record save.
+     *
+     * @param {string} storeName - The name of the Dexie store.
+     * @param {Object} data - The record data object to put in the store.
+     * @returns {Promise<*>} Resolves with the key of the inserted/updated record.
+     * @throws {Error} Throws if the database is not initialized.
      */
     saveRecord: async (storeName, data) => {
       if (!dbInstance) {
@@ -87,6 +109,11 @@ export function createWebStorageAdapter () {
 
     /**
      * Low-level record bulk save.
+     *
+     * @param {string} storeName - The name of the Dexie store.
+     * @param {Array<Object>} records - An array of record data objects.
+     * @returns {Promise<*>} Resolves when the bulk operation is complete.
+     * @throws {Error} Throws if the database is not initialized.
      */
     saveRecordsBulk: async (storeName, records) => {
       if (!dbInstance) {
@@ -97,6 +124,11 @@ export function createWebStorageAdapter () {
 
     /**
      * Low-level record delete.
+     *
+     * @param {string} storeName - The name of the Dexie store.
+     * @param {*} key - The key of the record to delete.
+     * @returns {Promise<void>} Resolves when deletion is complete.
+     * @throws {Error} Throws if the database is not initialized.
      */
     deleteRecord: async (storeName, key) => {
       if (!dbInstance) {
@@ -107,6 +139,11 @@ export function createWebStorageAdapter () {
 
     /**
      * Stores encrypted media blobs natively in IndexedDB.
+     *
+     * @param {string} fileName - The name of the file.
+     * @param {Blob} blob - The file content blob.
+     * @returns {Promise<*>} Resolves with the key of the inserted file.
+     * @throws {Error} Throws if the database is not initialized.
      */
     saveFile: async (fileName, blob) => {
       if (!dbInstance) {
@@ -120,6 +157,10 @@ export function createWebStorageAdapter () {
 
     /**
      * Retrieves the blob for decryption.
+     *
+     * @param {string} fileName - The name of the file.
+     * @returns {Promise<Blob|null>} Resolves with the file blob, or null if not found.
+     * @throws {Error} Throws if the database is not initialized.
      */
     getFile: async (fileName) => {
       if (!dbInstance) {
@@ -129,7 +170,13 @@ export function createWebStorageAdapter () {
       return record ? record.blob : null
     },
 
-    // Config Domain
+    /**
+     * Retrieves a config value by key.
+     *
+     * @param {string} key - The config key.
+     * @returns {Promise<*|null>} Resolves with the config value, or null if not found.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getConfig: async (key) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -138,6 +185,13 @@ export function createWebStorageAdapter () {
       return record ? record.value : null
     },
 
+    /**
+     * Retrieves a config record by key.
+     *
+     * @param {string} key - The config key.
+     * @returns {Promise<Object|null>} Resolves with the full config record, or null if not found.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getConfigRecord: async (key) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -145,6 +199,14 @@ export function createWebStorageAdapter () {
       return dbInstance.local_config.get(key)
     },
 
+    /**
+     * Saves a config key-value pair.
+     *
+     * @param {string} key - The config key.
+     * @param {*} value - The config value.
+     * @returns {Promise<*>} Resolves with the key.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     saveConfig: async (key, value) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -155,6 +217,13 @@ export function createWebStorageAdapter () {
       })
     },
 
+    /**
+     * Saves multiple config key-value pairs in bulk.
+     *
+     * @param {Array<Object>} configs - An array of config records.
+     * @returns {Promise<*>} Resolves when the bulk operation is complete.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     saveConfigs: async (configs) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -162,6 +231,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_config.bulkPut(configs)
     },
 
+    /**
+     * Deletes a config record by key.
+     *
+     * @param {string} key - The config key to delete.
+     * @returns {Promise<void>} Resolves when deletion is complete.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     deleteConfig: async (key) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -169,7 +245,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_config.delete(key)
     },
 
-    // Room Domain
+    /**
+     * Retrieves a local room by ID.
+     *
+     * @param {string} id - The unique room ID.
+     * @returns {Promise<Object|null>} Resolves with the room object, or null if not found.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getRoom: async (id) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -177,6 +259,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_rooms.get(id)
     },
 
+    /**
+     * Saves a room record.
+     *
+     * @param {Object} room - The room data object.
+     * @returns {Promise<*>} Resolves with the room ID.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     saveRoom: async (room) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -184,6 +273,14 @@ export function createWebStorageAdapter () {
       return dbInstance.local_rooms.put(room)
     },
 
+    /**
+     * Updates an existing room record with changes.
+     *
+     * @param {string} id - The room ID to update.
+     * @param {Object} changes - The properties to update.
+     * @returns {Promise<number>} Resolves with the number of affected rows (0 or 1).
+     * @throws {Error} Throws if the database is not initialized.
+     */
     updateRoom: async (id, changes) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -191,6 +288,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_rooms.update(id, changes)
     },
 
+    /**
+     * Deletes all local messages, local assets, and the room record for a given room.
+     *
+     * @param {string} roomId - The unique ID of the room.
+     * @returns {Promise<boolean>} Resolves to true when the deletion completes successfully.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     deleteRoomData: async (roomId) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -201,6 +305,15 @@ export function createWebStorageAdapter () {
       return true
     },
 
+    /**
+     * Updates a specific participant's state in a local room.
+     *
+     * @param {string} roomId - The room ID.
+     * @param {string} userId - The user ID of the participant.
+     * @param {Object} memberState - The dynamic member state changes (e.g., last_read_message_id, is_muted, is_typing).
+     * @returns {Promise<boolean>} Resolves to true when the update is complete.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     updateRoomMemberState: async (roomId, userId, memberState) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -224,6 +337,14 @@ export function createWebStorageAdapter () {
       return true
     },
 
+    /**
+     * Updates all local rooms having a participant with new participant profile data.
+     *
+     * @param {string} userId - The target participant user ID.
+     * @param {Object} participantData - The updated participant data (e.g., name, username, avatar).
+     * @returns {Promise<Array<string>>} Resolves with an array of room IDs that were updated.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     updateRoomsWithParticipant: async (userId, participantData) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -247,6 +368,15 @@ export function createWebStorageAdapter () {
       return updatedRooms.map(r => r.id)
     },
 
+    /**
+     * Retrieves all rooms sorted dynamically by descending updated_at timestamp.
+     * Supports timestamp pagination and batch size limits.
+     *
+     * @param {string} [lastTimestamp] - Cursor timestamp to query before.
+     * @param {number} [batchSize] - Maximum number of rooms to retrieve.
+     * @returns {Promise<Array<Object>>} Resolves with sorted room records.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getAllRoomsSorted: async (lastTimestamp, batchSize) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -261,6 +391,12 @@ export function createWebStorageAdapter () {
       return query.toArray()
     },
 
+    /**
+     * Retrieves the single room record with the absolute latest updated_at timestamp.
+     *
+     * @returns {Promise<Object|null>} Resolves with the latest room, or null if empty.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getLatestGlobalRoom: async () => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -268,7 +404,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_rooms.orderBy('updated_at').last()
     },
 
-    // Message Domain
+    /**
+     * Retrieves a local message record by its local UUID.
+     *
+     * @param {string} localUuid - The local UUID of the message.
+     * @returns {Promise<Object|null>} Resolves with the message, or null if not found.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getMessage: async (localUuid) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -276,6 +418,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_messages.get(localUuid)
     },
 
+    /**
+     * Saves or overwrites a local message record.
+     *
+     * @param {Object} message - The message record.
+     * @returns {Promise<*>} Resolves with the message local UUID.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     saveMessage: async (message) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -283,6 +432,14 @@ export function createWebStorageAdapter () {
       return dbInstance.local_messages.put(message)
     },
 
+    /**
+     * Updates an existing message record with changes.
+     *
+     * @param {string} localUuid - The local UUID of the message.
+     * @param {Object} changes - The fields and values to update.
+     * @returns {Promise<number>} Resolves with the number of updated records.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     updateMessage: async (localUuid, changes) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -290,6 +447,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_messages.update(localUuid, changes)
     },
 
+    /**
+     * Retrieves the absolute latest message in a room.
+     *
+     * @param {string} roomId - The target room ID.
+     * @returns {Promise<Object|null>} Resolves with the latest message record, or null if none.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getAbsoluteLatestMessage: async (roomId) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -302,24 +466,41 @@ export function createWebStorageAdapter () {
       return messages[0] || null
     },
 
+    /**
+     * Retrieves local messages for a room, sorted by creation timestamp.
+     * Supports a limiting count of records to fetch.
+     *
+     * @param {string} roomId - The target room ID.
+     * @param {number} [limit] - The maximum number of messages to retrieve.
+     * @returns {Promise<Array<Object>>} Resolves with the retrieved sorted messages.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getMessagesByRoom: async (roomId, limit) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
       }
-      let query = dbInstance.local_messages.where('room_id').equals(roomId)
+      const query = dbInstance.local_messages.where('room_id').equals(roomId)
       if (limit) {
-        // Dexie sortBy is performed in memory or on index, let's keep it consistent
         const raw = await query.sortBy('created_at')
         return raw.slice(0, limit)
       }
       return query.sortBy('created_at')
     },
 
+    /**
+     * Retrieves room messages after a cursor message in order of creation timestamp.
+     *
+     * @param {string} roomId - The target room ID.
+     * @param {Object} [lastItem] - The cursor message to start after.
+     * @param {number} batchSize - The batch size of messages to retrieve.
+     * @returns {Promise<Array<Object>>} Resolves with a slice of matching sorted messages.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getMessagesByRoomCursor: async (roomId, lastItem, batchSize) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
       }
-      let query = dbInstance.local_messages.where('room_id').equals(roomId)
+      const query = dbInstance.local_messages.where('room_id').equals(roomId)
       const allMatching = await query.sortBy('created_at')
       let startIndex = 0
       if (lastItem) {
@@ -328,6 +509,13 @@ export function createWebStorageAdapter () {
       return allMatching.slice(startIndex, startIndex + batchSize)
     },
 
+    /**
+     * Retrieves the latest non-reaction, non-signaling message in a room.
+     *
+     * @param {string} roomId - The target room ID.
+     * @returns {Promise<Object|null>} Resolves with the message, or null if none exist.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getLatestMessage: async (roomId) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -340,6 +528,12 @@ export function createWebStorageAdapter () {
       return messages.find(m => m.type !== 'reaction' && m.type !== 'ice_candidate')
     },
 
+    /**
+     * Retrieves the single local message with the absolute latest creation timestamp.
+     *
+     * @returns {Promise<Object|null>} Resolves with the message, or null if none.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getLatestGlobalMessage: async () => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -347,6 +541,12 @@ export function createWebStorageAdapter () {
       return dbInstance.local_messages.orderBy('created_at').last()
     },
 
+    /**
+     * Retrieves all messages containing links, sorted descending by creation timestamp.
+     *
+     * @returns {Promise<Array<Object>>} Resolves with sorted link messages.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getLinkMessages: async () => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -354,6 +554,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_messages.where('type').equals('link').reverse().sortBy('created_at')
     },
 
+    /**
+     * Retrieves reaction messages targeted to a specific message ID or multiple IDs.
+     *
+     * @param {string|Array<string>} targetIds - The target message ID or array of IDs.
+     * @returns {Promise<Array<Object>>} Resolves with an array of matching reaction messages.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getMessageReactions: async (targetIds) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -362,7 +569,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_messages.where('target_id').anyOf(ids).toArray()
     },
 
-    // Asset Domain
+    /**
+     * Retrieves an asset record by ID.
+     *
+     * @param {string} id - The unique ID of the asset.
+     * @returns {Promise<Object|null>} Resolves with the asset object, or null if not found.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getAsset: async (id) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -370,6 +583,13 @@ export function createWebStorageAdapter () {
       return dbInstance.local_assets.get(id)
     },
 
+    /**
+     * Saves or overwrites an asset record.
+     *
+     * @param {Object} asset - The asset data object.
+     * @returns {Promise<*>} Resolves with the asset ID.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     saveAsset: async (asset) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -377,6 +597,16 @@ export function createWebStorageAdapter () {
       return dbInstance.local_assets.put(asset)
     },
 
+    /**
+     * Retrieves and filters asset records by mime-type category, sorted descending by creation timestamp.
+     * Supports cursor pagination and batch size limits.
+     *
+     * @param {string} category - The mime-type category ('image', 'video', 'audio', 'document', or other).
+     * @param {Object} [lastItem] - The cursor asset record to start after.
+     * @param {number} [batchSize] - The batch size of assets to retrieve.
+     * @returns {Promise<Array<Object>>} Resolves with sorted, filtered asset records.
+     * @throws {Error} Throws if the database is not initialized.
+     */
     getAssetsByCategory: async (category, lastItem, batchSize) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
@@ -395,7 +625,6 @@ export function createWebStorageAdapter () {
       }
 
       if (category === 'document' && !lastItem && !batchSize) {
-        // Handle custom sort for document-list (allAssets)
         return dbInstance.local_assets.reverse().sortBy('created_at')
       }
 
