@@ -10,9 +10,9 @@ export default definePlugin({
       let resolvedAdapter = null
 
       /**
-       * Dynamically gets either the web or native deep link adapter.
+       * Dynamically resolves either the web or native deep link adapter.
        *
-       * @param {Object} instanceContext Global context of the instance.
+       * @param {Object} instanceContext - Global context of the instance.
        * @returns {Promise<Object>} Resolved deep link adapter.
        */
       const getAdapter = async (instanceContext) => {
@@ -23,16 +23,16 @@ export default definePlugin({
         try {
           const { Capacitor } = await import('@capacitor/core')
           if (Capacitor.isNativePlatform()) {
-            console.info('[deeplink-plugin] Native platform detected. Loading Native Deep Link Adapter.')
             const { createNativeDeepLinkAdapter } = await import('./deeplink-adapter-native.js')
             resolvedAdapter = createNativeDeepLinkAdapter(instanceContext)
             return resolvedAdapter
           }
-        } catch (_err) {
-          /* Fall back gracefully to Web adapter */
+        } catch (err) {
+          if (err && err.code !== 'MODULE_NOT_FOUND' && !err.message?.includes('Cannot find module')) {
+            throw err
+          }
         }
 
-        console.info('[deeplink-plugin] Web platform detected. Loading Web Deep Link Adapter.')
         const { createWebDeepLinkAdapter } = await import('./deeplink-adapter-web.js')
         resolvedAdapter = createWebDeepLinkAdapter(instanceContext)
         return resolvedAdapter
@@ -43,19 +43,17 @@ export default definePlugin({
 
       /* Phase 2: Local Instance */
       return (instanceContext) => {
-        const bus = instanceContext.eventBus?.$bus
+        const bus = instanceContext.eventBus.$bus
 
         return {
           /**
            * Initializes deep linking on the active adapter.
            *
-           * @returns {Promise<void>} Resolves when initialized.
+           * @returns {Promise<void>} Resolves when deep linking is initialized.
            */
           async initialize () {
             const adapter = await getAdapter(instanceContext)
-            if (adapter && typeof adapter.initialize === 'function') {
-              await adapter.initialize(bus)
-            }
+            await adapter.initialize(bus)
           }
         }
       }

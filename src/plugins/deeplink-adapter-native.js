@@ -1,10 +1,10 @@
 /**
  * Creates an instance of the Native Deep Link Adapter.
  *
- * @param {Object} [_instanceContext] Optional instance context.
+ * @param {Object} instanceContext Global context of the instance.
  * @returns {Object} Exposes standard deep link adapter methods.
  */
-export function createNativeDeepLinkAdapter (_instanceContext) {
+export function createNativeDeepLinkAdapter (instanceContext) {
   return {
     /**
      * Initializes the adapter to listen to native OS appUrlOpen events.
@@ -15,8 +15,7 @@ export function createNativeDeepLinkAdapter (_instanceContext) {
     async initialize (bus) {
       try {
         const { App } = await import('@capacitor/app')
-        await App.addListener('appUrlOpen', (event) => {
-          console.log('[NativeDeepLinkAdapter] App URL opened event:', event)
+        const listener = await App.addListener('appUrlOpen', (event) => {
           if (!event.url) {
             return
           }
@@ -34,14 +33,22 @@ export function createNativeDeepLinkAdapter (_instanceContext) {
               queryParams
             }
 
-            console.log('[NativeDeepLinkAdapter] Emitting app:route_requested:', payload)
             bus.emit('app:route_requested', payload)
           } catch (err) {
-            console.error('[NativeDeepLinkAdapter] Failed to parse opened URL:', event.url, err)
+            if (err instanceof TypeError || err instanceof ReferenceError) {
+              throw err
+            }
           }
         })
+
+        const signal = instanceContext.signal
+        signal.addEventListener('abort', () => {
+          listener.remove()
+        })
       } catch (err) {
-        console.error('[NativeDeepLinkAdapter] Failed to load @capacitor/app or add listener:', err)
+        if (err && err.code !== 'MODULE_NOT_FOUND' && !err.message?.includes('Cannot find module')) {
+          throw err
+        }
       }
     }
   }

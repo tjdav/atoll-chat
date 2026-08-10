@@ -1,10 +1,10 @@
 /**
  * Creates an instance of the Web Deep Link Adapter.
  *
- * @param {Object} [_instanceContext] Optional instance context.
+ * @param {Object} instanceContext Global context of the instance.
  * @returns {Object} Exposes standard deep link adapter methods.
  */
-export function createWebDeepLinkAdapter (_instanceContext) {
+export function createWebDeepLinkAdapter (instanceContext) {
   return {
     /**
      * Initializes the adapter to read URL on boot and listen to popstate navigations.
@@ -12,6 +12,13 @@ export function createWebDeepLinkAdapter (_instanceContext) {
      * @param {Object} bus Global event bus.
      */
     initialize (bus) {
+      /**
+       * Parses pathname and search parameters into a route payload.
+       *
+       * @param {string} pathname The current window location pathname.
+       * @param {string} search The current window location search string.
+       * @returns {Object} The route payload with path and query parameters.
+       */
       const getRoutePayload = (pathname, search) => {
         const queryParams = {}
         try {
@@ -20,7 +27,9 @@ export function createWebDeepLinkAdapter (_instanceContext) {
             queryParams[key] = value
           }
         } catch (err) {
-          console.error('[WebDeepLinkAdapter] Failed to parse search parameters:', err)
+          if (err instanceof TypeError || err instanceof ReferenceError) {
+            throw err
+          }
         }
         return {
           path: pathname,
@@ -30,23 +39,19 @@ export function createWebDeepLinkAdapter (_instanceContext) {
 
       /* Broadcast initial route on boot */
       const initialPayload = getRoutePayload(window.location.pathname, window.location.search)
-      console.log('[WebDeepLinkAdapter] Initial route on boot:', initialPayload)
       bus.emit('app:route_requested', initialPayload)
 
       /* Listen to browser popstate for runtime URL updates */
       const onPopState = () => {
         const payload = getRoutePayload(window.location.pathname, window.location.search)
-        console.log('[WebDeepLinkAdapter] Route updated via popstate:', payload)
         bus.emit('app:route_requested', payload)
       }
 
       window.addEventListener('popstate', onPopState)
 
-      if (_instanceContext && _instanceContext.signal) {
-        _instanceContext.signal.addEventListener('abort', () => {
-          window.removeEventListener('popstate', onPopState)
-        })
-      }
+      instanceContext.signal.addEventListener('abort', () => {
+        window.removeEventListener('popstate', onPopState)
+      })
     }
   }
 }
