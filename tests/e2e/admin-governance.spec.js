@@ -14,31 +14,31 @@ test.describe('Super-User Administration & Zero-Knowledge Delegated Invite Syste
     await page.locator('[data-testid$="btnSettings"]').click()
 
     // Verify ADMINISTRATION navbar section exists for Owner (Alice)
-    await expect(page.locator('[data-testid="nav-admin-overview"]')).toBeVisible()
-    await expect(page.locator('[data-testid="nav-admin-trust"]')).toBeVisible()
-    await expect(page.locator('[data-testid="nav-admin-requests"]')).toBeVisible()
+    await expect(page.locator('[data-testid$="nav-admin-overview"]')).toBeVisible()
+    await expect(page.locator('[data-testid$="nav-admin-trust"]')).toBeVisible()
+    await expect(page.locator('[data-testid$="nav-admin-requests"]')).toBeVisible()
 
     // Go to overview and verify statistics
-    await page.locator('[data-testid="nav-admin-overview"]').click()
-    await expect(page.locator('[data-testid="statTotalUsers"]')).not.toContainText('--')
+    await page.locator('[data-testid$="nav-admin-overview"]').click()
+    await expect(page.locator('[data-testid$="statTotalUsers"]')).not.toContainText('--')
 
     // Change delegation mode and save
-    await page.locator('[data-testid="modeStrict"]').click()
-    await page.locator('[data-testid="btnSaveGovernance"]').click()
-    await expect(page.locator('[data-testid="saveSuccessAlert"]')).toBeVisible()
+    await page.locator('[data-testid$="modeStrict"]').click()
+    await page.locator('[data-testid$="btnSaveGovernance"]').click()
+    await expect(page.locator('[data-testid$="saveSuccessAlert"]')).toBeVisible()
 
     // Restore to delegated mode and save
-    await page.locator('[data-testid="modeDelegated"]').click()
-    await page.locator('[data-testid="btnSaveGovernance"]').click()
-    await expect(page.locator('[data-testid="saveSuccessAlert"]')).toBeVisible()
+    await page.locator('[data-testid$="modeDelegated"]').click()
+    await page.locator('[data-testid$="btnSaveGovernance"]').click()
+    await expect(page.locator('[data-testid$="saveSuccessAlert"]')).toBeVisible()
 
     // Check trust matrix
-    await page.locator('[data-testid="nav-admin-trust"]').click()
-    await expect(page.locator('[data-testid="usersTableBody"]')).toContainText('bob')
+    await page.locator('[data-testid$="nav-admin-trust"]').click()
+    await expect(page.locator('[data-testid$="usersTableBody"]')).toContainText('bob')
 
     // Generate an invite link
-    await page.locator('[data-testid="nav-invitations"]').click()
-    await page.locator('[data-testid="btnGenerateInvite"]').click()
-    await expect(page.locator('[data-testid="generatedCode"]')).toContainText('INV-')
+    await page.locator('[data-testid$="nav-invitations"]').click()
+    await page.locator('[data-testid$="btnGenerateInvite"]').click()
+    await expect(page.locator('[data-testid$="generatedCode"]')).toContainText('INV-')
   })
 })
