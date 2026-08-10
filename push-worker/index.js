@@ -19,13 +19,111 @@ const vapidPrivateKey = process.env.ATOLL_VAPID_PRIVATE_KEY
 const vapidSubject = process.env.ATOLL_VAPID_SUBJECT
 
 if (vapidPublicKey && vapidPrivateKey && vapidSubject) {
-  console.log('[push-worker] VAPID keys loaded successfully.')
   webpush.setVapidDetails(vapidSubject, vapidPublicKey, vapidPrivateKey)
-} else {
-  console.warn('[push-worker] Warning: VAPID keys or subject are missing from environment.')
 }
 
-const server = http.createServer((req, res) => {
+/**
+ * Safely parses an ALTCHA payload from either raw JSON string or base64-encoded JSON string.
+ * @param {any} payload - The payload to parse.
+ * @returns {any} The parsed payload object.
+ * @throws {SyntaxError} If the payload cannot be parsed.
+ */
+function parseAltchaPayload (payload) {
+  if (!payload) {
+    throw new SyntaxError('Missing payload')
+  }
+  if (typeof payload === 'object') {
+    return payload
+  }
+  if (typeof payload !== 'string') {
+    throw new SyntaxError('Invalid payload type')
+  }
+
+  const trimmed = payload.trim()
+  let jsonStr = trimmed
+
+  if (!/^\s*\{/.test(trimmed)) {
+    const decoded = Buffer.from(trimmed, 'base64').toString('utf8')
+    if (!/^\s*\{/.test(decoded)) {
+      throw new SyntaxError(`Invalid ALTCHA payload structure: ${payload}`)
+    }
+    jsonStr = decoded
+  }
+
+  try {
+    return JSON.parse(jsonStr)
+  } catch (err) {
+    throw new SyntaxError(`Malformed JSON in ALTCHA payload: ${err.message}`)
+  }
+}
+
+/**
+ * Asynchronously processes push notifications for recipients in the background.
+ * Collects stale/expired user_ids (410/404) and posts them back to PocketBase webhook in batches.
+ * @param {Array<{user_id: string, subscription: any}>} recipients - List of user IDs and subscriptions
+ * @param {any} payload - The push payload content
+ * @returns {Promise<void>}
+ * @throws {Error} If a push notification or webhook pruning request fails unexpectedly.
+ */
+async function processPushRecipientsAsync (recipients, payload) {
+  const staleUserIds = []
+  const serializedPayload = JSON.stringify(payload)
+
+  for (const item of recipients) {
+    const { user_id, subscription } = item
+    if (!subscription || !subscription.endpoint) {
+      staleUserIds.push(user_id)
+      continue
+    }
+
+    try {
+      await webpush.sendNotification(subscription, serializedPayload)
+    } catch (error) {
+      if (error.statusCode === 410 || error.statusCode === 404) {
+        staleUserIds.push(user_id)
+      } else if (error.message && (error.message.includes('subscription') || error.message.includes('endpoint'))) {
+        staleUserIds.push(user_id)
+      } else {
+        throw error
+      }
+    }
+  }
+
+  if (staleUserIds.length > 0) {
+    const MAX_BATCH_SIZE = 500
+
+    for (let i = 0; i < staleUserIds.length; i += MAX_BATCH_SIZE) {
+      const chunk = staleUserIds.slice(i, i + MAX_BATCH_SIZE)
+
+      try {
+        const response = await fetch(`${pocketbaseUrl}/api/internal/prune-subscriptions`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Worker-Token': internalWorkerSecret
+          },
+          body: JSON.stringify({ user_ids: chunk })
+        })
+
+        if (!response.ok) {
+          throw new Error(`Failed to prune subscriptions. HTTP status: ${response.status}`)
+        }
+      } catch (err) {
+        throw err
+      }
+    }
+  }
+}
+
+/**
+ * Main HTTP request handler for the push-worker microservice.
+ * Handles CORS preflight options, ALTCHA challenge generation,
+ * ALTCHA verification, and sending push notifications.
+ * @param {import('http').IncomingMessage} req - The incoming HTTP request.
+ * @param {import('http').ServerResponse} res - The outgoing HTTP response.
+ * @returns {void}
+ */
+function handleRequest (req, res) {
   // CORS configuration
   res.setHeader('Access-Control-Allow-Origin', '*')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
@@ -52,7 +150,6 @@ const server = http.createServer((req, res) => {
       res.writeHead(200, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify(challenge))
     }).catch(err => {
-      console.error('[push-worker] Error generating ALTCHA challenge:', err)
       res.writeHead(500, { 'Content-Type': 'application/json' })
       res.end(JSON.stringify({ error: err.message }))
     })
@@ -80,24 +177,12 @@ const server = http.createServer((req, res) => {
         // Deterministic bypass for test / mock bypass tokens
         const isTestEnv = process.env.CORALITE_MODE === 'testing'
         if (isTestEnv && payload === 'atoll-mock-bypass-token') {
-          console.log('[push-worker] Bypassing ALTCHA verification for mock bypass token')
           res.writeHead(200, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ success: true }))
           return
         }
 
-        let payloadObj = payload
-        if (typeof payload === 'string') {
-          try {
-            payloadObj = JSON.parse(payload)
-          } catch {
-            try {
-              payloadObj = JSON.parse(Buffer.from(payload, 'base64').toString('utf8'))
-            } catch {
-              throw new SyntaxError(`Invalid ALTCHA payload structure: ${payload}`)
-            }
-          }
-        }
+        const payloadObj = parseAltchaPayload(payload)
 
         const result = await verifySolution({
           challenge: payloadObj.challenge,
@@ -114,7 +199,6 @@ const server = http.createServer((req, res) => {
           res.end(JSON.stringify({ error: 'Invalid challenge solution' }))
         }
       } catch (err) {
-        console.error('[push-worker] Error verifying ALTCHA solution:', err)
         res.writeHead(500, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ error: err.message }))
       }
@@ -157,11 +241,10 @@ const server = http.createServer((req, res) => {
 
         // Execute background notification iteration asynchronously
         processPushRecipientsAsync(recipients, payload).catch(err => {
-          console.error('[push-worker] Error during async recipients processing:', err)
+          throw err
         })
 
       } catch (err) {
-        console.error('[push-worker] Error processing /send-push request:', err)
         if (!res.writableEnded) {
           res.writeHead(500, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: err.message }))
@@ -172,70 +255,8 @@ const server = http.createServer((req, res) => {
     res.writeHead(404, { 'Content-Type': 'application/json' })
     res.end(JSON.stringify({ error: 'Not Found' }))
   }
-})
-
-/**
- * Asynchronously processes push notifications for recipients in the background.
- * Collects stale/expired user_ids (410/404) and posts them back to PocketBase webhook in batches.
- * @param {Array<{user_id: string, subscription: any}>} recipients - List of user IDs and subscriptions
- * @param {any} payload - The push payload content
- */
-async function processPushRecipientsAsync (recipients, payload) {
-  const staleUserIds = []
-  const serializedPayload = JSON.stringify(payload)
-
-  for (const item of recipients) {
-    const { user_id, subscription } = item
-    if (!subscription || !subscription.endpoint) {
-      console.warn(`[push-worker] Subscription for user ${user_id} is missing an endpoint or invalid. Queueing for pruning.`)
-      staleUserIds.push(user_id)
-      continue
-    }
-
-    try {
-      await webpush.sendNotification(subscription, serializedPayload)
-    } catch (error) {
-      if (error.statusCode === 410 || error.statusCode === 404) {
-        console.warn(`[push-worker] Subscription for user ${user_id} expired/revoked (Status ${error.statusCode}). Queueing for pruning.`)
-        staleUserIds.push(user_id)
-      } else if (error.message && (error.message.includes('subscription') || error.message.includes('endpoint'))) {
-        console.warn(`[push-worker] Subscription validation failed for user ${user_id}: ${error.message}. Queueing for pruning.`)
-        staleUserIds.push(user_id)
-      } else {
-        console.error(`[push-worker] Push failed for user ${user_id}:`, error)
-      }
-    }
-  }
-
-  if (staleUserIds.length > 0) {
-    console.log(`[push-worker] Collected ${staleUserIds.length} stale subscription(s) to prune. Sending pruning request...`)
-    const MAX_BATCH_SIZE = 500
-
-    for (let i = 0; i < staleUserIds.length; i += MAX_BATCH_SIZE) {
-      const chunk = staleUserIds.slice(i, i + MAX_BATCH_SIZE)
-
-      try {
-        const response = await fetch(`${pocketbaseUrl}/api/internal/prune-subscriptions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Worker-Token': internalWorkerSecret
-          },
-          body: JSON.stringify({ user_ids: chunk })
-        })
-
-        if (!response.ok) {
-          console.error(`[push-worker] Failed to prune subscriptions. HTTP status: ${response.status}`)
-        } else {
-          console.log(`[push-worker] Successfully pruned subscription chunk of size ${chunk.length}`)
-        }
-      } catch (err) {
-        console.error('[push-worker] Failed to trigger prune webhook:', err)
-      }
-    }
-  }
 }
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log(`[push-worker] Listening on port ${PORT}`)
-})
+const server = http.createServer(handleRequest)
+
+server.listen(PORT, '0.0.0.0')
