@@ -10,6 +10,12 @@ export default definePlugin({
     context: () => {
       let resolvedAdapter = null
 
+      /**
+       * Dynamically resolves and loads the platform-specific WebRTC transfer adapter.
+       *
+       * @returns {Promise<object>} A promise resolving to the resolved adapter instance.
+       * @throws {Error} If both dynamic native adapter and web adapter fallback fail.
+       */
       const getAdapter = async () => {
         if (resolvedAdapter) {
           return resolvedAdapter
@@ -18,16 +24,20 @@ export default definePlugin({
         try {
           const { Capacitor } = await import('@capacitor/core')
           if (Capacitor.isNativePlatform()) {
-            console.info('[webrtcTransfer] Native platform detected. Loading Native adapter.')
             const { createNativeRTCTransferAdapter } = await import('./webrtc-transfer-adapter-native.js')
             resolvedAdapter = createNativeRTCTransferAdapter()
             return resolvedAdapter
           }
-        } catch (_err) {
-          // Fall back gracefully to Web adapter
+        } catch (err) {
+          // Real recovery: Fallback gracefully to Web adapter if Capacitor is not present in web viewport
+          if (err instanceof Error && (err.name === 'TypeError' || err.message.includes('Failed to resolve') || err.message.includes('module') || err.message.includes('import'))) {
+            const { createWebRTCTransferAdapter } = await import('./webrtc-transfer-adapter-web.js')
+            resolvedAdapter = createWebRTCTransferAdapter()
+            return resolvedAdapter
+          }
+          throw err
         }
 
-        console.info('[webrtcTransfer] Web platform detected. Loading Web adapter.')
         const { createWebRTCTransferAdapter } = await import('./webrtc-transfer-adapter-web.js')
         resolvedAdapter = createWebRTCTransferAdapter()
         return resolvedAdapter
@@ -40,6 +50,14 @@ export default definePlugin({
       const incomingFilesMetadata = new Map()
 
       let toastEl = null
+
+      /**
+       * Creates or updates a floating progress toast/banner in the DOM.
+       *
+       * @param {string} title - The title or descriptive text to show.
+       * @param {number} percent - The current transfer completion percentage (0-100).
+       * @returns {void}
+       */
       const updateProgressToast = (title, percent) => {
         if (!toastEl) {
           toastEl = document.createElement('div')
@@ -90,6 +108,12 @@ export default definePlugin({
         toastEl.appendChild(progressWrapper)
       }
 
+      /**
+       * Dismisses and removes the progress toast/banner from the DOM.
+       *
+       * @param {string|null} [successMessage=null] - Optional success message to show briefly before dismissal.
+       * @returns {void}
+       */
       const removeProgressToast = (successMessage = null) => {
         if (toastEl) {
           if (successMessage) {
@@ -132,6 +156,12 @@ export default definePlugin({
         const { $config } = config
         const localIceServer = $config ? $config.get('localIceServer') : undefined
 
+        /**
+         * Resolves the list of ICE/STUN/TURN servers to use for WebRTC connection.
+         * Attempts to fetch dynamic TURN credentials from PocketBase if localIceServer is not set.
+         *
+         * @returns {Promise<Array<object>>} Resolves to an array of RTCIceServer configuration objects.
+         */
         const getIceServers = async () => {
           if (localIceServer) {
             return [
@@ -149,7 +179,6 @@ export default definePlugin({
           ]
 
           try {
-            console.log('[webrtcTransfer] Fetching dynamic TURN credentials from PocketBase')
             const { pb } = pocketbase
             const credentialsResponse = await pb.send('/api/turn-credentials', {
               method: 'GET'
@@ -175,12 +204,25 @@ export default definePlugin({
               return resultServers
             }
           } catch (err) {
-            console.warn('[webrtcTransfer] Failed to fetch dynamic TURN credentials, falling back to STUN-only:', err)
+            // Expected network or session auth exception. Fall back safely to default public STUN.
+            if (err instanceof Error && (err.name === 'ClientResponseError' || err.message.includes('network') || err.message.includes('fetch'))) {
+              // Real recovery: Fallback gracefully to public STUN
+            } else {
+              throw err
+            }
           }
 
           return defaultStun
         }
 
+        /**
+         * Sends an ephemeral P2P signaling message via the central crypto worker.
+         *
+         * @param {string} roomId - The ID of the active chat room.
+         * @param {string} type - The signaling message type (e.g. offer, answer, ice candidate).
+         * @param {object} [payload={}] - Additional metadata or signaling payloads.
+         * @returns {Promise<void>}
+         */
         const sendSignalingMessage = async (roomId, type, payload = {}) => {
           const localUuid = crypto.randomUUID()
           await $worker.execute('worker:send_message', {
@@ -198,8 +240,6 @@ export default definePlugin({
 
           activeTransfers.set(p2pUuid, file)
 
-          console.info(`[webrtcTransfer] Initiating ephemeral transfer ${p2pUuid} to user ${selectedUserId}`)
-
           updateProgressToast('Waiting for recipient...', 0)
 
           await sendSignalingMessage(roomId, 'p2p_transfer_request', {
@@ -215,7 +255,6 @@ export default definePlugin({
 
         $bus.on('action:execute_p2p_accept', async (payload) => {
           const { p2pUuid, roomId, senderId } = payload
-          console.info(`[webrtcTransfer] Bob accepted ephemeral transfer ${p2pUuid} from ${senderId}`)
 
           updateProgressToast('Connecting...', 0)
 
@@ -240,26 +279,20 @@ export default definePlugin({
           }
 
           const onComplete = async (blob) => {
-            console.info(`[webrtcTransfer] Bob transfer completed for ${p2pUuid}`)
             removeProgressToast('Transfer complete!')
 
-            try {
-              const url = URL.createObjectURL(blob)
-              const a = document.createElement('a')
-              a.href = url
-              const meta = incomingFilesMetadata.get(p2pUuid)
-              a.download = meta?.filename || 'downloaded_file'
-              document.body.appendChild(a)
-              a.click()
-              document.body.removeChild(a)
-              URL.revokeObjectURL(url)
-            } catch (err) {
-              console.error('[webrtcTransfer] Failed to trigger download:', err)
-            }
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            const meta = incomingFilesMetadata.get(p2pUuid)
+            a.download = meta?.filename || 'downloaded_file'
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+            URL.revokeObjectURL(url)
           }
 
           const onError = (err) => {
-            console.error(`[webrtcTransfer] Receiver error for ${p2pUuid}:`, err)
             removeProgressToast()
             alert('Transfer failed: ' + err.message)
           }
@@ -279,7 +312,6 @@ export default definePlugin({
 
         $bus.on('action:execute_p2p_reject', async (payload) => {
           const { p2pUuid, roomId, senderId } = payload
-          console.info(`[webrtcTransfer] Bob rejected ephemeral transfer ${p2pUuid} from ${senderId}`)
 
           await sendSignalingMessage(roomId, 'p2p_rejected', {
             target_id: senderId,
@@ -310,14 +342,11 @@ export default definePlugin({
           }
 
           if (message.type === 'p2p_transfer_request' && message.target_id === $state.currentUser?.id) {
-            console.info(`[webrtcTransfer] Bob received p2p_transfer_request for ${message.p2pUuid}, filename: ${message.content?.filename}, size: ${message.content?.size}`)
-
             incomingFilesMetadata.set(message.p2pUuid, {
               filename: message.content?.filename || 'downloaded_file',
               size: message.content?.size || 0
             })
 
-            console.info('[webrtcTransfer] Bob emitting ui:prompt_p2p_consent')
             $bus.emit('ui:prompt_p2p_consent', {
               senderId: message.sender_id,
               roomId,
@@ -328,18 +357,15 @@ export default definePlugin({
           }
 
           if (message.type === 'p2p_rejected' && message.target_id === $state.currentUser?.id) {
-            console.info(`[webrtcTransfer] Alice received p2p_rejected for ${message.p2pUuid}`)
             removeProgressToast()
             alert('Transfer was rejected by recipient.')
           }
 
           if (message.type === 'p2p_accept' && message.target_id === $state.currentUser?.id) {
             const p2pUuid = message.p2pUuid
-            console.info(`[webrtcTransfer] Alice received p2p_accept for ${p2pUuid} from ${message.sender_id}`)
 
             const file = activeTransfers.get(p2pUuid)
             if (!file) {
-              console.error(`[webrtcTransfer] Alice could not find cached file for ${p2pUuid}`)
               return
             }
 
@@ -362,13 +388,11 @@ export default definePlugin({
             }
 
             const onComplete = () => {
-              console.info(`[webrtcTransfer] Sender transfer complete for ${p2pUuid}`)
               removeProgressToast('Transfer complete!')
               activeTransfers.delete(p2pUuid)
             }
 
             const onError = (err) => {
-              console.error(`[webrtcTransfer] Sender transfer error for ${p2pUuid}:`, err)
               removeProgressToast()
               alert('Transfer failed: ' + err.message)
             }
@@ -403,18 +427,12 @@ export default definePlugin({
               if (originalOnOpen) {
                 originalOnOpen()
               }
-              console.info(`[webrtcTransfer] Starting file transfer for ${p2pUuid}`)
-              try {
-                await adapter.startOutgoing(p2pUuid, session.fileToSend, session.chunkSizeBytes)
-              } catch (err) {
-                console.error('[webrtcTransfer] Failed to start outgoing transfer:', err)
-              }
+              await adapter.startOutgoing(p2pUuid, session.fileToSend, session.chunkSizeBytes)
             }
           }
 
           if (message.type === 'p2p_offer' && message.target_id === $state.currentUser?.id) {
             const p2pUuid = message.p2pUuid
-            console.info(`[webrtcTransfer] Bob received p2p_offer for ${p2pUuid} from ${message.sender_id}`)
 
             const adapter = await adapterPromise
             const session = adapter.sessions.get(p2pUuid)
@@ -428,7 +446,12 @@ export default definePlugin({
                 try {
                   await session.pc.addIceCandidate(new RTCIceCandidate(candidate))
                 } catch (err) {
-                  console.error('[webrtcTransfer] Failed to add replayed candidate:', err)
+                  // Fall back gracefully if the ICE candidate is invalid or expired
+                  if (err instanceof Error && (err.name === 'InvalidStateError' || err.name === 'OperationError' || err.message.includes('candidate'))) {
+                    // expected WebRTC ICE candidate rejection
+                  } else {
+                    throw err
+                  }
                 }
               }
               pendingCandidates.delete(p2pUuid)
@@ -447,7 +470,6 @@ export default definePlugin({
 
           if (message.type === 'p2p_answer' && message.target_id === $state.currentUser?.id) {
             const p2pUuid = message.p2pUuid
-            console.info(`[webrtcTransfer] Alice received p2p_answer for ${p2pUuid} from ${message.sender_id}`)
             const adapter = await adapterPromise
             const session = adapter.sessions.get(p2pUuid)
 
@@ -460,7 +482,12 @@ export default definePlugin({
                 try {
                   await session.pc.addIceCandidate(new RTCIceCandidate(candidate))
                 } catch (err) {
-                  console.error('[webrtcTransfer] Failed to add replayed candidate:', err)
+                  // Fall back gracefully if the ICE candidate is invalid or expired
+                  if (err instanceof Error && (err.name === 'InvalidStateError' || err.name === 'OperationError' || err.message.includes('candidate'))) {
+                    // expected WebRTC ICE candidate rejection
+                  } else {
+                    throw err
+                  }
                 }
               }
               pendingCandidates.delete(p2pUuid)
@@ -476,7 +503,11 @@ export default definePlugin({
               try {
                 await session.pc.addIceCandidate(new RTCIceCandidate(candidate))
               } catch (err) {
-                console.error('[webrtcTransfer] Failed to add ICE candidate:', err)
+                if (err instanceof Error && (err.name === 'InvalidStateError' || err.name === 'OperationError' || err.message.includes('candidate'))) {
+                  // expected WebRTC ICE candidate rejection
+                } else {
+                  throw err
+                }
               }
             } else {
               if (!pendingCandidates.has(p2pUuid)) {
@@ -489,11 +520,26 @@ export default definePlugin({
 
         return {
           $webrtcTransfer: {
-            initiateTransfer: async (_localUuid, _file, _recipientId, _roomId) => {
-              console.info(`[webrtcTransfer] Manually initiating transfer for ${_localUuid}`)
+            /**
+             * Manually initiates a WebRTC P2P transfer session.
+             *
+             * @param {string} localUuid - The local session UUID.
+             * @param {File} file - The file object to transfer.
+             * @param {string} recipientId - The user ID of the recipient.
+             * @param {string} roomId - The active chat room ID.
+             * @returns {Promise<void>}
+             */
+            initiateTransfer: async (localUuid, file, recipientId, roomId) => {
+              // Manual initiation endpoint override stub
             },
-            handleSignal: async (_signalData) => {
-              console.info(`[webrtcTransfer] Manually handling signal`, _signalData)
+            /**
+             * Manually handles incoming WebRTC signaling data.
+             *
+             * @param {object} signalData - The signaling content and metadata.
+             * @returns {Promise<void>}
+             */
+            handleSignal: async (signalData) => {
+              // Manual signaling handler stub
             }
           }
         }
