@@ -19,18 +19,23 @@
       let currentTargetId = null
       let picker = null
 
+      /**
+       * Initializes the emoji picker component.
+       * Creates the picker element dynamically, appends it to the container,
+       * and registers interaction event listeners.
+       *
+       * @returns {Promise<void>} Resolves when initialization is complete.
+       */
       const initPicker = async () => {
         if (picker || !$emojiPicker) {
           return
         }
   
-        console.log('[atoll-chat-reaction-picker] Initializing picker')
         picker = await $emojiPicker.createPicker({})
         picker.classList.add('light')
         pickerContainer.appendChild(picker)
   
         picker.addEventListener('emoji-click', (event) => {
-          console.log('[atoll-chat-reaction-picker] Emoji clicked:', event.detail.unicode)
           if (currentTargetId === 'CHAT_INPUT') {
             $bus.emit('ui:emoji_selected', {
               emoji: event.detail.unicode
@@ -45,12 +50,20 @@
             })
           }
           hide()
-        })
+        }, { signal })
       }
 
+      /**
+       * Shows the reaction picker at the specified coordinates for a given target.
+       *
+       * @param {Object} payload - The show parameters.
+       * @param {number} payload.x - The viewport X coordinate.
+       * @param {number} payload.y - The viewport Y coordinate.
+       * @param {string} payload.targetId - The identifier of the message or element the reaction belongs to.
+       * @returns {Promise<void>} Resolves when the picker is visible and correctly positioned.
+       */
       const show = async (payload) => {
         const { x, y, targetId } = payload
-        console.log('[atoll-chat-reaction-picker] show called', payload)
         currentTargetId = targetId
   
         await initPicker()
@@ -58,7 +71,6 @@
         container.style.left = `${x}px`
         container.style.top = `${y}px`
 
-        // use requestAnimationFrame to position after rendering
         container.hidden = false
 
         await new Promise(resolve => requestAnimationFrame(resolve))
@@ -77,23 +89,28 @@
         if (rect.top < 0) {
           container.style.top = '10px'
         }
-        console.log('[atoll-chat-reaction-picker] Picker visible at', container.style.left, container.style.top)
       }
 
+      /**
+       * Hides the reaction picker and resets the active target reference.
+       */
       const hide = () => {
         container.hidden = true
         currentTargetId = null
       }
 
-      // Hide on click outside
+      /**
+       * Handles outer mouse down events to hide the picker if the click occurred outside.
+       *
+       * @param {Object} e - The mouse down event.
+       */
       const handleClickOutside = (e) => {
         if (!container.contains(e.target) && !container.hidden) {
           hide()
         }
       }
 
-      document.addEventListener('mousedown', handleClickOutside)
-      signal.addEventListener('abort', () => document.removeEventListener('mousedown', handleClickOutside))
+      document.addEventListener('mousedown', handleClickOutside, { signal })
 
       $bus.on('ui:show_reaction_picker', show)
       $bus.on('ui:hide_reaction_picker', hide)
