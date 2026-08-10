@@ -5,7 +5,9 @@
  */
 
 /**
+ * Creates and returns the Native Storage Adapter instance.
  *
+ * @returns {Object} The native storage adapter instance containing all API methods.
  */
 export function createNativeStorageAdapter () {
   // In-memory/localStorage stores to simulate SQLite persistence on Native
@@ -16,59 +18,97 @@ export function createNativeStorageAdapter () {
   const localFiles = new Map()
 
   // Helper to load existing localStorage keys if any
-  try {
-    if (typeof localStorage !== 'undefined') {
+  if (typeof localStorage !== 'undefined') {
+    try {
       for (let i = 0; i < localStorage.length; i++) {
         const key = localStorage.key(i)
-        if (key.startsWith('atoll_sqlite_')) {
-          const val = JSON.parse(localStorage.getItem(key))
-          if (key.includes('_rooms_')) {
-            localRooms.set(val.id, val)
-          } else if (key.includes('_messages_')) {
-            localMessages.set(val.local_uuid, val)
-          } else if (key.includes('_assets_')) {
-            localAssets.set(val.id, val)
-          } else if (key.includes('_config_')) {
-            localConfig.set(val.key, val)
-          } else if (key.includes('_files_')) {
-            localFiles.set(val.name, val)
+        if (key && key.startsWith('atoll_sqlite_')) {
+          const item = localStorage.getItem(key)
+          if (item) {
+            const val = JSON.parse(item)
+            if (key.includes('_rooms_')) {
+              localRooms.set(val.id, val)
+            } else if (key.includes('_messages_')) {
+              localMessages.set(val.local_uuid, val)
+            } else if (key.includes('_assets_')) {
+              localAssets.set(val.id, val)
+            } else if (key.includes('_config_')) {
+              localConfig.set(val.key, val)
+            } else if (key.includes('_files_')) {
+              localFiles.set(val.name, val)
+            }
           }
         }
       }
+    } catch (err) {
+      if (err instanceof Error && (err.name === 'SecurityError' || err.name === 'QuotaExceededError')) {
+        // Gracefully ignore expected security/quota issues by doing nothing
+      } else {
+        throw err
+      }
     }
-  } catch (err) {
-    console.error('[NativeStorageAdapter] Failed to sync localStorage:', err)
   }
 
+  /**
+   * Helper to persist a serialized record to localStorage as a fallback.
+   *
+   * @param {string} prefix - The namespace or store name.
+   * @param {string} key - The record key.
+   * @param {*} value - The record data.
+   * @throws {Error} Re-throws unexpected storage/serialization exceptions.
+   */
   const persistToLocalStorage = (prefix, key, value) => {
-    try {
-      if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== 'undefined') {
+      try {
         localStorage.setItem(`atoll_sqlite_${prefix}_${key}`, JSON.stringify(value))
+      } catch (err) {
+        if (err instanceof Error && (err.name === 'SecurityError' || err.name === 'QuotaExceededError')) {
+          // Gracefully fallback to memory-only when storage is restricted or full
+        } else {
+          throw err
+        }
       }
-    } catch (err) {
-      console.error('[NativeStorageAdapter] Storage write failed:', err)
     }
   }
 
+  /**
+   * Helper to remove a record from localStorage.
+   *
+   * @param {string} prefix - The namespace or store name.
+   * @param {string} key - The record key.
+   * @throws {Error} Re-throws unexpected deletion/access exceptions.
+   */
   const removeFromLocalStorage = (prefix, key) => {
-    try {
-      if (typeof localStorage !== 'undefined') {
+    if (typeof localStorage !== 'undefined') {
+      try {
         localStorage.removeItem(`atoll_sqlite_${prefix}_${key}`)
+      } catch (err) {
+        if (err instanceof Error && err.name === 'SecurityError') {
+          // Gracefully ignore storage security/access restrictions on delete
+        } else {
+          throw err
+        }
       }
-    } catch (err) {
-      console.error('[NativeStorageAdapter] Storage delete failed:', err)
     }
   }
 
   return {
+    /**
+     * Initializes the SQLite storage adapter.
+     *
+     * @returns {Promise<boolean>} Resolves to true when initialization succeeds.
+     */
     initialize: async () => {
-      console.info('[NativeStorageAdapter] Initializing SQLite and File System plugins...')
       return true
     },
 
     /**
      * Stores encrypted media blobs natively using the chunked Performance Guardrail
      * to prevent Out-Of-Memory crashes over the Capacitor JS Bridge.
+     *
+     * @param {string} fileName - The name of the file to save.
+     * @param {Blob} blob - The Blob to save.
+     * @returns {Promise<boolean>} Resolves to true when the file is successfully saved.
      */
     saveFile: async (fileName, blob) => {
       // 2MB chunk limit
@@ -78,20 +118,14 @@ export function createNativeStorageAdapter () {
       let chunkIndex = 0
       const totalChunks = Math.ceil(totalSize / CHUNK_SIZE)
 
-      console.info(`[NativeStorageAdapter] Initiating saveFile for "${fileName}" (Size: ${totalSize} bytes, Chunks: ${totalChunks})`)
-
       while (offset < totalSize) {
         const chunk = blob.slice(offset, offset + CHUNK_SIZE)
         // Convert the chunk to ArrayBuffer to simulate reading the file payload
         const buffer = await chunk.arrayBuffer()
 
         chunkIndex++
-        console.log(`[NativeStorageAdapter] [JS Bridge Guardrail] Writing chunk ${chunkIndex} of ${totalChunks} (${buffer.byteLength} bytes) to native disk...`)
-
         offset += CHUNK_SIZE
       }
-
-      console.info(`[NativeStorageAdapter] saveFile completed successfully for "${fileName}"`)
 
       // For stub functionality, keep the metadata and blob in local memory/cache
       localFiles.set(fileName, {
@@ -105,12 +139,24 @@ export function createNativeStorageAdapter () {
       return true
     },
 
+    /**
+     * Retrieves a saved file blob from the file system.
+     *
+     * @param {string} fileName - The name of the file to retrieve.
+     * @returns {Promise<Blob|null>} Resolves to the retrieved Blob, or null if not found.
+     */
     getFile: async (fileName) => {
-      console.info(`[NativeStorageAdapter] Retrieving file "${fileName}" from native file system...`)
       const file = localFiles.get(fileName)
       return file ? file.blob : null
     },
 
+    /**
+     * Saves a single record to the designated local store.
+     *
+     * @param {string} storeName - The name of the target database store.
+     * @param {Object} data - The record data to save.
+     * @returns {Promise<boolean>} Resolves to true when the record is saved.
+     */
     saveRecord: async (storeName, data) => {
       if (storeName === 'local_rooms') {
         localRooms.set(data.id, data)
@@ -128,6 +174,13 @@ export function createNativeStorageAdapter () {
       return true
     },
 
+    /**
+     * Bulk saves multiple records to the designated local store.
+     *
+     * @param {string} storeName - The name of the target database store.
+     * @param {Array<Object>} records - An array of record objects to save.
+     * @returns {Promise<boolean>} Resolves to true when all records are saved.
+     */
     saveRecordsBulk: async (storeName, records) => {
       for (const record of records) {
         if (storeName === 'local_rooms') {
@@ -147,6 +200,13 @@ export function createNativeStorageAdapter () {
       return true
     },
 
+    /**
+     * Deletes a record from the designated local store.
+     *
+     * @param {string} storeName - The name of the target database store.
+     * @param {string} key - The key of the record to delete.
+     * @returns {Promise<boolean>} Resolves to true when the record is deleted.
+     */
     deleteRecord: async (storeName, key) => {
       if (storeName === 'local_rooms') {
         localRooms.delete(key)
@@ -165,15 +225,34 @@ export function createNativeStorageAdapter () {
     },
 
     // Config Domain
+    /**
+     * Retrieves a config value by its key.
+     *
+     * @param {string} key - The configuration key.
+     * @returns {Promise<*>} Resolves to the config value, or null if not found.
+     */
     getConfig: async (key) => {
       const record = localConfig.get(key)
       return record ? record.value : null
     },
 
+    /**
+     * Retrieves a complete config record by its key.
+     *
+     * @param {string} key - The configuration key.
+     * @returns {Promise<Object|null>} Resolves to the config record, or null if not found.
+     */
     getConfigRecord: async (key) => {
       return localConfig.get(key) || null
     },
 
+    /**
+     * Saves a single configuration value under the specified key.
+     *
+     * @param {string} key - The configuration key.
+     * @param {*} value - The configuration value to save.
+     * @returns {Promise<boolean>} Resolves to true when saved.
+     */
     saveConfig: async (key, value) => {
       const data = {
         key,
@@ -184,6 +263,12 @@ export function createNativeStorageAdapter () {
       return true
     },
 
+    /**
+     * Bulk saves multiple configuration records.
+     *
+     * @param {Array<Object>} configs - An array of configuration records to save.
+     * @returns {Promise<boolean>} Resolves to true when all configs are saved.
+     */
     saveConfigs: async (configs) => {
       for (const config of configs) {
         localConfig.set(config.key, config)
@@ -192,6 +277,12 @@ export function createNativeStorageAdapter () {
       return true
     },
 
+    /**
+     * Deletes a configuration record by its key.
+     *
+     * @param {string} key - The configuration key to delete.
+     * @returns {Promise<boolean>} Resolves to true when deleted.
+     */
     deleteConfig: async (key) => {
       localConfig.delete(key)
       removeFromLocalStorage('config', key)
@@ -199,16 +290,35 @@ export function createNativeStorageAdapter () {
     },
 
     // Room Domain
+    /**
+     * Retrieves a local room record by its ID.
+     *
+     * @param {string} id - The room ID.
+     * @returns {Promise<Object|null>} Resolves to the room record, or null if not found.
+     */
     getRoom: async (id) => {
       return localRooms.get(id) || null
     },
 
+    /**
+     * Saves a room record locally.
+     *
+     * @param {Object} room - The room record to save.
+     * @returns {Promise<boolean>} Resolves to true when the room is saved.
+     */
     saveRoom: async (room) => {
       localRooms.set(room.id, room)
       persistToLocalStorage('rooms', room.id, room)
       return true
     },
 
+    /**
+     * Updates an existing room record with delta changes.
+     *
+     * @param {string} id - The room ID to update.
+     * @param {Object} changes - The properties to merge.
+     * @returns {Promise<boolean>} Resolves to true when the room is updated.
+     */
     updateRoom: async (id, changes) => {
       const existing = localRooms.get(id) || {}
       const updated = {
@@ -220,6 +330,12 @@ export function createNativeStorageAdapter () {
       return true
     },
 
+    /**
+     * Deletes all local room data including associated messages and assets.
+     *
+     * @param {string} roomId - The ID of the room to delete.
+     * @returns {Promise<boolean>} Resolves to true when room data is cleared.
+     */
     deleteRoomData: async (roomId) => {
       // Remove room messages
       for (const [uuid, msg] of localMessages.entries()) {
@@ -241,6 +357,14 @@ export function createNativeStorageAdapter () {
       return true
     },
 
+    /**
+     * Updates the status/membership metadata of a participant inside a room.
+     *
+     * @param {string} roomId - The room ID.
+     * @param {string} userId - The participant's user ID.
+     * @param {Object} memberState - The updated state properties (e.g. is_muted, last_read_message_id, is_typing).
+     * @returns {Promise<boolean>} Resolves to true when the member state is successfully updated.
+     */
     updateRoomMemberState: async (roomId, userId, memberState) => {
       const room = localRooms.get(roomId)
       if (room && room.participants) {
@@ -262,6 +386,13 @@ export function createNativeStorageAdapter () {
       return true
     },
 
+    /**
+     * Updates participant profile information across all rooms where they participate.
+     *
+     * @param {string} userId - The user ID of the participant whose profile changed.
+     * @param {Object} participantData - The new profile properties (name, username, avatar).
+     * @returns {Promise<Array<string>>} Resolves to an array of room IDs that were modified.
+     */
     updateRoomsWithParticipant: async (userId, participantData) => {
       const updatedRoomIds = []
       for (const [id, room] of localRooms.entries()) {
@@ -280,6 +411,14 @@ export function createNativeStorageAdapter () {
       return updatedRoomIds
     },
 
+    /**
+     * Retrieves all rooms sorted by last update timestamp (descending).
+     * Supports pagination via offset timestamp cursor and batch limit.
+     *
+     * @param {string} [lastTimestamp] - Cursor timestamp to query room updates older than this date.
+     * @param {number} [batchSize] - Maximum number of room records to retrieve.
+     * @returns {Promise<Array<Object>>} Resolves to the list of sorted rooms.
+     */
     getAllRoomsSorted: async (lastTimestamp, batchSize) => {
       let rooms = Array.from(localRooms.values())
       rooms.sort((a, b) => {
@@ -297,6 +436,11 @@ export function createNativeStorageAdapter () {
       return rooms
     },
 
+    /**
+     * Retrieves the absolute latest room by updated_at timestamp.
+     *
+     * @returns {Promise<Object|null>} Resolves to the most recently updated room, or null if none.
+     */
     getLatestGlobalRoom: async () => {
       const rooms = Array.from(localRooms.values())
       rooms.sort((a, b) => new Date(a.updated_at || 0).getTime() - new Date(b.updated_at || 0).getTime())
@@ -304,16 +448,35 @@ export function createNativeStorageAdapter () {
     },
 
     // Message Domain
+    /**
+     * Retrieves a message record by its local UUID.
+     *
+     * @param {string} localUuid - The message local unique identifier.
+     * @returns {Promise<Object|null>} Resolves to the message record, or null if not found.
+     */
     getMessage: async (localUuid) => {
       return localMessages.get(localUuid) || null
     },
 
+    /**
+     * Saves a message locally.
+     *
+     * @param {Object} message - The message record to save.
+     * @returns {Promise<boolean>} Resolves to true when the message is saved.
+     */
     saveMessage: async (message) => {
       localMessages.set(message.local_uuid, message)
       persistToLocalStorage('messages', message.local_uuid, message)
       return true
     },
 
+    /**
+     * Updates an existing message record.
+     *
+     * @param {string} localUuid - The message UUID to update.
+     * @param {Object} changes - The delta properties to merge.
+     * @returns {Promise<boolean>} Resolves to true when the message is updated.
+     */
     updateMessage: async (localUuid, changes) => {
       const existing = localMessages.get(localUuid) || {}
       const updated = {
@@ -325,12 +488,25 @@ export function createNativeStorageAdapter () {
       return true
     },
 
+    /**
+     * Retrieves the single most recent message in a room.
+     *
+     * @param {string} roomId - The target room ID.
+     * @returns {Promise<Object|null>} Resolves to the latest message, or null if empty.
+     */
     getAbsoluteLatestMessage: async (roomId) => {
       const msgs = Array.from(localMessages.values()).filter(m => m.room_id === roomId)
       msgs.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
       return msgs[0] || null
     },
 
+    /**
+     * Retrieves messages within a room, sorted chronologically (ascending).
+     *
+     * @param {string} roomId - The room ID.
+     * @param {number} [limit] - Maximum number of messages to return.
+     * @returns {Promise<Array<Object>>} Resolves to the chronological list of room messages.
+     */
     getMessagesByRoom: async (roomId, limit) => {
       let msgs = Array.from(localMessages.values()).filter(m => m.room_id === roomId)
       msgs.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
@@ -340,6 +516,14 @@ export function createNativeStorageAdapter () {
       return msgs
     },
 
+    /**
+     * Retrieves room messages paginated sequentially via cursor-based matching.
+     *
+     * @param {string} roomId - The room ID.
+     * @param {Object} [lastItem] - The last cursor message record from the previous batch.
+     * @param {number} batchSize - The size of the batch to retrieve.
+     * @returns {Promise<Array<Object>>} Resolves to the next sequential batch of messages.
+     */
     getMessagesByRoomCursor: async (roomId, lastItem, batchSize) => {
       let msgs = Array.from(localMessages.values()).filter(m => m.room_id === roomId)
       msgs.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
@@ -350,40 +534,83 @@ export function createNativeStorageAdapter () {
       return msgs.slice(startIndex, startIndex + batchSize)
     },
 
+    /**
+     * Retrieves the latest non-utility/non-signaling message in a room.
+     * Ignores auxiliary message types like reactions and ice candidates.
+     *
+     * @param {string} roomId - The room ID.
+     * @returns {Promise<Object|null>} Resolves to the latest user message, or null.
+     */
     getLatestMessage: async (roomId) => {
       const msgs = Array.from(localMessages.values()).filter(m => m.room_id === roomId && m.type !== 'reaction' && m.type !== 'ice_candidate')
       msgs.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
       return msgs[0] || null
     },
 
+    /**
+     * Retrieves the absolute latest message across all chats.
+     *
+     * @returns {Promise<Object|null>} Resolves to the newest message, or null if none.
+     */
     getLatestGlobalMessage: async () => {
       const msgs = Array.from(localMessages.values())
       msgs.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
       return msgs[msgs.length - 1] || null
     },
 
+    /**
+     * Retrieves all messages marked with the "link" type, sorted descending.
+     *
+     * @returns {Promise<Array<Object>>} Resolves to a list of link messages.
+     */
     getLinkMessages: async () => {
       const msgs = Array.from(localMessages.values()).filter(m => m.type === 'link')
       msgs.sort((a, b) => new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime())
       return msgs
     },
 
+    /**
+     * Retrieves reactions associated with one or many target message IDs.
+     *
+     * @param {string|Array<string>} targetIds - The target message identifier(s).
+     * @returns {Promise<Array<Object>>} Resolves to the matching reaction messages.
+     */
     getMessageReactions: async (targetIds) => {
       const ids = Array.isArray(targetIds) ? targetIds : [targetIds]
       return Array.from(localMessages.values()).filter(m => ids.includes(m.target_id))
     },
 
     // Asset Domain
+    /**
+     * Retrieves an asset record by its ID.
+     *
+     * @param {string} id - The unique asset ID.
+     * @returns {Promise<Object|null>} Resolves to the asset, or null if not found.
+     */
     getAsset: async (id) => {
       return localAssets.get(id) || null
     },
 
+    /**
+     * Saves an asset record locally.
+     *
+     * @param {Object} asset - The asset record to save.
+     * @returns {Promise<boolean>} Resolves to true when saved.
+     */
     saveAsset: async (asset) => {
       localAssets.set(asset.id, asset)
       persistToLocalStorage('assets', asset.id, asset)
       return true
     },
 
+    /**
+     * Retrieves assets filtered by category (image, video, audio, document) and paginated chronologically.
+     *
+     * @param {string} category - The asset category ('image', 'video', 'audio', or 'document').
+     * @param {Object} [lastItem] - The cursor record of the last item in the previous batch.
+     * @param {number} [batchSize] - The maximum batch size to return.
+     * @returns {Promise<Array<Object>>} Resolves to the filtered, paginated asset list.
+     */
     getAssetsByCategory: async (category, lastItem, batchSize) => {
       let assets = Array.from(localAssets.values())
       if (category === 'image') {
