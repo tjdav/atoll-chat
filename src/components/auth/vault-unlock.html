@@ -193,10 +193,22 @@
 
       usernameBadge.textContent = `@${user.username}`
 
+      /**
+       * Updates the text status message in the vault unlock card.
+       *
+       * @param {string} message - The status message to display.
+       * @returns {void}
+       */
       const updateStatus = (message) => {
         statusMsg.textContent = message
       }
 
+      /**
+       * Shows a global error alert toast if a non-empty message is provided.
+       *
+       * @param {string} msg - The message to display.
+       * @returns {void}
+       */
       const showGlobalAlert = (msg) => {
         if (msg) {
           $bus.emit('ui:show_toast', {
@@ -206,6 +218,12 @@
         }
       }
 
+      /**
+       * Validates all inputs in the form and updates validation error styling and messages.
+       *
+       * @param {HTMLFormElement} form - The form element containing atoll-inputs.
+       * @returns {void}
+       */
       const updateValidationFeedback = (form) => {
         const inputs = form.querySelectorAll('atoll-input')
         inputs.forEach(input => {
@@ -222,6 +240,12 @@
         })
       }
 
+      /**
+       * Sets up event listeners on inputs within a form to reset validation states.
+       *
+       * @param {HTMLFormElement} form - The form element to register listeners on.
+       * @returns {void}
+       */
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
           const input = e.target.closest('atoll-input')
@@ -230,9 +254,7 @@
             return
           }
   
-          if (typeof input.setCustomValidity === 'function') {
-            input.setCustomValidity('')
-          }
+          input.setCustomValidity('')
           input.removeAttribute('invalid')
           input.removeAttribute('error-message')
         })
@@ -274,6 +296,11 @@
 
       let autoBiometricAttempted = false
 
+      /**
+       * Checks whether native biometric authentication capabilities are supported/enrolled.
+       *
+       * @returns {Promise<void>}
+       */
       const checkBiometricSupport = async () => {
         const record = pb.authStore.model
         if (record && await biometric.isAvailable()) {
@@ -313,19 +340,22 @@
           }
 
           updateStatus('Decrypting private keys...')
-          let fetchedRecord
+          let fetchRecord
           try {
-            fetchedRecord = await pb.collection('users').getOne(record.id)
+            fetchRecord = await pb.collection('users').getOne(record.id)
           } catch (err) {
-            console.warn('[vault-unlock] Failed to fetch latest user record for biometric unlock. Using cached record.', err)
-            fetchedRecord = pb.authStore.model
+            if (err && (err.status === 404 || err.status === 0 || err.name === 'ClientResponseError')) {
+              fetchRecord = pb.authStore.model
+            } else {
+              throw err
+            }
           }
 
-          if (!fetchedRecord) {
+          if (!fetchRecord) {
             throw new Error('User record not found.')
           }
 
-          const encryptedVault = fetchedRecord.encrypted_master_keys_passkey || fetchedRecord.encrypted_private_keys
+          const encryptedVault = fetchRecord.encrypted_master_keys_passkey || fetchRecord.encrypted_private_keys
 
           if (!encryptedVault) {
             throw new Error('Secure vault not found on server.')
@@ -336,9 +366,8 @@
             master_key: masterKey
           })
 
-          await completeUnlock(decryptedKeys, fetchedRecord)
+          await completeUnlock(decryptedKeys, fetchRecord)
         } catch (error) {
-          console.error('Biometric unlock error:', error)
           let errorMessage = 'Biometric unlock failed'
           if (error.message) {
             errorMessage = error.message
@@ -352,6 +381,13 @@
         vaultUsernameHidden.value = `${pb.authStore.model.username} - Vault`
       }
 
+      /**
+       * Finalizes the vault unlocking phase, initializes keys in worker session, and notifies global listeners.
+       *
+       * @param {Object} decryptedKeys - Decrypted user private key keys.
+       * @param {Object} record - The authenticated user's record.
+       * @returns {Promise<void>}
+       */
       const completeUnlock = async (decryptedKeys, record) => {
         updateStatus('Vault unlocked!')
 
@@ -370,7 +406,9 @@
         try {
           await $sync.startSubscriptions()
         } catch (err) {
-          console.error('[vault-unlock] Subscription/Sync failed:', err)
+          if (err && err.message && !err.message.includes('subscription')) {
+            throw err
+          }
         }
       }
 
@@ -390,14 +428,17 @@
         try {
           unlockForm.classList.remove('was-validated')
           updateStatus('Locating vault...')
-          btnUnlockSubmit?.setAttribute('loading', 'true')
+          btnUnlockSubmit.setAttribute('loading', 'true')
   
           let record
           try {
             record = await pb.collection('users').getOne(pb.authStore.model.id)
           } catch (err) {
-            console.warn('[vault-unlock] Failed to fetch latest user record from server. Using cached record.', err)
-            record = pb.authStore.model
+            if (err && (err.status === 404 || err.status === 0 || err.name === 'ClientResponseError')) {
+              record = pb.authStore.model
+            } else {
+              throw err
+            }
           }
 
           if (!record) {
@@ -411,7 +452,7 @@
             updateValidationFeedback(unlockForm)
             unlockForm.classList.add('was-validated')
             updateStatus('')
-            btnUnlockSubmit?.removeAttribute('loading')
+            btnUnlockSubmit.removeAttribute('loading')
             passwordInput.removeAttribute('disabled')
             btnPasskey.removeAttribute('disabled')
             btnShowRecovery.classList.remove('pe-none')
@@ -448,10 +489,9 @@
           })
 
           await completeUnlock(decryptedKeys, record)
-          btnUnlockSubmit?.removeAttribute('loading')
+          btnUnlockSubmit.removeAttribute('loading')
         } catch (error) {
-          console.error('Unlock error:', error)
-          btnUnlockSubmit?.removeAttribute('loading')
+          btnUnlockSubmit.removeAttribute('loading')
           passwordInput.removeAttribute('disabled')
           btnPasskey.removeAttribute('disabled')
           btnShowRecovery.classList.remove('pe-none')
@@ -486,9 +526,7 @@
         updateStatus('')
         showGlobalAlert('')
         recoveryForm.classList.remove('was-validated')
-        if (typeof recoveryCodeInput.setCustomValidity === 'function') {
-          recoveryCodeInput.setCustomValidity('')
-        }
+        recoveryCodeInput.setCustomValidity('')
         recoveryCodeInput.removeAttribute('invalid')
         recoveryCodeInput.removeAttribute('error-message')
       })
@@ -518,15 +556,11 @@
         }
 
         const code = recoveryCodeInput.value.trim()
-        console.log('--- RECOVERY CODE VALUE ---', {
-          code,
-          length: code.length
-        })
 
         try {
           recoveryForm.classList.remove('was-validated')
           updateStatus('Verifying recovery limit...')
-          btnVerifyRecovery?.setAttribute('loading', 'true')
+          btnVerifyRecovery.setAttribute('loading', 'true')
           recoveryCodeInput.setAttribute('disabled', 'true')
           btnCancelRecovery.setAttribute('disabled', 'true')
 
@@ -578,7 +612,7 @@
           })
 
           /* Transition to new password setup */
-          btnVerifyRecovery?.removeAttribute('loading')
+          btnVerifyRecovery.removeAttribute('loading')
           recoveryCodeInput.removeAttribute('disabled')
           btnCancelRecovery.removeAttribute('disabled')
 
@@ -595,8 +629,7 @@
           newPasswordConfirmInput.removeAttribute('invalid')
           newPasswordConfirmInput.removeAttribute('error-message')
         } catch (err) {
-          console.error('Recovery failed:', err)
-          btnVerifyRecovery?.removeAttribute('loading')
+          btnVerifyRecovery.removeAttribute('loading')
           recoveryCodeInput.removeAttribute('disabled')
           btnCancelRecovery.removeAttribute('disabled')
 
@@ -605,12 +638,7 @@
           } else {
             recoveryCodeInput.setAttribute('invalid', 'true')
             recoveryCodeInput.setAttribute('error-message', err.message || 'Recovery failed.')
-            const innerInput = recoveryCodeInput.querySelector('input')
-            if (innerInput && typeof innerInput.setCustomValidity === 'function') {
-              innerInput.setCustomValidity(err.message || 'Recovery failed.')
-            } else if (typeof recoveryCodeInput.setCustomValidity === 'function') {
-              recoveryCodeInput.setCustomValidity(err.message || 'Recovery failed.')
-            }
+            recoveryCodeInput.setCustomValidity(err.message || 'Recovery failed.')
             updateValidationFeedback(recoveryForm)
             recoveryForm.classList.add('was-validated')
           }
@@ -618,12 +646,17 @@
         }
       })
 
+      /**
+       * Evaluates password complexity and updates the visual strength meter bar synchronously.
+       *
+       * @returns {Promise<void>}
+       */
       const updateNewStrength = async () => {
         const password = newPasswordInput.value
         if (password.length >= 12) {
-          btnSaveNewPassword?.removeAttribute('disabled')
+          btnSaveNewPassword.removeAttribute('disabled')
         } else {
-          btnSaveNewPassword?.setAttribute('disabled', 'true')
+          btnSaveNewPassword.setAttribute('disabled', 'true')
         }
 
         const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
@@ -633,9 +666,9 @@
         newStrengthBar.className = colorClass
         newStrengthText.textContent = text
         if (password.length < 12 || zxcvbnScore < 3) {
-          btnSaveNewPassword?.setAttribute('disabled', 'true')
+          btnSaveNewPassword.setAttribute('disabled', 'true')
         } else {
-          btnSaveNewPassword?.removeAttribute('disabled')
+          btnSaveNewPassword.removeAttribute('disabled')
         }
       }
 
@@ -676,7 +709,7 @@
         try {
           newPasswordForm.classList.remove('was-validated')
           updateStatus('Deriving new vault password...')
-          btnSaveNewPassword?.setAttribute('loading', 'true')
+          btnSaveNewPassword.setAttribute('loading', 'true')
           newPasswordInput.setAttribute('disabled', 'true')
           newPasswordConfirmInput.setAttribute('disabled', 'true')
 
@@ -702,12 +735,11 @@
           const refreshedRecord = await pb.collection('users').authRefresh()
 
           await completeUnlock(decryptedKeysLocal, refreshedRecord.record)
-          btnSaveNewPassword?.removeAttribute('loading')
+          btnSaveNewPassword.removeAttribute('loading')
           newPasswordInput.removeAttribute('disabled')
           newPasswordConfirmInput.removeAttribute('disabled')
         } catch (err) {
-          console.error('Password rotation failed:', err)
-          btnSaveNewPassword?.removeAttribute('loading')
+          btnSaveNewPassword.removeAttribute('loading')
           newPasswordInput.removeAttribute('disabled')
           newPasswordConfirmInput.removeAttribute('disabled')
           showGlobalAlert(err.message || 'Password rotation failed.')

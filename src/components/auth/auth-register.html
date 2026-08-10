@@ -160,7 +160,6 @@
       const statusMsg = refs('statusMsg')
       const strengthBar = refs('strengthBar')
       const strengthText = refs('strengthText')
-      // eslint-disable-next-line no-unused-vars
       let zxcvbnScore = 0
 
       const btnCopyCode = refs('btnCopyCode')
@@ -171,16 +170,11 @@
       const recoveryCodeBox = refs('recoveryCodeBox')
       const recoveryContent = refs('recoveryContent')
 
-      console.log('--- EXPLICIT REF RESOLUTION ---', {
-        btnCopyCode: !!btnCopyCode,
-        btnDownloadCode: !!btnDownloadCode,
-        chkStored: !!chkStored,
-        btnContinueToChat: !!btnContinueToChat,
-        recoveryModal: !!recoveryModal,
-        recoveryCodeBox: !!recoveryCodeBox,
-        recoveryContent: !!recoveryContent
-      })
-
+      /**
+       * Dynamically shifts the pre-rendered recovery code modal content into the active popup layout body.
+       *
+       * @returns {void}
+       */
       const moveRecoveryContent = () => {
         const popupBody = recoveryModal.querySelector('.atoll-popup-body')
         if (popupBody && recoveryContent.parentNode !== popupBody) {
@@ -203,6 +197,13 @@
 
       const isTesting = import.meta.env.MODE === 'testing' || (typeof window !== 'undefined' && (window.__playwright_test_id__ || window.PLAYWRIGHT_TEST))
 
+      /**
+       * Updates the visual and text status message in the register card.
+       *
+       * @param {string} message - The status message to display.
+       * @param {boolean} [isError=false] - Whether the status is an error state.
+       * @returns {void}
+       */
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message
         if (isError) {
@@ -214,6 +215,12 @@
         }
       }
 
+      /**
+       * Shows a global error alert toast if a non-empty message is provided.
+       *
+       * @param {string} msg - The message to display.
+       * @returns {void}
+       */
       const showGlobalAlert = (msg) => {
         if (msg) {
           $bus.emit('ui:show_toast', {
@@ -223,6 +230,12 @@
         }
       }
 
+      /**
+       * Validates all inputs in the form and updates validation error styling and messages.
+       *
+       * @param {HTMLFormElement} form - The form element containing atoll-inputs.
+       * @returns {void}
+       */
       const updateValidationFeedback = (form) => {
         const inputs = form.querySelectorAll('atoll-input')
         inputs.forEach(input => {
@@ -243,6 +256,12 @@
       const passwordConfirmInputEl = refs('passwordConfirm')
       const invitationCodeInput = refs('invitationCode')
 
+      /**
+       * Sets up event listeners on inputs within a form to reset validation states.
+       *
+       * @param {HTMLFormElement} form - The form element to register listeners on.
+       * @returns {void}
+       */
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
           const input = e.target.closest('atoll-input')
@@ -257,6 +276,11 @@
 
       registerInputReset(registerForm)
 
+      /**
+       * Evaluates password complexity and updates the visual strength meter bar synchronously.
+       *
+       * @returns {Promise<void>}
+       */
       const updateStrength = async () => {
         const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
         const { score, width, colorClass, text } = await evaluatePasswordStrength(passwordInputEl.value, 8)
@@ -273,14 +297,13 @@
         $state.authView = 'login'
       })
 
+      /**
+       * Updates the disabled/enabled states of the "Continue to Chat" button based on compliance requirements.
+       *
+       * @returns {void}
+       */
       const updateContinueButtonState = () => {
         const canContinue = isCheckboxChecked || hasCopiedOrDownloaded
-        console.log('--- updateContinueButtonState ---', {
-          isCheckboxChecked,
-          hasCopiedOrDownloaded,
-          canContinue,
-          btnContinueToChat: !!btnContinueToChat
-        })
         if (canContinue) {
           btnContinueToChat.removeAttribute('disabled')
           btnContinueToChat.disabled = false
@@ -299,8 +322,8 @@
           })
           hasCopiedOrDownloaded = true
           updateContinueButtonState()
-        } catch (err) {
-          console.error('Failed to copy code:', err)
+        } catch {
+          return
         }
       })
 
@@ -361,8 +384,11 @@ Atoll administrators cannot recover your credentials or vault.
         if ($state.isVaultUnlocked) {
           try {
             await $sync.startSubscriptions()
-          } catch (syncErr) {
-            console.error('[auth-register] Subscription sync warning:', syncErr)
+          } catch (err) {
+            // Verify if error is subscription related and should be gracefully bypassed
+            if (err && err.message && !err.message.includes('subscription')) {
+              throw err
+            }
           }
         }
 
@@ -379,7 +405,7 @@ Atoll administrators cannot recover your credentials or vault.
         }
       })
 
-      invitationCodeInput.addEventListener('input', (_) => {
+      invitationCodeInput.addEventListener('input', () => {
         const val = invitationCodeInput.value || ''
         const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
         let raw = clean
@@ -396,29 +422,37 @@ Atoll administrators cannot recover your credentials or vault.
         invitationCodeInput.value = formatted
       })
 
+      /**
+       * Extracts the ALTCHA security verification payload from a widget.
+       *
+       * @param {HTMLElement} widget - The Altcha widget element.
+       * @returns {string|null} The payload or null if unavailable.
+       */
       const getAltchaPayload = (widget) => {
         if (altchaPayload) {
           return altchaPayload
-        }
-
-        if (!widget) {
-          return null
         }
 
         if (widget.value) {
           return widget.value
         }
   
-        if (typeof widget.getAttribute === 'function' && widget.getAttribute('value')) {
-          return widget.getAttribute('value')
+        const attrVal = widget.getAttribute('value')
+        if (attrVal) {
+          return attrVal
         }
-        const hiddenInput = widget.querySelector ? widget.querySelector('input[name="altcha"]') : null
+        const hiddenInput = widget.querySelector('input[name="altcha"]')
         if (hiddenInput && hiddenInput.value) {
           return hiddenInput.value
         }
         return null
       }
 
+      /**
+       * Renders the ALTCHA challenge widget inside the registration container.
+       *
+       * @returns {HTMLElement} The initialized Altcha widget.
+       */
       const renderAltcha = () => {
         altchaContainer.innerHTML = ''
         altchaPayload = null
@@ -445,7 +479,6 @@ Atoll administrators cannot recover your credentials or vault.
 
         widget.addEventListener('verified', (ev) => {
           altchaPayload = ev.detail?.payload || widget.value || null
-          console.log('[ALTCHA REGISTER DEBUG] verified event payload:', altchaPayload)
         })
 
         widget.addEventListener('statechange', (ev) => {
@@ -454,7 +487,6 @@ Atoll administrators cannot recover your credentials or vault.
           if (resolvedPayload) {
             altchaPayload = resolvedPayload
           }
-          console.log('[ALTCHA REGISTER DEBUG]', 'state:', state, 'value:', widget.value, 'payload:', resolvedPayload)
           if (state === 'verifying') {
             if (registerSubmitPending) {
               btnSubmit.setAttribute('loading', 'true')
@@ -493,7 +525,6 @@ Atoll administrators cannot recover your credentials or vault.
       altchaWidget = renderAltcha()
 
       $bus.on('app:reconnected', () => {
-        console.log('[auth-register] App reconnected. Reloading Altcha widget...')
         altchaWidget = renderAltcha()
       })
 
@@ -509,7 +540,7 @@ Atoll administrators cannot recover your credentials or vault.
         passwordConfirmInputEl.setCustomValidity('')
         updateStatus('')
 
-        const inputs = [usernameInput, invitationCodeInput, passwordInputEl, passwordConfirmInputEl].filter(Boolean)
+        const inputs = [usernameInput, invitationCodeInput, passwordInputEl, passwordConfirmInputEl]
         let isValid = true
         inputs.forEach(input => {
           if (!input.checkValidity()) {
@@ -542,13 +573,6 @@ Atoll administrators cannot recover your credentials or vault.
           currentPayload = 'atoll-mock-bypass-token'
         }
 
-        console.log('[ALTCHA REGISTER ATTEMPT]', {
-          altchaPayload,
-          resolvedPayload: currentPayload,
-          widgetValue: altchaWidget?.value,
-          hiddenInputValue: altchaWidget?.querySelector?.('input[name="altcha"]')?.value
-        })
-
         // Immediately set loading and disable inputs/links
         btnSubmit.setAttribute('loading', 'true')
         usernameInput.setAttribute('disabled', 'true')
@@ -558,7 +582,6 @@ Atoll administrators cannot recover your credentials or vault.
         linkLogin.setAttribute('disabled', 'true')
 
         if (!currentPayload) {
-          console.log('[ALTCHA REGISTER PENDING] Verification pending. Form submission queued.')
           registerSubmitPending = true
           updateStatus('Verifying security challenge...')
           return
@@ -709,17 +732,11 @@ Atoll administrators cannot recover your credentials or vault.
 
           // Show the Recovery Modal Overlay and do NOT set isAuthenticated yet!
           savedCode = singleCode
-          console.log('--- MODAL REF CHECK ---', {
-            recoveryModal: recoveryModal ? 'found' : 'null',
-            recoveryCodeBox: recoveryCodeBox ? 'found' : 'null',
-            savedCode
-          })
           recoveryCodeBox.textContent = singleCode
           moveRecoveryContent()
           recoveryModal.setAttribute('open', 'true')
           updateStatus('Account created! Please save your recovery code.')
         } catch (error) {
-          console.error('Registration error:', error)
           pb.authStore.clear()
           $state.isAuthenticated = false
           $state.isVaultUnlocked = false
@@ -734,9 +751,7 @@ Atoll administrators cannot recover your credentials or vault.
 
           updateStatus(error.message || 'Registration failed', true)
           showGlobalAlert(error.message || 'Registration failed')
-          if (altchaWidget && typeof altchaWidget.reset === 'function') {
-            altchaWidget.reset()
-          }
+          altchaWidget.reset()
         }
       })
     }

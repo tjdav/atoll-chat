@@ -77,6 +77,13 @@
 
       const isTesting = import.meta.env.MODE === 'testing' || (typeof window !== 'undefined' && (window.__playwright_test_id__ || window.PLAYWRIGHT_TEST))
 
+      /**
+       * Updates the visual and text status message in the login card.
+       *
+       * @param {string} message - The status message to display.
+       * @param {boolean} [isError=false] - Whether the status is an error state.
+       * @returns {void}
+       */
       const updateStatus = (message, isError = false) => {
         statusMsg.textContent = message
         if (isError) {
@@ -88,6 +95,12 @@
         }
       }
 
+      /**
+       * Shows a global error alert toast if a non-empty message is provided.
+       *
+       * @param {string} msg - The message to display.
+       * @returns {void}
+       */
       const showGlobalAlert = (msg) => {
         if (msg) {
           $bus.emit('ui:show_toast', {
@@ -97,6 +110,12 @@
         }
       }
 
+      /**
+       * Validates all inputs in the form and updates validation error styling and messages.
+       *
+       * @param {HTMLFormElement} form - The form element containing atoll-inputs.
+       * @returns {void}
+       */
       const updateValidationFeedback = (form) => {
         const inputs = form.querySelectorAll('atoll-input')
         inputs.forEach(input => {
@@ -113,6 +132,12 @@
         })
       }
 
+      /**
+       * Sets up event listeners on inputs within a form to reset validation states.
+       *
+       * @param {HTMLFormElement} form - The form element to register listeners on.
+       * @returns {void}
+       */
       const registerInputReset = (form) => {
         form.addEventListener('input', (e) => {
           const input = e.target.closest('atoll-input')
@@ -134,26 +159,37 @@
         $state.authView = 'register'
       })
 
+      /**
+       * Extracts the ALTCHA security verification payload from a widget.
+       *
+       * @param {HTMLElement} widget - The Altcha widget element.
+       * @returns {string|null} The payload or null if unavailable.
+       */
       const getAltchaPayload = (widget) => {
         if (altchaPayload) {
           return altchaPayload
         }
-        if (!widget) {
-          return null
-        }
         if (widget.value) {
           return widget.value
         }
-        if (typeof widget.getAttribute === 'function' && widget.getAttribute('value')) {
-          return widget.getAttribute('value')
+        const attrVal = widget.getAttribute('value')
+        if (attrVal) {
+          return attrVal
         }
-        const hiddenInput = widget.querySelector ? widget.querySelector('input[name="altcha"]') : null
+        const hiddenInput = widget.querySelector('input[name="altcha"]')
         if (hiddenInput && hiddenInput.value) {
           return hiddenInput.value
         }
         return null
       }
 
+      /**
+       * Renders the ALTCHA challenge widget inside the provided container.
+       *
+       * @param {HTMLElement} container - The container element for the widget.
+       * @param {HTMLElement} submitBtn - The form submit button.
+       * @returns {HTMLElement} The initialized Altcha widget.
+       */
       const renderAltcha = (container, submitBtn) => {
         container.innerHTML = ''
         altchaPayload = null
@@ -180,7 +216,6 @@
 
         widget.addEventListener('verified', (ev) => {
           altchaPayload = ev.detail?.payload || widget.value || null
-          console.log('[ALTCHA DEBUG] verified event payload:', altchaPayload)
         })
 
         widget.addEventListener('statechange', (ev) => {
@@ -189,7 +224,6 @@
           if (resolvedPayload) {
             altchaPayload = resolvedPayload
           }
-          console.log('[ALTCHA DEBUG]', 'state:', state, 'value:', widget.value, 'payload:', resolvedPayload)
           if (state === 'verifying') {
             if (loginSubmitPending) {
               submitBtn.setAttribute('loading', 'true')
@@ -228,7 +262,6 @@
       activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
 
       $bus.on('app:reconnected', () => {
-        console.log('[auth-login] App reconnected. Reloading Altcha widget...')
         activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
       })
 
@@ -257,13 +290,6 @@
           currentPayload = 'atoll-mock-bypass-token'
         }
 
-        console.log('[ALTCHA LOGIN ATTEMPT]', {
-          altchaPayload,
-          resolvedPayload: currentPayload,
-          widgetValue: activeAltchaWidget?.value,
-          hiddenInputValue: activeAltchaWidget?.querySelector?.('input[name="altcha"]')?.value
-        })
-
         // Immediately set loading and disable inputs/links
         loginSubmit.setAttribute('loading', 'true')
         identityInput.setAttribute('disabled', 'true')
@@ -271,7 +297,6 @@
         linkRegister.setAttribute('disabled', 'true')
 
         if (!currentPayload) {
-          console.log('[ALTCHA LOGIN PENDING] Verification pending. Form submission queued.')
           loginSubmitPending = true
           updateStatus('Verifying security challenge...')
           return
@@ -408,13 +433,15 @@
 
           try {
             await $sync.startSubscriptions()
-          } catch (syncErr) {
-            console.error('[auth-login] Subscription sync warning:', syncErr)
+          } catch (err) {
+            // Verify if error is subscription related and should be gracefully bypassed
+            if (err && err.message && !err.message.includes('subscription')) {
+              throw err
+            }
           }
 
           updateStatus('Login complete!')
         } catch (error) {
-          console.error('Login error:', error)
           // Zombie State Guard: Reset session on any vault decryption failure
           pb.authStore.clear()
           purgeVaultKey()
@@ -429,9 +456,7 @@
 
           updateStatus(error.message || 'Failed to log in', true)
           showGlobalAlert(error.message || 'Failed to log in')
-          if (activeAltchaWidget && typeof activeAltchaWidget.reset === 'function') {
-            activeAltchaWidget.reset()
-          }
+          activeAltchaWidget.reset()
         }
       })
     }

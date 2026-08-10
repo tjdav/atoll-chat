@@ -134,6 +134,7 @@ export default [
             'HTMLCanvasElement',
             'HTMLCollection',
             'HTMLElement',
+            'HTMLFormElement',
             'HTMLFormControlsCollection',
             'HTMLImageElement',
             'Node',
