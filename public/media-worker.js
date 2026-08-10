@@ -26,26 +26,19 @@ self.onmessage = async (event) => {
 
   try {
     if (type === 'video:compress') {
-      let result
-      try {
-        console.log('[media-worker] Attempting MP4 compression')
-        result = await compressVideo(payload.file, {
-          ...payload.options,
-          format: 'mp4'
-        }, (progress) => {
-          self.postMessage({
-            id,
-            type: 'video:progress',
-            payload: { progress }
-          })
-        })
-      } catch (mp4Error) {
-        console.warn('[media-worker] MP4 encoding not supported, falling back to WebM (VP9)', mp4Error)
+      let result = null
+      const configs = [
+        { format: 'mp4' },
+        { format: 'webm', codec: 'vp9' },
+        { format: 'webm', codec: 'vp8' },
+        { format: 'webm', codec: 'av1' }
+      ]
+
+      for (const config of configs) {
         try {
           result = await compressVideo(payload.file, {
             ...payload.options,
-            format: 'webm',
-            codec: 'vp9'
+            ...config
           }, (progress) => {
             self.postMessage({
               id,
@@ -53,53 +46,26 @@ self.onmessage = async (event) => {
               payload: { progress }
             })
           })
-        } catch (vp9Error) {
-          console.warn('[media-worker] VP9 encoding not supported, falling back to WebM (VP8)', vp9Error)
-          try {
-            result = await compressVideo(payload.file, {
-              ...payload.options,
-              format: 'webm',
-              codec: 'vp8'
-            }, (progress) => {
-              self.postMessage({
-                id,
-                type: 'video:progress',
-                payload: { progress }
-              })
-            })
-          } catch (vp8Error) {
-            console.warn('[media-worker] VP8 encoding not supported, falling back to WebM (AV1)', vp8Error)
-            try {
-              result = await compressVideo(payload.file, {
-                ...payload.options,
-                format: 'webm',
-                codec: 'av1'
-              }, (progress) => {
-                self.postMessage({
-                  id,
-                  type: 'video:progress',
-                  payload: { progress }
-                })
-              })
-            } catch (av1Error) {
-              console.warn('[media-worker] All WebCodecs options failed. Initiating FFmpeg WASM fallback...', av1Error)
-              try {
-                result = await transcodeWithFFmpeg(payload.file, payload.options, (progress, status) => {
-                  self.postMessage({
-                    id,
-                    type: 'video:progress',
-                    payload: {
-                      progress,
-                      status
-                    }
-                  })
-                })
-              } catch (ffmpegError) {
-                console.error('[media-worker] FFmpeg WASM fallback failed:', ffmpegError)
-                throw ffmpegError
+          break
+        } catch {
+          // Fallback to the next codec configuration
+        }
+      }
+
+      if (!result) {
+        try {
+          result = await transcodeWithFFmpeg(payload.file, payload.options, (progress, status) => {
+            self.postMessage({
+              id,
+              type: 'video:progress',
+              payload: {
+                progress,
+                status
               }
-            }
-          }
+            })
+          })
+        } catch (ffmpegError) {
+          throw ffmpegError
         }
       }
 
@@ -144,16 +110,25 @@ self.onmessage = async (event) => {
         result
       }, [result.buffer.buffer])
     }
-  } catch (error) {
-    console.error(`[media-worker] Error (${type}):`, error)
+  } catch (err) {
     self.postMessage({
       id,
       type,
-      error: error.message
+      error: err.message
     })
   }
 }
 
+/**
+ * Converts audio to a universal format (MP4 audio / AAC).
+ *
+ * @param {Blob|File} file - The raw audio file to convert.
+ * @param {Object} [options={}] - Conversion options.
+ * @param {number} [options.bitrate=128000] - Output target bitrate.
+ * @param {Function} [onProgress] - Callback invoked with the progress percentage (0-100).
+ * @returns {Promise<{buffer: Uint8Array, mimeType: string, extension: string}>} The converted audio bytes and metadata.
+ * @throws {Error} If the conversion configuration is invalid or execution fails.
+ */
 async function convertAudioToUniversal (file, options = {}, onProgress) {
   const input = new Input({
     formats: SUPPORTED_FORMATS,
@@ -194,6 +169,15 @@ async function convertAudioToUniversal (file, options = {}, onProgress) {
   }
 }
 
+/**
+ * Evaluates whether a video file requires compression before server upload,
+ * determining the target bitrate or suggesting a P2P WebRTC transfer if the server limit is exceeded.
+ *
+ * @param {Blob|File} file - The raw video file.
+ * @param {number} [maxServerUploadSizeBytes=26214400] - Maximum file size permitted on the server.
+ * @param {number} [givenDuration=0] - Pre-computed video duration in seconds.
+ * @returns {Promise<{shouldCompress: boolean, estimatedSizeBytes: number, targetBitrate: number, useWebRTC: boolean}>} Evaluation results.
+ */
 async function evaluateVideoCompression (file, maxServerUploadSizeBytes = 26214400, givenDuration = 0) {
   if (file.size <= maxServerUploadSizeBytes) {
     return {
@@ -212,8 +196,8 @@ async function evaluateVideoCompression (file, maxServerUploadSizeBytes = 262144
         source: new BlobSource(file)
       })
       duration = await input.computeDuration()
-    } catch (durErr) {
-      console.warn('[media-worker] Failed to compute duration for evaluation:', durErr)
+    } catch {
+      // Handled: Proceed with evaluation using default fallback duration logic
     }
   }
 
@@ -223,8 +207,6 @@ async function evaluateVideoCompression (file, maxServerUploadSizeBytes = 262144
 
   const estimatedSizeBytes = Math.round(((targetVideoBitrate + audioBitrate) * duration) / 8) + 50_000
   const canFitOnServer = estimatedSizeBytes <= maxServerUploadSizeBytes
-
-  console.log(`[media-worker] Evaluation for ${file.name}: Original size ${(file.size / 1e6).toFixed(2)}MB, Duration ${duration.toFixed(1)}s, Original Bitrate ${Math.round(originalBitrate / 1000)}kbps -> Target Bitrate ${Math.round(targetVideoBitrate / 1000)}kbps. Estimated Size: ${(estimatedSizeBytes / 1e6).toFixed(2)}MB (Limit: ${(maxServerUploadSizeBytes / 1e6).toFixed(2)}MB). CanFitOnServer: ${canFitOnServer}`)
 
   if (canFitOnServer) {
     return {
@@ -243,6 +225,14 @@ async function evaluateVideoCompression (file, maxServerUploadSizeBytes = 262144
   }
 }
 
+/**
+ * Extracts metadata, tags, duration, and covers/thumbnails from a media file.
+ *
+ * @param {Blob|File} file - The media file (audio or video).
+ * @param {Object} [options={}] - Options for metadata extraction.
+ * @param {boolean} [options.skipThumbnail=false] - Whether to skip video frame thumbnail extraction.
+ * @returns {Promise<{duration: number, metadata: {title: string, artist: string, album: string, genre: string, year: (number|null), track: (number|null)}, albumArt: (ArrayBuffer|null), albumArtMimeType: (string|null), thumbnail: (ImageBitmap|null)}>} Extracted metadata.
+ */
 async function getMetadata (file, options = {}) {
   let duration = 0
   let tags = {}
@@ -255,16 +245,16 @@ async function getMetadata (file, options = {}) {
     })
     try {
       duration = await input.computeDuration()
-    } catch (durErr) {
-      console.warn('[media-worker] Failed to compute duration:', durErr)
+    } catch {
+      // Ignored: Default duration remains 0
     }
     try {
       tags = await input.getMetadataTags() || {}
-    } catch (tagsErr) {
-      console.warn('[media-worker] Failed to get metadata tags:', tagsErr)
+    } catch {
+      // Ignored: Default tags remains empty
     }
-  } catch (initErr) {
-    console.warn('[media-worker] Input initialization failed:', initErr)
+  } catch {
+    // Ignored: Input initialization failed, proceed with empty metadata
   }
 
   let thumbnail = null
@@ -283,16 +273,15 @@ async function getMetadata (file, options = {}) {
             thumbnail = await result.canvas.transferToImageBitmap()
           }
         }
-      } catch (thumbErr) {
-        console.warn('[media-worker] WebCodecs thumbnail extraction failed:', thumbErr)
+      } catch {
+        // Ignored: Canvas extraction failed, attempt FFmpeg fallback
       }
     }
     if (!thumbnail) {
       try {
-        console.info('[media-worker] Attempting FFmpeg WASM thumbnail extraction fallback...')
         thumbnail = await extractThumbnailWithFFmpeg(file)
-      } catch (ffmpegThumbErr) {
-        console.warn('[media-worker] FFmpeg WASM thumbnail extraction failed:', ffmpegThumbErr)
+      } catch {
+        // Ignored: Handled fallback failure gracefully
       }
     }
   }
@@ -304,8 +293,8 @@ async function getMetadata (file, options = {}) {
     try {
       albumArt = tags.images[0].data
       albumArtMimeType = tags.images[0].mimeType
-    } catch (artErr) {
-      console.warn('[media-worker] Failed to extract album art:', artErr)
+    } catch {
+      // Ignored: Fallback when image extraction fails
     }
   }
 
@@ -325,6 +314,21 @@ async function getMetadata (file, options = {}) {
   }
 }
 
+/**
+ * Compresses a video using WebCodecs with dynamic options.
+ *
+ * @param {Blob|File} file - The raw video file.
+ * @param {Object} [options={}] - Compression parameters.
+ * @param {number} [options.duration] - Pre-computed video duration in seconds.
+ * @param {number} [options.bitrate] - Requested target bitrate.
+ * @param {number} [options.maxWidth=1280] - Maximum video width.
+ * @param {number} [options.maxHeight=720] - Maximum video height.
+ * @param {string} [options.format='mp4'] - Desired output container ('mp4' or 'webm').
+ * @param {string} [options.codec='vp9'] - Desired WebM video codec ('vp9', 'vp8', or 'av1').
+ * @param {Function} [onProgress] - Callback invoked with the compression progress percentage.
+ * @returns {Promise<{buffer: Uint8Array, mimeType: string, extension: string}>} Compiled video.
+ * @throws {Error} If video container setup or transcoding fails.
+ */
 async function compressVideo (file, options = {}, onProgress) {
   const input = new Input({
     formats: SUPPORTED_FORMATS,
@@ -335,8 +339,8 @@ async function compressVideo (file, options = {}, onProgress) {
   if (!duration || duration <= 0) {
     try {
       duration = await input.computeDuration()
-    } catch (e) {
-      console.warn('[media-worker] Could not compute duration:', e)
+    } catch {
+      // Ignored: Falls back to default duration or zero
     }
   }
 
@@ -390,7 +394,6 @@ async function compressVideo (file, options = {}, onProgress) {
   if (!conversion.isValid) {
     const videoTrackValid = !conversion.discardedTracks.some(t => t.track && t.track.kind === 'video')
     if (videoTrackValid) {
-      console.warn('[media-worker] Audio track discarded in conversion; retrying video track only')
       delete conversionOptions.audio
       const videoOnlyConversion = await Conversion.init(conversionOptions)
       if (videoOnlyConversion.isValid) {
@@ -425,6 +428,12 @@ async function compressVideo (file, options = {}, onProgress) {
 
 let ffmpegInstance = null
 
+/**
+ * Instantiates and loads the FFmpeg WASM library if not already active.
+ *
+ * @returns {Promise<Object>} Loaded FFmpeg instance.
+ * @throws {Error} If FFmpeg fails to load.
+ */
 async function getFFmpegInstance () {
   if (!ffmpegInstance) {
     const { FFmpeg } = await import('/assets/ffmpeg/index.js')
@@ -440,6 +449,15 @@ async function getFFmpegInstance () {
   return ffmpegInstance
 }
 
+/**
+ * Transcodes a video using FFmpeg WASM as a robust fallback.
+ *
+ * @param {Blob|File} file - The raw video file.
+ * @param {Object} [_options={}] - Unused options placeholder.
+ * @param {Function} [onProgress] - Callback for transcode updates, reporting progress percentage and status text.
+ * @returns {Promise<{buffer: Uint8Array, mimeType: string, extension: string}>} Compiled video bytes and metadata.
+ * @throws {Error} If transcoding fails or the FFmpeg command fails to complete.
+ */
 async function transcodeWithFFmpeg (file, _options = {}, onProgress) {
   if (onProgress) {
     onProgress(0, 'Initializing FFmpeg WASM transcoder...')
@@ -488,7 +506,6 @@ async function transcodeWithFFmpeg (file, _options = {}, onProgress) {
       outputName
     ]
 
-    console.info(`[media-worker] Executing FFmpeg WASM command: ffmpeg ${execArgs.join(' ')}`)
     const ret = await ffmpeg.exec(execArgs)
 
     if (ret !== 0) {
@@ -500,8 +517,8 @@ async function transcodeWithFFmpeg (file, _options = {}, onProgress) {
     try {
       await ffmpeg.deleteFile(inputName)
       await ffmpeg.deleteFile(outputName)
-    } catch (e) {
-      console.warn('[media-worker] Cleanup error (ignored):', e)
+    } catch {
+      // Ignored: Cleanup files failed
     }
 
     if (onProgress) {
@@ -518,6 +535,12 @@ async function transcodeWithFFmpeg (file, _options = {}, onProgress) {
   }
 }
 
+/**
+ * Extracts a representative frame image from a video file using FFmpeg WASM.
+ *
+ * @param {Blob|File} file - The video file.
+ * @returns {Promise<ImageBitmap|null>} The generated thumbnail ImageBitmap, or null if extraction fails.
+ */
 async function extractThumbnailWithFFmpeg (file) {
   const ffmpeg = await getFFmpegInstance()
 
@@ -554,14 +577,13 @@ async function extractThumbnailWithFFmpeg (file) {
     try {
       await ffmpeg.deleteFile(inputName)
       await ffmpeg.deleteFile(outputName)
-    } catch (_e) {
+    } catch {
+      // Ignored: Cleanup files failed
     }
 
     const blob = new Blob([outputData], { type: 'image/jpeg' })
     return await createImageBitmap(blob)
-  } catch (err) {
-    console.warn('[media-worker] extractThumbnailWithFFmpeg failed:', err)
+  } catch {
     return null
   }
 }
-
