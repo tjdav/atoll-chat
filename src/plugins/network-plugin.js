@@ -6,6 +6,12 @@ import { definePlugin } from 'coralite'
 export default definePlugin({
   name: 'network',
   client: {
+    /**
+     * Resolves the plugin context during the initial setup phase.
+     *
+     * @param {Object} pluginContext The plugin-level context object.
+     * @returns {Function} A second-phase function that resolves instance-level context.
+     */
     context: (pluginContext) => {
       let resolvedAdapter = null
 
@@ -20,19 +26,13 @@ export default definePlugin({
           return resolvedAdapter
         }
 
-        try {
-          const { Capacitor } = await import('@capacitor/core')
-          if (Capacitor.isNativePlatform()) {
-            console.info('[network-plugin] Native platform detected. Loading Native Network Adapter.')
-            const { createNativeNetworkAdapter } = await import('./network-adapter-native.js')
-            resolvedAdapter = createNativeNetworkAdapter(instanceContext)
-            return resolvedAdapter
-          }
-        } catch (_err) {
-          /* Fall back gracefully to Web adapter */
+        const { Capacitor } = await import('@capacitor/core').catch(() => ({}))
+        if (Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform()) {
+          const { createNativeNetworkAdapter } = await import('./network-adapter-native.js')
+          resolvedAdapter = createNativeNetworkAdapter(instanceContext)
+          return resolvedAdapter
         }
 
-        console.info('[network-plugin] Web platform detected. Loading Web Network Adapter.')
         const { createWebNetworkAdapter } = await import('./network-adapter-web.js')
         resolvedAdapter = createWebNetworkAdapter(instanceContext)
         return resolvedAdapter
@@ -41,7 +41,12 @@ export default definePlugin({
       /* Expose getAdapter on the pluginContext for Phase 1 Setup */
       pluginContext.$getNetworkAdapter = getAdapter
 
-      /* Phase 2: Local Instance */
+      /**
+       * Two-phase instance resolver for the network plugin.
+       *
+       * @param {Object} instanceContext The Coralite instance context.
+       * @returns {Object} An object exposing network plugin API for the instance.
+       */
       return (instanceContext) => {
         const bus = instanceContext.eventBus?.$bus
 

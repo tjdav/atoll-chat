@@ -13,14 +13,12 @@ export function createWebNetworkAdapter () {
     registerListeners (bus) {
       if (typeof window !== 'undefined') {
         window.addEventListener('online', () => {
-          console.info('[WebNetworkAdapter] Browser went online.')
           bus.emit('app:network_change', {
             isOnline: true
           })
         })
 
         window.addEventListener('offline', () => {
-          console.info('[WebNetworkAdapter] Browser went offline.')
           bus.emit('app:network_change', {
             isOnline: false
           })
