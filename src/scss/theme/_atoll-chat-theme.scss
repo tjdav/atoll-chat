@@ -208,6 +208,8 @@
     --atoll-chat-bubble-received-border: #{map-get($tokens, "bubble-received-border")};
     --atoll-chat-bubble-received-backdrop-filter: #{map-get($tokens, "bubble-received-backdrop-filter")};
 
+    --atoll-chat-sender-name-color: #{map-get($tokens, "sender-name-color")};
+    --atoll-chat-timestamp-color: #{map-get($tokens, "timestamp-color")};
     --atoll-chat-sent-status-color: #{map-get($tokens, "sent-status-color")};
 
     --atoll-chat-date-separator-bg: #{map-get($tokens, "date-separator-bg")};
@@ -334,9 +336,20 @@
     -webkit-backdrop-filter: none !important;
 
     .text-muted,
-    .time-display {
+    .time-display,
+    .font-monospace {
       color: var(--atoll-chat-header-color, inherit) !important;
       opacity: 1 !important;
+    }
+  }
+
+  .reaction-trigger-icon {
+    background-color: var(--atoll-chat-reaction-pill-bg, var(--#{$prefix}body-bg)) !important;
+    border: 1px solid var(--atoll-chat-reaction-pill-border, var(--#{$prefix}border-color)) !important;
+    color: var(--atoll-chat-reaction-pill-color, var(--#{$prefix}secondary-color)) !important;
+
+    atoll-icon {
+      color: var(--atoll-chat-reaction-pill-color, var(--#{$prefix}secondary-color)) !important;
     }
   }
 
@@ -384,6 +397,12 @@
   position: relative;
   overflow: hidden;
   background-color: var(--atoll-chat-bg, #ffffff);
+
+  --atoll-chat-header-bg: var(--atoll-chat-input-container-bg-custom, rgba(255, 255, 255, 0.75));
+  --atoll-chat-header-backdrop-filter: blur(12px);
+  --atoll-chat-header-border: var(--atoll-chat-attachment-card-border, rgba(0, 0, 0, 0.08));
+  --atoll-chat-header-color: var(--atoll-chat-bubble-received-color, inherit);
+  --atoll-chat-header-subtitle-color: var(--atoll-chat-sender-name-color, inherit);
 
   &::before {
     content: "";
@@ -459,6 +478,16 @@
     -webkit-backdrop-filter: blur(12px) !important;
     border: 0px solid var(--atoll-chat-attachment-card-border, rgba(0, 0, 0, 0.08)) !important;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+  }
+
+  // Ensure empty state adapts beautifully to custom background text color
+  .atoll-chat-timeline-container {
+    p {
+      color: var(--atoll-chat-header-color, inherit) !important;
+    }
+    atoll-icon {
+      color: var(--atoll-chat-header-color, inherit) !important;
+    }
   }
 
   // Waveform player background to be glassy blurred

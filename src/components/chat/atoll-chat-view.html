@@ -285,6 +285,7 @@
             // Apply custom theme CSS properties
             if (room.theme === 'custom' && room.custom_theme) {
               const ct = room.custom_theme
+              chatViewRoot.style.setProperty('--atoll-chat-bg', ct.bgColor || '#FFFFFF')
               chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-bg', ct.sentBg || '#06C755')
               chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-color', ct.sentColor || '#FFFFFF')
               chatViewRoot.style.setProperty('--atoll-chat-bubble-received-bg', ct.receivedBg || '#EEEEEE')
@@ -295,6 +296,8 @@
 
               // Set newly expanded custom theme variables on chatViewRoot
               chatViewRoot.style.setProperty('--atoll-chat-sent-status-color', ct.sentStatusColor || ct.sentBg || '#06C755')
+              chatViewRoot.style.setProperty('--atoll-chat-sender-name-color', ct.senderNameColor || ct.receivedColor || '#111111')
+              chatViewRoot.style.setProperty('--atoll-chat-timestamp-color', ct.timestampColor || ct.receivedColor || '#111111')
               chatViewRoot.style.setProperty('--atoll-chat-btn-attach-bg', ct.btnAttachBg || 'transparent')
               chatViewRoot.style.setProperty('--atoll-chat-btn-attach-color', ct.btnAttachColor || ct.sentBg || '#06C755')
               chatViewRoot.style.setProperty('--atoll-chat-btn-voice-bg', ct.btnVoiceBg || 'transparent')
@@ -307,6 +310,7 @@
               chatViewRoot.style.setProperty('--atoll-chat-attachment-card-border', ct.attachmentCardBorder || 'rgba(0, 0, 0, 0.08)')
             } else {
               // Clear inline custom theme properties
+              chatViewRoot.style.removeProperty('--atoll-chat-bg')
               chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-bg')
               chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-color')
               chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-bg')
@@ -316,6 +320,8 @@
               chatViewRoot.style.removeProperty('--atoll-chat-bg-dim')
 
               chatViewRoot.style.removeProperty('--atoll-chat-sent-status-color')
+              chatViewRoot.style.removeProperty('--atoll-chat-sender-name-color')
+              chatViewRoot.style.removeProperty('--atoll-chat-timestamp-color')
               chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-bg')
               chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-color')
               chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-bg')

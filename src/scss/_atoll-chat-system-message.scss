@@ -5,4 +5,21 @@
   text-align: center;
   margin-top: 1rem;
   margin-bottom: 1rem;
+
+  .system-message-pill {
+    background-color: var(--atoll-chat-date-separator-bg, var(--#{$prefix}bg-surface-tertiary, #EEEEEE)) !important;
+    color: var(--atoll-chat-date-separator-color, var(--#{$prefix}secondary-color, #777777)) !important;
+    border-color: var(--atoll-chat-date-separator-border, var(--#{$prefix}border-color)) !important;
+    font-size: 0.7rem;
+
+    .text-success {
+      color: var(--atoll-chat-waveform-active, var(--#{$prefix}success, #06C755)) !important;
+    }
+    .text-primary {
+      color: var(--atoll-chat-waveform-active, var(--#{$prefix}primary, #0d6efd)) !important;
+    }
+    .text-danger {
+      color: var(--#{$prefix}danger, #dc3545) !important;
+    }
+  }
 }

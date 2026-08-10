@@ -60,9 +60,19 @@
           </div>
 
           <div class="mb-3 d-none" ref="paletteContainer">
-            <label class="form-label small fw-bold">Active Palette</label>
-            <div class="d-flex flex-wrap gap-1" ref="swatchList" data-testid="swatch-list">
+            <label class="form-label small fw-bold">Active Palette (Click a color to select it)</label>
+            <div class="d-flex flex-wrap gap-1 mb-2" ref="swatchList" data-testid="swatch-list">
               <!-- Dynamic swatches go here -->
+            </div>
+
+            <!-- Swatch Target Action Buttons -->
+            <div class="swatch-apply-actions d-none" ref="swatchActionsContainer" data-testid="swatch-apply-actions">
+              <div class="small text-muted mb-1">Apply selected color <span class="fw-bold" ref="selectedColorText" data-testid="selected-color-text"></span> to:</div>
+              <div class="d-flex gap-1">
+                <button type="button" class="btn btn-sm btn-outline-success flex-grow-1" ref="btnApplySent" data-testid="btn-apply-sent" style="font-size: 0.75rem; padding: 2px 4px;">Sent Bubble</button>
+                <button type="button" class="btn btn-sm btn-outline-info flex-grow-1" ref="btnApplyReceived" data-testid="btn-apply-received" style="font-size: 0.75rem; padding: 2px 4px;">Received Bubble</button>
+                <button type="button" class="btn btn-sm btn-outline-warning flex-grow-1" ref="btnApplyBackground" data-testid="btn-apply-background" style="font-size: 0.75rem; padding: 2px 4px;">Solid BG</button>
+              </div>
             </div>
           </div>
 
@@ -228,6 +238,8 @@
       const preDefinedThemeTokens = {
         classic: {
           'sent-status-color': 'var(--atoll-text-tertiary, #999999)',
+          'sender-name-color': 'var(--atoll-secondary-color, #777777)',
+          'timestamp-color': 'var(--atoll-text-tertiary, #999999)',
           'btn-attach-bg': 'transparent',
           'btn-attach-color': 'var(--atoll-secondary-color, #777777)',
           'btn-voice-bg': 'transparent',
@@ -241,6 +253,8 @@
         },
         ocean: {
           'sent-status-color': 'rgba(255, 255, 255, 0.7)',
+          'sender-name-color': 'rgba(255, 255, 255, 0.8)',
+          'timestamp-color': 'rgba(255, 255, 255, 0.7)',
           'btn-attach-bg': 'rgba(255, 255, 255, 0.1)',
           'btn-attach-color': '#ffffff',
           'btn-voice-bg': 'rgba(255, 255, 255, 0.1)',
@@ -254,6 +268,8 @@
         },
         forest: {
           'sent-status-color': 'rgba(255, 255, 255, 0.7)',
+          'sender-name-color': 'rgba(255, 255, 255, 0.8)',
+          'timestamp-color': 'rgba(255, 255, 255, 0.7)',
           'btn-attach-bg': 'rgba(255, 255, 255, 0.1)',
           'btn-attach-color': '#ffffff',
           'btn-voice-bg': 'rgba(255, 255, 255, 0.1)',
@@ -267,6 +283,8 @@
         },
         sunset: {
           'sent-status-color': 'rgba(255, 255, 255, 0.7)',
+          'sender-name-color': 'rgba(255, 255, 255, 0.8)',
+          'timestamp-color': 'rgba(255, 255, 255, 0.7)',
           'btn-attach-bg': 'rgba(255, 255, 255, 0.1)',
           'btn-attach-color': '#ffffff',
           'btn-voice-bg': 'rgba(255, 255, 255, 0.1)',
@@ -281,10 +299,11 @@
       }
 
       // Custom theme state variables
+      let customBgColor = '#FFFFFF'
       let customBgImage = null
       let customBgBlur = 5
       let customBgDim = 30
-      let customUseBgImage = false
+      let customUseBgImage = true
       let customPalette = []
       let customPaletteModeIdx = 0
       const paletteModes = ['vibrant', 'muted', 'pastel', 'deep']
@@ -293,6 +312,10 @@
       let customSentColor = '#FFFFFF'
       let customReceivedBg = '#EEEEEE'
       let customReceivedColor = '#111111'
+
+      let customSenderNameColor = '#111111'
+      let customTimestampColor = 'rgba(17, 17, 17, 0.7)'
+      let selectedSwatchColor = null
 
       // Derivable sub-colors
       let customSentStatusColor = '#999999'
@@ -308,6 +331,11 @@
       let customAttachmentCardBorder = 'rgba(0, 0, 0, 0.08)'
 
       const customThemeControls = refs('customThemeControls')
+      const swatchActionsContainer = refs('swatchActionsContainer')
+      const selectedColorText = refs('selectedColorText')
+      const btnApplySent = refs('btnApplySent')
+      const btnApplyReceived = refs('btnApplyReceived')
+      const btnApplyBackground = refs('btnApplyBackground')
       const imageUploader = refs('imageUploader')
       const btnGeneratePalette = refs('btnGeneratePalette')
       const btnRandomizeColors = refs('btnRandomizeColors')
@@ -330,18 +358,26 @@
         const room = await $storage.getRoom($state.activeSelectionId)
         highlightedTheme = room?.theme || 'classic'
 
+        selectedSwatchColor = null
+        if (swatchActionsContainer) {
+          swatchActionsContainer.classList.add('d-none')
+        }
+
         // Hydrate from existing custom theme settings if they exist
         if (room?.custom_theme) {
           const ct = room.custom_theme
+          customBgColor = ct.bgColor || '#FFFFFF'
           customBgImage = ct.bgImage || null
           customBgBlur = ct.bgBlur !== undefined ? ct.bgBlur : 5
           customBgDim = ct.bgDim !== undefined ? ct.bgDim : 30
-          customUseBgImage = !!ct.useBgImage
+          customUseBgImage = ct.useBgImage !== undefined ? !!ct.useBgImage : true
           customPalette = ct.palette || []
           customSentBg = ct.sentBg || '#06C755'
           customSentColor = ct.sentColor || '#FFFFFF'
           customReceivedBg = ct.receivedBg || '#EEEEEE'
           customReceivedColor = ct.receivedColor || '#111111'
+          customSenderNameColor = ct.senderNameColor || '#111111'
+          customTimestampColor = ct.timestampColor || 'rgba(17, 17, 17, 0.7)'
           customSentStatusColor = ct.sentStatusColor || '#999999'
           customBtnAttachBg = ct.btnAttachBg || 'transparent'
           customBtnAttachColor = ct.btnAttachColor || '#777777'
@@ -355,15 +391,18 @@
           customAttachmentCardBorder = ct.attachmentCardBorder || 'rgba(0, 0, 0, 0.08)'
         } else {
           // Reset custom theme state if none exist
+          customBgColor = '#FFFFFF'
           customBgImage = null
           customBgBlur = 5
           customBgDim = 30
-          customUseBgImage = false
+          customUseBgImage = true
           customPalette = []
           customSentBg = '#06C755'
           customSentColor = '#FFFFFF'
           customReceivedBg = '#EEEEEE'
           customReceivedColor = '#111111'
+          customSenderNameColor = '#111111'
+          customTimestampColor = 'rgba(17, 17, 17, 0.7)'
           customSentStatusColor = '#999999'
           customBtnAttachBg = 'transparent'
           customBtnAttachColor = '#777777'
@@ -487,36 +526,70 @@
           swatch.setAttribute('data-color', hex)
           swatch.className = 'palette-swatch shadow-sm'
 
-          if (hex === customSentBg || hex === customReceivedBg) {
+          if (hex === customSentBg || hex === customReceivedBg || hex === customBgColor) {
             swatch.style.borderColor = '#000000'
           }
+          if (hex === selectedSwatchColor) {
+            swatch.style.borderColor = 'var(--atoll-brand-primary, #06C755)'
+            swatch.style.transform = 'scale(1.15)'
+          }
 
-          // Clicking a swatch opens a small selection prompt or alternates Sent/Received selection
+          // Clicking a swatch opens the non-native apply controls
           swatch.addEventListener('click', () => {
-            // Alternate applying to Sent and Received for fun custom customization
-            const isSentSelection = confirm(`Apply ${hex} to Sent bubble? (Cancel applies to Received bubble)`)
-            const compliance = ensureWCAGContrast(hex, 4.5)
-            if (isSentSelection) {
-              customSentBg = compliance.bgHex
-              customSentColor = compliance.textColor
-              customBtnSendBg = compliance.bgHex
-              customBtnSendColor = compliance.textColor
-              customWaveformActive = compliance.bgHex
-              customWaveformInactive = hexToRgbaStr(compliance.bgHex, 0.2)
-              customSentStatusColor = compliance.bgHex
-            } else {
-              customReceivedBg = compliance.bgHex
-              customReceivedColor = compliance.textColor
-              customAttachmentCardBg = compliance.bgHex
-              customAttachmentCardBorder = hexToRgbaStr(compliance.bgHex, 0.15)
+            selectedSwatchColor = hex
+            if (selectedColorText) {
+              selectedColorText.textContent = hex
+              selectedColorText.style.color = hex
+            }
+            if (swatchActionsContainer) {
+              swatchActionsContainer.classList.remove('d-none')
             }
             renderPaletteSwatches()
-            updateLivePreviewStyles()
           })
 
           swatchList.appendChild(swatch)
-        }, { signal })
+        })
       }
+
+      btnApplySent.addEventListener('click', () => {
+        if (!selectedSwatchColor) {
+          return
+        }
+        const compliance = ensureWCAGContrast(selectedSwatchColor, 4.5)
+        customSentBg = compliance.bgHex
+        customSentColor = compliance.textColor
+        customBtnSendBg = compliance.bgHex
+        customBtnSendColor = compliance.textColor
+        customWaveformActive = compliance.bgHex
+        customWaveformInactive = hexToRgbaStr(compliance.bgHex, 0.2)
+        customSentStatusColor = compliance.bgHex
+        renderPaletteSwatches()
+        updateLivePreviewStyles()
+      }, { signal })
+
+      btnApplyReceived.addEventListener('click', () => {
+        if (!selectedSwatchColor) {
+          return
+        }
+        const compliance = ensureWCAGContrast(selectedSwatchColor, 4.5)
+        customReceivedBg = compliance.bgHex
+        customReceivedColor = compliance.textColor
+        customAttachmentCardBg = compliance.bgHex
+        customAttachmentCardBorder = hexToRgbaStr(compliance.bgHex, 0.15)
+        customSenderNameColor = compliance.bgHex
+        customTimestampColor = hexToRgbaStr(compliance.bgHex, 0.7)
+        renderPaletteSwatches()
+        updateLivePreviewStyles()
+      }, { signal })
+
+      btnApplyBackground.addEventListener('click', () => {
+        if (!selectedSwatchColor) {
+          return
+        }
+        customBgColor = selectedSwatchColor
+        renderPaletteSwatches()
+        updateLivePreviewStyles()
+      }, { signal })
 
       // Helper to generate rgba string from hex
       const hexToRgbaStr = (hex, opacity) => {
@@ -539,6 +612,8 @@
 
         // Clear inline custom styles first
         previewChatWindow.style.backgroundImage = ''
+        previewChatWindow.style.backgroundColor = ''
+        previewChatWindow.style.setProperty('--atoll-chat-bg', '')
         previewChatWindow.style.setProperty('--atoll-chat-bg-image', '')
         previewChatWindow.style.setProperty('--atoll-chat-bg-blur', '')
         previewChatWindow.style.setProperty('--atoll-chat-bg-dim', '')
@@ -549,6 +624,8 @@
         previewBubbleIncoming.style.color = ''
 
         // Clear custom theme properties from live preview first
+        previewChatWindow.style.removeProperty('--atoll-chat-sender-name-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-timestamp-color')
         previewChatWindow.style.removeProperty('--atoll-chat-sent-status-color')
         previewChatWindow.style.removeProperty('--atoll-chat-btn-attach-bg')
         previewChatWindow.style.removeProperty('--atoll-chat-btn-attach-color')
@@ -573,6 +650,11 @@
           previewBubbleIncoming.style.backgroundColor = customReceivedBg
           previewBubbleIncoming.style.color = customReceivedColor
 
+          previewChatWindow.style.setProperty('--atoll-chat-bg', customBgColor)
+          previewChatWindow.style.backgroundColor = customBgColor
+
+          previewChatWindow.style.setProperty('--atoll-chat-sender-name-color', customSenderNameColor || customReceivedColor)
+          previewChatWindow.style.setProperty('--atoll-chat-timestamp-color', customTimestampColor || customReceivedColor)
           previewChatWindow.style.setProperty('--atoll-chat-sent-status-color', customSentStatusColor)
           previewChatWindow.style.setProperty('--atoll-chat-btn-attach-bg', customBtnAttachBg)
           previewChatWindow.style.setProperty('--atoll-chat-btn-attach-color', customBtnAttachColor)
@@ -603,6 +685,8 @@
           // It's a pre-defined theme (classic, ocean, forest, sunset)
           const tokens = preDefinedThemeTokens[highlightedTheme]
           if (tokens) {
+            previewChatWindow.style.setProperty('--atoll-chat-sender-name-color', tokens['sender-name-color'] || '')
+            previewChatWindow.style.setProperty('--atoll-chat-timestamp-color', tokens['timestamp-color'] || '')
             previewChatWindow.style.setProperty('--atoll-chat-sent-status-color', tokens['sent-status-color'])
             previewChatWindow.style.setProperty('--atoll-chat-btn-attach-bg', tokens['btn-attach-bg'])
             previewChatWindow.style.setProperty('--atoll-chat-btn-attach-color', tokens['btn-attach-color'])
@@ -823,6 +907,7 @@
 
           // Create the dynamic custom theme data block to sync via Room Metadata
           const customThemeObj = highlightedTheme === 'custom' ? {
+            bgColor: customBgColor,
             sentBg: customSentBg,
             sentColor: customSentColor,
             receivedBg: customReceivedBg,
@@ -833,6 +918,8 @@
             useBgImage: customUseBgImage,
             palette: customPalette,
             sentStatusColor: customSentStatusColor,
+            senderNameColor: customSenderNameColor || customReceivedColor,
+            timestampColor: customTimestampColor || customReceivedColor,
             btnAttachBg: customBtnAttachBg,
             btnAttachColor: customBtnAttachColor,
             btnVoiceBg: customBtnVoiceBg,
