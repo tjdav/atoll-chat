@@ -231,7 +231,7 @@ routerAdd('GET', '/api/turn-credentials', (e) => {
 
   const unixTimestamp = Math.floor(Date.now() / 1000) + expiresInSeconds
 
-  // Direct access to e.auth in PocketBase v0.39.8
+  // Direct access to e.auth in PocketBase v0.39.10
   const authRecord = e.auth
 
   const userId = authRecord ? authRecord.id : 'unknown_user'

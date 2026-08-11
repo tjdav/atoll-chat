@@ -44,7 +44,7 @@ RUN pnpm run build
 FROM alpine:3.24
 
 # Set PocketBase version
-ARG PB_VERSION=0.39.8
+ARG PB_VERSION=0.39.10
 
 RUN apk add --no-cache ca-certificates unzip wget libc6-compat nodejs npm && npm install -g pnpm
 
