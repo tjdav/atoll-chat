@@ -1,3 +1,8 @@
+atoll-chat-voice-recorder {
+  display: block !important;
+  width: 100% !important;
+}
+
 .atoll-chat-input-container {
   background-color: var(--atoll-chat-input-container-bg, var(--bs-body-bg)) !important;
   border: 1px solid var(--atoll-chat-input-container-border, transparent) !important;
@@ -14,6 +19,48 @@
 
     &::placeholder {
       color: var(--atoll-chat-input-placeholder-color) !important;
+    }
+  }
+
+  .atoll-chat-input-btn-discard {
+    color: var(--atoll-chat-btn-voice-color, var(--atoll-chat-input-color)) !important;
+    
+    &:hover {
+      background-color: rgba(255, 255, 255, 0.1) !important;
+    }
+  }
+
+  .atoll-chat-recording-controls {
+    background-color: var(--atoll-chat-input-bg, var(--bs-body-bg)) !important;
+    border: 1px solid var(--atoll-chat-input-container-border, var(--bs-border-color)) !important;
+    color: var(--atoll-chat-input-color) !important;
+
+    .atoll-chat-recording-btn-pause-resume button {
+      background-color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+      color: var(--atoll-chat-bubble-sent-color, #ffffff) !important;
+      border-color: transparent !important;
+
+      .atoll-icon {
+        --atoll-icon-out-stroke: #FFFFFF !important;
+        --atoll-icon-out-fill: rgba(255, 255, 255, 0.25) !important;
+        --atoll-icon-inner-stroke: #FFFFFF !important;
+        --atoll-icon-inner-fill: #FFFFFF !important;
+        --solar-secondary-color: currentColor !important;
+        --solar-secondary-opacity: 0.6 !important;
+      }
+    }
+
+    .atoll-chat-recording-btn-redo,
+    .atoll-chat-recording-btn-resume {
+      color: var(--atoll-chat-btn-voice-color, var(--atoll-chat-input-color)) !important;
+      
+      &:hover {
+        background-color: rgba(255, 255, 255, 0.1) !important;
+      }
+    }
+
+    .atoll-chat-recording-timer {
+      color: var(--atoll-chat-input-color) !important;
     }
   }
 }

@@ -20,18 +20,24 @@ test.describe('Voice Recording', () => {
     await page.locator('[data-testid="atoll-chat-input-text-0__btn-mic-toggle"]').click()
 
     // Check if recorder is visible
-    await expect(page.locator('chat-voice-recorder')).toBeVisible()
+    await expect(page.locator('atoll-chat-voice-recorder')).toBeVisible()
+
+    // Wait for visualizer canvas to render and scale properly
+    await page.waitForTimeout(1000)
+
+    // Take screenshot of the new themed, 100% full-width voice message recorder
+    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
 
     // Wait a bit for some recording duration
     await page.waitForTimeout(2000)
 
     // Click send button in recorder
-    await page.locator('[data-testid="chat-voice-recorder-0__sendVoiceButton"]').click()
+    await page.locator('[data-testid="atoll-chat-voice-recorder-0__sendVoiceButton"]').click()
 
     // Recorder should disappear
-    await expect(page.locator('chat-voice-recorder')).not.toBeVisible()
+    await expect(page.locator('atoll-chat-voice-recorder')).not.toBeVisible()
 
     // verify message appeared in timeline with interactive waveform
-    await expect(page.locator('atoll-chat-timeline .atoll-chat-timeline-row-container .waveform-player').last()).toBeVisible({ timeout: 30000 })
+    await expect(page.locator('atoll-chat-timeline .atoll-chat-timeline-row-container .atoll-chat-waveform-player').last()).toBeVisible({ timeout: 30000 })
   })
 })

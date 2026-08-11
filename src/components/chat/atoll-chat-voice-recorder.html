@@ -1,13 +1,23 @@
 <template id="atoll-chat-voice-recorder">
-  <div class="atoll-chat-voice-recorder-ui d-flex align-items-center gap-2">
-    <atoll-button variant="ghost" leading-icon="trash" icon-only="true" ref="discardButton" title="Discard" data-testid="discardButton"></atoll-button>
+  <div class="atoll-chat-voice-recorder-ui d-flex align-items-center gap-2 w-100">
+    <atoll-button 
+      variant="ghost" 
+      size="sm" 
+      pill="true" 
+      icon-only="true" 
+      ref="discardButton" 
+      class="atoll-chat-input-btn-discard" 
+      title="Discard" 
+      aria-label="Discard" 
+      data-testid="discardButton"
+    >
+      <atoll-icon name="trash" size="20"></atoll-icon>
+    </atoll-button>
     
-    <div class="atoll-chat-recording-controls flex-grow-1 d-flex align-items-center bg-body-tertiary rounded-pill px-3 py-1 border">
-      <atoll-button variant="secondary" icon-only="true" pill="true" size="sm" ref="pauseResumeButton" data-testid="pauseResumeButton">
-        <atoll-icon name="{{ pauseResumeIcon }}" size="18"></atoll-icon>
-      </atoll-button>
+    <div class="atoll-chat-recording-controls flex-grow-1 d-flex align-items-center rounded-pill px-3 py-1">
+      <atoll-button variant="primary" leading-icon="{{ pauseResumeIcon }}" icon-only="true" pill="true" size="sm" ref="pauseResumeButton" class="atoll-chat-recording-btn-pause-resume" data-testid="pauseResumeButton"></atoll-button>
 
-      <atoll-button variant="ghost" leading-icon="restart" icon-only="true" size="sm" ref="redoButton" title="Restart" data-testid="redoButton" class="{{ redoClass }}"></atoll-button>
+      <atoll-button variant="ghost" leading-icon="restart" icon-only="true" size="sm" ref="redoButton" title="Restart" data-testid="redoButton" class="atoll-chat-recording-btn-redo {{ redoClass }}"></atoll-button>
 
       <div class="atoll-chat-recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 32px;">
         <canvas ref="visualizerCanvas" width="400" height="32" class="w-100 h-100"></canvas>
@@ -15,7 +25,7 @@
 
       <span class="atoll-chat-recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
 
-      <atoll-button variant="ghost" leading-icon="mic" icon-only="true" size="sm" ref="resumeMicButton" title="Add more" data-testid="resumeMicButton" class="{{ redoClass }}"></atoll-button>
+      <atoll-button variant="ghost" leading-icon="mic" icon-only="true" size="sm" ref="resumeMicButton" title="Add more" data-testid="resumeMicButton" class="atoll-chat-recording-btn-resume {{ redoClass }}"></atoll-button>
     </div>
 
     <atoll-button variant="primary" leading-icon="send" icon-only="true" pill="true" ref="sendVoiceButton" data-testid="sendVoiceButton"></atoll-button>
