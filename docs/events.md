@@ -39,11 +39,13 @@ Manage user interface states, modals, and notifications.
 | `ui:voice_ready` | Emitted when a voice recording is captured and ready to send. | `{ blob, duration, waveform }` |
 | `ui:voice_discarded` | Emitted when a voice recording is cancelled. | None |
 | `ui:cancel` | Generic UI cancellation event. | None |
-| `ui:dismiss_link_preview` | Closes the link metadata preview in the chat input. | None |
+| `ui:dismiss_link_preview` | Closes the link metadata preview in the chat input. | `{ url }` |
 | `ui:selection_made` | Signals that a selection (chat, media, etc.) has been confirmed by the user. | None |
 | `ui:scroll_to_bottom` | Triggers the timeline to scroll to the bottom. | `{ smooth }` (Boolean) |
 | `ui:focus_input` | Focuses the message input textarea. | None |
 | `ui:open_mobile_nav` | Opens the mobile navigation drawer. | None |
+| `ui:prompt_p2p_consent` | Opens the consent modal for large direct peer-to-peer file transfer. | `{ transferId, senderName, filename, size }` |
+| `ui:prompt_p2p_reroute` | Opens the prompt to reroute an upload to P2P direct transfer. | `{ file, targetUserId }` |
 
 ### Database & Sync (`db:`, `sync:`)
 Handle data persistence and server synchronization states.
@@ -67,6 +69,7 @@ Events related to chat rooms and message delivery/interaction.
 | `room:edit` | Request to retrieve room info and trigger the room edit flow. | `{ room_id }` |
 | `room:read_state_changed` | Triggered when a room is marked as read or active selection changes. | `room_id` |
 | `room:member_updated` | Notifies that a participant's read status or metadata has changed. | `{ room_id }` |
+| `room:theme_updated` | Emitted when a room's custom styling theme is updated. | `{ room_id, theme }` |
 | `message:sent` | Emitted after a message is successfully encrypted and uploaded. | `Message` object |
 | `message:send_reaction` | Request to send a reaction to a specific message. | `{ targetId, emoji }` |
 | `message:scroll_to` | Triggers the timeline to jump to a specific message ID. | `{ messageId }` |
@@ -84,6 +87,7 @@ Controls for the global headless media engine and media selections.
 | `media:seek` | Changes the current playback position. | `{ percent }` or `{ time }` |
 | `media:select` | Signals that a media item (music, pictures, or videos) has been selected. | `{ assetId, type }` (where type is 'music', 'pictures', or 'videos') |
 | `media:video_progress` | Notifies about video compression/processing progress. | `{ id, progress }` |
+| `media:audio_progress` | Notifies about audio file compression or processing progress. | `{ id, progress }` |
 
 ### Calls (`call:`)
 Events for real-time WebRTC audio and video communication.
@@ -95,22 +99,48 @@ Events for real-time WebRTC audio and video communication.
 | `call:ended` | Signals that a call session has terminated. | `{ room_id }` |
 | `call:remote_track_arrival` | Emitted when a remote media track is received and ready for display. | `{ room_id, stream, track }` |
 | `call:local_stream_available` | Emitted when the local camera/mic stream is initialized. | `{ stream }` |
+| `call:accept_clicked` | Emitted when the user accepts an incoming call from the call view overlay. | None |
+| `call:reject_clicked` | Emitted when the user rejects an incoming call. | None |
+| `call:toggle_audio_clicked` | Emitted when the user toggles local microphone audio on/off. | None |
+| `call:toggle_video_clicked` | Emitted when the user toggles local camera video on/off. | None |
+| `call:pip_clicked` | Emitted when the user requests to switch call layout to Picture-in-Picture. | None |
+| `call:end_clicked` | Emitted when the user hangs up from the control bar interface. | None |
 
-### Picture-in-Picture (`pip:`)
-Controls for the floating video overlay.
+### P2P Direct File Transfers (`action:`)
+These background flow events coordinate WebRTC direct device-to-device file transfers.
 
 | Event Name | Description | Payload |
 |------------|-------------|---------|
+| `action:execute_p2p_transfer` | Dispatches file metadata to initiate P2P negotiation with peer. | `{ file, targetUserId }` |
+| `action:execute_p2p_accept` | Informs WebRTC transfer plugin to accept the incoming transfer request. | `{ transferId }` |
+| `action:execute_p2p_reject` | Informs WebRTC transfer plugin to reject the incoming transfer request. | `{ transferId }` |
+
+### Video Grid & Picture-in-Picture (`video_grid:`, `pip:`)
+Controls for call participant layouts and floating overlays.
+
+| Event Name | Description | Payload |
+|------------|-------------|---------|
+| `video_grid:sync` | Synchronizes active tracks, mute/unmute indicators, and grid positioning. | None |
 | `pip:expand` | Returns the floating PiP window to the main chat grid. | None |
 | `pip:reset_position` | Resets the PiP window to its default bottom-right anchor. | None |
 
-### Authentication (`auth:`)
-User session and vault security events.
+### Authentication & Push Notifications (`auth:`, `push:`)
+User session, vault security, and push synchronization events.
 
 | Event Name | Description | Payload |
 |------------|-------------|---------|
 | `auth:logout` | Triggers the global logout and cleanup process. | None |
 | `auth:unlocked` | Emitted after successful vault password/passkey verification. | `{ keys, userRecord }` |
+| `auth:totp_passed` | Emitted after successful TOTP multi-factor verification. | None |
+| `push:decryption_error` | Signals that a background push notification could not be decrypted. | `{ error }` |
+
+### Global App State (`app:`)
+Network state transitions and global system signals.
+
+| Event Name | Description | Payload |
+|------------|-------------|---------|
+| `app:request_reconnect` | Emitted by the offline banner to request a manual reconnect attempt. | None |
+| `app:reconnected` | Emitted when the client successfully regains active internet/server connection. | None |
 
 ### Worker (`worker:`)
 Communication between the main thread and the background cryptographic worker.

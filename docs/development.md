@@ -9,6 +9,7 @@ This document describes how to set up and run the local development environment 
 To spin up the entire development environment, run the following command in the project root:
 
 ```bash
+pnpm install
 pnpm run start
 ```
 
@@ -90,8 +91,14 @@ The following helper scripts are configured in [package.json](/package.json):
   Runs the full dev setup orchestrator ([scripts/start-dev.js](/scripts/start-dev.js)).
 - **`pnpm run start:app`**
   Directly runs the Coralite development compiler server using `coralite-scripts dev`.
+- **`pnpm run invite:create`**
+  Generates a registration/invitation token.
 - **`pnpm run build`**
   Compiles the production-ready static assets to the `dist/` directory using `coralite-scripts build`.
+- **`pnpm run build:android`**
+  Compiles static assets and syncs the Android Capacitor project in debug mode.
+- **`pnpm run build:android:release`**
+  Compiles static assets and compiles a release Android APK.
 
 ### Testing Scripts
 
@@ -105,6 +112,10 @@ The following helper scripts are configured in [package.json](/package.json):
   Generates a synthetic audio/video test input asset and executes Playwright end-to-end integration tests.
 - **`pnpm run test:e2e:ui`**
   Runs the end-to-end integration tests with the visual Playwright UI runner.
+- **`pnpm run test:components`**
+  Validates Coralite component templates and custom component slot constraints.
+- **`pnpm run test:plugins`**
+  Validates registered plugins execution contexts.
 
 ### Code Quality Scripts
 

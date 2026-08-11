@@ -26,6 +26,7 @@ Here is a template you can use for local development and deployment:
 # Statically compiled into client JavaScript assets.
 # ==============================================================================
 ATOLL_POCKETBASE_URL=http://localhost:8090
+ATOLL_APP_URL=http://localhost:3000
 
 # LOCAL_ICE_SERVER=turn:127.0.0.1:3478
 # ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS=1000
@@ -79,7 +80,6 @@ ATOLL_SMTP_SENDER_ADDRESS="noreply@atoll.chat"
 
 # ==============================================================================
 # SECTION 4: PUSH WORKER SERVICE (RUNTIME ONLY)
-# Set as Container RUNTIME ENVIRONMENT VARIABLES (read dynamically by Node daemon)
 # ==============================================================================
 ATOLL_VAPID_PRIVATE_KEY=your_private_key_here
 ATOLL_VAPID_SUBJECT=mailto:admin@example.com
@@ -107,6 +107,7 @@ ATOLL_INTERNAL_POCKETBASE_URL=http://127.0.0.1:8080
 | Variable Name | Scope / Lifecycle | Default Value | Description | Used In / By |
 |---------------|-------------------|---------------|-------------|--------------|
 | `ATOLL_POCKETBASE_URL` | `[BUILD-TIME ONLY]` | `http://localhost:8090` | Base URL of the PocketBase database server. Defaults to `/` in Docker for relative api routing. | [coralite.config.js](/coralite.config.js), [pocketbasePlugin](/src/plugins/pocketbase.js) |
+| `ATOLL_APP_URL` | `[BUILD-TIME ONLY]` | None | Absolute URL pointing to the frontend web application (used by background cryptographic workers and redirects). | [coralite.config.js](/coralite.config.js), [pocketbasePlugin](/src/plugins/pocketbase.js), [cryptoPlugin](/src/plugins/crypto-worker.js) |
 | `ATOLL_VAPID_PUBLIC_KEY` | **`[BUILD & RUNTIME]`** | `BG6jbL6oHXUyR8...` | Valid 65-byte P-256 VAPID public key. Embedded into JS bundle at build-time for browser push subscriptions, and loaded at runtime by push-worker for VAPID headers. **Must be set as both Docker Build Arg AND Runtime Env.** | [coralite.config.js](/coralite.config.js), [pushPlugin](/src/plugins/push-plugin.js), [push-worker](/push-worker/index.js) |
 | `LOCAL_ICE_SERVER` | `[BUILD-TIME ONLY]` | None | Overrides the Ice Server configuration for local WebRTC calls. | [coralite.config.js](/coralite.config.js), [configPlugin](/src/plugins/config-plugin.js), [webrtcPlugin](/src/plugins/web-rtc-plugin.js) |
 | `ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS` | `[BUILD-TIME ONLY]` | `1000` | Minimum interval (in ms) required between playing notification sounds. | [coralite.config.js](/coralite.config.js), [configPlugin](/src/plugins/config-plugin.js) |

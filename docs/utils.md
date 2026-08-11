@@ -16,13 +16,16 @@ import { defineComponent } from 'coralite'
 export default defineComponent({
   client: ({ utils }) => {
     // Destructure the required namespaces
-    const { $time, $string, $list, $func, $image, $crypto, $media, $device } = utils
+    const { $time, $string, $list, $func, $crypto, $media, $device, $url } = utils
 
     // Example: Convert a timestamp
     const relativeTime = $time.getRelative(timestamp)
     
     // Example: Truncate a message preview
     const preview = $string.truncate(messageText, 30)
+
+    // Example: Normalize a URL
+    const cleanUrl = $url.normalizeUrl('http://example.com/', '/path')
   }
 })
 ```
@@ -84,20 +87,6 @@ Provides utility helpers for function execution control.
 |---|---|---|---|
 | `debounce(fn, wait)` | Creates a debounced function that delays invoking `fn` until after `wait` milliseconds. | `fn`: `function` - The function to debounce.<br>`wait`: `number` - The delay in milliseconds. | `function` - The debounced version of the function. |
 
-### Image Helpers (`$image`)
-Provides client-side image compression and manipulation.
-
-| Function | Description | Arguments | Returns |
-|---|---|---|---|
-| `compress(source, options)` | Compresses and resizes an image on the canvas. Supports optional cropping to a square. | `source`: `HTMLImageElement \| HTMLCanvasElement \| ImageBitmap \| OffscreenCanvas \| Blob \| string` - The image source.<br>`options`: `object` - Optional configuration parameters (see below). | `Promise<Blob>` - Resolves to the compressed WebP/image blob. |
-
-#### Compress Options (`options`):
-- `maxWidth` (`number`): Maximum width. Defaults to `1200`.
-- `maxHeight` (`number`): Maximum height. Defaults to `1200`.
-- `quality` (`number`): Compression quality between `0.0` and `1.0`. Defaults to `0.8`.
-- `format` (`string`): Output MIME type. Defaults to `'image/webp'`.
-- `cropToSquare` (`boolean`): If true, crops the image center to a square of the minimum dimension. Defaults to `false`.
-
 ### Cryptography Helpers (`$crypto`)
 Provides native browser-based encoding, decoding, and byte conversion helpers. Does not contain Libsodium functions.
 
@@ -129,5 +118,11 @@ Provides hardware and browser capability checks.
 
 | Function | Description | Arguments | Returns |
 |---|---|---|---|
-| [isTouch()](file:///home/thomas/Projects/atoll-chat/src/plugins/utils-plugin.js#L365-L367) | Checks if the current device has a touch screen using a pointer media query. | None | `boolean` - `true` if the device supports touch, `false` otherwise. |
+| `isTouch()` | Checks if the current device has a touch screen using a pointer media query. | None | `boolean` - `true` if the device supports touch, `false` otherwise. |
 
+### URL Helpers (`$url`)
+Provides robust URL utility helpers to handle path and endpoint parsing safely.
+
+| Function | Description | Arguments | Returns |
+|---|---|---|---|
+| `normalizeUrl(baseUrl, ...paths)` | Normalizes a base URL and relative/absolute paths into a valid, safe URL string. Prevents protocol-relative `//` traps and double slashes. | `baseUrl`: `string` - The base/origin URL.<br>`...paths`: `string[]` - Suffix path segments to join. | `string` - The normalized URL string. |

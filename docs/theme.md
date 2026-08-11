@@ -1,6 +1,6 @@
 # Atoll Chat Color, Layout, & Gutter System Architecture
 
-This document establishes the foundational modular design systems for Atoll Chat. It governs the visual rhythm, color foundations, screen margins, responsive column gutters, touch target dimensions, and dynamic viewport safe areas across all supported platforms (Web, Capacitor iOS/Android). All design variables map seamlessly into native Bootstrap 5.3+ variables under a custom namespace prefix.
+This document establishes the foundational modular design systems for Atoll Chat. It governs the visual rhythm, color foundations, screen margins, responsive column gutters, touch target dimensions, dynamic viewport safe areas, and the pre-compiled theme matrix map across all supported platforms (Web, Capacitor iOS/Android). All design variables map seamlessly into native Bootstrap 5.3+ variables under a custom namespace prefix.
 
 ---
 
@@ -11,14 +11,19 @@ The design system assets reside under `src/scss/theme/` to ensure modularity, se
 ```text
 src/scss/
 ├── theme/
-│   ├── _variables-primitives.scss  # Brand base primitives, 20-step neutral scale, and $spacers
-│   ├── _variables-rainbow.scss     # Rainbow scale map & core Bootstrap overrides
-│   ├── _variables-layout.scss      # Responsive breakpoints, container widths, and grid columns
-│   ├── _theme-layout-insets.scss   # Viewport safe area variables and composite dimension rules
-│   ├── _mixins-states.scss         # Interactive component state functions/mixins
-│   ├── _theme-semantic.scss        # Semantic CSS variables for light/dark modes
-│   └── _layout.scss                # Consolidated dual-pane split, touch targets, and responsive overrides
-└── styles.scss                     # Main entry stylesheet orchestrating cascading imports
+│   ├── _variables-primitives.scss     # Brand base primitives, 20-step neutral scale, and $spacers
+│   ├── _variables-colours.scss        # Raw solid hex colours, brand palette maps, and utility variables
+│   ├── _variables-layout.scss         # Responsive breakpoints, container widths, and grid columns
+│   ├── _theme-layout-insets.scss      # Viewport safe area variables and composite dimension rules
+│   ├── _mixins-states.scss            # Interactive component state functions/mixins
+│   ├── _theme-semantic.scss           # Semantic CSS variables for light/dark modes
+│   ├── _theme-typography.scss         # Typography settings and font scaling rules
+│   ├── _typography-utilities.scss     # Layout/spacing classes for headers, labels, and text alignment
+│   ├── _variables-typography.scss     # Base font families, line-heights, and font-weight overrides
+│   ├── _atoll-chat-theme-variables.scss # Chat view themes map configurations and color keys
+│   ├── _atoll-chat-theme.scss         # Compilation & mapping of chat-specific styles (bubbles, headers, inputs)
+│   └── _layout.scss                   # Consolidated dual-pane split, touch targets, and responsive overrides
+└── styles.scss                        # Main entry stylesheet orchestrating cascading imports
 ```
 
 ---
@@ -31,8 +36,8 @@ In `src/scss/styles.scss`, the import cascade is ordered intentionally so that B
 // 1. Primitive Tokens & Custom Prefix Configuration
 @import "theme/variables-primitives";
 
-// 2. Rainbow & Bootstrap Variable Overrides ($primary, $theme-colors, etc.)
-@import "theme/variables-rainbow";
+// 2. Colours & Bootstrap Variable Overrides ($primary, $theme-colors, etc.)
+@import "theme/variables-colours";
 
 // 3. Responsive Breakpoints & Layout overrides
 @import "theme/variables-layout";
@@ -124,7 +129,7 @@ $grays: (
 ```
 
 ### B. Categorical Rainbow Palette
-Provides contrast-rich distinction for tags, statuses, badges, and user-group indicators mapping to `$theme-colors`:
+Provides contrast-rich distinction for tags, statuses, badges, and user-group indicators mapping to `$theme-colors` via `_variables-colours.scss`:
 
 | Category Token | Hex Code | Utility Classes | Core Application |
 | --- | --- | --- | --- |
@@ -152,7 +157,29 @@ Key mappings include:
 
 ---
 
-## 6. Mathematical State Engine
+## 6. Pre-compiled Chat View Themes Map (`$atoll-chat-themes`)
+
+Atoll Chat includes standard predefined visual themes mapping custom variables directly onto `.chat-view` hosts. This configures bubble layouts, headers, buttons, date badges, and inputs dynamically:
+
+1. **Classic (Light):** Flat opaque backgrounds, light gray incoming message bubbles, and green outgoing bubbles.
+2. **Classic-Dark:** Optimized dark layouts with flat gray incoming bubbles and deep green outgoing bubbles.
+3. **Ocean (Glassmorphic):** Deep sea blue-to-teal gradients, translucent frosted bubbles, and vibrant blue accents.
+4. **Forest (Glassmorphic):** Vibrant forest green gradients with translucent bubbles and green accents.
+5. **Sunset (Glassmorphic):** Rich warm red-to-orange gradients with translucent bubbles and red accents.
+6. **Custom:** Allows custom colors and background image toggles.
+
+### Glassmorphic Shared Variable Framework
+
+For glassmorphic themes (Ocean, Forest, Sunset), the system applies uniform transparency and backdrop filtering overrides using custom properties:
+* `--atoll-chat-header-bg`: Translucent glass header background (e.g., `rgba(15, 32, 39, 0.75)`).
+* `--atoll-chat-header-backdrop-filter`: Applied to headers for high legibility (`blur(16px)`).
+* `--atoll-chat-input-container-bg` & `--atoll-chat-input-backdrop-filter`: Creates floating, frosted input areas.
+* `--atoll-chat-bubble-sent-backdrop-filter` & `--atoll-chat-bubble-received-backdrop-filter`: Applies custom glass filtering (`blur(8px)`) directly onto the text chat bubbles.
+* `--atoll-chat-reaction-pill-backdrop-filter` & `--atoll-chat-date-separator-backdrop-filter`: Matches the overall glassmorphism style across all chat feed accessories.
+
+---
+
+## 7. Mathematical State Engine
 
 Interactive elements calculate their hovered, active, or focused values programmatically based on lightness thresholds ($V$) using an HSV mathematical framework.
 
@@ -186,7 +213,7 @@ Components requiring standard, accessible buttons make use of `.btn-atoll-primar
 
 ---
 
-## 7. Spatial Grid System (4px / 8px Base Grid)
+## 8. Spatial Grid System (4px / 8px Base Grid)
 
 Atoll Chat enforces a dual-density spatial grid system to ensure visual rhythm, predictable element alignment, and high touch accuracy.
 
@@ -225,7 +252,7 @@ $spacers: (
 
 ---
 
-## 8. Responsive Breakpoints & Multi-Column Grid
+## 9. Responsive Breakpoints & Multi-Column Grid
 
 Atoll Chat adapts fluidly from single-column mobile views to multi-pane desktop layouts.
 
@@ -264,7 +291,7 @@ $grid-gutter-width: 1.5rem; // Default 24px
 
 ---
 
-## 9. Gutter & Outer Margin Architecture
+## 10. Gutter & Outer Margin Architecture
 
 Horizontal rhythm ensures that messaging feeds, media grids, and settings panels remain legible regardless of display width.
 
@@ -292,7 +319,7 @@ Message bubbles sit within a padded stream container to prevent text from clingi
 
 ---
 
-## 10. Vertical Rhythm & Structural Dimensions
+## 11. Vertical Rhythm & Structural Dimensions
 
 Consistent height constraints prevent layout shifting during real-time data streaming and keyboard toggles.
 
@@ -310,7 +337,7 @@ Consistent height constraints prevent layout shifting during real-time data stre
 
 ---
 
-## 11. Viewport Safe Areas (Capacitor Mobile & Notch Handling)
+## 12. Viewport Safe Areas (Capacitor Mobile & Notch Handling)
 
 To prevent mobile OS overlays (iOS Home Indicator, Android Navigation Bar, Display Notches) from obscuring messaging UI elements, Atoll Chat integrates CSS `env(safe-area-inset-*)` variables directly into layout calculation rules inside `src/scss/theme/_theme-layout-insets.scss`:
 
@@ -346,7 +373,7 @@ These classes are available globally to adjust scroll pads and top/bottom offset
 
 ---
 
-## 12. Layout Integration Classes
+## 13. Layout Integration Classes
 
 The foundational layout and split-pane structural system is written inside `src/scss/theme/_layout.scss` to finalize the spatial system configuration.
 
