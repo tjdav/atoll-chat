@@ -40,7 +40,10 @@ export function createNativeRTCTransferAdapter () {
         filename: '',
         mimeType: '',
         offset: 0,
-        isSending: false
+        isSending: false,
+        onProgress,
+        onComplete,
+        onError
       }
 
       sessions.set(localUuid, session)
@@ -147,12 +150,14 @@ export function createNativeRTCTransferAdapter () {
       const chunkSize = chunkSizeBytes || 16384
       let offset = 0
 
+      const totalSize = (typeof file === 'string') ? session.totalBytes : file.size
+
       dc.send(JSON.stringify({
         type: 'start',
         localUuid,
-        size: file.size,
-        filename: file.name,
-        mimeType: file.type
+        size: totalSize,
+        filename: (typeof file === 'string') ? session.filename : file.name,
+        mimeType: (typeof file === 'string') ? session.mimeType : file.type
       }))
 
       const bufferedAmountLowThreshold = 64 * 1024
@@ -199,6 +204,11 @@ export function createNativeRTCTransferAdapter () {
 
           dc.send(bytes.buffer)
           offset += bytes.byteLength
+
+          if (session.onProgress && session.totalBytes > 0) {
+            const progressPercent = Math.min(100, Math.round((offset / session.totalBytes) * 100))
+            session.onProgress(progressPercent)
+          }
         }
       } else {
         const blob = file
@@ -217,7 +227,27 @@ export function createNativeRTCTransferAdapter () {
           const arrayBuffer = await chunk.arrayBuffer()
           dc.send(arrayBuffer)
           offset += arrayBuffer.byteLength
+
+          if (session.onProgress && blob.size > 0) {
+            const progressPercent = Math.min(100, Math.round((offset / blob.size) * 100))
+            session.onProgress(progressPercent)
+          }
         }
+      }
+
+      if (dc.bufferedAmount > 0) {
+        dc.bufferedAmountLowThreshold = 0
+        await new Promise(resolve => {
+          const onBufferedAmountLow = () => {
+            dc.removeEventListener('bufferedamountlow', onBufferedAmountLow)
+            resolve()
+          }
+          dc.addEventListener('bufferedamountlow', onBufferedAmountLow)
+        })
+      }
+
+      if (session.onComplete) {
+        session.onComplete()
       }
     }
   }

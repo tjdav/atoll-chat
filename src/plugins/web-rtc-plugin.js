@@ -91,6 +91,7 @@ export default function webrtcPlugin ({
         const candidateBuffers = new Map()
         const candidateTimers = new Map()
         const processedMessages = new Set()
+        const pendingSignalingQueue = new Map()
         const $bus = pluginContext.$bus
 
         const rtcConfig = {
@@ -152,6 +153,7 @@ export default function webrtcPlugin ({
           for (const room_id of activeCalls.keys()) {
             teardownCall(room_id)
           }
+          pendingSignalingQueue.clear()
         })
 
         $bus.on('auth:logout', () => {
@@ -373,6 +375,113 @@ export default function webrtcPlugin ({
         }
 
         /**
+         * Processes an individual WebRTC call signaling message.
+         *
+         * @param {string} room_id - The ID of the room.
+         * @param {Object} message - The signaling message object.
+         * @returns {Promise<void>}
+         * @throws {Error} Re-throws unexpected non-WebRTC failures.
+         */
+        const processSignalingMessage = async (room_id, message) => {
+          try {
+            if (message.type === 'call_offer') {
+              $bus.emit('call:incoming', {
+                room_id,
+                offer: message.content,
+                senderId: message.sender_id,
+                media_types: message.media_types
+              })
+            } else if (message.type === 'call_answer') {
+              if (message.sender_id === globalState.currentUser?.id && globalState.callStatus === 'incoming' && globalState.activeCallRoomId === room_id) {
+                teardownCall(room_id)
+                $bus.emit('call:ended', { room_id })
+                $bus.emit('ui:show_toast', {
+                  message: 'Call answered on another device',
+                  variant: 'primary'
+                })
+                globalState.set('callStatus', 'idle')
+                globalState.activeCallRoomId = null
+                globalState.remoteStream = null
+                globalState.hasRemoteVideo = false
+                globalState.localStream = null
+                return
+              }
+              const pc = activeCalls.get(room_id)
+              if (pc) {
+                if (pc.signalingState === 'have-local-offer') {
+                  await pc.setRemoteDescription(new RTCSessionDescription(message.content))
+                  await applyPendingCandidates(room_id, pc)
+                }
+              }
+            } else if (message.type === 'ice_candidate') {
+              const pc = activeCalls.get(room_id)
+              const candidates = message.candidates || (message.candidate ? [message.candidate] : [])
+
+              for (const candidate of candidates) {
+                if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+                  await pc.addIceCandidate(new RTCIceCandidate(candidate))
+                } else {
+                  if (!pendingCandidates.has(room_id)) {
+                    pendingCandidates.set(room_id, [])
+                  }
+                  pendingCandidates.get(room_id).push(candidate)
+                }
+              }
+            } else if (message.type === 'call_end') {
+              teardownCall(room_id)
+              $bus.emit('call:ended', { room_id })
+            }
+          } catch (err) {
+            if (err instanceof Error && (
+              err.name === 'InvalidStateError' ||
+              err.name === 'OperationError' ||
+              err.name === 'TypeError' ||
+              err.message.includes('RTCPeerConnection')
+            )) {
+              return
+            }
+            throw err
+          }
+        }
+
+        /**
+         * Reconciles queued call signaling messages once historical catch-up finishes.
+         *
+         * @returns {Promise<void>}
+         * @throws {Error} Re-throws unexpected non-WebRTC failures.
+         */
+        const reconcileSignalingQueue = async () => {
+          for (const [room_id, queue] of pendingSignalingQueue.entries()) {
+            // Check if there is a call_end in the queue
+            const hasCallEnd = queue.some(msg => msg.type === 'call_end')
+            if (hasCallEnd) {
+              // Call was cancelled or ended, discard everything for this call
+              continue
+            }
+
+            // Find the call_offer message
+            const callOffer = queue.find(msg => msg.type === 'call_offer')
+            if (callOffer) {
+              const callTime = callOffer.timestamp || (callOffer.created_at ? new Date(callOffer.created_at.replace(' ', 'T') + 'Z').getTime() : 0)
+              const isRecent = callTime && (Date.now() - callTime < 45000)
+
+              if (isRecent) {
+                // Bob is still calling Alice, prompt Alice
+                await processSignalingMessage(room_id, callOffer)
+
+                // Process other related signaling messages (e.g. ice_candidates)
+                for (const msg of queue) {
+                  if (msg !== callOffer) {
+                    await processSignalingMessage(room_id, msg)
+                  }
+                }
+              }
+            }
+          }
+          pendingSignalingQueue.clear()
+        }
+
+        /**
          * Initializes database-event listeners for WebRTC signaling messages.
          * Subscribes to and handles incoming offers, answers, candidates, and call closures.
          *
@@ -387,6 +496,11 @@ export default function webrtcPlugin ({
           isSignalingSetup = true
           globalWorker = $worker
           globalState = $state
+
+          // Listen for sync:complete to reconcile any queued signaling messages
+          $bus.on('sync:complete', async () => {
+            await reconcileSignalingQueue()
+          })
 
           $bus.on('db:new_local_data', async (payload) => {
             const { room_id, message } = payload
@@ -416,65 +530,19 @@ export default function webrtcPlugin ({
               processedMessages.add(message.id)
             }
 
-            try {
-              if (message.type === 'call_offer') {
-                $bus.emit('call:incoming', {
-                  room_id,
-                  offer: message.content,
-                  senderId: message.sender_id,
-                  media_types: message.media_types
-                })
-              } else if (message.type === 'call_answer') {
-                if (message.sender_id === globalState.currentUser?.id && globalState.callStatus === 'incoming' && globalState.activeCallRoomId === room_id) {
-                  teardownCall(room_id)
-                  $bus.emit('call:ended', { room_id })
-                  $bus.emit('ui:show_toast', {
-                    message: 'Call answered on another device',
-                    variant: 'primary'
-                  })
-                  globalState.set('callStatus', 'idle')
-                  globalState.activeCallRoomId = null
-                  globalState.remoteStream = null
-                  globalState.hasRemoteVideo = false
-                  globalState.localStream = null
-                  return
+            // Queue WebRTC signaling messages during historical catch-up sync phase
+            if (globalState.isCatchingUp) {
+              if (['call_offer', 'call_end', 'call_answer', 'ice_candidate'].includes(message.type)) {
+                if (!pendingSignalingQueue.has(room_id)) {
+                  pendingSignalingQueue.set(room_id, [])
                 }
-                const pc = activeCalls.get(room_id)
-                if (pc) {
-                  if (pc.signalingState === 'have-local-offer') {
-                    await pc.setRemoteDescription(new RTCSessionDescription(message.content))
-                    await applyPendingCandidates(room_id, pc)
-                  }
-                }
-              } else if (message.type === 'ice_candidate') {
-                const pc = activeCalls.get(room_id)
-                const candidates = message.candidates || (message.candidate ? [message.candidate] : [])
-
-                for (const candidate of candidates) {
-                  if (pc && pc.remoteDescription && pc.remoteDescription.type) {
-                    await pc.addIceCandidate(new RTCIceCandidate(candidate))
-                  } else {
-                    if (!pendingCandidates.has(room_id)) {
-                      pendingCandidates.set(room_id, [])
-                    }
-                    pendingCandidates.get(room_id).push(candidate)
-                  }
-                }
-              } else if (message.type === 'call_end') {
-                teardownCall(room_id)
-                $bus.emit('call:ended', { room_id })
-              }
-            } catch (err) {
-              if (err instanceof Error && (
-                err.name === 'InvalidStateError' ||
-                err.name === 'OperationError' ||
-                err.name === 'TypeError' ||
-                err.message.includes('RTCPeerConnection')
-              )) {
+                pendingSignalingQueue.get(room_id).push(message)
                 return
               }
-              throw err
             }
+
+            // Otherwise, process signaling message immediately in real-time
+            await processSignalingMessage(room_id, message)
           })
         }
 

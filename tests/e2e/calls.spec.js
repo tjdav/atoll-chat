@@ -584,4 +584,68 @@ test.describe.serial('Calls', () => {
       await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
     })
   })
+
+  test('Call while logged out (cancelled)', async () => {
+    await test.step('Alice logs out', async () => {
+      await alicePage.locator('[data-testid$="profileBtn"]').click()
+      await alicePage.locator('[data-testid$="btnLogout"]').click()
+      await expect(alicePage.locator('auth-login')).toBeVisible()
+    })
+
+    await test.step('Bob initiates a call', async () => {
+      await bobPage.locator('[data-testid$="btnAudioCall"]').click()
+      // Wait to ensure the signaling message is sent and stored
+      await bobPage.waitForTimeout(1500)
+    })
+
+    await test.step('Bob cancels the call', async () => {
+      await bobPage.locator('call-overlay [ref$="btnEndCall"]').click()
+      await expect(bobPage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
+      // Wait to ensure the call_end signaling message is processed and stored
+      await bobPage.waitForTimeout(1500)
+    })
+
+    await test.step('Alice logs back in', async () => {
+      await alicePage.locator('auth-login input[data-testid$="username"]').fill('alice')
+      await alicePage.locator('auth-login input[data-testid$="password"]').fill('Password123!')
+      await alicePage.locator('auth-login [data-testid$="loginSubmit"]').click()
+      await expect(alicePage.locator('app-layout')).toBeVisible({ timeout: 15000 })
+    })
+
+    await test.step('Verify that the call overlay does not appear for Alice', async () => {
+      await alicePage.waitForTimeout(2000)
+      const callModal = alicePage.locator('call-overlay > [ref$="modal"]')
+      await expect(callModal).not.toBeVisible()
+    })
+  })
+
+  test('Call while logged out (active)', async () => {
+    await test.step('Alice logs out', async () => {
+      await alicePage.locator('[data-testid$="profileBtn"]').click()
+      await alicePage.locator('[data-testid$="btnLogout"]').click()
+      await expect(alicePage.locator('auth-login')).toBeVisible()
+    })
+
+    await test.step('Bob initiates a call and remains active', async () => {
+      await bobPage.locator('[data-testid$="btnAudioCall"]').click()
+      await bobPage.waitForTimeout(1500)
+    })
+
+    await test.step('Alice logs back in', async () => {
+      await alicePage.locator('auth-login input[data-testid$="username"]').fill('alice')
+      await alicePage.locator('auth-login input[data-testid$="password"]').fill('Password123!')
+      await alicePage.locator('auth-login [data-testid$="loginSubmit"]').click()
+      await expect(alicePage.locator('app-layout')).toBeVisible({ timeout: 15000 })
+    })
+
+    await test.step('Verify Alice is prompted to accept the active incoming call', async () => {
+      const aliceIncomingView = alicePage.locator('call-overlay .incoming-view')
+      await expect(aliceIncomingView).toBeVisible({ timeout: 20000 })
+    })
+
+    await test.step('Alice rejects the call to clean up', async () => {
+      await alicePage.getByRole('button', { name: 'Reject Call' }).click()
+      await expect(alicePage.locator('call-overlay > [ref$="modal"]')).not.toBeVisible()
+    })
+  })
 })

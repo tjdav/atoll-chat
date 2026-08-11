@@ -2,12 +2,30 @@
  * Web P2P WebRTC Transfer Adapter.
  * Uses browser-native RTCPeerConnection and RTCDataChannel.
  */
+
+/**
+ * Creates an instance of the Web P2P WebRTC Transfer Adapter.
+ *
+ * @returns {object} The Web WebRTC transfer adapter instance.
+ */
 export function createWebRTCTransferAdapter () {
   const sessions = new Map()
 
   return {
     sessions,
 
+    /**
+     * Creates and initializes a new WebRTC transfer session.
+     *
+     * @param {string} localUuid - Unique identifier for the transfer session.
+     * @param {boolean} isSender - Whether this instance is the sender.
+     * @param {function} onSignal - Callback triggered when signaling events occur.
+     * @param {function} onProgress - Callback triggered with transfer progress percent.
+     * @param {function} onComplete - Callback triggered when the transfer completes successfully.
+     * @param {function} onError - Callback triggered when an error occurs during transfer.
+     * @param {Array<object>} iceServers - List of ICE/STUN/TURN servers to use.
+     * @returns {object} The created transfer session configuration object.
+     */
     createSession: (localUuid, isSender, onSignal, onProgress, onComplete, onError, iceServers) => {
       const pc = new RTCPeerConnection({ iceServers })
 
@@ -22,7 +40,10 @@ export function createWebRTCTransferAdapter () {
         filename: '',
         mimeType: '',
         offset: 0,
-        isSending: false
+        isSending: false,
+        onProgress,
+        onComplete,
+        onError
       }
 
       sessions.set(localUuid, session)
@@ -37,13 +58,15 @@ export function createWebRTCTransferAdapter () {
         }
       }
 
+      /**
+       * Configures and binds event listeners for the WebRTC Data Channel.
+       *
+       * @param {RTCDataChannel} dc - The data channel to setup.
+       * @returns {void}
+       */
       const setupDataChannel = (dc) => {
         session.dc = dc
         dc.binaryType = 'arraybuffer'
-
-        dc.onopen = () => {
-          console.info(`[WebRTC-P2P] DataChannel opened for ${localUuid}`)
-        }
 
         dc.onmessage = async (event) => {
           if (typeof event.data === 'string') {
@@ -55,10 +78,13 @@ export function createWebRTCTransferAdapter () {
                 session.mimeType = msg.mimeType
                 session.chunks = []
                 session.receivedBytes = 0
-                console.info(`[WebRTC-P2P] Incoming transfer started: ${session.filename} (${session.totalBytes} bytes)`)
               }
             } catch (err) {
-              console.error('[WebRTC-P2P] Failed to parse string message:', err)
+              if (session.onError) {
+                session.onError(err)
+              } else {
+                throw err
+              }
             }
           } else {
             session.chunks.push(event.data)
@@ -70,7 +96,6 @@ export function createWebRTCTransferAdapter () {
             }
 
             if (session.receivedBytes >= session.totalBytes && session.totalBytes > 0) {
-              console.info(`[WebRTC-P2P] Transfer complete for ${localUuid}`)
               const blob = new Blob(session.chunks, { type: session.mimeType })
               dc.close()
               pc.close()
@@ -83,13 +108,11 @@ export function createWebRTCTransferAdapter () {
         }
 
         dc.onclose = () => {
-          console.info(`[WebRTC-P2P] DataChannel closed for ${localUuid}`)
           pc.close()
           sessions.delete(localUuid)
         }
 
         dc.onerror = (err) => {
-          console.error(`[WebRTC-P2P] DataChannel error for ${localUuid}:`, err)
           pc.close()
           sessions.delete(localUuid)
           if (onError) {
@@ -110,6 +133,15 @@ export function createWebRTCTransferAdapter () {
       return session
     },
 
+    /**
+     * Starts an outgoing file transfer session.
+     *
+     * @param {string} localUuid - Unique identifier for the transfer session.
+     * @param {File|Blob} file - The file/blob to transfer.
+     * @param {number} [chunkSizeBytes=16384] - Size of each chunk to send in bytes.
+     * @throws {Error} If no active data channel exists for the transfer session.
+     * @returns {Promise<void>} Resolves when the transfer is successfully initiated.
+     */
     startOutgoing: async (localUuid, file, chunkSizeBytes) => {
       const session = sessions.get(localUuid)
       if (!session || !session.dc) {
@@ -146,6 +178,26 @@ export function createWebRTCTransferAdapter () {
         const arrayBuffer = await chunk.arrayBuffer()
         dc.send(arrayBuffer)
         offset += arrayBuffer.byteLength
+
+        if (session.onProgress) {
+          const progressPercent = Math.min(100, Math.round((offset / file.size) * 100))
+          session.onProgress(progressPercent)
+        }
+      }
+
+      if (dc.bufferedAmount > 0) {
+        dc.bufferedAmountLowThreshold = 0
+        await new Promise(resolve => {
+          const onBufferedAmountLow = () => {
+            dc.removeEventListener('bufferedamountlow', onBufferedAmountLow)
+            resolve()
+          }
+          dc.addEventListener('bufferedamountlow', onBufferedAmountLow)
+        })
+      }
+
+      if (session.onComplete) {
+        session.onComplete()
       }
     }
   }
