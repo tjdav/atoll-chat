@@ -48,6 +48,7 @@ export default definePlugin({
       const pendingCandidates = new Map()
       const activeTransfers = new Map()
       const incomingFilesMetadata = new Map()
+      const processedTransferUuids = new Set()
 
       let toastEl = null
 
@@ -234,10 +235,15 @@ export default definePlugin({
           })
         }
 
+        $bus.on('auth:logout', () => {
+          processedTransferUuids.clear()
+        })
+
         $bus.on('action:execute_p2p_transfer', async (payload) => {
           const { file, selectedUserId, roomId } = payload
           const p2pUuid = crypto.randomUUID()
 
+          processedTransferUuids.add(p2pUuid)
           activeTransfers.set(p2pUuid, file)
 
           updateProgressToast('Waiting for recipient...', 0)
@@ -342,6 +348,11 @@ export default definePlugin({
           }
 
           if (message.type === 'p2p_transfer_request' && message.target_id === $state.currentUser?.id) {
+            if (processedTransferUuids.has(message.p2pUuid)) {
+              return
+            }
+            processedTransferUuids.add(message.p2pUuid)
+
             incomingFilesMetadata.set(message.p2pUuid, {
               filename: message.content?.filename || 'downloaded_file',
               size: message.content?.size || 0
@@ -366,6 +377,11 @@ export default definePlugin({
 
             const file = activeTransfers.get(p2pUuid)
             if (!file) {
+              return
+            }
+
+            const adapter = await adapterPromise
+            if (adapter.sessions.has(p2pUuid)) {
               return
             }
 
@@ -398,7 +414,6 @@ export default definePlugin({
             }
 
             const activeIceServers = await getIceServers()
-            const adapter = await adapterPromise
             const session = adapter.createSession(
               p2pUuid,
               true,
