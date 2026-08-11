@@ -1,3 +1,23 @@
+// Global Hardware Acceleration & Layer Promotion for Smooth Offcanvas Transitions
+.offcanvas,
+.offcanvas-sm,
+.offcanvas-md,
+.offcanvas-lg,
+.offcanvas-xl,
+.offcanvas-xxl {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
+.offcanvas-backdrop {
+  will-change: opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+}
+
 @include media-breakpoint-down(md) {
 
   .offcanvas,
@@ -35,7 +55,7 @@
 
   .offcanvas,
   .offcanvas-sm {
-    transition: transform 0.3s ease-in-out !important;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
   }
 
   // Mobile layout state overrides for offcanvas-sm navigation pane
