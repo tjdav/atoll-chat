@@ -256,11 +256,11 @@
             localUuid,
             ...params
           })
-    
+  
           $bus.emit('message:sent', result)
           return result
         } catch (err) {
-          throw err;
+          throw err
         }
       }
 

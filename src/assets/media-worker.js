@@ -29,9 +29,18 @@ self.onmessage = async (event) => {
       let result = null
       const configs = [
         { format: 'mp4' },
-        { format: 'webm', codec: 'vp9' },
-        { format: 'webm', codec: 'vp8' },
-        { format: 'webm', codec: 'av1' }
+        {
+          format: 'webm',
+          codec: 'vp9'
+        },
+        {
+          format: 'webm',
+          codec: 'vp8'
+        },
+        {
+          format: 'webm',
+          codec: 'av1'
+        }
       ]
 
       for (const config of configs) {

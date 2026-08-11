@@ -342,43 +342,51 @@
       }
 
       // Initial load
-      updateRoomInfo($state.activeSelectionId).catch(() => {})
+      updateRoomInfo($state.activeSelectionId).catch(() => {
+      })
 
       // Watch for room changes
       $state.subscribe('activeSelectionId', (val) => {
-        updateRoomInfo(val).catch(() => {})
+        updateRoomInfo(val).catch(() => {
+        })
         // Close details when switching rooms
         state.isRoomDetailsOpen = false
         $state.isRoomDetailsOpen = false
       })
 
       $state.subscribe('activeSelectionType', () => {
-        updateRoomInfo($state.activeSelectionId).catch(() => {})
+        updateRoomInfo($state.activeSelectionId).catch(() => {
+        })
       })
 
       $state.subscribe('callStatus', () => {
-        updateRoomInfo($state.activeSelectionId).catch(() => {})
+        updateRoomInfo($state.activeSelectionId).catch(() => {
+        })
       })
 
       $state.subscribe('activeCallRoomId', () => {
-        updateRoomInfo($state.activeSelectionId).catch(() => {})
+        updateRoomInfo($state.activeSelectionId).catch(() => {
+        })
       })
 
       $bus.on('room:theme_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
-          updateRoomInfo($state.activeSelectionId).catch(() => {})
+          updateRoomInfo($state.activeSelectionId).catch(() => {
+          })
         }
       })
 
       $bus.on('room:nicknames_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
-          updateRoomInfo($state.activeSelectionId).catch(() => {})
+          updateRoomInfo($state.activeSelectionId).catch(() => {
+          })
         }
       })
 
       $bus.on('room:member_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
-          updateRoomInfo($state.activeSelectionId).catch(() => {})
+          updateRoomInfo($state.activeSelectionId).catch(() => {
+          })
         }
       })
 
@@ -395,7 +403,8 @@
           })
 
           // Refresh active room info & timeline
-          updateRoomInfo($state.activeSelectionId).catch(() => {})
+          updateRoomInfo($state.activeSelectionId).catch(() => {
+          })
           $bus.emit('db:new_local_data', { room_id: $state.activeSelectionId })
         }
       })
@@ -469,8 +478,10 @@
         }
       }
 
-      refs('btnAudioCall').addEventListener('click', () => initiateCall(false).catch(() => {}))
-      refs('btnVideoCall').addEventListener('click', () => initiateCall(true).catch(() => {}))
+      refs('btnAudioCall').addEventListener('click', () => initiateCall(false).catch(() => {
+      }))
+      refs('btnVideoCall').addEventListener('click', () => initiateCall(true).catch(() => {
+      }))
     }
   })
 </script>
