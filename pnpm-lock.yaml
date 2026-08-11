@@ -109,11 +109,11 @@ importers:
         specifier: ^26.1.0
         version: 26.1.2
       coralite:
-        specifier: ^0.44.1
-        version: 0.44.1(@noble/hashes@2.3.0)
+        specifier: ^0.44.2
+        version: 0.44.2(@noble/hashes@2.3.0)
       coralite-scripts:
-        specifier: ^0.44.1
-        version: 0.44.1(@noble/hashes@2.3.0)(supports-color@5.5.0)
+        specifier: ^0.44.2
+        version: 0.44.2(@noble/hashes@2.3.0)(supports-color@5.5.0)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1179,13 +1179,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.44.1:
-    resolution: {integrity: sha512-a0s5KImeZdQBLG9raKHHhT7TrseqHR/8ve+MJ4Ja++9bsNn6e8yvrr3x9U/M+Vym2zkwEn/YsY9f+fAqsEbYCg==}
+  coralite-scripts@0.44.2:
+    resolution: {integrity: sha512-cvvDr3EAWb0FufIM8i0BvUmD29rtJt18BjUjabE1bF6N1Vs9Ttgz+PYUGFRsv3QuBrBbq7b9WKCR7KVam7hY5A==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  coralite@0.44.1:
-    resolution: {integrity: sha512-YrGMvegPWylyNR5UawL5mg2GyMCM6ZssmzkyrLNeSvSjIE4fg9Nk1J1UWdMAsGm+lLPolFG4XEZRUKRuYf/YZw==}
+  coralite@0.44.2:
+    resolution: {integrity: sha512-eQ8o8+YgH9KYq+ExJIACCjoMQoThW9z9bs68PGehSN+TGSeFsGufqyFzu0DLdPWBk5re3u3BlmjeTCkw5ByrNw==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -2072,8 +2072,8 @@ packages:
   ms@2.1.3:
     resolution: {integrity: sha512-6FlzubTLZG3J2a/NVCAleEhjzq5oxgHyaCU9yYXvcLsvoVaHJq/s5xXI6/XXP6tz7R9xAOtHnSO/tXtF3WRTlA==}
 
-  nanoid@3.3.17:
-    resolution: {integrity: sha512-xQLf0A3HOMlgHq0n247/LRuAOYmB7dXJ/DvAxGvsSBij45XtBSmQycu+F8ODbHwns/XyFZagyL1+J0Offw1E0g==}
+  nanoid@3.3.18:
+    resolution: {integrity: sha512-DTg4MJbGMWkfi6VZFdNt2/caMbQy4Ou+Op/hJQvGEWcnVfoA1QA+xzRKAzw9jD6+GVOOeYr/mIcuDSdug6F6+w==}
     engines: {node: ^10 || ^12 || ^13.7 || ^14 || >=15.0.1}
     hasBin: true
 
@@ -2514,8 +2514,8 @@ packages:
     resolution: {integrity: sha512-1gnZf7DFcoIcajTjTwjwuDjzuz4PPcY2StKPlsGAQ1+YH20IRVrBaXSWmdjowTJ6u8Rc01PoYOGHXfP1mYcZNQ==}
     engines: {node: '>= 18'}
 
-  serialize-javascript@7.0.7:
-    resolution: {integrity: sha512-YAy8Od6KV+uuwUuU50np8fGB/Aues6Y0nAhA9y/hId74PlKUcme4pXcBD46NWKr1Q4osN/iseZ17YqO1XfmI8g==}
+  serialize-javascript@7.1.0:
+    resolution: {integrity: sha512-RNEqWOyhhUQYN9V1GfHwu9AR/g+NTciH6Z5u3/no6X3/w+04J2lVDL+svFQVXgXrEGBMG2puMVN3gq2SNGuTGw==}
     engines: {node: '>=20.0.0'}
 
   serve-static@2.2.1:
@@ -3411,7 +3411,7 @@ snapshots:
     dependencies:
       '@ionic/utils-object': 2.1.6(supports-color@5.5.0)
       '@ionic/utils-terminal': 2.3.4(supports-color@5.5.0)
-      debug: 4.3.4(supports-color@5.5.0)
+      debug: 4.4.3(supports-color@5.5.0)
       signal-exit: 3.0.7
       tree-kill: 1.2.2
       tslib: 2.6.2
@@ -3431,7 +3431,7 @@ snapshots:
 
   '@ionic/utils-stream@3.1.6(supports-color@5.5.0)':
     dependencies:
-      debug: 4.3.4(supports-color@5.5.0)
+      debug: 4.4.3(supports-color@5.5.0)
       tslib: 2.6.2
     transitivePeerDependencies:
       - supports-color
@@ -3472,7 +3472,7 @@ snapshots:
   '@ionic/utils-terminal@2.3.4(supports-color@5.5.0)':
     dependencies:
       '@types/slice-ansi': 4.0.0
-      debug: 4.3.4(supports-color@5.5.0)
+      debug: 4.4.3(supports-color@5.5.0)
       signal-exit: 3.0.7
       slice-ansi: 4.0.0
       string-width: 4.2.3
@@ -4107,11 +4107,11 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.44.1(@noble/hashes@2.3.0)(supports-color@5.5.0):
+  coralite-scripts@0.44.2(@noble/hashes@2.3.0)(supports-color@5.5.0):
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.44.1(@noble/hashes@2.3.0)
+      coralite: 0.44.2(@noble/hashes@2.3.0)
       cross-env: 10.1.0
       express: 5.2.1(supports-color@5.5.0)
       kleur: 4.1.5
@@ -4125,7 +4125,7 @@ snapshots:
       - canvas
       - supports-color
 
-  coralite@0.44.1(@noble/hashes@2.3.0):
+  coralite@0.44.2(@noble/hashes@2.3.0):
     dependencies:
       acorn: 8.18.0
       acorn-walk: 8.3.5
@@ -4139,7 +4139,7 @@ snapshots:
       p-limit: 7.3.1
       postcss: 8.5.26
       postcss-selector-parser: 7.1.5
-      serialize-javascript: 7.0.7
+      serialize-javascript: 7.1.0
       xxhash-wasm: 1.1.0
     transitivePeerDependencies:
       - '@noble/hashes'
@@ -5048,7 +5048,7 @@ snapshots:
 
   ms@2.1.3: {}
 
-  nanoid@3.3.17: {}
+  nanoid@3.3.18: {}
 
   napi-build-utils@2.0.0: {}
 
@@ -5299,7 +5299,7 @@ snapshots:
 
   postcss@8.5.26:
     dependencies:
-      nanoid: 3.3.17
+      nanoid: 3.3.18
       picocolors: 1.1.1
       source-map-js: 1.2.1
 
@@ -5522,7 +5522,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  serialize-javascript@7.0.7: {}
+  serialize-javascript@7.1.0: {}
 
   serve-static@2.2.1(supports-color@5.5.0):
     dependencies:
