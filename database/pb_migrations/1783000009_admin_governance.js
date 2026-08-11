@@ -1,8 +1,20 @@
 migrate((app) => {
-  const users = app.findCollectionByNameOrId('users')
+  // Safely find 'users' collection
+  let users = null
+  try {
+    users = app.findCollectionByNameOrId('users')
+  } catch (_err) {
+    // 'users' collection does not exist yet
+  }
 
-  // Extend app_metadata collection
-  const appMetadata = app.findCollectionByNameOrId('app_metadata')
+  // Safely find and extend 'app_metadata' collection
+  let appMetadata = null
+  try {
+    appMetadata = app.findCollectionByNameOrId('app_metadata')
+  } catch (_err) {
+    // 'app_metadata' collection does not exist yet
+  }
+
   if (appMetadata) {
     if (!appMetadata.fields.getByName('invite_mode')) {
       appMetadata.fields.add(new SelectField({
@@ -35,34 +47,37 @@ migrate((app) => {
     app.save(appMetadata)
 
     // Update existing singleton record with defaults
-    const records = app.findRecordsByFilter('app_metadata', '1=1', '', 1, 0)
-    if (records && records.length > 0) {
-      const rec = records[0]
-      if (!rec.get('invite_mode')) {
-        rec.set('invite_mode', 'delegated')
+    try {
+      const records = app.findRecordsByFilter('app_metadata', '1=1', '', 1, 0)
+      if (records && records.length > 0) {
+        const rec = records[0]
+        if (!rec.get('invite_mode')) {
+          rec.set('invite_mode', 'delegated')
+        }
+        if (rec.get('default_trusted_quota') === undefined || rec.get('default_trusted_quota') === null || rec.get('default_trusted_quota') === 0) {
+          rec.set('default_trusted_quota', 5)
+        }
+        if (rec.get('max_uses_per_invite') === undefined || rec.get('max_uses_per_invite') === null || rec.get('max_uses_per_invite') === 0) {
+          rec.set('max_uses_per_invite', 3)
+        }
+        if (rec.get('allow_quota_requests') === undefined || rec.get('allow_quota_requests') === null) {
+          rec.set('allow_quota_requests', true)
+        }
+        app.save(rec)
       }
-      if (rec.get('default_trusted_quota') === undefined || rec.get('default_trusted_quota') === null || rec.get('default_trusted_quota') === 0) {
-        rec.set('default_trusted_quota', 5)
-      }
-      if (rec.get('max_uses_per_invite') === undefined || rec.get('max_uses_per_invite') === null || rec.get('max_uses_per_invite') === 0) {
-        rec.set('max_uses_per_invite', 3)
-      }
-      if (rec.get('allow_quota_requests') === undefined || rec.get('allow_quota_requests') === null) {
-        rec.set('allow_quota_requests', true)
-      }
-      app.save(rec)
+    } catch (_err) {
+      // No records found or table query failed
     }
   }
 
-  // Create user_trust collection
-  let userTrust
+  // Create or update 'user_trust' collection
+  let userTrust = null
   try {
     userTrust = app.findCollectionByNameOrId('user_trust')
-  } catch {
-    userTrust = new Collection({ id: 'user_trust' })
+  } catch (_err) {
+    userTrust = new Collection({ name: 'user_trust' })
   }
 
-  userTrust.name = 'user_trust'
   userTrust.type = 'base'
   userTrust.listRule = null
   userTrust.viewRule = null
@@ -70,7 +85,7 @@ migrate((app) => {
   userTrust.updateRule = null
   userTrust.deleteRule = null
 
-  if (!userTrust.fields.getByName('user')) {
+  if (!userTrust.fields.getByName('user') && users) {
     userTrust.fields.add(new RelationField({
       name: 'user',
       required: true,
@@ -99,7 +114,7 @@ migrate((app) => {
     }))
   }
 
-  if (!userTrust.fields.getByName('invited_by')) {
+  if (!userTrust.fields.getByName('invited_by') && users) {
     userTrust.fields.add(new RelationField({
       name: 'invited_by',
       required: false,
@@ -118,15 +133,14 @@ migrate((app) => {
 
   app.save(userTrust)
 
-  // Create invite_requests collection
-  let inviteRequests
+  // Create or update 'invite_requests' collection
+  let inviteRequests = null
   try {
     inviteRequests = app.findCollectionByNameOrId('invite_requests')
-  } catch {
-    inviteRequests = new Collection({ id: 'invite_requests' })
+  } catch (_err) {
+    inviteRequests = new Collection({ name: 'invite_requests' })
   }
 
-  inviteRequests.name = 'invite_requests'
   inviteRequests.type = 'base'
   inviteRequests.listRule = null
   inviteRequests.viewRule = null
@@ -134,7 +148,7 @@ migrate((app) => {
   inviteRequests.updateRule = null
   inviteRequests.deleteRule = null
 
-  if (!inviteRequests.fields.getByName('requester')) {
+  if (!inviteRequests.fields.getByName('requester') && users) {
     inviteRequests.fields.add(new RelationField({
       name: 'requester',
       required: true,
@@ -172,23 +186,32 @@ migrate((app) => {
 
   app.save(inviteRequests)
 }, (app) => {
-  // rollback logic
-  const userTrust = app.findCollectionByNameOrId('user_trust')
-  if (userTrust) {
-    app.delete(userTrust)
+  // Rollback logic
+  try {
+    const userTrust = app.findCollectionByNameOrId('user_trust')
+    if (userTrust) {
+      app.delete(userTrust)
+    }
+  } catch (_err) {
   }
 
-  const inviteRequests = app.findCollectionByNameOrId('invite_requests')
-  if (inviteRequests) {
-    app.delete(inviteRequests)
+  try {
+    const inviteRequests = app.findCollectionByNameOrId('invite_requests')
+    if (inviteRequests) {
+      app.delete(inviteRequests)
+    }
+  } catch (_err) {
   }
 
-  const appMetadata = app.findCollectionByNameOrId('app_metadata')
-  if (appMetadata) {
-    appMetadata.fields.removeByName('invite_mode')
-    appMetadata.fields.removeByName('default_trusted_quota')
-    appMetadata.fields.removeByName('max_uses_per_invite')
-    appMetadata.fields.removeByName('allow_quota_requests')
-    app.save(appMetadata)
+  try {
+    const appMetadata = app.findCollectionByNameOrId('app_metadata')
+    if (appMetadata) {
+      appMetadata.fields.removeByName('invite_mode')
+      appMetadata.fields.removeByName('default_trusted_quota')
+      appMetadata.fields.removeByName('max_uses_per_invite')
+      appMetadata.fields.removeByName('allow_quota_requests')
+      app.save(appMetadata)
+    }
+  } catch (_err) {
   }
 })
