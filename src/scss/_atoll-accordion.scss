@@ -93,3 +93,68 @@
     background-color: var(--atoll-bg-surface-primary, #161616);
   }
 }
+
+/* Room Settings Sidebar specific styling to match clean design */
+.room-settings-groups {
+  gap: 16px;
+
+  .atoll-accordion-item {
+    border-bottom: none !important;
+    background-color: transparent !important; // Completely transparent/flat as in design
+  }
+
+  .atoll-accordion-item-header {
+    padding: 8px 0; // flush left/right matching the clean layout
+    background-color: transparent !important;
+    border-bottom: none !important;
+
+    &:hover {
+      background-color: transparent !important;
+    }
+  }
+
+  .atoll-accordion-item-title-text {
+    font-size: var(--atoll-font-size-body-1, 15px);
+    font-weight: 700 !important;
+  }
+
+  .atoll-accordion-item-content {
+    background-color: transparent !important;
+    padding: 4px 0 0 0;
+  }
+
+  .atoll-list {
+    background-color: transparent !important;
+  }
+
+  .atoll-list-item {
+    padding: var(--atoll-list-item-padding-y) 0; // Flush padding
+    background-color: transparent !important;
+    border-bottom: none !important;
+
+    &:hover {
+      background-color: transparent !important;
+    }
+  }
+
+  .atoll-list-item-title {
+    font-size: var(--atoll-font-size-body-2, 14px);
+    font-weight: 500 !important;
+  }
+
+  .atoll-list-item-description {
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    color: var(--atoll-text-secondary, #777777);
+  }
+}
+
+/* Dark mode overrides for room settings groups */
+[data-atoll-theme="dark"] .room-settings-groups {
+  .atoll-accordion-item,
+  .atoll-accordion-item-header,
+  .atoll-accordion-item-content,
+  .atoll-list,
+  .atoll-list-item {
+    background-color: transparent !important;
+  }
+}

@@ -129,6 +129,10 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
       const roomSettingsBtn = alicePage.locator('[data-testid$="btnRoomSettings"]')
       await expect(roomSettingsBtn).toBeVisible({ timeout: 15000 })
       await roomSettingsBtn.click()
+
+      // Expand Customise Chat accordion
+      await alicePage.locator('[data-testid$="accordion-customise-btn"]').click()
+
       await expect(alicePage.locator('[data-testid$="btnChangeTheme"]')).toBeVisible({ timeout: 15000 })
 
       const themeModal = alicePage.locator('.modal').filter({ hasText: 'Preview and select theme' })

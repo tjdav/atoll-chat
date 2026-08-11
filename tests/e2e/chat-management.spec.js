@@ -163,6 +163,9 @@ test.describe('Chat Management', () => {
       // Wait for room details to load completely (room name matches "bob")
       await expect(alicePage.locator('[data-testid$="roomDetailsOffcanvas"] [ref$="roomNameText"]')).toHaveText('bob', { timeout: 15000 })
 
+      // Expand Privacy & support accordion
+      await alicePage.locator('[data-testid$="accordion-privacy-btn"]').click()
+
       // Scroll the container to the bottom to make Delete chat fully visible
       await alicePage.locator('room-details-sidebar .offcanvas-body .overflow-y-auto').evaluate(el => el.scrollTop = el.scrollHeight)
 

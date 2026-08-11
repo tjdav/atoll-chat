@@ -33,6 +33,7 @@ test.describe('Messaging Features', () => {
       await expect(offcanvas.locator('[ref$="roomNameText"]')).toContainText('bob')
 
       console.log('Toggling mute status...')
+      await page.locator('[data-testid$="accordion-privacy-btn"]').click()
       const muteBadge = page.locator('[ref$="muteStatusBadge"]')
       await expect(muteBadge).toContainText('Off')
       await page.locator('[data-testid$="btnMuteNotifications"]').getByRole('button').click()

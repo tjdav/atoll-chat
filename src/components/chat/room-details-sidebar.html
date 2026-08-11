@@ -34,21 +34,33 @@
           <atoll-accordion-item 
             title="Customise chat" 
             icon="palette"
-            expanded="true" 
+            expanded="false" 
             data-testid="accordion-customise-btn" 
             body-testid="collapse-customise"
             ref="headerCustomise"
             class="room-settings-card overflow-hidden"
           >
-            <atoll-list divided="true">
-              <atoll-list-item ref="btnChangeTheme" clickable="true" chevron="true" title="Change theme" data-testid="btnChangeTheme">
-                <span slot="leading"><atoll-icon name="palette" size="20"></atoll-icon></span>
+            <atoll-list>
+              <atoll-list-item ref="btnChangeTheme" clickable="true" chevron="true" title="Change theme" description="Personalise your chat colors and background" data-testid="btnChangeTheme">
+                <span slot="leading">
+                  <atoll-profile size="xs" palette="theme">
+                    <atoll-icon slot="image" name="palette" size="16" color="#FFFFFF"></atoll-icon>
+                  </atoll-profile>
+                </span>
               </atoll-list-item>
-              <atoll-list-item ref="btnEditNicknames" clickable="true" chevron="true" title="Edit nicknames" data-testid="btnEditNicknames">
-                <span slot="leading"><atoll-icon name="Aa" size="20"></atoll-icon></span>
+              <atoll-list-item ref="btnEditNicknames" clickable="true" chevron="true" title="Edit nicknames" description="Set custom aliases for room participants" data-testid="btnEditNicknames">
+                <span slot="leading">
+                  <atoll-profile size="xs" palette="nicknames">
+                    <atoll-icon slot="image" name="Aa" size="16" color="#FFFFFF"></atoll-icon>
+                  </atoll-profile>
+                </span>
               </atoll-list-item>
-              <atoll-list-item ref="btnEditRoom" clickable="true" chevron="true" title="Edit room" data-testid="btnEditRoom" hidden="{{ hideEditRoom }}">
-                <span slot="leading"><atoll-icon name="edit" size="20"></atoll-icon></span>
+              <atoll-list-item ref="btnEditRoom" clickable="true" chevron="true" title="Edit room" description="Modify the room's name, avatar, and settings" data-testid="btnEditRoom" hidden="{{ hideEditRoom }}">
+                <span slot="leading">
+                  <atoll-profile size="xs" palette="room">
+                    <atoll-icon slot="image" name="edit" size="16" color="#FFFFFF"></atoll-icon>
+                  </atoll-profile>
+                </span>
               </atoll-list-item>
             </atoll-list>
           </atoll-accordion-item>
@@ -57,15 +69,19 @@
           <atoll-accordion-item 
             title="Privacy & support" 
             icon="bell"
-            expanded="true" 
+            expanded="false" 
             data-testid="accordion-privacy-btn" 
             body-testid="collapse-privacy"
             ref="headerPrivacy"
             class="room-settings-card overflow-hidden"
           >
-            <atoll-list divided="true">
-              <atoll-list-item ref="btnMuteNotifications" clickable="true" title="Mute notifications" data-testid="btnMuteNotifications">
-                <span slot="leading"><atoll-icon name="bell" size="20"></atoll-icon></span>
+            <atoll-list>
+              <atoll-list-item ref="btnMuteNotifications" clickable="true" title="Mute notifications" description="Silence alerts for incoming messages in this room" data-testid="btnMuteNotifications">
+                <span slot="leading">
+                  <atoll-profile size="xs" palette="mute">
+                    <atoll-icon slot="image" name="bell" size="16" color="#FFFFFF"></atoll-icon>
+                  </atoll-profile>
+                </span>
                 <div slot="right" class="d-flex align-items-center gap-2">
                   <span class="d-none" ref="muteStatusBadge">Off</span>
                   <div class="form-check form-switch m-0">
@@ -73,8 +89,12 @@
                   </div>
                 </div>
               </atoll-list-item>
-              <atoll-list-item ref="btnReadReceipts" clickable="true" title="Read receipts" data-testid="btnReadReceipts">
-                <span slot="leading"><atoll-icon name="eye" size="20"></atoll-icon></span>
+              <atoll-list-item ref="btnReadReceipts" clickable="true" title="Read receipts" description="Allow others to see when you have read their messages" data-testid="btnReadReceipts">
+                <span slot="leading">
+                  <atoll-profile size="xs" palette="receipts">
+                    <atoll-icon slot="image" name="eye" size="16" color="#FFFFFF"></atoll-icon>
+                  </atoll-profile>
+                </span>
                 <div slot="right" class="d-flex align-items-center gap-2">
                   <span class="d-none" ref="readReceiptsStatusText">On</span>
                   <div class="form-check form-switch m-0">
@@ -82,11 +102,19 @@
                   </div>
                 </div>
               </atoll-list-item>
-              <atoll-list-item ref="btnBlock" clickable="true" title="Block" class="text-danger" data-testid="btnBlock">
-                <span slot="leading"><atoll-icon name="block" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
+              <atoll-list-item ref="btnBlock" clickable="true" title="Block" description="Prevent this participant from contacting you" class="text-danger" data-testid="btnBlock">
+                <span slot="leading">
+                  <atoll-profile size="xs" palette="block">
+                    <atoll-icon slot="image" name="block" size="16" color="#FFFFFF"></atoll-icon>
+                  </atoll-profile>
+                </span>
               </atoll-list-item>
-              <atoll-list-item ref="btnDelete" clickable="true" title="{{ deleteLabel }}" class="text-danger" data-testid="btnDelete">
-                <span slot="leading"><atoll-icon name="trash" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon></span>
+              <atoll-list-item ref="btnDelete" clickable="true" title="{{ deleteLabel }}" description="Remove this conversation from your inbox" class="text-danger" data-testid="btnDelete">
+                <span slot="leading">
+                  <atoll-profile size="xs" palette="delete">
+                    <atoll-icon slot="image" name="trash" size="16" color="#FFFFFF"></atoll-icon>
+                  </atoll-profile>
+                </span>
               </atoll-list-item>
             </atoll-list>
           </atoll-accordion-item>
@@ -96,7 +124,7 @@
             title="Members" 
             icon="user"
             badge="{{ memberCount }}"
-            expanded="true" 
+            expanded="false" 
             data-testid="accordion-members-btn" 
             body-testid="collapse-members"
             ref="headerMembers"
@@ -420,23 +448,10 @@
         })
       }
 
-      // Custom coordinate logic for new accordions if resetting to expanded on room/selection updates
-      const resetAccordionToExpanded = () => {
-        const sections = ['headerCustomise', 'headerPrivacy', 'headerMembers']
-        sections.forEach(refName => {
-          const headerEl = refs(refName)
-          if (headerEl) {
-            headerEl.setAttribute('expanded', 'true')
-          }
-        })
-      }
-
       // Initial load and event subscriptions
-      resetAccordionToExpanded()
       fetchRoomAndSettings()
 
       $state.subscribe('activeSelectionId', () => {
-        resetAccordionToExpanded()
         fetchRoomAndSettings()
       })
 
