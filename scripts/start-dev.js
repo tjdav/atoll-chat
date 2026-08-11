@@ -90,7 +90,7 @@ async function ensureLocalPocketBaseDownloaded () {
 
   const arch = process.arch === 'arm64' ? 'arm64' : 'amd64'
   const zipName = `pocketbase_0.39.10_${platform}_${arch}.zip`
-  const downloadUrl = `https://github.com/pocketbase/pocketbase/releases/download/v0.39.8/${zipName}`
+  const downloadUrl = `https://github.com/pocketbase/pocketbase/releases/download/v0.39.10/${zipName}`
 
   console.log(`Downloading PocketBase from ${downloadUrl}...`)
 

@@ -49,7 +49,8 @@ function getOrCreateTrust (userId) {
     return existing[0]
   }
 
-  const isFirst = countTable('users') <= 1
+  const firstUsers = $app.findRecordsByFilter('users', '1=1', 'created', 1, 0)
+  const isFirst = firstUsers.length > 0 && firstUsers[0].id === userId
   const collection = $app.findCollectionByNameOrId('user_trust')
   const trustRecord = new Record(collection)
   trustRecord.set('user', userId)
