@@ -113,10 +113,15 @@
             const latestMsg = await $storage.getLatestMessage(room.id)
             if (latestMsg) {
               const me = room.participants?.find(p => p.id === $state.currentUser?.id)
-              const isUnread = latestMsg && (
+              let isUnread = latestMsg && (
                 me?.last_read_message_id === null ||
                 (latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id)
               )
+  
+              if ($state.currentAppView === 'chats' && $state.activeSelectionId === room.id) {
+                isUnread = false
+              }
+  
               if (isUnread) {
                 unreadCount++
               }

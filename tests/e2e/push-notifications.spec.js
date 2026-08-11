@@ -263,7 +263,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     expect(pruned).toBe(true)
   })
 
-  test('should mute notification and sound only when active chat is selected AND app is focused', async ({ page, loginApp }) => {
+  test('should mute notification and sound only when active chat is selected AND app is visible', async ({ page, loginApp }) => {
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
     await expect(page.locator('app-layout')).toBeVisible()
 
@@ -280,7 +280,7 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     const roomId = await page.evaluate(() => window.$state.activeSelectionId)
     expect(roomId).toBeDefined()
 
-    /* Stub Notification class and document.hasFocus() to return true (app focused) */
+    /* Stub Notification class and document.visibilityState to return 'visible' */
     await page.evaluate(() => {
       window.__notif_dispatched__ = false
       window.Notification = class extends EventTarget {
@@ -292,40 +292,50 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
         static permission = 'granted'
       }
 
-      document.hasFocus = () => true
+      Object.defineProperty(document, 'visibilityState', {
+        get () {
+          return 'visible'
+        },
+        configurable: true
+      })
     })
 
-    /* Simulate incoming message for active room when app IS focused */
+    /* Simulate incoming message for active room when app IS visible */
     await page.evaluate(({ roomId }) => {
       window.$bus.emit('db:new_local_data', {
         room_id: roomId,
         message: {
-          id: 'msg-focus-1',
+          id: 'msg-visible-1',
           sender_id: 'bob',
           type: 'text',
-          content: 'Message while focused'
+          content: 'Message while visible'
         }
       })
     }, { roomId })
 
-    const wasDispatchedWhenFocused = await page.evaluate(() => window.__notif_dispatched__)
-    expect(wasDispatchedWhenFocused).toBe(false)
+    const wasDispatchedWhenVisible = await page.evaluate(() => window.__notif_dispatched__)
+    expect(wasDispatchedWhenVisible).toBe(false)
 
-    /* Reset flag and stub document.hasFocus() to return false (app NOT focused) */
+    /* Reset flag and stub document.visibilityState to return 'hidden' (app NOT visible) */
     await page.evaluate(() => {
       window.__notif_dispatched__ = false
-      document.hasFocus = () => false
+      Object.defineProperty(document, 'visibilityState', {
+        get () {
+          return 'hidden'
+        },
+        configurable: true
+      })
     })
 
-    /* Simulate incoming message for active room when app is NOT focused */
+    /* Simulate incoming message for active room when app is NOT visible */
     await page.evaluate(({ roomId }) => {
       window.$bus.emit('db:new_local_data', {
         room_id: roomId,
         message: {
-          id: 'msg-unfocused-1',
+          id: 'msg-hidden-1',
           sender_id: 'bob',
           type: 'text',
-          content: 'Message while unfocused'
+          content: 'Message while hidden'
         }
       })
     }, { roomId })
@@ -333,5 +343,66 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await expect.poll(async () => {
       return await page.evaluate(() => window.__notif_dispatched__)
     }).toBe(true)
+  })
+
+  test('should suppress unread badge and automatically mark new message as read when active on the room', async ({ page, loginApp }) => {
+    await loginApp('alice', 'Password123!', 'VaultPassword123!')
+    await expect(page.locator('app-layout')).toBeVisible()
+
+    // Ensure sync is complete before interacting
+    await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp, { timeout: 30000 })
+
+    /* Create a room with Bob */
+    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+    await page.locator('[data-testid$="search-result-bob"]').click()
+    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await expect(page.locator('atoll-chat-view')).toBeVisible()
+
+    const roomId = await page.evaluate(() => window.$state.activeSelectionId)
+    expect(roomId).toBeDefined()
+
+    /* Verify there is no unread badge initially on the active chat-list-item */
+    const chatListItem = page.locator(`chat-list-item[room-id="${roomId}"]`)
+    await expect(chatListItem).toBeVisible()
+    await expect(chatListItem).toHaveAttribute('is-unread', 'false')
+    await expect(chatListItem).toHaveAttribute('unread-count', '0')
+
+    /* Simulate incoming message from Bob for this active room */
+    await page.evaluate(async ({ roomId }) => {
+      const msg = {
+        id: 'msg-active-read-1',
+        local_uuid: 'uuid-active-read-1',
+        room_id: roomId,
+        sender_id: 'bob',
+        type: 'text',
+        content: 'Message for active room',
+        created_at: new Date().toISOString(),
+        status: 'sent'
+      }
+      await window.$localDb.local_messages.put(msg)
+      window.$bus.emit('db:new_local_data', {
+        room_id: roomId,
+        message: msg
+      })
+    }, { roomId })
+
+    /* Give a small timeout for database/event updates */
+    await page.waitForTimeout(500)
+
+    /* Verify that the badge and counts are STILL suppressed in the UI (is-unread is false, count is 0) */
+    await expect(chatListItem).toHaveAttribute('is-unread', 'false')
+    await expect(chatListItem).toHaveAttribute('unread-count', '0')
+
+    /* Verify that the message was saved and actually marked as read (last_read_message_id is updated to 'msg-active-read-1') */
+    const lastReadMsgId = await page.evaluate(async ({ roomId }) => {
+      const room = await window.$localDb.local_rooms.get(roomId)
+      const me = room?.participants?.find(p => p.id === window.$state.currentUser?.id)
+      return me?.last_read_message_id
+    }, { roomId })
+
+    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+
+    expect(lastReadMsgId).toBe('msg-active-read-1')
   })
 })

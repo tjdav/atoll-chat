@@ -87,10 +87,14 @@
         }
         const previewText = getPreviewText(latestMsg, participants, item.is_group)
         const me = participants.find(p => p.id === $state.currentUser?.id)
-        const isUnread = latestMsg && (
+        let isUnread = latestMsg && (
           me?.last_read_message_id === null ||
           (latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id)
         )
+
+        if ($state.currentAppView === 'chats' && $state.activeSelectionId === item.id) {
+          isUnread = false
+        }
   
         let unreadCount = 0
         if (isUnread) {
@@ -485,7 +489,12 @@
 
       debouncedRender()
       $state.subscribe('listSearchQuery', () => debouncedRender())
-      $bus.on('db:new_local_data', (payload) => handleUpdateInPlace(payload.room_id))
+      $bus.on('db:new_local_data', async (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId && $state.currentAppView === 'chats') {
+          await markAsRead(payload.room_id)
+        }
+        await handleUpdateInPlace(payload.room_id)
+      })
       $bus.on('db:new_local_room', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('db:room_deleted', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id))

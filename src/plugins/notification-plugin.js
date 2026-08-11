@@ -233,17 +233,16 @@ export default definePlugin({
           }
 
           /**
-           * Checks whether the application is focused and the given room is actively opened.
+           * Checks whether the application is visible and the given room is actively opened.
            *
            * @param {string} roomId - The ID of the room to verify.
-           * @returns {boolean} True if the chat is both active and focused.
+           * @returns {boolean} True if the chat is both active and visible.
            */
           const isChatActiveAndFocused = (roomId) => {
-            const isAppFocused = typeof document !== 'undefined' &&
-              document.hasFocus() &&
+            const isAppVisible = typeof document !== 'undefined' &&
               document.visibilityState === 'visible'
 
-            return isAppFocused &&
+            return isAppVisible &&
               $state.currentAppView === 'chats' &&
               $state.activeSelectionId === roomId
           }
