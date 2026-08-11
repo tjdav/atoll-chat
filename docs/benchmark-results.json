@@ -1,0 +1,75 @@
+{
+  "timestamp": "2026-08-11T07:21:59.488Z",
+  "results": {
+    "Msg encrypt throughput": {
+      "avg": 3.207741914285714,
+      "p50": 3.039667,
+      "p95": 5.681574
+    },
+    "Msg decrypt throughput": {
+      "avg": 3.132390574766355,
+      "p50": 2.861687,
+      "p95": 6.307447
+    },
+    "Governance box seal": {
+      "avg": 3.685323295081967,
+      "p50": 3.321818,
+      "p95": 8.494869
+    },
+    "File encrypt (1MB) throughput": {
+      "avg": 50.389368299999994,
+      "p50": 49.591161,
+      "p95": 53.275282
+    },
+    "Dexie write throughput (500 messages)": {
+      "avg": 208.63801066666664,
+      "p50": 207.421076,
+      "p95": 212.241245
+    },
+    "Dexie query latency (200 messages)": {
+      "avg": 104.64372816666668,
+      "p50": 101.239849,
+      "p95": 113.910623
+    },
+    "Admin overview latency (/api/custom/admin/overview)": {
+      "avg": 8.100914086419612,
+      "p50": 7.697282000001907,
+      "p95": 14.168867999996186
+    },
+    "Owner public key latency (/api/custom/owner/public-key)": {
+      "avg": 8.453347039473684,
+      "p50": 8.004055,
+      "p95": 14.149961
+    },
+    "Invite generate latency (/api/custom/invites/generate)": {
+      "avg": 9.145157901408451,
+      "p50": 8.612618,
+      "p95": 15.84065
+    },
+    "Timeline Render (100 messages)": {
+      "avg": 86.6000000005588,
+      "p50": 86.6000000005588,
+      "p95": 86.6000000005588
+    },
+    "Timeline Render (500 messages)": {
+      "avg": 2021.5999999996275,
+      "p50": 2021.5999999996275,
+      "p95": 2021.5999999996275
+    },
+    "Timeline Render (2000 messages)": {
+      "avg": 21785.299999999814,
+      "p50": 21785.299999999814,
+      "p95": 21785.299999999814
+    },
+    "Timeline Scroll FPS": {
+      "avg": 54.700234539071445,
+      "p50": 54.700234539071445,
+      "p95": 54.700234539071445
+    },
+    "Timeline Scroll Jank Count": {
+      "avg": 9,
+      "p50": 9,
+      "p95": 9
+    }
+  }
+}

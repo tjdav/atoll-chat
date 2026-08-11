@@ -238,6 +238,14 @@ async function processQueue () {
     await handleEvent(event)
   } catch (err) {
     console.error('Queue processing error:', err)
+    const { id, type } = event.data
+    if (id) {
+      self.postMessage({
+        id,
+        type,
+        error: err.message
+      })
+    }
   } finally {
     isProcessing = false
     processQueue()

@@ -31,6 +31,7 @@
     "build:android:release": "cross-env NODE_ENV=production pnpm run build && pnpm exec cap sync android && cd android && ./gradlew assembleRelease",
     "lint:types": "pnpm exec tsc --noEmit",
     "lint:format": "eslint --cache --fix .",
+    "benchmark": "node scripts/generate-test-video.js && cross-env NODE_OPTIONS=\"--experimental-vm-modules --experimental-import-meta-resolve\" node tests/benchmarks/run.js",
     "test:unit": "node --experimental-vm-modules --import ./tests/unit/helpers/dom-setup.js --test",
     "test:unit:coverage": "node --experimental-vm-modules --import ./tests/unit/helpers/dom-setup.js --experimental-test-coverage --test",
     "test:e2e": "node scripts/generate-test-video.js && pnpm exec playwright test",
@@ -54,6 +55,7 @@
     "eslint-plugin-html": "^8.1.4",
     "eslint-plugin-jsdoc": "^62.8.1",
     "happy-dom": "20.10.6",
+    "mitata": "^1.0.34",
     "sirv-cli": "^3.0.1",
     "typescript": "^6.0.3"
   },
