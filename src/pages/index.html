@@ -15,6 +15,23 @@
   <link rel="apple-touch-icon" href="./icon-192x192.png">
 
   <app-root></app-root>
+
+  <script>
+    (function () {
+      window.__coralite_instanceCounters = window.__coralite_instanceCounters || {}
+      document.querySelectorAll('[data-cid]').forEach(function (el) {
+        const cid = el.getAttribute('data-cid')
+        if (cid) {
+          const parts = cid.split('-')
+          const num = parseInt(parts.pop(), 10)
+          const prefix = parts.join('-')
+          if (prefix && !isNaN(num)) {
+            window.__coralite_instanceCounters[prefix] = Math.max(window.__coralite_instanceCounters[prefix] || 0, num + 1)
+          }
+        }
+      })
+    })()
+  </script>
 </body>
 
 </html>

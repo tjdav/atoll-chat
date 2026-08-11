@@ -102,6 +102,7 @@ export default function bootstrapScriptPlugin () {
         content = content.replace(/<script[^>]*src=["'](?:\.\/)?\/?assets\/altcha\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
         content = content.replace(/<script[^>]*src=["'](?:\.\/)?\/?assets\/register-sw\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
         content = content.replace(/<script[^>]*src=["'](?:\.\/)?\/?assets\/js\/bootstrap-app\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
+        content = content.replace(/<script>[\s\S]*?__coralite_instanceCounters[\s\S]*?<\/script>/gi, '')
 
         // Compute dynamic SRI for altcha.js if present
         const altchaPath = join(outputDir, 'assets', 'altcha.js')
