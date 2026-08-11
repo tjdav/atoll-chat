@@ -36,12 +36,27 @@ test.describe('Audio Waveform Playback Progress Smoothness', () => {
 
     // Wait and ensure it starts updating the progress bar width smoothly beyond 0%
     const progress = waveform.locator('.waveform-progress')
-    await page.waitForTimeout(2000)
+    await page.waitForTimeout(1000)
 
     const widthStyle = await progress.getAttribute('style')
     expect(widthStyle).not.toBeNull()
-
-    // Width should have updated as audio plays smoothly
     expect(widthStyle).toContain('width:')
+
+    // Wait for the audio to end (icon changes back to play)
+    const playIcon = playBtn.locator('atoll-icon')
+    await expect(playIcon).toHaveAttribute('name', 'play', { timeout: 15000 })
+
+    // Reset screenshot folder and take screenshot of the final ended state
+    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
+
+    // Play the audio again!
+    await playBtn.click()
+    await expect(playIcon).toHaveAttribute('name', 'pause', { timeout: 5000 })
+
+    // Wait and ensure it plays and updates progress bar again
+    await page.waitForTimeout(1000)
+    const widthStyleAfterReplay = await progress.getAttribute('style')
+    expect(widthStyleAfterReplay).not.toBeNull()
+    expect(widthStyleAfterReplay).toContain('width:')
   })
 })

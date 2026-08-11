@@ -199,6 +199,9 @@
           })
           audio.addEventListener('ended', () => {
             audio.currentTime = 0
+            if (audio.currentTime !== 0) {
+              audio.load()
+            }
             updateProgress()
             playBtn.innerHTML = '<atoll-icon name="play" size="18" color="#ffffff"></atoll-icon>'
             stopUpdateLoop()
@@ -208,6 +211,12 @@
             e.stopPropagation()
             if (!audio) {
               return
+            }
+            if (audio.ended) {
+              audio.currentTime = 0
+              if (audio.currentTime !== 0) {
+                audio.load()
+              }
             }
             if (audio.paused) {
               audio.play().catch(err => {

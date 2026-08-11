@@ -159,6 +159,9 @@
 
       audio.onended = () => {
         audio.currentTime = 0
+        if (audio.currentTime !== 0) {
+          audio.load()
+        }
         updateProgress()
         state.playbackStatus = 'paused'
         updatePlaybackUI()
@@ -311,6 +314,12 @@
         }
 
         if (isLoaded) {
+          if (audio.ended) {
+            audio.currentTime = 0
+            if (audio.currentTime !== 0) {
+              audio.load()
+            }
+          }
           if (audio.paused) {
             triggerPlay()
           } else {
