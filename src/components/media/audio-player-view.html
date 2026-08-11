@@ -37,9 +37,10 @@
       errorMessage: '',
       fileName: 'Untitled Audio'
     }),
-    client: async ({ state, signal, refs, storage, globalStore, bootstrap }) => {
+    client: async ({ state, signal, refs, storage, globalStore, pocketbase, bootstrap }) => {
       const { $storage } = storage
       const { $state } = globalStore
+      const { pb } = pocketbase
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
       const carouselInner = refs('carouselInner')
@@ -65,11 +66,80 @@
       const updateItemUI = async (item, container) => {
         const room = await $storage.getRoom(item.room_id)
         const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
-        const artistAlbum = item.artist ? `${item.artist}${item.album ? ' • ' + item.album : ''}` : ''
+
+        let artistAlbum = ''
+        if (item.music_metadata) {
+          const meta = item.music_metadata
+          artistAlbum = meta.artist ? `${meta.artist}${meta.album ? ' • ' + meta.album : ''}` : ''
+        } else if (item.artist) {
+          artistAlbum = item.artist ? `${item.artist}${item.album ? ' • ' + item.album : ''}` : ''
+        }
 
         container.querySelector('.audio-filename').textContent = item.filename || item.name || 'Audio File'
         container.querySelector('.audio-artist').textContent = artistAlbum
         container.querySelector('.audio-room').textContent = roomName
+
+        // Fetch sender & message details
+        let senderName = 'Unknown User'
+        let sentTime = ''
+        let senderAvatarSrc = ''
+        let senderId = ''
+  
+        if (item.message_id) {
+          const message = await $storage.getMessage(item.message_id)
+          if (message) {
+            senderId = message.sender_id
+            if (message.sender_id === $state.currentUser?.id) {
+              senderName = 'You'
+              if ($state.currentUser?.avatar && pb?.files) {
+                senderAvatarSrc = pb.files.getURL($state.currentUser, $state.currentUser.avatar, { thumb: '30x30' })
+              }
+            } else if (room) {
+              const sender = (room.participants || []).find(p => p.id === message.sender_id)
+              if (sender) {
+                const nicknames = room.nicknames || {}
+                senderName = nicknames[sender.id] || sender.name || sender.username || 'Member'
+                if (sender.avatar && pb?.files) {
+                  senderAvatarSrc = pb.files.getURL(sender, sender.avatar, { thumb: '30x30' })
+                }
+              }
+            }
+            if (message.created_at) {
+              sentTime = new Date(message.created_at).toLocaleString()
+            }
+          }
+        }
+  
+        if (!sentTime && item.created_at) {
+          sentTime = new Date(item.created_at).toLocaleString()
+        }
+
+        const avatarEl = container.querySelector('.audio-sender-avatar')
+        if (avatarEl) {
+          avatarEl.setAttribute('size', 'xs')
+          avatarEl.setAttribute('name', senderName)
+          avatarEl.setAttribute('alt', senderName)
+          if (senderId) {
+            avatarEl.setAttribute('user-id', senderId)
+          } else {
+            avatarEl.removeAttribute('user-id')
+          }
+          if (senderAvatarSrc) {
+            avatarEl.setAttribute('src', senderAvatarSrc)
+          } else {
+            avatarEl.removeAttribute('src')
+          }
+        }
+
+        const senderNameEl = container.querySelector('.audio-sender-name')
+        if (senderNameEl) {
+          senderNameEl.textContent = senderName
+        }
+
+        const sentTimeEl = container.querySelector('.audio-sent-time')
+        if (sentTimeEl) {
+          sentTimeEl.textContent = sentTime ? `Sent on ${sentTime}` : ''
+        }
       }
 
       const createCarouselItem = (item, isActive) => {
@@ -85,7 +155,15 @@
               <div class="mb-4">
                 <h4 class="mb-1 text-truncate audio-filename">Loading...</h4>
                 <div class="text-muted mb-1 audio-artist"></div>
-                <div class="text-muted small">From: <span class="fw-bold audio-room"></span></div>
+              </div>
+              <div class="card p-3 mb-4 bg-body-tertiary border-0 rounded-4">
+                <div class="d-flex align-items-center justify-content-center gap-2 mb-2 flex-wrap">
+                  <atoll-profile class="audio-sender-avatar" size="xs"></atoll-profile>
+                  <span class="fw-bold small audio-sender-name">Loading...</span>
+                  <span class="text-muted small">•</span>
+                  <span class="text-muted small audio-room"></span>
+                </div>
+                <div class="text-muted x-small audio-sent-time"></div>
               </div>
               <div class="d-flex flex-column align-items-center gap-4 w-100">
                 <ui-waveform-player 
