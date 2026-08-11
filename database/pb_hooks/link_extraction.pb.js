@@ -99,12 +99,50 @@ routerAdd('GET', '/api/link-extraction', (e) => {
       return e.json(400, { error: 'Target metadata unreachable' })
     }
 
+    let mediaId = ''
+    let fileKey = ''
+    let fileNonce = ''
+
+    if (image && image.startsWith('http')) {
+      try {
+        const tempFile = $filesystem.fileFromURL(image, 15)
+        if (tempFile) {
+          let rawBytesStr = ''
+          try {
+            rawBytesStr = readerToString(tempFile)
+          } finally {
+            tempFile.close()
+          }
+
+          if (rawBytesStr) {
+            const aesKey = $security.randomString(32)
+            const encryptedStr = $security.encrypt(rawBytesStr, aesKey)
+
+            const encryptedFile = $filesystem.fileFromBytes(encryptedStr, 'preview.enc')
+            const mediaCollection = $app.findCollectionByNameOrId('media')
+            const mediaRecord = new Record(mediaCollection)
+            mediaRecord.set('file', encryptedFile)
+            $app.save(mediaRecord)
+
+            mediaId = mediaRecord.id
+            fileKey = aesKey
+            fileNonce = 'AES-GCM'
+          }
+        }
+      } catch {
+        // Fallback gracefully on image download/processing error
+      }
+    }
+
     return e.json(200, {
       title: title || domain || url,
       description: description,
       image: image,
       domain: domain,
-      url: url
+      url: url,
+      media_id: mediaId,
+      file_key: fileKey,
+      file_nonce: fileNonce
     })
 
   } catch (err) {

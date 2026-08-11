@@ -1,8 +1,33 @@
 .atoll-chat-link-preview {
+  display: flex !important;
+  flex-direction: row !important;
+  border-radius: var(--bs-border-radius-xl, 16px) !important;
+  overflow: hidden !important;
+  text-decoration: none !important;
+  color: inherit !important;
   background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg)) !important;
   border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color)) !important;
   backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
   -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+  .preview-image-col {
+    width: 120px !important;
+    min-width: 120px !important;
+    height: 100% !important;
+    overflow: hidden !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    background-color: rgba(0, 0, 0, 0.03) !important;
+
+    img {
+      width: 100% !important;
+      height: 100% !important;
+      object-fit: cover !important;
+      border-radius: 0 !important;
+    }
+  }
 
   .text-primary {
     color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;

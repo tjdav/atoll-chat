@@ -26,7 +26,10 @@
       title: String,
       summary: String,
       domain: String,
-      imageUrl: String
+      imageUrl: String,
+      mediaId: String,
+      fileKey: String,
+      fileNonce: String
     },
     getters: {
       imageDisplayClass: (state) => (state.title ? '' : 'd-none'),
@@ -56,7 +59,7 @@
 
         const img = document.createElement('img')
         img.src = src
-        img.className = 'rounded-start'
+        img.className = 'img-fluid rounded-start'
         imageContainer.appendChild(img)
       }
 
@@ -85,21 +88,22 @@
         if (callId !== lastCallId || signal.aborted) {
           return
         }
-        if (!msg) {
-          return
-        }
+
+        const mediaId = state.mediaId || msg?.media_id
+        const fileKey = state.fileKey || msg?.file_key
+        const fileNonce = state.fileNonce || msg?.file_nonce
 
         // If it's a newer message with image_url, we can use it as fallback
-        if (state.imageUrl) {
+        if (state.imageUrl && !mediaId) {
           renderImage(state.imageUrl)
         }
 
-        if (!msg.media_id || !msg.file_key || !msg.file_nonce) {
+        if (!mediaId || !fileKey || !fileNonce) {
           return
         }
 
         try {
-          const record = await pb.collection('media').getOne(msg.media_id)
+          const record = await pb.collection('media').getOne(mediaId)
           const fileUrl = pb.files.getURL(record, record.file)
   
           const response = await fetch(fileUrl, { signal })
@@ -108,11 +112,42 @@
             return
           }
 
-          const decrypted = await $worker.execute('worker:crypto_secretbox_open_easy', {
-            ciphertext: encryptedBuffer,
-            nonce: msg.file_nonce,
-            key: msg.file_key
-          })
+          let decrypted
+          if (fileNonce === 'AES-GCM') {
+            const base64Text = new TextDecoder().decode(encryptedBuffer).trim()
+            const binaryString = atob(base64Text.replace(/-/g, '+').replace(/_/g, '/'))
+            const len = binaryString.length
+            const bytes = new Uint8Array(len)
+            for (let i = 0; i < len; i++) {
+              bytes[i] = binaryString.charCodeAt(i)
+            }
+            const iv = bytes.slice(0, 12)
+            const ciphertextWithTag = bytes.slice(12)
+
+            const rawKey = new TextEncoder().encode(fileKey)
+            const cryptoKey = await window.crypto.subtle.importKey(
+              'raw',
+              rawKey,
+              { name: 'AES-GCM' },
+              false,
+              ['decrypt']
+            )
+
+            decrypted = await window.crypto.subtle.decrypt(
+              {
+                name: 'AES-GCM',
+                iv: iv
+              },
+              cryptoKey,
+              ciphertextWithTag
+            )
+          } else {
+            decrypted = await $worker.execute('worker:crypto_secretbox_open_easy', {
+              ciphertext: encryptedBuffer,
+              nonce: fileNonce,
+              key: fileKey
+            })
+          }
 
           if (callId !== lastCallId || signal.aborted) {
             return
