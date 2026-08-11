@@ -2,23 +2,32 @@ import { spawn, execSync } from 'child_process'
 import { chromium } from '@playwright/test'
 import { run, bench, group } from 'mitata'
 import fs, { existsSync } from 'fs'
-import path from 'path'
-import net from 'net'
 import { fileURLToPath } from 'url'
+import pbPath from 'path'
 import PocketBase from 'pocketbase'
 import sodium from 'libsodium-wrappers-sumo'
+import net from 'net'
 import { deriveAuthAndVaultKeys } from '../../src/utils/keys.js'
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const projectRoot = path.resolve(__dirname, '../..')
+// Import modular benchmark suites
+import * as cryptoSuite from './suites/crypto.js'
+import * as databaseSuite from './suites/database.js'
+import * as serverSuite from './suites/server.js'
+import * as uiSuite from './suites/ui.js'
+
+const __dirname = pbPath.dirname(fileURLToPath(import.meta.url))
+const projectRoot = pbPath.resolve(__dirname, '../..')
 
 // Setup paths
-const resultsMdPath = path.join(projectRoot, 'docs/benchmark-results.md')
-const resultsJsonPath = path.join(projectRoot, 'docs/benchmark-results.json')
+const resultsMdPath = pbPath.join(projectRoot, 'docs/benchmark-results.md')
+const resultsJsonPath = pbPath.join(projectRoot, 'docs/benchmark-results.json')
 
 // Get custom executable path if exists
 const getExecutablePath = (p) => (existsSync(p) ? p : undefined)
 const executablePath = getExecutablePath('/usr/bin/google-chrome') || getExecutablePath('/usr/bin/chromium')
+
+// Environment configuration for verbose logging
+const isVerbose = process.env.VERBOSE === 'true' || process.env.DEBUG === 'true'
 
 // Keep track of spawned child processes to clean them up on exit
 const childProcesses = []
@@ -329,6 +338,9 @@ async function startServers () {
  * Run the benchmarking suite.
  */
 async function main () {
+  // Wait for libsodium sumo wrappers to be ready
+  await sodium.ready
+
   // Start backend and frontend servers
   await startServers()
 
@@ -337,7 +349,6 @@ async function main () {
   await resetPocketBase(testId)
 
   // Derive keys and log in Alice on the Node side first
-  await sodium.ready
   const pb = new PocketBase('http://localhost:8091')
   pb.beforeSend = (url, options) => {
     options.headers = options.headers || {}
@@ -391,20 +402,24 @@ async function main () {
   })
 
   // Inject window.Worker wrap to capture $cryptoWorker instance and override EventSource
-  await context.addInitScript((tId) => {
+  await context.addInitScript(({ tId, verbose }) => {
     // Intercept and bypass controllerchange to prevent unexpected reload race conditions in tests
     if ('serviceWorker' in navigator) {
       const originalAddEventListener = navigator.serviceWorker.addEventListener
       navigator.serviceWorker.addEventListener = function (type, listener, options) {
         if (type === 'controllerchange') {
-          console.log('[E2E Mock] Bypassing controllerchange event listener to prevent unexpected reload')
+          if (verbose) {
+            console.log('[E2E Mock] Bypassing controllerchange event listener to prevent unexpected reload')
+          }
           return
         }
         return originalAddEventListener.call(this, type, listener, options)
       }
       Object.defineProperty(navigator.serviceWorker, 'oncontrollerchange', {
         set () {
-          console.log('[E2E Mock] Bypassing oncontrollerchange setter to prevent unexpected reload')
+          if (verbose) {
+            console.log('[E2E Mock] Bypassing oncontrollerchange setter to prevent unexpected reload')
+          }
         },
         get () {
           return null
@@ -426,20 +441,28 @@ async function main () {
     window.OriginalWorker = window.Worker
     window.Worker = function (url, options) {
       const isCryptoWorker = url && url.includes('worker.js') && !url.includes('media-worker.js')
-      console.log('[DIAGNOSTIC] Instantiating Worker:', url, 'Is Crypto:', isCryptoWorker)
+      if (verbose) {
+        console.log('[DIAGNOSTIC] Instantiating Worker:', url, 'Is Crypto:', isCryptoWorker)
+      }
       const worker = new window.OriginalWorker(url, options)
       if (isCryptoWorker) {
-        console.log('[DIAGNOSTIC] Captured active $cryptoWorker instance!')
+        if (verbose) {
+          console.log('[DIAGNOSTIC] Captured active $cryptoWorker instance!')
+        }
         window.$cryptoWorker = worker
 
         // Attach listeners to spy on traffic
         worker.addEventListener('message', (e) => {
-          console.log('[DIAGNOSTIC WORKER OUT]:', e.data.type, e.data.id, !!e.data.error)
+          if (verbose) {
+            console.log('[DIAGNOSTIC WORKER OUT]:', e.data.type, e.data.id, !!e.data.error)
+          }
         })
 
         const originalPost = worker.postMessage
         worker.postMessage = function (msg, trans) {
-          console.log('[DIAGNOSTIC WORKER IN]:', msg.type, msg.id)
+          if (verbose) {
+            console.log('[DIAGNOSTIC WORKER IN]:', msg.type, msg.id)
+          }
           return originalPost.call(this, msg, trans)
         }
       }
@@ -462,26 +485,39 @@ async function main () {
     window.addEventListener('unhandledrejection', event => {
       console.error('Unhandled rejection:', event.reason?.message || event.reason)
     })
-  }, testId)
+  }, {
+    tId: testId,
+    verbose: isVerbose
+  })
 
   const page = await context.newPage()
 
-  // Register Console event logging inside browser for debugging
+  // Register Console event logging inside browser (suppressed unless verbose is enabled)
   page.on('console', msg => {
-    console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`)
+    if (isVerbose) {
+      console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`)
+    }
   })
   page.on('pageerror', err => {
     console.log(`[BROWSER ERROR] ${err.message}`)
   })
   page.on('request', req => {
-    console.log(`[BROWSER REQUEST] ${req.method()} ${req.url()}`)
+    if (isVerbose) {
+      console.log(`[BROWSER REQUEST] ${req.method()} ${req.url()}`)
+    }
   })
   page.on('requestfailed', req => {
-    console.log(`[BROWSER REQUEST FAILED] ${req.method()} ${req.url()} - ${req.failure()?.errorText}`)
+    if (isVerbose) {
+      console.log(`[BROWSER REQUEST FAILED] ${req.method()} ${req.url()} - ${req.failure()?.errorText}`)
+    }
   })
   page.on('response', res => {
-    if (res.status() >= 400) {
-      console.log(`[BROWSER RESPONSE ERROR] ${res.status()} ${res.url()}`)
+    if (isVerbose) {
+      if (res.status() >= 400) {
+        console.log(`[BROWSER RESPONSE ERROR] ${res.status()} ${res.url()}`)
+      } else {
+        console.log(`[BROWSER RESPONSE] ${res.status()} ${res.url()}`)
+      }
     }
   })
 
@@ -538,21 +574,17 @@ async function main () {
   await page.waitForSelector('app-layout', { timeout: 15000 })
   console.log('Alice session hydrated completely!')
 
-  // Inject window.__perf helpers
-  console.log('--- Injecting performance benchmark helpers into browser ---')
+  // Inject general RPC execution capability
   await page.evaluate(() => {
     window.__perf = {
-      // Execute RPC on captured crypto worker
       execute: (type, payload) => {
         return new Promise((resolve, reject) => {
-          console.log('[PERF EXECUTE] Calling worker task:', type, !!window.$cryptoWorker)
           if (!window.$cryptoWorker) {
             reject(new Error('Crypto worker not captured yet'))
             return
           }
           const id = crypto.randomUUID()
           const handler = (e) => {
-            console.log('[PERF EXECUTE] Received worker message:', e.data.type, e.data.id === id)
             if (e.data.id === id) {
               window.$cryptoWorker.removeEventListener('message', handler)
               if (e.data.error) {
@@ -569,342 +601,61 @@ async function main () {
             payload
           })
         })
-      },
-
-      key: null,
-      nonce: null,
-      ciphertext: null,
-      fileBytes: null,
-      fileCiphertext: null,
-      govPublicKey: null,
-      govPrivateKey: null,
-      govCiphertext: null,
-
-      async init () {
-        console.log('[PERF HELPER] Initializing __perf state...')
-        // Wait for worker setup to settle
-        await new Promise(r => setTimeout(r, 2000))
-        this.key = new Uint8Array(32)
-        crypto.getRandomValues(this.key)
-        this.nonce = new Uint8Array(24)
-        crypto.getRandomValues(this.nonce)
-
-        console.log('[PERF HELPER] Warmup msg encrypt...')
-        // Warmup msg encrypt
-        this.ciphertext = await this.execute('worker:crypto_secretbox_easy', {
-          message: 'Hello World',
-          nonce: this.nonce,
-          key: this.key
-        })
-
-        console.log('[PERF HELPER] Warmup 1MB file...')
-        // Warmup 1MB file bytes (generating in chunks to prevent QuotaExceededError)
-        this.fileBytes = new Uint8Array(1024 * 1024)
-        for (let i = 0; i < this.fileBytes.length; i += 65536) {
-          const chunk = this.fileBytes.subarray(i, i + 65536)
-          crypto.getRandomValues(chunk)
-        }
-
-        this.fileCiphertext = await this.execute('worker:crypto_secretbox_easy', {
-          message: this.fileBytes,
-          nonce: this.nonce,
-          key: this.key
-        })
-
-        console.log('[PERF HELPER] Warmup Gov keys...')
-        // Warmup Gov keys
-        const masterKeys = await this.execute('worker:generate_master_keys', {})
-        this.govPublicKey = masterKeys.public_box_key
-        this.govPrivateKey = masterKeys.private_box_key
-        this.govCiphertext = await this.execute('worker:crypto_box_seal', {
-          message: 'Secret Governance Info',
-          publicKey: this.govPublicKey
-        })
-        console.log('[PERF HELPER] State successfully initialized!')
-      },
-
-      async benchMsgEncrypt () {
-        return this.execute('worker:crypto_secretbox_easy', {
-          message: 'Hello Performance Benchmark',
-          nonce: this.nonce,
-          key: this.key
-        })
-      },
-
-      async benchMsgDecrypt () {
-        return this.execute('worker:crypto_secretbox_open_easy', {
-          ciphertext: this.ciphertext,
-          nonce: this.nonce,
-          key: this.key
-        })
-      },
-
-      async benchGovSeal () {
-        return this.execute('worker:crypto_box_seal', {
-          message: 'Secret Governance Info',
-          publicKey: this.govPublicKey
-        })
-      },
-
-      async benchGovSealOpen () {
-        return this.execute('worker:crypto_box_seal_open', {
-          ciphertext: this.govCiphertext,
-          publicKey: this.govPublicKey,
-          privateKey: this.govPrivateKey
-        })
-      },
-
-      async benchFileEncrypt () {
-        return this.execute('worker:crypto_secretbox_easy', {
-          message: this.fileBytes,
-          nonce: this.nonce,
-          key: this.key
-        })
-      },
-
-      async benchFileDecrypt () {
-        return this.execute('worker:decrypt_file', {
-          encryptedBuffer: this.fileCiphertext,
-          nonce: this.nonce,
-          key: this.key
-        })
-      },
-
-      async benchDbWrite () {
-        const roomId = 'perf_db_room'
-        const messages = []
-        for (let i = 0; i < 500; i++) {
-          messages.push({
-            local_uuid: `perf_db_msg_${i}`,
-            id: `perf_db_msg_${i}`,
-            room_id: roomId,
-            created_at: new Date(Date.now() - (i * 1000)).toISOString(),
-            sender_id: 'alice',
-            type: 'text',
-            content: `Perf message ${i}`,
-            status: 'sent'
-          })
-        }
-        const start = performance.now()
-        await window.$localDb.local_messages.bulkPut(messages)
-        const duration = performance.now() - start
-        await window.$localDb.local_messages.where('room_id').equals(roomId).delete()
-        return duration
-      },
-
-      async benchDbQuery () {
-        const roomId = 'perf_db_query_room'
-        const messages = []
-        for (let i = 0; i < 200; i++) {
-          messages.push({
-            local_uuid: `perf_query_msg_${i}`,
-            id: `perf_query_msg_${i}`,
-            room_id: roomId,
-            created_at: new Date(Date.now() - (i * 1000)).toISOString(),
-            sender_id: 'alice',
-            type: 'text',
-            content: `Perf message ${i}`,
-            status: 'sent'
-          })
-        }
-        await window.$localDb.local_messages.bulkPut(messages)
-
-        const start = performance.now()
-        await window.$localDb.local_messages
-          .where('[room_id+created_at]')
-          .between([roomId, ''], [roomId, '\uffff'])
-          .reverse()
-          .limit(200)
-          .toArray()
-        const duration = performance.now() - start
-        await window.$localDb.local_messages.where('room_id').equals(roomId).delete()
-        return duration
-      },
-
-      async benchTimelineRender (msgCount) {
-        const roomId = `perf_room_${msgCount}`
-        const roomExists = await window.$localDb.local_rooms.get(roomId)
-        if (!roomExists) {
-          await window.$localDb.local_rooms.put({
-            id: roomId,
-            name: `Perf ${msgCount} Room`,
-            is_group: false,
-            updated_at: new Date().toISOString(),
-            participants: [
-              {
-                id: 'alice',
-                name: 'Alice',
-                username: 'alice'
-              },
-              {
-                id: 'bob',
-                name: 'Bob',
-                username: 'bob'
-              }
-            ]
-          })
-          const messages = []
-          for (let i = 0; i < msgCount; i++) {
-            messages.push({
-              local_uuid: `perf_msg_${roomId}_${i}`,
-              id: `perf_msg_${roomId}_${i}`,
-              room_id: roomId,
-              created_at: new Date(Date.now() - ((msgCount - i) * 1000)).toISOString(),
-              sender_id: 'alice',
-              type: 'text',
-              content: `Test message ${i}`,
-              status: 'sent'
-            })
-          }
-          await window.$localDb.local_messages.bulkPut(messages)
-        }
-
-        const start = performance.now()
-        window.$bus.emit('room:select', { room_id: roomId })
-
-        await new Promise((resolve) => {
-          const check = () => {
-            const rows = document.querySelectorAll('atoll-chat-timeline-row')
-            if (rows.length >= msgCount) {
-              resolve()
-            } else {
-              setTimeout(check, 10)
-            }
-          }
-          check()
-        })
-
-        const duration = performance.now() - start
-        window.$bus.emit('room:select', { room_id: null })
-        await new Promise(r => setTimeout(r, 100))
-        return duration
-      },
-
-      async benchTimelineScrollJank () {
-        const roomId = 'perf_room_500'
-        window.$bus.emit('room:select', { room_id: roomId })
-        await new Promise((resolve) => {
-          const check = () => {
-            const rows = document.querySelectorAll('atoll-chat-timeline-row')
-            if (rows.length >= 500) {
-              resolve()
-            } else {
-              setTimeout(check, 10)
-            }
-          }
-          check()
-        })
-
-        const container = document.querySelector('atoll-chat-timeline .overflow-auto')
-        if (!container) {
-          return {
-            fps: 60,
-            jankCount: 0
-          }
-        }
-
-        const frameGaps = []
-        let lastTime = performance.now()
-        let isScrolling = true
-
-        const sampleFrames = (now) => {
-          const gap = now - lastTime
-          frameGaps.push(gap)
-          lastTime = now
-          if (isScrolling) {
-            requestAnimationFrame(sampleFrames)
-          }
-        }
-        requestAnimationFrame(sampleFrames)
-
-        const step = 50
-        const delay = 16
-        for (let current = container.scrollHeight; current > 0; current -= step) {
-          container.scrollTop = current
-          await new Promise(r => setTimeout(r, delay))
-        }
-
-        isScrolling = false
-        await new Promise(r => setTimeout(r, 100))
-
-        const totalDuration = frameGaps.reduce((a, b) => a + b, 0)
-        const fps = (frameGaps.length / totalDuration) * 1000
-        const jankCount = frameGaps.filter(g => g > 25).length
-
-        window.$bus.emit('room:select', { room_id: null })
-        return {
-          fps,
-          jankCount
-        }
-      },
-
-      async benchServerHook (endpoint) {
-        const authRaw = window.localStorage.getItem('pocketbase_auth')
-        const token = authRaw ? JSON.parse(authRaw).token : ''
-        const start = performance.now()
-        await window.fetch(`http://localhost:8091${endpoint}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'x-test-id': window.__playwright_test_id__ || 'default'
-          }
-        })
-        return performance.now() - start
       }
     }
   })
 
-  // Initialize helper states (pre-generate keys/bytes)
-  await page.evaluate(() => window.__perf.init())
+  // List of suites
+  const suites = [
+    {
+      name: 'crypto',
+      module: cryptoSuite
+    },
+    {
+      name: 'database',
+      module: databaseSuite
+    },
+    {
+      name: 'server',
+      module: serverSuite
+    },
+    {
+      name: 'ui',
+      module: uiSuite
+    }
+  ]
+
+  // Generate Node-side cryptographic params for the browser context
+  const keypair = sodium.crypto_box_keypair()
+  const cryptoParams = {
+    govPublicKey: sodium.to_base64(keypair.publicKey, sodium.base64_variants.ORIGINAL),
+    govPrivateKey: sodium.to_base64(keypair.privateKey, sodium.base64_variants.ORIGINAL),
+    fileKey: sodium.to_base64(sodium.randombytes_buf(32), sodium.base64_variants.ORIGINAL),
+    fileNonce: sodium.to_base64(sodium.randombytes_buf(24), sodium.base64_variants.ORIGINAL)
+  }
+
+  // Phase 1: Inject helper functions into the browser context
+  console.log('--- Injecting modular benchmark helpers into browser ---')
+  for (const suite of suites) {
+    if (suite.name === 'crypto') {
+      await suite.module.inject(page, cryptoParams)
+    } else {
+      await suite.module.inject(page)
+    }
+  }
+
+  // Phase 2: Register mitata benchmarks
+  console.log('\n--- Registering mitata Benchmark Suites ---')
+  for (const suite of suites) {
+    suite.module.register(page, group, bench)
+  }
+
+  // Phase 3: Run Mitata Benchmark Suite
+  console.log('\n--- Starting mitata Benchmark Suite ---')
+  const mitataResult = await run({ format: 'mitata' })
 
   // Define metric dictionary to harvest results
   const harvestedStats = {}
-
-  console.log('\n--- Starting mitata Benchmark Suite ---')
-
-  group('Cryptographic performance (P0)', () => {
-    bench('Msg encrypt throughput', async () => {
-      await page.evaluate(() => window.__perf.benchMsgEncrypt())
-    })
-    bench('Msg decrypt throughput', async () => {
-      await page.evaluate(() => window.__perf.benchMsgDecrypt())
-    })
-    bench('Governance box seal', async () => {
-      await page.evaluate(() => window.__perf.benchGovSeal())
-    })
-    bench('Governance box seal_open', async () => {
-      await page.evaluate(() => window.__perf.benchGovSealOpen())
-    })
-    bench('File encrypt (1MB) throughput', async () => {
-      await page.evaluate(() => window.__perf.benchFileEncrypt())
-    })
-    bench('File decrypt (1MB) throughput', async () => {
-      await page.evaluate(() => window.__perf.benchFileDecrypt())
-    })
-  })
-
-  group('Database & persistence performance (P1)', () => {
-    bench('Dexie write throughput (500 messages)', async () => {
-      await page.evaluate(() => window.__perf.benchDbWrite())
-    })
-    bench('Dexie query latency (200 messages)', async () => {
-      await page.evaluate(() => window.__perf.benchDbQuery())
-    })
-  })
-
-  group('Server hooks & governance (P1)', () => {
-    bench('Admin overview latency (/api/custom/admin/overview)', async () => {
-      await page.evaluate(() => window.__perf.benchServerHook('/api/custom/admin/overview'))
-    })
-    bench('Owner public key latency (/api/custom/owner/public-key)', async () => {
-      await page.evaluate(() => window.__perf.benchServerHook('/api/custom/owner/public-key'))
-    })
-    bench('Invite generate latency (/api/custom/invites/generate)', async () => {
-      await page.evaluate(() => window.__perf.benchServerHook('/api/custom/invites/generate'))
-    })
-  })
-
-  // Execute Mitata suite
-  const mitataResult = await run({ format: 'mitata' })
 
   // Map mitata runs to harvestedStats
   for (const b of mitataResult.benchmarks) {
@@ -919,91 +670,21 @@ async function main () {
     }
   }
 
-  // Measure custom UI/scrolling/startup metrics
-  console.log('\n--- Measuring UI & Scrolling Performance ---')
-
-  const t100 = await page.evaluate(() => window.__perf.benchTimelineRender(100))
-  const t500 = await page.evaluate(() => window.__perf.benchTimelineRender(500))
-  const t2000 = await page.evaluate(() => window.__perf.benchTimelineRender(2000))
-  const scrollResults = await page.evaluate(() => window.__perf.benchTimelineScrollJank())
-
-  harvestedStats['Timeline Render (100 messages)'] = {
-    avg: t100,
-    p50: t100,
-    p95: t100
+  // Phase 4: Measure custom non-Mitata suite metrics
+  console.log('\n--- Measuring Custom & UI Performance Metrics ---')
+  for (const suite of suites) {
+    const customResults = await suite.module.runCustom(page)
+    Object.assign(harvestedStats, customResults)
   }
-  harvestedStats['Timeline Render (500 messages)'] = {
-    avg: t500,
-    p50: t500,
-    p95: t500
-  }
-  harvestedStats['Timeline Render (2000 messages)'] = {
-    avg: t2000,
-    p50: t2000,
-    p95: t2000
-  }
-  harvestedStats['Timeline Scroll FPS'] = {
-    avg: scrollResults.fps,
-    p50: scrollResults.fps,
-    p95: scrollResults.fps
-  }
-  harvestedStats['Timeline Scroll Jank Count'] = {
-    avg: scrollResults.jankCount,
-    p50: scrollResults.jankCount,
-    p95: scrollResults.jankCount
-  }
-
   console.log('UI/Scrolling measurements complete!')
 
   // Clean up browser
   await browser.close()
 
-  // Define Baseline Performance Threshold Limits
-  const baselineLimits = {
-    'Msg encrypt throughput': {
-      p50: 15,
-      msg: 'Message encryption is too slow'
-    },
-    'Msg decrypt throughput': {
-      p50: 15,
-      msg: 'Message decryption is too slow'
-    },
-    'Governance box seal': {
-      p50: 20,
-      msg: 'Governance box sealing is too slow'
-    },
-    'Governance box seal_open': {
-      p50: 20,
-      msg: 'Governance box seal-opening is too slow'
-    },
-    'File encrypt (1MB) throughput': {
-      p50: 100,
-      msg: '1MB File encryption is too slow'
-    },
-    'File decrypt (1MB) throughput': {
-      p50: 100,
-      msg: '1MB File decryption is too slow'
-    },
-    'Dexie write throughput (500 messages)': {
-      p50: 300,
-      msg: 'IndexedDB bulk messages write is too slow'
-    },
-    'Dexie query latency (200 messages)': {
-      p50: 200,
-      msg: 'IndexedDB room messages query is too slow'
-    },
-    'Admin overview latency (/api/custom/admin/overview)': {
-      p50: 150,
-      msg: 'Admin overview REST API is too slow'
-    },
-    'Timeline Render (500 messages)': {
-      p50: 3000,
-      msg: 'Timeline 500 messages rendering is too slow'
-    },
-    'Timeline Scroll FPS': {
-      min_p50: 30,
-      msg: 'Timeline scrolling FPS is too low'
-    }
+  // Collect consolidated baseline thresholds and limits from all modular suites
+  const baselineLimits = {}
+  for (const suite of suites) {
+    Object.assign(baselineLimits, suite.module.baselineLimits)
   }
 
   // Output formatted report
