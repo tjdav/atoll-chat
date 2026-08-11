@@ -59,9 +59,9 @@ export function createNativeBiometricAdapter () {
      * @param {string} username - The username of the logged-in user.
      * @param {string} userId - The unique identifier of the logged-in user.
      * @returns {Promise<void>}
+     * @throws {Error} If the biometric plugin is not available or storing credentials fails.
      */
     storeMasterKey: async (key, username, userId) => {
-      console.info('[NativeBiometricAdapter] Storing master key securely.')
       try {
         const { NativeBiometric, AccessControl } = await import('@capgo/capacitor-native-biometric')
 
@@ -74,7 +74,9 @@ export function createNativeBiometricAdapter () {
           username: username || userId,
           password: b64,
           server: `atoll-chat-vault-${userId}`,
-          accessControl: AccessControl.BIOMETRY_ANY
+          accessControl: AccessControl.BIOMETRY_ANY,
+          title: 'Secure Vault Key',
+          negativeButtonText: 'Cancel'
         })
 
         // Save a dummy payload in localStorage to indicate biometric unlock is enabled for this user.
@@ -84,7 +86,6 @@ export function createNativeBiometricAdapter () {
         }
         localStorage.setItem(`atoll_vault_wrap_${userId}`, JSON.stringify(payload))
       } catch (err) {
-        console.error('[NativeBiometricAdapter] storeMasterKey error:', err)
         throw err
       }
     },
@@ -94,6 +95,7 @@ export function createNativeBiometricAdapter () {
      *
      * @param {string} userId - The unique identifier of the logged-in user.
      * @returns {Promise<Uint8Array>} Resolves to the decrypted AES Master Key.
+     * @throws {Error} If retrieval or biometric verification fails.
      */
     retrieveMasterKey: async (userId) => {
       const rawData = localStorage.getItem(`atoll_vault_wrap_${userId}`)
@@ -124,7 +126,6 @@ export function createNativeBiometricAdapter () {
 
         return base64ToUint8Array(credentials.password)
       } catch (err) {
-        console.error('[NativeBiometricAdapter] retrieveMasterKey error:', err)
         throw err
       }
     },
@@ -146,8 +147,8 @@ export function createNativeBiometricAdapter () {
         await NativeBiometric.deleteCredentials({
           server: `atoll-chat-vault-${userId}`
         })
-      } catch (err) {
-        console.warn('[NativeBiometricAdapter] deleteMasterKey failed:', err)
+      } catch {
+        // Ignored gracefully to allow clean fallback and non-blocking state cleanups
       }
       localStorage.removeItem(`atoll_vault_wrap_${userId}`)
     }
