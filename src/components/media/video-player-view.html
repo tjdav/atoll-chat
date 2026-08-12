@@ -172,7 +172,9 @@
               playText.classList.add('d-none')
             }
 
-            videoContainer.classList.add('d-none')
+            video.className = 'w-100 h-100 object-fit-contain'
+            videoContainer.appendChild(video)
+            videoContainer.classList.remove('d-none')
             errorDisplay.classList.add('d-none')
           } else if (playbackState.error) {
             errorDisplay.classList.remove('d-none')
@@ -228,6 +230,10 @@
 
         try {
           const objectUrl = await $media.decrypt(item, signal)
+          if (playbackState.currentId !== item.id || signal.aborted) {
+            return
+          }
+  
           video.src = objectUrl
           video.volume = $state.mediaVolume
           video.controls = true
@@ -237,6 +243,11 @@
           if (err.name === 'AbortError') {
             return
           }
+
+          if (playbackState.currentId !== item.id || signal.aborted) {
+            return
+          }
+
           console.error('[video-player-view] Playback error:', err)
           playbackState.error = err.message
           playbackState.status = 'idle'
@@ -251,7 +262,7 @@
         div.innerHTML = `
           <div class="d-flex justify-content-center align-items-center h-100 overflow-hidden position-relative">
             <div class="video-placeholder flex-grow-1 w-100 h-100 d-flex flex-column align-items-center justify-content-center position-relative">
-              <img class="thumbnail-img position-absolute top-0 start-0 w-100 h-100 object-fit-contain opacity-50" style="z-index: 1;">
+              <img class="thumbnail-img position-absolute top-0 start-0 w-100 h-100 object-fit-contain opacity-50" style="z-index: 1; pointer-events: none;">
               <atoll-button variant="primary" icon-only="true" pill="true" class="btn-big-play position-relative mb-3" style="width: 120px; height: 120px; z-index: 2;">
                 <atoll-icon name="play" size="64" color="#ffffff"></atoll-icon>
               </atoll-button>
@@ -359,6 +370,11 @@
         carouselEl.addEventListener('slid.bs.carousel', async (e) => {
           const activeItem = e.relatedTarget
           const id = activeItem.dataset.id
+  
+          if (playbackState.currentId && playbackState.currentId !== id) {
+            stopLocalPlayback()
+          }
+
           const index = loadedItems.findIndex(i => i.id === id)
           const item = loadedItems[index]
   

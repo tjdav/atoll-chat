@@ -248,6 +248,59 @@ test.describe('Media & Attachments', () => {
       expect(isPaused).toBe(false)
     })
 
+    test('video carousel sliding and consecutive playback', async ({ page }) => {
+      test.slow()
+      const vp = path.resolve('tests/e2e/fixtures/test-files/test.mp4')
+
+      // Upload first video
+      await page.setInputFiles('[data-testid$="__fileInput"]', vp)
+      await page.click('[data-testid$="__sendButton"]')
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 45000 })
+
+      // Upload second video
+      await page.setInputFiles('[data-testid$="__fileInput"]', vp)
+      await page.click('[data-testid$="__sendButton"]')
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 45000 })
+
+      const videoTimelineItems = page.locator('atoll-chat-timeline-item-media')
+      await expect(videoTimelineItems).toHaveCount(2, { timeout: 30000 })
+
+      // Open the video viewer on the first video item (which is at index 1 or 0 depending on temporal order, we just click the first rendered timeline item)
+      await videoTimelineItems.first().click()
+
+      // Should transition to video-player-view
+      const videoPlayerView = page.locator('video-player-view')
+      await expect(videoPlayerView).toBeVisible({ timeout: 30000 })
+
+      // Assert video 1 starts playing automatically (not paused)
+      const isFirstPaused = await videoPlayerView.locator('video').evaluate(el => el.paused)
+      expect(isFirstPaused).toBe(false)
+
+      // Click next arrow to slide to the second video slide
+      await videoPlayerView.locator('.carousel-control-next').click()
+      await page.waitForTimeout(1000)
+
+      // Verify the first video stopped playing (either paused or removed src)
+      const isVideoStopped = await videoPlayerView.locator('video').evaluate(el => el.paused || !el.src)
+      expect(isVideoStopped).toBe(true)
+
+      // Locate the newly active slide
+      const activeItem = videoPlayerView.locator('.carousel-item.active')
+      const bigPlayButton = activeItem.locator('.btn-big-play')
+      await expect(bigPlayButton).toBeVisible({ timeout: 15000 })
+
+      // Click Play on the active second video slide
+      await bigPlayButton.click()
+
+      // The video container should become visible (not hidden with d-none)
+      const videoContainer = activeItem.locator('.video-container')
+      await expect(videoContainer).not.toHaveClass(/d-none/, { timeout: 30000 })
+
+      // Assert video is actually playing (not paused)
+      const isSecondPaused = await videoPlayerView.locator('video').evaluate(el => el.paused)
+      expect(isSecondPaused).toBe(false)
+    })
+
     test('aggregate documents and links', async ({ page }) => {
       const dp = path.resolve('tests/e2e/fixtures/test-files/test.txt')
       await page.setInputFiles('[data-testid$="__fileInput"]', dp)
