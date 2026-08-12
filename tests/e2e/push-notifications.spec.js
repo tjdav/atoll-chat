@@ -401,8 +401,6 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
       return me?.last_read_message_id
     }, { roomId })
 
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
-
     expect(lastReadMsgId).toBe('msg-active-read-1')
   })
 })

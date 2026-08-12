@@ -513,10 +513,6 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
       id: 'sunset',
       name: 'Sunset'
     })
-    // Capture verification screenshot for frontend changes
-    const fs = await import('fs')
-    await fs.promises.mkdir('/home/jules/verification/screenshots', { recursive: true })
-    await alicePage.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
   })
 
   test('theme: custom with dark background image', async () => {

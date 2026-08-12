@@ -25,9 +25,6 @@ test.describe('Voice Recording', () => {
     // Wait for visualizer canvas to render and scale properly
     await page.waitForTimeout(1000)
 
-    // Take screenshot of the new themed, 100% full-width voice message recorder
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
-
     // Wait a bit for some recording duration
     await page.waitForTimeout(2000)
 

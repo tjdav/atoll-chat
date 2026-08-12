@@ -254,8 +254,5 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     // Expand Privacy & support accordion (Customise chat is already expanded)
     await page.locator('[data-testid$="accordion-privacy-btn"]').click()
     await page.waitForTimeout(1000)
-
-    // Take screenshot
-    await page.locator('[data-testid$="roomDetailsOffcanvas"]').screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
   })
 })

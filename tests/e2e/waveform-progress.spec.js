@@ -46,9 +46,6 @@ test.describe('Audio Waveform Playback Progress Smoothness', () => {
     const playIcon = playBtn.locator('atoll-icon')
     await expect(playIcon).toHaveAttribute('name', 'play', { timeout: 15000 })
 
-    // Reset screenshot folder and take screenshot of the final ended state
-    await page.screenshot({ path: '/home/jules/verification/screenshots/verification.png' })
-
     // Play the audio again!
     await playBtn.click()
     await expect(playIcon).toHaveAttribute('name', 'pause', { timeout: 5000 })
