@@ -929,8 +929,46 @@
         updateVisualViewportHeight()
       }
 
+      /**
+       * Determines and configures the top safe area inset for native platforms.
+       * Sets the custom CSS variable `--atoll-safe-area-top` globally.
+       *
+       * @returns {Promise<void>}
+       */
+      const configureSafeInsets = async () => {
+        try {
+          const { Capacitor } = await import('@capacitor/core')
+          if (Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform()) {
+            const { StatusBar } = await import('@capacitor/status-bar')
+            const info = await StatusBar.getInfo()
+            const platform = Capacitor.getPlatform()
+            let barHeight = info && typeof info.height === 'number' ? info.height : 0
+
+            if (platform === 'android') {
+              if (barHeight === 0) {
+                // Generous default fallback in case info.height is not yet available on Android
+                barHeight = 32
+              }
+            } else if (platform === 'ios') {
+              if (barHeight === 0) {
+                // Generous default fallback in case info.height is not yet available on iOS
+                barHeight = 47
+              }
+            }
+
+            if (barHeight > 0) {
+              document.documentElement.style.setProperty('--atoll-safe-area-top', `${barHeight}px`)
+            }
+          }
+        } catch {
+          // Fail gracefully and use default/CSS env values
+        }
+      }
+
       /* Initialize boot handshake */
-      startBootHandshake().catch((err) => {
+      startBootHandshake().then(async () => {
+        await configureSafeInsets()
+      }).catch((err) => {
         // Critical system failure: transition UI to offline setup mode to prompt reconnection
         $state.isOfflineSetup = true
         updateUI()
