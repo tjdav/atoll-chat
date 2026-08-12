@@ -227,6 +227,59 @@ export function ensureWCAGContrast (bgHex, minRatio = 4.5) {
 }
 
 /**
+ * Ensures a foreground (text) color meets WCAG 2.2 contrast ratio against a background color.
+ * Adjusts foreground lightness in HSL space if contrast falls below minRatio.
+ * @param {string} textHex - The raw foreground color in hex format.
+ * @param {string} bgHex - The background color in hex format.
+ * @param {number} minRatio - The target minimum contrast ratio.
+ * @returns {string} hex representation of the adjusted text color
+ */
+export function ensureForegroundContrast (textHex, bgHex, minRatio = 4.5) {
+  if (getContrastRatio(textHex, bgHex) >= minRatio) {
+    return textHex
+  }
+
+  const rgbBg = hexToRgb(bgHex)
+  const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
+
+  const rgbText = hexToRgb(textHex)
+  const [h, s, l] = rgbToHsl(rgbText[0], rgbText[1], rgbText[2])
+
+  let currentL = l
+  let adjustedHex = textHex
+
+  if (bgLuminance < 0.5) {
+    // Lighten the foreground text
+    while (currentL < 100) {
+      currentL = Math.min(100, currentL + 1)
+      const adjustedRgb = hslToRgb(h, s, currentL)
+      adjustedHex = rgbToHex(adjustedRgb[0], adjustedRgb[1], adjustedRgb[2])
+      if (getContrastRatio(adjustedHex, bgHex) >= minRatio) {
+        return adjustedHex
+      }
+    }
+    if (getContrastRatio('#FFFFFF', bgHex) >= minRatio) {
+      return '#FFFFFF'
+    }
+  } else {
+    // Darken the foreground text
+    while (currentL > 0) {
+      currentL = Math.max(0, currentL - 1)
+      const adjustedRgb = hslToRgb(h, s, currentL)
+      adjustedHex = rgbToHex(adjustedRgb[0], adjustedRgb[1], adjustedRgb[2])
+      if (getContrastRatio(adjustedHex, bgHex) >= minRatio) {
+        return adjustedHex
+      }
+    }
+    if (getContrastRatio('#111111', bgHex) >= minRatio) {
+      return '#111111'
+    }
+  }
+
+  return adjustedHex
+}
+
+/**
  * Extracts distinct color palettes from an image element.
  * Supports 4 modes: 'vibrant', 'muted', 'pastel', 'deep'
  * @param {HTMLImageElement|HTMLCanvasElement} imgElement
@@ -401,5 +454,38 @@ function getFallbackPalette (mode) {
     return ['#FFD1DC', '#FFDFD3', '#FEC8D8', '#D4F0F0', '#E2F0CB', '#B5EAD7', '#C7CEEA', '#E8EAFF']
   } else { // deep
     return ['#1C1C1E', '#2C2C2E', '#3A3A3C', '#1C2730', '#1C3120', '#301C1C', '#241C30', '#0F1C3F']
+  }
+}
+
+/**
+ * Updates the native mobile status bar color and style using @capacitor/status-bar.
+ * Automatically checks background color luminance to set contrasting icons/text.
+ * @param {string} bgColorHex - Background color of the status bar in hex format.
+ * @returns {Promise<void>} Resolves when the status bar style has been updated.
+ */
+export async function updateNativeStatusBar (bgColorHex) {
+  try {
+    const { Capacitor } = await import('@capacitor/core')
+    if (Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform()) {
+      const { StatusBar, Style } = await import('@capacitor/status-bar')
+
+      let color = bgColorHex || '#FFFFFF'
+      if (!color.startsWith('#')) {
+        color = '#FFFFFF'
+      }
+
+      // Calculate relative luminance to determine optimal status bar style
+      const rgb = hexToRgb(color)
+      const luminance = getRelativeLuminance(rgb[0], rgb[1], rgb[2])
+
+      // If background luminance is low (dark), use Style.Dark (light text/icons)
+      // If background luminance is high (light), use Style.Light (dark text/icons)
+      const style = luminance < 0.5 ? Style.Dark : Style.Light
+
+      await StatusBar.setBackgroundColor({ color })
+      await StatusBar.setStyle({ style })
+    }
+  } catch {
+    // Fail-safe closed / ignore gracefully on non-supported environments
   }
 }

@@ -222,7 +222,7 @@
     server: () => ({}),
     getters: {},
     client: async ({ refs, globalStore, storage, pocketbase, utils, signal, eventBus, cryptoWorker }) => {
-      const { ensureWCAGContrast, generateImagePalettes } = await import('../../utils/color-contrast.js')
+      const { hexToRgb, getRelativeLuminance, ensureWCAGContrast, ensureForegroundContrast, generateImagePalettes } = await import('../../utils/color-contrast.js')
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -551,18 +551,42 @@
         })
       }
 
+      // Central helper function to calculate all custom theme text/foreground colors ensuring 100% WCAG 2.2 contrast compliance
+      const normalizeCustomThemeContrast = () => {
+        const compSent = ensureWCAGContrast(customSentBg, 4.5)
+        customSentBg = compSent.bgHex
+        customSentColor = compSent.textColor
+
+        const compReceived = ensureWCAGContrast(customReceivedBg, 4.5)
+        customReceivedBg = compReceived.bgHex
+        customReceivedColor = compReceived.textColor
+
+        customSenderNameColor = ensureForegroundContrast(customReceivedBg, customBgColor, 4.5)
+        customTimestampColor = hexToRgbaStr(ensureForegroundContrast(customReceivedBg, customBgColor, 4.5), 0.7)
+        customSentStatusColor = ensureForegroundContrast(customSentBg, customBgColor, 4.5)
+
+        const rgbBg = hexToRgb(customBgColor)
+        const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
+        const inputBgPseudo = bgLuminance < 0.5 ? '#1F1F1F' : '#FFFFFF'
+
+        customBtnAttachColor = ensureForegroundContrast(customSentBg, inputBgPseudo, 4.5)
+        customBtnVoiceColor = ensureForegroundContrast(customSentBg, inputBgPseudo, 4.5)
+        customBtnSendBg = customSentBg
+        customBtnSendColor = customSentColor
+
+        customWaveformActive = customSentBg
+        customWaveformInactive = hexToRgbaStr(customSentBg, 0.2)
+
+        customAttachmentCardBg = customReceivedBg
+        customAttachmentCardBorder = hexToRgbaStr(customReceivedBg, 0.15)
+      }
+
       btnApplySent.addEventListener('click', () => {
         if (!selectedSwatchColor) {
           return
         }
-        const compliance = ensureWCAGContrast(selectedSwatchColor, 4.5)
-        customSentBg = compliance.bgHex
-        customSentColor = compliance.textColor
-        customBtnSendBg = compliance.bgHex
-        customBtnSendColor = compliance.textColor
-        customWaveformActive = compliance.bgHex
-        customWaveformInactive = hexToRgbaStr(compliance.bgHex, 0.2)
-        customSentStatusColor = compliance.bgHex
+        customSentBg = selectedSwatchColor
+        normalizeCustomThemeContrast()
         renderPaletteSwatches()
         updateLivePreviewStyles()
       }, { signal })
@@ -571,13 +595,8 @@
         if (!selectedSwatchColor) {
           return
         }
-        const compliance = ensureWCAGContrast(selectedSwatchColor, 4.5)
-        customReceivedBg = compliance.bgHex
-        customReceivedColor = compliance.textColor
-        customAttachmentCardBg = compliance.bgHex
-        customAttachmentCardBorder = hexToRgbaStr(compliance.bgHex, 0.15)
-        customSenderNameColor = compliance.bgHex
-        customTimestampColor = hexToRgbaStr(compliance.bgHex, 0.7)
+        customReceivedBg = selectedSwatchColor
+        normalizeCustomThemeContrast()
         renderPaletteSwatches()
         updateLivePreviewStyles()
       }, { signal })
@@ -587,6 +606,7 @@
           return
         }
         customBgColor = selectedSwatchColor
+        normalizeCustomThemeContrast()
         renderPaletteSwatches()
         updateLivePreviewStyles()
       }, { signal })
@@ -652,6 +672,11 @@
 
           previewChatWindow.style.setProperty('--atoll-chat-bg', customBgColor)
           previewChatWindow.style.backgroundColor = customBgColor
+
+          const rgbBg = hexToRgb(customBgColor)
+          const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
+          const inputContainerBg = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
+          previewChatWindow.style.setProperty('--atoll-chat-input-container-bg-custom', inputContainerBg)
 
           previewChatWindow.style.setProperty('--atoll-chat-sender-name-color', customSenderNameColor || customReceivedColor)
           previewChatWindow.style.setProperty('--atoll-chat-timestamp-color', customTimestampColor || customReceivedColor)
@@ -754,20 +779,9 @@
 
           // Setup initial Sent and Received bubble colors
           if (customPalette && customPalette.length >= 2) {
-            const complianceSent = ensureWCAGContrast(customPalette[0], 4.5)
-            customSentBg = complianceSent.bgHex
-            customSentColor = complianceSent.textColor
-            customBtnSendBg = complianceSent.bgHex
-            customBtnSendColor = complianceSent.textColor
-            customWaveformActive = complianceSent.bgHex
-            customWaveformInactive = hexToRgbaStr(complianceSent.bgHex, 0.2)
-            customSentStatusColor = complianceSent.bgHex
-
-            const complianceReceived = ensureWCAGContrast(customPalette[1], 4.5)
-            customReceivedBg = complianceReceived.bgHex
-            customReceivedColor = complianceReceived.textColor
-            customAttachmentCardBg = complianceReceived.bgHex
-            customAttachmentCardBorder = hexToRgbaStr(complianceReceived.bgHex, 0.15)
+            customSentBg = customPalette[0]
+            customReceivedBg = customPalette[1]
+            normalizeCustomThemeContrast()
           }
 
           // Enable Custom Theme controls
@@ -805,20 +819,9 @@
 
           // Setup compliant Sent and Received colors from the new palette
           if (customPalette && customPalette.length >= 2) {
-            const complianceSent = ensureWCAGContrast(customPalette[0], 4.5)
-            customSentBg = complianceSent.bgHex
-            customSentColor = complianceSent.textColor
-            customBtnSendBg = complianceSent.bgHex
-            customBtnSendColor = complianceSent.textColor
-            customWaveformActive = complianceSent.bgHex
-            customWaveformInactive = hexToRgbaStr(complianceSent.bgHex, 0.2)
-            customSentStatusColor = complianceSent.bgHex
-
-            const complianceReceived = ensureWCAGContrast(customPalette[1], 4.5)
-            customReceivedBg = complianceReceived.bgHex
-            customReceivedColor = complianceReceived.textColor
-            customAttachmentCardBg = complianceReceived.bgHex
-            customAttachmentCardBorder = hexToRgbaStr(complianceReceived.bgHex, 0.15)
+            customSentBg = customPalette[0]
+            customReceivedBg = customPalette[1]
+            normalizeCustomThemeContrast()
           }
 
           renderPaletteSwatches()
@@ -844,23 +847,9 @@
           idx2 = Math.floor(Math.random() * customPalette.length)
         }
 
-        const color1 = customPalette[idx1]
-        const color2 = customPalette[idx2]
-
-        const complianceSent = ensureWCAGContrast(color1, 4.5)
-        customSentBg = complianceSent.bgHex
-        customSentColor = complianceSent.textColor
-        customBtnSendBg = complianceSent.bgHex
-        customBtnSendColor = complianceSent.textColor
-        customWaveformActive = complianceSent.bgHex
-        customWaveformInactive = hexToRgbaStr(complianceSent.bgHex, 0.2)
-        customSentStatusColor = complianceSent.bgHex
-
-        const complianceReceived = ensureWCAGContrast(color2, 4.5)
-        customReceivedBg = complianceReceived.bgHex
-        customReceivedColor = complianceReceived.textColor
-        customAttachmentCardBg = complianceReceived.bgHex
-        customAttachmentCardBorder = hexToRgbaStr(complianceReceived.bgHex, 0.15)
+        customSentBg = customPalette[idx1]
+        customReceivedBg = customPalette[idx2]
+        normalizeCustomThemeContrast()
 
         renderPaletteSwatches()
         updateLivePreviewStyles()

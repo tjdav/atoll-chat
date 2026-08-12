@@ -8,6 +8,7 @@ import {
   getRelativeLuminance,
   getContrastRatio,
   ensureWCAGContrast,
+  ensureForegroundContrast,
   generateImagePalettes
 } from '../../src/utils/color-contrast.js'
 
@@ -53,9 +54,6 @@ describe('Color Contrast and Conversion Utility', () => {
   })
 
   test('ensureWCAGContrast lightness adjustments', () => {
-    // A mid-light green like #06C755 might fail white text contrast
-    const initialContrast = getContrastRatio('#06C755', '#FFFFFF')
-
     // Ensure we can make it compliant with white or dark text
     const result = ensureWCAGContrast('#06C755', 4.5)
 
@@ -63,6 +61,16 @@ describe('Color Contrast and Conversion Utility', () => {
     assert.ok(result.textColor === '#FFFFFF' || result.textColor === '#111111')
     assert.equal(typeof result.bgHex, 'string')
     assert.match(result.bgHex, /^#[0-9A-F]{6}$/i)
+  })
+
+  test('ensureForegroundContrast text lightness adjustments against background', () => {
+    // On dark background (#111111), low-contrast green (#113311) as text should be lightened
+    const lightenedText = ensureForegroundContrast('#113311', '#111111', 4.5)
+    assert.ok(getContrastRatio(lightenedText, '#111111') >= 4.5)
+
+    // On light background (#FFFFFF), low-contrast light text (#EEEEEE) should be darkened
+    const darkenedText = ensureForegroundContrast('#EEEEEE', '#FFFFFF', 4.5)
+    assert.ok(getContrastRatio(darkenedText, '#FFFFFF') >= 4.5)
   })
 
   test('generateImagePalettes falls back gracefully if canvas has no image data', () => {

@@ -82,6 +82,7 @@
     getters: {
     },
     client: async ({ refs, state, globalStore, storage, pocketbase, utils, signal, eventBus, webrtc: webrtcPluginContext, bootstrap }) => {
+      const { hexToRgb, getRelativeLuminance, updateNativeStatusBar } = await import('../../utils/color-contrast.js')
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -249,6 +250,21 @@
             state.roomTheme = room.theme || 'classic'
             state.nicknames = room.nicknames || {}
 
+            let statusBarColor = '#FFFFFF'
+            if (room.theme === 'classic-dark') {
+              statusBarColor = '#1F1F1F'
+            } else if (room.theme === 'ocean') {
+              statusBarColor = '#0f2027'
+            } else if (room.theme === 'forest') {
+              statusBarColor = '#0C3328'
+            } else if (room.theme === 'sunset') {
+              statusBarColor = '#2C1014'
+            } else if (room.theme === 'custom' && room.custom_theme) {
+              statusBarColor = room.custom_theme.bgColor || '#FFFFFF'
+            }
+            updateNativeStatusBar(statusBarColor).catch(() => {
+            })
+
             const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
             if (!room.is_group && participants.length > 0) {
               const other = participants[0]
@@ -286,6 +302,12 @@
             if (room.theme === 'custom' && room.custom_theme) {
               const ct = room.custom_theme
               chatViewRoot.style.setProperty('--atoll-chat-bg', ct.bgColor || '#FFFFFF')
+
+              const rgbBg = hexToRgb(ct.bgColor || '#FFFFFF')
+              const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
+              const inputContainerBg = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
+              chatViewRoot.style.setProperty('--atoll-chat-input-container-bg-custom', inputContainerBg)
+
               chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-bg', ct.sentBg || '#06C755')
               chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-color', ct.sentColor || '#FFFFFF')
               chatViewRoot.style.setProperty('--atoll-chat-bubble-received-bg', ct.receivedBg || '#EEEEEE')
@@ -311,6 +333,7 @@
             } else {
               // Clear inline custom theme properties
               chatViewRoot.style.removeProperty('--atoll-chat-bg')
+              chatViewRoot.style.removeProperty('--atoll-chat-input-container-bg-custom')
               chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-bg')
               chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-color')
               chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-bg')

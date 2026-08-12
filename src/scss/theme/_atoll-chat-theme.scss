@@ -483,10 +483,10 @@
   // Ensure empty state adapts beautifully to custom background text color
   .atoll-chat-timeline-container {
     p {
-      color: var(--atoll-chat-header-color, inherit) !important;
+      color: var(--atoll-chat-sender-name-color, var(--atoll-chat-header-color, inherit)) !important;
     }
     atoll-icon {
-      color: var(--atoll-chat-header-color, inherit) !important;
+      color: var(--atoll-chat-sender-name-color, var(--atoll-chat-header-color, inherit)) !important;
     }
   }
 
