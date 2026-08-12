@@ -62,40 +62,34 @@ export default function bootstrapScriptPlugin () {
           }
         }
 
+        // Extract raw bootstrap script from inline script tag or existing file
+        let rawScriptContent = ''
         if (inlineMatch) {
-          const inlineScript = inlineMatch[1]
-
-          // Use app.writeFile to write and automatically track the output file in Coralite
-          await app.writeFile(`assets/js/${bootstrapFilename}`, inlineScript)
-          bootstrapSri = getSriHash(inlineScript)
-
-          // Remove original inline script tag from content
+          rawScriptContent = inlineMatch[1]
           content = content.replace(inlineMatch[0], '')
         } else {
           const bootstrapFullPath = join(outputDir, 'assets', 'js', bootstrapFilename)
           if (existsSync(bootstrapFullPath)) {
             try {
-              let scriptContent = await readFile(bootstrapFullPath, 'utf8')
-              if (runtimeFilename) {
-                const updatedContent = scriptContent.replace(
-                  /\/assets\/js\/coralite-runtime-[\w-]+\.js/g,
-                  `/assets/js/${runtimeFilename}`
-                )
-                if (updatedContent !== scriptContent) {
-                  scriptContent = updatedContent
-                  await app.writeFile(`assets/js/${bootstrapFilename}`, scriptContent)
-                } else {
-                  app.trackOutputFile(bootstrapFullPath)
-                }
-              } else {
-                app.trackOutputFile(bootstrapFullPath)
-              }
-              bootstrapSri = getSriHash(scriptContent)
+              rawScriptContent = await readFile(bootstrapFullPath, 'utf8')
             } catch (err) {
-              console.error('[bootstrapScriptExtractor] Failed to update bootstrap-app.js:', err)
-              app.trackOutputFile(bootstrapFullPath)
+              console.error('[bootstrapScriptExtractor] Failed to read bootstrap-app.js:', err)
             }
           }
+        }
+
+        if (rawScriptContent) {
+          // Normalize runtime import specifiers to point to the active runtime bundle
+          if (runtimeFilename) {
+            rawScriptContent = rawScriptContent.replace(
+              /(?:\.\/|\/)?(?:assets\/js\/)?coralite-runtime-[\w-]+\.js/g,
+              `/assets/js/${runtimeFilename}`
+            )
+          }
+
+          // Write updated bootstrap-app.js via app.writeFile to automatically track output file in Coralite
+          await app.writeFile(`assets/js/${bootstrapFilename}`, rawScriptContent)
+          bootstrapSri = getSriHash(rawScriptContent)
         }
 
         // Remove any previously injected or hardcoded asset script tags to avoid duplication
