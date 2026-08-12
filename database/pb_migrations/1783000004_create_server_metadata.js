@@ -3,7 +3,7 @@ migrate((app) => {
   try {
     appMetadata = app.findCollectionByNameOrId('app_metadata')
   } catch {
-    appMetadata = new Collection({ id: 'app_metadata' })
+    appMetadata = new Collection({ name: 'app_metadata' })
   }
 
   appMetadata.name = 'app_metadata'

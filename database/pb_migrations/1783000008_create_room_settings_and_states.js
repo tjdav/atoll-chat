@@ -9,7 +9,7 @@ migrate((app) => {
   try {
     settingsCollection = app.findCollectionByNameOrId('room_settings')
   } catch {
-    settingsCollection = new Collection({ id: 'room_settings' })
+    settingsCollection = new Collection({ name: 'room_settings' })
   }
   settingsCollection.name = 'room_settings'
   settingsCollection.type = 'base'
@@ -59,7 +59,7 @@ migrate((app) => {
   try {
     statesCollection = app.findCollectionByNameOrId('room_member_states')
   } catch {
-    statesCollection = new Collection({ id: 'room_member_states' })
+    statesCollection = new Collection({ name: 'room_member_states' })
   }
   statesCollection.name = 'room_member_states'
   statesCollection.type = 'base'
