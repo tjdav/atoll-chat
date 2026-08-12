@@ -29,8 +29,20 @@
       localUuid: String,
       status: String
     },
+    server: () => ({
+      isLoaded: false,
+      isError: false
+    }),
     getters: {
-      loadingClass: (state) => (['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave')
+      loadingClass: (state) => {
+        if (state.isLoaded) {
+          return 'd-none'
+        }
+        if (state.isError) {
+          return ''
+        }
+        return ['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave'
+      }
     },
     client: async ({ refs, state, storage, globalStore, pocketbase, eventBus, signal, cryptoWorker, observe }) => {
       const { $storage } = storage
@@ -47,6 +59,7 @@
       const fileIcon = refs('fileIcon')
 
       let lastCallId = 0
+      let lastLoadedUuid = null
 
       const renderFile = (objectUrl, mimeType, filename) => {
         if (!objectUrl) {
@@ -75,12 +88,21 @@
         }
   
         $bus.emit('ui:media_loaded')
+        state.isLoaded = true
+        lastLoadedUuid = state.localUuid
       }
 
       const loadFile = async () => {
         const callId = ++lastCallId
         try {
           if (!state.localUuid || signal.aborted) {
+            return
+          }
+  
+          if (lastLoadedUuid !== state.localUuid) {
+            state.isLoaded = false
+            state.isError = false
+          } else if (state.isLoaded) {
             return
           }
 
@@ -160,6 +182,7 @@
             return
           }
           console.error('[atoll-chat-timeline-item-file] Error:', err)
+          state.isError = true
           loading.innerHTML = `
             <atoll-icon name="warning" size="24" color="var(--bs-warning)"></atoll-icon>
             <div class="x-small ms-2">Failed to load file</div>

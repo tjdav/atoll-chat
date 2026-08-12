@@ -15,8 +15,22 @@
       localUuid: String,
       status: String
     },
+    server: () => ({
+      isLoaded: false,
+      isError: false
+    }),
     getters: {
-      loadingClass: (state) => (['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave')
+      loadingClass: (state) => {
+        if (state.isLoaded) {
+          return 'd-none'
+        }
+  
+        if (state.isError) {
+          return ''
+        }
+
+        return ['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave'
+      }
     },
     client: async ({ refs, state, storage, globalStore, eventBus, signal, utils, observe }) => {
       const { $storage } = storage
@@ -27,6 +41,7 @@
       const loading = refs('loading')
 
       let lastCallId = 0
+      let lastLoadedUuid = null
 
       container.onclick = async () => {
         if (!state.localUuid) {
@@ -72,6 +87,8 @@
         overlay.appendChild(playBtn)
 
         container.appendChild(overlay)
+        state.isLoaded = true
+        lastLoadedUuid = state.localUuid
       }
 
       const renderMedia = (objectUrl, mimeType, duration = 0) => {
@@ -83,6 +100,8 @@
         const existing = container.querySelector('img')
         if (existing) {
           if (existing.src === objectUrl || existing.src.endsWith(objectUrl)) {
+            state.isLoaded = true
+            lastLoadedUuid = state.localUuid
             loading.classList.add('d-none')
             container.style.minHeight = 'auto'
             return
@@ -138,6 +157,8 @@
           overlay.appendChild(badge)
           container.appendChild(overlay)
         }
+        state.isLoaded = true
+        lastLoadedUuid = state.localUuid
       }
 
       const loadMedia = async () => {
@@ -150,6 +171,13 @@
           if (!state.localUuid || signal.aborted) {
             return
           }
+          if (lastLoadedUuid !== state.localUuid) {
+            state.isLoaded = false
+            state.isError = false
+          } else if (state.isLoaded) {
+            return
+          }
+
           const testMsg = await $storage.getMessage(state.localUuid)
           console.info('[atoll-chat-timeline-item-media] testMsg from DB:', testMsg)
 
@@ -217,6 +245,7 @@
             return
           }
           console.error('[atoll-chat-timeline-item-media] Error:', err)
+          state.isError = true
           loading.innerHTML = `
             <atoll-icon name="warning" size="24" color="var(--bs-warning)"></atoll-icon>
             <div class="x-small mt-1">Failed to load</div>

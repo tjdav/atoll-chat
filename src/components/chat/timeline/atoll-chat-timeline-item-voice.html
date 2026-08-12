@@ -15,8 +15,20 @@
       localUuid: String,
       status: String
     },
+    server: () => ({
+      isLoaded: false,
+      isError: false
+    }),
     getters: {
-      loadingClass: (state) => (['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave')
+      loadingClass: (state) => {
+        if (state.isLoaded) {
+          return 'd-none'
+        }
+        if (state.isError) {
+          return ''
+        }
+        return ['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave'
+      }
     },
     client: async ({ refs, state, storage, pocketbase, globalStore, signal, eventBus, cryptoWorker, observe }) => {
       const { $storage } = storage
@@ -30,6 +42,7 @@
 
       let audio = null
       let lastCallId = 0
+      let lastLoadedUuid = null
 
       const cleanup = () => {
         if (audio) {
@@ -51,6 +64,8 @@
         if (existing.length > 0) {
           const existingAudio = container.querySelector('audio')
           if (existingAudio && (existingAudio.src === objectUrl || existingAudio.src.endsWith(objectUrl))) {
+            state.isLoaded = true
+            lastLoadedUuid = state.localUuid
             loading.classList.add('d-none')
             return
           }
@@ -315,12 +330,21 @@
           audio.oncanplaythrough = () => $bus.emit('ui:media_loaded')
           container.appendChild(audio)
         }
+        state.isLoaded = true
+        lastLoadedUuid = state.localUuid
       }
 
       const loadAudio = async () => {
         const callId = ++lastCallId
         try {
           if (!state.localUuid || signal.aborted) {
+            return
+          }
+  
+          if (lastLoadedUuid !== state.localUuid) {
+            state.isLoaded = false
+            state.isError = false
+          } else if (state.isLoaded) {
             return
           }
 
@@ -402,6 +426,7 @@
             return
           }
           console.error('[atoll-chat-timeline-item-voice] Error:', err)
+          state.isError = true
           loading.innerHTML = `
             <atoll-icon name="warning" size="24" color="var(--bs-warning)"></atoll-icon>
             <div class="x-small ms-2">Failed to load audio</div>
