@@ -195,6 +195,10 @@
           participants = room.participants || []
           seenByMessageId = new Map()
           participants.forEach(p => {
+            if (p.id === $state.currentUser?.id) {
+              return
+            }
+  
             if (p.last_read_message_id) {
               if (!seenByMessageId.has(p.last_read_message_id)) {
                 seenByMessageId.set(p.last_read_message_id, [])
@@ -243,7 +247,14 @@
        */
       const createObserver = () => {
         if (typeof IntersectionObserver === 'undefined') {
-          return { observe: () => {}, unobserve: () => {}, disconnect: () => {} }
+          return {
+            observe: () => {
+            },
+            unobserve: () => {
+            },
+            disconnect: () => {
+            }
+          }
         }
         return new IntersectionObserver((entries) => {
           entries.forEach(entry => {
@@ -340,6 +351,9 @@
 
           const seenByMessageId = new Map()
           participants.forEach(p => {
+            if (p.id === $state.currentUser?.id) {
+              return
+            }
             if (p.last_read_message_id) {
               if (!seenByMessageId.has(p.last_read_message_id)) {
                 seenByMessageId.set(p.last_read_message_id, [])

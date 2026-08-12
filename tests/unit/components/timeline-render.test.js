@@ -100,4 +100,28 @@ describe('Atoll Chat Timeline Component Render Path', () => {
     await new Promise(resolve => setTimeout(resolve, 150))
     assert.ok(el, 'Timeline element should exist in DOM')
   })
+
+  test('should exclude the current user from seen indicators', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    // user-1 is current user, user-2 is Bob
+    // user-2 read msg-5, user-1 (current user) read msg-10
+    // So msg-5 row should have user-2 in seen-user-ids, but msg-10 row should NOT have user-1.
+    const rowMsg5 = el.querySelector('atoll-chat-timeline-row[message-id="msg-5"]')
+    const rowMsg10 = el.querySelector('atoll-chat-timeline-row[message-id="msg-10"]')
+
+    if (rowMsg5) {
+      const seenUserIds = rowMsg5.getAttribute('seen-user-ids') || ''
+      assert.ok(seenUserIds.includes('user-2'), 'Bob should be included in seen-user-ids on msg-5')
+      assert.ok(!seenUserIds.includes('user-1'), 'Current user should be excluded from seen-user-ids on msg-5')
+    }
+
+    if (rowMsg10) {
+      const seenUserIds = rowMsg10.getAttribute('seen-user-ids') || ''
+      assert.ok(!seenUserIds.includes('user-1'), 'Current user should be excluded from seen-user-ids on msg-10')
+    }
+  })
 })
