@@ -222,7 +222,7 @@
     server: () => ({}),
     getters: {},
     client: async ({ refs, globalStore, storage, pocketbase, utils, signal, eventBus, cryptoWorker }) => {
-      const { hexToRgb, getRelativeLuminance, ensureWCAGContrast, ensureForegroundContrast, generateImagePalettes } = await import('../../utils/color-contrast.js')
+      const { hexToRgb, getRelativeLuminance, ensureWCAGContrast, ensureForegroundContrast, generateImagePalettes, getAverageColor } = await import('../../utils/color-contrast.js')
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -772,6 +772,9 @@
   
           // Store compressed background JPEG
           customBgImage = canvas.toDataURL('image/jpeg', 0.7)
+
+          // Automatically extract and apply average color as custom solid background
+          customBgColor = getAverageColor(canvas)
 
           // Extract initial Vibrant palette
           customPaletteModeIdx = 0

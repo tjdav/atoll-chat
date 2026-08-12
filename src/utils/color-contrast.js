@@ -458,6 +458,76 @@ function getFallbackPalette (mode) {
 }
 
 /**
+ * Calculates the average RGB color of an image or canvas.
+ * @param {HTMLImageElement|HTMLCanvasElement} imgElement
+ * @returns {string} hex representation of the average color
+ */
+export function getAverageColor (imgElement) {
+  let canvas
+  const hasCanvas = typeof HTMLCanvasElement !== 'undefined'
+
+  if (hasCanvas && imgElement instanceof HTMLCanvasElement) {
+    canvas = imgElement
+  } else if (typeof document !== 'undefined') {
+    canvas = document.createElement('canvas')
+    canvas.width = 100
+    canvas.height = 100
+    const ctx = canvas.getContext('2d')
+    if (ctx && imgElement) {
+      try {
+        ctx.drawImage(imgElement, 0, 0, 100, 100)
+      } catch {
+        return '#FFFFFF'
+      }
+    }
+  } else {
+    // Node environment with no document or HTMLCanvasElement
+    return '#FFFFFF'
+  }
+
+  const ctx = canvas.getContext('2d')
+  if (!ctx) {
+    return '#FFFFFF'
+  }
+
+  let imgData
+  try {
+    imgData = ctx.getImageData(0, 0, canvas.width, canvas.height)
+  } catch {
+    return '#FFFFFF'
+  }
+
+  const pixels = imgData.data
+  let rSum = 0
+  let gSum = 0
+  let bSum = 0
+  let count = 0
+
+  for (let i = 0; i < pixels.length; i += 4) {
+    const r = pixels[i]
+    const g = pixels[i + 1]
+    const b = pixels[i + 2]
+    const a = pixels[i + 3]
+    if (a >= 200) { // skip highly transparent pixels
+      rSum += r
+      gSum += g
+      bSum += b
+      count++
+    }
+  }
+
+  if (count === 0) {
+    return '#FFFFFF'
+  }
+
+  return rgbToHex(
+    Math.round(rSum / count),
+    Math.round(gSum / count),
+    Math.round(bSum / count)
+  )
+}
+
+/**
  * Updates the native mobile status bar color and style using @capacitor/status-bar.
  * Automatically checks background color luminance to set contrasting icons/text.
  * @param {string} bgColorHex - Background color of the status bar in hex format.

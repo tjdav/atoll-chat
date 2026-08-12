@@ -1,0 +1,28 @@
+<template id="atoll-back-button">
+  <div class="d-inline-block me-3">
+    <atoll-button 
+      variant="ghost" 
+      leading-icon="chevron-left" 
+      icon-only="true" 
+      pill="true"
+      aria-label="Go back"
+    ></atoll-button>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: ({ root, eventBus, signal }) => {
+      const { $bus } = eventBus
+
+      // Dispatches a unified router:back event on button click.
+      root.addEventListener('click', (event) => {
+        event.preventDefault()
+        event.stopPropagation()
+        $bus.emit('router:back')
+      }, { signal })
+    }
+  })
+</script>

@@ -9,7 +9,8 @@ import {
   getContrastRatio,
   ensureWCAGContrast,
   ensureForegroundContrast,
-  generateImagePalettes
+  generateImagePalettes,
+  getAverageColor
 } from '../../src/utils/color-contrast.js'
 
 describe('Color Contrast and Conversion Utility', () => {
@@ -88,5 +89,11 @@ describe('Color Contrast and Conversion Utility', () => {
 
     const deep = generateImagePalettes(null, 'deep')
     assert.ok(Array.isArray(deep))
+  })
+
+  test('getAverageColor falls back gracefully if canvas has no image data', () => {
+    // Pass null/empty or invalid input, should return white fallback
+    const avgColor = getAverageColor(null)
+    assert.equal(avgColor, '#FFFFFF')
   })
 })
