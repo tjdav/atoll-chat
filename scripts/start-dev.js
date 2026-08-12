@@ -36,6 +36,43 @@ function runCommandSilently (cmd, options = {}) {
   }
 }
 
+// Kill any process currently occupying a target TCP port
+function killProcessOnPort (port) {
+  try {
+    if (process.platform === 'win32') {
+      const output = execSync(`netstat -ano | findstr :${port}`, {
+        encoding: 'utf8',
+        stdio: ['pipe', 'pipe', 'ignore']
+      })
+      const lines = output.trim().split('\n')
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/)
+        const pid = parts[parts.length - 1]
+        if (pid && pid !== '0' && !isNaN(Number(pid))) {
+          runCommandSilently(`taskkill /F /PID ${pid}`)
+        }
+      }
+    } else {
+      runCommandSilently(`fuser -k ${port}/tcp`)
+      try {
+        const pids = execSync(`lsof -t -i:${port}`, {
+          encoding: 'utf8',
+          stdio: ['pipe', 'pipe', 'ignore']
+        }).trim()
+        if (pids) {
+          pids.split('\n').forEach(pid => {
+            if (pid) {
+              runCommandSilently(`kill -9 ${pid}`)
+            }
+          })
+        }
+      } catch {
+      }
+    }
+  } catch {
+  }
+}
+
 // Check if http://127.0.0.1:8090/api/health is online
 function checkHealth () {
   return new Promise((resolve) => {
@@ -174,6 +211,7 @@ const cleanupAndExit = async (code = 0) => {
   // Await the graceful shutdown of our spawned processes
   await stopProcess(appProcess, 'frontend app process')
   await stopProcess(pushWorkerProcess, 'local push-worker process')
+  killProcessOnPort(3001)
 
   if (isDockerUsed) {
     console.log(`Stopping PocketBase and Coturn containers via ${dockerComposeCmd}...`)
@@ -306,6 +344,7 @@ const run = async () => {
 
     // Start local push-worker process
     console.log('Starting local push-worker on port 3001...')
+    killProcessOnPort(3001)
     const pushWorkerDir = path.join(process.cwd(), 'push-worker')
     console.log('Installing dependencies for push-worker...')
     try {
