@@ -112,7 +112,7 @@
           paths += `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="1"/>`
         })
 
-        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" style="fill: var(--atoll-chat-waveform-active, var(--bs-primary));">${paths}</svg>`
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="${width}" height="${height}" preserveAspectRatio="none" style="fill: var(--atoll-chat-waveform-active, var(--bs-primary));">${paths}</svg>`
       }
 
       const startRecording = async () => {
@@ -237,7 +237,8 @@
               const waveformData = generateWaveformImage()
               $bus.emit('ui:voice_ready', {
                 blob: file,
-                waveformData
+                waveformData,
+                duration: state.recordingDuration
               })
             } else {
               cleanupAudioContext()

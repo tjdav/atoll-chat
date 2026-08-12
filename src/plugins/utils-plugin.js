@@ -450,7 +450,7 @@ export default definePlugin({
                 return `<rect x="${x}" y="${y}" width="${barWidth}" height="${barHeight}" rx="1.5" ry="1.5" fill="currentColor" />`
               }).join('')
 
-              const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 40">${rects}</svg>`
+              const svgString = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 40" preserveAspectRatio="none">${rects}</svg>`
               return 'data:image/svg+xml;utf8,' + encodeURIComponent(svgString)
             } catch (err) {
               console.warn('[utils-plugin] Waveform generation failed:', err)

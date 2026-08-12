@@ -393,7 +393,7 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
       return
     }
 
-    const me = $state.currentUser || { id: 'local-user' }
+    const me = $state.currentUser || { name: 'local-user' }
     const localTile = videoGrid.querySelector(`[data-participant-id="${me.id}"]`)
       || videoGrid.querySelector('.grid-tile')
 

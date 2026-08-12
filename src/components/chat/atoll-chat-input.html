@@ -267,11 +267,13 @@
       /**
        * Submits the user's composed message (whether text, media file, or link).
        * @param {Blob} [recordedBlob=null] - Optional voice recording audio blob.
+       * @param {Blob} [recordedBlob=null] - Optional voice recording audio blob.
        * @param {string} [waveformData=null] - Optional voice recording waveform peak data.
+       * @param {number} [recordedDuration=null] - Optional voice recording duration in seconds.
        * @returns {Promise<void>}
        * @throws {Error} If the sending process fails.
        */
-      const sendMessage = async (recordedBlob = null, waveformData = null) => {
+      const sendMessage = async (recordedBlob = null, waveformData = null, recordedDuration = null) => {
         if (state.isSending || state.isUploading || state.isCompressing) {
           return
         }
@@ -364,7 +366,7 @@
               music_metadata: musicMetadata,
               album_art_blob: albumArtBlob,
               thumbnail_blob: state.thumbnailBlob,
-              duration: state.duration,
+              duration: recordedDuration ?? state.duration,
               timestamp: Date.now()
             }
             await dispatchMessage(payloadToDispatch)
@@ -565,7 +567,7 @@
       })
 
       $bus.on('ui:voice_ready', (payload) => {
-        sendMessage(payload.blob, payload.waveformData)
+        sendMessage(payload.blob, payload.waveformData, payload.duration)
       })
 
       $bus.on('ui:voice_discarded', () => {

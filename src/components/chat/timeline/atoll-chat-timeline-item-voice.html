@@ -95,11 +95,13 @@
               const doc = parser.parseFromString(svgString, 'image/svg+xml')
               const parsedSvg = doc.querySelector('svg')
               if (parsedSvg) {
+                parsedSvg.setAttribute('preserveAspectRatio', 'none')
                 parsedSvg.setAttribute('class', 'waveform-image text-primary')
                 parsedSvg.setAttribute('style', 'width: 100%; height: 100%; object-fit: fill; fill: var(--atoll-chat-waveform-inactive, rgba(6, 199, 85, 0.2)); color: var(--atoll-chat-waveform-inactive, rgba(6, 199, 85, 0.2));')
                 waveEl = parsedSvg.cloneNode(true)
 
                 progressEl = parsedSvg.cloneNode(true)
+                progressEl.setAttribute('preserveAspectRatio', 'none')
                 progressEl.setAttribute('class', 'waveform-image text-primary')
                 progressEl.setAttribute('style', 'height: 100%; object-fit: fill; max-width: none; fill: var(--atoll-chat-waveform-active, var(--bs-primary)); color: var(--atoll-chat-waveform-active, var(--bs-primary));')
               }
@@ -140,6 +142,24 @@
           audio.hidden = true
           container.appendChild(audio)
 
+          // WebM audio duration fix for Chromium (seeking forces Chromium to compute total duration)
+          const fixWebMDuration = () => {
+            if (audio && audio.duration === Infinity) {
+              audio.currentTime = 1e101
+              const resetPos = () => {
+                audio.removeEventListener('timeupdate', resetPos)
+                audio.currentTime = 0
+              }
+              audio.addEventListener('timeupdate', resetPos)
+            }
+          }
+          audio.addEventListener('loadedmetadata', fixWebMDuration)
+          audio.addEventListener('durationchange', () => {
+            if (audio && audio.duration === Infinity) {
+              fixWebMDuration()
+            }
+          })
+
           let updateFrameId = null
 
           const stopUpdateLoop = () => {
@@ -154,15 +174,21 @@
               return
             }
             let dur = audio.duration
-            if (!dur || isNaN(dur) || dur === Infinity) {
+            if (!dur || isNaN(dur) || dur === Infinity || dur <= 0) {
               dur = duration
             }
-            const percent = dur ? (audio.currentTime / dur) * 100 : 0
+            const current = audio.currentTime || 0
+            const percent = (dur && dur > 0) ? Math.min(100, Math.max(0, (current / dur) * 100)) : 0
             progressContainer.style.width = `${percent}%`
             seeker.style.left = `${percent}%`
-            const mins = Math.floor(audio.currentTime / 60)
-            const secs = Math.floor(audio.currentTime % 60)
+            const mins = Math.floor(current / 60)
+            const secs = Math.floor(current % 60)
             timeDisplay.textContent = `${mins}:${secs.toString().padStart(2, '0')}`
+
+            const containerWidth = waveContainer.clientWidth || waveContainer.getBoundingClientRect().width
+            if (containerWidth > 0 && progressEl) {
+              progressEl.style.width = `${containerWidth}px`
+            }
           }
 
           const tick = () => {
@@ -181,7 +207,7 @@
           }
 
           audio.oncanplaythrough = () => $bus.emit('ui:media_loaded')
-  
+
           audio.addEventListener('play', () => {
             playBtn.innerHTML = '<atoll-icon name="pause" size="18" color="#ffffff"></atoll-icon>'
             startUpdateLoop()
@@ -207,6 +233,35 @@
             stopUpdateLoop()
           })
 
+          const triggerPlay = () => {
+            $bus.emit('waveform_player:play', { localUuid: state.localUuid })
+            audio.play().catch(err => {
+              if (err.name !== 'AbortError') {
+                console.warn('[atoll-chat-timeline-item-voice] Playback failed:', err)
+              }
+            })
+          }
+
+          const unsubscribePlay = $bus.on('waveform_player:play', ({ localUuid }) => {
+            if (localUuid !== state.localUuid && audio && !audio.paused) {
+              audio.pause()
+            }
+          })
+          signal.addEventListener('abort', unsubscribePlay)
+
+          const unsubView = $state.subscribe('currentAppView', (view) => {
+            if (view !== 'chat' && audio && !audio.paused) {
+              audio.pause()
+            }
+          })
+          const unsubRoom = $state.subscribe('activeSelectionId', () => {
+            if (audio && !audio.paused) {
+              audio.pause()
+            }
+          })
+          signal.addEventListener('abort', unsubView)
+          signal.addEventListener('abort', unsubRoom)
+
           playBtn.onclick = (e) => {
             e.stopPropagation()
             if (!audio) {
@@ -219,11 +274,7 @@
               }
             }
             if (audio.paused) {
-              audio.play().catch(err => {
-                if (err.name !== 'AbortError') {
-                  console.warn('[atoll-chat-timeline-item-voice] Playback failed:', err)
-                }
-              })
+              triggerPlay()
             } else {
               audio.pause()
             }
@@ -232,21 +283,26 @@
           waveContainer.onclick = (e) => {
             e.stopPropagation()
             let dur = audio ? audio.duration : 0
-            if (!dur || isNaN(dur) || dur === Infinity) {
+            if (!dur || isNaN(dur) || dur === Infinity || dur <= 0) {
               dur = duration
             }
-            if (!audio || !dur) {
+            if (!audio || !dur || dur <= 0) {
               return
             }
             const rect = waveContainer.getBoundingClientRect()
-            const percent = (e.clientX - rect.left) / rect.width
+            if (!rect.width) {
+              return
+            }
+            const percent = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width))
             audio.currentTime = percent * dur
             updateProgress()
           }
 
           const resizeObserver = new ResizeObserver(entries => {
             for (const entry of entries) {
-              progressEl.style.width = `${entry.contentRect.width}px`
+              if (progressEl) {
+                progressEl.style.width = `${entry.contentRect.width}px`
+              }
             }
           })
           resizeObserver.observe(waveContainer)
