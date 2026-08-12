@@ -160,7 +160,6 @@
       const statusMsg = refs('statusMsg')
       const strengthBar = refs('strengthBar')
       const strengthText = refs('strengthText')
-      let zxcvbnScore = 0
 
       const btnCopyCode = refs('btnCopyCode')
       const btnDownloadCode = refs('btnDownloadCode')
@@ -283,8 +282,7 @@
        */
       const updateStrength = async () => {
         const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
-        const { score, width, colorClass, text } = await evaluatePasswordStrength(passwordInputEl.value, 8)
-        zxcvbnScore = score
+        const { width, colorClass, text } = await evaluatePasswordStrength(passwordInputEl.value, 8)
         strengthBar.style.width = width
         strengthBar.className = colorClass
         strengthText.textContent = text

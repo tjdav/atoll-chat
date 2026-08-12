@@ -13,9 +13,13 @@ describe('Atoll Back Button Component', () => {
     const mockEventBus = {
       $bus: {
         emit: (event, payload) => {
-          emittedEvents.push({ event, payload })
+          emittedEvents.push({
+            event,
+            payload
+          })
         },
-        on: () => {}
+        on: () => {
+        }
       }
     }
 
