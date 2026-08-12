@@ -208,6 +208,7 @@
 
     --atoll-chat-bubble-received-bg: #{map-get($tokens, "bubble-received-bg")};
     --atoll-chat-bubble-received-color: #{map-get($tokens, "bubble-received-color")};
+    --atoll-chat-bubble-received-link-color: #{map-get($tokens, "bubble-received-link-color")};
     --atoll-chat-bubble-received-border: #{map-get($tokens, "bubble-received-border")};
     --atoll-chat-bubble-received-backdrop-filter: #{map-get($tokens, "bubble-received-backdrop-filter")};
 
@@ -455,6 +456,9 @@
     position: relative;
     z-index: 2;
   }
+
+  --atoll-chat-bubble-sent-link-color: var(--atoll-chat-bubble-sent-link-color-custom, #ffffff);
+  --atoll-chat-bubble-received-link-color: var(--atoll-chat-bubble-received-link-color-custom, var(--atoll-chat-waveform-active, #06C755));
 
   // Set message bubbles to inherit custom variables correctly
   .atoll-chat-bubble-sent {

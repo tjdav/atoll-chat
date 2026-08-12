@@ -4,12 +4,30 @@
   border-radius: var(--bs-border-radius-xl, 16px) !important;
   overflow: hidden !important;
   text-decoration: none !important;
-  color: inherit !important;
+  color: var(--atoll-chat-header-color, inherit) !important;
   background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg)) !important;
   border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color)) !important;
   backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
   -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+
+  .small.fw-bold, .fw-bold {
+    color: var(--atoll-chat-header-color, inherit) !important;
+  }
+
+  .link-preview-summary {
+    color: var(--atoll-chat-header-color, inherit) !important;
+    opacity: 0.85 !important;
+  }
+
+  .link-preview-domain {
+    color: var(--atoll-chat-header-color, inherit) !important;
+    opacity: 0.7 !important;
+
+    atoll-icon {
+      color: var(--atoll-chat-header-color, inherit) !important;
+    }
+  }
 
   .preview-image-col {
     width: 120px !important;

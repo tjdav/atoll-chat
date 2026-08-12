@@ -22,6 +22,46 @@ atoll-chat-voice-recorder {
     }
   }
 
+  .atoll-chat-input-btn-attach button {
+    background-color: var(--atoll-chat-btn-attach-bg, transparent) !important;
+    color: var(--atoll-chat-btn-attach-color, inherit) !important;
+    border-color: transparent !important;
+
+    atoll-icon {
+      color: var(--atoll-chat-btn-attach-color, inherit) !important;
+    }
+  }
+
+  .atoll-chat-input-btn-voice button {
+    background-color: var(--atoll-chat-btn-voice-bg, transparent) !important;
+    color: var(--atoll-chat-btn-voice-color, inherit) !important;
+    border-color: transparent !important;
+
+    atoll-icon {
+      color: var(--atoll-chat-btn-voice-color, inherit) !important;
+    }
+  }
+
+  .atoll-chat-input-btn-send button {
+    background-color: var(--atoll-chat-btn-send-bg, #047835) !important;
+    color: var(--atoll-chat-btn-send-color, #ffffff) !important;
+    border-color: transparent !important;
+
+    atoll-icon {
+      color: var(--atoll-chat-btn-send-color, #ffffff) !important;
+    }
+  }
+
+  .atoll-chat-emoji-button button {
+    background-color: transparent !important;
+    color: var(--atoll-chat-input-emoji-color, inherit) !important;
+    border-color: transparent !important;
+
+    atoll-icon {
+      color: var(--atoll-chat-input-emoji-color, inherit) !important;
+    }
+  }
+
   .atoll-chat-input-btn-discard {
     color: var(--atoll-chat-btn-voice-color, var(--atoll-chat-input-color)) !important;
     

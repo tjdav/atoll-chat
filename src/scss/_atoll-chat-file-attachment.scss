@@ -8,16 +8,16 @@
   backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
   -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
 
-  .file-name {
+  .file-name, .atoll-chat-file-name {
     color: var(--atoll-chat-header-color, inherit) !important;
   }
 
-  .file-attachment-size {
+  .file-attachment-size, .atoll-chat-file-size {
     color: var(--atoll-chat-header-color, inherit) !important;
     opacity: 0.85 !important;
   }
 
-  .file-icon-wrapper {
+  .file-icon-wrapper, .atoll-chat-file-icon-wrapper {
     color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
   }
 }
