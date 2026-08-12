@@ -479,12 +479,19 @@ export function createWebStorageAdapter () {
       if (!dbInstance) {
         throw new Error('Database not initialized')
       }
-      const query = dbInstance.local_messages.where('room_id').equals(roomId)
       if (limit) {
-        const raw = await query.sortBy('created_at')
-        return raw.slice(0, limit)
+        const raw = await dbInstance.local_messages
+          .where('[room_id+created_at]')
+          .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
+          .reverse()
+          .limit(limit)
+          .toArray()
+        return raw.reverse()
       }
-      return query.sortBy('created_at')
+      return dbInstance.local_messages
+        .where('[room_id+created_at]')
+        .between([roomId, Dexie.minKey], [roomId, Dexie.maxKey])
+        .toArray()
     },
 
     /**
@@ -507,6 +514,55 @@ export function createWebStorageAdapter () {
         startIndex = allMatching.findIndex(a => a.local_uuid === lastItem.local_uuid) + 1
       }
       return allMatching.slice(startIndex, startIndex + batchSize)
+    },
+
+    /**
+     * Retrieves room messages created before a given timestamp or message.
+     *
+     * @param {string} roomId - The target room ID.
+     * @param {string} beforeTime - ISO date string or timestamp.
+     * @param {number} [limit=50] - Number of messages to fetch.
+     * @returns {Promise<Array<Object>>} Sorted ascendingly by created_at.
+     * @throws {Error} Throws if the database is not initialized.
+     */
+    getMessagesByRoomBefore: async (roomId, beforeTime, limit = 50) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      const all = await dbInstance.local_messages
+        .where('room_id')
+        .equals(roomId)
+        .toArray()
+      const targetTime = new Date(beforeTime).getTime()
+      const filtered = all.filter(m => new Date(m.created_at || 0).getTime() < targetTime)
+      filtered.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+      return filtered.slice(-limit)
+    },
+
+    /**
+     * Retrieves a window of messages centered around a specific target message ID.
+     *
+     * @param {string} roomId - The target room ID.
+     * @param {string} messageId - The target message ID or local_uuid.
+     * @param {number} [windowSize=50] - Window size around the target message.
+     * @returns {Promise<Array<Object>>} Sorted ascendingly.
+     * @throws {Error} Throws if the database is not initialized.
+     */
+    getMessagesByRoomAround: async (roomId, messageId, windowSize = 50) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      const all = await dbInstance.local_messages
+        .where('room_id')
+        .equals(roomId)
+        .toArray()
+      const index = all.findIndex(m => m.id === messageId || m.local_uuid === messageId)
+      if (index === -1) {
+        return all.slice(-windowSize)
+      }
+      const half = Math.floor(windowSize / 2)
+      const start = Math.max(0, index - half)
+      return all.slice(start, start + windowSize)
     },
 
     /**

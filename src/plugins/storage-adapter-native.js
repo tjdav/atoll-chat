@@ -511,9 +511,48 @@ export function createNativeStorageAdapter () {
       let msgs = Array.from(localMessages.values()).filter(m => m.room_id === roomId)
       msgs.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
       if (limit) {
-        msgs = msgs.slice(0, limit)
+        msgs = msgs.slice(-limit)
       }
       return msgs
+    },
+
+    /**
+     * Retrieves room messages created before a given timestamp or message.
+     *
+     * @param {string} roomId - The target room ID.
+     * @param {string} beforeTime - ISO date string or timestamp.
+     * @param {number} [limit=50] - Number of messages to fetch.
+     * @returns {Promise<Array<Object>>} Sorted ascendingly by created_at.
+     */
+    getMessagesByRoomBefore: async (roomId, beforeTime, limit = 50) => {
+      let msgs = Array.from(localMessages.values()).filter(m => m.room_id === roomId)
+      const targetTime = new Date(beforeTime).getTime()
+      msgs = msgs.filter(m => new Date(m.created_at || 0).getTime() < targetTime)
+      msgs.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+      if (limit) {
+        msgs = msgs.slice(-limit)
+      }
+      return msgs
+    },
+
+    /**
+     * Retrieves a window of messages centered around a specific target message ID.
+     *
+     * @param {string} roomId - The target room ID.
+     * @param {string} messageId - The target message ID or local_uuid.
+     * @param {number} [windowSize=50] - Window size around the target message.
+     * @returns {Promise<Array<Object>>} Sorted ascendingly.
+     */
+    getMessagesByRoomAround: async (roomId, messageId, windowSize = 50) => {
+      let msgs = Array.from(localMessages.values()).filter(m => m.room_id === roomId)
+      msgs.sort((a, b) => new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime())
+      const index = msgs.findIndex(m => m.id === messageId || m.local_uuid === messageId)
+      if (index === -1) {
+        return msgs.slice(-windowSize)
+      }
+      const half = Math.floor(windowSize / 2)
+      const start = Math.max(0, index - half)
+      return msgs.slice(start, start + windowSize)
     },
 
     /**

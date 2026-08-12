@@ -35,6 +35,10 @@
       let forceScrollToBottom = false
       let isRestorePending = false
       let ephemeralMessages = []
+      let storedMessagesCache = []
+      let isFetchingOlder = false
+      let hasMoreOlder = true
+      const renderedRows = new Map()
 
       const scrollToBottom = (smooth = false) => {
         if (smooth) {
@@ -70,8 +74,57 @@
         }
       }
 
-      container.addEventListener('scroll', $func.debounce(() => saveScrollPosition(), 150))
+      /**
+       * Checks scroll position and fetches older message batches when scrolling near top.
+       *
+       * @returns {Promise<void>} Resolves when scroll pagination completes.
+       */
+      const checkScrollPagination = async () => {
+        if (isFetchingOlder || !hasMoreOlder || container.scrollTop > 200 || !last_room_id) {
+          return
+        }
+        const oldest = storedMessagesCache?.[0]
+        if (!oldest || (!oldest.created_at && !oldest.timestamp)) {
+          return
+        }
+        const beforeTime = oldest.created_at || oldest.timestamp
+        isFetchingOlder = true
+        try {
+          const olderBatch = await $storage.getMessagesByRoomBefore(last_room_id, beforeTime, 50)
+          if (!olderBatch || olderBatch.length === 0) {
+            hasMoreOlder = false
+            return
+          }
+          if (olderBatch.length < 50) {
+            hasMoreOlder = false
+          }
+          const prevHeight = container.scrollHeight
+          const prevScrollTop = container.scrollTop
 
+          const existingIds = new Set(storedMessagesCache.map(m => m.id || m.local_uuid))
+          const newOlder = olderBatch.filter(m => !existingIds.has(m.id || m.local_uuid))
+          if (newOlder.length > 0) {
+            storedMessagesCache = [...newOlder, ...storedMessagesCache]
+            await renderTimeline({ preserveMessages: true })
+            const newHeight = container.scrollHeight
+            container.scrollTop = prevScrollTop + (newHeight - prevHeight)
+          }
+        } finally {
+          isFetchingOlder = false
+        }
+      }
+
+      container.addEventListener('scroll', $func.debounce(() => {
+        saveScrollPosition()
+        checkScrollPagination()
+      }, 100), { signal })
+
+      /**
+       * Debounces and updates read state for a message viewed in the room.
+       *
+       * @param {string} messageId - The target message ID.
+       * @returns {void}
+       */
       const updateSeenStatus = (messageId) => {
         const room_id = $state.activeSelectionId
         if (!room_id || !messageId) {
@@ -88,7 +141,11 @@
               stateRecord = await pb.collection('room_member_states').getFirstListItem(
                 `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
               )
-            } catch (e) {
+            } catch (err) {
+              const isNotFound = err && (err.status === 404 || err.message?.includes('404'))
+              if (!isNotFound) {
+                throw err
+              }
             }
 
             if (stateRecord) {
@@ -106,77 +163,108 @@
               })
             }
           } catch (err) {
-            console.error('Failed to update seen status:', err)
+            const isExpectedNetworkError = err && (err.name === 'AbortError' || err.status === 0)
+            if (!isExpectedNetworkError) {
+              throw err
+            }
           }
         }, 1000)
       }
 
-      const updateAllSeenIndicators = async () => {
+      /**
+       * Updates DOM seen-status attributes for messages rendered in the timeline.
+       *
+       * @param {Array<Object>} [precomputedParticipants=null] - Pre-fetched room participants.
+       * @param {Map<string, Array<Object>>} [precomputedSeenBy=null] - Map of message ID to reader records.
+       * @returns {Promise<void>} Resolves when seen indicators are synced.
+       */
+      const updateAllSeenIndicators = async (precomputedParticipants = null, precomputedSeenBy = null) => {
         const room_id = $state.activeSelectionId
         if (!room_id) {
           return
         }
 
-        try {
+        let participants = precomputedParticipants
+        let seenByMessageId = precomputedSeenBy
+
+        if (!participants || !seenByMessageId) {
           const room = await $storage.getRoom(room_id)
           if (!room || $state.activeSelectionId !== room_id) {
             return
           }
-          const participants = room.participants || []
-
-          const rows = container.querySelectorAll('atoll-chat-timeline-row')
-          rows.forEach(row => {
-            const messageId = row.getAttribute('message-id') || row.dataset.messageId
-            if (!messageId) {
-              return
-            }
-
-            const seenBy = participants.filter(p => p.last_read_message_id === messageId)
-            if (seenBy.length > 0) {
-              const seenUserIds = seenBy.map(p => p.id).join(',')
-              const seenAvatars = seenBy.map(p => {
-                if (p.avatar) {
-                  return pb.files.getURL(p, p.avatar, { thumb: '16x16' })
-                }
-                return (p.username || '?').substring(0, 1).toUpperCase()
-              }).join(',')
-
-              if (row.getAttribute('seen-user-ids') !== seenUserIds) {
-                row.setAttribute('seen-user-ids', seenUserIds)
+          participants = room.participants || []
+          seenByMessageId = new Map()
+          participants.forEach(p => {
+            if (p.last_read_message_id) {
+              if (!seenByMessageId.has(p.last_read_message_id)) {
+                seenByMessageId.set(p.last_read_message_id, [])
               }
-              if (row.getAttribute('seen-avatars') !== seenAvatars) {
-                row.setAttribute('seen-avatars', seenAvatars)
-              }
-            } else {
-              if (row.hasAttribute('seen-user-ids')) {
-                row.removeAttribute('seen-user-ids')
-              }
-              if (row.hasAttribute('seen-avatars')) {
-                row.removeAttribute('seen-avatars')
-              }
+              seenByMessageId.get(p.last_read_message_id).push(p)
             }
           })
-        } catch (err) {
-          console.error('[atoll-chat-timeline] Failed to update seen indicators:', err)
         }
-      }
 
-      const intersectionObserver = new IntersectionObserver((entries) => {
-        entries.forEach(entry => {
-          if (entry.isIntersecting) {
-            const messageId = entry.target.dataset.messageId
-            const isSent = entry.target.dataset.isSent === 'true'
-            if (!isSent) {
-              updateSeenStatus(messageId)
+        const activeSeenMsgIds = new Set(seenByMessageId.keys())
+
+        const rowsShowingIndicators = container.querySelectorAll('atoll-chat-timeline-row[seen-user-ids]')
+        rowsShowingIndicators.forEach(row => {
+          const msgId = row.getAttribute('message-id') || row.dataset.messageId
+          if (msgId && !activeSeenMsgIds.has(msgId)) {
+            row.removeAttribute('seen-user-ids')
+            row.removeAttribute('seen-avatars')
+          }
+        })
+
+        seenByMessageId.forEach((seenBy, messageId) => {
+          const row = renderedRows.get(messageId)
+          if (row) {
+            const seenUserIds = seenBy.map(p => p.id).join(',')
+            const seenAvatars = seenBy.map(p => {
+              if (p.avatar) {
+                return pb.files.getURL(p, p.avatar, { thumb: '16x16' })
+              }
+              return (p.username || '?').substring(0, 1).toUpperCase()
+            }).join(',')
+
+            if (row.getAttribute('seen-user-ids') !== seenUserIds) {
+              row.setAttribute('seen-user-ids', seenUserIds)
+            }
+            if (row.getAttribute('seen-avatars') !== seenAvatars) {
+              row.setAttribute('seen-avatars', seenAvatars)
             }
           }
         })
-      }, {
-        root: container,
-        threshold: 0.7
-      })
+      }
 
-      const renderTimeline = async () => {
+      /**
+       * Instantiates an IntersectionObserver for timeline rows with environment fallback.
+       *
+       * @returns {IntersectionObserver|Object} Observer instance or mock fallback.
+       */
+      const createObserver = () => {
+        if (typeof IntersectionObserver === 'undefined') {
+          return { observe: () => {}, unobserve: () => {}, disconnect: () => {} }
+        }
+        return new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const messageId = entry.target.dataset.messageId
+              const isSent = entry.target.dataset.isSent === 'true'
+              if (!isSent) {
+                updateSeenStatus(messageId)
+              }
+            }
+          })
+        }, {
+          root: container,
+          threshold: 0.7
+        })
+      }
+
+      const intersectionObserver = createObserver()
+
+      let currentRenderId = 0
+      const renderTimeline = async (opts = {}) => {
         const room_id = $state.activeSelectionId
         const type = $state.activeSelectionType
 
@@ -185,6 +273,7 @@
           return
         }
 
+        const renderId = ++currentRenderId
         const isNewRoom = room_id !== last_room_id || lastView !== 'chats'
         if (isNewRoom) {
           last_room_id = room_id
@@ -192,23 +281,41 @@
           lastRenderedMessageId = null
           container.innerHTML = ''
           intersectionObserver.disconnect()
+          renderedRows.clear()
+          hasMoreOlder = true
         }
 
         try {
           if (!room_id) {
             return
           }
-          let [storedMessages, room] = await Promise.all([
-            $storage.getMessagesByRoom(room_id),
-            $storage.getRoom(room_id)
-          ])
 
-          if ($state.activeSelectionId !== room_id) {
+          let room = null
+          if (isNewRoom || !opts.preserveMessages) {
+            let fetchedMsgs = []
+            if (isNewRoom) {
+              if ($state.isJumpingToMessage && $state.jumpToMessageId) {
+                fetchedMsgs = await $storage.getMessagesByRoomAround(room_id, $state.jumpToMessageId, 50)
+              } else {
+                fetchedMsgs = await $storage.getMessagesByRoom(room_id, 100)
+              }
+              storedMessagesCache = fetchedMsgs
+            } else if (!opts.preserveMessages) {
+              fetchedMsgs = await $storage.getMessagesByRoom(room_id, 100)
+              // Merge newly fetched recent messages into cache while deduplicating
+              const existingMap = new Map()
+              storedMessagesCache.forEach(m => existingMap.set(m.id || m.local_uuid, m))
+              fetchedMsgs.forEach(m => existingMap.set(m.id || m.local_uuid, m))
+              storedMessagesCache = Array.from(existingMap.values())
+            }
+          }
+          room = await $storage.getRoom(room_id)
+
+          if (renderId !== currentRenderId || $state.activeSelectionId !== room_id) {
             return
           }
-          const participants = room?.participants || []
 
-          let messages = [...storedMessages, ...ephemeralMessages]
+          let messages = [...storedMessagesCache, ...ephemeralMessages]
           messages.sort((a, b) => {
             const timeA = new Date(a.created_at || a.timestamp).getTime()
             const timeB = new Date(b.created_at || b.timestamp).getTime()
@@ -227,13 +334,35 @@
             container.removeChild(emptyState)
           }
 
-          // Update status of already rendered messages
+          const participants = room?.participants || []
+          const participantsById = new Map()
+          participants.forEach(p => participantsById.set(p.id, p))
+
+          const seenByMessageId = new Map()
+          participants.forEach(p => {
+            if (p.last_read_message_id) {
+              if (!seenByMessageId.has(p.last_read_message_id)) {
+                seenByMessageId.set(p.last_read_message_id, [])
+              }
+              seenByMessageId.get(p.last_read_message_id).push(p)
+            }
+          })
+
+          const reactionTargets = new Set()
           messages.forEach(m => {
-            const row = container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${m.local_uuid}"]`)
+            if (m.type === 'reaction' && m.target_id) {
+              reactionTargets.add(m.target_id)
+            }
+          })
+
+          // Update status of already rendered messages via renderedRows Map
+          messages.forEach(m => {
+            const row = m.local_uuid ? renderedRows.get(m.local_uuid) : null
             if (row) {
               if (m.id && !row.dataset.messageId) {
                 row.dataset.messageId = m.id
                 row.setAttribute('message-id', m.id)
+                renderedRows.set(m.id, row)
               }
 
               // Propagate status to children
@@ -254,7 +383,9 @@
             }
           })
 
-          // Filter out ephemeral, system signaling, and non-rendered messages
+          /* Grouping view excludes system-signaling messages, matching the original render pass:
+             call_* events are still rendered as centered system messages below, but they do not
+             participate in sender-block grouping / date-separator adjacency. */
           const visibleMessages = messages.filter(m => {
             if (['reaction', 'ice_candidate', 'p2p_request_offer', 'p2p_offer', 'p2p_answer', 'p2p_ice_candidate', 'call_offer', 'call_answer', 'call_end'].includes(m.type)) {
               return false
@@ -262,42 +393,62 @@
             return true
           })
 
+          // Build index lookup map for faster grouping & separator resolve (O(n))
+          const messageIndexMap = new Map()
+          visibleMessages.forEach((m, idx) => {
+            if (m.local_uuid) {
+              messageIndexMap.set(m.local_uuid, idx)
+            }
+            if (m.id) {
+              messageIndexMap.set(m.id, idx)
+            }
+          })
+
           // identify new messages to render without relying on lastRenderedMessageId
           let messagesToRender = messages
 
           // prevent duplicate appending if multiple calls overlap
-          const existingElements = Array.from(container.querySelectorAll('atoll-chat-timeline-row, atoll-chat-timeline-system-message'))
-          const existingIds = new Set()
-          existingElements.forEach(el => {
-            if (el.dataset.messageId) {
-              existingIds.add(el.dataset.messageId)
-            }
-            if (el.dataset.localUuid) {
-              existingIds.add(el.dataset.localUuid)
-            }
-          })
-
           messagesToRender = messagesToRender.filter(m => {
             if (m.type === 'ice_candidate' || m.type === 'reaction' || m.type === 'p2p_request_offer' || m.type === 'p2p_offer' || m.type === 'p2p_answer' || m.type === 'p2p_ice_candidate') {
               return false
             }
-            const hasId = m.id && existingIds.has(m.id)
-            const hasUuid = m.local_uuid && existingIds.has(m.local_uuid)
+            const hasId = m.id && renderedRows.has(m.id)
+            const hasUuid = m.local_uuid && renderedRows.has(m.local_uuid)
             return !hasId && !hasUuid
           })
 
-          messagesToRender.forEach((message) => {
-            let vIndex = -1
-            if (message.id) {
-              vIndex = visibleMessages.findIndex(m => m.id === message.id)
-            }
-            if (vIndex === -1 && message.local_uuid) {
-              vIndex = visibleMessages.findIndex(m => m.local_uuid === message.local_uuid)
-            }
+          // Before appending, update the previously last message's styling
+          if (lastRenderedMessageId && messagesToRender.length > 0) {
+            const prevLastRow = renderedRows.get(lastRenderedMessageId)
+            if (prevLastRow) {
+              const firstNew = messagesToRender[0]
+              const prevIndex = messageIndexMap.get(lastRenderedMessageId)
+              const prevMsg = prevIndex !== undefined ? visibleMessages[prevIndex] : null
+  
+              if (prevMsg && prevMsg.created_at && firstNew.created_at) {
+                // date separator logic
+                const prevTime = new Date(prevMsg.created_at).getTime()
+                const currTime = new Date(firstNew.created_at).getTime()
+                const showSeparator = currTime - prevTime > 3600000
 
+                if (!showSeparator && firstNew.sender_id === prevLastRow.dataset.senderId) {
+                  // It's no longer the last in block
+                  prevLastRow.setAttribute('is-last-in-block', 'false')
+                  // Remove avatar if it had one
+                  prevLastRow.removeAttribute('avatar-url')
+                  prevLastRow.removeAttribute('avatar-initials')
+                }
+              }
+            }
+          }
+
+          const fragment = document.createDocumentFragment()
+
+          messagesToRender.forEach((message) => {
+            const index = messageIndexMap.get(message.local_uuid) !== undefined ? messageIndexMap.get(message.local_uuid) : messageIndexMap.get(message.id)
             const isSent = message.sender_id === $state.currentUser?.id
-            const nextMessage = vIndex !== -1 ? visibleMessages[vIndex + 1] : null
-            const prevMessage = vIndex !== -1 ? visibleMessages[vIndex - 1] : null
+            const nextMessage = (index !== undefined) ? visibleMessages[index + 1] : null
+            const prevMessage = (index !== undefined) ? visibleMessages[index - 1] : null
   
             // date separator logic
             let showSeparator = false
@@ -314,7 +465,7 @@
             if (showSeparator) {
               const sep = document.createElement('atoll-chat-timeline-date-separator')
               sep.setAttribute('timestamp', message.created_at || message.timestamp)
-              container.appendChild(sep)
+              fragment.appendChild(sep)
             }
 
             let nextShowSeparator = false
@@ -333,6 +484,8 @@
             row.setAttribute('is-sent', isSent)
             row.setAttribute('is-first-in-block', isFirstInBlock)
             row.setAttribute('is-last-in-block', isLastInBlock)
+            const hasReactions = reactionTargets.has(message.id) || reactionTargets.has(message.local_uuid)
+            row.setAttribute('has-reactions', hasReactions ? 'true' : 'false')
             if (message.status === 'pending') {
               row.classList.add('opacity-75')
             }
@@ -350,7 +503,7 @@
               row.setAttribute('sender-id', message.sender_id)
             }
 
-            const sender = participants.find(p => p.id === message.sender_id)
+            const sender = participantsById.get(message.sender_id)
             if (!isSent && isFirstInBlock && sender) {
               row.setAttribute('sender-name', sender.name || sender.username || 'Unknown')
             }
@@ -364,7 +517,7 @@
             }
 
             // Seen Indicators
-            const seenBy = participants.filter(p => p.last_read_message_id === message.id)
+            const seenBy = seenByMessageId.get(message.id) || []
             if (seenBy.length > 0) {
               const seenUserIds = seenBy.map(p => p.id).join(',')
               row.setAttribute('seen-user-ids', seenUserIds)
@@ -448,7 +601,13 @@
                 systemMsg.setAttribute('media-types', message.media_types.join(','))
               }
               // Don't append to row, signaling messages are centered
-              container.appendChild(systemMsg)
+              fragment.appendChild(systemMsg)
+              if (message.local_uuid) {
+                renderedRows.set(message.local_uuid, systemMsg)
+              }
+              if (message.id) {
+                renderedRows.set(message.id, systemMsg)
+              }
               lastRenderedMessageId = message.id || message.local_uuid
               return
             } else if (message.type === 'link') {
@@ -501,10 +660,17 @@
               row.appendChild(text)
             }
 
-            container.appendChild(row)
+            fragment.appendChild(row)
             intersectionObserver.observe(row)
+            if (message.local_uuid) {
+              renderedRows.set(message.local_uuid, row)
+            }
+            if (message.id) {
+              renderedRows.set(message.id, row)
+            }
             lastRenderedMessageId = message.id || message.local_uuid
           })
+          container.appendChild(fragment)
 
           // Update and re-append global status indicator
           const lastMessage = messages[messages.length - 1]
@@ -519,8 +685,8 @@
             statusContainer.classList.add('d-none')
           }
 
-          // sort messages chronologically if we added something new
-          if (messagesToRender.length > 0) {
+          // sort messages chronologically if we added something new and it is NOT a new room
+          if (!isNewRoom && messagesToRender.length > 0) {
             const children = Array.from(container.children).filter(el => el.tagName === 'ATOLL-CHAT-TIMELINE-ROW' ||
               el.tagName === 'ATOLL-CHAT-TIMELINE-SYSTEM-MESSAGE' ||
               el.tagName === 'ATOLL-CHAT-TIMELINE-DATE-SEPARATOR'
@@ -570,85 +736,7 @@
             }
           }
 
-          // Dynamic post-render sequence alignment pass
-          const rows = Array.from(container.querySelectorAll('atoll-chat-timeline-row'))
-          rows.forEach(row => {
-            const rowMsgId = row.getAttribute('message-id') || row.dataset.messageId
-            const rowLocalUuid = row.getAttribute('local-uuid') || row.dataset.localUuid
-
-            let vIndex = -1
-            if (rowMsgId) {
-              vIndex = visibleMessages.findIndex(m => m.id === rowMsgId)
-            }
-            if (vIndex === -1 && rowLocalUuid) {
-              vIndex = visibleMessages.findIndex(m => m.local_uuid === rowLocalUuid)
-            }
-
-            if (vIndex !== -1) {
-              const message = visibleMessages[vIndex]
-              const isSent = message.sender_id === $state.currentUser?.id
-              const prevMessage = visibleMessages[vIndex - 1]
-              const nextMessage = visibleMessages[vIndex + 1]
-
-              let showSeparator = false
-              if (prevMessage) {
-                const prevTime = new Date(prevMessage.created_at || prevMessage.timestamp).getTime()
-                const currTime = new Date(message.created_at || message.timestamp).getTime()
-                if (currTime - prevTime > 3600000) {
-                  showSeparator = true
-                }
-              } else {
-                showSeparator = true
-              }
-
-              let nextShowSeparator = false
-              if (nextMessage) {
-                const currTime = new Date(message.created_at || message.timestamp).getTime()
-                const nextTime = new Date(nextMessage.created_at || nextMessage.timestamp).getTime()
-                if (nextTime - currTime > 3600000) {
-                  nextShowSeparator = true
-                }
-              }
-
-              const isFirstInBlock = !prevMessage || prevMessage.sender_id !== message.sender_id || showSeparator
-              const isLastInBlock = !nextMessage || nextMessage.sender_id !== message.sender_id || nextShowSeparator
-
-              // Update DOM attributes on the row element
-              row.setAttribute('is-first-in-block', isFirstInBlock)
-              row.setAttribute('is-last-in-block', isLastInBlock)
-
-              const sender = participants.find(p => p.id === message.sender_id)
-              if (!isSent && isFirstInBlock && sender) {
-                const sName = sender.name || sender.username || 'Unknown'
-                if (row.getAttribute('sender-name') !== sName) {
-                  row.setAttribute('sender-name', sName)
-                }
-              } else {
-                row.removeAttribute('sender-name')
-              }
-
-              if (!isSent && isLastInBlock && sender) {
-                if (sender.avatar) {
-                  const url = pb.files.getURL(sender, sender.avatar, { thumb: '32x32' })
-                  if (row.getAttribute('avatar-url') !== url) {
-                    row.setAttribute('avatar-url', url)
-                  }
-                  row.removeAttribute('avatar-initials')
-                } else {
-                  const initials = (sender.name || sender.username || '?').substring(0, 2).toUpperCase()
-                  if (row.getAttribute('avatar-initials') !== initials) {
-                    row.setAttribute('avatar-initials', initials)
-                  }
-                  row.removeAttribute('avatar-url')
-                }
-              } else {
-                row.removeAttribute('avatar-url')
-                row.removeAttribute('avatar-initials')
-              }
-            }
-          })
-
-          await updateAllSeenIndicators()
+          await updateAllSeenIndicators(participants, seenByMessageId)
 
           if (isNewRoom) {
             const savedPos = $state.scrollPositions?.[room_id]
@@ -718,7 +806,7 @@
             }
           }
         } catch (err) {
-          console.error('[atoll-chat-timeline] Failed to render timeline:', err)
+          throw err
         }
       }
 
@@ -757,6 +845,16 @@
       $bus.on('db:new_local_data', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
           if (payload.message && payload.message.type === 'reaction') {
+            /* The reactions component only mounts for rows that actually have reactions, so a
+               newly added reaction must opt its target row into mounting it. Toggle the
+               attribute directly (O(1)) instead of re-rendering the whole timeline. */
+            const targetId = payload.message.target_id
+            if (targetId) {
+              const targetRow = renderedRows.get(targetId)
+              if (targetRow && targetRow.tagName.toLowerCase() === 'atoll-chat-timeline-row') {
+                targetRow.setAttribute('has-reactions', 'true')
+              }
+            }
             return
           }
 
@@ -802,7 +900,6 @@
         }
 
         if (!targetId || !content) {
-          console.warn('[atoll-chat-timeline] Invalid reaction payload:', payload)
           return
         }
 
@@ -852,7 +949,18 @@
                        container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${messageId}"]`)
   
         if (!targetEl) {
-          await renderTimeline()
+          $state.isJumpingToMessage = true
+          $state.jumpToMessageId = messageId
+          const room_id = $state.activeSelectionId
+          if (room_id) {
+            const contextMsgs = await $storage.getMessagesByRoomAround(room_id, messageId, 50)
+            if (contextMsgs && contextMsgs.length > 0) {
+              storedMessagesCache = contextMsgs
+              container.innerHTML = ''
+              renderedRows.clear()
+              await renderTimeline({ preserveMessages: true })
+            }
+          }
           targetEl = container.querySelector(`#timeline-item-${messageId}`) ||
                      container.querySelector(`atoll-chat-timeline-row[data-message-id="${messageId}"]`) ||
                      container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${messageId}"]`)

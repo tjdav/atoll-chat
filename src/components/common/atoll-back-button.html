@@ -5,6 +5,7 @@
       leading-icon="chevron-left" 
       icon-only="true" 
       pill="true"
+      ref="btn"
       aria-label="Go back"
     ></atoll-button>
   </div>
@@ -14,8 +15,14 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ root, eventBus, signal }) => {
+    client: ({ refs, eventBus, signal }) => {
       const { $bus } = eventBus
+      const btn = refs('btn')
+      const testId = root.getAttribute('data-testid')
+  
+      if (testId && btn) {
+        btn.setAttribute('data-testid', testId)
+      }
 
       // Dispatches a unified router:back event on button click.
       root.addEventListener('click', (event) => {

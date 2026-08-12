@@ -15,6 +15,11 @@
 .atoll-chat-timeline-row {
   display: block;
 
+  // Skip layout/paint for off-screen rows. This is progressively enhanced: browsers that
+  // don't support content-visibility simply ignore these declarations and render normally.
+  content-visibility: auto;
+  contain-intrinsic-size: auto 48px;
+
   &[is-sent="true"] {
     &[is-first-in-block="true"][is-last-in-block="false"] .message-bubble {
       border-bottom-right-radius: 0.25rem;

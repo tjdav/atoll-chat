@@ -46,7 +46,8 @@
       seenUserIds: String,
       seenAvatars: String,
       messageId: String,
-      localUuid: String
+      localUuid: String,
+      hasReactions: Boolean
     },
     getters: {
       rowClass: (state) => {
@@ -77,13 +78,19 @@
       const reactionBtn = refs('addReactionBtn')
       const reactionsContainer = refs('reactionsContainer')
 
+      let lastAvatarKey = null
       const updateAvatar = () => {
-        avatarContainer.innerHTML = ''
         const isSent = state.isSent === 'true' || state.isSent === true
         const isLastInBlock = state.isLastInBlock === 'true' || state.isLastInBlock === true
+        const avatarKey = `${isSent}:${isLastInBlock}:${state.senderId}:${state.senderName}:${state.avatarUrl}`
+        if (avatarKey === lastAvatarKey) {
+          return
+        }
+        lastAvatarKey = avatarKey
 
         // In received blocks, we only show the avatar for the last message in the block
         if (isLastInBlock && !isSent) {
+          avatarContainer.innerHTML = ''
           const profile = document.createElement('atoll-profile')
           profile.setAttribute('size', '2xs')
           profile.className = 'timeline-avatar-profile'
@@ -98,14 +105,25 @@
             profile.setAttribute('src', state.avatarUrl)
           }
           avatarContainer.appendChild(profile)
+        } else {
+          if (avatarContainer.innerHTML !== '') {
+            avatarContainer.innerHTML = ''
+          }
         }
       }
 
+      let lastSeenKey = null
       const updateSeen = () => {
-        seenContainer.innerHTML = ''
+        const seenKey = `${state.seenUserIds}:${state.seenAvatars}`
+        if (seenKey === lastSeenKey) {
+          return
+        }
+        lastSeenKey = seenKey
+
         const seenUserIds = state.seenUserIds ? state.seenUserIds.split(',').filter(id => id.trim() !== '') : []
 
         if (seenUserIds.length > 0) {
+          seenContainer.innerHTML = ''
           const groupRow = document.createElement('div')
           groupRow.className = 'atoll-profile-group-row'
           seenUserIds.forEach(uid => {
@@ -120,11 +138,15 @@
         }
 
         if (!state.seenAvatars) {
+          if (seenContainer.innerHTML !== '') {
+            seenContainer.innerHTML = ''
+          }
           return
         }
 
         const parts = state.seenAvatars.split(',').filter(p => p.trim() !== '')
         if (parts.length > 0) {
+          seenContainer.innerHTML = ''
           const groupRow = document.createElement('div')
           groupRow.className = 'atoll-profile-group-row'
           parts.forEach(p => {
@@ -140,20 +162,34 @@
             groupRow.appendChild(profile)
           })
           seenContainer.appendChild(groupRow)
+        } else {
+          if (seenContainer.innerHTML !== '') {
+            seenContainer.innerHTML = ''
+          }
         }
       }
 
       // Reactions Integration
+      let lastReactionsKey = null
       const updateReactions = () => {
         const msgId = state.messageId
         const localUuid = state.localUuid
+        const hasReactions = state.hasReactions === 'true' || state.hasReactions === true
+        const reactionsKey = `${msgId}:${localUuid}:${hasReactions}`
+        if (reactionsKey === lastReactionsKey) {
+          return
+        }
+        lastReactionsKey = reactionsKey
   
         // Update data-local-uuid for E2E
         if (localUuid) {
           container.setAttribute('data-local-uuid', localUuid)
         }
   
-        if (msgId || localUuid) {
+        /* Only mount the reactions component when the message actually has reactions. The
+           timeline toggles this attribute live when a reaction arrives, so newly reacted
+           messages still mount the component without re-rendering the timeline. */
+        if (hasReactions && (msgId || localUuid)) {
           reactionsContainer.innerHTML = ''
           const reactions = document.createElement('atoll-chat-message-reactions')
           if (msgId) {
@@ -163,6 +199,10 @@
             reactions.setAttribute('local-uuid', localUuid)
           }
           reactionsContainer.appendChild(reactions)
+        } else {
+          if (reactionsContainer.innerHTML !== '') {
+            reactionsContainer.innerHTML = ''
+          }
         }
       }
 
@@ -175,6 +215,7 @@
       observe('seenAvatars', updateSeen)
       observe('messageId', updateReactions)
       observe('localUuid', updateReactions)
+      observe('hasReactions', updateReactions)
 
       updateAvatar()
       updateSeen()

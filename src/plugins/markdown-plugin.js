@@ -44,6 +44,14 @@ export default definePlugin({
           if (!content) {
             return ''
           }
+          /* Fast path: single-line plain text. Marked would render this as a single <p>, so we do
+             the same synchronously and skip importing marked + DOMPurify entirely (costly when
+             rendering thousands of rows). Anything containing markdown syntax or a bare URL
+             still goes through the parser so formatting and autolinking are unchanged. */
+          const needsMarked = /[*_`#<>&\n[\]()]|:\/\//.test(content) || /www\./.test(content)
+          if (!needsMarked) {
+            return `<p>${content}</p>`
+          }
           const { marked, DOMPurify } = await getLibs()
           const rawHtml = await marked.parse(content)
           return DOMPurify.sanitize(rawHtml)

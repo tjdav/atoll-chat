@@ -293,6 +293,8 @@ export default definePlugin({
           getAbsoluteLatestMessage: (roomId) => initialAdapter.getAbsoluteLatestMessage(roomId),
           getMessagesByRoom: (roomId, limit) => initialAdapter.getMessagesByRoom(roomId, limit),
           getMessagesByRoomCursor: (roomId, lastItem, batchSize) => initialAdapter.getMessagesByRoomCursor(roomId, lastItem, batchSize),
+          getMessagesByRoomBefore: (roomId, beforeTime, limit) => initialAdapter.getMessagesByRoomBefore(roomId, beforeTime, limit),
+          getMessagesByRoomAround: (roomId, messageId, windowSize) => initialAdapter.getMessagesByRoomAround(roomId, messageId, windowSize),
           getLatestMessage: (roomId) => initialAdapter.getLatestMessage(roomId),
           getLatestGlobalMessage: () => initialAdapter.getLatestGlobalMessage(),
           getLinkMessages: () => initialAdapter.getLinkMessages(),

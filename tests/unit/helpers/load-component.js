@@ -57,7 +57,14 @@ export async function loadComponent (componentName, mocks = {}) {
       },
       $time: {
         formatRelative: () => ''
+      },
+      $func: {
+        debounce: (fn) => fn,
+        throttle: (fn) => fn
       }
+    },
+    markdown: {
+      renderMarkdown: async (content) => `<p>${content || ''}</p>`
     },
     eventBus: {
       $bus: {

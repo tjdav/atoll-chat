@@ -55,15 +55,17 @@ export async function inject (page) {
           })
         }
         await window.$localDb.local_messages.bulkPut(messages)
+        await new Promise(r => setTimeout(r, 300))
       }
 
+      const latestMsgId = `perf_msg_${roomId}_${msgCount - 1}`
       const start = performance.now()
       window.$bus.emit('room:select', { room_id: roomId })
 
       await new Promise((resolve) => {
         const check = () => {
-          const rows = document.querySelectorAll('atoll-chat-timeline-row')
-          if (rows.length >= msgCount) {
+          const latestRow = document.querySelector(`atoll-chat-timeline-row[data-message-id="${latestMsgId}"]`)
+          if (latestRow) {
             resolve()
           } else {
             setTimeout(check, 10)
@@ -85,10 +87,11 @@ export async function inject (page) {
     window.__perf.benchTimelineScrollJank = async function () {
       const roomId = 'perf_room_500'
       window.$bus.emit('room:select', { room_id: roomId })
+      const latestMsgId = 'perf_msg_perf_room_500_499'
       await new Promise((resolve) => {
         const check = () => {
-          const rows = document.querySelectorAll('atoll-chat-timeline-row')
-          if (rows.length >= 500) {
+          const latestRow = document.querySelector(`atoll-chat-timeline-row[data-message-id="${latestMsgId}"]`)
+          if (latestRow) {
             resolve()
           } else {
             setTimeout(check, 10)
@@ -198,9 +201,17 @@ export async function runCustom (page) {
  * @type {Record<string, { p50?: number; min_p50?: number; msg: string }>}
  */
 export const baselineLimits = {
+  'Timeline Render (100 messages)': {
+    p50: 300,
+    msg: 'Timeline 100 messages rendering is too slow'
+  },
   'Timeline Render (500 messages)': {
     p50: 3000,
     msg: 'Timeline 500 messages rendering is too slow'
+  },
+  'Timeline Render (2000 messages)': {
+    p50: 2000,
+    msg: 'Timeline 2000 messages rendering is too slow'
   },
   'Timeline Scroll FPS': {
     min_p50: 30,

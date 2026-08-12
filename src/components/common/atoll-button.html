@@ -216,7 +216,7 @@
 
       // Forward test-id / data-testid to inner button
       const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
-      if (testId && btn) {
+      if (testId) {
         root.__testId = testId
         btn.setAttribute('data-testid', testId)
         root.removeAttribute('test-id')
@@ -302,16 +302,6 @@
           btn.removeAttribute('aria-disabled')
         }
       }
-
-      // Icon-only buttons should expose an accessible name — dev-time a11y warning
-      // (a side effect that a getter/template binding can't express).
-      const warnMissingAriaLabel = () => {
-        if (state.iconOnly && !state.ariaLabel) {
-          console.warn('[atoll-button] icon-only buttons require an aria-label attribute for accessibility.')
-        }
-      }
-      observe('iconOnly', warnMissingAriaLabel)
-      warnMissingAriaLabel()
 
       // The loading spinner is imperative DOM (created/destroyed/positioned inside the
       // <button>), so it can't be a template binding or getter and must be observed.

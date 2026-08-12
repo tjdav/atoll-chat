@@ -696,6 +696,19 @@ async function main () {
   let hasRegression = false
   const regressionErrors = []
 
+  // Check scaling ratio regression (2000 vs 500 should be < 6.0x)
+  const t500Stats = harvestedStats['Timeline Render (500 messages)']
+  const t2000Stats = harvestedStats['Timeline Render (2000 messages)']
+  if (t500Stats && t2000Stats) {
+    const ratio = t2000Stats.p50 / t500Stats.p50
+    const ratioStr = `Timeline Render Scaling Ratio (2000 / 500): ${ratio.toFixed(2)}x`
+    console.log(`[PERFORMANCE DIAGNOSTIC] ${ratioStr}`)
+    if (ratio > 6.0) {
+      hasRegression = true
+      regressionErrors.push(`Timeline Render scaling ratio was too high: ${ratio.toFixed(2)}x (Target < 6.0x)`)
+    }
+  }
+
   for (const [metric, stats] of Object.entries(harvestedStats)) {
     const limit = baselineLimits[metric]
     let status = '✅ PASS'
