@@ -111,6 +111,56 @@
         }, 1000)
       }
 
+      const updateAllSeenIndicators = async () => {
+        const room_id = $state.activeSelectionId
+        if (!room_id) {
+          return
+        }
+
+        try {
+          const room = await $storage.getRoom(room_id)
+          if (!room || $state.activeSelectionId !== room_id) {
+            return
+          }
+          const participants = room.participants || []
+
+          const rows = container.querySelectorAll('atoll-chat-timeline-row')
+          rows.forEach(row => {
+            const messageId = row.getAttribute('message-id') || row.dataset.messageId
+            if (!messageId) {
+              return
+            }
+
+            const seenBy = participants.filter(p => p.last_read_message_id === messageId)
+            if (seenBy.length > 0) {
+              const seenUserIds = seenBy.map(p => p.id).join(',')
+              const seenAvatars = seenBy.map(p => {
+                if (p.avatar) {
+                  return pb.files.getURL(p, p.avatar, { thumb: '16x16' })
+                }
+                return (p.username || '?').substring(0, 1).toUpperCase()
+              }).join(',')
+
+              if (row.getAttribute('seen-user-ids') !== seenUserIds) {
+                row.setAttribute('seen-user-ids', seenUserIds)
+              }
+              if (row.getAttribute('seen-avatars') !== seenAvatars) {
+                row.setAttribute('seen-avatars', seenAvatars)
+              }
+            } else {
+              if (row.hasAttribute('seen-user-ids')) {
+                row.removeAttribute('seen-user-ids')
+              }
+              if (row.hasAttribute('seen-avatars')) {
+                row.removeAttribute('seen-avatars')
+              }
+            }
+          })
+        } catch (err) {
+          console.error('[atoll-chat-timeline] Failed to update seen indicators:', err)
+        }
+      }
+
       const intersectionObserver = new IntersectionObserver((entries) => {
         entries.forEach(entry => {
           if (entry.isIntersecting) {
@@ -314,7 +364,7 @@
             }
 
             // Seen Indicators
-            const seenBy = participants.filter(p => p.id !== $state.currentUser?.id && p.last_read_message_id === message.id)
+            const seenBy = participants.filter(p => p.last_read_message_id === message.id)
             if (seenBy.length > 0) {
               const seenUserIds = seenBy.map(p => p.id).join(',')
               row.setAttribute('seen-user-ids', seenUserIds)
@@ -520,6 +570,8 @@
             }
           }
 
+          await updateAllSeenIndicators()
+
           if (isNewRoom) {
             const savedPos = $state.scrollPositions?.[room_id]
             if ($state.isJumpingToMessage) {
@@ -694,6 +746,7 @@
       // Update participants seen status in real-time
       $bus.on('room:member_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
+          updateAllSeenIndicators()
           debouncedRender()
         }
       })

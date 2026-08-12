@@ -68,8 +68,7 @@
         return state.isSent ? 'justify-content-end' : 'justify-content-start'
       }
     },
-    client: ({ refs, state, globalStore, eventBus, signal }) => {
-      const { $state } = globalStore
+    client: ({ refs, state, eventBus, signal, observe }) => {
       const { $bus } = eventBus
       const container = refs('container')
       const avatarContainer = refs('avatarContainer')
@@ -144,17 +143,6 @@
         }
       }
 
-      $state.subscribe('isSent', updateAvatar)
-      $state.subscribe('isLastInBlock', updateAvatar)
-      $state.subscribe('senderId', updateAvatar)
-      $state.subscribe('avatarUrl', updateAvatar)
-      $state.subscribe('avatarInitials', updateAvatar)
-      $state.subscribe('seenUserIds', updateSeen)
-      $state.subscribe('seenAvatars', updateSeen)
-
-      updateAvatar()
-      updateSeen()
-
       // Reactions Integration
       const updateReactions = () => {
         const msgId = state.messageId
@@ -178,8 +166,18 @@
         }
       }
 
-      $state.subscribe('messageId', updateReactions)
-      $state.subscribe('localUuid', updateReactions)
+      observe('isSent', updateAvatar)
+      observe('isLastInBlock', updateAvatar)
+      observe('senderId', updateAvatar)
+      observe('avatarUrl', updateAvatar)
+      observe('avatarInitials', updateAvatar)
+      observe('seenUserIds', updateSeen)
+      observe('seenAvatars', updateSeen)
+      observe('messageId', updateReactions)
+      observe('localUuid', updateReactions)
+
+      updateAvatar()
+      updateSeen()
       updateReactions()
 
       const getMsgId = () => state.messageId || state.localUuid

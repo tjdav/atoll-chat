@@ -77,4 +77,37 @@ describe('Atoll Chat Timeline Row Component', () => {
 
     assert.ok(!container.classList.contains('show-reaction-btn'), 'Should hide button on external click')
   })
+
+  test('should render and update seen indicators dynamically', async () => {
+    const el = document.createElement(tagName)
+    el.setAttribute('message-id', 'msg-123')
+    el.setAttribute('is-sent', 'true')
+    el.setAttribute('seen-user-ids', 'uid-alice,uid-bob')
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const seenContainer = el.querySelector('.seen-indicators')
+    assert.ok(seenContainer, 'seen-indicators container should exist')
+
+    let profiles = seenContainer.querySelectorAll('atoll-profile')
+    assert.strictEqual(profiles.length, 2, 'Should render 2 seen profiles')
+    assert.strictEqual(profiles[0].getAttribute('user-id'), 'uid-alice')
+    assert.strictEqual(profiles[1].getAttribute('user-id'), 'uid-bob')
+
+    // Update seen-user-ids to only one user
+    el.setAttribute('seen-user-ids', 'uid-alice')
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    profiles = seenContainer.querySelectorAll('atoll-profile')
+    assert.strictEqual(profiles.length, 1, 'Should now render only 1 seen profile')
+    assert.strictEqual(profiles[0].getAttribute('user-id'), 'uid-alice')
+
+    // Clear seen-user-ids
+    el.setAttribute('seen-user-ids', '')
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    profiles = seenContainer.querySelectorAll('atoll-profile')
+    assert.strictEqual(profiles.length, 0, 'Should clear all profiles')
+  })
 })
