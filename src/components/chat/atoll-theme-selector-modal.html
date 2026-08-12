@@ -575,7 +575,7 @@
         customBtnSendColor = customSentColor
 
         customWaveformActive = customSentBg
-        customWaveformInactive = hexToRgbaStr(customSentBg, 0.2)
+        customWaveformInactive = bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.35)' : 'rgba(17, 17, 17, 0.25)'
 
         customAttachmentCardBg = customReceivedBg
         customAttachmentCardBorder = hexToRgbaStr(customReceivedBg, 0.15)
@@ -677,6 +677,8 @@
           const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
           const inputContainerBg = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
           previewChatWindow.style.setProperty('--atoll-chat-input-container-bg-custom', inputContainerBg)
+          const glassyTextColor = bgLuminance < 0.5 ? '#FFFFFF' : '#111111'
+          previewChatWindow.style.setProperty('--atoll-chat-glassy-text-color', glassyTextColor)
 
           previewChatWindow.style.setProperty('--atoll-chat-sender-name-color', customSenderNameColor || customReceivedColor)
           previewChatWindow.style.setProperty('--atoll-chat-timestamp-color', customTimestampColor || customReceivedColor)

@@ -473,4 +473,196 @@ test.describe('Messaging Features', () => {
       expect(errorLogs.length).toBe(0)
     })
   })
+
+  test.describe('Bubble Grouping & Spacing Verification', () => {
+    test('private chat bubble grouping and spacing (sent and received)', async ({ browser, loginCustomPage }) => {
+      test.slow()
+
+      // Set up Alice's browser context and page
+      const aliceContext = await browser.newContext()
+      const alicePage = await aliceContext.newPage()
+      await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
+
+      // Set up Bob's browser context and page
+      const bobContext = await browser.newContext()
+      const bobPage = await bobContext.newPage()
+      await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
+
+      // Alice creates a private chat room with Bob
+      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
+      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid$="btnCreate"]').click()
+
+      // Wait for room to be created and active
+      await expect(alicePage.locator('atoll-chat-view')).toBeVisible()
+
+      // Alice sends 2 consecutive messages
+      const aliceInput = alicePage.locator('textarea[placeholder="Type a message..."]')
+      await aliceInput.fill('Hi Bob 1')
+      await alicePage.keyboard.press('Enter')
+      await alicePage.waitForTimeout(500)
+
+      await aliceInput.fill('Hi Bob 2')
+      await alicePage.keyboard.press('Enter')
+      await alicePage.waitForTimeout(1000)
+
+      // Verify Alice's sent messages in her timeline
+      const aliceRows = alicePage.locator('atoll-chat-timeline-row')
+      await expect(aliceRows).toHaveCount(2)
+
+      // Alice's 1st message: is-first-in-block="true", is-last-in-block="false", spacing mb-1
+      const firstSentRow = aliceRows.nth(0)
+      await expect(firstSentRow).toHaveAttribute('is-first-in-block', 'true')
+      await expect(firstSentRow).toHaveAttribute('is-last-in-block', 'false')
+      const firstSentRowClass = await firstSentRow.evaluate(el => el.querySelector('.atoll-chat-timeline-row')?.className || '')
+      expect(firstSentRowClass).toContain('mb-1')
+
+      // Alice's 2nd message: is-first-in-block="false", is-last-in-block="true", spacing mb-3
+      const secondSentRow = aliceRows.nth(1)
+      await expect(secondSentRow).toHaveAttribute('is-first-in-block', 'false')
+      await expect(secondSentRow).toHaveAttribute('is-last-in-block', 'true')
+      const secondSentRowClass = await secondSentRow.evaluate(el => el.querySelector('.atoll-chat-timeline-row')?.className || '')
+      expect(secondSentRowClass).toContain('mb-3')
+
+      // Bob clicks on the room with Alice in his chat list
+      const getAliceChatInBobList = bobPage.locator('chat-list-item').filter({ hasText: /alice/i })
+      await expect(getAliceChatInBobList).toBeVisible({ timeout: 30000 })
+      await getAliceChatInBobList.click()
+      await expect(bobPage.locator('atoll-chat-view')).toBeVisible()
+
+      // Bob sends 2 consecutive messages
+      const bobInput = bobPage.locator('textarea[placeholder="Type a message..."]')
+      await bobInput.fill('Hi Alice 1')
+      await bobPage.keyboard.press('Enter')
+      await bobPage.waitForTimeout(500)
+
+      await bobInput.fill('Hi Alice 2')
+      await bobPage.keyboard.press('Enter')
+      await bobPage.waitForTimeout(1000)
+
+      // Verify Alice's received Bob's messages on Alice's page
+      // There should be 4 messages in Alice's timeline total (2 from Alice, 2 from Bob)
+      await expect(aliceRows).toHaveCount(4)
+
+      // Bob's 1st message (received by Alice): is-first-in-block="true", is-last-in-block="false", has sender-name, no avatar, spacing mb-1
+      const firstRecvRow = aliceRows.nth(2)
+      await expect(firstRecvRow).toHaveAttribute('is-first-in-block', 'true')
+      await expect(firstRecvRow).toHaveAttribute('is-last-in-block', 'false')
+      await expect(firstRecvRow).toHaveAttribute('sender-name', 'bob')
+      await expect(firstRecvRow).not.toHaveAttribute('avatar-url', /.*/)
+      await expect(firstRecvRow).not.toHaveAttribute('avatar-initials', /.*/)
+      const firstRecvRowClass = await firstRecvRow.evaluate(el => el.querySelector('.atoll-chat-timeline-row')?.className || '')
+      expect(firstRecvRowClass).toContain('mb-1')
+
+      // Bob's 2nd message (received by Alice): is-first-in-block="false", is-last-in-block="true", no sender-name, has avatar, spacing mb-3
+      const secondRecvRow = aliceRows.nth(3)
+      await expect(secondRecvRow).toHaveAttribute('is-first-in-block', 'false')
+      await expect(secondRecvRow).toHaveAttribute('is-last-in-block', 'true')
+      await expect(secondRecvRow).not.toHaveAttribute('sender-name', /.*/)
+      // Check that it has either avatar-url or avatar-initials
+      const hasAvatarUrl = await secondRecvRow.getAttribute('avatar-url')
+      const hasAvatarInitials = await secondRecvRow.getAttribute('avatar-initials')
+      expect(Boolean(hasAvatarUrl || hasAvatarInitials)).toBe(true)
+      const secondRecvRowClass = await secondRecvRow.evaluate(el => el.querySelector('.atoll-chat-timeline-row')?.className || '')
+      expect(secondRecvRowClass).toContain('mb-3')
+
+      await aliceContext.close()
+      await bobContext.close()
+    })
+
+    test('group chat bubble grouping and spacing (sent and received)', async ({ browser, loginCustomPage }) => {
+      test.slow()
+
+      // Set up Alice's context and page
+      const aliceContext = await browser.newContext()
+      const alicePage = await aliceContext.newPage()
+      await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
+
+      // Set up Bob's context and page
+      const bobContext = await browser.newContext()
+      const bobPage = await bobContext.newPage()
+      await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
+
+      // Alice creates a Group chat room with Bob and Charlie
+      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
+      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('charlie')
+      await alicePage.locator('[data-testid$="search-result-charlie"]').click()
+      await alicePage.locator('[data-testid$="roomNameInput"]').fill('Group Project')
+      await alicePage.locator('[data-testid$="btnCreate"]').click()
+
+      // Wait for group room to appear and active
+      await expect(alicePage.locator('chat-list chat-list-item:has-text("Group Project")')).toBeVisible({ timeout: 20000 })
+      await expect(alicePage.locator('atoll-chat-view')).toBeVisible()
+
+      // Alice sends 2 consecutive group messages
+      const aliceInput = alicePage.locator('textarea[placeholder="Type a message..."]')
+      await aliceInput.fill('Group Alice 1')
+      await alicePage.keyboard.press('Enter')
+      await alicePage.waitForTimeout(500)
+
+      await aliceInput.fill('Group Alice 2')
+      await alicePage.keyboard.press('Enter')
+      await alicePage.waitForTimeout(1000)
+
+      // Verify Alice's sent group messages
+      const aliceRows = alicePage.locator('atoll-chat-timeline-row')
+      await expect(aliceRows).toHaveCount(2)
+
+      const firstSentRow = aliceRows.nth(0)
+      await expect(firstSentRow).toHaveAttribute('is-first-in-block', 'true')
+      await expect(firstSentRow).toHaveAttribute('is-last-in-block', 'false')
+      const firstSentRowClass = await firstSentRow.evaluate(el => el.querySelector('.atoll-chat-timeline-row')?.className || '')
+      expect(firstSentRowClass).toContain('mb-1')
+
+      const secondSentRow = aliceRows.nth(1)
+      await expect(secondSentRow).toHaveAttribute('is-first-in-block', 'false')
+      await expect(secondSentRow).toHaveAttribute('is-last-in-block', 'true')
+      const secondSentRowClass = await secondSentRow.evaluate(el => el.querySelector('.atoll-chat-timeline-row')?.className || '')
+      expect(secondSentRowClass).toContain('mb-3')
+
+      // Bob clicks on the Group Project room in his chat list
+      const getGroupChatInBobList = bobPage.locator('chat-list-item').filter({ hasText: /Group Project/i })
+      await expect(getGroupChatInBobList).toBeVisible({ timeout: 30000 })
+      await getGroupChatInBobList.click()
+      await expect(bobPage.locator('atoll-chat-view')).toBeVisible()
+
+      // Bob sends 2 consecutive group messages
+      const bobInput = bobPage.locator('textarea[placeholder="Type a message..."]')
+      await bobInput.fill('Group Bob 1')
+      await bobPage.keyboard.press('Enter')
+      await bobPage.waitForTimeout(500)
+
+      await bobInput.fill('Group Bob 2')
+      await bobPage.keyboard.press('Enter')
+      await bobPage.waitForTimeout(1000)
+
+      // Verify Alice's received Bob's group messages
+      await expect(aliceRows).toHaveCount(4)
+
+      const firstRecvRow = aliceRows.nth(2)
+      await expect(firstRecvRow).toHaveAttribute('is-first-in-block', 'true')
+      await expect(firstRecvRow).toHaveAttribute('is-last-in-block', 'false')
+      await expect(firstRecvRow).toHaveAttribute('sender-name', 'bob')
+      await expect(firstRecvRow).not.toHaveAttribute('avatar-url', /.*/)
+      await expect(firstRecvRow).not.toHaveAttribute('avatar-initials', /.*/)
+      const firstRecvRowClass = await firstRecvRow.evaluate(el => el.querySelector('.atoll-chat-timeline-row')?.className || '')
+      expect(firstRecvRowClass).toContain('mb-1')
+
+      const secondRecvRow = aliceRows.nth(3)
+      await expect(secondRecvRow).toHaveAttribute('is-first-in-block', 'false')
+      await expect(secondRecvRow).toHaveAttribute('is-last-in-block', 'true')
+      await expect(secondRecvRow).not.toHaveAttribute('sender-name', /.*/)
+      const hasAvatarUrl = await secondRecvRow.getAttribute('avatar-url')
+      const hasAvatarInitials = await secondRecvRow.getAttribute('avatar-initials')
+      expect(Boolean(hasAvatarUrl || hasAvatarInitials)).toBe(true)
+      const secondRecvRowClass = await secondRecvRow.evaluate(el => el.querySelector('.atoll-chat-timeline-row')?.className || '')
+      expect(secondRecvRowClass).toContain('mb-3')
+
+      await aliceContext.close()
+      await bobContext.close()
+    })
+  })
 })

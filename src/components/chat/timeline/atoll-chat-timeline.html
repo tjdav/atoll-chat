@@ -254,6 +254,14 @@
             }
           })
 
+          // Filter out ephemeral, system signaling, and non-rendered messages
+          const visibleMessages = messages.filter(m => {
+            if (['reaction', 'ice_candidate', 'p2p_request_offer', 'p2p_offer', 'p2p_answer', 'p2p_ice_candidate', 'call_offer', 'call_answer', 'call_end'].includes(m.type)) {
+              return false
+            }
+            return true
+          })
+
           // identify new messages to render without relying on lastRenderedMessageId
           let messagesToRender = messages
 
@@ -278,41 +286,24 @@
             return !hasId && !hasUuid
           })
 
-          // Before appending, update the previously last message's styling
-          if (lastRenderedMessageId && messagesToRender.length > 0) {
-            const prevLastRow = container.querySelector(`atoll-chat-timeline-row[data-message-id="${lastRenderedMessageId}"], atoll-chat-timeline-row[data-local-uuid="${lastRenderedMessageId}"]`)
-            if (prevLastRow) {
-              const firstNew = messagesToRender[0]
-              const prevMsg = messages.find(m => (m.id && m.id === lastRenderedMessageId) || (m.local_uuid && m.local_uuid === lastRenderedMessageId))
-  
-              if (prevMsg && prevMsg.created_at && firstNew.created_at) {
-                // date separator logic
-                const prevTime = new Date(prevMsg.created_at).getTime()
-                const currTime = new Date(firstNew.created_at).getTime()
-                const showSeparator = currTime - prevTime > 3600000
-
-                if (!showSeparator && firstNew.sender_id === prevLastRow.dataset.senderId) {
-                  // It's no longer the last in block
-                  prevLastRow.setAttribute('is-last-in-block', 'false')
-                  // Remove avatar if it had one
-                  prevLastRow.removeAttribute('avatar-url')
-                  prevLastRow.removeAttribute('avatar-initials')
-                }
-              }
-            }
-          }
-
           messagesToRender.forEach((message) => {
-            const index = messages.findIndex(m => m.local_uuid === message.local_uuid)
+            let vIndex = -1
+            if (message.id) {
+              vIndex = visibleMessages.findIndex(m => m.id === message.id)
+            }
+            if (vIndex === -1 && message.local_uuid) {
+              vIndex = visibleMessages.findIndex(m => m.local_uuid === message.local_uuid)
+            }
+
             const isSent = message.sender_id === $state.currentUser?.id
-            const nextMessage = messages[index + 1]
-            const prevMessage = messages[index - 1]
+            const nextMessage = vIndex !== -1 ? visibleMessages[vIndex + 1] : null
+            const prevMessage = vIndex !== -1 ? visibleMessages[vIndex - 1] : null
   
             // date separator logic
             let showSeparator = false
             if (prevMessage) {
-              const prevTime = new Date(prevMessage.created_at).getTime()
-              const currTime = new Date(message.created_at).getTime()
+              const prevTime = new Date(prevMessage.created_at || prevMessage.timestamp).getTime()
+              const currTime = new Date(message.created_at || message.timestamp).getTime()
               if (currTime - prevTime > 3600000) {
                 showSeparator = true
               }
@@ -322,11 +313,20 @@
 
             if (showSeparator) {
               const sep = document.createElement('atoll-chat-timeline-date-separator')
-              sep.setAttribute('timestamp', message.created_at)
+              sep.setAttribute('timestamp', message.created_at || message.timestamp)
               container.appendChild(sep)
             }
 
-            const isLastInBlock = !nextMessage || nextMessage.sender_id !== message.sender_id
+            let nextShowSeparator = false
+            if (nextMessage) {
+              const currTime = new Date(message.created_at || message.timestamp).getTime()
+              const nextTime = new Date(nextMessage.created_at || nextMessage.timestamp).getTime()
+              if (nextTime - currTime > 3600000) {
+                nextShowSeparator = true
+              }
+            }
+
+            const isLastInBlock = !nextMessage || nextMessage.sender_id !== message.sender_id || nextShowSeparator
             const isFirstInBlock = !prevMessage || prevMessage.sender_id !== message.sender_id || showSeparator
   
             const row = document.createElement('atoll-chat-timeline-row')
@@ -569,6 +569,84 @@
               })
             }
           }
+
+          // Dynamic post-render sequence alignment pass
+          const rows = Array.from(container.querySelectorAll('atoll-chat-timeline-row'))
+          rows.forEach(row => {
+            const rowMsgId = row.getAttribute('message-id') || row.dataset.messageId
+            const rowLocalUuid = row.getAttribute('local-uuid') || row.dataset.localUuid
+
+            let vIndex = -1
+            if (rowMsgId) {
+              vIndex = visibleMessages.findIndex(m => m.id === rowMsgId)
+            }
+            if (vIndex === -1 && rowLocalUuid) {
+              vIndex = visibleMessages.findIndex(m => m.local_uuid === rowLocalUuid)
+            }
+
+            if (vIndex !== -1) {
+              const message = visibleMessages[vIndex]
+              const isSent = message.sender_id === $state.currentUser?.id
+              const prevMessage = visibleMessages[vIndex - 1]
+              const nextMessage = visibleMessages[vIndex + 1]
+
+              let showSeparator = false
+              if (prevMessage) {
+                const prevTime = new Date(prevMessage.created_at || prevMessage.timestamp).getTime()
+                const currTime = new Date(message.created_at || message.timestamp).getTime()
+                if (currTime - prevTime > 3600000) {
+                  showSeparator = true
+                }
+              } else {
+                showSeparator = true
+              }
+
+              let nextShowSeparator = false
+              if (nextMessage) {
+                const currTime = new Date(message.created_at || message.timestamp).getTime()
+                const nextTime = new Date(nextMessage.created_at || nextMessage.timestamp).getTime()
+                if (nextTime - currTime > 3600000) {
+                  nextShowSeparator = true
+                }
+              }
+
+              const isFirstInBlock = !prevMessage || prevMessage.sender_id !== message.sender_id || showSeparator
+              const isLastInBlock = !nextMessage || nextMessage.sender_id !== message.sender_id || nextShowSeparator
+
+              // Update DOM attributes on the row element
+              row.setAttribute('is-first-in-block', isFirstInBlock)
+              row.setAttribute('is-last-in-block', isLastInBlock)
+
+              const sender = participants.find(p => p.id === message.sender_id)
+              if (!isSent && isFirstInBlock && sender) {
+                const sName = sender.name || sender.username || 'Unknown'
+                if (row.getAttribute('sender-name') !== sName) {
+                  row.setAttribute('sender-name', sName)
+                }
+              } else {
+                row.removeAttribute('sender-name')
+              }
+
+              if (!isSent && isLastInBlock && sender) {
+                if (sender.avatar) {
+                  const url = pb.files.getURL(sender, sender.avatar, { thumb: '32x32' })
+                  if (row.getAttribute('avatar-url') !== url) {
+                    row.setAttribute('avatar-url', url)
+                  }
+                  row.removeAttribute('avatar-initials')
+                } else {
+                  const initials = (sender.name || sender.username || '?').substring(0, 2).toUpperCase()
+                  if (row.getAttribute('avatar-initials') !== initials) {
+                    row.setAttribute('avatar-initials', initials)
+                  }
+                  row.removeAttribute('avatar-url')
+                }
+              } else {
+                row.removeAttribute('avatar-url')
+                row.removeAttribute('avatar-initials')
+              }
+            }
+          })
 
           await updateAllSeenIndicators()
 
