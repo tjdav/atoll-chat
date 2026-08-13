@@ -12,7 +12,7 @@
 
   /* Atoll Semantic Extensions - Backgrounds */
   --#{$prefix}bg-body: #{map-get($grays, "100")};
-  --#{$prefix}bg-surface-primary: #{map-get($grays, "100")};
+  --#{$prefix}bg-surface-primary: #{map-get($grays, "000")};
   --#{$prefix}bg-surface-secondary: #{map-get($grays, "100")};
   --#{$prefix}bg-surface-tertiary: #{map-get($grays, "200")};
   --#{$prefix}bg-surface-elevated: #{map-get($grays, "100")};
