@@ -136,6 +136,7 @@
 }
 
 .atoll-chat-message-status-container {
+  display: flex;
   margin-top: -12px;
   margin-bottom: 8px;
   color: var(--atoll-chat-sent-status-color, var(--atoll-chat-timestamp-color)) !important;

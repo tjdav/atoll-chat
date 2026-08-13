@@ -173,6 +173,13 @@
 
           if (wasConfigured) {
             await biometric.deleteMasterKey(record.id)
+            localStorage.removeItem(`atoll_biometric_credentials_${record.id}`)
+
+            const biometricUsers = JSON.parse(localStorage.getItem('atoll_biometric_users') || '[]')
+            const filteredUsers = biometricUsers.filter(u => u.id !== record.id)
+  
+            localStorage.setItem('atoll_biometric_users', JSON.stringify(filteredUsers))
+
             await updatePasskeyState()
   
             verifyModal.hide()
@@ -183,7 +190,7 @@
             })
           } else {
             const { deriveAuthAndVaultKeys, purgeVaultKey } = await import('../../utils/keys.js')
-            const { keyA } = await deriveAuthAndVaultKeys(record.username, password)
+            const { keyA, keyB } = await deriveAuthAndVaultKeys(record.username, password)
 
             let masterKey
             try {
@@ -202,6 +209,55 @@
             }
 
             await biometric.storeMasterKey(masterKey, record.username, record.id)
+
+            // Encrypt Key B and username with masterKey and save
+            const payloadObj = {
+              keyB,
+              username: record.username
+            }
+            const payloadStr = JSON.stringify(payloadObj)
+            const nonce = window.crypto.getRandomValues(new Uint8Array(24))
+            let nonceB64 = ''
+  
+            for (let i = 0; i < nonce.length; i++) {
+              nonceB64 += String.fromCharCode(nonce[i])
+            }
+  
+            nonceB64 = btoa(nonceB64)
+
+            const encryptedBuffer = await $worker.execute('worker:crypto_secretbox_easy', {
+              message: payloadStr,
+              nonce: nonceB64,
+              key: masterKey
+            })
+
+            let encryptedB64 = ''
+            for (let i = 0; i < encryptedBuffer.length; i++) {
+              encryptedB64 += String.fromCharCode(encryptedBuffer[i])
+            }
+            encryptedB64 = btoa(encryptedB64)
+
+            const credsObj = {
+              ciphertext: encryptedB64,
+              nonce: nonceB64
+            }
+            localStorage.setItem(`atoll_biometric_credentials_${record.id}`, JSON.stringify(credsObj))
+
+            // Add user to the registry
+            const biometricUsers = JSON.parse(localStorage.getItem('atoll_biometric_users') || '[]')
+            const existingIndex = biometricUsers.findIndex(u => u.id === record.id)
+            const userEntry = {
+              id: record.id,
+              username: record.username,
+              avatar: record.avatar || ''
+            }
+            if (existingIndex !== -1) {
+              biometricUsers[existingIndex] = userEntry
+            } else {
+              biometricUsers.push(userEntry)
+            }
+            localStorage.setItem('atoll_biometric_users', JSON.stringify(biometricUsers))
+
             await updatePasskeyState()
   
             verifyModal.hide()

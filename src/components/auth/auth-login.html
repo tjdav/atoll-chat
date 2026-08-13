@@ -40,6 +40,17 @@
         <!-- Zone 4: Bottom Action Zone -->
         <div class="atoll-auth-bottom-zone">
           <atoll-button type="submit" variant="primary" block="true" ref="loginSubmit" test-id="loginSubmit">Log In</atoll-button>
+          
+          <!-- Biometric Login Section -->
+          <div ref="biometricSection" data-testid="biometricSection" class="d-none flex-column w-100 mt-3 mb-2">
+            <div class="d-flex align-items-center my-2 text-muted">
+              <hr class="flex-grow-1 m-0">
+              <span class="px-2 small fw-bold text-uppercase" style="letter-spacing: 0.5px; font-size: 0.75rem;">Biometric Sign In</span>
+              <hr class="flex-grow-1 m-0">
+            </div>
+            <div ref="biometricContainer" data-testid="biometricContainer" class="d-flex flex-column gap-2"></div>
+          </div>
+
           <atoll-button type="button" variant="ghost" block="true" ref="linkRegister" test-id="linkRegister">Don't have an account? Register</atoll-button>
         </div>
       </form>
@@ -53,7 +64,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, _root }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, biometric, _root }) => {
       const { pb } = pocketbase
       const { $storage } = storage
       const { $state } = globalStore
@@ -70,6 +81,8 @@
 
       const linkRegister = refs('linkRegister')
       const statusMsg = refs('statusMsg')
+      const biometricSection = refs('biometricSection')
+      const biometricContainer = refs('biometricContainer')
 
       let activeAltchaWidget = null
       let loginSubmitPending = false
@@ -264,6 +277,229 @@
       $bus.on('app:reconnected', () => {
         activeAltchaWidget = renderAltcha(altchaContainer, loginSubmit)
       })
+
+      /**
+       * Checks if biometric capabilities are available and renders
+       * enrolled accounts from the registry if any are present.
+       */
+      const initBiometricLogin = async () => {
+        if (!biometric || !await biometric.isAvailable()) {
+          return
+        }
+
+        const enrolledUsers = JSON.parse(localStorage.getItem('atoll_biometric_users') || '[]')
+        if (enrolledUsers.length === 0) {
+          return
+        }
+
+        // Show the biometric section
+        biometricSection.classList.remove('d-none')
+        biometricSection.classList.add('d-flex')
+
+        biometricContainer.innerHTML = ''
+
+        for (const user of enrolledUsers) {
+          const btn = document.createElement('atoll-button')
+          btn.setAttribute('type', 'button')
+          btn.setAttribute('variant', 'outline')
+          btn.setAttribute('block', 'true')
+          btn.setAttribute('test-id', `biometric-login-${user.username}`)
+          btn.setAttribute('text', `Log in as @${user.username}`)
+
+          btn.addEventListener('click', async () => {
+            // Disable other login inputs & buttons to prevent concurrent submissions
+            btn.setAttribute('loading', 'true')
+            identityInput.setAttribute('disabled', 'true')
+            passwordInput.setAttribute('disabled', 'true')
+            loginSubmit.setAttribute('disabled', 'true')
+            linkRegister.setAttribute('disabled', 'true')
+            showGlobalAlert('')
+            updateStatus('')
+
+            try {
+              updateStatus('Scan your fingerprint/biometric to authenticate...')
+              const masterKey = await biometric.retrieveMasterKey(user.id)
+              if (!masterKey) {
+                throw new Error('Biometric verification failed or was canceled.')
+              }
+
+              updateStatus('Decrypting credentials...')
+              const credsRaw = localStorage.getItem(`atoll_biometric_credentials_${user.id}`)
+              if (!credsRaw) {
+                throw new Error('Biometric credentials not found.')
+              }
+
+              const creds = JSON.parse(credsRaw)
+              const decryptedBuffer = await $worker.execute('worker:crypto_secretbox_open_easy', {
+                ciphertext: creds.ciphertext,
+                nonce: creds.nonce,
+                key: masterKey
+              })
+
+              if (!decryptedBuffer) {
+                throw new Error('Failed to decrypt credentials with master key.')
+              }
+
+              const credentials = JSON.parse(new TextDecoder().decode(decryptedBuffer))
+              const { keyB, username } = credentials
+
+              let currentPayload = getAltchaPayload(activeAltchaWidget)
+              if (isTesting && !currentPayload) {
+                currentPayload = 'atoll-mock-bypass-token'
+              }
+
+              if (!currentPayload) {
+                btn.removeAttribute('loading')
+                identityInput.removeAttribute('disabled')
+                passwordInput.removeAttribute('disabled')
+                loginSubmit.removeAttribute('disabled')
+                linkRegister.removeAttribute('disabled')
+                updateStatus('Security challenge is required. Please wait for it to load.', true)
+                return
+              }
+
+              updateStatus('Logging in...')
+              const loginRes = await fetch($url.normalizeUrl(`${pb.baseUrl}/api/custom/login`), {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                  identity: username,
+                  password: keyB,
+                  altcha: currentPayload
+                })
+              })
+
+              if (!loginRes.ok) {
+                const errData = await loginRes.json()
+                throw new Error(errData.error || 'Login failed')
+              }
+
+              const authData = await loginRes.json()
+              const record = authData.record
+
+              // Check if TOTP is enabled and device is untrusted
+              let isDeviceTrusted = false
+              if (record.totp_enabled) {
+                const localToken = localStorage.getItem('device_trust_token')
+                if (localToken) {
+                  const msgUint8 = new TextEncoder().encode(localToken)
+                  const hashBuffer = await crypto.subtle.digest('SHA-256', msgUint8)
+                  const hashArray = Array.from(new Uint8Array(hashBuffer))
+                  const hash = hashArray.map((b) => b.toString(16).padStart(2, '0')).join('')
+                  const hashes = record.trusted_device_hashes || []
+                  isDeviceTrusted = hashes.includes(hash)
+                }
+              } else {
+                isDeviceTrusted = true
+              }
+
+              if (record.totp_enabled && !isDeviceTrusted) {
+                // Save authentication without unlocking the vault yet
+                pb.authStore.save(authData.token, record)
+                await $storage.saveConfigs([
+                  {
+                    key: 'pb_url',
+                    value: pb.baseUrl
+                  },
+                  {
+                    key: 'pb_token',
+                    value: pb.authStore.token
+                  }
+                ])
+
+                const { purgeVaultKey } = await import('../../utils/keys.js')
+                purgeVaultKey()
+
+                $state.currentUser = record
+                $state.isAuthenticated = true
+                $state.isVaultUnlocked = false
+                updateStatus('Please complete Two-Step Verification.')
+                return
+              }
+
+              // Decrypt private keypair with masterKey (VMK)
+              updateStatus('Decrypting private keys...')
+              const encryptedPrivateKeys = record.encrypted_private_keys
+              if (!encryptedPrivateKeys) {
+                throw new Error('Vault metadata missing from user account.')
+              }
+
+              const decryptedKeys = await $worker.execute('worker:decrypt_vault', {
+                encrypted_private_keys: encryptedPrivateKeys,
+                master_key: masterKey
+              })
+
+              // Initialize Crypto Worker session
+              updateStatus('Initializing session...')
+              await $worker.execute('worker:set_token', { token: authData.token })
+              await $worker.execute('worker:init_keys', {
+                ...decryptedKeys,
+                id: record.id
+              })
+
+              // Authenticate SDK instance & persist config
+              pb.authStore.save(authData.token, record)
+              await $storage.saveConfigs([
+                {
+                  key: 'pb_url',
+                  value: pb.baseUrl
+                },
+                {
+                  key: 'pb_token',
+                  value: pb.authStore.token
+                }
+              ])
+
+              const { purgeVaultKey } = await import('../../utils/keys.js')
+              purgeVaultKey()
+
+              // Flip UI State & Start Sync
+              $state.currentUser = {
+                ...record,
+                ...decryptedKeys
+              }
+              $bus.emit('auth:unlocked', {
+                keys: decryptedKeys,
+                userRecord: record
+              })
+              $state.isAuthenticated = true
+              $state.isVaultUnlocked = true
+
+              try {
+                await $sync.startSubscriptions()
+              } catch (err) {
+                if (err && err.message && !err.message.includes('subscription')) {
+                  throw err
+                }
+              }
+
+              updateStatus('Login complete!')
+            } catch (error) {
+              pb.authStore.clear()
+              const { purgeVaultKey } = await import('../../utils/keys.js')
+              purgeVaultKey()
+              $state.isAuthenticated = false
+              $state.isVaultUnlocked = false
+
+              btn.removeAttribute('loading')
+              identityInput.removeAttribute('disabled')
+              passwordInput.removeAttribute('disabled')
+              loginSubmit.removeAttribute('disabled')
+              linkRegister.removeAttribute('disabled')
+
+              updateStatus(error.message || 'Failed to log in', true)
+              showGlobalAlert(error.message || 'Failed to log in')
+              activeAltchaWidget.reset()
+            }
+          })
+
+          biometricContainer.appendChild(btn)
+        }
+      }
+
+      await initBiometricLogin()
 
       loginForm.addEventListener('submit', async (event) => {
         event.preventDefault()

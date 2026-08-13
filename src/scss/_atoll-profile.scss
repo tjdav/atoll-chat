@@ -209,11 +209,6 @@ atoll-profile,
     &:first-child {
       margin-left: 0;
     }
-
-    .atoll-profile-circle {
-      border: 2px solid var(--#{$prefix}profile-border-color, #ffffff);
-      box-shadow: 0 0 0 2px var(--#{$prefix}profile-border-color, #ffffff);
-    }
   }
 
   /* Reverse z-index order so left-most profile stays on top */

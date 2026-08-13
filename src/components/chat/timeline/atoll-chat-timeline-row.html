@@ -92,15 +92,19 @@
         if (isLastInBlock && !isSent) {
           avatarContainer.innerHTML = ''
           const profile = document.createElement('atoll-profile')
-          profile.setAttribute('size', '2xs')
+
+          profile.setAttribute('size', 'xs')
           profile.className = 'timeline-avatar-profile'
+
           if (state.senderId) {
             profile.setAttribute('user-id', state.senderId)
           }
+
           if (state.senderName) {
             profile.setAttribute('name', state.senderName)
             profile.setAttribute('alt', state.senderName)
           }
+  
           if (state.avatarUrl) {
             profile.setAttribute('src', state.avatarUrl)
           }
