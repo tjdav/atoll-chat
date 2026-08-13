@@ -27,3 +27,42 @@
     transform: scale(0.95);
   }
 }
+
+atoll-button.btn-big-play {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 120px !important;
+  height: 120px !important;
+  flex-shrink: 0 !important;
+
+  &.d-none {
+    display: none !important;
+  }
+
+  button {
+    width: 100% !important;
+    height: 100% !important;
+    max-width: 100% !important;
+    max-height: 100% !important;
+    border-radius: 50% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  .atoll-btn-content {
+    width: 100% !important;
+    height: 100% !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+  }
+
+  atoll-icon {
+    width: 64px !important;
+    height: 64px !important;
+    flex-shrink: 0 !important;
+    --#{$prefix}icon-size: 64px !important;
+  }
+}

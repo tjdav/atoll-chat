@@ -7,6 +7,14 @@ describe('Atoll Waveform Player Component', () => {
 
   beforeEach(async () => {
     document.body.innerHTML = ''
+    if (!customElements.get('atoll-button')) {
+      customElements.define('atoll-button', class extends HTMLElement {
+        constructor() {
+          super()
+          this.innerHTML = '<button><slot></slot></button>'
+        }
+      })
+    }
     tagName = await loadComponent('ui-waveform-player')
   })
 

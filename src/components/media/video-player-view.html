@@ -140,6 +140,7 @@
       const stopLocalPlayback = () => {
         if (video) {
           video.pause()
+          video.src = ''
           video.removeAttribute('src')
           video.load()
         }
@@ -162,7 +163,7 @@
         if (isSelectedThis) {
           if (playbackState.status === 'loading') {
             loadingIndicator.classList.remove('d-none')
-            videoPlaceholder.classList.remove('d-none')
+            videoPlaceholder.classList.add('d-none')
             const bigPlay = videoPlaceholder.querySelector('.btn-big-play')
             if (bigPlay) {
               bigPlay.classList.add('d-none')
@@ -365,6 +366,10 @@
           interval: false,
           touch: true,
           wrap: false
+        })
+
+        carouselEl.addEventListener('slide.bs.carousel', (e) => {
+          stopLocalPlayback()
         })
 
         carouselEl.addEventListener('slid.bs.carousel', async (e) => {
