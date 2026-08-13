@@ -910,6 +910,70 @@
         })
       }
 
+      let updateNativeStatusBarRef = null
+      import('../../utils/color-contrast.js').then((m) => {
+        updateNativeStatusBarRef = m.updateNativeStatusBar
+      }).catch(() => {
+      })
+
+      /**
+       * Dynamically calculates and updates the native status bar style and background color.
+       *
+       * @returns {Promise<void>}
+       */
+      const updateAppStatusBar = async () => {
+        try {
+          if (!updateNativeStatusBarRef) {
+            const m = await import('../../utils/color-contrast.js')
+            updateNativeStatusBarRef = m.updateNativeStatusBar
+          }
+
+          if (updateNativeStatusBarRef) {
+            // Detect if the overall application/system is in dark mode
+            const isAppDark =
+              document.documentElement.getAttribute('data-atoll-theme') === 'dark' ||
+              document.body.getAttribute('data-atoll-theme') === 'dark' ||
+              (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+            //  Default colors for light/dark modes
+            const defaultLightColor = '#F5F5F5'
+            const defaultDarkColor = '#111111'
+
+            let statusBarColor = isAppDark ? defaultDarkColor : defaultLightColor
+
+            // Resolve status bar background color based on app state
+            if (!$state.isAuthenticated || !$state.isVaultUnlocked || $state.isOfflineSetup) {
+              // Unauthenticated / Locked Screens / Offline Setup
+              statusBarColor = isAppDark ? defaultDarkColor : defaultLightColor
+            } else {
+              // Main App - Authenticated & Unlocked
+              const activeType = $state.activeSelectionType
+              const activeId = $state.activeSelectionId
+
+              if (activeId) {
+                // Inside detail views
+                if (activeType === 'chats') {
+                  return
+                } else if (activeType === 'pictures' || activeType === 'videos') {
+                  // Image/Video viewers are styled dark even in light mode
+                  statusBarColor = '#111111'
+                } else {
+                  // Other detail views (Music, Documents, Links, Settings) use light/dark headers
+                  statusBarColor = isAppDark ? defaultDarkColor : '#FFFFFF'
+                }
+              } else {
+                // Standard sidebar list panes
+                statusBarColor = isAppDark ? defaultDarkColor : '#FFFFFF'
+              }
+            }
+
+            await updateNativeStatusBarRef(statusBarColor)
+          }
+        } catch {
+          // Fail gracefully if status bar utility fails to load/execute
+        }
+      }
+
       /**
        * Dynamically calculates and sets the visual viewport height as a CSS custom property.
        *
@@ -936,45 +1000,52 @@
        * @returns {Promise<void>}
        */
       const configureSafeInsets = async () => {
-        try {
-          const { Capacitor } = await import('@capacitor/core')
-          if (Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform()) {
-            const { StatusBar } = await import('@capacitor/status-bar')
-            const info = await StatusBar.getInfo()
-            const platform = Capacitor.getPlatform()
-            let barHeight = info && typeof info.height === 'number' ? info.height : 0
+        const { Capacitor } = await import('@capacitor/core')
+        if (Capacitor && typeof Capacitor.isNativePlatform === 'function' && Capacitor.isNativePlatform()) {
+          const { StatusBar } = await import('@capacitor/status-bar')
+          const info = await StatusBar.getInfo()
+          const platform = Capacitor.getPlatform()
+          let barHeight = info && typeof info.height === 'number' ? info.height : 0
 
-            if (platform === 'android') {
-              if (barHeight === 0) {
-                // Generous default fallback in case info.height is not yet available on Android
-                barHeight = 32
-              }
-            } else if (platform === 'ios') {
-              if (barHeight === 0) {
-                // Generous default fallback in case info.height is not yet available on iOS
-                barHeight = 47
-              }
+          if (platform === 'android') {
+            if (barHeight === 0) {
+              // Generous default fallback in case info.height is not yet available on Android
+              barHeight = 32
             }
-
-            if (barHeight > 0) {
-              document.documentElement.style.setProperty('--atoll-safe-area-top', `${barHeight}px`)
+          } else if (platform === 'ios') {
+            if (barHeight === 0) {
+              // Generous default fallback in case info.height is not yet available on iOS
+              barHeight = 47
             }
           }
-        } catch {
-          // Fail gracefully and use default/CSS env values
+
+          if (barHeight > 0) {
+            document.documentElement.style.setProperty('--atoll-safe-area-top', `${barHeight}px`)
+          }
         }
       }
 
-      /* Initialize boot handshake */
-      startBootHandshake().then(async () => {
-        await configureSafeInsets()
-      }).catch((err) => {
-        // Critical system failure: transition UI to offline setup mode to prompt reconnection
-        $state.isOfflineSetup = true
-        updateUI()
-        // Re-throw unexpected system failures so they are caught by global handlers
-        throw err
-      })
+      /* Initialize boot handshake & status bar */
+      startBootHandshake()
+        .then(async () => {
+          updateAppStatusBar()
+          await configureSafeInsets()
+        })
+        .catch((err) => {
+          // Critical system failure: transition UI to offline setup mode to prompt reconnection
+          $state.isOfflineSetup = true
+          updateUI()
+          updateAppStatusBar()
+          // Re-throw unexpected system failures so they are caught by global handlers
+          throw err
+        })
+
+      // Update status bar when system theme changes
+      if (window.matchMedia) {
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => {
+          updateAppStatusBar()
+        })
+      }
 
       $state.subscribe('isAuthenticated', async () => {
         const user = pb.authStore.model
@@ -983,15 +1054,32 @@
         }
         await checkDeviceTrust()
         updateUI()
+        updateAppStatusBar()
       })
       $state.subscribe('isVaultUnlocked', () => {
         updateUI()
+        updateAppStatusBar()
         processPendingInvite().catch((err) => {
           // Invite processing recovery path
           return
         })
       })
-      $state.subscribe('authView', updateUI)
+      $state.subscribe('authView', () => {
+        updateUI()
+        updateAppStatusBar()
+      })
+      $state.subscribe('isOfflineSetup', () => {
+        updateAppStatusBar()
+      })
+      $state.subscribe('currentAppView', () => {
+        updateAppStatusBar()
+      })
+      $state.subscribe('activeSelectionId', () => {
+        updateAppStatusBar()
+      })
+      $state.subscribe('activeSelectionType', () => {
+        updateAppStatusBar()
+      })
 
       $state.subscribe('isOnline', (val) => {
         if (val) {
