@@ -195,6 +195,24 @@ test.describe('Messaging Features', () => {
       await expect(row.locator('a:has-text("G")')).toBeVisible()
     })
 
+    test('code syntax highlighting', async ({ page, loginCustomPage }) => {
+      test.slow()
+      await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
+      await page.locator('[data-testid$="btnCreateRoom"]').click()
+      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid$="btnCreate"]').click()
+
+      const md = '```javascript\nconst variable = "value";\n```'
+      await page.fill('textarea', md)
+      await page.click('[data-testid$="__sendButton"]')
+
+      const codeBlock = page.locator('pre code.hljs.language-javascript')
+      await expect(codeBlock).toBeVisible({ timeout: 15000 })
+      await expect(codeBlock.locator('span.hljs-keyword')).toHaveText('const')
+      await expect(codeBlock.locator('span.hljs-string')).toHaveText('"value"')
+    })
+
     test('link previews', async ({ page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')

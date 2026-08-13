@@ -10,8 +10,9 @@ export default definePlugin({
     name: 'markdown',
     context: () => {
       let markdownPromise = null
+      let highlightPromise = null
 
-      const getLibs = () => {
+      const getLibs = (hasCode) => {
         if (!markdownPromise) {
           markdownPromise = Promise.all([
             import('marked'),
@@ -31,7 +32,27 @@ export default definePlugin({
             }
           })
         }
-        return markdownPromise
+
+        if (hasCode) {
+          if (!highlightPromise) {
+            highlightPromise = import('highlight.js').then(m => m.default || m)
+          }
+          return Promise.all([markdownPromise, highlightPromise]).then(([{ marked, DOMPurify }, hljs]) => {
+            return {
+              marked,
+              DOMPurify,
+              hljs
+            }
+          })
+        }
+
+        return markdownPromise.then(({ marked, DOMPurify }) => {
+          return {
+            marked,
+            DOMPurify,
+            hljs: null
+          }
+        })
       }
 
       const $markdown = {
@@ -52,8 +73,35 @@ export default definePlugin({
           if (!needsMarked) {
             return `<p>${content}</p>`
           }
-          const { marked, DOMPurify } = await getLibs()
-          const rawHtml = await marked.parse(content)
+          const hasCode = content.includes('```')
+          const { marked, DOMPurify, hljs } = await getLibs(hasCode)
+
+          const options = {}
+          if (hljs) {
+            options.renderer = {
+              code ({ text, lang }) {
+                let highlightedText = text
+                if (lang && hljs.getLanguage(lang)) {
+                  try {
+                    highlightedText = hljs.highlight(text, { language: lang }).value
+                  } catch {
+                    // Fallback to text
+                  }
+                } else {
+                  try {
+                    highlightedText = hljs.highlightAuto(text).value
+                  } catch {
+                    // Fallback to text
+                  }
+                }
+                const cleanLang = lang ? lang.replace(/[^\w-]/g, '') : ''
+                const classAttr = cleanLang ? `hljs language-${cleanLang}` : 'hljs'
+                return `<pre><code class="${classAttr}">${highlightedText}</code></pre>`
+              }
+            }
+          }
+
+          const rawHtml = await marked.parse(content, options)
           return DOMPurify.sanitize(rawHtml)
         },
         getLibs

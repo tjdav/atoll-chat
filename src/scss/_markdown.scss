@@ -2,6 +2,59 @@
   font-size: inherit;
   word-wrap: break-word;
 
+  // Syntax highlighting custom properties (default: light high-contrast syntax)
+  --hljs-comment: #6a737d;
+  --hljs-keyword: #d73a49;
+  --hljs-string: #032f62;
+  --hljs-number: #005cc5;
+  --hljs-title: #6f42c1;
+  --hljs-variable: #e36209;
+  --hljs-type: #e36209;
+  --hljs-tag: #22863a;
+
+  // Apply these colors to highlight.js classes
+  .hljs-comment,
+  .hljs-quote {
+    color: var(--hljs-comment) !important;
+    font-style: italic;
+  }
+  .hljs-keyword,
+  .hljs-selector-tag,
+  .hljs-subst {
+    color: var(--hljs-keyword) !important;
+    font-weight: bold;
+  }
+  .hljs-string,
+  .hljs-regexp,
+  .hljs-addition,
+  .hljs-attribute {
+    color: var(--hljs-string) !important;
+  }
+  .hljs-number,
+  .hljs-literal,
+  .hljs-bullet,
+  .hljs-symbol {
+    color: var(--hljs-number) !important;
+  }
+  .hljs-title,
+  .hljs-section,
+  .hljs-name {
+    color: var(--hljs-title) !important;
+    font-weight: bold;
+  }
+  .hljs-variable,
+  .hljs-template-variable,
+  .hljs-type,
+  .hljs-attr,
+  .hljs-selector-id,
+  .hljs-selector-class {
+    color: var(--hljs-variable) !important;
+  }
+  .hljs-tag,
+  .hljs-meta {
+    color: var(--hljs-tag) !important;
+  }
+
   > *:last-child {
     margin-bottom: 0;
   }
@@ -87,6 +140,12 @@
       opacity: 1;
     }
   }
+}
+
+// When markdown is inside a text-bg-primary container or a Sent Bubble
+.text-bg-primary .markdown-body,
+.atoll-chat-bubble-sent .markdown-body {
+  color: inherit;
 
   code {
     background-color: rgba(0, 0, 0, 0.2);
@@ -121,12 +180,32 @@
   }
 }
 
-// When markdown is inside a bg-body-secondary container (Received Bubbles)
-.bg-body-secondary .markdown-body {
+// When markdown is inside a bg-body-secondary container or a Received Bubble
+.bg-body-secondary .markdown-body,
+.atoll-chat-bubble-received .markdown-body {
   // Ensure links are visible enough on secondary background
   --#{$prefix}link-color: var(--#{$prefix}primary);
   
   [data-#{$prefix}theme="dark"] & {
     --#{$prefix}link-color: #6ea8fe; // Better contrast for dark mode
   }
+}
+
+// Override syntax highlighting variables for dark background containers and themes
+.atoll-chat-bubble-sent .markdown-body,
+.text-bg-primary .markdown-body,
+[data-bs-theme="dark"] .markdown-body,
+[data-#{$prefix}theme="dark"] .markdown-body,
+.atoll-chat-view[data-theme="classic-dark"] .markdown-body,
+.atoll-chat-view[data-theme="ocean"] .markdown-body,
+.atoll-chat-view[data-theme="forest"] .markdown-body,
+.atoll-chat-view[data-theme="sunset"] .markdown-body {
+  --hljs-comment: #8b949e;
+  --hljs-keyword: #ff7b72;
+  --hljs-string: #a5d6ff;
+  --hljs-number: #79c0ff;
+  --hljs-title: #d2a8ff;
+  --hljs-variable: #ffa657;
+  --hljs-type: #ff7b72;
+  --hljs-tag: #7ee787;
 }
