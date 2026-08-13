@@ -75,6 +75,7 @@ export function createNativeBiometricAdapter () {
           password: b64,
           server: `atoll-chat-vault-${userId}`,
           accessControl: AccessControl.BIOMETRY_ANY,
+          authValidityDuration: 15,
           title: 'Secure Vault Key',
           negativeButtonText: 'Cancel'
         })
