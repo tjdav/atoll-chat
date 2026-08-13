@@ -1,6 +1,11 @@
 <template id="atoll-profile">
   <div class="{{ profileClasses }}" role="img" aria-label="{{ computedAlt }}">
-    <div class="atoll-profile-circle {{ gridClass }}" style="{{ circleStyle }}">
+    <!-- Standalone Loading / Skeleton state -->
+    <div hidden="{{ hideLoading }}" class="placeholder-wave w-100 h-100 position-absolute top-0 start-0" style="z-index: 5;">
+      <div class="placeholder rounded-circle w-100 h-100"></div>
+    </div>
+
+    <div class="atoll-profile-circle {{ gridClass }}" style="{{ circleStyle }}" hidden="{{ showLoading }}">
       <slot name="image">
         <img 
           ref="avatarImage" 
@@ -14,13 +19,13 @@
       </slot>
     </div>
 
-    <div class="atoll-profile-badge" hidden="{{ hideBadge }}">
+    <div class="atoll-profile-badge" hidden="{{ hideBadgeOrLoading }}">
       <slot name="badge">
         <atoll-badge size="sm" count="{{ badge }}"></atoll-badge>
       </slot>
     </div>
 
-    <div class="atoll-profile-icon" hidden="{{ hideOverlayIcon }}">
+    <div class="atoll-profile-icon" hidden="{{ hideOverlayIconOrLoading }}">
       <slot name="icon">
         <atoll-icon name="{{ iconName }}" size="{{ overlayIconSize }}"></atoll-icon>
       </slot>
@@ -83,6 +88,10 @@
       hasProjectedImage: {
         type: Boolean,
         default: false
+      },
+      loading: {
+        type: Boolean,
+        default: false
       }
     },
 
@@ -94,7 +103,7 @@
        * @returns {string|Node[]|null} Evaluated slot content.
        */
       badge (originalNodes, state) {
-        if (!state.badge) {
+        if (!state.badge || state.loading) {
           return null
         }
         if (originalNodes && originalNodes.length > 0) {
@@ -120,7 +129,7 @@
        * @returns {string|Node[]|null} Evaluated slot content.
        */
       icon (originalNodes, state) {
-        if (!state.iconName) {
+        if (!state.iconName || state.loading) {
           return null
         }
         if (originalNodes && originalNodes.length > 0) {
@@ -211,6 +220,14 @@
 
       hideOverlayIcon: (state) => (!state.iconName ? 'true' : null),
 
+      hideBadgeOrLoading: (state) => (state.loading || !state.badge ? 'true' : null),
+
+      hideOverlayIconOrLoading: (state) => (state.loading || !state.iconName ? 'true' : null),
+
+      hideLoading: (state) => (!state.loading ? 'true' : null),
+
+      showLoading: (state) => (state.loading ? 'true' : null),
+
       iconSize: (state) => {
         if (state.size === '2xs' || state.size === 'xs') {
           return '16'
@@ -259,6 +276,10 @@
           classes.push('atoll-profile-ring')
         }
 
+        if (state.loading) {
+          classes.push('atoll-profile-loading')
+        }
+
         return classes.join(' ')
       },
 
@@ -300,7 +321,7 @@
       }
     },
 
-    client: ({ state, refs, root, observe, globalStore, pocketbase, storage }) => {
+    client: ({ state, refs, root, observe, globalStore, pocketbase, storage, signal }) => {
       const { $state } = globalStore || {}
       const { pb } = pocketbase || {}
       const { $storage } = storage || {}
@@ -418,15 +439,6 @@
         childList: true,
         subtree: true
       })
-
-      if (observe) {
-        observe('palette', (val) => {
-          state.palette = val
-        })
-        observe('hasProjectedImage', (val) => {
-          state.hasProjectedImage = val === 'true' || val === true
-        })
-      }
 
       // Real-time user profile state synchronization
       const fetchingUserIds = new Set()
@@ -710,7 +722,7 @@
         handleMultiparty()
       })
 
-      return () => {
+      signal.addEventListener('abort', () => {
         if (rootObserver) {
           rootObserver.disconnect()
         }
@@ -723,7 +735,7 @@
         if (unsubCurrentUser) {
           unsubCurrentUser()
         }
-      }
+      })
     }
   })
 </script>

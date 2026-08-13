@@ -13,6 +13,7 @@ test.describe('Atoll List and List Item Component Architecture', () => {
     await page.evaluate(() => {
       return window.__coralite__.lifecycle.hydrated
     })
+    await page.waitForLoadState('networkidle')
     await page.evaluate(() => {
       let sandbox = document.getElementById('test-sandbox')
 
@@ -301,6 +302,48 @@ test.describe('Atoll List and List Item Component Architecture', () => {
     expect(actions[0].value).toBe('Deletable Person')
   })
 
+  test('should support loading attribute with skeleton placeholders and prevent interaction', async ({ page }) => {
+    await page.evaluate(async () => {
+      const sandbox = document.getElementById('test-sandbox')
+      const item = document.createElement('atoll-list-item')
+      item.id = 'loading-item'
+      item.setAttribute('title', 'Loaded Title')
+      item.setAttribute('loading', 'true')
+      item.setAttribute('clickable', 'true')
+
+      window.loadingClicks = []
+      item.addEventListener('atoll-item-click', (e) => {
+        window.loadingClicks.push(e.detail)
+      })
+
+      sandbox.appendChild(item)
+      await customElements.whenDefined('atoll-list-item')
+    })
+
+    const itemLoc = page.locator('#loading-item')
+    const rootDiv = itemLoc.locator('.atoll-list-item')
+
+    // Confirm disabled roles/tabindex
+    await expect(rootDiv).toHaveAttribute('tabindex', '-1')
+    await expect(rootDiv).toHaveClass(/atoll-list-item-loading/)
+
+    // Confirm placeholders are visible
+    const avatarPlaceholder = itemLoc.locator('.placeholder.rounded-circle')
+    await expect(avatarPlaceholder).toBeVisible()
+
+    const waveWrapper = itemLoc.locator('.placeholder-wave')
+    await expect(waveWrapper).toBeVisible()
+
+    // Confirm that the actual title text/slots are hidden
+    const titleSlot = itemLoc.locator('.atoll-list-item-content')
+    await expect(titleSlot).toBeHidden()
+
+    // Confirm clicks do nothing
+    await rootDiv.click({ force: true })
+    const clicks = await page.evaluate(() => window.loadingClicks)
+    expect(clicks.length).toBe(0)
+  })
+
   test('should render visual matrix of states for screenshot', async ({ page }) => {
     await page.evaluate(() => {
       const sandbox = document.getElementById('test-sandbox')
@@ -377,6 +420,15 @@ test.describe('Atoll List and List Item Component Architecture', () => {
               <atoll-list-item title="Highlighted Item" description="Soft subtle highlight tint" highlighted="true" clickable="true" id="v-highlighted">
                 <atoll-profile slot="leading" size="md" name="Highlighted Item"></atoll-profile>
               </atoll-list-item>
+            </atoll-list>
+          </div>
+
+          <div>
+            <h4 style="font-size: 18px; font-weight: 600; margin-bottom: 8px;">6. Loading Wave Placeholders</h4>
+            <atoll-list divided="true" id="loading-list">
+              <atoll-list-item loading="true" size="sm"></atoll-list-item>
+              <atoll-list-item loading="true" size="md"></atoll-list-item>
+              <atoll-list-item loading="true" size="lg"></atoll-list-item>
             </atoll-list>
           </div>
         </div>

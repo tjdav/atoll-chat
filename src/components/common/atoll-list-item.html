@@ -5,8 +5,17 @@
     role="{{ itemRole }}"
     tabindex="{{ itemTabindex }}"
   >
+    <!-- Skeleton / Placeholder view on Loading -->
+    <div class="placeholder-wave w-100 h-100 d-flex align-items-center gap-3" hidden="{{ showOnLoading }}">
+      <div class="{{ avatarPlaceholderClasses }} placeholder rounded-circle flex-shrink-0"></div>
+      <div class="flex-grow-1 d-flex flex-column gap-2">
+        <div class="placeholder col-6" style="height: 14px; border-radius: 4px;"></div>
+        <div class="placeholder col-8" style="height: 10px; border-radius: 3px;"></div>
+      </div>
+    </div>
+
     <!-- 3-1. Left Area (Avatar, Thumbnail, Selection Control) -->
-    <div class="atoll-list-item-left">
+    <div class="atoll-list-item-left" hidden="{{ hideOnLoading }}">
       <atoll-checkbox ref="checkbox" hidden="{{ hideCheckbox }}" checked="{{ checked }}"></atoll-checkbox>
       <atoll-icon ref="deleteIcon" name="minus-circle" size="24" color="var(--atoll-danger, #FF334B)" hidden="{{ hideDeleteIcon }}" class="atoll-list-item-delete-icon"></atoll-icon>
       <slot name="leading"></slot>
@@ -14,7 +23,7 @@
     </div>
 
     <!-- 3-2. Center Text Area -->
-    <div class="atoll-list-item-content">
+    <div class="atoll-list-item-content" hidden="{{ hideOnLoading }}">
       <div class="atoll-list-item-title-row">
         <span class="atoll-list-item-title">
           <slot>{{ title }}</slot>
@@ -33,7 +42,7 @@
     </div>
 
     <!-- 3-3. Right Area (Switch, Badge, Chevron, Custom Action) -->
-    <div class="atoll-list-item-right">
+    <div class="atoll-list-item-right" hidden="{{ hideOnLoading }}">
       <slot name="right"></slot>
 
       <!-- Unread Count Badge -->
@@ -82,6 +91,7 @@
       highlighted: Boolean,
       disabled: Boolean,
       selected: Boolean,
+      loading: Boolean,
       mode: {
         type: String,
         default: 'default'
@@ -110,9 +120,23 @@
 
       isClickable: (state) => state.clickable || state.chevron || state.mode === 'selection',
 
-      itemRole: (state) => (state.isClickable ? 'button' : 'listitem'),
+      itemRole: (state) => (state.isClickable && !state.loading ? 'button' : 'listitem'),
 
-      itemTabindex: (state) => (state.isClickable && !state.disabled ? '0' : '-1'),
+      itemTabindex: (state) => (state.isClickable && !state.disabled && !state.loading ? '0' : '-1'),
+
+      hideOnLoading: (state) => (state.loading ? 'true' : null),
+
+      showOnLoading: (state) => (state.loading ? null : 'true'),
+
+      avatarPlaceholderClasses: (state) => {
+        if (state.size === 'sm') {
+          return 'atoll-list-item-avatar-placeholder-sm'
+        }
+        if (state.size === 'lg') {
+          return 'atoll-list-item-avatar-placeholder-lg'
+        }
+        return 'atoll-list-item-avatar-placeholder-md'
+      },
 
       itemClasses: (state) => {
         const classes = ['atoll-list-item']
@@ -123,7 +147,7 @@
           classes.push('atoll-list-item-md')
         }
 
-        if (state.isClickable) {
+        if (state.isClickable && !state.loading) {
           classes.push('atoll-list-item-clickable')
         }
         if (state.highlighted) {
@@ -139,6 +163,9 @@
         if (state.mode && state.mode !== 'default') {
           classes.push(`atoll-list-item-mode-${state.mode}`)
         }
+        if (state.loading) {
+          classes.push('atoll-list-item-loading')
+        }
 
         return classes.join(' ')
       }
@@ -150,7 +177,7 @@
       const checkbox = refs('checkbox')
 
       const handleTrigger = () => {
-        if (state.disabled) {
+        if (state.disabled || state.loading) {
           return
         }
 
@@ -188,7 +215,7 @@
       })
 
       itemRoot.addEventListener('keydown', (event) => {
-        if (state.isClickable && (event.key === 'Enter' || event.key === ' ')) {
+        if (state.isClickable && !state.loading && (event.key === 'Enter' || event.key === ' ')) {
           event.preventDefault()
           handleTrigger(event)
         }
@@ -256,43 +283,6 @@
         },
         configurable: true
       })
-
-      // Sync attribute changes dynamically
-      if (observe) {
-        observe('selected', (val) => {
-          state.selected = val === 'true' || val === true || val === ''
-        })
-        observe('disabled', (val) => {
-          state.disabled = val === 'true' || val === true || val === ''
-        })
-        observe('highlighted', (val) => {
-          state.highlighted = val === 'true' || val === true || val === ''
-        })
-        observe('clickable', (val) => {
-          state.clickable = val === 'true' || val === true || val === ''
-        })
-        observe('title', (val) => {
-          state.title = val
-        })
-        observe('description', (val) => {
-          state.description = val
-        })
-        observe('timestamp', (val) => {
-          state.timestamp = val
-        })
-        observe('badge', (val) => {
-          state.badge = val
-        })
-        observe('mode', (val) => {
-          state.mode = val || 'default'
-        })
-        observe('checked', (val) => {
-          state.checked = val === 'true' || val === true || val === ''
-        })
-        observe('value', (val) => {
-          state.value = val || ''
-        })
-      }
     }
   })
 </script>

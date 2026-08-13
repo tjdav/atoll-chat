@@ -32,6 +32,11 @@ atoll-profile,
   flex-shrink: 0;
   user-select: none;
   box-sizing: border-box;
+
+  &.atoll-profile-loading {
+    overflow: hidden;
+    border-radius: 50%;
+  }
 }
 
 /* Inner Profile Circle Container */

@@ -183,6 +183,30 @@
 }
 
 /* -------------------------------------------------------------------------- */
+/* Loading Skeleton Dimensions for Avatars                                    */
+/* -------------------------------------------------------------------------- */
+
+.atoll-list-item-avatar-placeholder-sm {
+  width: var(--#{$prefix}profile-size-sm, 42px);
+  height: var(--#{$prefix}profile-size-sm, 42px);
+}
+
+.atoll-list-item-avatar-placeholder-md {
+  width: var(--#{$prefix}profile-size-md, 50px);
+  height: var(--#{$prefix}profile-size-md, 50px);
+}
+
+.atoll-list-item-avatar-placeholder-lg {
+  width: var(--#{$prefix}profile-size-lg, 56px);
+  height: var(--#{$prefix}profile-size-lg, 56px);
+}
+
+.atoll-list-item-loading {
+  pointer-events: none;
+  cursor: default;
+}
+
+/* -------------------------------------------------------------------------- */
 /* Dark Mode Overrides ([data-atoll-theme="dark"])                                */
 /* -------------------------------------------------------------------------- */
 

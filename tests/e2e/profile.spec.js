@@ -9,6 +9,7 @@ test.describe('Atoll Profile Component', () => {
     await page.evaluate(() => {
       return window.__coralite__.lifecycle.hydrated
     })
+    await page.waitForLoadState('networkidle')
   })
 
   test('should render 8 strict sizes correctly', async ({ page }) => {
@@ -179,6 +180,10 @@ test.describe('Atoll Profile Component', () => {
           <div id="section-grouped" style="display: flex; gap: 20px; align-items: center;">
             <strong>Grouped Overlapping Rows:</strong>
           </div>
+
+          <div id="section-loading" style="display: flex; gap: 20px; align-items: center;">
+            <strong>Loading Placeholders:</strong>
+          </div>
         </div>
       `
 
@@ -328,12 +333,42 @@ test.describe('Atoll Profile Component', () => {
       row.appendChild(p3)
 
       groupedSection.appendChild(row)
+
+      const loadingSection = document.getElementById('section-loading')
+      const sizesListForLoading = ['2xs', 'xs', 'sm', 'md', 'lg', 'xl', '2xl', '3xl']
+      sizesListForLoading.forEach((size) => {
+        const prof = document.createElement('atoll-profile')
+        prof.setAttribute('size', size)
+        prof.setAttribute('loading', 'true')
+        loadingSection.appendChild(prof)
+      })
     })
 
     await page.waitForTimeout(2000)
     await page.screenshot({
       path: 'tests/e2e/screenshots/profile-verification.png'
     })
+  })
+
+  test('should support loading attribute with stand-alone circular skeleton placeholder', async ({ page }) => {
+    await page.evaluate(() => {
+      const el = document.createElement('atoll-profile')
+      el.id = 'profile-loading-test'
+      el.setAttribute('loading', 'true')
+      document.body.appendChild(el)
+    })
+
+    const profile = page.locator('#profile-loading-test')
+    await expect(profile).toBeVisible()
+
+    const innerDiv = profile.locator('div.atoll-profile')
+    await expect(innerDiv).toHaveClass(/atoll-profile-loading/)
+
+    const loader = profile.locator('.placeholder-wave')
+    await expect(loader).toBeVisible()
+
+    const circle = profile.locator('.atoll-profile-circle')
+    await expect(circle).toBeHidden()
   })
 
   test('should support grouped overlapping style inside timeline seenIndicators', async ({ page }) => {
