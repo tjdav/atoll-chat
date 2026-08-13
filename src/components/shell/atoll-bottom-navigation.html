@@ -1,0 +1,353 @@
+<template id="atoll-bottom-navigation">
+  <nav class="atoll-bottom-navigation border-top bg-body d-flex justify-content-around align-items-center" ref="root" data-testid="bottomNavigation" role="navigation" aria-label="Mobile Navigation" hidden="{{ isHidden }}">
+    
+    <!-- Tab 1: Chats (Direct Navigation) -->
+    <button class="nav-link-mobile d-flex flex-column align-items-center justify-content-center flex-grow-1 py-1 position-relative {{ isChatsActiveClass }}" ref="btnChats" data-testid="bottomBtnChats" title="Chats">
+      <div class="bottom-tab-icon-wrapper position-relative">
+        <img src="/logo.svg" alt="Atoll logo" class="bottom-logo-img">
+        <atoll-badge count="{{ totalUnread }}" size="sm" class="atoll-badge-positioned" data-testid="bottom-chats-unread-badge"></atoll-badge>
+      </div>
+      <span class="bottom-tab-label">Chats</span>
+    </button>
+
+    <!-- Tab 2: Media (Dropup Menu) -->
+    <div class="dropup flex-grow-1">
+      <button class="nav-link-mobile d-flex flex-column align-items-center justify-content-center w-100 py-1 {{ isMediaActiveClass }}" type="button" data-bs-toggle="dropdown" aria-expanded="false" ref="btnMedia" data-testid="bottomBtnMedia" title="Media">
+        <div class="bottom-tab-icon-wrapper">
+          <atoll-icon name="gallery" size="24" active="{{ isMediaActive }}"></atoll-icon>
+        </div>
+        <span class="bottom-tab-label">Media</span>
+      </button>
+      <ul class="dropdown-menu shadow dropdown-menu-dark p-0 overflow-hidden" ref="mediaDropdownMenu">
+        <li>
+          <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnMusic" data-testid="bottomBtnMusic">
+            <atoll-icon name="music" size="20"></atoll-icon>
+            <span>Music</span>
+          </button>
+        </li>
+        <li>
+          <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnPictures" data-testid="bottomBtnPictures">
+            <atoll-icon name="gallery" size="20"></atoll-icon>
+            <span>Pictures</span>
+          </button>
+        </li>
+        <li>
+          <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnVideos" data-testid="bottomBtnVideos">
+            <atoll-icon name="videocam" size="20"></atoll-icon>
+            <span>Video</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Tab 3: Files (Dropup Menu) -->
+    <div class="dropup flex-grow-1">
+      <button class="nav-link-mobile d-flex flex-column align-items-center justify-content-center w-100 py-1 {{ isFilesActiveClass }}" type="button" data-bs-toggle="dropdown" aria-expanded="false" ref="btnFiles" data-testid="bottomBtnFiles" title="Files">
+        <div class="bottom-tab-icon-wrapper">
+          <atoll-icon name="document" size="24" active="{{ isFilesActive }}"></atoll-icon>
+        </div>
+        <span class="bottom-tab-label">Files</span>
+      </button>
+      <ul class="dropdown-menu shadow dropdown-menu-dark p-0 overflow-hidden" ref="filesDropdownMenu">
+        <li>
+          <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnDocuments" data-testid="bottomBtnDocuments">
+            <atoll-icon name="document" size="20"></atoll-icon>
+            <span>Documents</span>
+          </button>
+        </li>
+        <li>
+          <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnLinks" data-testid="bottomBtnLinks">
+            <atoll-icon name="link" size="20"></atoll-icon>
+            <span>Links</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+    <!-- Tab 4: Account & Settings (Dropup Menu) -->
+    <div class="dropup flex-grow-1">
+      <button class="nav-link-mobile d-flex flex-column align-items-center justify-content-center w-100 py-1 {{ isSettingsActiveClass }}" type="button" data-bs-toggle="dropdown" aria-expanded="false" ref="btnProfile" data-testid="bottomBtnProfile" title="Account">
+        <div class="bottom-tab-avatar-wrapper d-flex align-items-center justify-content-center" ref="avatarContainer" style="width: 32px; height: 32px;">
+          <!-- Avatar element dynamically populated -->
+        </div>
+        <span class="bottom-tab-label">Account</span>
+      </button>
+      <ul class="dropdown-menu shadow dropdown-menu-dark p-0 overflow-hidden" ref="profileDropdownMenu">
+        <li>
+          <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3" ref="btnSettings" data-testid="bottomBtnSettings">
+            <atoll-icon name="settings" size="20"></atoll-icon>
+            <span>Settings</span>
+          </button>
+        </li>
+        <li><hr class="dropdown-divider m-0"></li>
+        <li>
+          <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 text-danger" ref="btnLogout" data-testid="bottomBtnLogout">
+            <atoll-icon name="logout" size="20" color="var(--atoll-danger, #FF334B)"></atoll-icon>
+            <span>Logout</span>
+          </button>
+        </li>
+      </ul>
+    </div>
+
+  </nav>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      currentAppView: 'chats',
+      isAuthenticated: false,
+      isVaultUnlocked: false,
+      totalUnread: 0,
+      activeSelectionId: null,
+      activeSelectionType: null
+    }),
+    getters: {
+      isChatsActive: (state) => state.currentAppView === 'chats',
+      isChatsActiveClass: (state) => (state.currentAppView === 'chats' ? 'active' : ''),
+      isMediaActive: (state) => ['music', 'pictures', 'videos'].includes(state.currentAppView),
+      isMediaActiveClass: (state) => (['music', 'pictures', 'videos'].includes(state.currentAppView) ? 'active' : ''),
+      isFilesActive: (state) => ['documents', 'links'].includes(state.currentAppView),
+      isFilesActiveClass: (state) => (['documents', 'links'].includes(state.currentAppView) ? 'active' : ''),
+      isSettingsActive: (state) => state.currentAppView === 'settings',
+      isSettingsActiveClass: (state) => (state.currentAppView === 'settings' ? 'active' : ''),
+      isHidden: (state) => {
+        // Automatically hide the entire bottom navigation bar when a chat conversation
+        // thread is actively open to maximize typing and message scroll area.
+        return !state.isAuthenticated || !state.isVaultUnlocked || (!!state.activeSelectionId && state.activeSelectionType === 'chats')
+      }
+    },
+    client: async ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker, bootstrap, storage }) => {
+      const { $state } = globalStore
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $worker } = cryptoWorker
+      const { Dropdown } = await bootstrap
+      const { $storage } = storage
+
+      state.currentAppView = $state.currentAppView || 'chats'
+      state.isAuthenticated = $state.isAuthenticated || false
+      state.isVaultUnlocked = $state.isVaultUnlocked || false
+      state.activeSelectionId = $state.activeSelectionId || null
+      state.activeSelectionType = $state.activeSelectionType || null
+      state.totalUnread = 0
+
+      // Avatar Updater
+      const avatarContainer = refs('avatarContainer')
+      const updateAvatar = () => {
+        if (!avatarContainer) return
+        avatarContainer.innerHTML = ''
+
+        const avatar = document.createElement('atoll-profile')
+        avatar.setAttribute('size', 'xs')
+
+        if (state.isAuthenticated && pb?.authStore?.model) {
+          const user = pb.authStore.model
+          avatar.setAttribute('alt', user.name || user.username || 'User profile')
+          if (user.id) {
+            avatar.setAttribute('user-id', user.id)
+          }
+          if (user.avatar) {
+            const avatarUrl = pb.files.getURL(user, user.avatar, { thumb: '32x32' })
+            avatar.setAttribute('src', avatarUrl)
+          }
+        } else {
+          avatar.setAttribute('alt', 'Guest')
+        }
+
+        avatarContainer.appendChild(avatar)
+      }
+
+      const calculateTotalUnread = async () => {
+        if (!state.isAuthenticated || !state.isVaultUnlocked) {
+          state.totalUnread = 0
+          return
+        }
+        try {
+          const rooms = await $storage.getAllRoomsSorted()
+          let unreadCount = 0
+          for (const room of rooms) {
+            const latestMsg = await $storage.getLatestMessage(room.id)
+            if (latestMsg) {
+              const me = room.participants?.find(p => p.id === $state.currentUser?.id)
+              let isUnread = latestMsg && (
+                me?.last_read_message_id === null ||
+                (latestMsg.sender_id !== $state.currentUser?.id && latestMsg.id !== me?.last_read_message_id)
+              )
+  
+              if ($state.currentAppView === 'chats' && $state.activeSelectionId === room.id) {
+                isUnread = false
+              }
+  
+              if (isUnread) {
+                unreadCount++
+              }
+            }
+          }
+          state.totalUnread = unreadCount
+        } catch (err) {
+          state.totalUnread = 0
+        }
+      }
+
+      const updateUnread = () => {
+        calculateTotalUnread().catch(() => {})
+      }
+
+      // Define helper functions first, then subscribe/bind events
+      $bus.on('db:new_local_data', updateUnread)
+      $bus.on('db:new_local_room', updateUnread)
+      $bus.on('db:room_deleted', updateUnread)
+      $bus.on('room:member_updated', updateUnread)
+      $bus.on('room:read_state_changed', updateUnread)
+      $bus.on('sync:complete', updateUnread)
+      $bus.on('auth:unlocked', updateUnread)
+      $bus.on('auth:logout', updateUnread)
+
+      $state.subscribe('currentAppView', (value) => {
+        state.currentAppView = value
+      })
+      $state.subscribe('activeSelectionId', (value) => {
+        state.activeSelectionId = value
+      })
+      $state.subscribe('activeSelectionType', (value) => {
+        state.activeSelectionType = value
+      })
+      $state.subscribe('isAuthenticated', (value) => {
+        state.isAuthenticated = value
+        updateAvatar()
+        updateUnread()
+      })
+      $state.subscribe('isVaultUnlocked', (value) => {
+        state.isVaultUnlocked = value
+        updateAvatar()
+        updateUnread()
+      })
+
+      if (state.isAuthenticated && state.isVaultUnlocked) {
+        updateUnread()
+      }
+
+      // Dropdown instances
+      const btnMedia = refs('btnMedia')
+      const btnFiles = refs('btnFiles')
+      const btnProfile = refs('btnProfile')
+
+      let mediaDropdown = btnMedia ? new Dropdown(btnMedia) : null
+      let filesDropdown = btnFiles ? new Dropdown(btnFiles) : null
+      let profileDropdown = btnProfile ? new Dropdown(btnProfile) : null
+
+      const navigationViews = {
+        btnChats: 'chats',
+        btnMusic: 'music',
+        btnPictures: 'pictures',
+        btnVideos: 'videos',
+        btnDocuments: 'documents',
+        btnLinks: 'links',
+        btnSettings: 'settings'
+      }
+
+      function triggerViewChange(viewName) {
+        if ($state.currentAppView === viewName) {
+          return
+        }
+
+        $state.isSidebarNavigating = true
+
+        if (!$state.lastSelections) {
+          $state.lastSelections = {}
+        }
+
+        if ($state.activeSelectionId) {
+          $state.lastSelections[$state.currentAppView] = {
+            id: $state.activeSelectionId,
+            type: $state.activeSelectionType
+          }
+        } else {
+          delete $state.lastSelections[$state.currentAppView]
+        }
+
+        $state.currentAppView = viewName
+
+        const last = $state.lastSelections[viewName]
+        if (last) {
+          $state.activeSelectionId = last.id
+          $state.activeSelectionType = last.type
+        } else {
+          $state.activeSelectionId = null
+          $state.activeSelectionType = null
+        }
+
+        setTimeout(() => {
+          $state.isSidebarNavigating = false
+        }, 0)
+      }
+
+      // Tap Chats tab active action
+      const btnChats = refs('btnChats')
+      if (btnChats) {
+        btnChats.addEventListener('click', () => {
+          if ($state.currentAppView === 'chats' && !$state.activeSelectionId) {
+            $bus.emit('ui:scroll_chats_top')
+          } else {
+            triggerViewChange('chats')
+          }
+        })
+      }
+
+      // Media and Files sub-items view change handlers
+      const subItemBtns = {
+        btnMusic: 'music',
+        btnPictures: 'pictures',
+        btnVideos: 'videos',
+        btnDocuments: 'documents',
+        btnLinks: 'links',
+        btnSettings: 'settings'
+      }
+
+      Object.entries(subItemBtns).forEach(([refName, viewName]) => {
+        const btn = refs(refName)
+        if (btn) {
+          btn.addEventListener('click', () => {
+            if (mediaDropdown && ['music', 'pictures', 'videos'].includes(viewName)) {
+              mediaDropdown.hide()
+            }
+            if (filesDropdown && ['documents', 'links'].includes(viewName)) {
+              filesDropdown.hide()
+            }
+            if (profileDropdown && viewName === 'settings') {
+              profileDropdown.hide()
+            }
+            triggerViewChange(viewName)
+          })
+        }
+      })
+
+      // Logout handler
+      const btnLogout = refs('btnLogout')
+      if (btnLogout) {
+        btnLogout.addEventListener('click', async () => {
+          if (profileDropdown) {
+            profileDropdown.hide()
+          }
+          pb.authStore.clear()
+          $state.authView = 'login'
+          $bus.emit('auth:logout')
+          try {
+            await $worker.execute('worker:wipe_keys')
+          } catch (err) {
+            // fail-silent
+          }
+        })
+      }
+
+      updateAvatar()
+
+      $bus.on('auth:logout', () => {
+        updateAvatar()
+      })
+    }
+  })
+</script>

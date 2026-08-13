@@ -487,6 +487,12 @@
         }
       })
 
+      $bus.on('ui:scroll_chats_top', () => {
+        if (rootEl) {
+          rootEl.scrollTo({ top: 0, behavior: 'smooth' })
+        }
+      })
+
       debouncedRender()
       $state.subscribe('listSearchQuery', () => debouncedRender())
       $bus.on('db:new_local_data', async (payload) => {
