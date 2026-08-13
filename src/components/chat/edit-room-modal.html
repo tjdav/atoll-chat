@@ -56,7 +56,17 @@
       const btnSelectAvatar = refs('btnSelectAvatar')
       const btnClearAvatar = refs('btnClearAvatar')
 
-      $bus.on('ui:open_edit_room_modal', async (room) => {
+      /**
+       * Opens the edit room modal and loads the current room metadata and room avatar.
+       *
+       * @param {Object} room - The room record to edit.
+       * @param {string} room.id - The unique ID of the room.
+       * @param {string} room.name - The current name of the room.
+       * @param {string} [room.avatar] - The serialized JSON string representing the encrypted room avatar.
+       * @returns {Promise<void>} Resolves when the modal is fully loaded and shown.
+       * @throws {Error} Propagates any unexpected system or database errors during avatar retrieval.
+       */
+      const openEditRoomModal = async (room) => {
         if (!room) {
           return
         }
@@ -95,14 +105,26 @@
               btnClearAvatar.classList.remove('d-none')
               signal.addEventListener('abort', () => URL.revokeObjectURL(url))
             }
-          } catch (e) {
-            console.error('Failed to load existing avatar in edit modal:', e)
+          } catch (err) {
+            const isExpected = err instanceof Error && (
+              err.name === 'AbortError' ||
+              err.message.includes('fetch') ||
+              err.message.includes('media') ||
+              err.message.includes('decrypted') ||
+              err.message.includes('parse')
+            )
+            if (!isExpected) {
+              throw err
+            }
           }
         }
 
         modal.show()
         setTimeout(() => roomNameInput.focus(), 100)
-      })
+      }
+
+      $bus.on('ui:open_edit_room_modal', openEditRoomModal)
+      $bus.on('ui:open_edit_room', openEditRoomModal)
 
       roomNameInput.oninput = (e) => {
         state.roomName = e.target.value
@@ -200,8 +222,8 @@
           $bus.emit('db:new_local_room', { room_id: room.id })
           modal.hide()
         } catch (err) {
-          console.error('[edit-room-modal] Save failed:', err)
           alert('Save failed: ' + err.message)
+          throw err
         } finally {
           state.isSaving = false
         }

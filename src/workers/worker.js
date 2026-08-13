@@ -1530,6 +1530,19 @@ async function deleteLocalRoom (rpcId, payload) {
   })
 }
 
+/**
+ * Updates the user's profile metadata in the local database cache and public key cache,
+ * then notifies the main thread about all rooms containing this participant to trigger reactive UI updates.
+ *
+ * @param {string} rpcId - The unique remote procedure call identifier.
+ * @param {Object} record - The updated user record.
+ * @param {string} record.id - The unique user ID of the user.
+ * @param {string} record.name - The updated display name of the user.
+ * @param {string} record.username - The updated username.
+ * @param {string} [record.avatar] - The user's updated avatar filename/resource.
+ * @returns {Promise<void>} Resolves when the cache has been updated and main thread notifications have been posted.
+ * @throws {Error} Throws if the database or cache update fails.
+ */
 async function updateUserData (rpcId, record) {
   const userId = record.id
   const { name, username, avatar } = record
@@ -1545,7 +1558,7 @@ async function updateUserData (rpcId, record) {
     })
   }
 
-  await workerBridge.request('updateRoomsWithParticipant', [
+  const updatedRoomIds = await workerBridge.request('updateRoomsWithParticipant', [
     userId,
     {
       name,
@@ -1553,6 +1566,15 @@ async function updateUserData (rpcId, record) {
       avatar
     }
   ])
+
+  if (Array.isArray(updatedRoomIds)) {
+    for (const roomId of updatedRoomIds) {
+      self.postMessage({
+        type: 'room:member_updated',
+        payload: { room_id: roomId }
+      })
+    }
+  }
 
   self.postMessage({
     id: rpcId,

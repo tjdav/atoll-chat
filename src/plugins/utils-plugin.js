@@ -317,7 +317,22 @@ export default definePlugin({
          */
         const media = {
           /**
-           * Fetches an encrypted asset from PocketBase, decrypts it, and returns an Object URL.
+           * Fetches an encrypted asset from PocketBase, decrypts it using the crypto worker, and returns an Object URL.
+           *
+           * @param {Object} asset - The encrypted asset metadata containing keys, nonces, and media identifiers.
+           * @param {string} [asset.media_id] - The media record identifier.
+           * @param {string} [asset.id] - The asset identifier.
+           * @param {string} [asset.message_id] - The message identifier.
+           * @param {string} [asset.dataUrl] - Pre-resolved data URL, if any.
+           * @param {string} [asset.file_key] - Base64 encoded decryption key.
+           * @param {string} [asset.key] - Alternative Base64 encoded decryption key fallback.
+           * @param {string} [asset.file_nonce] - Base64 encoded decryption nonce.
+           * @param {string} [asset.nonce] - Alternative Base64 encoded decryption nonce fallback.
+           * @param {string} [asset.mime_type] - The mime type of the decrypted blob.
+           * @param {AbortSignal} [signal] - Optional AbortSignal to cancel network requests or decryption task.
+           * @returns {Promise<string>} A promise resolving to the decrypted object URL.
+           * @throws {DOMException} Throws an AbortError if the signal is aborted during execution.
+           * @throws {Error} Throws if the media file is not found, fetch fails, or decryption fails.
            */
           decrypt: async (asset, signal) => {
             const { pb } = pocketbase
@@ -357,8 +372,8 @@ export default definePlugin({
             }
             const decryptedBuffer = await $worker.execute('worker:decrypt_file', {
               encryptedBuffer,
-              nonce: asset.file_nonce,
-              key: asset.file_key
+              nonce: asset.file_nonce || asset.nonce,
+              key: asset.file_key || asset.key
             })
             if (signal?.aborted) {
               throw new DOMException('Aborted', 'AbortError')
