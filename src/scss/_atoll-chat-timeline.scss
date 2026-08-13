@@ -8,6 +8,8 @@
 }
 
 .atoll-chat-timeline-container {
+  // Apply top padding standard so scrolling content sits cleanly below floating header overlay initially
+  padding-top: var(--atoll-chat-timeline-padding-top, calc(#{$app-header-height} + var(--atoll-safe-area-top, 0px))) !important;
   // Apply bottom padding standard so scrolling content sits cleanly above floating input overlay
   padding-bottom: var(--atoll-chat-timeline-padding-bottom, 80px) !important;
 }
