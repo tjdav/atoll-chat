@@ -22,6 +22,14 @@ atoll-chat-voice-recorder {
     }
   }
 
+  textarea {
+    transition: border-radius 0.2s ease !important;
+
+    &.is-multiline {
+      border-radius: 16px !important;
+    }
+  }
+
   .atoll-chat-input-btn-attach button {
     background-color: var(--atoll-chat-btn-attach-bg, transparent) !important;
     color: var(--atoll-chat-btn-attach-color, inherit) !important;

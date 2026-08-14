@@ -107,7 +107,11 @@
 
       const autoExpand = () => {
         messageInput.style.height = 'auto'
-        messageInput.style.height = messageInput.scrollHeight + 'px'
+        const scrollHeight = messageInput.scrollHeight
+        messageInput.style.height = scrollHeight + 'px'
+        
+        // Toggle multiline class based on height threshold
+        messageInput.classList.toggle('is-multiline', scrollHeight > 40)
       }
 
       let isLocalTyping = false
