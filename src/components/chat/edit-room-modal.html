@@ -3,6 +3,10 @@
     ref="editModal"
     title="Edit Room Details"
     size="md"
+    primary-text="Save Changes"
+    secondary-text="Cancel"
+    primary-disabled="{{ disableSave }}"
+    primary-loading="{{ isSaving }}"
     data-testid="editRoomModal"
   >
     <div class="d-flex flex-column gap-3">
@@ -36,16 +40,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- Action Button Bar -->
-    <div slot="actions" class="d-flex gap-2 justify-content-end mt-4 w-100">
-      <atoll-button ref="btnCancel" variant="secondary" size="md" data-testid="btnCancelEdit">
-        Cancel
-      </atoll-button>
-      <atoll-button ref="btnSave" variant="primary" size="md" data-testid="btnSaveRoom" disabled="{{ disableSave }}" loading="{{ isSaving }}">
-        Save Changes
-      </atoll-button>
     </div>
   </atoll-popup>
 </template>
@@ -85,8 +79,6 @@
       const avatarPreview = refs('avatarPreview')
       const btnSelectAvatar = refs('btnSelectAvatar')
       const btnClearAvatar = refs('btnClearAvatar')
-      const btnCancel = refs('btnCancel')
-      const btnSave = refs('btnSave')
 
       let currentBlobUrl = null
 
@@ -267,10 +259,6 @@
         btnClearAvatar.classList.add('d-none')
       }, { signal })
 
-      btnCancel.addEventListener('click', () => {
-        closeEditRoomModal()
-      }, { signal })
-
       /**
        * Persists updated room name and avatar changes to PocketBase and local storage.
        *
@@ -378,7 +366,6 @@
         }
       }
 
-      btnSave.addEventListener('click', saveChanges, { signal })
       modal.addEventListener('atoll-popup-primary', saveChanges, { signal })
       modal.addEventListener('atoll-popup-close', resetState, { signal })
     }

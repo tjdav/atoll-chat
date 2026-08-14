@@ -9,7 +9,7 @@ describe('Atoll Waveform Player Component', () => {
     document.body.innerHTML = ''
     if (!customElements.get('atoll-button')) {
       customElements.define('atoll-button', class extends HTMLElement {
-        constructor() {
+        constructor () {
           super()
           this.innerHTML = '<button><slot></slot></button>'
         }

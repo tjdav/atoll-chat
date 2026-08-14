@@ -8,7 +8,10 @@ test('Atoll Bottom Navigation Component Tests', async (t) => {
     isAuthenticated: true,
     isVaultUnlocked: true,
     currentAppView: 'chats',
-    currentUser: { id: 'test-user', username: 'tester' },
+    currentUser: {
+      id: 'test-user',
+      username: 'tester'
+    },
     activeSelectionId: null,
     subscribers: {},
     subscribe (key, cb) {
@@ -35,9 +38,12 @@ test('Atoll Bottom Navigation Component Tests', async (t) => {
     },
     bootstrap: Promise.resolve({
       Dropdown: class {
-        constructor() {}
-        show() {}
-        hide() {}
+        constructor () {
+        }
+        show () {
+        }
+        hide () {
+        }
       }
     }),
     storage: {
@@ -47,7 +53,7 @@ test('Atoll Bottom Navigation Component Tests', async (t) => {
       }
     }
   }
-  
+
   await t.test('should mount bottom navigation with all expected tabs', async () => {
     const tagName = await loadComponent('atoll-bottom-navigation', mocks)
     const bottomNav = document.createElement(tagName)
@@ -55,7 +61,7 @@ test('Atoll Bottom Navigation Component Tests', async (t) => {
 
     // Wait for initial render cycle
     await new Promise(resolve => setTimeout(resolve, 50))
-    
+
     assert.ok(bottomNav, 'Component should instantiate successfully')
 
     const chatsBtn = bottomNav.querySelector('[data-testid="bottomBtnChats"]')
@@ -89,7 +95,7 @@ test('Atoll Bottom Navigation Component Tests', async (t) => {
     await new Promise(resolve => setTimeout(resolve, 50))
 
     assert.ok(!chatsBtn.classList.contains('active'), 'Chats tab should lose active class when currentAppView is pictures')
-    
+
     const mediaBtn = bottomNav.querySelector('[data-testid="bottomBtnMedia"]')
     assert.ok(mediaBtn.classList.contains('active'), 'Media tab should acquire active class when currentAppView is pictures')
 

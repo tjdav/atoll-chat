@@ -50,10 +50,15 @@ describe('Atoll Jump to Chat Component', () => {
   const mockEventBus = {
     $bus: {
       emit: (event, payload) => {
-        emittedEvents.push({ event, payload })
+        emittedEvents.push({
+          event,
+          payload
+        })
       },
-      on: () => {},
-      off: () => {}
+      on: () => {
+      },
+      off: () => {
+      }
     }
   }
 

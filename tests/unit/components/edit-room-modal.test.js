@@ -137,33 +137,9 @@ describe('Atoll Edit Room Modal Component Tests', () => {
       delete listeners[key]
     }
 
-    // Register child custom elements if not defined
-    if (!customElements.get('atoll-popup')) {
-      customElements.define('atoll-popup', class extends HTMLElement {
-        show () {
-          this.setAttribute('open', 'true')
-        }
-        hide () {
-          this.removeAttribute('open')
-        }
-      })
-    }
-    if (!customElements.get('atoll-button')) {
-      customElements.define('atoll-button', class extends HTMLElement {
-        constructor () {
-          super()
-        }
-      })
-    }
-    if (!customElements.get('atoll-icon')) {
-      customElements.define('atoll-icon', class extends HTMLElement {
-        static get observedAttributes () {
-          return ['name']
-        }
-        attributeChangedCallback () {
-        }
-      })
-    }
+    await loadComponent('atoll-icon')
+    await loadComponent('atoll-button')
+    await loadComponent('atoll-popup')
 
     const mocks = {
       eventBus: { $bus: busMock },
@@ -237,24 +213,24 @@ describe('Atoll Edit Room Modal Component Tests', () => {
     busMock.emit('ui:open_edit_room', sampleRoom)
     await new Promise(resolve => setTimeout(resolve, 50))
 
+    const popup = element.querySelector('atoll-popup')
     const input = element.querySelector('[data-testid="editRoomNameInput"]')
-    const btnSave = element.querySelector('[data-testid="btnSaveRoom"]')
 
-    assert.ok(btnSave.hasAttribute('disabled'), 'Save button should be disabled when room name is unchanged')
+    assert.strictEqual(popup.getAttribute('primary-disabled'), 'true', 'atoll-popup should have primary-disabled="true" when room name is unchanged')
 
     // Change room name
     input.value = 'Modified Name'
     input.dispatchEvent(new Event('input'))
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    assert.strictEqual(btnSave.hasAttribute('disabled'), false, 'Save button should be enabled when room name is modified')
+    assert.strictEqual(popup.getAttribute('primary-disabled'), 'false', 'atoll-popup primary-disabled attribute should be "false" when room name is modified')
 
     // Reset room name back to initial
     input.value = 'Original Name'
     input.dispatchEvent(new Event('input'))
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    assert.ok(btnSave.hasAttribute('disabled'), 'Save button should be disabled when reset back to initial name')
+    assert.strictEqual(popup.getAttribute('primary-disabled'), 'true', 'atoll-popup should have primary-disabled="true" when reset back to initial name')
 
     element.remove()
   })
@@ -277,14 +253,14 @@ describe('Atoll Edit Room Modal Component Tests', () => {
     busMock.emit('ui:open_edit_room', sampleRoom)
     await new Promise(resolve => setTimeout(resolve, 50))
 
+    const popup = element.querySelector('atoll-popup')
     const btnClearAvatar = element.querySelector('[data-testid="btnClearAvatar"]')
-    const btnSave = element.querySelector('[data-testid="btnSaveRoom"]')
 
     // Click clear avatar button
     btnClearAvatar.click()
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    assert.strictEqual(btnSave.hasAttribute('disabled'), false, 'Save button should be enabled when avatar is cleared')
+    assert.strictEqual(popup.getAttribute('primary-disabled'), 'false', 'Save button should be enabled when avatar is cleared')
 
     element.remove()
   })
@@ -321,8 +297,8 @@ describe('Atoll Edit Room Modal Component Tests', () => {
 
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    const btnSave = element.querySelector('[data-testid="btnSaveRoom"]')
-    btnSave.dispatchEvent(new Event('click', { bubbles: true }))
+    const popup = element.querySelector('atoll-popup')
+    popup.dispatchEvent(new CustomEvent('atoll-popup-primary', { bubbles: true }))
 
     await new Promise(resolve => setTimeout(resolve, 200))
 
@@ -405,10 +381,10 @@ describe('Atoll Edit Room Modal Component Tests', () => {
     input.dispatchEvent(new Event('input'))
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    const btnSave = element.querySelector('[data-testid="btnSaveRoom"]')
+    const popup = element.querySelector('atoll-popup')
 
     try {
-      btnSave.dispatchEvent(new Event('click', { bubbles: true }))
+      popup.dispatchEvent(new CustomEvent('atoll-popup-primary', { bubbles: true }))
       await new Promise(resolve => setTimeout(resolve, 150))
     } catch {
       // Expected caught error

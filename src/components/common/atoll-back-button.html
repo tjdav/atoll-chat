@@ -15,7 +15,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, eventBus, signal }) => {
+    client: ({ root, refs, eventBus, signal }) => {
       const { $bus } = eventBus
       const btn = refs('btn')
       const testId = root.getAttribute('data-testid')

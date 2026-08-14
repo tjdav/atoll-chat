@@ -137,7 +137,6 @@
       // Avatar Updater
       const avatarContainer = refs('avatarContainer')
       const updateAvatar = () => {
-        if (!avatarContainer) return
         avatarContainer.innerHTML = ''
 
         const avatar = document.createElement('atoll-profile')
@@ -193,7 +192,8 @@
       }
 
       const updateUnread = () => {
-        calculateTotalUnread().catch(() => {})
+        calculateTotalUnread().catch(() => {
+        })
       }
 
       // Define helper functions first, then subscribe/bind events
@@ -249,7 +249,7 @@
         btnSettings: 'settings'
       }
 
-      function triggerViewChange(viewName) {
+      function triggerViewChange (viewName) {
         if ($state.currentAppView === viewName) {
           return
         }

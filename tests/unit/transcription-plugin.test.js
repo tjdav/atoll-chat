@@ -19,7 +19,10 @@ describe('Transcription Plugin Tests', () => {
       }
 
       postMessage (msg, transferables) {
-        this.messages.push({ msg, transferables })
+        this.messages.push({
+          msg,
+          transferables
+        })
         // Simulate a successful transcription response on message send
         if (msg.type === 'transcribe') {
           setTimeout(() => {
@@ -36,7 +39,8 @@ describe('Transcription Plugin Tests', () => {
         }
       }
 
-      addEventListener (type, cb) {}
+      addEventListener (type, cb) {
+      }
     }
 
     // Mock AudioContext and OfflineAudioContext
@@ -50,7 +54,8 @@ describe('Transcription Plugin Tests', () => {
         return mockAudioBuffer
       }
 
-      async close () {}
+      async close () {
+      }
     }
 
     class MockOfflineAudioContext {
@@ -60,8 +65,10 @@ describe('Transcription Plugin Tests', () => {
 
       createBufferSource () {
         return {
-          connect () {},
-          start () {}
+          connect () {
+          },
+          start () {
+          }
         }
       }
 
@@ -77,7 +84,8 @@ describe('Transcription Plugin Tests', () => {
 
     const contextFn = transcriptionPlugin.client.context({
       $bus: {
-        emit: () => {}
+        emit: () => {
+        }
       }
     })
 

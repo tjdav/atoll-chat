@@ -10,7 +10,10 @@ describe('Atoll Theme Selector Modal Component', () => {
     id: 'room_123',
     name: 'Test Room',
     theme: 'classic',
-    key_history: [{ epoch_id: 1, key: 'mock_key' }],
+    key_history: [{
+      epoch_id: 1,
+      key: 'mock_key'
+    }],
     custom_theme: null
   }
 
@@ -30,7 +33,10 @@ describe('Atoll Theme Selector Modal Component', () => {
         this._listeners[event].push(callback)
       },
       emit (event, payload) {
-        emittedEvents.push({ event, payload })
+        emittedEvents.push({
+          event,
+          payload
+        })
         if (this._listeners && this._listeners[event]) {
           this._listeners[event].forEach(cb => cb(payload))
         }
@@ -55,7 +61,10 @@ describe('Atoll Theme Selector Modal Component', () => {
         return {
           async update (id, data) {
             pocketbaseUpdated = true
-            return { id, ...data }
+            return {
+              id,
+              ...data
+            }
           }
         }
       }
@@ -93,7 +102,10 @@ describe('Atoll Theme Selector Modal Component', () => {
     mockRoom.id = 'room_123'
     mockRoom.name = 'Test Room'
     mockRoom.theme = 'classic'
-    mockRoom.key_history = [{ epoch_id: 1, key: 'mock_key' }]
+    mockRoom.key_history = [{
+      epoch_id: 1,
+      key: 'mock_key'
+    }]
     mockRoom.custom_theme = null
 
     // Load nested dependencies
