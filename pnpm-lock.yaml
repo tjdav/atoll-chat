@@ -118,11 +118,11 @@ importers:
         specifier: ^26.1.0
         version: 26.1.2
       coralite:
-        specifier: ^0.45.0
-        version: 0.45.0(@noble/hashes@2.3.0)
+        specifier: ^0.45.1
+        version: 0.45.1(@noble/hashes@2.3.0)
       coralite-scripts:
-        specifier: ^0.45.0
-        version: 0.45.0(@noble/hashes@2.3.0)(supports-color@5.5.0)
+        specifier: ^0.45.1
+        version: 0.45.1(@noble/hashes@2.3.0)(supports-color@5.5.0)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1017,8 +1017,8 @@ packages:
     resolution: {integrity: sha512-quJQXlTSUGL2LH9SUXo8VwsY4soanhgo6LNSm84E1LBcE8s3O0wpdiRzyR9z/ZZJMlMWv37qOOb9pdJlMUEKFQ==}
     engines: {node: '>=8'}
 
-  ansi-regex@6.2.2:
-    resolution: {integrity: sha512-Bq3SmSpyFHaWjPk8If9yc6svM8c56dB5BAtW4Qbw5jHTwwXXcTLoRMkpDJp6VL0XzlWaCHTXrkFURMYmD0sLqg==}
+  ansi-regex@6.3.0:
+    resolution: {integrity: sha512-WpDfL7NO6j7tH88IDBNVdUJxDh9nmCteAVW9dsep846XdwF4naCBK+/tGLX3KJgcpgMRXCFlTM2hKGoK9FsdrQ==}
     engines: {node: '>=12'}
 
   ansi-styles@3.2.1:
@@ -1306,8 +1306,8 @@ packages:
     resolution: {integrity: sha512-nTjqfcBFEipKdXCv4YDQWCfmcLZKm81ldF0pAopTvyrFGVbcR6P/VAAd5G7N+0tTr8QqiU0tFadD6FK4NtJwOA==}
     engines: {node: '>= 0.6'}
 
-  content-type@2.0.0:
-    resolution: {integrity: sha512-j/O/d7GcZCyNl7/hwZAb606rzqkyvaDctLmckbxLzHvFBzTJHuGEdodATcP3yIRoDrLHkIATJuvzbFlp/ki2cQ==}
+  content-type@2.1.0:
+    resolution: {integrity: sha512-mj7UPXE0jaqaOsukNZRUEfEi2AcL7C/vwmwcHV0O97eO1E1pxBZuyjlZrx5seTaNBg1U6+o35wpa35Qfcc+7ag==}
     engines: {node: '>=18'}
 
   conventional-changelog-angular@5.0.13:
@@ -1388,13 +1388,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.45.0:
-    resolution: {integrity: sha512-NTuTTfVEGEAwfybtuP4Ly0Z/wx84VuLjL0oUmE9cg41uY3P1c2DtxUPhwEVyMkOfWqH8uJlSvSU5sHhZ3nwdQQ==}
+  coralite-scripts@0.45.1:
+    resolution: {integrity: sha512-34T0gFHNivyFgGHOag5f7BvmdgCe+NVbKTFNjhOTYcx1HH+FZFG4AXZrBgRukk+F63SKUpHMIaXRvRKg7C+0VQ==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  coralite@0.45.0:
-    resolution: {integrity: sha512-kl02YSuB7e+BuATmSmNY9HcA7hOnJZt9qbhtorS9V6zfRr9ozfW7sqRDqVcGr7kJCAlrmv+Cv30Eoi5mUGtFIw==}
+  coralite@0.45.1:
+    resolution: {integrity: sha512-cf5TuC6J8FTpErnfcJz7mTWtv6yrOnllZuQvZe91BU3PRGSLVMZIenRItFCefdOrKhLS8wVenD84fD3JFELq9Q==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -4181,7 +4181,7 @@ snapshots:
 
   ansi-regex@5.0.1: {}
 
-  ansi-regex@6.2.2: {}
+  ansi-regex@6.3.0: {}
 
   ansi-styles@3.2.1:
     dependencies:
@@ -4259,7 +4259,7 @@ snapshots:
   body-parser@2.3.0(supports-color@5.5.0):
     dependencies:
       bytes: 3.1.2
-      content-type: 2.0.0
+      content-type: 2.1.0
       debug: 4.4.3(supports-color@5.5.0)
       http-errors: 2.0.1
       iconv-lite: 0.7.3
@@ -4435,7 +4435,7 @@ snapshots:
 
   content-type@1.0.5: {}
 
-  content-type@2.0.0: {}
+  content-type@2.1.0: {}
 
   conventional-changelog-angular@5.0.13:
     dependencies:
@@ -4540,11 +4540,11 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.45.0(@noble/hashes@2.3.0)(supports-color@5.5.0):
+  coralite-scripts@0.45.1(@noble/hashes@2.3.0)(supports-color@5.5.0):
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.45.0(@noble/hashes@2.3.0)
+      coralite: 0.45.1(@noble/hashes@2.3.0)
       cross-env: 10.1.0
       express: 5.2.1(supports-color@5.5.0)
       kleur: 4.1.5
@@ -4558,7 +4558,7 @@ snapshots:
       - canvas
       - supports-color
 
-  coralite@0.45.0(@noble/hashes@2.3.0):
+  coralite@0.45.1(@noble/hashes@2.3.0):
     dependencies:
       acorn: 8.18.0
       acorn-walk: 8.3.5
@@ -6270,7 +6270,7 @@ snapshots:
 
   strip-ansi@7.2.0:
     dependencies:
-      ansi-regex: 6.2.2
+      ansi-regex: 6.3.0
 
   strip-bom@3.0.0: {}
 
@@ -6459,7 +6459,7 @@ snapshots:
 
   type-is@2.1.0:
     dependencies:
-      content-type: 2.0.0
+      content-type: 2.1.0
       media-typer: 1.1.1
       mime-types: 3.0.2
 

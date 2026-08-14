@@ -47,8 +47,8 @@
     "@playwright/test": "^1.61.0",
     "@stylistic/eslint-plugin": "^5.9.0",
     "@types/node": "^26.1.0",
-    "coralite": "^0.45.0",
-    "coralite-scripts": "^0.45.0",
+    "coralite": "^0.45.1",
+    "coralite-scripts": "^0.45.1",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^10.0.2",
@@ -60,7 +60,6 @@
     "typescript": "^6.0.3"
   },
   "dependencies": {
-    "@huggingface/transformers": "^3.0.0",
     "@capacitor/app": "^8.1.0",
     "@capacitor/core": "^8.4.1",
     "@capacitor/filesystem": "^8.1.2",
@@ -71,6 +70,7 @@
     "@ffmpeg/core": "^0.12.10",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
+    "@huggingface/transformers": "^3.0.0",
     "@solar-icons/js": "2.0.0-beta.2",
     "altcha": "3.2.1",
     "bootstrap": "^5.3.8",
