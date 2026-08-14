@@ -1,0 +1,85 @@
+<template id="transcription-settings">
+  <div class="d-flex flex-column gap-3">
+    <div>
+      <h6 class="mb-1">Local Speech-to-Text Model</h6>
+      <p class="text-muted small mb-3">Configure the speech-to-text transcription engine. Moonshine runs 100% locally and securely in your browser sandbox.</p>
+    </div>
+
+    <div class="form-check p-3 rounded border {{ isTinySelectedClass }}" ref="optTiny" data-testid="opt-moonshine-tiny" style="cursor: pointer;">
+      <input class="form-check-input ms-0 me-3" type="radio" name="transcriptionModel" id="modelTiny" value="onnx-community/moonshine-tiny-ONNX" ref="inputTiny" style="cursor: pointer;">
+      <label class="form-check-label" for="modelTiny" style="cursor: pointer;">
+        <span class="d-block fw-bold mb-0">Moonshine Tiny</span>
+        <span class="d-block text-muted small">Ultra-fast transcription with extremely low memory usage. Perfect for most short voice messages.</span>
+      </label>
+    </div>
+
+    <div class="form-check p-3 rounded border {{ isBaseSelectedClass }}" ref="optBase" data-testid="opt-moonshine-base" style="cursor: pointer;">
+      <input class="form-check-input ms-0 me-3" type="radio" name="transcriptionModel" id="modelBase" value="onnx-community/moonshine-base-ONNX" ref="inputBase" style="cursor: pointer;">
+      <label class="form-check-label" for="modelBase" style="cursor: pointer;">
+        <span class="d-block fw-bold mb-0">Moonshine Base</span>
+        <span class="d-block text-muted small">Higher accuracy with robust recognition. Requires slightly more memory and compute.</span>
+      </label>
+    </div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: () => ({
+      selectedModel: 'onnx-community/moonshine-tiny-ONNX'
+    }),
+    getters: {
+      isTinySelectedClass: (state) => (state.selectedModel === 'onnx-community/moonshine-tiny-ONNX' ? 'border-primary bg-light-subtle' : 'border-secondary-subtle'),
+      isBaseSelectedClass: (state) => (state.selectedModel === 'onnx-community/moonshine-base-ONNX' ? 'border-primary bg-light-subtle' : 'border-secondary-subtle')
+    },
+    client: async ({ refs, state, globalStore, storage }) => {
+      const { $state } = globalStore
+      const { $storage } = storage
+
+      const optTiny = refs('optTiny')
+      const optBase = refs('optBase')
+      const inputTiny = refs('inputTiny')
+      const inputBase = refs('inputBase')
+
+      state.selectedModel = $state.transcriptionModel || 'onnx-community/moonshine-tiny-ONNX'
+
+      // Set actual DOM properties checked state on initial load
+      inputTiny.checked = state.selectedModel === 'onnx-community/moonshine-tiny-ONNX'
+      inputBase.checked = state.selectedModel === 'onnx-community/moonshine-base-ONNX'
+
+      const updateSelection = async (model) => {
+        state.selectedModel = model
+        $state.transcriptionModel = model
+        await $storage.saveConfig('transcription_model', model)
+      }
+
+      optTiny.addEventListener('click', (e) => {
+        if (e.target === inputTiny) {
+          updateSelection('onnx-community/moonshine-tiny-ONNX')
+          return
+        }
+        inputTiny.checked = true
+        updateSelection('onnx-community/moonshine-tiny-ONNX')
+      })
+
+      optBase.addEventListener('click', (e) => {
+        if (e.target === inputBase) {
+          updateSelection('onnx-community/moonshine-base-ONNX')
+          return
+        }
+        inputBase.checked = true
+        updateSelection('onnx-community/moonshine-base-ONNX')
+      })
+
+      $state.subscribe('transcriptionModel', (val) => {
+        if (val) {
+          state.selectedModel = val
+          inputTiny.checked = val === 'onnx-community/moonshine-tiny-ONNX'
+          inputBase.checked = val === 'onnx-community/moonshine-base-ONNX'
+        }
+      })
+    }
+  })
+</script>

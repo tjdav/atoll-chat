@@ -877,6 +877,11 @@
         const dbName = 'atoll_data_' + instanceId
         await $storage.initialize(dbName)
 
+        const savedModel = await $storage.getConfig('transcription_model')
+        if (savedModel) {
+          $state.transcriptionModel = savedModel
+        }
+
         // Asynchronously run Garbage Collection in background
         runGarbageCollection(instanceId).catch((err) => {
           // Background task fail-safe: GC failure should not disrupt boot handshake

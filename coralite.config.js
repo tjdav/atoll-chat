@@ -99,7 +99,7 @@ export default defineConfig({
         callSoundsEnabled: true,
         isCatchingUp: false,
         isOnline: true,
-        transcriptionModel: 'onnx-community/whisper-tiny'
+        transcriptionModel: 'onnx-community/moonshine-tiny-ONNX'
       }
     }),
     storagePlugin,

@@ -1,6 +1,6 @@
 /**
  * @file Background Web Worker for client-side local voice message transcription
- * using OpenAI's Whisper model via @huggingface/transformers.
+ * using Useful Sensors' Moonshine model via @huggingface/transformers.
  */
 
 import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3'
@@ -44,7 +44,7 @@ function startIdleTimer () {
 /**
  * Retrieves or instantiates the pipeline for automatic-speech-recognition.
  *
- * @param {string} modelName - The Whisper model identifier.
+ * @param {string} modelName - The model identifier.
  * @returns {Promise<any>} The instantiated pipeline.
  */
 async function getPipeline (modelName) {
@@ -76,13 +76,15 @@ self.addEventListener('message', async (event) => {
         throw new Error('No PCM audio data provided')
       }
 
-      const activeModel = modelName || 'onnx-community/whisper-tiny'
+      const activeModel = modelName || 'onnx-community/moonshine-tiny-ONNX'
       const transcriber = await getPipeline(activeModel)
-
-      const result = await transcriber(pcmData, {
+      const isMoonshine = activeModel.includes('moonshine')
+      const options = isMoonshine ? {} : {
         chunk_length_s: 30,
         stride_length_s: 5
-      })
+      }
+
+      const result = await transcriber(pcmData, options)
 
       let text = ''
       if (result && typeof result === 'object') {

@@ -91,7 +91,7 @@ describe('Transcription Plugin Tests', () => {
 
     const { $transcription } = contextFn({
       storage: { $storage: mockStorage },
-      globalStore: { $state: { transcriptionModel: 'onnx-community/whisper-tiny' } }
+      globalStore: { $state: { transcriptionModel: 'onnx-community/moonshine-tiny-ONNX' } }
     })
 
     assert.ok($transcription)

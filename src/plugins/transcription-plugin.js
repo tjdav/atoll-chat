@@ -4,7 +4,7 @@ import { definePlugin } from 'coralite'
 
 /**
  * Transcription Plugin for Atoll Chat
- * Manages background Speech-to-Text operations using OpenAI's Whisper model
+ * Manages background Speech-to-Text operations using Useful Sensors' Moonshine model
  * via a dedicated Web Worker running @huggingface/transformers.
  */
 export default definePlugin({
@@ -145,7 +145,7 @@ export default definePlugin({
               reject
             })
 
-            const model = modelName || (pluginContext.$state?.transcriptionModel || 'onnx-community/whisper-tiny')
+            const model = modelName || (pluginContext.$state?.transcriptionModel || 'onnx-community/moonshine-tiny-ONNX')
 
             w.postMessage({
               id,
