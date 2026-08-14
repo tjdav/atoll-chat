@@ -5,7 +5,7 @@ migrate((app) => {
   try {
     collection = app.findCollectionByNameOrId('invitations')
   } catch {
-    collection = new Collection({ id: 'invitations' })
+    collection = new Collection({ name: 'invitations' })
   }
 
   collection.name = 'invitations'
