@@ -82,265 +82,307 @@ function enforceOwner (e) {
 
 // POST /api/custom/admin/settings
 routerAdd('POST', '/api/custom/admin/settings', (e) => {
-  enforceOwner(e)
+  try {
+    enforceOwner(e)
 
-  const data = new DynamicModel({
-    invite_mode: '',
-    default_trusted_quota: null,
-    max_uses_per_invite: null,
-    allow_quota_requests: null
-  })
-  e.bindBody(data)
+    const data = new DynamicModel({
+      invite_mode: '',
+      default_trusted_quota: null,
+      max_uses_per_invite: null,
+      allow_quota_requests: null
+    })
+    e.bindBody(data)
 
-  const appMetadataRecord = getAppMetadata()
+    const appMetadataRecord = getAppMetadata()
 
-  if (data.invite_mode) {
-    if (!['strict', 'delegated', 'open'].includes(data.invite_mode)) {
-      throw new BadRequestError('Invalid invite_mode value.')
+    if (data.invite_mode) {
+      if (!['strict', 'delegated', 'open'].includes(data.invite_mode)) {
+        throw new BadRequestError('Invalid invite_mode value.')
+      }
+      appMetadataRecord.set('invite_mode', data.invite_mode)
     }
-    appMetadataRecord.set('invite_mode', data.invite_mode)
-  }
-  if (data.default_trusted_quota !== null) {
-    appMetadataRecord.set('default_trusted_quota', parseInt(data.default_trusted_quota, 10))
-  }
-  if (data.max_uses_per_invite !== null) {
-    appMetadataRecord.set('max_uses_per_invite', parseInt(data.max_uses_per_invite, 10))
-  }
-  if (data.allow_quota_requests !== null) {
-    appMetadataRecord.set('allow_quota_requests', !!data.allow_quota_requests)
-  }
+    if (data.default_trusted_quota !== null) {
+      appMetadataRecord.set('default_trusted_quota', parseInt(data.default_trusted_quota, 10))
+    }
+    if (data.max_uses_per_invite !== null) {
+      appMetadataRecord.set('max_uses_per_invite', parseInt(data.max_uses_per_invite, 10))
+    }
+    if (data.allow_quota_requests !== null) {
+      appMetadataRecord.set('allow_quota_requests', !!data.allow_quota_requests)
+    }
 
-  $app.save(appMetadataRecord)
+    $app.save(appMetadataRecord)
 
-  return e.json(200, { success: true })
+    return e.json(200, { success: true })
+  } catch (err) {
+    if (err.status) {
+      throw err
+    }
+    throw new BadRequestError(err.message || String(err))
+  }
 })
 
 // POST /api/custom/admin/users/trust
 routerAdd('POST', '/api/custom/admin/users/trust', (e) => {
-  enforceOwner(e)
+  try {
+    enforceOwner(e)
 
-  const data = new DynamicModel({
-    userId: '',
-    tier: '',
-    invite_quota: null,
-    invites_revoked: null
-  })
-  e.bindBody(data)
+    const data = new DynamicModel({
+      userId: '',
+      tier: '',
+      invite_quota: null,
+      invites_revoked: null
+    })
+    e.bindBody(data)
 
-  if (!data.userId) {
-    throw new BadRequestError('Missing userId parameter.')
-  }
-
-  const targetUsers = $app.findRecordsByIds('users', [data.userId])
-  if (targetUsers.length === 0) {
-    throw new BadRequestError('Target user does not exist.')
-  }
-
-  const trustRecord = getOrCreateTrust(data.userId)
-
-  if (data.tier) {
-    if (!['owner', 'trusted', 'standard'].includes(data.tier)) {
-      throw new BadRequestError('Invalid tier value.')
+    if (!data.userId) {
+      throw new BadRequestError('Missing userId parameter.')
     }
-    trustRecord.set('tier', data.tier)
-  }
-  if (data.invite_quota !== null) {
-    trustRecord.set('invite_quota', parseInt(data.invite_quota, 10))
-  }
-  if (data.invites_revoked !== null) {
-    trustRecord.set('invites_revoked', !!data.invites_revoked)
-  }
 
-  $app.save(trustRecord)
+    const targetUsers = $app.findRecordsByIds('users', [data.userId])
+    if (targetUsers.length === 0) {
+      throw new BadRequestError('Target user does not exist.')
+    }
 
-  return e.json(200, { success: true })
+    const trustRecord = getOrCreateTrust(data.userId)
+
+    if (data.tier) {
+      if (!['owner', 'trusted', 'standard'].includes(data.tier)) {
+        throw new BadRequestError('Invalid tier value.')
+      }
+      trustRecord.set('tier', data.tier)
+    }
+    if (data.invite_quota !== null) {
+      trustRecord.set('invite_quota', parseInt(data.invite_quota, 10))
+    }
+    if (data.invites_revoked !== null) {
+      trustRecord.set('invites_revoked', !!data.invites_revoked)
+    }
+
+    $app.save(trustRecord)
+
+    return e.json(200, { success: true })
+  } catch (err) {
+    if (err.status) {
+      throw err
+    }
+    throw new BadRequestError(err.message || String(err))
+  }
 })
 
 // POST /api/custom/admin/requests/resolve
 routerAdd('POST', '/api/custom/admin/requests/resolve', (e) => {
-  enforceOwner(e)
+  try {
+    enforceOwner(e)
 
-  const data = new DynamicModel({
-    requestId: '',
-    status: ''
-  })
-  e.bindBody(data)
+    const data = new DynamicModel({
+      requestId: '',
+      status: ''
+    })
+    e.bindBody(data)
 
-  if (!data.requestId || !data.status) {
-    throw new BadRequestError('Missing requestId or status parameters.')
-  }
-
-  if (!['approved', 'rejected'].includes(data.status)) {
-    throw new BadRequestError('Status must be approved or rejected.')
-  }
-
-  const requestRecords = $app.findRecordsByIds('invite_requests', [data.requestId])
-  if (requestRecords.length === 0) {
-    throw new BadRequestError('Invite request not found.')
-  }
-  const requestRecord = requestRecords[0]
-
-  if (requestRecord.get('status') !== 'pending') {
-    throw new BadRequestError('Invite request has already been resolved.')
-  }
-
-  const requesterId = requestRecord.get('requester')
-  const requestedCount = requestRecord.get('requested_count') || 0
-
-  // Execute the resolution inside a transaction
-  $app.runInTransaction((txApp) => {
-    requestRecord.set('status', data.status)
-    txApp.save(requestRecord)
-
-    if (data.status === 'approved') {
-      const trustRecords = txApp.findRecordsByFilter('user_trust', 'user = {:userId}', '', 1, 0, { userId: requesterId })
-      let trustRecord
-      if (trustRecords.length > 0) {
-        trustRecord = trustRecords[0]
-      } else {
-        const collection = txApp.findCollectionByNameOrId('user_trust')
-        trustRecord = new Record(collection)
-        trustRecord.set('user', requesterId)
-        trustRecord.set('tier', 'standard')
-        trustRecord.set('invite_quota', 0)
-        trustRecord.set('invites_revoked', false)
-      }
-
-      const currentQuota = trustRecord.get('invite_quota') || 0
-      trustRecord.set('invite_quota', currentQuota + requestedCount)
-      txApp.save(trustRecord)
+    if (!data.requestId || !data.status) {
+      throw new BadRequestError('Missing requestId or status parameters.')
     }
 
-    return null
-  })
+    if (!['approved', 'rejected'].includes(data.status)) {
+      throw new BadRequestError('Status must be approved or rejected.')
+    }
 
-  return e.json(200, { success: true })
+    const requestRecords = $app.findRecordsByIds('invite_requests', [data.requestId])
+    if (requestRecords.length === 0) {
+      throw new BadRequestError('Invite request not found.')
+    }
+    const requestRecord = requestRecords[0]
+
+    if (requestRecord.get('status') !== 'pending') {
+      throw new BadRequestError('Invite request has already been resolved.')
+    }
+
+    const requesterId = requestRecord.get('requester')
+    const requestedCount = requestRecord.get('requested_count') || 0
+
+    // Execute the resolution inside a transaction
+    $app.runInTransaction((txApp) => {
+      requestRecord.set('status', data.status)
+      txApp.save(requestRecord)
+
+      if (data.status === 'approved') {
+        const trustRecords = txApp.findRecordsByFilter('user_trust', 'user = {:userId}', '', 1, 0, { userId: requesterId })
+        let trustRecord
+        if (trustRecords.length > 0) {
+          trustRecord = trustRecords[0]
+        } else {
+          const collection = txApp.findCollectionByNameOrId('user_trust')
+          trustRecord = new Record(collection)
+          trustRecord.set('user', requesterId)
+          trustRecord.set('tier', 'standard')
+          trustRecord.set('invite_quota', 0)
+          trustRecord.set('invites_revoked', false)
+        }
+
+        const currentQuota = trustRecord.get('invite_quota') || 0
+        trustRecord.set('invite_quota', currentQuota + requestedCount)
+        txApp.save(trustRecord)
+      }
+
+      return null
+    })
+
+    return e.json(200, { success: true })
+  } catch (err) {
+    if (err.status) {
+      throw err
+    }
+    throw new BadRequestError(err.message || String(err))
+  }
 })
 
 // GET /api/custom/owner/public-key
 routerAdd('GET', '/api/custom/owner/public-key', (e) => {
-  if (!e.auth) {
-    throw new ForbiddenError('Authentication is required.')
-  }
-
-  let ownerTrust
-  const owners = $app.findRecordsByFilter('user_trust', 'tier = "owner"', '', 1, 0)
-  if (owners.length > 0) {
-    ownerTrust = owners[0]
-  } else {
-    const firstUsers = $app.findRecordsByFilter('users', '1=1', 'created', 1, 0)
-    if (firstUsers.length === 0) {
-      throw new BadRequestError('No owner or users found on this instance.')
+  try {
+    if (!e.auth) {
+      throw new ForbiddenError('Authentication is required.')
     }
-    ownerTrust = getOrCreateTrust(firstUsers[0].id)
-  }
 
-  const ownerRecords = $app.findRecordsByIds('users', [ownerTrust.get('user')])
-  if (ownerRecords.length === 0) {
-    throw new BadRequestError('Owner user record not found.')
-  }
+    let ownerTrust
+    const owners = $app.findRecordsByFilter('user_trust', 'tier = "owner"', '', 1, 0)
+    if (owners.length > 0) {
+      ownerTrust = owners[0]
+    } else {
+      const firstUsers = $app.findRecordsByFilter('users', '1=1', 'created', 1, 0)
+      if (firstUsers.length === 0) {
+        throw new BadRequestError('No owner or users found on this instance.')
+      }
+      ownerTrust = getOrCreateTrust(firstUsers[0].id)
+    }
 
-  return e.json(200, {
-    ownerPublicKey: ownerRecords[0].get('public_box_key') || ''
-  })
+    const ownerRecords = $app.findRecordsByIds('users', [ownerTrust.get('user')])
+    if (ownerRecords.length === 0) {
+      throw new BadRequestError('Owner user record not found.')
+    }
+
+    return e.json(200, {
+      ownerPublicKey: ownerRecords[0].get('public_box_key') || ''
+    })
+  } catch (err) {
+    if (err.status) {
+      throw err
+    }
+    throw new BadRequestError(err.message || String(err))
+  }
 })
 
 // POST /api/custom/invites/generate
 routerAdd('POST', '/api/custom/invites/generate', (e) => {
-  const authRecord = e.auth
-  if (!authRecord) {
-    throw new ForbiddenError('Authentication is required.')
-  }
-
-  const appMetadataRecord = getAppMetadata()
-
-  const inviteMode = appMetadataRecord.get('invite_mode') || 'delegated'
-  const maxUses = appMetadataRecord.get('max_uses_per_invite') || 3
-
-  const trustRecord = getOrCreateTrust(authRecord.id)
-
-  const isOwner = trustRecord.get('tier') === 'owner'
-  const isRevoked = !!trustRecord.get('invites_revoked')
-  const currentQuota = trustRecord.get('invite_quota') || 0
-
-  if (isRevoked) {
-    throw new ForbiddenError('Your invite generation privileges have been revoked.')
-  }
-
-  if (inviteMode === 'strict' && !isOwner) {
-    throw new ForbiddenError('Invite generation is restricted to the instance owner.')
-  }
-
-  if (!isOwner && currentQuota <= 0) {
-    throw new ForbiddenError('You do not have enough invite quota remaining.')
-  }
-
-  // Atomically deduct quota if the requester is not the owner
-  if (!isOwner) {
-    trustRecord.set('invite_quota', currentQuota - 1)
-    $app.save(trustRecord)
-  }
-
-  function randSeg (len) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-    let res = ''
-    for (let i = 0; i < len; i++) {
-      res += chars.charAt(Math.floor(Math.random() * chars.length))
+  try {
+    const authRecord = e.auth
+    if (!authRecord) {
+      throw new ForbiddenError('Authentication is required.')
     }
-    return res
+
+    const appMetadataRecord = getAppMetadata()
+
+    const inviteMode = appMetadataRecord.get('invite_mode') || 'delegated'
+    const maxUses = appMetadataRecord.get('max_uses_per_invite') || 3
+
+    const trustRecord = getOrCreateTrust(authRecord.id)
+
+    const isOwner = trustRecord.get('tier') === 'owner'
+    const isRevoked = !!trustRecord.get('invites_revoked')
+    const currentQuota = trustRecord.get('invite_quota') || 0
+
+    if (isRevoked) {
+      throw new ForbiddenError('Your invite generation privileges have been revoked.')
+    }
+
+    if (inviteMode === 'strict' && !isOwner) {
+      throw new ForbiddenError('Invite generation is restricted to the instance owner.')
+    }
+
+    if (!isOwner && currentQuota <= 0) {
+      throw new ForbiddenError('You do not have enough invite quota remaining.')
+    }
+
+    // Atomically deduct quota if the requester is not the owner
+    if (!isOwner) {
+      trustRecord.set('invite_quota', currentQuota - 1)
+      $app.save(trustRecord)
+    }
+
+    function randSeg (len) {
+      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+      let res = ''
+      for (let i = 0; i < len; i++) {
+        res += chars.charAt(Math.floor(Math.random() * chars.length))
+      }
+      return res
+    }
+    const code = `INV-${randSeg(4)}-${randSeg(4)}`
+
+    const invitationsColl = $app.findCollectionByNameOrId('invitations')
+    const inviteRecord = new Record(invitationsColl)
+    inviteRecord.set('code', code)
+    inviteRecord.set('is_used', false)
+    inviteRecord.set('max_uses', maxUses)
+    inviteRecord.set('used_count', 0)
+    $app.save(inviteRecord)
+
+    return e.json(200, {
+      code: code,
+      max_uses: maxUses
+    })
+  } catch (err) {
+    if (err.status) {
+      throw err
+    }
+    throw new BadRequestError(err.message || String(err))
   }
-  const code = `INV-${randSeg(4)}-${randSeg(4)}`
-
-  const invitationsColl = $app.findCollectionByNameOrId('invitations')
-  const inviteRecord = new Record(invitationsColl)
-  inviteRecord.set('code', code)
-  inviteRecord.set('is_used', false)
-  inviteRecord.set('max_uses', maxUses)
-  inviteRecord.set('used_count', 0)
-  $app.save(inviteRecord)
-
-  return e.json(200, {
-    code: code,
-    max_uses: maxUses
-  })
 })
 
 // POST /api/custom/invites/request
 routerAdd('POST', '/api/custom/invites/request', (e) => {
-  const authRecord = e.auth
-  if (!authRecord) {
-    throw new ForbiddenError('Authentication is required.')
+  try {
+    const authRecord = e.auth
+    if (!authRecord) {
+      throw new ForbiddenError('Authentication is required.')
+    }
+
+    const data = new DynamicModel({
+      requested_count: 1,
+      encrypted_reason: ''
+    })
+    e.bindBody(data)
+
+    if (!data.encrypted_reason) {
+      throw new BadRequestError('Missing encrypted reason parameter.')
+    }
+
+    const requestedCount = parseInt(data.requested_count, 10)
+    if (isNaN(requestedCount) || requestedCount < 1 || requestedCount > 10) {
+      throw new BadRequestError('Requested count must be between 1 and 10.')
+    }
+
+    const appMetadataRecord = getAppMetadata()
+
+    if (appMetadataRecord.get('allow_quota_requests') === false) {
+      throw new ForbiddenError('Quota requests are disabled on this instance.')
+    }
+
+    const inviteRequestsColl = $app.findCollectionByNameOrId('invite_requests')
+    const requestRecord = new Record(inviteRequestsColl)
+    requestRecord.set('requester', authRecord.id)
+    requestRecord.set('requested_count', requestedCount)
+    requestRecord.set('encrypted_reason', data.encrypted_reason)
+    requestRecord.set('status', 'pending')
+
+    $app.save(requestRecord)
+
+    return e.json(200, { success: true })
+  } catch (err) {
+    if (err.status) {
+      throw err
+    }
+    throw new BadRequestError(err.message || String(err))
   }
-
-  const data = new DynamicModel({
-    requested_count: 1,
-    encrypted_reason: ''
-  })
-  e.bindBody(data)
-
-  if (!data.encrypted_reason) {
-    throw new BadRequestError('Missing encrypted reason parameter.')
-  }
-
-  const requestedCount = parseInt(data.requested_count, 10)
-  if (isNaN(requestedCount) || requestedCount < 1 || requestedCount > 10) {
-    throw new BadRequestError('Requested count must be between 1 and 10.')
-  }
-
-  const appMetadataRecord = getAppMetadata()
-
-  if (appMetadataRecord.get('allow_quota_requests') === false) {
-    throw new ForbiddenError('Quota requests are disabled on this instance.')
-  }
-
-  const inviteRequestsColl = $app.findCollectionByNameOrId('invite_requests')
-  const requestRecord = new Record(inviteRequestsColl)
-  requestRecord.set('requester', authRecord.id)
-  requestRecord.set('requested_count', requestedCount)
-  requestRecord.set('encrypted_reason', data.encrypted_reason)
-  requestRecord.set('status', 'pending')
-
-  $app.save(requestRecord)
-
-  return e.json(200, { success: true })
 })

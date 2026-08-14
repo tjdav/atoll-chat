@@ -164,6 +164,7 @@ async function provision () {
         // User doesn't exist
       }
 
+      let userId
       if (existingRecord) {
         console.log(`Updating existing user ${user.username}...`)
         const updatePayload = {
@@ -188,15 +189,47 @@ async function provision () {
         await pb.collection('users').update(existingRecord.id, updatePayload, {
           requestKey: null
         })
+        userId = existingRecord.id
         console.log(`User ${user.username} updated successfully.`)
       } else {
-        await pb.collection('users').create(payload, {
+        const createdRecord = await pb.collection('users').create(payload, {
           requestKey: null
         })
+        userId = createdRecord.id
         console.log(`User ${user.username} created successfully.`)
       }
+
+      // Provision corresponding user_trust record
+      let existingTrust = null
+      try {
+        existingTrust = await pb.collection('user_trust').getFirstListItem(pb.filter('user = {:userId}', { userId }), {
+          requestKey: null
+        })
+      } catch {
+        // Trust doesn't exist
+      }
+
+      const isOwner = user.username === 'alice'
+      const trustPayload = {
+        user: userId,
+        tier: isOwner ? 'owner' : 'standard',
+        invite_quota: isOwner ? 999999 : 0,
+        invites_revoked: false
+      }
+
+      if (existingTrust) {
+        console.log(`Updating existing user_trust for ${user.username}...`)
+        await pb.collection('user_trust').update(existingTrust.id, trustPayload, {
+          requestKey: null
+        })
+      } else {
+        console.log(`Creating new user_trust for ${user.username}...`)
+        await pb.collection('user_trust').create(trustPayload, {
+          requestKey: null
+        })
+      }
     } catch (error) {
-      console.error(`Failed to create user ${user.username}:`, error.data || error.message)
+      console.error(`Failed to create/update user ${user.username}:`, error.data || error.message)
     }
   }
 

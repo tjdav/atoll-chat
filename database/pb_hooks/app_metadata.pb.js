@@ -63,6 +63,19 @@ onBootstrap((e) => {
     record.set('app_name', appName)
     record.set('app_url', appUrl)
 
+    if (collection.fields.getByName('invite_mode')) {
+      record.set('invite_mode', 'delegated')
+    }
+    if (collection.fields.getByName('default_trusted_quota')) {
+      record.set('default_trusted_quota', 5)
+    }
+    if (collection.fields.getByName('max_uses_per_invite')) {
+      record.set('max_uses_per_invite', 3)
+    }
+    if (collection.fields.getByName('allow_quota_requests')) {
+      record.set('allow_quota_requests', true)
+    }
+
     try {
       e.app.save(record)
       e.app.logger().info('[app_metadata.pb.js] App metadata initialized with instance_id:', 'instance_id', instanceId)

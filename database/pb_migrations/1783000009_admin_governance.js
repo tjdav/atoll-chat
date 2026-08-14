@@ -108,7 +108,7 @@ migrate((app) => {
   if (!userTrust.fields.getByName('invite_quota')) {
     userTrust.fields.add(new NumberField({
       name: 'invite_quota',
-      required: true,
+      required: false,
       min: 0,
       noDecimal: true
     }))
