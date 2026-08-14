@@ -106,8 +106,6 @@
       const micButton = refs('micButton')
       const sendButton = refs('sendButton')
 
-      if (!messageInput) return
-
       // Sync initial global state
       state.currentMessageText = $state.currentMessageText || ''
       messageInput.value = state.currentMessageText
@@ -116,7 +114,7 @@
         messageInput.style.height = 'auto'
         const scrollHeight = messageInput.scrollHeight
         messageInput.style.height = scrollHeight + 'px'
-        
+  
         // Toggle multiline class based on height threshold
         messageInput.classList.toggle('is-multiline', scrollHeight > 40)
       }
