@@ -97,20 +97,30 @@ test.describe('Atoll Popup / Modal Component', () => {
     const openEvent = events.find(e => e.type === 'open')
     expect(openEvent.detail).toEqual({
       variant: 'confirm',
-      size: 'md'
+      size: 'md',
+      title: 'Confirm Action'
     })
 
     const primaryEvent = events.find(e => e.type === 'primary')
     expect(primaryEvent.detail).toEqual({
       variant: 'confirm',
-      size: 'md'
+      size: 'md',
+      title: 'Confirm Action'
     })
 
     const secondaryEvent = events.find(e => e.type === 'secondary')
-    expect(secondaryEvent.detail).toEqual({ variant: 'confirm' })
+    expect(secondaryEvent.detail).toEqual({
+      variant: 'confirm',
+      size: 'md',
+      title: 'Confirm Action'
+    })
 
     const closeEvent = events.find(e => e.type === 'close')
-    expect(closeEvent.detail).toEqual({ variant: 'confirm' })
+    expect(closeEvent.detail).toEqual({
+      variant: 'confirm',
+      size: 'md',
+      title: 'Confirm Action'
+    })
   })
 
   test('should support static backdrop preventing close', async ({ page }) => {
@@ -246,7 +256,7 @@ test.describe('Atoll Popup / Modal Component', () => {
   })
 
   test('should support horizontal, vertical layout attributes, and tertiary-text with correct button ordering', async ({ page }) => {
-    // 1. Test 2-button horizontal layout (Default / "horizontal")
+    // Horizontal layout (Default / "horizontal")
     await page.evaluate(() => {
       const popup = document.createElement('atoll-popup')
       popup.id = 'popup-test-horizontal'
@@ -269,7 +279,7 @@ test.describe('Atoll Popup / Modal Component', () => {
     await expect(firstButtonH).toHaveAttribute('ref', 'secondaryBtn')
     await expect(secondButtonH).toHaveAttribute('ref', 'primaryBtn')
 
-    // 2. Test 2-button vertical layout ("vertical")
+    // Vertical layout ("vertical")
     await page.evaluate(() => {
       const popup = document.createElement('atoll-popup')
       popup.id = 'popup-test-vertical'
@@ -292,7 +302,7 @@ test.describe('Atoll Popup / Modal Component', () => {
     await expect(firstButtonV).toHaveAttribute('ref', 'primaryBtn')
     await expect(secondButtonV).toHaveAttribute('ref', 'secondaryBtn')
 
-    // 3. Test 3-button layout with tertiary-text (Forced Vertical)
+    // 3-button layout with tertiary-text (Forced Vertical)
     await page.evaluate(() => {
       const popup = document.createElement('atoll-popup')
       popup.id = 'popup-test-tertiary'
@@ -356,7 +366,8 @@ test.describe('Atoll Popup / Modal Component', () => {
       type: 'tertiary',
       detail: {
         variant: 'confirm',
-        size: 'lg'
+        size: 'lg',
+        title: 'Tertiary Event Test'
       }
     })
 
@@ -387,7 +398,6 @@ test.describe('Atoll Popup / Modal Component', () => {
     })
 
     const offcanvas = page.locator('#test-offcanvas')
-    const popupHost = page.locator('#nested-popup')
     const modal = page.locator('.modal')
 
     await expect(offcanvas).toBeVisible()

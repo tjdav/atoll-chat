@@ -71,6 +71,14 @@
         type: String,
         default: 'OK'
       },
+      primaryDisabled: {
+        type: Boolean,
+        default: false
+      },
+      primaryLoading: {
+        type: Boolean,
+        default: false
+      },
       secondaryText: {
         type: String,
         default: 'Cancel'
@@ -91,6 +99,12 @@
     },
 
     slots: {
+      /**
+       * Slot transformer for hero section.
+       * @param {Node[]} nodes Slotted DOM nodes
+       * @param {Object} state Component reactive state
+       * @returns {HTMLElement[]|undefined} Transformed hero container nodes
+       */
       hero (nodes, state) {
         if (typeof document === 'undefined') {
           return undefined
@@ -118,12 +132,18 @@
         return undefined
       },
 
+      /**
+       * Slot transformer for action buttons.
+       * @param {Node[]} nodes Slotted DOM nodes
+       * @param {Object} state Component reactive state
+       * @returns {HTMLElement[]|undefined} Transformed actions container nodes
+       */
       actions (nodes, state) {
         if (typeof document === 'undefined') {
           return undefined
         }
 
-        const isVertical = !!state.tertiaryText || state.stackedActions || state.actionsLayout === 'vertical'
+        const isVertical = Boolean(state.tertiaryText || state.stackedActions || state.actionsLayout === 'vertical')
         const actionClasses = isVertical
           ? 'atoll-popup-actions atoll-popup-actions-vertical atoll-popup-actions-stacked'
           : 'atoll-popup-actions atoll-popup-actions-horizontal'
@@ -148,59 +168,67 @@
         const wrapper = document.createElement('div')
         wrapper.className = actionClasses
 
+        const createPrimaryBtn = () => {
+          const btn = document.createElement('atoll-button')
+          btn.setAttribute('ref', 'primaryBtn')
+          const primaryVariant = state.variant === 'danger' ? 'danger' : 'primary'
+          btn.setAttribute('variant', primaryVariant)
+          btn.setAttribute('size', 'md')
+          if (isVertical) {
+            btn.setAttribute('block', 'true')
+          }
+          if (state.primaryDisabled) {
+            btn.setAttribute('disabled', 'true')
+          }
+          if (state.primaryLoading) {
+            btn.setAttribute('loading', 'true')
+          }
+          btn.textContent = state.primaryText
+          return btn
+        }
+
+        const createSecondaryBtn = () => {
+          const btn = document.createElement('atoll-button')
+          btn.setAttribute('ref', 'secondaryBtn')
+          btn.setAttribute('variant', 'secondary')
+          btn.setAttribute('size', 'md')
+          if (isVertical) {
+            btn.setAttribute('block', 'true')
+          }
+          btn.textContent = state.secondaryText
+          return btn
+        }
+
+        const createTertiaryBtn = () => {
+          const btn = document.createElement('atoll-button')
+          btn.setAttribute('ref', 'tertiaryBtn')
+          btn.setAttribute('variant', 'outline')
+          btn.setAttribute('size', 'md')
+          if (isVertical) {
+            btn.setAttribute('block', 'true')
+          }
+          btn.textContent = state.tertiaryText
+          return btn
+        }
+
         if (isVertical) {
-          // Visual Order: Affirmative (Top) -> Tertiary (Mid) -> Dismissive (Bot)
+          // Visual Order: Affirmative (Top) -> Tertiary (Mid) -> Dismissive (Bottom)
           if (!hidePrimary) {
-            const btn = document.createElement('atoll-button')
-            btn.setAttribute('ref', 'primaryBtn')
-            const primaryVariant = state.variant === 'danger' ? 'danger' : 'primary'
-            btn.setAttribute('variant', primaryVariant)
-            btn.setAttribute('size', 'md')
-            btn.setAttribute('block', 'true')
-            btn.textContent = state.primaryText
-            wrapper.appendChild(btn)
+            wrapper.appendChild(createPrimaryBtn())
           }
-
           if (!hideTertiary) {
-            const btn = document.createElement('atoll-button')
-            btn.setAttribute('ref', 'tertiaryBtn')
-            btn.setAttribute('variant', 'outline')
-            btn.setAttribute('size', 'md')
-            btn.setAttribute('block', 'true')
-            btn.textContent = state.tertiaryText
-            wrapper.appendChild(btn)
+            wrapper.appendChild(createTertiaryBtn())
           }
-
           if (!hideSecondary) {
-            const btn = document.createElement('atoll-button')
-            btn.setAttribute('ref', 'secondaryBtn')
-            btn.setAttribute('variant', 'secondary')
-            btn.setAttribute('size', 'md')
-            btn.setAttribute('block', 'true')
-            btn.textContent = state.secondaryText
-            wrapper.appendChild(btn)
+            wrapper.appendChild(createSecondaryBtn())
           }
         } else {
           // Visual Order: Dismissive (Left) -> Affirmative (Right)
           if (!hideSecondary) {
-            const btn = document.createElement('atoll-button')
-            btn.setAttribute('ref', 'secondaryBtn')
-            btn.setAttribute('variant', 'secondary')
-            btn.setAttribute('size', 'md')
-            btn.setAttribute('block', 'true')
-            btn.textContent = state.secondaryText
-            wrapper.appendChild(btn)
+            wrapper.appendChild(createSecondaryBtn())
           }
-
           if (!hidePrimary) {
-            const btn = document.createElement('atoll-button')
-            btn.setAttribute('ref', 'primaryBtn')
-            const primaryVariant = state.variant === 'danger' ? 'danger' : 'primary'
-            btn.setAttribute('variant', primaryVariant)
-            btn.setAttribute('size', 'md')
-            btn.setAttribute('block', 'true')
-            btn.textContent = state.primaryText
-            wrapper.appendChild(btn)
+            wrapper.appendChild(createPrimaryBtn())
           }
         }
 
@@ -210,20 +238,17 @@
 
     getters: {
       primaryVariant: (state) => (state.variant === 'danger' ? 'danger' : 'primary'),
-
       hideDescription: (state) => !state.description,
-
       hideHeader: (state) => !state.title,
-
+      ref_modalTitle: (_state, { instanceId }) => (instanceId ? `${instanceId}-title` : 'atoll-popup-title'),
+      ref_modalDesc: (_state, { instanceId }) => (instanceId ? `${instanceId}-desc` : 'atoll-popup-desc'),
       dialogClasses: (state) => {
         const classes = []
-
         if (state.size) {
           classes.push(`atoll-popup-${state.size}`)
         } else {
           classes.push('atoll-popup-md')
         }
-
         return classes.join(' ')
       }
     },
@@ -231,15 +256,9 @@
     client: ({ state, refs, root, observe, signal }) => {
       const dialogEl = refs('modalElement')
 
-      if (root && root.host && root.host.hasAttribute('title')) {
-        state.title = root.host.getAttribute('title')
-      }
-
-      observe('title', (newVal) => {
-        state.title = newVal || ''
-      })
-
-
+      /**
+       * Opens the modal dialog and adds body locks.
+       */
       const showModal = () => {
         if (!dialogEl.open) {
           dialogEl.classList.remove('atoll-popup-closing')
@@ -247,7 +266,7 @@
           try {
             dialogEl.showModal()
           } catch {
-            // fallback if showModal is already open
+            // Native showModal throw fallback if element state is already open
           }
 
           document.body.classList.add('modal-open')
@@ -258,18 +277,22 @@
               composed: true,
               detail: {
                 variant: state.variant,
-                size: state.size
+                size: state.size,
+                title: state.title
               }
             })
           )
         }
       }
 
+      /**
+       * Closes the modal dialog and removes body locks.
+       */
       const hideModal = () => {
         if (!dialogEl.open && !state.open) {
           return
         }
-  
+
         dialogEl.classList.remove('atoll-popup-closing')
         dialogEl.classList.remove('show')
         document.body.classList.remove('modal-open')
@@ -281,15 +304,37 @@
           new CustomEvent('atoll-popup-close', {
             bubbles: true,
             composed: true,
-            detail: { variant: state.variant }
+            detail: {
+              variant: state.variant,
+              size: state.size,
+              title: state.title
+            }
           })
         )
       }
+
+      /**
+       * Triggers CSS shake animation feedback when static backdrop is clicked or Esc is pressed.
+       */
+      const triggerShake = () => {
+        const dialogBox = dialogEl.querySelector('.modal-dialog')
+        dialogBox.classList.remove('atoll-popup-static-shake')
+        void dialogBox.offsetWidth
+        dialogBox.classList.add('atoll-popup-static-shake')
+      }
+
+      // Cleanup on component disconnect
+      signal.addEventListener('abort', () => {
+        document.body.classList.remove('modal-open')
+      })
 
       // Handle native Escape key (cancel event)
       dialogEl.addEventListener('cancel', (e) => {
         if (state.staticBackdrop || state.disableKeyboard) {
           e.preventDefault()
+          if (state.staticBackdrop) {
+            triggerShake()
+          }
         } else {
           e.preventDefault()
           hideModal()
@@ -300,7 +345,9 @@
       dialogEl.addEventListener('click', (e) => {
         // If click target is dialogEl itself (backdrop click)
         if (e.target === dialogEl) {
-          if (!state.staticBackdrop && !state.disableBackdrop) {
+          if (state.staticBackdrop) {
+            triggerShake()
+          } else if (!state.disableBackdrop) {
             hideModal()
           }
           return
@@ -324,7 +371,8 @@
               composed: true,
               detail: {
                 variant: state.variant,
-                size: state.size
+                size: state.size,
+                title: state.title
               }
             })
           )
@@ -333,7 +381,11 @@
             new CustomEvent('atoll-popup-secondary', {
               bubbles: true,
               composed: true,
-              detail: { variant: state.variant }
+              detail: {
+                variant: state.variant,
+                size: state.size,
+                title: state.title
+              }
             })
           )
           hideModal()
@@ -344,7 +396,8 @@
               composed: true,
               detail: {
                 variant: state.variant,
-                size: state.size
+                size: state.size,
+                title: state.title
               }
             })
           )
