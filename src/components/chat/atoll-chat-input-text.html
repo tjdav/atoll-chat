@@ -1,6 +1,6 @@
 <template id="atoll-chat-input-text">
   <div class="d-flex gap-2 align-items-center atoll-chat-input-text">
-    <input type="file" ref="fileInput" class="d-none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz" data-testid="fileInput">
+    <input type="file" ref="fileInput" class="d-none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz" data-testid="fileInput" aria-hidden="true" tabindex="-1">
     
     <!-- Attachment Button -->
     <atoll-button 
@@ -19,12 +19,16 @@
 
     <div class="position-relative flex-grow-1">
       <textarea
-        id="{{ ref_messageInput }}"
         ref="messageInput"
         class="form-control rounded-pill w-100 pe-6"
         placeholder="Type a message..."
+        aria-label="Type a message"
         rows="1"
+        enterkeyhint="send"
+        autocapitalize="sentences"
+        spellcheck="true"
         disabled="{{ isDisabled }}"
+        style="resize: none; max-height: 160px; overflow-y: auto;"
       ></textarea>
       
       <atoll-button 
@@ -64,6 +68,7 @@
       pill="true"
       ref="sendButton" 
       class="atoll-chat-input-btn-send"
+      title="Send Message"
       aria-label="Send Message"
       disabled="{{ isDisabled }}" 
       loading="{{ isDisabled }}"
@@ -88,9 +93,7 @@
       currentMessageText: ''
     }),
     getters: {
-      isDisabled: (state) => (state.isSending || state.isUploading || state.isCompressing ? true : false),
-      sendIconClass: (state) => (state.isCompressing ? 'd-none' : ''),
-      spinnerClass: (state) => (state.isCompressing ? '' : 'd-none')
+      isDisabled: (state) => Boolean(state.isSending || state.isUploading || state.isCompressing)
     },
     client: ({ refs, state, globalStore, eventBus, signal, utils, storage, pocketbase }) => {
       const { $state } = globalStore
@@ -100,6 +103,10 @@
       const { pb } = pocketbase
       const messageInput = refs('messageInput')
       const emojiButton = refs('emojiButton')
+      const micButton = refs('micButton')
+      const sendButton = refs('sendButton')
+
+      if (!messageInput) return
 
       // Sync initial global state
       state.currentMessageText = $state.currentMessageText || ''
@@ -116,10 +123,12 @@
 
       let isLocalTyping = false
       let typingTimeout = null
+      let previousRoomId = $state.activeSelectionId
 
-      const setServerTyping = async (isTyping) => {
-        const room_id = $state.activeSelectionId
-        if (!room_id) {
+      const setServerTyping = async (isTyping, targetRoomId = null) => {
+        const room_id = targetRoomId || $state.activeSelectionId
+        const userId = $state.currentUser?.id
+        if (!room_id || !userId || !pb) {
           return
         }
 
@@ -132,7 +141,7 @@
           let stateRecord = null
           try {
             stateRecord = await pb.collection('room_member_states').getFirstListItem(
-              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+              `room_id="${room_id}" && user_id="${userId}"`, { requestKey: null }
             )
           } catch (e) {
           }
@@ -146,7 +155,7 @@
           } else {
             await pb.collection('room_member_states').create({
               room_id,
-              user_id: $state.currentUser.id,
+              user_id: userId,
               last_read_message_id: null,
               is_typing: isTyping
             }, { requestKey: null })
@@ -175,6 +184,7 @@
             isLocalTyping = false
             if (typingTimeout) {
               clearTimeout(typingTimeout)
+              typingTimeout = null
             }
             setServerTyping(false)
           }
@@ -186,6 +196,7 @@
           isLocalTyping = false
           if (typingTimeout) {
             clearTimeout(typingTimeout)
+            typingTimeout = null
           }
           setServerTyping(false)
         }
@@ -198,33 +209,62 @@
         handleTypingActivity()
       }, { signal })
 
-      // Handle paste: convert HTML to Markdown
+      // Handle paste: convert HTML to Markdown or dispatch clipboard file
       messageInput.addEventListener('paste', async (e) => {
+        const files = e.clipboardData?.files
+        if (files && files.length > 0 && files[0].type) {
+          e.preventDefault()
+          $bus.emit('ui:file_selected', { file: files[0] })
+          return
+        }
+
         const html = e.clipboardData.getData('text/html')
         if (html) {
           e.preventDefault()
   
-          const { default: TurndownService } = await import('turndown')
-          const turndownService = new TurndownService({
-            headingStyle: 'atx',
-            codeBlockStyle: 'fenced'
-          })
+          try {
+            const { default: TurndownService } = await import('turndown')
+            const turndownService = new TurndownService({
+              headingStyle: 'atx',
+              codeBlockStyle: 'fenced'
+            })
   
-          const markdown = turndownService.turndown(html)
+            const markdown = turndownService.turndown(html)
   
-          const start = messageInput.selectionStart
-          const end = messageInput.selectionEnd
-          const text = messageInput.value
-          const newValue = text.substring(0, start) + markdown + text.substring(end)
+            const start = messageInput.selectionStart
+            const end = messageInput.selectionEnd
+            const text = messageInput.value
+            const newValue = text.substring(0, start) + markdown + text.substring(end)
   
-          messageInput.value = newValue
-          $state.currentMessageText = newValue
-          state.currentMessageText = newValue
+            messageInput.value = newValue
+            $state.currentMessageText = newValue
+            state.currentMessageText = newValue
   
-          const newPos = start + markdown.length
-          messageInput.setSelectionRange(newPos, newPos)
+            const newPos = start + markdown.length
+            messageInput.setSelectionRange(newPos, newPos)
   
-          autoExpand()
+            autoExpand()
+            handleTypingActivity()
+          } catch (err) {
+            // Fall back to native plain text insertion if Turndown fails
+            const plainText = e.clipboardData.getData('text/plain')
+            if (plainText) {
+              const start = messageInput.selectionStart
+              const end = messageInput.selectionEnd
+              const text = messageInput.value
+              const newValue = text.substring(0, start) + plainText + text.substring(end)
+  
+              messageInput.value = newValue
+              $state.currentMessageText = newValue
+              state.currentMessageText = newValue
+  
+              const newPos = start + plainText.length
+              messageInput.setSelectionRange(newPos, newPos)
+  
+              autoExpand()
+              handleTypingActivity()
+            }
+          }
         }
       }, { signal })
 
@@ -237,7 +277,28 @@
             autoExpand()
           }
         })
+
+        // Track active selection changes to reset server typing in previous room
+        $state.subscribe('activeSelectionId', (newRoomId) => {
+          if (previousRoomId && previousRoomId !== newRoomId && isLocalTyping) {
+            setServerTyping(false, previousRoomId)
+            resetTyping()
+          }
+          previousRoomId = newRoomId
+        })
       }
+
+      // Clean up timer and server typing on component disconnect
+      signal.addEventListener('abort', () => {
+        if (typingTimeout) {
+          clearTimeout(typingTimeout)
+          typingTimeout = null
+        }
+        if (isLocalTyping && previousRoomId) {
+          setServerTyping(false, previousRoomId)
+          isLocalTyping = false
+        }
+      })
 
       // Initial expand
       autoExpand()
@@ -270,23 +331,29 @@
 
       setupFileInput('attachButton', 'fileInput')
 
-      refs('micButton').addEventListener('click', () => {
-        $bus.emit('ui:mic_clicked')
-      }, { signal })
+      if (micButton) {
+        micButton.addEventListener('click', () => {
+          $bus.emit('ui:mic_clicked')
+        }, { signal })
+      }
 
-      refs('sendButton').addEventListener('click', () => {
-        resetTyping()
-        $bus.emit('ui:send_clicked')
-      }, { signal })
+      if (sendButton) {
+        sendButton.addEventListener('click', () => {
+          resetTyping()
+          $bus.emit('ui:send_clicked')
+        }, { signal })
+      }
 
-      emojiButton.addEventListener('click', () => {
-        const rect = emojiButton.getBoundingClientRect()
-        $bus.emit('ui:show_reaction_picker', {
-          x: rect.left - 300,
-          y: rect.top - 410,
-          targetId: 'CHAT_INPUT'
-        })
-      }, { signal })
+      if (emojiButton) {
+        emojiButton.addEventListener('click', () => {
+          const rect = emojiButton.getBoundingClientRect()
+          $bus.emit('ui:show_reaction_picker', {
+            x: rect.left - 300,
+            y: rect.top - 410,
+            targetId: 'CHAT_INPUT'
+          })
+        }, { signal })
+      }
 
       $bus.on('ui:emoji_selected', (payload) => {
         const emoji = payload.emoji
@@ -307,10 +374,11 @@
         messageInput.setSelectionRange(newPos, newPos)
   
         autoExpand()
+        handleTypingActivity()
       })
 
       messageInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter' && !e.shiftKey) {
+        if (((e.key === 'Enter' && !e.shiftKey) || (e.key === 'Enter' && (e.ctrlKey || e.metaKey))) && !e.isComposing) {
           e.preventDefault()
           resetTyping()
           $bus.emit('ui:send_clicked')
