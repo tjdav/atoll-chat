@@ -28,6 +28,16 @@
     right: 0;
     z-index: 10;
   }
+
+  .offcanvas {
+    room-details-sidebar {
+      display: flex !important;
+      flex-direction: column !important;
+      height: 100% !important;
+      min-height: 0 !important;
+      flex-grow: 1 !important;
+    }
+  }
 }
 
 .audio-player-container {

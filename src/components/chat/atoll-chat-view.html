@@ -3,11 +3,11 @@
     <!-- Chat Header -->
     <header class="app-header atoll-chat-view-header d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">
-        <atoll-button variant="ghost" leading-icon="chevron-left" icon-only="true" pill="true" ref="btnBack" class="d-inline-block d-md-none me-3" data-testid="chatBackBtn"></atoll-button>
+        <atoll-button variant="ghost" leading-icon="chevron-left" icon-only="true" pill="true" ref="btnBack" class="d-inline-block d-md-none me-3" data-testid="chatBackBtn" title="Back to chats" aria-label="Back to chats"></atoll-button>
         <atoll-profile ref="headerAvatar" size="sm" class="d-inline-block me-3" alt="{{ roomName }}"></atoll-profile>
         <div>
           <h6 class="atoll-text-title-2 mb-0">{{ roomName }}</h6>
-          <small class="atoll-chat-view-header-subtitle mb-0">{{ roomStatus }}</small>
+          <small class="atoll-chat-view-header-subtitle mb-0" aria-live="polite" aria-atomic="true">{{ roomStatus }}</small>
         </div>
       </div>
       <div class="d-flex gap-2">
@@ -58,7 +58,7 @@
 
     <!-- Room Details Sidebar (Bootstrap Offcanvas drawer) -->
     <div class="offcanvas offcanvas-end shadow-lg" tabindex="-1" ref="roomDetailsOffcanvas" id="roomDetailsOffcanvas" aria-labelledby="roomDetailsOffcanvasLabel" data-testid="roomDetailsOffcanvas">
-      <room-details-sidebar style="display: flex !important; flex-direction: column !important; height: 100% !important; min-height: 0 !important; flex-grow: 1 !important;"></room-details-sidebar>
+      <room-details-sidebar></room-details-sidebar>
     </div>
 
     <!-- Chat Input -->
@@ -73,7 +73,6 @@
   export default defineComponent({
     server: () => ({
       roomName: 'Loading...',
-      roomInitial: '?',
       roomStatus: 'Encrypted',
       isRoomDetailsOpen: false,
       roomTheme: 'classic',
@@ -94,6 +93,14 @@
       const offcanvasEl = refs('roomDetailsOffcanvas')
       let bsOffcanvas = new Offcanvas(offcanvasEl)
 
+      signal.addEventListener('abort', () => {
+        try {
+          bsOffcanvas?.dispose?.()
+        } catch (e) {
+          console.error('Failed to dispose offcanvas', e)
+        }
+      }, { once: true })
+
       // Swipe to close right offcanvas (swipe right)
       let rTouchStartX = 0
       let rTouchStartY = 0
@@ -107,14 +114,20 @@
           rTouchEndX = rTouchStartX
           rTouchEndY = rTouchStartY
         }
-      }, { passive: true })
+      }, {
+        passive: true,
+        signal
+      })
 
       offcanvasEl.addEventListener('touchmove', (e) => {
         if (e.touches && e.touches.length > 0) {
           rTouchEndX = e.touches[0].clientX
           rTouchEndY = e.touches[0].clientY
         }
-      }, { passive: true })
+      }, {
+        passive: true,
+        signal
+      })
 
       offcanvasEl.addEventListener('touchend', () => {
         const deltaX = rTouchEndX - rTouchStartX
@@ -123,17 +136,20 @@
         if (deltaX >= 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
           bsOffcanvas.hide()
         }
-      }, { passive: true })
+      }, {
+        passive: true,
+        signal
+      })
 
       offcanvasEl.addEventListener('hide.bs.offcanvas', () => {
         state.isRoomDetailsOpen = false
         $state.isRoomDetailsOpen = false
-      })
+      }, { signal })
 
       offcanvasEl.addEventListener('show.bs.offcanvas', () => {
         state.isRoomDetailsOpen = true
         $state.isRoomDetailsOpen = true
-      })
+      }, { signal })
 
       state.isRoomDetailsOpen = $state.isRoomDetailsOpen || false
       if (state.isRoomDetailsOpen && bsOffcanvas) {
@@ -147,7 +163,7 @@
        * @returns {void}
        */
       const renderHeaderAvatar = (room, participants) => {
-        if (!room) {
+        if (!headerAvatar || !room) {
           return
         }
         const existingSlot = headerAvatar.querySelector('[slot="image"]')
@@ -208,16 +224,14 @@
           const displayCount = Math.min(participants.length, splitCount)
           for (let i = 0; i < displayCount; i++) {
             const p = participants[i]
-            const pName = p.name || p.username || 'Member'
-            if (p.avatar && pb?.files) {
-              const img = document.createElement('img')
-              img.src = pb.files.getURL(p, p.avatar, { thumb: '30x30' })
-              img.alt = pName
-              slotDiv.appendChild(img)
-            } else {
-              const img = document.createElement('img')
-              img.alt = pName
-              slotDiv.appendChild(img)
+            if (p) {
+              const pName = p.name || p.username || 'Member'
+              if (p.avatar && pb?.files) {
+                const img = document.createElement('img')
+                img.src = pb.files.getURL(p, p.avatar, { thumb: '30x30' })
+                img.alt = pName
+                slotDiv.appendChild(img)
+              }
             }
           }
           headerAvatar.appendChild(slotDiv)
@@ -232,6 +246,41 @@
       }
 
       /**
+       * Clears all inline CSS custom properties of custom themes on the chatViewRoot.
+       * @param {HTMLElement} chatViewRoot
+       */
+      const clearCustomThemeProperties = (chatViewRoot) => {
+        if (!chatViewRoot) {
+          return
+        }
+  
+        chatViewRoot.style.removeProperty('--atoll-chat-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-input-container-bg-custom')
+        chatViewRoot.style.removeProperty('--atoll-chat-glassy-text-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-bg-image')
+        chatViewRoot.style.removeProperty('--atoll-chat-bg-blur')
+        chatViewRoot.style.removeProperty('--atoll-chat-bg-dim')
+        chatViewRoot.style.removeProperty('--atoll-chat-sent-status-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-sender-name-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-timestamp-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-btn-send-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-btn-send-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-input-emoji-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-waveform-active')
+        chatViewRoot.style.removeProperty('--atoll-chat-waveform-inactive')
+        chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-border')
+      }
+
+      /**
        * Fetches active room details from storage and updates the component's state, theme, and headers.
        * @param {string} room_id - The active room's identifier.
        * @returns {Promise<void>}
@@ -239,18 +288,32 @@
        */
       const updateRoomInfo = async (room_id) => {
         if (!room_id || typeof room_id !== 'string' || $state.activeSelectionType !== 'chats') {
+          state.roomName = ''
+          state.roomStatus = ''
+          clearCustomThemeProperties(refs('chatViewRoot'))
           return
         }
   
         try {
           const room = await $storage.getRoom(room_id)
 
+          // Guard against race conditions after the async operation
+          if ($state.activeSelectionId !== room_id || $state.activeSelectionType !== 'chats') {
+            return
+          }
+
           if (room) {
             // Load theme & nicknames
             state.roomTheme = room.theme || 'classic'
             state.nicknames = room.nicknames || {}
 
-            let statusBarColor = '#FFFFFF'
+            const isAppDark =
+              document.documentElement.getAttribute('data-atoll-theme') === 'dark' ||
+              document.documentElement.getAttribute('data-bs-theme') === 'dark' ||
+              document.body.getAttribute('data-atoll-theme') === 'dark' ||
+              (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches)
+
+            let statusBarColor = isAppDark ? '#1F1F1F' : '#FFFFFF'
             if (room.theme === 'classic-dark') {
               statusBarColor = '#1F1F1F'
             } else if (room.theme === 'ocean') {
@@ -260,7 +323,7 @@
             } else if (room.theme === 'sunset') {
               statusBarColor = '#2C1014'
             } else if (room.theme === 'custom' && room.custom_theme) {
-              statusBarColor = room.custom_theme.bgColor || '#FFFFFF'
+              statusBarColor = room.custom_theme.bgColor || (isAppDark ? '#1F1F1F' : '#FFFFFF')
             }
             updateNativeStatusBar(statusBarColor).catch(() => {
             })
@@ -272,7 +335,6 @@
             } else {
               state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
             }
-            state.roomInitial = state.roomName.charAt(0).toUpperCase()
   
             const typingParticipants = participants.filter(p => p.is_typing === true)
             let baseStatus = room.is_group ? 'Group Chat' : 'Private'
@@ -334,32 +396,7 @@
               chatViewRoot.style.setProperty('--atoll-chat-attachment-card-bg', ct.attachmentCardBg || ct.receivedBg || '#EEEEEE')
               chatViewRoot.style.setProperty('--atoll-chat-attachment-card-border', ct.attachmentCardBorder || 'rgba(0, 0, 0, 0.08)')
             } else {
-              // Clear inline custom theme properties
-              chatViewRoot.style.removeProperty('--atoll-chat-bg')
-              chatViewRoot.style.removeProperty('--atoll-chat-input-container-bg-custom')
-              chatViewRoot.style.removeProperty('--atoll-chat-glassy-text-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-bg')
-              chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-bg')
-              chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-bg-image')
-              chatViewRoot.style.removeProperty('--atoll-chat-bg-blur')
-              chatViewRoot.style.removeProperty('--atoll-chat-bg-dim')
-
-              chatViewRoot.style.removeProperty('--atoll-chat-sent-status-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-sender-name-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-timestamp-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-bg')
-              chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-bg')
-              chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-btn-send-bg')
-              chatViewRoot.style.removeProperty('--atoll-chat-btn-send-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-input-emoji-color')
-              chatViewRoot.style.removeProperty('--atoll-chat-waveform-active')
-              chatViewRoot.style.removeProperty('--atoll-chat-waveform-inactive')
-              chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-bg')
-              chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-border')
+              clearCustomThemeProperties(chatViewRoot)
             }
 
             renderHeaderAvatar(room, participants)
@@ -450,7 +487,7 @@
       btnDetails.addEventListener('click', () => {
         state.isRoomDetailsOpen = !state.isRoomDetailsOpen
         $state.isRoomDetailsOpen = state.isRoomDetailsOpen
-      })
+      }, { signal })
 
       $bus.on('ui:close_room_details', () => {
         state.isRoomDetailsOpen = false
@@ -461,7 +498,7 @@
         $state.activeSelectionId = null
         $state.activeSelectionType = null
         $bus.emit('ui:open_mobile_nav')
-      })
+      }, { signal })
 
       /**
        * Initiates an E2E media call (audio and optionally video) in the current room.
@@ -474,25 +511,44 @@
           return
         }
 
+        if (!navigator.mediaDevices || typeof navigator.mediaDevices.getUserMedia !== 'function') {
+          $bus.emit('ui:show_toast', {
+            message: 'No microphone or camera detected',
+            type: 'error'
+          })
+          return
+        }
+
         let localStream = null
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-            video
-          })
-        } catch (err) {
-          if (video) {
-            try {
+          try {
+            localStream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: video
+            })
+          } catch (err) {
+            if (video) {
               localStream = await navigator.mediaDevices.getUserMedia({
                 audio: true,
                 video: false
               })
-            } catch {
-              return
+            } else {
+              throw err
             }
-          } else {
-            throw err
           }
+        } catch (err) {
+          const errName = err?.name || err?.message || ''
+          let errMsg = 'No microphone or camera detected'
+          if (errName === 'NotAllowedError' || errName === 'PermissionDeniedError') {
+            errMsg = 'Microphone or camera permission was denied'
+          } else if (errName === 'NotFoundError' || errName === 'DevicesNotFoundError') {
+            errMsg = 'No microphone or camera detected'
+          }
+          $bus.emit('ui:show_toast', {
+            message: errMsg,
+            type: 'error'
+          })
+          return
         }
 
         try {
@@ -504,14 +560,27 @@
   
           await $webrtc.initiateCall($state.activeCallRoomId, localStream)
         } catch (err) {
-          throw err
+          if (localStream) {
+            try {
+              localStream.getTracks().forEach(t => t.stop())
+            } catch (cleanupErr) {
+              console.error('Failed to cleanup stream tracks', cleanupErr)
+            }
+          }
+          $state.callStatus = 'idle'
+          $state.activeCallRoomId = null
+
+          $bus.emit('ui:show_toast', {
+            message: 'Failed to establish call connection. Please check your network.',
+            type: 'error'
+          })
         }
       }
 
       refs('btnAudioCall').addEventListener('click', () => initiateCall(false).catch(() => {
-      }))
+      }), { signal })
       refs('btnVideoCall').addEventListener('click', () => initiateCall(true).catch(() => {
-      }))
+      }), { signal })
     }
   })
 </script>
