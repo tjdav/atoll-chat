@@ -23,16 +23,19 @@ export default function syncPlugin () {
        */
       context: (pluginContext) => {
         let isSubscribed = false
+        let catchUpPromise = null
+        let lifecycleListenersRegistered = false
 
         return (instanceContext) => {
           const { pb } = instanceContext.pocketbase
           const { $worker } = instanceContext.cryptoWorker
           const { $storage } = instanceContext.storage
 
-          let catchUpPromise = null
+          // Note: lifecycleListenersRegistered guard mirrors web-rtc-plugin.js isSignalingSetup
+          if (!lifecycleListenersRegistered && pluginContext.$bus) {
+            lifecycleListenersRegistered = true
 
-          // Reset subscription state on logout to allow re-syncing on next login
-          if (pluginContext.$bus) {
+            // Reset subscription state on logout to allow re-syncing on next login
             pluginContext.$bus.on('auth:logout', () => {
               isSubscribed = false
               catchUpPromise = null
@@ -51,6 +54,20 @@ export default function syncPlugin () {
               } catch (err) {
                 // To comply with "NO SWALLOWED ERRORS", we explicitly re-throw unexpected errors.
                 throw err
+              }
+            })
+
+            pluginContext.$bus.on('app:foreground', async () => {
+              const { $state } = instanceContext.globalStore
+              if ($state.isAuthenticated && $state.isVaultUnlocked) {
+                try {
+                  await performCatchUpSync()
+                } catch (err) {
+                  pluginContext.$bus.emit('ui:show_toast', {
+                    message: `Foreground sync catch-up failed: ${err.message || err}`,
+                    variant: 'danger'
+                  })
+                }
               }
             })
           }
@@ -130,21 +147,6 @@ export default function syncPlugin () {
             }
           }
 
-          if (pluginContext.$bus) {
-            pluginContext.$bus.on('app:foreground', async () => {
-              const { $state } = instanceContext.globalStore
-              if ($state.isAuthenticated && $state.isVaultUnlocked) {
-                try {
-                  await performCatchUpSync()
-                } catch (err) {
-                  pluginContext.$bus.emit('ui:show_toast', {
-                    message: `Foreground sync catch-up failed: ${err.message || err}`,
-                    variant: 'danger'
-                  })
-                }
-              }
-            })
-          }
 
           /**
            * Establishes real-time subscriptions to PocketBase collections.
