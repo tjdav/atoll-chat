@@ -254,7 +254,7 @@
               if (other.avatar) {
                 roomAvatarComp.setAttribute('src', pb.files.getURL(other, other.avatar, { thumb: '100x100' }))
               }
-            } else if (room.is_group && participants.length > 0) {
+            } else if (room.is_group) {
               roomAvatarComp.setAttribute('type', 'multiparty')
               roomAvatarComp.setAttribute('size', '3xl')
               const splitCount = Math.min(Math.max(participants.length, 2), 4)
@@ -265,12 +265,14 @@
               const displayCount = Math.min(participants.length, splitCount)
               for (let i = 0; i < displayCount; i++) {
                 const p = participants[i]
-                const img = document.createElement('img')
-                img.alt = p.name || p.username || 'Member'
-                if (p.avatar) {
-                  img.src = pb.files.getURL(p, p.avatar, { thumb: '50x50' })
+                if (p) {
+                  const img = document.createElement('img')
+                  img.alt = p.name || p.username || 'Member'
+                  if (p.avatar) {
+                    img.src = pb.files.getURL(p, p.avatar, { thumb: '50x50' })
+                  }
+                  slotDiv.appendChild(img)
                 }
-                slotDiv.appendChild(img)
               }
               roomAvatarComp.appendChild(slotDiv)
             } else {

@@ -176,4 +176,64 @@ describe('Atoll Profile Component', () => {
     assert.ok(circle, 'Profile circle container should exist')
     assert.ok(circle.classList.contains('multiparty-3'), 'Should apply multiparty-3 grid class')
   })
+
+  test('should render initials and colored fallbacks for images without src in multiparty mode', async () => {
+    const el = document.createElement(tagName)
+    el.setAttribute('type', 'multiparty')
+    el.setAttribute('split-count', '2')
+
+    const slotDiv = document.createElement('div')
+    slotDiv.setAttribute('slot', 'image')
+
+    const img1 = document.createElement('img')
+    img1.setAttribute('alt', 'Alice Smith')
+    slotDiv.appendChild(img1)
+
+    const img2 = document.createElement('img')
+    img2.setAttribute('alt', 'Bob Jones')
+    slotDiv.appendChild(img2)
+
+    el.appendChild(slotDiv)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const imageContainer = el.querySelector('[slot="image"]')
+    assert.ok(imageContainer, 'Slot image container should exist')
+
+    const fallbacks = imageContainer.querySelectorAll('.atoll-profile-fallback')
+    assert.equal(fallbacks.length, 2, 'Should render 2 fallbacks for missing images')
+
+    const initialsSpans = imageContainer.querySelectorAll('.atoll-profile-initials')
+    assert.equal(initialsSpans.length, 2, 'Should render 2 initials spans')
+    assert.equal(initialsSpans[0].textContent.trim(), 'AS')
+    assert.equal(initialsSpans[1].textContent.trim(), 'BJ')
+  })
+
+  test('should automatically create fallback cells when fewer items are provided than splitCount', async () => {
+    const el = document.createElement(tagName)
+    el.setAttribute('type', 'multiparty')
+    el.setAttribute('split-count', '3')
+
+    const slotDiv = document.createElement('div')
+    slotDiv.setAttribute('slot', 'image')
+
+    const img1 = document.createElement('img')
+    img1.setAttribute('alt', 'Charlie Brown')
+    slotDiv.appendChild(img1)
+
+    el.appendChild(slotDiv)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const imageContainer = el.querySelector('[slot="image"]')
+    assert.ok(imageContainer, 'Slot image container should exist')
+
+    const fallbacks = imageContainer.querySelectorAll('.atoll-profile-fallback')
+    assert.equal(fallbacks.length, 3, 'Should render 3 total fallbacks (1 for provided img, 2 auto-generated)')
+
+    const defaultFallbacks = imageContainer.querySelectorAll('.atoll-profile-fallback[data-default-fallback="true"]')
+    assert.equal(defaultFallbacks.length, 2, 'Should generate 2 default fallback icon cells')
+  })
 })

@@ -169,7 +169,7 @@
             profile.setAttribute('src', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '50x50' }))
           }
           return profile
-        } else if (item.is_group && participants.length > 0) {
+        } else if (item.is_group) {
           const profile = document.createElement('atoll-profile')
           profile.setAttribute('slot', 'avatar')
           profile.setAttribute('type', 'multiparty')
@@ -220,7 +220,7 @@
 
         const existingAvatar = el.querySelector('[slot="avatar"]')
         const isEncryptedAvatar = Boolean(data.item.avatar)
-        const isMultiparty = Boolean(data.item.is_group && (data.item.participants || []).filter(p => p.id !== $state.currentUser?.id).length > 0 && !isEncryptedAvatar)
+        const isMultiparty = Boolean(data.item.is_group && !isEncryptedAvatar)
 
         if (!existingAvatar) {
           el.appendChild(createAvatarComponent(data.item, data.roomName))

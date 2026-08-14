@@ -604,12 +604,19 @@
           return
         }
 
-        const container = root.querySelector('[slot="image"]')
+        let container = root.querySelector('[slot="image"]')
         if (!container) {
-          return
+          container = document.createElement('div')
+          container.setAttribute('slot', 'image')
+          if (circle) {
+            circle.appendChild(container)
+          } else {
+            root.appendChild(container)
+          }
+          cleanDefaultSlot()
         }
 
-        const targetCount = Math.min(Math.max(state.splitCount, 2), 4)
+        const targetCount = Math.min(Math.max(state.splitCount || 2, 2), 4)
 
         const syncImages = () => {
           const defaultImg = container.querySelector('[ref="avatarImage"]')

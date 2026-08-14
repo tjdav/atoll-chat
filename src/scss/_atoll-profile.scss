@@ -120,7 +120,7 @@ atoll-profile,
   .atoll-profile-circle {
     display: grid;
     gap: 1px;
-    background-color: var(--#{$prefix}profile-border-color, #ffffff);
+    background-color: var(--#{$prefix}profile-cutout-border, var(--#{$prefix}profile-border-color, #ffffff));
     border-radius: 50%;
     overflow: hidden;
 
@@ -197,6 +197,16 @@ atoll-profile,
       object-fit: cover;
     }
   }
+
+  /* Scale initial typography so initials fit comfortably inside multiparty quadrants */
+  &.atoll-profile-2xs, &[size="2xs"] { .atoll-profile-initials { font-size: 8px; } }
+  &.atoll-profile-xs, &[size="xs"] { .atoll-profile-initials { font-size: 9px; } }
+  &.atoll-profile-sm, &[size="sm"] { .atoll-profile-initials { font-size: 11px; } }
+  &.atoll-profile-md, &[size="md"] { .atoll-profile-initials { font-size: 13px; } }
+  &.atoll-profile-lg, &[size="lg"] { .atoll-profile-initials { font-size: 14px; } }
+  &.atoll-profile-xl, &[size="xl"] { .atoll-profile-initials { font-size: 15px; } }
+  &.atoll-profile-2xl, &[size="2xl"] { .atoll-profile-initials { font-size: 20px; } }
+  &.atoll-profile-3xl, &[size="3xl"] { .atoll-profile-initials { font-size: 22px; } }
 }
 
 /* Grouped Overlapping Row (type="grouped") */

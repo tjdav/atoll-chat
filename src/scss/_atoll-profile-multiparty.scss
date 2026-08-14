@@ -36,6 +36,23 @@
     slot[name="image"] > *:first-child,
     [slot="image"] > *:first-child {
       grid-row: 1 / span 2;
+      grid-column: 1;
+    }
+
+    .atoll-profile-img:nth-child(2),
+    .atoll-profile-fallback:nth-child(2),
+    slot[name="image"] > *:nth-child(2),
+    [slot="image"] > *:nth-child(2) {
+      grid-row: 1;
+      grid-column: 2;
+    }
+
+    .atoll-profile-img:nth-child(3),
+    .atoll-profile-fallback:nth-child(3),
+    slot[name="image"] > *:nth-child(3),
+    [slot="image"] > *:nth-child(3) {
+      grid-row: 2;
+      grid-column: 2;
     }
   }
 

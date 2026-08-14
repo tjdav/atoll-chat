@@ -8,7 +8,10 @@ describe('Atoll Chat List Component', () => {
 
   // Suite-level persistent singleton objects for test execution across instances
   const globalState = {
-    currentUser: { id: 'user1', name: 'User One' },
+    currentUser: {
+      id: 'user1',
+      name: 'User One'
+    },
     currentAppView: 'chats',
     activeSelectionId: null,
     activeSelectionType: null,
@@ -124,7 +127,10 @@ describe('Atoll Chat List Component', () => {
             let itemsToDisplay = loadedItems
             const query = (globalState.listSearchQuery || '').trim().toLowerCase()
             if (query && Fuse) {
-              const fuseInstance = new Fuse(loadedItems, { keys: ['searchContent'], threshold: 0.4 })
+              const fuseInstance = new Fuse(loadedItems, {
+                keys: ['searchContent'],
+                threshold: 0.4
+              })
               itemsToDisplay = fuseInstance.search(query).map(r => r.item)
             }
             await render(itemsToDisplay, query)
@@ -137,9 +143,14 @@ describe('Atoll Chat List Component', () => {
         }
 
         const debouncedRender = () => manager.performRender()
-        const debouncedSaveScroll = () => {}
+        const debouncedSaveScroll = () => {
+        }
 
-        return { manager, debouncedRender, debouncedSaveScroll }
+        return {
+          manager,
+          debouncedRender,
+          debouncedSaveScroll
+        }
       }
     }
   }
@@ -162,7 +173,10 @@ describe('Atoll Chat List Component', () => {
     document.body.innerHTML = ''
     emittedEvents.length = 0
 
-    globalState.currentUser = { id: 'user1', name: 'User One' }
+    globalState.currentUser = {
+      id: 'user1',
+      name: 'User One'
+    }
     globalState.currentAppView = 'chats'
     globalState.activeSelectionId = null
     globalState.activeSelectionType = null
@@ -176,8 +190,16 @@ describe('Atoll Chat List Component', () => {
         is_group: false,
         name: null,
         participants: [
-          { id: 'user1', name: 'User One', last_read_message_id: 'm1' },
-          { id: 'user2', name: 'Alice Smith', username: 'alice' }
+          {
+            id: 'user1',
+            name: 'User One',
+            last_read_message_id: 'm1'
+          },
+          {
+            id: 'user2',
+            name: 'Alice Smith',
+            username: 'alice'
+          }
         ],
         updated_at: '2025-01-01T10:00:00Z'
       },
@@ -186,8 +208,16 @@ describe('Atoll Chat List Component', () => {
         is_group: true,
         name: 'Project Discussion',
         participants: [
-          { id: 'user1', name: 'User One', last_read_message_id: null },
-          { id: 'user3', name: 'Bob Johnson', username: 'bob' }
+          {
+            id: 'user1',
+            name: 'User One',
+            last_read_message_id: null
+          },
+          {
+            id: 'user3',
+            name: 'Bob Johnson',
+            username: 'bob'
+          }
         ],
         updated_at: '2025-01-01T09:00:00Z'
       }
@@ -195,18 +225,34 @@ describe('Atoll Chat List Component', () => {
 
     mockMessages = {
       room1: [
-        { id: 'm1', room_id: 'room1', sender_id: 'user1', type: 'text', content: 'Hello Alice', created_at: '2025-01-01T10:00:00Z' }
+        {
+          id: 'm1',
+          room_id: 'room1',
+          sender_id: 'user1',
+          type: 'text',
+          content: 'Hello Alice',
+          created_at: '2025-01-01T10:00:00Z'
+        }
       ],
       room2: [
-        { id: 'm2', room_id: 'room2', sender_id: 'user3', type: 'text', content: 'Welcome Bob', created_at: '2025-01-01T09:00:00Z' }
+        {
+          id: 'm2',
+          room_id: 'room2',
+          sender_id: 'user3',
+          type: 'text',
+          content: 'Welcome Bob',
+          created_at: '2025-01-01T09:00:00Z'
+        }
       ]
     }
 
     if (!customElements.get('atoll-list')) {
-      customElements.define('atoll-list', class extends HTMLElement {})
+      customElements.define('atoll-list', class extends HTMLElement {
+      })
     }
     if (!customElements.get('atoll-profile')) {
-      customElements.define('atoll-profile', class extends HTMLElement {})
+      customElements.define('atoll-profile', class extends HTMLElement {
+      })
     }
     if (!customElements.get('chat-list-item')) {
       customElements.define('chat-list-item', class extends HTMLElement {
@@ -223,7 +269,10 @@ describe('Atoll Chat List Component', () => {
       eventBus: {
         $bus: {
           emit: (name, payload) => {
-            emittedEvents.push({ name, payload })
+            emittedEvents.push({
+              name,
+              payload
+            })
           },
           on: (name, cb) => {
             if (!globalState.busListeners) {
@@ -234,7 +283,8 @@ describe('Atoll Chat List Component', () => {
             }
             globalState.busListeners[name].push(cb)
           },
-          off: () => {},
+          off: () => {
+          },
           triggerBus: (name, payload) => {
             if (globalState.busListeners && globalState.busListeners[name]) {
               globalState.busListeners[name].forEach(cb => cb(payload))
@@ -295,6 +345,11 @@ describe('Atoll Chat List Component', () => {
     assert.equal(secondItem.getAttribute('preview-text'), 'Bob: Welcome Bob')
     assert.equal(secondItem.getAttribute('is-unread'), 'true')
     assert.equal(secondItem.getAttribute('unread-count'), '1')
+
+    const groupAvatar = secondItem.querySelector('atoll-profile[slot="avatar"]')
+    assert.ok(groupAvatar, 'Group chat list item should contain an avatar profile element')
+    assert.equal(groupAvatar.getAttribute('type'), 'multiparty', 'Group avatar should have type="multiparty"')
+    assert.equal(groupAvatar.getAttribute('split-count'), '2', 'Group avatar split-count should equal 2 (minimum split count for 1 other participant)')
   })
 
   test('should filter list results on listSearchQuery update', async () => {

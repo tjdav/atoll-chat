@@ -210,7 +210,7 @@
           } else {
             headerAvatar.removeAttribute('src')
           }
-        } else if (room.is_group && participants.length > 0) {
+        } else if (room.is_group) {
           headerAvatar.removeAttribute('user-id')
           headerAvatar.setAttribute('type', 'multiparty')
           headerAvatar.setAttribute('size', 'sm')
@@ -226,12 +226,12 @@
             const p = participants[i]
             if (p) {
               const pName = p.name || p.username || 'Member'
+              const img = document.createElement('img')
+              img.alt = pName
               if (p.avatar && pb?.files) {
-                const img = document.createElement('img')
                 img.src = pb.files.getURL(p, p.avatar, { thumb: '30x30' })
-                img.alt = pName
-                slotDiv.appendChild(img)
               }
+              slotDiv.appendChild(img)
             }
           }
           headerAvatar.appendChild(slotDiv)
