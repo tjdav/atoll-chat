@@ -52,6 +52,8 @@
           return
         }
         const targetView = (msg.mime_type || '').startsWith('image/') ? 'pictures' : 'videos'
+        $state.mediaViewerSourceChatRoomId = msg.room_id
+        $state.mediaViewerSourceMessageId = state.localUuid
         $state.currentAppView = targetView
         $state.activeSelectionType = targetView
         $state.activeSelectionId = msg.media_id
