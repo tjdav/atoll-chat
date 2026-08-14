@@ -7,15 +7,20 @@
   >
     <!-- Form Body nested naturally -->
     <div class="d-flex flex-column gap-3">
+
+      <!-- Creation Error Banner -->
+      <div class="alert alert-danger py-2 px-3 small mb-0" hidden="{{ hideCreationError }}" ref="creationErrorEl" data-testid="creationError">
+        {{ creationError }}
+      </div>
       
       <!-- Room Name (shown conditionally for group rooms) -->
-      <div class="mb-1 {{ roomNameClass }}" ref="roomNameContainer">
+      <div class="mb-1" ref="roomNameContainer" hidden="{{ hideGroupFields }}">
         <label class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.05em;">Room Name</label>
         <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput" data-testid="roomNameInput">
       </div>
 
       <!-- Room Avatar (shown conditionally for group rooms) -->
-      <div class="mb-1 {{ roomNameClass }}" ref="roomAvatarContainer">
+      <div class="mb-1" ref="roomAvatarContainer" hidden="{{ hideGroupFields }}">
         <label class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.05em;">Room Avatar (Optional)</label>
         <div class="d-flex align-items-center gap-3">
           <div class="room-avatar-preview bg-body-tertiary border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
@@ -35,9 +40,7 @@
         class="atoll-token-container p-2 border rounded-3 d-flex flex-wrap gap-2 align-items-center" 
         hidden="{{ hideSelectedTokens }}"
       >
-        <slot name="tokens">
-          <!-- Dynamically rendered chips -->
-        </slot>
+        <!-- Dynamically rendered chips -->
       </div>
 
       <!-- Integrated Search Bar -->
@@ -62,7 +65,7 @@
       <atoll-button ref="btnCancel" variant="ghost" size="md">
         Cancel
       </atoll-button>
-      <atoll-button ref="btnSubmit" variant="primary" size="md" data-testid="btnCreate">
+      <atoll-button ref="btnSubmit" variant="primary" size="md" disabled="{{ disableSubmit }}" loading="{{ isCreating }}" data-testid="btnCreate">
         Create Room
       </atoll-button>
     </div>
@@ -79,19 +82,21 @@
       searchResults: [],
       selectedParticipants: [],
       searchError: null,
+      creationError: null,
       isCreating: false,
       roomAvatar: null
     }),
     getters: {
       isGroup: (state) => (state.selectedParticipants || []).length > 1,
       canCreate: (state) => (state.selectedParticipants || []).length > 0,
-      roomNameClass: (state) => (((state.selectedParticipants || []).length > 1) ? 'd-block' : 'd-none'),
+      hideGroupFields: (state) => (state.selectedParticipants || []).length <= 1,
       disableSubmit: (state) => !state.canCreate || state.isCreating,
       hasSelectedUsers: (state) => (state.selectedParticipants || []).length > 0,
-      hideSelectedTokens: (state) => (state.selectedParticipants || []).length === 0
+      hideSelectedTokens: (state) => (state.selectedParticipants || []).length === 0,
+      hideCreationError: (state) => !state.creationError
     },
     client: (context) => {
-      const { refs, state, pocketbase, eventBus, globalStore, storage, utils, cryptoWorker, signal } = context
+      const { refs, root, state, pocketbase, eventBus, globalStore, storage, utils, cryptoWorker, signal } = context
 
       const { pb } = pocketbase
       const { $func, $crypto } = utils
@@ -99,7 +104,7 @@
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $storage } = storage
-  
+
       const popupEl = refs('popupEl')
       const searchBar = refs('searchBar')
       const roomNameInput = refs('roomNameInput')
@@ -109,49 +114,86 @@
       const avatarPreview = refs('avatarPreview')
       const btnSelectAvatar = refs('btnSelectAvatar')
       const btnClearAvatar = refs('btnClearAvatar')
-      const roomNameContainer = refs('roomNameContainer')
-      const roomAvatarContainer = refs('roomAvatarContainer')
-      const btnSubmit = refs('btnSubmit')
+
+      let activeAvatarPreviewUrl = null
 
       /**
-       * Imperatively updates the component's interactive UI controls, token list, and user list.
-       * Relying strictly on the template contract.
+       * Cleans up created Object URL preview for avatar images.
+       * @returns {void}
+       */
+      const cleanupAvatarPreview = () => {
+        if (activeAvatarPreviewUrl) {
+          URL.revokeObjectURL(activeAvatarPreviewUrl)
+          activeAvatarPreviewUrl = null
+        }
+      }
+
+      /**
+       * Resets state, input controls, and avatar preview to initial empty conditions.
+       * @returns {void}
+       */
+      const resetForm = () => {
+        state.roomName = ''
+        state.searchQuery = ''
+        state.searchResults = []
+        state.selectedParticipants = []
+        state.searchError = null
+        state.creationError = null
+        state.isCreating = false
+        state.roomAvatar = null
+
+        cleanupAvatarPreview()
+
+        searchBar.value = ''
+        roomNameInput.value = ''
+        avatarInput.value = ''
+        avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
+        btnClearAvatar.classList.add('d-none')
+
+        render()
+      }
+
+      /**
+       * Displays the room creation modal popup and focuses search bar input.
+       * @returns {void}
+       */
+      const showModal = () => {
+        resetForm()
+        if (typeof popupEl.show === 'function') {
+          popupEl.show()
+        } else {
+          popupEl.setAttribute('open', 'true')
+        }
+        setTimeout(() => {
+          const inputEl = searchBar.querySelector('input') || searchBar
+          if (typeof inputEl.focus === 'function') {
+            inputEl.focus()
+          }
+        }, 50)
+      }
+
+      /**
+       * Closes the active popup modal dialog.
+       * @returns {void}
+       */
+      const close = () => {
+        if (typeof popupEl.hide === 'function') {
+          popupEl.hide()
+        } else {
+          popupEl.removeAttribute('open')
+        }
+      }
+
+      // Expose public instance methods on custom element host
+      root.show = showModal
+      root.hide = close
+
+      /**
+       * Imperatively updates the token list and user candidate list.
+       * State-driven getters manage group field & error element hidden attributes declaratively.
        * @returns {void}
        */
       const render = () => {
-        // Handle dynamic group field visibility classes imperatively as fallback/safeguard
-        const showGroupFields = state.selectedParticipants.length > 1
-        if (showGroupFields) {
-          roomNameContainer.classList.remove('d-none')
-          roomNameContainer.classList.add('d-block')
-          roomAvatarContainer.classList.remove('d-none')
-          roomAvatarContainer.classList.add('d-block')
-        } else {
-          roomNameContainer.classList.remove('d-block')
-          roomNameContainer.classList.add('d-none')
-          roomAvatarContainer.classList.remove('d-block')
-          roomAvatarContainer.classList.add('d-none')
-        }
-
-        // Token container hidden state
-        if (state.hideSelectedTokens) {
-          tokenContainer.setAttribute('hidden', 'true')
-        } else {
-          tokenContainer.removeAttribute('hidden')
-        }
-
-        // Submit button state and text
-        // The "Create Room" action button remains disabled until at least one participant is selected.
-        btnSubmit.disabled = !state.hasSelectedUsers || state.disableSubmit
-        const labelEl = btnSubmit.querySelector('.atoll-btn-label') || btnSubmit
-        if (state.isCreating) {
-          btnSubmit.setAttribute('loading', 'true')
-          labelEl.textContent = 'Creating...'
-        } else {
-          btnSubmit.removeAttribute('loading')
-          labelEl.textContent = 'Create Room'
-        }
-
         // Render participant tokens (chips)
         tokenContainer.innerHTML = ''
         state.selectedParticipants.forEach(user => {
@@ -240,17 +282,14 @@
         }
       }
 
-      // Initial render
-      render()
-
       /**
-       * Searches for users in PocketBase matching the input search string.
-       * @param {string} query - The search text.
+       * Debounced handler to execute PocketBase user search queries.
+       * @param {string} query - The search query string.
        * @returns {Promise<void>}
-       * @throws {Error} Re-throws non-abort network and PocketBase failures.
        */
       const performSearch = $func.debounce(async (query) => {
-        if (!query || query.length < 3) {
+        const trimmed = (query || '').trim()
+        if (!trimmed || trimmed.length < 3) {
           state.searchResults = []
           state.searchError = null
           render()
@@ -262,32 +301,191 @@
           let items = []
 
           if (typeof window !== 'undefined' && typeof window.__pbMockGetList === 'function') {
-            const res = await window.__pbMockGetList(query)
+            const res = await window.__pbMockGetList(trimmed)
             items = res.items || []
           } else {
             const res = await pb.collection('users').getList(1, 10, {
               filter: pb.filter('username ~ {:query} && id != {:currentUserId}', {
-                query,
+                query: trimmed,
                 currentUserId
-              })
+              }),
+              requestKey: 'user-search'
             })
             items = res.items || []
           }
 
-          state.searchResults = items.filter(u => u.id !== currentUserId)
+          const selectedIds = new Set(state.selectedParticipants.map(p => p.id))
+          state.searchResults = items.filter(u => u.id !== currentUserId && !selectedIds.has(u.id))
           state.searchError = null
-          render()
         } catch (err) {
-          if (err.isAbort) {
+          if (err.isAbort || err.name === 'AbortError') {
             return
           }
           state.searchError = 'Search failed. Please try again.'
           state.searchResults = []
+        } finally {
           render()
-          throw err
         }
       }, 300)
 
+      /**
+       * Handles room creation form submission including encryption key validation,
+       * room key wrapping, and PocketBase record creation.
+       * @returns {Promise<void>}
+       * @throws {Error} Re-throws unexpected exceptions after updating state & toast feedback.
+       */
+      const handleCreateRoom = async () => {
+        if (state.isCreating || state.disableSubmit || !state.hasSelectedUsers) {
+          return
+        }
+
+        try {
+          state.isCreating = true
+          state.creationError = null
+          render()
+
+          const creator = $state.currentUser
+          if (!creator) {
+            throw new Error('Current user session not found in global state.')
+          }
+          if (!creator.private_box_key) {
+            throw new Error('Your encryption keys are not loaded. Please log in again.')
+          }
+
+          const participants = [
+            creator,
+            ...state.selectedParticipants.filter(p => p.id !== creator.id)
+          ]
+
+          for (const p of participants) {
+            if (!p.public_box_key) {
+              throw new Error(`User @${p.username || 'unknown'} does not have a public encryption key configured.`)
+            }
+          }
+
+          const roomKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
+          const isGroup = state.isGroup
+          let roomName = isGroup ? (state.roomName || '').trim() : ''
+          if (isGroup && !roomName) {
+            roomName = state.selectedParticipants.map(p => p.name || p.username).join(', ')
+          }
+
+          let roomAvatarBase64 = ''
+          if (isGroup && state.roomAvatar) {
+            const fileBuffer = await state.roomAvatar.arrayBuffer()
+            const avatarKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
+            const avatarNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+            const encryptedAvatar = await $worker.execute('worker:crypto_secretbox_easy', {
+              message: fileBuffer,
+              nonce: avatarNonce.slice(0),
+              key: avatarKey.slice(0)
+            })
+
+            const blob = new Blob([encryptedAvatar], { type: 'application/octet-stream' })
+            const formData = new FormData()
+            formData.append('file', blob, 'avatar.bin')
+            const mediaRecord = await pb.collection('media').create(formData)
+
+            roomAvatarBase64 = JSON.stringify({
+              media_id: mediaRecord.id,
+              key: $crypto.toBase64(avatarKey),
+              nonce: $crypto.toBase64(avatarNonce)
+            })
+          }
+
+          const metadata = JSON.stringify({
+            name: roomName,
+            avatar: roomAvatarBase64
+          })
+          const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+          const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
+            message: metadata,
+            nonce: metadataNonce.slice(0),
+            key: roomKey.slice(0)
+          })
+
+          const metadataPayload = {
+            ciphertext: $crypto.toBase64(encryptedMetadata),
+            nonce: $crypto.toBase64(metadataNonce)
+          }
+
+          const wrappedMemberRecords = []
+          for (const participant of participants) {
+            const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
+            const encryptedKey = await $worker.execute('worker:crypto_box_easy', {
+              message: roomKey.slice(0),
+              nonce: nonce.slice(0),
+              publicKey: participant.public_box_key,
+              privateKey: creator.private_box_key
+            })
+
+            wrappedMemberRecords.push({
+              user_id: participant.id,
+              wrapped_by: creator.id,
+              encrypted_room_key: $crypto.toBase64(encryptedKey),
+              key_nonce: $crypto.toBase64(nonce),
+              role: participant.id === creator.id ? 'admin' : 'member'
+            })
+          }
+
+          const newRoom = await pb.collection('rooms').create({
+            is_group: isGroup,
+            encrypted_metadata: metadataPayload
+          })
+
+          for (const record of wrappedMemberRecords) {
+            await pb.collection('room_members').create({
+              ...record,
+              room_id: newRoom.id,
+              epoch_id: 1
+            }, {
+              requestKey: null
+            })
+          }
+
+          await $storage.saveRoom({
+            id: newRoom.id,
+            is_group: isGroup,
+            name: roomName,
+            avatar: roomAvatarBase64,
+            participants: participants.map(u => ({
+              id: u.id,
+              username: u.username,
+              avatar: u.avatar,
+              collectionId: u.collectionId,
+              collectionName: u.collectionName
+            })),
+            user_role: 'admin',
+            key_history: [{
+              epoch_id: 1,
+              key: $crypto.toBase64(roomKey)
+            }],
+            created_at: newRoom.created,
+            updated_at: newRoom.updated
+          })
+
+          $bus.emit('db:new_local_room', { room_id: newRoom.id })
+          $bus.emit('room:select', { room_id: newRoom.id })
+
+          $state.currentAppView = 'chats'
+          $state.activeSelectionId = newRoom.id
+          $state.activeSelectionType = 'chats'
+          close()
+
+        } catch (err) {
+          const errorMsg = err.message || 'Room creation failed'
+          state.creationError = errorMsg
+          $bus.emit('ui:show_toast', {
+            message: `Room creation failed: ${errorMsg}`,
+            type: 'danger'
+          })
+        } finally {
+          state.isCreating = false
+          render()
+        }
+      }
+
+      // DOM Event Listeners bound with { signal }
       searchBar.addEventListener('input', () => {
         state.searchQuery = searchBar.value || ''
         state.searchError = null
@@ -304,68 +502,37 @@
         render()
       }, { signal })
 
-      roomNameInput.oninput = (e) => {
+      roomNameInput.addEventListener('input', (e) => {
         state.roomName = e.target.value
         render()
-      }
+      }, { signal })
 
-      $bus.on('ui:open_create_room', () => {
-        state.roomName = ''
-        state.searchQuery = ''
-        state.searchResults = []
-        state.selectedParticipants = []
-        state.searchError = null
-        state.roomAvatar = null
-        searchBar.value = ''
-        roomNameInput.value = ''
-        avatarInput.value = ''
-        avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
-        btnClearAvatar.classList.add('d-none')
-        render()
-        if (typeof popupEl.show === 'function') {
-          popupEl.show()
-        } else {
-          popupEl.setAttribute('open', 'true')
-        }
-      })
+      btnSelectAvatar.addEventListener('click', () => avatarInput.click(), { signal })
 
-      btnSelectAvatar.onclick = () => avatarInput.click()
-      avatarInput.onchange = (e) => {
+      avatarInput.addEventListener('change', (e) => {
         const file = e.target.files[0]
         if (file) {
           state.roomAvatar = file
-          const reader = new FileReader()
-          reader.onload = (re) => {
-            avatarPreview.innerHTML = ''
-            const img = document.createElement('img')
-            img.src = re.target.result
-            img.className = 'w-100 h-100 object-fit-cover'
-            avatarPreview.appendChild(img)
-            btnClearAvatar.classList.remove('d-none')
-          }
-          reader.readAsDataURL(file)
+          cleanupAvatarPreview()
+          activeAvatarPreviewUrl = URL.createObjectURL(file)
+          avatarPreview.innerHTML = ''
+          const img = document.createElement('img')
+          img.src = activeAvatarPreviewUrl
+          img.className = 'w-100 h-100 object-fit-cover'
+          avatarPreview.appendChild(img)
+          btnClearAvatar.classList.remove('d-none')
         }
-      }
-      btnClearAvatar.onclick = () => {
+      }, { signal })
+
+      btnClearAvatar.addEventListener('click', () => {
         state.roomAvatar = null
+        cleanupAvatarPreview()
         avatarInput.value = ''
         avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
         btnClearAvatar.classList.add('d-none')
-      }
+      }, { signal })
 
-      /**
-       * Closes the active popup modal dialog.
-       * @returns {void}
-       */
-      const close = () => {
-        if (typeof popupEl.hide === 'function') {
-          popupEl.hide()
-        } else {
-          popupEl.removeAttribute('open')
-        }
-      }
-
-      popupEl.addEventListener('click', async (e) => {
+      popupEl.addEventListener('click', (e) => {
         const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
         if (!target) {
           return
@@ -377,167 +544,24 @@
         if (isCancel) {
           close()
         } else if (isSubmit) {
-          if (state.isCreating || state.disableSubmit || !state.hasSelectedUsers) {
-            return
-          }
-
-          try {
-            state.isCreating = true
-            render()
-
-            // Prepare participants
-            const creator = $state.currentUser
-            if (!creator) {
-              throw new Error('Current user session not found in global state.')
-            }
-
-            // Ensure creator is included and deduplicate
-            const participants = [
-              creator,
-              ...state.selectedParticipants.filter(p => p.id !== creator.id)
-            ]
-
-            // Generate room key and encrypt metadata
-            const roomKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
-            const isGroup = state.isGroup
-            let roomName = isGroup ? (state.roomName || '').trim() : ''
-            if (isGroup && !roomName) {
-              roomName = state.selectedParticipants.map(p => p.name || p.username).join(', ')
-            }
-
-            let roomAvatarBase64 = ''
-            if (state.roomAvatar) {
-              const fileBuffer = await state.roomAvatar.arrayBuffer()
-              const avatarKey = await $worker.execute('worker:randombytes_buf', { length: 32 })
-              const avatarNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
-              const encryptedAvatar = await $worker.execute('worker:crypto_secretbox_easy', {
-                message: fileBuffer,
-                nonce: avatarNonce.slice(0),
-                key: avatarKey.slice(0)
-              })
-
-              // Upload encrypted avatar to media collection
-              const blob = new Blob([encryptedAvatar], { type: 'application/octet-stream' })
-              const formData = new FormData()
-              formData.append('file', blob, 'avatar.bin')
-              const mediaRecord = await pb.collection('media').create(formData)
-
-              roomAvatarBase64 = JSON.stringify({
-                media_id: mediaRecord.id,
-                key: $crypto.toBase64(avatarKey),
-                nonce: $crypto.toBase64(avatarNonce)
-              })
-            }
-
-            const metadata = JSON.stringify({
-              name: roomName,
-              avatar: roomAvatarBase64
-            })
-            const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
-            const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
-              message: metadata,
-              nonce: metadataNonce.slice(0),
-              key: roomKey.slice(0)
-            })
-
-            const metadataPayload = {
-              ciphertext: $crypto.toBase64(encryptedMetadata),
-              nonce: $crypto.toBase64(metadataNonce)
-            }
-
-            // Key wrapping loop
-            const wrappedMemberRecords = []
-            for (const participant of participants) {
-              const nonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
-              const encryptedKey = await $worker.execute('worker:crypto_box_easy', {
-                message: roomKey.slice(0),
-                nonce: nonce.slice(0),
-                publicKey: participant.public_box_key,
-                privateKey: creator.private_box_key
-              })
-
-              wrappedMemberRecords.push({
-                user_id: participant.id,
-                wrapped_by: creator.id,
-                encrypted_room_key: $crypto.toBase64(encryptedKey),
-                key_nonce: $crypto.toBase64(nonce),
-                role: participant.id === creator.id ? 'admin' : 'member'
-              })
-            }
-
-            // Batch server transaction
-            const newRoom = await pb.collection('rooms').create({
-              is_group: isGroup,
-              encrypted_metadata: metadataPayload
-            })
-
-            // Create room members sequentially to avoid PocketBase auto-cancellation
-            for (const record of wrappedMemberRecords) {
-              await pb.collection('room_members').create({
-                ...record,
-                room_id: newRoom.id,
-                epoch_id: 1
-              }, {
-                // Disable auto-cancellation for these requests
-                requestKey: null
-              })
-            }
-
-            // Update local cache
-            await $storage.saveRoom({
-              id: newRoom.id,
-              is_group: isGroup,
-              name: roomName,
-              avatar: roomAvatarBase64,
-              participants: participants.map(u => ({
-                id: u.id,
-                username: u.username,
-                avatar: u.avatar,
-                collectionId: u.collectionId,
-                collectionName: u.collectionName
-              })),
-              user_role: 'admin',
-              key_history: [{
-                epoch_id: 1,
-                key: $crypto.toBase64(roomKey)
-              }],
-              created_at: newRoom.created,
-              updated_at: newRoom.updated
-            })
-
-            $bus.emit('db:new_local_room', { room_id: newRoom.id })
-            $bus.emit('room:select', { room_id: newRoom.id })
-
-            // Navigation & cleanup
-            $state.currentAppView = 'chats'
-            $state.activeSelectionId = newRoom.id
-            $state.activeSelectionType = 'chats'
-            popupEl.hide()
-
-          } catch (err) {
-            alert('Room creation failed: ' + err.message)
-            throw err
-          } finally {
-            state.isCreating = false
-            render()
-          }
+          handleCreateRoom()
         }
+      }, { signal })
+
+      $bus.on('ui:open_create_room', () => {
+        showModal()
       })
 
       popupEl.addEventListener('atoll-popup-close', () => {
-        state.roomName = ''
-        state.searchQuery = ''
-        state.searchResults = []
-        state.selectedParticipants = []
-        state.searchError = null
-        state.roomAvatar = null
-        searchBar.value = ''
-        roomNameInput.value = ''
-        avatarInput.value = ''
-        avatarPreview.innerHTML = '<atoll-icon name="camera" size="24" class="text-muted"></atoll-icon>'
-        btnClearAvatar.classList.add('d-none')
-        render()
+        resetForm()
       }, { signal })
+
+      signal.addEventListener('abort', () => {
+        cleanupAvatarPreview()
+      })
+
+      // Initial render
+      render()
     }
   })
 </script>
