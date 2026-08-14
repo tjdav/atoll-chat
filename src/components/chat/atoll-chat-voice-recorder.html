@@ -221,7 +221,9 @@
           let lastClientHeight = 0
 
           const updateColorsAndDPI = () => {
-            if (!canvasEl) return
+            if (!canvasEl) {
+              return
+            }
             const dpr = window.devicePixelRatio || 1
             const clientWidth = canvasEl.clientWidth || 400
             const clientHeight = canvasEl.clientHeight || 32
@@ -363,7 +365,10 @@
           startTimer()
         } catch (err) {
           console.error('[atoll-chat-voice-recorder] Failed to start recording:', err)
-          $bus.emit('ui:show_toast', { message: 'Microphone access denied or unavailable.', type: 'danger' })
+          $bus.emit('ui:show_toast', {
+            message: 'Microphone access denied or unavailable.',
+            type: 'danger'
+          })
           $bus.emit('ui:voice_discarded')
         }
       }

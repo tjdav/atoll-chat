@@ -135,7 +135,9 @@
       const fetchInvitations = async () => {
         try {
           const list = await pb.send('/api/custom/invites/list', { method: 'GET' }).catch(() => [])
-          if (signal?.aborted) return
+          if (signal?.aborted) {
+            return
+          }
 
           if (!list || list.length === 0) {
             historyCard.classList.add('d-none')
