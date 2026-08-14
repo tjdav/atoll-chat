@@ -1,6 +1,16 @@
 <template id="jump-to-chat">
-  <atoll-button variant="primary" size="md" pill="true" leading-icon="chat" ref="btnJump">
-    <span class="atoll-btn-text">Jump to Chat</span>
+  <atoll-button 
+    ref="btnJump"
+    variant="{{ buttonVariant }}" 
+    size="{{ buttonSize }}" 
+    pill="true" 
+    leading-icon="{{ buttonIcon }}" 
+    text="{{ buttonLabel }}"
+    aria-label="{{ buttonLabel }}"
+    title="{{ buttonLabel }}"
+    icon-only="{{ isIconOnly }}"
+    data-testid="btnJumpToChat"
+  >
   </atoll-button>
 </template>
 
@@ -8,74 +18,159 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, storage, globalStore, eventBus, signal }) => {
+    attributes: {
+      variant: {
+        type: String,
+        default: 'primary'
+      },
+      size: {
+        type: String,
+        default: 'md'
+      },
+      label: {
+        type: String,
+        default: 'Jump to Chat'
+      },
+      icon: {
+        type: String,
+        default: 'chat'
+      },
+      roomId: {
+        type: String,
+        default: ''
+      },
+      messageId: {
+        type: String,
+        default: ''
+      },
+      iconOnly: {
+        type: Boolean,
+        default: false
+      },
+      responsive: {
+        type: Boolean,
+        default: true
+      }
+    },
+    getters: {
+      buttonVariant: (state) => state.variant || 'primary',
+      buttonSize: (state) => state.size || 'md',
+      buttonIcon: (state) => state.icon || 'chat',
+      buttonLabel: (state) => state.label || 'Jump to Chat',
+      isIconOnly: (state) => Boolean(state.iconOnly || (state.responsive && state.isMobile))
+    },
+    server: () => ({
+      isMobile: false
+    }),
+    client: ({ refs, root, state, storage, globalStore, eventBus, signal }) => {
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const btnJump = refs('btnJump')
 
-      // Media query to dynamically set icon-only on mobile/tablet view
-      const mediaQuery = window.matchMedia('(max-width: 767.98px)')
-      const updateIconOnly = (e) => {
-        if (e.matches) {
-          btnJump.setAttribute('icon-only', 'true')
-        } else {
-          btnJump.removeAttribute('icon-only')
+      // Handle responsive collapsing on mobile screens
+      if (state.responsive && typeof window !== 'undefined' && typeof window.matchMedia === 'function') {
+        const mediaQuery = window.matchMedia('(max-width: 767.98px)')
+        const handleMediaChange = (e) => {
+          state.isMobile = e.matches
         }
-      }
-      mediaQuery.addEventListener('change', updateIconOnly)
-      updateIconOnly(mediaQuery)
 
-      signal.addEventListener('abort', () => {
-        mediaQuery.removeEventListener('change', updateIconOnly)
-      })
+        if (typeof mediaQuery.addEventListener === 'function') {
+          mediaQuery.addEventListener('change', handleMediaChange)
+          signal.addEventListener('abort', () => {
+            mediaQuery.removeEventListener('change', handleMediaChange)
+          })
+        } else if (typeof mediaQuery.addListener === 'function') {
+          mediaQuery.addListener(handleMediaChange)
+          signal.addEventListener('abort', () => {
+            mediaQuery.removeListener(handleMediaChange)
+          })
+        }
+
+        state.isMobile = mediaQuery.matches
+      }
 
       btnJump.addEventListener('click', async () => {
-        const id = $state.activeSelectionId
-        const type = $state.activeSelectionType
-  
-        if (!id || !type) {
-          return
+        let targetRoomId = state.roomId || null
+        let targetMessageId = state.messageId || null
+
+        if (!targetRoomId || !targetMessageId) {
+          if ($state.mediaViewerSourceChatRoomId && $state.mediaViewerSourceMessageId) {
+            targetRoomId = $state.mediaViewerSourceChatRoomId
+            targetMessageId = $state.mediaViewerSourceMessageId
+          }
         }
 
-        let room_id = null
-        let messageId = null
+        if (!targetRoomId || !targetMessageId) {
+          const id = $state.activeSelectionId
+          const type = $state.activeSelectionType
 
-        try {
-          if (type === 'links') {
-            const msg = await $storage.getMessage(id)
-            if (msg) {
-              room_id = msg.room_id
-              messageId = id
-            }
-          } else {
-            // For pictures, videos, music, documents
-            const asset = await $storage.getAsset(id)
-            if (asset) {
-              room_id = asset.room_id
-              messageId = asset.message_id
-            }
-          }
-
-          if (room_id && messageId) {
-            $state.isJumpingToMessage = true
-            $state.jumpToMessageId = messageId
-            $state.currentAppView = 'chats'
-            $state.activeSelectionId = room_id
-            $state.activeSelectionType = 'chats'
-  
-            // Wait for timeline to mount and then emit scroll
-            setTimeout(() => {
-              $bus.emit('message:scroll_to', { messageId })
-            }, 100)
-          } else {
-            console.warn('[jump-to-chat] Could not resolve room or message for', {
-              id,
-              type
+          if (!id || !type) {
+            $bus.emit('ui:show_toast', {
+              message: 'No active media or message selected',
+              type: 'warning'
             })
+            return
           }
-        } catch (err) {
-          console.error('[jump-to-chat] Error jumping to chat:', err)
+
+          try {
+            if (type === 'links') {
+              const msg = await $storage.getMessage(id)
+              if (msg) {
+                targetRoomId = msg.room_id
+                targetMessageId = id
+              }
+            } else {
+              // For pictures, videos, music, documents
+              const asset = await $storage.getAsset(id)
+              if (asset) {
+                targetRoomId = asset.room_id
+                targetMessageId = asset.message_id
+              } else {
+                // Fallback to message lookup if selection ID matches message record
+                const msg = await $storage.getMessage(id)
+                if (msg) {
+                  targetRoomId = msg.room_id
+                  targetMessageId = id
+                }
+              }
+            }
+          } catch {
+            // Gracefully catch storage errors and fall through to unresolvable check
+          }
+        }
+
+        // Execution & Navigation
+        if (targetRoomId && targetMessageId) {
+          // Clear source tracking
+          $state.mediaViewerSourceChatRoomId = null
+          $state.mediaViewerSourceMessageId = null
+
+          // Set jumping state and navigate
+          $state.isJumpingToMessage = true
+          $state.jumpToMessageId = targetMessageId
+          $state.currentAppView = 'chats'
+          $state.activeSelectionId = targetRoomId
+          $state.activeSelectionType = 'chats'
+
+          // Emit scroll command for timeline
+          setTimeout(() => {
+            $bus.emit('message:scroll_to', { messageId: targetMessageId })
+          }, 100)
+
+          root.dispatchEvent(new CustomEvent('jump-to-chat:success', {
+            bubbles: true,
+            composed: true,
+            detail: {
+              roomId: targetRoomId,
+              messageId: targetMessageId
+            }
+          }))
+        } else {
+          $bus.emit('ui:show_toast', {
+            message: 'Could not locate original chat message',
+            type: 'warning'
+          })
         }
       }, { signal })
     }
