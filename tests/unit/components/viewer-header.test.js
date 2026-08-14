@@ -91,7 +91,10 @@ describe('Atoll Viewer Header Component', () => {
     })
   })
 
-  test('should open mobile nav offcanvas by default if no source chat was stored', async () => {
+  test('should open mobile nav offcanvas on back button click regardless of source chat', async () => {
+    sharedState.mediaViewerSourceChatRoomId = 'source-room-id'
+    sharedState.mediaViewerSourceMessageId = 'source-msg-uuid'
+
     const el = document.createElement(tagName)
     el.setAttribute('title', 'Image Details')
     el.setAttribute('subtitle', 'test.png')
@@ -109,23 +112,49 @@ describe('Atoll Viewer Header Component', () => {
 
     const openNavEmitted = emittedEvents.find(e => e.event === 'ui:open_mobile_nav')
     assert.ok(openNavEmitted, 'ui:open_mobile_nav should be emitted on click')
+    assert.equal(sharedState.mediaViewerSourceChatRoomId, 'source-room-id', 'Source chat room ID should NOT be cleared by back button')
   })
 
-  test('should go back to source chat and trigger jump to scroll when click back if source chat was stored', async () => {
-    sharedState.mediaViewerSourceChatRoomId = 'source-room-id'
-    sharedState.mediaViewerSourceMessageId = 'source-msg-uuid'
-
+  test('should hide close button by default if no source chat was stored', async () => {
     const el = document.createElement(tagName)
-    el.setAttribute('title', 'Image Details')
-    el.setAttribute('subtitle', 'test.png')
-    el.setAttribute('icon', 'gallery')
     document.body.appendChild(el)
 
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    const btnBack = el.querySelector('atoll-button')
-    assert.ok(btnBack, 'Back button should exist')
-    btnBack.click()
+    const btnCloseInner = el.querySelector('[data-testid="viewerCloseBtn"]')
+    assert.ok(btnCloseInner, 'Close button element should exist in DOM')
+    const btnCloseHost = btnCloseInner.closest('atoll-button') || btnCloseInner
+    assert.ok(btnCloseHost.hasAttribute('hidden') || btnCloseHost.style.display === 'none', 'Close button host should be hidden')
+  })
+
+  test('should show close button when source chat is present and activeSelectionType is pictures or videos', async () => {
+    sharedState.mediaViewerSourceChatRoomId = 'source-room-id'
+    sharedState.mediaViewerSourceMessageId = 'source-msg-uuid'
+    sharedState.activeSelectionType = 'pictures'
+
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const btnCloseInner = el.querySelector('[data-testid="viewerCloseBtn"]')
+    assert.ok(btnCloseInner, 'Close button element should exist in DOM')
+    const btnCloseHost = btnCloseInner.closest('atoll-button') || btnCloseInner
+    assert.equal(btnCloseHost.hasAttribute('hidden'), false, 'Close button host should NOT be hidden')
+  })
+
+  test('should navigate back to source chat, scroll to message, and clear source variables when clicking close button', async () => {
+    sharedState.mediaViewerSourceChatRoomId = 'source-room-id'
+    sharedState.mediaViewerSourceMessageId = 'source-msg-uuid'
+
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const btnClose = el.querySelector('[data-testid="viewerCloseBtn"]')
+    assert.ok(btnClose, 'Close button should exist')
+    btnClose.click()
 
     await new Promise(resolve => setTimeout(resolve, 150))
 
@@ -140,6 +169,23 @@ describe('Atoll Viewer Header Component', () => {
     const scrollEmitted = emittedEvents.find(e => e.event === 'message:scroll_to')
     assert.ok(scrollEmitted, 'message:scroll_to event should be emitted')
     assert.equal(scrollEmitted.payload.messageId, 'source-msg-uuid')
+  })
+
+  test('should navigate back to source chat when pressing Escape key', async () => {
+    sharedState.mediaViewerSourceChatRoomId = 'source-room-id'
+    sharedState.mediaViewerSourceMessageId = 'source-msg-uuid'
+
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    assert.equal(sharedState.mediaViewerSourceChatRoomId, null, 'Source chat room ID should be cleared on Escape')
+    assert.equal(sharedState.currentAppView, 'chats', 'App view should change to chats on Escape')
   })
 
   test('should clear source variables when navigating away from pictures/videos', async () => {

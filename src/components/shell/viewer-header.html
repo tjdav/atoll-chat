@@ -13,6 +13,17 @@
     <div class="flex-shrink-0 ms-3 d-flex align-items-center gap-2">
       <jump-to-chat></jump-to-chat>
       <ui-share-button></ui-share-button>
+      <atoll-button
+        variant="secondary"
+        size="md"
+        pill="true"
+        icon-only="true"
+        leading-icon="close"
+        ref="btnClose"
+        title="Close"
+        aria-label="Close"
+        hidden="{{ isCloseHidden }}"
+        data-testid="viewerCloseBtn"></atoll-button>
     </div>
   </header>
 </template>
@@ -27,45 +38,78 @@
       icon: String,
       theme: String
     },
+    server: () => ({
+      hasSourceChat: false
+    }),
     getters: {
       headerClass: (state) => (state.theme === 'dark' ? 'bg-dark border-secondary text-white' : 'bg-body text-body'),
       iconContainerClass: (state) => (state.theme === 'dark' ? 'bg-secondary text-white' : 'bg-primary-subtle text-primary'),
       textClass: (state) => (state.theme === 'dark' ? 'text-white' : 'text-body'),
       subtitleClass: (state) => (state.theme === 'dark' ? 'text-white-50' : 'text-muted'),
-      backButtonIconClass: (state) => (state.theme === 'dark' ? 'text-white' : '')
+      backButtonIconClass: (state) => (state.theme === 'dark' ? 'text-white' : ''),
+      isCloseHidden: (state) => !state.hasSourceChat
     },
-    client: ({ refs, eventBus, globalStore, signal }) => {
+    client: ({ state, refs, eventBus, globalStore, signal }) => {
       const { $bus } = eventBus
       const { $state } = globalStore
 
-      refs('btnBack').addEventListener('click', () => {
+      const syncSourceChat = () => {
+        state.hasSourceChat = Boolean(
+          $state.mediaViewerSourceChatRoomId &&
+          ($state.activeSelectionType === 'pictures' || $state.activeSelectionType === 'videos')
+        )
+      }
+
+      const closeViewer = () => {
         const sourceRoomId = $state.mediaViewerSourceChatRoomId
         const sourceMessageId = $state.mediaViewerSourceMessageId
 
-        if (sourceRoomId && sourceMessageId && ($state.activeSelectionType === 'pictures' || $state.activeSelectionType === 'videos')) {
+        if (sourceRoomId) {
           $state.mediaViewerSourceChatRoomId = null
           $state.mediaViewerSourceMessageId = null
 
-          $state.isJumpingToMessage = true
-          $state.jumpToMessageId = sourceMessageId
+          if (sourceMessageId) {
+            $state.isJumpingToMessage = true
+            $state.jumpToMessageId = sourceMessageId
+          }
           $state.currentAppView = 'chats'
           $state.activeSelectionId = sourceRoomId
           $state.activeSelectionType = 'chats'
 
-          setTimeout(() => {
-            $bus.emit('message:scroll_to', { messageId: sourceMessageId })
-          }, 100)
-        } else {
-          $bus.emit('ui:open_mobile_nav')
+          if (sourceMessageId) {
+            setTimeout(() => {
+              $bus.emit('message:scroll_to', { messageId: sourceMessageId })
+            }, 100)
+          }
+        }
+      }
+
+      refs('btnBack').addEventListener('click', () => {
+        $bus.emit('ui:open_mobile_nav')
+      }, { signal })
+
+      refs('btnClose').addEventListener('click', closeViewer, { signal })
+
+      window.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && state.hasSourceChat) {
+          e.preventDefault()
+          closeViewer()
         }
       }, { signal })
+
+      $state.subscribe('mediaViewerSourceChatRoomId', () => {
+        syncSourceChat()
+      })
 
       $state.subscribe('activeSelectionType', (type) => {
         if (type !== 'pictures' && type !== 'videos') {
           $state.mediaViewerSourceChatRoomId = null
           $state.mediaViewerSourceMessageId = null
         }
+        syncSourceChat()
       })
+
+      syncSourceChat()
     }
   })
 </script>
