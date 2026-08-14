@@ -525,7 +525,9 @@ export function createServer () {
           code: code,
           is_used: false,
           max_uses: db.max_uses_per_invite || 3,
-          used_count: 0
+          used_count: 0,
+          created_by: userId,
+          created: new Date().toISOString()
         }
         db.invitations.push(newInvite)
 
@@ -541,6 +543,56 @@ export function createServer () {
           code: code,
           max_uses: db.max_uses_per_invite || 3
         }))
+        return
+      }
+
+      // GET /api/custom/invites/list
+      if (pathname === '/api/custom/invites/list' && req.method === 'GET') {
+        const authHeader = req.headers.authorization || ''
+        const userId = getUserIdFromToken(authHeader)
+        if (!userId) {
+          res.writeHead(401, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Unauthorized' }))
+          return
+        }
+
+        db.user_trust = db.user_trust || []
+        const trust = db.user_trust.find(t => t.user === userId)
+        const isOwner = trust && trust.tier === 'owner'
+
+        let list = []
+        if (isOwner) {
+          list = db.invitations || []
+        } else {
+          list = (db.invitations || []).filter(inv => inv.created_by === userId)
+        }
+
+        const results = list.map(inv => {
+          let usedByUser = null
+          if (inv.used_by) {
+            const userRec = db.users.find(u => u.id === inv.used_by)
+            if (userRec) {
+              usedByUser = {
+                id: userRec.id,
+                username: userRec.username,
+                name: userRec.name
+              }
+            }
+          }
+          return {
+            id: inv.id,
+            code: inv.code,
+            is_used: inv.is_used || false,
+            max_uses: inv.max_uses || 3,
+            used_count: inv.used_count || 0,
+            expires_at: inv.expires_at || null,
+            used_by: usedByUser,
+            created: inv.created || new Date().toISOString()
+          }
+        })
+
+        res.writeHead(200, { 'Content-Type': 'application/json' })
+        res.end(JSON.stringify(results))
         return
       }
 

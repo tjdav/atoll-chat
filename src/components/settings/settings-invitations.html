@@ -39,6 +39,28 @@
       </div>
     </div>
 
+    <!-- Generated Invitations Table Card -->
+    <div class="card border-0 shadow-sm mb-4 d-none" ref="historyCard" data-testid="historyCard">
+      <div class="card-body">
+        <h5 class="fw-bold mb-3">Your Generated Invitations</h5>
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead>
+              <tr>
+                <th style="width: 40%;">Code</th>
+                <th style="width: 20%;">Uses</th>
+                <th style="width: 25%;">Used By</th>
+                <th style="width: 15%;">Status</th>
+              </tr>
+            </thead>
+            <tbody ref="historyTableBody" data-testid="historyTableBody">
+              <!-- Dynamically populated rows -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
     <!-- Invite Request Panel -->
     <div class="card border-0 shadow-sm d-none" ref="requestQuotaCard">
       <div class="card-body">
@@ -106,10 +128,75 @@
       const requestErrorText = refs('requestErrorText')
       const btnSubmitRequest = refs('btnSubmitRequest')
 
+      const historyCard = refs('historyCard')
+      const historyTableBody = refs('historyTableBody')
+
       let currentQuota = 0
       let isOwner = false
       let isRevoked = false
       let currentInviteMode = 'delegated'
+
+      const fetchInvitations = async () => {
+        try {
+          const list = await pb.send('/api/custom/invites/list', { method: 'GET' }).catch(() => [])
+          if (signal?.aborted) return
+
+          if (!list || list.length === 0) {
+            historyCard.classList.add('d-none')
+            return
+          }
+
+          historyCard.classList.remove('d-none')
+          historyTableBody.innerHTML = ''
+
+          list.forEach((inv) => {
+            const tr = document.createElement('tr')
+
+            // Determine status
+            let statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>'
+            if (inv.is_used || inv.used_count >= inv.max_uses) {
+              statusBadge = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Used</span>'
+            } else if (inv.expires_at) {
+              const expiresTime = new Date(inv.expires_at).getTime()
+              if (expiresTime < Date.now()) {
+                statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Expired</span>'
+              }
+            }
+
+            // Determine Used By info
+            let usedByText = '—'
+            if (inv.used_by) {
+              const username = inv.used_by.username || 'unknown'
+              usedByText = `<span class="fw-medium text-dark">@${username}</span>`
+            }
+
+            tr.innerHTML = `
+              <td>
+                <div class="d-flex align-items-center gap-2">
+                  <code class="fw-bold text-primary">${inv.code}</code>
+                  <button type="button" class="btn btn-sm btn-link p-0 text-muted btn-copy-history" data-code="${inv.code}" title="Copy Code" style="line-height: 1;">
+                    <atoll-icon name="copy" size="14"></atoll-icon>
+                  </button>
+                </div>
+              </td>
+              <td>
+                <span class="small text-muted">${inv.used_count} / ${inv.max_uses}</span>
+              </td>
+              <td>
+                ${usedByText}
+              </td>
+              <td>
+                ${statusBadge}
+              </td>
+            `
+            historyTableBody.appendChild(tr)
+          })
+        } catch (err) {
+          if (!signal?.aborted) {
+            console.error('Failed to load invitations history:', err)
+          }
+        }
+      }
 
       const fetchStatus = async () => {
         try {
@@ -166,6 +253,9 @@
               }
             }
           }
+
+          // Fetch history of generated invitation codes
+          await fetchInvitations()
         } catch (err) {
           // Propagate error if abort was not triggered
           if (!signal?.aborted) {
@@ -175,6 +265,24 @@
       }
 
       await fetchStatus()
+
+      // Wire up copying from the invitations history table
+      historyTableBody.addEventListener('click', (e) => {
+        const btn = e.target.closest('.btn-copy-history')
+        if (btn) {
+          const code = btn.getAttribute('data-code')
+          if (code) {
+            navigator.clipboard.writeText(code)
+            const iconEl = btn.querySelector('atoll-icon')
+            if (iconEl) {
+              iconEl.setAttribute('name', 'check')
+              setTimeout(() => {
+                iconEl.setAttribute('name', 'copy')
+              }, 1500)
+            }
+          }
+        }
+      }, { signal })
 
       // Wire up the generate invitation button
       btnGenerateInvite.addEventListener('click', async () => {

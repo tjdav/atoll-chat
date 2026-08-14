@@ -42,6 +42,75 @@ routerAdd('GET', '/api/custom/admin/overview', (e) => {
 })
 
 /**
+ * GET /api/custom/invites/list
+ * Returns the list of invitation codes for the authenticated user.
+ * If the user is an owner, they get all codes. If a standard user, only their own codes.
+ */
+routerAdd('GET', '/api/custom/invites/list', (e) => {
+  try {
+    const { getOrCreateTrust } = require(`${__hooks}/admin_helpers.js`)
+
+    const authRecord = e.auth
+    if (!authRecord) {
+      throw new ForbiddenError('Authentication is required.')
+    }
+
+    const trustRecord = getOrCreateTrust(authRecord.id)
+    const isOwner = trustRecord.get('tier') === 'owner'
+
+    let invitations = []
+    if (isOwner) {
+      invitations = $app.findRecordsByFilter('invitations', '1=1', '-created', 100, 0)
+    } else {
+      invitations = $app.findRecordsByFilter('invitations', 'created_by = {:userId}', '-created', 100, 0, { userId: authRecord.id })
+    }
+
+    const userIds = []
+    invitations.forEach((inv) => {
+      const usedBy = inv.get('used_by')
+      if (usedBy) {
+        userIds.push(usedBy)
+      }
+    })
+
+    const usersMap = {}
+    if (userIds.length > 0) {
+      const userRecords = $app.findRecordsByIds('users', userIds)
+      userRecords.forEach((userRec) => {
+        usersMap[userRec.id] = {
+          id: userRec.id,
+          username: userRec.get('username'),
+          name: userRec.get('name')
+        }
+      })
+    }
+
+    const results = invitations.map((inv) => {
+      const usedByUserId = inv.get('used_by')
+      const usedByUser = usedByUserId ? (usersMap[usedByUserId] || null) : null
+
+      return {
+        id: inv.id,
+        code: inv.get('code'),
+        is_used: inv.get('is_used') || false,
+        max_uses: inv.get('max_uses') || 3,
+        used_count: inv.get('used_count') || 0,
+        expires_at: inv.get('expires_at') || null,
+        used_by: usedByUser,
+        created: inv.get('created')
+      }
+    })
+
+    return e.json(200, results)
+  } catch (err) {
+    if (err.status) {
+      throw err
+    }
+    throw new BadRequestError(err.message || String(err))
+  }
+})
+
+/**
  * POST /api/custom/admin/settings
  * Updates global instance governance metadata.
  */
@@ -309,6 +378,7 @@ routerAdd('POST', '/api/custom/invites/generate', (e) => {
     inviteRecord.set('is_used', false)
     inviteRecord.set('max_uses', maxUses)
     inviteRecord.set('used_count', 0)
+    inviteRecord.set('created_by', authRecord.id)
     $app.save(inviteRecord)
 
     return e.json(200, {
