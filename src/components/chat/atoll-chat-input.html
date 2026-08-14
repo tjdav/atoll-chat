@@ -34,6 +34,17 @@
         <!-- chat-voice-recorder will be mounted here -->
       </div>
     </div>
+
+    <!-- File Too Large Alert -->
+    <atoll-popup
+      ref="fileTooLargePopup"
+      data-testid="fileTooLargePopup"
+      size="sm"
+      variant="alert"
+      title="File Too Large"
+      description="File is too large. Maximum size is 100MB."
+      primary-text="Dismiss"
+    ></atoll-popup>
   </div>
 </template>
 
@@ -67,7 +78,7 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'd-flex w-100' : 'd-none')
     },
-    client: ({ state, globalStore, storage, eventBus, refs, _signal, cryptoWorker, pocketbase, utils, media, config }) => {
+    client: ({ state, globalStore, storage, eventBus, refs, signal, cryptoWorker, pocketbase, utils, media, config }) => {
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -80,6 +91,12 @@
       let currentMusicMetadata = null
       let currentAlbumArtBlob = null
       let currentAudioWaveformData = null
+
+      // File-size alert popup (single Dismiss button)
+      const fileTooLargePopup = refs('fileTooLargePopup')
+      fileTooLargePopup.addEventListener('atoll-popup-primary', () => {
+        fileTooLargePopup.hide()
+      }, { signal })
 
       /**
        * Revokes the object URL of the thumbnail preview to free up memory.
@@ -267,7 +284,6 @@
       /**
        * Submits the user's composed message (whether text, media file, or link).
        * @param {Blob} [recordedBlob=null] - Optional voice recording audio blob.
-       * @param {Blob} [recordedBlob=null] - Optional voice recording audio blob.
        * @param {string} [waveformData=null] - Optional voice recording waveform peak data.
        * @param {number} [recordedDuration=null] - Optional voice recording duration in seconds.
        * @returns {Promise<void>}
@@ -393,7 +409,6 @@
           state.isSending = false
           state.isUploading = false
           alert('Failed to send: ' + err.message)
-          throw err
         }
       }
 
@@ -413,6 +428,12 @@
       $bus.on('ui:file_selected', async (payload) => {
         let file = payload.file
         if (!file) {
+          return
+        }
+
+        // Reject oversized files before any expensive processing (compression, thumbnailing, transcoding)
+        if (file.size > 100 * 1024 * 1024) {
+          fileTooLargePopup.show()
           return
         }
 
@@ -536,18 +557,13 @@
 
           state.uploadStatus = 'Generating waveform...'
           try {
-            currentAudioWaveformData = await utils.$media.generateWaveform(file)
+            currentAudioWaveformData = await $media.generateWaveform(file)
           } catch {
             // Proceed with fallback audio handling if waveform generation fails
           }
           state.isCompressing = false
         }
 
-        if (file.size > 100 * 1024 * 1024) {
-          alert('File is too large. Maximum size is 100MB.')
-          resetUI()
-          return
-        }
         state.selectedFile = file
         state.fileName = file.name
         state.uploadStatus = 'Ready to send'
@@ -619,7 +635,6 @@
           state.uploadStatus = 'Custom cover applied'
         } catch (err) {
           alert('Failed to process custom cover: ' + err.message)
-          throw err
         } finally {
           state.isCompressing = false
         }
