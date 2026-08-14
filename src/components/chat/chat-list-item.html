@@ -54,65 +54,10 @@
       }
     },
 
-    client: ({ refs, state, globalStore, eventBus, signal, root, observe }) => {
+    client: ({ refs, state, globalStore, eventBus, signal }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       const container = refs('container')
-
-      observe('roomName', (val) => {
-        state.roomName = val
-      })
-      observe('room-name', (val) => {
-        state.roomName = val
-      })
-      observe('previewText', (val) => {
-        state.previewText = val
-      })
-      observe('preview-text', (val) => {
-        state.previewText = val
-      })
-      observe('relativeTime', (val) => {
-        state.relativeTime = val
-      })
-      observe('relative-time', (val) => {
-        state.relativeTime = val
-      })
-      observe('roomId', (val) => {
-        state.roomId = val
-      })
-      observe('room-id', (val) => {
-        state.roomId = val
-      })
-      observe('isUnread', (val) => {
-        state.isUnread = val
-      })
-      observe('is-unread', (val) => {
-        state.isUnread = val
-      })
-      observe('unreadCount', (val) => {
-        state.unreadCount = val
-      })
-      observe('unread-count', (val) => {
-        state.unreadCount = val
-      })
-      observe('isMuted', (val) => {
-        state.isMuted = val
-      })
-      observe('is-muted', (val) => {
-        state.isMuted = val
-      })
-      observe('isGroup', (val) => {
-        state.isGroup = val
-      })
-      observe('is-group', (val) => {
-        state.isGroup = val
-      })
-      observe('userRole', (val) => {
-        state.userRole = val
-      })
-      observe('user-role', (val) => {
-        state.userRole = val
-      })
 
       // Synchronize active selection state
       const syncActiveState = () => {
