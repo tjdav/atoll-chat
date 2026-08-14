@@ -46,6 +46,8 @@ import {
   SmileCircleLinearIcon,
   UserCircleLinearIcon,
   VideocameraLinearIcon,
+  KeyLinearIcon,
+  KeyBoldIcon,
   VideocameraBoldIcon,
   VideocameraRecordLinearIcon,
   VideocameraRecordBoldIcon,
@@ -134,6 +136,10 @@ export const SOLAR_ICON_MAP = {
     bold: LinkCircleBoldIcon
   },
   globe: EarthLinearIcon,
+  key: {
+    linear: KeyLinearIcon,
+    bold: KeyBoldIcon
+  },
   logout: LogoutLinearIcon,
   settings: SettingsLinearIcon,
   'setting-two': SettingsLinearIcon,
