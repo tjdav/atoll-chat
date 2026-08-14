@@ -80,6 +80,42 @@ function enforceOwner (e) {
   }
 }
 
+// GET /api/custom/admin/overview
+routerAdd('GET', '/api/custom/admin/overview', (e) => {
+  try {
+    const authRecord = e.auth
+    if (!authRecord) {
+      throw new ForbiddenError('Authentication is required.')
+    }
+
+    const appMetadataRecord = getAppMetadata()
+    const totalUsers = countTable('users')
+    const activeRooms = countTable('rooms')
+    const activeInvitations = countTable('invitations', $dbx.exp('is_used = 0'))
+    const pendingInviteRequests = countTable('invite_requests', $dbx.exp('status = {:status}', { status: 'pending' }))
+
+    return e.json(200, {
+      metadata: {
+        invite_mode: appMetadataRecord.get('invite_mode') || 'delegated',
+        default_trusted_quota: appMetadataRecord.get('default_trusted_quota') || 5,
+        max_uses_per_invite: appMetadataRecord.get('max_uses_per_invite') || 3,
+        allow_quota_requests: appMetadataRecord.get('allow_quota_requests') !== false
+      },
+      stats: {
+        totalUsers: totalUsers,
+        activeRooms: activeRooms,
+        pendingInviteRequests: pendingInviteRequests,
+        activeInvitations: activeInvitations
+      }
+    })
+  } catch (err) {
+    if (err.status) {
+      throw err
+    }
+    throw new BadRequestError(err.message || String(err))
+  }
+})
+
 // POST /api/custom/admin/settings
 routerAdd('POST', '/api/custom/admin/settings', (e) => {
   try {

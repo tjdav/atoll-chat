@@ -79,8 +79,8 @@ migrate((app) => {
   }
 
   userTrust.type = 'base'
-  userTrust.listRule = null
-  userTrust.viewRule = null
+  userTrust.listRule = '@request.auth.id != ""'
+  userTrust.viewRule = '@request.auth.id != ""'
   userTrust.createRule = null
   userTrust.updateRule = null
   userTrust.deleteRule = null
@@ -142,8 +142,8 @@ migrate((app) => {
   }
 
   inviteRequests.type = 'base'
-  inviteRequests.listRule = null
-  inviteRequests.viewRule = null
+  inviteRequests.listRule = '@request.auth.id != ""'
+  inviteRequests.viewRule = '@request.auth.id != ""'
   inviteRequests.createRule = '@request.auth.id != ""'
   inviteRequests.updateRule = null
   inviteRequests.deleteRule = null
