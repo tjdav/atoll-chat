@@ -1,6 +1,6 @@
 <template id="chat-list">
   <div class="chat-list h-100 overflow-y-auto" ref="root">
-    <atoll-list divided ref="listGroup" class="h-100 overflow-y-auto">
+    <atoll-list divided ref="listGroup">
       <!-- Chat items will be rendered here via script -->
     </atoll-list>
   </div>
@@ -37,8 +37,8 @@
         } else if (isGroup) {
           const sender = participants.find(p => p.id === msg.sender_id)
           if (sender) {
-            const senderName = sender.name || sender.username
-            prefix = `${senderName.split(' ')[0]}: `
+            const senderName = sender.name || sender.username || 'Member'
+            prefix = `${senderName.trim().split(/\s+/)[0]}: `
           }
         }
         const hasVideo = msg.media_types && msg.media_types.includes('video')
@@ -98,11 +98,10 @@
   
         let unreadCount = 0
         if (isUnread) {
+          const msgs = await $storage.getMessagesByRoom(item.id, 100)
           if (me?.last_read_message_id === null || me?.last_read_message_id === undefined) {
-            const msgs = await $storage.getMessagesByRoom(item.id)
             unreadCount = msgs.filter(m => m.sender_id !== $state.currentUser?.id).length
           } else {
-            const msgs = await $storage.getMessagesByRoom(item.id)
             const lastReadIdx = msgs.findIndex(m => m.id === me.last_read_message_id)
             if (lastReadIdx !== -1) {
               unreadCount = msgs.slice(lastReadIdx + 1).filter(m => m.sender_id !== $state.currentUser?.id).length
@@ -216,15 +215,32 @@
         el.setAttribute('is-unread', data.isUnread ? 'true' : 'false')
         el.setAttribute('unread-count', String(data.unreadCount || 0))
         el.setAttribute('is-group', data.item.is_group ? 'true' : 'false')
-        el.setAttribute('user-role', data.item.user_role)
+        el.setAttribute('user-role', data.item.user_role || '')
         el.setAttribute('is-muted', data.isMuted ? 'true' : 'false')
 
         const existingAvatar = el.querySelector('[slot="avatar"]')
-        const newAvatar = createAvatarComponent(data.item, data.roomName)
+        const isEncryptedAvatar = Boolean(data.item.avatar)
+        const isMultiparty = Boolean(data.item.is_group && (data.item.participants || []).filter(p => p.id !== $state.currentUser?.id).length > 0 && !isEncryptedAvatar)
+
         if (!existingAvatar) {
-          el.appendChild(newAvatar)
-        } else if (existingAvatar.tagName !== newAvatar.tagName || existingAvatar.getAttribute('src') !== newAvatar.getAttribute('src') || existingAvatar.getAttribute('type') !== newAvatar.getAttribute('type')) {
-          existingAvatar.replaceWith(newAvatar)
+          el.appendChild(createAvatarComponent(data.item, data.roomName))
+        } else {
+          const isExistingMultiparty = existingAvatar.getAttribute('type') === 'multiparty'
+          if (isMultiparty !== isExistingMultiparty || isEncryptedAvatar) {
+            existingAvatar.replaceWith(createAvatarComponent(data.item, data.roomName))
+          } else if (!isMultiparty) {
+            existingAvatar.setAttribute('name', data.roomName)
+            existingAvatar.setAttribute('alt', data.roomName)
+            const participants = (data.item.participants || []).filter(p => p.id !== $state.currentUser?.id)
+            if (participants.length > 0) {
+              if (participants[0].id) {
+                existingAvatar.setAttribute('user-id', participants[0].id)
+              }
+              if (participants[0].avatar && pb?.files?.getURL) {
+                existingAvatar.setAttribute('src', pb.files.getURL(participants[0], participants[0].avatar, { thumb: '50x50' }))
+              }
+            }
+          }
         }
       }
 
@@ -257,7 +273,7 @@
       })
 
       const updatingRooms = new Set()
-      const handleUpdateInPlace = async (room_id) => {
+      const handleUpdateInPlace = async (room_id, { moveToTop = false } = {}) => {
         if (updatingRooms.has(room_id) || !room_id) {
           return
         }
@@ -265,7 +281,7 @@
         try {
           const room = await $storage.getRoom(room_id)
           if (!room) {
-            const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`) || document.querySelector(`chat-list-item[room-id="${room_id}"]`)
+            const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)
             if (existingItem) {
               existingItem.remove()
             }
@@ -273,25 +289,40 @@
             if (idx !== -1) {
               manager.loadedItems.splice(idx, 1)
             }
+            if (manager.loadedItems.length === 0) {
+              listGroup.innerHTML = `<div class="p-4 text-center text-body-secondary">${$state.listSearchQuery ? 'No matches found' : 'No chats found'}</div>`
+            }
             return
           }
           const data = await enrichItem(room)
           if (!updatingRooms.has(room_id)) {
             return
           }
-          const idx = manager.loadedItems.findIndex(i => i.item.id === room_id)
-          if (idx !== -1) {
-            manager.loadedItems.splice(idx, 1)
-          }
-          manager.loadedItems.unshift(data)
 
-          const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`) || document.querySelector(`chat-list-item[room-id="${room_id}"]`)
+          const idx = manager.loadedItems.findIndex(i => i.item.id === room_id)
+          if (moveToTop) {
+            if (idx !== -1) {
+              manager.loadedItems.splice(idx, 1)
+            }
+            manager.loadedItems.unshift(data)
+          } else if (idx !== -1) {
+            manager.loadedItems[idx] = data
+          } else {
+            manager.loadedItems.push(data)
+          }
+
+          if ($state.listSearchQuery) {
+            debouncedRender()
+            return
+          }
+
+          const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)
           if (existingItem) {
             updateItemAttributes(existingItem, data)
-            if (listGroup.firstElementChild !== existingItem) {
+            if (moveToTop && listGroup.firstElementChild !== existingItem) {
               listGroup.prepend(existingItem)
             }
-          } else if (!$state.listSearchQuery) {
+          } else {
             const emptyState = listGroup.querySelector('.text-body-secondary')
             if (emptyState && emptyState.textContent.includes('No chats found')) {
               emptyState.remove()
@@ -299,7 +330,11 @@
             if (!listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)) {
               const newItem = document.createElement('chat-list-item')
               updateItemAttributes(newItem, data)
-              listGroup.prepend(newItem)
+              if (moveToTop) {
+                listGroup.prepend(newItem)
+              } else {
+                listGroup.appendChild(newItem)
+              }
             }
           }
         } finally {
@@ -321,23 +356,25 @@
           me.last_read_message_id = latestMsg.id
           await $storage.saveRoom(room)
           try {
-            let stateRecord = null
-            try {
-              stateRecord = await pb.collection('room_member_states').getFirstListItem(
-                `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
-              )
-            } catch (e) {
-            }
+            if (pb?.collection && $state.currentUser?.id) {
+              let stateRecord = null
+              try {
+                stateRecord = await pb.collection('room_member_states').getFirstListItem(
+                  `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+                )
+              } catch {
+              }
 
-            if (stateRecord) {
-              await pb.collection('room_member_states').update(stateRecord.id, { last_read_message_id: latestMsg.id }, { requestKey: null })
-            } else {
-              await pb.collection('room_member_states').create({
-                room_id,
-                user_id: $state.currentUser.id,
-                last_read_message_id: latestMsg.id,
-                is_typing: false
-              }, { requestKey: null })
+              if (stateRecord) {
+                await pb.collection('room_member_states').update(stateRecord.id, { last_read_message_id: latestMsg.id }, { requestKey: null })
+              } else {
+                await pb.collection('room_member_states').create({
+                  room_id,
+                  user_id: $state.currentUser.id,
+                  last_read_message_id: latestMsg.id,
+                  is_typing: false
+                }, { requestKey: null })
+              }
             }
           } catch (err) {
             console.error('[chat-list] Failed to update read status:', err)
@@ -374,23 +411,25 @@
         me.last_read_message_id = newLastReadId
         await $storage.saveRoom(room)
         try {
-          let stateRecord = null
-          try {
-            stateRecord = await pb.collection('room_member_states').getFirstListItem(
-              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
-            )
-          } catch (e) {
-          }
+          if (pb?.collection && $state.currentUser?.id) {
+            let stateRecord = null
+            try {
+              stateRecord = await pb.collection('room_member_states').getFirstListItem(
+                `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+              )
+            } catch {
+            }
 
-          if (stateRecord) {
-            await pb.collection('room_member_states').update(stateRecord.id, { last_read_message_id: newLastReadId }, { requestKey: null })
-          } else {
-            await pb.collection('room_member_states').create({
-              room_id,
-              user_id: $state.currentUser.id,
-              last_read_message_id: newLastReadId,
-              is_typing: false
-            }, { requestKey: null })
+            if (stateRecord) {
+              await pb.collection('room_member_states').update(stateRecord.id, { last_read_message_id: newLastReadId }, { requestKey: null })
+            } else {
+              await pb.collection('room_member_states').create({
+                room_id,
+                user_id: $state.currentUser.id,
+                last_read_message_id: newLastReadId,
+                is_typing: false
+              }, { requestKey: null })
+            }
           }
         } catch (err) {
           console.error('[chat-list] Failed to toggle read status:', err)
@@ -415,22 +454,24 @@
         me.is_muted = newMuteStatus
         await $storage.saveRoom(room)
         try {
-          let settingsRecord = null
-          try {
-            settingsRecord = await pb.collection('room_settings').getFirstListItem(
-              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
-            )
-          } catch (e) {
-          }
+          if (pb?.collection && $state.currentUser?.id) {
+            let settingsRecord = null
+            try {
+              settingsRecord = await pb.collection('room_settings').getFirstListItem(
+                `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+              )
+            } catch {
+            }
 
-          if (settingsRecord) {
-            await pb.collection('room_settings').update(settingsRecord.id, { is_muted: newMuteStatus }, { requestKey: null })
-          } else {
-            await pb.collection('room_settings').create({
-              room_id,
-              user_id: $state.currentUser.id,
-              is_muted: newMuteStatus
-            }, { requestKey: null })
+            if (settingsRecord) {
+              await pb.collection('room_settings').update(settingsRecord.id, { is_muted: newMuteStatus }, { requestKey: null })
+            } else {
+              await pb.collection('room_settings').create({
+                room_id,
+                user_id: $state.currentUser.id,
+                is_muted: newMuteStatus
+              }, { requestKey: null })
+            }
           }
         } catch (err) {
           console.error('[chat-list] Failed to toggle mute status:', err)
@@ -448,17 +489,19 @@
           return
         }
         try {
-          try {
-            const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser?.id}"`, { requestKey: null })
-            if (memberRecord) {
-              await pb.collection('room_members').delete(memberRecord.id, { requestKey: null })
+          if (pb?.collection && $state.currentUser?.id) {
+            try {
+              const memberRecord = await pb.collection('room_members').getFirstListItem(`room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null })
+              if (memberRecord) {
+                await pb.collection('room_members').delete(memberRecord.id, { requestKey: null })
+              }
+            } catch (pbErr) {
+              console.warn('[chat-list] PocketBase member cleanup warning:', pbErr)
             }
-          } catch (pbErr) {
-            console.warn('[chat-list] PocketBase member cleanup warning:', pbErr)
           }
 
           const room = await $storage.getRoom(room_id)
-          if (!isGroup && room?.participants?.length <= 1) {
+          if (!isGroup && room?.participants?.length <= 1 && pb?.collection) {
             try {
               await pb.collection('rooms').delete(room_id, { requestKey: null })
             } catch (rErr) {
@@ -489,22 +532,30 @@
 
       $bus.on('ui:scroll_chats_top', () => {
         if (rootEl) {
-          rootEl.scrollTo({ top: 0, behavior: 'smooth' })
+          rootEl.scrollTo({
+            top: 0,
+            behavior: 'smooth'
+          })
         }
       })
 
       debouncedRender()
       $state.subscribe('listSearchQuery', () => debouncedRender())
+      $state.subscribe('activeSelectionId', (newId) => {
+        if (newId && $state.currentAppView === 'chats') {
+          markAsRead(newId)
+        }
+      })
       $bus.on('db:new_local_data', async (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId && $state.currentAppView === 'chats') {
           await markAsRead(payload.room_id)
         }
-        await handleUpdateInPlace(payload.room_id)
+        await handleUpdateInPlace(payload.room_id, { moveToTop: true })
       })
-      $bus.on('db:new_local_room', (payload) => handleUpdateInPlace(payload.room_id))
+      $bus.on('db:new_local_room', (payload) => handleUpdateInPlace(payload.room_id, { moveToTop: true }))
       $bus.on('db:room_deleted', (payload) => handleUpdateInPlace(payload.room_id))
-      $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id))
-      $bus.on('room:read_state_changed', (room_id) => handleUpdateInPlace(room_id))
+      $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id, { moveToTop: false }))
+      $bus.on('room:read_state_changed', (room_id) => handleUpdateInPlace(room_id, { moveToTop: false }))
       $bus.on('sync:complete', () => {
         manager.reset(); debouncedRender()
       })
