@@ -176,9 +176,10 @@
         outCtx.fillStyle = 'white'
         outCtx.fillRect(0, 0, 400, 400)
   
+        const cropScale = 400 / 300
         outCtx.save()
-        outCtx.translate(200 + offsetX, 200 + offsetY)
-        outCtx.scale(scale, scale)
+        outCtx.translate(200 + offsetX * cropScale, 200 + offsetY * cropScale)
+        outCtx.scale(scale * cropScale, scale * cropScale)
         outCtx.drawImage(img, -img.width / 2, -img.height / 2)
         outCtx.restore()
   
