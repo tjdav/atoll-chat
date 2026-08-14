@@ -46,6 +46,7 @@
       let audio = null
       let lastCallId = 0
       let lastLoadedUuid = null
+      let isTranscribing = false
 
       const cleanup = () => {
         if (audio) {
@@ -373,6 +374,7 @@
       }
 
       const startTranscription = async () => {
+        isTranscribing = true
         renderProgress(0, 'Initializing...')
 
         try {
@@ -389,6 +391,7 @@
             throw new Error('Transcription service not available')
           }
         } catch (err) {
+          isTranscribing = false
           renderError(err.message)
         }
       }
@@ -491,15 +494,21 @@
         }
 
         if (transcriptionState === 'transcribing') {
+          isTranscribing = true
           renderProgress(0, 'Transcribing...')
         } else if (transcriptionState === 'done') {
+          isTranscribing = false
           renderTranscript(text)
         } else if (transcriptionState === 'error') {
+          isTranscribing = false
           renderError(error)
         }
       })
 
       const unsubscribeProgress = $bus.on('transcription:progress', (data) => {
+        if (!isTranscribing) {
+          return
+        }
         if (data && data.status === 'progress') {
           const pct = Math.round(data.progress)
           renderProgress(pct, `Loading model... ${pct}%`)

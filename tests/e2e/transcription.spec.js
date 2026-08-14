@@ -51,4 +51,44 @@ test.describe('Voice Message Transcription E2E', () => {
     const textEl = transcriptCard.locator('.transcription-text')
     await expect(textEl).not.toBeEmpty()
   })
+
+  test('should not reset previously transcribed voice messages when transcribing a new one', async ({ page }) => {
+    // 1. Send first voice message
+    await page.locator('[data-testid$="__btn-mic-toggle"]').click()
+    await page.locator('atoll-chat-voice-recorder').waitFor({ state: 'visible' })
+    await page.waitForTimeout(2000)
+    await page.locator('[data-testid$="__sendVoiceButton"]').click()
+
+    // Wait for first Transcribe button to appear
+    const firstTranscribeBtn = page.locator('[data-testid="btn-transcribe"]').first()
+    await expect(firstTranscribeBtn).toBeVisible({ timeout: 30000 })
+
+    // 2. Send second voice message
+    await page.locator('[data-testid$="__btn-mic-toggle"]').click()
+    await page.locator('atoll-chat-voice-recorder').waitFor({ state: 'visible' })
+    await page.waitForTimeout(2000)
+    await page.locator('[data-testid$="__sendVoiceButton"]').click()
+
+    // Wait for second Transcribe button to appear (there should now be 2 transcribe buttons)
+    const secondTranscribeBtn = page.locator('[data-testid="btn-transcribe"]').last()
+    await expect(page.locator('[data-testid="btn-transcribe"]')).toHaveCount(2, { timeout: 30000 })
+
+    // 3. Transcribe the first voice message
+    await firstTranscribeBtn.click()
+
+    // Wait for the first message's transcript card to appear
+    const firstTranscriptCard = page.locator('.transcription-card').first()
+    await expect(firstTranscriptCard).toBeVisible({ timeout: 30000 })
+    const firstTranscriptText = await firstTranscriptCard.locator('.transcription-text').textContent()
+
+    // 4. Transcribe the second voice message
+    await secondTranscribeBtn.click()
+
+    // Wait a brief moment for the second message transcription to be in progress or finish
+    await page.waitForTimeout(2000)
+
+    // 5. Verify the first transcript is still intact and not reset to a loading/progress view
+    await expect(firstTranscriptCard).toBeVisible()
+    await expect(firstTranscriptCard.locator('.transcription-text')).toHaveText(firstTranscriptText)
+  })
 })
