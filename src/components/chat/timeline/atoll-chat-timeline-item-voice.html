@@ -4,6 +4,7 @@
         <div class="placeholder rounded-circle me-3" style="width: 32px; height: 32px;"></div>
         <div class="placeholder col-8" style="height: 24px;"></div>
     </div>
+    <div ref="transcriptionArea" class="transcription-area mt-2 px-2 d-none"></div>
   </div>
 </template>
 
@@ -30,15 +31,17 @@
         return ['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave'
       }
     },
-    client: async ({ refs, state, storage, pocketbase, globalStore, signal, eventBus, cryptoWorker, observe }) => {
+    client: async ({ refs, state, storage, pocketbase, globalStore, signal, eventBus, cryptoWorker, transcription, observe }) => {
       const { $storage } = storage
       const { pb } = pocketbase
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $worker } = cryptoWorker
+      const { $transcription } = transcription || {}
 
       const container = refs('container')
       const loading = refs('loading')
+      const transcriptionArea = refs('transcriptionArea')
 
       let audio = null
       let lastCallId = 0
@@ -332,7 +335,183 @@
         }
         state.isLoaded = true
         lastLoadedUuid = state.localUuid
+        loadTranscription()
       }
+
+      const loadTranscription = async () => {
+        if (!state.localUuid) {
+          return
+        }
+        try {
+          const message = await $storage.getMessage(state.localUuid)
+          if (message && message.transcript) {
+            renderTranscript(message.transcript)
+          } else {
+            renderTranscribeButton()
+          }
+        } catch {
+          renderTranscribeButton()
+        }
+      }
+
+      const renderTranscribeButton = () => {
+        transcriptionArea.replaceChildren()
+
+        const btn = document.createElement('button')
+        btn.className = 'btn btn-sm btn-outline-primary d-flex align-items-center gap-1 py-1 px-2 mt-2'
+        btn.style.fontSize = '0.75rem'
+        btn.setAttribute('data-testid', 'btn-transcribe')
+        btn.innerHTML = '<atoll-icon name="Aa" size="14"></atoll-icon> Transcribe'
+
+        btn.onclick = async (e) => {
+          e.stopPropagation()
+          await startTranscription()
+        }
+
+        transcriptionArea.appendChild(btn)
+        transcriptionArea.classList.remove('d-none')
+      }
+
+      const startTranscription = async () => {
+        renderProgress(0, 'Initializing...')
+
+        try {
+          const cached = $state.decryptionCache.get(state.localUuid)
+          if (!cached) {
+            throw new Error('Audio not loaded')
+          }
+          const response = await fetch(cached.blobUrl)
+          const audioBlob = await response.blob()
+
+          if ($transcription) {
+            await $transcription.transcribe(audioBlob, state.localUuid)
+          } else {
+            throw new Error('Transcription service not available')
+          }
+        } catch (err) {
+          renderError(err.message)
+        }
+      }
+
+      const renderProgress = (percentage, text) => {
+        transcriptionArea.replaceChildren()
+
+        const progressContainer = document.createElement('div')
+        progressContainer.className = 'w-100 mt-2 p-2 rounded border border-secondary bg-body-tertiary text-body'
+
+        const label = document.createElement('div')
+        label.className = 'text-muted x-small mb-1 text-start'
+        label.textContent = text
+
+        const progressWrapper = document.createElement('div')
+        progressWrapper.className = 'progress'
+        progressWrapper.style.height = '4px'
+
+        const progressBar = document.createElement('div')
+        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated'
+        progressBar.style.width = `${percentage}%`
+
+        progressWrapper.appendChild(progressBar)
+        progressContainer.appendChild(label)
+        progressContainer.appendChild(progressWrapper)
+
+        transcriptionArea.appendChild(progressContainer)
+        transcriptionArea.classList.remove('d-none')
+      }
+
+      const renderTranscript = (text) => {
+        transcriptionArea.replaceChildren()
+
+        const card = document.createElement('div')
+        card.className = 'transcription-card p-2 rounded border border-secondary bg-body-tertiary text-body mt-2 d-flex flex-column gap-1'
+        card.style.fontSize = '0.825rem'
+        card.style.lineHeight = '1.4'
+
+        const textContainer = document.createElement('div')
+        textContainer.className = 'transcription-text text-start text-break'
+        textContainer.textContent = text || '(Silence)'
+
+        const actionsContainer = document.createElement('div')
+        actionsContainer.className = 'd-flex justify-content-end align-items-center gap-2 mt-1'
+
+        const copyBtn = document.createElement('button')
+        copyBtn.className = 'btn btn-link btn-sm p-0 text-muted d-flex align-items-center gap-1 text-decoration-none'
+        copyBtn.style.fontSize = '0.75rem'
+        copyBtn.innerHTML = '<atoll-icon name="copy" size="12"></atoll-icon> Copy'
+
+        copyBtn.onclick = async (e) => {
+          e.stopPropagation()
+          try {
+            await navigator.clipboard.writeText(text)
+            copyBtn.innerHTML = '<atoll-icon name="check-circle" size="12" color="var(--bs-success)"></atoll-icon> Copied'
+            setTimeout(() => {
+              copyBtn.innerHTML = '<atoll-icon name="copy" size="12"></atoll-icon> Copy'
+            }, 2000)
+          } catch {
+            // Ignore
+          }
+        }
+
+        actionsContainer.appendChild(copyBtn)
+        card.appendChild(textContainer)
+        card.appendChild(actionsContainer)
+
+        transcriptionArea.appendChild(card)
+        transcriptionArea.classList.remove('d-none')
+      }
+
+      const renderError = (message) => {
+        transcriptionArea.replaceChildren()
+
+        const errContainer = document.createElement('div')
+        errContainer.className = 'd-flex align-items-center gap-1 text-warning mt-2'
+        errContainer.style.fontSize = '0.75rem'
+        errContainer.innerHTML = `
+          <atoll-icon name="warning" size="14" color="var(--bs-warning)"></atoll-icon>
+          <span>Failed to transcribe: ${message}</span>
+        `
+
+        const retryBtn = document.createElement('button')
+        retryBtn.className = 'btn btn-link btn-sm p-0 ms-2 text-primary text-decoration-none'
+        retryBtn.style.fontSize = '0.75rem'
+        retryBtn.textContent = 'Retry'
+        retryBtn.onclick = async (e) => {
+          e.stopPropagation()
+          await startTranscription()
+        }
+
+        errContainer.appendChild(retryBtn)
+        transcriptionArea.appendChild(errContainer)
+        transcriptionArea.classList.remove('d-none')
+      }
+
+      const unsubscribeState = $bus.on('transcription:state_change', ({ localUuid, state: transcriptionState, text, error }) => {
+        if (localUuid !== state.localUuid) {
+          return
+        }
+
+        if (transcriptionState === 'transcribing') {
+          renderProgress(0, 'Transcribing...')
+        } else if (transcriptionState === 'done') {
+          renderTranscript(text)
+        } else if (transcriptionState === 'error') {
+          renderError(error)
+        }
+      })
+
+      const unsubscribeProgress = $bus.on('transcription:progress', (data) => {
+        if (data && data.status === 'progress') {
+          const pct = Math.round(data.progress)
+          renderProgress(pct, `Loading model... ${pct}%`)
+        } else if (data && data.status === 'ready') {
+          renderProgress(100, 'Model loaded, transcribing...')
+        }
+      })
+
+      signal.addEventListener('abort', () => {
+        unsubscribeState()
+        unsubscribeProgress()
+      })
 
       const loadAudio = async () => {
         const callId = ++lastCallId

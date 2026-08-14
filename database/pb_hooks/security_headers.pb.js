@@ -14,6 +14,8 @@ routerUse((e) => {
         "base-uri 'self'; " +
         "form-action 'self';"
       )
+      h.set('Cross-Origin-Opener-Policy', 'same-origin')
+      h.set('Cross-Origin-Embedder-Policy', 'require-corp')
       h.set('Access-Control-Allow-Origin', '*')
       h.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
       h.set('Access-Control-Allow-Headers', '*')

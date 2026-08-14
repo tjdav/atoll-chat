@@ -8,6 +8,7 @@ import utilsPlugin from './src/plugins/utils-plugin.js'
 import cryptoPlugin from './src/plugins/crypto-worker.js'
 import mediaWorkerPlugin from './src/plugins/media-worker-plugin.js'
 import mediaPlugin from './src/plugins/media-plugin.js'
+import transcriptionPlugin from './src/plugins/transcription-plugin.js'
 import syncPlugin from './src/plugins/sync-plugin.js'
 import webrtcPlugin from './src/plugins/web-rtc-plugin.js'
 import webrtcTransferPlugin from './src/plugins/webrtc-transfer-plugin.js'
@@ -97,7 +98,8 @@ export default defineConfig({
         messageSoundsEnabled: true,
         callSoundsEnabled: true,
         isCatchingUp: false,
-        isOnline: true
+        isOnline: true,
+        transcriptionModel: 'onnx-community/whisper-tiny'
       }
     }),
     storagePlugin,
@@ -108,6 +110,7 @@ export default defineConfig({
     }),
     mediaWorkerPlugin,
     mediaPlugin,
+    transcriptionPlugin,
     syncPlugin(),
     routerPlugin(),
     emojiPlugin,
