@@ -430,7 +430,8 @@
 
           const newRoom = await pb.collection('rooms').create({
             is_group: isGroup,
-            encrypted_metadata: metadataPayload
+            encrypted_metadata: metadataPayload,
+            weight: 0
           })
 
           for (const record of wrappedMemberRecords) {
@@ -446,6 +447,7 @@
           await $storage.saveRoom({
             id: newRoom.id,
             is_group: isGroup,
+            weight: typeof newRoom.weight === 'number' ? newRoom.weight : 0,
             name: roomName,
             avatar: roomAvatarBase64,
             participants: participants.map(u => ({

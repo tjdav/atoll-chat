@@ -270,6 +270,7 @@ export function createWebStorageAdapter () {
       if (!dbInstance) {
         throw new Error('Database not initialized')
       }
+      room.weight = Number(room.weight ?? 0)
       return dbInstance.local_rooms.put(room)
     },
 

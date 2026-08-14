@@ -1801,9 +1801,10 @@ async function processNewRoomKey (rpcId, payload) {
     }
 
     // fetch room record
+    let roomRecord = null
     const roomResponse = await fetchWithTimeout(`${baseUrl}/api/collections/rooms/records/${room_id}`, { headers })
     if (roomResponse.ok) {
-      const roomRecord = await roomResponse.json()
+      roomRecord = await roomResponse.json()
       isGroup = roomRecord.is_group
 
       if (roomRecord.encrypted_metadata && roomRecord.encrypted_metadata.ciphertext) {
@@ -1855,6 +1856,7 @@ async function processNewRoomKey (rpcId, payload) {
       room = {
         id: room_id,
         is_group: isGroup,
+        weight: typeof roomRecord?.weight === 'number' ? roomRecord.weight : 0,
         name: roomMetadata?.name || '',
         avatar: roomMetadata?.avatar || '',
         theme: roomMetadata?.theme || 'classic',
@@ -1869,6 +1871,9 @@ async function processNewRoomKey (rpcId, payload) {
     } else {
       room.updated_at = updated || room.updated_at
       room.user_role = role || room.user_role
+      if (typeof roomRecord?.weight === 'number') {
+        room.weight = roomRecord.weight
+      }
       room.read_receipts = settingsAndStates.read_receipts
       room.nicknames = settingsAndStates.nicknames
       if (roomMetadata?.name) {

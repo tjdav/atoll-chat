@@ -307,6 +307,7 @@ export function createNativeStorageAdapter () {
      * @returns {Promise<boolean>} Resolves to true when the room is saved.
      */
     saveRoom: async (room) => {
+      room.weight = Number(room.weight ?? 0)
       localRooms.set(room.id, room)
       persistToLocalStorage('rooms', room.id, room)
       return true

@@ -442,6 +442,7 @@
             await $storage.saveRoom({
               id: roomId,
               is_group: roomRecord.is_group || false,
+              weight: typeof roomRecord.weight === 'number' ? roomRecord.weight : 0,
               name: roomRecord.name || 'Joined Room',
               avatar: roomRecord.avatar || '',
               participants: participants.map(u => ({
