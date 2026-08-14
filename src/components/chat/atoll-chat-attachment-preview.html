@@ -1,32 +1,32 @@
 <template id="atoll-chat-attachment-preview">
   <div class="atoll-chat-attachment-preview p-2 mb-2 rounded-4 d-flex align-items-center justify-content-between border">
     <div class="d-flex align-items-center">
-      <!-- Video Cover Thumbnail Container -->
-      <div class="position-relative me-2 bg-dark rounded-2 border d-flex align-items-center justify-content-center" hidden="{{ isVideoHidden }}" style="width: 100px; height: 100px; overflow: hidden; flex-shrink: 0;">
+      <!-- Thumbnail Container (Video or Image) -->
+      <div class="atoll-chat-attachment-preview-thumbnail-container position-relative me-2 bg-dark rounded-2 border d-flex align-items-center justify-content-center" hidden="{{ isThumbnailContainerHidden }}">
         <img ref="thumbnailImg" class="w-100 h-100 object-fit-cover" alt="Cover Preview" hidden="{{ isThumbnailHidden }}">
-        <atoll-icon name="videocam" size="28" color="#ffffff" hidden="{{ isThumbnailVisibleHidden }}"></atoll-icon>
+        <atoll-icon name="videocam" size="28" color="#ffffff" hidden="{{ isVideoIconHidden }}"></atoll-icon>
         
         <!-- Standard file picker restricted to image files, visually hidden -->
         <input type="file" ref="coverInput" class="d-none" accept="image/jpeg, image/png, image/webp" data-testid="cover-file-input">
         
-        <!-- Action Button overlaid -->
-        <button class="btn btn-sm {{ coverBtnClass }} position-absolute bottom-0 start-50 translate-middle-x mb-1" 
-                style="z-index: 5; white-space: nowrap; font-size: 0.6rem; padding: 1px 4px; line-height: 1.2; width: 90%; text-overflow: ellipsis; overflow: hidden;"
+        <!-- Action Button overlaid (Video only) -->
+        <button class="btn btn-sm {{ coverBtnClass }} atoll-chat-attachment-preview-cover-btn position-absolute bottom-0 start-50 translate-middle-x mb-1" 
+                hidden="{{ isCoverBtnHidden }}"
                 ref="coverBtn" 
                 data-testid="btn-change-cover">
           {{ coverBtnText }}
         </button>
       </div>
 
-      <!-- Generic Document/File Icon if not video -->
+      <!-- Generic Document/File Icon if no thumbnail container -->
       <atoll-icon name="document" size="24" color="var(--atoll-brand-primary, #06C755)" class="me-2" hidden="{{ isGenericIconHidden }}"></atoll-icon>
       
       <div>
-        <div class="small fw-bold text-truncate atoll-chat-attachment-preview-name" style="max-width: 250px;">{{ fileName }}</div>
-        <div class="x-small atoll-chat-attachment-preview-status text-truncate" style="max-width: 250px;">{{ uploadStatus }}</div>
+        <div class="small fw-bold text-truncate atoll-chat-attachment-preview-name atoll-chat-attachment-preview-text-max-width">{{ fileName }}</div>
+        <div class="x-small atoll-chat-attachment-preview-status text-truncate atoll-chat-attachment-preview-text-max-width">{{ uploadStatus }}</div>
         
         <!-- Progress Bar Indicator -->
-        <div class="progress mt-1" style="height: 6px; width: 100%; max-width: 250px;" hidden="{{ isProgressHidden }}">
+        <div class="progress mt-1 atoll-chat-attachment-preview-progress" hidden="{{ isProgressHidden }}">
           <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
                role="progressbar" 
                style="{{ progressBarStyle }}" 
@@ -56,10 +56,11 @@
       progress: Number
     },
     getters: {
-      isVideoHidden: (state) => !state.isVideo,
-      isGenericIconHidden: (state) => !!state.isVideo,
+      isThumbnailContainerHidden: (state) => !state.isVideo && !state.thumbnailUrl,
+      isCoverBtnHidden: (state) => !state.isVideo,
+      isVideoIconHidden: (state) => !state.isVideo || !!state.thumbnailUrl,
       isThumbnailHidden: (state) => !state.thumbnailUrl,
-      isThumbnailVisibleHidden: (state) => !!state.thumbnailUrl,
+      isGenericIconHidden: (state) => !!state.isVideo || !!state.thumbnailUrl,
       coverBtnText: (state) => (state.isCustom ? 'Remove Custom Cover' : 'Change Cover'),
       coverBtnClass: (state) => (state.isCustom ? 'btn-danger' : 'btn-dark'),
       isProgressHidden: (state) => !(state.isCompressing || state.isUploading),
@@ -72,36 +73,41 @@
       const coverInput = refs('coverInput')
       const thumbnailImg = refs('thumbnailImg')
 
+      /**
+       * Synchronizes the image source element with the reactive thumbnailUrl state.
+       */
       const updateThumbnail = () => {
         thumbnailImg.src = state.thumbnailUrl || ''
       }
 
       updateThumbnail()
       observe('thumbnailUrl', updateThumbnail)
-  
+
+      thumbnailImg.addEventListener('error', () => {
+        thumbnailImg.src = ''
+      }, { signal })
+
       cancelBtn.addEventListener('click', () => {
         $bus.emit('ui:cancel')
       }, { signal })
 
-      if (coverBtn && coverInput) {
-        coverBtn.addEventListener('click', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          if (state.isCustom) {
-            $bus.emit('ui:remove_custom_cover_clicked')
-          } else {
-            coverInput.click()
-          }
-        }, { signal })
+      coverBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (state.isCustom) {
+          $bus.emit('ui:remove_custom_cover_clicked')
+        } else {
+          coverInput.click()
+        }
+      }, { signal })
 
-        coverInput.addEventListener('change', () => {
-          const file = coverInput.files[0]
-          if (file) {
-            $bus.emit('ui:custom_cover_selected', { file })
-            coverInput.value = ''
-          }
-        }, { signal })
-      }
+      coverInput.addEventListener('change', () => {
+        const file = coverInput.files[0]
+        if (file) {
+          $bus.emit('ui:custom_cover_selected', { file })
+          coverInput.value = ''
+        }
+      }, { signal })
     }
   })
 </script>

@@ -441,6 +441,10 @@
         state.fileName = file.name
         state.hasFile = true
         state.progress = 0
+        state.isVideo = false
+        state.isCustomCover = false
+        state.autoExtractedThumbnailBlob = null
+        revokePreviewUrl()
 
         // Check format compatibility for web playback across browsers and devices
         const compatibility = await $media.checkCompatibility(file)
@@ -462,6 +466,7 @@
               state.isCompressing = false
             }
           }
+          state.thumbnailPreviewUrl = URL.createObjectURL(file)
         } else if (file.type.startsWith('image/') || compatibility.category === 'image') {
           state.isCompressing = true
           state.uploadStatus = 'Compressing image...'
@@ -482,14 +487,12 @@
           } finally {
             state.isCompressing = false
           }
+          state.thumbnailPreviewUrl = URL.createObjectURL(file)
         } else if (file.type.startsWith('video/') || compatibility.category === 'video') {
           state.isCompressing = true
           state.progress = 0
           state.uploadStatus = 'Processing video...'
           state.isVideo = true
-          state.isCustomCover = false
-          state.autoExtractedThumbnailBlob = null
-          revokePreviewUrl()
           try {
             // Extract thumbnail and duration first
             const result = await $media.extractThumbnail(file)
