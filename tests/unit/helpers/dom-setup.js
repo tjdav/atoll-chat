@@ -21,6 +21,8 @@ const props = [
   'document',
   'customElements',
   'HTMLElement',
+  'HTMLImageElement',
+  'Image',
   'HTMLTemplateElement',
   'Node',
   'DocumentFragment',
@@ -57,6 +59,10 @@ for (const prop of props) {
       }
     }
   }
+}
+
+if (!globalThis.Image && globalThis.HTMLImageElement) {
+  globalThis.Image = globalThis.HTMLImageElement
 }
 
 globalThis.self = globalThis
