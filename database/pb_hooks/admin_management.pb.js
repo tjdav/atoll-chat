@@ -1,88 +1,13 @@
 // database/pb_hooks/admin_management.pb.js
 
 /**
- * Counts rows in a collection table.
- *
- * Genuine database failures propagate so callers fail closed instead of
- * silently defaulting to zero.
- *
- * @param {string} table - The name of the database table/collection.
- * @param {import("dbx").Expression} [condition] - Optional query condition filter.
- * @returns {number} The count of matching rows.
+ * GET /api/custom/admin/overview
+ * Returns instance governance settings and high-level platform statistics.
  */
-function countTable (table, condition) {
-  const dm = new DynamicModel({ count: 0 })
-  let query = $app.db().select('count(*) as count').from(table)
-  if (condition) {
-    query = query.where(condition)
-  }
-  query.one(dm)
-  return dm.count
-}
-
-/**
- * Loads the singleton `app_metadata` record or fails with a clear error.
- *
- * @throws {BadRequestError} If no `app_metadata` record exists.
- * @returns {core.Record} The fetched metadata record.
- */
-function getAppMetadata () {
-  const records = $app.findRecordsByFilter('app_metadata', '1=1', '', 1, 0)
-  if (records.length === 0) {
-    throw new BadRequestError('App metadata record not found.')
-  }
-  return records[0]
-}
-
-/**
- * Returns the trust record for the given user, lazy-seeding it when absent.
- *
- * The first account ever created is promoted to owner; database failures
- * propagate so ownership is never granted by accident (fail closed).
- *
- * @param {string} userId - The unique ID of the target user record.
- * @returns {core.Record} The existing or freshly created `user_trust` record.
- */
-function getOrCreateTrust (userId) {
-  const existing = $app.findRecordsByFilter('user_trust', 'user = {:userId}', '', 1, 0, { userId: userId })
-  if (existing.length > 0) {
-    return existing[0]
-  }
-
-  const firstUsers = $app.findRecordsByFilter('users', '1=1', 'created', 1, 0)
-  const isFirst = firstUsers.length > 0 && firstUsers[0].id === userId
-  const collection = $app.findCollectionByNameOrId('user_trust')
-  const trustRecord = new Record(collection)
-  trustRecord.set('user', userId)
-  trustRecord.set('tier', isFirst ? 'owner' : 'standard')
-  trustRecord.set('invite_quota', isFirst ? 999999 : 0)
-  trustRecord.set('invites_revoked', false)
-  $app.save(trustRecord)
-  return trustRecord
-}
-
-/**
- * Middleware helper that ensures the requesting user has the owner tier in `user_trust`.
- *
- * @param {core.RequestEvent} e - The PocketBase router context event object.
- * @throws {ForbiddenError} If the request is unauthenticated or the user lacks the owner tier.
- * @returns {void}
- */
-function enforceOwner (e) {
-  const authRecord = e.auth
-  if (!authRecord) {
-    throw new ForbiddenError('Only authenticated owners can access this endpoint.')
-  }
-
-  const trust = getOrCreateTrust(authRecord.id)
-  if (trust.get('tier') !== 'owner') {
-    throw new ForbiddenError('Only authenticated owners can access this endpoint.')
-  }
-}
-
-// GET /api/custom/admin/overview
 routerAdd('GET', '/api/custom/admin/overview', (e) => {
   try {
+    const { countTable, getAppMetadata } = require(`${__hooks}/admin_helpers.js`)
+
     const authRecord = e.auth
     if (!authRecord) {
       throw new ForbiddenError('Authentication is required.')
@@ -102,10 +27,10 @@ routerAdd('GET', '/api/custom/admin/overview', (e) => {
         allow_quota_requests: appMetadataRecord.get('allow_quota_requests') !== false
       },
       stats: {
-        totalUsers: totalUsers,
-        activeRooms: activeRooms,
-        pendingInviteRequests: pendingInviteRequests,
-        activeInvitations: activeInvitations
+        totalUsers,
+        activeRooms,
+        pendingInviteRequests,
+        activeInvitations
       }
     })
   } catch (err) {
@@ -116,9 +41,13 @@ routerAdd('GET', '/api/custom/admin/overview', (e) => {
   }
 })
 
-// POST /api/custom/admin/settings
+/**
+ * POST /api/custom/admin/settings
+ * Updates global instance governance metadata.
+ */
 routerAdd('POST', '/api/custom/admin/settings', (e) => {
   try {
+    const { enforceOwner, getAppMetadata } = require(`${__hooks}/admin_helpers.js`)
     enforceOwner(e)
 
     const data = new DynamicModel({
@@ -158,9 +87,13 @@ routerAdd('POST', '/api/custom/admin/settings', (e) => {
   }
 })
 
-// POST /api/custom/admin/users/trust
+/**
+ * POST /api/custom/admin/users/trust
+ * Updates a user's trust tier, quota, or privileges.
+ */
 routerAdd('POST', '/api/custom/admin/users/trust', (e) => {
   try {
+    const { enforceOwner, getOrCreateTrust } = require(`${__hooks}/admin_helpers.js`)
     enforceOwner(e)
 
     const data = new DynamicModel({
@@ -206,9 +139,13 @@ routerAdd('POST', '/api/custom/admin/users/trust', (e) => {
   }
 })
 
-// POST /api/custom/admin/requests/resolve
+/**
+ * POST /api/custom/admin/requests/resolve
+ * Approves or rejects a pending invite request and grants quota if approved.
+ */
 routerAdd('POST', '/api/custom/admin/requests/resolve', (e) => {
   try {
+    const { enforceOwner } = require(`${__hooks}/admin_helpers.js`)
     enforceOwner(e)
 
     const data = new DynamicModel({
@@ -274,9 +211,14 @@ routerAdd('POST', '/api/custom/admin/requests/resolve', (e) => {
   }
 })
 
-// GET /api/custom/owner/public-key
+/**
+ * GET /api/custom/owner/public-key
+ * Returns the public box encryption key of the instance owner.
+ */
 routerAdd('GET', '/api/custom/owner/public-key', (e) => {
   try {
+    const { getOrCreateTrust } = require(`${__hooks}/admin_helpers.js`)
+
     if (!e.auth) {
       throw new ForbiddenError('Authentication is required.')
     }
@@ -309,9 +251,14 @@ routerAdd('GET', '/api/custom/owner/public-key', (e) => {
   }
 })
 
-// POST /api/custom/invites/generate
+/**
+ * POST /api/custom/invites/generate
+ * Generates an invitation code for an authorized owner or quota-credited member.
+ */
 routerAdd('POST', '/api/custom/invites/generate', (e) => {
   try {
+    const { getAppMetadata, getOrCreateTrust } = require(`${__hooks}/admin_helpers.js`)
+
     const authRecord = e.auth
     if (!authRecord) {
       throw new ForbiddenError('Authentication is required.')
@@ -365,7 +312,7 @@ routerAdd('POST', '/api/custom/invites/generate', (e) => {
     $app.save(inviteRecord)
 
     return e.json(200, {
-      code: code,
+      code,
       max_uses: maxUses
     })
   } catch (err) {
@@ -376,9 +323,14 @@ routerAdd('POST', '/api/custom/invites/generate', (e) => {
   }
 })
 
-// POST /api/custom/invites/request
+/**
+ * POST /api/custom/invites/request
+ * Submits a zero-knowledge encrypted quota request for owner review.
+ */
 routerAdd('POST', '/api/custom/invites/request', (e) => {
   try {
+    const { getAppMetadata } = require(`${__hooks}/admin_helpers.js`)
+
     const authRecord = e.auth
     if (!authRecord) {
       throw new ForbiddenError('Authentication is required.')

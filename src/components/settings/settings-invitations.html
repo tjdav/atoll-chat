@@ -84,7 +84,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, globalStore, pocketbase }) => {
+    client: async ({ refs, globalStore, pocketbase, signal }) => {
       const { $state } = globalStore
       const pb = pocketbase
 
@@ -135,7 +135,6 @@
 
             let trustRec = trustList[0]
             if (!trustRec) {
-              // Hit custom route or lazy seeding by querying stats or generating fake request to trigger pb_hooks fallback
               await pb.send('/api/custom/owner/public-key', { method: 'GET' }).catch(() => null)
               const updatedTrust = await pb.collection('user_trust').getFullList({
                 filter: `user = "${authRecord.id}"`
@@ -168,7 +167,10 @@
             }
           }
         } catch (err) {
-          console.error('[settings-invitations] Fetch status error:', err)
+          // Propagate error if abort was not triggered
+          if (!signal?.aborted) {
+            throw err
+          }
         }
       }
 
@@ -191,7 +193,7 @@
         } finally {
           btnGenerateInvite.removeAttribute('loading')
         }
-      })
+      }, { signal })
 
       // Wire up the copy-to-clipboard button
       btnCopyCode.addEventListener('click', () => {
@@ -201,7 +203,7 @@
         setTimeout(() => {
           btnCopyCode.setAttribute('leading-icon', prevIcon)
         }, 1500)
-      })
+      }, { signal })
 
       // Submit the sealed zero-knowledge quota request
       requestQuotaForm.addEventListener('submit', async (e) => {
@@ -219,7 +221,7 @@
         try {
           btnSubmitRequest.setAttribute('loading', 'true')
 
-          // A. Fetch Instance Owner's public key
+          // Fetch Instance Owner's public key
           const pubKeyRes = await pb.send('/api/custom/owner/public-key', { method: 'GET' })
           const ownerPubKey = pubKeyRes.ownerPublicKey
 
@@ -227,13 +229,13 @@
             throw new Error('Could not retrieve instance owner public key.')
           }
 
-          // B. Execute libsodium.crypto_box_seal inside worker
+          // Execute libsodium.crypto_box_seal inside worker
           const sealedReason = await $state.cryptoWorker.request('worker:crypto_box_seal', {
             message: reason,
             publicKey: ownerPubKey
           })
 
-          // C. Submit to PocketBase custom endpoint
+          // Submit to PocketBase custom endpoint
           await pb.send('/api/custom/invites/request', {
             method: 'POST',
             body: {
@@ -252,7 +254,7 @@
         } finally {
           btnSubmitRequest.removeAttribute('loading')
         }
-      })
+      }, { signal })
     }
   })
 </script>

@@ -1,33 +1,33 @@
 migrate((app) => {
-  try {
-    const userTrust = app.findCollectionByNameOrId('user_trust')
+  const collections = app.findAllCollections()
+
+  const userTrust = collections.find((c) => (c.name || c.Name) === 'user_trust')
+  if (userTrust) {
     userTrust.listRule = '@request.auth.id != ""'
     userTrust.viewRule = '@request.auth.id != ""'
     app.save(userTrust)
-  } catch (_err) {
   }
 
-  try {
-    const inviteRequests = app.findCollectionByNameOrId('invite_requests')
+  const inviteRequests = collections.find((c) => (c.name || c.Name) === 'invite_requests')
+  if (inviteRequests) {
     inviteRequests.listRule = '@request.auth.id != ""'
     inviteRequests.viewRule = '@request.auth.id != ""'
     app.save(inviteRequests)
-  } catch (_err) {
   }
 }, (app) => {
-  try {
-    const userTrust = app.findCollectionByNameOrId('user_trust')
+  const collections = app.findAllCollections()
+
+  const userTrust = collections.find((c) => (c.name || c.Name) === 'user_trust')
+  if (userTrust) {
     userTrust.listRule = null
     userTrust.viewRule = null
     app.save(userTrust)
-  } catch (_err) {
   }
 
-  try {
-    const inviteRequests = app.findCollectionByNameOrId('invite_requests')
+  const inviteRequests = collections.find((c) => (c.name || c.Name) === 'invite_requests')
+  if (inviteRequests) {
     inviteRequests.listRule = null
     inviteRequests.viewRule = null
     app.save(inviteRequests)
-  } catch (_err) {
   }
 })
