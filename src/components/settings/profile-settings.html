@@ -1,25 +1,21 @@
 <template id="profile-settings">
-  <section class="mb-5">
+  <section>
     <h6 class="text-uppercase text-muted fw-bold small mb-3">Profile</h6>
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <div class="d-flex align-items-center gap-4 mb-4">
-          <div class="position-relative cursor-pointer flex-shrink-0" ref="avatarContainer" data-testid="avatarContainer">
-            <atoll-profile ref="avatarProfile" size="2xl" icon-name="camera" alt="{{ displayName }}" user-id="{{ currentUserId }}"></atoll-profile>
-            <input type="file" class="d-none" ref="avatarInput" accept="image/*">
-          </div>
-          <div class="flex-grow-1">
-            <label class="form-label small text-muted text-uppercase fw-bold">Display Name</label>
-            <input type="text" class="form-control" ref="nameInput" value="{{ displayName }}" placeholder="Enter your display name" data-testid="nameInput">
-            <p class="text-muted small mb-0 mt-1">This name will be visible to your contacts.</p>
-          </div>
-        </div>
-        <div class="d-flex justify-content-end">
-          <button class="btn btn-primary" ref="btnSave" disabled="{{ saveBtnDisabled }}" data-testid="btnSave">
-            {{ saveBtnText }}
-          </button>
-        </div>
+    <div class="d-flex align-items-center gap-4 mb-4">
+      <div class="position-relative cursor-pointer flex-shrink-0" ref="avatarContainer" data-testid="avatarContainer">
+        <atoll-profile ref="avatarProfile" size="2xl" icon-name="camera" alt="{{ displayName }}" user-id="{{ currentUserId }}"></atoll-profile>
+        <input type="file" class="d-none" ref="avatarInput" accept="image/*">
       </div>
+      <div class="flex-grow-1">
+        <label class="form-label small text-muted text-uppercase fw-bold">Display Name</label>
+        <input type="text" class="form-control" ref="nameInput" value="{{ displayName }}" placeholder="Enter your display name" data-testid="nameInput">
+        <p class="text-muted small mb-0 mt-1">This name will be visible to your contacts.</p>
+      </div>
+    </div>
+    <div class="d-flex justify-content-end">
+      <button class="btn btn-primary" ref="btnSave" disabled="{{ saveBtnDisabled }}" data-testid="btnSave">
+        {{ saveBtnText }}
+      </button>
     </div>
   </section>
 </template>

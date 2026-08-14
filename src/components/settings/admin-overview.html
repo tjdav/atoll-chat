@@ -1,95 +1,92 @@
 <template id="admin-overview">
   <div class="admin-overview">
-    <div class="card border-0 shadow-sm mb-4">
-      <div class="card-body">
-        <h5 class="fw-bold mb-4">Instance Governance & Settings</h5>
+    <div class="mb-4">
+      <h5 class="fw-bold mb-4">Instance Governance & Settings</h5>
 
-        <form ref="governanceForm">
-          <div class="mb-3">
-            <label class="form-label small fw-bold">Delegation Mode</label>
-            <div class="d-flex flex-column gap-2 mt-1">
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="invite_mode" id="modeDelegated" value="delegated" checked ref="modeDelegated" data-testid="modeDelegated">
-                <label class="form-check-label" for="modeDelegated">
-                  <strong>Delegated Trust (Default)</strong>
-                  <div class="text-muted small">Standard users generate invitations with quota credit deductions. Owners can adjust quotas.</div>
-                </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="invite_mode" id="modeStrict" value="strict" ref="modeStrict" data-testid="modeStrict">
-                <label class="form-check-label" for="modeStrict">
-                  <strong>Strict (Owner Only)</strong>
-                  <div class="text-muted small">Only the instance owner can generate invitations. Standard users cannot invite anyone.</div>
-                </label>
-              </div>
-              <div class="form-check">
-                <input class="form-check-input" type="radio" name="invite_mode" id="modeOpen" value="open" ref="modeOpen" data-testid="modeOpen">
-                <label class="form-check-label" for="modeOpen">
-                  <strong>Open Enrollment</strong>
-                  <div class="text-muted small">No invitation check applied. Anyone can register without codes (not fully recommended for zero-knowledge privacy hubs).</div>
-                </label>
-              </div>
+      <form ref="governanceForm">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Delegation Mode</label>
+          <div class="d-flex flex-column gap-2 mt-1">
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="invite_mode" id="modeDelegated" value="delegated" checked ref="modeDelegated" data-testid="modeDelegated">
+              <label class="form-check-label" for="modeDelegated">
+                <strong>Delegated Trust (Default)</strong>
+                <div class="text-muted small">Standard users generate invitations with quota credit deductions. Owners can adjust quotas.</div>
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="invite_mode" id="modeStrict" value="strict" ref="modeStrict" data-testid="modeStrict">
+              <label class="form-check-label" for="modeStrict">
+                <strong>Strict (Owner Only)</strong>
+                <div class="text-muted small">Only the instance owner can generate invitations. Standard users cannot invite anyone.</div>
+              </label>
+            </div>
+            <div class="form-check">
+              <input class="form-check-input" type="radio" name="invite_mode" id="modeOpen" value="open" ref="modeOpen" data-testid="modeOpen">
+              <label class="form-check-label" for="modeOpen">
+                <strong>Open Enrollment</strong>
+                <div class="text-muted small">No invitation check applied. Anyone can register without codes (not fully recommended for zero-knowledge privacy hubs).</div>
+              </label>
             </div>
           </div>
+        </div>
 
-          <div class="mb-3 mt-4">
-            <label class="form-label small fw-bold" for="inputDefaultQuota">Default Trusted Quota</label>
-            <atoll-input type="number" min="0" ref="inputDefaultQuota" data-testid="inputDefaultQuota" placeholder="5"></atoll-input>
-            <span class="text-muted small">Starting quota given to trusted promoted members.</span>
-          </div>
+        <div class="mb-3 mt-4">
+          <label class="form-label small fw-bold" for="inputDefaultQuota">Default Trusted Quota</label>
+          <atoll-input type="number" min="0" ref="inputDefaultQuota" data-testid="inputDefaultQuota" placeholder="5"></atoll-input>
+          <span class="text-muted small">Starting quota given to trusted promoted members.</span>
+        </div>
 
-          <div class="mb-3">
-            <label class="form-label small fw-bold" for="inputMaxUses">Max Uses Per Invitation Link</label>
-            <atoll-input type="number" min="1" ref="inputMaxUses" data-testid="inputMaxUses" placeholder="3"></atoll-input>
-            <span class="text-muted small">The number of times a newly generated link can be used before expiring.</span>
-          </div>
+        <div class="mb-3">
+          <label class="form-label small fw-bold" for="inputMaxUses">Max Uses Per Invitation Link</label>
+          <atoll-input type="number" min="1" ref="inputMaxUses" data-testid="inputMaxUses" placeholder="3"></atoll-input>
+          <span class="text-muted small">The number of times a newly generated link can be used before expiring.</span>
+        </div>
 
-          <div class="mb-3 form-check form-switch mt-4">
-            <input class="form-check-input" type="checkbox" id="switchAllowRequests" ref="switchAllowRequests" data-testid="switchAllowRequests">
-            <label class="form-check-label fw-bold small" for="switchAllowRequests">Allow Quota Requests</label>
-            <div class="text-muted small">Allow users with 0 quota to request more invite credits through secure encrypted notes.</div>
-          </div>
+        <div class="mb-3 form-check form-switch mt-4">
+          <input class="form-check-input" type="checkbox" id="switchAllowRequests" ref="switchAllowRequests" data-testid="switchAllowRequests">
+          <label class="form-check-label fw-bold small" for="switchAllowRequests">Allow Quota Requests</label>
+          <div class="text-muted small">Allow users with 0 quota to request more invite credits through secure encrypted notes.</div>
+        </div>
 
-          <div class="alert alert-success d-none mt-4" ref="saveSuccessAlert" data-testid="saveSuccessAlert">
-            <atoll-icon name="check-circle" size="18" class="me-2"></atoll-icon>
-            Governance settings saved successfully!
-          </div>
+        <div class="alert alert-success d-none mt-4" ref="saveSuccessAlert" data-testid="saveSuccessAlert">
+          <atoll-icon name="check-circle" size="18" class="me-2"></atoll-icon>
+          Governance settings saved successfully!
+        </div>
 
-          <div class="d-flex justify-content-end mt-4">
-            <atoll-button variant="primary" type="submit" ref="btnSaveGovernance" data-testid="btnSaveGovernance">Save Changes</atoll-button>
-          </div>
-        </form>
-      </div>
+        <div class="d-flex justify-content-end mt-4">
+          <atoll-button variant="primary" type="submit" ref="btnSaveGovernance" data-testid="btnSaveGovernance">Save Changes</atoll-button>
+        </div>
+      </form>
     </div>
 
     <!-- Active Statistics Dashboard Card -->
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <h5 class="fw-bold mb-4">Instance Statistics</h5>
-        <div class="row g-3">
-          <div class="col-6 col-md-3">
-            <div class="p-3 border rounded text-center">
-              <div class="text-muted small text-uppercase">Total Users</div>
-              <h3 class="fw-bold mb-0 mt-1" ref="statTotalUsers" data-testid="statTotalUsers">--</h3>
-            </div>
+    <div>
+      <hr class="my-4">
+      <h5 class="fw-bold mb-4">Instance Statistics</h5>
+      <div class="row g-3">
+        <div class="col-6 col-md-3">
+          <div class="p-3 border rounded text-center">
+            <div class="text-muted small text-uppercase">Total Users</div>
+            <h3 class="fw-bold mb-0 mt-1" ref="statTotalUsers" data-testid="statTotalUsers">--</h3>
           </div>
-          <div class="col-6 col-md-3">
-            <div class="p-3 border rounded text-center">
-              <div class="text-muted small text-uppercase">Active Rooms</div>
-              <h3 class="fw-bold mb-0 mt-1" ref="statActiveRooms" data-testid="statActiveRooms">--</h3>
-            </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="p-3 border rounded text-center">
+            <div class="text-muted small text-uppercase">Active Rooms</div>
+            <h3 class="fw-bold mb-0 mt-1" ref="statActiveRooms" data-testid="statActiveRooms">--</h3>
           </div>
-          <div class="col-6 col-md-3">
-            <div class="p-3 border rounded text-center">
-              <div class="text-muted small text-uppercase">Pending Requests</div>
-              <h3 class="fw-bold mb-0 mt-1" ref="statPendingRequests" data-testid="statPendingRequests">--</h3>
-            </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="p-3 border rounded text-center">
+            <div class="text-muted small text-uppercase">Pending Requests</div>
+            <h3 class="fw-bold mb-0 mt-1" ref="statPendingRequests" data-testid="statPendingRequests">--</h3>
           </div>
-          <div class="col-6 col-md-3">
-            <div class="p-3 border rounded text-center">
-              <div class="text-muted small text-uppercase">Unused Invites</div>
-              <h3 class="fw-bold mb-0 mt-1" ref="statActiveInvitations" data-testid="statActiveInvitations">--</h3>
-            </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="p-3 border rounded text-center">
+            <div class="text-muted small text-uppercase">Unused Invites</div>
+            <h3 class="fw-bold mb-0 mt-1" ref="statActiveInvitations" data-testid="statActiveInvitations">--</h3>
           </div>
         </div>
       </div>

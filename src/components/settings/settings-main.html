@@ -1,9 +1,16 @@
 <template id="settings-main">
   <div class="settings-main d-flex flex-column h-100 bg-body">
-    <!-- Top Bar Header (Only shows Back chevron on mobile, no redundant title text) -->
+    <!-- Top Bar Header -->
     <header class="app-header atoll-chat-view-header d-flex justify-content-between align-items-center border-bottom bg-body px-3">
       <div class="d-flex align-items-center">
         <atoll-button variant="ghost" leading-icon="chevron-left" icon-only="true" ref="btnBack" pill="true" class="d-inline-block d-md-none me-3" data-testid="settingsBackBtn"></atoll-button>
+        <div class="rounded-circle bg-primary-subtle text-primary d-flex align-items-center justify-content-center me-3 flex-shrink-0" style="width: 40px; height: 40px;">
+          <atoll-icon name="setting-two" size="20"></atoll-icon>
+        </div>
+        <div>
+          <h6 class="atoll-text-title-2 mb-0">Account &amp; Preferences</h6>
+          <small class="atoll-chat-view-header-subtitle mb-0 text-muted">Profile, security, and application options</small>
+        </div>
       </div>
     </header>
 
@@ -17,68 +24,64 @@
             <div id="section-account">
               <account-info></account-info>
             </div>
+            <hr class="my-5 opacity-25">
 
             <!-- Section: Profile Settings -->
             <div id="section-profile">
               <profile-settings></profile-settings>
             </div>
+            <hr class="my-5 opacity-25">
 
             <!-- Section: Notifications -->
-            <div id="section-notifications" class="mb-5">
+            <div id="section-notifications">
               <h6 class="text-uppercase text-muted fw-bold small mb-3">Notifications</h6>
-              <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                  <notifications-settings></notifications-settings>
-                  <hr class="my-4">
-                  <sound-notifications></sound-notifications>
-                </div>
-              </div>
+              <notifications-settings></notifications-settings>
+              <hr class="my-4">
+              <sound-notifications></sound-notifications>
             </div>
+            <hr class="my-5 opacity-25">
 
             <!-- Section: Security -->
-            <div id="section-security" class="mb-5">
+            <div id="section-security">
               <h6 class="text-uppercase text-muted fw-bold small mb-3">Security</h6>
-              <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                  <passkey-settings></passkey-settings>
-                  <hr class="my-4">
-                  <totp-settings></totp-settings>
-                </div>
-              </div>
+              <passkey-settings></passkey-settings>
+              <hr class="my-4">
+              <totp-settings></totp-settings>
             </div>
+            <hr class="my-5 opacity-25">
 
             <!-- Section: Voice & Transcription -->
-            <div id="section-transcription" class="mb-5">
+            <div id="section-transcription">
               <h6 class="text-uppercase text-muted fw-bold small mb-3">Voice & Transcription</h6>
-              <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                  <transcription-settings></transcription-settings>
-                </div>
-              </div>
+              <transcription-settings></transcription-settings>
             </div>
+            <hr class="my-5 opacity-25">
 
             <!-- Section: Invitations -->
-            <div id="section-invitations" class="mb-5">
+            <div id="section-invitations">
               <h6 class="text-uppercase text-muted fw-bold small mb-3">Invitations</h6>
               <settings-invitations></settings-invitations>
             </div>
 
             <!-- Section: Administration Group (rendered for owner tier) -->
             <div ref="adminContentGroup" class="d-none">
+              <hr class="my-5 opacity-25">
               <!-- Section: Admin Overview -->
-              <div id="section-admin-overview" class="mb-5">
+              <div id="section-admin-overview">
                 <h6 class="text-uppercase text-muted fw-bold small mb-3">Administration: Overview</h6>
                 <admin-overview></admin-overview>
               </div>
+              <hr class="my-5 opacity-25">
 
               <!-- Section: Admin Trust Matrix -->
-              <div id="section-admin-trust" class="mb-5">
+              <div id="section-admin-trust">
                 <h6 class="text-uppercase text-muted fw-bold small mb-3">Administration: User Trust Matrix</h6>
                 <admin-trust-matrix></admin-trust-matrix>
               </div>
+              <hr class="my-5 opacity-25">
 
               <!-- Section: Admin Requests -->
-              <div id="section-admin-requests" class="mb-5">
+              <div id="section-admin-requests">
                 <h6 class="text-uppercase text-muted fw-bold small mb-3">Administration: Invite Requests</h6>
                 <admin-requests></admin-requests>
               </div>

@@ -1,19 +1,15 @@
 <template id="admin-requests">
   <div class="admin-requests">
-    <div class="card border-0 shadow-sm">
-      <div class="card-body">
-        <h5 class="fw-bold mb-3">Pending Invite Requests</h5>
-        <p class="text-muted small">Justification reasons below are securely decrypted on-the-fly locally in your browser sandbox using your private vault keys (Zero-Knowledge).</p>
+    <h5 class="fw-bold mb-3">Pending Invite Requests</h5>
+    <p class="text-muted small">Justification reasons below are securely decrypted on-the-fly locally in your browser sandbox using your private vault keys (Zero-Knowledge).</p>
 
-        <div class="alert alert-info d-none" ref="decryptionStatus">
-          <div class="spinner-border spinner-border-sm me-2" role="status"></div>
-          Decrypting justification notes locally using Web Worker cryptography sandbox...
-        </div>
+    <div class="alert alert-info d-none" ref="decryptionStatus">
+      <div class="spinner-border spinner-border-sm me-2" role="status"></div>
+      Decrypting justification notes locally using Web Worker cryptography sandbox...
+    </div>
 
-        <div class="list-group list-group-flush mt-4" ref="requestsList" data-testid="requestsList">
-          <div class="text-center py-4 text-muted">No pending invite requests.</div>
-        </div>
-      </div>
+    <div class="list-group list-group-flush mt-4" ref="requestsList" data-testid="requestsList">
+      <div class="text-center py-4 text-muted">No pending invite requests.</div>
     </div>
   </div>
 </template>
