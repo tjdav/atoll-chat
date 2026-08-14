@@ -106,6 +106,10 @@
       const micButton = refs('micButton')
       const sendButton = refs('sendButton')
 
+      if (!messageInput) {
+        return
+      }
+
       // Sync initial global state
       state.currentMessageText = $state.currentMessageText || ''
       messageInput.value = state.currentMessageText

@@ -75,20 +75,16 @@ export default function syncPlugin () {
 
             catchUpPromise = (async () => {
               const lastMsgFromStorage = await $storage.getLatestGlobalMessage()
-              const lastRoomFromStorage = await $storage.getLatestGlobalRoom()
 
               const defaultDate = '2000-01-01 00:00:00.000Z'
               const lastMsgSyncTime = lastMsgFromStorage?.created_at
                 ? new Date(lastMsgFromStorage.created_at).toISOString().replace('T', ' ')
                 : defaultDate
-              const lastRoomSyncTime = lastRoomFromStorage?.updated_at
-                ? new Date(lastRoomFromStorage.updated_at).toISOString().replace('T', ' ')
-                : defaultDate
 
               try {
-                // Fetch missed room keys first
+                // Fetch room keys first (fetch all member records to guarantee zero dropped room keys)
                 const missedKeys = await pb.collection('room_members').getFullList({
-                  filter: `user_id = "${pb.authStore.model.id}" && updated > "${lastRoomSyncTime}"`,
+                  filter: `user_id = "${pb.authStore.model.id}"`,
                   sort: 'updated'
                 })
 

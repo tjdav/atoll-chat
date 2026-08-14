@@ -137,6 +137,9 @@
       // Avatar Updater
       const avatarContainer = refs('avatarContainer')
       const updateAvatar = () => {
+        if (!avatarContainer) {
+          return
+        }
         avatarContainer.innerHTML = ''
 
         const avatar = document.createElement('atoll-profile')

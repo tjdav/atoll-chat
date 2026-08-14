@@ -422,13 +422,18 @@ export function createNativeStorageAdapter () {
     getAllRoomsSorted: async (lastTimestamp, batchSize) => {
       let rooms = Array.from(localRooms.values())
       rooms.sort((a, b) => {
-        const ta = new Date(a.updated_at || 0).getTime()
-        const tb = new Date(b.updated_at || 0).getTime()
+        const weightA = Number(a.weight ?? 0)
+        const weightB = Number(b.weight ?? 0)
+        if (weightA !== weightB) {
+          return weightB - weightA
+        }
+        const ta = new Date(a.updated_at || a.created_at || 0).getTime()
+        const tb = new Date(b.updated_at || b.created_at || 0).getTime()
         return tb - ta
       })
       if (lastTimestamp) {
         const lastTime = new Date(lastTimestamp).getTime()
-        rooms = rooms.filter(r => new Date(r.updated_at || 0).getTime() < lastTime)
+        rooms = rooms.filter(r => new Date(r.updated_at || r.created_at || 0).getTime() < lastTime)
       }
       if (batchSize) {
         rooms = rooms.slice(0, batchSize)

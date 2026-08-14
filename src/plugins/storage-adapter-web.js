@@ -381,14 +381,26 @@ export function createWebStorageAdapter () {
       if (!dbInstance) {
         throw new Error('Database not initialized')
       }
-      let query = dbInstance.local_rooms.reverse()
+      const rooms = await dbInstance.local_rooms.toArray()
+      rooms.sort((a, b) => {
+        const weightA = Number(a.weight ?? 0)
+        const weightB = Number(b.weight ?? 0)
+        if (weightA !== weightB) {
+          return weightB - weightA
+        }
+        const ta = new Date(a.updated_at || a.created_at || 0).getTime()
+        const tb = new Date(b.updated_at || b.created_at || 0).getTime()
+        return tb - ta
+      })
+      let filtered = rooms
       if (lastTimestamp) {
-        query = query.filter(item => item.updated_at < lastTimestamp)
+        const lastTime = new Date(lastTimestamp).getTime()
+        filtered = rooms.filter(r => new Date(r.updated_at || r.created_at || 0).getTime() < lastTime)
       }
       if (batchSize) {
-        query = query.limit(batchSize)
+        filtered = filtered.slice(0, batchSize)
       }
-      return query.toArray()
+      return filtered
     },
 
     /**
@@ -401,7 +413,13 @@ export function createWebStorageAdapter () {
       if (!dbInstance) {
         throw new Error('Database not initialized')
       }
-      return dbInstance.local_rooms.orderBy('updated_at').last()
+      const rooms = await dbInstance.local_rooms.toArray()
+      rooms.sort((a, b) => {
+        const ta = new Date(a.updated_at || a.created_at || 0).getTime()
+        const tb = new Date(b.updated_at || b.created_at || 0).getTime()
+        return ta - tb
+      })
+      return rooms[rooms.length - 1] || null
     },
 
     /**
