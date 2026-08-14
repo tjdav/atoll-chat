@@ -378,16 +378,16 @@ test.describe('Messaging Features', () => {
       // Open the mobile navigation offcanvas first by clicking back button in header
       await page.locator('[data-testid$="chatBackBtn"]').click()
 
-      // Open profile dropdown and navigate to Settings on mobile
-      await page.locator('[data-testid$="profileBtn"]').click()
-      await page.locator('[data-testid$="btnSettings"]').click()
+      // Open profile dropdown and navigate to Settings on mobile via bottom navigation
+      await page.locator('[data-testid$="bottomBtnProfile"]').click()
+      await page.locator('[data-testid$="bottomBtnSettings"]').click()
 
       // Verify settings list pane is loaded and mobileNav is visible
       await expect(page.locator('settings-pane')).toBeVisible()
       await expect(page.locator('[data-testid$="mobileNav"]')).toBeVisible()
 
-      // Click the chats button in the sidebar on mobile
-      await page.locator('[data-testid$="btnChats"]').click()
+      // Click the chats button in the bottom navigation on mobile
+      await page.locator('[data-testid$="bottomBtnChats"]').click()
 
       // Verify that mobileNav (the offcanvas list pane) is STILL visible
       await expect(page.locator('[data-testid$="mobileNav"]')).toBeVisible()

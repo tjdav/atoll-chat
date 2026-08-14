@@ -458,6 +458,8 @@
       })
 
       refs('btnBack').addEventListener('click', () => {
+        $state.activeSelectionId = null
+        $state.activeSelectionType = null
         $bus.emit('ui:open_mobile_nav')
       })
 

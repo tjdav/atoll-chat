@@ -34,5 +34,8 @@ test.describe('Mobile Back Button Navigation', () => {
 
     // Verify that we have successfully navigated back to the chats list pane (mobileNav is visible)
     await expect(page.locator('[data-testid$="mobileNav"]')).toBeVisible()
+
+    // Verify that the bottom navigation bar is visible on mobile after clicking back
+    await expect(page.locator('[data-testid$="bottomNavigation"]')).toBeVisible()
   })
 })
