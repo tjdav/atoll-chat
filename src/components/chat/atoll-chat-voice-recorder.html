@@ -1,6 +1,7 @@
 <template id="atoll-chat-voice-recorder">
   <div class="atoll-chat-voice-recorder-ui d-flex align-items-center gap-2 w-100">
     <atoll-button 
+      type="button"
       variant="ghost" 
       size="sm" 
       pill="true" 
@@ -15,20 +16,66 @@
     </atoll-button>
     
     <div class="atoll-chat-recording-controls flex-grow-1 d-flex align-items-center rounded-pill px-3 py-1">
-      <atoll-button variant="primary" leading-icon="{{ pauseResumeIcon }}" icon-only="true" pill="true" size="sm" ref="pauseResumeButton" class="atoll-chat-recording-btn-pause-resume" data-testid="pauseResumeButton"></atoll-button>
+      <atoll-button 
+        type="button"
+        variant="primary" 
+        leading-icon="{{ pauseResumeIcon }}" 
+        icon-only="true" 
+        pill="true" 
+        size="sm" 
+        ref="pauseResumeButton" 
+        class="atoll-chat-recording-btn-pause-resume" 
+        title="Pause or Resume" 
+        aria-label="Pause or Resume" 
+        data-testid="pauseResumeButton"
+      ></atoll-button>
 
-      <atoll-button variant="ghost" leading-icon="restart" icon-only="true" size="sm" ref="redoButton" title="Restart" data-testid="redoButton" class="atoll-chat-recording-btn-redo {{ redoClass }}"></atoll-button>
+      <atoll-button 
+        type="button"
+        variant="ghost" 
+        leading-icon="restart" 
+        icon-only="true" 
+        size="sm" 
+        ref="redoButton" 
+        title="Restart" 
+        aria-label="Restart recording" 
+        data-testid="redoButton" 
+        class="atoll-chat-recording-btn-redo" 
+        hidden="{{ hideRedoControls }}"
+      ></atoll-button>
 
       <div class="atoll-chat-recording-visualizer flex-grow-1 d-flex align-items-center overflow-hidden" style="height: 32px;">
-        <canvas ref="visualizerCanvas" width="400" height="32" class="w-100 h-100"></canvas>
+        <canvas ref="visualizerCanvas" width="400" height="32" class="w-100 h-100" role="img" aria-label="Voice visualizer waveform"></canvas>
       </div>
 
       <span class="atoll-chat-recording-timer small fw-bold font-monospace ms-2">{{ formattedDuration }}</span>
 
-      <atoll-button variant="ghost" leading-icon="mic" icon-only="true" size="sm" ref="resumeMicButton" title="Add more" data-testid="resumeMicButton" class="atoll-chat-recording-btn-resume {{ redoClass }}"></atoll-button>
+      <atoll-button 
+        type="button"
+        variant="ghost" 
+        leading-icon="mic" 
+        icon-only="true" 
+        size="sm" 
+        ref="resumeMicButton" 
+        title="Add more" 
+        aria-label="Resume recording" 
+        data-testid="resumeMicButton" 
+        class="atoll-chat-recording-btn-resume" 
+        hidden="{{ hideRedoControls }}"
+      ></atoll-button>
     </div>
 
-    <atoll-button variant="primary" leading-icon="send" icon-only="true" pill="true" ref="sendVoiceButton" data-testid="sendVoiceButton"></atoll-button>
+    <atoll-button 
+      type="button"
+      variant="primary" 
+      leading-icon="send" 
+      icon-only="true" 
+      pill="true" 
+      ref="sendVoiceButton" 
+      title="Send Voice Message" 
+      aria-label="Send Voice Message" 
+      data-testid="sendVoiceButton"
+    ></atoll-button>
   </div>
 </template>
 
@@ -43,7 +90,7 @@
     }),
     getters: {
       pauseResumeIcon: (state) => (state.isPaused ? 'play' : 'pause'),
-      redoClass: (state) => (state.isPaused ? '' : 'd-none'),
+      hideRedoControls: (state) => (!state.isPaused),
       formattedDuration: (state) => {
         const mins = Math.floor(state.recordingDuration / 60)
         const secs = state.recordingDuration % 60
@@ -53,6 +100,7 @@
     client: ({ refs, state, eventBus, signal }) => {
       const { $bus } = eventBus
       let mediaRecorder = null
+      let activeStream = null
       let audioChunks = []
       let timerInterval = null
       let shouldSendVoice = false
@@ -62,6 +110,7 @@
       let analyser = null
       let dataArray = null
       let animationFrameId = null
+      let drawFn = null
       let recordedAmplitudes = []
       let lastSampleTime = 0
       const SAMPLE_INTERVAL = 100
@@ -90,11 +139,42 @@
           animationFrameId = null
         }
         if (audioContext) {
-          audioContext.close()
+          if (audioContext.state !== 'closed') {
+            audioContext.close().catch(err => console.error('[atoll-chat-voice-recorder] Error closing audio context:', err))
+          }
           audioContext = null
         }
         recordedAmplitudes = []
       }
+
+      const teardown = () => {
+        stopTimer()
+        cleanupAudioContext()
+
+        if (mediaRecorder) {
+          mediaRecorder.onstop = null
+          mediaRecorder.ondataavailable = null
+          if (mediaRecorder.state !== 'inactive') {
+            try {
+              mediaRecorder.stop()
+            } catch (err) {
+              console.error('[atoll-chat-voice-recorder] Error stopping media recorder:', err)
+            }
+          }
+          mediaRecorder = null
+        }
+
+        if (activeStream) {
+          try {
+            activeStream.getTracks().forEach(track => track.stop())
+          } catch (err) {
+            console.error('[atoll-chat-voice-recorder] Error stopping stream tracks:', err)
+          }
+          activeStream = null
+        }
+      }
+
+      signal.addEventListener('abort', teardown)
 
       const generateWaveformImage = () => {
         if (recordedAmplitudes.length === 0) {
@@ -118,6 +198,7 @@
       const startRecording = async () => {
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+          activeStream = stream
   
           // Audio Visualizer Setup
           audioContext = new (window.AudioContext || window.webkitAudioContext)()
@@ -133,6 +214,33 @@
 
           let canvasEl = null
           let ctx2d = null
+          let activeColor = '#007bff'
+          let inactiveColor = 'rgba(0, 123, 255, 0.15)'
+          let lastDpr = 1
+          let lastClientWidth = 0
+          let lastClientHeight = 0
+
+          const updateColorsAndDPI = () => {
+            if (!canvasEl) return
+            const dpr = window.devicePixelRatio || 1
+            const clientWidth = canvasEl.clientWidth || 400
+            const clientHeight = canvasEl.clientHeight || 32
+
+            // Check if resize or DPI change or initialization is needed
+            if (clientWidth !== lastClientWidth || clientHeight !== lastClientHeight || dpr !== lastDpr || canvasEl.width === 400) {
+              canvasEl.width = clientWidth * dpr
+              canvasEl.height = clientHeight * dpr
+              ctx2d.setTransform(1, 0, 0, 1, 0, 0)
+              ctx2d.scale(dpr, dpr)
+              lastClientWidth = clientWidth
+              lastClientHeight = clientHeight
+              lastDpr = dpr
+
+              // Only read computed styles on resize/init to avoid layout thrashing at 60 FPS
+              activeColor = window.getComputedStyle(canvasEl).getPropertyValue('--atoll-chat-waveform-active').trim() || '#007bff'
+              inactiveColor = window.getComputedStyle(canvasEl).getPropertyValue('--atoll-chat-waveform-inactive').trim() || 'rgba(0, 123, 255, 0.15)'
+            }
+          }
 
           const draw = (timestamp) => {
             if (!canvasEl) {
@@ -142,11 +250,12 @@
               }
             }
 
-            animationFrameId = requestAnimationFrame(draw)
-
             if (state.isPaused) {
+              animationFrameId = null
               return
             }
+
+            animationFrameId = requestAnimationFrame(draw)
 
             const now = timestamp || performance.now()
             if (now - lastSampleTime >= SAMPLE_INTERVAL) {
@@ -166,19 +275,12 @@
               return
             }
   
-            // Sync internal width with displayed width
-            if (canvasEl.width !== canvasEl.clientWidth && canvasEl.clientWidth > 0) {
-              canvasEl.width = canvasEl.clientWidth
-            }
+            updateColorsAndDPI()
 
-            const w = canvasEl.width
-            const h = canvasEl.height
+            const w = lastClientWidth
+            const h = lastClientHeight
   
             ctx2d.clearRect(0, 0, w, h)
-  
-            // Compute current waveform theme color dynamically
-            const activeColor = window.getComputedStyle(canvasEl).getPropertyValue('--atoll-chat-waveform-active') || '#007bff'
-            const inactiveColor = window.getComputedStyle(canvasEl).getPropertyValue('--atoll-chat-waveform-inactive') || 'rgba(0, 123, 255, 0.15)'
 
             // Draw faint baseline
             ctx2d.fillStyle = inactiveColor
@@ -196,6 +298,8 @@
               ctx2d.fillRect(x, y, barWidth, barHeight)
             }
           }
+
+          drawFn = draw
 
           const options = {
             audioBitsPerSecond: 32000
@@ -219,8 +323,11 @@
           }
 
           mediaRecorder.onstop = () => {
-            const tracks = stream.getTracks()
-            tracks.forEach(track => track.stop())
+            if (activeStream) {
+              const tracks = activeStream.getTracks()
+              tracks.forEach(track => track.stop())
+              activeStream = null
+            }
   
             if (shouldSendVoice && audioChunks.length > 0) {
               let extension = 'bin'
@@ -256,7 +363,7 @@
           startTimer()
         } catch (err) {
           console.error('[atoll-chat-voice-recorder] Failed to start recording:', err)
-          alert('Microphone access denied or unavailable.')
+          $bus.emit('ui:show_toast', { message: 'Microphone access denied or unavailable.', type: 'danger' })
           $bus.emit('ui:voice_discarded')
         }
       }
@@ -266,9 +373,7 @@
 
       refs('discardButton').addEventListener('click', () => {
         shouldSendVoice = false
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          mediaRecorder.stop()
-        }
+        teardown()
         $bus.emit('ui:voice_discarded')
       }, { signal })
 
@@ -279,6 +384,10 @@
         if (state.isPaused) {
           mediaRecorder.resume()
           state.isPaused = false
+          // Restart draw loop
+          if (!animationFrameId && drawFn) {
+            requestAnimationFrame(drawFn)
+          }
         } else {
           mediaRecorder.pause()
           state.isPaused = true
@@ -289,15 +398,16 @@
         if (mediaRecorder && state.isPaused) {
           mediaRecorder.resume()
           state.isPaused = false
+          // Restart draw loop
+          if (!animationFrameId && drawFn) {
+            requestAnimationFrame(drawFn)
+          }
         }
       }, { signal })
 
       refs('redoButton').addEventListener('click', () => {
         shouldSendVoice = false
-        if (mediaRecorder && mediaRecorder.state !== 'inactive') {
-          mediaRecorder.stop()
-        }
-        cleanupAudioContext()
+        teardown()
         startRecording()
       }, { signal })
 
