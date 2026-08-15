@@ -51,6 +51,7 @@ ATOLL_VAPID_PUBLIC_KEY=BG6jbL6oHXUyR8hntptF57uh1ZC229JFqe0t4moskBqFNFhN8nYrCUma4
 # Set as Container RUNTIME ENVIRONMENT VARIABLES (read dynamically by Goja hooks)
 # ==============================================================================
 PORT=8080
+ATOLL_OWNER_EMAIL=owner@example.com
 ATOLL_ALLOWED_ORIGINS=*
 ATOLL_TURN_SHARED_SECRET=REPLACE_THIS_WITH_A_LONG_RANDOM_STRING
 ATOLL_TURN_EXPIRES_IN_SECONDS=3600
@@ -124,6 +125,7 @@ ATOLL_INTERNAL_POCKETBASE_URL=http://127.0.0.1:8080
 | Variable Name | Scope / Lifecycle | Default Value | Description | Used In / By |
 |---------------|-------------------|---------------|-------------|--------------|
 | `PORT` | `[RUNTIME ONLY]` | `8080` (or `8090` in dev) | Port that the PocketBase server listens on. | [Dockerfile](/Dockerfile) |
+| `ATOLL_OWNER_EMAIL` | `[RUNTIME ONLY]` | None | Recipient email address for the initial owner setup invitation on first boot. Priority: `ATOLL_OWNER_EMAIL` -> `PB_ADMIN_EMAIL` -> PocketBase `_superusers`. | [initial_invite.pb.js](/database/pb_hooks/initial_invite.pb.js) |
 | `ATOLL_ALLOWED_ORIGINS` | `[RUNTIME ONLY]` | `*` | CORS allowed origins passed to PocketBase `--origins` flag. | [Dockerfile](/Dockerfile) |
 | `ATOLL_TURN_SHARED_SECRET` | `[RUNTIME ONLY]` | `'REPLACE_THIS...'` | Shared key for signing WebRTC TURN relay credentials. | [turn_credentials.pb.js](/database/pb_hooks/turn_credentials.pb.js) |
 | `ATOLL_TURN_EXPIRES_IN_SECONDS` | `[RUNTIME ONLY]` | `3600` | Expiry duration (TTL) for generated TURN credentials. | [turn_credentials.pb.js](/database/pb_hooks/turn_credentials.pb.js) |
