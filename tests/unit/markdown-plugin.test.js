@@ -11,6 +11,16 @@ describe('Markdown Plugin Syntax Highlighting', () => {
     assert.equal(html, '<p>Hello world</p>')
   })
 
+  test('should escape HTML special characters in fast path', async () => {
+    const html = await renderMarkdown('Hello "world"')
+    assert.equal(html, '<p>Hello &quot;world&quot;</p>')
+  })
+
+  test('should sanitize XSS payloads that trigger marked route', async () => {
+    const html = await renderMarkdown('<script>alert("xss")</script>')
+    assert.equal(html.includes('<script>'), false)
+  })
+
   test('should highlight code blocks with explicit language', async () => {
     const md = '```js\nconst a = 123;\n```'
     const html = await renderMarkdown(md)

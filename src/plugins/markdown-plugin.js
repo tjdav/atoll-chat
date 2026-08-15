@@ -71,7 +71,13 @@ export default definePlugin({
              still goes through the parser so formatting and autolinking are unchanged. */
           const needsMarked = /[*_`#<>&\n[\]()]|:\/\//.test(content) || /www\./.test(content)
           if (!needsMarked) {
-            return `<p>${content}</p>`
+            const escaped = content
+              .replace(/&/g, '&amp;')
+              .replace(/</g, '&lt;')
+              .replace(/>/g, '&gt;')
+              .replace(/"/g, '&quot;')
+              .replace(/'/g, '&#39;')
+            return `<p>${escaped}</p>`
           }
           const hasCode = content.includes('```')
           const { marked, DOMPurify, hljs } = await getLibs(hasCode)
