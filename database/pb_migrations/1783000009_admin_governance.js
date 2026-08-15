@@ -13,6 +13,7 @@ migrate((app) => {
     appMetadata = app.findCollectionByNameOrId('app_metadata')
   } catch (_err) {
     // 'app_metadata' collection does not exist yet
+    appMetadata = new Collection({ name: 'app_metadata' })
   }
 
   if (appMetadata) {
