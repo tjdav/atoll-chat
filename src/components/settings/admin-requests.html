@@ -137,8 +137,11 @@
 
           decryptionStatus.classList.add('d-none')
         } catch (err) {
-          console.error('[admin-requests] Fetch/render requests error:', err)
-          requestsList.innerHTML = `<div class="text-center py-4 text-danger">Failed to load requests: ${err.message}</div>`
+          requestsList.innerHTML = ''
+          const errDiv = document.createElement('div')
+          errDiv.className = 'text-center py-4 text-danger'
+          errDiv.textContent = `Failed to load requests: ${err.message || err}`
+          requestsList.appendChild(errDiv)
           decryptionStatus.classList.add('d-none')
         }
       }

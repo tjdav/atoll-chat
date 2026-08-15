@@ -221,8 +221,14 @@
             usersTableBody.appendChild(tr)
           })
         } catch (err) {
-          console.error('[admin-trust-matrix] Fetch trust matrix error:', err)
-          usersTableBody.innerHTML = `<tr><td colspan="6" class="text-center py-4 text-danger">Failed to load user matrix: ${err.message}</td></tr>`
+          usersTableBody.innerHTML = ''
+          const tr = document.createElement('tr')
+          const td = document.createElement('td')
+          td.setAttribute('colspan', '6')
+          td.className = 'text-center py-4 text-danger'
+          td.textContent = `Failed to load user matrix: ${err.message || err}`
+          tr.appendChild(td)
+          usersTableBody.appendChild(tr)
         }
       }
 
