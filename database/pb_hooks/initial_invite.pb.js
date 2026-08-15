@@ -24,10 +24,57 @@ onBootstrap((e) => {
     }
 
     if (typeof $os !== 'undefined' && typeof $os.getenv === 'function') {
-      return $os.getenv(key)
+      const val = $os.getenv(key)
+      return val !== '' ? val : undefined
     }
 
     return undefined
+  }
+
+  /**
+   * Applies SMTP configuration from environment variables to PocketBase settings.
+   *
+   * @param {core.App} app - The PocketBase app instance.
+   * @returns {void}
+   */
+  function applySmtpSettings (app) {
+    const host = getEnv('ATOLL_SMTP_HOST')
+    if (!host) {
+      return
+    }
+
+    const settings = app.settings()
+    const smtp = settings.smtp
+    if (smtp) {
+      const enabledEnv = getEnv('ATOLL_SMTP_ENABLED')
+      smtp.enabled = enabledEnv !== 'false'
+      smtp.host = host
+
+      const port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
+      smtp.port = port
+      smtp.username = getEnv('ATOLL_SMTP_USERNAME') || ''
+      smtp.password = getEnv('ATOLL_SMTP_PASSWORD') || ''
+
+      const tlsEnv = getEnv('ATOLL_SMTP_TLS')
+      let tls = false
+      if (tlsEnv !== undefined && tlsEnv !== '') {
+        tls = tlsEnv === 'true'
+      } else if (port === 465 || port === 2465) {
+        tls = true
+      }
+      smtp.tls = tls
+
+      smtp.authMethod = getEnv('ATOLL_SMTP_AUTH_METHOD') || 'PLAIN'
+      smtp.localName = getEnv('ATOLL_SMTP_LOCAL_NAME') || ''
+    }
+
+    const meta = settings.meta
+    if (meta) {
+      meta.senderName = getEnv('ATOLL_SMTP_SENDER_NAME') || 'Atoll Chat'
+      meta.senderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS') || 'noreply@atoll.chat'
+    }
+
+    app.save(settings)
   }
 
   /**
@@ -36,9 +83,10 @@ onBootstrap((e) => {
    * 2. PB_ADMIN_EMAIL
    * 3. First superuser email from PocketBase `_superusers` collection
    *
+   * @param {core.App} app - The PocketBase app instance.
    * @returns {string|null}
    */
-  function getOwnerEmail () {
+  function getOwnerEmail (app) {
     let email = getEnv('ATOLL_OWNER_EMAIL')
     if (email && email.trim() !== '') {
       return email.trim()
@@ -50,7 +98,7 @@ onBootstrap((e) => {
     }
 
     try {
-      const superuserRecords = e.app.findRecordsByFilter('_superusers', 'email != ""', '-created', 1, 0)
+      const superuserRecords = app.findRecordsByFilter('_superusers', 'email != ""', '-created', 1, 0)
       if (superuserRecords && superuserRecords.length > 0) {
         const suEmail = superuserRecords[0].get('email')
         if (suEmail && suEmail.trim() !== '') {
@@ -58,7 +106,7 @@ onBootstrap((e) => {
         }
       }
     } catch {
-      // Ignore filter error if _superusers collection or query fails
+      // Ignore filter error if _superusers collection query fails
     }
 
     return null
@@ -75,25 +123,31 @@ onBootstrap((e) => {
   // Count registered users
   let userCount = 0
   try {
-    const countResult = new DynamicModel({ count: 0 })
-    e.app.db().select('count(*) as count').from('users').one(countResult)
-    userCount = countResult.count
-  } catch (err) {
-    e.app.logger().error('[initial_invite.pb.js] Error counting users:', 'error', err.message || String(err))
-    return
+    userCount = e.app.countRecords('users')
+  } catch {
+    try {
+      const countResult = new DynamicModel({ count: 0 })
+      e.app.db().select('count(*) as count').from('users').one(countResult)
+      userCount = countResult.count
+    } catch (err) {
+      e.app.logger().error('[initial-invite] Error counting users', 'error', err.message || String(err))
+      return
+    }
   }
 
   if (userCount > 0) {
     return
   }
 
+  // Ensure SMTP settings from environment variables are applied before sending
+  applySmtpSettings(e.app)
+
   // Find or generate initial setup code
   let inviteCode = ''
   let existingInvites = []
   try {
     existingInvites = e.app.findRecordsByFilter('invitations', 'is_used = false && (created_by = "" || created_by = null)', '-created', 1, 0)
-  } catch (err) {
-    // If filter fails, attempt simpler filter query
+  } catch {
     try {
       existingInvites = e.app.findRecordsByFilter('invitations', 'is_used = false', '-created', 1, 0)
     } catch {
@@ -117,7 +171,7 @@ onBootstrap((e) => {
       record.set('used_count', 0)
       e.app.save(record)
     } catch (err) {
-      e.app.logger().error('[initial_invite.pb.js] Failed to save initial invite record:', 'error', err.message || String(err))
+      e.app.logger().error('[initial-invite] Failed to save initial invite record', 'error', err.message || String(err))
       return
     }
   }
@@ -143,9 +197,9 @@ onBootstrap((e) => {
   const setupUrl = `${appUrl}/?invite=${inviteCode}`
 
   // Resolve recipient owner email
-  const ownerEmail = getOwnerEmail()
+  const ownerEmail = getOwnerEmail(e.app)
   if (!ownerEmail) {
-    e.app.logger().error('[initial_invite.pb.js] Initial owner setup invitation email not sent: No recipient email configured. Set ATOLL_OWNER_EMAIL or PB_ADMIN_EMAIL.')
+    e.app.logger().warn('[initial-invite] Initial owner setup email skipped: ATOLL_OWNER_EMAIL not configured')
     return
   }
 
@@ -226,8 +280,8 @@ Note: This single-use setup link and invitation code are strictly intended for s
     })
 
     e.app.newMailClient().send(message)
-    e.app.logger().info(`[initial-invite] Setup invitation email dispatched to ${ownerEmail}`)
+    e.app.logger().info('[initial-invite] Initial owner setup email sent successfully', 'recipient', ownerEmail)
   } catch (err) {
-    e.app.logger().error('[initial_invite.pb.js] Failed to dispatch setup email', 'error', err.message || String(err))
+    e.app.logger().error('[initial-invite] Failed to send initial owner setup email', 'recipient', ownerEmail, 'error', err.message || String(err))
   }
 })

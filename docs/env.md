@@ -149,6 +149,7 @@ ATOLL_INTERNAL_POCKETBASE_URL=http://127.0.0.1:8080
 
 | Variable Name | Scope / Lifecycle | Default Value | Description | Used In / By |
 |---------------|-------------------|---------------|-------------|--------------|
+| `ATOLL_OWNER_EMAIL` | `[RUNTIME ONLY]` | None | Destination email address to receive the initial owner setup invitation link on first boot (0 users). | [initial_invite.pb.js](/database/pb_hooks/initial_invite.pb.js) |
 | `ATOLL_SMTP_ENABLED` | `[RUNTIME ONLY]` | None | Enable or disable SMTP mail server. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
 | `ATOLL_SMTP_HOST` | `[RUNTIME ONLY]` | None | Mail server host address. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
 | `ATOLL_SMTP_PORT` | `[RUNTIME ONLY]` | `587` | Mail server port. | [smtp_config.pb.js](/database/pb_hooks/smtp_config.pb.js) |
