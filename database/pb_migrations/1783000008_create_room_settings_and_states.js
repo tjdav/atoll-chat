@@ -1,14 +1,13 @@
 /// <reference path="../pb_data/types.d.ts" />
 migrate((app) => {
-  const rooms = app.findCollectionByNameOrId('rooms')
-  const users = app.findCollectionByNameOrId('users')
-  const messages = app.findCollectionByNameOrId('messages')
+  const collections = app.findAllCollections()
+  const rooms = collections.find((c) => c.name === 'rooms' || c.id === 'rooms')
+  const users = collections.find((c) => c.name === 'users' || c.id === 'users')
+  const messages = collections.find((c) => c.name === 'messages' || c.id === 'messages')
 
   // Create room_settings collection
-  let settingsCollection
-  try {
-    settingsCollection = app.findCollectionByNameOrId('room_settings')
-  } catch {
+  let settingsCollection = collections.find((c) => c.name === 'room_settings' || c.id === 'room_settings')
+  if (!settingsCollection) {
     settingsCollection = new Collection({ name: 'room_settings' })
   }
   settingsCollection.name = 'room_settings'
@@ -55,10 +54,8 @@ migrate((app) => {
   app.save(settingsCollection)
 
   // Create room_member_states collection
-  let statesCollection
-  try {
-    statesCollection = app.findCollectionByNameOrId('room_member_states')
-  } catch {
+  let statesCollection = collections.find((c) => c.name === 'room_member_states' || c.id === 'room_member_states')
+  if (!statesCollection) {
     statesCollection = new Collection({ name: 'room_member_states' })
   }
   statesCollection.name = 'room_member_states'
@@ -108,7 +105,7 @@ migrate((app) => {
   app.save(statesCollection)
 
   // Remove is_muted, settings, last_read_message_id fields from room_members
-  const roomMembers = app.findCollectionByNameOrId('room_members')
+  const roomMembers = collections.find((c) => c.name === 'room_members' || c.id === 'room_members')
   if (roomMembers) {
     roomMembers.fields.removeByName('is_muted')
     roomMembers.fields.removeByName('settings')
@@ -117,25 +114,20 @@ migrate((app) => {
   }
 }, (app) => {
   // Rollback logic
-  try {
-    const settingsCollection = app.findCollectionByNameOrId('room_settings')
-    if (settingsCollection) {
-      app.delete(settingsCollection)
-    }
-  } catch {
+  const collections = app.findAllCollections()
+  const settingsCollection = collections.find((c) => c.name === 'room_settings' || c.id === 'room_settings')
+  if (settingsCollection) {
+    app.delete(settingsCollection)
   }
 
-  try {
-    const statesCollection = app.findCollectionByNameOrId('room_member_states')
-    if (statesCollection) {
-      app.delete(statesCollection)
-    }
-  } catch {
+  const statesCollection = collections.find((c) => c.name === 'room_member_states' || c.id === 'room_member_states')
+  if (statesCollection) {
+    app.delete(statesCollection)
   }
 
-  const roomMembers = app.findCollectionByNameOrId('room_members')
+  const roomMembers = collections.find((c) => c.name === 'room_members' || c.id === 'room_members')
   if (roomMembers) {
-    const messages = app.findCollectionByNameOrId('messages')
+    const messages = collections.find((c) => c.name === 'messages' || c.id === 'messages')
     if (!roomMembers.fields.getByName('is_muted')) {
       roomMembers.fields.add(new BoolField({
         name: 'is_muted',

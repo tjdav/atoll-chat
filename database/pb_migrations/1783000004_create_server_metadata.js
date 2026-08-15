@@ -1,8 +1,7 @@
 migrate((app) => {
-  let appMetadata
-  try {
-    appMetadata = app.findCollectionByNameOrId('app_metadata')
-  } catch {
+  const collections = app.findAllCollections()
+  let appMetadata = collections.find((c) => c.name === 'app_metadata' || c.id === 'app_metadata')
+  if (!appMetadata) {
     appMetadata = new Collection({ name: 'app_metadata' })
   }
 
@@ -68,7 +67,8 @@ migrate((app) => {
     app.save(record)
   }
 }, (app) => {
-  const collection = app.findCollectionByNameOrId('app_metadata')
+  const collections = app.findAllCollections()
+  const collection = collections.find((c) => c.name === 'app_metadata' || c.id === 'app_metadata')
   if (collection) {
     return app.delete(collection)
   }

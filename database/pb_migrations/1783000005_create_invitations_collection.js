@@ -1,10 +1,9 @@
 migrate((app) => {
-  const users = app.findCollectionByNameOrId('users')
+  const collections = app.findAllCollections()
+  const users = collections.find((c) => c.name === 'users' || c.id === 'users')
 
-  let collection
-  try {
-    collection = app.findCollectionByNameOrId('invitations')
-  } catch {
+  let collection = collections.find((c) => c.name === 'invitations' || c.id === 'invitations')
+  if (!collection) {
     collection = new Collection({ name: 'invitations' })
   }
 
@@ -66,7 +65,8 @@ migrate((app) => {
 
   return app.save(collection)
 }, (app) => {
-  const collection = app.findCollectionByNameOrId('invitations')
+  const collections = app.findAllCollections()
+  const collection = collections.find((c) => c.name === 'invitations' || c.id === 'invitations')
   if (collection) {
     return app.delete(collection)
   }

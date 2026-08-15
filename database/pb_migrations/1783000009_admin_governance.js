@@ -1,18 +1,12 @@
 migrate((app) => {
+  const collections = app.findAllCollections()
+
   // Safely find 'users' collection
-  let users = null
-  try {
-    users = app.findCollectionByNameOrId('users')
-  } catch (_err) {
-    // 'users' collection does not exist yet
-  }
+  const users = collections.find((c) => c.name === 'users' || c.id === 'users')
 
   // Safely find and extend 'app_metadata' collection
-  let appMetadata = null
-  try {
-    appMetadata = app.findCollectionByNameOrId('app_metadata')
-  } catch (_err) {
-    // 'app_metadata' collection does not exist yet
+  let appMetadata = collections.find((c) => c.name === 'app_metadata' || c.id === 'app_metadata')
+  if (!appMetadata) {
     appMetadata = new Collection({ name: 'app_metadata' })
   }
 
@@ -72,10 +66,8 @@ migrate((app) => {
   }
 
   // Create or update 'user_trust' collection
-  let userTrust = null
-  try {
-    userTrust = app.findCollectionByNameOrId('user_trust')
-  } catch (_err) {
+  let userTrust = collections.find((c) => c.name === 'user_trust' || c.id === 'user_trust')
+  if (!userTrust) {
     userTrust = new Collection({ name: 'user_trust' })
   }
 
@@ -135,10 +127,8 @@ migrate((app) => {
   app.save(userTrust)
 
   // Create or update 'invite_requests' collection
-  let inviteRequests = null
-  try {
-    inviteRequests = app.findCollectionByNameOrId('invite_requests')
-  } catch (_err) {
+  let inviteRequests = collections.find((c) => c.name === 'invite_requests' || c.id === 'invite_requests')
+  if (!inviteRequests) {
     inviteRequests = new Collection({ name: 'invite_requests' })
   }
 
@@ -188,31 +178,23 @@ migrate((app) => {
   app.save(inviteRequests)
 }, (app) => {
   // Rollback logic
-  try {
-    const userTrust = app.findCollectionByNameOrId('user_trust')
-    if (userTrust) {
-      app.delete(userTrust)
-    }
-  } catch (_err) {
+  const collections = app.findAllCollections()
+  const userTrust = collections.find((c) => c.name === 'user_trust' || c.id === 'user_trust')
+  if (userTrust) {
+    app.delete(userTrust)
   }
 
-  try {
-    const inviteRequests = app.findCollectionByNameOrId('invite_requests')
-    if (inviteRequests) {
-      app.delete(inviteRequests)
-    }
-  } catch (_err) {
+  const inviteRequests = collections.find((c) => c.name === 'invite_requests' || c.id === 'invite_requests')
+  if (inviteRequests) {
+    app.delete(inviteRequests)
   }
 
-  try {
-    const appMetadata = app.findCollectionByNameOrId('app_metadata')
-    if (appMetadata) {
-      appMetadata.fields.removeByName('invite_mode')
-      appMetadata.fields.removeByName('default_trusted_quota')
-      appMetadata.fields.removeByName('max_uses_per_invite')
-      appMetadata.fields.removeByName('allow_quota_requests')
-      app.save(appMetadata)
-    }
-  } catch (_err) {
+  const appMetadata = collections.find((c) => c.name === 'app_metadata' || c.id === 'app_metadata')
+  if (appMetadata) {
+    appMetadata.fields.removeByName('invite_mode')
+    appMetadata.fields.removeByName('default_trusted_quota')
+    appMetadata.fields.removeByName('max_uses_per_invite')
+    appMetadata.fields.removeByName('allow_quota_requests')
+    app.save(appMetadata)
   }
 })
