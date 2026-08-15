@@ -39,10 +39,10 @@ test.describe('Super-User Administration & Zero-Knowledge Delegated Invite Syste
     // Generate an invite link
     await page.locator('[data-testid$="nav-invitations"]').click()
     await page.locator('[data-testid$="btnGenerateInvite"]').click()
-    await expect(page.locator('[data-testid$="historyTableBody"]')).toContainText('INV-')
+    await expect(page.locator('[data-testid$="invitationsList"]')).toContainText('INV-')
   })
 
-  test('should display table of generated invitations and support copying', async ({ page, loginApp }) => {
+  test('should display list of generated invitations and support copying', async ({ page, loginApp }) => {
     // Login as Alice (Owner)
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
@@ -57,19 +57,19 @@ test.describe('Super-User Administration & Zero-Knowledge Delegated Invite Syste
     // Since Alice is Owner and we have seeded invites in the db, historyCard is visible initially
     await expect(page.locator('[data-testid$="historyCard"]')).toBeVisible()
 
-    // The table body should contain the seeded invite code
-    await expect(page.locator('[data-testid$="historyTableBody"]')).toContainText('INV-SEED-1111')
+    // The invitations list should contain the seeded invite code
+    await expect(page.locator('[data-testid$="invitationsList"]')).toContainText('INV-SEED-1111')
 
     // Generate a new invite link
     await page.locator('[data-testid$="btnGenerateInvite"]').click()
 
-    // Now historyCard should be visible and contain the newly generated code row at top
+    // Now historyCard should be visible and contain the newly generated code item at top
     await expect(page.locator('[data-testid$="historyCard"]')).toBeVisible()
-    const firstRow = page.locator('[data-testid$="historyTableBody"] tr').first()
-    await expect(firstRow).toContainText('INV-')
+    const firstItem = page.locator('[data-testid$="invitationsList"] atoll-list-item').first()
+    await expect(firstItem).toContainText('INV-')
 
-    // Click on Copy Code button inside the top row
-    const copyCodeBtn = firstRow.locator('.btn-copy-code')
+    // Click on Copy Code button inside the top item
+    const copyCodeBtn = firstItem.locator('.btn-copy-code')
     await expect(copyCodeBtn).toBeVisible()
     await copyCodeBtn.click()
 
@@ -79,8 +79,8 @@ test.describe('Super-User Administration & Zero-Knowledge Delegated Invite Syste
     await page.waitForTimeout(1600)
     await expect(codeIcon).toHaveAttribute('name', 'copy')
 
-    // Click on Copy Link button inside the top row
-    const copyLinkBtn = firstRow.locator('.btn-copy-link')
+    // Click on Copy Link button inside the top item
+    const copyLinkBtn = firstItem.locator('.btn-copy-link')
     await expect(copyLinkBtn).toBeVisible()
     await copyLinkBtn.click()
 

@@ -27,7 +27,7 @@
       </div>
     </div>
 
-    <!-- Generated Invitations Table Section -->
+    <!-- Generated Invitations List Section -->
     <div ref="historySection">
       <hr class="my-4">
       <h5 class="fw-bold mb-3">Your Generated Invitations</h5>
@@ -43,23 +43,11 @@
         </div>
       </div>
 
-      <!-- History Table Card -->
-      <div class="table-responsive d-none" ref="historyCard" data-testid="historyCard">
-        <table class="table table-hover align-middle mb-0">
-          <thead>
-            <tr>
-              <th style="width: 25%;">Code</th>
-              <th style="width: 12%;">Uses</th>
-              <th style="width: 18%;">Created</th>
-              <th style="width: 18%;">Used By</th>
-              <th style="width: 12%;">Status</th>
-              <th style="width: 15%; text-align: right;">Actions</th>
-            </tr>
-          </thead>
-          <tbody ref="historyTableBody" data-testid="historyTableBody">
-            <!-- Dynamically populated rows -->
-          </tbody>
-        </table>
+      <!-- History List Container -->
+      <div class="d-none" ref="historyCard" data-testid="historyCard">
+        <atoll-list divided="true" ref="invitationsList" data-testid="invitationsList">
+          <!-- Dynamically populated list items -->
+        </atoll-list>
       </div>
     </div>
 
@@ -127,13 +115,13 @@
 
       const emptyStateCard = refs('emptyStateCard')
       const historyCard = refs('historyCard')
-      const historyTableBody = refs('historyTableBody')
+      const invitationsList = refs('invitationsList')
 
       let currentQuota = 0
       let isOwner = false
       let isRevoked = false
       let currentInviteMode = 'delegated'
-      let invitationsList = []
+      let invitationsData = []
 
       const formatRelativeTime = (isoString) => {
         if (!isoString) return '—'
@@ -149,69 +137,63 @@
         return date.toLocaleDateString()
       }
 
-      const createRowForInvite = (inv, highlight = false) => {
-        const tr = document.createElement('tr')
+      const createListItemForInvite = (inv, highlight = false) => {
+        const item = document.createElement('atoll-list-item')
+
         if (highlight) {
-          tr.classList.add('table-primary')
-          tr.style.transition = 'background-color 1s ease'
+          item.setAttribute('highlighted', 'true')
           setTimeout(() => {
-            tr.classList.remove('table-primary')
+            item.removeAttribute('highlighted')
           }, 2000)
         }
 
-        // Determine status
-        let statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>'
+        // Determine status badge
+        let statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle ms-2">Active</span>'
         if (inv.is_used || inv.used_count >= inv.max_uses) {
-          statusBadge = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Used</span>'
+          statusBadge = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-2">Used</span>'
         } else if (inv.expires_at) {
           const expiresTime = new Date(inv.expires_at).getTime()
           if (expiresTime < Date.now()) {
-            statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Expired</span>'
+            statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2">Expired</span>'
           }
         }
 
-        // Determine Used By info
-        let usedByText = '—'
+        // Determine description string
+        let description = `${inv.used_count || 0} / ${inv.max_uses || 3} uses`
         if (inv.used_by) {
           const username = inv.used_by.username || (typeof inv.used_by === 'string' ? inv.used_by : 'unknown')
-          usedByText = `<span class="fw-medium text-dark">@${username}</span>`
+          description += ` • Claimed by @${username}`
         }
 
         const createdText = formatRelativeTime(inv.created)
 
-        tr.innerHTML = `
-          <td>
-            <code class="fw-bold text-primary user-select-all fs-6">${inv.code}</code>
-          </td>
-          <td>
-            <span class="small text-muted">${inv.used_count || 0} / ${inv.max_uses || 3}</span>
-          </td>
-          <td>
-            <span class="small text-muted">${createdText}</span>
-          </td>
-          <td>
-            ${usedByText}
-          </td>
-          <td>
+        item.setAttribute('description', description)
+        item.setAttribute('timestamp', createdText)
+
+        item.innerHTML = `
+          <div slot="leading" class="bg-primary-subtle text-primary p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
+            <atoll-icon name="key" size="18"></atoll-icon>
+          </div>
+          <div class="d-flex align-items-center">
+            <code class="fw-bold text-primary user-select-all fs-6 mb-0">${inv.code}</code>
             ${statusBadge}
-          </td>
-          <td style="text-align: right;">
-            <div class="d-inline-flex gap-1 align-items-center">
-              <button type="button" class="btn btn-sm btn-outline-primary btn-copy-link d-inline-flex align-items-center gap-1" data-code="${inv.code}">
-                <atoll-icon name="link" size="14"></atoll-icon>
-                <span class="btn-copy-link-text">Copy Link</span>
-              </button>
-              <button type="button" class="btn btn-sm btn-outline-secondary btn-copy-code btn-copy-history" data-code="${inv.code}" title="Copy Code">
-                <atoll-icon name="copy" size="14"></atoll-icon>
-              </button>
-            </div>
-          </td>
+          </div>
+          <div slot="right" class="d-inline-flex gap-1 align-items-center">
+            <button type="button" class="btn btn-sm btn-outline-primary btn-copy-link d-inline-flex align-items-center gap-1" data-code="${inv.code}">
+              <atoll-icon name="link" size="14"></atoll-icon>
+              <span class="btn-copy-link-text">Copy Link</span>
+            </button>
+            <button type="button" class="btn btn-sm btn-outline-secondary btn-copy-code btn-copy-history" data-code="${inv.code}" title="Copy Code">
+              <atoll-icon name="copy" size="14"></atoll-icon>
+            </button>
+          </div>
         `
-        return tr
+
+        return item
       }
 
-      const renderInvitationsTable = () => {
-        if (!invitationsList || invitationsList.length === 0) {
+      const renderInvitationsList = () => {
+        if (!invitationsData || invitationsData.length === 0) {
           historyCard.classList.add('d-none')
           emptyStateCard.classList.remove('d-none')
           return
@@ -219,11 +201,11 @@
 
         emptyStateCard.classList.add('d-none')
         historyCard.classList.remove('d-none')
-        historyTableBody.innerHTML = ''
+        invitationsList.innerHTML = ''
 
-        invitationsList.forEach((inv) => {
-          const tr = createRowForInvite(inv)
-          historyTableBody.appendChild(tr)
+        invitationsData.forEach((inv) => {
+          const item = createListItemForInvite(inv)
+          invitationsList.appendChild(item)
         })
       }
 
@@ -232,8 +214,8 @@
           const list = await pb.send('/api/custom/invites/list', { method: 'GET' }).catch(() => [])
           if (signal?.aborted) return
 
-          invitationsList = Array.isArray(list) ? list : []
-          renderInvitationsTable()
+          invitationsData = Array.isArray(list) ? list : []
+          renderInvitationsList()
         } catch (err) {
           if (!signal?.aborted) {
             console.error('Failed to load invitations history:', err)
@@ -307,8 +289,8 @@
 
       await fetchStatus()
 
-      // Event delegation for table copy actions
-      historyTableBody.addEventListener('click', (e) => {
+      // Event delegation for copy actions
+      historyCard.addEventListener('click', (e) => {
         // Copy Link Button
         const btnLink = e.target.closest('.btn-copy-link')
         if (btnLink) {
@@ -374,13 +356,13 @@
             }
           }
 
-          // Prepend new invitation to table
-          invitationsList.unshift(newInv)
+          // Prepend new invitation to list
+          invitationsData.unshift(newInv)
           emptyStateCard.classList.add('d-none')
           historyCard.classList.remove('d-none')
 
-          const tr = createRowForInvite(newInv, true)
-          historyTableBody.insertBefore(tr, historyTableBody.firstChild)
+          const item = createListItemForInvite(newInv, true)
+          invitationsList.insertBefore(item, invitationsList.firstChild)
         } catch (err) {
           if ($bus) {
             $bus.emit('ui:show_toast', { message: err.message || 'Failed to generate invitation link.', type: 'danger' })

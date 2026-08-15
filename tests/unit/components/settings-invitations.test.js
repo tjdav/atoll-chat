@@ -91,7 +91,7 @@ describe('Atoll Settings Invitations Component', () => {
     assert.ok(historyCard.classList.contains('d-none'), 'History card should be hidden')
   })
 
-  test('should render table with metadata when invitations exist', async () => {
+  test('should render list with metadata when invitations exist', async () => {
     mockList = [
       {
         id: 'inv_1',
@@ -110,17 +110,19 @@ describe('Atoll Settings Invitations Component', () => {
 
     const emptyCard = el.querySelector('[data-testid="emptyStateCard"]')
     const historyCard = el.querySelector('[data-testid="historyCard"]')
-    const tableBody = el.querySelector('[data-testid="historyTableBody"]')
+    const invitationsList = el.querySelector('[data-testid="invitationsList"]')
 
     assert.ok(emptyCard.classList.contains('d-none'), 'Empty state card should be hidden')
     assert.ok(!historyCard.classList.contains('d-none'), 'History card should be visible')
-    assert.ok(tableBody.textContent.includes('INV-1111-2222'), 'Table should contain invite code')
-    assert.ok(tableBody.textContent.includes('1 / 3'), 'Table should contain usages')
-    assert.ok(tableBody.textContent.includes('@bob'), 'Table should contain redeemed handle')
-    assert.ok(tableBody.textContent.includes('Active'), 'Table should contain status badge')
+
+    const item = invitationsList.querySelector('atoll-list-item')
+    assert.ok(item, 'An atoll-list-item should be rendered')
+    assert.ok(item.textContent.includes('INV-1111-2222'), 'List item should contain invite code')
+    assert.equal(item.getAttribute('description'), '1 / 3 uses • Claimed by @bob', 'Description should contain usages and claimed user handle')
+    assert.ok(item.textContent.includes('Active'), 'List item should contain status badge')
   })
 
-  test('should generate invitation and insert row at top of table', async () => {
+  test('should generate invitation and insert atoll-list-item at top of list', async () => {
     mockList = []
     const el = document.createElement(tagName)
     document.body.appendChild(el)
@@ -132,10 +134,12 @@ describe('Atoll Settings Invitations Component', () => {
 
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const tableBody = el.querySelector('[data-testid="historyTableBody"]')
+    const invitationsList = el.querySelector('[data-testid="invitationsList"]')
     const emptyCard = el.querySelector('[data-testid="emptyStateCard"]')
 
     assert.ok(emptyCard.classList.contains('d-none'), 'Empty state should hide after generation')
-    assert.ok(tableBody.textContent.includes('INV-TEST-9999'), 'Table should contain newly generated code')
+    const firstItem = invitationsList.querySelector('atoll-list-item')
+    assert.ok(firstItem, 'First item should be an atoll-list-item')
+    assert.ok(firstItem.textContent.includes('INV-TEST-9999'), 'List should contain newly generated code')
   })
 })
