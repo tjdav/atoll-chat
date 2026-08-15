@@ -4,6 +4,8 @@ FROM node:24-alpine AS builder
 
 # Set CI=true to prevent interactive prompts
 ENV CI=true
+# Disable release age requirements across all pnpm commands
+ENV PNPM_CONFIG_MINIMUM_RELEASE_AGE=0
 
 # Expose build-time arguments for the frontend (with defaults)
 ARG ATOLL_POCKETBASE_URL="/"
@@ -29,7 +31,7 @@ RUN corepack enable pnpm
 
 # Cache dependency downloads based ONLY on the lockfile
 COPY pnpm-lock.yaml ./
-RUN pnpm fetch --config.minimum-release-age=0
+RUN pnpm fetch
 
 # Copy the entire source code
 COPY . .
