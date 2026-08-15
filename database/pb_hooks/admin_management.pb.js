@@ -382,8 +382,14 @@ routerAdd('POST', '/api/custom/invites/generate', (e) => {
     $app.save(inviteRecord)
 
     return e.json(200, {
+      id: inviteRecord.id,
       code,
-      max_uses: maxUses
+      is_used: false,
+      max_uses: maxUses,
+      used_count: 0,
+      expires_at: inviteRecord.get('expires_at') || null,
+      used_by: null,
+      created: inviteRecord.get('created') || new Date().toISOString()
     })
   } catch (err) {
     if (err.status) {

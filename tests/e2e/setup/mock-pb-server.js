@@ -540,8 +540,14 @@ export function createServer () {
 
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({
+          id: newInvite.id,
           code: code,
-          max_uses: db.max_uses_per_invite || 3
+          is_used: false,
+          max_uses: db.max_uses_per_invite || 3,
+          used_count: 0,
+          expires_at: null,
+          used_by: null,
+          created: newInvite.created
         }))
         return
       }

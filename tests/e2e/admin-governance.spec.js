@@ -39,7 +39,7 @@ test.describe('Super-User Administration & Zero-Knowledge Delegated Invite Syste
     // Generate an invite link
     await page.locator('[data-testid$="nav-invitations"]').click()
     await page.locator('[data-testid$="btnGenerateInvite"]').click()
-    await expect(page.locator('[data-testid$="generatedCode"]')).toContainText('INV-')
+    await expect(page.locator('[data-testid$="historyTableBody"]')).toContainText('INV-')
   })
 
   test('should display table of generated invitations and support copying', async ({ page, loginApp }) => {
@@ -62,25 +62,31 @@ test.describe('Super-User Administration & Zero-Knowledge Delegated Invite Syste
 
     // Generate a new invite link
     await page.locator('[data-testid$="btnGenerateInvite"]').click()
-    await expect(page.locator('[data-testid$="generatedCode"]')).toContainText('INV-')
 
-    const code = await page.locator('[data-testid$="generatedCode"]').textContent()
-
-    // Now historyCard should be visible and also contain the newly generated code
+    // Now historyCard should be visible and contain the newly generated code row at top
     await expect(page.locator('[data-testid$="historyCard"]')).toBeVisible()
+    const firstRow = page.locator('[data-testid$="historyTableBody"] tr').first()
+    await expect(firstRow).toContainText('INV-')
 
-    // The table body should contain the generated code
-    await expect(page.locator('[data-testid$="historyTableBody"]')).toContainText(code)
+    // Click on Copy Code button inside the top row
+    const copyCodeBtn = firstRow.locator('.btn-copy-code')
+    await expect(copyCodeBtn).toBeVisible()
+    await copyCodeBtn.click()
 
-    // Click on copy button inside the table for the generated code
-    const copyBtn = page.locator(`[data-testid$="historyTableBody"] tr:has-text("${code}") .btn-copy-history`)
-    await expect(copyBtn).toBeVisible()
-    await copyBtn.click()
-
-    // Verify copy works by checking clipboard or just ensuring it executes
-    const icon = copyBtn.locator('atoll-icon')
-    await expect(icon).toHaveAttribute('name', 'check')
+    // Verify copy works by checking icon feedback
+    const codeIcon = copyCodeBtn.locator('atoll-icon')
+    await expect(codeIcon).toHaveAttribute('name', 'check')
     await page.waitForTimeout(1600)
-    await expect(icon).toHaveAttribute('name', 'copy')
+    await expect(codeIcon).toHaveAttribute('name', 'copy')
+
+    // Click on Copy Link button inside the top row
+    const copyLinkBtn = firstRow.locator('.btn-copy-link')
+    await expect(copyLinkBtn).toBeVisible()
+    await copyLinkBtn.click()
+
+    // Verify copy link feedback
+    const linkIcon = copyLinkBtn.locator('atoll-icon')
+    await expect(linkIcon).toHaveAttribute('name', 'check')
+    await expect(copyLinkBtn.locator('.btn-copy-link-text')).toHaveText('Copied!')
   })
 })

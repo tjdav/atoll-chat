@@ -8,16 +8,16 @@
         </div>
         <div>
           <div class="text-muted small">Invite Quota Remaining</div>
-          <h3 class="fw-bold mb-0" ref="quotaValue">--</h3>
+          <h3 class="fw-bold mb-0" ref="quotaValue" data-testid="quotaValue">--</h3>
         </div>
       </div>
 
-      <div class="alert alert-warning d-none" ref="revokedAlert">
+      <div class="alert alert-warning d-none" ref="revokedAlert" data-testid="revokedAlert">
         <atoll-icon name="info" size="18" class="me-2"></atoll-icon>
         Your invite generation privileges have been suspended by an administrator.
       </div>
 
-      <div class="alert alert-danger d-none" ref="strictAlert">
+      <div class="alert alert-danger d-none" ref="strictAlert" data-testid="strictAlert">
         <atoll-icon name="info" size="18" class="me-2"></atoll-icon>
         Instance invitation generation is currently in strict/owner-only mode.
       </div>
@@ -25,30 +25,35 @@
       <div class="mt-4">
         <atoll-button variant="primary" ref="btnGenerateInvite" data-testid="btnGenerateInvite">Generate Invitation Link</atoll-button>
       </div>
-
-      <!-- Generated Invitation Result Modal/Box -->
-      <div class="mt-3 p-3 bg-light rounded d-none" ref="inviteResultBox">
-        <span class="text-muted small d-block mb-1">Generated Invite Code:</span>
-        <div class="d-flex align-items-center justify-content-between bg-white border rounded p-2 mb-2">
-          <code class="fw-bold fs-5 text-primary" ref="generatedCode" data-testid="generatedCode">INV-XXXX-YYYY</code>
-          <atoll-button variant="ghost" ref="btnCopyCode" icon-only="true" leading-icon="copy" data-testid="btnCopyCode"></atoll-button>
-        </div>
-        <span class="text-muted small d-block">Max uses: <span ref="maxUsesCount">3</span>. Copy and share this code with friends to let them register!</span>
-      </div>
     </div>
 
-    <!-- Generated Invitations Table Card -->
-    <div class="mb-4 d-none" ref="historyCard" data-testid="historyCard">
+    <!-- Generated Invitations Table Section -->
+    <div ref="historySection">
       <hr class="my-4">
       <h5 class="fw-bold mb-3">Your Generated Invitations</h5>
-      <div class="table-responsive">
+
+      <!-- Empty State Card -->
+      <div class="card bg-light border-0 text-center p-4 my-3 d-none" ref="emptyStateCard" data-testid="emptyStateCard">
+        <div class="card-body">
+          <div class="text-muted mb-2">
+            <atoll-icon name="key" size="36"></atoll-icon>
+          </div>
+          <h6 class="fw-bold text-dark mb-1">No Invitations Generated Yet</h6>
+          <p class="text-muted small mb-0">Click "Generate Invitation Link" above to create your first invite link and share it with others.</p>
+        </div>
+      </div>
+
+      <!-- History Table Card -->
+      <div class="table-responsive d-none" ref="historyCard" data-testid="historyCard">
         <table class="table table-hover align-middle mb-0">
           <thead>
             <tr>
-              <th style="width: 40%;">Code</th>
-              <th style="width: 20%;">Uses</th>
-              <th style="width: 25%;">Used By</th>
-              <th style="width: 15%;">Status</th>
+              <th style="width: 25%;">Code</th>
+              <th style="width: 12%;">Uses</th>
+              <th style="width: 18%;">Created</th>
+              <th style="width: 18%;">Used By</th>
+              <th style="width: 12%;">Status</th>
+              <th style="width: 15%; text-align: right;">Actions</th>
             </tr>
           </thead>
           <tbody ref="historyTableBody" data-testid="historyTableBody">
@@ -103,17 +108,13 @@
 
   export default defineComponent({
     client: async ({ refs, globalStore, pocketbase, signal }) => {
-      const { $state } = globalStore
+      const { $state, $bus } = globalStore
       const pb = pocketbase
 
       const quotaValue = refs('quotaValue')
       const revokedAlert = refs('revokedAlert')
       const strictAlert = refs('strictAlert')
       const btnGenerateInvite = refs('btnGenerateInvite')
-      const inviteResultBox = refs('inviteResultBox')
-      const generatedCode = refs('generatedCode')
-      const btnCopyCode = refs('btnCopyCode')
-      const maxUsesCount = refs('maxUsesCount')
 
       const requestQuotaCard = refs('requestQuotaCard')
       const requestQuotaForm = refs('requestQuotaForm')
@@ -124,6 +125,7 @@
       const requestErrorText = refs('requestErrorText')
       const btnSubmitRequest = refs('btnSubmitRequest')
 
+      const emptyStateCard = refs('emptyStateCard')
       const historyCard = refs('historyCard')
       const historyTableBody = refs('historyTableBody')
 
@@ -131,64 +133,107 @@
       let isOwner = false
       let isRevoked = false
       let currentInviteMode = 'delegated'
+      let invitationsList = []
+
+      const formatRelativeTime = (isoString) => {
+        if (!isoString) return '—'
+        const date = new Date(isoString)
+        const now = new Date()
+        const diffInSeconds = Math.floor((now - date) / 1000)
+
+        if (isNaN(diffInSeconds) || diffInSeconds < 0) return 'Just now'
+        if (diffInSeconds < 60) return 'Just now'
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
+        if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
+        return date.toLocaleDateString()
+      }
+
+      const createRowForInvite = (inv, highlight = false) => {
+        const tr = document.createElement('tr')
+        if (highlight) {
+          tr.classList.add('table-primary')
+          tr.style.transition = 'background-color 1s ease'
+          setTimeout(() => {
+            tr.classList.remove('table-primary')
+          }, 2000)
+        }
+
+        // Determine status
+        let statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>'
+        if (inv.is_used || inv.used_count >= inv.max_uses) {
+          statusBadge = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Used</span>'
+        } else if (inv.expires_at) {
+          const expiresTime = new Date(inv.expires_at).getTime()
+          if (expiresTime < Date.now()) {
+            statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Expired</span>'
+          }
+        }
+
+        // Determine Used By info
+        let usedByText = '—'
+        if (inv.used_by) {
+          const username = inv.used_by.username || (typeof inv.used_by === 'string' ? inv.used_by : 'unknown')
+          usedByText = `<span class="fw-medium text-dark">@${username}</span>`
+        }
+
+        const createdText = formatRelativeTime(inv.created)
+
+        tr.innerHTML = `
+          <td>
+            <code class="fw-bold text-primary user-select-all fs-6">${inv.code}</code>
+          </td>
+          <td>
+            <span class="small text-muted">${inv.used_count || 0} / ${inv.max_uses || 3}</span>
+          </td>
+          <td>
+            <span class="small text-muted">${createdText}</span>
+          </td>
+          <td>
+            ${usedByText}
+          </td>
+          <td>
+            ${statusBadge}
+          </td>
+          <td style="text-align: right;">
+            <div class="d-inline-flex gap-1 align-items-center">
+              <button type="button" class="btn btn-sm btn-outline-primary btn-copy-link d-inline-flex align-items-center gap-1" data-code="${inv.code}">
+                <atoll-icon name="link" size="14"></atoll-icon>
+                <span class="btn-copy-link-text">Copy Link</span>
+              </button>
+              <button type="button" class="btn btn-sm btn-outline-secondary btn-copy-code btn-copy-history" data-code="${inv.code}" title="Copy Code">
+                <atoll-icon name="copy" size="14"></atoll-icon>
+              </button>
+            </div>
+          </td>
+        `
+        return tr
+      }
+
+      const renderInvitationsTable = () => {
+        if (!invitationsList || invitationsList.length === 0) {
+          historyCard.classList.add('d-none')
+          emptyStateCard.classList.remove('d-none')
+          return
+        }
+
+        emptyStateCard.classList.add('d-none')
+        historyCard.classList.remove('d-none')
+        historyTableBody.innerHTML = ''
+
+        invitationsList.forEach((inv) => {
+          const tr = createRowForInvite(inv)
+          historyTableBody.appendChild(tr)
+        })
+      }
 
       const fetchInvitations = async () => {
         try {
           const list = await pb.send('/api/custom/invites/list', { method: 'GET' }).catch(() => [])
-          if (signal?.aborted) {
-            return
-          }
+          if (signal?.aborted) return
 
-          if (!list || list.length === 0) {
-            historyCard.classList.add('d-none')
-            return
-          }
-
-          historyCard.classList.remove('d-none')
-          historyTableBody.innerHTML = ''
-
-          list.forEach((inv) => {
-            const tr = document.createElement('tr')
-
-            // Determine status
-            let statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle">Active</span>'
-            if (inv.is_used || inv.used_count >= inv.max_uses) {
-              statusBadge = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">Used</span>'
-            } else if (inv.expires_at) {
-              const expiresTime = new Date(inv.expires_at).getTime()
-              if (expiresTime < Date.now()) {
-                statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle">Expired</span>'
-              }
-            }
-
-            // Determine Used By info
-            let usedByText = '—'
-            if (inv.used_by) {
-              const username = inv.used_by.username || 'unknown'
-              usedByText = `<span class="fw-medium text-dark">@${username}</span>`
-            }
-
-            tr.innerHTML = `
-              <td>
-                <div class="d-flex align-items-center gap-2">
-                  <code class="fw-bold text-primary">${inv.code}</code>
-                  <button type="button" class="btn btn-sm btn-link p-0 text-muted btn-copy-history" data-code="${inv.code}" title="Copy Code" style="line-height: 1;">
-                    <atoll-icon name="copy" size="14"></atoll-icon>
-                  </button>
-                </div>
-              </td>
-              <td>
-                <span class="small text-muted">${inv.used_count} / ${inv.max_uses}</span>
-              </td>
-              <td>
-                ${usedByText}
-              </td>
-              <td>
-                ${statusBadge}
-              </td>
-            `
-            historyTableBody.appendChild(tr)
-          })
+          invitationsList = Array.isArray(list) ? list : []
+          renderInvitationsTable()
         } catch (err) {
           if (!signal?.aborted) {
             console.error('Failed to load invitations history:', err)
@@ -213,7 +258,6 @@
           // Fetch active user trust parameters
           const authRecord = pb.authStore.record
           if (authRecord) {
-            // Check fallback logic endpoints
             const trustList = await pb.collection('user_trust').getFullList({
               filter: `user = "${authRecord.id}"`
             }).catch(() => [])
@@ -255,7 +299,6 @@
           // Fetch history of generated invitation codes
           await fetchInvitations()
         } catch (err) {
-          // Propagate error if abort was not triggered
           if (!signal?.aborted) {
             throw err
           }
@@ -264,20 +307,50 @@
 
       await fetchStatus()
 
-      // Wire up copying from the invitations history table
+      // Event delegation for table copy actions
       historyTableBody.addEventListener('click', (e) => {
-        const btn = e.target.closest('.btn-copy-history')
-        if (btn) {
-          const code = btn.getAttribute('data-code')
+        // Copy Link Button
+        const btnLink = e.target.closest('.btn-copy-link')
+        if (btnLink) {
+          const code = btnLink.getAttribute('data-code')
+          if (code) {
+            const fullUrl = `${window.location.origin}/?invite=${code}`
+            navigator.clipboard.writeText(fullUrl)
+
+            const iconEl = btnLink.querySelector('atoll-icon')
+            const textEl = btnLink.querySelector('.btn-copy-link-text')
+            if (iconEl) iconEl.setAttribute('name', 'check')
+            if (textEl) textEl.textContent = 'Copied!'
+
+            if ($bus) {
+              $bus.emit('ui:show_toast', { message: 'Invitation link copied to clipboard!', type: 'success' })
+            }
+
+            setTimeout(() => {
+              if (iconEl) iconEl.setAttribute('name', 'link')
+              if (textEl) textEl.textContent = 'Copy Link'
+            }, 2000)
+          }
+          return
+        }
+
+        // Copy Code Button
+        const btnCode = e.target.closest('.btn-copy-code')
+        if (btnCode) {
+          const code = btnCode.getAttribute('data-code')
           if (code) {
             navigator.clipboard.writeText(code)
-            const iconEl = btn.querySelector('atoll-icon')
-            if (iconEl) {
-              iconEl.setAttribute('name', 'check')
-              setTimeout(() => {
-                iconEl.setAttribute('name', 'copy')
-              }, 1500)
+
+            const iconEl = btnCode.querySelector('atoll-icon')
+            if (iconEl) iconEl.setAttribute('name', 'check')
+
+            if ($bus) {
+              $bus.emit('ui:show_toast', { message: 'Invite code copied to clipboard!', type: 'success' })
             }
+
+            setTimeout(() => {
+              if (iconEl) iconEl.setAttribute('name', 'copy')
+            }, 1500)
           }
         }
       }, { signal })
@@ -286,29 +359,37 @@
       btnGenerateInvite.addEventListener('click', async () => {
         try {
           btnGenerateInvite.setAttribute('loading', 'true')
-          const res = await pb.send('/api/custom/invites/generate', { method: 'POST' })
-  
-          generatedCode.textContent = res.code
-          maxUsesCount.textContent = res.max_uses || 3
-          inviteResultBox.classList.remove('d-none')
+          const newInv = await pb.send('/api/custom/invites/generate', { method: 'POST' })
 
-          // Refetch to adjust quota display
-          await fetchStatus()
+          if ($bus) {
+            $bus.emit('ui:show_toast', { message: 'Invitation link generated successfully!', type: 'success' })
+          }
+
+          // Decrement local quota if not owner
+          if (!isOwner && currentQuota > 0) {
+            currentQuota -= 1
+            quotaValue.textContent = currentQuota
+            if (currentQuota === 0) {
+              requestQuotaCard.classList.remove('d-none')
+            }
+          }
+
+          // Prepend new invitation to table
+          invitationsList.unshift(newInv)
+          emptyStateCard.classList.add('d-none')
+          historyCard.classList.remove('d-none')
+
+          const tr = createRowForInvite(newInv, true)
+          historyTableBody.insertBefore(tr, historyTableBody.firstChild)
         } catch (err) {
-          alert(err.message || 'Failed to generate invitation link.')
+          if ($bus) {
+            $bus.emit('ui:show_toast', { message: err.message || 'Failed to generate invitation link.', type: 'danger' })
+          } else {
+            alert(err.message || 'Failed to generate invitation link.')
+          }
         } finally {
           btnGenerateInvite.removeAttribute('loading')
         }
-      }, { signal })
-
-      // Wire up the copy-to-clipboard button
-      btnCopyCode.addEventListener('click', () => {
-        navigator.clipboard.writeText(generatedCode.textContent)
-        const prevIcon = btnCopyCode.getAttribute('leading-icon')
-        btnCopyCode.setAttribute('leading-icon', 'check')
-        setTimeout(() => {
-          btnCopyCode.setAttribute('leading-icon', prevIcon)
-        }, 1500)
       }, { signal })
 
       // Submit the sealed zero-knowledge quota request
@@ -352,7 +433,7 @@
 
           requestSuccessAlert.classList.remove('d-none')
           requestReasonTextarea.value = ''
-  
+
           await fetchStatus()
         } catch (err) {
           requestErrorText.textContent = err.message || 'Failed to submit sealed request.'
