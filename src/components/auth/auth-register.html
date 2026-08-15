@@ -143,7 +143,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, root }) => {
+    client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, root, signal }) => {
       const { pb } = pocketbase
       const { $url } = utils
       const { $storage } = storage
@@ -403,8 +403,16 @@ Atoll administrators cannot recover your credentials or vault.
         }
       })
 
-      invitationCodeInput.addEventListener('input', () => {
-        const val = invitationCodeInput.value || ''
+      /**
+       * Formats a raw invite code into standard INV-XXXX-XXXX representation.
+       *
+       * @param {string} val - The input invite code string.
+       * @returns {string} The formatted invitation code.
+       */
+      const formatInviteCode = (val) => {
+        if (!val) {
+          return ''
+        }
         const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
         let raw = clean
         if (raw.startsWith('INV')) {
@@ -417,8 +425,41 @@ Atoll administrators cannot recover your credentials or vault.
         if (raw.length > 4) {
           formatted += '-' + raw.substring(4, 8)
         }
-        invitationCodeInput.value = formatted
+        return formatted
+      }
+
+      /**
+       * Pre-fills and formats the invitation code input field.
+       *
+       * @param {string} rawCode - The raw invite code.
+       * @returns {void}
+       */
+      const applyInviteCode = (rawCode) => {
+        if (rawCode && invitationCodeInput) {
+          invitationCodeInput.value = formatInviteCode(rawCode)
+        }
+      }
+
+      invitationCodeInput.addEventListener('input', () => {
+        invitationCodeInput.value = formatInviteCode(invitationCodeInput.value || '')
       })
+
+      // Check global state or URL query parameters on mount
+      let initialInvite = $state.pendingRegistrationInvite
+      if (!initialInvite && typeof window !== 'undefined' && window.location.search) {
+        try {
+          const params = new URLSearchParams(window.location.search)
+          initialInvite = params.get('invite_code') || params.get('code') || params.get('invite')
+        } catch {
+        }
+      }
+      if (initialInvite) {
+        applyInviteCode(initialInvite)
+      }
+
+      $bus.on('auth:invite_code_received', ({ code }) => {
+        applyInviteCode(code)
+      }, { signal })
 
       /**
        * Extracts the ALTCHA security verification payload from a widget.

@@ -613,6 +613,21 @@
 
       /* Listen for unified deep link route events */
       $bus.on('app:route_requested', async ({ path: routePath, queryParams }) => {
+        const rawInviteParam = queryParams?.invite_code || queryParams?.code || queryParams?.invite
+        if (rawInviteParam && typeof rawInviteParam === 'string') {
+          const trimmed = rawInviteParam.trim()
+          // Differentiate user registration invite codes (e.g. INV-XXXX-XXXX or contains hyphens) from 15-char PB room record IDs
+          const isRegCode = trimmed.toUpperCase().startsWith('INV-') || queryParams?.invite_code || queryParams?.code || (trimmed.includes('-') && !routePath?.startsWith('/invite/'))
+          if (isRegCode) {
+            if (!$state.isAuthenticated) {
+              $state.pendingRegistrationInvite = trimmed
+              $state.authView = 'register'
+              $bus.emit('auth:invite_code_received', { code: trimmed })
+            }
+            return
+          }
+        }
+
         const inviteRoomId = queryParams?.invite || (routePath && routePath.startsWith('/invite/') ? routePath.split('/invite/')[1]?.split('?')[0]?.trim() : null)
         if (inviteRoomId) {
           await handleJoinRoom(inviteRoomId)

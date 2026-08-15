@@ -387,11 +387,15 @@ const run = async () => {
     }
 
     // Run provisioning of test users (Alice, Bob, Charlie)
-    console.log('Provisioning test users (Alice, Bob, Charlie)...')
-    try {
-      execSync('node scripts/provision-users.js', { stdio: 'inherit' })
-    } catch (err) {
-      console.error('Failed to provision test users:', err.message)
+    if (process.env.ATOLL_PROVISION_TEST_USERS !== 'false') {
+      console.log('Provisioning test users (Alice, Bob, Charlie)...')
+      try {
+        execSync('node scripts/provision-users.js', { stdio: 'inherit' })
+      } catch (err) {
+        console.error('Failed to provision test users:', err.message)
+      }
+    } else {
+      console.log('Skipping test user provisioning (ATOLL_PROVISION_TEST_USERS=false)...')
     }
 
     // Print the HTTPS dev links box (Android/iOS need TLS via Caddy)
