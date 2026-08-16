@@ -44,41 +44,40 @@ onBootstrap((e) => {
     }
 
     const settings = app.settings()
-    const smtp = settings.smtp || {}
-    const enabledEnv = getEnv('ATOLL_SMTP_ENABLED')
-    smtp.enabled = enabledEnv !== 'false'
-    smtp.host = host
+    const smtp = settings.smtp
 
-    const port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
-    smtp.port = port
-    smtp.username = getEnv('ATOLL_SMTP_USERNAME') || ''
-    smtp.password = getEnv('ATOLL_SMTP_PASSWORD') || ''
+    if (smtp) {
+      const enabledEnv = getEnv('ATOLL_SMTP_ENABLED')
+      smtp.enabled = enabledEnv !== 'false'
+      smtp.host = host
 
-    const tlsEnv = getEnv('ATOLL_SMTP_TLS')
-    let tls = false
-    if (tlsEnv !== undefined && tlsEnv !== '') {
-      tls = tlsEnv === 'true'
-    } else if (port === 465 || port === 2465) {
-      tls = true
+      const port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
+      smtp.port = port
+      smtp.username = getEnv('ATOLL_SMTP_USERNAME') || ''
+      smtp.password = getEnv('ATOLL_SMTP_PASSWORD') || ''
+
+      const tlsEnv = getEnv('ATOLL_SMTP_TLS')
+      let tls = false
+      if (tlsEnv !== undefined && tlsEnv !== '') {
+        tls = tlsEnv === 'true'
+      } else if (port === 465 || port === 2465) {
+        tls = true
+      }
+      smtp.tls = tls
+
+      smtp.authMethod = getEnv('ATOLL_SMTP_AUTH_METHOD') || 'PLAIN'
+      smtp.localName = getEnv('ATOLL_SMTP_LOCAL_NAME') || ''
     }
-    smtp.tls = tls
 
-    smtp.authMethod = getEnv('ATOLL_SMTP_AUTH_METHOD') || 'PLAIN'
-    smtp.localName = getEnv('ATOLL_SMTP_LOCAL_NAME') || ''
-    settings.smtp = smtp
-
-    const meta = settings.meta || {}
-    meta.senderName = getEnv('ATOLL_SMTP_SENDER_NAME') || 'Atoll Chat'
-    meta.senderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS') || 'noreply@atoll.chat'
-    settings.meta = meta
+    const meta = settings.meta
+    if (meta) {
+      meta.senderName = getEnv('ATOLL_SMTP_SENDER_NAME') || 'Atoll Chat'
+      meta.senderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS') || 'noreply@atoll.chat'
+    }
 
     app.save(settings)
-    try {
-      if (typeof app.reloadSettings === 'function') {
-        app.reloadSettings()
-      }
-    } catch (_err) {
-      // Ignore if reloadSettings fails
+    if (typeof app.reloadSettings === 'function') {
+      app.reloadSettings()
     }
   }
 
