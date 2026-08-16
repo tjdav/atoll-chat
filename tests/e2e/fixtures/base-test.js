@@ -350,21 +350,6 @@ export const test = base.extend({
     await page.context().addInitScript((tId) => {
       window.__playwright_test_id__ = tId
 
-      document.addEventListener('DOMContentLoaded', () => {
-        window.__coralite_instanceCounters = window.__coralite_instanceCounters || {}
-        document.querySelectorAll('[data-cid]').forEach(function (el) {
-          const cid = el.getAttribute('data-cid')
-          if (cid) {
-            const parts = cid.split('-')
-            const num = parseInt(parts.pop(), 10)
-            const prefix = parts.join('-')
-            if (prefix && !isNaN(num)) {
-              window.__coralite_instanceCounters[prefix] = Math.max(window.__coralite_instanceCounters[prefix] || 0, num + 1)
-            }
-          }
-        })
-      })
-
       // Intercept and bypass controllerchange to prevent unexpected reload race conditions in E2E tests
       if ('serviceWorker' in navigator) {
         const originalAddEventListener = navigator.serviceWorker.addEventListener
@@ -484,21 +469,6 @@ export const test = base.extend({
       /* Inject testId into the browser's window scope and override EventSource */
       await targetPage.context().addInitScript((tId) => {
         window.__playwright_test_id__ = tId
-
-        document.addEventListener('DOMContentLoaded', () => {
-          window.__coralite_instanceCounters = window.__coralite_instanceCounters || {}
-          document.querySelectorAll('[data-cid]').forEach(function (el) {
-            const cid = el.getAttribute('data-cid')
-            if (cid) {
-              const parts = cid.split('-')
-              const num = parseInt(parts.pop(), 10)
-              const prefix = parts.join('-')
-              if (prefix && !isNaN(num)) {
-                window.__coralite_instanceCounters[prefix] = Math.max(window.__coralite_instanceCounters[prefix] || 0, num + 1)
-              }
-            }
-          })
-        })
 
         // Intercept and bypass controllerchange to prevent unexpected reload race conditions in E2E tests
         if ('serviceWorker' in navigator) {
