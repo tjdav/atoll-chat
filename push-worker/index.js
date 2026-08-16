@@ -68,12 +68,13 @@ function parseAltchaPayload (payload) {
 async function processPushRecipientsAsync (recipients, payload) {
   const staleUserIds = []
   const serializedPayload = JSON.stringify(payload)
+  let unexpectedError = null
 
-  for (const item of recipients) {
+  const promises = recipients.map(async (item) => {
     const { user_id, subscription } = item
     if (!subscription || !subscription.endpoint) {
       staleUserIds.push(user_id)
-      continue
+      return
     }
 
     try {
@@ -87,6 +88,14 @@ async function processPushRecipientsAsync (recipients, payload) {
         throw error
       }
     }
+  })
+
+  const results = await Promise.allSettled(promises)
+
+  for (const res of results) {
+    if (res.status === 'rejected' && !unexpectedError) {
+      unexpectedError = res.reason
+    }
   }
 
   if (staleUserIds.length > 0) {
@@ -95,23 +104,23 @@ async function processPushRecipientsAsync (recipients, payload) {
     for (let i = 0; i < staleUserIds.length; i += MAX_BATCH_SIZE) {
       const chunk = staleUserIds.slice(i, i + MAX_BATCH_SIZE)
 
-      try {
-        const response = await fetch(`${pocketbaseUrl}/api/internal/prune-subscriptions`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Worker-Token': internalWorkerSecret
-          },
-          body: JSON.stringify({ user_ids: chunk })
-        })
+      const response = await fetch(`${pocketbaseUrl}/api/internal/prune-subscriptions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Worker-Token': internalWorkerSecret
+        },
+        body: JSON.stringify({ user_ids: chunk })
+      })
 
-        if (!response.ok) {
-          throw new Error(`Failed to prune subscriptions. HTTP status: ${response.status}`)
-        }
-      } catch (err) {
-        throw err
+      if (!response.ok) {
+        throw new Error(`Failed to prune subscriptions. HTTP status: ${response.status}`)
       }
     }
+  }
+
+  if (unexpectedError) {
+    throw unexpectedError
   }
 }
 
