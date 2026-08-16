@@ -93,6 +93,7 @@ export default function bootstrapScriptPlugin () {
         }
 
         // Remove any previously injected or hardcoded asset script tags to avoid duplication
+        content = content.replace(/<script[^>]*type=["']importmap["'][^>]*>[\s\S]*?<\/script>\s*/gi, '')
         content = content.replace(/<script[^>]*src=["'](?:\.\/)?\/?assets\/altcha\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
         content = content.replace(/<script[^>]*src=["'](?:\.\/)?\/?assets\/register-sw\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
         content = content.replace(/<script[^>]*src=["'](?:\.\/)?\/?assets\/js\/bootstrap-app\.js["'][^>]*>[\s\S]*?<\/script>/gi, '')
@@ -131,9 +132,6 @@ export default function bootstrapScriptPlugin () {
         // Inject asset scripts right before </body>
         const injectedScripts = `${altchaTag}${swTag}${bootstrapTag}\n</body>`
         content = content.replace(/<\/body>/i, injectedScripts)
-
-        // Ensure importmap is moved to top of head for Firefox ES module compliance
-        content = content.replace(/(<head.*?>)([\s\S]*?)(<script type="importmap">[\s\S]*?<\/script>)/i, '$1\n  $3$2')
 
         await writeFile(indexHtmlPath, content, 'utf8')
       }
