@@ -469,10 +469,17 @@
         const errContainer = document.createElement('div')
         errContainer.className = 'd-flex align-items-center gap-1 text-warning mt-2'
         errContainer.style.fontSize = '0.75rem'
-        errContainer.innerHTML = `
-          <atoll-icon name="warning" size="14" color="var(--bs-warning)"></atoll-icon>
-          <span>Failed to transcribe: ${message}</span>
-        `
+
+        const icon = document.createElement('atoll-icon')
+        icon.setAttribute('name', 'warning')
+        icon.setAttribute('size', '14')
+        icon.setAttribute('color', 'var(--bs-warning)')
+
+        const msgSpan = document.createElement('span')
+        msgSpan.textContent = `Failed to transcribe: ${message}`
+
+        errContainer.appendChild(icon)
+        errContainer.appendChild(msgSpan)
 
         const retryBtn = document.createElement('button')
         retryBtn.className = 'btn btn-link btn-sm p-0 ms-2 text-primary text-decoration-none'
