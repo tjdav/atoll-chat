@@ -43,22 +43,32 @@ describe('Atoll Settings Invitations Component', () => {
 
     const mockGlobalStore = {
       $state: {
-        subscribe: () => () => {},
+        subscribe: () => () => {
+        },
         cryptoWorker: { request: async () => 'sealed_reason' }
       },
       $bus: {
-        emit: () => {}
+        emit: () => {
+        }
       }
     }
 
     const mockPocketbase = {
       authStore: {
-        record: { id: 'user_123', username: 'alice' }
+        record: {
+          id: 'user_123',
+          username: 'alice'
+        }
       },
       send: (path, opts) => mockSendHandler(path, opts),
       collection: () => ({
         getFullList: async () => [
-          { user: 'user_123', invite_quota: 3, tier: 'standard', invites_revoked: false }
+          {
+            user: 'user_123',
+            invite_quota: 3,
+            tier: 'standard',
+            invites_revoked: false
+          }
         ]
       })
     }
@@ -68,9 +78,12 @@ describe('Atoll Settings Invitations Component', () => {
       pocketbase: mockPocketbase,
       bootstrap: Promise.resolve({
         Dropdown: class {
-          constructor () {}
-          show () {}
-          hide () {}
+          constructor () {
+          }
+          show () {
+          }
+          hide () {
+          }
         }
       })
     })

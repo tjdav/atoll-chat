@@ -124,16 +124,28 @@
       let invitationsData = []
 
       const formatRelativeTime = (isoString) => {
-        if (!isoString) return '—'
+        if (!isoString) {
+          return '—'
+        }
         const date = new Date(isoString)
         const now = new Date()
         const diffInSeconds = Math.floor((now - date) / 1000)
 
-        if (isNaN(diffInSeconds) || diffInSeconds < 0) return 'Just now'
-        if (diffInSeconds < 60) return 'Just now'
-        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`
-        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`
-        if (diffInSeconds < 604800) return `${Math.floor(diffInSeconds / 86400)}d ago`
+        if (isNaN(diffInSeconds) || diffInSeconds < 0) {
+          return 'Just now'
+        }
+        if (diffInSeconds < 60) {
+          return 'Just now'
+        }
+        if (diffInSeconds < 3600) {
+          return `${Math.floor(diffInSeconds / 60)}m ago`
+        }
+        if (diffInSeconds < 86400) {
+          return `${Math.floor(diffInSeconds / 3600)}h ago`
+        }
+        if (diffInSeconds < 604800) {
+          return `${Math.floor(diffInSeconds / 86400)}d ago`
+        }
         return date.toLocaleDateString()
       }
 
@@ -212,7 +224,9 @@
       const fetchInvitations = async () => {
         try {
           const list = await pb.send('/api/custom/invites/list', { method: 'GET' }).catch(() => [])
-          if (signal?.aborted) return
+          if (signal?.aborted) {
+            return
+          }
 
           invitationsData = Array.isArray(list) ? list : []
           renderInvitationsList()
@@ -301,16 +315,27 @@
 
             const iconEl = btnLink.querySelector('atoll-icon')
             const textEl = btnLink.querySelector('.btn-copy-link-text')
-            if (iconEl) iconEl.setAttribute('name', 'check')
-            if (textEl) textEl.textContent = 'Copied!'
+            if (iconEl) {
+              iconEl.setAttribute('name', 'check')
+            }
+            if (textEl) {
+              textEl.textContent = 'Copied!'
+            }
 
             if ($bus) {
-              $bus.emit('ui:show_toast', { message: 'Invitation link copied to clipboard!', type: 'success' })
+              $bus.emit('ui:show_toast', {
+                message: 'Invitation link copied to clipboard!',
+                type: 'success'
+              })
             }
 
             setTimeout(() => {
-              if (iconEl) iconEl.setAttribute('name', 'link')
-              if (textEl) textEl.textContent = 'Copy Link'
+              if (iconEl) {
+                iconEl.setAttribute('name', 'link')
+              }
+              if (textEl) {
+                textEl.textContent = 'Copy Link'
+              }
             }, 2000)
           }
           return
@@ -324,14 +349,21 @@
             navigator.clipboard.writeText(code)
 
             const iconEl = btnCode.querySelector('atoll-icon')
-            if (iconEl) iconEl.setAttribute('name', 'check')
+            if (iconEl) {
+              iconEl.setAttribute('name', 'check')
+            }
 
             if ($bus) {
-              $bus.emit('ui:show_toast', { message: 'Invite code copied to clipboard!', type: 'success' })
+              $bus.emit('ui:show_toast', {
+                message: 'Invite code copied to clipboard!',
+                type: 'success'
+              })
             }
 
             setTimeout(() => {
-              if (iconEl) iconEl.setAttribute('name', 'copy')
+              if (iconEl) {
+                iconEl.setAttribute('name', 'copy')
+              }
             }, 1500)
           }
         }
@@ -344,7 +376,10 @@
           const newInv = await pb.send('/api/custom/invites/generate', { method: 'POST' })
 
           if ($bus) {
-            $bus.emit('ui:show_toast', { message: 'Invitation link generated successfully!', type: 'success' })
+            $bus.emit('ui:show_toast', {
+              message: 'Invitation link generated successfully!',
+              type: 'success'
+            })
           }
 
           // Decrement local quota if not owner
@@ -365,7 +400,10 @@
           invitationsList.insertBefore(item, invitationsList.firstChild)
         } catch (err) {
           if ($bus) {
-            $bus.emit('ui:show_toast', { message: err.message || 'Failed to generate invitation link.', type: 'danger' })
+            $bus.emit('ui:show_toast', {
+              message: err.message || 'Failed to generate invitation link.',
+              type: 'danger'
+            })
           } else {
             alert(err.message || 'Failed to generate invitation link.')
           }
