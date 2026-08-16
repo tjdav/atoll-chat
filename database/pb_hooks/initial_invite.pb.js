@@ -6,7 +6,7 @@
  * If empty, generates or retrieves a one-time invitation setup code and
  * dispatches a transactional email to the owner without outputting secrets to stdout.
  *
- * @param {core.BootstrapEvent} e - The PocketBase bootstrap event.
+ * @param {Object} e - The PocketBase bootstrap event.
  * @returns {void}
  */
 onBootstrap((e) => {
@@ -34,7 +34,7 @@ onBootstrap((e) => {
   /**
    * Applies SMTP configuration from environment variables to PocketBase settings.
    *
-   * @param {core.App} app - The PocketBase app instance.
+   * @param {Object} app - The PocketBase app instance.
    * @returns {void}
    */
   function applySmtpSettings (app) {
@@ -44,37 +44,42 @@ onBootstrap((e) => {
     }
 
     const settings = app.settings()
-    const smtp = settings.smtp
-    if (smtp) {
-      const enabledEnv = getEnv('ATOLL_SMTP_ENABLED')
-      smtp.enabled = enabledEnv !== 'false'
-      smtp.host = host
+    const smtp = settings.smtp || {}
+    const enabledEnv = getEnv('ATOLL_SMTP_ENABLED')
+    smtp.enabled = enabledEnv !== 'false'
+    smtp.host = host
 
-      const port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
-      smtp.port = port
-      smtp.username = getEnv('ATOLL_SMTP_USERNAME') || ''
-      smtp.password = getEnv('ATOLL_SMTP_PASSWORD') || ''
+    const port = parseInt(getEnv('ATOLL_SMTP_PORT'), 10) || 587
+    smtp.port = port
+    smtp.username = getEnv('ATOLL_SMTP_USERNAME') || ''
+    smtp.password = getEnv('ATOLL_SMTP_PASSWORD') || ''
 
-      const tlsEnv = getEnv('ATOLL_SMTP_TLS')
-      let tls = false
-      if (tlsEnv !== undefined && tlsEnv !== '') {
-        tls = tlsEnv === 'true'
-      } else if (port === 465 || port === 2465) {
-        tls = true
-      }
-      smtp.tls = tls
-
-      smtp.authMethod = getEnv('ATOLL_SMTP_AUTH_METHOD') || 'PLAIN'
-      smtp.localName = getEnv('ATOLL_SMTP_LOCAL_NAME') || ''
+    const tlsEnv = getEnv('ATOLL_SMTP_TLS')
+    let tls = false
+    if (tlsEnv !== undefined && tlsEnv !== '') {
+      tls = tlsEnv === 'true'
+    } else if (port === 465 || port === 2465) {
+      tls = true
     }
+    smtp.tls = tls
 
-    const meta = settings.meta
-    if (meta) {
-      meta.senderName = getEnv('ATOLL_SMTP_SENDER_NAME') || 'Atoll Chat'
-      meta.senderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS') || 'noreply@atoll.chat'
-    }
+    smtp.authMethod = getEnv('ATOLL_SMTP_AUTH_METHOD') || 'PLAIN'
+    smtp.localName = getEnv('ATOLL_SMTP_LOCAL_NAME') || ''
+    settings.smtp = smtp
+
+    const meta = settings.meta || {}
+    meta.senderName = getEnv('ATOLL_SMTP_SENDER_NAME') || 'Atoll Chat'
+    meta.senderAddress = getEnv('ATOLL_SMTP_SENDER_ADDRESS') || 'noreply@atoll.chat'
+    settings.meta = meta
 
     app.save(settings)
+    try {
+      if (typeof app.reloadSettings === 'function') {
+        app.reloadSettings()
+      }
+    } catch (_err) {
+      // Ignore if reloadSettings fails
+    }
   }
 
   /**
@@ -83,7 +88,7 @@ onBootstrap((e) => {
    * 2. PB_ADMIN_EMAIL
    * 3. First superuser email from PocketBase `_superusers` collection
    *
-   * @param {core.App} app - The PocketBase app instance.
+   * @param {Object} app - The PocketBase app instance.
    * @returns {string|null}
    */
   function getOwnerEmail (app) {
