@@ -175,6 +175,22 @@ migrate((app) => {
     }))
   }
 
+  if (!inviteRequests.fields.getByName('created')) {
+    inviteRequests.fields.add(new AutodateField({
+      name: 'created',
+      onCreate: true,
+      onUpdate: false
+    }))
+  }
+
+  if (!inviteRequests.fields.getByName('updated')) {
+    inviteRequests.fields.add(new AutodateField({
+      name: 'updated',
+      onCreate: true,
+      onUpdate: true
+    }))
+  }
+
   app.save(inviteRequests)
 }, (app) => {
   // Rollback logic

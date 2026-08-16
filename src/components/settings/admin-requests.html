@@ -29,7 +29,7 @@
           // Fetch all pending invite requests (no query limit)
           const list = await pb.collection('invite_requests').getFullList({
             filter: 'status = "pending"',
-            sort: 'created',
+            sort: '-created',
             expand: 'requester'
           }).catch(() => [])
 
