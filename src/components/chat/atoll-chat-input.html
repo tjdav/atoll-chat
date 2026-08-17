@@ -45,6 +45,17 @@
       description="File is too large. Maximum size is 100MB."
       primary-text="Dismiss"
     ></atoll-popup>
+
+    <!-- Media Conversion Error Alert -->
+    <atoll-popup
+      ref="mediaConversionErrorPopup"
+      data-testid="mediaConversionErrorPopup"
+      size="sm"
+      variant="alert"
+      title="Media Conversion Failed"
+      description="This media file could not be converted for web playback."
+      primary-text="Dismiss"
+    ></atoll-popup>
   </div>
 </template>
 
@@ -91,12 +102,28 @@
       let currentMusicMetadata = null
       let currentAlbumArtBlob = null
       let currentAudioWaveformData = null
+      let fileProcessingToken = 0
 
       // File-size alert popup (single Dismiss button)
       const fileTooLargePopup = refs('fileTooLargePopup')
       fileTooLargePopup.addEventListener('atoll-popup-primary', () => {
         fileTooLargePopup.hide()
       }, { signal })
+
+      // Media conversion error popup
+      const mediaConversionErrorPopup = refs('mediaConversionErrorPopup')
+      mediaConversionErrorPopup.addEventListener('atoll-popup-primary', () => {
+        mediaConversionErrorPopup.hide()
+      }, { signal })
+
+      /**
+       * Displays media conversion failure alert modal.
+       */
+      const showConversionError = (title, description) => {
+        mediaConversionErrorPopup.setAttribute('title', title)
+        mediaConversionErrorPopup.setAttribute('description', description)
+        mediaConversionErrorPopup.show()
+      }
 
       /**
        * Revokes the object URL of the thumbnail preview to free up memory.
@@ -112,6 +139,7 @@
        * Resets the entire input UI state and components back to their defaults.
        */
       const resetUI = () => {
+        fileProcessingToken++
         state.isSending = false
         state.isUploading = false
         state.uploadStatus = ''
@@ -278,6 +306,10 @@
           $bus.emit('message:sent', result)
           return result
         } catch (err) {
+          await $storage.deleteRecord('local_messages', localUuid).catch(() => {})
+          await $storage.deleteRecord('local_files', localUuid).catch(() => {})
+          $state.decryptionCache.delete(localUuid)
+          $bus.emit('db:new_local_data', { room_id })
           throw err
         }
       }
@@ -306,6 +338,13 @@
 
         try {
           if (file) {
+            const compatibility = await $media.checkCompatibility(file)
+            if (compatibility.requiresConversion) {
+              $bus.emit('ui:show_toast', { message: 'Cannot send unconverted media format', type: 'warning' })
+              resetUI()
+              return
+            }
+
             state.isUploading = true
             state.progress = 100
 
@@ -409,7 +448,8 @@
         } catch (err) {
           state.isSending = false
           state.isUploading = false
-          alert('Failed to send: ' + err.message)
+          $bus.emit('ui:show_toast', { message: 'Failed to send: ' + err.message, type: 'danger' })
+          resetUI()
         }
       }
 
@@ -432,6 +472,8 @@
           return
         }
 
+        const currentToken = ++fileProcessingToken
+
         // Reject oversized files before any expensive processing (compression, thumbnailing, transcoding)
         if (file.size > 100 * 1024 * 1024) {
           fileTooLargePopup.show()
@@ -449,6 +491,10 @@
 
         // Check format compatibility for web playback across browsers and devices
         const compatibility = await $media.checkCompatibility(file)
+        if (currentToken !== fileProcessingToken) {
+          return
+        }
+
         if (compatibility.requiresConversion) {
           state.uploadStatus = `Converting ${compatibility.category} to web format...`
         }
@@ -464,7 +510,12 @@
             } catch {
               // Proceed with original file on compression failure
             } finally {
-              state.isCompressing = false
+              if (currentToken === fileProcessingToken) {
+                state.isCompressing = false
+              }
+            }
+            if (currentToken !== fileProcessingToken) {
+              return
             }
           }
           state.thumbnailPreviewUrl = URL.createObjectURL(file)
@@ -478,15 +529,33 @@
               quality: 0.8,
               format: 'image/webp'
             })
+            if (currentToken !== fileProcessingToken) {
+              return
+            }
             // Create a new File from the Blob to keep the original name (with new extension)
             const lastDot = file.name.lastIndexOf('.')
             const baseName = lastDot !== -1 ? file.name.substring(0, lastDot) : file.name
             const newName = baseName + '.webp'
             file = new File([compressedBlob], newName, { type: 'image/webp' })
           } catch {
-            // Proceed with original file on compression failure
+            if (currentToken !== fileProcessingToken) {
+              return
+            }
+            if (compatibility.requiresConversion) {
+              resetUI()
+              showConversionError(
+                'Image Conversion Failed',
+                'This image format could not be converted for web display. Please choose a supported image format (such as JPEG, PNG, or WebP).'
+              )
+              return
+            }
           } finally {
-            state.isCompressing = false
+            if (currentToken === fileProcessingToken) {
+              state.isCompressing = false
+            }
+          }
+          if (currentToken !== fileProcessingToken) {
+            return
           }
           state.thumbnailPreviewUrl = URL.createObjectURL(file)
         } else if (file.type.startsWith('video/') || compatibility.category === 'video') {
@@ -497,6 +566,9 @@
           try {
             // Extract thumbnail and duration first
             const result = await $media.extractThumbnail(file)
+            if (currentToken !== fileProcessingToken) {
+              return
+            }
             if (result.thumbnail) {
               state.thumbnailBlob = result.thumbnail
               state.autoExtractedThumbnailBlob = result.thumbnail
@@ -510,6 +582,9 @@
               duration: result.duration,
               maxServerUploadSizeBytes
             })
+            if (currentToken !== fileProcessingToken) {
+              return
+            }
 
             // If non-universal format (.mkv, .mov, .avi, .ts), always force transcoding to MP4 for web playback
             if (compatibility.requiresConversion || evalResult.shouldCompress) {
@@ -520,6 +595,9 @@
                 duration: result.duration,
                 bitrate: evalResult.targetBitrate || undefined,
                 onProgress: (progress, status) => {
+                  if (currentToken !== fileProcessingToken) {
+                    return
+                  }
                   state.progress = progress
                   if (status) {
                     state.uploadStatus = status
@@ -530,13 +608,49 @@
                   }
                 }
               })
+              if (currentToken !== fileProcessingToken) {
+                return
+              }
             } else if (evalResult.useWebRTC) {
               state.uploadStatus = 'Queued for P2P direct transfer (exceeds server limit)'
             }
           } catch {
-            state.uploadStatus = 'Ready to send (original format)'
+            if (currentToken !== fileProcessingToken) {
+              return
+            }
+            if (compatibility.requiresConversion) {
+              resetUI()
+              showConversionError(
+                'Video Conversion Failed',
+                'This video could not be converted for web playback. Please choose a supported format (such as MP4 or WebM).'
+              )
+              return
+            }
+            const maxServerUploadSizeBytes = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
+            if (file.size > maxServerUploadSizeBytes) {
+              const activeRoomId = $state.activeSelectionId
+              const room = await $storage.getRoom(activeRoomId)
+              const participantsCount = room?.participants?.length || 0
+              if (participantsCount > 2) {
+                resetUI()
+                showConversionError(
+                  'Video Conversion Failed',
+                  'This video exceeds the 25MB server limit and could not be compressed for group chat.'
+                )
+                return
+              } else {
+                state.uploadStatus = 'Queued for P2P direct transfer (exceeds server limit)'
+              }
+            } else {
+              state.uploadStatus = 'Ready to send (original format)'
+            }
           } finally {
-            state.isCompressing = false
+            if (currentToken === fileProcessingToken) {
+              state.isCompressing = false
+            }
+          }
+          if (currentToken !== fileProcessingToken) {
+            return
           }
         } else if (file.type.startsWith('audio/') || compatibility.category === 'audio') {
           state.isCompressing = true
@@ -547,30 +661,57 @@
             if (compatibility.requiresConversion) {
               state.uploadStatus = 'Converting audio to web format...'
               file = await $media.convertAudio(file)
+              if (currentToken !== fileProcessingToken) {
+                return
+              }
             }
 
             const result = await $media.extractThumbnail(file)
+            if (currentToken !== fileProcessingToken) {
+              return
+            }
             if (result) {
               currentMusicMetadata = result.metadata
               state.duration = result.duration
               currentAlbumArtBlob = result.albumArt
             }
           } catch {
-            // Proceed with fallback audio handling if metadata fails
+            if (currentToken !== fileProcessingToken) {
+              return
+            }
+            if (compatibility.requiresConversion) {
+              resetUI()
+              showConversionError(
+                'Audio Conversion Failed',
+                'This audio format could not be converted for web playback. Please choose a supported audio format (such as MP3 or M4A).'
+              )
+              return
+            }
           }
 
+          if (currentToken !== fileProcessingToken) {
+            return
+          }
           state.uploadStatus = 'Generating waveform...'
           try {
             currentAudioWaveformData = await $media.generateWaveform(file)
           } catch {
             // Proceed with fallback audio handling if waveform generation fails
           }
+          if (currentToken !== fileProcessingToken) {
+            return
+          }
           state.isCompressing = false
         }
 
+        if (currentToken !== fileProcessingToken) {
+          return
+        }
         state.selectedFile = file
         state.fileName = file.name
-        state.uploadStatus = 'Ready to send'
+        if (!state.uploadStatus || state.uploadStatus.startsWith('Converting') || state.uploadStatus.startsWith('Processing') || state.uploadStatus.startsWith('Compressing') || state.uploadStatus.startsWith('Extracting')) {
+          state.uploadStatus = 'Ready to send'
+        }
       })
 
       $bus.on('ui:mic_clicked', () => {
@@ -582,8 +723,8 @@
         container.appendChild(el)
       })
 
-      $bus.on('ui:send_clicked', () => {
-        sendMessage()
+      $bus.on('ui:send_clicked', async () => {
+        await sendMessage()
       })
 
       $bus.on('ui:voice_ready', (payload) => {

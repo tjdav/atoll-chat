@@ -413,6 +413,14 @@
         }
       })
 
+      observe('title', (val) => {
+        state.title = val
+      })
+
+      observe('description', (val) => {
+        state.description = val
+      })
+
       // Expose public DOM interface methods on component host
       root.show = showModal
       root.hide = hideModal
