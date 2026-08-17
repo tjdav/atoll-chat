@@ -26,7 +26,6 @@ import networkPlugin from './src/plugins/network-plugin.js'
 import markdownPlugin from './src/plugins/markdown-plugin.js'
 import deeplinkPlugin from './src/plugins/deeplink-plugin.js'
 import deeplinkManifestPlugin from './src/plugins/deeplink-manifest-plugin.js'
-import bootstrapScriptPlugin from './src/plugins/bootstrap-script-plugin.js'
 import pkg from './package.json' with { type: 'json' }
 import os from 'os'
 
@@ -137,12 +136,30 @@ export default defineConfig({
     serviceWorkerPlugin({
       name: pkg.name,
       version: pkg.version
-    }),
-    bootstrapScriptPlugin()
+    })
   ],
   output: 'dist',
   pages: 'src/pages',
   components: 'src/components',
+  csp: {
+    enabled: true,
+    externalScripts: true,
+    externalStyles: true,
+    injectMeta: true,
+    hashAlgorithm: 'sha256',
+    directives: {
+      'default-src': ['\'none\''],
+      'script-src': ['\'self\'', '\'wasm-unsafe-eval\'', 'blob:'],
+      'style-src': ['\'self\'', '\'unsafe-inline\''],
+      'img-src': ['\'self\'', 'data:', 'blob:'],
+      'font-src': ['\'self\'', 'data:'],
+      'connect-src': ['\'self\'', 'https:', 'http:', 'ws:', 'wss:'],
+      'worker-src': ['\'self\'', 'blob:'],
+      'frame-ancestors': ['\'none\''],
+      'base-uri': ['\'self\''],
+      'form-action': ['\'self\'']
+    }
+  },
   styles: {
     input: ['src/scss/styles.scss'],
     processors: {
@@ -179,11 +196,28 @@ export default defineConfig({
     {
       pkg: 'altcha',
       path: 'dist/main/altcha.min.js',
-      dest: 'assets/altcha.js'
+      dest: 'assets/altcha.js',
+      inject: {
+        type: 'script',
+        placement: 'body-end',
+        sri: true,
+        attributes: {
+          type: 'module'
+        }
+      }
     },
     {
       src: 'src/assets/register-sw.js',
-      dest: 'assets/register-sw.js'
+      dest: 'assets/register-sw.js',
+      inject: {
+        type: 'script',
+        placement: 'body-end',
+        sri: true,
+        attributes: {
+          type: 'module',
+          defer: ''
+        }
+      }
     },
     {
       pkg: '@ffmpeg/core',

@@ -118,11 +118,11 @@ importers:
         specifier: ^26.1.0
         version: 26.1.2
       coralite:
-        specifier: ^0.45.1
-        version: 0.45.1(@noble/hashes@2.3.0)
+        specifier: ^0.46.0
+        version: 0.46.0(@noble/hashes@2.3.0)
       coralite-scripts:
-        specifier: ^0.45.1
-        version: 0.45.1(@noble/hashes@2.3.0)(supports-color@5.5.0)
+        specifier: ^0.46.0
+        version: 0.46.0(@noble/hashes@2.3.0)(supports-color@5.5.0)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1388,13 +1388,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.45.1:
-    resolution: {integrity: sha512-34T0gFHNivyFgGHOag5f7BvmdgCe+NVbKTFNjhOTYcx1HH+FZFG4AXZrBgRukk+F63SKUpHMIaXRvRKg7C+0VQ==}
+  coralite-scripts@0.46.0:
+    resolution: {integrity: sha512-6ZTtCSjn2POXZYpX9PMIAEeF8dK63rlKRO/Vz2WdiZQuOdx7EHYUuXeTPVeq2oeA9kfsED2nKyc2oelEqLFKRQ==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  coralite@0.45.1:
-    resolution: {integrity: sha512-cf5TuC6J8FTpErnfcJz7mTWtv6yrOnllZuQvZe91BU3PRGSLVMZIenRItFCefdOrKhLS8wVenD84fD3JFELq9Q==}
+  coralite@0.46.0:
+    resolution: {integrity: sha512-x5WAtiF3ZWEs5saILDL2U9q5v1138Fa+8wCMeX2l8JABOsuon15q2xXL0cLpotzEWaptwFiiLmKFpqyxucHSsg==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -4540,11 +4540,11 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.45.1(@noble/hashes@2.3.0)(supports-color@5.5.0):
+  coralite-scripts@0.46.0(@noble/hashes@2.3.0)(supports-color@5.5.0):
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.45.1(@noble/hashes@2.3.0)
+      coralite: 0.46.0(@noble/hashes@2.3.0)
       cross-env: 10.1.0
       express: 5.2.1(supports-color@5.5.0)
       kleur: 4.1.5
@@ -4558,7 +4558,7 @@ snapshots:
       - canvas
       - supports-color
 
-  coralite@0.45.1(@noble/hashes@2.3.0):
+  coralite@0.46.0(@noble/hashes@2.3.0):
     dependencies:
       acorn: 8.18.0
       acorn-walk: 8.3.5
@@ -4570,6 +4570,7 @@ snapshots:
       isomorphic-dompurify: 3.22.0(@noble/hashes@2.3.0)
       kleur: 4.1.5
       p-limit: 7.3.1
+      picomatch: 4.0.5
       postcss: 8.5.26
       postcss-selector-parser: 7.1.5
       serialize-javascript: 7.1.0
