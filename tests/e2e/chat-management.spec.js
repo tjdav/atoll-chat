@@ -234,7 +234,7 @@ test.describe('Chat Management', () => {
       await expect(page.locator('music-list')).toBeVisible({ timeout: 15000 })
     })
 
-    test('Timeline Scroll Restoration', async ({ page }) => {
+    test('Timeline Navigation Starts at Last Message Sent', async ({ page }) => {
       await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
       await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
       await page.locator('[data-testid$="search-result-bob"]').click()
@@ -266,21 +266,9 @@ test.describe('Chat Management', () => {
       await expect(page).toHaveURL(/\/\?view=music$/)
 
       await page.click('button[title="Chats"]')
-      // Wait for chat to reload and scroll to be restored
-      await expect.poll(async () => {
-        const data = await page.evaluate(() => {
-          const state = window.$state
-          return {
-            scrollTop: document.querySelector('atoll-chat-timeline .overflow-auto')?.scrollTop,
-            scrollPositions: state ? state.scrollPositions : undefined,
-            activeSelectionId: state ? state.activeSelectionId : undefined
-          }
-        })
-        console.log('Restored scroll top check:', data.scrollTop, 'Positions:', JSON.stringify(data.scrollPositions), 'Active:', data.activeSelectionId)
-        return data.scrollTop
-      }, {
-        timeout: 10000
-      }).toBeLessThan(400)
+      // Verify that upon returning to chat, timeline starts at the bottom at the last message sent
+      await expect(page.locator('atoll-chat-timeline-row').last()).toBeInViewport({ timeout: 10000 })
+      await expect(page.locator('atoll-chat-timeline-row').last()).toContainText('Persistence message 29')
     })
   })
 })

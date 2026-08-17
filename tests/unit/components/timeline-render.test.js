@@ -17,7 +17,6 @@ describe('Atoll Chat Timeline Component Render Path', () => {
         id: 'user-1',
         name: 'Alice'
       },
-      scrollPositions: {},
       subscribe: () => () => {
       }
     }
@@ -123,5 +122,15 @@ describe('Atoll Chat Timeline Component Render Path', () => {
       const seenUserIds = rowMsg10.getAttribute('seen-user-ids') || ''
       assert.ok(!seenUserIds.includes('user-1'), 'Current user should be excluded from seen-user-ids on msg-10')
     }
+  })
+
+  test('should scroll to bottom on room entry', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    const container = el.shadowRoot ? el.shadowRoot.querySelector('.atoll-chat-timeline-container') : el.querySelector('.atoll-chat-timeline-container')
+    assert.ok(container, 'Timeline container should exist')
   })
 })

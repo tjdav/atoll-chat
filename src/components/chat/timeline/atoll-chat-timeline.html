@@ -51,29 +51,6 @@
         }
       }
 
-      const saveScrollPosition = (idOrEvent) => {
-        if ($state.isJumpingToMessage) {
-          return
-        }
-  
-        const room_id = typeof idOrEvent === 'string' ? idOrEvent : $state.activeSelectionId
-        if (!room_id || typeof room_id !== 'string' || container.clientHeight === 0 || container.scrollHeight <= container.clientHeight) {
-          return
-        }
-
-        if (!$state.scrollPositions) {
-          $state.scrollPositions = {}
-        }
-
-        const isNearBottom = container.clientHeight > 0 && (container.scrollHeight - container.clientHeight > 100) && (container.scrollHeight - container.scrollTop - container.clientHeight < 50)
-        const pos = isNearBottom ? -1 : container.scrollTop
-  
-        // Only save if it's the current room OR if we are explicitly told which room to save for
-        if (typeof idOrEvent === 'string' || room_id === $state.activeSelectionId) {
-          $state.scrollPositions[room_id] = pos
-        }
-      }
-
       /**
        * Checks scroll position and fetches older message batches when scrolling near top.
        *
@@ -115,7 +92,6 @@
       }
 
       container.addEventListener('scroll', $func.debounce(() => {
-        saveScrollPosition()
         checkScrollPagination()
       }, 100), { signal })
 
@@ -753,7 +729,6 @@
           await updateAllSeenIndicators(participants, seenByMessageId)
 
           if (isNewRoom) {
-            const savedPos = $state.scrollPositions?.[room_id]
             if ($state.isJumpingToMessage) {
               // Skip scroll restoration if we are jumping to a specific message
               isRestorePending = false
@@ -788,21 +763,6 @@
                 }
                 requestAnimationFrame(scrollAndCleanup)
               }
-            } else if (savedPos !== undefined && savedPos !== -1) {
-              isRestorePending = true
-              const restore = () => {
-                if (room_id !== $state.activeSelectionId) {
-                  isRestorePending = false
-                  return
-                }
-                if (container.clientHeight > 0) {
-                  container.scrollTop = savedPos
-                  isRestorePending = false
-                } else {
-                  requestAnimationFrame(restore)
-                }
-              }
-              requestAnimationFrame(restore)
             } else {
               requestAnimationFrame(() => scrollToBottom())
               // Extra safety for media that might load instantly from cache
@@ -836,25 +796,15 @@
 
       let prevSelectionId = $state.activeSelectionId
       $state.subscribe('activeSelectionId', (val) => {
-        if (prevSelectionId && prevSelectionId !== val) {
-          saveScrollPosition(prevSelectionId)
-        }
         prevSelectionId = val
         ephemeralMessages = []
         debouncedRender()
       })
       let prevSelectionType = $state.activeSelectionType
       $state.subscribe('activeSelectionType', (val) => {
-        if (prevSelectionType === 'chats' && val !== 'chats') {
-          saveScrollPosition()
-        }
         prevSelectionType = val
         debouncedRender()
       })
-
-      if (signal) {
-        signal.addEventListener('abort', () => saveScrollPosition())
-      }
 
       $bus.on('db:new_local_data', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
@@ -945,6 +895,12 @@
         scrollToBottom(smooth)
       })
 
+      $bus.on('room:select', (payload) => {
+        if (payload && payload.room_id === $state.activeSelectionId && !$state.isJumpingToMessage) {
+          scrollToBottom(true)
+        }
+      })
+
       $bus.on('message:scroll_to', async (payload) => {
         if (!payload) {
           $state.isJumpingToMessage = false
@@ -986,15 +942,8 @@
             block: 'center'
           })
 
-          // Update saved scroll position after the smooth scroll finishes or settles
           setTimeout(() => {
             $state.isJumpingToMessage = false
-            const isNearBottom = container.clientHeight > 0 && (container.scrollHeight - container.scrollTop - container.clientHeight < 50)
-            const pos = isNearBottom ? -1 : container.scrollTop
-            if (!$state.scrollPositions) {
-              $state.scrollPositions = {}
-            }
-            $state.scrollPositions[$state.activeSelectionId] = pos
           }, 400)
         } else {
           $state.isJumpingToMessage = false
