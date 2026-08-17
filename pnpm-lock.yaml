@@ -121,11 +121,11 @@ importers:
         specifier: ^26.1.0
         version: 26.1.2
       coralite:
-        specifier: ^0.46.0
-        version: 0.46.0(@noble/hashes@2.3.0)
+        specifier: ^0.46.1
+        version: 0.46.1(@noble/hashes@2.3.0)
       coralite-scripts:
-        specifier: ^0.46.0
-        version: 0.46.0(@noble/hashes@2.3.0)(supports-color@5.5.0)
+        specifier: ^0.46.1
+        version: 0.46.1(@noble/hashes@2.3.0)(supports-color@5.5.0)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1391,13 +1391,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.46.0:
-    resolution: {integrity: sha512-6ZTtCSjn2POXZYpX9PMIAEeF8dK63rlKRO/Vz2WdiZQuOdx7EHYUuXeTPVeq2oeA9kfsED2nKyc2oelEqLFKRQ==}
+  coralite-scripts@0.46.1:
+    resolution: {integrity: sha512-K5UcpqjAA+SR6MSsszhuWZ4OkGaCyzek4vfbpYX5iSIURW+jzU7hRItCQRWnY+O9LhZltbBf/zdnMITDLlhY4Q==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  coralite@0.46.0:
-    resolution: {integrity: sha512-x5WAtiF3ZWEs5saILDL2U9q5v1138Fa+8wCMeX2l8JABOsuon15q2xXL0cLpotzEWaptwFiiLmKFpqyxucHSsg==}
+  coralite@0.46.1:
+    resolution: {integrity: sha512-d632UtLgHjmkvKSZyHpAqwqOoqCScn/kSmr/zJoJ49uzPlV7LDBQJa6HNxFjo4ikTQ72QpvpCL2Tz7ltBRU/6A==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -3868,7 +3868,7 @@ snapshots:
       '@ionic/utils-stream': 3.1.6(supports-color@5.5.0)
       '@ionic/utils-terminal': 2.3.4(supports-color@5.5.0)
       cross-spawn: 7.0.6
-      debug: 4.3.4(supports-color@5.5.0)
+      debug: 4.4.3(supports-color@5.5.0)
       tslib: 2.6.2
     transitivePeerDependencies:
       - supports-color
@@ -4546,11 +4546,11 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.46.0(@noble/hashes@2.3.0)(supports-color@5.5.0):
+  coralite-scripts@0.46.1(@noble/hashes@2.3.0)(supports-color@5.5.0):
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.46.0(@noble/hashes@2.3.0)
+      coralite: 0.46.1(@noble/hashes@2.3.0)
       cross-env: 10.1.0
       express: 5.2.1(supports-color@5.5.0)
       kleur: 4.1.5
@@ -4564,7 +4564,7 @@ snapshots:
       - canvas
       - supports-color
 
-  coralite@0.46.0(@noble/hashes@2.3.0):
+  coralite@0.46.1(@noble/hashes@2.3.0):
     dependencies:
       acorn: 8.18.0
       acorn-walk: 8.3.5
