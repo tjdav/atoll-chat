@@ -12,7 +12,7 @@
           <!-- Active Call Sub-View -->
           <div class="active-view h-100 position-relative {{ activeClass }}">
             <div ref="fullScreenVideoContainer" class="h-100 w-100">
-              <!-- video-grid will be moved here by syncVideoGrid -->
+              <video-grid ref="videoGrid"></video-grid>
             </div>
             
             <!-- Control Bar Sub-View -->
@@ -27,11 +27,6 @@
   <!-- PiP Window -->
   <div class="{{ pipClass }}">
     <pip-video ref="pipVideo"></pip-video>
-  </div>
-
-  <!-- Persistent Video Grid Source (to prevent re-mounting) -->
-  <div class="d-none" ref="videoGridSource">
-    <video-grid ref="videoGrid"></video-grid>
   </div>
 </template>
 
@@ -90,10 +85,13 @@
        */
       const getElementRef = (name) => {
         const direct = refs(name)
-        if (direct) {
+        if (direct && document.body.contains(direct)) {
           return direct
         }
-        return modalEl.querySelector(`[ref="${name}"]`) || modalEl.querySelector(`[ref$="${name}"]`)
+        return (modalEl && (modalEl.querySelector(`[ref="${name}"]`) || modalEl.querySelector(`[ref$="${name}"]`))) ||
+               document.querySelector(`[ref="${name}"]`) ||
+               document.querySelector(`[ref$="${name}"]`) ||
+               direct
       }
 
       /**
@@ -103,25 +101,18 @@
       const syncVideoGrid = () => {
         const videoGrid = getElementRef('videoGrid')
         const pipVideo = getElementRef('pipVideo')
-        if (!videoGrid) {
+        const fullScreenContainer = getElementRef('fullScreenVideoContainer')
+        if (!videoGrid || !fullScreenContainer) {
           return
         }
 
         if (state.isPipMode && pipVideo) {
           const container = pipVideo.shadowRoot ? pipVideo.shadowRoot.querySelector('[ref$="container"]') : pipVideo.querySelector('[ref$="container"]')
-          if (container) {
+          if (container && videoGrid.parentElement !== container) {
             container.appendChild(videoGrid)
           }
-        } else if (state.callStatus === 'active') {
-          const container = getElementRef('fullScreenVideoContainer')
-          if (container) {
-            container.appendChild(videoGrid)
-          }
-        } else {
-          const source = getElementRef('videoGridSource')
-          if (source) {
-            source.appendChild(videoGrid)
-          }
+        } else if (videoGrid.parentElement !== fullScreenContainer) {
+          fullScreenContainer.appendChild(videoGrid)
         }
 
         $bus.emit('video-grid:sync')

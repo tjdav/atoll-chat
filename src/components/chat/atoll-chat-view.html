@@ -560,6 +560,7 @@
   
           await $webrtc.initiateCall($state.activeCallRoomId, localStream)
         } catch (err) {
+          console.error('[atoll-call] initiateCall failed:', err)
           if (localStream) {
             try {
               localStream.getTracks().forEach(t => t.stop())

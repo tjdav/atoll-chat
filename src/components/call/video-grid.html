@@ -108,9 +108,9 @@
           username: me.username || 'you',
           avatar: me.avatar,
           isLocal: true,
-          isMuted: !$state.isAudioEnabled,
+          isMuted: $state.isAudioEnabled !== undefined ? !$state.isAudioEnabled : false,
           isSpeaking: Boolean($state.isLocalSpeaking),
-          isVideoEnabled: Boolean($state.isVideoEnabled)
+          isVideoEnabled: $state.isVideoEnabled !== undefined ? Boolean($state.isVideoEnabled) : true
         }
         list.push(meObj)
 
