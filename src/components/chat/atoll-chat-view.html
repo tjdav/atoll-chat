@@ -578,10 +578,16 @@
         }
       }
 
-      refs('btnAudioCall').addEventListener('click', () => initiateCall(false).catch(() => {
-      }), { signal })
-      refs('btnVideoCall').addEventListener('click', () => initiateCall(true).catch(() => {
-      }), { signal })
+      refs('btnAudioCall').addEventListener('click', () => {
+        initiateCall(false).catch(err => {
+          console.error('[atoll-chat-view] Audio call initiation failed:', err)
+        })
+      }, { signal })
+      refs('btnVideoCall').addEventListener('click', () => {
+        initiateCall(true).catch(err => {
+          console.error('[atoll-chat-view] Video call initiation failed:', err)
+        })
+      }, { signal })
     }
   })
 </script>
