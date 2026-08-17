@@ -8,6 +8,7 @@
       <span ref="statusText" class="x-small me-1" style="color: var(--atoll-chat-sent-status-color, #595959) !important;" data-testid="status-text"></span>
       <atoll-icon ref="statusIcon" name="check-circle" size="xs" color="var(--atoll-chat-sent-status-color)"></atoll-icon>
     </div>
+    <div ref="bottomSentinel" style="height: 1px; width: 100%; pointer-events: none; opacity: 0;"></div>
   </div>
 </template>
 
@@ -27,13 +28,14 @@
       const statusContainer = refs('statusContainer')
       const statusText = refs('statusText')
       const statusIcon = refs('statusIcon')
+      const bottomSentinel = refs('bottomSentinel')
 
       let last_room_id = null
       let lastView = null
       let seenTimeout = null
       let lastRenderedMessageId = null
       let forceScrollToBottom = false
-      let isRestorePending = false
+      let shouldAutoScroll = true
       let ephemeralMessages = []
       let storedMessagesCache = []
       let isFetchingOlder = false
@@ -91,7 +93,22 @@
         }
       }
 
+      /**
+       * Evaluates container distance from bottom and updates auto-scroll state.
+       *
+       * @returns {void}
+       */
+      const updateAutoScrollState = () => {
+        const dist = container.scrollHeight - container.scrollTop - container.clientHeight
+        if (dist < 150 || container.scrollHeight <= container.clientHeight) {
+          shouldAutoScroll = true
+        } else {
+          shouldAutoScroll = false
+        }
+      }
+
       container.addEventListener('scroll', $func.debounce(() => {
+        updateAutoScrollState()
         checkScrollPagination()
       }, 100), { signal })
 
@@ -250,6 +267,47 @@
 
       const intersectionObserver = createObserver()
 
+      /**
+       * Instantiates an IntersectionObserver for the bottom sentinel element with environment fallback.
+       *
+       * @returns {IntersectionObserver|Object} Observer instance or mock fallback.
+       */
+      const createBottomObserver = () => {
+        if (typeof IntersectionObserver === 'undefined') {
+          return {
+            observe: () => {
+            },
+            unobserve: () => {
+            },
+            disconnect: () => {
+            }
+          }
+        }
+  
+        return new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              shouldAutoScroll = true
+            } else {
+              updateAutoScrollState()
+            }
+          })
+        }, {
+          root: container,
+          threshold: 0.1
+        })
+      }
+
+      const bottomObserver = createBottomObserver()
+      if (bottomSentinel) {
+        bottomObserver.observe(bottomSentinel)
+      }
+
+      signal.addEventListener('abort', () => {
+        intersectionObserver.disconnect()
+        bottomObserver.disconnect()
+      })
+
       let currentRenderId = 0
       const renderTimeline = async (opts = {}) => {
         const room_id = $state.activeSelectionId
@@ -268,8 +326,14 @@
           lastRenderedMessageId = null
           container.innerHTML = ''
           intersectionObserver.disconnect()
+          bottomObserver.disconnect()
           renderedRows.clear()
           hasMoreOlder = true
+          shouldAutoScroll = true
+          if (bottomSentinel) {
+            container.appendChild(bottomSentinel)
+            bottomObserver.observe(bottomSentinel)
+          }
         }
 
         try {
@@ -660,6 +724,10 @@
             }
             lastRenderedMessageId = message.id || message.local_uuid
           })
+
+          const distBeforeAppend = container.scrollHeight - container.scrollTop - container.clientHeight
+          const wasNearBottom = shouldAutoScroll || container.scrollHeight <= container.clientHeight || distBeforeAppend < 150
+
           container.appendChild(fragment)
 
           // Update and re-append global status indicator
@@ -669,10 +737,13 @@
             statusText.textContent = lastMessage.status === 'pending' ? 'Sending...' : 'Sent'
             statusIcon.setAttribute('name', lastMessage.status === 'pending' ? 'clock' : 'check')
   
-            // Always move to end, making sure it is the absolute last element
             container.appendChild(statusContainer)
           } else {
             statusContainer.classList.add('d-none')
+          }
+
+          if (bottomSentinel) {
+            container.appendChild(bottomSentinel)
           }
 
           // sort messages chronologically if we added something new and it is NOT a new room
@@ -764,20 +835,18 @@
                 requestAnimationFrame(scrollAndCleanup)
               }
             } else {
+              shouldAutoScroll = true
               requestAnimationFrame(() => scrollToBottom())
               // Extra safety for media that might load instantly from cache
               setTimeout(() => scrollToBottom(), 100)
             }
-          } else if (forceScrollToBottom) {
-            scrollToBottom(true)
+          } else if (forceScrollToBottom || wasNearBottom) {
+            shouldAutoScroll = true
             forceScrollToBottom = false
-          } else if (!isRestorePending && messagesToRender.length > 0) {
-            // New messages arrived, smooth scroll if we are already near bottom
-            const isNearBottom = container.scrollHeight > container.clientHeight &&
-                                 container.scrollHeight - container.scrollTop - container.clientHeight < 100
-            if (isNearBottom) {
-              scrollToBottom(true)
-            }
+            scrollToBottom(true)
+            requestAnimationFrame(() => scrollToBottom(true))
+            setTimeout(() => scrollToBottom(true), 50)
+            setTimeout(() => scrollToBottom(true), 150)
           }
         } catch (err) {
           throw err
@@ -788,8 +857,8 @@
       debouncedRender()
 
       $bus.on('ui:media_loaded', () => {
-        const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 250
-        if (isNearBottom) {
+        const dist = container.scrollHeight - container.scrollTop - container.clientHeight
+        if (shouldAutoScroll || dist < 350) {
           requestAnimationFrame(() => scrollToBottom(true))
         }
       })
@@ -824,6 +893,7 @@
 
           if (payload.message && payload.message.sender_id === $state.currentUser?.id && payload.message.status === 'pending') {
             forceScrollToBottom = true
+            shouldAutoScroll = true
           }
 
           if (payload.message && ['call_offer', 'call_answer', 'call_end'].includes(payload.message.type)) {

@@ -170,6 +170,75 @@ test.describe('Messaging Features', () => {
       await expect(rows.nth(2)).toHaveAttribute('is-first-in-block', 'false')
       await expect(rows.nth(2)).toHaveAttribute('is-last-in-block', 'true')
     })
+
+    test('auto-scroll on incoming message when at bottom vs position preservation when scrolled up', async ({ browser, loginCustomPage }) => {
+      test.slow()
+
+      const aliceContext = await browser.newContext()
+      const alicePage = await aliceContext.newPage()
+      await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
+
+      const bobContext = await browser.newContext()
+      const bobPage = await bobContext.newPage()
+      await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
+
+      // Alice creates room with Bob
+      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
+      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
+      await alicePage.locator('[data-testid$="search-result-bob"]').click()
+      await alicePage.locator('[data-testid$="btnCreate"]').click()
+
+      // Fill Alice's timeline with messages
+      const aliceInput = alicePage.locator('textarea[placeholder="Type a message..."]')
+      for (let i = 0; i < 20; i++) {
+        await aliceInput.fill(`Line message ${i}`)
+        await alicePage.keyboard.press('Enter')
+        await alicePage.waitForTimeout(50)
+      }
+
+      // Bob enters the chat room
+      const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: /alice/i }).first()
+      await expect(bobChat).toBeVisible({ timeout: 30000 })
+      await bobChat.click()
+      await expect(bobPage.locator('atoll-chat-view')).toBeVisible()
+
+      // Ensure Alice is at the bottom
+      const timeline = alicePage.locator('atoll-chat-timeline div.overflow-auto').first()
+      await timeline.evaluate(el => el.scrollTop = el.scrollHeight)
+      await alicePage.waitForTimeout(500)
+
+      // Bob sends a multi-line message
+      const bobInput = bobPage.locator('textarea[placeholder="Type a message..."]')
+      await bobInput.fill('Hello from Bob!\nMulti-line incoming content.')
+      await bobPage.keyboard.press('Enter')
+
+      // Alice should automatically auto-scroll to reveal Bob's new message
+      await expect(alicePage.locator('atoll-chat-timeline-row').last()).toContainText('Hello from Bob!')
+      await alicePage.waitForTimeout(1500)
+
+      const scrollTopNearBottom = await timeline.evaluate(el => el.scrollTop)
+      const scrollHeightNearBottom = await timeline.evaluate(el => el.scrollHeight)
+      const clientHeightNearBottom = await timeline.evaluate(el => el.clientHeight)
+      expect(scrollTopNearBottom).toBeGreaterThanOrEqual(scrollHeightNearBottom - clientHeightNearBottom - 80)
+
+      // Alice intentionally scrolls up into message history
+      await timeline.evaluate(el => el.scrollTop = 0)
+      await alicePage.waitForTimeout(1000)
+
+      // Bob sends another message
+      await bobInput.fill('Second message while Alice is reading history')
+      await bobPage.keyboard.press('Enter')
+
+      await expect(alicePage.locator('atoll-chat-timeline-row').last()).toContainText('Second message while Alice')
+      await alicePage.waitForTimeout(1500)
+
+      // Alice's scroll position should remain preserved at the top (scrolled up)
+      const scrollTopScrolledUp = await timeline.evaluate(el => el.scrollTop)
+      expect(scrollTopScrolledUp).toBeLessThan(100)
+
+      await aliceContext.close()
+      await bobContext.close()
+    })
   })
 
   test.describe('Content Rendering', () => {
