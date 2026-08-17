@@ -551,30 +551,74 @@
               waveformInactive: customWaveformInactive,
               attachmentCardBg: customAttachmentCardBg,
               attachmentCardBorder: customAttachmentCardBorder
-            } : (room.custom_theme || null)
+            } : (room?.custom_theme || null)
 
-            const metadata = JSON.stringify({
-              name: room.name,
-              avatar: room.avatar || '',
+            let settingsRecord = null
+            if (pb?.collection) {
+              try {
+                settingsRecord = await pb.collection('room_settings').getFirstListItem(
+                  `room_id="${room_id}" && user_id="${$state.currentUser?.id}"`, { requestKey: null }
+                )
+              } catch {
+              }
+            }
+
+            let nicknames = room?.nicknames || {}
+            let read_receipts = room?.read_receipts !== false
+            if (settingsRecord?.settings?.ciphertext) {
+              try {
+                const decryptedBytes = await $worker.execute('worker:crypto_secretbox_open_easy', {
+                  ciphertext: settingsRecord.settings.ciphertext,
+                  nonce: settingsRecord.settings.nonce,
+                  key: roomKeyB64
+                })
+                if (decryptedBytes) {
+                  const decodedStr = new TextDecoder().decode(decryptedBytes)
+                  const settingsObj = JSON.parse(decodedStr)
+                  if (settingsObj.nicknames) {
+                    nicknames = settingsObj.nicknames
+                  }
+                  if (settingsObj.read_receipts !== undefined) {
+                    read_receipts = settingsObj.read_receipts !== false
+                  }
+                }
+              } catch (decErr) {
+                console.warn('[atoll-theme-selector-modal] Decrypting existing settings failed:', decErr)
+              }
+            }
+
+            const payloadStr = JSON.stringify({
+              nicknames,
+              read_receipts,
               theme: highlightedTheme,
               custom_theme: customThemeObj
             })
 
-            const metadataNonce = await $worker.execute('worker:randombytes_buf', { length: 24 })
-            const encryptedMetadata = await $worker.execute('worker:crypto_secretbox_easy', {
-              message: metadata,
-              nonce: metadataNonce.slice(),
+            const nonceBytes = await $worker.execute('worker:randombytes_buf', { length: 24 })
+            const encryptedBytes = await $worker.execute('worker:crypto_secretbox_easy', {
+              message: payloadStr,
+              nonce: nonceBytes.slice(),
               key: roomKeyB64
             })
 
+            const encryptedPayload = {
+              ciphertext: $crypto.toBase64(encryptedBytes),
+              nonce: $crypto.toBase64(nonceBytes)
+            }
+
             if (pb?.collection) {
-              await pb.collection('rooms').update(room.id, {
-                theme: highlightedTheme,
-                encrypted_metadata: {
-                  ciphertext: $crypto.toBase64(encryptedMetadata),
-                  nonce: $crypto.toBase64(metadataNonce)
-                }
-              })
+              if (settingsRecord) {
+                await pb.collection('room_settings').update(settingsRecord.id, {
+                  settings: encryptedPayload
+                })
+              } else {
+                await pb.collection('room_settings').create({
+                  room_id,
+                  user_id: $state.currentUser?.id,
+                  is_muted: false,
+                  settings: encryptedPayload
+                })
+              }
             }
 
             room.theme = highlightedTheme
@@ -583,7 +627,8 @@
 
             $bus.emit('room:theme_updated', {
               room_id,
-              theme: highlightedTheme
+              theme: highlightedTheme,
+              custom_theme: customThemeObj
             })
             $bus.emit('room:member_updated', { room_id })
             $bus.emit('db:new_local_room', { room_id })

@@ -180,7 +180,9 @@
           }
 
           let read_receipts = true
-          // Decrypt existing settings to preserve read_receipts
+          let theme = room?.theme || 'classic'
+          let custom_theme = room?.custom_theme || null
+          // Decrypt existing settings to preserve read_receipts, theme, and custom_theme
           if (settingsRecord && settingsRecord.settings && settingsRecord.settings.ciphertext) {
             try {
               const decryptedBytes = await $worker.execute('worker:crypto_secretbox_open_easy', {
@@ -191,15 +193,23 @@
               if (decryptedBytes) {
                 const settingsObj = JSON.parse(new TextDecoder().decode(decryptedBytes))
                 read_receipts = settingsObj.read_receipts !== false
+                if (settingsObj.theme !== undefined) {
+                  theme = settingsObj.theme || 'classic'
+                }
+                if (settingsObj.custom_theme !== undefined) {
+                  custom_theme = settingsObj.custom_theme || null
+                }
               }
             } catch (decErr) {
-              console.warn('[atoll-nicknames-modal] Preserving read receipts read failed:', decErr)
+              console.warn('[atoll-nicknames-modal] Preserving existing settings read failed:', decErr)
             }
           }
 
           const payloadStr = JSON.stringify({
             nicknames: tempNicknames,
-            read_receipts
+            read_receipts,
+            theme,
+            custom_theme
           })
 
           const nonceBytes = await $worker.execute('worker:randombytes_buf', { length: 24 })

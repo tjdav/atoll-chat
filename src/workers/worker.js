@@ -1485,7 +1485,26 @@ async function updateRoomSettings (rpcId, record) {
           const settingsObj = JSON.parse(decodedStr)
           room.nicknames = settingsObj.nicknames || {}
           room.read_receipts = settingsObj.read_receipts !== false
+          if (settingsObj.theme !== undefined) {
+            room.theme = settingsObj.theme || 'classic'
+          }
+          if (settingsObj.custom_theme !== undefined) {
+            room.custom_theme = settingsObj.custom_theme || null
+          }
           await workerBridge.request('saveRoom', [room])
+
+          self.postMessage({
+            type: 'room:theme_updated',
+            payload: {
+              room_id,
+              theme: room.theme,
+              custom_theme: room.custom_theme
+            }
+          })
+          self.postMessage({
+            type: 'room:member_updated',
+            payload: { room_id }
+          })
         }
       } catch (e) {
         console.error('[worker] Failed to decrypt settings in live update:', e)
@@ -1587,6 +1606,8 @@ async function fetchRoomSettingsAndStates (room_id, unwrappedKeyBuffer) {
   let is_muted = false
   let nicknames = {}
   let read_receipts = true
+  let theme = 'classic'
+  let custom_theme = null
   const memberStates = {} // maps user_id -> { last_read_message_id, is_typing }
 
   const currentUserId = self.currentUserKeys?.id
@@ -1616,6 +1637,8 @@ async function fetchRoomSettingsAndStates (room_id, unwrappedKeyBuffer) {
                 const settingsObj = JSON.parse(decodedStr)
                 nicknames = settingsObj.nicknames || {}
                 read_receipts = settingsObj.read_receipts !== false
+                theme = settingsObj.theme || 'classic'
+                custom_theme = settingsObj.custom_theme || null
               }
             } catch (e) {
               console.error('[worker] Failed to decrypt settings:', e)
@@ -1652,6 +1675,8 @@ async function fetchRoomSettingsAndStates (room_id, unwrappedKeyBuffer) {
     is_muted,
     nicknames,
     read_receipts,
+    theme,
+    custom_theme,
     memberStates
   }
 }
@@ -1859,8 +1884,8 @@ async function processNewRoomKey (rpcId, payload) {
         weight: typeof roomRecord?.weight === 'number' ? roomRecord.weight : 0,
         name: roomMetadata?.name || '',
         avatar: roomMetadata?.avatar || '',
-        theme: roomMetadata?.theme || 'classic',
-        custom_theme: roomMetadata?.custom_theme || null,
+        theme: settingsAndStates.theme || 'classic',
+        custom_theme: settingsAndStates.custom_theme || null,
         participants: participants || [],
         user_role: role,
         key_history: [],
@@ -1876,17 +1901,13 @@ async function processNewRoomKey (rpcId, payload) {
       }
       room.read_receipts = settingsAndStates.read_receipts
       room.nicknames = settingsAndStates.nicknames
+      room.theme = settingsAndStates.theme || 'classic'
+      room.custom_theme = settingsAndStates.custom_theme || null
       if (roomMetadata?.name) {
         room.name = roomMetadata.name
       }
       if (roomMetadata?.avatar) {
         room.avatar = roomMetadata.avatar
-      }
-      if (roomMetadata?.theme !== undefined) {
-        room.theme = roomMetadata.theme
-      }
-      if (roomMetadata?.custom_theme !== undefined) {
-        room.custom_theme = roomMetadata.custom_theme
       }
       if (participants && participants.length > 0) {
         const existingParticipants = room.participants || []

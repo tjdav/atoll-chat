@@ -20,9 +20,13 @@ describe('Atoll Theme Selector Modal Component', () => {
   const emittedEvents = []
   let savedRoom = null
   let pocketbaseUpdated = false
+  let _pocketbaseCreated = false
+  let updatedCollection = null
+  let lastEncryptedMessage = null
 
   const sharedState = {
-    activeSelectionId: 'room_123'
+    activeSelectionId: 'room_123',
+    currentUser: { id: 'user_123' }
   }
 
   const sharedEventBus = {
@@ -46,7 +50,7 @@ describe('Atoll Theme Selector Modal Component', () => {
 
   const sharedStorage = {
     $storage: {
-      async getRoom (id) {
+      async getRoom (_id) {
         return mockRoom
       },
       async saveRoom (room) {
@@ -58,11 +62,30 @@ describe('Atoll Theme Selector Modal Component', () => {
   const sharedPocketbase = {
     pb: {
       collection (name) {
+        updatedCollection = name
         return {
+          async getFirstListItem (_filter, _options) {
+            return {
+              id: 'settings_123',
+              room_id: 'room_123',
+              user_id: 'user_123',
+              settings: {
+                ciphertext: 'mock_ciph',
+                nonce: 'mock_nonce'
+              }
+            }
+          },
           async update (id, data) {
             pocketbaseUpdated = true
             return {
               id,
+              ...data
+            }
+          },
+          async create (data) {
+            _pocketbaseCreated = true
+            return {
+              id: 'settings_123',
               ...data
             }
           }
@@ -78,7 +101,15 @@ describe('Atoll Theme Selector Modal Component', () => {
           return new Uint8Array(24)
         }
         if (cmd === 'worker:crypto_secretbox_easy') {
+          lastEncryptedMessage = params.message
           return new Uint8Array([1, 2, 3, 4])
+        }
+        if (cmd === 'worker:crypto_secretbox_open_easy') {
+          const jsonStr = JSON.stringify({
+            nicknames: { user_456: 'Alice' },
+            read_receipts: false
+          })
+          return new TextEncoder().encode(jsonStr)
         }
         return null
       }
@@ -87,7 +118,7 @@ describe('Atoll Theme Selector Modal Component', () => {
 
   const sharedUtils = {
     $crypto: {
-      toBase64 (arr) {
+      toBase64 (_arr) {
         return 'mock_b64'
       }
     }
@@ -98,6 +129,9 @@ describe('Atoll Theme Selector Modal Component', () => {
     emittedEvents.length = 0
     savedRoom = null
     pocketbaseUpdated = false
+    _pocketbaseCreated = false
+    updatedCollection = null
+    lastEncryptedMessage = null
 
     mockRoom.id = 'room_123'
     mockRoom.name = 'Test Room'
@@ -195,7 +229,7 @@ describe('Atoll Theme Selector Modal Component', () => {
     assert.match(toast.payload.message, /valid image file/i)
   })
 
-  test('should save theme on popup primary button press', async () => {
+  test('should save theme in encrypted room_settings on popup primary button press', async () => {
     const el = document.createElement(tagName)
     document.body.appendChild(el)
     await new Promise(resolve => setTimeout(resolve, 50))
@@ -209,9 +243,16 @@ describe('Atoll Theme Selector Modal Component', () => {
     popup.dispatchEvent(new CustomEvent('atoll-popup-primary', { bubbles: true }))
     await new Promise(resolve => setTimeout(resolve, 100))
 
-    assert.equal(pocketbaseUpdated, true, 'PocketBase collection should be updated')
+    assert.equal(updatedCollection, 'room_settings', 'Should update room_settings collection in PocketBase')
+    assert.equal(pocketbaseUpdated, true, 'room_settings record should be updated in PocketBase')
     assert.ok(savedRoom, 'Room should be saved in local storage')
     assert.equal(savedRoom.theme, 'classic', 'Room theme should be updated')
+
+    assert.ok(lastEncryptedMessage, 'An encrypted message payload should be sent to worker')
+    const parsedPayload = JSON.parse(lastEncryptedMessage)
+    assert.equal(parsedPayload.theme, 'classic')
+    assert.deepEqual(parsedPayload.nicknames, { user_456: 'Alice' }, 'Should preserve existing nicknames')
+    assert.equal(parsedPayload.read_receipts, false, 'Should preserve existing read_receipts')
 
     const updatedToast = emittedEvents.find(e => e.event === 'ui:show_toast' && e.payload?.type === 'success')
     assert.ok(updatedToast, 'success toast should be emitted')

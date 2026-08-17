@@ -531,9 +531,43 @@
             throw new Error('Room secret key not found locally')
           }
 
+          let theme = room?.theme || 'classic'
+          let custom_theme = room?.custom_theme || null
+
+          let settingsRecord = null
+          try {
+            settingsRecord = await pb.collection('room_settings').getFirstListItem(
+              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
+            )
+          } catch (e) {
+          }
+
+          if (settingsRecord?.settings?.ciphertext) {
+            try {
+              const decryptedBytes = await $worker.execute('worker:crypto_secretbox_open_easy', {
+                ciphertext: settingsRecord.settings.ciphertext,
+                nonce: settingsRecord.settings.nonce,
+                key: roomKeyB64
+              })
+              if (decryptedBytes) {
+                const settingsObj = JSON.parse(new TextDecoder().decode(decryptedBytes))
+                if (settingsObj.theme !== undefined) {
+                  theme = settingsObj.theme || 'classic'
+                }
+                if (settingsObj.custom_theme !== undefined) {
+                  custom_theme = settingsObj.custom_theme || null
+                }
+              }
+            } catch (decErr) {
+              console.warn('[sidebar] Preserving theme settings read failed:', decErr)
+            }
+          }
+
           const payloadStr = JSON.stringify({
             nicknames: state.nicknames,
-            read_receipts: state.readReceipts
+            read_receipts: state.readReceipts,
+            theme,
+            custom_theme
           })
 
           const nonceBytes = await $worker.execute('worker:randombytes_buf', { length: 24 })
@@ -546,14 +580,6 @@
           const encryptedPayload = {
             ciphertext: $crypto.toBase64(encryptedBytes),
             nonce: $crypto.toBase64(nonceBytes)
-          }
-
-          let settingsRecord = null
-          try {
-            settingsRecord = await pb.collection('room_settings').getFirstListItem(
-              `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
-            )
-          } catch (e) {
           }
 
           if (settingsRecord) {
