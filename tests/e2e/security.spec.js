@@ -338,28 +338,34 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     expect(response).not.toBeNull()
     const headers = response.headers()
 
-    expect(headers['content-security-policy']).toBeDefined()
-    const csp = headers['content-security-policy']
-    expect(csp).toContain("default-src 'none'")
-    expect(csp).toContain("script-src 'self' 'wasm-unsafe-eval' blob:")
-    expect(csp).not.toContain("script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'")
-    expect(csp).toContain("worker-src 'self' blob:")
-    expect(csp).toContain("style-src 'self' 'unsafe-inline'")
-    expect(csp).toContain("img-src 'self' data: blob: https:")
-    expect(csp).toContain("media-src 'self' blob: data: mediabunny-blob: https:")
-    expect(csp).toContain("connect-src 'self' blob: data: https: http: ws: wss:")
-    expect(csp).toContain("manifest-src 'self'")
-    expect(csp).toContain("child-src 'self' blob:")
-    expect(csp).toContain("font-src 'self' data:")
-    expect(csp).toContain("base-uri 'self'")
-    expect(csp).toContain("form-action 'self'")
-    expect(csp).toContain("frame-ancestors 'none'")
+    // Regression check: PocketBase server should not send duplicate CSP header
+    expect(headers['content-security-policy']).toBeUndefined()
 
-    // Safety Headers
+    // Server Transport & Safety Headers
     expect(headers['x-frame-options']).toBe('DENY')
     expect(headers['x-content-type-options']).toBe('nosniff')
     expect(headers['referrer-policy']).toBe('strict-origin-when-cross-origin')
     expect(headers['strict-transport-security']).toBe('max-age=31536000; includeSubDomains')
+    expect(headers['cross-origin-opener-policy']).toBe('same-origin')
+    expect(headers['cross-origin-embedder-policy']).toBe('credentialless')
+
+    // Document-level CSP injected into <meta> at build time by Coralite
+    await page.goto('/')
+    const metaCsp = await page.locator('meta[http-equiv="Content-Security-Policy"]').getAttribute('content')
+    expect(metaCsp).not.toBeNull()
+    expect(metaCsp).toContain("default-src 'none'")
+    expect(metaCsp).toContain("script-src 'self' 'wasm-unsafe-eval' blob:")
+    expect(metaCsp).not.toContain("script-src 'self' 'unsafe-inline'")
+    expect(metaCsp).toContain("worker-src 'self' blob:")
+    expect(metaCsp).toContain("style-src 'self' 'unsafe-inline'")
+    expect(metaCsp).toContain("img-src 'self' data: blob: https:")
+    expect(metaCsp).toContain("media-src 'self' blob: data: mediabunny-blob: https:")
+    expect(metaCsp).toContain("connect-src 'self' blob: data: https: http: ws: wss:")
+    expect(metaCsp).toContain("manifest-src 'self'")
+    expect(metaCsp).toContain("child-src 'self' blob:")
+    expect(metaCsp).toContain("font-src 'self' data:")
+    expect(metaCsp).toContain("base-uri 'self'")
+    expect(metaCsp).toContain("form-action 'self'")
   })
 
   test('should enforce server-side rate-limiting on recovery attempts and reject after 5 requests', async ({ page }, testInfo) => {

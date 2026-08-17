@@ -266,22 +266,7 @@ export function createServer () {
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-test-id')
     res.setHeader('Access-Control-Allow-Credentials', 'true')
 
-    // Content Security Policy and Safety Headers (simulating Goja security_headers.pb.js)
-    res.setHeader('Content-Security-Policy',
-      "default-src 'none'; " +
-      "script-src 'self' 'wasm-unsafe-eval' blob:; " +
-      "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: blob: https:; " +
-      "font-src 'self' data:; " +
-      "connect-src 'self' blob: data: https: http: ws: wss:; " +
-      "media-src 'self' blob: data: mediabunny-blob: https:; " +
-      "manifest-src 'self'; " +
-      "worker-src 'self' blob:; " +
-      "child-src 'self' blob:; " +
-      "frame-ancestors 'none'; " +
-      "base-uri 'self'; " +
-      "form-action 'self';"
-    )
+    // Safety Headers (simulating Goja security_headers.pb.js)
     res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
     res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless')
     res.setHeader('Access-Control-Allow-Origin', origin || '*')
