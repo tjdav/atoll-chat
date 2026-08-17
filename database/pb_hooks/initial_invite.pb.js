@@ -180,21 +180,32 @@ onBootstrap((e) => {
     }
   }
 
-  // Resolve App URL
-  let appUrl = getEnv('ATOLL_APP_URL')
-  if (!appUrl) {
-    try {
-      const metaRecords = e.app.findRecordsByFilter('app_metadata', '1=1', '', 1, 0)
-      if (metaRecords.length > 0 && metaRecords[0].get('app_url')) {
-        appUrl = metaRecords[0].get('app_url')
-      }
-    } catch {
-      // Fallback if app_metadata not initialized yet
+  // Resolve App URL with fallback cascade
+  const settings = e.app.settings()
+  const meta = settings.meta || {}
+
+  let appUrl = getEnv('ATOLL_APP_URL') || getEnv('APP_URL')
+  const pbMetaAppUrl = (meta.appURL || meta.appUrl || '').trim()
+
+  let dbAppUrl = ''
+  try {
+    const metaRecords = e.app.findRecordsByFilter('app_metadata', '1=1', '', 1, 0)
+    if (metaRecords.length > 0 && metaRecords[0].get('app_url')) {
+      dbAppUrl = (metaRecords[0].get('app_url') || '').trim()
     }
+  } catch {
+    // Fallback if app_metadata not initialized yet
   }
 
   if (!appUrl) {
-    appUrl = 'http://localhost:3000'
+    // Prefer configured non-localhost URLs over initial migration defaults
+    if (pbMetaAppUrl && !pbMetaAppUrl.includes('localhost') && !pbMetaAppUrl.includes('127.0.0.1')) {
+      appUrl = pbMetaAppUrl
+    } else if (dbAppUrl && !dbAppUrl.includes('localhost') && !dbAppUrl.includes('127.0.0.1')) {
+      appUrl = dbAppUrl
+    } else {
+      appUrl = pbMetaAppUrl || dbAppUrl || 'http://localhost:3000'
+    }
   }
   appUrl = appUrl.replace(/\/+$/, '')
 
@@ -208,8 +219,6 @@ onBootstrap((e) => {
   }
 
   // Resolve sender metadata from PocketBase settings
-  const settings = e.app.settings()
-  const meta = settings.meta || {}
   const senderName = meta.senderName || 'Atoll Chat'
   const senderAddress = meta.senderAddress || 'noreply@atoll.chat'
 
@@ -225,10 +234,11 @@ onBootstrap((e) => {
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background-color: #f4f6f8; margin: 0; padding: 20px; color: #111111; }
         .container { max-width: 560px; margin: 0 auto; background: #ffffff; padding: 32px; border-radius: 12px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
         .header { text-align: center; margin-bottom: 24px; }
-        .header h1 { font-size: 24px; margin: 0; color: #0d6efd; }
+        .header h1 { font-size: 24px; margin: 0; color: #111111; font-weight: 700; }
         .content { font-size: 16px; line-height: 1.6; margin-bottom: 28px; }
         .button-wrapper { text-align: center; margin: 32px 0; }
-        .btn { display: inline-block; background-color: #0d6efd; color: #ffffff !important; font-weight: 600; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px; }
+        .btn { display: inline-block; background-color: #06C755; color: #ffffff !important; font-weight: 600; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px; }
+        .btn:hover { background-color: #05b34c; }
         .code-box { background-color: #f8f9fa; border: 1px solid #e9ecef; border-radius: 6px; padding: 12px 16px; font-family: monospace; font-size: 18px; text-align: center; letter-spacing: 2px; font-weight: bold; color: #212529; margin: 16px 0; }
         .footer { font-size: 13px; color: #6c757d; border-top: 1px solid #e9ecef; padding-top: 16px; margin-top: 24px; text-align: center; }
       </style>
@@ -242,7 +252,7 @@ onBootstrap((e) => {
           <p>Welcome to Atoll Chat!</p>
           <p>No user accounts exist on this instance yet. You have been designated as the owner. Use the button below to complete your initial owner account registration:</p>
           <div class="button-wrapper">
-            <a href="${setupUrl}" class="btn" target="_blank">Complete Owner Setup</a>
+            <a href="${setupUrl}" class="btn" target="_blank" style="display: inline-block; background-color: #06C755; color: #ffffff !important; font-weight: 600; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px;">Complete Owner Setup</a>
           </div>
           <p>Alternatively, you can manually enter your single-use invitation code during registration:</p>
           <div class="code-box">${inviteCode}</div>

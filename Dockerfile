@@ -60,6 +60,7 @@ RUN --mount=type=cache,target=/var/cache/pocketbase \
 
 # Expose run-time environment variables for deployment
 ENV PORT=8080
+ENV ATOLL_APP_URL=""
 ENV ATOLL_TURN_SHARED_SECRET="REPLACE_THIS_WITH_A_LONG_RANDOM_STRING"
 ENV ATOLL_TURN_EXPIRES_IN_SECONDS=3600
 ENV ATOLL_ALLOWED_ORIGINS="*"

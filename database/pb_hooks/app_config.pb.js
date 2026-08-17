@@ -15,7 +15,8 @@ onBootstrap((e) => {
     }
 
     if (typeof $os !== 'undefined' && typeof $os.getenv === 'function') {
-      return $os.getenv(key)
+      const val = $os.getenv(key)
+      return val !== '' ? val : undefined
     }
 
     return undefined
@@ -27,9 +28,10 @@ onBootstrap((e) => {
   if (meta) {
     meta.appName = 'Atoll Chat'
 
-    const appUrl = getEnv('ATOLL_APP_URL')
+    const appUrl = getEnv('ATOLL_APP_URL') || getEnv('APP_URL')
     if (appUrl) {
       meta.appURL = appUrl
+      meta.appUrl = appUrl
     }
 
     e.app.save(settings)

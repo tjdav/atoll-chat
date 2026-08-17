@@ -229,6 +229,308 @@ test('PocketBase Hooks - smtp_config.pb.js and initial_invite.pb.js', async (t) 
     assert.equal(sentMessage.to[0].address, 'owner@atoll.test')
     assert.equal(sentMessage.subject, 'Atoll Chat - Complete Initial Owner Setup')
     assert.ok(sentMessage.html.includes('https://atoll.test/?invite=INV-TEST-TEST'))
+    assert.ok(sentMessage.html.includes('background-color: #06C755'), 'CTA button should use primary color #06C755')
+    assert.ok(sentMessage.html.includes('style="display: inline-block; background-color: #06C755; color: #ffffff !important; font-weight: 600; text-decoration: none; padding: 14px 28px; border-radius: 8px; font-size: 16px;"'), 'CTA button link should have inline style attribute')
+  })
+
+  await t.test('initial_invite.pb.js URL resolution cascade and primary button styling', () => {
+    let bootstrapFn = null
+    let sentMessage = null
+
+    class MockMailerMessage {
+      constructor (opts) {
+        this.html = opts.html
+        this.text = opts.text
+      }
+    }
+
+    const mockApp = {
+      findAllCollections: () => [{ name: 'users' }, { name: 'invitations' }],
+      countRecords: () => 0,
+      findRecordsByFilter: (coll) => {
+        if (coll === 'invitations') {
+          return [{ get: (k) => (k === 'code' ? 'INV-URL1-TEST' : null) }]
+        }
+        if (coll === 'app_metadata') {
+          return [{ get: (k) => (k === 'app_url' ? 'https://db-app-url.com' : null) }]
+        }
+        return []
+      },
+      settings: () => ({
+        smtp: {
+          enabled: true,
+          host: 'smtp.test.com'
+        },
+        meta: {
+          senderName: 'Atoll',
+          senderAddress: 'noreply@atoll.chat',
+          appURL: 'https://pb-settings-domain.com'
+        }
+      }),
+      save: () => {
+      },
+      reloadSettings: () => {
+      },
+      newMailClient: () => ({
+        send: (msg) => {
+          sentMessage = msg
+        }
+      }),
+      logger: () => ({
+        info: () => {
+        },
+        warn: () => {
+        },
+        error: () => {
+        }
+      })
+    }
+
+    const inviteHookCode = fs.readFileSync(path.resolve(process.cwd(), 'database/pb_hooks/initial_invite.pb.js'), 'utf8')
+
+    // ATOLL_APP_URL takes highest priority
+    const context1 = vm.createContext({
+      onBootstrap: (fn) => {
+        bootstrapFn = fn
+      },
+      $os: {
+        getenv: (k) => {
+          if (k === 'ATOLL_APP_URL') {
+            return 'https://env-atoll-app-url.com'
+          }
+          if (k === 'ATOLL_OWNER_EMAIL') {
+            return 'owner@test.com'
+          }
+          return ''
+        }
+      },
+      $security: { randomStringWithAlphabet: () => 'TEST' },
+      MailerMessage: MockMailerMessage,
+      console
+    })
+    vm.runInContext(inviteHookCode, context1)
+    bootstrapFn({
+      next: () => {
+      },
+      app: mockApp
+    })
+
+    assert.ok(sentMessage.html.includes('https://env-atoll-app-url.com/?invite=INV-URL1-TEST'))
+
+    // APP_URL takes priority when ATOLL_APP_URL is absent
+    const context2 = vm.createContext({
+      onBootstrap: (fn) => {
+        bootstrapFn = fn
+      },
+      $os: {
+        getenv: (k) => {
+          if (k === 'APP_URL') {
+            return 'https://env-app-url.com'
+          }
+          if (k === 'ATOLL_OWNER_EMAIL') {
+            return 'owner@test.com'
+          }
+          return ''
+        }
+      },
+      $security: { randomStringWithAlphabet: () => 'TEST' },
+      MailerMessage: MockMailerMessage,
+      console
+    })
+    vm.runInContext(inviteHookCode, context2)
+    bootstrapFn({
+      next: () => {
+      },
+      app: mockApp
+    })
+
+    assert.ok(sentMessage.html.includes('https://env-app-url.com/?invite=INV-URL1-TEST'))
+
+    // Fallback to PocketBase settings non-localhost URL when env is absent
+    const context3 = vm.createContext({
+      onBootstrap: (fn) => {
+        bootstrapFn = fn
+      },
+      $os: {
+        getenv: (k) => (k === 'ATOLL_OWNER_EMAIL' ? 'owner@test.com' : '')
+      },
+      $security: { randomStringWithAlphabet: () => 'TEST' },
+      MailerMessage: MockMailerMessage,
+      console
+    })
+    vm.runInContext(inviteHookCode, context3)
+    bootstrapFn({
+      next: () => {
+      },
+      app: mockApp
+    })
+
+    assert.ok(sentMessage.html.includes('https://pb-settings-domain.com/?invite=INV-URL1-TEST'))
+
+    // Prefer non-localhost DB record over localhost PocketBase settings
+    const mockAppLocalhostSettings = {
+      ...mockApp,
+      settings: () => ({
+        smtp: {
+          enabled: true,
+          host: 'smtp.test.com'
+        },
+        meta: { appURL: 'http://localhost:8090' }
+      })
+    }
+    const context4 = vm.createContext({
+      onBootstrap: (fn) => {
+        bootstrapFn = fn
+      },
+      $os: { getenv: (k) => (k === 'ATOLL_OWNER_EMAIL' ? 'owner@test.com' : '') },
+      $security: { randomStringWithAlphabet: () => 'TEST' },
+      MailerMessage: MockMailerMessage,
+      console
+    })
+    vm.runInContext(inviteHookCode, context4)
+    bootstrapFn({
+      next: () => {
+      },
+      app: mockAppLocalhostSettings
+    })
+
+    assert.ok(sentMessage.html.includes('https://db-app-url.com/?invite=INV-URL1-TEST'))
+  })
+
+  await t.test('app_metadata.pb.js auto-syncs app_url and app_name from non-empty env vars on existing record', () => {
+    let bootstrapFn = null
+    let savedRecord = null
+
+    const existingRecordData = {
+      instance_id: 'inst-123',
+      app_url: 'http://localhost:3000',
+      app_name: 'Old App Name'
+    }
+
+    const mockRecord = {
+      get: (k) => existingRecordData[k],
+      set: (k, v) => {
+        existingRecordData[k] = v
+      }
+    }
+
+    const mockApp = {
+      findAllCollections: () => [{ name: 'app_metadata' }],
+      findRecordsByFilter: (coll) => {
+        if (coll === 'app_metadata') {
+          return [mockRecord]
+        }
+        return []
+      },
+      save: (rec) => {
+        savedRecord = rec
+      },
+      logger: () => ({
+        info: () => {
+        },
+        warn: () => {
+        },
+        error: () => {
+        }
+      })
+    }
+
+    const mockOs = {
+      getenv: (k) => {
+        if (k === 'ATOLL_APP_URL') {
+          return 'https://new-domain.com'
+        }
+        if (k === 'ATOLL_APP_NAME') {
+          return 'New App Name'
+        }
+        return ''
+      }
+    }
+
+    const context = vm.createContext({
+      onBootstrap: (fn) => {
+        bootstrapFn = fn
+      },
+      $os: mockOs,
+      console
+    })
+
+    const metadataHookCode = fs.readFileSync(path.resolve(process.cwd(), 'database/pb_hooks/app_metadata.pb.js'), 'utf8')
+    vm.runInContext(metadataHookCode, context)
+
+    bootstrapFn({
+      next: () => {
+      },
+      app: mockApp
+    })
+
+    assert.ok(savedRecord, 'Record should be saved when env vars differ from DB record')
+    assert.equal(existingRecordData.app_url, 'https://new-domain.com')
+    assert.equal(existingRecordData.app_name, 'New App Name')
+  })
+
+  await t.test('app_metadata.pb.js ignores empty environment variables to preserve existing database values', () => {
+    let bootstrapFn = null
+    let savedRecord = null
+
+    const existingRecordData = {
+      instance_id: 'inst-123',
+      app_url: 'https://my-custom-app.com',
+      app_name: 'My Custom App'
+    }
+
+    const mockRecord = {
+      get: (k) => existingRecordData[k],
+      set: (k, v) => {
+        existingRecordData[k] = v
+      }
+    }
+
+    const mockApp = {
+      findAllCollections: () => [{ name: 'app_metadata' }],
+      findRecordsByFilter: (coll) => {
+        if (coll === 'app_metadata') {
+          return [mockRecord]
+        }
+        return []
+      },
+      save: (rec) => {
+        savedRecord = rec
+      },
+      logger: () => ({
+        info: () => {
+        },
+        warn: () => {
+        },
+        error: () => {
+        }
+      })
+    }
+
+    const mockOs = {
+      getenv: () => ''
+    }
+
+    const context = vm.createContext({
+      onBootstrap: (fn) => {
+        bootstrapFn = fn
+      },
+      $os: mockOs,
+      console
+    })
+
+    const metadataHookCode = fs.readFileSync(path.resolve(process.cwd(), 'database/pb_hooks/app_metadata.pb.js'), 'utf8')
+    vm.runInContext(metadataHookCode, context)
+
+    bootstrapFn({
+      next: () => {
+      },
+      app: mockApp
+    })
+
+    assert.equal(savedRecord, null, 'Record should NOT be saved when env vars are empty')
+    assert.equal(existingRecordData.app_url, 'https://my-custom-app.com')
+    assert.equal(existingRecordData.app_name, 'My Custom App')
   })
 
   await t.test('initial_invite.pb.js skips sending email if user count is greater than 0', () => {

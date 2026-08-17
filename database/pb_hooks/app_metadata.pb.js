@@ -23,7 +23,8 @@ onBootstrap((e) => {
     }
 
     if (typeof $os !== 'undefined' && typeof $os.getenv === 'function') {
-      return $os.getenv(key)
+      const val = $os.getenv(key)
+      return val !== '' ? val : undefined
     }
 
     return undefined
@@ -84,6 +85,28 @@ onBootstrap((e) => {
       throw err
     }
   } else {
-    e.app.logger().info('[app_metadata.pb.js] App metadata already exists. Active instance_id:', 'instance_id', records[0].get('instance_id'))
+    const currentRecord = records[0]
+    const envAppUrl = getEnv('ATOLL_APP_URL') || getEnv('APP_URL')
+    const envAppName = getEnv('ATOLL_APP_NAME')
+    let needsSave = false
+
+    if (envAppUrl && currentRecord.get('app_url') !== envAppUrl) {
+      currentRecord.set('app_url', envAppUrl)
+      needsSave = true
+    }
+    if (envAppName && currentRecord.get('app_name') !== envAppName) {
+      currentRecord.set('app_name', envAppName)
+      needsSave = true
+    }
+
+    if (needsSave) {
+      try {
+        e.app.save(currentRecord)
+        e.app.logger().info('[app_metadata.pb.js] Synchronized app metadata from environment variables')
+      } catch (err) {
+        e.app.logger().error('[app_metadata.pb.js] Failed to update app metadata:', 'error', err.message || String(err))
+      }
+    }
+    e.app.logger().info('[app_metadata.pb.js] App metadata active instance_id:', 'instance_id', currentRecord.get('instance_id'))
   }
 })
