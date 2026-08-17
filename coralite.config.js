@@ -151,10 +151,13 @@ export default defineConfig({
       'default-src': ['\'none\''],
       'script-src': ['\'self\'', '\'wasm-unsafe-eval\'', 'blob:'],
       'style-src': ['\'self\'', '\'unsafe-inline\''],
-      'img-src': ['\'self\'', 'data:', 'blob:'],
+      'img-src': ['\'self\'', 'data:', 'blob:', 'https:'],
       'font-src': ['\'self\'', 'data:'],
-      'connect-src': ['\'self\'', 'https:', 'http:', 'ws:', 'wss:'],
+      'connect-src': ['\'self\'', 'blob:', 'data:', 'https:', 'http:', 'ws:', 'wss:'],
+      'media-src': ['\'self\'', 'blob:', 'data:', 'mediabunny-blob:', 'https:'],
+      'manifest-src': ['\'self\''],
       'worker-src': ['\'self\'', 'blob:'],
+      'child-src': ['\'self\'', 'blob:'],
       'frame-ancestors': ['\'none\''],
       'base-uri': ['\'self\''],
       'form-action': ['\'self\'']
@@ -263,6 +266,21 @@ export default defineConfig({
       pkg: '@ffmpeg/ffmpeg',
       path: 'dist/esm/worker.js',
       dest: 'assets/ffmpeg/worker.js'
+    },
+    {
+      pkg: '@huggingface/transformers',
+      path: 'dist/transformers.web.min.js',
+      dest: 'assets/transformers.web.min.js'
+    },
+    {
+      pkg: '@huggingface/transformers',
+      path: 'dist/ort-wasm-simd-threaded.jsep.wasm',
+      dest: 'assets/ort-wasm-simd-threaded.jsep.wasm'
+    },
+    {
+      pkg: '@huggingface/transformers',
+      path: 'dist/ort-wasm-simd-threaded.jsep.mjs',
+      dest: 'assets/ort-wasm-simd-threaded.jsep.mjs'
     }
   ],
   testing: {

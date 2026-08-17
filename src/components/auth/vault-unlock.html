@@ -230,8 +230,9 @@
           const isValid = input.checkValidity()
           if (!isValid) {
             input.setAttribute('invalid', 'true')
-            const innerInput = input.querySelector('input')
-            const validationMsg = innerInput ? innerInput.validationMessage : 'Invalid value.'
+            const existingMsg = input.getAttribute('error-message') || input.errorMessage
+            const innerInput = input.shadowRoot ? input.shadowRoot.querySelector('input') : input.querySelector('input')
+            const validationMsg = existingMsg || (innerInput ? innerInput.validationMessage : 'Invalid value.')
             input.setAttribute('error-message', validationMsg)
           } else {
             input.removeAttribute('invalid')
@@ -636,10 +637,12 @@
           if (err.status && err.status >= 500) {
             showGlobalAlert(err.message || 'Recovery failed.')
           } else {
+            const errorMsg = err.message || 'Recovery failed.'
+            recoveryCodeInput.errorMessage = errorMsg
+            recoveryCodeInput.invalid = true
+            recoveryCodeInput.setCustomValidity(errorMsg)
+            recoveryCodeInput.setAttribute('error-message', errorMsg)
             recoveryCodeInput.setAttribute('invalid', 'true')
-            recoveryCodeInput.setAttribute('error-message', err.message || 'Recovery failed.')
-            recoveryCodeInput.setCustomValidity(err.message || 'Recovery failed.')
-            updateValidationFeedback(recoveryForm)
             recoveryForm.classList.add('was-validated')
           }
           updateStatus('')

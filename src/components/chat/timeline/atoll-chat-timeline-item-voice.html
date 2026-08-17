@@ -71,6 +71,7 @@
             state.isLoaded = true
             lastLoadedUuid = state.localUuid
             loading.classList.add('d-none')
+            loadTranscription()
             return
           }
         }
@@ -382,8 +383,11 @@
           if (!cached) {
             throw new Error('Audio not loaded')
           }
-          const response = await fetch(cached.blobUrl)
-          const audioBlob = await response.blob()
+          let audioBlob = cached.blob
+          if (!audioBlob) {
+            const response = await fetch(cached.blobUrl)
+            audioBlob = await response.blob()
+          }
 
           if ($transcription) {
             await $transcription.transcribe(audioBlob, state.localUuid)
@@ -553,6 +557,7 @@
               return
             }
             renderAudio(objectUrl, message?.waveform_data, message?.duration || 0)
+            return
           }
 
           // async lifecycle: fetch from DB and decrypt
@@ -607,6 +612,7 @@
             objectUrl = URL.createObjectURL(blob)
             $state.decryptionCache.set(state.localUuid, {
               blobUrl: objectUrl,
+              blob,
               mimeType: message.mime_type || 'audio/webm'
             })
           }

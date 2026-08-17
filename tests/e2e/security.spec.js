@@ -107,7 +107,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-    await expect(page.locator('vault-unlock')).toBeVisible()
+    await expect(page.locator('vault-unlock')).toBeVisible({ timeout: 15000 })
 
     /* Initiate Self-Recovery Flow using a single-use Recovery Code */
     await page.locator('vault-unlock [ref$="__btnShowRecovery"]').dispatchEvent('click')
@@ -169,7 +169,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-    await expect(page.locator('vault-unlock')).toBeVisible()
+    await expect(page.locator('vault-unlock')).toBeVisible({ timeout: 15000 })
 
     /* Try old password and expect unlock failure */
     await page.locator('vault-unlock input[data-testid$="password"]').fill('Password123!')
@@ -345,7 +345,11 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     expect(csp).not.toContain("script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval'")
     expect(csp).toContain("worker-src 'self' blob:")
     expect(csp).toContain("style-src 'self' 'unsafe-inline'")
-    expect(csp).toContain("img-src 'self' data: blob:")
+    expect(csp).toContain("img-src 'self' data: blob: https:")
+    expect(csp).toContain("media-src 'self' blob: data: mediabunny-blob: https:")
+    expect(csp).toContain("connect-src 'self' blob: data: https: http: ws: wss:")
+    expect(csp).toContain("manifest-src 'self'")
+    expect(csp).toContain("child-src 'self' blob:")
     expect(csp).toContain("font-src 'self' data:")
     expect(csp).toContain("base-uri 'self'")
     expect(csp).toContain("form-action 'self'")

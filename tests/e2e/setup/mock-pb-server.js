@@ -271,14 +271,19 @@ export function createServer () {
       "default-src 'none'; " +
       "script-src 'self' 'wasm-unsafe-eval' blob:; " +
       "style-src 'self' 'unsafe-inline'; " +
-      "img-src 'self' data: blob:; " +
+      "img-src 'self' data: blob: https:; " +
       "font-src 'self' data:; " +
-      "connect-src 'self' ws: wss:; " +
+      "connect-src 'self' blob: data: https: http: ws: wss:; " +
+      "media-src 'self' blob: data: mediabunny-blob: https:; " +
+      "manifest-src 'self'; " +
       "worker-src 'self' blob:; " +
+      "child-src 'self' blob:; " +
       "frame-ancestors 'none'; " +
       "base-uri 'self'; " +
       "form-action 'self';"
     )
+    res.setHeader('Cross-Origin-Opener-Policy', 'same-origin')
+    res.setHeader('Cross-Origin-Embedder-Policy', 'credentialless')
     res.setHeader('Access-Control-Allow-Origin', origin || '*')
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With, X-Worker-Token, x-test-id')

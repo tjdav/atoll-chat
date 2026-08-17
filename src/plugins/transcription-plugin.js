@@ -71,9 +71,10 @@ export default definePlugin({
           }
         }
 
-        worker.onerror = () => {
+        worker.onerror = (e) => {
+          console.error('[transcription-plugin] Worker error:', e.message || e, e.filename, e.lineno)
           for (const [id, { reject }] of pendingRequests) {
-            reject(new Error('Transcription worker crashed'))
+            reject(new Error(`Transcription worker crashed: ${e.message || e}`))
             pendingRequests.delete(id)
           }
         }

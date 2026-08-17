@@ -3,7 +3,10 @@
  * using Useful Sensors' Moonshine model via @huggingface/transformers.
  */
 
-import { pipeline, env } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@3.3.3'
+import { pipeline, env } from '/assets/transformers.web.min.js'
+
+// Configure local WASM paths for ONNX Runtime helper assets
+env.backends.onnx.wasm.wasmPaths = '/assets/'
 
 // Disable local model loading to fetch from Hugging Face Hub and cache weights in IndexedDB/Cache Storage
 env.allowLocalModels = false

@@ -222,6 +222,7 @@
 
           $state.decryptionCache.set(localUuid, {
             blobUrl,
+            blob: params.file,
             thumbnailBlobUrl,
             mimeType: params.mime_type || params.file.type,
             duration: params.duration

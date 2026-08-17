@@ -206,6 +206,13 @@
       root.reportValidity = () => input.reportValidity()
       root.setCustomValidity = (msg) => {
         input.setCustomValidity(msg)
+        if (msg) {
+          state.invalid = true
+          state.errorMessage = msg
+        } else {
+          state.invalid = false
+          state.errorMessage = ''
+        }
       }
       Object.defineProperty(root, 'validity', {
         get () {
@@ -284,6 +291,14 @@
         if (input.value !== (newVal || '')) {
           input.value = newVal || ''
         }
+      })
+
+      observe('invalid', (val) => {
+        state.invalid = Boolean(val)
+      })
+
+      observe('errorMessage', (val) => {
+        state.errorMessage = val || ''
       })
     }
   })

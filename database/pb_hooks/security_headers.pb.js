@@ -6,16 +6,19 @@ routerUse((e) => {
         "default-src 'none'; " +
         "script-src 'self' 'wasm-unsafe-eval' blob:; " +
         "style-src 'self' 'unsafe-inline'; " +
-        "img-src 'self' data: blob:; " +
+        "img-src 'self' data: blob: https:; " +
         "font-src 'self' data:; " +
-        "connect-src 'self' https: http: ws: wss:; " +
+        "connect-src 'self' blob: data: https: http: ws: wss:; " +
+        "media-src 'self' blob: data: mediabunny-blob: https:; " +
+        "manifest-src 'self'; " +
         "worker-src 'self' blob:; " +
+        "child-src 'self' blob:; " +
         "frame-ancestors 'none'; " +
         "base-uri 'self'; " +
         "form-action 'self';"
       )
       h.set('Cross-Origin-Opener-Policy', 'same-origin')
-      h.set('Cross-Origin-Embedder-Policy', 'require-corp')
+      h.set('Cross-Origin-Embedder-Policy', 'credentialless')
       h.set('Access-Control-Allow-Origin', '*')
       h.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
       h.set('Access-Control-Allow-Headers', '*')
