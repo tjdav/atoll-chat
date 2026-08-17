@@ -269,8 +269,8 @@ export default defineConfig({
     },
     {
       pkg: '@huggingface/transformers',
-      path: 'dist/transformers.min.js',
-      dest: 'assets/transformers.min.js'
+      path: 'dist/transformers.web.min.js',
+      dest: 'assets/transformers.web.min.js'
     },
     {
       pkg: '@huggingface/transformers',
@@ -281,6 +281,11 @@ export default defineConfig({
       pkg: '@huggingface/transformers',
       path: 'dist/ort-wasm-simd-threaded.jsep.mjs',
       dest: 'assets/ort-wasm-simd-threaded.jsep.mjs'
+    },
+    {
+      pkg: 'emoji-picker-element-data',
+      path: 'en/emojibase/data.json',
+      dest: 'assets/emoji-en.json'
     }
   ],
   testing: {

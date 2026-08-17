@@ -16,10 +16,24 @@ if (window.ResizeObserver === undefined) {
   }
 }
 
+if (!window.indexedDB) {
+  window.indexedDB = {
+    open () {
+      return {
+        addEventListener () {
+        },
+        removeEventListener () {
+        }
+      }
+    }
+  }
+}
+
 const props = [
   'window',
   'document',
   'customElements',
+  'Element',
   'HTMLElement',
   'HTMLImageElement',
   'Image',
@@ -40,7 +54,8 @@ const props = [
   'DOMParser',
   'Blob',
   'FileReader',
-  'ResizeObserver'
+  'ResizeObserver',
+  'indexedDB'
 ]
 
 for (const prop of props) {
