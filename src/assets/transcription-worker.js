@@ -3,7 +3,7 @@
  * using Useful Sensors' Moonshine model via @huggingface/transformers.
  */
 
-import { pipeline, env } from '/assets/transformers.web.min.js'
+import { pipeline, env } from '/assets/transformers.min.js'
 
 // Configure local WASM paths for ONNX Runtime helper assets
 env.backends.onnx.wasm.wasmPaths = '/assets/'

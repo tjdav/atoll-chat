@@ -269,8 +269,8 @@ export default defineConfig({
     },
     {
       pkg: '@huggingface/transformers',
-      path: 'dist/transformers.web.min.js',
-      dest: 'assets/transformers.web.min.js'
+      path: 'dist/transformers.min.js',
+      dest: 'assets/transformers.min.js'
     },
     {
       pkg: '@huggingface/transformers',
