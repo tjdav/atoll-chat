@@ -48,7 +48,7 @@ FROM alpine:3.24
 # Set PocketBase version
 ARG PB_VERSION=0.39.10
 
-RUN apk add --no-cache ca-certificates unzip wget libc6-compat nodejs npm && npm install -g pnpm
+RUN apk add --no-cache ca-certificates unzip wget curl libc6-compat nodejs npm && npm install -g pnpm
 
 # Download and extract PocketBase using BuildKit cache mount
 RUN --mount=type=cache,target=/var/cache/pocketbase \

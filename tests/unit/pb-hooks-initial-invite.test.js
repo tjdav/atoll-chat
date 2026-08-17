@@ -4,7 +4,73 @@ import fs from 'node:fs'
 import path from 'node:path'
 import vm from 'node:vm'
 
-test('PocketBase Hooks - smtp_config.pb.js and initial_invite.pb.js', async (t) => {
+test('PocketBase Hooks - app_config.pb.js, smtp_config.pb.js, and initial_invite.pb.js', async (t) => {
+  await t.test('app_config.pb.js sets meta.appName and meta.appURL without throwing Go host object assignment errors', () => {
+    let bootstrapFn = null
+    let savedSettings = null
+
+    // Mock Go host struct Proxy that throws TypeError on invalid property assignment (like appUrl)
+    const allowedMetaFields = new Set(['appName', 'appURL', 'senderName', 'senderAddress'])
+    const metaTarget = {
+      appName: '',
+      appURL: ''
+    }
+    const mockMetaHostObject = new Proxy(metaTarget, {
+      set (target, prop, value) {
+        if (!allowedMetaFields.has(prop)) {
+          throw new TypeError(`Cannot assign to property ${String(prop)} of a host object`)
+        }
+        target[prop] = value
+        return true
+      }
+    })
+
+    const mockSettings = {
+      meta: mockMetaHostObject
+    }
+
+    const mockApp = {
+      settings: () => mockSettings,
+      save: (settings) => {
+        savedSettings = settings
+      }
+    }
+
+    const mockOs = {
+      getenv: (key) => {
+        if (key === 'ATOLL_APP_URL') {
+          return 'https://chat.example.com'
+        }
+        return ''
+      }
+    }
+
+    const context = vm.createContext({
+      onBootstrap: (fn) => {
+        bootstrapFn = fn
+      },
+      $os: mockOs,
+      console
+    })
+
+    const appConfigHookCode = fs.readFileSync(path.resolve(process.cwd(), 'database/pb_hooks/app_config.pb.js'), 'utf8')
+    vm.runInContext(appConfigHookCode, context)
+
+    assert.equal(typeof bootstrapFn, 'function')
+
+    assert.doesNotThrow(() => {
+      bootstrapFn({
+        next: () => {
+        },
+        app: mockApp
+      })
+    })
+
+    assert.ok(savedSettings, 'e.app.save should have been called')
+    assert.equal(mockMetaHostObject.appName, 'Atoll Chat')
+    assert.equal(mockMetaHostObject.appURL, 'https://chat.example.com')
+  })
+
   await t.test('smtp_config.pb.js properly sets SMTP settings on app.settings() and saves', () => {
     let bootstrapFn = null
     let savedSettings = null
