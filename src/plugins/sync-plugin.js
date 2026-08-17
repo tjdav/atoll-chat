@@ -63,6 +63,7 @@ export default function syncPlugin () {
                 try {
                   await performCatchUpSync()
                 } catch (err) {
+                  console.error('[sync] Foreground sync catch-up failed:', err)
                   pluginContext.$bus.emit('ui:show_toast', {
                     message: `Foreground sync catch-up failed: ${err.message || err}`,
                     variant: 'danger'
@@ -121,10 +122,23 @@ export default function syncPlugin () {
                   sort: 'created'
                 })
 
-                // Process messages in parallel
-                await Promise.all(
-                  missedMessages.map((record) => $worker.execute('worker:process_incoming_message', record))
+                // Process messages in parallel with resilient error boundary
+                const messageResults = await Promise.allSettled(
+                  missedMessages.map(async (record) => {
+                    const result = await $worker.execute('worker:process_incoming_message', record)
+                    if (result && result.success === false) {
+                      console.warn('[sync] Dropped invalid/unverified message during catch-up:', record.id, result.error)
+                    }
+                    return result
+                  })
                 )
+
+                for (let i = 0; i < messageResults.length; i++) {
+                  const res = messageResults[i]
+                  if (res.status === 'rejected') {
+                    console.warn('[sync] Dropped invalid/unverified message during catch-up:', missedMessages[i]?.id, res.reason)
+                  }
+                }
 
                 // Notify UI that catch-up is done
                 if (pluginContext.$bus) {
@@ -169,13 +183,12 @@ export default function syncPlugin () {
             // Subscribe to the messages collection
             await pb.collection('messages').subscribe('*', (e) => {
               if (e.action === 'create') {
-                $worker.execute('worker:process_incoming_message', e.record).catch((err) => {
-                  if (pluginContext.$bus) {
-                    pluginContext.$bus.emit('ui:show_toast', {
-                      message: `Failed to process incoming message: ${err.message || err}`,
-                      variant: 'danger'
-                    })
+                $worker.execute('worker:process_incoming_message', e.record).then((result) => {
+                  if (result && result.success === false) {
+                    console.warn('[sync] Dropped invalid/unverified incoming message:', e.record?.id, result.error)
                   }
+                }).catch((err) => {
+                  console.warn('[sync] Failed to process incoming message:', e.record?.id, err)
                 })
               }
             })

@@ -732,6 +732,7 @@ async function handleEvent (event) {
       error: `Unknown task type: ${type}`
     })
   } catch (error) {
+    console.error('[worker] Unhandled error during task processing:', type, error)
     self.postMessage({
       id,
       type,
@@ -1162,6 +1163,19 @@ async function processIncomingMessage (rpcId, record) {
   let decryptedBuffer = null
 
   try {
+    if (!record || typeof record !== 'object') {
+      console.warn('[worker] Skipping message processing: Invalid message record object')
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Invalid message record'
+        }
+      })
+      return
+    }
+
     const {
       id,
       room_id,
@@ -1173,6 +1187,19 @@ async function processIncomingMessage (rpcId, record) {
       local_uuid: localUuid,
       created
     } = record
+
+    if (!payload || typeof payload !== 'object') {
+      console.warn(`[worker] Skipping message processing in room ${room_id}: Invalid message payload object`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Invalid message payload'
+        }
+      })
+      return
+    }
 
     // Anti-duplication: check if local_uuid already exists
     if (localUuid) {
@@ -1200,6 +1227,20 @@ async function processIncomingMessage (rpcId, record) {
 
     const { ciphertext, nonce } = payload
 
+    // Validate signature and public key strings
+    if (typeof signature !== 'string' || !signature.trim()) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Missing or invalid signature string`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Missing or invalid signature string'
+        }
+      })
+      return
+    }
+
     // Fetch Sender Key
     let senderKeys = self.publicKeyCache.get(senderId)
     if (!senderKeys || !senderKeys.public_sign_key) {
@@ -1224,20 +1265,89 @@ async function processIncomingMessage (rpcId, record) {
     }
 
     const publicSignKey = senderKeys.public_sign_key
-    if (!publicSignKey) {
-      throw new Error('Sender public sign key is missing')
+    if (typeof publicSignKey !== 'string' || !publicSignKey.trim()) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Sender public sign key is missing or invalid`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Sender public sign key is missing or invalid'
+        }
+      })
+      return
     }
 
-    // Identity Verification (Ed25519)
-    signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
-    publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
+    // Safe base64 decoding & buffer length checks for Ed25519 signature & public key
+    try {
+      signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
+    } catch (err) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Failed to decode base64 signature`, err)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Failed to decode base64 signature'
+        }
+      })
+      return
+    }
+
+    try {
+      publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
+    } catch (err) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Failed to decode base64 public sign key`, err)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Failed to decode base64 public sign key'
+        }
+      })
+      return
+    }
+
+    if (!signatureBuffer || signatureBuffer.length !== sodium.crypto_sign_BYTES) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Signature length invalid (${signatureBuffer?.length} != ${sodium.crypto_sign_BYTES})`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Signature length invalid'
+        }
+      })
+      return
+    }
+
+    if (!publicSignKeyBuffer || publicSignKeyBuffer.length !== sodium.crypto_sign_PUBLICKEYBYTES) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Public key length invalid (${publicSignKeyBuffer?.length} != ${sodium.crypto_sign_PUBLICKEYBYTES})`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Public key length invalid'
+        }
+      })
+      return
+    }
 
     const validationString = `${room_id}|${epochId}|${previousMsgUuid}|${ciphertext}|${nonce}`
     validationBuffer = new TextEncoder().encode(validationString)
 
-    const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
+    let isValid = false
+    try {
+      isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
+    } catch (err) {
+      console.warn(`[worker] Signature verification threw error for message ${id} in room ${room_id}:`, err)
+      isValid = false
+    }
+
     if (!isValid) {
-      console.warn(`[worker] Skipping message processing in room ${room_id}: Signature forged or invalid`)
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Signature forged or invalid`)
       self.postMessage({
         id: rpcId,
         type: 'worker:process_incoming_message',
@@ -1252,7 +1362,7 @@ async function processIncomingMessage (rpcId, record) {
     // Symmetric Decryption (X25519)
     const room = await workerBridge.request('getRoom', [room_id])
     if (!room) {
-      console.warn(`[worker] Skipping message processing: Local room ${room_id} not found`)
+      console.warn(`[worker] Skipping message processing for message ${id}: Local room ${room_id} not found`)
       self.postMessage({
         id: rpcId,
         type: 'worker:process_incoming_message',
@@ -1265,8 +1375,8 @@ async function processIncomingMessage (rpcId, record) {
     }
 
     const activeEpoch = room.key_history?.find(h => h.epoch_id === epochId)
-    if (!activeEpoch) {
-      console.warn(`[worker] Skipping message processing: Missing cryptographic key for epoch ${epochId} in room ${room_id}`)
+    if (!activeEpoch || typeof activeEpoch.key !== 'string' || !activeEpoch.key.trim()) {
+      console.warn(`[worker] Skipping message processing for message ${id}: Missing or invalid cryptographic key for epoch ${epochId} in room ${room_id}`)
       self.postMessage({
         id: rpcId,
         type: 'worker:process_incoming_message',
@@ -1278,14 +1388,94 @@ async function processIncomingMessage (rpcId, record) {
       return
     }
 
-    ciphertextBuffer = sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL)
-    nonceBuffer = sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL)
-    epochKeyBuffer = sodium.from_base64(activeEpoch.key, sodium.base64_variants.ORIGINAL)
+    if (typeof ciphertext !== 'string' || typeof nonce !== 'string') {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Ciphertext or nonce is not a string`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Ciphertext or nonce is not a string'
+        }
+      })
+      return
+    }
+
+    try {
+      ciphertextBuffer = sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL)
+    } catch (err) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Failed to decode base64 ciphertext`, err)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Failed to decode base64 ciphertext'
+        }
+      })
+      return
+    }
+
+    try {
+      nonceBuffer = sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL)
+    } catch (err) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Failed to decode base64 nonce`, err)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Failed to decode base64 nonce'
+        }
+      })
+      return
+    }
+
+    try {
+      epochKeyBuffer = sodium.from_base64(activeEpoch.key, sodium.base64_variants.ORIGINAL)
+    } catch (err) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Failed to decode base64 epoch key`, err)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Failed to decode base64 epoch key'
+        }
+      })
+      return
+    }
+
+    if (!nonceBuffer || nonceBuffer.length !== sodium.crypto_secretbox_NONCEBYTES) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Nonce length invalid (${nonceBuffer?.length} != ${sodium.crypto_secretbox_NONCEBYTES})`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Nonce length invalid'
+        }
+      })
+      return
+    }
+
+    if (!epochKeyBuffer || epochKeyBuffer.length !== sodium.crypto_secretbox_KEYBYTES) {
+      console.warn(`[worker] Skipping message processing for message ${id} in room ${room_id}: Epoch key length invalid (${epochKeyBuffer?.length} != ${sodium.crypto_secretbox_KEYBYTES})`)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Epoch key length invalid'
+        }
+      })
+      return
+    }
 
     try {
       decryptedBuffer = sodium.crypto_secretbox_open_easy(ciphertextBuffer, nonceBuffer, epochKeyBuffer)
     } catch (err) {
-      console.warn(`[worker] Decryption failed for message in room ${room_id}:`, err)
+      console.warn(`[worker] Decryption failed for message ${id} in room ${room_id}:`, err)
       self.postMessage({
         id: rpcId,
         type: 'worker:process_incoming_message',
@@ -1298,7 +1488,7 @@ async function processIncomingMessage (rpcId, record) {
     }
 
     if (!decryptedBuffer) {
-      console.warn(`[worker] Decryption failed (null result) for message in room ${room_id}`)
+      console.warn(`[worker] Decryption failed (null result) for message ${id} in room ${room_id}`)
       self.postMessage({
         id: rpcId,
         type: 'worker:process_incoming_message',
@@ -1310,8 +1500,23 @@ async function processIncomingMessage (rpcId, record) {
       return
     }
 
-    const decryptedString = new TextDecoder().decode(decryptedBuffer)
-    const decryptedPayload = JSON.parse(decryptedString)
+    let decryptedString = ''
+    let decryptedPayload = null
+    try {
+      decryptedString = new TextDecoder().decode(decryptedBuffer)
+      decryptedPayload = JSON.parse(decryptedString)
+    } catch (err) {
+      console.warn(`[worker] Failed to decode or parse JSON payload for message ${id} in room ${room_id}:`, err)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: 'Failed to decode or parse JSON payload'
+        }
+      })
+      return
+    }
     console.info('[worker] decryptedPayload:', decryptedPayload)
     const { type, content, candidate, candidates, media_types, target_id, timestamp, p2pUuid } = decryptedPayload
 

@@ -18,7 +18,8 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
     currentUser: { id: 'user1' },
     isOnline: true,
     decryptionCache,
-    subscribe: () => () => {}
+    subscribe: () => () => {
+    }
   }
 
   let mediaBehavior = {}
@@ -33,9 +34,15 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
       }
       if (file.name.endsWith('.mkv') || file.name.endsWith('.mov') || file.name.endsWith('.heic') || file.name.endsWith('.wav')) {
         const category = file.name.endsWith('.heic') ? 'image' : file.name.endsWith('.wav') ? 'audio' : 'video'
-        return { requiresConversion: true, category }
+        return {
+          requiresConversion: true,
+          category
+        }
       }
-      return { requiresConversion: false, category: 'none' }
+      return {
+        requiresConversion: false,
+        category: 'none'
+      }
     },
     compressVideo: async (file, options) => {
       if (mediaBehavior.compressVideo) {
@@ -51,15 +58,25 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
         return mediaBehavior.evaluateVideo(file, options)
       }
       if (file.name.includes('oversized') || file.size > (options.maxServerUploadSizeBytes || 26214400)) {
-        return { shouldCompress: true, useWebRTC: false, targetBitrate: 1000000 }
+        return {
+          shouldCompress: true,
+          useWebRTC: false,
+          targetBitrate: 1000000
+        }
       }
-      return { shouldCompress: false, useWebRTC: false }
+      return {
+        shouldCompress: false,
+        useWebRTC: false
+      }
     },
     extractThumbnail: async (file) => {
       if (mediaBehavior.extractThumbnail) {
         return mediaBehavior.extractThumbnail(file)
       }
-      return { thumbnail: new Blob(['thumb'], { type: 'image/jpeg' }), duration: 10 }
+      return {
+        thumbnail: new Blob(['thumb'], { type: 'image/jpeg' }),
+        duration: 10
+      }
     },
     compressImage: async (file, options) => {
       if (mediaBehavior.compressImage) {
@@ -83,7 +100,7 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
   }
 
   const mockConfig = {
-    get: (key) => key === 'maxServerUploadSizeBytes' ? configMaxServerUpload : null
+    get: (key) => (key === 'maxServerUploadSizeBytes' ? configMaxServerUpload : null)
   }
 
   const mockStorage = {
@@ -92,10 +109,16 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
     },
     getRoom: async (roomId) => {
       const participants = Array.from({ length: roomParticipantsCount }, (_, i) => ({ id: `user${i + 1}` }))
-      return { id: roomId, participants }
+      return {
+        id: roomId,
+        participants
+      }
     },
     deleteRecord: async (collection, id) => {
-      deletedRecords.push({ collection, id })
+      deletedRecords.push({
+        collection,
+        id
+      })
     }
   }
 
@@ -118,7 +141,10 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
   const mockEventBus = {
     $bus: {
       emit: (event, payload) => {
-        emittedEvents.push({ event, payload })
+        emittedEvents.push({
+          event,
+          payload
+        })
         if (busListeners[event]) {
           busListeners[event](payload)
         }
@@ -150,11 +176,15 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
   before(async () => {
     // Override URL.createObjectURL and revokeObjectURL to be safe across happy-dom and Node
     globalThis.URL.createObjectURL = () => 'blob:http://localhost/mock-blob-url'
-    globalThis.URL.revokeObjectURL = () => {}
+    globalThis.URL.revokeObjectURL = () => {
+    }
 
     await loadComponent('atoll-popup')
     await loadComponent('atoll-chat-attachment-preview', { eventBus: mockEventBus })
-    await loadComponent('atoll-chat-input-text', { eventBus: mockEventBus, globalStore: mockServices.globalStore })
+    await loadComponent('atoll-chat-input-text', {
+      eventBus: mockEventBus,
+      globalStore: mockServices.globalStore
+    })
     tagName = await loadComponent('atoll-chat-input', mockServices)
   })
 
@@ -227,7 +257,10 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
     await new Promise(resolve => setTimeout(resolve, 20))
 
     const file = new File(['small_mp4'], 'fail_compress_small.mp4', { type: 'video/mp4' })
-    mediaBehavior.evaluateVideo = async () => ({ shouldCompress: true, useWebRTC: false })
+    mediaBehavior.evaluateVideo = async () => ({
+      shouldCompress: true,
+      useWebRTC: false
+    })
 
     mockEventBus.$bus.emit('ui:file_selected', { file })
     await new Promise(resolve => setTimeout(resolve, 50))
@@ -270,7 +303,9 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
     await new Promise(resolve => setTimeout(resolve, 20))
 
     let resolveCompress
-    mediaBehavior.compressVideo = () => new Promise(res => { resolveCompress = res })
+    mediaBehavior.compressVideo = () => new Promise(res => {
+      resolveCompress = res
+    })
 
     const slowFile = new File(['slow_video'], 'slow.mkv', { type: 'video/x-matroska' })
     mockEventBus.$bus.emit('ui:file_selected', { file: slowFile })
@@ -279,7 +314,9 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
     mockEventBus.$bus.emit('ui:cancel')
 
     // Resolve slow conversion
-    if (resolveCompress) resolveCompress(new File(['done'], 'slow.mp4', { type: 'video/mp4' }))
+    if (resolveCompress) {
+      resolveCompress(new File(['done'], 'slow.mp4', { type: 'video/mp4' }))
+    }
     await new Promise(resolve => setTimeout(resolve, 30))
 
     // Verify state remained reset
@@ -296,9 +333,15 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
     let isSendingPhase = false
     mediaBehavior.checkCompatibility = async (file) => {
       if (isSendingPhase) {
-        return { requiresConversion: true, category: 'video' }
+        return {
+          requiresConversion: true,
+          category: 'video'
+        }
       }
-      return { requiresConversion: false, category: 'none' }
+      return {
+        requiresConversion: false,
+        category: 'none'
+      }
     }
 
     const file = new File(['data'], 'valid.mp4', { type: 'video/mp4' })

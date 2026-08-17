@@ -306,8 +306,10 @@
           $bus.emit('message:sent', result)
           return result
         } catch (err) {
-          await $storage.deleteRecord('local_messages', localUuid).catch(() => {})
-          await $storage.deleteRecord('local_files', localUuid).catch(() => {})
+          await $storage.deleteRecord('local_messages', localUuid).catch(() => {
+          })
+          await $storage.deleteRecord('local_files', localUuid).catch(() => {
+          })
           $state.decryptionCache.delete(localUuid)
           $bus.emit('db:new_local_data', { room_id })
           throw err
@@ -340,7 +342,10 @@
           if (file) {
             const compatibility = await $media.checkCompatibility(file)
             if (compatibility.requiresConversion) {
-              $bus.emit('ui:show_toast', { message: 'Cannot send unconverted media format', type: 'warning' })
+              $bus.emit('ui:show_toast', {
+                message: 'Cannot send unconverted media format',
+                type: 'warning'
+              })
               resetUI()
               return
             }
@@ -448,7 +453,10 @@
         } catch (err) {
           state.isSending = false
           state.isUploading = false
-          $bus.emit('ui:show_toast', { message: 'Failed to send: ' + err.message, type: 'danger' })
+          $bus.emit('ui:show_toast', {
+            message: 'Failed to send: ' + err.message,
+            type: 'danger'
+          })
           resetUI()
         }
       }
