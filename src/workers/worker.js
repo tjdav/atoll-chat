@@ -188,6 +188,7 @@ self.onmessage = (event) => {
     'worker:generate_salt',
     'worker:process_incoming_message',
     'worker:decrypt_file',
+    'worker:decrypt_link_preview',
     'worker:process_new_room_key',
     'worker:flush_pending_messages',
     'room:member_updated',
@@ -337,110 +338,276 @@ async function handleEvent (event) {
 
     if (type === 'worker:encrypt_master_key_with_kek') {
       const { master_key, KEK } = payload
-      const masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
-      const kekBuffer = typeof KEK === 'string' ? sodium.from_base64(KEK, sodium.base64_variants.ORIGINAL) : KEK
+      let masterKeyBuffer = null
+      let kekBuffer = null
+      let nonce = null
+      try {
+        masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
+        kekBuffer = typeof KEK === 'string' ? sodium.from_base64(KEK, sodium.base64_variants.ORIGINAL) : KEK
 
-      const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-      const ciphertext = sodium.crypto_secretbox_easy(masterKeyBuffer, nonce, kekBuffer)
+        nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+        const ciphertext = sodium.crypto_secretbox_easy(masterKeyBuffer, nonce, kekBuffer)
 
-      const result = {
-        ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
-        nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+        const result = {
+          ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+          nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+        }
+        self.postMessage({
+          id,
+          type,
+          result
+        })
+        return
+      } finally {
+        if (masterKeyBuffer && typeof masterKeyBuffer.fill === 'function') {
+          masterKeyBuffer.fill(0)
+        }
+        if (kekBuffer && typeof kekBuffer.fill === 'function') {
+          kekBuffer.fill(0)
+        }
+        if (nonce && typeof nonce.fill === 'function') {
+          nonce.fill(0)
+        }
       }
-      self.postMessage({
-        id,
-        type,
-        result
-      })
-      return
     }
 
     if (type === 'worker:encrypt_master_key_with_code') {
       const { master_key, code } = payload
-      const masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
+      let masterKeyBuffer = null
+      let codeHash = null
+      let nonce = null
+      try {
+        masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
 
-      const codeHash = sodium.crypto_generichash(32, code)
+        codeHash = sodium.crypto_generichash(32, code)
 
-      const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
-      const ciphertext = sodium.crypto_secretbox_easy(masterKeyBuffer, nonce, codeHash)
+        nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
+        const ciphertext = sodium.crypto_secretbox_easy(masterKeyBuffer, nonce, codeHash)
 
-      const result = {
-        hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
-        ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
-        nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+        const result = {
+          hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+          ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
+          nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
+        }
+        self.postMessage({
+          id,
+          type,
+          result
+        })
+        return
+      } finally {
+        if (masterKeyBuffer && typeof masterKeyBuffer.fill === 'function') {
+          masterKeyBuffer.fill(0)
+        }
+        if (codeHash && typeof codeHash.fill === 'function') {
+          codeHash.fill(0)
+        }
+        if (nonce && typeof nonce.fill === 'function') {
+          nonce.fill(0)
+        }
       }
-      self.postMessage({
-        id,
-        type,
-        result
-      })
-      return
     }
 
     if (type === 'worker:decrypt_master_key_with_code') {
       const { code, wrap } = payload
-      const codeHash = sodium.crypto_generichash(32, code)
+      let codeHash = null
+      let cipherBytes = null
+      let nonceBytes = null
+      let decrypted = null
+      try {
+        codeHash = sodium.crypto_generichash(32, code)
+        cipherBytes = sodium.from_base64(wrap.ciphertext, sodium.base64_variants.ORIGINAL)
+        nonceBytes = sodium.from_base64(wrap.nonce, sodium.base64_variants.ORIGINAL)
 
-      const decrypted = sodium.crypto_secretbox_open_easy(
-        sodium.from_base64(wrap.ciphertext, sodium.base64_variants.ORIGINAL),
-        sodium.from_base64(wrap.nonce, sodium.base64_variants.ORIGINAL),
-        codeHash
-      )
+        decrypted = sodium.crypto_secretbox_open_easy(
+          cipherBytes,
+          nonceBytes,
+          codeHash
+        )
 
-      if (!decrypted) {
-        throw new Error('Failed to decrypt master key. Invalid recovery code.')
+        if (!decrypted) {
+          throw new Error('Failed to decrypt master key. Invalid recovery code.')
+        }
+
+        const result = sodium.to_base64(decrypted, sodium.base64_variants.ORIGINAL)
+        self.postMessage({
+          id,
+          type,
+          result
+        })
+        return
+      } finally {
+        if (codeHash && typeof codeHash.fill === 'function') {
+          codeHash.fill(0)
+        }
+        if (cipherBytes && typeof cipherBytes.fill === 'function') {
+          cipherBytes.fill(0)
+        }
+        if (nonceBytes && typeof nonceBytes.fill === 'function') {
+          nonceBytes.fill(0)
+        }
+        if (decrypted && typeof decrypted.fill === 'function') {
+          decrypted.fill(0)
+        }
       }
-
-      const result = sodium.to_base64(decrypted, sodium.base64_variants.ORIGINAL)
-      self.postMessage({
-        id,
-        type,
-        result
-      })
-      return
     }
 
     if (type === 'worker:decrypt_vault') {
       const { encrypted_private_keys, master_key } = payload
-      const masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
+      let masterKeyBuffer = null
+      let cipherBytes = null
+      let nonceBytes = null
+      let decrypted = null
+      try {
+        masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
 
-      self.activeVmk = masterKeyBuffer
+        self.activeVmk = masterKeyBuffer
 
-      const decrypted = sodium.crypto_secretbox_open_easy(
-        sodium.from_base64(encrypted_private_keys.ciphertext, sodium.base64_variants.ORIGINAL),
-        sodium.from_base64(encrypted_private_keys.nonce, sodium.base64_variants.ORIGINAL),
-        masterKeyBuffer
-      )
+        cipherBytes = sodium.from_base64(encrypted_private_keys.ciphertext, sodium.base64_variants.ORIGINAL)
+        nonceBytes = sodium.from_base64(encrypted_private_keys.nonce, sodium.base64_variants.ORIGINAL)
 
-      if (!decrypted) {
-        throw new Error('Failed to decrypt vault with master key.')
+        decrypted = sodium.crypto_secretbox_open_easy(
+          cipherBytes,
+          nonceBytes,
+          masterKeyBuffer
+        )
+
+        if (!decrypted) {
+          throw new Error('Failed to decrypt vault with master key.')
+        }
+
+        const result = JSON.parse(sodium.to_string(decrypted))
+        self.postMessage({
+          id,
+          type,
+          result
+        })
+        return
+      } finally {
+        if (cipherBytes && typeof cipherBytes.fill === 'function') {
+          cipherBytes.fill(0)
+        }
+        if (nonceBytes && typeof nonceBytes.fill === 'function') {
+          nonceBytes.fill(0)
+        }
+        if (decrypted && typeof decrypted.fill === 'function') {
+          decrypted.fill(0)
+        }
       }
-
-      const result = JSON.parse(sodium.to_string(decrypted))
-      self.postMessage({
-        id,
-        type,
-        result
-      })
-      return
     }
 
     if (type === 'worker:decrypt_file') {
       const { encryptedBuffer, nonce, key } = payload
-      const decryptedBuffer = sodium.crypto_secretbox_open_easy(
-        new Uint8Array(encryptedBuffer),
-        sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL),
-        sodium.from_base64(key, sodium.base64_variants.ORIGINAL)
-      )
-      if (!decryptedBuffer) {
-        throw new Error('Decryption failed')
+      let fileBytes = null
+      let nonceBytes = null
+      let rawKey = null
+      try {
+        fileBytes = encryptedBuffer instanceof Uint8Array ? encryptedBuffer : new Uint8Array(encryptedBuffer)
+        nonceBytes = typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce
+        rawKey = typeof key === 'string' ? parseKey(key) : key
+
+        const decryptedBuffer = sodium.crypto_secretbox_open_easy(
+          fileBytes,
+          nonceBytes,
+          rawKey
+        )
+        if (!decryptedBuffer) {
+          throw new Error('Decryption failed')
+        }
+        self.postMessage({
+          id,
+          type,
+          result: decryptedBuffer
+        }, { transfer: [decryptedBuffer.buffer] })
+        return
+      } finally {
+        if (fileBytes && typeof fileBytes.fill === 'function') {
+          fileBytes.fill(0)
+        }
+        if (nonceBytes && typeof nonceBytes.fill === 'function') {
+          nonceBytes.fill(0)
+        }
+        if (rawKey && typeof rawKey.fill === 'function') {
+          rawKey.fill(0)
+        }
       }
-      self.postMessage({
-        id,
-        type,
-        result: decryptedBuffer
-      }, { transfer: [decryptedBuffer.buffer] })
-      return
+    }
+
+    if (type === 'worker:decrypt_link_preview') {
+      const { encryptedBuffer, nonce, key } = payload
+      let rawKeyBytes = null
+      let ivBytes = null
+      let cipherBytes = null
+      let nonceBytes = null
+      let decryptedBuffer = null
+
+      try {
+        if (nonce === 'AES-GCM') {
+          const encBytes = new Uint8Array(encryptedBuffer)
+          const base64Text = new TextDecoder().decode(encBytes).trim()
+          const binaryString = self.atob(base64Text.replace(/-/g, '+').replace(/_/g, '/'))
+          const len = binaryString.length
+          const bytes = new Uint8Array(len)
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryString.charCodeAt(i)
+          }
+          ivBytes = bytes.slice(0, 12)
+          cipherBytes = bytes.slice(12)
+
+          rawKeyBytes = new TextEncoder().encode(key)
+          const cryptoKey = await self.crypto.subtle.importKey(
+            'raw',
+            rawKeyBytes,
+            { name: 'AES-GCM' },
+            false,
+            ['decrypt']
+          )
+
+          const decryptedArrayBuffer = await self.crypto.subtle.decrypt(
+            {
+              name: 'AES-GCM',
+              iv: ivBytes
+            },
+            cryptoKey,
+            cipherBytes
+          )
+          decryptedBuffer = new Uint8Array(decryptedArrayBuffer)
+        } else {
+          cipherBytes = encryptedBuffer instanceof Uint8Array ? encryptedBuffer : new Uint8Array(encryptedBuffer)
+          nonceBytes = typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce
+          rawKeyBytes = typeof key === 'string' ? parseKey(key) : key
+
+          decryptedBuffer = sodium.crypto_secretbox_open_easy(
+            cipherBytes,
+            nonceBytes,
+            rawKeyBytes
+          )
+        }
+
+        if (!decryptedBuffer) {
+          throw new Error('Decryption failed')
+        }
+
+        self.postMessage({
+          id,
+          type,
+          result: decryptedBuffer
+        }, decryptedBuffer && decryptedBuffer.buffer ? { transfer: [decryptedBuffer.buffer] } : undefined)
+        return
+      } finally {
+        if (rawKeyBytes && typeof rawKeyBytes.fill === 'function') {
+          rawKeyBytes.fill(0)
+        }
+        if (ivBytes && typeof ivBytes.fill === 'function') {
+          ivBytes.fill(0)
+        }
+        if (cipherBytes && typeof cipherBytes.fill === 'function') {
+          cipherBytes.fill(0)
+        }
+        if (nonceBytes && typeof nonceBytes.fill === 'function') {
+          nonceBytes.fill(0)
+        }
+      }
     }
 
     if (type === 'worker:wipe_keys') {
@@ -501,35 +668,65 @@ async function handleEvent (event) {
 
     if (type === 'worker:crypto_box_seal') {
       const { message, publicKey } = payload
-      const msgBytes = typeof message === 'string' ? new TextEncoder().encode(message) : new Uint8Array(message)
-      const pubKeyBytes = typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey
+      let msgBytes = null
+      let pubKeyBytes = null
+      try {
+        msgBytes = typeof message === 'string' ? new TextEncoder().encode(message) : new Uint8Array(message)
+        pubKeyBytes = typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey
 
-      const ciphertext = sodium.crypto_box_seal(msgBytes, pubKeyBytes)
-      const result = sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL)
+        const ciphertext = sodium.crypto_box_seal(msgBytes, pubKeyBytes)
+        const result = sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL)
 
-      self.postMessage({
-        id,
-        type,
-        result
-      })
-      return
+        self.postMessage({
+          id,
+          type,
+          result
+        })
+        return
+      } finally {
+        if (msgBytes && typeof msgBytes.fill === 'function') {
+          msgBytes.fill(0)
+        }
+        if (pubKeyBytes && typeof pubKeyBytes.fill === 'function') {
+          pubKeyBytes.fill(0)
+        }
+      }
     }
 
     if (type === 'worker:crypto_box_seal_open') {
       const { ciphertext, publicKey, privateKey } = payload
-      const cipherBytes = typeof ciphertext === 'string' ? sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL) : new Uint8Array(ciphertext)
-      const pubKeyBytes = typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey
-      const privKeyBytes = typeof privateKey === 'string' ? sodium.from_base64(privateKey, sodium.base64_variants.ORIGINAL) : privateKey
+      let cipherBytes = null
+      let pubKeyBytes = null
+      let privKeyBytes = null
+      let decrypted = null
+      try {
+        cipherBytes = typeof ciphertext === 'string' ? sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL) : new Uint8Array(ciphertext)
+        pubKeyBytes = typeof publicKey === 'string' ? sodium.from_base64(publicKey, sodium.base64_variants.ORIGINAL) : publicKey
+        privKeyBytes = typeof privateKey === 'string' ? sodium.from_base64(privateKey, sodium.base64_variants.ORIGINAL) : privateKey
 
-      const decrypted = sodium.crypto_box_seal_open(cipherBytes, pubKeyBytes, privKeyBytes)
-      const result = sodium.to_string(decrypted)
+        decrypted = sodium.crypto_box_seal_open(cipherBytes, pubKeyBytes, privKeyBytes)
+        const result = sodium.to_string(decrypted)
 
-      self.postMessage({
-        id,
-        type,
-        result
-      })
-      return
+        self.postMessage({
+          id,
+          type,
+          result
+        })
+        return
+      } finally {
+        if (cipherBytes && typeof cipherBytes.fill === 'function') {
+          cipherBytes.fill(0)
+        }
+        if (pubKeyBytes && typeof pubKeyBytes.fill === 'function') {
+          pubKeyBytes.fill(0)
+        }
+        if (privKeyBytes && typeof privKeyBytes.fill === 'function') {
+          privKeyBytes.fill(0)
+        }
+        if (decrypted && typeof decrypted.fill === 'function') {
+          decrypted.fill(0)
+        }
+      }
     }
 
     if (type === 'worker:generate_salt') {
@@ -555,32 +752,72 @@ async function handleEvent (event) {
     // low-level libsodium primitives
     if (type === 'worker:crypto_secretbox_easy') {
       const { message, nonce, key } = payload
-      const result = sodium.crypto_secretbox_easy(
-        typeof message === 'string' ? message : new Uint8Array(message),
-        typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
-        parseKey(key)
-      )
-      self.postMessage({
-        id,
-        type,
-        result
-      }, result && result.buffer ? { transfer: [result.buffer] } : undefined)
-      return
+      let msgBytes = null
+      let nonceBytes = null
+      let keyBytes = null
+      try {
+        msgBytes = typeof message === 'string' ? message : new Uint8Array(message)
+        nonceBytes = typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce
+        keyBytes = parseKey(key)
+
+        const result = sodium.crypto_secretbox_easy(
+          msgBytes,
+          nonceBytes,
+          keyBytes
+        )
+        self.postMessage({
+          id,
+          type,
+          result
+        }, result && result.buffer ? { transfer: [result.buffer] } : undefined)
+        return
+      } finally {
+        if (msgBytes && typeof msgBytes.fill === 'function') {
+          msgBytes.fill(0)
+        }
+
+        if (nonceBytes && typeof nonceBytes.fill === 'function') {
+          nonceBytes.fill(0)
+        }
+
+        if (keyBytes && typeof keyBytes.fill === 'function') {
+          keyBytes.fill(0)
+        }
+      }
     }
 
     if (type === 'worker:crypto_secretbox_open_easy') {
       const { ciphertext, nonce, key } = payload
-      const result = sodium.crypto_secretbox_open_easy(
-        typeof ciphertext === 'string' ? sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL) : new Uint8Array(ciphertext),
-        typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce,
-        parseKey(key)
-      )
-      self.postMessage({
-        id,
-        type,
-        result
-      }, result && result.buffer ? { transfer: [result.buffer] } : undefined)
-      return
+      let cipherBytes = null
+      let nonceBytes = null
+      let keyBytes = null
+      try {
+        cipherBytes = typeof ciphertext === 'string' ? sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL) : new Uint8Array(ciphertext)
+        nonceBytes = typeof nonce === 'string' ? sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL) : nonce
+        keyBytes = parseKey(key)
+
+        const result = sodium.crypto_secretbox_open_easy(
+          cipherBytes,
+          nonceBytes,
+          keyBytes
+        )
+        self.postMessage({
+          id,
+          type,
+          result
+        }, result && result.buffer ? { transfer: [result.buffer] } : undefined)
+        return
+      } finally {
+        if (cipherBytes && typeof cipherBytes.fill === 'function') {
+          cipherBytes.fill(0)
+        }
+        if (nonceBytes && typeof nonceBytes.fill === 'function') {
+          nonceBytes.fill(0)
+        }
+        if (keyBytes && typeof keyBytes.fill === 'function') {
+          keyBytes.fill(0)
+        }
+      }
     }
 
     if (type === 'worker:crypto_box_easy') {
@@ -643,12 +880,16 @@ async function handleEvent (event) {
     // high-level tasks
 
     if (type === 'worker:upload_media') {
+      let fileBuffer = null
+      let fileKey = null
+      let fileNonce = null
+      let encryptedFile = null
       try {
         const { file } = payload
-        const fileBuffer = new Uint8Array(await file.arrayBuffer())
-        const fileKey = sodium.randombytes_buf(32)
-        const fileNonce = sodium.randombytes_buf(24)
-        const encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, fileNonce, fileKey)
+        fileBuffer = new Uint8Array(await file.arrayBuffer())
+        fileKey = sodium.randombytes_buf(32)
+        fileNonce = sodium.randombytes_buf(24)
+        encryptedFile = sodium.crypto_secretbox_easy(fileBuffer, fileNonce, fileKey)
 
         const mainParts = [encryptedFile]
         const mainBlob = new Blob(mainParts, { type: 'application/octet-stream' })
@@ -684,6 +925,19 @@ async function handleEvent (event) {
           type,
           error: err.message
         })
+      } finally {
+        if (fileBuffer && typeof fileBuffer.fill === 'function') {
+          fileBuffer.fill(0)
+        }
+        if (fileKey && typeof fileKey.fill === 'function') {
+          fileKey.fill(0)
+        }
+        if (fileNonce && typeof fileNonce.fill === 'function') {
+          fileNonce.fill(0)
+        }
+        if (encryptedFile && typeof encryptedFile.fill === 'function') {
+          encryptedFile.fill(0)
+        }
       }
       return
     }
@@ -1416,7 +1670,7 @@ async function processIncomingMessageInternal (record) {
 
     try {
       signatureBuffer = sodium.from_base64(signature, sodium.base64_variants.ORIGINAL)
-    } catch (err) {
+    } catch {
       return {
         success: false,
         code: 'ERR_SIGNATURE_INVALID',
@@ -1426,7 +1680,7 @@ async function processIncomingMessageInternal (record) {
 
     try {
       publicSignKeyBuffer = sodium.from_base64(publicSignKey, sodium.base64_variants.ORIGINAL)
-    } catch (err) {
+    } catch {
       return {
         success: false,
         code: 'ERR_SIGNATURE_INVALID',
@@ -1456,7 +1710,7 @@ async function processIncomingMessageInternal (record) {
     let isValid = false
     try {
       isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
-    } catch (err) {
+    } catch {
       isValid = false
     }
 
@@ -1497,7 +1751,7 @@ async function processIncomingMessageInternal (record) {
 
     try {
       ciphertextBuffer = sodium.from_base64(ciphertext, sodium.base64_variants.ORIGINAL)
-    } catch (err) {
+    } catch {
       return {
         success: false,
         code: 'ERR_DECRYPTION_FAILED',
@@ -1507,7 +1761,7 @@ async function processIncomingMessageInternal (record) {
 
     try {
       nonceBuffer = sodium.from_base64(nonce, sodium.base64_variants.ORIGINAL)
-    } catch (err) {
+    } catch {
       return {
         success: false,
         code: 'ERR_DECRYPTION_FAILED',

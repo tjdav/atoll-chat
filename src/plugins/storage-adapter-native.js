@@ -151,6 +151,18 @@ export function createNativeStorageAdapter () {
     },
 
     /**
+     * Deletes a saved file blob from local files storage.
+     *
+     * @param {string} fileName - The name of the file to delete.
+     * @returns {Promise<boolean>} Resolves to true when deleted.
+     */
+    deleteFile: async (fileName) => {
+      localFiles.delete(fileName)
+      removeFromLocalStorage('files', fileName)
+      return true
+    },
+
+    /**
      * Saves a single record to the designated local store.
      *
      * @param {string} storeName - The name of the target database store.

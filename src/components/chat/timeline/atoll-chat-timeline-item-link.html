@@ -39,7 +39,7 @@
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { $media } = utils
+      const { $media, $link } = utils
 
       const imageContainer = refs('imageContainer')
 
@@ -100,7 +100,11 @@
         }
 
         try {
-          const blobUrl = await $media.decrypt({
+          const decryptFn = ($link && typeof $link.decryptPreview === 'function')
+            ? $link.decryptPreview
+            : $media.decrypt
+
+          const blobUrl = await decryptFn({
             media_id: mediaId,
             file_key: fileKey,
             file_nonce: fileNonce,

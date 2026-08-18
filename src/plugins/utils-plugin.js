@@ -377,6 +377,25 @@ export default definePlugin({
           })
         }
 
+
+        /**
+         * Helper to decrypt encrypted file buffers in Web Worker scope.
+         */
+        const decryptPayloadInWorker = async ($worker, encryptedBuffer, nonce, key) => {
+          if (nonce === 'AES-GCM') {
+            return $worker.execute('worker:decrypt_link_preview', {
+              encryptedBuffer,
+              nonce,
+              key
+            })
+          }
+          return $worker.execute('worker:crypto_secretbox_open_easy', {
+            ciphertext: encryptedBuffer,
+            nonce,
+            key
+          })
+        }
+
         /**
          * Namespace: $media
          */
@@ -426,60 +445,43 @@ export default definePlugin({
               let encryptedBuffer
               const fileId = asset.localUuid || asset.message_id || asset.id || asset.media_id
               const localFile = fileId ? await $storage.getFile(fileId) : null
-
-              if (localFile) {
-                encryptedBuffer = await localFile.arrayBuffer()
-              } else if (asset.media_id) {
-                const mediaRecord = await pb.collection('media').getOne(asset.media_id)
-                const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-                const response = await fetch(url)
-                if (!response.ok) {
-                  throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
-                }
-                encryptedBuffer = await response.arrayBuffer()
-              } else {
-                throw new Error('Media file not found locally or on server')
-              }
-
               const nonce = asset.file_nonce || asset.nonce
               const key = asset.file_key || asset.key
               const mimeType = asset.mime_type || asset.mimeType || 'image/jpeg'
-              let decryptedBuffer
 
-              if (nonce === 'AES-GCM') {
-                const base64Text = new TextDecoder().decode(encryptedBuffer).trim()
-                const binaryString = atob(base64Text.replace(/-/g, '+').replace(/_/g, '/'))
-                const len = binaryString.length
-                const bytes = new Uint8Array(len)
-                for (let i = 0; i < len; i++) {
-                  bytes[i] = binaryString.charCodeAt(i)
+              let decryptedBuffer = null
+
+              if (localFile) {
+                try {
+                  encryptedBuffer = await localFile.arrayBuffer()
+                  decryptedBuffer = await decryptPayloadInWorker($worker, encryptedBuffer, nonce, key)
+                } catch (localDecryptError) {
+                  console.warn(`[media] Local decryption failed for ${fileId}, falling back to remote URL:`, localDecryptError)
+                  if (fileId) {
+                    await $storage.deleteFile(fileId)
+                  }
+                  decryptedBuffer = null
                 }
-                const iv = bytes.slice(0, 12)
-                const ciphertextWithTag = bytes.slice(12)
+              }
 
-                const rawKey = new TextEncoder().encode(key)
-                const cryptoKey = await window.crypto.subtle.importKey(
-                  'raw',
-                  rawKey,
-                  { name: 'AES-GCM' },
-                  false,
-                  ['decrypt']
-                )
+              if (!decryptedBuffer) {
+                if (asset.media_id) {
+                  const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+                  const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+                  const response = await fetch(url)
+                  if (!response.ok) {
+                    throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+                  }
+                  const remoteBlob = typeof response.blob === 'function' ? await response.blob() : new Blob([await response.arrayBuffer()])
+                  encryptedBuffer = await remoteBlob.arrayBuffer()
+                  decryptedBuffer = await decryptPayloadInWorker($worker, encryptedBuffer, nonce, key)
 
-                decryptedBuffer = await window.crypto.subtle.decrypt(
-                  {
-                    name: 'AES-GCM',
-                    iv
-                  },
-                  cryptoKey,
-                  ciphertextWithTag
-                )
-              } else {
-                decryptedBuffer = await $worker.execute('worker:crypto_secretbox_open_easy', {
-                  ciphertext: encryptedBuffer,
-                  nonce,
-                  key
-                })
+                  if (decryptedBuffer && fileId && typeof $storage.saveFile === 'function') {
+                    await $storage.saveFile(fileId, remoteBlob)
+                  }
+                } else {
+                  throw new Error('Media file not found locally or on server')
+                }
               }
 
               if (!decryptedBuffer) {
@@ -636,9 +638,30 @@ export default definePlugin({
           }
         }
 
+        /**
+         * Namespace: $link
+         */
+        const link = {
+          /**
+           * Decrypts link preview image delegating to $media.decrypt.
+           */
+          decryptPreview: (asset, optionsOrSignal) => {
+            let options = {}
+            if (optionsOrSignal) {
+              if (optionsOrSignal instanceof AbortSignal || typeof optionsOrSignal.addEventListener === 'function') {
+                options = { signal: optionsOrSignal }
+              } else {
+                options = optionsOrSignal
+              }
+            }
+            return media.decrypt(asset, { isThumbnail: true, ...options })
+          }
+        }
+
         return {
           ...baseNamespaces,
-          $media: media
+          $media: media,
+          $link: link
         }
       }
     }

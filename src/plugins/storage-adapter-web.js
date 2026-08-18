@@ -171,6 +171,20 @@ export function createWebStorageAdapter () {
     },
 
     /**
+     * Deletes a saved file blob from IndexedDB.
+     *
+     * @param {string} fileName - The name of the file to delete.
+     * @returns {Promise<void>} Resolves when deletion is complete.
+     * @throws {Error} Throws if the database is not initialized.
+     */
+    deleteFile: async (fileName) => {
+      if (!dbInstance) {
+        throw new Error('Database not initialized')
+      }
+      return dbInstance.table('local_files').delete(fileName)
+    },
+
+    /**
      * Retrieves a config value by key.
      *
      * @param {string} key - The config key.
