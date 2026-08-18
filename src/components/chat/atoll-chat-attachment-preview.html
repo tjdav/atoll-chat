@@ -1,255 +1,128 @@
 <template id="atoll-chat-attachment-preview">
-  <div class="atoll-chat-attachment-preview p-2 mb-2 rounded-4 border">
-    <div class="atoll-chat-attachment-reel d-flex gap-2 align-items-center overflow-x-auto" ref="reelContainer">
-      <!-- Dynamic list of attachments will be rendered here or slotted -->
-      <div ref="itemsContainer" class="d-flex gap-2 align-items-center"></div>
+  <div class="atoll-chat-attachment-preview p-2 mb-2 rounded-4 d-flex align-items-center justify-content-between border">
+    <div class="d-flex align-items-center">
+      <!-- Thumbnail Container (Video or Image) -->
+      <div class="atoll-chat-attachment-tile atoll-chat-attachment-preview-thumbnail-container position-relative me-2 bg-dark rounded-3 border d-flex align-items-center justify-content-center" hidden="{{ isThumbnailContainerHidden }}">
+        <img ref="thumbnailImg" class="w-100 h-100 object-fit-cover" alt="Cover Preview" hidden="{{ isThumbnailHidden }}">
+        <atoll-icon name="videocam" size="28" color="#ffffff" hidden="{{ isVideoIconHidden }}"></atoll-icon>
+        
+        <!-- Standard file picker restricted to image files, visually hidden -->
+        <input type="file" ref="coverInput" class="d-none" accept="image/jpeg, image/png, image/webp" data-testid="cover-file-input">
+        
+        <!-- Action Button overlaid (Video only) -->
+        <button class="btn btn-sm {{ coverBtnClass }} atoll-chat-tile-cover-btn atoll-chat-attachment-preview-cover-btn position-absolute bottom-0 start-50 translate-middle-x mb-1" 
+                hidden="{{ isCoverBtnHidden }}"
+                ref="coverBtn" 
+                data-testid="btn-change-cover">
+          {{ coverBtnText }}
+        </button>
+      </div>
 
-      <!-- "Add More" (+) Tile (Shown if total attachments < 10) -->
-      <div class="atoll-chat-attachment-add-more flex-shrink-0 d-flex flex-column align-items-center justify-content-center rounded-3 border border-dashed text-secondary cursor-pointer"
-           ref="addMoreTile"
-           hidden="{{ isAddMoreHidden }}"
-           title="Add more attachments"
-           data-testid="add-more-tile">
-        <atoll-icon name="add" size="24"></atoll-icon>
-        <span class="x-small mt-1">Add</span>
+      <!-- Generic Document/File Icon if no thumbnail container -->
+      <atoll-icon name="document" size="24" color="var(--atoll-brand-primary, #06C755)" class="me-2" hidden="{{ isGenericIconHidden }}"></atoll-icon>
+      
+      <div>
+        <div class="small fw-bold text-truncate atoll-chat-attachment-preview-name atoll-chat-attachment-preview-text-max-width">{{ effectiveFileName }}</div>
+        <div class="x-small atoll-chat-attachment-preview-status text-truncate atoll-chat-attachment-preview-text-max-width">{{ effectiveUploadStatus }}</div>
+        
+        <!-- Progress Bar Indicator -->
+        <div class="progress mt-1 atoll-chat-attachment-preview-progress" hidden="{{ isProgressHidden }}">
+          <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+               role="progressbar" 
+               style="{{ progressBarStyle }}" 
+               aria-valuenow="{{ progress }}" 
+               aria-valuemin="0" 
+               aria-valuemax="100"></div>
+        </div>
       </div>
     </div>
+    <atoll-button variant="ghost" leading-icon="close" icon-only="true" ref="cancelFileButton" title="Cancel"></atoll-button>
   </div>
 </template>
+
 
 <script type="module">
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    server: () => ({
-      attachments: []
-    }),
-    getters: {
-      isAddMoreHidden: (state) => (state.attachments || []).length >= 10
+    attributes: {
+      fileName: String,
+      filename: String,
+      uploadStatus: String,
+      'upload-status': String,
+      isVideo: Boolean,
+      'is-video': Boolean,
+      thumbnailUrl: String,
+      'thumbnail-url': String,
+      isCustom: Boolean,
+      'is-custom': Boolean,
+      isCompressing: Boolean,
+      'is-compressing': Boolean,
+      isUploading: Boolean,
+      'is-uploading': Boolean,
+      progress: Number
     },
-    client: ({ root, refs, state, eventBus, signal, observe }) => {
+    getters: {
+      effectiveFileName: (state) => state.fileName || state.filename || '',
+      effectiveUploadStatus: (state) => state.uploadStatus || state['upload-status'] || '',
+      effectiveIsVideo: (state) => Boolean(state.isVideo || state['is-video']),
+      effectiveThumbnailUrl: (state) => state.thumbnailUrl || state['thumbnail-url'] || '',
+      effectiveIsCustom: (state) => Boolean(state.isCustom || state['is-custom']),
+      effectiveIsCompressing: (state) => Boolean(state.isCompressing || state['is-compressing']),
+      effectiveIsUploading: (state) => Boolean(state.isUploading || state['is-uploading']),
+      isThumbnailContainerHidden: (state) => !state.effectiveIsVideo && !state.effectiveThumbnailUrl,
+      isCoverBtnHidden: (state) => !state.effectiveIsVideo,
+      isVideoIconHidden: (state) => !state.effectiveIsVideo || !!state.effectiveThumbnailUrl,
+      isThumbnailHidden: (state) => !state.effectiveThumbnailUrl,
+      isGenericIconHidden: (state) => !!state.effectiveIsVideo || !!state.effectiveThumbnailUrl,
+      coverBtnText: (state) => (state.effectiveIsCustom ? 'Remove Custom Cover' : 'Change Cover'),
+      coverBtnClass: (state) => (state.effectiveIsCustom ? 'btn-danger' : 'btn-dark'),
+      isProgressHidden: (state) => !(state.effectiveIsCompressing || state.effectiveIsUploading),
+      progressBarStyle: (state) => 'width: ' + Math.min(100, Math.max(0, Number(state.progress) || 0)) + '%'
+    },
+    client: ({ refs, state, eventBus, signal, observe }) => {
       const { $bus } = eventBus
+      const cancelBtn = refs('cancelFileButton')
+      const coverBtn = refs('coverBtn')
+      const coverInput = refs('coverInput')
+      const thumbnailImg = refs('thumbnailImg')
 
-      const getItemsContainer = () => refs('itemsContainer') || (root ? root.querySelector('[ref="itemsContainer"]') : null)
-      const getAddMoreTile = () => refs('addMoreTile') || (root ? root.querySelector('[ref="addMoreTile"]') : null)
-
-      const formatFileSize = (bytes) => {
-        if (!bytes || isNaN(bytes)) {
-          return ''
-        }
-        if (bytes < 1024) {
-          return bytes + ' B'
-        }
-        if (bytes < 1024 * 1024) {
-          return (bytes / 1024).toFixed(1) + ' KB'
-        }
-        return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
+      /**
+       * Synchronizes the image source element with the reactive thumbnailUrl state.
+       */
+      const updateThumbnail = () => {
+        thumbnailImg.src = state.effectiveThumbnailUrl || ''
       }
 
-      const formatDuration = (seconds) => {
-        if (!seconds || isNaN(seconds)) {
-          return ''
+      updateThumbnail()
+      observe('thumbnailUrl', updateThumbnail)
+      observe('thumbnail-url', updateThumbnail)
+
+      thumbnailImg.addEventListener('error', () => {
+        thumbnailImg.src = ''
+      }, { signal })
+
+      cancelBtn.addEventListener('click', () => {
+        $bus.emit('ui:cancel')
+      }, { signal })
+
+      coverBtn.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        if (state.effectiveIsCustom) {
+          $bus.emit('ui:remove_custom_cover_clicked')
+        } else {
+          coverInput.click()
         }
-        const mins = Math.floor(seconds / 60)
-        const secs = Math.floor(seconds % 60)
-        return `${mins}:${secs < 10 ? '0' : ''}${secs}`
-      }
+      }, { signal })
 
-      const renderAttachments = () => {
-        const itemsContainer = getItemsContainer()
-        if (!itemsContainer) {
-          return
+      coverInput.addEventListener('change', () => {
+        const file = coverInput.files[0]
+        if (file) {
+          $bus.emit('ui:custom_cover_selected', { file })
+          coverInput.value = ''
         }
-        itemsContainer.innerHTML = ''
-
-        const list = state.attachments || []
-        const addMoreTile = getAddMoreTile()
-        if (addMoreTile) {
-          addMoreTile.hidden = list.length >= 10
-        }
-
-        list.forEach((att) => {
-          if (att.isImage || att.isVideo) {
-            // Square Thumbnail Tile (Images and Videos)
-            const tile = document.createElement('div')
-            tile.className = 'atoll-chat-attachment-tile position-relative flex-shrink-0 rounded-3 border overflow-hidden bg-dark d-flex align-items-center justify-content-center'
-            tile.setAttribute('data-id', att.id)
-
-            // Image element
-            if (att.thumbnailPreviewUrl) {
-              const img = document.createElement('img')
-              img.className = 'w-100 h-100 object-fit-cover'
-              img.src = att.thumbnailPreviewUrl
-              img.alt = att.fileName || 'Attachment preview'
-              img.onerror = () => {
-                img.style.display = 'none'
-              }
-              tile.appendChild(img)
-            } else if (att.isVideo) {
-              const icon = document.createElement('atoll-icon')
-              icon.setAttribute('name', 'videocam')
-              icon.setAttribute('size', '24')
-              icon.setAttribute('color', '#ffffff')
-              tile.appendChild(icon)
-            }
-
-            // Video Duration / Badge
-            if (att.isVideo && att.duration) {
-              const durationBadge = document.createElement('div')
-              durationBadge.className = 'position-absolute bottom-0 start-0 m-1 px-1 rounded bg-dark bg-opacity-75 text-white x-small fw-bold d-flex align-items-center gap-1'
-              durationBadge.innerHTML = `<atoll-icon name="play" size="10" color="#ffffff"></atoll-icon> ${formatDuration(att.duration)}`
-              tile.appendChild(durationBadge)
-            }
-
-            // Video Custom Cover Edit Button
-            if (att.isVideo && !att.isCompressing && !att.isError) {
-              const coverBtn = document.createElement('button')
-              coverBtn.className = `btn btn-xs ${att.isCustomCover ? 'btn-danger' : 'btn-dark'} position-absolute bottom-0 end-0 m-1 p-0 px-1 atoll-chat-tile-cover-btn`
-              coverBtn.title = att.isCustomCover ? 'Remove custom cover' : 'Change video cover'
-              coverBtn.innerHTML = att.isCustomCover ? '<atoll-icon name="close" size="12"></atoll-icon>' : '<atoll-icon name="camera" size="12"></atoll-icon>'
-              coverBtn.onclick = (e) => {
-                e.stopPropagation()
-                if (att.isCustomCover) {
-                  $bus.emit('ui:attachment_cover_removed', { id: att.id })
-                } else {
-                  const coverInput = document.createElement('input')
-                  coverInput.type = 'file'
-                  coverInput.accept = 'image/jpeg, image/png, image/webp'
-                  coverInput.onchange = () => {
-                    const file = coverInput.files[0]
-                    if (file) {
-                      $bus.emit('ui:attachment_cover_selected', {
-                        id: att.id,
-                        file
-                      })
-                    }
-                  }
-                  coverInput.click()
-                }
-              }
-              tile.appendChild(coverBtn)
-            }
-
-            // Loading / Compressing overlay
-            if (att.isCompressing) {
-              const overlay = document.createElement('div')
-              overlay.className = 'position-absolute top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex flex-column align-items-center justify-content-center text-white'
-              overlay.innerHTML = `<div class="spinner-border spinner-border-sm text-light mb-1" role="status"></div><span class="x-small">${att.progress ? att.progress + '%' : ''}</span>`
-              tile.appendChild(overlay)
-            }
-
-            // Error Overlay
-            if (att.isError) {
-              const errorOverlay = document.createElement('div')
-              errorOverlay.className = 'position-absolute top-0 start-0 w-100 h-100 bg-danger bg-opacity-75 d-flex flex-column align-items-center justify-content-center text-white p-1 text-center'
-              errorOverlay.innerHTML = `<atoll-icon name="warning" size="16" color="#ffffff"></atoll-icon><span class="x-small text-truncate w-100" title="${att.errorMessage}">${att.errorMessage || 'Error'}</span>`
-              tile.appendChild(errorOverlay)
-            }
-
-            // Remove (x) Button Badge
-            const removeBtn = document.createElement('button')
-            removeBtn.className = 'btn btn-sm btn-dark position-absolute top-0 end-0 m-1 rounded-circle p-0 d-flex align-items-center justify-content-center atoll-chat-tile-remove-btn'
-            removeBtn.title = 'Remove'
-            removeBtn.setAttribute('data-testid', `btn-remove-attachment-${att.id}`)
-            removeBtn.innerHTML = '<atoll-icon name="close" size="12" color="#ffffff"></atoll-icon>'
-            removeBtn.onclick = (e) => {
-              e.stopPropagation()
-              $bus.emit('ui:remove_attachment', { id: att.id })
-            }
-            tile.appendChild(removeBtn)
-
-            itemsContainer.appendChild(tile)
-          } else {
-            // Non-Media Attachment Chip (PDF, Doc, ZIP, Audio)
-            const chip = document.createElement('div')
-            chip.className = 'atoll-chat-attachment-chip position-relative flex-shrink-0 rounded-3 border p-2 d-flex align-items-center gap-2 bg-body-tertiary'
-            chip.setAttribute('data-id', att.id)
-
-            // Leading Icon
-            let iconName = 'document'
-            if (att.isAudio) {
-              iconName = 'music-note'
-            } else if (att.fileName && (att.fileName.endsWith('.zip') || att.fileName.endsWith('.rar') || att.fileName.endsWith('.7z'))) {
-              iconName = 'box'
-            }
-
-            const icon = document.createElement('atoll-icon')
-            icon.setAttribute('name', iconName)
-            icon.setAttribute('size', '20')
-            icon.setAttribute('color', 'var(--atoll-brand-primary, #06C755)')
-            chip.appendChild(icon)
-
-            // Text Info
-            const textGroup = document.createElement('div')
-            textGroup.className = 'd-flex flex-column text-truncate'
-            textGroup.style.maxWidth = '140px'
-
-            const nameEl = document.createElement('span')
-            nameEl.className = 'small fw-bold text-truncate'
-            nameEl.textContent = att.fileName
-            textGroup.appendChild(nameEl)
-
-            const subEl = document.createElement('span')
-            subEl.className = 'x-small text-muted text-truncate'
-            subEl.textContent = att.isError ? (att.errorMessage || 'Error') : (formatFileSize(att.fileSize) || att.status || '')
-            textGroup.appendChild(subEl)
-
-            chip.appendChild(textGroup)
-
-            // Loading indicator or error icon
-            if (att.isCompressing) {
-              const spinner = document.createElement('div')
-              spinner.className = 'spinner-border spinner-border-sm text-primary flex-shrink-0'
-              chip.appendChild(spinner)
-            }
-
-            // Remove Button
-            const removeBtn = document.createElement('button')
-            removeBtn.className = 'btn btn-sm btn-link text-secondary p-0 ms-1 flex-shrink-0'
-            removeBtn.title = 'Remove'
-            removeBtn.setAttribute('data-testid', `btn-remove-attachment-${att.id}`)
-            removeBtn.innerHTML = '<atoll-icon name="close" size="16"></atoll-icon>'
-            removeBtn.onclick = (e) => {
-              e.stopPropagation()
-              $bus.emit('ui:remove_attachment', { id: att.id })
-            }
-            chip.appendChild(removeBtn)
-
-            itemsContainer.appendChild(chip)
-          }
-        })
-      }
-
-      if (root) {
-        Object.defineProperty(root, 'attachments', {
-          get: () => state.attachments || [],
-          set: (val) => {
-            state.attachments = val || []
-            renderAttachments()
-          },
-          configurable: true
-        })
-      }
-
-      $bus.on('ui:attachments_updated', (payload) => {
-        if (payload && payload.attachments) {
-          state.attachments = payload.attachments
-          renderAttachments()
-        }
-      })
-
-      renderAttachments()
-      observe('attachments', renderAttachments)
-
-      const addMoreTile = getAddMoreTile()
-      if (addMoreTile) {
-        addMoreTile.addEventListener('click', () => {
-          const fileInput = document.querySelector('atoll-chat-input-text input[type="file"]')
-          if (fileInput) {
-            fileInput.click()
-          }
-        }, { signal })
-      }
+      }, { signal })
     }
   })
 </script>

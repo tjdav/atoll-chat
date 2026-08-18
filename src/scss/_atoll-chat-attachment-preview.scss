@@ -1,14 +1,98 @@
 .atoll-chat-attachment-preview {
-  background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg)) !important;
-  border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color)) !important;
+  --atoll-chat-attachment-tile-size: 64px;
+
+  background-color: var(--atoll-chat-attachment-card-bg, var(--#{$prefix}bg-surface-tertiary, #EEEEEE)) !important;
+  border: 1px solid var(--atoll-chat-attachment-card-border, var(--#{$prefix}border-color-translucent, rgba(0, 0, 0, 0.08))) !important;
   backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
   -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
 
-  .atoll-chat-attachment-preview-thumbnail-container {
-    width: 100px;
-    height: 100px;
+  .atoll-chat-attachment-reel {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scrollbar-width: thin;
+
+    &::-webkit-scrollbar {
+      height: 4px;
+    }
+  }
+
+  .atoll-chat-attachment-tile {
+    width: var(--atoll-chat-attachment-tile-size);
+    height: var(--atoll-chat-attachment-tile-size);
+    min-width: var(--atoll-chat-attachment-tile-size);
+    min-height: var(--atoll-chat-attachment-tile-size);
+    max-width: var(--atoll-chat-attachment-tile-size);
+    max-height: var(--atoll-chat-attachment-tile-size);
+    border-radius: var(--#{$prefix}border-radius-lg, 12px) !important;
+    position: relative;
     overflow: hidden;
     flex-shrink: 0;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+  }
+
+  .atoll-chat-attachment-add-more {
+    width: var(--atoll-chat-attachment-tile-size);
+    height: var(--atoll-chat-attachment-tile-size);
+    min-width: var(--atoll-chat-attachment-tile-size);
+    min-height: var(--atoll-chat-attachment-tile-size);
+    border-radius: var(--#{$prefix}border-radius-lg, 12px) !important;
+    border: 1px dashed var(--atoll-chat-attachment-card-border, var(--#{$prefix}border-color-translucent, rgba(0, 0, 0, 0.08))) !important;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+
+    &:hover {
+      background-color: rgba(var(--#{$prefix}body-color-rgb, 0, 0, 0), 0.05);
+    }
+  }
+
+  .atoll-chat-attachment-chip {
+    height: var(--atoll-chat-attachment-tile-size);
+    max-width: 220px;
+    border-radius: var(--#{$prefix}border-radius-lg, 12px) !important;
+  }
+
+  .atoll-chat-tile-remove-btn {
+    width: 22px;
+    height: 22px;
+    top: 3px;
+    right: 3px;
+    z-index: 10;
+    background-color: rgba(0, 0, 0, 0.65) !important;
+    backdrop-filter: blur(4px);
+    border: none !important;
+
+    &:hover {
+      background-color: rgba(0, 0, 0, 0.85) !important;
+    }
+  }
+
+  /* Legacy aliases for backward compatibility */
+  .atoll-chat-attachment-preview-thumbnail-container {
+    width: var(--atoll-chat-attachment-tile-size);
+    height: var(--atoll-chat-attachment-tile-size);
+    min-width: var(--atoll-chat-attachment-tile-size);
+    min-height: var(--atoll-chat-attachment-tile-size);
+    max-width: var(--atoll-chat-attachment-tile-size);
+    max-height: var(--atoll-chat-attachment-tile-size);
+    border-radius: var(--#{$prefix}border-radius-lg, 12px) !important;
+    position: relative;
+    overflow: hidden;
+    flex-shrink: 0;
+
+    img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
   }
 
   .atoll-chat-attachment-preview-cover-btn {
@@ -33,11 +117,11 @@
   }
 
   .atoll-chat-attachment-preview-name {
-    color: var(--atoll-chat-header-color, inherit) !important;
+    color: var(--atoll-chat-header-color, var(--#{$prefix}text-primary, inherit)) !important;
   }
 
   .atoll-chat-attachment-preview-status {
-    color: var(--atoll-chat-header-color, inherit) !important;
+    color: var(--atoll-chat-header-color, var(--#{$prefix}text-secondary, inherit)) !important;
     opacity: 1 !important;
   }
 }
