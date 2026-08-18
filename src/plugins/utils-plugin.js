@@ -309,8 +309,73 @@ export default definePlugin({
 
 
       return (instanceContext) => {
-        const { pocketbase, cryptoWorker, globalStore, storage } = instanceContext
+        const { pocketbase, cryptoWorker, globalStore, storage, eventBus } = instanceContext
         const { $storage } = storage
+        const { $bus } = eventBus || {}
+
+        const inFlightDecryptions = new Map()
+
+        if ($bus) {
+          $bus.on('auth:logout', () => {
+            inFlightDecryptions.clear()
+          })
+        }
+
+        /**
+         * Resolves strict canonical cache key for a media asset.
+         */
+        const resolveCanonicalKey = (asset = {}, options = {}) => {
+          if (typeof asset === 'string') {
+            return asset
+          }
+          if (options.cacheKey) {
+            return options.cacheKey
+          }
+          if (asset.cacheKey) {
+            return asset.cacheKey
+          }
+
+          const isThumbnail = !!(options.isThumbnail || asset.isThumbnail)
+          const isLocal = !!(options.isLocal || asset.isLocal || (asset.localUuid && !asset.media_id && !asset.file_key))
+          const id = asset.media_id || asset.attachmentId || asset.id || asset.localUuid || asset.message_id || 'unknown'
+
+          if (isLocal) {
+            return `local:${asset.localUuid || id}`
+          }
+          if (isThumbnail) {
+            return `thumb:${id}`
+          }
+          return `media:${id}`
+        }
+
+        /**
+         * Attaches caller-isolated AbortSignal listener to a promise.
+         */
+        const attachSignal = (promise, signal) => {
+          if (!signal) {
+            return promise
+          }
+          if (signal.aborted) {
+            return Promise.reject(new DOMException('Aborted', 'AbortError'))
+          }
+          return new Promise((resolve, reject) => {
+            const onAbort = () => {
+              reject(new DOMException('Aborted', 'AbortError'))
+            }
+            signal.addEventListener('abort', onAbort, { once: true })
+
+            promise.then(
+              (res) => {
+                signal.removeEventListener('abort', onAbort)
+                resolve(res)
+              },
+              (err) => {
+                signal.removeEventListener('abort', onAbort)
+                reject(err)
+              }
+            )
+          })
+        }
 
         /**
          * Namespace: $media
@@ -318,23 +383,13 @@ export default definePlugin({
         const media = {
           /**
            * Fetches an encrypted asset from PocketBase, decrypts it using the crypto worker, and returns an Object URL.
+           * Uses strict canonical cache keys and in-flight promise memoization to deduplicate requests.
            *
-           * @param {Object} asset - The encrypted asset metadata containing keys, nonces, and media identifiers.
-           * @param {string} [asset.media_id] - The media record identifier.
-           * @param {string} [asset.id] - The asset identifier.
-           * @param {string} [asset.message_id] - The message identifier.
-           * @param {string} [asset.dataUrl] - Pre-resolved data URL, if any.
-           * @param {string} [asset.file_key] - Base64 encoded decryption key.
-           * @param {string} [asset.key] - Alternative Base64 encoded decryption key fallback.
-           * @param {string} [asset.file_nonce] - Base64 encoded decryption nonce.
-           * @param {string} [asset.nonce] - Alternative Base64 encoded decryption nonce fallback.
-           * @param {string} [asset.mime_type] - The mime type of the decrypted blob.
-           * @param {AbortSignal} [signal] - Optional AbortSignal to cancel network requests or decryption task.
+           * @param {Object|string} asset - The encrypted asset metadata containing keys, nonces, and media identifiers.
+           * @param {Object|AbortSignal} [optionsOrSignal] - Options object ({ signal, isThumbnail, cacheKey, isLocal }) or AbortSignal.
            * @returns {Promise<string>} A promise resolving to the decrypted object URL.
-           * @throws {DOMException} Throws an AbortError if the signal is aborted during execution.
-           * @throws {Error} Throws if the media file is not found, fetch fails, or decryption fails.
            */
-          decrypt: async (asset, signal) => {
+          decrypt: async (asset, optionsOrSignal) => {
             const { pb } = pocketbase
             const { $worker } = cryptoWorker
             const { $state } = globalStore
@@ -343,52 +398,117 @@ export default definePlugin({
               return asset.dataUrl
             }
 
-            const possibleKeys = [asset.message_id, asset.id, asset.media_id].filter(Boolean)
-            for (const key of possibleKeys) {
-              if ($state.decryptionCache.has(key)) {
-                const cached = $state.decryptionCache.get(key)
-                return typeof cached === 'string' ? cached : cached.blobUrl
+            let options = {}
+            if (optionsOrSignal) {
+              if (optionsOrSignal instanceof AbortSignal || typeof optionsOrSignal.addEventListener === 'function') {
+                options = { signal: optionsOrSignal }
+              } else {
+                options = optionsOrSignal
               }
             }
+            const signal = options.signal
 
-            let encryptedBuffer
-            const localFile = await $storage.getFile(asset.message_id || asset.id || asset.media_id)
-            if (localFile) {
-              encryptedBuffer = await localFile.arrayBuffer()
-            } else if (asset.media_id) {
-              const mediaRecord = await pb.collection('media').getOne(asset.media_id)
-              const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-              const response = await fetch(url, { signal })
-              if (!response.ok) {
-                throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+            const canonicalKey = resolveCanonicalKey(asset, options)
+
+            // Synchronous cache lookup
+            if ($state.decryptionCache.has(canonicalKey)) {
+              const cached = $state.decryptionCache.get(canonicalKey)
+              return typeof cached === 'string' ? cached : cached.blobUrl
+            }
+
+            // In-flight memoization lookup
+            if (inFlightDecryptions.has(canonicalKey)) {
+              return attachSignal(inFlightDecryptions.get(canonicalKey), signal)
+            }
+
+            // Start background decryption job
+            const decryptionPromise = (async () => {
+              let encryptedBuffer
+              const fileId = asset.localUuid || asset.message_id || asset.id || asset.media_id
+              const localFile = fileId ? await $storage.getFile(fileId) : null
+
+              if (localFile) {
+                encryptedBuffer = await localFile.arrayBuffer()
+              } else if (asset.media_id) {
+                const mediaRecord = await pb.collection('media').getOne(asset.media_id)
+                const url = pb.files.getURL(mediaRecord, mediaRecord.file)
+                const response = await fetch(url)
+                if (!response.ok) {
+                  throw new Error(`Failed to fetch media: ${response.status} ${response.statusText}`)
+                }
+                encryptedBuffer = await response.arrayBuffer()
+              } else {
+                throw new Error('Media file not found locally or on server')
               }
-              encryptedBuffer = await response.arrayBuffer()
-            } else {
-              throw new Error('Media file not found locally or on server')
-            }
 
-            if (signal?.aborted) {
-              throw new DOMException('Aborted', 'AbortError')
-            }
-            const decryptedBuffer = await $worker.execute('worker:decrypt_file', {
-              encryptedBuffer,
-              nonce: asset.file_nonce || asset.nonce,
-              key: asset.file_key || asset.key
-            })
-            if (signal?.aborted) {
-              throw new DOMException('Aborted', 'AbortError')
-            }
-            const mediaBlob = new Blob([decryptedBuffer], { type: asset.mime_type })
-            const objectUrl = URL.createObjectURL(mediaBlob)
-            const cacheKey = asset.message_id || asset.id || asset.media_id
-            if (cacheKey) {
-              $state.decryptionCache.set(cacheKey, {
+              const nonce = asset.file_nonce || asset.nonce
+              const key = asset.file_key || asset.key
+              const mimeType = asset.mime_type || asset.mimeType || 'image/jpeg'
+              let decryptedBuffer
+
+              if (nonce === 'AES-GCM') {
+                const base64Text = new TextDecoder().decode(encryptedBuffer).trim()
+                const binaryString = atob(base64Text.replace(/-/g, '+').replace(/_/g, '/'))
+                const len = binaryString.length
+                const bytes = new Uint8Array(len)
+                for (let i = 0; i < len; i++) {
+                  bytes[i] = binaryString.charCodeAt(i)
+                }
+                const iv = bytes.slice(0, 12)
+                const ciphertextWithTag = bytes.slice(12)
+
+                const rawKey = new TextEncoder().encode(key)
+                const cryptoKey = await window.crypto.subtle.importKey(
+                  'raw',
+                  rawKey,
+                  { name: 'AES-GCM' },
+                  false,
+                  ['decrypt']
+                )
+
+                decryptedBuffer = await window.crypto.subtle.decrypt(
+                  {
+                    name: 'AES-GCM',
+                    iv
+                  },
+                  cryptoKey,
+                  ciphertextWithTag
+                )
+              } else {
+                decryptedBuffer = await $worker.execute('worker:crypto_secretbox_open_easy', {
+                  ciphertext: encryptedBuffer,
+                  nonce,
+                  key
+                })
+              }
+
+              if (!decryptedBuffer) {
+                throw new Error('Decryption failed')
+              }
+
+              const mediaBlob = new Blob([decryptedBuffer], { type: mimeType })
+              const objectUrl = URL.createObjectURL(mediaBlob)
+
+              $state.decryptionCache.set(canonicalKey, {
                 blobUrl: objectUrl,
-                mimeType: asset.mime_type
+                blob: mediaBlob,
+                mimeType
               })
-            }
-            return objectUrl
+
+              return objectUrl
+            })().finally(() => {
+              inFlightDecryptions.delete(canonicalKey)
+            })
+
+            inFlightDecryptions.set(canonicalKey, decryptionPromise)
+
+            return attachSignal(decryptionPromise, signal)
           },
+
+          /**
+           * Alias for $media.decrypt
+           */
+          getDecryptedMedia: (...args) => media.decrypt(...args),
 
           /**
            * Generates a theme-aware SVG waveform for any audio file.

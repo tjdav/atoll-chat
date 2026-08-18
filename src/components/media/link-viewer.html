@@ -31,11 +31,10 @@
     server: () => ({
       domain: ''
     }),
-    client: async ({ state, signal, refs, storage, globalStore, pocketbase, cryptoWorker, bootstrap }) => {
+    client: async ({ state, signal, refs, storage, globalStore, utils, bootstrap }) => {
       const { $storage } = storage
       const { $state } = globalStore
-      const { pb } = pocketbase
-      const { $worker } = cryptoWorker
+      const { $media } = utils
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
       const carouselInner = refs('carouselInner')
@@ -79,28 +78,20 @@
         container.querySelector('.link-date').textContent = new Date(msg.created_at).toLocaleString()
 
         const imgContainer = container.querySelector('.link-image-container')
-        const cacheKey = `${msg.local_uuid}:${linkIndex}`
+        const thumbKey = `thumb:${msg.media_id || `${msg.local_uuid}:${linkIndex}`}`
 
         if (msg.media_id && msg.file_key && msg.file_nonce && linkIndex === 0) {
           // Decrypt if it's the primary (first) link which might have an encrypted image
           try {
-            let blobUrl = $state.decryptionCache.get(cacheKey)
-            if (!blobUrl) {
-              const record = await pb.collection('media').getOne(msg.media_id)
-              const fileUrl = pb.files.getURL(record, record.file)
-              const response = await fetch(fileUrl)
-              const encryptedBuffer = await response.arrayBuffer()
+            const blobUrl = await $media.decrypt({
+              media_id: msg.media_id,
+              file_key: msg.file_key,
+              file_nonce: msg.file_nonce,
+              mime_type: 'image/jpeg',
+              isThumbnail: true,
+              cacheKey: thumbKey
+            }, { signal })
 
-              const decrypted = await $worker.execute('worker:crypto_secretbox_open_easy', {
-                ciphertext: encryptedBuffer,
-                nonce: msg.file_nonce,
-                key: msg.file_key
-              })
-
-              const blob = new Blob([decrypted], { type: 'image/jpeg' })
-              blobUrl = URL.createObjectURL(blob)
-              $state.decryptionCache.set(cacheKey, blobUrl)
-            }
             const img = document.createElement('img')
             img.src = blobUrl
             img.className = 'w-100 h-100 object-fit-cover'

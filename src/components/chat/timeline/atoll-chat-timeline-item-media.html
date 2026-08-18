@@ -184,57 +184,63 @@
           console.info('[atoll-chat-timeline-item-media] testMsg from DB:', testMsg)
 
           // synchronous cache check
-          const cached = state.localUuid ? $state.decryptionCache.get(state.localUuid) : null
-          if (cached && state.localUuid) {
-            const isVideo = (cached.mimeType || '').startsWith('video/')
-            const objectUrl = isVideo ? cached.thumbnailBlobUrl : (cached.blobUrl || cached)
-            if (objectUrl) {
-              const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || 'image/webp'
-              renderMedia(objectUrl, mimeType, cached.duration)
-              return
-            }
-          }
-
-          // async lifecycle: fetch from DB and decrypt
-          if (!state.localUuid) {
-            return
-          }
           const message = await $storage.getMessage(state.localUuid)
           if (callId !== lastCallId || signal.aborted) {
             return
           }
 
+          const localKey = `local:${state.localUuid}`
+          const localThumbKey = `thumb:${state.localUuid}`
+          const isVideo = (message?.mime_type || '').startsWith('video/')
+          const thumbKey = `thumb:${message?.thumbnail?.media_id || message?.media_id}`
+          const mediaKey = `media:${message?.media_id}`
+
+          let cached
+          if (isVideo) {
+            cached = $state.decryptionCache.get(localThumbKey) || $state.decryptionCache.get(thumbKey)
+          } else {
+            cached = $state.decryptionCache.get(localKey) || $state.decryptionCache.get(mediaKey)
+          }
+
+          if (cached) {
+            const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
+            if (objectUrl) {
+              const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || message?.mime_type || 'image/webp'
+              renderMedia(objectUrl, mimeType, message?.duration || 0)
+              return
+            }
+          }
+
           let objectUrl = null
-          let mimeType = message?.mime_type || (typeof cached === 'object' ? cached?.mimeType : null) || 'image/webp'
-          let duration = message?.duration || cached?.duration || 0
+          let mimeType = message?.mime_type || 'image/webp'
+          let duration = message?.duration || 0
 
           if (mimeType.startsWith('video/')) {
-            objectUrl = cached?.thumbnailBlobUrl
-            if (!objectUrl && message?.thumbnail) {
-              objectUrl = await $media.decrypt(message.thumbnail, signal)
+            if (message?.thumbnail) {
+              objectUrl = await $media.decrypt(message.thumbnail, {
+                isThumbnail: true,
+                signal
+              })
             }
             if (!objectUrl) {
               renderVideoPlaceholder(duration)
               return
             }
           } else {
-            objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
-            if (!objectUrl) {
-              if (['pending', 'pending_p2p'].includes(state.status)) {
-                return
-              }
-              if (!message || !message.file_key) {
-                throw new Error('Message or key missing')
-              }
-
-              objectUrl = await $media.decrypt({
-                media_id: message.media_id,
-                file_key: message.file_key,
-                file_nonce: message.file_nonce,
-                mime_type: message.mime_type,
-                message_id: state.localUuid
-              }, signal)
+            if (['pending', 'pending_p2p'].includes(state.status)) {
+              return
             }
+            if (!message || !message.file_key) {
+              throw new Error('Message or key missing')
+            }
+
+            objectUrl = await $media.decrypt({
+              media_id: message.media_id,
+              file_key: message.file_key,
+              file_nonce: message.file_nonce,
+              mime_type: message.mime_type,
+              localUuid: state.localUuid
+            }, { signal })
           }
 
           if (callId !== lastCallId || signal.aborted) {

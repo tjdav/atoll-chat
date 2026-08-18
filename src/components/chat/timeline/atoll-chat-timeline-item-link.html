@@ -35,14 +35,12 @@
       imageDisplayClass: (state) => (state.title ? '' : 'd-none'),
       urlHref: (state) => state.url
     },
-    client: ({ state, refs, storage, globalStore, eventBus, pocketbase, signal, cryptoWorker, observe }) => {
+    client: ({ state, refs, storage, globalStore, eventBus, utils, signal, observe }) => {
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
-      const { pb } = pocketbase
-      const { $worker } = cryptoWorker
+      const { $media } = utils
 
-      const decryptionCache = $state.decryptionCache
       const imageContainer = refs('imageContainer')
 
       let lastCallId = 0
@@ -67,20 +65,9 @@
         const callId = ++lastCallId
         const uuid = state.localUuid
         const linkIndex = state.linkIndex || 0
-        const cacheKey = `${uuid}:${linkIndex}`
 
-        if (!uuid || !decryptionCache || signal.aborted) {
+        if (!uuid || signal.aborted) {
           return
-        }
-
-        // check cache
-        if (decryptionCache.has(cacheKey)) {
-          const cached = decryptionCache.get(cacheKey)
-          const cachedUrl = typeof cached === 'string' ? cached : cached.blobUrl
-          if (cachedUrl) {
-            renderImage(cachedUrl)
-            return
-          }
         }
 
         // query db
@@ -92,6 +79,16 @@
         const mediaId = state.mediaId || msg?.media_id
         const fileKey = state.fileKey || msg?.file_key
         const fileNonce = state.fileNonce || msg?.file_nonce
+        const thumbKey = `thumb:${mediaId || `${uuid}:${linkIndex}`}`
+
+        if ($state.decryptionCache.has(thumbKey)) {
+          const cached = $state.decryptionCache.get(thumbKey)
+          const cachedUrl = typeof cached === 'string' ? cached : cached.blobUrl
+          if (cachedUrl) {
+            renderImage(cachedUrl)
+            return
+          }
+        }
 
         // If it's a newer message with image_url, we can use it as fallback
         if (state.imageUrl && !mediaId) {
@@ -103,67 +100,19 @@
         }
 
         try {
-          const record = await pb.collection('media').getOne(mediaId)
-          const fileUrl = pb.files.getURL(record, record.file)
-  
-          const response = await fetch(fileUrl, { signal })
-          const encryptedBuffer = await response.arrayBuffer()
-          if (callId !== lastCallId || signal.aborted) {
-            return
-          }
-
-          let decrypted
-          if (fileNonce === 'AES-GCM') {
-            const base64Text = new TextDecoder().decode(encryptedBuffer).trim()
-            const binaryString = atob(base64Text.replace(/-/g, '+').replace(/_/g, '/'))
-            const len = binaryString.length
-            const bytes = new Uint8Array(len)
-            for (let i = 0; i < len; i++) {
-              bytes[i] = binaryString.charCodeAt(i)
-            }
-            const iv = bytes.slice(0, 12)
-            const ciphertextWithTag = bytes.slice(12)
-
-            const rawKey = new TextEncoder().encode(fileKey)
-            const cryptoKey = await window.crypto.subtle.importKey(
-              'raw',
-              rawKey,
-              { name: 'AES-GCM' },
-              false,
-              ['decrypt']
-            )
-
-            decrypted = await window.crypto.subtle.decrypt(
-              {
-                name: 'AES-GCM',
-                iv: iv
-              },
-              cryptoKey,
-              ciphertextWithTag
-            )
-          } else {
-            decrypted = await $worker.execute('worker:crypto_secretbox_open_easy', {
-              ciphertext: encryptedBuffer,
-              nonce: fileNonce,
-              key: fileKey
-            })
-          }
+          const blobUrl = await $media.decrypt({
+            media_id: mediaId,
+            file_key: fileKey,
+            file_nonce: fileNonce,
+            mime_type: 'image/jpeg',
+            isThumbnail: true,
+            cacheKey: thumbKey
+          }, { signal })
 
           if (callId !== lastCallId || signal.aborted) {
             return
           }
 
-          if (!decrypted) {
-            throw new Error('Decryption failed')
-          }
-
-          const blob = new Blob([decrypted], { type: 'image/jpeg' })
-          const blobUrl = URL.createObjectURL(blob)
-
-          decryptionCache.set(cacheKey, {
-            blobUrl,
-            mimeType: 'image/jpeg'
-          })
           renderImage(blobUrl)
           $bus.emit('ui:media_loaded')
         } catch (err) {

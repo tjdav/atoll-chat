@@ -115,15 +115,28 @@
 
             // Resolve Image / Thumbnail URL
             const isVideo = item.isVideo || (item.mime_type || '').startsWith('video/')
-            const cacheKey = item.id ? `${state.localUuid}_${item.id}` : (i === 0 ? state.localUuid : `${state.localUuid}_${i}`)
-            const cached = $state.decryptionCache?.get(cacheKey)
+            const itemId = item.id ? `${state.localUuid}_${item.id}` : (i === 0 ? state.localUuid : `${state.localUuid}_${i}`)
+            const localKey = `local:${itemId}`
+            const localThumbKey = `thumb:${itemId}`
+            const thumbKey = `thumb:${item.thumbnail?.media_id || item.media_id || item.id}`
+            const mediaKey = `media:${item.media_id || item.id}`
 
-            let objectUrl = isVideo ? cached?.thumbnailBlobUrl : (cached?.blobUrl || cached)
+            let cached
+            if (isVideo) {
+              cached = $state.decryptionCache?.get(localThumbKey) || $state.decryptionCache?.get(thumbKey)
+            } else {
+              cached = $state.decryptionCache?.get(localKey) || $state.decryptionCache?.get(mediaKey)
+            }
+
+            let objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
 
             if (!objectUrl) {
               if (isVideo) {
                 if (item.thumbnail) {
-                  objectUrl = await $media.decrypt(item.thumbnail, signal).catch(() => null)
+                  objectUrl = await $media.decrypt(item.thumbnail, {
+                    isThumbnail: true,
+                    signal
+                  }).catch(() => null)
                 }
               } else {
                 if (item.file_key && item.media_id) {
@@ -132,8 +145,8 @@
                     file_key: item.file_key,
                     file_nonce: item.file_nonce,
                     mime_type: item.mime_type,
-                    message_id: state.localUuid
-                  }, signal).catch(() => null)
+                    localUuid: itemId
+                  }, { signal }).catch(() => null)
                 }
               }
             }

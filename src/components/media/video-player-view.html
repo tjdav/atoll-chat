@@ -120,12 +120,15 @@
         try {
           let objectUrl
           if (item.thumbnail) {
-            objectUrl = await $media.decrypt(item.thumbnail, signal)
+            objectUrl = await $media.decrypt(item.thumbnail, {
+              isThumbnail: true,
+              signal
+            })
           } else {
-  
-            const cached = $state.decryptionCache.get(item.message_id || item.id)
-            if (cached?.thumbnailBlobUrl) {
-              objectUrl = cached.thumbnailBlobUrl
+            const thumbKey = `thumb:${item.thumbnail?.media_id || item.id}`
+            const cached = $state.decryptionCache.get(thumbKey)
+            if (cached) {
+              objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             }
           }
 

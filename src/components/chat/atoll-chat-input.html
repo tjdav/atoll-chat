@@ -236,27 +236,41 @@
           params.attachments.forEach((att, idx) => {
             if (att.file) {
               const blobUrl = URL.createObjectURL(att.file)
-              let thumbnailBlobUrl = att.thumbnail_blob ? URL.createObjectURL(att.thumbnail_blob) : null
-              const cacheKey = att.id ? `${localUuid}_${att.id}` : (idx === 0 ? localUuid : `${localUuid}_${idx}`)
-              $state.decryptionCache.set(cacheKey, {
+              const subId = att.id ? `${localUuid}_${att.id}` : (idx === 0 ? localUuid : `${localUuid}_${idx}`)
+              const localKey = `local:${subId}`
+              $state.decryptionCache.set(localKey, {
                 blobUrl,
                 blob: att.file,
-                thumbnailBlobUrl,
                 mimeType: att.mime_type || att.file.type,
                 duration: att.duration
               })
+              if (att.thumbnail_blob) {
+                const thumbBlobUrl = URL.createObjectURL(att.thumbnail_blob)
+                $state.decryptionCache.set(`thumb:${subId}`, {
+                  blobUrl: thumbBlobUrl,
+                  blob: att.thumbnail_blob,
+                  mimeType: 'image/webp'
+                })
+              }
             }
           })
         } else if (params.file) {
           const blobUrl = URL.createObjectURL(params.file)
-          let thumbnailBlobUrl = params.thumbnail_blob ? URL.createObjectURL(params.thumbnail_blob) : null
-          $state.decryptionCache.set(localUuid, {
+          const localKey = `local:${localUuid}`
+          $state.decryptionCache.set(localKey, {
             blobUrl,
             blob: params.file,
-            thumbnailBlobUrl,
             mimeType: params.mime_type || params.file.type,
             duration: params.duration
           })
+          if (params.thumbnail_blob) {
+            const thumbBlobUrl = URL.createObjectURL(params.thumbnail_blob)
+            $state.decryptionCache.set(`thumb:${localUuid}`, {
+              blobUrl: thumbBlobUrl,
+              blob: params.thumbnail_blob,
+              mimeType: 'image/webp'
+            })
+          }
         }
 
         // Optimistic Write
@@ -322,11 +336,13 @@
           })
           await $storage.deleteRecord('local_files', localUuid).catch(() => {
           })
-          $state.decryptionCache.delete(localUuid)
+          $state.decryptionCache.delete(`local:${localUuid}`)
+          $state.decryptionCache.delete(`thumb:${localUuid}`)
           if (params.attachments && params.attachments.length > 0) {
             params.attachments.forEach((att, idx) => {
-              const cacheKey = att.id ? `${localUuid}_${att.id}` : (idx === 0 ? localUuid : `${localUuid}_${idx}`)
-              $state.decryptionCache.delete(cacheKey)
+              const subId = att.id ? `${localUuid}_${att.id}` : (idx === 0 ? localUuid : `${localUuid}_${idx}`)
+              $state.decryptionCache.delete(`local:${subId}`)
+              $state.decryptionCache.delete(`thumb:${subId}`)
             })
           }
           $bus.emit('db:new_local_data', { room_id })
@@ -680,7 +696,7 @@
               }
             }
             item.isCompressing = false
-            item.status = (item.status && item.status !== 'Processing video...') ? item.status : 'Ready'
+            item.status = item.status || 'Ready'
           } else if (file.type.startsWith('audio/') || compatibility.category === 'audio') {
             item.isAudio = true
             item.status = 'Extracting audio...'

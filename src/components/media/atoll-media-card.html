@@ -131,7 +131,10 @@
 
           if (isVideoType) {
             if (asset?.thumbnail) {
-              objectUrl = await $media.decrypt(asset.thumbnail, signal)
+              objectUrl = await $media.decrypt(asset.thumbnail, {
+                isThumbnail: true,
+                signal
+              })
             } else {
               throw new Error('Video thumbnail missing')
             }
@@ -142,7 +145,7 @@
               file_nonce: state.fileNonce,
               mime_type: state.mimeType,
               id: state.assetId
-            }, signal)
+            }, { signal })
           }
 
           if (signal.aborted) {

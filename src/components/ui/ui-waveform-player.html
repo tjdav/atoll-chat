@@ -267,13 +267,14 @@
         try {
           let objectUrl = state.src
           if (!objectUrl && state.audioId) {
-            const cached = $state.decryptionCache.get(state.audioId)
+            const mediaKey = `media:${state.audioId}`
+            const cached = $state.decryptionCache.get(mediaKey)
             if (cached) {
               objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             } else {
               const asset = await $storage.getAsset(state.audioId)
               if (asset) {
-                objectUrl = await $media.decrypt(asset, signal)
+                objectUrl = await $media.decrypt(asset, { signal })
               }
             }
           }
@@ -342,7 +343,8 @@
           let objectUrl = state.src
 
           if (!objectUrl && state.audioId) {
-            const cached = $state.decryptionCache.get(state.audioId)
+            const mediaKey = `media:${state.audioId}`
+            const cached = $state.decryptionCache.get(mediaKey)
             if (cached) {
               objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             } else {
@@ -350,7 +352,7 @@
               if (!asset) {
                 throw new Error('Asset not found in local database')
               }
-              objectUrl = await $media.decrypt(asset, signal)
+              objectUrl = await $media.decrypt(asset, { signal })
             }
           }
 

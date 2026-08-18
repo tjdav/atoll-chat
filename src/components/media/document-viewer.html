@@ -37,11 +37,10 @@
       errorMessage: '',
       fileName: 'Untitled Document'
     }),
-    client: async ({ state, signal, refs, pocketbase, storage, globalStore, cryptoWorker, bootstrap }) => {
-      const { pb } = pocketbase
+    client: async ({ state, signal, refs, storage, globalStore, utils, bootstrap }) => {
       const { $storage } = storage
       const { $state } = globalStore
-      const { $worker } = cryptoWorker
+      const { $media } = utils
       const { Carousel } = bootstrap
       const carouselEl = refs('carousel')
       const carouselInner = refs('carouselInner')
@@ -55,11 +54,8 @@
       const BATCH_SIZE = 24
       let isInternalChange = false
       let initSequence = 0
-      const objectUrls = new Map()
 
       const cleanup = () => {
-        objectUrls.forEach(url => URL.revokeObjectURL(url))
-        objectUrls.clear()
         if (carouselInstance) {
           carouselInstance.dispose()
           carouselInstance = null
@@ -68,11 +64,6 @@
       signal.addEventListener('abort', cleanup)
 
       const decryptAndLoad = async (item, container) => {
-        if (objectUrls.has(item.id)) {
-          container.querySelector('.download-btn').href = objectUrls.get(item.id)
-          return
-        }
-
         const loader = container.querySelector('.spinner-border')
         const content = container.querySelector('.doc-content')
         if (loader) {
@@ -80,28 +71,17 @@
         }
 
         try {
-          const mediaRecord = await pb.collection('media').getOne(item.media_id)
-          const url = pb.files.getURL(mediaRecord, mediaRecord.file)
-          const response = await fetch(url, { signal })
-          const arrayBuffer = await response.arrayBuffer()
-
-          const decryptedData = await $worker.execute('worker:crypto_secretbox_open_easy', {
-            ciphertext: arrayBuffer,
-            nonce: item.file_nonce,
-            key: item.file_key
-          })
-
-          if (!decryptedData) {
-            throw new Error('Decryption failed')
-          }
-
-          const blob = new Blob([decryptedData], { type: item.mime_type })
-          const url_ = URL.createObjectURL(blob)
-          objectUrls.set(item.id, url_)
+          const objectUrl = await $media.decrypt({
+            media_id: item.media_id,
+            file_key: item.file_key,
+            file_nonce: item.file_nonce,
+            mime_type: item.mime_type,
+            id: item.id
+          }, { signal })
 
           if (!signal.aborted) {
             const downloadBtn = container.querySelector('.download-btn')
-            downloadBtn.href = url_
+            downloadBtn.href = objectUrl
             downloadBtn.download = item.filename || 'document'
             if (loader) {
               loader.classList.add('d-none')
@@ -111,6 +91,9 @@
             }
           }
         } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
           console.error('[document-viewer] Error:', err)
           if (loader) {
             loader.classList.add('d-none')
