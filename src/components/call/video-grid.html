@@ -44,6 +44,9 @@
       state.pinnedParticipantId = null
       state.participants = []
 
+      const callStates = ['connected', 'active', 'idle']
+      const activeCallStates = ['connected', 'active']
+  
       let lastHeroId = null
       let lastLayoutMode = null
       let lastDisplayIds = ''
@@ -90,7 +93,7 @@
         }
 
         // Default list to prevent blank screen
-        if (rawParticipants.length === 0 && $state.callStatus === 'active') {
+        if (rawParticipants.length === 0 && activeCallStates.includes($state.callStatus)) {
           rawParticipants = [
             me,
             {
@@ -146,7 +149,7 @@
         })
 
         const hasRemoteInList = list.some(p => !p.isLocal)
-        if (!hasRemoteInList && ($state.callStatus === 'active' || $state.remoteStream)) {
+        if (!hasRemoteInList && (activeCallStates.includes($state.callStatus) || $state.remoteStream)) {
           list.push({
             id: 'remote-user',
             name: 'Remote Participant',
@@ -556,7 +559,7 @@
       })
 
       $state.subscribe('callStatus', (status) => {
-        if (status === 'active' || status === 'idle') {
+        if (callStates.includes(status)) {
           renderGrid()
         }
       })
@@ -565,7 +568,7 @@
         renderGrid()
       }, { signal })
 
-      if ($state.activeCallRoomId || $state.callStatus === 'active') {
+      if ($state.activeCallRoomId || activeCallStates.includes($state.callStatus)) {
         renderGrid()
       }
 

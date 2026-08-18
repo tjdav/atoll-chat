@@ -34,14 +34,29 @@
       const { $storage } = storage
       const { pb } = pocketbase || {}
       const callerAvatar = refs('callerAvatar')
+      const btnAccept = refs('btnAccept')
+      const btnReject = refs('btnReject')
+
+      let isActionInFlight = false
 
       state.callStatus = $state.callStatus
 
+      const resetActionGuard = () => {
+        isActionInFlight = false
+        btnAccept.removeAttribute('disabled')
+        btnReject.removeAttribute('disabled')
+      }
+
       $state.subscribe('callStatus', (val) => {
         state.callStatus = val
+        if (val !== 'incoming') {
+          resetActionGuard()
+        }
       })
 
       $bus.on('call:incoming', async ({ room_id, senderId, media_types }) => {
+        resetActionGuard()
+
         if (senderId === $state.currentUser?.id) {
           return
         }
@@ -82,11 +97,27 @@
         state.callerInitial = state.callerName.charAt(0).toUpperCase()
       }, { signal })
 
-      refs('btnAccept').addEventListener('click', () => {
+      btnAccept.addEventListener('click', () => {
+        if (state.callStatus !== 'incoming' || isActionInFlight) {
+          return
+        }
+
+        isActionInFlight = true
+
+        btnAccept.setAttribute('disabled', 'true')
+        btnReject.setAttribute('disabled', 'true')
         $bus.emit('call:accept_clicked')
       })
 
-      refs('btnReject').addEventListener('click', () => {
+      btnReject.addEventListener('click', () => {
+        if (state.callStatus !== 'incoming' || isActionInFlight) {
+          return
+        }
+
+        isActionInFlight = true
+  
+        btnAccept.setAttribute('disabled', 'true')
+        btnReject.setAttribute('disabled', 'true')
         $bus.emit('call:reject_clicked')
       })
     }

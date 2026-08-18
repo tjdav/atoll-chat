@@ -274,7 +274,7 @@ test('Call Session (call_id) & Stale Signaling Isolation Tests', async (t) => {
 
   await t.test('5. Auto-Reject Busy Response - Sends call_end reason busy when already in call', async () => {
     const env = createMockEnvironment()
-    env.globalState.callStatus = 'active'
+    env.globalState.callStatus = 'connected'
     env.globalState.activeCallId = 'active-call-session-1'
 
     // Deliver incoming call_offer for new session while busy
@@ -374,5 +374,66 @@ test('Call Session (call_id) & Stale Signaling Isolation Tests', async (t) => {
 
     assert.strictEqual(incomingCallId, 'session-B', 'Reconciliation should process active session-B and ignore session-A')
     assert.strictEqual(env.globalState.activeCallId, 'session-B')
+  })
+
+  await t.test('8. Busy Toast Notification for Caller - Receives reason: busy and shows warning toast', async () => {
+    const env = createMockEnvironment()
+    const mockTrack = { stop: () => {} }
+    const mockStream = { getVideoTracks: () => [], getAudioTracks: () => [mockTrack], getTracks: () => [mockTrack] }
+
+    await env.webrtc.initiateCall('room-1', mockStream)
+    const callId = env.globalState.activeCallId
+
+    let toastEmitted = null
+    env.bus.on('ui:show_toast', (toast) => {
+      toastEmitted = toast
+    })
+
+    env.bus.emit('db:new_local_data', {
+      room_id: 'room-1',
+      message: {
+        type: 'call_end',
+        call_id: callId,
+        sender_id: 'user-bob',
+        reason: 'busy'
+      }
+    })
+
+    assert.ok(toastEmitted, 'Toast event should be emitted')
+    assert.strictEqual(toastEmitted.message, 'User is busy on another call')
+    assert.strictEqual(toastEmitted.variant, 'warning')
+    assert.strictEqual(env.globalState.callStatus, 'idle')
+  })
+
+  await t.test('9. In-Flight answerCall Deduplication - Duplicate calls return active promise', async () => {
+    const env = createMockEnvironment()
+    const mockTrack = { stop: () => {} }
+    const mockStream = { getVideoTracks: () => [], getAudioTracks: () => [mockTrack], getTracks: () => [mockTrack] }
+
+    // First transition to INCOMING via incoming offer
+    env.bus.emit('db:new_local_data', {
+      room_id: 'room-1',
+      message: {
+        type: 'call_offer',
+        call_id: 'session-dedup',
+        sender_id: 'user-bob',
+        content: { type: 'offer', sdp: 'sdp' }
+      }
+    })
+
+    assert.strictEqual(env.globalState.callStatus, 'incoming')
+
+    const offer = { type: 'offer', sdp: 'sdp' }
+    const p1 = env.webrtc.answerCall('room-1', mockStream, offer, 'session-dedup')
+    const p2 = env.webrtc.answerCall('room-1', mockStream, offer, 'session-dedup')
+
+    assert.strictEqual(p1, p2, 'Concurrent answerCall must return the exact same in-flight Promise')
+    await p1
+    assert.strictEqual(env.globalState.callStatus, 'connected')
+
+    // Calling answerCall when already CONNECTED resolves immediately without error
+    const p3 = env.webrtc.answerCall('room-1', mockStream, offer, 'session-dedup')
+    await p3
+    assert.strictEqual(env.globalState.callStatus, 'connected')
   })
 })

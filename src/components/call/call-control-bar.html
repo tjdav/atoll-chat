@@ -232,7 +232,7 @@
 
       $state.subscribe('callStatus', (val) => {
         state.callStatus = val
-        if (val === 'active') {
+        if (['connected', 'active'].includes(val)) {
           // Pre-emptively move content when active so enumerated devices can render
           moveContent()
           deviceManager.enumerateAndBootDevices()

@@ -48,8 +48,8 @@
       callId: null
     }),
     getters: {
-      activeClass: (state) => (state.callStatus === 'active' && !state.isPipMode ? 'd-block' : 'd-none'),
-      pipClass: (state) => (state.callStatus === 'active' && state.isPipMode ? 'd-block' : 'd-none')
+      activeClass: (state) => (['connected', 'active', 'outgoing'].includes(state.callStatus) && !state.isPipMode ? 'd-block' : 'd-none'),
+      pipClass: (state) => (['connected', 'active'].includes(state.callStatus) && state.isPipMode ? 'd-block' : 'd-none')
     },
     client: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, storage, refs, signal, bootstrap }) => {
       const { $state } = globalStore
@@ -63,11 +63,12 @@
         keyboard: false
       })
 
-      const { playRingtone, stopRingtone } = await import('../../utils/call/callSoundManager.js')
+      const { playRingtone, stopRingtone, playRingback, stopRingback, stopAll } = await import('../../utils/call/callSoundManager.js')
+      let isActionInFlight = false
 
       /**
        * Toggles bootstrap call overlay visibility on the viewport.
-       * @param {string} status - Active call overlay state (idle, active, incoming).
+       * @param {string} status - Active call overlay state (idle, connected, active, incoming, outgoing).
        * @param {boolean} isPip - Indicates if picture-in-picture mode is active.
        * @returns {void}
        */
@@ -164,6 +165,7 @@
           await $webrtc.endCall($state.activeCallRoomId, state.callId || $state.activeCallId)
         }
         stopTracks()
+        stopAll()
         $state.set('callStatus', 'idle')
         $state.activeCallRoomId = null
         $state.activeCallId = null
@@ -216,15 +218,23 @@
 
       $state.subscribe('callStatus', (val) => {
         state.callStatus = val
-        if (val === 'idle' || (val === 'active' && (state.remoteOffer || $state.remoteStream))) {
-          stopRingtone()
+        if (val === 'idle' || (['connected', 'active'].includes(val) && (state.remoteOffer || $state.remoteStream))) {
+          stopAll()
         }
         if (val === 'idle') {
           state.isPipMode = false
           $bus.emit('pip:reset_position')
         }
         if (val === 'incoming') {
+          stopRingback()
           playRingtone({
+            globalStore,
+            $storage
+          })
+        }
+        if (val === 'outgoing') {
+          stopRingtone()
+          playRingback({
             globalStore,
             $storage
           })
@@ -283,7 +293,7 @@
           remoteStreamId = null
         }
         if (stream) {
-          stopRingtone()
+          stopAll()
           remoteStreamId = speakerDetector.attachStream(stream, 'remote')
         }
       })
@@ -308,7 +318,7 @@
         updateTrackStates(localStream)
 
         $bus.emit('call:local_stream_available', { stream: localStream })
-        playRingtone({
+        playRingback({
           globalStore,
           $storage
         })
@@ -322,6 +332,7 @@
   
         if ($state.activeCallRoomId === room_id) {
           stopTracks()
+          stopAll()
           $state.set('callStatus', 'idle')
           $state.activeCallRoomId = null
           $state.activeCallId = null
@@ -332,42 +343,49 @@
 
       // Subcomponent Action Event Listeners
       $bus.on('call:accept_clicked', async () => {
+        if (isActionInFlight) {
+          return
+        }
+        isActionInFlight = true
+
         let localStream = null
         const hasVideoOffer = state.incomingMediaTypes && state.incomingMediaTypes.includes('video')
 
         try {
-          localStream = await navigator.mediaDevices.getUserMedia({
-            audio: true,
-            video: hasVideoOffer
-          })
-        } catch {
-          if (hasVideoOffer) {
-            try {
-              localStream = await navigator.mediaDevices.getUserMedia({
-                audio: true,
-                video: false
-              })
-            } catch {
+          try {
+            localStream = await navigator.mediaDevices.getUserMedia({
+              audio: true,
+              video: hasVideoOffer
+            })
+          } catch {
+            if (hasVideoOffer) {
+              try {
+                localStream = await navigator.mediaDevices.getUserMedia({
+                  audio: true,
+                  video: false
+                })
+              } catch {
+                await endCall()
+                return
+              }
+            } else {
               await endCall()
               return
             }
-          } else {
-            await endCall()
-            return
           }
-        }
 
-        try {
           state.localStream = localStream
           $state.localStream = localStream
           updateTrackStates(localStream)
 
-          $state.set('callStatus', 'active')
+          $state.set('callStatus', 'connected')
           $bus.emit('call:local_stream_available', { stream: localStream })
 
           await $webrtc.answerCall($state.activeCallRoomId, localStream, state.remoteOffer, state.callId)
         } catch {
           await endCall()
+        } finally {
+          isActionInFlight = false
         }
       }, { signal })
 
@@ -404,7 +422,7 @@
       // Cleanup on unmount
       signal.addEventListener('abort', () => {
         stopTracks()
-        stopRingtone()
+        stopAll()
         modal.dispose()
       })
     }

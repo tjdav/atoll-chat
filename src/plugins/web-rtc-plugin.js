@@ -1,4 +1,6 @@
 import { definePlugin } from 'coralite'
+import { createCallStateMachine, CALL_STATES } from '../utils/call/callStateMachine.js'
+import { stopRingtone, stopRingback, stopAll } from '../utils/call/callSoundManager.js'
 
 /**
  * Defines and exports the WebRTC Manager Plugin for Atoll Chat.
@@ -93,6 +95,11 @@ export default function webrtcPlugin ({
         const candidateTimers = new Map()
         const processedMessages = new Set()
         const pendingSignalingQueue = new Map()
+        const inFlightAnswers = new Map()
+
+        let outgoingTimer = null
+        let incomingTimer = null
+
         const $bus = pluginContext.$bus
 
         const rtcConfig = {
@@ -103,6 +110,26 @@ export default function webrtcPlugin ({
         let globalWorker = null
         let isSignalingSetup = false
 
+        const callFSM = createCallStateMachine({
+          initialState: CALL_STATES.IDLE,
+          onTransition: (newState) => {
+            if (globalState) {
+              globalState.set('callStatus', newState)
+            }
+          }
+        })
+
+        const clearCallTimers = () => {
+          if (outgoingTimer) {
+            clearTimeout(outgoingTimer)
+            outgoingTimer = null
+          }
+          if (incomingTimer) {
+            clearTimeout(incomingTimer)
+            incomingTimer = null
+          }
+        }
+
         /**
          * Cleanly tears down any active WebRTC call for a specific room.
          * Closes peer connections, stops media tracks, and resets global call states.
@@ -111,6 +138,9 @@ export default function webrtcPlugin ({
          * @returns {void}
          */
         const teardownCall = (room_id) => {
+          clearCallTimers()
+          stopAll()
+
           const callId = activeCallIdByRoom.get(room_id)
           if (globalState && globalState.activeCallRoomId === room_id) {
             globalState.remoteStream = null
@@ -142,9 +172,13 @@ export default function webrtcPlugin ({
             window.__E2E_PEER_CONNECTION__ = null
           }
 
-          activeCallIdByRoom.delete(room_id)
+          if (room_id) {
+            activeCallIdByRoom.delete(room_id)
+          }
+
           if (callId) {
             pendingCandidatesByCall.delete(callId)
+            inFlightAnswers.delete(callId)
           }
 
           // Clear candidate batching state
@@ -152,7 +186,9 @@ export default function webrtcPlugin ({
             clearTimeout(candidateTimers.get(room_id))
             candidateTimers.delete(room_id)
           }
+
           candidateBuffers.delete(room_id)
+          callFSM.reset()
         }
 
         window.addEventListener('beforeunload', () => {
@@ -410,9 +446,31 @@ export default function webrtcPlugin ({
             const currentCallId = activeCallIdByRoom.get(room_id)
 
             if (message.type === 'call_offer') {
-              if (globalState.callStatus === 'idle') {
+              // Also check globalState.callStatus for legacy 'active' or external state sync
+              const isGlobalIdle = globalState ? (globalState.callStatus === 'idle' || !globalState.callStatus) : true
+              if (callFSM.is(CALL_STATES.IDLE) && isGlobalIdle) {
+                callFSM.transition(CALL_STATES.INCOMING)
                 activeCallIdByRoom.set(room_id, message.call_id)
                 globalState.activeCallId = message.call_id
+
+                // Arm 45-second incoming timer
+                clearCallTimers()
+                incomingTimer = setTimeout(async () => {
+                  incomingTimer = null
+                  const call_id = activeCallIdByRoom.get(room_id) || message.call_id
+                  await sendSignalingMessage(room_id, 'call_end', {
+                    call_id,
+                    reason: 'missed'
+                  })
+                  stopRingtone()
+                  teardownCall(room_id)
+                  $bus.emit('call:ended', {
+                    room_id,
+                    call_id,
+                    reason: 'missed'
+                  })
+                }, 45000)
+
                 $bus.emit('call:incoming', {
                   room_id,
                   call_id: message.call_id,
@@ -431,7 +489,7 @@ export default function webrtcPlugin ({
                 }
               }
             } else if (message.type === 'call_answer') {
-              if (message.sender_id === globalState.currentUser?.id && globalState.callStatus === 'incoming' && globalState.activeCallRoomId === room_id) {
+              if (message.sender_id === globalState.currentUser?.id && callFSM.is(CALL_STATES.INCOMING) && globalState.activeCallRoomId === room_id) {
                 if (message.call_id === currentCallId) {
                   teardownCall(room_id)
                   $bus.emit('call:ended', {
@@ -443,7 +501,7 @@ export default function webrtcPlugin ({
                     message: 'Call answered on another device',
                     variant: 'primary'
                   })
-                  globalState.set('callStatus', 'idle')
+                  callFSM.reset()
                   globalState.activeCallRoomId = null
                   globalState.activeCallId = null
                   globalState.remoteStream = null
@@ -463,6 +521,14 @@ export default function webrtcPlugin ({
                 if (pc.signalingState === 'have-local-offer') {
                   await pc.setRemoteDescription(new RTCSessionDescription(message.content))
                   await applyPendingCandidates(currentCallId, pc)
+
+                  // Immediately halt ringback and transition state to CONNECTED upon setRemoteDescription
+                  clearCallTimers()
+                  stopRingback()
+
+                  if (callFSM.canTransitionTo(CALL_STATES.CONNECTED)) {
+                    callFSM.transition(CALL_STATES.CONNECTED)
+                  }
                 }
               }
             } else if (message.type === 'ice_candidate') {
@@ -488,6 +554,18 @@ export default function webrtcPlugin ({
               if (currentCallId && message.call_id !== currentCallId) {
                 console.warn(`[webrtc] Discarding call_end for mismatched call_id "${message.call_id}" (active: "${currentCallId}")`)
                 return
+              }
+
+              if (message.reason === 'busy') {
+                $bus.emit('ui:show_toast', {
+                  message: 'User is busy on another call',
+                  variant: 'warning'
+                })
+              } else if (message.reason === 'missed' || message.reason === 'timeout') {
+                $bus.emit('ui:show_toast', {
+                  message: 'User did not answer',
+                  variant: 'warning'
+                })
               }
 
               teardownCall(room_id)
@@ -575,6 +653,17 @@ export default function webrtcPlugin ({
           globalWorker = $worker
           globalState = $state
 
+          // Synchronize callFSM with globalState callStatus if modified externally or on boot
+          if (globalState.callStatus) {
+            const normalizedStatus = globalState.callStatus === 'active' ? CALL_STATES.CONNECTED : globalState.callStatus
+            if (Object.values(CALL_STATES).includes(normalizedStatus) && normalizedStatus !== callFSM.getState()) {
+              callFSM.reset()
+              if (normalizedStatus !== CALL_STATES.IDLE && callFSM.canTransitionTo(normalizedStatus)) {
+                callFSM.transition(normalizedStatus)
+              }
+            }
+          }
+
           // Listen for sync:complete to reconcile any queued signaling messages
           $bus.on('sync:complete', async () => {
             await reconcileSignalingQueue()
@@ -633,6 +722,11 @@ export default function webrtcPlugin ({
           return {
             $webrtc: {
               /**
+               * Returns the current state machine instance.
+               */
+              getFSM: () => callFSM,
+
+              /**
                * Initiates an outgoing WebRTC call.
                *
                * @param {string} room_id - The ID of the room to call.
@@ -640,10 +734,38 @@ export default function webrtcPlugin ({
                * @returns {Promise<void>}
                */
               initiateCall: async (room_id, mediaStream) => {
+                if (!callFSM.canTransitionTo(CALL_STATES.OUTGOING)) {
+                  console.warn(`[webrtc] Cannot initiate call from state "${callFSM.getState()}"`)
+                  return
+                }
+
+                callFSM.transition(CALL_STATES.OUTGOING)
                 const call_id = crypto.randomUUID()
                 activeCallIdByRoom.set(room_id, call_id)
                 $state.activeCallId = call_id
                 $state.activeCallRoomId = room_id
+
+                // Arm 45-second outgoing timer
+                clearCallTimers()
+                outgoingTimer = setTimeout(async () => {
+                  outgoingTimer = null
+                  const activeCallId = activeCallIdByRoom.get(room_id) || call_id
+                  await sendSignalingMessage(room_id, 'call_end', {
+                    call_id: activeCallId,
+                    reason: 'timeout'
+                  })
+                  stopRingback()
+                  teardownCall(room_id)
+                  $bus.emit('ui:show_toast', {
+                    message: 'User did not answer',
+                    variant: 'warning'
+                  })
+                  $bus.emit('call:ended', {
+                    room_id,
+                    call_id: activeCallId,
+                    reason: 'timeout'
+                  })
+                }, 45000)
 
                 const pc = await setupPeerConnection(room_id, mediaStream, $state, pb)
                 const offer = await pc.createOffer()
@@ -659,7 +781,7 @@ export default function webrtcPlugin ({
               },
 
               /**
-               * Answers an incoming WebRTC call.
+               * Answers an incoming WebRTC call with in-flight deduplication.
                *
                * @param {string} room_id - The ID of the room.
                * @param {MediaStream} mediaStream - The local media stream tracks to send.
@@ -667,25 +789,58 @@ export default function webrtcPlugin ({
                * @param {string} [call_id] - The session ID of the call being answered.
                * @returns {Promise<void>}
                */
-              answerCall: async (room_id, mediaStream, remoteOffer, call_id) => {
+              answerCall: (room_id, mediaStream, remoteOffer, call_id) => {
                 const currentCallId = call_id || activeCallIdByRoom.get(room_id) || $state.activeCallId
-                if (currentCallId) {
-                  activeCallIdByRoom.set(room_id, currentCallId)
-                  $state.activeCallId = currentCallId
-                }
-                $state.activeCallRoomId = room_id
 
-                const pc = await setupPeerConnection(room_id, mediaStream, $state, pb)
-                await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer))
-                if (currentCallId) {
-                  await applyPendingCandidates(currentCallId, pc)
+                // Resolve immediately if already connected or not incoming
+                if (callFSM.is(CALL_STATES.CONNECTED) || (!callFSM.is(CALL_STATES.INCOMING) && !callFSM.canTransitionTo(CALL_STATES.CONNECTED))) {
+                  return Promise.resolve()
                 }
-                const answer = await pc.createAnswer()
-                await pc.setLocalDescription(answer)
-                await sendSignalingMessage(room_id, 'call_answer', {
-                  call_id: currentCallId,
-                  content: answer
-                })
+
+                // In-flight promise deduplication guard
+                if (currentCallId && inFlightAnswers.has(currentCallId)) {
+                  return inFlightAnswers.get(currentCallId)
+                }
+
+                const executeAnswer = async () => {
+                  try {
+                    clearCallTimers()
+                    stopRingtone()
+
+                    if (currentCallId) {
+                      activeCallIdByRoom.set(room_id, currentCallId)
+                      $state.activeCallId = currentCallId
+                    }
+                    $state.activeCallRoomId = room_id
+
+                    const pc = await setupPeerConnection(room_id, mediaStream, $state, pb)
+                    await pc.setRemoteDescription(new RTCSessionDescription(remoteOffer))
+                    if (currentCallId) {
+                      await applyPendingCandidates(currentCallId, pc)
+                    }
+                    const answer = await pc.createAnswer()
+                    await pc.setLocalDescription(answer)
+                    await sendSignalingMessage(room_id, 'call_answer', {
+                      call_id: currentCallId,
+                      content: answer
+                    })
+
+                    if (callFSM.canTransitionTo(CALL_STATES.CONNECTED)) {
+                      callFSM.transition(CALL_STATES.CONNECTED)
+                    }
+                  } finally {
+                    if (currentCallId) {
+                      inFlightAnswers.delete(currentCallId)
+                    }
+                  }
+                }
+
+                const answerPromise = executeAnswer()
+                if (currentCallId) {
+                  inFlightAnswers.set(currentCallId, answerPromise)
+                }
+
+                return answerPromise
               },
 
               /**
