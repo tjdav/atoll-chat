@@ -139,6 +139,42 @@
       }
 
       /**
+       * Consolidates local and remote call state invalidation, stopping tracks,
+       * halting audio, and clearing all offer, stream, and status flags.
+       * @returns {void}
+       */
+      const resetCallState = () => {
+        state.remoteOffer = null
+        state.incomingMediaTypes = ['audio', 'video']
+        state.callId = null
+        isActionInFlight = false
+
+        stopTracks()
+
+        if ($state.localStream) {
+          $state.localStream.getTracks().forEach(t => t.stop())
+          $state.localStream = null
+        }
+        if ($state.remoteStream) {
+          $state.remoteStream.getTracks().forEach(t => t.stop())
+          $state.remoteStream = null
+        }
+        $state.hasRemoteVideo = false
+        state.localStream = null
+
+        stopAll()
+
+        state.isAudioEnabled = true
+        $state.isAudioEnabled = true
+        state.isVideoEnabled = true
+        $state.isVideoEnabled = true
+        state.isPipMode = false
+        $state.activeCallId = null
+        $state.activeCallRoomId = null
+        $state.set('callStatus', 'idle')
+      }
+
+      /**
        * Infers current track enablement states back to the reactive state model.
        * @param {MediaStream} stream - Active input media stream.
        * @returns {void}
@@ -164,20 +200,7 @@
         if ($state.activeCallRoomId) {
           await $webrtc.endCall($state.activeCallRoomId, state.callId || $state.activeCallId)
         }
-        stopTracks()
-        stopAll()
-        $state.set('callStatus', 'idle')
-        $state.activeCallRoomId = null
-        $state.activeCallId = null
-        state.callId = null
-        $state.localStream = null
-        $state.remoteStream = null
-        $state.hasRemoteVideo = false
-        state.remoteOffer = null
-        state.isAudioEnabled = true
-        $state.isAudioEnabled = true
-        state.isVideoEnabled = true
-        $state.isVideoEnabled = true
+        resetCallState()
       }
 
       /**
@@ -329,15 +352,9 @@
         if (call_id && $state.activeCallId && call_id !== $state.activeCallId) {
           return
         }
-  
-        if ($state.activeCallRoomId === room_id) {
-          stopTracks()
-          stopAll()
-          $state.set('callStatus', 'idle')
-          $state.activeCallRoomId = null
-          $state.activeCallId = null
-          state.callId = null
-          state.remoteOffer = null
+
+        if ($state.activeCallRoomId === room_id || !room_id) {
+          resetCallState()
 
           if (reason === 'connection_failed' || reason === 'timeout_disconnected') {
             $bus.emit('ui:show_toast', {
@@ -346,6 +363,10 @@
             })
           }
         }
+      }, { signal })
+
+      $bus.on('auth:logout', () => {
+        resetCallState()
       }, { signal })
 
       // Subcomponent Action Event Listeners
@@ -428,8 +449,7 @@
 
       // Cleanup on unmount
       signal.addEventListener('abort', () => {
-        stopTracks()
-        stopAll()
+        resetCallState()
         modal.dispose()
       })
     }

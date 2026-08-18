@@ -1,6 +1,7 @@
 import { definePlugin } from 'coralite'
 import { createCallStateMachine, CALL_STATES } from '../utils/call/callStateMachine.js'
 import { stopRingtone, stopRingback, stopAll } from '../utils/call/callSoundManager.js'
+import { BoundedTTLDedupe } from '../utils/call/boundedTTLDedupe.js'
 
 /**
  * Defines and exports the WebRTC Manager Plugin for Atoll Chat.
@@ -94,7 +95,7 @@ export default function webrtcPlugin ({
         const pendingCandidatesByCall = new Map()
         const candidateBuffers = new Map()
         const candidateTimers = new Map()
-        const processedMessages = new Set()
+        const processedMessages = new BoundedTTLDedupe(10 * 60 * 1000, 500)
         const pendingSignalingQueue = new Map()
         const inFlightAnswers = new Map()
         const reconnectTimersByRoom = new Map()
@@ -160,7 +161,16 @@ export default function webrtcPlugin ({
 
           const callId = activeCallIdByRoom.get(room_id)
           if (globalState && globalState.activeCallRoomId === room_id) {
-            globalState.remoteStream = null
+            if (globalState.remoteStream) {
+              globalState.remoteStream.getTracks().forEach(t => t.stop())
+              globalState.remoteStream = null
+            }
+
+            if (globalState.localStream) {
+              globalState.localStream.getTracks().forEach(t => t.stop())
+              globalState.localStream = null
+            }
+
             globalState.hasRemoteVideo = false
           }
           const pc = activeCalls.get(room_id)
@@ -211,19 +221,52 @@ export default function webrtcPlugin ({
           callFSM.reset()
         }
 
+        const handleFullTeardown = async (reason = 'user_logged_out') => {
+          clearCallTimers()
+          for (const [room_id, callId] of Array.from(activeCallIdByRoom.entries())) {
+            clearReconnectTimer(room_id)
+            await sendSignalingMessage(room_id, 'call_end', {
+              call_id: callId,
+              reason
+            })
+            teardownCall(room_id)
+          }
+
+          processedMessages.clear()
+          pendingSignalingQueue.clear()
+          pendingCandidatesByCall.clear()
+          candidateBuffers.clear()
+
+          for (const timer of candidateTimers.values()) {
+            clearTimeout(timer)
+          }
+          candidateTimers.clear()
+
+          stopAll()
+
+          if (globalState) {
+            if (globalState.localStream) {
+              globalState.localStream.getTracks().forEach(t => t.stop())
+              globalState.localStream = null
+            }
+            if (globalState.remoteStream) {
+              globalState.remoteStream.getTracks().forEach(t => t.stop())
+              globalState.remoteStream = null
+            }
+            globalState.hasRemoteVideo = false
+            globalState.activeCallId = null
+            globalState.activeCallRoomId = null
+          }
+        }
+
         if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
           window.addEventListener('beforeunload', () => {
-            for (const room_id of activeCalls.keys()) {
-              teardownCall(room_id)
-            }
-            pendingSignalingQueue.clear()
+            handleFullTeardown('beforeunload')
           })
         }
 
-        $bus.on('auth:logout', () => {
-          for (const room_id of activeCalls.keys()) {
-            teardownCall(room_id)
-          }
+        $bus.on('auth:logout', async () => {
+          await handleFullTeardown('user_logged_out')
         })
 
         /**
