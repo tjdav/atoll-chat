@@ -217,14 +217,8 @@
         root.hide = closeEditRoomModal
       }
 
-      $bus.on('ui:open_edit_room_modal', openEditRoomModal)
-      $bus.on('ui:open_edit_room', openEditRoomModal)
-
-      const unbindBus = () => {
-        $bus.off('ui:open_edit_room_modal', openEditRoomModal)
-        $bus.off('ui:open_edit_room', openEditRoomModal)
-      }
-      signal.addEventListener('abort', unbindBus)
+      $bus.on('ui:open_edit_room_modal', openEditRoomModal, { signal })
+      $bus.on('ui:open_edit_room', openEditRoomModal, { signal })
 
       roomNameInput.addEventListener('input', (e) => {
         state.roomName = e.target.value

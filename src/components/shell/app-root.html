@@ -60,8 +60,16 @@
         const toastType = variant || type
         toastBody.textContent = message
         toastEl.className = `toast align-items-center text-white bg-${toastType} border-0 shadow`
+        if (!toastInstance && bootstrap?.Toast) {
+          try {
+            toastInstance = new bootstrap.Toast(toastEl)
+          } catch {
+          }
+        }
         if (toastInstance) {
           toastInstance.show()
+        } else {
+          toastEl.classList.add('show')
         }
       })
 
@@ -613,22 +621,43 @@
 
       /* Listen for unified deep link route events */
       $bus.on('app:route_requested', async ({ path: routePath, queryParams }) => {
-        const rawInviteParam = queryParams?.invite_code || queryParams?.code || queryParams?.invite
+        const pathInviteCode = routePath && routePath.startsWith('/invite/') ? routePath.split('/invite/')[1]?.split('?')[0]?.trim() : null
+        const rawInviteParam = queryParams?.invite_code || queryParams?.code || queryParams?.invite || pathInviteCode
+  
         if (rawInviteParam && typeof rawInviteParam === 'string') {
           const trimmed = rawInviteParam.trim()
           // Differentiate user registration invite codes (e.g. INV-XXXX-XXXX or contains hyphens) from 15-char PB room record IDs
-          const isRegCode = trimmed.toUpperCase().startsWith('INV-') || queryParams?.invite_code || queryParams?.code || (trimmed.includes('-') && !routePath?.startsWith('/invite/'))
+          const isRegCode = trimmed.toUpperCase().startsWith('INV-') ||
+                            trimmed.toUpperCase().startsWith('INV') ||
+                            queryParams?.invite_code ||
+                            queryParams?.code ||
+                            trimmed.includes('-') ||
+                            (!$state.isAuthenticated && trimmed.length !== 15)
           if (isRegCode) {
             if (!$state.isAuthenticated) {
               $state.pendingRegistrationInvite = trimmed
               $state.authView = 'register'
+              if (typeof window !== 'undefined' && window.history && (window.location.search || window.location.pathname.startsWith('/invite/'))) {
+                window.history.replaceState({}, '', '/')
+              }
+              updateUI()
               $bus.emit('auth:invite_code_received', { code: trimmed })
+            } else {
+              if (typeof window !== 'undefined' && window.history && (window.location.search || window.location.pathname.startsWith('/invite/'))) {
+                window.history.replaceState({}, '', '/')
+              }
+  
+              $bus.emit('ui:show_toast', {
+                message: 'You are already logged in to Atoll.',
+                type: 'info'
+              })
             }
             return
           }
         }
 
-        const inviteRoomId = queryParams?.invite || (routePath && routePath.startsWith('/invite/') ? routePath.split('/invite/')[1]?.split('?')[0]?.trim() : null)
+        const inviteRoomId = queryParams?.invite || pathInviteCode
+  
         if (inviteRoomId) {
           await handleJoinRoom(inviteRoomId)
         }

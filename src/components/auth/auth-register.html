@@ -379,6 +379,7 @@ Atoll administrators cannot recover your credentials or vault.
         }
 
         $state.isAuthenticated = true
+        $state.pendingRegistrationInvite = null
         if ($state.isVaultUnlocked) {
           try {
             await $sync.startSubscriptions()
@@ -436,7 +437,18 @@ Atoll administrators cannot recover your credentials or vault.
        */
       const applyInviteCode = (rawCode) => {
         if (rawCode && invitationCodeInput) {
-          invitationCodeInput.value = formatInviteCode(rawCode)
+          const formatted = formatInviteCode(rawCode)
+  
+          invitationCodeInput.value = formatted
+          invitationCodeInput.setAttribute('value', formatted)
+          invitationCodeInput.dispatchEvent(new Event('input', {
+            bubbles: true,
+            composed: true
+          }))
+          invitationCodeInput.dispatchEvent(new Event('change', {
+            bubbles: true,
+            composed: true
+          }))
         }
       }
 
@@ -446,10 +458,19 @@ Atoll administrators cannot recover your credentials or vault.
 
       // Check global state or URL query parameters on mount
       let initialInvite = $state.pendingRegistrationInvite
-      if (!initialInvite && typeof window !== 'undefined' && window.location.search) {
+      if (!initialInvite && typeof window !== 'undefined') {
         try {
-          const params = new URLSearchParams(window.location.search)
-          initialInvite = params.get('invite_code') || params.get('code') || params.get('invite')
+          if (window.location.search) {
+            const params = new URLSearchParams(window.location.search)
+            initialInvite = params.get('invite_code') || params.get('code') || params.get('invite')
+          }
+  
+          if (!initialInvite && window.location.pathname && window.location.pathname.startsWith('/invite/')) {
+            const pathCode = window.location.pathname.split('/invite/')[1]?.split('?')[0]?.trim()
+            if (pathCode) {
+              initialInvite = pathCode
+            }
+          }
         } catch {
         }
       }

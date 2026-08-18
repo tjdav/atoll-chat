@@ -176,6 +176,15 @@
       const clearBtn = refs('clearBtn')
       const passBtn = refs('passwordToggleBtn')
 
+      // Capture initial value from property or attribute if set prior to / during hydration
+      const initialVal = root.value || root.getAttribute('value') || state.value || ''
+      if (initialVal) {
+        state.value = initialVal
+        if (input) {
+          input.value = initialVal
+        }
+      }
+
       // Forward test-id / data-testid and standard attributes
       const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
       if (testId) {
@@ -228,6 +237,9 @@
         },
         set (newVal) {
           state.value = newVal || ''
+          if (input && input.value !== (newVal || '')) {
+            input.value = newVal || ''
+          }
         },
         configurable: true
       })

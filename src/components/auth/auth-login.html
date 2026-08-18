@@ -466,6 +466,7 @@
               })
               $state.isAuthenticated = true
               $state.isVaultUnlocked = true
+              $state.pendingRegistrationInvite = null
 
               try {
                 await $sync.startSubscriptions()
@@ -666,6 +667,7 @@
           })
           $state.isAuthenticated = true
           $state.isVaultUnlocked = true
+          $state.pendingRegistrationInvite = null
 
           try {
             await $sync.startSubscriptions()
