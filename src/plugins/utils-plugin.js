@@ -525,7 +525,7 @@ export default definePlugin({
            * Generates a theme-aware SVG waveform for any audio file.
            */
           generateWaveform: async (file) => {
-            if (!file || (!file.type.startsWith('audio/') && !file.name?.match(/\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i))) {
+            if (!file || (!file.type?.startsWith('audio/') && !file.name?.match(/\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i))) {
               return null
             }
             if (file.size > 20 * 1024 * 1024) {
@@ -534,15 +534,22 @@ export default definePlugin({
             }
 
             try {
-              // Read file as ArrayBuffer
-              const arrayBuffer = await new Promise((resolve, reject) => {
-                const reader = new FileReader()
-                reader.onload = () => resolve(reader.result)
-                reader.onerror = () => reject(reader.error)
-                reader.readAsArrayBuffer(file)
-              })
+              // Read file as ArrayBuffer with fallback to FileReader
+              let arrayBuffer
+              if (typeof file.arrayBuffer === 'function') {
+                arrayBuffer = await file.arrayBuffer()
+              } else {
+                arrayBuffer = await new Promise((resolve, reject) => {
+                  const reader = new FileReader()
+                  reader.onload = () => resolve(reader.result)
+                  reader.onerror = () => reject(reader.error)
+                  reader.readAsArrayBuffer(file)
+                })
+              }
 
               let normalizedPeaks = []
+              /** @type {any} */
+              let audioContext = null
               try {
                 /**
                  * @typedef {Object} CustomWindow
@@ -552,7 +559,7 @@ export default definePlugin({
                 const win = window
                 const AudioContextClass = win.AudioContext || win.webkitAudioContext
                 if (AudioContextClass) {
-                  const audioContext = new AudioContextClass()
+                  audioContext = new AudioContextClass()
                   const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0))
                   const channelData = audioBuffer.getChannelData(0)
                   const barCount = 100
@@ -591,6 +598,16 @@ export default definePlugin({
                   }
                 }
                 normalizedPeaks = peaks.map(p => Math.max(0.1, maxPeak > 0 ? p / maxPeak : 0.2))
+              } finally {
+                if (audioContext && audioContext.state !== 'closed') {
+                  try {
+                    if (typeof audioContext.close === 'function') {
+                      await audioContext.close()
+                    }
+                  } catch (closeErr) {
+                    console.warn('[utils-plugin] Error closing audioContext:', closeErr)
+                  }
+                }
               }
 
               if (normalizedPeaks.length === 0) {
