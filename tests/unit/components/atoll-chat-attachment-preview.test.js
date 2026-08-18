@@ -1,159 +1,127 @@
-import { test, describe, beforeEach } from 'node:test'
-import assert from 'node:assert/strict'
+import test, { describe, beforeEach, before } from 'node:test'
+import assert from 'node:assert'
 import { loadComponent } from '../helpers/load-component.js'
 
 describe('Atoll Chat Attachment Preview Component', () => {
   let tagName
-  let emittedEvents
+  let element
+  const emittedEvents = []
+  const busListeners = new Map()
 
-  const mockBus = {
+  const mockEventBus = {
     $bus: {
       emit: (event, payload) => {
         emittedEvents.push({
           event,
           payload
         })
+        const listeners = busListeners.get(event)
+        if (listeners) {
+          listeners.forEach(cb => cb(payload))
+        }
       },
-      on: () => {
+      on: (event, cb) => {
+        if (!busListeners.has(event)) {
+          busListeners.set(event, new Set())
+        }
+        busListeners.get(event).add(cb)
       },
-      off: () => {
+      off: (event, cb) => {
+        if (busListeners.has(event)) {
+          if (cb) {
+            busListeners.get(event).delete(cb)
+          } else {
+            busListeners.delete(event)
+          }
+        }
       }
     }
   }
 
-  beforeEach(async () => {
-    document.body.innerHTML = ''
-    emittedEvents = []
+  before(async () => {
     await loadComponent('atoll-icon')
     await loadComponent('atoll-button')
-    tagName = await loadComponent('atoll-chat-attachment-preview', {
-      eventBus: mockBus
-    })
+    tagName = await loadComponent('atoll-chat-attachment-preview', { eventBus: mockEventBus })
   })
 
-  test('should render base document attachment preview', async () => {
-    const el = document.createElement(tagName)
-    el.setAttribute('file-name', 'document.pdf')
-    el.setAttribute('upload-status', 'Ready to send')
-    document.body.appendChild(el)
-
-    await new Promise(resolve => setTimeout(resolve, 20))
-
-    const nameEl = el.querySelector('.atoll-chat-attachment-preview-name')
-    const statusEl = el.querySelector('.atoll-chat-attachment-preview-status')
-    assert.ok(nameEl)
-    assert.equal(nameEl.textContent.trim(), 'document.pdf')
-    assert.ok(statusEl)
-    assert.equal(statusEl.textContent.trim(), 'Ready to send')
-
-    const genericIcon = el.querySelector('atoll-icon[name="document"]')
-    assert.ok(genericIcon)
-    assert.equal(genericIcon.hasAttribute('hidden'), false)
-
-    const thumbContainer = el.querySelector('.atoll-chat-attachment-preview-thumbnail-container')
-    assert.ok(thumbContainer)
-    assert.equal(thumbContainer.hasAttribute('hidden'), true)
+  beforeEach(() => {
+    document.body.innerHTML = ''
+    emittedEvents.length = 0
+    busListeners.clear()
+    element = document.createElement(tagName)
   })
 
-  test('should render image thumbnail preview when thumbnailUrl is provided', async () => {
-    const el = document.createElement(tagName)
-    el.setAttribute('file-name', 'photo.jpg')
-    el.setAttribute('upload-status', 'Ready to send')
-    el.setAttribute('thumbnail-url', 'blob:http://localhost/mock-image-blob')
-    document.body.appendChild(el)
+  test('should render horizontal reel and "Add More" tile when attachments < 10', async () => {
+    document.body.appendChild(element)
+    await new Promise(res => setTimeout(res, 20))
 
-    await new Promise(resolve => setTimeout(resolve, 20))
+    const attachments = [
+      {
+        id: '1',
+        fileName: 'photo1.jpg',
+        fileSize: 102400,
+        isImage: true,
+        thumbnailPreviewUrl: 'blob:http://localhost/1'
+      },
+      {
+        id: '2',
+        fileName: 'doc1.pdf',
+        fileSize: 204800,
+        isImage: false,
+        isVideo: false
+      }
+    ]
+    mockEventBus.$bus.emit('ui:attachments_updated', { attachments })
+    await new Promise(res => setTimeout(res, 20))
 
-    const thumbContainer = el.querySelector('.atoll-chat-attachment-preview-thumbnail-container')
-    assert.ok(thumbContainer)
-    assert.equal(thumbContainer.hasAttribute('hidden'), false)
+    const addMoreTile = element.querySelector('[data-testid="add-more-tile"]')
+    assert.ok(addMoreTile)
 
-    const img = thumbContainer.querySelector('img')
-    assert.ok(img)
-    assert.equal(img.hasAttribute('hidden'), false)
-    assert.ok(img.src.includes('mock-image-blob'))
+    const tiles = element.querySelectorAll('.atoll-chat-attachment-tile')
+    assert.strictEqual(tiles.length, 1)
 
-    const coverBtn = el.querySelector('[data-testid="btn-change-cover"]')
-    assert.ok(coverBtn)
-    assert.equal(coverBtn.hasAttribute('hidden'), true, 'Change cover button should be hidden for image attachments')
-
-    const genericIcon = el.querySelector('atoll-icon[name="document"]')
-    assert.ok(genericIcon)
-    assert.equal(genericIcon.hasAttribute('hidden'), true)
+    const chips = element.querySelectorAll('.atoll-chat-attachment-chip')
+    assert.strictEqual(chips.length, 1)
   })
 
-  test('should render video attachment preview with cover change button', async () => {
-    const el = document.createElement(tagName)
-    el.setAttribute('file-name', 'video.mp4')
-    el.setAttribute('upload-status', 'Processing video...')
-    el.setAttribute('is-video', 'true')
-    el.setAttribute('thumbnail-url', 'blob:http://localhost/mock-video-thumb')
-    document.body.appendChild(el)
+  test('should hide "Add More" tile when attachments reach 10 items', async () => {
+    document.body.appendChild(element)
+    await new Promise(res => setTimeout(res, 20))
 
-    await new Promise(resolve => setTimeout(resolve, 20))
+    const attachments = Array.from({ length: 10 }, (_, i) => ({
+      id: `${i}`,
+      fileName: `file${i}.png`,
+      isImage: true,
+      thumbnailPreviewUrl: `blob:http://localhost/${i}`
+    }))
+    mockEventBus.$bus.emit('ui:attachments_updated', { attachments })
+    await new Promise(res => setTimeout(res, 20))
 
-    const thumbContainer = el.querySelector('.atoll-chat-attachment-preview-thumbnail-container')
-    assert.ok(thumbContainer)
-    assert.equal(thumbContainer.hasAttribute('hidden'), false)
-
-    const coverBtn = el.querySelector('[data-testid="btn-change-cover"]')
-    assert.ok(coverBtn)
-    assert.equal(coverBtn.hasAttribute('hidden'), false, 'Change cover button should be visible for videos')
-    assert.equal(coverBtn.textContent.trim(), 'Change Cover')
-
-    // Change to custom cover
-    el.setAttribute('is-custom', 'true')
-    await new Promise(resolve => setTimeout(resolve, 20))
-    assert.equal(coverBtn.textContent.trim(), 'Remove Custom Cover')
+    const addMoreTile = element.querySelector('[data-testid="add-more-tile"]')
+    assert.ok(addMoreTile)
+    assert.strictEqual(addMoreTile.hidden || addMoreTile.hasAttribute('hidden'), true)
   })
 
-  test('should display progress bar when compressing or uploading', async () => {
-    const el = document.createElement(tagName)
-    el.setAttribute('file-name', 'large-video.mp4')
-    el.setAttribute('upload-status', 'Compressing video...')
-    el.setAttribute('is-compressing', 'true')
-    el.setAttribute('progress', '45')
-    document.body.appendChild(el)
+  test('should emit ui:remove_attachment when remove button is clicked', async () => {
+    document.body.appendChild(element)
+    await new Promise(res => setTimeout(res, 20))
 
-    await new Promise(resolve => setTimeout(resolve, 20))
+    const attachments = [
+      {
+        id: 'att-123',
+        fileName: 'file.png',
+        isImage: true,
+        thumbnailPreviewUrl: 'blob:http://localhost/1'
+      }
+    ]
+    mockEventBus.$bus.emit('ui:attachments_updated', { attachments })
+    await new Promise(res => setTimeout(res, 20))
 
-    const progressWrapper = el.querySelector('.atoll-chat-attachment-preview-progress')
-    assert.ok(progressWrapper)
-    assert.equal(progressWrapper.hasAttribute('hidden'), false)
+    const removeBtn = element.querySelector('[data-testid="btn-remove-attachment-att-123"]')
+    assert.ok(removeBtn)
 
-    const progressBar = progressWrapper.querySelector('.progress-bar')
-    assert.ok(progressBar)
-    assert.equal(progressBar.style.width, '45%')
-  })
+    removeBtn.click()
 
-  test('should emit ui:cancel event bus signal when cancel button is clicked', async () => {
-    const el = document.createElement(tagName)
-    document.body.appendChild(el)
-
-    await new Promise(resolve => setTimeout(resolve, 20))
-
-    const cancelBtn = el.querySelector('atoll-button')
-    assert.ok(cancelBtn)
-
-    const innerBtn = cancelBtn.querySelector('button') || cancelBtn
-    innerBtn.click()
-
-    const emitted = emittedEvents.find(e => e.event === 'ui:cancel')
-    assert.ok(emitted, 'ui:cancel should be emitted on bus')
-  })
-
-  test('should clear thumbnail image src on image load error', async () => {
-    const el = document.createElement(tagName)
-    el.setAttribute('thumbnail-url', 'blob:http://localhost/invalid-blob-url')
-    document.body.appendChild(el)
-
-    await new Promise(resolve => setTimeout(resolve, 20))
-
-    const img = el.querySelector('.atoll-chat-attachment-preview-thumbnail-container img')
-    assert.ok(img)
-    assert.ok(img.src.includes('invalid-blob-url'))
-
-    img.dispatchEvent(new Event('error'))
-    assert.equal(img.getAttribute('src'), '')
+    assert.strictEqual(emittedEvents.some(e => e.event === 'ui:remove_attachment' && e.payload.id === 'att-123'), true)
   })
 })

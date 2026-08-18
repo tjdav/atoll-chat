@@ -587,8 +587,53 @@
             }
 
             // Project content into slot
-            if (message.type === 'media' && (message.file_key || message.status === 'pending')) {
-              if (message.mime_type?.startsWith('audio/')) {
+            if (message.type === 'media' && (message.attachments || message.file_key || message.status === 'pending')) {
+              if (message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0) {
+                const mediaAttachments = message.attachments.filter(a => a.isImage || a.isVideo || (a.mime_type || '').startsWith('image/') || (a.mime_type || '').startsWith('video/'))
+                const nonMediaAttachments = message.attachments.filter(a => !a.isImage && !a.isVideo && !(a.mime_type || '').startsWith('image/') && !(a.mime_type || '').startsWith('video/'))
+
+                // Render media group
+                if (mediaAttachments.length >= 2) {
+                  const album = document.createElement('atoll-chat-timeline-item-album')
+                  album.setAttribute('local-uuid', message.local_uuid)
+                  album.setAttribute('status', message.status)
+                  album.setAttribute('is-sent', isSent)
+                  row.appendChild(album)
+                } else if (mediaAttachments.length === 1) {
+                  const preview = document.createElement('atoll-chat-timeline-item-media')
+                  preview.setAttribute('local-uuid', message.local_uuid)
+                  preview.setAttribute('status', message.status)
+                  preview.setAttribute('is-sent', isSent)
+                  row.appendChild(preview)
+                }
+
+                // Render non-media items
+                nonMediaAttachments.forEach((att) => {
+                  if (att.isAudio || (att.mime_type || '').startsWith('audio/')) {
+                    const player = document.createElement('atoll-chat-timeline-item-voice')
+                    player.setAttribute('local-uuid', message.local_uuid)
+                    player.setAttribute('status', message.status)
+                    player.setAttribute('is-sent', isSent)
+                    row.appendChild(player)
+                  } else {
+                    const fileComp = document.createElement('atoll-chat-timeline-item-file')
+                    fileComp.setAttribute('local-uuid', message.local_uuid)
+                    fileComp.setAttribute('status', message.status)
+                    fileComp.setAttribute('is-sent', isSent)
+                    row.appendChild(fileComp)
+                  }
+                })
+
+                // Caption
+                if (message.content) {
+                  const text = document.createElement('atoll-chat-timeline-item-text')
+                  text.setAttribute('local-uuid', message.local_uuid)
+                  text.setAttribute('content', message.content)
+                  text.setAttribute('is-sent', isSent)
+                  text.setAttribute('status', message.status)
+                  row.appendChild(text)
+                }
+              } else if (message.mime_type?.startsWith('audio/')) {
                 const player = document.createElement('atoll-chat-timeline-item-voice')
                 player.setAttribute('local-uuid', message.local_uuid)
                 player.setAttribute('status', message.status)

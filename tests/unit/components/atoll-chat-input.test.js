@@ -128,7 +128,9 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
         if (workerSendMessageError) {
           throw workerSendMessageError
         }
-        if (payload.file && payload.file.name.includes('send_fail')) {
+        const hasFailFile = (payload.file && payload.file.name.includes('send_fail')) ||
+          (payload.attachments && payload.attachments.some(a => (a.filename || a.file?.name || '').includes('send_fail')))
+        if (hasFailFile) {
           throw new Error('HTTP 413 Payload Too Large')
         }
       }
@@ -265,8 +267,7 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
     mockEventBus.$bus.emit('ui:file_selected', { file })
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    const preview = el.querySelector('atoll-chat-attachment-preview')
-    assert.equal(preview.getAttribute('upload-status'), 'Ready to send (original format)')
+    assert.equal(el.attachments?.[0]?.status, 'Ready to send (original format)')
   })
 
   test('should show conversion error popup when non-universal image conversion fails', async () => {
@@ -388,5 +389,43 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
     const toastEvent = emittedEvents.find(e => e.event === 'ui:show_toast' && e.payload.type === 'danger')
     assert.ok(toastEvent)
     assert.ok(toastEvent.payload.message.includes('HTTP 413 Payload Too Large'))
+  })
+
+  test('should cap queue at 10 items and emit warning toast on batch overflow', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const files = Array.from({ length: 12 }, (_, i) => new File(['data'], `file${i}.png`, { type: 'image/png' }))
+    mockEventBus.$bus.emit('ui:files_selected', { files })
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    const toast = emittedEvents.find(e => e.event === 'ui:show_toast' && e.payload.message.includes('Maximum 10 attachments'))
+    assert.ok(toast, 'Should emit warning toast on exceeding 10 attachments')
+    assert.equal(el.attachments.length, 10)
+  })
+
+  test('should dispatch batch message with attachments array on send', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    globalState.currentMessageText = 'Album batch caption'
+    const files = [
+      new File(['img1'], 'photo1.png', { type: 'image/png' }),
+      new File(['img2'], 'photo2.png', { type: 'image/png' })
+    ]
+    mockEventBus.$bus.emit('ui:files_selected', { files })
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    mockEventBus.$bus.emit('ui:send_clicked')
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    assert.equal(savedMessages.length, 1)
+    const sent = savedMessages[0]
+    assert.equal(sent.type, 'media')
+    assert.equal(sent.content, 'Album batch caption')
+    assert.ok(Array.isArray(sent.attachments))
+    assert.equal(sent.attachments.length, 2)
   })
 })

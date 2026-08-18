@@ -1,0 +1,201 @@
+<template id="atoll-chat-timeline-item-album">
+  <div id="timeline-album-{{ localUuid }}" ref="container" class="atoll-chat-timeline-item-album rounded-3 overflow-hidden mb-1 position-relative" style="min-height: 180px; max-width: 320px;">
+    <div ref="loading" class="{{ loadingClass }} w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center" style="background: var(--bs-tertiary-bg); min-height: 180px;">
+      <div class="placeholder col-8 mb-2" style="height: 24px;"></div>
+      <div class="placeholder col-4" style="height: 16px;"></div>
+    </div>
+    <div ref="gridContainer" class="d-none"></div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      localUuid: String,
+      status: String
+    },
+    server: () => ({
+      isLoaded: false,
+      isError: false
+    }),
+    getters: {
+      loadingClass: (state) => {
+        if (state.isLoaded) {
+          return 'd-none'
+        }
+        if (state.isError) {
+          return ''
+        }
+        return ['pending', 'pending_p2p'].includes(state.status) ? 'placeholder-glow' : 'placeholder-wave'
+      }
+    },
+    client: async ({ refs, state, storage, globalStore, eventBus, signal, utils, observe }) => {
+      const { $storage } = storage
+      const { $state } = globalStore
+      const { $bus } = eventBus
+      const { $time, $media } = utils
+      const container = refs('container')
+      const loading = refs('loading')
+      const gridContainer = refs('gridContainer')
+
+      let lastCallId = 0
+      let lastLoadedUuid = null
+
+      const openMediaViewer = (message, item) => {
+        if (!message || !item) {
+          return
+        }
+        const isVideo = item.isVideo || (item.mime_type || '').startsWith('video/')
+        const targetView = isVideo ? 'videos' : 'pictures'
+        $state.mediaViewerSourceChatRoomId = message.room_id
+        $state.mediaViewerSourceMessageId = state.localUuid
+        $state.currentAppView = targetView
+        $state.activeSelectionType = targetView
+        $state.activeSelectionId = item.media_id || item.id
+      }
+
+      const loadAlbum = async () => {
+        const callId = ++lastCallId
+        if (!state.localUuid || signal.aborted) {
+          return
+        }
+
+        if (lastLoadedUuid !== state.localUuid) {
+          state.isLoaded = false
+          state.isError = false
+        } else if (state.isLoaded) {
+          return
+        }
+
+        try {
+          const message = await $storage.getMessage(state.localUuid)
+          if (callId !== lastCallId || signal.aborted || !message) {
+            return
+          }
+
+          const allAttachments = message.attachments || []
+          const mediaItems = allAttachments.filter(a => a.isImage || a.isVideo || (a.mime_type || '').startsWith('image/') || (a.mime_type || '').startsWith('video/'))
+
+          if (mediaItems.length === 0) {
+            state.isLoaded = true
+            loading.classList.add('d-none')
+            return
+          }
+
+          gridContainer.innerHTML = ''
+          const count = mediaItems.length
+          let gridClass = 'atoll-album-grid '
+          if (count === 2) {
+            gridClass += 'atoll-album-2'
+          } else if (count === 3) {
+            gridClass += 'atoll-album-3'
+          } else if (count >= 4) {
+            gridClass += 'atoll-album-4'
+          }
+
+          gridContainer.className = gridClass
+
+          const displayItems = count >= 5 ? mediaItems.slice(0, 4) : mediaItems
+          const remainingCount = count - 3
+
+          for (let i = 0; i < displayItems.length; i++) {
+            const item = displayItems[i]
+            const isLastOfFivePlus = (count >= 5 && i === 3)
+
+            const tile = document.createElement('div')
+            tile.className = 'atoll-album-tile position-relative overflow-hidden cursor-pointer'
+            tile.style.backgroundColor = 'var(--bs-tertiary-bg)'
+
+            tile.onclick = (e) => {
+              e.stopPropagation()
+              openMediaViewer(message, item)
+            }
+
+            // Resolve Image / Thumbnail URL
+            const isVideo = item.isVideo || (item.mime_type || '').startsWith('video/')
+            const cacheKey = item.id ? `${state.localUuid}_${item.id}` : (i === 0 ? state.localUuid : `${state.localUuid}_${i}`)
+            const cached = $state.decryptionCache?.get(cacheKey)
+
+            let objectUrl = isVideo ? cached?.thumbnailBlobUrl : (cached?.blobUrl || cached)
+
+            if (!objectUrl) {
+              if (isVideo) {
+                if (item.thumbnail) {
+                  objectUrl = await $media.decrypt(item.thumbnail, signal).catch(() => null)
+                }
+              } else {
+                if (item.file_key && item.media_id) {
+                  objectUrl = await $media.decrypt({
+                    media_id: item.media_id,
+                    file_key: item.file_key,
+                    file_nonce: item.file_nonce,
+                    mime_type: item.mime_type,
+                    message_id: state.localUuid
+                  }, signal).catch(() => null)
+                }
+              }
+            }
+
+            if (objectUrl) {
+              const img = document.createElement('img')
+              img.className = 'w-100 h-100 object-fit-cover'
+              img.src = objectUrl
+              img.alt = item.filename || 'Album media'
+              tile.appendChild(img)
+            } else {
+              const placeholder = document.createElement('div')
+              placeholder.className = 'w-100 h-100 d-flex align-items-center justify-content-center bg-dark bg-opacity-25'
+              placeholder.innerHTML = `<atoll-icon name="${isVideo ? 'videocam' : 'image'}" size="24" color="#ffffff"></atoll-icon>`
+              tile.appendChild(placeholder)
+            }
+
+            // Video Duration Badge
+            if (isVideo && item.duration) {
+              const durationBadge = document.createElement('div')
+              durationBadge.className = 'position-absolute bottom-0 start-0 m-1 px-1 rounded bg-dark bg-opacity-75 text-white x-small fw-bold d-flex align-items-center gap-1'
+              durationBadge.innerHTML = `<atoll-icon name="play" size="10" color="#ffffff"></atoll-icon> ${$time.formatDuration(item.duration)}`
+              tile.appendChild(durationBadge)
+            }
+
+            // +N Overlay for 5+ items on the 4th tile
+            if (isLastOfFivePlus) {
+              const overlay = document.createElement('div')
+              overlay.className = 'atoll-album-more-overlay position-absolute top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center text-white fw-bold fs-5'
+              overlay.style.backgroundColor = 'rgba(0, 0, 0, 0.65)'
+              overlay.textContent = `+${remainingCount}`
+              tile.appendChild(overlay)
+            }
+
+            gridContainer.appendChild(tile)
+          }
+
+          if (callId !== lastCallId || signal.aborted) {
+            return
+          }
+
+          loading.classList.add('d-none')
+          gridContainer.classList.remove('d-none')
+          state.isLoaded = true
+          lastLoadedUuid = state.localUuid
+          $bus.emit('ui:media_loaded')
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
+          console.error('[atoll-chat-timeline-item-album] Error:', err)
+          state.isError = true
+          loading.innerHTML = `
+            <atoll-icon name="warning" size="24" color="var(--bs-warning)"></atoll-icon>
+            <div class="x-small mt-1">Failed to load album</div>
+          `
+        }
+      }
+
+      observe('status', loadAlbum)
+      observe('localUuid', loadAlbum)
+      loadAlbum()
+    }
+  })
+</script>

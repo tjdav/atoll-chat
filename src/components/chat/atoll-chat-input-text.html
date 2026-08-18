@@ -1,6 +1,6 @@
 <template id="atoll-chat-input-text">
   <div class="d-flex gap-2 align-items-center atoll-chat-input-text">
-    <input type="file" ref="fileInput" class="d-none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz" data-testid="fileInput" aria-hidden="true" tabindex="-1">
+    <input type="file" ref="fileInput" class="d-none" accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz" multiple data-testid="fileInput" aria-hidden="true" tabindex="-1">
     
     <!-- Attachment Button -->
     <atoll-button 
@@ -214,10 +214,17 @@
       // Handle paste: convert HTML to Markdown or dispatch clipboard file
       messageInput.addEventListener('paste', async (e) => {
         const files = e.clipboardData?.files
-        if (files && files.length > 0 && files[0].type) {
-          e.preventDefault()
-          $bus.emit('ui:file_selected', { file: files[0] })
-          return
+        if (files && files.length > 0) {
+          const fileList = Array.from(files).filter(f => f.type || f.size > 0)
+          if (fileList.length === 1) {
+            e.preventDefault()
+            $bus.emit('ui:file_selected', { file: fileList[0] })
+            return
+          } else if (fileList.length > 1) {
+            e.preventDefault()
+            $bus.emit('ui:files_selected', { files: fileList })
+            return
+          }
         }
 
         const html = e.clipboardData.getData('text/html')
@@ -247,7 +254,7 @@
   
             autoExpand()
             handleTypingActivity()
-          } catch (err) {
+          } catch (_e) {
             // Fall back to native plain text insertion if Turndown fails
             const plainText = e.clipboardData.getData('text/plain')
             if (plainText) {
@@ -322,11 +329,13 @@
 
         if (input) {
           input.addEventListener('change', () => {
-            const file = input.files[0]
-            if (file) {
-              $bus.emit('ui:file_selected', { file })
-              input.value = ''
+            const files = Array.from(input.files || [])
+            if (files.length === 1) {
+              $bus.emit('ui:file_selected', { file: files[0] })
+            } else if (files.length > 1) {
+              $bus.emit('ui:files_selected', { files })
             }
+            input.value = ''
           }, { signal })
         }
       }
@@ -404,6 +413,22 @@
 
       messageInput.addEventListener('blur', () => {
         window.scrollTo(0, 0)
+      }, { signal })
+
+      // Drag and Drop support
+      const containerEl = messageInput.closest('.atoll-chat-input-text') || messageInput
+      containerEl.addEventListener('dragover', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+      }, { signal })
+
+      containerEl.addEventListener('drop', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        const files = Array.from(e.dataTransfer?.files || [])
+        if (files.length > 0) {
+          $bus.emit('ui:files_selected', { files })
+        }
       }, { signal })
 
       $bus.on('ui:focus_input', () => {

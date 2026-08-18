@@ -838,13 +838,127 @@ async function sendMessage (rpcId, payload) {
     let fileNonceBase64 = existingFileNonce || null
     let albumArtInfo = existingAlbumArt || null
     let thumbnailInfo = existingThumbnail || null
+    let encryptedAttachments = null
 
     const headers = {}
     if (self.authToken) {
       headers.Authorization = self.authToken
     }
 
-    if (type === 'media' && file && !mediaId) {
+    if (type === 'media' && Array.isArray(payload.attachments) && payload.attachments.length > 0) {
+      encryptedAttachments = []
+      for (const att of payload.attachments) {
+        let attMediaId = att.media_id || null
+        let attFileKeyBase64 = att.file_key || null
+        let attFileNonceBase64 = att.file_nonce || null
+        let attAlbumArtInfo = att.album_art || null
+        let attThumbnailInfo = att.thumbnail || null
+
+        // Encrypt and upload album art if present
+        if (att.album_art_blob && !attAlbumArtInfo) {
+          const aBuf = new Uint8Array(await att.album_art_blob.arrayBuffer())
+          const aKey = sodium.randombytes_buf(32)
+          const aNonce = sodium.randombytes_buf(24)
+          const encArt = sodium.crypto_secretbox_easy(aBuf, aNonce, aKey)
+
+          const artBlob = new Blob([encArt], { type: 'application/octet-stream' })
+          const artFormData = new FormData()
+          artFormData.append('file', artBlob, 'album-art.bin')
+
+          const artResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
+            method: 'POST',
+            headers,
+            body: artFormData
+          })
+          if (artResponse.ok) {
+            const artRecord = await artResponse.json()
+            attAlbumArtInfo = {
+              media_id: artRecord.id,
+              file_key: sodium.to_base64(aKey, sodium.base64_variants.ORIGINAL),
+              file_nonce: sodium.to_base64(aNonce, sodium.base64_variants.ORIGINAL)
+            }
+          }
+        }
+
+        // Encrypt and upload thumbnail if present
+        if (att.thumbnail_blob && !attThumbnailInfo) {
+          const tBuf = new Uint8Array(await att.thumbnail_blob.arrayBuffer())
+          const tKey = sodium.randombytes_buf(32)
+          const tNonce = sodium.randombytes_buf(24)
+          const encThumb = sodium.crypto_secretbox_easy(tBuf, tNonce, tKey)
+
+          const thumbBlob = new Blob([encThumb], { type: 'application/octet-stream' })
+          const thumbFormData = new FormData()
+          thumbFormData.append('file', thumbBlob, 'thumbnail.bin')
+
+          const thumbResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
+            method: 'POST',
+            headers,
+            body: thumbFormData
+          })
+          if (thumbResponse.ok) {
+            const thumbRecord = await thumbResponse.json()
+            attThumbnailInfo = {
+              media_id: thumbRecord.id,
+              file_key: sodium.to_base64(tKey, sodium.base64_variants.ORIGINAL),
+              file_nonce: sodium.to_base64(tNonce, sodium.base64_variants.ORIGINAL),
+              mime_type: 'image/webp'
+            }
+          }
+        }
+
+        // Encrypt and upload main file
+        if (att.file && !attMediaId) {
+          const fBuf = new Uint8Array(await att.file.arrayBuffer())
+          const fKey = sodium.randombytes_buf(32)
+          const fNonce = sodium.randombytes_buf(24)
+          const encFile = sodium.crypto_secretbox_easy(fBuf, fNonce, fKey)
+
+          attFileKeyBase64 = sodium.to_base64(fKey, sodium.base64_variants.ORIGINAL)
+          attFileNonceBase64 = sodium.to_base64(fNonce, sodium.base64_variants.ORIGINAL)
+
+          if (att.transfer_mode === 'p2p') {
+            const encBlob = new Blob([encFile], { type: 'application/octet-stream' })
+            const attUuid = att.id || crypto.randomUUID()
+            await workerBridge.request('saveFile', [attUuid, encBlob])
+            attMediaId = attUuid
+          } else {
+            const mainBlob = new Blob([encFile], { type: 'application/octet-stream' })
+            const mainFormData = new FormData()
+            mainFormData.append('file', mainBlob, 'encrypted.bin')
+
+            const mainResponse = await fetchWithTimeout(`${baseUrl}/api/collections/media/records`, {
+              method: 'POST',
+              headers,
+              body: mainFormData
+            })
+            if (!mainResponse.ok) {
+              throw new Error(`Failed to upload media: ${mainResponse.status}`)
+            }
+            const mainRecord = await mainResponse.json()
+            attMediaId = mainRecord.id
+          }
+        }
+
+        encryptedAttachments.push({
+          id: att.id || attMediaId,
+          media_id: attMediaId,
+          file_key: attFileKeyBase64,
+          file_nonce: attFileNonceBase64,
+          filename: att.filename,
+          mime_type: att.mime_type,
+          waveform_data: att.waveform_data,
+          music_metadata: att.music_metadata,
+          album_art: attAlbumArtInfo,
+          thumbnail: attThumbnailInfo,
+          duration: att.duration,
+          isVideo: att.isVideo,
+          isAudio: att.isAudio,
+          isImage: att.isImage,
+          transfer_mode: att.transfer_mode
+        })
+      }
+    } else if (type === 'media' && file && !mediaId) {
       // Encrypt and upload album art if present
       if (album_art_blob) {
         artBuffer = new Uint8Array(await album_art_blob.arrayBuffer())
@@ -953,17 +1067,21 @@ async function sendMessage (rpcId, payload) {
     }
 
     if (type === 'media') {
-      plaintextObj.media_id = mediaId
-      plaintextObj.file_key = fileKeyBase64
-      plaintextObj.file_nonce = fileNonceBase64
-      plaintextObj.filename = filename
-      plaintextObj.mime_type = mime_type
-      plaintextObj.waveform_data = waveform_data
-      plaintextObj.music_metadata = music_metadata
-      plaintextObj.album_art = albumArtInfo
-      plaintextObj.thumbnail = thumbnailInfo
-      plaintextObj.duration = duration
-      plaintextObj.transfer_mode = transfer_mode
+      if (encryptedAttachments) {
+        plaintextObj.attachments = encryptedAttachments
+      } else {
+        plaintextObj.media_id = mediaId
+        plaintextObj.file_key = fileKeyBase64
+        plaintextObj.file_nonce = fileNonceBase64
+        plaintextObj.filename = filename
+        plaintextObj.mime_type = mime_type
+        plaintextObj.waveform_data = waveform_data
+        plaintextObj.music_metadata = music_metadata
+        plaintextObj.album_art = albumArtInfo
+        plaintextObj.thumbnail = thumbnailInfo
+        plaintextObj.duration = duration
+        plaintextObj.transfer_mode = transfer_mode
+      }
       plaintextObj.status = status || 'sent'
 
       console.info('[worker] plaintextObj inside media block:', {
@@ -1062,30 +1180,53 @@ async function sendMessage (rpcId, payload) {
       }
 
       if (type === 'media') {
-        updateData.media_id = mediaId || localUuid
-        updateData.file_key = fileKeyBase64
-        updateData.file_nonce = fileNonceBase64
-        updateData.filename = filename
-        updateData.mime_type = mime_type
-        updateData.album_art = albumArtInfo
-        updateData.thumbnail = thumbnailInfo
-        updateData.duration = duration
+        if (encryptedAttachments) {
+          updateData.attachments = encryptedAttachments
+          for (const att of encryptedAttachments) {
+            if (att.media_id) {
+              await workerBridge.request('saveAsset', [{
+                id: att.media_id,
+                media_id: att.media_id,
+                room_id,
+                message_id: localUuid,
+                filename: att.filename,
+                mime_type: att.mime_type,
+                file_key: att.file_key,
+                file_nonce: att.file_nonce,
+                created_at: pbRecord.created,
+                music_metadata: att.music_metadata,
+                album_art: att.album_art,
+                thumbnail: att.thumbnail,
+                duration: att.duration
+              }])
+            }
+          }
+        } else {
+          updateData.media_id = mediaId || localUuid
+          updateData.file_key = fileKeyBase64
+          updateData.file_nonce = fileNonceBase64
+          updateData.filename = filename
+          updateData.mime_type = mime_type
+          updateData.album_art = albumArtInfo
+          updateData.thumbnail = thumbnailInfo
+          updateData.duration = duration
 
-        await workerBridge.request('saveAsset', [{
-          id: mediaId || localUuid,
-          media_id: mediaId || localUuid,
-          room_id,
-          message_id: localUuid,
-          filename,
-          mime_type,
-          file_key: fileKeyBase64,
-          file_nonce: fileNonceBase64,
-          created_at: pbRecord.created,
-          music_metadata,
-          album_art: albumArtInfo,
-          thumbnail: thumbnailInfo,
-          duration
-        }])
+          await workerBridge.request('saveAsset', [{
+            id: mediaId || localUuid,
+            media_id: mediaId || localUuid,
+            room_id,
+            message_id: localUuid,
+            filename,
+            mime_type,
+            file_key: fileKeyBase64,
+            file_nonce: fileNonceBase64,
+            created_at: pbRecord.created,
+            music_metadata,
+            album_art: albumArtInfo,
+            thumbnail: thumbnailInfo,
+            duration
+          }])
+        }
       }
 
       let existing = null
@@ -1574,36 +1715,59 @@ async function processIncomingMessage (rpcId, record) {
 
     // If media, extend the message with media metadata for easier rendering in the timeline
     if (type === 'media') {
-      const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art, thumbnail, duration, transfer_mode } = decryptedPayload
-      decryptedMessage.media_id = media_id
-      decryptedMessage.file_key = file_key
-      decryptedMessage.file_nonce = file_nonce
-      decryptedMessage.filename = filename
-      decryptedMessage.mime_type = mime_type
-      decryptedMessage.waveform_data = waveform_data
-      decryptedMessage.music_metadata = music_metadata
-      decryptedMessage.album_art = album_art
-      decryptedMessage.thumbnail = thumbnail
-      decryptedMessage.duration = duration
-      decryptedMessage.transfer_mode = transfer_mode
+      if (Array.isArray(decryptedPayload.attachments) && decryptedPayload.attachments.length > 0) {
+        decryptedMessage.attachments = decryptedPayload.attachments
+        for (const att of decryptedPayload.attachments) {
+          if (att.media_id && att.transfer_mode !== 'p2p') {
+            await workerBridge.request('saveAsset', [{
+              id: att.media_id,
+              media_id: att.media_id,
+              room_id: room_id,
+              message_id: decryptedMessage.local_uuid,
+              filename: att.filename,
+              mime_type: att.mime_type,
+              file_key: att.file_key,
+              file_nonce: att.file_nonce,
+              created_at: created,
+              music_metadata: att.music_metadata,
+              album_art: att.album_art,
+              thumbnail: att.thumbnail,
+              duration: att.duration
+            }])
+          }
+        }
+      } else {
+        const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art, thumbnail, duration, transfer_mode } = decryptedPayload
+        decryptedMessage.media_id = media_id
+        decryptedMessage.file_key = file_key
+        decryptedMessage.file_nonce = file_nonce
+        decryptedMessage.filename = filename
+        decryptedMessage.mime_type = mime_type
+        decryptedMessage.waveform_data = waveform_data
+        decryptedMessage.music_metadata = music_metadata
+        decryptedMessage.album_art = album_art
+        decryptedMessage.thumbnail = thumbnail
+        decryptedMessage.duration = duration
+        decryptedMessage.transfer_mode = transfer_mode
 
-      if (transfer_mode !== 'p2p') {
-      // Also store in local_assets for the global archive
-        await workerBridge.request('saveAsset', [{
-          id: media_id,
-          media_id,
-          room_id: room_id,
-          message_id: decryptedMessage.local_uuid,
-          filename,
-          mime_type,
-          file_key,
-          file_nonce,
-          created_at: created,
-          music_metadata,
-          album_art,
-          thumbnail,
-          duration
-        }])
+        if (transfer_mode !== 'p2p') {
+          // Also store in local_assets for the global archive
+          await workerBridge.request('saveAsset', [{
+            id: media_id,
+            media_id,
+            room_id: room_id,
+            message_id: decryptedMessage.local_uuid,
+            filename,
+            mime_type,
+            file_key,
+            file_nonce,
+            created_at: created,
+            music_metadata,
+            album_art,
+            thumbnail,
+            duration
+          }])
+        }
       }
     }
 

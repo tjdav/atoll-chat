@@ -4,14 +4,7 @@
       <!-- Attachment Preview Bar -->
       <div class="{{ attachmentPreviewClass }}">
         <atoll-chat-attachment-preview 
-          file-name="{{ fileName }}" 
-          upload-status="{{ uploadStatus }}"
-          is-video="{{ isVideo }}"
-          thumbnail-url="{{ thumbnailPreviewUrl }}"
-          is-custom="{{ isCustomCover }}"
-          is-compressing="{{ isCompressing }}"
-          is-uploading="{{ isUploading }}"
-          progress="{{ progress }}"
+          ref="attachmentPreview"
         ></atoll-chat-attachment-preview>
       </div>
 
@@ -68,20 +61,11 @@
       isSending: false,
       isUploading: false,
       isCompressing: false,
-      uploadStatus: '',
-      fileName: '',
       hasFile: false,
       isRecording: false,
-      selectedFile: null,
-      thumbnailBlob: null,
-      duration: 0,
+      attachments: [],
       pendingLinkData: [],
-      ignoredUrls: {},
-      isVideo: false,
-      thumbnailPreviewUrl: '',
-      isCustomCover: false,
-      autoExtractedThumbnailBlob: null,
-      progress: 0
+      ignoredUrls: {}
     }),
     getters: {
       attachmentPreviewClass: (state) => (state.hasFile ? 'd-block' : 'd-none'),
@@ -89,7 +73,13 @@
       inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
       recordingUIClass: (state) => (state.isRecording ? 'd-flex w-100' : 'd-none')
     },
-    client: ({ state, globalStore, storage, eventBus, refs, signal, cryptoWorker, pocketbase, utils, media, config }) => {
+    client: ({ root, state, globalStore, storage, eventBus, refs, signal, cryptoWorker, pocketbase, utils, media, config }) => {
+      if (root) {
+        Object.defineProperty(root, 'attachments', {
+          get: () => state.attachments || [],
+          configurable: true
+        })
+      }
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -99,9 +89,6 @@
       const { $media } = media
       const { $config } = config
 
-      let currentMusicMetadata = null
-      let currentAlbumArtBlob = null
-      let currentAudioWaveformData = null
       let fileProcessingToken = 0
 
       // File-size alert popup (single Dismiss button)
@@ -126,12 +113,23 @@
       }
 
       /**
-       * Revokes the object URL of the thumbnail preview to free up memory.
+       * Revokes object URLs for queued attachments to free up memory.
        */
-      const revokePreviewUrl = () => {
-        if (state.thumbnailPreviewUrl) {
-          URL.revokeObjectURL(state.thumbnailPreviewUrl)
-          state.thumbnailPreviewUrl = ''
+      const revokeAttachmentUrls = (attachment) => {
+        if (attachment.thumbnailPreviewUrl) {
+          URL.revokeObjectURL(attachment.thumbnailPreviewUrl)
+          attachment.thumbnailPreviewUrl = null
+        }
+      }
+
+      /**
+       * Synchronizes attachment list to the preview component.
+       */
+      const syncAttachmentPreview = () => {
+        $bus.emit('ui:attachments_updated', { attachments: state.attachments || [] })
+        const previewComp = refs('attachmentPreview')
+        if (previewComp) {
+          previewComp.attachments = state.attachments || []
         }
       }
 
@@ -142,28 +140,21 @@
         fileProcessingToken++
         state.isSending = false
         state.isUploading = false
-        state.uploadStatus = ''
-        state.fileName = ''
+        state.isCompressing = false
         state.hasFile = false
         state.isRecording = false
-        state.selectedFile = null
-        state.thumbnailBlob = null
-        state.duration = 0
+        if (state.attachments) {
+          state.attachments.forEach(revokeAttachmentUrls)
+        }
+        state.attachments = []
         state.pendingLinkData = []
         state.ignoredUrls = {}
-        state.isVideo = false
-        state.isCustomCover = false
-        state.autoExtractedThumbnailBlob = null
-        state.progress = 0
-        revokePreviewUrl()
-        currentMusicMetadata = null
-        currentAlbumArtBlob = null
-        currentAudioWaveformData = null
         $state.currentMessageText = ''
         const container = refs('voiceRecorderContainer')
         container.innerHTML = ''
         const linkContainer = refs('linkPreviewContainer')
         linkContainer.innerHTML = ''
+        syncAttachmentPreview()
       }
 
       const URL_REGEX = /(?:\[[^\]]+\]\((https?:\/\/[^\s)]+)\))|(?:^|\s)(https?:\/\/[^\s]+)(?=\s|$)/gi
@@ -241,13 +232,24 @@
         const room_id = $state.activeSelectionId
 
         // Optimistic Media Cache (Sender side)
-        if (params.file) {
+        if (params.attachments && params.attachments.length > 0) {
+          params.attachments.forEach((att, idx) => {
+            if (att.file) {
+              const blobUrl = URL.createObjectURL(att.file)
+              let thumbnailBlobUrl = att.thumbnail_blob ? URL.createObjectURL(att.thumbnail_blob) : null
+              const cacheKey = att.id ? `${localUuid}_${att.id}` : (idx === 0 ? localUuid : `${localUuid}_${idx}`)
+              $state.decryptionCache.set(cacheKey, {
+                blobUrl,
+                blob: att.file,
+                thumbnailBlobUrl,
+                mimeType: att.mime_type || att.file.type,
+                duration: att.duration
+              })
+            }
+          })
+        } else if (params.file) {
           const blobUrl = URL.createObjectURL(params.file)
-          let thumbnailBlobUrl = null
-          if (params.thumbnail_blob) {
-            thumbnailBlobUrl = URL.createObjectURL(params.thumbnail_blob)
-          }
-
+          let thumbnailBlobUrl = params.thumbnail_blob ? URL.createObjectURL(params.thumbnail_blob) : null
           $state.decryptionCache.set(localUuid, {
             blobUrl,
             blob: params.file,
@@ -268,7 +270,17 @@
           status: params.status || 'pending',
           transfer_mode: params.transfer_mode,
           created_at: new Date().toISOString(),
-          // Include any specific metadata for UI rendering while pending
+          attachments: params.attachments ? params.attachments.map(a => ({
+            id: a.id,
+            filename: a.filename,
+            mime_type: a.mime_type,
+            duration: a.duration,
+            waveform_data: a.waveform_data,
+            music_metadata: a.music_metadata,
+            isVideo: a.isVideo,
+            isAudio: a.isAudio,
+            isImage: a.isImage
+          })) : undefined,
           mime_type: params.mime_type,
           filename: params.filename,
           waveform_data: params.waveform_data,
@@ -311,7 +323,18 @@
           await $storage.deleteRecord('local_files', localUuid).catch(() => {
           })
           $state.decryptionCache.delete(localUuid)
+          if (params.attachments && params.attachments.length > 0) {
+            params.attachments.forEach((att, idx) => {
+              const cacheKey = att.id ? `${localUuid}_${att.id}` : (idx === 0 ? localUuid : `${localUuid}_${idx}`)
+              $state.decryptionCache.delete(cacheKey)
+            })
+          }
           $bus.emit('db:new_local_data', { room_id })
+          $bus.emit('ui:show_toast', {
+            message: 'Failed to send: ' + err.message,
+            type: 'danger'
+          })
+          resetUI()
           throw err
         }
       }
@@ -330,62 +353,66 @@
         }
 
         const text = ($state.currentMessageText || '').trim()
-        const file = recordedBlob || state.selectedFile
+        const hasAttachments = state.attachments && state.attachments.length > 0
 
-        if (!text && !file) {
+        if (!text && !hasAttachments && !recordedBlob) {
           return
+        }
+
+        // Check if any attachment is still processing or in error state
+        if (hasAttachments) {
+          for (const att of state.attachments) {
+            if (att.file) {
+              const comp = await $media.checkCompatibility(att.file)
+              if (comp.requiresConversion) {
+                $bus.emit('ui:show_toast', {
+                  message: 'Cannot send unconverted media format',
+                  type: 'warning'
+                })
+                resetUI()
+                return
+              }
+            }
+          }
+          if (state.attachments.some(att => att.isCompressing)) {
+            $bus.emit('ui:show_toast', {
+              message: 'Please wait for media compression to complete',
+              type: 'warning'
+            })
+            return
+          }
+          if (state.attachments.some(att => att.isError)) {
+            $bus.emit('ui:show_toast', {
+              message: 'Please remove failed attachments before sending',
+              type: 'warning'
+            })
+            return
+          }
         }
 
         state.isSending = true
 
         try {
-          if (file) {
-            const compatibility = await $media.checkCompatibility(file)
-            if (compatibility.requiresConversion) {
-              $bus.emit('ui:show_toast', {
-                message: 'Cannot send unconverted media format',
-                type: 'warning'
-              })
-              resetUI()
-              return
-            }
-
+          if (recordedBlob) {
+            // Voice Message Flow
             state.isUploading = true
-            state.progress = 100
-
-            // Determine appropriate sending label based on file details
-            let label = 'Sending file...'
-            const isGif = (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'))
-            if (isGif) {
-              label = 'Sending animated GIF...'
-            } else if (file.type.startsWith('image/')) {
-              label = 'Sending image...'
-            } else if (file.type.startsWith('video/')) {
-              label = 'Sending video...'
-            } else if (file.type.startsWith('audio/') || recordedBlob) {
-              label = 'Sending audio...'
-            } else {
-              // Try checking compatibility category if available
-              const compatibility = await $media.checkCompatibility(file)
-              if (compatibility.category === 'image') {
-                label = 'Sending image...'
-              } else if (compatibility.category === 'video') {
-                label = 'Sending video...'
-              } else if (compatibility.category === 'audio') {
-                label = 'Sending audio...'
-              }
-            }
-
-            state.uploadStatus = label
-
-            let musicMetadata = currentMusicMetadata
-            let albumArtBlob = currentAlbumArtBlob
-            let audioWaveformData = currentAudioWaveformData
-
+            await dispatchMessage({
+              type: 'media',
+              content: '',
+              file: recordedBlob,
+              filename: 'voice-message.webm',
+              mime_type: recordedBlob.type || 'audio/webm',
+              waveform_data: waveformData,
+              duration: recordedDuration,
+              timestamp: Date.now()
+            })
+          } else if (hasAttachments) {
+            state.isUploading = true
             const maxServerUpload = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
-            const isP2P = file.size > maxServerUpload
 
-            if (isP2P) {
+            // Check if any attachment exceeds server limit for P2P direct transfer
+            const oversizedItem = state.attachments.find(att => att.file && att.file.size > maxServerUpload)
+            if (oversizedItem) {
               const activeRoomId = $state.activeSelectionId
               const room = await $storage.getRoom(activeRoomId)
               const participantsCount = room?.participants?.length || 0
@@ -393,21 +420,18 @@
               if (participantsCount > 2) {
                 state.isSending = false
                 state.isUploading = false
-                state.uploadStatus = ''
-                $bus.emit('ui:prompt_p2p_reroute', {
-                  file,
-                  room
-                })
-                resetUI()
+                showConversionError(
+                  'File Too Large',
+                  `File "${oversizedItem.fileName}" exceeds the 25MB server upload limit for group chats.`
+                )
                 return
               } else {
                 const recipient = room?.participants?.find(p => p.id !== $state.currentUser?.id)
                 if (recipient) {
                   state.isSending = false
                   state.isUploading = false
-                  state.uploadStatus = ''
                   $bus.emit('action:execute_p2p_transfer', {
-                    file,
+                    file: oversizedItem.file,
                     selectedUserId: recipient.id,
                     roomId: activeRoomId
                   })
@@ -417,17 +441,25 @@
               }
             }
 
+            const attachmentsPayload = state.attachments.map(att => ({
+              id: att.id,
+              file: att.file,
+              filename: att.fileName,
+              mime_type: att.mimeType,
+              waveform_data: att.waveform_data,
+              music_metadata: att.music_metadata,
+              album_art_blob: att.album_art_blob,
+              thumbnail_blob: att.thumbnailBlob,
+              duration: att.duration,
+              isVideo: att.isVideo,
+              isAudio: att.isAudio,
+              isImage: att.isImage
+            }))
+
             const payloadToDispatch = {
               type: 'media',
-              content: recordedBlob ? '' : text,
-              file: file,
-              filename: file.name,
-              mime_type: file.type,
-              waveform_data: recordedBlob ? waveformData : audioWaveformData,
-              music_metadata: musicMetadata,
-              album_art_blob: albumArtBlob,
-              thumbnail_blob: state.thumbnailBlob,
-              duration: recordedDuration ?? state.duration,
+              content: text,
+              attachments: attachmentsPayload,
               timestamp: Date.now()
             }
             await dispatchMessage(payloadToDispatch)
@@ -474,252 +506,318 @@
         state.uploadStatus = `Converting audio... ${payload.progress}%`
       })
 
-      $bus.on('ui:file_selected', async (payload) => {
-        let file = payload.file
-        if (!file) {
-          return
-        }
+      /**
+       * Process an individual file and populate attachment record state.
+       */
+      const processAttachmentItem = async (item, currentToken) => {
+        let file = item.file
 
-        const currentToken = ++fileProcessingToken
-
-        // Reject oversized files before any expensive processing (compression, thumbnailing, transcoding)
         if (file.size > 100 * 1024 * 1024) {
-          fileTooLargePopup.show()
+          item.isCompressing = false
+          item.isError = true
+          item.errorMessage = 'File is too large (>100MB)'
+          item.status = 'Error'
+          syncAttachmentPreview()
           return
         }
 
-        state.selectedFile = file
-        state.fileName = file.name
-        state.hasFile = true
-        state.progress = 0
-        state.isVideo = false
-        state.isCustomCover = false
-        state.autoExtractedThumbnailBlob = null
-        revokePreviewUrl()
-
-        // Check format compatibility for web playback across browsers and devices
-        const compatibility = await $media.checkCompatibility(file)
-        if (currentToken !== fileProcessingToken) {
-          return
-        }
-
-        if (compatibility.requiresConversion) {
-          state.uploadStatus = `Converting ${compatibility.category} to web format...`
-        }
-
-        const isGif = (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'))
-
-        if (isGif) {
-          if (file.size > 15 * 1024 * 1024) {
-            state.isCompressing = true
-            state.uploadStatus = 'Compressing animated GIF...'
-            try {
-              file = await $media.compressGif(file)
-            } catch {
-              // Proceed with original file on compression failure
-            } finally {
-              if (currentToken === fileProcessingToken) {
-                state.isCompressing = false
-              }
-            }
-            if (currentToken !== fileProcessingToken) {
-              return
-            }
-          }
-          state.thumbnailPreviewUrl = URL.createObjectURL(file)
-        } else if (file.type.startsWith('image/') || compatibility.category === 'image') {
-          state.isCompressing = true
-          state.uploadStatus = 'Compressing image...'
-          try {
-            const compressedBlob = await $media.compressImage(file, {
-              maxWidth: 1200,
-              maxHeight: 1200,
-              quality: 0.8,
-              format: 'image/webp'
-            })
-            if (currentToken !== fileProcessingToken) {
-              return
-            }
-            // Create a new File from the Blob to keep the original name (with new extension)
-            const lastDot = file.name.lastIndexOf('.')
-            const baseName = lastDot !== -1 ? file.name.substring(0, lastDot) : file.name
-            const newName = baseName + '.webp'
-            file = new File([compressedBlob], newName, { type: 'image/webp' })
-          } catch {
-            if (currentToken !== fileProcessingToken) {
-              return
-            }
-            if (compatibility.requiresConversion) {
-              resetUI()
-              showConversionError(
-                'Image Conversion Failed',
-                'This image format could not be converted for web display. Please choose a supported image format (such as JPEG, PNG, or WebP).'
-              )
-              return
-            }
-          } finally {
-            if (currentToken === fileProcessingToken) {
-              state.isCompressing = false
-            }
-          }
+        try {
+          const compatibility = await $media.checkCompatibility(file)
           if (currentToken !== fileProcessingToken) {
             return
           }
-          state.thumbnailPreviewUrl = URL.createObjectURL(file)
-        } else if (file.type.startsWith('video/') || compatibility.category === 'video') {
-          state.isCompressing = true
-          state.progress = 0
-          state.uploadStatus = 'Processing video...'
-          state.isVideo = true
-          try {
-            // Extract thumbnail and duration first
-            const result = await $media.extractThumbnail(file)
-            if (currentToken !== fileProcessingToken) {
-              return
-            }
-            if (result.thumbnail) {
-              state.thumbnailBlob = result.thumbnail
-              state.autoExtractedThumbnailBlob = result.thumbnail
-              state.thumbnailPreviewUrl = URL.createObjectURL(result.thumbnail)
-            }
-            state.duration = result.duration
 
-            // Evaluate video file size against ENV server limit
-            const maxServerUploadSizeBytes = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
-            const evalResult = await $media.evaluateVideo(file, {
-              duration: result.duration,
-              maxServerUploadSizeBytes
-            })
-            if (currentToken !== fileProcessingToken) {
-              return
-            }
+          const isGif = (file.type === 'image/gif' || file.name.toLowerCase().endsWith('.gif'))
 
-            // If non-universal format (.mkv, .mov, .avi, .ts), always force transcoding to MP4 for web playback
-            if (compatibility.requiresConversion || evalResult.shouldCompress) {
-              state.uploadStatus = compatibility.requiresConversion
-                ? 'Converting video to MP4 for web playback... 0%'
-                : 'Compressing video for server upload... 0%'
-              file = await $media.compressVideo(file, {
-                duration: result.duration,
-                bitrate: evalResult.targetBitrate || undefined,
-                onProgress: (progress, status) => {
-                  if (currentToken !== fileProcessingToken) {
-                    return
-                  }
-                  state.progress = progress
-                  if (status) {
-                    state.uploadStatus = status
-                  } else {
-                    state.uploadStatus = compatibility.requiresConversion
-                      ? `Converting video to MP4... ${progress}%`
-                      : `Compressing video... ${progress}%`
-                  }
-                }
+          if (isGif) {
+            item.isImage = true
+            if (file.size > 15 * 1024 * 1024) {
+              item.status = 'Compressing GIF...'
+              try {
+                file = await $media.compressGif(file)
+              } catch {
+                // proceed with original
+              }
+              if (currentToken !== fileProcessingToken) {
+                return
+              }
+            }
+            item.file = file
+            item.thumbnailPreviewUrl = URL.createObjectURL(file)
+            item.isCompressing = false
+            item.status = 'Ready'
+          } else if (file.type.startsWith('image/') || compatibility.category === 'image') {
+            item.isImage = true
+            item.status = 'Compressing image...'
+            syncAttachmentPreview()
+            try {
+              const compressedBlob = await $media.compressImage(file, {
+                maxWidth: 1200,
+                maxHeight: 1200,
+                quality: 0.8,
+                format: 'image/webp'
               })
               if (currentToken !== fileProcessingToken) {
                 return
               }
-            } else if (evalResult.useWebRTC) {
-              state.uploadStatus = 'Queued for P2P direct transfer (exceeds server limit)'
-            }
-          } catch {
-            if (currentToken !== fileProcessingToken) {
-              return
-            }
-            if (compatibility.requiresConversion) {
-              resetUI()
-              showConversionError(
-                'Video Conversion Failed',
-                'This video could not be converted for web playback. Please choose a supported format (such as MP4 or WebM).'
-              )
-              return
-            }
-            const maxServerUploadSizeBytes = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
-            if (file.size > maxServerUploadSizeBytes) {
-              const activeRoomId = $state.activeSelectionId
-              const room = await $storage.getRoom(activeRoomId)
-              const participantsCount = room?.participants?.length || 0
-              if (participantsCount > 2) {
-                resetUI()
-                showConversionError(
-                  'Video Conversion Failed',
-                  'This video exceeds the 25MB server limit and could not be compressed for group chat.'
-                )
-                return
-              } else {
-                state.uploadStatus = 'Queued for P2P direct transfer (exceeds server limit)'
-              }
-            } else {
-              state.uploadStatus = 'Ready to send (original format)'
-            }
-          } finally {
-            if (currentToken === fileProcessingToken) {
-              state.isCompressing = false
-            }
-          }
-          if (currentToken !== fileProcessingToken) {
-            return
-          }
-        } else if (file.type.startsWith('audio/') || compatibility.category === 'audio') {
-          state.isCompressing = true
-          state.progress = 0
-          state.uploadStatus = 'Extracting metadata...'
-          try {
-            // Convert uncompressed or non-universal audio (WAV, FLAC) to MP4/AAC (.m4a)
-            if (compatibility.requiresConversion) {
-              state.uploadStatus = 'Converting audio to web format...'
-              file = await $media.convertAudio(file)
+              const lastDot = file.name.lastIndexOf('.')
+              const baseName = lastDot !== -1 ? file.name.substring(0, lastDot) : file.name
+              const newName = baseName + '.webp'
+              file = new File([compressedBlob], newName, { type: 'image/webp' })
+              item.file = file
+              item.mimeType = file.type
+            } catch {
               if (currentToken !== fileProcessingToken) {
                 return
               }
+              if (compatibility.requiresConversion) {
+                resetUI()
+                showConversionError(
+                  'Image Conversion Failed',
+                  'This image format could not be converted for web display. Please choose a supported image format (such as JPEG, PNG, or WebP).'
+                )
+                return
+              }
+            }
+            item.thumbnailPreviewUrl = URL.createObjectURL(item.file)
+            item.isCompressing = false
+            item.status = 'Ready'
+          } else if (file.type.startsWith('video/') || compatibility.category === 'video') {
+            item.isVideo = true
+            item.status = 'Processing video...'
+            syncAttachmentPreview()
+            try {
+              const result = await $media.extractThumbnail(file)
+              if (currentToken !== fileProcessingToken) {
+                return
+              }
+              if (result.thumbnail) {
+                item.thumbnailBlob = result.thumbnail
+                item.autoExtractedThumbnailBlob = result.thumbnail
+                item.thumbnailPreviewUrl = URL.createObjectURL(result.thumbnail)
+              }
+              item.duration = result.duration
+
+              const maxServerUploadSizeBytes = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
+              const evalResult = await $media.evaluateVideo(file, {
+                duration: result.duration,
+                maxServerUploadSizeBytes
+              })
+              if (currentToken !== fileProcessingToken) {
+                return
+              }
+
+              if (compatibility.requiresConversion || evalResult.shouldCompress) {
+                item.status = 'Compressing video...'
+                file = await $media.compressVideo(file, {
+                  duration: result.duration,
+                  bitrate: evalResult.targetBitrate || undefined,
+                  onProgress: (progress, status) => {
+                    if (currentToken !== fileProcessingToken) {
+                      return
+                    }
+                    item.progress = progress
+                    if (status) {
+                      item.status = status
+                    }
+                    syncAttachmentPreview()
+                  }
+                })
+                if (currentToken !== fileProcessingToken) {
+                  return
+                }
+                item.file = file
+                item.mimeType = file.type
+              }
+            } catch {
+              if (currentToken !== fileProcessingToken) {
+                return
+              }
+              if (compatibility.requiresConversion) {
+                resetUI()
+                showConversionError(
+                  'Video Conversion Failed',
+                  'This video could not be converted for web playback. Please choose a supported format (such as MP4 or WebM).'
+                )
+                return
+              }
+              const maxServerUploadSizeBytes = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
+              if (file.size > maxServerUploadSizeBytes) {
+                const activeRoomId = $state.activeSelectionId
+                const room = await $storage.getRoom(activeRoomId)
+                const participantsCount = room?.participants?.length || 0
+                if (participantsCount > 2) {
+                  item.isError = true
+                  item.errorMessage = 'Exceeds 25MB limit'
+                  item.status = 'Error'
+                  item.isCompressing = false
+                  resetUI()
+                  showConversionError(
+                    'Video Conversion Failed',
+                    'This video exceeds the 25MB server limit and could not be compressed for group chat.'
+                  )
+                  return
+                }
+              } else {
+                item.status = 'Ready to send (original format)'
+              }
+            }
+            item.isCompressing = false
+            item.status = item.status || 'Ready'
+          } else if (file.type.startsWith('audio/') || compatibility.category === 'audio') {
+            item.isAudio = true
+            item.status = 'Extracting audio...'
+            syncAttachmentPreview()
+            try {
+              if (compatibility.requiresConversion) {
+                file = await $media.convertAudio(file)
+                if (currentToken !== fileProcessingToken) {
+                  return
+                }
+                item.file = file
+                item.mimeType = file.type
+              }
+              const result = await $media.extractThumbnail(file)
+              if (currentToken !== fileProcessingToken) {
+                return
+              }
+              if (result) {
+                item.music_metadata = result.metadata
+                item.duration = result.duration
+                item.album_art_blob = result.albumArt
+                if (result.albumArt) {
+                  item.thumbnailBlob = result.albumArt
+                  item.thumbnailPreviewUrl = URL.createObjectURL(result.albumArt)
+                }
+              }
+            } catch {
+              if (currentToken !== fileProcessingToken) {
+                return
+              }
+              if (compatibility.requiresConversion) {
+                resetUI()
+                showConversionError(
+                  'Audio Conversion Failed',
+                  'This audio format could not be converted for web playback. Please choose a supported audio format (such as MP3 or M4A).'
+                )
+                return
+              }
             }
 
-            const result = await $media.extractThumbnail(file)
-            if (currentToken !== fileProcessingToken) {
-              return
+            try {
+              item.waveform_data = await $media.generateWaveform(file)
+            } catch {
             }
-            if (result) {
-              currentMusicMetadata = result.metadata
-              state.duration = result.duration
-              currentAlbumArtBlob = result.albumArt
-            }
-          } catch {
-            if (currentToken !== fileProcessingToken) {
-              return
-            }
-            if (compatibility.requiresConversion) {
-              resetUI()
-              showConversionError(
-                'Audio Conversion Failed',
-                'This audio format could not be converted for web playback. Please choose a supported audio format (such as MP3 or M4A).'
-              )
-              return
-            }
+            item.isCompressing = false
+            item.status = 'Ready'
+          } else {
+            // Non-media document
+            item.isCompressing = false
+            item.status = 'Ready'
           }
-
-          if (currentToken !== fileProcessingToken) {
-            return
-          }
-          state.uploadStatus = 'Generating waveform...'
-          try {
-            currentAudioWaveformData = await $media.generateWaveform(file)
-          } catch {
-            // Proceed with fallback audio handling if waveform generation fails
-          }
-          if (currentToken !== fileProcessingToken) {
-            return
-          }
-          state.isCompressing = false
+        } catch (err) {
+          item.isError = true
+          item.errorMessage = err.message || 'Processing failed'
+          item.status = 'Error'
+          item.isCompressing = false
         }
 
-        if (currentToken !== fileProcessingToken) {
+        syncAttachmentPreview()
+      }
+
+      /**
+       * Queues multiple files for batch processing.
+       */
+      const handleFilesSelected = async (incomingFiles) => {
+        if (!incomingFiles || incomingFiles.length === 0) {
           return
         }
-        state.selectedFile = file
-        state.fileName = file.name
-        if (!state.uploadStatus || state.uploadStatus.startsWith('Converting') || state.uploadStatus.startsWith('Processing') || state.uploadStatus.startsWith('Compressing') || state.uploadStatus.startsWith('Extracting')) {
-          state.uploadStatus = 'Ready to send'
+
+        const currentAttachments = state.attachments || []
+        const currentCount = currentAttachments.length
+
+        if (currentCount >= 10) {
+          $bus.emit('ui:show_toast', {
+            message: 'Maximum 10 attachments per message',
+            type: 'warning'
+          })
+          return
         }
+
+        let filesToAdd = incomingFiles
+        if (currentCount + incomingFiles.length > 10) {
+          $bus.emit('ui:show_toast', {
+            message: 'Maximum 10 attachments per message',
+            type: 'warning'
+          })
+          filesToAdd = incomingFiles.slice(0, 10 - currentCount)
+        }
+
+        const currentToken = ++fileProcessingToken
+
+        const newItems = filesToAdd.map(file => ({
+          id: crypto.randomUUID(),
+          file: file,
+          fileName: file.name,
+          fileSize: file.size,
+          mimeType: file.type,
+          isVideo: false,
+          isAudio: false,
+          isImage: false,
+          thumbnailBlob: null,
+          thumbnailPreviewUrl: null,
+          autoExtractedThumbnailBlob: null,
+          isCustomCover: false,
+          duration: 0,
+          waveform_data: null,
+          music_metadata: null,
+          album_art_blob: null,
+          isCompressing: true,
+          isUploading: false,
+          isError: false,
+          errorMessage: null,
+          progress: 0,
+          status: 'Processing...'
+        }))
+
+        state.attachments = [...currentAttachments, ...newItems]
+        state.hasFile = true
+        syncAttachmentPreview()
+
+        // Concurrently process files
+        await Promise.all(newItems.map(item => processAttachmentItem(item, currentToken)))
+      }
+
+      $bus.on('ui:file_selected', (payload) => {
+        if (payload.file) {
+          handleFilesSelected([payload.file])
+        }
+      })
+
+      $bus.on('ui:files_selected', (payload) => {
+        if (payload.files && payload.files.length > 0) {
+          handleFilesSelected(payload.files)
+        }
+      })
+
+      $bus.on('ui:remove_attachment', (payload) => {
+        const id = payload.id
+        if (!id) {
+          return
+        }
+        const removed = (state.attachments || []).find(a => a.id === id)
+        if (removed) {
+          revokeAttachmentUrls(removed)
+        }
+        state.attachments = (state.attachments || []).filter(a => a.id !== id)
+        if (state.attachments.length === 0) {
+          state.hasFile = false
+        }
+        syncAttachmentPreview()
+      })
+
+      $bus.on('ui:clear_all_attachments', () => {
+        resetUI()
       })
 
       $bus.on('ui:mic_clicked', () => {
@@ -762,16 +860,20 @@
         }
       })
 
-      $bus.on('ui:custom_cover_selected', async (payload) => {
-        const file = payload.file
-        if (!file) {
+      $bus.on('ui:attachment_cover_selected', async (payload) => {
+        const { id, file } = payload
+        if (!id || !file) {
+          return
+        }
+        const item = (state.attachments || []).find(a => a.id === id)
+        if (!item) {
           return
         }
 
-        state.isCompressing = true
-        state.uploadStatus = 'Compressing custom cover...'
+        item.isCompressing = true
+        item.status = 'Compressing cover...'
+        syncAttachmentPreview()
         try {
-          // Compress custom cover directly in the main thread (<= 50KB constraint)
           const compressed = await $media.compressImage(file, {
             maxWidth: 480,
             maxHeight: 480,
@@ -779,30 +881,44 @@
             format: 'image/webp'
           })
 
-          state.thumbnailBlob = compressed
-          state.isCustomCover = true
-
-          // Swap the preview URL
-          revokePreviewUrl()
-          state.thumbnailPreviewUrl = URL.createObjectURL(compressed)
-          state.uploadStatus = 'Custom cover applied'
+          item.thumbnailBlob = compressed
+          item.isCustomCover = true
+          if (item.thumbnailPreviewUrl) {
+            URL.revokeObjectURL(item.thumbnailPreviewUrl)
+          }
+          item.thumbnailPreviewUrl = URL.createObjectURL(compressed)
+          item.status = 'Custom cover applied'
         } catch (err) {
-          alert('Failed to process custom cover: ' + err.message)
+          $bus.emit('ui:show_toast', {
+            message: 'Failed to process custom cover: ' + err.message,
+            type: 'danger'
+          })
         } finally {
-          state.isCompressing = false
+          item.isCompressing = false
+          syncAttachmentPreview()
         }
       })
 
-      $bus.on('ui:remove_custom_cover_clicked', () => {
-        state.isCustomCover = false
-        state.thumbnailBlob = state.autoExtractedThumbnailBlob
-
-        // Restore original preview
-        revokePreviewUrl()
-        if (state.autoExtractedThumbnailBlob) {
-          state.thumbnailPreviewUrl = URL.createObjectURL(state.autoExtractedThumbnailBlob)
+      $bus.on('ui:attachment_cover_removed', (payload) => {
+        const { id } = payload
+        if (!id) {
+          return
         }
-        state.uploadStatus = 'Ready to send'
+        const item = (state.attachments || []).find(a => a.id === id)
+        if (!item) {
+          return
+        }
+
+        item.isCustomCover = false
+        item.thumbnailBlob = item.autoExtractedThumbnailBlob
+        if (item.thumbnailPreviewUrl) {
+          URL.revokeObjectURL(item.thumbnailPreviewUrl)
+        }
+        if (item.autoExtractedThumbnailBlob) {
+          item.thumbnailPreviewUrl = URL.createObjectURL(item.autoExtractedThumbnailBlob)
+        }
+        item.status = 'Ready'
+        syncAttachmentPreview()
       })
     }
   })
