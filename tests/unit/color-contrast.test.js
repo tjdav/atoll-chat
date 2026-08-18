@@ -96,4 +96,26 @@ describe('Color Contrast and Conversion Utility', () => {
     const avgColor = getAverageColor(null)
     assert.equal(avgColor, '#FFFFFF')
   })
+
+  test('generateThemeImageVariants creates sm, md, lg variants without upscaling', async () => {
+    const { generateThemeImageVariants, THEME_IMAGE_BREAKPOINTS } = await import('../../src/utils/color-contrast.js')
+    assert.deepEqual(THEME_IMAGE_BREAKPOINTS, {
+      sm: 640,
+      md: 1280,
+      lg: 1920
+    })
+
+    // Test null input
+    assert.deepEqual(generateThemeImageVariants(null), {})
+
+    // Test mock image with 2000x1000 dimensions
+    const mockLargeImg = {
+      naturalWidth: 2000,
+      naturalHeight: 1000
+    }
+    const variants = generateThemeImageVariants(mockLargeImg)
+    assert.ok(variants.sm, 'sm variant should exist')
+    assert.ok(variants.md, 'md variant should exist')
+    assert.ok(variants.lg, 'lg variant should exist')
+  })
 })

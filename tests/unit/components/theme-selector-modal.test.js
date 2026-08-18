@@ -286,4 +286,39 @@ describe('Atoll Theme Selector Modal Component', () => {
     assert.notEqual(dimSlider.id, 'dimSlider', 'should not use static ID')
     assert.ok(dimLabel, 'label should match dim slider dynamic ID')
   })
+
+  test('should render <picture> element and save both bgImages and bgImage in encrypted settings', async () => {
+    mockRoom.theme = 'custom'
+    mockRoom.custom_theme = {
+      bgColor: '#FFFFFF',
+      useBgImage: true,
+      bgImages: {
+        sm: 'data:image/webp;base64,sm',
+        md: 'data:image/webp;base64,md',
+        lg: 'data:image/webp;base64,lg'
+      },
+      bgImage: 'data:image/webp;base64,lg'
+    }
+
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    await el.show()
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const picture = el.querySelector('.atoll-chat-bg-picture')
+    assert.ok(picture, 'preview chat window should render <picture> element')
+
+    const popup = el.querySelector('atoll-popup')
+    popup.dispatchEvent(new CustomEvent('atoll-popup-primary', { bubbles: true }))
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    assert.ok(lastEncryptedMessage, 'An encrypted message payload should be sent to worker')
+    const parsedPayload = JSON.parse(lastEncryptedMessage)
+    assert.equal(parsedPayload.theme, 'custom')
+    assert.ok(parsedPayload.custom_theme.bgImages, 'bgImages should be saved in custom_theme')
+    assert.equal(parsedPayload.custom_theme.bgImages.sm, 'data:image/webp;base64,sm')
+    assert.equal(parsedPayload.custom_theme.bgImage, 'data:image/webp;base64,lg', 'legacy bgImage should be saved for backward compatibility')
+  })
 })

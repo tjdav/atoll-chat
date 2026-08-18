@@ -104,6 +104,13 @@
       <div class="theme-preview-section p-3 d-flex flex-column align-items-stretch" ref="themePreviewContainer" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); border-radius: 8px;">
         <div class="preview-chat-window atoll-chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm position-relative overflow-hidden" ref="previewChatWindow" style="min-height: 220px; transition: background 0.3s ease;">
           
+          <!-- Responsive Background Image Layer -->
+          <picture class="atoll-chat-bg-picture" ref="previewBgPicture" aria-hidden="true" style="display: none;">
+            <source ref="previewBgSourceLg" media="(min-width: 1200px)" />
+            <source ref="previewBgSourceMd" media="(min-width: 768px)" />
+            <img ref="previewBgImg" class="atoll-chat-bg-img" alt="" />
+          </picture>
+          
           <!-- Today Date Separator Badge -->
           <div class="text-center my-2 atoll-chat-date-separator" style="z-index: 2; margin: 5px 0;">
             <span class="badge rounded-pill px-3 py-1 text-uppercase font-monospace atoll-chat-date-separator-pill" style="font-size: 0.7rem; font-weight: 500;">Today</span>
@@ -222,7 +229,7 @@
     server: () => ({}),
     getters: {},
     client: async ({ root, refs, globalStore, storage, pocketbase, utils, signal, eventBus, cryptoWorker }) => {
-      const { hexToRgb, getRelativeLuminance, ensureWCAGContrast, ensureForegroundContrast, generateImagePalettes, getAverageColor } = await import('../../utils/color-contrast.js')
+      const { hexToRgb, getRelativeLuminance, ensureWCAGContrast, ensureForegroundContrast, generateImagePalettes, getAverageColor, generateThemeImageVariants } = await import('../../utils/color-contrast.js')
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -309,6 +316,7 @@
       // Custom theme state variables
       let customBgColor = '#FFFFFF'
       let customBgImage = null
+      let customBgImages = null
       let customBgBlur = 5
       let customBgDim = 30
       let customUseBgImage = true
@@ -534,6 +542,7 @@
               receivedBg: customReceivedBg,
               receivedColor: customReceivedColor,
               bgImage: customBgImage,
+              bgImages: customBgImages,
               bgBlur: customBgBlur,
               bgDim: customBgDim,
               useBgImage: customUseBgImage,
@@ -662,7 +671,12 @@
         if (room?.custom_theme) {
           const ct = room.custom_theme
           customBgColor = ct.bgColor || '#FFFFFF'
-          customBgImage = ct.bgImage || null
+          customBgImages = ct.bgImages || (ct.bgImage ? {
+            sm: ct.bgImage,
+            md: ct.bgImage,
+            lg: ct.bgImage
+          } : null)
+          customBgImage = ct.bgImage || (customBgImages ? (customBgImages.lg || customBgImages.md || customBgImages.sm) : null)
           customBgBlur = ct.bgBlur !== undefined ? ct.bgBlur : 5
           customBgDim = ct.bgDim !== undefined ? ct.bgDim : 30
           customUseBgImage = ct.useBgImage !== undefined ? !!ct.useBgImage : true
@@ -688,6 +702,7 @@
           // Reset custom theme state if none exist
           customBgColor = '#FFFFFF'
           customBgImage = null
+          customBgImages = null
           customBgBlur = 5
           customBgDim = 30
           customUseBgImage = true
@@ -927,6 +942,10 @@
        */
       const updateLivePreviewStyles = () => {
         const previewChatWindow = getRef('previewChatWindow')
+        const previewBgPicture = getRef('previewBgPicture')
+        const previewBgSourceLg = getRef('previewBgSourceLg')
+        const previewBgSourceMd = getRef('previewBgSourceMd')
+        const previewBgImg = getRef('previewBgImg')
 
         if (highlightedTheme) {
           previewChatWindow.setAttribute('data-theme', highlightedTheme)
@@ -941,6 +960,19 @@
         previewChatWindow.style.removeProperty('--atoll-chat-bg-image')
         previewChatWindow.style.removeProperty('--atoll-chat-bg-blur')
         previewChatWindow.style.removeProperty('--atoll-chat-bg-dim')
+
+        if (previewBgPicture) {
+          previewBgPicture.style.display = 'none'
+        }
+        if (previewBgSourceLg) {
+          previewBgSourceLg.removeAttribute('srcset')
+        }
+        if (previewBgSourceMd) {
+          previewBgSourceMd.removeAttribute('srcset')
+        }
+        if (previewBgImg) {
+          previewBgImg.removeAttribute('src')
+        }
   
         const previewBubbleOutgoing = getRef('previewBubbleOutgoing')
         const previewBubbleIncoming = getRef('previewBubbleIncoming')
@@ -1001,14 +1033,44 @@
           previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', customAttachmentCardBg)
           previewChatWindow.style.setProperty('--atoll-chat-attachment-card-border', customAttachmentCardBorder)
 
-          if (customUseBgImage && customBgImage) {
-            previewChatWindow.style.setProperty('--atoll-chat-bg-image', `url(${customBgImage})`)
+          const resolvedVariants = customBgImages || (customBgImage ? {
+            sm: customBgImage,
+            md: customBgImage,
+            lg: customBgImage
+          } : null)
+          const fallbackSrc = resolvedVariants ? (resolvedVariants.sm || resolvedVariants.md || resolvedVariants.lg || '') : ''
+
+          if (customUseBgImage && fallbackSrc) {
             previewChatWindow.style.setProperty('--atoll-chat-bg-blur', `${customBgBlur}px`)
             previewChatWindow.style.setProperty('--atoll-chat-bg-dim', `${customBgDim / 100}`)
+
+            if (previewBgSourceLg) {
+              previewBgSourceLg.srcset = resolvedVariants.lg || resolvedVariants.md || resolvedVariants.sm || fallbackSrc
+            }
+            if (previewBgSourceMd) {
+              previewBgSourceMd.srcset = resolvedVariants.md || resolvedVariants.lg || resolvedVariants.sm || fallbackSrc
+            }
+            if (previewBgImg) {
+              previewBgImg.src = fallbackSrc
+            }
+            if (previewBgPicture) {
+              previewBgPicture.style.display = 'block'
+            }
           } else {
-            previewChatWindow.style.removeProperty('--atoll-chat-bg-image')
             previewChatWindow.style.removeProperty('--atoll-chat-bg-blur')
             previewChatWindow.style.removeProperty('--atoll-chat-bg-dim')
+            if (previewBgPicture) {
+              previewBgPicture.style.display = 'none'
+            }
+            if (previewBgSourceLg) {
+              previewBgSourceLg.removeAttribute('srcset')
+            }
+            if (previewBgSourceMd) {
+              previewBgSourceMd.removeAttribute('srcset')
+            }
+            if (previewBgImg) {
+              previewBgImg.removeAttribute('src')
+            }
           }
         } else {
           // It's a pre-defined theme (classic, ocean, forest, sunset)
@@ -1034,50 +1096,38 @@
       // Offscreen image load event handler
       if (offscreenImg) {
         offscreenImg.onload = () => {
-          const canvas = document.createElement('canvas')
-          const maxDim = 800
-          let w = offscreenImg.width
-          let h = offscreenImg.height
+          customBgImages = generateThemeImageVariants(offscreenImg)
+          customBgImage = customBgImages.lg || customBgImages.md || customBgImages.sm || null
 
-          if (w > maxDim || h > maxDim) {
-            if (w > h) {
-              h = Math.round((h * maxDim) / w)
-              w = maxDim
-            } else {
-              w = Math.round((w * maxDim) / h)
-              h = maxDim
-            }
-          }
-
-          canvas.width = w
-          canvas.height = h
-          const ctx = canvas.getContext('2d')
+          // Sample canvas for fast palette and average color extraction
+          const sampleCanvas = document.createElement('canvas')
+          sampleCanvas.width = 100
+          sampleCanvas.height = 100
+          const ctx = sampleCanvas.getContext('2d')
           if (ctx) {
-            ctx.drawImage(offscreenImg, 0, 0, w, h)
-  
-            customBgImage = canvas.toDataURL('image/jpeg', 0.7)
-            customBgColor = getAverageColor(canvas)
+            ctx.drawImage(offscreenImg, 0, 0, 100, 100)
+            customBgColor = getAverageColor(sampleCanvas)
 
             customPaletteModeIdx = 0
-            customPalette = generateImagePalettes(canvas, 'vibrant')
+            customPalette = generateImagePalettes(sampleCanvas, 'vibrant')
 
             if (customPalette && customPalette.length >= 2) {
               customSentBg = customPalette[0]
               customReceivedBg = customPalette[1]
               normalizeCustomThemeContrast()
             }
-
-            getRef('btnGeneratePalette').removeAttribute('disabled')
-            getRef('btnRandomizeColors').removeAttribute('disabled')
-
-            renderPaletteSwatches()
-            updateLivePreviewStyles()
-
-            $bus.emit('ui:show_toast', {
-              message: 'Custom palette extracted successfully!',
-              type: 'success'
-            })
           }
+
+          getRef('btnGeneratePalette').removeAttribute('disabled')
+          getRef('btnRandomizeColors').removeAttribute('disabled')
+
+          renderPaletteSwatches()
+          updateLivePreviewStyles()
+
+          $bus.emit('ui:show_toast', {
+            message: 'Custom palette extracted successfully!',
+            type: 'success'
+          })
         }
       }
     }

@@ -559,3 +559,86 @@ export async function updateNativeStatusBar (bgColorHex) {
     // Fail-safe closed / ignore gracefully on non-supported environments
   }
 }
+
+export const THEME_IMAGE_BREAKPOINTS = {
+  sm: 640,
+  md: 1280,
+  lg: 1920
+}
+
+/**
+ * Generates responsive image variants for custom chat themes.
+ * @param {HTMLImageElement|HTMLCanvasElement} sourceImg - The source image or canvas to downscale.
+ * @param {Object} [options] - Options configuration.
+ * @param {Object} [options.widths] - Target max dimensions for each tier.
+ * @param {string} [options.format='image/webp'] - Preferred MIME type.
+ * @param {number} [options.quality=0.82] - Compression quality.
+ * @returns {Record<string, string>} Object containing { sm, md, lg } data URLs.
+ */
+export function generateThemeImageVariants (sourceImg, options = {}) {
+  const {
+    widths = THEME_IMAGE_BREAKPOINTS,
+    format = 'image/webp',
+    quality = 0.82
+  } = options
+
+  if (!sourceImg) {
+    return {}
+  }
+
+  const origW = sourceImg.naturalWidth || sourceImg.width || 0
+  const origH = sourceImg.naturalHeight || sourceImg.height || 0
+  if (origW <= 0 || origH <= 0) {
+    return {}
+  }
+
+  const result = {}
+  const hasCanvas = typeof HTMLCanvasElement !== 'undefined' || typeof document !== 'undefined'
+  if (!hasCanvas) {
+    return result
+  }
+
+  for (const [tier, maxDim] of Object.entries(widths)) {
+    let w = origW
+    let h = origH
+
+    if (w > maxDim || h > maxDim) {
+      if (w > h) {
+        h = Math.max(1, Math.round((h * maxDim) / w))
+        w = maxDim
+      } else {
+        w = Math.max(1, Math.round((w * maxDim) / h))
+        h = maxDim
+      }
+    }
+
+    let canvas = null
+    if (typeof document !== 'undefined') {
+      canvas = document.createElement('canvas')
+      canvas.width = w
+      canvas.height = h
+      const ctx = canvas.getContext('2d')
+      if (ctx) {
+        try {
+          ctx.drawImage(sourceImg, 0, 0, w, h)
+        } catch (e) {
+          console.error('[color-contrast] Failed to draw image variant to canvas:', e)
+        }
+      }
+    }
+
+    if (canvas) {
+      try {
+        let dataUrl = canvas.toDataURL(format, quality)
+        if (format === 'image/webp' && (dataUrl.startsWith('data:image/png') || !dataUrl.startsWith('data:image/webp'))) {
+          dataUrl = canvas.toDataURL('image/jpeg', quality)
+        }
+        result[tier] = dataUrl
+      } catch (e) {
+        console.error('[color-contrast] Failed to generate theme image variant:', e)
+      }
+    }
+  }
+
+  return result
+}

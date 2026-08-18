@@ -50,6 +50,13 @@
       </div>
     </header>
 
+    <!-- Responsive Background Image Layer -->
+    <picture class="atoll-chat-bg-picture" ref="chatBgPicture" aria-hidden="true" style="display: none;">
+      <source ref="bgSourceLg" media="(min-width: 1200px)" />
+      <source ref="bgSourceMd" media="(min-width: 768px)" />
+      <img ref="chatBgImg" class="atoll-chat-bg-img" alt="" loading="eager" decoding="async" />
+    </picture>
+
     <!-- Main Content Area -->
     <div class="flex-grow-1 position-relative overflow-hidden">
       <!-- Message Timeline -->
@@ -253,6 +260,24 @@
         if (!chatViewRoot) {
           return
         }
+
+        const chatBgPicture = refs('chatBgPicture')
+        const bgSourceLg = refs('bgSourceLg')
+        const bgSourceMd = refs('bgSourceMd')
+        const chatBgImg = refs('chatBgImg')
+
+        if (chatBgPicture) {
+          chatBgPicture.style.display = 'none'
+        }
+        if (bgSourceLg) {
+          bgSourceLg.removeAttribute('srcset')
+        }
+        if (bgSourceMd) {
+          bgSourceMd.removeAttribute('srcset')
+        }
+        if (chatBgImg) {
+          chatBgImg.removeAttribute('src')
+        }
   
         chatViewRoot.style.removeProperty('--atoll-chat-bg')
         chatViewRoot.style.removeProperty('--atoll-chat-input-container-bg-custom')
@@ -376,9 +401,48 @@
               chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-color', ct.sentColor || '#FFFFFF')
               chatViewRoot.style.setProperty('--atoll-chat-bubble-received-bg', ct.receivedBg || '#EEEEEE')
               chatViewRoot.style.setProperty('--atoll-chat-bubble-received-color', ct.receivedColor || '#111111')
-              chatViewRoot.style.setProperty('--atoll-chat-bg-image', ct.useBgImage && ct.bgImage ? `url(${ct.bgImage})` : 'none')
               chatViewRoot.style.setProperty('--atoll-chat-bg-blur', `${ct.bgBlur || 0}px`)
               chatViewRoot.style.setProperty('--atoll-chat-bg-dim', `${(ct.bgDim !== undefined ? ct.bgDim : 30) / 100}`)
+
+              const chatBgPicture = refs('chatBgPicture')
+              const bgSourceLg = refs('bgSourceLg')
+              const bgSourceMd = refs('bgSourceMd')
+              const chatBgImg = refs('chatBgImg')
+
+              const resolvedVariants = ct.bgImages || (ct.bgImage ? {
+                sm: ct.bgImage,
+                md: ct.bgImage,
+                lg: ct.bgImage
+              } : null)
+              const fallbackSrc = resolvedVariants ? (resolvedVariants.sm || resolvedVariants.md || resolvedVariants.lg || '') : ''
+
+              if (ct.useBgImage && fallbackSrc) {
+                if (bgSourceLg) {
+                  bgSourceLg.srcset = resolvedVariants.lg || resolvedVariants.md || resolvedVariants.sm || fallbackSrc
+                }
+                if (bgSourceMd) {
+                  bgSourceMd.srcset = resolvedVariants.md || resolvedVariants.lg || resolvedVariants.sm || fallbackSrc
+                }
+                if (chatBgImg) {
+                  chatBgImg.src = fallbackSrc
+                }
+                if (chatBgPicture) {
+                  chatBgPicture.style.display = 'block'
+                }
+              } else {
+                if (chatBgPicture) {
+                  chatBgPicture.style.display = 'none'
+                }
+                if (bgSourceLg) {
+                  bgSourceLg.removeAttribute('srcset')
+                }
+                if (bgSourceMd) {
+                  bgSourceMd.removeAttribute('srcset')
+                }
+                if (chatBgImg) {
+                  chatBgImg.removeAttribute('src')
+                }
+              }
 
               // Set newly expanded custom theme variables on chatViewRoot
               chatViewRoot.style.setProperty('--atoll-chat-sent-status-color', ct.sentStatusColor || ct.sentBg || '#06C755')

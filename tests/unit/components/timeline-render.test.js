@@ -220,11 +220,19 @@ describe('Atoll Chat Timeline Component Render Path', () => {
 
     // Simulate scrolled up state: large scrollHeight, small scrollTop
     let scrollVal = 100
-    Object.defineProperty(container, 'scrollHeight', { value: 2000, configurable: true })
-    Object.defineProperty(container, 'clientHeight', { value: 500, configurable: true })
+    Object.defineProperty(container, 'scrollHeight', {
+      value: 2000,
+      configurable: true
+    })
+    Object.defineProperty(container, 'clientHeight', {
+      value: 500,
+      configurable: true
+    })
     Object.defineProperty(container, 'scrollTop', {
       get: () => scrollVal,
-      set: (v) => { scrollVal = v },
+      set: (v) => {
+        scrollVal = v
+      },
       configurable: true
     })
 
