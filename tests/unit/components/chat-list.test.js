@@ -373,7 +373,7 @@ describe('Atoll Chat List Component', () => {
     assert.equal(emptyMsg.textContent, 'No matches found', 'Should display "No matches found"')
   })
 
-  test('should selectively reorder on db:new_local_data and preserve order on metadata updates', async () => {
+  test('should update preview text and unread count in-place on db:new_local_data without changing position when weights are equal', async () => {
     const el = document.createElement(tagName)
     document.body.appendChild(el)
     await new Promise(resolve => setTimeout(resolve, 50))
@@ -382,7 +382,7 @@ describe('Atoll Chat List Component', () => {
     assert.equal(items[0].getAttribute('room-id'), 'room1')
     assert.equal(items[1].getAttribute('room-id'), 'room2')
 
-    // 1. Metadata update (room:read_state_changed) -> stays in place
+    // Metadata update (room:read_state_changed) -> stays in place
     globalState.busListeners['room:read_state_changed']?.forEach(cb => cb('room2'))
     await new Promise(resolve => setTimeout(resolve, 50))
 
@@ -390,7 +390,7 @@ describe('Atoll Chat List Component', () => {
     assert.equal(items[0].getAttribute('room-id'), 'room1', 'room1 should remain at position 0 on metadata update')
     assert.equal(items[1].getAttribute('room-id'), 'room2', 'room2 should remain at position 1 on metadata update')
 
-    // 2. New message event (db:new_local_data) for room2 -> moves to top
+    // New message event (db:new_local_data) for room2 -> updates preview/unread count in-place, position stays equal
     mockMessages.room2.push({
       id: 'm3',
       room_id: 'room2',
@@ -406,8 +406,49 @@ describe('Atoll Chat List Component', () => {
     await new Promise(resolve => setTimeout(resolve, 50))
 
     items = el.querySelectorAll('chat-list-item')
-    assert.equal(items[0].getAttribute('room-id'), 'room2', 'room2 should be moved to top after new message event')
+    assert.equal(items[0].getAttribute('room-id'), 'room1', 'room1 position preserved when weights equal')
+    assert.equal(items[1].getAttribute('room-id'), 'room2', 'room2 updated in-place at index 1')
+    assert.equal(items[1].getAttribute('preview-text'), 'Bob: New message in group', 'preview text updated')
+  })
+
+  test('should re-sort room to top when room weight increases', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    let items = el.querySelectorAll('chat-list-item')
+    assert.equal(items[0].getAttribute('room-id'), 'room1')
+    assert.equal(items[1].getAttribute('room-id'), 'room2')
+
+    // Increase weight of room2 (e.g., pinned)
+    const room2 = mockRooms.find(r => r.id === 'room2')
+    room2.weight = 10
+
+    for (const cb of (globalState.busListeners['room:member_updated'] || [])) {
+      await cb({ room_id: 'room2' })
+    }
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    items = el.querySelectorAll('chat-list-item')
+    assert.equal(items[0].getAttribute('room-id'), 'room2', 'room2 moves to top because weight=10 > weight=0')
     assert.equal(items[1].getAttribute('room-id'), 'room1')
+  })
+
+  test('should perform non-destructive resync on sync:complete without wiping loaded items', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const firstItemBefore = el.querySelector('chat-list-item[room-id="room1"]')
+    assert.ok(firstItemBefore, 'Item for room1 exists in DOM')
+
+    for (const cb of (globalState.busListeners['sync:complete'] || [])) {
+      await cb()
+    }
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const firstItemAfter = el.querySelector('chat-list-item[room-id="room1"]')
+    assert.equal(firstItemBefore, firstItemAfter, 'Existing DOM node reused during non-destructive resync')
   })
 
   test('should restore empty state when rooms are deleted', async () => {

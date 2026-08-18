@@ -370,33 +370,30 @@ export function createWebStorageAdapter () {
     },
 
     /**
-     * Retrieves all rooms sorted dynamically by descending updated_at timestamp.
-     * Supports timestamp pagination and batch size limits.
+     * Retrieves all rooms sorted strictly by descending room weight.
+     * Supports index/ID cursor pagination and batch size limits.
      *
-     * @param {string} [lastTimestamp] - Cursor timestamp to query before.
+     * @param {string|Object} [lastItemOrCursor] - Cursor item, room object, or room ID to paginate after.
      * @param {number} [batchSize] - Maximum number of rooms to retrieve.
      * @returns {Promise<Array<Object>>} Resolves with sorted room records.
      * @throws {Error} Throws if the database is not initialized.
      */
-    getAllRoomsSorted: async (lastTimestamp, batchSize) => {
+    getAllRoomsSorted: async (lastItemOrCursor, batchSize) => {
       if (!dbInstance) {
         throw new Error('Database not initialized')
       }
       const rooms = await dbInstance.local_rooms.toArray()
-      rooms.sort((a, b) => {
-        const weightA = Number(a.weight ?? 0)
-        const weightB = Number(b.weight ?? 0)
-        if (weightA !== weightB) {
-          return weightB - weightA
-        }
-        const ta = new Date(a.updated_at || a.created_at || 0).getTime()
-        const tb = new Date(b.updated_at || b.created_at || 0).getTime()
-        return tb - ta
-      })
+
+      rooms.sort((a, b) => Number(b.weight ?? 0) - Number(a.weight ?? 0))
       let filtered = rooms
-      if (lastTimestamp) {
-        const lastTime = new Date(lastTimestamp).getTime()
-        filtered = rooms.filter(r => new Date(r.updated_at || r.created_at || 0).getTime() < lastTime)
+      if (lastItemOrCursor) {
+        const targetId = typeof lastItemOrCursor === 'object' && lastItemOrCursor !== null
+          ? (lastItemOrCursor.id || lastItemOrCursor.item?.id)
+          : lastItemOrCursor
+        const idx = rooms.findIndex(r => r.id === targetId)
+        if (idx !== -1) {
+          filtered = rooms.slice(idx + 1)
+        }
       }
       if (batchSize) {
         filtered = filtered.slice(0, batchSize)

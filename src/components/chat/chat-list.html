@@ -130,7 +130,31 @@
         }
       }
 
-      const createAvatarComponent = (item, roomName) => {
+      const setAttrIfChanged = (el, name, value) => {
+        const strVal = String(value ?? '')
+        if (el.getAttribute(name) !== strVal) {
+          el.setAttribute(name, strVal)
+        }
+      }
+
+      const computeAvatarKey = (item, roomName) => {
+        const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
+        if (item.avatar) {
+          const avatarStr = typeof item.avatar === 'string' ? item.avatar : JSON.stringify(item.avatar)
+          return `encrypted_${avatarStr}`
+        }
+        if (!item.is_group && participants.length > 0) {
+          const otherUser = participants[0]
+          return `direct_${otherUser.id}_${otherUser.avatar || ''}_${roomName}`
+        } else if (item.is_group) {
+          const splitCount = Math.min(Math.max(participants.length, 2), 4)
+          const pKeys = participants.map(p => `${p.id}_${p.avatar || ''}`).join('_')
+          return `group_${pKeys}_${splitCount}`
+        }
+        return `default_${roomName}`
+      }
+
+      const createAvatarComponent = (item, roomName, avatarKey) => {
         const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
         if (item.avatar) {
           try {
@@ -140,6 +164,7 @@
             profile.setAttribute('size', 'md')
             profile.setAttribute('name', roomName)
             profile.setAttribute('alt', roomName)
+            profile.setAttribute('data-avatar-key', avatarKey)
 
             const $media = utils?.$media
             if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
@@ -162,6 +187,7 @@
           profile.setAttribute('size', 'md')
           profile.setAttribute('name', displayName)
           profile.setAttribute('alt', displayName)
+          profile.setAttribute('data-avatar-key', avatarKey)
           if (otherUser.id) {
             profile.setAttribute('user-id', otherUser.id)
           }
@@ -174,6 +200,7 @@
           profile.setAttribute('slot', 'avatar')
           profile.setAttribute('type', 'multiparty')
           profile.setAttribute('size', 'md')
+          profile.setAttribute('data-avatar-key', avatarKey)
           const splitCount = Math.min(Math.max(participants.length, 2), 4)
           profile.setAttribute('split-count', splitCount)
 
@@ -204,43 +231,28 @@
         profile.setAttribute('size', 'md')
         profile.setAttribute('name', roomName)
         profile.setAttribute('alt', roomName)
+        profile.setAttribute('data-avatar-key', avatarKey)
         return profile
       }
 
       const updateItemAttributes = (el, data) => {
-        el.setAttribute('room-id', data.item.id)
-        el.setAttribute('room-name', data.roomName)
-        el.setAttribute('preview-text', data.previewText)
-        el.setAttribute('relative-time', data.relativeTime)
-        el.setAttribute('is-unread', data.isUnread ? 'true' : 'false')
-        el.setAttribute('unread-count', String(data.unreadCount || 0))
-        el.setAttribute('is-group', data.item.is_group ? 'true' : 'false')
-        el.setAttribute('user-role', data.item.user_role || '')
-        el.setAttribute('is-muted', data.isMuted ? 'true' : 'false')
+        setAttrIfChanged(el, 'room-id', data.item.id)
+        setAttrIfChanged(el, 'room-name', data.roomName)
+        setAttrIfChanged(el, 'preview-text', data.previewText)
+        setAttrIfChanged(el, 'relative-time', data.relativeTime)
+        setAttrIfChanged(el, 'is-unread', data.isUnread ? 'true' : 'false')
+        setAttrIfChanged(el, 'unread-count', String(data.unreadCount || 0))
+        setAttrIfChanged(el, 'is-group', data.item.is_group ? 'true' : 'false')
+        setAttrIfChanged(el, 'user-role', data.item.user_role || '')
+        setAttrIfChanged(el, 'is-muted', data.isMuted ? 'true' : 'false')
 
+        const avatarKey = computeAvatarKey(data.item, data.roomName)
         const existingAvatar = el.querySelector('[slot="avatar"]')
-        const isEncryptedAvatar = Boolean(data.item.avatar)
-        const isMultiparty = Boolean(data.item.is_group && !isEncryptedAvatar)
 
         if (!existingAvatar) {
-          el.appendChild(createAvatarComponent(data.item, data.roomName))
-        } else {
-          const isExistingMultiparty = existingAvatar.getAttribute('type') === 'multiparty'
-          if (isMultiparty !== isExistingMultiparty || isEncryptedAvatar) {
-            existingAvatar.replaceWith(createAvatarComponent(data.item, data.roomName))
-          } else if (!isMultiparty) {
-            existingAvatar.setAttribute('name', data.roomName)
-            existingAvatar.setAttribute('alt', data.roomName)
-            const participants = (data.item.participants || []).filter(p => p.id !== $state.currentUser?.id)
-            if (participants.length > 0) {
-              if (participants[0].id) {
-                existingAvatar.setAttribute('user-id', participants[0].id)
-              }
-              if (participants[0].avatar && pb?.files?.getURL) {
-                existingAvatar.setAttribute('src', pb.files.getURL(participants[0], participants[0].avatar, { thumb: '50x50' }))
-              }
-            }
-          }
+          el.appendChild(createAvatarComponent(data.item, data.roomName, avatarKey))
+        } else if (existingAvatar.getAttribute('data-avatar-key') !== avatarKey) {
+          existingAvatar.replaceWith(createAvatarComponent(data.item, data.roomName, avatarKey))
         }
       }
 
@@ -253,7 +265,7 @@
         bus: eventBus,
         Fuse: $Fuse,
         fetchNextBatch: async (lastItem) => {
-          const rawItems = await $storage.getAllRoomsSorted(lastItem ? lastItem.item.updated_at : null, BATCH_SIZE)
+          const rawItems = await $storage.getAllRoomsSorted(lastItem ? lastItem.item : null, BATCH_SIZE)
           const items = await Promise.all(rawItems.map(enrichItem))
           return { items }
         },
@@ -262,18 +274,56 @@
             listGroup.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No chats found'}</div>`
             return
           }
-          const fragment = document.createDocumentFragment()
-          for (const data of itemsToDisplay) {
-            const listItem = document.createElement('chat-list-item')
-            updateItemAttributes(listItem, data)
-            fragment.appendChild(listItem)
+
+          const emptyState = listGroup.querySelector('.text-body-secondary')
+          if (emptyState) {
+            emptyState.remove()
           }
-          listGroup.innerHTML = ''; listGroup.appendChild(fragment)
+
+          const existingNodesMap = new Map()
+          const currentItems = listGroup.querySelectorAll('chat-list-item')
+          for (const itemNode of currentItems) {
+            const rId = itemNode.getAttribute('room-id')
+            if (rId) {
+              existingNodesMap.set(rId, itemNode)
+            }
+          }
+
+          const activeRoomIds = new Set(itemsToDisplay.map(d => d.item.id))
+          for (const [rId, itemNode] of existingNodesMap.entries()) {
+            if (!activeRoomIds.has(rId)) {
+              itemNode.remove()
+            }
+          }
+
+          for (let i = 0; i < itemsToDisplay.length; i++) {
+            const data = itemsToDisplay[i]
+            let listItem = existingNodesMap.get(data.item.id)
+
+            if (!listItem) {
+              listItem = document.createElement('chat-list-item')
+            }
+
+            updateItemAttributes(listItem, data)
+
+            const currentChildAtIndex = listGroup.children[i]
+            if (currentChildAtIndex !== listItem) {
+              listGroup.insertBefore(listItem, currentChildAtIndex || null)
+            }
+          }
         }
       })
 
+      const resyncRooms = async () => {
+        const currentCount = Math.max(manager.loadedItems.length, BATCH_SIZE)
+        const rawRooms = await $storage.getAllRoomsSorted(null, currentCount)
+        const enriched = await Promise.all(rawRooms.map(enrichItem))
+        manager.loadedItems = enriched
+        debouncedRender()
+      }
+
       const updatingRooms = new Set()
-      const handleUpdateInPlace = async (room_id, { moveToTop = false } = {}) => {
+      const handleUpdateInPlace = async (room_id) => {
         if (updatingRooms.has(room_id) || !room_id) {
           return
         }
@@ -281,17 +331,11 @@
         try {
           const room = await $storage.getRoom(room_id)
           if (!room) {
-            const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)
-            if (existingItem) {
-              existingItem.remove()
-            }
             const idx = manager.loadedItems.findIndex(i => i.item.id === room_id)
             if (idx !== -1) {
               manager.loadedItems.splice(idx, 1)
             }
-            if (manager.loadedItems.length === 0) {
-              listGroup.innerHTML = `<div class="p-4 text-center text-body-secondary">${$state.listSearchQuery ? 'No matches found' : 'No chats found'}</div>`
-            }
+            debouncedRender()
             return
           }
           const data = await enrichItem(room)
@@ -300,43 +344,14 @@
           }
 
           const idx = manager.loadedItems.findIndex(i => i.item.id === room_id)
-          if (moveToTop) {
-            if (idx !== -1) {
-              manager.loadedItems.splice(idx, 1)
-            }
-            manager.loadedItems.unshift(data)
-          } else if (idx !== -1) {
+          if (idx !== -1) {
             manager.loadedItems[idx] = data
           } else {
             manager.loadedItems.push(data)
           }
 
-          if ($state.listSearchQuery) {
-            debouncedRender()
-            return
-          }
-
-          const existingItem = listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)
-          if (existingItem) {
-            updateItemAttributes(existingItem, data)
-            if (moveToTop && listGroup.firstElementChild !== existingItem) {
-              listGroup.prepend(existingItem)
-            }
-          } else {
-            const emptyState = listGroup.querySelector('.text-body-secondary')
-            if (emptyState && emptyState.textContent.includes('No chats found')) {
-              emptyState.remove()
-            }
-            if (!listGroup.querySelector(`chat-list-item[room-id="${room_id}"]`)) {
-              const newItem = document.createElement('chat-list-item')
-              updateItemAttributes(newItem, data)
-              if (moveToTop) {
-                listGroup.prepend(newItem)
-              } else {
-                listGroup.appendChild(newItem)
-              }
-            }
-          }
+          manager.loadedItems.sort((a, b) => Number(b.item.weight ?? 0) - Number(a.item.weight ?? 0))
+          debouncedRender()
         } finally {
           updatingRooms.delete(room_id)
         }
@@ -550,18 +565,14 @@
         if (payload && payload.room_id === $state.activeSelectionId && $state.currentAppView === 'chats') {
           await markAsRead(payload.room_id)
         }
-        await handleUpdateInPlace(payload.room_id, { moveToTop: true })
+        await handleUpdateInPlace(payload.room_id)
       })
-      $bus.on('db:new_local_room', (payload) => handleUpdateInPlace(payload.room_id, { moveToTop: true }))
+      $bus.on('db:new_local_room', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('db:room_deleted', (payload) => handleUpdateInPlace(payload.room_id))
-      $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id, { moveToTop: false }))
-      $bus.on('room:read_state_changed', (room_id) => handleUpdateInPlace(room_id, { moveToTop: false }))
-      $bus.on('sync:complete', () => {
-        manager.reset(); debouncedRender()
-      })
-      $bus.on('auth:unlocked', () => {
-        manager.reset(); debouncedRender()
-      })
+      $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id))
+      $bus.on('room:read_state_changed', (room_id) => handleUpdateInPlace(room_id))
+      $bus.on('sync:complete', () => resyncRooms())
+      $bus.on('auth:unlocked', () => resyncRooms())
     }
   })
 </script>

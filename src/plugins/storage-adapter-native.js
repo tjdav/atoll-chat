@@ -413,28 +413,26 @@ export function createNativeStorageAdapter () {
     },
 
     /**
-     * Retrieves all rooms sorted by last update timestamp (descending).
-     * Supports pagination via offset timestamp cursor and batch limit.
+     * Retrieves all rooms sorted strictly by descending room weight.
+     * Supports index/ID cursor pagination and batch size limits.
      *
-     * @param {string} [lastTimestamp] - Cursor timestamp to query room updates older than this date.
-     * @param {number} [batchSize] - Maximum number of room records to retrieve.
+     * @param {string|Object} [lastItemOrCursor] - Cursor item, room object, or room ID to paginate after.
+     * @param {number} [batchSize] - Maximum number of rooms to retrieve.
      * @returns {Promise<Array<Object>>} Resolves to the list of sorted rooms.
      */
-    getAllRoomsSorted: async (lastTimestamp, batchSize) => {
+    getAllRoomsSorted: async (lastItemOrCursor, batchSize) => {
       let rooms = Array.from(localRooms.values())
-      rooms.sort((a, b) => {
-        const weightA = Number(a.weight ?? 0)
-        const weightB = Number(b.weight ?? 0)
-        if (weightA !== weightB) {
-          return weightB - weightA
+
+      rooms.sort((a, b) => Number(b.weight ?? 0) - Number(a.weight ?? 0))
+
+      if (lastItemOrCursor) {
+        const targetId = typeof lastItemOrCursor === 'object' && lastItemOrCursor !== null
+          ? (lastItemOrCursor.id || lastItemOrCursor.item?.id)
+          : lastItemOrCursor
+        const idx = rooms.findIndex(r => r.id === targetId)
+        if (idx !== -1) {
+          rooms = rooms.slice(idx + 1)
         }
-        const ta = new Date(a.updated_at || a.created_at || 0).getTime()
-        const tb = new Date(b.updated_at || b.created_at || 0).getTime()
-        return tb - ta
-      })
-      if (lastTimestamp) {
-        const lastTime = new Date(lastTimestamp).getTime()
-        rooms = rooms.filter(r => new Date(r.updated_at || r.created_at || 0).getTime() < lastTime)
       }
       if (batchSize) {
         rooms = rooms.slice(0, batchSize)
