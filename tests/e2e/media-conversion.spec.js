@@ -64,7 +64,7 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(tiffPath)
 
     // Verify media conversion error popup appears for un-decodable TIFF format
-    await expect(page.locator('[data-testid="mediaConversionErrorPopup"] dialog')).toBeVisible({ timeout: 30000 })
+    await expect(page.locator('[data-testid$="mediaConversionErrorPopup"] dialog')).toBeVisible({ timeout: 30000 })
   })
 
   test('converts non-universal audio (.wav) to universal MP4/AAC format', async ({ page, loginCustomPage }) => {
