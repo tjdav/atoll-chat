@@ -160,7 +160,10 @@
         const file = coverInput.files[0]
         if (file) {
           const first = state._attachments && state._attachments[0]
-          $bus.emit('ui:attachment_cover_selected', { id: first ? first.id : null, file })
+          $bus.emit('ui:attachment_cover_selected', {
+            id: first ? first.id : null,
+            file
+          })
           coverInput.value = ''
         }
       }, { signal })

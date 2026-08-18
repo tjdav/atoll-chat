@@ -489,10 +489,21 @@ export default definePlugin({
               const mediaBlob = new Blob([decryptedBuffer], { type: mimeType })
               const objectUrl = URL.createObjectURL(mediaBlob)
 
+              const roomId = options.roomId || (typeof asset === 'object' && asset ? asset.roomId : null) || $state.activeSelectionId
+
+              if ($state.decryptionCache?.isTornDown) {
+                try {
+                  URL.revokeObjectURL(objectUrl)
+                } catch {
+                }
+                throw new Error('Session terminated during decryption')
+              }
+
               $state.decryptionCache.set(canonicalKey, {
                 blobUrl: objectUrl,
                 blob: mediaBlob,
-                mimeType
+                mimeType,
+                roomId
               })
 
               return objectUrl
@@ -554,10 +565,14 @@ export default definePlugin({
                     let peak = 0
                     for (let j = start; j < end; j++) {
                       const val = Math.abs(channelData[j])
-                      if (val > peak) peak = val
+                      if (val > peak) {
+                        peak = val
+                      }
                     }
                     peaks.push(peak)
-                    if (peak > maxPeak) maxPeak = peak
+                    if (peak > maxPeak) {
+                      maxPeak = peak
+                    }
                   }
                   normalizedPeaks = peaks.map(p => Math.max(0.05, maxPeak > 0 ? p / maxPeak : 0))
                 }
@@ -571,7 +586,9 @@ export default definePlugin({
                 for (let i = 0; i < barCount; i++) {
                   const val = bytes[(i * step) % bytes.length] || 0
                   peaks.push(val)
-                  if (val > maxPeak) maxPeak = val
+                  if (val > maxPeak) {
+                    maxPeak = val
+                  }
                 }
                 normalizedPeaks = peaks.map(p => Math.max(0.1, maxPeak > 0 ? p / maxPeak : 0.2))
               }

@@ -912,6 +912,10 @@
       let prevSelectionId = $state.activeSelectionId
       $state.subscribe('activeSelectionId', (val) => {
         prevSelectionId = val
+        if ($state.decryptionCache && typeof $state.decryptionCache.setActiveRoom === 'function') {
+          $state.decryptionCache.setActiveRoom(val)
+        }
+  
         ephemeralMessages = []
         debouncedRender()
       })

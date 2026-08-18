@@ -801,6 +801,10 @@
 
       // Auth lifecycle management
       $bus.on('auth:unlocked', ({ keys, userRecord }) => {
+        if ($state.decryptionCache && typeof $state.decryptionCache.reset === 'function') {
+          $state.decryptionCache.reset()
+        }
+  
         $state.currentUser = {
           ...userRecord,
           ...keys
@@ -856,36 +860,15 @@
         $state.isAuthenticated = false
         $state.isVaultUnlocked = false
 
-        if ($state.decryptionCache && $state.decryptionCache.forEach) {
-          $state.decryptionCache.forEach((cached) => {
-            if (!cached) {
-              return
-            }
-
-            try {
-              if (typeof cached === 'string') {
-                if (cached.startsWith('blob:')) {
-                  URL.revokeObjectURL(cached)
-                }
-              } else {
-                if (cached.blobUrl && typeof cached.blobUrl === 'string' && cached.blobUrl.startsWith('blob:')) {
-                  URL.revokeObjectURL(cached.blobUrl)
-                }
-                if (cached.thumbnailBlobUrl && typeof cached.thumbnailBlobUrl === 'string' && cached.thumbnailBlobUrl.startsWith('blob:')) {
-                  URL.revokeObjectURL(cached.thumbnailBlobUrl)
-                }
-              }
-            } catch (err) {
-              // Non-critical resource cleanup failure, continue revoking other URLs
-              return
-            }
-          })
-
+        if ($state.decryptionCache && typeof $state.decryptionCache.clear === 'function') {
           $state.decryptionCache.clear()
         }
       })
 
       $bus.on('auth:totp_passed', () => {
+        if ($state.decryptionCache && typeof $state.decryptionCache.reset === 'function') {
+          $state.decryptionCache.reset()
+        }
         isDeviceTrusted = true
         updateUI()
       })

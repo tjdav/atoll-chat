@@ -1,4 +1,5 @@
 import { definePlugin } from 'coralite'
+import { MediaLRUCache } from '../utils/media-lru-cache.js'
 
 /**
  * Ultimate State Plugin for Coralite (Hardened Version)
@@ -16,8 +17,9 @@ export default function statePlugin (options = {}) {
         const storeState = {
           users: {},
           ...pluginContext.config.initialState,
-          decryptionCache: new Map()
+          decryptionCache: new MediaLRUCache({ maxEntries: 128 })
         }
+
         const listeners = new Map()
 
         const notify = (key, value) => {

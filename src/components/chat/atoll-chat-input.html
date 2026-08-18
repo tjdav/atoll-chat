@@ -116,9 +116,24 @@
        * Revokes object URLs for queued attachments to free up memory.
        */
       const revokeAttachmentUrls = (attachment) => {
-        if (attachment.thumbnailPreviewUrl) {
-          URL.revokeObjectURL(attachment.thumbnailPreviewUrl)
+        if (!attachment) {
+          return
+        }
+
+        if (attachment.thumbnailPreviewUrl && typeof attachment.thumbnailPreviewUrl === 'string' && attachment.thumbnailPreviewUrl.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(attachment.thumbnailPreviewUrl)
+          } catch {
+          }
           attachment.thumbnailPreviewUrl = null
+        }
+  
+        if (attachment.blobUrl && typeof attachment.blobUrl === 'string' && attachment.blobUrl.startsWith('blob:')) {
+          try {
+            URL.revokeObjectURL(attachment.blobUrl)
+          } catch {
+          }
+          attachment.blobUrl = null
         }
       }
 
