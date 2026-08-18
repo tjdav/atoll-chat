@@ -1,5 +1,11 @@
 <template id="video-grid">
   <div class="video-grid position-relative w-100 h-100 bg-dark overflow-hidden {{ pipClass }}">
+    <!-- Floating Reconnecting Banner -->
+    <div ref="reconnectingBanner" class="reconnecting-banner position-absolute top-0 start-50 translate-middle-x mt-3 px-3 py-2 rounded-pill shadow d-none align-items-center gap-2" style="z-index: 9999; background: rgba(0, 0, 0, 0.85); border: 1px solid var(--atoll-warning, #FFC107);">
+      <div class="spinner-border spinner-border-sm text-warning" role="status"></div>
+      <span class="text-white small fw-semibold">Connection lost. Reconnecting…</span>
+    </div>
+
     <!-- Grid Container for all participants -->
     <div ref="gridContainer" class="grid-container w-100 h-100">
       <!-- Dynamic tiles will be rendered here -->
@@ -29,7 +35,8 @@
       isRemoteSpeaking: false,
       currentPage: 1,
       pinnedParticipantId: null,
-      participants: []
+      participants: [],
+      isReconnecting: false
     }),
     getters: {
       pipClass: (state) => (state.isPipMode ? 'is-pip' : '')
@@ -269,6 +276,13 @@
               tile.classList.remove('speaking-border-blue')
             }
 
+            // Update remote tile opacity on reconnection
+            if (!p.isLocal && state.isReconnecting) {
+              tile.style.opacity = '0.45'
+            } else {
+              tile.style.opacity = '1.0'
+            }
+
             // Update audio status icon container (muted vs pulsing active waves vs none)
             const audioContainer = tile.querySelector('.audio-status-container')
             if (audioContainer) {
@@ -368,6 +382,12 @@
 
         if (p.isSpeaking) {
           tile.classList.add('speaking-border-blue')
+        }
+
+        if (!p.isLocal && state.isReconnecting) {
+          tile.style.opacity = '0.45'
+        } else {
+          tile.style.opacity = '1.0'
         }
 
         let audioStatusHtml = ''
@@ -644,6 +664,32 @@
         renderGrid()
       }, { signal })
 
+      $bus.on('call:reconnecting', ({ room_id }) => {
+        if (room_id && room_id !== $state.activeCallRoomId) {
+          return
+        }
+        state.isReconnecting = true
+        const banner = refs('reconnectingBanner')
+        if (banner) {
+          banner.classList.remove('d-none')
+          banner.classList.add('d-flex')
+        }
+        renderGrid()
+      }, { signal })
+
+      $bus.on('call:reconnected', ({ room_id }) => {
+        if (room_id && room_id !== $state.activeCallRoomId) {
+          return
+        }
+        state.isReconnecting = false
+        const banner = refs('reconnectingBanner')
+        if (banner) {
+          banner.classList.remove('d-flex')
+          banner.classList.add('d-none')
+        }
+        renderGrid()
+      }, { signal })
+
       $bus.on('call:ended', ({ room_id, call_id }) => {
         if (call_id && $state.activeCallId && call_id !== $state.activeCallId) {
           return
@@ -651,6 +697,12 @@
   
         if (room_id && room_id !== $state.activeCallRoomId) {
           return
+        }
+        state.isReconnecting = false
+        const banner = refs('reconnectingBanner')
+        if (banner) {
+          banner.classList.remove('d-flex')
+          banner.classList.add('d-none')
         }
         state.currentPage = 1
         state.pinnedParticipantId = null

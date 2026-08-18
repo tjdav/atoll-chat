@@ -96,6 +96,8 @@ export default function webrtcPlugin ({
         const processedMessages = new Set()
         const pendingSignalingQueue = new Map()
         const inFlightAnswers = new Map()
+        const reconnectTimersByRoom = new Map()
+        const callInitiatorsByRoom = new Map()
 
         let outgoingTimer = null
         let incomingTimer = null
@@ -130,6 +132,13 @@ export default function webrtcPlugin ({
           }
         }
 
+        const clearReconnectTimer = (room_id) => {
+          if (reconnectTimersByRoom.has(room_id)) {
+            clearTimeout(reconnectTimersByRoom.get(room_id))
+            reconnectTimersByRoom.delete(room_id)
+          }
+        }
+
         /**
          * Cleanly tears down any active WebRTC call for a specific room.
          * Closes peer connections, stops media tracks, and resets global call states.
@@ -139,6 +148,13 @@ export default function webrtcPlugin ({
          */
         const teardownCall = (room_id) => {
           clearCallTimers()
+          if (room_id) {
+            clearReconnectTimer(room_id)
+          } else {
+            for (const rId of reconnectTimersByRoom.keys()) {
+              clearReconnectTimer(rId)
+            }
+          }
           stopAll()
 
           const callId = activeCallIdByRoom.get(room_id)
@@ -162,6 +178,7 @@ export default function webrtcPlugin ({
             })
             // Close connection
             pc.oniceconnectionstatechange = null
+            pc.onicegatheringstatechange = null
             pc.onicecandidate = null
             pc.ontrack = null
             pc.onconnectionstatechange = null
@@ -174,6 +191,7 @@ export default function webrtcPlugin ({
 
           if (room_id) {
             activeCallIdByRoom.delete(room_id)
+            callInitiatorsByRoom.delete(room_id)
           }
 
           if (callId) {
@@ -191,12 +209,14 @@ export default function webrtcPlugin ({
           callFSM.reset()
         }
 
-        window.addEventListener('beforeunload', () => {
-          for (const room_id of activeCalls.keys()) {
-            teardownCall(room_id)
-          }
-          pendingSignalingQueue.clear()
-        })
+        if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+          window.addEventListener('beforeunload', () => {
+            for (const room_id of activeCalls.keys()) {
+              teardownCall(room_id)
+            }
+            pendingSignalingQueue.clear()
+          })
+        }
 
         $bus.on('auth:logout', () => {
           for (const room_id of activeCalls.keys()) {
@@ -268,6 +288,35 @@ export default function webrtcPlugin ({
               return
             }
             throw err
+          }
+        }
+
+        /**
+         * Helper to safely flush buffered ICE candidates for a specific call session.
+         * Verifies current call ID matching before dispatching candidates.
+         *
+         * @param {string} call_id - Target session ID.
+         * @param {string} room_id - Target room ID.
+         * @returns {Promise<void>}
+         */
+        const flushIceCandidates = async (call_id, room_id) => {
+          if (candidateTimers.has(room_id)) {
+            clearTimeout(candidateTimers.get(room_id))
+            candidateTimers.delete(room_id)
+          }
+
+          if (!call_id || call_id !== activeCallIdByRoom.get(room_id)) {
+            candidateBuffers.delete(room_id)
+            return
+          }
+
+          const candidates = candidateBuffers.get(room_id)
+          if (candidates && candidates.length > 0) {
+            candidateBuffers.set(room_id, [])
+            await sendSignalingMessage(room_id, 'ice_candidate', {
+              call_id,
+              candidates
+            })
           }
         }
 
@@ -352,11 +401,73 @@ export default function webrtcPlugin ({
           if (mediaStream) {
             mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
           }
-          pc.oniceconnectionstatechange = () => {
-            // ICE Connection State changed handler
+
+          pc.oniceconnectionstatechange = async () => {
+            const call_id = activeCallIdByRoom.get(room_id)
+            const iceState = pc.iceConnectionState
+
+            if (iceState === 'disconnected') {
+              $bus.emit('call:reconnecting', { room_id, call_id })
+
+              if (!reconnectTimersByRoom.has(room_id)) {
+                const timer = setTimeout(async () => {
+                  reconnectTimersByRoom.delete(room_id)
+                  const currentCallId = activeCallIdByRoom.get(room_id) || call_id
+                  await sendSignalingMessage(room_id, 'call_end', {
+                    call_id: currentCallId,
+                    reason: 'timeout_disconnected'
+                  })
+                  teardownCall(room_id)
+                  $bus.emit('call:ended', {
+                    room_id,
+                    call_id: currentCallId,
+                    reason: 'timeout_disconnected'
+                  })
+                }, 12000)
+                reconnectTimersByRoom.set(room_id, timer)
+              }
+
+              const initiatorId = callInitiatorsByRoom.get(room_id)
+              const currentUserId = globalState?.currentUser?.id
+              if (initiatorId && currentUserId && initiatorId === currentUserId) {
+                try {
+                  if (typeof pc.restartIce === 'function') {
+                    pc.restartIce()
+                  }
+                  const offer = await pc.createOffer({ iceRestart: true })
+                  await pc.setLocalDescription(offer)
+                  const sendStream = pc.getSenders().length > 0 ? mediaStream : null
+                  const hasVideo = sendStream ? sendStream.getVideoTracks().length > 0 : $state?.isVideoEnabled
+                  await sendSignalingMessage(room_id, 'call_offer', {
+                    call_id,
+                    caller_id: currentUserId,
+                    target_id: null,
+                    content: offer,
+                    media_types: hasVideo ? ['audio', 'video'] : ['audio']
+                  })
+                } catch (err) {
+                  console.warn('[webrtc] ICE restart failed during disconnected state:', err)
+                }
+              }
+            } else if (iceState === 'connected' || iceState === 'completed') {
+              clearReconnectTimer(room_id)
+              $bus.emit('call:reconnected', { room_id, call_id })
+            } else if (iceState === 'failed') {
+              clearReconnectTimer(room_id)
+              await sendSignalingMessage(room_id, 'call_end', {
+                call_id,
+                reason: 'connection_failed'
+              })
+              teardownCall(room_id)
+              $bus.emit('call:ended', {
+                room_id,
+                call_id,
+                reason: 'connection_failed'
+              })
+            }
           }
 
-          pc.onicecandidate = (event) => {
+          pc.onicecandidate = async (event) => {
             const call_id = activeCallIdByRoom.get(room_id)
             if (event.candidate) {
               if (!candidateBuffers.has(room_id)) {
@@ -369,31 +480,19 @@ export default function webrtcPlugin ({
               }
 
               const timer = setTimeout(async () => {
-                candidateTimers.delete(room_id)
-                const candidates = candidateBuffers.get(room_id)
-                if (candidates && candidates.length > 0) {
-                  candidateBuffers.set(room_id, [])
-                  await sendSignalingMessage(room_id, 'ice_candidate', {
-                    call_id,
-                    candidates
-                  })
-                }
+                await flushIceCandidates(call_id, room_id)
               }, 500)
               candidateTimers.set(room_id, timer)
             } else {
-              // End of candidates: flush remaining immediately
-              if (candidateTimers.has(room_id)) {
-                clearTimeout(candidateTimers.get(room_id))
-                candidateTimers.delete(room_id)
-              }
-              const candidates = candidateBuffers.get(room_id)
-              if (candidates && candidates.length > 0) {
-                candidateBuffers.set(room_id, [])
-                sendSignalingMessage(room_id, 'ice_candidate', {
-                  call_id,
-                  candidates
-                })
-              }
+              // End of candidates (trickle end): flush remaining immediately
+              await flushIceCandidates(call_id, room_id)
+            }
+          }
+
+          pc.onicegatheringstatechange = async () => {
+            if (pc.iceGatheringState === 'complete') {
+              const call_id = activeCallIdByRoom.get(room_id)
+              await flushIceCandidates(call_id, room_id)
             }
           }
 
@@ -413,17 +512,24 @@ export default function webrtcPlugin ({
               track: event.track
             })
           }
-          pc.onconnectionstatechange = () => {
+
+          pc.onconnectionstatechange = async () => {
             if (pc.connectionState === 'failed' || pc.connectionState === 'closed') {
+              clearReconnectTimer(room_id)
               const call_id = activeCallIdByRoom.get(room_id)
+              await sendSignalingMessage(room_id, 'call_end', {
+                call_id,
+                reason: 'connection_failed'
+              })
               teardownCall(room_id)
               $bus.emit('call:ended', {
                 room_id,
                 call_id,
-                reason: 'connection_closed'
+                reason: 'connection_failed'
               })
             }
           }
+
           activeCalls.set(room_id, pc)
           return pc
         }
@@ -448,7 +554,20 @@ export default function webrtcPlugin ({
             if (message.type === 'call_offer') {
               // Also check globalState.callStatus for legacy 'active' or external state sync
               const isGlobalIdle = globalState ? (globalState.callStatus === 'idle' || !globalState.callStatus) : true
-              if (callFSM.is(CALL_STATES.IDLE) && isGlobalIdle) {
+              if (message.call_id === currentCallId && !callFSM.is(CALL_STATES.IDLE)) {
+                // Renegotiation / ICE Restart offer for active call session
+                const pc = activeCalls.get(room_id)
+                if (pc) {
+                  await pc.setRemoteDescription(new RTCSessionDescription(message.content))
+                  await applyPendingCandidates(currentCallId, pc)
+                  const answer = await pc.createAnswer()
+                  await pc.setLocalDescription(answer)
+                  await sendSignalingMessage(room_id, 'call_answer', {
+                    call_id: currentCallId,
+                    content: answer
+                  })
+                }
+              } else if (callFSM.is(CALL_STATES.IDLE) && isGlobalIdle) {
                 callFSM.transition(CALL_STATES.INCOMING)
                 activeCallIdByRoom.set(room_id, message.call_id)
                 globalState.activeCallId = message.call_id
@@ -742,6 +861,7 @@ export default function webrtcPlugin ({
                 callFSM.transition(CALL_STATES.OUTGOING)
                 const call_id = crypto.randomUUID()
                 activeCallIdByRoom.set(room_id, call_id)
+                callInitiatorsByRoom.set(room_id, $state.currentUser?.id)
                 $state.activeCallId = call_id
                 $state.activeCallRoomId = room_id
 

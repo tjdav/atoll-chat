@@ -325,7 +325,7 @@
       }, { signal })
 
       // Listen for call ended from remote
-      $bus.on('call:ended', ({ room_id, call_id }) => {
+      $bus.on('call:ended', ({ room_id, call_id, reason }) => {
         if (call_id && $state.activeCallId && call_id !== $state.activeCallId) {
           return
         }
@@ -338,6 +338,13 @@
           $state.activeCallId = null
           state.callId = null
           state.remoteOffer = null
+
+          if (reason === 'connection_failed' || reason === 'timeout_disconnected') {
+            $bus.emit('ui:show_toast', {
+              message: 'Call disconnected due to network issues',
+              variant: 'warning'
+            })
+          }
         }
       }, { signal })
 

@@ -256,6 +256,42 @@
         state.isLocalSpeaking = Boolean(val)
       })
 
+      $bus.on('call:reconnecting', () => {
+        const audioBtn = refs('btnToggleAudio')
+        const videoBtn = refs('btnToggleVideo')
+        if (audioBtn) {
+          audioBtn.setAttribute('disabled', 'true')
+        }
+
+        if (videoBtn) {
+          videoBtn.setAttribute('disabled', 'true')
+        }
+      }, { signal })
+
+      $bus.on('call:reconnected', () => {
+        const audioBtn = refs('btnToggleAudio')
+        const videoBtn = refs('btnToggleVideo')
+        if (audioBtn) {
+          audioBtn.removeAttribute('disabled')
+        }
+
+        if (videoBtn) {
+          videoBtn.removeAttribute('disabled')
+        }
+      }, { signal })
+
+      $bus.on('call:ended', () => {
+        const audioBtn = refs('btnToggleAudio')
+        const videoBtn = refs('btnToggleVideo')
+        if (audioBtn) {
+          audioBtn.removeAttribute('disabled')
+        }
+  
+        if (videoBtn) {
+          videoBtn.removeAttribute('disabled')
+        }
+      }, { signal })
+
       refs('btnToggleAudio').addEventListener('click', () => {
         $bus.emit('call:toggle_audio_clicked')
       }, { signal })
