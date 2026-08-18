@@ -170,7 +170,7 @@
         return (state.isAudioEnabled && state.isLocalSpeaking) ? 'speaking-btn-glow atoll-call-speaking' : ''
       }
     },
-    client: async ({ state, globalStore, eventBus, refs, signal }) => {
+    client: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, refs, signal }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
 
@@ -210,6 +210,7 @@
         refs,
         globalStore,
         eventBus,
+        webrtc: webrtcPluginContext,
         signal
       })
 

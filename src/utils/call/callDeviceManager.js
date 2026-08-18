@@ -19,7 +19,7 @@
  * @returns {Object} Public interface methods for call hardware control.
  * @throws {Error} Re-throws unexpected system errors.
  */
-export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, eventBus: { $bus }, signal }) => {
+export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, eventBus: { $bus }, webrtc: { $webrtc } = {}, signal }) => {
 
   /**
    * Helper function to find a ref either directly from component refs or via call-overlay fallback query.
@@ -244,11 +244,13 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
    * @throws {Error} Re-throws unexpected non-media errors.
    */
   const selectMicrophone = async (deviceId) => {
+    const prevMicId = state.activeMicId
     state.activeMicId = deviceId
     localStorage.setItem('atoll_active_microphone', deviceId)
     renderDeviceMenus()
 
-    if (state.callStatus !== 'active' || !$state.localStream) {
+    const isCallActive = ['active', 'connected'].includes(state.callStatus) || ['active', 'connected'].includes($state.callStatus)
+    if (!isCallActive || !$state.localStream) {
       return
     }
 
@@ -259,36 +261,50 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
       autoGainControl: state.isNoiseCancellationEnabled
     }
 
+    let newTrack = null
+    const oldAudioTrack = $state.localStream.getAudioTracks()[0]
+
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({ audio: audioConstraints })
-      const newTrack = newStream.getAudioTracks()[0]
+      newTrack = newStream.getAudioTracks()[0]
 
-      if (!state.isAudioEnabled) {
-        newTrack.enabled = false
+      // Mute State Privacy: match active mute state prior to replaceTrack
+      newTrack.enabled = Boolean(state.isAudioEnabled)
+
+      const audioSender = $webrtc?.getAudioSender($state.activeCallId)
+      if (audioSender) {
+        await audioSender.replaceTrack(newTrack)
       }
 
-      const pc = window.__E2E_PEER_CONNECTION__
-      if (pc) {
-        const senders = pc.getSenders()
-        const audioSender = senders.find(s => s.track && s.track.kind === 'audio')
-        if (audioSender) {
-          await audioSender.replaceTrack(newTrack)
-        }
-      }
-
-      const oldAudioTrack = $state.localStream.getAudioTracks()[0]
       if (oldAudioTrack) {
-        oldAudioTrack.stop()
         $state.localStream.removeTrack(oldAudioTrack)
       }
       $state.localStream.addTrack(newTrack)
       $bus.emit('call:local_stream_available', { stream: $state.localStream })
+
+      // Non-Destructive Ordering: Stop old track strictly AFTER replaceTrack and localStream swap succeed
+      if (oldAudioTrack) {
+        oldAudioTrack.stop()
+      }
     } catch (err) {
-      if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'SecurityError' || err.name === 'AbortError' || err.name === 'TypeError')) {
-        $bus.emit('ui:show_toast', {
-          message: 'Failed to access or swap to the selected microphone.',
-          type: 'danger'
-        })
+      if (newTrack) {
+        try {
+          newTrack.stop()
+        } catch (_) {
+        }
+      }
+
+      state.activeMicId = prevMicId
+      localStorage.setItem('atoll_active_microphone', prevMicId)
+      renderDeviceMenus()
+
+      $bus.emit('ui:show_toast', {
+        message: 'Failed to switch microphone. Continuing with previous device.',
+        variant: 'warning',
+        type: 'warning'
+      })
+
+      if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'SecurityError' || err.name === 'AbortError' || err.name === 'TypeError' || err.name === 'InvalidStateError')) {
         return
       }
       throw err
@@ -304,45 +320,61 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
    * @throws {Error} Re-throws unexpected non-media errors.
    */
   const selectCamera = async (deviceId) => {
+    const prevCamId = state.activeCamId
     state.activeCamId = deviceId
     localStorage.setItem('atoll_active_camera', deviceId)
     renderDeviceMenus()
 
-    if (state.callStatus !== 'active' || !$state.localStream) {
+    const isCallActive = ['active', 'connected'].includes(state.callStatus) || ['active', 'connected'].includes($state.callStatus)
+    if (!isCallActive || !$state.localStream) {
       return
     }
 
+    let newTrack = null
+    const oldVideoTrack = $state.localStream.getVideoTracks()[0]
+
     try {
       const newStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } } })
-      const newTrack = newStream.getVideoTracks()[0]
+      newTrack = newStream.getVideoTracks()[0]
 
-      if (!state.isVideoEnabled) {
-        newTrack.enabled = false
+      // Mute State Privacy: match active video mute state prior to replaceTrack
+      newTrack.enabled = Boolean(state.isVideoEnabled)
+
+      const videoSender = $webrtc?.getVideoSender($state.activeCallId)
+      if (videoSender) {
+        await videoSender.replaceTrack(newTrack)
       }
 
-      const pc = window.__E2E_PEER_CONNECTION__
-      if (pc) {
-        const senders = pc.getSenders()
-        const videoSender = senders.find(s => s.track && s.track.kind === 'video')
-        if (videoSender) {
-          await videoSender.replaceTrack(newTrack)
-        }
-      }
-
-      const oldVideoTrack = $state.localStream.getVideoTracks()[0]
       if (oldVideoTrack) {
-        oldVideoTrack.stop()
         $state.localStream.removeTrack(oldVideoTrack)
       }
       $state.localStream.addTrack(newTrack)
       $bus.emit('call:local_stream_available', { stream: $state.localStream })
       applyLocalVideoEffects()
+
+      // Non-Destructive Ordering: Stop old track strictly AFTER replaceTrack and localStream swap succeed
+      if (oldVideoTrack) {
+        oldVideoTrack.stop()
+      }
     } catch (err) {
-      if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'SecurityError' || err.name === 'AbortError' || err.name === 'TypeError')) {
-        $bus.emit('ui:show_toast', {
-          message: 'Failed to access or swap to the selected camera.',
-          type: 'danger'
-        })
+      if (newTrack) {
+        try {
+          newTrack.stop()
+        } catch (_) {
+        }
+      }
+
+      state.activeCamId = prevCamId
+      localStorage.setItem('atoll_active_camera', prevCamId)
+      renderDeviceMenus()
+
+      $bus.emit('ui:show_toast', {
+        message: 'Failed to switch camera. Continuing with previous device.',
+        variant: 'warning',
+        type: 'warning'
+      })
+
+      if (err && (err.name === 'NotAllowedError' || err.name === 'NotFoundError' || err.name === 'OverconstrainedError' || err.name === 'SecurityError' || err.name === 'AbortError' || err.name === 'TypeError' || err.name === 'InvalidStateError')) {
         return
       }
       throw err
@@ -523,41 +555,187 @@ export const createCallDeviceManager = ({ state, refs, globalStore: { $state }, 
    */
   const onDeviceChange = async () => {
     const oldMics = [...state.microphones]
-    await fetchHardwareLists()
-    renderDeviceMenus()
+    const oldCams = [...state.cameras]
+    const oldSpeakers = [...state.speakers]
 
-    if (state.callStatus !== 'active') {
+    await fetchHardwareLists()
+
+    const isCallActive = ['active', 'connected', 'outgoing'].includes(state.callStatus) || ['active', 'connected', 'outgoing'].includes($state.callStatus)
+
+    if (!isCallActive) {
+      await bootValidatePreferences()
+      renderDeviceMenus()
       return
     }
 
-    const currentActiveMicStillExists = state.microphones.some(m => m.deviceId === state.activeMicId)
-    if (oldMics.length > 0 && !currentActiveMicStillExists) {
-      const localStream = $state.localStream || state.localStream
-      if (localStream) {
-        const tracks = localStream.getAudioTracks()
-        tracks.forEach(track => {
-          track.enabled = false
-          track.stop()
+    renderDeviceMenus()
+
+    // 1. Microphone Disconnection Recovery
+    const currentMicExists = state.microphones.some(m => m.deviceId === state.activeMicId)
+    if (oldMics.length > 0 && !currentMicExists) {
+      const lostMicId = state.activeMicId
+      let fallbackSuccess = false
+
+      try {
+        await selectMicrophone('default')
+        if (state.activeMicId === 'default') {
+          fallbackSuccess = true
+          $bus.emit('ui:show_toast', {
+            message: 'Microphone disconnected. Switched to default microphone.',
+            variant: 'info',
+            type: 'info'
+          })
+        }
+      } catch (_) {
+        fallbackSuccess = false
+      }
+
+      if (!fallbackSuccess) {
+        const audioSender = $webrtc?.getAudioSender($state.activeCallId)
+        if (audioSender) {
+          try {
+            await audioSender.replaceTrack(null)
+          } catch (_) {
+          }
+        }
+
+        const localStream = $state.localStream || state.localStream
+        if (localStream) {
+          const tracks = localStream.getAudioTracks()
+          tracks.forEach(track => {
+            track.enabled = false
+            track.stop()
+            localStream.removeTrack(track)
+          })
+        }
+
+        state.isAudioEnabled = false
+        state.isLocalSpeaking = false
+        $state.isAudioEnabled = false
+        $state.isLocalSpeaking = false
+        if (typeof $state.set === 'function') {
+          $state.set('isAudioEnabled', false)
+          $state.set('isLocalSpeaking', false)
+        }
+
+        localStorage.removeItem('atoll_active_microphone')
+        state.activeMicId = 'default'
+
+        $bus.emit('ui:show_toast', {
+          message: 'Microphone disconnected.',
+          variant: 'danger',
+          type: 'danger'
+        })
+
+        $bus.emit('call:device_lost', {
+          kind: 'audio',
+          deviceId: lostMicId,
+          callId: $state.activeCallId || null,
+          roomId: $state.activeCallRoomId || null
+        })
+
+        renderDeviceMenus()
+      }
+    }
+
+    // 2. Camera Disconnection Recovery
+    const currentCamExists = state.cameras.some(c => c.deviceId === state.activeCamId)
+    if (oldCams.length > 0 && !currentCamExists) {
+      const lostCamId = state.activeCamId
+      let fallbackSuccess = false
+
+      try {
+        await selectCamera('default')
+        if (state.activeCamId === 'default') {
+          fallbackSuccess = true
+          $bus.emit('ui:show_toast', {
+            message: 'Camera disconnected. Switched to default camera.',
+            variant: 'info',
+            type: 'info'
+          })
+        }
+      } catch (_) {
+        fallbackSuccess = false
+      }
+
+      if (!fallbackSuccess) {
+        const videoSender = $webrtc?.getVideoSender($state.activeCallId)
+        if (videoSender) {
+          try {
+            await videoSender.replaceTrack(null)
+          } catch (_) {
+          }
+        }
+
+        const localStream = $state.localStream || state.localStream
+        if (localStream) {
+          const tracks = localStream.getVideoTracks()
+          tracks.forEach(track => {
+            track.enabled = false
+            track.stop()
+            localStream.removeTrack(track)
+          })
+        }
+
+        state.isVideoEnabled = false
+        $state.isVideoEnabled = false
+        if (typeof $state.set === 'function') {
+          $state.set('isVideoEnabled', false)
+        }
+
+        localStorage.removeItem('atoll_active_camera')
+        state.activeCamId = 'default'
+
+        $bus.emit('ui:show_toast', {
+          message: 'Camera disconnected.',
+          variant: 'danger',
+          type: 'danger'
+        })
+
+        $bus.emit('call:device_lost', {
+          kind: 'video',
+          deviceId: lostCamId,
+          callId: $state.activeCallId || null,
+          roomId: $state.activeCallRoomId || null
+        })
+
+        renderDeviceMenus()
+      }
+    }
+
+    // 3. Speaker Disconnection Recovery
+    if (state.isSpeakerSelectionSupported) {
+      const currentSpeakerExists = state.speakers.some(s => s.deviceId === state.activeSpeakerId)
+      if (oldSpeakers.length > 0 && !currentSpeakerExists) {
+        const lostSpeakerId = state.activeSpeakerId
+        state.activeSpeakerId = 'default'
+        localStorage.setItem('atoll_active_speaker', 'default')
+
+        const remoteVideos = document.querySelectorAll('video-grid video')
+        for (const video of remoteVideos) {
+          if (typeof video.setSinkId === 'function') {
+            try {
+              await video.setSinkId('')
+            } catch (_) {
+            }
+          }
+        }
+
+        renderDeviceMenus()
+
+        $bus.emit('ui:show_toast', {
+          message: 'Speaker disconnected. Resetting to default speaker.',
+          variant: 'info',
+          type: 'info'
+        })
+
+        $bus.emit('call:device_lost', {
+          kind: 'speaker',
+          deviceId: lostSpeakerId,
+          callId: $state.activeCallId || null,
+          roomId: $state.activeCallRoomId || null
         })
       }
-      state.isAudioEnabled = false
-      state.isLocalSpeaking = false
-      $state.isAudioEnabled = false
-      $state.isLocalSpeaking = false
-      if (typeof $state.set === 'function') {
-        $state.set('isAudioEnabled', false)
-        $state.set('isLocalSpeaking', false)
-      }
-
-      localStorage.removeItem('atoll_active_microphone')
-      state.activeMicId = 'default'
-
-      $bus.emit('ui:show_toast', {
-        message: 'Microphone disconnected.',
-        type: 'danger'
-      })
-
-      renderDeviceMenus()
     }
   }
 

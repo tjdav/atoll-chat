@@ -89,6 +89,7 @@ export default function webrtcPlugin ({
         // Phase 1: Global Setup
         const localIceServer = pluginContext.config.localIceServer
         const activeCalls = new Map()
+        const activePeerConnectionsByCallId = new Map()
         const activeCallIdByRoom = new Map()
         const pendingCandidatesByCall = new Map()
         const candidateBuffers = new Map()
@@ -197,6 +198,7 @@ export default function webrtcPlugin ({
           if (callId) {
             pendingCandidatesByCall.delete(callId)
             inFlightAnswers.delete(callId)
+            activePeerConnectionsByCallId.delete(callId)
           }
 
           // Clear candidate batching state
@@ -399,7 +401,17 @@ export default function webrtcPlugin ({
           }
 
           if (mediaStream) {
-            mediaStream.getTracks().forEach(track => pc.addTrack(track, mediaStream))
+            mediaStream.getTracks().forEach(track => {
+              const sender = pc.addTrack(track, mediaStream)
+              if (sender) {
+                sender._kind = track.kind
+              }
+            })
+          }
+
+          const existingCallId = activeCallIdByRoom.get(room_id)
+          if (existingCallId) {
+            activePeerConnectionsByCallId.set(existingCallId, pc)
           }
 
           pc.oniceconnectionstatechange = async () => {
@@ -407,7 +419,10 @@ export default function webrtcPlugin ({
             const iceState = pc.iceConnectionState
 
             if (iceState === 'disconnected') {
-              $bus.emit('call:reconnecting', { room_id, call_id })
+              $bus.emit('call:reconnecting', {
+                room_id,
+                call_id
+              })
 
               if (!reconnectTimersByRoom.has(room_id)) {
                 const timer = setTimeout(async () => {
@@ -451,7 +466,10 @@ export default function webrtcPlugin ({
               }
             } else if (iceState === 'connected' || iceState === 'completed') {
               clearReconnectTimer(room_id)
-              $bus.emit('call:reconnected', { room_id, call_id })
+              $bus.emit('call:reconnected', {
+                room_id,
+                call_id
+              })
             } else if (iceState === 'failed') {
               clearReconnectTimer(room_id)
               await sendSignalingMessage(room_id, 'call_end', {
@@ -844,6 +862,77 @@ export default function webrtcPlugin ({
                * Returns the current state machine instance.
                */
               getFSM: () => callFSM,
+
+              /**
+               * Resolves and returns the active RTCPeerConnection for a call or room ID.
+               *
+               * @param {string} [callIdOrRoomId] - The target call ID or room ID.
+               * @returns {RTCPeerConnection|null} The resolved RTCPeerConnection or null if not found.
+               */
+              getPeerConnection: (callIdOrRoomId) => {
+                if (callIdOrRoomId) {
+                  if (activePeerConnectionsByCallId.has(callIdOrRoomId)) {
+                    return activePeerConnectionsByCallId.get(callIdOrRoomId)
+                  }
+                  if (activeCalls.has(callIdOrRoomId)) {
+                    return activeCalls.get(callIdOrRoomId)
+                  }
+                }
+                const activeCallId = globalState?.activeCallId
+                if (activeCallId && activePeerConnectionsByCallId.has(activeCallId)) {
+                  return activePeerConnectionsByCallId.get(activeCallId)
+                }
+                const activeRoomId = globalState?.activeCallRoomId
+                if (activeRoomId && activeCalls.has(activeRoomId)) {
+                  return activeCalls.get(activeRoomId)
+                }
+                if (activeCalls.size > 0) {
+                  return activeCalls.values().next().value
+                }
+                return null
+              },
+
+              /**
+               * Resolves and returns the audio RTCRtpSender for a call or room ID.
+               *
+               * @param {string} [callIdOrRoomId] - The target call ID or room ID.
+               * @returns {RTCRtpSender|null} The audio RTCRtpSender or null.
+               */
+              getAudioSender: (callIdOrRoomId) => {
+                const pc = activeCalls.get(callIdOrRoomId) || activePeerConnectionsByCallId.get(callIdOrRoomId) || (
+                  !callIdOrRoomId ? (
+                    (globalState?.activeCallId && activePeerConnectionsByCallId.get(globalState.activeCallId)) ||
+                    (globalState?.activeCallRoomId && activeCalls.get(globalState.activeCallRoomId)) ||
+                    (activeCalls.size > 0 ? activeCalls.values().next().value : null)
+                  ) : null
+                )
+                if (!pc) {
+                  return null
+                }
+                const senders = typeof pc.getSenders === 'function' ? pc.getSenders() : []
+                return senders.find(s => (s.track && s.track.kind === 'audio') || s._kind === 'audio' || s.kind === 'audio') || null
+              },
+
+              /**
+               * Resolves and returns the video RTCRtpSender for a call or room ID.
+               *
+               * @param {string} [callIdOrRoomId] - The target call ID or room ID.
+               * @returns {RTCRtpSender|null} The video RTCRtpSender or null.
+               */
+              getVideoSender: (callIdOrRoomId) => {
+                const pc = activeCalls.get(callIdOrRoomId) || activePeerConnectionsByCallId.get(callIdOrRoomId) || (
+                  !callIdOrRoomId ? (
+                    (globalState?.activeCallId && activePeerConnectionsByCallId.get(globalState.activeCallId)) ||
+                    (globalState?.activeCallRoomId && activeCalls.get(globalState.activeCallRoomId)) ||
+                    (activeCalls.size > 0 ? activeCalls.values().next().value : null)
+                  ) : null
+                )
+                if (!pc) {
+                  return null
+                }
+                const senders = typeof pc.getSenders === 'function' ? pc.getSenders() : []
+                return senders.find(s => (s.track && s.track.kind === 'video') || s._kind === 'video' || s.kind === 'video') || null
+              },
 
               /**
                * Initiates an outgoing WebRTC call.
