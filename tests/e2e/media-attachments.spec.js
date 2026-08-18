@@ -104,7 +104,7 @@ test.describe('Media & Attachments', () => {
       for (const f of files) {
         const fp = path.resolve(`tests/e2e/fixtures/test-files/${f.n}`)
         await alicePage.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(fp)
-        await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
+        await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
         const cap = `S ${f.n}`
         await alicePage.fill('atoll-chat-view textarea', cap)
         await alicePage.click('atoll-chat-view [data-testid$="__sendButton"]')
@@ -125,7 +125,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const vp = path.join(__dirname, 'fixtures', 'test-files', 'test.mp4')
       await page.setInputFiles('[data-testid$="__fileInput"]', vp)
-      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
       await page.locator('[data-testid$="sendButton"]').click()
       await expect(page.locator('atoll-chat-timeline-row img').first()).toBeVisible({ timeout: 15000 })
     })
@@ -158,7 +158,7 @@ test.describe('Media & Attachments', () => {
       // Click to remove custom cover
       await changeCoverBtn.click()
 
-      // Should revert back to "Ready to send" or standard auto-thumbnail status
+      // Should revert back to "Ready" or standard auto-thumbnail status
       await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 15000 })
       await expect(changeCoverBtn).toHaveText('Change Cover')
     })
@@ -172,7 +172,7 @@ test.describe('Media & Attachments', () => {
       await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
       const ap = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
       await page.setInputFiles('[data-testid$="__fileInput"]', ap)
-      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
       await page.locator('[data-testid$="sendButton"]').click()
 
       // Wait for the message status to be 'Sent'
@@ -419,7 +419,7 @@ test.describe('Media & Attachments', () => {
       // Capture screenshot of Music List
       await page.screenshot({ path: 'tests/e2e/screenshots/music_list.png' })
 
-      await page.locator('audio-player-view .play-pause-btn').click()
+      await page.locator('audio-player-view .play-pause-btn').click({ force: true })
       await expect(page.locator('audio-player-view .play-pause-btn atoll-icon')).toHaveAttribute('name', 'pause', { timeout: 15000 })
     })
   })

@@ -379,13 +379,16 @@
 
         try {
           const message = await $storage.getMessage(state.localUuid)
-          const localKey = `local:${state.localUuid}`
-          const mediaKey = `media:${message?.media_id}`
+          const audioAtt = Array.isArray(message?.attachments) ? message.attachments.find(a => a.isAudio || (a.mime_type || '').startsWith('audio/')) : null
+          const attSubId = audioAtt?.id ? `${state.localUuid}_${audioAtt.id}` : state.localUuid
 
-          let cached = $state.decryptionCache.get(localKey)
-          if (!cached) {
-            cached = $state.decryptionCache.get(mediaKey)
-          }
+          const localKey = `local:${attSubId}`
+          const mediaId = audioAtt?.media_id || message?.media_id
+          const mediaKey = `media:${mediaId}`
+
+          let cached = $state.decryptionCache.get(localKey) ||
+                       $state.decryptionCache.get(`local:${state.localUuid}`) ||
+                       $state.decryptionCache.get(mediaKey)
 
           if (!cached) {
             throw new Error('Audio not loaded')
@@ -559,39 +562,49 @@
             return
           }
 
-          const localKey = `local:${state.localUuid}`
-          const mediaKey = `media:${message?.media_id}`
+          const audioAtt = Array.isArray(message?.attachments) ? message.attachments.find(a => a.isAudio || (a.mime_type || '').startsWith('audio/')) : null
+          const attSubId = audioAtt?.id ? `${state.localUuid}_${audioAtt.id}` : state.localUuid
 
-          let cached = $state.decryptionCache.get(localKey)
-          if (!cached) {
-            cached = $state.decryptionCache.get(mediaKey)
-          }
+          const localKey = `local:${attSubId}`
+          const mediaId = audioAtt?.media_id || message?.media_id
+          const mediaKey = `media:${mediaId}`
+
+          let cached = $state.decryptionCache.get(localKey) ||
+                       $state.decryptionCache.get(`local:${state.localUuid}`) ||
+                       $state.decryptionCache.get(mediaKey)
 
           if (cached) {
             const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
-            renderAudio(objectUrl, message?.waveform_data, message?.duration || 0)
+            const waveformData = audioAtt?.waveform_data || message?.waveform_data
+            const duration = audioAtt?.duration || message?.duration || 0
+            renderAudio(objectUrl, waveformData, duration)
             return
           }
 
           if (['pending', 'pending_p2p'].includes(state.status)) {
             return
           }
-          if (!message || !message.file_key) {
+
+          const fileKey = audioAtt?.file_key || message?.file_key
+          const fileNonce = audioAtt?.file_nonce || message?.file_nonce
+          if (!mediaId || !fileKey) {
             throw new Error('Message or key missing')
           }
 
           const objectUrl = await $media.decrypt({
-            media_id: message.media_id,
-            file_key: message.file_key,
-            file_nonce: message.file_nonce,
-            mime_type: message.mime_type || 'audio/webm',
+            media_id: mediaId,
+            file_key: fileKey,
+            file_nonce: fileNonce,
+            mime_type: audioAtt?.mime_type || message?.mime_type || 'audio/webm',
             localUuid: state.localUuid
           }, { signal })
 
           if (callId !== lastCallId || signal.aborted) {
             return
           }
-          renderAudio(objectUrl, message?.waveform_data, message?.duration || 0)
+          const waveformData = audioAtt?.waveform_data || message?.waveform_data
+          const duration = audioAtt?.duration || message?.duration || 0
+          renderAudio(objectUrl, waveformData, duration)
 
         } catch (err) {
           if (err.name === 'AbortError') {

@@ -6,11 +6,36 @@
 
 const NON_UNIVERSAL_VIDEO_EXTENSIONS = new Set(['mkv', 'avi', 'mov', 'flv', 'wmv', 'ts', 'm2ts', '3gp', 'ogv'])
 const NON_UNIVERSAL_IMAGE_EXTENSIONS = new Set(['heic', 'heif', 'bmp', 'tiff', 'tif', 'raw', 'cr2', 'nef'])
-const NON_UNIVERSAL_AUDIO_EXTENSIONS = new Set(['wav', 'aiff', 'wma', 'flac', 'ape', 'alac'])
+const NON_UNIVERSAL_AUDIO_EXTENSIONS = new Set(['wav', 'aiff', 'aif', 'wma', 'flac', 'ape', 'alac'])
 
-const UNIVERSAL_VIDEO_MIMES = new Set(['video/mp4', 'video/webm'])
-const UNIVERSAL_IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif'])
-const UNIVERSAL_AUDIO_MIMES = new Set(['audio/mp4', 'audio/aac', 'audio/mpeg', 'audio/webm', 'audio/ogg'])
+const UNIVERSAL_VIDEO_MIMES = new Set([
+  'video/mp4',
+  'video/webm',
+  'video/ogg'
+])
+
+const UNIVERSAL_IMAGE_MIMES = new Set([
+  'image/jpeg',
+  'image/jpg',
+  'image/pjpeg',
+  'image/png',
+  'image/webp',
+  'image/gif',
+  'image/svg+xml'
+])
+
+const UNIVERSAL_AUDIO_MIMES = new Set([
+  'audio/mp4',
+  'audio/m4a',
+  'audio/x-m4a',
+  'audio/aac',
+  'audio/x-aac',
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/webm',
+  'audio/ogg',
+  'audio/opus'
+])
 
 /**
  * Evaluates whether a media file is in a non-universal format that requires format conversion for HTML5 web playback.
@@ -31,7 +56,8 @@ export function checkMediaCompatibility (file) {
 
   const lastDot = file.name.lastIndexOf('.')
   const extension = lastDot !== -1 ? file.name.substring(lastDot + 1).toLowerCase() : ''
-  const mime = (file.type || '').toLowerCase()
+  const rawMime = (file.type || '').toLowerCase()
+  const mime = rawMime.split(';')[0].trim()
 
   // Check Video Compatibility
   const isVideoType = mime.startsWith('video/') || NON_UNIVERSAL_VIDEO_EXTENSIONS.has(extension)

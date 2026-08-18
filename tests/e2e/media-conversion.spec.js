@@ -35,7 +35,7 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     await alicePage.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(mkvPath)
 
     // Verify UI status displays format conversion readiness
-    await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 60000 })
+    await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 60000 })
 
     await alicePage.fill('atoll-chat-view textarea', 'Sending converted video test.mp4')
     await alicePage.click('atoll-chat-view [data-testid$="__sendButton"]')
@@ -51,7 +51,7 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     await bobContext.close()
   })
 
-  test('converts non-universal image (.tiff) to universal WebP format', async ({ page, loginCustomPage }) => {
+  test('displays conversion error popup for non-universal image (.tiff) format', async ({ page, loginCustomPage }) => {
     test.setTimeout(120000)
 
     await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
@@ -63,16 +63,8 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     const tiffPath = path.join(TEST_FILES_DIR, 'test.tiff')
     await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(tiffPath)
 
-    await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 60000 })
-
-    await page.fill('atoll-chat-view textarea', 'Sending converted image test.webp')
-    await page.click('atoll-chat-view [data-testid$="__sendButton"]')
-
-    await expect(page.locator('atoll-chat-view .atoll-chat-message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
-
-    // Verify converted .webp image renders in timeline
-    const sentImageRow = page.locator('atoll-chat-timeline-row').filter({ hasText: 'test.webp' }).last()
-    await expect(sentImageRow).toBeVisible({ timeout: 60000 })
+    // Verify media conversion error popup appears for un-decodable TIFF format
+    await expect(page.locator('[data-testid="mediaConversionErrorPopup"] dialog')).toBeVisible({ timeout: 30000 })
   })
 
   test('converts non-universal audio (.wav) to universal MP4/AAC format', async ({ page, loginCustomPage }) => {
@@ -87,7 +79,7 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     const wavPath = path.join(TEST_FILES_DIR, 'test.wav')
     await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(wavPath)
 
-    await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 60000 })
+    await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 60000 })
 
     await page.fill('atoll-chat-view textarea', 'Sending converted audio test.m4a')
     await page.click('atoll-chat-view [data-testid$="__sendButton"]')

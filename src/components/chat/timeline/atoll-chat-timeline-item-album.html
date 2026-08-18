@@ -123,9 +123,13 @@
 
             let cached
             if (isVideo) {
-              cached = $state.decryptionCache?.get(localThumbKey) || $state.decryptionCache?.get(thumbKey)
+              cached = $state.decryptionCache?.get(localThumbKey) ||
+                       $state.decryptionCache?.get(`thumb:${state.localUuid}`) ||
+                       $state.decryptionCache?.get(thumbKey)
             } else {
-              cached = $state.decryptionCache?.get(localKey) || $state.decryptionCache?.get(mediaKey)
+              cached = $state.decryptionCache?.get(localKey) ||
+                       $state.decryptionCache?.get(`local:${state.localUuid}`) ||
+                       $state.decryptionCache?.get(mediaKey)
             }
 
             let objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
@@ -139,12 +143,12 @@
                   }).catch(() => null)
                 }
               } else {
-                if (item.file_key && item.media_id) {
+                if ((item.file_key || message.file_key) && (item.media_id || message.media_id)) {
                   objectUrl = await $media.decrypt({
-                    media_id: item.media_id,
-                    file_key: item.file_key,
-                    file_nonce: item.file_nonce,
-                    mime_type: item.mime_type,
+                    media_id: item.media_id || message.media_id,
+                    file_key: item.file_key || message.file_key,
+                    file_nonce: item.file_nonce || message.file_nonce,
+                    mime_type: item.mime_type || message.mime_type,
                     localUuid: itemId
                   }, { signal }).catch(() => null)
                 }

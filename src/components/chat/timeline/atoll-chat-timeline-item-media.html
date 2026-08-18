@@ -48,15 +48,21 @@
           return
         }
         const msg = await $storage.getMessage(state.localUuid)
-        if (!msg?.media_id) {
+        const mediaAtts = Array.isArray(msg?.attachments)
+          ? msg.attachments.filter(a => a.isImage || a.isVideo || (a.mime_type || '').startsWith('image/') || (a.mime_type || '').startsWith('video/'))
+          : []
+        const singleAtt = mediaAtts[0] || null
+        const mediaId = singleAtt?.media_id || msg?.media_id
+        if (!mediaId) {
           return
         }
-        const targetView = (msg.mime_type || '').startsWith('image/') ? 'pictures' : 'videos'
+        const mimeType = singleAtt?.mime_type || msg?.mime_type || ''
+        const targetView = mimeType.startsWith('image/') ? 'pictures' : 'videos'
         $state.mediaViewerSourceChatRoomId = msg.room_id
         $state.mediaViewerSourceMessageId = state.localUuid
         $state.currentAppView = targetView
         $state.activeSelectionType = targetView
-        $state.activeSelectionId = msg.media_id
+        $state.activeSelectionId = mediaId
       }
 
       const renderVideoPlaceholder = (duration = 0) => {
@@ -166,10 +172,6 @@
       const loadMedia = async () => {
         const callId = ++lastCallId
         try {
-          console.info('[atoll-chat-timeline-item-media] loadMedia start', {
-            localUuid: state.localUuid,
-            status: state.status
-          })
           if (!state.localUuid || signal.aborted) {
             return
           }
@@ -180,44 +182,53 @@
             return
           }
 
-          const testMsg = await $storage.getMessage(state.localUuid)
-          console.info('[atoll-chat-timeline-item-media] testMsg from DB:', testMsg)
-
-          // synchronous cache check
           const message = await $storage.getMessage(state.localUuid)
           if (callId !== lastCallId || signal.aborted) {
             return
           }
 
-          const localKey = `local:${state.localUuid}`
-          const localThumbKey = `thumb:${state.localUuid}`
-          const isVideo = (message?.mime_type || '').startsWith('video/')
-          const thumbKey = `thumb:${message?.thumbnail?.media_id || message?.media_id}`
-          const mediaKey = `media:${message?.media_id}`
+          const mediaAtts = Array.isArray(message?.attachments)
+            ? message.attachments.filter(a => a.isImage || a.isVideo || (a.mime_type || '').startsWith('image/') || (a.mime_type || '').startsWith('video/'))
+            : []
+          const singleAtt = mediaAtts[0] || null
+          const attSubId = singleAtt?.id ? `${state.localUuid}_${singleAtt.id}` : state.localUuid
+
+          const localKey = `local:${attSubId}`
+          const localThumbKey = `thumb:${attSubId}`
+          const mimeType = singleAtt?.mime_type || message?.mime_type || 'image/webp'
+          const isVideo = mimeType.startsWith('video/')
+          const mediaId = singleAtt?.media_id || message?.media_id
+          const thumbMediaId = singleAtt?.thumbnail?.media_id || singleAtt?.media_id || message?.thumbnail?.media_id || message?.media_id
+          const thumbKey = `thumb:${thumbMediaId}`
+          const mediaKey = `media:${mediaId}`
+          const duration = singleAtt?.duration || message?.duration || 0
 
           let cached
           if (isVideo) {
-            cached = $state.decryptionCache.get(localThumbKey) || $state.decryptionCache.get(thumbKey)
+            cached = $state.decryptionCache.get(localThumbKey) ||
+                     $state.decryptionCache.get(`thumb:${state.localUuid}`) ||
+                     $state.decryptionCache.get(thumbKey)
           } else {
-            cached = $state.decryptionCache.get(localKey) || $state.decryptionCache.get(mediaKey)
+            cached = $state.decryptionCache.get(localKey) ||
+                     $state.decryptionCache.get(`local:${state.localUuid}`) ||
+                     $state.decryptionCache.get(mediaKey)
           }
 
           if (cached) {
             const objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             if (objectUrl) {
-              const mimeType = (typeof cached === 'object' ? cached.mimeType : null) || message?.mime_type || 'image/webp'
-              renderMedia(objectUrl, mimeType, message?.duration || 0)
+              const cachedMime = (typeof cached === 'object' ? cached.mimeType : null) || mimeType
+              renderMedia(objectUrl, cachedMime, duration)
               return
             }
           }
 
           let objectUrl = null
-          let mimeType = message?.mime_type || 'image/webp'
-          let duration = message?.duration || 0
 
-          if (mimeType.startsWith('video/')) {
-            if (message?.thumbnail) {
-              objectUrl = await $media.decrypt(message.thumbnail, {
+          if (isVideo) {
+            const thumb = singleAtt?.thumbnail || message?.thumbnail
+            if (thumb) {
+              objectUrl = await $media.decrypt(thumb, {
                 isThumbnail: true,
                 signal
               })
@@ -230,15 +241,17 @@
             if (['pending', 'pending_p2p'].includes(state.status)) {
               return
             }
-            if (!message || !message.file_key) {
+            const fileKey = singleAtt?.file_key || message?.file_key
+            const fileNonce = singleAtt?.file_nonce || message?.file_nonce
+            if (!mediaId || !fileKey) {
               throw new Error('Message or key missing')
             }
 
             objectUrl = await $media.decrypt({
-              media_id: message.media_id,
-              file_key: message.file_key,
-              file_nonce: message.file_nonce,
-              mime_type: message.mime_type,
+              media_id: mediaId,
+              file_key: fileKey,
+              file_nonce: fileNonce,
+              mime_type: mimeType,
               localUuid: state.localUuid
             }, { signal })
           }

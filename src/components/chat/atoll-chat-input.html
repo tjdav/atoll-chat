@@ -661,6 +661,9 @@
                 }
                 item.file = file
                 item.mimeType = file.type
+                item.status = 'Ready'
+              } else {
+                item.status = 'Ready'
               }
             } catch {
               if (currentToken !== fileProcessingToken) {
