@@ -140,6 +140,13 @@ export default function syncPlugin () {
                   }
                 }
 
+                // Flush pending replay buffer for any messages queued before or during catch-up
+                try {
+                  await $worker.execute('worker:flush_pending_messages')
+                } catch (flushErr) {
+                  console.warn('[sync] Failed to flush pending messages after catch-up:', flushErr)
+                }
+
                 // Notify UI that catch-up is done
                 if (pluginContext.$bus) {
                   /** @type {CustomWindow & typeof globalThis} */
@@ -184,7 +191,9 @@ export default function syncPlugin () {
             await pb.collection('messages').subscribe('*', (e) => {
               if (e.action === 'create') {
                 $worker.execute('worker:process_incoming_message', e.record).then((result) => {
-                  if (result && result.success === false) {
+                  if (result && result.status === 'queued_for_key') {
+                    console.info('[sync] Message queued awaiting room key:', e.record?.id, result.roomId)
+                  } else if (result && result.success === false) {
                     console.warn('[sync] Dropped invalid/unverified incoming message:', e.record?.id, result.error)
                   }
                 }).catch((err) => {

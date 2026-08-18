@@ -92,6 +92,14 @@ export default function workerPlugin ({ url = '/', appUrl = '' } = {}) {
             return
           }
 
+          if (!id && type === 'sync:message_replayed') {
+            if (pluginContext.$bus) {
+              pluginContext.$bus.emit('sync:message_replayed', payload)
+            }
+
+            return
+          }
+
           if (type === 'worker:initialized') {
             if (pluginContext.$bus) {
               pluginContext.$bus.emit('worker:initialized', payload)
