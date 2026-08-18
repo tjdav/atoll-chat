@@ -223,63 +223,84 @@
 
             // Sync room avatar
             const roomAvatarComp = refs('roomAvatar')
-            const existingImg = roomAvatarComp.querySelector('[slot="image"]')
-            if (existingImg) {
-              existingImg.remove()
-            }
-            if (room.avatar) {
-              try {
-                const avatarData = typeof room.avatar === 'string' ? JSON.parse(room.avatar) : room.avatar
+            if (roomAvatarComp) {
+              const existingSlots = roomAvatarComp.querySelectorAll('[slot="image"]')
+              existingSlots.forEach(el => el.remove())
+
+              if (room.avatar) {
+                try {
+                  const avatarData = typeof room.avatar === 'string' ? JSON.parse(room.avatar) : room.avatar
+                  roomAvatarComp.setAttribute('type', 'single')
+                  roomAvatarComp.setAttribute('size', '3xl')
+                  roomAvatarComp.setAttribute('name', state.roomName)
+                  roomAvatarComp.setAttribute('alt', state.roomName)
+                  roomAvatarComp.removeAttribute('user-id')
+                  roomAvatarComp.removeAttribute('src')
+
+                  const $media = utils.$media
+                  if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
+                    $media.decrypt(avatarData, signal).then((url) => {
+                      roomAvatarComp.setAttribute('src', url)
+                    }).catch(err => {
+                      console.error('[sidebar] Failed to decrypt room avatar:', err)
+                      roomAvatarComp.removeAttribute('src')
+                    })
+                  }
+                } catch (e) {
+                  console.error('Failed to parse avatar:', e)
+                  roomAvatarComp.removeAttribute('src')
+                  roomAvatarComp.removeAttribute('user-id')
+                }
+              } else if (!room.is_group && participants.length > 0) {
+                const other = participants[0]
+                const displayName = state.roomName || other.name || other.username
+                roomAvatarComp.setAttribute('type', 'single')
+                roomAvatarComp.setAttribute('size', '3xl')
+                roomAvatarComp.setAttribute('name', displayName)
+                roomAvatarComp.setAttribute('alt', displayName)
+
+                if (other.id) {
+                  roomAvatarComp.setAttribute('user-id', other.id)
+                } else {
+                  roomAvatarComp.removeAttribute('user-id')
+                }
+  
+                if (other.avatar && pb?.files) {
+                  roomAvatarComp.setAttribute('src', pb.files.getURL(other, other.avatar, { thumb: '100x100' }))
+                } else {
+                  roomAvatarComp.removeAttribute('src')
+                }
+              } else if (room.is_group) {
+                roomAvatarComp.removeAttribute('user-id')
+                roomAvatarComp.removeAttribute('src')
+                roomAvatarComp.setAttribute('type', 'multiparty')
+                roomAvatarComp.setAttribute('size', '3xl')
+                const splitCount = Math.min(Math.max(participants.length, 2), 4)
+                roomAvatarComp.setAttribute('split-count', splitCount)
+
+                const slotDiv = document.createElement('div')
+                slotDiv.setAttribute('slot', 'image')
+                const displayCount = Math.min(participants.length, splitCount)
+                for (let i = 0; i < displayCount; i++) {
+                  const p = participants[i]
+                  if (p) {
+                    const img = document.createElement('img')
+                    img.alt = p.name || p.username || 'Member'
+                    if (p.avatar && pb?.files) {
+                      img.src = pb.files.getURL(p, p.avatar, { thumb: '50x50' })
+                    }
+                    slotDiv.appendChild(img)
+                  }
+                }
+                roomAvatarComp.appendChild(slotDiv)
+              } else {
+                roomAvatarComp.removeAttribute('user-id')
+                roomAvatarComp.removeAttribute('src')
                 roomAvatarComp.setAttribute('type', 'single')
                 roomAvatarComp.setAttribute('size', '3xl')
                 roomAvatarComp.setAttribute('name', state.roomName)
                 roomAvatarComp.setAttribute('alt', state.roomName)
-                const $media = utils?.$media
-                if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
-                  $media.decrypt(avatarData, signal).then((url) => {
-                    roomAvatarComp.setAttribute('src', url)
-                  }).catch(err => {
-                    console.error('[sidebar] Failed to decrypt room avatar:', err)
-                  })
-                }
-              } catch (e) {
-                console.error('Failed to parse avatar:', e)
               }
-            } else if (!room.is_group && participants.length > 0) {
-              const other = participants[0]
-              roomAvatarComp.setAttribute('type', 'single')
-              roomAvatarComp.setAttribute('size', '3xl')
-              roomAvatarComp.setAttribute('name', other.name || other.username)
-              roomAvatarComp.setAttribute('alt', other.name || other.username)
-              if (other.avatar) {
-                roomAvatarComp.setAttribute('src', pb.files.getURL(other, other.avatar, { thumb: '100x100' }))
-              }
-            } else if (room.is_group) {
-              roomAvatarComp.setAttribute('type', 'multiparty')
-              roomAvatarComp.setAttribute('size', '3xl')
-              const splitCount = Math.min(Math.max(participants.length, 2), 4)
-              roomAvatarComp.setAttribute('split-count', splitCount)
-
-              const slotDiv = document.createElement('div')
-              slotDiv.setAttribute('slot', 'image')
-              const displayCount = Math.min(participants.length, splitCount)
-              for (let i = 0; i < displayCount; i++) {
-                const p = participants[i]
-                if (p) {
-                  const img = document.createElement('img')
-                  img.alt = p.name || p.username || 'Member'
-                  if (p.avatar) {
-                    img.src = pb.files.getURL(p, p.avatar, { thumb: '50x50' })
-                  }
-                  slotDiv.appendChild(img)
-                }
-              }
-              roomAvatarComp.appendChild(slotDiv)
-            } else {
-              roomAvatarComp.setAttribute('type', 'single')
-              roomAvatarComp.setAttribute('size', '3xl')
-              roomAvatarComp.setAttribute('name', state.roomName)
-              roomAvatarComp.setAttribute('alt', state.roomName)
             }
           }
 
