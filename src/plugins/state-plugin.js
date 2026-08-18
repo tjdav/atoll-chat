@@ -1,5 +1,4 @@
 import { definePlugin } from 'coralite'
-import { MediaLRUCache } from '../utils/media-lru-cache.js'
 
 /**
  * Ultimate State Plugin for Coralite (Hardened Version)
@@ -13,7 +12,8 @@ export default function statePlugin (options = {}) {
     name: 'globalStore',
     client: {
       config: { initialState: options.initialState || {} },
-      context: (pluginContext) => {
+      context: async (pluginContext) => {
+        const { MediaLRUCache } = await import('../utils/media-lru-cache.js')
         const storeState = {
           users: {},
           ...pluginContext.config.initialState,

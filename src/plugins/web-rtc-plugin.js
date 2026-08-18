@@ -1,7 +1,4 @@
 import { definePlugin } from 'coralite'
-import { createCallStateMachine, CALL_STATES } from '../utils/call/callStateMachine.js'
-import { stopRingtone, stopRingback, stopAll } from '../utils/call/callSoundManager.js'
-import { BoundedTTLDedupe } from '../utils/call/boundedTTLDedupe.js'
 
 /**
  * Defines and exports the WebRTC Manager Plugin for Atoll Chat.
@@ -44,7 +41,11 @@ export default function webrtcPlugin ({
         iceServers: finalIceServers,
         localIceServer
       },
-      context: (pluginContext) => {
+      context: async (pluginContext) => {
+        const { createCallStateMachine, CALL_STATES } = await import('../utils/call/callStateMachine.js')
+        const { stopRingtone, stopRingback, stopAll } = await import('../utils/call/callSoundManager.js')
+        const { BoundedTTLDedupe } = await import('../utils/call/boundedTTLDedupe.js')
+
         /**
          * Expands turn or turns server URLs with TCP and UDP transport protocols.
          *
@@ -272,7 +273,7 @@ export default function webrtcPlugin ({
         /**
          * Replays and applies any queued/pending ICE candidates to an active RTCPeerConnection.
          *
-         * @param {string} room_id - The ID of the room.
+         * @param {string} call_id - The session ID of the call.
          * @param {RTCPeerConnection} pc - The active peer connection.
          * @returns {Promise<void>}
          * @throws {Error} Re-throws unexpected non-WebRTC failures.
