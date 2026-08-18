@@ -44,7 +44,8 @@
       remoteOffer: null,
       isPipMode: false,
       isLocalSpeaking: false,
-      incomingMediaTypes: ['audio', 'video']
+      incomingMediaTypes: ['audio', 'video'],
+      callId: null
     }),
     getters: {
       activeClass: (state) => (state.callStatus === 'active' && !state.isPipMode ? 'd-block' : 'd-none'),
@@ -160,11 +161,13 @@
        */
       const endCall = async () => {
         if ($state.activeCallRoomId) {
-          await $webrtc.endCall($state.activeCallRoomId)
+          await $webrtc.endCall($state.activeCallRoomId, state.callId || $state.activeCallId)
         }
         stopTracks()
         $state.set('callStatus', 'idle')
         $state.activeCallRoomId = null
+        $state.activeCallId = null
+        state.callId = null
         $state.localStream = null
         $state.remoteStream = null
         $state.hasRemoteVideo = false
@@ -231,7 +234,7 @@
       })
 
       // Listen for incoming call event to record remote offer and media types
-      $bus.on('call:incoming', async ({ room_id, offer, senderId, media_types }) => {
+      $bus.on('call:incoming', async ({ room_id, call_id, offer, senderId, media_types }) => {
         if (senderId === $state.currentUser?.id) {
           return
         }
@@ -240,6 +243,8 @@
           return
         }
 
+        state.callId = call_id
+        $state.activeCallId = call_id
         $state.activeCallRoomId = room_id
         $state.set('callStatus', 'incoming')
         state.remoteOffer = offer
@@ -310,11 +315,17 @@
       }, { signal })
 
       // Listen for call ended from remote
-      $bus.on('call:ended', ({ room_id }) => {
+      $bus.on('call:ended', ({ room_id, call_id }) => {
+        if (call_id && $state.activeCallId && call_id !== $state.activeCallId) {
+          return
+        }
+  
         if ($state.activeCallRoomId === room_id) {
           stopTracks()
           $state.set('callStatus', 'idle')
           $state.activeCallRoomId = null
+          $state.activeCallId = null
+          state.callId = null
           state.remoteOffer = null
         }
       }, { signal })
@@ -354,7 +365,7 @@
           $state.set('callStatus', 'active')
           $bus.emit('call:local_stream_available', { stream: localStream })
 
-          await $webrtc.answerCall($state.activeCallRoomId, localStream, state.remoteOffer)
+          await $webrtc.answerCall($state.activeCallRoomId, localStream, state.remoteOffer, state.callId)
         } catch {
           await endCall()
         }

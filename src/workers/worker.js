@@ -796,6 +796,9 @@ async function sendMessage (rpcId, payload) {
       localUuid,
       type,
       content,
+      call_id,
+      caller_id,
+      reason,
       file,
       filename,
       mime_type,
@@ -1067,6 +1070,9 @@ async function sendMessage (rpcId, payload) {
       local_uuid: localUuid,
       type,
       content,
+      call_id,
+      caller_id,
+      reason,
       candidate,
       candidates,
       media_types,
@@ -1173,6 +1179,9 @@ async function sendMessage (rpcId, payload) {
             sender_id: self.currentUserKeys.id,
             type,
             content,
+            call_id,
+            caller_id,
+            reason,
             candidate,
             candidates,
             media_types,
@@ -1563,7 +1572,7 @@ async function processIncomingMessageInternal (record) {
       }
     }
 
-    const { type, content, candidate, candidates, media_types, target_id, timestamp, p2pUuid } = decryptedPayload
+    const { type, content, call_id, caller_id, reason, candidate, candidates, media_types, target_id, timestamp, p2pUuid } = decryptedPayload
 
     const decryptedMessage = {
       id,
@@ -1572,6 +1581,9 @@ async function processIncomingMessageInternal (record) {
       sender_id: senderId,
       type,
       content,
+      call_id,
+      caller_id,
+      reason,
       candidate,
       candidates,
       media_types,

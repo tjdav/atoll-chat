@@ -641,7 +641,11 @@
         renderGrid()
       }, { signal })
 
-      $bus.on('call:ended', ({ room_id }) => {
+      $bus.on('call:ended', ({ room_id, call_id }) => {
+        if (call_id && $state.activeCallId && call_id !== $state.activeCallId) {
+          return
+        }
+  
         if (room_id && room_id !== $state.activeCallRoomId) {
           return
         }
