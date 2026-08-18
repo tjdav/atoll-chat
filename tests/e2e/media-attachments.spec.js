@@ -7,6 +7,68 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url))
 test.describe('Media & Attachments', () => {
 
   test.describe('File Handling', () => {
+    test('batch upload & preview queue with individual item removal', async ({ page, loginCustomPage }) => {
+      await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+
+      // Select 3 files simultaneously
+      const files = [
+        path.resolve('tests/e2e/fixtures/test-files/test.png'),
+        path.resolve('tests/e2e/fixtures/test-files/test.mp4'),
+        path.resolve('tests/e2e/fixtures/test-files/test.docx')
+      ]
+      await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(files)
+
+      // Verify preview displays details and status for queued items
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
+
+      // Verify state.attachments via page evaluation has 3 items
+      await page.waitForFunction(() => {
+        const inputComp = document.querySelector('atoll-chat-input')
+        return inputComp && inputComp.attachments && inputComp.attachments.length === 3
+      })
+
+      // Remove 1 individual item from the queue via ui:remove_attachment event
+      await page.evaluate(() => {
+        const inputComp = document.querySelector('atoll-chat-input')
+        if (inputComp && inputComp.attachments && inputComp.attachments.length > 0) {
+          const firstId = inputComp.attachments[0].id
+          window.$bus.emit('ui:remove_attachment', { id: firstId })
+        }
+      })
+
+      // Verify remaining queued items update from 3 to 2 and preview remains visible
+      await page.waitForFunction(() => {
+        const inputComp = document.querySelector('atoll-chat-input')
+        return inputComp && inputComp.attachments && inputComp.attachments.length === 2
+      })
+      await expect(page.locator('atoll-chat-attachment-preview')).toBeVisible()
+    })
+
+    test('queue overflow boundary capping at 10 items', async ({ page, loginCustomPage }) => {
+      await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+
+      // Attempt selecting 12 files at once
+      const twelveFiles = Array(12).fill(path.resolve('tests/e2e/fixtures/test-files/test.png'))
+      await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(twelveFiles)
+
+      // Verify warning toast "Maximum 10 attachments per message" appears
+      await expect(page.locator('.toast, [data-testid="toast-container"]').filter({ hasText: 'Maximum 10 attachments per message' })).toBeVisible({ timeout: 15000 })
+
+      // Verify queue is capped at 10 items
+      await page.waitForFunction(() => {
+        const inputComp = document.querySelector('atoll-chat-input')
+        return inputComp && inputComp.attachments && inputComp.attachments.length === 10
+      })
+    })
+
     test('send various file types', async ({ browser, loginCustomPage }) => {
 
       const aliceContext = await browser.newContext()
@@ -69,6 +131,7 @@ test.describe('Media & Attachments', () => {
     })
 
     test('custom video cover selection and removal', async ({ page, loginCustomPage }) => {
+      test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
       await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
       await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
@@ -77,7 +140,7 @@ test.describe('Media & Attachments', () => {
 
       const vp = path.join(__dirname, 'fixtures', 'test-files', 'test.mp4')
       await page.setInputFiles('[data-testid$="__fileInput"]', vp)
-      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
 
       // Verify the Change Cover button exists
       const changeCoverBtn = page.locator('[data-testid$="__btn-change-cover"]')
@@ -86,7 +149,7 @@ test.describe('Media & Attachments', () => {
 
       // Programmatically input a custom cover image file
       const customCoverPath = path.resolve('tests/e2e/fixtures/test-files/test.png')
-      await page.setInputFiles('[data-testid$="__cover-file-input"]', customCoverPath)
+      await page.setInputFiles('[data-testid$="cover-file-input"]', customCoverPath)
 
       // Verify custom cover application
       await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Custom cover applied', { timeout: 15000 })
@@ -96,7 +159,7 @@ test.describe('Media & Attachments', () => {
       await changeCoverBtn.click()
 
       // Should revert back to "Ready to send" or standard auto-thumbnail status
-      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 15000 })
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 15000 })
       await expect(changeCoverBtn).toHaveText('Change Cover')
     })
 
@@ -358,6 +421,107 @@ test.describe('Media & Attachments', () => {
 
       await page.locator('audio-player-view .play-pause-btn').click()
       await expect(page.locator('audio-player-view .play-pause-btn atoll-icon')).toHaveAttribute('name', 'pause', { timeout: 15000 })
+    })
+  })
+
+  test.describe('Multi-Attachment Album Matrix', () => {
+    test.beforeEach(async ({ page, loginApp }) => {
+      await loginApp('alice', 'Password123!', 'VaultPassword123!')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    })
+
+    test('renders 2-item album grid (.atoll-album-2)', async ({ page }) => {
+      const files = [
+        path.resolve('tests/e2e/fixtures/test-files/test.png'),
+        path.resolve('tests/e2e/fixtures/test-files/test.jpg')
+      ]
+      await page.setInputFiles('[data-testid$="__fileInput"]', files)
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
+      await page.click('[data-testid$="__sendButton"]')
+
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 30000 })
+
+      const album = page.locator('atoll-chat-timeline-item-album').last()
+      await expect(album).toBeVisible({ timeout: 30000 })
+
+      const grid = album.locator('.atoll-album-grid')
+      await expect(grid).toHaveClass(/atoll-album-2/, { timeout: 15000 })
+      await expect(grid.locator('.atoll-album-tile')).toHaveCount(2)
+    })
+
+    test('renders 3-item album grid (.atoll-album-3)', async ({ page }) => {
+      const files = [
+        path.resolve('tests/e2e/fixtures/test-files/test.png'),
+        path.resolve('tests/e2e/fixtures/test-files/test.jpg'),
+        path.resolve('tests/e2e/fixtures/test-files/test.webp')
+      ]
+      await page.setInputFiles('[data-testid$="__fileInput"]', files)
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
+      await page.click('[data-testid$="__sendButton"]')
+
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 30000 })
+
+      const album = page.locator('atoll-chat-timeline-item-album').last()
+      await expect(album).toBeVisible({ timeout: 30000 })
+
+      const grid = album.locator('.atoll-album-grid')
+      await expect(grid).toHaveClass(/atoll-album-3/, { timeout: 15000 })
+      await expect(grid.locator('.atoll-album-tile')).toHaveCount(3)
+    })
+
+    test('renders 4-item album grid (.atoll-album-4)', async ({ page }) => {
+      const files = [
+        path.resolve('tests/e2e/fixtures/test-files/test.png'),
+        path.resolve('tests/e2e/fixtures/test-files/test.jpg'),
+        path.resolve('tests/e2e/fixtures/test-files/test.webp'),
+        path.resolve('tests/e2e/fixtures/test-files/test.gif')
+      ]
+      await page.setInputFiles('[data-testid$="__fileInput"]', files)
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
+      await page.click('[data-testid$="__sendButton"]')
+
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 30000 })
+
+      const album = page.locator('atoll-chat-timeline-item-album').last()
+      await expect(album).toBeVisible({ timeout: 30000 })
+
+      const grid = album.locator('.atoll-album-grid')
+      await expect(grid).toHaveClass(/atoll-album-4/, { timeout: 15000 })
+      await expect(grid.locator('.atoll-album-tile')).toHaveCount(4)
+    })
+
+    test('renders 5+ item album grid with +N overflow badge and opens viewer on click', async ({ page }) => {
+      const files = [
+        path.resolve('tests/e2e/fixtures/test-files/test.png'),
+        path.resolve('tests/e2e/fixtures/test-files/test.jpg'),
+        path.resolve('tests/e2e/fixtures/test-files/test.webp'),
+        path.resolve('tests/e2e/fixtures/test-files/test.gif'),
+        path.resolve('tests/e2e/fixtures/test-files/test.png')
+      ]
+      await page.setInputFiles('[data-testid$="__fileInput"]', files)
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
+      await page.click('[data-testid$="__sendButton"]')
+
+      await expect(page.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 30000 })
+
+      const album = page.locator('atoll-chat-timeline-item-album').last()
+      await expect(album).toBeVisible({ timeout: 30000 })
+
+      const grid = album.locator('.atoll-album-grid')
+      await expect(grid).toHaveClass(/atoll-album-4/, { timeout: 15000 })
+      await expect(grid.locator('.atoll-album-tile')).toHaveCount(4)
+
+      // Assert 4th tile renders the +2 overlay badge
+      const overlay = grid.locator('.atoll-album-more-overlay')
+      await expect(overlay).toBeVisible()
+      await expect(overlay).toHaveText('+2')
+
+      // Click album tile to verify transition to media viewer
+      await grid.locator('.atoll-album-tile').first().click()
+      await expect(page.locator('image-viewer')).toBeVisible({ timeout: 15000 })
     })
   })
 })

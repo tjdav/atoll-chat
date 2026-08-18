@@ -80,12 +80,51 @@
       isProgressHidden: (state) => !(state.effectiveIsCompressing || state.effectiveIsUploading),
       progressBarStyle: (state) => 'width: ' + Math.min(100, Math.max(0, Number(state.progress) || 0)) + '%'
     },
-    client: ({ refs, state, eventBus, signal, observe }) => {
+    client: ({ root, refs, state, eventBus, signal, observe }) => {
       const { $bus } = eventBus
       const cancelBtn = refs('cancelFileButton')
       const coverBtn = refs('coverBtn')
       const coverInput = refs('coverInput')
       const thumbnailImg = refs('thumbnailImg')
+
+      const syncFromAttachments = (list) => {
+        const first = list && list.length > 0 ? list[0] : null
+        if (first) {
+          state.fileName = first.fileName || first.filename || ''
+          state.uploadStatus = first.status || first.uploadStatus || ''
+          state.thumbnailUrl = first.thumbnailPreviewUrl || first.thumbnailUrl || ''
+          state.isVideo = Boolean(first.isVideo)
+          state.isCustom = Boolean(first.isCustomCover || first.isCustom)
+          state.isCompressing = Boolean(first.isCompressing)
+          state.isUploading = Boolean(first.isUploading)
+          state.progress = Number(first.progress || 0)
+        } else {
+          state.fileName = ''
+          state.uploadStatus = ''
+          state.thumbnailUrl = ''
+          state.isVideo = false
+          state.isCustom = false
+          state.isCompressing = false
+          state.isUploading = false
+          state.progress = 0
+        }
+      }
+
+      if (root) {
+        Object.defineProperty(root, 'attachments', {
+          set: (list) => {
+            state._attachments = list
+            syncFromAttachments(list)
+          },
+          get: () => state._attachments || [],
+          configurable: true
+        })
+      }
+
+      const unsubAttachments = $bus.on('ui:attachments_updated', ({ attachments }) => {
+        syncFromAttachments(attachments)
+      })
+      signal.addEventListener('abort', unsubAttachments)
 
       /**
        * Synchronizes the image source element with the reactive thumbnailUrl state.
@@ -110,7 +149,8 @@
         e.preventDefault()
         e.stopPropagation()
         if (state.effectiveIsCustom) {
-          $bus.emit('ui:remove_custom_cover_clicked')
+          const first = state._attachments && state._attachments[0]
+          $bus.emit('ui:attachment_cover_removed', { id: first ? first.id : null })
         } else {
           coverInput.click()
         }
@@ -119,7 +159,8 @@
       coverInput.addEventListener('change', () => {
         const file = coverInput.files[0]
         if (file) {
-          $bus.emit('ui:custom_cover_selected', { file })
+          const first = state._attachments && state._attachments[0]
+          $bus.emit('ui:attachment_cover_selected', { id: first ? first.id : null, file })
           coverInput.value = ''
         }
       }, { signal })

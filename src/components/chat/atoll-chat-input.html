@@ -406,6 +406,15 @@
               duration: recordedDuration,
               timestamp: Date.now()
             })
+            state.isSending = false
+            state.isUploading = false
+            state.isRecording = false
+            const container = refs('voiceRecorderContainer')
+            if (container) {
+              container.innerHTML = ''
+            }
+            $bus.emit('ui:focus_input')
+            return
           } else if (hasAttachments) {
             state.isUploading = true
             const maxServerUpload = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
@@ -485,11 +494,19 @@
         } catch (err) {
           state.isSending = false
           state.isUploading = false
+          if (recordedBlob) {
+            state.isRecording = false
+            const container = refs('voiceRecorderContainer')
+            if (container) {
+              container.innerHTML = ''
+            }
+          } else {
+            resetUI()
+          }
           $bus.emit('ui:show_toast', {
             message: 'Failed to send: ' + err.message,
             type: 'danger'
           })
-          resetUI()
         }
       }
 
@@ -663,7 +680,7 @@
               }
             }
             item.isCompressing = false
-            item.status = item.status || 'Ready'
+            item.status = (item.status && item.status !== 'Processing video...') ? item.status : 'Ready'
           } else if (file.type.startsWith('audio/') || compatibility.category === 'audio') {
             item.isAudio = true
             item.status = 'Extracting audio...'
