@@ -77,7 +77,7 @@
 
 .atoll-chat-sender-name {
   font-size: 0.75rem;
-  color: var(--atoll-chat-sender-name-color);
+  color: var(--atoll-chat-text-secondary);
   margin-left: calc($timeline-avatar-size + $timeline-avatar-margin);
   margin-bottom: 2px;
 }
@@ -141,10 +141,10 @@
   display: flex;
   margin-top: -12px;
   margin-bottom: 8px;
-  color: var(--atoll-chat-sent-status-color, var(--atoll-chat-timestamp-color)) !important;
+  color: var(--atoll-chat-text-muted) !important;
 
   span {
-    color: var(--atoll-chat-sent-status-color, var(--atoll-chat-timestamp-color)) !important;
+    color: var(--atoll-chat-text-muted) !important;
   }
 }
 

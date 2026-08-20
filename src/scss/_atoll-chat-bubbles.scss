@@ -33,7 +33,7 @@
   -webkit-backdrop-filter: var(--atoll-chat-bubble-received-backdrop-filter, none);
 
   a, .markdown-body a {
-    color: var(--atoll-chat-bubble-received-link-color, var(--atoll-chat-bubble-received-color, #047835)) !important;
+    color: var(--atoll-chat-accent) !important;
     text-decoration: underline;
   }
 }

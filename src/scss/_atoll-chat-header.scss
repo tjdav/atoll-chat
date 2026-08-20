@@ -1,10 +1,26 @@
 // src/scss/_atoll-chat-header.scss
 
 .atoll-chat-view-header {
-  border-bottom: 1px solid var(--atoll-chat-header-border, var(--#{$prefix}border-color-translucent)) !important;
+  border-bottom: 1px solid var(--atoll-chat-border) !important;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  background-color: var(--atoll-chat-header-bg, var(--#{$prefix}pane-bg)) !important;
-  backdrop-filter: var(--atoll-chat-header-backdrop-filter, none);
-  -webkit-backdrop-filter: var(--atoll-chat-header-backdrop-filter, none);
-  color: var(--atoll-chat-header-color, inherit);
+  background-color: var(--atoll-chat-surface-glass) !important;
+  backdrop-filter: var(--atoll-chat-header-backdrop-filter, blur(12px));
+  -webkit-backdrop-filter: var(--atoll-chat-header-backdrop-filter, blur(12px));
+  color: var(--atoll-chat-text-primary);
+
+  .header-title,
+  .atoll-chat-header-title {
+    color: var(--atoll-chat-text-primary) !important;
+  }
+
+  .header-subtitle,
+  .atoll-chat-header-subtitle {
+    color: var(--atoll-chat-text-secondary) !important;
+  }
+
+  button,
+  .btn,
+  atoll-icon {
+    color: var(--atoll-chat-text-secondary);
+  }
 }

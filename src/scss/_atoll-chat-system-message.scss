@@ -7,16 +7,16 @@
   margin-bottom: 1rem;
 
   .system-message-pill {
-    background-color: var(--atoll-chat-date-separator-bg, var(--#{$prefix}bg-surface-tertiary, #EEEEEE)) !important;
-    color: var(--atoll-chat-date-separator-color, var(--#{$prefix}secondary-color, #777777)) !important;
-    border-color: var(--atoll-chat-date-separator-border, var(--#{$prefix}border-color)) !important;
+    background-color: var(--atoll-chat-surface-glass) !important;
+    color: var(--atoll-chat-text-secondary) !important;
+    border-color: var(--atoll-chat-border) !important;
     font-size: 0.7rem;
 
     .text-success {
-      color: var(--atoll-chat-waveform-active, var(--#{$prefix}success, #06C755)) !important;
+      color: var(--atoll-chat-accent, var(--#{$prefix}success, #06C755)) !important;
     }
     .text-primary {
-      color: var(--atoll-chat-waveform-active, var(--#{$prefix}primary, #0d6efd)) !important;
+      color: var(--atoll-chat-accent, var(--#{$prefix}primary, #0d6efd)) !important;
     }
     .text-danger {
       color: var(--#{$prefix}danger, #dc3545) !important;

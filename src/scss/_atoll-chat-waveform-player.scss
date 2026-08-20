@@ -21,7 +21,7 @@
 
   .text-muted,
   .time-display {
-    color: var(--atoll-chat-header-color, inherit) !important;
+    color: var(--atoll-chat-text-secondary) !important;
     opacity: 1 !important;
   }
 }
@@ -68,13 +68,13 @@
   left: 0;
   width: 2px;
   height: 100%;
-  background-color: var(--atoll-chat-waveform-active, var(--bs-primary));
+  background-color: var(--atoll-chat-accent, var(--bs-primary));
   pointer-events: none;
 }
 
 .play-pause-btn {
   border: none;
-  background: var(--atoll-chat-waveform-active, var(--bs-primary));
+  background: var(--atoll-chat-accent, var(--bs-primary));
   color: white;
   width: 32px;
   height: 32px;

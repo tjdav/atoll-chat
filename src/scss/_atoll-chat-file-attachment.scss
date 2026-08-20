@@ -9,15 +9,15 @@
   -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
 
   .file-name, .atoll-chat-file-name {
-    color: var(--atoll-chat-header-color, inherit) !important;
+    color: var(--atoll-chat-text-primary) !important;
   }
 
   .file-attachment-size, .atoll-chat-file-size {
-    color: var(--atoll-chat-header-color, inherit) !important;
+    color: var(--atoll-chat-text-secondary) !important;
     opacity: 0.85 !important;
   }
 
   .file-icon-wrapper, .atoll-chat-file-icon-wrapper {
-    color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+    color: var(--atoll-chat-accent, var(--bs-primary)) !important;
   }
 }

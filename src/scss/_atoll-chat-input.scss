@@ -4,8 +4,8 @@ atoll-chat-voice-recorder {
 }
 
 .atoll-chat-input-container {
-  background-color: var(--atoll-chat-input-container-bg, var(--bs-body-bg)) !important;
-  border: 1px solid var(--atoll-chat-input-container-border, transparent) !important;
+  background-color: var(--atoll-chat-surface-glass) !important;
+  border: 1px solid var(--atoll-chat-border) !important;
   
   // Backdrop filter blur and translucent overlay standard across all themes (configurable via CSS variable)
   backdrop-filter: var(--atoll-chat-input-backdrop-filter, blur(12px)) !important;
@@ -32,21 +32,21 @@ atoll-chat-voice-recorder {
 
   .atoll-chat-input-btn-attach button {
     background-color: var(--atoll-chat-btn-attach-bg, transparent) !important;
-    color: var(--atoll-chat-btn-attach-color, inherit) !important;
+    color: var(--atoll-chat-text-secondary) !important;
     border-color: transparent !important;
 
     atoll-icon {
-      color: var(--atoll-chat-btn-attach-color, inherit) !important;
+      color: var(--atoll-chat-text-secondary) !important;
     }
   }
 
   .atoll-chat-input-btn-voice button {
     background-color: var(--atoll-chat-btn-voice-bg, transparent) !important;
-    color: var(--atoll-chat-btn-voice-color, inherit) !important;
+    color: var(--atoll-chat-text-secondary) !important;
     border-color: transparent !important;
 
     atoll-icon {
-      color: var(--atoll-chat-btn-voice-color, inherit) !important;
+      color: var(--atoll-chat-text-secondary) !important;
     }
   }
 
@@ -71,7 +71,7 @@ atoll-chat-voice-recorder {
   }
 
   .atoll-chat-input-btn-discard {
-    color: var(--atoll-chat-btn-voice-color, var(--atoll-chat-input-color)) !important;
+    color: var(--atoll-chat-text-secondary) !important;
     
     &:hover {
       background-color: rgba(255, 255, 255, 0.1) !important;
@@ -80,11 +80,11 @@ atoll-chat-voice-recorder {
 
   .atoll-chat-recording-controls {
     background-color: var(--atoll-chat-input-bg, var(--bs-body-bg)) !important;
-    border: 1px solid var(--atoll-chat-input-container-border, var(--bs-border-color)) !important;
+    border: 1px solid var(--atoll-chat-border) !important;
     color: var(--atoll-chat-input-color) !important;
 
     .atoll-chat-recording-btn-pause-resume button {
-      background-color: var(--atoll-chat-waveform-active, var(--bs-primary)) !important;
+      background-color: var(--atoll-chat-accent, var(--bs-primary)) !important;
       color: var(--atoll-chat-bubble-sent-color, #ffffff) !important;
       border-color: transparent !important;
 
@@ -100,7 +100,7 @@ atoll-chat-voice-recorder {
 
     .atoll-chat-recording-btn-redo,
     .atoll-chat-recording-btn-resume {
-      color: var(--atoll-chat-btn-voice-color, var(--atoll-chat-input-color)) !important;
+      color: var(--atoll-chat-text-secondary) !important;
       
       &:hover {
         background-color: rgba(255, 255, 255, 0.1) !important;
