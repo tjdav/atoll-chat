@@ -1,35 +1,56 @@
 .atoll-chat-attachment-preview {
-  --atoll-chat-attachment-tile-size: 64px;
+  --atoll-chat-attachment-tile-size: 52px;
+
+  height: 60px;
+  max-height: 60px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  transition: max-height 180ms ease-out, opacity 180ms ease-out;
 
   background-color: var(--atoll-chat-attachment-card-bg, var(--#{$prefix}bg-surface-tertiary, #EEEEEE)) !important;
   border: 1px solid var(--atoll-chat-attachment-card-border, var(--#{$prefix}border-color-translucent, rgba(0, 0, 0, 0.08))) !important;
   backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
   -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
+  border-radius: var(--#{$prefix}border-radius-lg, 12px) !important;
+  padding: 4px 8px;
 
   .atoll-chat-attachment-reel {
     display: flex;
-    gap: 0.5rem;
+    flex-direction: row;
+    gap: 8px;
     align-items: center;
     overflow-x: auto;
     overflow-y: hidden;
     scrollbar-width: thin;
+    height: 100%;
+    width: 100%;
 
     &::-webkit-scrollbar {
       height: 4px;
     }
   }
 
+  .atoll-chat-attachment-items {
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  /* Media Card Thumbnail Styling */
   .atoll-chat-attachment-tile {
-    width: var(--atoll-chat-attachment-tile-size);
-    height: var(--atoll-chat-attachment-tile-size);
-    min-width: var(--atoll-chat-attachment-tile-size);
-    min-height: var(--atoll-chat-attachment-tile-size);
-    max-width: var(--atoll-chat-attachment-tile-size);
-    max-height: var(--atoll-chat-attachment-tile-size);
-    border-radius: var(--#{$prefix}border-radius-lg, 12px) !important;
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    min-height: 52px;
+    max-width: 52px;
+    max-height: 52px;
+    border-radius: 8px !important;
     position: relative;
     overflow: hidden;
     flex-shrink: 0;
+    background-color: var(--#{$prefix}dark-bg-subtle, #1E1E1E);
 
     img {
       width: 100%;
@@ -39,50 +60,196 @@
     }
   }
 
-  .atoll-chat-attachment-add-more {
-    width: var(--atoll-chat-attachment-tile-size);
-    height: var(--atoll-chat-attachment-tile-size);
-    min-width: var(--atoll-chat-attachment-tile-size);
-    min-height: var(--atoll-chat-attachment-tile-size);
-    border-radius: var(--#{$prefix}border-radius-lg, 12px) !important;
-    border: 1px dashed var(--atoll-chat-attachment-card-border, var(--#{$prefix}border-color-translucent, rgba(0, 0, 0, 0.08))) !important;
-    transition: background-color 0.15s ease, border-color 0.15s ease;
+  /* Video Badge Indicator (bottom-left) */
+  .atoll-chat-tile-video-badge {
+    position: absolute;
+    bottom: 3px;
+    left: 3px;
+    z-index: 8;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    color: #ffffff;
+    border-radius: 4px;
+    padding: 1px 4px;
+    font-size: 0.65rem;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  /* Custom Cover Trigger Badge (bottom-right) */
+  .atoll-chat-tile-cover-btn {
+    position: absolute;
+    bottom: 3px;
+    right: 3px;
+    z-index: 8;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(4px);
+    color: #ffffff;
+    border: none !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    font-size: 0;
+    overflow: hidden;
 
     &:hover {
-      background-color: rgba(var(--#{$prefix}body-color-rgb, 0, 0, 0), 0.05);
+      background: rgba(0, 0, 0, 0.85);
+      color: #ffffff;
+    }
+
+    &.is-custom {
+      background: rgba(220, 53, 69, 0.85);
+
+      &:hover {
+        background: rgba(220, 53, 69, 1);
+      }
     }
   }
 
-  .atoll-chat-attachment-chip {
-    height: var(--atoll-chat-attachment-tile-size);
-    max-width: 220px;
-    border-radius: var(--#{$prefix}border-radius-lg, 12px) !important;
-  }
-
+  /* Close/Remove Badge on Media Cards (top-right) */
   .atoll-chat-tile-remove-btn {
-    width: 22px;
-    height: 22px;
+    position: absolute;
     top: 3px;
     right: 3px;
-    z-index: 10;
-    background-color: rgba(0, 0, 0, 0.65) !important;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65) !important;
     backdrop-filter: blur(4px);
+    color: #ffffff !important;
     border: none !important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 10;
+    cursor: pointer;
+    padding: 0;
 
     &:hover {
       background-color: rgba(0, 0, 0, 0.85) !important;
     }
   }
 
-  /* Legacy aliases for backward compatibility */
+  /* Document Pill Styling */
+  .atoll-chat-attachment-chip {
+    height: 48px;
+    min-width: 180px;
+    max-width: 220px;
+    border-radius: 10px !important;
+    padding: 4px 8px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    background-color: var(--atoll-chat-attachment-pill-bg, rgba(0, 0, 0, 0.04));
+    border: 1px solid var(--atoll-chat-attachment-card-border, var(--#{$prefix}border-color-translucent, rgba(0, 0, 0, 0.08)));
+
+    .atoll-chip-icon-wrapper {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .atoll-chip-text-stack {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-width: 0;
+      flex: 1;
+      line-height: 1.2;
+    }
+
+    .atoll-chip-filename {
+      font-size: 0.8rem;
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--atoll-chat-text-primary, inherit);
+    }
+
+    .atoll-chip-subtext {
+      font-size: 0.7rem;
+      color: var(--atoll-chat-text-muted, var(--#{$prefix}secondary-color, #767676));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .atoll-chip-remove-btn {
+      flex-shrink: 0;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--atoll-chat-text-muted, #767676);
+      cursor: pointer;
+      padding: 0;
+
+      &:hover {
+        background-color: rgba(0, 0, 0, 0.08);
+        color: var(--atoll-chat-text-primary, #111111);
+      }
+    }
+  }
+
+  /* "Add More" Trailing Tile */
+  .atoll-chat-attachment-add-more {
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    min-height: 52px;
+    max-width: 52px;
+    max-height: 52px;
+    border: 1px dashed var(--atoll-border-color, var(--#{$prefix}border-color, rgba(0, 0, 0, 0.2)));
+    border-radius: 8px !important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease, border-color 0.15s ease;
+    background: transparent;
+    padding: 0;
+    color: var(--atoll-chat-text-secondary, #525252);
+
+    &:hover {
+      background-color: rgba(var(--#{$prefix}body-color-rgb, 0, 0, 0), 0.05);
+      border-color: var(--atoll-chat-accent, #06C755);
+      color: var(--atoll-chat-accent, #06C755);
+    }
+
+    .atoll-add-more-counter {
+      font-size: 0.625rem;
+      font-weight: 600;
+      margin-top: 1px;
+      line-height: 1;
+    }
+  }
+
+  /* Legacy aliases and compatibility classes */
   .atoll-chat-attachment-preview-thumbnail-container {
-    width: var(--atoll-chat-attachment-tile-size);
-    height: var(--atoll-chat-attachment-tile-size);
-    min-width: var(--atoll-chat-attachment-tile-size);
-    min-height: var(--atoll-chat-attachment-tile-size);
-    max-width: var(--atoll-chat-attachment-tile-size);
-    max-height: var(--atoll-chat-attachment-tile-size);
-    border-radius: var(--#{$prefix}border-radius-lg, 12px) !important;
+    width: 52px;
+    height: 52px;
+    min-width: 52px;
+    min-height: 52px;
+    max-width: 52px;
+    max-height: 52px;
+    border-radius: 8px !important;
     position: relative;
     overflow: hidden;
     flex-shrink: 0;
@@ -107,13 +274,13 @@
   }
 
   .atoll-chat-attachment-preview-text-max-width {
-    max-width: 250px;
+    max-width: 220px;
   }
 
   .atoll-chat-attachment-preview-progress {
-    height: 6px;
+    height: 4px;
     width: 100%;
-    max-width: 250px;
+    max-width: 220px;
   }
 
   .atoll-chat-attachment-preview-name {

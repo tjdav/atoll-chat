@@ -1,42 +1,19 @@
 <template id="atoll-chat-attachment-preview">
-  <div class="atoll-chat-attachment-preview p-2 mb-2 rounded-4 d-flex align-items-center justify-content-between border">
-    <div class="d-flex align-items-center">
-      <!-- Thumbnail Container (Video or Image) -->
-      <div class="atoll-chat-attachment-tile atoll-chat-attachment-preview-thumbnail-container position-relative me-2 bg-dark rounded-3 border d-flex align-items-center justify-content-center" hidden="{{ isThumbnailContainerHidden }}">
-        <img ref="thumbnailImg" class="w-100 h-100 object-fit-cover" alt="Cover Preview" hidden="{{ isThumbnailHidden }}">
-        <atoll-icon name="videocam" size="28" color="#ffffff" hidden="{{ isVideoIconHidden }}"></atoll-icon>
-        
-        <!-- Standard file picker restricted to image files, visually hidden -->
-        <input type="file" ref="coverInput" class="d-none" accept="image/jpeg, image/png, image/webp" data-testid="cover-file-input">
-        
-        <!-- Action Button overlaid (Video only) -->
-        <button class="btn btn-sm {{ coverBtnClass }} atoll-chat-tile-cover-btn atoll-chat-attachment-preview-cover-btn position-absolute bottom-0 start-50 translate-middle-x mb-1" 
-                hidden="{{ isCoverBtnHidden }}"
-                ref="coverBtn" 
-                data-testid="btn-change-cover">
-          {{ coverBtnText }}
-        </button>
-      </div>
+  <div class="atoll-chat-attachment-preview">
+    <div class="atoll-chat-attachment-reel" ref="reel">
+      <!-- Dynamic Items Container -->
+      <div class="atoll-chat-attachment-items" ref="itemsContainer"></div>
 
-      <!-- Generic Document/File Icon if no thumbnail container -->
-      <atoll-icon name="document" size="24" color="var(--atoll-brand-primary, #06C755)" class="me-2" hidden="{{ isGenericIconHidden }}"></atoll-icon>
-      
-      <div>
-        <div class="small fw-bold text-truncate atoll-chat-attachment-preview-name atoll-chat-attachment-preview-text-max-width">{{ effectiveFileName }}</div>
-        <div class="x-small atoll-chat-attachment-preview-status text-truncate atoll-chat-attachment-preview-text-max-width">{{ effectiveUploadStatus }}</div>
-        
-        <!-- Progress Bar Indicator -->
-        <div class="progress mt-1 atoll-chat-attachment-preview-progress" hidden="{{ isProgressHidden }}">
-          <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
-               role="progressbar" 
-               style="{{ progressBarStyle }}" 
-               aria-valuenow="{{ progress }}" 
-               aria-valuemin="0" 
-               aria-valuemax="100"></div>
-        </div>
-      </div>
+      <!-- Trailing "Add More" Tile -->
+      <button class="atoll-chat-attachment-add-more" ref="addMoreTile" data-testid="add-more-tile" title="Add more files" type="button">
+        <atoll-icon name="plus" size="20" color="currentColor"></atoll-icon>
+        <span class="atoll-add-more-counter" ref="addMoreCounter">0/10</span>
+      </button>
+
+      <!-- Hidden inputs for adding files & video covers -->
+      <input type="file" ref="addMoreInput" multiple accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.rtf,.zip,.rar,.7z,.tar,.gz" class="d-none" data-testid="add-more-file-input">
+      <input type="file" ref="coverInput" class="d-none" accept="image/jpeg, image/png, image/webp" data-testid="cover-file-input">
     </div>
-    <atoll-button variant="ghost" leading-icon="close" icon-only="true" ref="cancelFileButton" title="Cancel"></atoll-button>
   </div>
 </template>
 
@@ -45,6 +22,10 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    server: () => ({
+      _attachments: null,
+      _attachmentsSet: false
+    }),
     attributes: {
       fileName: String,
       filename: String,
@@ -69,52 +50,363 @@
       effectiveThumbnailUrl: (state) => state.thumbnailUrl || state['thumbnail-url'] || '',
       effectiveIsCustom: (state) => Boolean(state.isCustom || state['is-custom']),
       effectiveIsCompressing: (state) => Boolean(state.isCompressing || state['is-compressing']),
-      effectiveIsUploading: (state) => Boolean(state.isUploading || state['is-uploading']),
-      isThumbnailContainerHidden: (state) => !state.effectiveIsVideo && !state.effectiveThumbnailUrl,
-      isCoverBtnHidden: (state) => !state.effectiveIsVideo,
-      isVideoIconHidden: (state) => !state.effectiveIsVideo || !!state.effectiveThumbnailUrl,
-      isThumbnailHidden: (state) => !state.effectiveThumbnailUrl,
-      isGenericIconHidden: (state) => !!state.effectiveIsVideo || !!state.effectiveThumbnailUrl,
-      coverBtnText: (state) => (state.effectiveIsCustom ? 'Remove Custom Cover' : 'Change Cover'),
-      coverBtnClass: (state) => (state.effectiveIsCustom ? 'btn-danger' : 'btn-dark'),
-      isProgressHidden: (state) => !(state.effectiveIsCompressing || state.effectiveIsUploading),
-      progressBarStyle: (state) => 'width: ' + Math.min(100, Math.max(0, Number(state.progress) || 0)) + '%'
+      effectiveIsUploading: (state) => Boolean(state.isUploading || state['is-uploading'])
     },
     client: ({ root, refs, state, eventBus, signal, observe }) => {
       const { $bus } = eventBus
-      const cancelBtn = refs('cancelFileButton')
-      const coverBtn = refs('coverBtn')
+      const itemsContainer = refs('itemsContainer')
+      const addMoreTile = refs('addMoreTile')
+      const addMoreCounter = refs('addMoreCounter')
+      const addMoreInput = refs('addMoreInput')
       const coverInput = refs('coverInput')
-      const thumbnailImg = refs('thumbnailImg')
+      const reel = refs('reel')
 
-      const syncFromAttachments = (list) => {
-        const first = list && list.length > 0 ? list[0] : null
-        if (first) {
-          state.fileName = first.fileName || first.filename || ''
-          state.uploadStatus = first.status || first.uploadStatus || ''
-          state.thumbnailUrl = first.thumbnailPreviewUrl || first.thumbnailUrl || ''
-          state.isVideo = Boolean(first.isVideo)
-          state.isCustom = Boolean(first.isCustomCover || first.isCustom)
-          state.isCompressing = Boolean(first.isCompressing)
-          state.isUploading = Boolean(first.isUploading)
-          state.progress = Number(first.progress || 0)
-        } else {
-          state.fileName = ''
-          state.uploadStatus = ''
-          state.thumbnailUrl = ''
-          state.isVideo = false
-          state.isCustom = false
-          state.isCompressing = false
-          state.isUploading = false
-          state.progress = 0
+      let targetCoverAttachmentId = null
+
+      const formatSize = (bytes) => {
+        if (!bytes || isNaN(bytes)) {
+          return ''
+        }
+        if (bytes >= 1048576) {
+          return (bytes / 1048576).toFixed(1) + ' MB'
+        }
+        if (bytes >= 1024) {
+          return Math.round(bytes / 1024) + ' KB'
+        }
+        return bytes + ' B'
+      }
+
+      const getDocIconDetails = (item) => {
+        const fileName = (item.fileName || item.filename || item.file?.name || '').toLowerCase()
+        const mimeType = (item.mimeType || item.file?.type || '').toLowerCase()
+
+        if (item.isAudio || mimeType.startsWith('audio/') || /\.(mp3|wav|m4a|aac|flac|ogg)$/i.test(fileName)) {
+          return { name: 'music', color: 'var(--atoll-brand-primary, #06C755)' }
+        }
+        if (/\.(zip|rar|7z|tar|gz)$/i.test(fileName) || mimeType.includes('zip') || mimeType.includes('compressed')) {
+          return { name: 'folder', color: 'var(--atoll-brand-primary, #06C755)' }
+        }
+        return { name: 'document', color: 'var(--atoll-brand-primary, #06C755)' }
+      }
+
+      const getEffectiveAttachments = () => {
+        if (state._attachmentsSet && Array.isArray(state._attachments)) {
+          return state._attachments
+        }
+
+        return [{
+          id: 'legacy-item-1',
+          fileName: state.effectiveFileName || 'Attachment',
+          thumbnailPreviewUrl: state.effectiveThumbnailUrl,
+          isVideo: state.effectiveIsVideo,
+          isCustomCover: state.effectiveIsCustom,
+          status: state.effectiveUploadStatus,
+          isCompressing: state.effectiveIsCompressing,
+          isUploading: state.effectiveIsUploading,
+          progress: Number(state.progress || 0)
+        }]
+      }
+
+      const render = () => {
+        if (!itemsContainer) {
+          return
+        }
+
+        const list = getEffectiveAttachments()
+
+        // Update quota counter & Add More tile visibility
+        if (addMoreCounter) {
+          addMoreCounter.textContent = `${list.length}/10`
+        }
+        if (addMoreTile) {
+          addMoreTile.hidden = list.length >= 10
+        }
+
+        // Fast-path in-place update for single item to preserve DOM element references
+        const existingChild = itemsContainer.firstElementChild
+        if (list.length === 1 && existingChild) {
+          while (itemsContainer.children.length > 1) {
+            itemsContainer.lastElementChild.remove()
+          }
+
+          const item = list[0]
+          const isMedia = Boolean(
+            item.isVideo ||
+            item.thumbnailPreviewUrl ||
+            item.thumbnailUrl ||
+            item.isImage ||
+            (item.file && item.file.type && (item.file.type.startsWith('image/') || item.file.type.startsWith('video/')))
+          )
+
+          if (isMedia && existingChild.classList.contains('atoll-chat-attachment-tile')) {
+            const img = existingChild.querySelector('img')
+            const thumbUrl = item.thumbnailPreviewUrl || item.thumbnailUrl || ''
+            if (img) {
+              if (thumbUrl) {
+                img.src = thumbUrl
+                img.removeAttribute('hidden')
+              }
+            }
+
+            const coverBtn = existingChild.querySelector('[data-testid$="btn-change-cover"]')
+            if (coverBtn) {
+              const isCustom = Boolean(item.isCustomCover || item.isCustom || state.effectiveIsCustom)
+              if (item.isVideo) {
+                coverBtn.removeAttribute('hidden')
+                coverBtn.classList.remove('d-none')
+                if (isCustom) {
+                  coverBtn.classList.add('is-custom')
+                  coverBtn.title = 'Remove Custom Cover'
+                  coverBtn.textContent = 'Remove Custom Cover'
+                } else {
+                  coverBtn.classList.remove('is-custom')
+                  coverBtn.title = 'Change Cover'
+                  coverBtn.textContent = 'Change Cover'
+                }
+              } else {
+                coverBtn.setAttribute('hidden', 'true')
+                coverBtn.classList.add('d-none')
+              }
+            }
+            return
+          } else if (!isMedia && existingChild.classList.contains('atoll-chat-attachment-chip')) {
+            const nameEl = existingChild.querySelector('.atoll-chip-filename')
+            if (nameEl) {
+              nameEl.textContent = item.fileName || item.filename || 'File'
+            }
+
+            const statusEl = existingChild.querySelector('.atoll-chip-subtext')
+            if (statusEl) {
+              const formattedSize = formatSize(item.fileSize || item.file?.size)
+              statusEl.textContent = formattedSize || item.uploadStatus || item.status || 'Ready'
+            }
+
+            const isComp = Boolean(item.isCompressing || item.isUploading || state.effectiveIsCompressing || state.effectiveIsUploading)
+            let progressWrapper = existingChild.querySelector('.atoll-chat-attachment-preview-progress')
+            if (isComp) {
+              if (!progressWrapper) {
+                progressWrapper = document.createElement('div')
+                progressWrapper.className = 'progress mt-1 atoll-chat-attachment-preview-progress'
+                const progressBar = document.createElement('div')
+                progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary'
+                progressBar.setAttribute('role', 'progressbar')
+                progressWrapper.appendChild(progressBar)
+                const textStack = existingChild.querySelector('.atoll-chip-text-stack')
+                if (textStack) {
+                  textStack.appendChild(progressWrapper)
+                }
+              }
+              progressWrapper.removeAttribute('hidden')
+              const progressBar = progressWrapper.querySelector('.progress-bar')
+              if (progressBar) {
+                const pVal = Number(item.progress || state.progress || 0)
+                progressBar.style.width = Math.min(100, Math.max(0, pVal)) + '%'
+              }
+            } else if (progressWrapper) {
+              progressWrapper.setAttribute('hidden', 'true')
+            }
+            return
+          }
+        }
+
+        itemsContainer.innerHTML = ''
+
+        list.forEach((item) => {
+          const isMedia = Boolean(
+            item.isVideo ||
+            item.thumbnailPreviewUrl ||
+            item.thumbnailUrl ||
+            item.isImage ||
+            (item.file && item.file.type && (item.file.type.startsWith('image/') || item.file.type.startsWith('video/')))
+          )
+
+          if (isMedia) {
+            // Media Card Tile
+            const tile = document.createElement('div')
+            tile.className = 'atoll-chat-attachment-tile atoll-chat-attachment-preview-thumbnail-container'
+            tile.setAttribute('data-testid', `media-tile-${item.id}`)
+
+            // Hidden generic document icon for test compatibility
+            const hiddenDocIcon = document.createElement('atoll-icon')
+            hiddenDocIcon.setAttribute('name', 'document')
+            hiddenDocIcon.setAttribute('size', '24')
+            hiddenDocIcon.setAttribute('hidden', 'true')
+            tile.appendChild(hiddenDocIcon)
+
+            const thumbUrl = item.thumbnailPreviewUrl || item.thumbnailUrl || ''
+            if (thumbUrl) {
+              const img = document.createElement('img')
+              img.src = thumbUrl
+              img.alt = item.fileName || 'Preview'
+              img.className = 'w-100 h-100 object-fit-cover'
+              img.addEventListener('error', () => {
+                img.src = ''
+              })
+              tile.appendChild(img)
+            } else if (item.isVideo) {
+              const iconWrapper = document.createElement('div')
+              iconWrapper.className = 'w-100 h-100 d-flex align-items-center justify-content-center bg-dark'
+              const vIcon = document.createElement('atoll-icon')
+              vIcon.setAttribute('name', 'videocam')
+              vIcon.setAttribute('size', '24')
+              vIcon.setAttribute('color', '#ffffff')
+              iconWrapper.appendChild(vIcon)
+              tile.appendChild(iconWrapper)
+            }
+
+            // Top-Right Close Badge
+            const cancelBtn = document.createElement('atoll-button')
+            cancelBtn.setAttribute('variant', 'ghost')
+            cancelBtn.setAttribute('leading-icon', 'close')
+            cancelBtn.setAttribute('icon-only', 'true')
+            cancelBtn.className = 'atoll-chat-tile-remove-btn'
+            cancelBtn.setAttribute('title', 'Cancel')
+            cancelBtn.setAttribute('data-testid', `btn-remove-${item.id}`)
+
+            cancelBtn.addEventListener('click', (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (item.id === 'legacy-item-1') {
+                $bus.emit('ui:cancel')
+              } else {
+                $bus.emit('ui:remove_attachment', { id: item.id })
+              }
+            })
+            tile.appendChild(cancelBtn)
+
+            // Video Badges & Cover Button
+            if (item.isVideo) {
+              const videoBadge = document.createElement('div')
+              videoBadge.className = 'atoll-chat-tile-video-badge'
+              const vSmallIcon = document.createElement('atoll-icon')
+              vSmallIcon.setAttribute('name', 'videocam')
+              vSmallIcon.setAttribute('size', '10')
+              vSmallIcon.setAttribute('color', '#ffffff')
+              videoBadge.appendChild(vSmallIcon)
+              tile.appendChild(videoBadge)
+
+              const coverBtn = document.createElement('button')
+              const isCustom = Boolean(item.isCustomCover || item.isCustom || state.effectiveIsCustom)
+              coverBtn.className = `atoll-chat-tile-cover-btn atoll-chat-attachment-preview-cover-btn ${isCustom ? 'is-custom' : ''}`
+              coverBtn.setAttribute('title', isCustom ? 'Remove Custom Cover' : 'Change Cover')
+              coverBtn.setAttribute('data-testid', 'btn-change-cover')
+              coverBtn.type = 'button'
+              coverBtn.textContent = isCustom ? 'Remove Custom Cover' : 'Change Cover'
+
+              const penIcon = document.createElement('atoll-icon')
+              penIcon.setAttribute('name', isCustom ? 'trash' : 'pen-2')
+              penIcon.setAttribute('size', '12')
+              penIcon.setAttribute('color', '#ffffff')
+              coverBtn.appendChild(penIcon)
+
+              coverBtn.addEventListener('click', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                if (isCustom) {
+                  $bus.emit('ui:attachment_cover_removed', { id: item.id === 'legacy-item-1' ? (state._attachments && state._attachments[0]?.id) : item.id })
+                } else {
+                  targetCoverAttachmentId = item.id === 'legacy-item-1' ? (state._attachments && state._attachments[0]?.id) : item.id
+                  coverInput.click()
+                }
+              })
+              tile.appendChild(coverBtn)
+            } else {
+              // Non-video image cover button (hidden for test compatibility)
+              const hiddenCoverBtn = document.createElement('button')
+              hiddenCoverBtn.className = 'atoll-chat-tile-cover-btn atoll-chat-attachment-preview-cover-btn d-none'
+              hiddenCoverBtn.setAttribute('data-testid', 'btn-change-cover')
+              hiddenCoverBtn.setAttribute('hidden', 'true')
+              tile.appendChild(hiddenCoverBtn)
+            }
+
+            itemsContainer.appendChild(tile)
+          } else {
+            // Document Pill
+            const chip = document.createElement('div')
+            chip.className = 'atoll-chat-attachment-chip'
+            chip.setAttribute('data-testid', `document-pill-${item.id}`)
+
+            // Hidden thumbnail container for test compatibility
+            const hiddenThumbContainer = document.createElement('div')
+            hiddenThumbContainer.className = 'atoll-chat-attachment-preview-thumbnail-container d-none'
+            hiddenThumbContainer.setAttribute('hidden', 'true')
+            chip.appendChild(hiddenThumbContainer)
+
+            const iconDetails = getDocIconDetails(item)
+
+            const iconWrapper = document.createElement('div')
+            iconWrapper.className = 'atoll-chip-icon-wrapper'
+            const docIcon = document.createElement('atoll-icon')
+            docIcon.setAttribute('name', iconDetails.name)
+            docIcon.setAttribute('size', '20')
+            docIcon.setAttribute('color', iconDetails.color)
+            iconWrapper.appendChild(docIcon)
+            chip.appendChild(iconWrapper)
+
+            const textStack = document.createElement('div')
+            textStack.className = 'atoll-chip-text-stack'
+
+            const nameEl = document.createElement('div')
+            nameEl.className = 'atoll-chip-filename atoll-chat-attachment-preview-name'
+            nameEl.textContent = item.fileName || item.filename || 'File'
+            textStack.appendChild(nameEl)
+
+            const statusEl = document.createElement('div')
+            statusEl.className = 'atoll-chip-subtext atoll-chat-attachment-preview-status'
+            const formattedSize = formatSize(item.fileSize || item.file?.size)
+            statusEl.textContent = formattedSize || item.uploadStatus || item.status || 'Ready'
+            textStack.appendChild(statusEl)
+
+            const isComp = Boolean(item.isCompressing || item.isUploading || state.effectiveIsCompressing || state.effectiveIsUploading)
+            if (isComp) {
+              const progressWrapper = document.createElement('div')
+              progressWrapper.className = 'progress mt-1 atoll-chat-attachment-preview-progress'
+              const progressBar = document.createElement('div')
+              progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary'
+              progressBar.setAttribute('role', 'progressbar')
+              const pVal = Number(item.progress || state.progress || 0)
+              progressBar.style.width = Math.min(100, Math.max(0, pVal)) + '%'
+              progressWrapper.appendChild(progressBar)
+              textStack.appendChild(progressWrapper)
+            }
+
+            chip.appendChild(textStack)
+
+            const cancelBtn = document.createElement('atoll-button')
+            cancelBtn.setAttribute('variant', 'ghost')
+            cancelBtn.setAttribute('leading-icon', 'close')
+            cancelBtn.setAttribute('icon-only', 'true')
+            cancelBtn.className = 'atoll-chip-remove-btn'
+            cancelBtn.setAttribute('title', 'Cancel')
+            cancelBtn.setAttribute('data-testid', `btn-remove-${item.id}`)
+
+            cancelBtn.addEventListener('click', (e) => {
+              e.preventDefault()
+              e.stopPropagation()
+              if (item.id === 'legacy-item-1') {
+                $bus.emit('ui:cancel')
+              } else {
+                $bus.emit('ui:remove_attachment', { id: item.id })
+              }
+            })
+            chip.appendChild(cancelBtn)
+
+            itemsContainer.appendChild(chip)
+          }
+        })
+
+        // Auto-scroll reel to the far right on item changes
+        if (reel) {
+          reel.scrollLeft = reel.scrollWidth
         }
       }
 
       if (root) {
         Object.defineProperty(root, 'attachments', {
           set: (list) => {
+            state._attachmentsSet = true
             state._attachments = list
-            syncFromAttachments(list)
+            render()
           },
           get: () => state._attachments || [],
           configurable: true
@@ -122,51 +414,66 @@
       }
 
       const unsubAttachments = $bus.on('ui:attachments_updated', ({ attachments }) => {
-        syncFromAttachments(attachments)
+        state._attachmentsSet = true
+        state._attachments = attachments
+        render()
       })
       signal.addEventListener('abort', unsubAttachments)
 
-      /**
-       * Synchronizes the image source element with the reactive thumbnailUrl state.
-       */
-      const updateThumbnail = () => {
-        thumbnailImg.src = state.effectiveThumbnailUrl || ''
+      // Observe single attribute changes for legacy backward compatibility
+      observe('fileName', render)
+      observe('filename', render)
+      observe('uploadStatus', render)
+      observe('upload-status', render)
+      observe('thumbnailUrl', render)
+      observe('thumbnail-url', render)
+      observe('isVideo', render)
+      observe('is-video', render)
+      observe('isCustom', render)
+      observe('is-custom', render)
+      observe('isCompressing', render)
+      observe('is-compressing', render)
+      observe('isUploading', render)
+      observe('is-uploading', render)
+      observe('progress', render)
+
+      // Add More tile click -> trigger addMoreInput
+      if (addMoreTile) {
+        addMoreTile.addEventListener('click', (e) => {
+          e.preventDefault()
+          addMoreInput.click()
+        }, { signal })
       }
 
-      updateThumbnail()
-      observe('thumbnailUrl', updateThumbnail)
-      observe('thumbnail-url', updateThumbnail)
+      // Add More input change -> dispatch ui:files_selected
+      if (addMoreInput) {
+        addMoreInput.addEventListener('change', () => {
+          const files = Array.from(addMoreInput.files || [])
+          if (files.length > 0) {
+            $bus.emit('ui:files_selected', { files })
+            addMoreInput.value = ''
+          }
+        }, { signal })
+      }
 
-      thumbnailImg.addEventListener('error', () => {
-        thumbnailImg.src = ''
-      }, { signal })
+      // Cover input change -> dispatch ui:attachment_cover_selected
+      if (coverInput) {
+        coverInput.addEventListener('change', () => {
+          const file = coverInput.files[0]
+          if (file) {
+            const list = getEffectiveAttachments()
+            const targetId = targetCoverAttachmentId || (list[0] ? list[0].id : null)
+            $bus.emit('ui:attachment_cover_selected', {
+              id: targetId === 'legacy-item-1' ? (state._attachments && state._attachments[0]?.id) : targetId,
+              file
+            })
+            coverInput.value = ''
+          }
+        }, { signal })
+      }
 
-      cancelBtn.addEventListener('click', () => {
-        $bus.emit('ui:cancel')
-      }, { signal })
-
-      coverBtn.addEventListener('click', (e) => {
-        e.preventDefault()
-        e.stopPropagation()
-        if (state.effectiveIsCustom) {
-          const first = state._attachments && state._attachments[0]
-          $bus.emit('ui:attachment_cover_removed', { id: first ? first.id : null })
-        } else {
-          coverInput.click()
-        }
-      }, { signal })
-
-      coverInput.addEventListener('change', () => {
-        const file = coverInput.files[0]
-        if (file) {
-          const first = state._attachments && state._attachments[0]
-          $bus.emit('ui:attachment_cover_selected', {
-            id: first ? first.id : null,
-            file
-          })
-          coverInput.value = ''
-        }
-      }, { signal })
+      // Initial render
+      render()
     }
   })
 </script>

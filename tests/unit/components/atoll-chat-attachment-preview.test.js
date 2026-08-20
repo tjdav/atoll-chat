@@ -74,7 +74,7 @@ describe('Atoll Chat Attachment Preview Component', () => {
     assert.equal(img.hasAttribute('hidden'), false)
     assert.ok(img.src.includes('mock-image-blob'))
 
-    const coverBtn = el.querySelector('[data-testid="btn-change-cover"]')
+    const coverBtn = el.querySelector('[data-testid$="btn-change-cover"]')
     assert.ok(coverBtn)
     assert.equal(coverBtn.hasAttribute('hidden'), true, 'Change cover button should be hidden for image attachments')
 
@@ -97,7 +97,7 @@ describe('Atoll Chat Attachment Preview Component', () => {
     assert.ok(thumbContainer)
     assert.equal(thumbContainer.hasAttribute('hidden'), false)
 
-    const coverBtn = el.querySelector('[data-testid="btn-change-cover"]')
+    const coverBtn = el.querySelector('[data-testid$="btn-change-cover"]')
     assert.ok(coverBtn)
     assert.equal(coverBtn.hasAttribute('hidden'), false, 'Change cover button should be visible for videos')
     assert.ok(coverBtn.classList.contains('atoll-chat-tile-cover-btn'), 'Cover button should include atoll-chat-tile-cover-btn class')
@@ -157,5 +157,155 @@ describe('Atoll Chat Attachment Preview Component', () => {
 
     img.dispatchEvent(new Event('error'))
     assert.equal(img.getAttribute('src'), '')
+  })
+
+  test('should render multiple attachments (media cards and document pills) using attachments property', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      {
+        id: 'item-1',
+        fileName: 'photo.png',
+        isImage: true,
+        thumbnailPreviewUrl: 'blob:http://localhost/photo-blob'
+      },
+      {
+        id: 'item-2',
+        fileName: 'report.pdf',
+        fileSize: 2097152
+      }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const mediaTile = el.querySelector('[data-testid$="media-tile-item-1"]')
+    assert.ok(mediaTile, 'Media card tile should be rendered')
+
+    const docPill = el.querySelector('[data-testid$="document-pill-item-2"]')
+    assert.ok(docPill, 'Document pill should be rendered')
+
+    const sizeSubtext = docPill.querySelector('.atoll-chip-subtext')
+    assert.ok(sizeSubtext)
+    assert.equal(sizeSubtext.textContent.trim(), '2.0 MB')
+
+    const counter = el.querySelector('.atoll-add-more-counter')
+    assert.ok(counter)
+    assert.equal(counter.textContent.trim(), '2/10')
+  })
+
+  test('should hide Add More tile when attachments quota reaches 10', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const tenItems = Array.from({ length: 10 }, (_, i) => ({
+      id: `item-${i}`,
+      fileName: `file-${i}.txt`,
+      fileSize: 1024
+    }))
+
+    el.attachments = tenItems
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const addMoreTile = el.querySelector('[data-testid$="add-more-tile"]')
+    assert.ok(addMoreTile)
+    assert.equal(addMoreTile.hidden, true, 'Add More tile should be hidden when quota is 10')
+
+    const counter = el.querySelector('.atoll-add-more-counter')
+    assert.equal(counter.textContent.trim(), '10/10')
+  })
+
+  test('should emit ui:files_selected on Add More file input change', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const addMoreInput = el.querySelector('[data-testid$="add-more-file-input"]')
+    assert.ok(addMoreInput)
+
+    const testFile = new File(['test content'], 'sample.pdf', { type: 'application/pdf' })
+    Object.defineProperty(addMoreInput, 'files', {
+      value: [testFile],
+      configurable: true
+    })
+
+    addMoreInput.dispatchEvent(new Event('change'))
+
+    const emitted = emittedEvents.find(e => e.event === 'ui:files_selected')
+    assert.ok(emitted, 'ui:files_selected event should be emitted on $bus')
+    assert.equal(emitted.payload.files.length, 1)
+    assert.equal(emitted.payload.files[0].name, 'sample.pdf')
+  })
+
+  test('should emit ui:remove_attachment when close button is clicked on multi-attachment item', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      {
+        id: 'att-101',
+        fileName: 'doc1.pdf'
+      },
+      {
+        id: 'att-102',
+        fileName: 'doc2.pdf'
+      }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const removeBtn = el.querySelector('[data-testid$="btn-remove-att-101"]')
+    assert.ok(removeBtn)
+
+    const innerBtn = removeBtn.querySelector('button') || removeBtn
+    innerBtn.click()
+
+    const emitted = emittedEvents.find(e => e.event === 'ui:remove_attachment')
+    assert.ok(emitted, 'ui:remove_attachment event should be emitted on $bus')
+    assert.equal(emitted.payload.id, 'att-101')
+  })
+
+  test('should emit ui:attachment_cover_selected when selecting cover for video item', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      {
+        id: 'vid-01',
+        isVideo: true,
+        fileName: 'my-video.mp4'
+      }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const coverInput = el.querySelector('[data-testid$="cover-file-input"]')
+    assert.ok(coverInput)
+
+    const coverFile = new File(['cover img'], 'cover.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(coverInput, 'files', {
+      value: [coverFile],
+      configurable: true
+    })
+
+    const coverBtn = el.querySelector('[data-testid$="btn-change-cover"]')
+    assert.ok(coverBtn)
+    coverBtn.click()
+
+    coverInput.dispatchEvent(new Event('change'))
+
+    const emitted = emittedEvents.find(e => e.event === 'ui:attachment_cover_selected')
+    assert.ok(emitted, 'ui:attachment_cover_selected event should be emitted on $bus')
+    assert.equal(emitted.payload.id, 'vid-01')
+    assert.equal(emitted.payload.file.name, 'cover.jpg')
   })
 })
