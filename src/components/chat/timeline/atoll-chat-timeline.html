@@ -857,7 +857,7 @@
                                    container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${jumpId}"]`)
                   if (targetEl) {
                     targetEl.scrollIntoView({
-                      behavior: 'smooth',
+                      behavior: 'auto',
                       block: 'center'
                     })
                     $state.isJumpingToMessage = false
@@ -869,7 +869,7 @@
                                       container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${jumpId}"]`)
                       if (retryEl) {
                         retryEl.scrollIntoView({
-                          behavior: 'smooth',
+                          behavior: 'auto',
                           block: 'center'
                         })
                       }
@@ -882,9 +882,9 @@
               }
             } else {
               shouldAutoScroll = true
-              requestAnimationFrame(() => scrollToBottom())
+              requestAnimationFrame(() => scrollToBottom(false))
               // Extra safety for media that might load instantly from cache
-              setTimeout(() => scrollToBottom(), 100)
+              setTimeout(() => scrollToBottom(false), 100)
             }
           } else if (forceScrollToBottom || wasNearBottom) {
             shouldAutoScroll = true
@@ -1017,7 +1017,7 @@
 
       $bus.on('room:select', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId && !$state.isJumpingToMessage) {
-          scrollToBottom(true)
+          scrollToBottom(false)
         }
       })
 
