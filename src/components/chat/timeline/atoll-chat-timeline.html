@@ -1,12 +1,12 @@
 <template id="atoll-chat-timeline">
   <div ref="timelineContainer" class="atoll-chat-timeline-container flex-grow-1 overflow-auto p-3 d-flex flex-column h-100">
-    <div class="mt-auto text-center p-5" ref="emptyState">
+    <div class="mt-auto text-center p-5 atoll-chat-empty-state" ref="emptyState">
       <atoll-icon name="shield-lock" size="xl" class="mb-3 d-block"></atoll-icon>
       <p>Messages are end-to-end encrypted. No one outside of this chat, not even Atoll, can read them.</p>
     </div>
     <div ref="statusContainer" class="container atoll-chat-message-status-container d-none text-endatoll-chat-header-border px-2 py-1 align-items-center justify-content-end">
-      <span ref="statusText" class="x-small me-1" style="color: var(--atoll-chat-sent-status-color, #595959) !important;" data-testid="status-text"></span>
-      <atoll-icon ref="statusIcon" name="check-circle" size="xs" color="var(--atoll-chat-sent-status-color)"></atoll-icon>
+      <span ref="statusText" class="x-small me-1" style="color: var(--atoll-chat-text-muted, #525252) !important;" data-testid="status-text"></span>
+      <atoll-icon ref="statusIcon" name="check-circle" size="xs" color="var(--atoll-chat-text-muted)"></atoll-icon>
     </div>
     <div ref="bottomSentinel" style="height: 1px; width: 100%; pointer-events: none; opacity: 0;"></div>
   </div>
