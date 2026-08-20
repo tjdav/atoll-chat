@@ -36,6 +36,7 @@ Manage user interface states, modals, and notifications.
 | `ui:trigger_kick_user` | Triggers the flow to remove a user from a group. | `{ room_id, user_id }` |
 | `ui:close_room_details` | Closes the room information sidebar. | None |
 | `ui:media_loaded` | Notifies the timeline that an asset (image/video) has finished loading. | None |
+| `ui:input_height_changed` | Emitted when the chat input container height changes, signaling the timeline padding and pinning state to update. | None |
 | `ui:voice_ready` | Emitted when a voice recording is captured and ready to send. | `{ blob, duration, waveform }` |
 | `ui:voice_discarded` | Emitted when a voice recording is cancelled. | None |
 | `ui:cancel` | Generic UI cancellation event. | None |
