@@ -58,6 +58,73 @@
       object-fit: cover;
       display: block;
     }
+
+    &.has-error {
+      cursor: pointer;
+      border: 1px solid rgba(220, 53, 69, 0.8) !important;
+    }
+  }
+
+  /* Processing Overlay on Media Cards */
+  .atoll-chat-tile-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    background: rgba(0, 0, 0, 0.55);
+    backdrop-filter: blur(2px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    pointer-events: none;
+
+    .atoll-chat-tile-progress-text {
+      font-size: 0.625rem;
+      font-weight: 700;
+      line-height: 1;
+    }
+  }
+
+  /* Error Overlay on Media Cards */
+  .atoll-chat-tile-error-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 7;
+    background: rgba(220, 53, 69, 0.75);
+    backdrop-filter: blur(2px);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: #ffffff;
+    padding: 2px;
+    text-align: center;
+
+    .atoll-chat-tile-error-badge {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ffffff;
+      color: #dc3545;
+      font-weight: 800;
+      font-size: 0.75rem;
+      line-height: 18px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .atoll-chat-tile-error-msg {
+      font-size: 0.55rem;
+      font-weight: 600;
+      line-height: 1.1;
+      max-width: 48px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-top: 1px;
+    }
   }
 
   /* Video Badge Indicator (bottom-left) */
@@ -151,6 +218,12 @@
     flex-shrink: 0;
     background-color: var(--atoll-chat-attachment-pill-bg, rgba(0, 0, 0, 0.04));
     border: 1px solid var(--atoll-chat-attachment-card-border, var(--#{$prefix}border-color-translucent, rgba(0, 0, 0, 0.08)));
+
+    &.has-error {
+      cursor: pointer;
+      border-color: rgba(220, 53, 69, 0.6) !important;
+      background-color: rgba(220, 53, 69, 0.05) !important;
+    }
 
     .atoll-chip-icon-wrapper {
       display: flex;

@@ -120,21 +120,16 @@
           return
         }
 
-        if (attachment.thumbnailPreviewUrl && typeof attachment.thumbnailPreviewUrl === 'string' && attachment.thumbnailPreviewUrl.startsWith('blob:')) {
-          try {
-            URL.revokeObjectURL(attachment.thumbnailPreviewUrl)
-          } catch {
+        const keysToRevoke = ['thumbnailPreviewUrl', 'blobUrl', 'customCoverUrl', 'previewUrl']
+        keysToRevoke.forEach(key => {
+          if (attachment[key] && typeof attachment[key] === 'string' && attachment[key].startsWith('blob:')) {
+            try {
+              URL.revokeObjectURL(attachment[key])
+            } catch {
+            }
+            attachment[key] = null
           }
-          attachment.thumbnailPreviewUrl = null
-        }
-  
-        if (attachment.blobUrl && typeof attachment.blobUrl === 'string' && attachment.blobUrl.startsWith('blob:')) {
-          try {
-            URL.revokeObjectURL(attachment.blobUrl)
-          } catch {
-          }
-          attachment.blobUrl = null
-        }
+        })
       }
 
       /**
@@ -970,6 +965,25 @@
         }
         item.status = 'Ready'
         syncAttachmentPreview()
+      })
+
+      $bus.on('ui:retry_attachment_processing', (payload) => {
+        const id = payload?.id
+        if (!id) {
+          return
+        }
+        const item = (state.attachments || []).find(a => a.id === id)
+        if (!item) {
+          return
+        }
+
+        item.isError = false
+        item.errorMessage = null
+        item.isCompressing = true
+        item.status = 'Processing...'
+        syncAttachmentPreview()
+
+        processAttachmentItem(item, fileProcessingToken)
       })
     }
   })

@@ -328,6 +328,53 @@
               tile.appendChild(hiddenCoverBtn)
             }
 
+            // Processing Overlay (In-flight compressing/uploading)
+            const isProcessingMedia = Boolean(item.isCompressing || item.isUploading || item.status === 'Processing...')
+            if (isProcessingMedia) {
+              const overlay = document.createElement('div')
+              overlay.className = 'atoll-chat-tile-overlay'
+              overlay.setAttribute('data-testid', `processing-overlay-${item.id}`)
+
+              const spinner = document.createElement('div')
+              spinner.className = 'spinner-border spinner-border-sm text-light mb-1'
+              spinner.setAttribute('role', 'status')
+
+              const progressText = document.createElement('span')
+              progressText.className = 'atoll-chat-tile-progress-text'
+              progressText.textContent = `${item.progress || 0}%`
+
+              overlay.appendChild(spinner)
+              overlay.appendChild(progressText)
+              tile.appendChild(overlay)
+            }
+
+            // Error Overlay & Retry Action
+            if (item.isError) {
+              const errOverlay = document.createElement('div')
+              errOverlay.className = 'atoll-chat-tile-error-overlay'
+              errOverlay.setAttribute('data-testid', `error-overlay-${item.id}`)
+              errOverlay.setAttribute('title', item.errorMessage || 'Processing failed')
+
+              const errBadge = document.createElement('div')
+              errBadge.className = 'atoll-chat-tile-error-badge'
+              errBadge.textContent = '!'
+
+              const errText = document.createElement('span')
+              errText.className = 'atoll-chat-tile-error-msg'
+              errText.textContent = item.errorMessage || 'Processing failed'
+
+              errOverlay.appendChild(errBadge)
+              errOverlay.appendChild(errText)
+              tile.appendChild(errOverlay)
+
+              tile.classList.add('has-error')
+              tile.addEventListener('click', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                $bus.emit('ui:retry_attachment_processing', { id: item.id })
+              })
+            }
+
             itemsContainer.appendChild(tile)
           } else {
             // Document Pill
@@ -366,10 +413,11 @@
             statusEl.textContent = formattedSize || item.uploadStatus || item.status || 'Ready'
             textStack.appendChild(statusEl)
 
-            const isComp = Boolean(item.isCompressing || item.isUploading || state.effectiveIsCompressing || state.effectiveIsUploading)
+            const isComp = Boolean(item.isCompressing || item.isUploading || item.status === 'Processing...' || state.effectiveIsCompressing || state.effectiveIsUploading)
             if (isComp) {
               const progressWrapper = document.createElement('div')
               progressWrapper.className = 'progress mt-1 atoll-chat-attachment-preview-progress'
+              progressWrapper.setAttribute('data-testid', `processing-overlay-${item.id}`)
               const progressBar = document.createElement('div')
               progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated bg-primary'
               progressBar.setAttribute('role', 'progressbar')
@@ -377,6 +425,33 @@
               progressBar.style.width = Math.min(100, Math.max(0, pVal)) + '%'
               progressWrapper.appendChild(progressBar)
               textStack.appendChild(progressWrapper)
+            }
+
+            if (item.isError) {
+              const errWrapper = document.createElement('div')
+              errWrapper.className = 'atoll-chip-error-badge d-flex align-items-center gap-1 mt-1'
+              errWrapper.setAttribute('data-testid', `error-overlay-${item.id}`)
+
+              const errBadge = document.createElement('span')
+              errBadge.className = 'badge bg-danger rounded-circle p-1'
+              errBadge.style.fontSize = '0.65rem'
+              errBadge.textContent = '!'
+
+              const errText = document.createElement('span')
+              errText.className = 'atoll-chip-error-msg text-danger fw-semibold'
+              errText.style.fontSize = '0.65rem'
+              errText.textContent = item.errorMessage || 'Processing failed'
+
+              errWrapper.appendChild(errBadge)
+              errWrapper.appendChild(errText)
+              textStack.appendChild(errWrapper)
+
+              chip.classList.add('has-error')
+              chip.addEventListener('click', (e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                $bus.emit('ui:retry_attachment_processing', { id: item.id })
+              })
             }
 
             chip.appendChild(textStack)
@@ -476,6 +551,7 @@
               id: targetId === 'legacy-item-1' ? (state._attachments && state._attachments[0]?.id) : targetId,
               file
             })
+            targetCoverAttachmentId = null
             coverInput.value = ''
           }
         }, { signal })

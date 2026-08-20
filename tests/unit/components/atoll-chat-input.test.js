@@ -428,4 +428,55 @@ describe('Atoll Chat Input Component - Media Conversion & Send Failure Handling'
     assert.ok(Array.isArray(sent.attachments))
     assert.equal(sent.attachments.length, 2)
   })
+
+  test('should handle ui:retry_attachment_processing to clear error state and re-process attachment', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const itemFile = new File(['data'], 'test.png', { type: 'image/png' })
+    mockEventBus.$bus.emit('ui:file_selected', { file: itemFile })
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const item = el.attachments[0]
+    assert.ok(item)
+
+    // Simulate error state
+    item.isError = true
+    item.errorMessage = 'Processing failed'
+    item.isCompressing = false
+
+    // Emit retry processing signal
+    mockEventBus.$bus.emit('ui:retry_attachment_processing', { id: item.id })
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    assert.equal(item.isError, false)
+    assert.equal(item.errorMessage, null)
+    assert.equal(item.status, 'Ready')
+  })
+
+  test('should revoke object URLs on item removal via ui:remove_attachment', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    let revokedUrls = []
+    globalThis.URL.revokeObjectURL = (url) => {
+      revokedUrls.push(url)
+    }
+
+    const itemFile = new File(['data'], 'test.png', { type: 'image/png' })
+    mockEventBus.$bus.emit('ui:file_selected', { file: itemFile })
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    const item = el.attachments[0]
+    assert.ok(item)
+    assert.ok(item.thumbnailPreviewUrl)
+
+    mockEventBus.$bus.emit('ui:remove_attachment', { id: item.id })
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    assert.ok(revokedUrls.length > 0)
+    assert.equal(el.attachments.length, 0)
+  })
 })

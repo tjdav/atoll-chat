@@ -308,4 +308,73 @@ describe('Atoll Chat Attachment Preview Component', () => {
     assert.equal(emitted.payload.id, 'vid-01')
     assert.equal(emitted.payload.file.name, 'cover.jpg')
   })
+
+  test('should render processing and error overlays and emit ui:retry_attachment_processing on error tile click', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      {
+        id: 'proc-item',
+        isImage: true,
+        isCompressing: true,
+        progress: 60,
+        status: 'Compressing image...'
+      },
+      {
+        id: 'err-item',
+        isImage: true,
+        isError: true,
+        errorMessage: 'Failed to compress'
+      }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const procOverlay = el.querySelector('[data-testid$="processing-overlay-proc-item"]')
+    assert.ok(procOverlay, 'Processing overlay should be rendered')
+    assert.ok(procOverlay.textContent.includes('60%'))
+
+    const errOverlay = el.querySelector('[data-testid$="error-overlay-err-item"]')
+    assert.ok(errOverlay, 'Error overlay should be rendered')
+    assert.ok(errOverlay.textContent.includes('Failed to compress'))
+
+    const errTile = el.querySelector('[data-testid$="media-tile-err-item"]')
+    assert.ok(errTile)
+    errTile.click()
+
+    const emitted = emittedEvents.find(e => e.event === 'ui:retry_attachment_processing')
+    assert.ok(emitted, 'ui:retry_attachment_processing event should be emitted on $bus')
+    assert.equal(emitted.payload.id, 'err-item')
+  })
+
+  test('should emit ui:attachment_cover_removed when custom cover remove action is clicked', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      {
+        id: 'vid-custom',
+        isVideo: true,
+        isCustomCover: true,
+        fileName: 'my-custom-video.mp4'
+      }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const coverBtn = el.querySelector('[data-testid$="btn-change-cover"]')
+    assert.ok(coverBtn)
+    assert.ok(coverBtn.classList.contains('is-custom'))
+
+    coverBtn.click()
+
+    const emitted = emittedEvents.find(e => e.event === 'ui:attachment_cover_removed')
+    assert.ok(emitted, 'ui:attachment_cover_removed event should be emitted on $bus')
+    assert.equal(emitted.payload.id, 'vid-custom')
+  })
 })
