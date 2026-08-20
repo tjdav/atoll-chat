@@ -1,5 +1,5 @@
 <template id="atoll-chat-timeline-item-album">
-  <div id="timeline-album-{{ localUuid }}" ref="container" class="atoll-chat-timeline-item-album rounded-3 overflow-hidden mb-1 position-relative" style="min-height: 180px; max-width: 320px;">
+  <div id="timeline-album-{{ localUuid }}" ref="container" class="atoll-chat-timeline-item-album rounded-3 overflow-hidden mb-1 position-relative" style="min-height: 180px; max-width: 400px;">
     <div ref="loading" class="{{ loadingClass }} w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center" style="background: var(--bs-tertiary-bg); min-height: 180px;">
       <div class="placeholder col-8 mb-2" style="height: 24px;"></div>
       <div class="placeholder col-4" style="height: 16px;"></div>
@@ -100,6 +100,8 @@
           const displayItems = count >= 5 ? mediaItems.slice(0, 4) : mediaItems
           const remainingCount = count - 3
 
+          const loadedDimensions = []
+
           for (let i = 0; i < displayItems.length; i++) {
             const item = displayItems[i]
             const isLastOfFivePlus = (count >= 5 && i === 3)
@@ -160,6 +162,20 @@
               img.className = 'w-100 h-100 object-fit-cover'
               img.src = objectUrl
               img.alt = item.filename || 'Album media'
+
+              // Measure image dimensions for dynamic album ratio selection
+              if (typeof Image !== 'undefined') {
+                const measurePromise = new Promise((resolve) => {
+                  if (img.complete && img.naturalWidth) {
+                    resolve({ width: img.naturalWidth, height: img.naturalHeight })
+                  } else {
+                    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
+                    img.onerror = () => resolve(null)
+                  }
+                })
+                loadedDimensions.push(measurePromise)
+              }
+
               tile.appendChild(img)
             } else {
               const placeholder = document.createElement('div')
@@ -186,6 +202,31 @@
             }
 
             gridContainer.appendChild(tile)
+          }
+
+          // Evaluate loaded image aspect ratios for 2-item albums
+          if (count === 2 && loadedDimensions.length > 0) {
+            const dims = await Promise.all(loadedDimensions)
+            const validDims = dims.filter(Boolean)
+            if (validDims.length > 0) {
+              const avgAspect = validDims.reduce((acc, d) => acc + (d.width / d.height), 0) / validDims.length
+              if (avgAspect < 0.85) {
+                // Tall / portrait images (e.g. 9:16 or 3:4 screenshots) -> 3:4 aspect ratio grid
+                gridContainer.classList.add('atoll-album-2-portrait')
+              } else if (avgAspect > 1.35) {
+                // Landscape images -> 16:9 aspect ratio grid
+                gridContainer.classList.add('atoll-album-2-landscape')
+              } else {
+                // Square / near-square images -> 1:1 aspect ratio grid
+                gridContainer.classList.add('atoll-album-2-square')
+              }
+
+              // Intrinsic scale check for small images
+              const maxNaturalWidth = Math.max(...validDims.map(d => d.width))
+              if (maxNaturalWidth > 0 && maxNaturalWidth < 300) {
+                container.style.maxWidth = `${Math.max(maxNaturalWidth, 160)}px`
+              }
+            }
           }
 
           if (callId !== lastCallId || signal.aborted) {

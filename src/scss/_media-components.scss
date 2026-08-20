@@ -143,11 +143,23 @@
   border-radius: 12px;
   overflow: hidden;
   width: 100%;
-  max-width: 320px;
+  max-width: 400px;
 
   &.atoll-album-2 {
     grid-template-columns: 1fr 1fr;
-    aspect-ratio: 16 / 9;
+    aspect-ratio: 2 / 1;
+
+    &.atoll-album-2-portrait {
+      aspect-ratio: 3 / 2;
+    }
+
+    &.atoll-album-2-square {
+      aspect-ratio: 2 / 1;
+    }
+
+    &.atoll-album-2-landscape {
+      aspect-ratio: 8 / 3;
+    }
   }
 
   &.atoll-album-3 {
