@@ -37,7 +37,6 @@
       let seenTimeout = null
       let lastRenderedMessageId = null
       let forceScrollToBottom = false
-      let isRestorePending = false
       let stickToBottom = true
       let ephemeralMessages = []
       let storedMessagesCache = []
@@ -46,6 +45,80 @@
       const renderedRows = new Map()
       let currentTopVisibleId = null
       const roomAnchorMap = new Map()
+
+      const anchorQuietMs = 500
+      const anchorMaxReanchors = 10
+      const anchorUserScrollThreshold = 48
+      let pendingAnchor = null
+
+      const resolveAnchorEl = (targetId) => {
+        if (!targetId) {
+          return null
+        }
+        return container.querySelector(`#timeline-item-${targetId}`) ||
+               container.querySelector(`[data-message-id="${targetId}"]`) ||
+               container.querySelector(`[data-local-uuid="${targetId}"]`)
+      }
+
+      const cancelPendingAnchor = () => {
+        if (!pendingAnchor) {
+          return
+        }
+        if (pendingAnchor.quietTimer) {
+          clearTimeout(pendingAnchor.quietTimer)
+        }
+        if (pendingAnchor.reAnchorFrame) {
+          cancelAnimationFrame(pendingAnchor.reAnchorFrame)
+        }
+        pendingAnchor = null
+      }
+
+      const requestReAnchor = () => {
+        if (!pendingAnchor) {
+          return
+        }
+        if (pendingAnchor.reAnchorFrame) {
+          return
+        }
+
+        pendingAnchor.reAnchorFrame = requestAnimationFrame(() => {
+          if (!pendingAnchor) {
+            return
+          }
+          pendingAnchor.reAnchorFrame = null
+
+          const scrollDelta = Math.abs(container.scrollTop - pendingAnchor.lastScrollTop)
+          if (scrollDelta > anchorUserScrollThreshold) {
+            cancelPendingAnchor()
+            return
+          }
+
+          if (pendingAnchor.reanchors >= anchorMaxReanchors) {
+            cancelPendingAnchor()
+            return
+          }
+
+          const targetEl = resolveAnchorEl(pendingAnchor.targetId)
+          if (!targetEl) {
+            cancelPendingAnchor()
+            return
+          }
+
+          targetEl.scrollIntoView({
+            behavior: 'auto',
+            block: pendingAnchor.block,
+            inline: pendingAnchor.inline
+          })
+
+          pendingAnchor.lastScrollTop = container.scrollTop
+          pendingAnchor.reanchors++
+
+          if (pendingAnchor.quietTimer) {
+            clearTimeout(pendingAnchor.quietTimer)
+          }
+          pendingAnchor.quietTimer = setTimeout(cancelPendingAnchor, anchorQuietMs)
+        })
+      }
 
       const pinToBottom = (force = false) => {
         if (!stickToBottom && !force) {
@@ -78,6 +151,8 @@
         ? new ResizeObserver(() => {
           if (stickToBottom) {
             pinToBottom()
+          } else if (pendingAnchor) {
+            requestReAnchor()
           }
         })
         : null
@@ -156,6 +231,12 @@
       }
 
       container.addEventListener('scroll', $func.debounce(() => {
+        if (pendingAnchor) {
+          const scrollDelta = Math.abs(container.scrollTop - pendingAnchor.lastScrollTop)
+          if (scrollDelta > anchorUserScrollThreshold) {
+            cancelPendingAnchor()
+          }
+        }
         updateAutoScrollState()
         checkScrollPagination()
       }, 100), { signal })
@@ -389,6 +470,7 @@
       }
 
       signal.addEventListener('abort', () => {
+        cancelPendingAnchor()
         intersectionObserver.disconnect()
         topObserver.disconnect()
         bottomObserver.disconnect()
@@ -408,6 +490,7 @@
         const renderId = ++currentRenderId
         const isNewRoom = room_id !== last_room_id || lastView !== 'chats'
         if (isNewRoom) {
+          cancelPendingAnchor()
           if (last_room_id) {
             roomAnchorMap.set(last_room_id, {
               anchorId: currentTopVisibleId,
@@ -976,6 +1059,8 @@
         if (stickToBottom) {
           pinToBottom()
           beginConvergence()
+        } else if (pendingAnchor) {
+          requestReAnchor()
         }
       })
 
@@ -1111,13 +1196,12 @@
         if (!targetId) {
           return
         }
+        cancelPendingAnchor()
         stickToBottom = false
         const block = options.block || 'start'
         const inline = options.inline || 'start'
 
-        let targetEl = container.querySelector(`#timeline-item-${targetId}`) ||
-                       container.querySelector(`[data-message-id="${targetId}"]`) ||
-                       container.querySelector(`[data-local-uuid="${targetId}"]`)
+        let targetEl = resolveAnchorEl(targetId)
 
         if (!targetEl) {
           $state.isJumpingToMessage = true
@@ -1137,9 +1221,7 @@
               })
             }
           }
-          targetEl = container.querySelector(`#timeline-item-${targetId}`) ||
-                     container.querySelector(`[data-message-id="${targetId}"]`) ||
-                     container.querySelector(`[data-local-uuid="${targetId}"]`)
+          targetEl = resolveAnchorEl(targetId)
         }
 
         if (targetEl) {
@@ -1162,6 +1244,17 @@
             }
           }
           requestAnimationFrame(convergeAnchor)
+
+          pendingAnchor = {
+            targetId,
+            block,
+            inline,
+            targetEl,
+            lastScrollTop: container.scrollTop,
+            reanchors: 0,
+            reAnchorFrame: null,
+            quietTimer: setTimeout(cancelPendingAnchor, anchorQuietMs)
+          }
         }
 
         $state.isJumpingToMessage = false
