@@ -297,8 +297,8 @@
     border: 1px solid var(--atoll-chat-bubble-sent-border, transparent) !important;
     backdrop-filter: var(--atoll-chat-bubble-sent-backdrop-filter, none) !important;
     -webkit-backdrop-filter: var(--atoll-chat-bubble-sent-backdrop-filter, none) !important;
-    --atoll-chat-timestamp-color: var(--atoll-chat-bubble-sent-timestamp-color, #e0e0e0);
-    --atoll-chat-sent-status-color: var(--atoll-chat-bubble-sent-status-color, #e0e0e0);
+    --atoll-chat-timestamp-color: var(--atoll-chat-bubble-sent-timestamp-color, var(--atoll-chat-bubble-sent-color));
+    --atoll-chat-sent-status-color: var(--atoll-chat-bubble-sent-status-color, var(--atoll-chat-sent-status-color));
   }
 
   .atoll-chat-bubble-received {
@@ -401,8 +401,8 @@
 // Timeline row-level cascading
 .atoll-chat-timeline-row {
   &[is-sent="true"] {
-    --atoll-chat-timestamp-color: var(--atoll-chat-bubble-sent-timestamp-color, #e0e0e0);
-    --atoll-chat-sent-status-color: var(--atoll-chat-bubble-sent-status-color, #e0e0e0);
+    --atoll-chat-timestamp-color: var(--atoll-chat-bubble-sent-timestamp-color, var(--atoll-chat-bubble-sent-color));
+    --atoll-chat-sent-status-color: var(--atoll-chat-bubble-sent-status-color, var(--atoll-chat-sent-status-color));
   }
 
   &[is-sent="false"] {

@@ -18,7 +18,7 @@
   -webkit-backdrop-filter: var(--atoll-chat-bubble-sent-backdrop-filter, none);
 
   a, .markdown-body a {
-    color: var(--atoll-chat-bubble-sent-link-color, #ffffff) !important;
+    color: var(--atoll-chat-bubble-sent-link-color, var(--atoll-chat-bubble-sent-color, #ffffff)) !important;
     text-decoration: underline;
   }
 }
@@ -33,7 +33,7 @@
   -webkit-backdrop-filter: var(--atoll-chat-bubble-received-backdrop-filter, none);
 
   a, .markdown-body a {
-    color: var(--atoll-chat-bubble-received-link-color, #047835) !important;
+    color: var(--atoll-chat-bubble-received-link-color, var(--atoll-chat-bubble-received-color, #047835)) !important;
     text-decoration: underline;
   }
 }

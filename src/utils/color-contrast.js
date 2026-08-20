@@ -560,6 +560,8 @@ export async function updateNativeStatusBar (bgColorHex) {
   }
 }
 
+export { parseColorToRgb, compositeColor } from './chat-theme-contrast.js'
+
 export const THEME_IMAGE_BREAKPOINTS = {
   sm: 640,
   md: 1280,

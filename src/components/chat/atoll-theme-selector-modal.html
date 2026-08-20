@@ -229,7 +229,8 @@
     server: () => ({}),
     getters: {},
     client: async ({ root, refs, globalStore, storage, pocketbase, utils, signal, eventBus, cryptoWorker }) => {
-      const { hexToRgb, getRelativeLuminance, ensureWCAGContrast, ensureForegroundContrast, generateImagePalettes, getAverageColor, generateThemeImageVariants } = await import('../../utils/color-contrast.js')
+      const { hexToRgb, rgbToHex, getRelativeLuminance, ensureWCAGContrast, ensureForegroundContrast, generateImagePalettes, getAverageColor, generateThemeImageVariants } = await import('../../utils/color-contrast.js')
+      const { compositeColor } = await import('../../utils/chat-theme-contrast.js')
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -326,21 +327,35 @@
   
       let customSentBg = '#06C755'
       let customSentColor = '#FFFFFF'
+      let customSentLinkColor = '#FFFFFF'
+      let customSentTimestampColor = '#FFFFFF'
       let customReceivedBg = '#EEEEEE'
       let customReceivedColor = '#111111'
+      let customReceivedLinkColor = '#06C755'
+      let customReceivedTimestampColor = '#111111'
 
       let customSenderNameColor = '#111111'
-      let customTimestampColor = 'rgba(17, 17, 17, 0.7)'
+      let customTimestampColor = '#111111'
       let selectedSwatchColor = null
 
       // Derivable sub-colors
       let customSentStatusColor = '#999999'
+      let customHeaderColor = '#111111'
+      let customHeaderSubtitleColor = '#595959'
       let customBtnAttachBg = 'transparent'
       let customBtnAttachColor = '#777777'
       let customBtnVoiceBg = 'transparent'
       let customBtnVoiceColor = '#777777'
       let customBtnSendBg = '#06C755'
       let customBtnSendColor = '#FFFFFF'
+      let customInputBg = '#F5F5F5'
+      let customInputColor = '#111111'
+      let customInputPlaceholderColor = '#595959'
+      let customInputEmojiColor = '#595959'
+      let customDateSeparatorColor = '#111111'
+      let customDateSeparatorBorder = 'rgba(0, 0, 0, 0.08)'
+      let customReactionPillColor = '#111111'
+      let customReactionPillBorder = 'rgba(0, 0, 0, 0.08)'
       let customWaveformActive = '#06C755'
       let customWaveformInactive = 'rgba(6, 199, 85, 0.2)'
       let customAttachmentCardBg = '#EEEEEE'
@@ -539,8 +554,12 @@
               bgColor: customBgColor,
               sentBg: customSentBg,
               sentColor: customSentColor,
+              sentLinkColor: customSentLinkColor,
+              sentTimestampColor: customSentTimestampColor,
               receivedBg: customReceivedBg,
               receivedColor: customReceivedColor,
+              receivedLinkColor: customReceivedLinkColor,
+              receivedTimestampColor: customReceivedTimestampColor,
               bgImage: customBgImage,
               bgImages: customBgImages,
               bgBlur: customBgBlur,
@@ -548,14 +567,24 @@
               useBgImage: customUseBgImage,
               palette: customPalette,
               sentStatusColor: customSentStatusColor,
-              senderNameColor: customSenderNameColor || customReceivedColor,
-              timestampColor: customTimestampColor || customReceivedColor,
+              senderNameColor: customSenderNameColor,
+              timestampColor: customReceivedTimestampColor,
+              headerColor: customHeaderColor,
+              headerSubtitleColor: customHeaderSubtitleColor,
               btnAttachBg: customBtnAttachBg,
               btnAttachColor: customBtnAttachColor,
               btnVoiceBg: customBtnVoiceBg,
               btnVoiceColor: customBtnVoiceColor,
               btnSendBg: customBtnSendBg,
               btnSendColor: customBtnSendColor,
+              inputBg: customInputBg,
+              inputColor: customInputColor,
+              inputPlaceholderColor: customInputPlaceholderColor,
+              inputEmojiColor: customInputEmojiColor,
+              dateSeparatorColor: customDateSeparatorColor,
+              dateSeparatorBorder: customDateSeparatorBorder,
+              reactionPillColor: customReactionPillColor,
+              reactionPillBorder: customReactionPillBorder,
               waveformActive: customWaveformActive,
               waveformInactive: customWaveformInactive,
               attachmentCardBg: customAttachmentCardBg,
@@ -683,17 +712,31 @@
           customPalette = ct.palette || []
           customSentBg = ct.sentBg || '#06C755'
           customSentColor = ct.sentColor || '#FFFFFF'
+          customSentLinkColor = ct.sentLinkColor || ct.sentColor || '#FFFFFF'
+          customSentTimestampColor = ct.sentTimestampColor || ct.sentColor || '#FFFFFF'
           customReceivedBg = ct.receivedBg || '#EEEEEE'
           customReceivedColor = ct.receivedColor || '#111111'
+          customReceivedLinkColor = ct.receivedLinkColor || ct.waveformActive || '#06C755'
+          customReceivedTimestampColor = ct.receivedTimestampColor || ct.receivedColor || '#111111'
           customSenderNameColor = ct.senderNameColor || '#111111'
-          customTimestampColor = ct.timestampColor || 'rgba(17, 17, 17, 0.7)'
+          customTimestampColor = ct.timestampColor || '#111111'
           customSentStatusColor = ct.sentStatusColor || '#999999'
+          customHeaderColor = ct.headerColor || '#111111'
+          customHeaderSubtitleColor = ct.headerSubtitleColor || '#595959'
           customBtnAttachBg = ct.btnAttachBg || 'transparent'
           customBtnAttachColor = ct.btnAttachColor || '#777777'
           customBtnVoiceBg = ct.btnVoiceBg || 'transparent'
           customBtnVoiceColor = ct.btnVoiceColor || '#777777'
           customBtnSendBg = ct.btnSendBg || '#06C755'
           customBtnSendColor = ct.btnSendColor || '#FFFFFF'
+          customInputBg = ct.inputBg || '#F5F5F5'
+          customInputColor = ct.inputColor || '#111111'
+          customInputPlaceholderColor = ct.inputPlaceholderColor || '#595959'
+          customInputEmojiColor = ct.inputEmojiColor || '#595959'
+          customDateSeparatorColor = ct.dateSeparatorColor || '#111111'
+          customDateSeparatorBorder = ct.dateSeparatorBorder || 'rgba(0, 0, 0, 0.08)'
+          customReactionPillColor = ct.reactionPillColor || '#111111'
+          customReactionPillBorder = ct.reactionPillBorder || 'rgba(0, 0, 0, 0.08)'
           customWaveformActive = ct.waveformActive || '#06C755'
           customWaveformInactive = ct.waveformInactive || 'rgba(6, 199, 85, 0.2)'
           customAttachmentCardBg = ct.attachmentCardBg || '#EEEEEE'
@@ -709,17 +752,31 @@
           customPalette = []
           customSentBg = '#06C755'
           customSentColor = '#FFFFFF'
+          customSentLinkColor = '#FFFFFF'
+          customSentTimestampColor = '#FFFFFF'
           customReceivedBg = '#EEEEEE'
           customReceivedColor = '#111111'
+          customReceivedLinkColor = '#06C755'
+          customReceivedTimestampColor = '#111111'
           customSenderNameColor = '#111111'
-          customTimestampColor = 'rgba(17, 17, 17, 0.7)'
+          customTimestampColor = '#111111'
           customSentStatusColor = '#999999'
+          customHeaderColor = '#111111'
+          customHeaderSubtitleColor = '#595959'
           customBtnAttachBg = 'transparent'
           customBtnAttachColor = '#777777'
           customBtnVoiceBg = 'transparent'
           customBtnVoiceColor = '#777777'
           customBtnSendBg = '#06C755'
           customBtnSendColor = '#FFFFFF'
+          customInputBg = '#F5F5F5'
+          customInputColor = '#111111'
+          customInputPlaceholderColor = '#595959'
+          customInputEmojiColor = '#595959'
+          customDateSeparatorColor = '#111111'
+          customDateSeparatorBorder = 'rgba(0, 0, 0, 0.08)'
+          customReactionPillColor = '#111111'
+          customReactionPillBorder = 'rgba(0, 0, 0, 0.08)'
           customWaveformActive = '#06C755'
           customWaveformInactive = 'rgba(6, 199, 85, 0.2)'
           customAttachmentCardBg = '#EEEEEE'
@@ -894,47 +951,65 @@
        * Normalizes custom theme foreground colors for WCAG 2.2 AA contrast compliance.
        */
       const normalizeCustomThemeContrast = () => {
+        // Canvas Background & Luminance
+        const rgbBg = compositeColor(customBgColor, '#FFFFFF')
+        const rgbBgHex = rgbToHex(rgbBg[0], rgbBg[1], rgbBg[2])
+        const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
+
+        // Glassy Fill Selection & Compositing
+        const glassyBgHex = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
+        const glassyFill = compositeColor(glassyBgHex, rgbBg)
+        const glassyFillHex = rgbToHex(glassyFill[0], glassyFill[1], glassyFill[2])
+
+        //  Sent Bubble Normalization
         const compSent = ensureWCAGContrast(customSentBg, 4.5)
         customSentBg = compSent.bgHex
         customSentColor = compSent.textColor
+        customSentLinkColor = ensureForegroundContrast(customSentColor, customSentBg, 4.5)
+        customSentTimestampColor = ensureForegroundContrast(customSentColor, customSentBg, 4.5)
 
+        // Received Bubble Normalization
         const compReceived = ensureWCAGContrast(customReceivedBg, 4.5)
         customReceivedBg = compReceived.bgHex
         customReceivedColor = compReceived.textColor
+        customReceivedLinkColor = ensureForegroundContrast(customWaveformActive || customSentBg, customReceivedBg, 4.5)
+        customReceivedTimestampColor = ensureForegroundContrast(customReceivedColor, customReceivedBg, 4.5)
 
-        customSenderNameColor = ensureForegroundContrast(customReceivedBg, customBgColor, 4.5)
-        customTimestampColor = hexToRgbaStr(ensureForegroundContrast(customReceivedBg, customBgColor, 4.5), 0.7)
-        customSentStatusColor = ensureForegroundContrast(customSentBg, customBgColor, 4.5)
+        // Canvas Direct Elements (Sender name & Sent status vs Canvas BG)
+        const baseCanvasText = bgLuminance < 0.5 ? '#FFFFFF' : '#111111'
+        customSenderNameColor = ensureForegroundContrast(baseCanvasText, rgbBgHex, 4.5)
+        customSentStatusColor = ensureForegroundContrast(baseCanvasText, rgbBgHex, 4.5)
 
-        const rgbBg = hexToRgb(customBgColor)
-        const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
-        const inputBgPseudo = bgLuminance < 0.5 ? '#1F1F1F' : '#FFFFFF'
+        // Floating Glassy Container Elements (Header, Icons, Pills vs Glassy Fill)
+        customHeaderColor = ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5)
+        customHeaderSubtitleColor = ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5)
+        customBtnAttachColor = ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5)
+        customBtnVoiceColor = ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5)
+        customDateSeparatorColor = ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5)
+        customReactionPillColor = ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5)
 
-        customBtnAttachColor = ensureForegroundContrast(customSentBg, inputBgPseudo, 4.5)
-        customBtnVoiceColor = ensureForegroundContrast(customSentBg, inputBgPseudo, 4.5)
+        // Input Container Bar (Input field vs Input BG)
+        customInputBg = bgLuminance < 0.5 ? '#2A2A2A' : '#F5F5F5'
+        const solidInputBg = compositeColor(customInputBg, glassyFill)
+        const solidInputBgHex = rgbToHex(solidInputBg[0], solidInputBg[1], solidInputBg[2])
+        customInputColor = ensureForegroundContrast(baseCanvasText, solidInputBgHex, 4.5)
+        customInputPlaceholderColor = ensureForegroundContrast(bgLuminance < 0.5 ? '#B0B0B0' : '#595959', solidInputBgHex, 4.5)
+        customInputEmojiColor = ensureForegroundContrast(bgLuminance < 0.5 ? '#B0B0B0' : '#595959', solidInputBgHex, 4.5)
+
         customBtnSendBg = customSentBg
         customBtnSendColor = customSentColor
 
-        customWaveformActive = customSentBg
-        customWaveformInactive = bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.35)' : 'rgba(17, 17, 17, 0.25)'
+        // Attachment Card & Graphical Components
+        customAttachmentCardBg = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
+        const solidCardBg = compositeColor(customAttachmentCardBg, glassyFill)
+        const solidCardBgHex = rgbToHex(solidCardBg[0], solidCardBg[1], solidCardBg[2])
 
-        customAttachmentCardBg = customReceivedBg
-        customAttachmentCardBorder = hexToRgbaStr(customReceivedBg, 0.15)
-      }
-
-      /**
-       * Generates an RGBA color string from hex and opacity.
-       * @param {string} hex - The hex color code.
-       * @param {number} opacity - Opacity value between 0 and 1.
-       * @returns {string} The formatted rgba string.
-       */
-      const hexToRgbaStr = (hex, opacity) => {
-        const cleanHex = hex.replace('#', '')
-        const num = parseInt(cleanHex, 16)
-        const r = (num >> 16) & 255
-        const g = (num >> 8) & 255
-        const b = num & 255
-        return `rgba(${r}, ${g}, ${b}, ${opacity})`
+        // Graphical UI elements (target >= 3.0:1)
+        customWaveformActive = ensureForegroundContrast(customSentBg, solidCardBgHex, 3.0)
+        customWaveformInactive = ensureForegroundContrast(bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.35)' : 'rgba(17, 17, 17, 0.25)', solidCardBgHex, 3.0)
+        customAttachmentCardBorder = ensureForegroundContrast(bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)', glassyFillHex, 3.0)
+        customDateSeparatorBorder = ensureForegroundContrast(bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)', glassyFillHex, 3.0)
+        customReactionPillBorder = ensureForegroundContrast(bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.15)', glassyFillHex, 3.0)
       }
 
       /**
@@ -986,12 +1061,22 @@
         previewChatWindow.style.removeProperty('--atoll-chat-sender-name-color')
         previewChatWindow.style.removeProperty('--atoll-chat-timestamp-color')
         previewChatWindow.style.removeProperty('--atoll-chat-sent-status-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-glassy-text-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-header-subtitle-color')
         previewChatWindow.style.removeProperty('--atoll-chat-btn-attach-bg')
         previewChatWindow.style.removeProperty('--atoll-chat-btn-attach-color')
         previewChatWindow.style.removeProperty('--atoll-chat-btn-voice-bg')
         previewChatWindow.style.removeProperty('--atoll-chat-btn-voice-color')
         previewChatWindow.style.removeProperty('--atoll-chat-btn-send-bg')
         previewChatWindow.style.removeProperty('--atoll-chat-btn-send-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-input-bg')
+        previewChatWindow.style.removeProperty('--atoll-chat-input-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-input-placeholder-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-input-emoji-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-date-separator-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-date-separator-border')
+        previewChatWindow.style.removeProperty('--atoll-chat-reaction-pill-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-reaction-pill-border')
         previewChatWindow.style.removeProperty('--atoll-chat-waveform-active')
         previewChatWindow.style.removeProperty('--atoll-chat-waveform-inactive')
         previewChatWindow.style.removeProperty('--atoll-chat-attachment-card-bg')
@@ -1000,8 +1085,13 @@
         // Clear extra variables in live preview
         previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-bg')
         previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-link-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-timestamp-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-status-color')
         previewChatWindow.style.removeProperty('--atoll-chat-bubble-received-bg')
         previewChatWindow.style.removeProperty('--atoll-chat-bubble-received-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-bubble-received-link-color')
+        previewChatWindow.style.removeProperty('--atoll-chat-bubble-received-timestamp-color')
 
         if (highlightedTheme === 'custom') {
           previewBubbleOutgoing.style.backgroundColor = customSentBg
@@ -1012,15 +1102,26 @@
           previewChatWindow.style.setProperty('--atoll-chat-bg', customBgColor)
           previewChatWindow.style.backgroundColor = customBgColor
 
-          const rgbBg = hexToRgb(customBgColor)
+          const rgbBg = compositeColor(customBgColor, '#FFFFFF')
           const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
           const inputContainerBg = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
           previewChatWindow.style.setProperty('--atoll-chat-input-container-bg-custom', inputContainerBg)
-          const glassyTextColor = bgLuminance < 0.5 ? '#FFFFFF' : '#111111'
-          previewChatWindow.style.setProperty('--atoll-chat-glassy-text-color', glassyTextColor)
 
-          previewChatWindow.style.setProperty('--atoll-chat-sender-name-color', customSenderNameColor || customReceivedColor)
-          previewChatWindow.style.setProperty('--atoll-chat-timestamp-color', customTimestampColor || customReceivedColor)
+          previewChatWindow.style.setProperty('--atoll-chat-glassy-text-color', customHeaderColor)
+          previewChatWindow.style.setProperty('--atoll-chat-header-subtitle-color', customHeaderSubtitleColor)
+          previewChatWindow.style.setProperty('--atoll-chat-bubble-sent-bg', customSentBg)
+          previewChatWindow.style.setProperty('--atoll-chat-bubble-sent-color', customSentColor)
+          previewChatWindow.style.setProperty('--atoll-chat-bubble-sent-link-color', customSentLinkColor)
+          previewChatWindow.style.setProperty('--atoll-chat-bubble-sent-timestamp-color', customSentTimestampColor)
+          previewChatWindow.style.setProperty('--atoll-chat-bubble-sent-status-color', customSentStatusColor)
+
+          previewChatWindow.style.setProperty('--atoll-chat-bubble-received-bg', customReceivedBg)
+          previewChatWindow.style.setProperty('--atoll-chat-bubble-received-color', customReceivedColor)
+          previewChatWindow.style.setProperty('--atoll-chat-bubble-received-link-color', customReceivedLinkColor)
+          previewChatWindow.style.setProperty('--atoll-chat-bubble-received-timestamp-color', customReceivedTimestampColor)
+
+          previewChatWindow.style.setProperty('--atoll-chat-sender-name-color', customSenderNameColor)
+          previewChatWindow.style.setProperty('--atoll-chat-timestamp-color', customReceivedTimestampColor)
           previewChatWindow.style.setProperty('--atoll-chat-sent-status-color', customSentStatusColor)
           previewChatWindow.style.setProperty('--atoll-chat-btn-attach-bg', customBtnAttachBg)
           previewChatWindow.style.setProperty('--atoll-chat-btn-attach-color', customBtnAttachColor)
@@ -1028,6 +1129,14 @@
           previewChatWindow.style.setProperty('--atoll-chat-btn-voice-color', customBtnVoiceColor)
           previewChatWindow.style.setProperty('--atoll-chat-btn-send-bg', customBtnSendBg)
           previewChatWindow.style.setProperty('--atoll-chat-btn-send-color', customBtnSendColor)
+          previewChatWindow.style.setProperty('--atoll-chat-input-bg', customInputBg)
+          previewChatWindow.style.setProperty('--atoll-chat-input-color', customInputColor)
+          previewChatWindow.style.setProperty('--atoll-chat-input-placeholder-color', customInputPlaceholderColor)
+          previewChatWindow.style.setProperty('--atoll-chat-input-emoji-color', customInputEmojiColor)
+          previewChatWindow.style.setProperty('--atoll-chat-date-separator-color', customDateSeparatorColor)
+          previewChatWindow.style.setProperty('--atoll-chat-date-separator-border', customDateSeparatorBorder)
+          previewChatWindow.style.setProperty('--atoll-chat-reaction-pill-color', customReactionPillColor)
+          previewChatWindow.style.setProperty('--atoll-chat-reaction-pill-border', customReactionPillBorder)
           previewChatWindow.style.setProperty('--atoll-chat-waveform-active', customWaveformActive)
           previewChatWindow.style.setProperty('--atoll-chat-waveform-inactive', customWaveformInactive)
           previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', customAttachmentCardBg)
