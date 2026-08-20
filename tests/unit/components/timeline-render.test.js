@@ -4,8 +4,6 @@ import { loadComponent } from '../helpers/load-component.js'
 
 describe('Atoll Chat Timeline Component Render Path', () => {
   let tagName
-  let mockStorage
-  let mockState
   let busListeners = {}
 
   const mockBus = {
@@ -27,60 +25,74 @@ describe('Atoll Chat Timeline Component Render Path', () => {
     }
   }
 
+  const mockState = {
+    activeSelectionId: 'room-1',
+    activeSelectionType: 'chats',
+    currentUser: {
+      id: 'user-1',
+      name: 'Alice'
+    },
+    subscribe: () => () => {
+    }
+  }
+
+  const mockStorage = {
+    $storage: {
+      getMessagesByRoom: async (roomId, limit) => [],
+      getRoom: async (roomId) => ({}),
+      getMessagesByRoomBefore: async (roomId, beforeTime, limit = 50) => [],
+      getMessagesByRoomAround: async (roomId, messageId, windowSize = 50) => []
+    }
+  }
+
   beforeEach(async () => {
     document.body.innerHTML = ''
     for (const key of Object.keys(busListeners)) {
       delete busListeners[key]
     }
 
-    mockState = {
-      activeSelectionId: 'room-1',
-      activeSelectionType: 'chats',
-      currentUser: {
-        id: 'user-1',
-        name: 'Alice'
-      },
-      subscribe: () => () => {
-      }
+    mockState.activeSelectionId = 'room-1'
+    mockState.activeSelectionType = 'chats'
+    mockState.currentUser = {
+      id: 'user-1',
+      name: 'Alice'
     }
 
-    mockStorage = {
-      $storage: {
-        getMessagesByRoom: async (roomId, limit) => {
-          const messages = []
-          for (let i = 1; i <= (limit || 10); i++) {
-            messages.push({
-              id: `msg-${i}`,
-              local_uuid: `uuid-${i}`,
-              room_id: roomId,
-              sender_id: i % 2 === 0 ? 'user-2' : 'user-1',
-              type: 'text',
-              content: `Message ${i}`,
-              created_at: new Date(Date.now() - (10 - i) * 60000).toISOString(),
-              status: 'sent'
-            })
-          }
-          return messages
-        },
-        getRoom: async (roomId) => ({
-          id: roomId,
-          participants: [
-            {
-              id: 'user-1',
-              name: 'Alice',
-              last_read_message_id: 'msg-10'
-            },
-            {
-              id: 'user-2',
-              name: 'Bob',
-              last_read_message_id: 'msg-5'
-            }
-          ]
-        }),
-        getMessagesByRoomBefore: async (roomId, beforeTime, limit = 50) => [],
-        getMessagesByRoomAround: async (roomId, messageId, windowSize = 50) => []
+    mockStorage.$storage.getMessagesByRoom = async (roomId, limit) => {
+      const messages = []
+      for (let i = 1; i <= (limit || 10); i++) {
+        messages.push({
+          id: `msg-${i}`,
+          local_uuid: `uuid-${i}`,
+          room_id: roomId,
+          sender_id: i % 2 === 0 ? 'user-2' : 'user-1',
+          type: 'text',
+          content: `Message ${i}`,
+          created_at: new Date(Date.now() - (10 - i) * 60000).toISOString(),
+          status: 'sent'
+        })
       }
+      return messages
     }
+
+    mockStorage.$storage.getRoom = async (roomId) => ({
+      id: roomId,
+      participants: [
+        {
+          id: 'user-1',
+          name: 'Alice',
+          last_read_message_id: 'msg-10'
+        },
+        {
+          id: 'user-2',
+          name: 'Bob',
+          last_read_message_id: 'msg-5'
+        }
+      ]
+    })
+
+    mockStorage.$storage.getMessagesByRoomBefore = async () => []
+    mockStorage.$storage.getMessagesByRoomAround = async () => []
 
     await loadComponent('atoll-icon')
     await loadComponent('atoll-button')
@@ -388,5 +400,67 @@ describe('Atoll Chat Timeline Component Render Path', () => {
       await new Promise(resolve => setTimeout(resolve, 50))
       assert.strictEqual(currentScrollTop, 1600, 'document.fonts loadingdone should re-pin timeline')
     }
+  })
+
+  test('should execute scrollToAnchor with behavior: auto and correct block options', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    const targetRow = el.querySelector('atoll-chat-timeline-row[message-id="msg-5"]')
+    assert.ok(targetRow, 'Target message row msg-5 should exist in DOM')
+
+    let scrollIntoViewCalled = false
+    let scrollOptions = null
+    targetRow.scrollIntoView = (options) => {
+      scrollIntoViewCalled = true
+      scrollOptions = options
+    }
+
+    mockBus.emit('message:scroll_to', { messageId: 'msg-5' })
+
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    assert.ok(scrollIntoViewCalled, 'scrollIntoView should be called')
+    assert.strictEqual(scrollOptions.behavior, 'auto', 'scrollToAnchor must use behavior: auto')
+    assert.strictEqual(scrollOptions.block, 'center', 'message:scroll_to should use block: center')
+  })
+
+  test('should resolve elements outside DOM batch via getMessagesByRoomAround and re-render', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    let getAroundCalled = false
+    let requestedTargetId = null
+
+    mockStorage.$storage.getMessagesByRoomAround = async (roomId, targetId, windowSize) => {
+      getAroundCalled = true
+      requestedTargetId = targetId
+      return [
+        {
+          id: 'msg-999',
+          local_uuid: 'uuid-999',
+          room_id: roomId,
+          sender_id: 'user-1',
+          type: 'text',
+          content: 'Outside DOM batch message',
+          created_at: new Date().toISOString(),
+          status: 'sent'
+        }
+      ]
+    }
+
+    mockBus.emit('message:scroll_to', { messageId: 'msg-999' })
+
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    assert.ok(getAroundCalled, 'getMessagesByRoomAround should be called for target missing from DOM')
+    assert.strictEqual(requestedTargetId, 'msg-999', 'getMessagesByRoomAround should be passed target messageId')
+
+    const newRow = el.querySelector('atoll-chat-timeline-row[message-id="msg-999"]')
+    assert.ok(newRow, 'Target row msg-999 should be rendered after getMessagesByRoomAround resolves')
   })
 })

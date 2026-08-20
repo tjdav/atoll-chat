@@ -143,7 +143,7 @@ describe('Atoll Viewer Header Component', () => {
     assert.equal(btnCloseHost.hasAttribute('hidden'), false, 'Close button host should NOT be hidden')
   })
 
-  test('should navigate back to source chat, scroll to message, and clear source variables when clicking close button', async () => {
+  test('should navigate back to source chat, set jump flags, and clear source variables when clicking close button', async () => {
     sharedState.mediaViewerSourceChatRoomId = 'source-room-id'
     sharedState.mediaViewerSourceMessageId = 'source-msg-uuid'
 
@@ -165,10 +165,6 @@ describe('Atoll Viewer Header Component', () => {
     assert.equal(sharedState.activeSelectionType, 'chats', 'Active selection type should change to chats')
     assert.equal(sharedState.isJumpingToMessage, true, 'isJumpingToMessage flag should be set')
     assert.equal(sharedState.jumpToMessageId, 'source-msg-uuid', 'jumpToMessageId should be correct message ID')
-
-    const scrollEmitted = emittedEvents.find(e => e.event === 'message:scroll_to')
-    assert.ok(scrollEmitted, 'message:scroll_to event should be emitted')
-    assert.equal(scrollEmitted.payload.messageId, 'source-msg-uuid')
   })
 
   test('should navigate back to source chat when pressing Escape key', async () => {

@@ -72,15 +72,10 @@
             $state.isJumpingToMessage = true
             $state.jumpToMessageId = sourceMessageId
           }
+
           $state.currentAppView = 'chats'
           $state.activeSelectionId = sourceRoomId
           $state.activeSelectionType = 'chats'
-
-          if (sourceMessageId) {
-            setTimeout(() => {
-              $bus.emit('message:scroll_to', { messageId: sourceMessageId })
-            }, 100)
-          }
         }
       }
 

@@ -44,6 +44,8 @@
       let isFetchingOlder = false
       let hasMoreOlder = true
       const renderedRows = new Map()
+      let currentTopVisibleId = null
+      const roomAnchorMap = new Map()
 
       const pinToBottom = (force = false) => {
         if (!stickToBottom && !force) {
@@ -314,6 +316,43 @@
       const intersectionObserver = createObserver()
 
       /**
+       * Instantiates an IntersectionObserver for tracking topmost visible row for scroll anchoring.
+       *
+       * @returns {IntersectionObserver|Object} Observer instance or mock fallback.
+       */
+      const createTopObserver = () => {
+        if (typeof IntersectionObserver === 'undefined') {
+          return {
+            observe: () => {
+            },
+            unobserve: () => {
+            },
+            disconnect: () => {
+            }
+          }
+        }
+        return new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const rowId = entry.target.dataset.messageId ||
+                            entry.target.dataset.localUuid ||
+                            entry.target.getAttribute('message-id') ||
+                            entry.target.getAttribute('local-uuid') ||
+                            entry.target.id?.replace('timeline-item-', '')
+              if (rowId) {
+                currentTopVisibleId = rowId
+              }
+            }
+          })
+        }, {
+          root: container,
+          rootMargin: '0px 0px -70% 0px'
+        })
+      }
+
+      const topObserver = createTopObserver()
+
+      /**
        * Instantiates an IntersectionObserver for the bottom sentinel element with environment fallback.
        *
        * @returns {IntersectionObserver|Object} Observer instance or mock fallback.
@@ -351,6 +390,7 @@
 
       signal.addEventListener('abort', () => {
         intersectionObserver.disconnect()
+        topObserver.disconnect()
         bottomObserver.disconnect()
         contentObserver?.disconnect()
       })
@@ -368,11 +408,19 @@
         const renderId = ++currentRenderId
         const isNewRoom = room_id !== last_room_id || lastView !== 'chats'
         if (isNewRoom) {
+          if (last_room_id) {
+            roomAnchorMap.set(last_room_id, {
+              anchorId: currentTopVisibleId,
+              stickToBottom: stickToBottom
+            })
+          }
           last_room_id = room_id
           lastView = type
           lastRenderedMessageId = null
+          currentTopVisibleId = null
           messageWrapper.innerHTML = ''
           intersectionObserver.disconnect()
+          topObserver.disconnect()
           bottomObserver.disconnect()
           renderedRows.clear()
           hasMoreOlder = true
@@ -809,6 +857,7 @@
 
             fragment.appendChild(row)
             intersectionObserver.observe(row)
+            topObserver.observe(row)
             if (message.local_uuid) {
               renderedRows.set(message.local_uuid, row)
             }
@@ -893,44 +942,21 @@
           await updateAllSeenIndicators(participants, seenByMessageId)
 
           if (isNewRoom) {
-            if ($state.isJumpingToMessage) {
-              // Skip scroll restoration if we are jumping to a specific message
-              isRestorePending = false
-              const jumpId = $state.jumpToMessageId
-              if (jumpId) {
-                const scrollAndCleanup = () => {
-                  const targetEl = container.querySelector(`#timeline-item-${jumpId}`) ||
-                                   container.querySelector(`atoll-chat-timeline-row[data-message-id="${jumpId}"]`) ||
-                                   container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${jumpId}"]`)
-                  if (targetEl) {
-                    targetEl.scrollIntoView({
-                      behavior: 'auto',
-                      block: 'center'
-                    })
-                    $state.isJumpingToMessage = false
-                    $state.jumpToMessageId = null
-                  } else {
-                    requestAnimationFrame(() => {
-                      const retryEl = container.querySelector(`#timeline-item-${jumpId}`) ||
-                                      container.querySelector(`atoll-chat-timeline-row[data-message-id="${jumpId}"]`) ||
-                                      container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${jumpId}"]`)
-                      if (retryEl) {
-                        retryEl.scrollIntoView({
-                          behavior: 'auto',
-                          block: 'center'
-                        })
-                      }
-                      $state.isJumpingToMessage = false
-                      $state.jumpToMessageId = null
-                    })
-                  }
+            if (!opts.skipAnchorResolution) {
+              if ($state.isJumpingToMessage && $state.jumpToMessageId) {
+                const jumpId = $state.jumpToMessageId
+                await scrollToAnchor(jumpId, { block: 'center' })
+              } else {
+                const cachedAnchor = roomAnchorMap.get(room_id)
+                if (cachedAnchor && !cachedAnchor.stickToBottom && cachedAnchor.anchorId) {
+                  stickToBottom = false
+                  await scrollToAnchor(cachedAnchor.anchorId, { block: 'start' })
+                } else {
+                  stickToBottom = true
+                  pinToBottom()
+                  beginConvergence()
                 }
-                requestAnimationFrame(scrollAndCleanup)
               }
-            } else {
-              stickToBottom = true
-              pinToBottom()
-              beginConvergence()
             }
           } else if (forceScrollToBottom || wasNearBottom) {
             stickToBottom = true
@@ -1074,53 +1100,80 @@
         }
       })
 
-      $bus.on('message:scroll_to', async (payload) => {
-        if (!payload) {
-          $state.isJumpingToMessage = false
+      /**
+       * Scrolls to target anchor element by ID, fetching context window if out of DOM batch.
+       *
+       * @param {string} targetId - Target message ID or local UUID.
+       * @param {Object} [options={}] - Options containing block and inline positioning.
+       * @returns {Promise<void>}
+       */
+      const scrollToAnchor = async (targetId, options = {}) => {
+        if (!targetId) {
           return
         }
+        const block = options.block || 'start'
+        const inline = options.inline || 'start'
 
-        const { messageId } = payload
-
-        if (!messageId) {
-          $state.isJumpingToMessage = false
-          return
-        }
-
-        let targetEl = container.querySelector(`#timeline-item-${messageId}`) ||
-                       container.querySelector(`atoll-chat-timeline-row[data-message-id="${messageId}"]`) ||
-                       container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${messageId}"]`)
+        let targetEl = container.querySelector(`#timeline-item-${targetId}`) ||
+                       container.querySelector(`[data-message-id="${targetId}"]`) ||
+                       container.querySelector(`[data-local-uuid="${targetId}"]`)
 
         if (!targetEl) {
           $state.isJumpingToMessage = true
-          $state.jumpToMessageId = messageId
+          $state.jumpToMessageId = targetId
           const room_id = $state.activeSelectionId
           if (room_id) {
-            const contextMsgs = await $storage.getMessagesByRoomAround(room_id, messageId, 50)
+            const contextMsgs = await $storage.getMessagesByRoomAround(room_id, targetId, 50)
             if (contextMsgs && contextMsgs.length > 0) {
               storedMessagesCache = contextMsgs
               messageWrapper.innerHTML = ''
               renderedRows.clear()
-              await renderTimeline({ preserveMessages: true })
+              topObserver.disconnect()
+              intersectionObserver.disconnect()
+              await renderTimeline({
+                preserveMessages: true,
+                skipAnchorResolution: true
+              })
             }
           }
-          targetEl = container.querySelector(`#timeline-item-${messageId}`) ||
-                     container.querySelector(`atoll-chat-timeline-row[data-message-id="${messageId}"]`) ||
-                     container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${messageId}"]`)
+          targetEl = container.querySelector(`#timeline-item-${targetId}`) ||
+                     container.querySelector(`[data-message-id="${targetId}"]`) ||
+                     container.querySelector(`[data-local-uuid="${targetId}"]`)
         }
 
         if (targetEl) {
           targetEl.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
+            behavior: 'auto',
+            block,
+            inline
           })
 
-          setTimeout(() => {
-            $state.isJumpingToMessage = false
-          }, 400)
-        } else {
-          $state.isJumpingToMessage = false
+          let frame = 0
+          const convergeAnchor = () => {
+            if (frame < 3 && targetEl) {
+              frame++
+              targetEl.scrollIntoView({
+                behavior: 'auto',
+                block,
+                inline
+              })
+              requestAnimationFrame(convergeAnchor)
+            }
+          }
+          requestAnimationFrame(convergeAnchor)
         }
+
+        $state.isJumpingToMessage = false
+        $state.jumpToMessageId = null
+      }
+
+      $bus.on('message:scroll_to', async (payload) => {
+        if (!payload || !payload.messageId) {
+          $state.isJumpingToMessage = false
+          return
+        }
+
+        await scrollToAnchor(payload.messageId, { block: 'center' })
       })
     }
   })
