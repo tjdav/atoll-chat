@@ -118,7 +118,7 @@
 
           <!-- Received Bubble -->
           <div class="align-self-start d-flex flex-column align-items-start gap-1" style="max-width: 80%; z-index: 2;">
-            <span class="x-small text-muted ps-2" style="color: var(--atoll-chat-sender-name-color, #777777);">Bob</span>
+            <span class="x-small text-muted ps-2" style="color: var(--atoll-chat-text-secondary, #777777);">Bob</span>
             <div class="message-bubble atoll-chat-bubble-received p-2 rounded-3 text-start shadow-sm" ref="previewBubbleIncoming" style="position: relative;">
               Hey! Check out this awesome chat theme.
               <div class="atoll-chat-reaction-pill atoll-chat-reaction-consolidated-pill d-inline-flex align-items-center gap-1 mt-1 px-2 py-0.5 rounded-pill border x-small" style="margin: 4px 0 0 0; font-size: 0.7rem;">
@@ -181,7 +181,7 @@
                 </div>
                 <div style="position: absolute; top: 0; left: 45%; width: 2px; height: 100%; background-color: var(--atoll-chat-waveform-active, var(--bs-primary, #06C755));"></div>
               </div>
-              <span class="x-small font-monospace" style="color: var(--atoll-chat-timestamp-color, #999999);">0:08</span>
+              <span class="x-small font-monospace" style="color: var(--atoll-chat-text-muted, #999999);">0:08</span>
             </div>
           </div>
 
@@ -191,9 +191,9 @@
               Wow, this live preview looks amazing!
             </div>
             <!-- Sent Status Indicator -->
-            <div class="d-flex align-items-center gap-1 mt-0.5 pe-1" style="color: var(--atoll-chat-sent-status-color, #999999);">
+            <div class="d-flex align-items-center gap-1 mt-0.5 pe-1" style="color: var(--atoll-chat-text-muted, #999999);">
               <span class="x-small">Sent</span>
-              <atoll-icon name="check" size="14" style="color: var(--atoll-chat-sent-status-color, #999999);"></atoll-icon>
+              <atoll-icon name="check" size="14" style="color: var(--atoll-chat-text-muted, #999999);"></atoll-icon>
             </div>
           </div>
 
@@ -204,7 +204,7 @@
             </button>
             <div class="flex-grow-1" style="position: relative;">
               <input type="text" class="form-control form-control-sm rounded-pill" placeholder="Type a message..." disabled style="background-color: var(--atoll-chat-input-bg, #F5F5F5); color: var(--atoll-chat-input-color, #111111); border: 1px solid transparent; padding-right: 32px; font-size: 0.8rem; height: 28px;">
-              <button type="button" class="btn p-0" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--atoll-chat-timestamp-color, #999999); background: none; border: none;">
+              <button type="button" class="btn p-0" style="position: absolute; right: 8px; top: 50%; transform: translateY(-50%); color: var(--atoll-chat-text-secondary, #999999); background: none; border: none;">
                 <atoll-icon name="emoji" size="16"></atoll-icon>
               </button>
             </div>
@@ -253,64 +253,36 @@
       // Structured Token Definitions for Predefined themes to synchronize live preview perfectly
       const preDefinedThemeTokens = {
         classic: {
-          'sent-status-color': 'var(--atoll-text-tertiary, #999999)',
-          'sender-name-color': 'var(--atoll-secondary-color, #777777)',
-          'timestamp-color': 'var(--atoll-text-tertiary, #999999)',
-          'btn-attach-bg': 'transparent',
-          'btn-attach-color': 'var(--atoll-secondary-color, #777777)',
-          'btn-voice-bg': 'transparent',
-          'btn-voice-color': 'var(--atoll-secondary-color, #777777)',
-          'btn-send-bg': 'var(--atoll-brand-primary, #06C755)',
-          'btn-send-color': '#ffffff',
-          'waveform-active': 'var(--atoll-brand-primary, #06C755)',
-          'waveform-inactive': 'rgba(6, 199, 85, 0.2)',
-          'attachment-card-bg': 'var(--atoll-bg-surface-tertiary, #EEEEEE)',
-          'attachment-card-border': 'rgba(0, 0, 0, 0.08)'
+          'text-primary': 'var(--atoll-text-primary, #111111)',
+          'text-secondary': '#525252',
+          'text-muted': '#525252',
+          'accent': 'var(--atoll-brand-primary, #047835)',
+          'surface-glass': 'rgba(255, 255, 255, 0.8)',
+          'border': 'var(--atoll-border-color-translucent, rgba(0, 0, 0, 0.08))'
         },
         ocean: {
-          'sent-status-color': 'rgba(255, 255, 255, 0.7)',
-          'sender-name-color': 'rgba(255, 255, 255, 0.8)',
-          'timestamp-color': 'rgba(255, 255, 255, 0.7)',
-          'btn-attach-bg': 'rgba(255, 255, 255, 0.1)',
-          'btn-attach-color': '#ffffff',
-          'btn-voice-bg': 'rgba(255, 255, 255, 0.1)',
-          'btn-voice-color': '#ffffff',
-          'btn-send-bg': '#0083b0',
-          'btn-send-color': '#ffffff',
-          'waveform-active': '#0083b0',
-          'waveform-inactive': 'rgba(0, 131, 176, 0.25)',
-          'attachment-card-bg': '#142830',
-          'attachment-card-border': 'rgba(255, 255, 255, 0.15)'
+          'text-primary': '#ffffff',
+          'text-secondary': 'rgba(255, 255, 255, 0.85)',
+          'text-muted': 'rgba(255, 255, 255, 0.7)',
+          'accent': '#00d2ff',
+          'surface-glass': 'rgba(15, 32, 39, 0.75)',
+          'border': 'rgba(255, 255, 255, 0.15)'
         },
         forest: {
-          'sent-status-color': 'rgba(255, 255, 255, 0.7)',
-          'sender-name-color': 'rgba(255, 255, 255, 0.8)',
-          'timestamp-color': 'rgba(255, 255, 255, 0.7)',
-          'btn-attach-bg': 'rgba(255, 255, 255, 0.1)',
-          'btn-attach-color': '#ffffff',
-          'btn-voice-bg': 'rgba(255, 255, 255, 0.1)',
-          'btn-voice-color': '#ffffff',
-          'btn-send-bg': '#11998e',
-          'btn-send-color': '#ffffff',
-          'waveform-active': '#11998e',
-          'waveform-inactive': 'rgba(17, 153, 142, 0.25)',
-          'attachment-card-bg': '#0C3328',
-          'attachment-card-border': 'rgba(255, 255, 255, 0.15)'
+          'text-primary': '#ffffff',
+          'text-secondary': 'rgba(255, 255, 255, 0.85)',
+          'text-muted': 'rgba(255, 255, 255, 0.7)',
+          'accent': '#38ef7d',
+          'surface-glass': 'rgba(10, 45, 35, 0.70)',
+          'border': 'rgba(255, 255, 255, 0.18)'
         },
         sunset: {
-          'sent-status-color': 'rgba(255, 255, 255, 0.7)',
-          'sender-name-color': 'rgba(255, 255, 255, 0.8)',
-          'timestamp-color': 'rgba(255, 255, 255, 0.7)',
-          'btn-attach-bg': 'rgba(255, 255, 255, 0.1)',
-          'btn-attach-color': '#ffffff',
-          'btn-voice-bg': 'rgba(255, 255, 255, 0.1)',
-          'btn-voice-color': '#ffffff',
-          'btn-send-bg': '#f12711',
-          'btn-send-color': '#ffffff',
-          'waveform-active': '#f12711',
-          'waveform-inactive': 'rgba(241, 39, 17, 0.25)',
-          'attachment-card-bg': '#2C1014',
-          'attachment-card-border': 'rgba(255, 255, 255, 0.15)'
+          'text-primary': '#ffffff',
+          'text-secondary': 'rgba(255, 255, 255, 0.85)',
+          'text-muted': 'rgba(255, 255, 255, 0.7)',
+          'accent': '#f5af19',
+          'surface-glass': 'rgba(40, 10, 15, 0.65)',
+          'border': 'rgba(255, 255, 255, 0.2)'
         }
       }
 
@@ -1057,32 +1029,13 @@
         previewBubbleIncoming.style.backgroundColor = ''
         previewBubbleIncoming.style.color = ''
 
-        // Clear custom theme properties from live preview first
-        previewChatWindow.style.removeProperty('--atoll-chat-sender-name-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-timestamp-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-sent-status-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-glassy-text-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-header-subtitle-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-btn-attach-bg')
-        previewChatWindow.style.removeProperty('--atoll-chat-btn-attach-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-btn-voice-bg')
-        previewChatWindow.style.removeProperty('--atoll-chat-btn-voice-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-btn-send-bg')
-        previewChatWindow.style.removeProperty('--atoll-chat-btn-send-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-input-bg')
-        previewChatWindow.style.removeProperty('--atoll-chat-input-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-input-placeholder-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-input-emoji-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-date-separator-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-date-separator-border')
-        previewChatWindow.style.removeProperty('--atoll-chat-reaction-pill-color')
-        previewChatWindow.style.removeProperty('--atoll-chat-reaction-pill-border')
-        previewChatWindow.style.removeProperty('--atoll-chat-waveform-active')
-        previewChatWindow.style.removeProperty('--atoll-chat-waveform-inactive')
-        previewChatWindow.style.removeProperty('--atoll-chat-attachment-card-bg')
-        previewChatWindow.style.removeProperty('--atoll-chat-attachment-card-border')
+        previewChatWindow.style.removeProperty('--atoll-chat-text-primary')
+        previewChatWindow.style.removeProperty('--atoll-chat-text-secondary')
+        previewChatWindow.style.removeProperty('--atoll-chat-text-muted')
+        previewChatWindow.style.removeProperty('--atoll-chat-accent')
+        previewChatWindow.style.removeProperty('--atoll-chat-surface-glass')
+        previewChatWindow.style.removeProperty('--atoll-chat-border')
 
-        // Clear extra variables in live preview
         previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-bg')
         previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-color')
         previewChatWindow.style.removeProperty('--atoll-chat-bubble-sent-link-color')
@@ -1104,11 +1057,14 @@
 
           const rgbBg = compositeColor(customBgColor, '#FFFFFF')
           const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
-          const inputContainerBg = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
-          previewChatWindow.style.setProperty('--atoll-chat-input-container-bg-custom', inputContainerBg)
 
-          previewChatWindow.style.setProperty('--atoll-chat-glassy-text-color', customHeaderColor)
-          previewChatWindow.style.setProperty('--atoll-chat-header-subtitle-color', customHeaderSubtitleColor)
+          previewChatWindow.style.setProperty('--atoll-chat-text-primary', bgLuminance < 0.5 ? '#FFFFFF' : '#111111')
+          previewChatWindow.style.setProperty('--atoll-chat-text-secondary', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.75)' : '#525252')
+          previewChatWindow.style.setProperty('--atoll-chat-text-muted', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.6)' : '#767676')
+          previewChatWindow.style.setProperty('--atoll-chat-accent', customSentBg || '#06C755')
+          previewChatWindow.style.setProperty('--atoll-chat-surface-glass', bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.8)' : 'rgba(255, 255, 255, 0.8)')
+          previewChatWindow.style.setProperty('--atoll-chat-border', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')
+
           previewChatWindow.style.setProperty('--atoll-chat-bubble-sent-bg', customSentBg)
           previewChatWindow.style.setProperty('--atoll-chat-bubble-sent-color', customSentColor)
           previewChatWindow.style.setProperty('--atoll-chat-bubble-sent-link-color', customSentLinkColor)
@@ -1119,28 +1075,6 @@
           previewChatWindow.style.setProperty('--atoll-chat-bubble-received-color', customReceivedColor)
           previewChatWindow.style.setProperty('--atoll-chat-bubble-received-link-color', customReceivedLinkColor)
           previewChatWindow.style.setProperty('--atoll-chat-bubble-received-timestamp-color', customReceivedTimestampColor)
-
-          previewChatWindow.style.setProperty('--atoll-chat-sender-name-color', customSenderNameColor)
-          previewChatWindow.style.setProperty('--atoll-chat-timestamp-color', customReceivedTimestampColor)
-          previewChatWindow.style.setProperty('--atoll-chat-sent-status-color', customSentStatusColor)
-          previewChatWindow.style.setProperty('--atoll-chat-btn-attach-bg', customBtnAttachBg)
-          previewChatWindow.style.setProperty('--atoll-chat-btn-attach-color', customBtnAttachColor)
-          previewChatWindow.style.setProperty('--atoll-chat-btn-voice-bg', customBtnVoiceBg)
-          previewChatWindow.style.setProperty('--atoll-chat-btn-voice-color', customBtnVoiceColor)
-          previewChatWindow.style.setProperty('--atoll-chat-btn-send-bg', customBtnSendBg)
-          previewChatWindow.style.setProperty('--atoll-chat-btn-send-color', customBtnSendColor)
-          previewChatWindow.style.setProperty('--atoll-chat-input-bg', customInputBg)
-          previewChatWindow.style.setProperty('--atoll-chat-input-color', customInputColor)
-          previewChatWindow.style.setProperty('--atoll-chat-input-placeholder-color', customInputPlaceholderColor)
-          previewChatWindow.style.setProperty('--atoll-chat-input-emoji-color', customInputEmojiColor)
-          previewChatWindow.style.setProperty('--atoll-chat-date-separator-color', customDateSeparatorColor)
-          previewChatWindow.style.setProperty('--atoll-chat-date-separator-border', customDateSeparatorBorder)
-          previewChatWindow.style.setProperty('--atoll-chat-reaction-pill-color', customReactionPillColor)
-          previewChatWindow.style.setProperty('--atoll-chat-reaction-pill-border', customReactionPillBorder)
-          previewChatWindow.style.setProperty('--atoll-chat-waveform-active', customWaveformActive)
-          previewChatWindow.style.setProperty('--atoll-chat-waveform-inactive', customWaveformInactive)
-          previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', customAttachmentCardBg)
-          previewChatWindow.style.setProperty('--atoll-chat-attachment-card-border', customAttachmentCardBorder)
 
           const resolvedVariants = customBgImages || (customBgImage ? {
             sm: customBgImage,
@@ -1185,19 +1119,12 @@
           // It's a pre-defined theme (classic, ocean, forest, sunset)
           const tokens = preDefinedThemeTokens[highlightedTheme]
           if (tokens) {
-            previewChatWindow.style.setProperty('--atoll-chat-sender-name-color', tokens['sender-name-color'] || '')
-            previewChatWindow.style.setProperty('--atoll-chat-timestamp-color', tokens['timestamp-color'] || '')
-            previewChatWindow.style.setProperty('--atoll-chat-sent-status-color', tokens['sent-status-color'])
-            previewChatWindow.style.setProperty('--atoll-chat-btn-attach-bg', tokens['btn-attach-bg'])
-            previewChatWindow.style.setProperty('--atoll-chat-btn-attach-color', tokens['btn-attach-color'])
-            previewChatWindow.style.setProperty('--atoll-chat-btn-voice-bg', tokens['btn-voice-bg'])
-            previewChatWindow.style.setProperty('--atoll-chat-btn-voice-color', tokens['btn-voice-color'])
-            previewChatWindow.style.setProperty('--atoll-chat-btn-send-bg', tokens['btn-send-bg'])
-            previewChatWindow.style.setProperty('--atoll-chat-btn-send-color', tokens['btn-send-color'])
-            previewChatWindow.style.setProperty('--atoll-chat-waveform-active', tokens['waveform-active'])
-            previewChatWindow.style.setProperty('--atoll-chat-waveform-inactive', tokens['waveform-inactive'])
-            previewChatWindow.style.setProperty('--atoll-chat-attachment-card-bg', tokens['attachment-card-bg'])
-            previewChatWindow.style.setProperty('--atoll-chat-attachment-card-border', tokens['attachment-card-border'])
+            previewChatWindow.style.setProperty('--atoll-chat-text-primary', tokens['text-primary'])
+            previewChatWindow.style.setProperty('--atoll-chat-text-secondary', tokens['text-secondary'])
+            previewChatWindow.style.setProperty('--atoll-chat-text-muted', tokens['text-muted'])
+            previewChatWindow.style.setProperty('--atoll-chat-accent', tokens['accent'])
+            previewChatWindow.style.setProperty('--atoll-chat-surface-glass', tokens['surface-glass'])
+            previewChatWindow.style.setProperty('--atoll-chat-border', tokens['border'])
           }
         }
       }

@@ -280,9 +280,17 @@
         }
   
         chatViewRoot.style.removeProperty('--atoll-chat-bg')
-        chatViewRoot.style.removeProperty('--atoll-chat-input-container-bg-custom')
-        chatViewRoot.style.removeProperty('--atoll-chat-glassy-text-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-header-subtitle-color')
+        chatViewRoot.style.removeProperty('--atoll-chat-bg-image')
+        chatViewRoot.style.removeProperty('--atoll-chat-bg-blur')
+        chatViewRoot.style.removeProperty('--atoll-chat-bg-dim')
+
+        chatViewRoot.style.removeProperty('--atoll-chat-text-primary')
+        chatViewRoot.style.removeProperty('--atoll-chat-text-secondary')
+        chatViewRoot.style.removeProperty('--atoll-chat-text-muted')
+        chatViewRoot.style.removeProperty('--atoll-chat-accent')
+        chatViewRoot.style.removeProperty('--atoll-chat-surface-glass')
+        chatViewRoot.style.removeProperty('--atoll-chat-border')
+
         chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-bg')
         chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-color')
         chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-link-color')
@@ -292,30 +300,6 @@
         chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-color')
         chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-link-color')
         chatViewRoot.style.removeProperty('--atoll-chat-bubble-received-timestamp-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-bg-image')
-        chatViewRoot.style.removeProperty('--atoll-chat-bg-blur')
-        chatViewRoot.style.removeProperty('--atoll-chat-bg-dim')
-        chatViewRoot.style.removeProperty('--atoll-chat-sent-status-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-sender-name-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-timestamp-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-bg')
-        chatViewRoot.style.removeProperty('--atoll-chat-btn-attach-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-bg')
-        chatViewRoot.style.removeProperty('--atoll-chat-btn-voice-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-btn-send-bg')
-        chatViewRoot.style.removeProperty('--atoll-chat-btn-send-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-input-bg')
-        chatViewRoot.style.removeProperty('--atoll-chat-input-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-input-placeholder-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-input-emoji-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-date-separator-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-date-separator-border')
-        chatViewRoot.style.removeProperty('--atoll-chat-reaction-pill-color')
-        chatViewRoot.style.removeProperty('--atoll-chat-reaction-pill-border')
-        chatViewRoot.style.removeProperty('--atoll-chat-waveform-active')
-        chatViewRoot.style.removeProperty('--atoll-chat-waveform-inactive')
-        chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-bg')
-        chatViewRoot.style.removeProperty('--atoll-chat-attachment-card-border')
       }
 
       /**
@@ -405,11 +389,13 @@
 
               const rgbBg = hexToRgb(ct.bgColor || '#FFFFFF')
               const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
-              const inputContainerBg = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
-              chatViewRoot.style.setProperty('--atoll-chat-input-container-bg-custom', inputContainerBg)
 
-              chatViewRoot.style.setProperty('--atoll-chat-glassy-text-color', ct.headerColor || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111'))
-              chatViewRoot.style.setProperty('--atoll-chat-header-subtitle-color', ct.headerSubtitleColor || ct.senderNameColor || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111'))
+              chatViewRoot.style.setProperty('--atoll-chat-text-primary', bgLuminance < 0.5 ? '#FFFFFF' : '#111111')
+              chatViewRoot.style.setProperty('--atoll-chat-text-secondary', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.75)' : '#525252')
+              chatViewRoot.style.setProperty('--atoll-chat-text-muted', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.6)' : '#767676')
+              chatViewRoot.style.setProperty('--atoll-chat-accent', ct.sentBg || '#06C755')
+              chatViewRoot.style.setProperty('--atoll-chat-surface-glass', bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.8)' : 'rgba(255, 255, 255, 0.8)')
+              chatViewRoot.style.setProperty('--atoll-chat-border', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')
 
               chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-bg', ct.sentBg || '#06C755')
               chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-color', ct.sentColor || '#FFFFFF')
@@ -464,29 +450,6 @@
                   chatBgImg.removeAttribute('src')
                 }
               }
-
-              // Set newly expanded custom theme variables on chatViewRoot
-              chatViewRoot.style.setProperty('--atoll-chat-sent-status-color', ct.sentStatusColor || ct.sentBg || '#06C755')
-              chatViewRoot.style.setProperty('--atoll-chat-sender-name-color', ct.senderNameColor || ct.receivedColor || '#111111')
-              chatViewRoot.style.setProperty('--atoll-chat-timestamp-color', ct.timestampColor || ct.receivedColor || '#111111')
-              chatViewRoot.style.setProperty('--atoll-chat-btn-attach-bg', ct.btnAttachBg || 'transparent')
-              chatViewRoot.style.setProperty('--atoll-chat-btn-attach-color', ct.btnAttachColor || ct.sentBg || '#06C755')
-              chatViewRoot.style.setProperty('--atoll-chat-btn-voice-bg', ct.btnVoiceBg || 'transparent')
-              chatViewRoot.style.setProperty('--atoll-chat-btn-voice-color', ct.btnVoiceColor || ct.sentBg || '#06C755')
-              chatViewRoot.style.setProperty('--atoll-chat-btn-send-bg', ct.btnSendBg || ct.sentBg || '#06C755')
-              chatViewRoot.style.setProperty('--atoll-chat-btn-send-color', ct.btnSendColor || '#FFFFFF')
-              chatViewRoot.style.setProperty('--atoll-chat-input-bg', ct.inputBg || '#F5F5F5')
-              chatViewRoot.style.setProperty('--atoll-chat-input-color', ct.inputColor || '#111111')
-              chatViewRoot.style.setProperty('--atoll-chat-input-placeholder-color', ct.inputPlaceholderColor || '#595959')
-              chatViewRoot.style.setProperty('--atoll-chat-input-emoji-color', ct.inputEmojiColor || ct.receivedColor || '#111111')
-              chatViewRoot.style.setProperty('--atoll-chat-date-separator-color', ct.dateSeparatorColor || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111'))
-              chatViewRoot.style.setProperty('--atoll-chat-date-separator-border', ct.dateSeparatorBorder || 'rgba(0, 0, 0, 0.08)')
-              chatViewRoot.style.setProperty('--atoll-chat-reaction-pill-color', ct.reactionPillColor || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111'))
-              chatViewRoot.style.setProperty('--atoll-chat-reaction-pill-border', ct.reactionPillBorder || 'rgba(0, 0, 0, 0.08)')
-              chatViewRoot.style.setProperty('--atoll-chat-waveform-active', ct.waveformActive || ct.sentBg || '#06C755')
-              chatViewRoot.style.setProperty('--atoll-chat-waveform-inactive', ct.waveformInactive || (bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.35)' : 'rgba(17, 17, 17, 0.25)'))
-              chatViewRoot.style.setProperty('--atoll-chat-attachment-card-bg', ct.attachmentCardBg || ct.receivedBg || '#EEEEEE')
-              chatViewRoot.style.setProperty('--atoll-chat-attachment-card-border', ct.attachmentCardBorder || 'rgba(0, 0, 0, 0.08)')
             } else {
               clearCustomThemeProperties(chatViewRoot)
             }
