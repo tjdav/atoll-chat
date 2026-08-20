@@ -15,7 +15,8 @@ describe('Media Fallback & Cache Self-Healing Unit Tests', () => {
     if (typeof globalThis.URL.createObjectURL !== 'function' || globalThis.URL.createObjectURL.name === 'createObjectURL') {
       let objectUrlCounter = 0
       globalThis.URL.createObjectURL = (_blob) => `blob:http://localhost/${++objectUrlCounter}`
-      globalThis.URL.revokeObjectURL = () => {}
+      globalThis.URL.revokeObjectURL = () => {
+      }
     }
 
     deletedFiles = []
@@ -29,7 +30,10 @@ describe('Media Fallback & Cache Self-Healing Unit Tests', () => {
       getFile: async (fileId) => mockStorage.files.get(fileId) || null,
       saveFile: async (fileId, blob) => {
         mockStorage.files.set(fileId, blob)
-        savedFiles.push({ fileId, blob })
+        savedFiles.push({
+          fileId,
+          blob
+        })
       },
       deleteFile: async (fileId) => {
         mockStorage.files.delete(fileId)

@@ -268,7 +268,7 @@ export default definePlugin({
           deleteRecord: (storeName, key) => initialAdapter.deleteRecord(storeName, key),
           saveFile: (fileName, blob) => initialAdapter.saveFile(fileName, blob),
           getFile: (fileName) => initialAdapter.getFile(fileName),
-          deleteFile: (fileName) => typeof initialAdapter.deleteFile === 'function' ? initialAdapter.deleteFile(fileName) : initialAdapter.deleteRecord('local_files', fileName),
+          deleteFile: (fileName) => (typeof initialAdapter.deleteFile === 'function' ? initialAdapter.deleteFile(fileName) : initialAdapter.deleteRecord('local_files', fileName)),
 
           // Config Domain
           getConfig: (key) => initialAdapter.getConfig(key),

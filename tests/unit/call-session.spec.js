@@ -378,8 +378,15 @@ test('Call Session (call_id) & Stale Signaling Isolation Tests', async (t) => {
 
   await t.test('8. Busy Toast Notification for Caller - Receives reason: busy and shows warning toast', async () => {
     const env = createMockEnvironment()
-    const mockTrack = { stop: () => {} }
-    const mockStream = { getVideoTracks: () => [], getAudioTracks: () => [mockTrack], getTracks: () => [mockTrack] }
+    const mockTrack = {
+      stop: () => {
+      }
+    }
+    const mockStream = {
+      getVideoTracks: () => [],
+      getAudioTracks: () => [mockTrack],
+      getTracks: () => [mockTrack]
+    }
 
     await env.webrtc.initiateCall('room-1', mockStream)
     const callId = env.globalState.activeCallId
@@ -407,8 +414,15 @@ test('Call Session (call_id) & Stale Signaling Isolation Tests', async (t) => {
 
   await t.test('9. In-Flight answerCall Deduplication - Duplicate calls return active promise', async () => {
     const env = createMockEnvironment()
-    const mockTrack = { stop: () => {} }
-    const mockStream = { getVideoTracks: () => [], getAudioTracks: () => [mockTrack], getTracks: () => [mockTrack] }
+    const mockTrack = {
+      stop: () => {
+      }
+    }
+    const mockStream = {
+      getVideoTracks: () => [],
+      getAudioTracks: () => [mockTrack],
+      getTracks: () => [mockTrack]
+    }
 
     // First transition to INCOMING via incoming offer
     env.bus.emit('db:new_local_data', {
@@ -417,13 +431,19 @@ test('Call Session (call_id) & Stale Signaling Isolation Tests', async (t) => {
         type: 'call_offer',
         call_id: 'session-dedup',
         sender_id: 'user-bob',
-        content: { type: 'offer', sdp: 'sdp' }
+        content: {
+          type: 'offer',
+          sdp: 'sdp'
+        }
       }
     })
 
     assert.strictEqual(env.globalState.callStatus, 'incoming')
 
-    const offer = { type: 'offer', sdp: 'sdp' }
+    const offer = {
+      type: 'offer',
+      sdp: 'sdp'
+    }
     const p1 = env.webrtc.answerCall('room-1', mockStream, offer, 'session-dedup')
     const p2 = env.webrtc.answerCall('room-1', mockStream, offer, 'session-dedup')
 

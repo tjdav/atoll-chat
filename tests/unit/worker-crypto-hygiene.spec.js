@@ -67,7 +67,10 @@ describe('Worker Cryptographic Hygiene & Sandbox Isolation Unit Tests', () => {
     const iv = new Uint8Array(12).fill(7)
     const plaintext = new TextEncoder().encode('Link Preview Test Content')
     const encryptedArrayBuffer = await globalThis.crypto.subtle.encrypt(
-      { name: 'AES-GCM', iv },
+      {
+        name: 'AES-GCM',
+        iv
+      },
       rawKey,
       plaintext
     )
@@ -112,15 +115,24 @@ describe('Worker Cryptographic Hygiene & Sandbox Isolation Unit Tests', () => {
       )
 
       const decryptedArrayBuffer = await globalThis.crypto.subtle.decrypt(
-        { name: 'AES-GCM', iv: ivBytes },
+        {
+          name: 'AES-GCM',
+          iv: ivBytes
+        },
         cryptoKey,
         cipherBytes
       )
       decryptedBuffer = new Uint8Array(decryptedArrayBuffer)
     } finally {
-      if (rawKeyBytes) rawKeyBytes.fill(0)
-      if (ivBytes) ivBytes.fill(0)
-      if (cipherBytes) cipherBytes.fill(0)
+      if (rawKeyBytes) {
+        rawKeyBytes.fill(0)
+      }
+      if (ivBytes) {
+        ivBytes.fill(0)
+      }
+      if (cipherBytes) {
+        cipherBytes.fill(0)
+      }
     }
 
     assert.ok(decryptedBuffer)

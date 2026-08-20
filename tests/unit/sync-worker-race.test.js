@@ -99,8 +99,12 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
 
     const mockBridge = {
       request: async (method, args) => {
-        if (method === 'getMessage') return dbMessages.get(args[0]) || null
-        if (method === 'getRoom') return dbRooms.get(args[0]) || null
+        if (method === 'getMessage') {
+          return dbMessages.get(args[0]) || null
+        }
+        if (method === 'getRoom') {
+          return dbRooms.get(args[0]) || null
+        }
         if (method === 'saveRoom') {
           dbRooms.set(args[0].id, args[0])
           return true
@@ -118,11 +122,6 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
       ['inviter_1', { public_box_key: inviterPublicBoxKey }]
     ])
 
-    const currentUserKeys = {
-      id: 'user_1',
-      private_box_key: userPrivateBoxKey
-    }
-
     // Replay Pass Functions using processIncomingMessageInternal pattern
     async function processIncomingMessageInternal (record) {
       const { room_id: roomId, epoch_id: epochId, sender_id: senderId, payload, signature, previous_msg_uuid: previousMsgUuid, local_uuid: localUuid, created } = record
@@ -135,17 +134,29 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
 
       const isValid = sodium.crypto_sign_verify_detached(signatureBuffer, validationBuffer, publicSignKeyBuffer)
       if (!isValid) {
-        return { success: false, code: 'ERR_SIGNATURE_INVALID', error: 'Signature forged or invalid' }
+        return {
+          success: false,
+          code: 'ERR_SIGNATURE_INVALID',
+          error: 'Signature forged or invalid'
+        }
       }
 
       const room = await mockBridge.request('getRoom', [roomId])
       if (!room) {
-        return { success: false, code: 'ERR_KEY_PENDING', error: `Local room ${roomId} not found` }
+        return {
+          success: false,
+          code: 'ERR_KEY_PENDING',
+          error: `Local room ${roomId} not found`
+        }
       }
 
       const activeEpoch = room.key_history?.find(h => h.epoch_id === epochId)
       if (!activeEpoch) {
-        return { success: false, code: 'ERR_KEY_PENDING', error: 'Missing cryptographic key for this epoch.' }
+        return {
+          success: false,
+          code: 'ERR_KEY_PENDING',
+          error: 'Missing cryptographic key for this epoch.'
+        }
       }
 
       const ciphertextBuffer = sodium.from_base64(payload.ciphertext, sodium.base64_variants.ORIGINAL)
@@ -169,13 +180,20 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
 
       await mockBridge.request('saveMessage', [decryptedMessage])
 
-      return { success: true, data: decryptedMessage }
+      return {
+        success: true,
+        data: decryptedMessage
+      }
     }
 
     async function processIncomingMessage (rpcId, record) {
       const result = await processIncomingMessageInternal(record)
       if (result.success) {
-        postedMessages.push({ id: rpcId, type: 'worker:process_incoming_message', result: { success: true } })
+        postedMessages.push({
+          id: rpcId,
+          type: 'worker:process_incoming_message',
+          result: { success: true }
+        })
         return
       }
 
@@ -185,24 +203,44 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
         let queue = pendingKeyReplayBuffer.get(roomId) || []
         const now = Date.now()
         queue = queue.filter(item => (now - item.receivedAt) <= 60000)
-        while (queue.length >= 50) queue.shift()
-        queue.push({ id: msgId, record, receivedAt: now })
+        while (queue.length >= 50) {
+          queue.shift()
+        }
+        queue.push({
+          id: msgId,
+          record,
+          receivedAt: now
+        })
         pendingKeyReplayBuffer.set(roomId, queue)
 
         postedMessages.push({
           id: rpcId,
           type: 'worker:process_incoming_message',
-          result: { success: true, status: 'queued_for_key', roomId, messageId: msgId }
+          result: {
+            success: true,
+            status: 'queued_for_key',
+            roomId,
+            messageId: msgId
+          }
         })
         return
       }
 
-      postedMessages.push({ id: rpcId, type: 'worker:process_incoming_message', result: { success: false, error: result.error } })
+      postedMessages.push({
+        id: rpcId,
+        type: 'worker:process_incoming_message',
+        result: {
+          success: false,
+          error: result.error
+        }
+      })
     }
 
     async function flushPendingMessagesForRoom (roomId) {
       const queue = pendingKeyReplayBuffer.get(roomId)
-      if (!queue || queue.length === 0) return
+      if (!queue || queue.length === 0) {
+        return
+      }
 
       const now = Date.now()
       const validItems = queue.filter(item => (now - item.receivedAt) <= 60000)
@@ -212,8 +250,20 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
         const result = await processIncomingMessageInternal(item.record)
         if (result && result.success) {
           if (result.data) {
-            postedMessages.push({ type: 'db:new_local_data', payload: { room_id: roomId, message: result.data } })
-            postedMessages.push({ type: 'sync:message_replayed', payload: { room_id: roomId, message: result.data } })
+            postedMessages.push({
+              type: 'db:new_local_data',
+              payload: {
+                room_id: roomId,
+                message: result.data
+              }
+            })
+            postedMessages.push({
+              type: 'sync:message_replayed',
+              payload: {
+                room_id: roomId,
+                message: result.data
+              }
+            })
           }
         } else if (result && result.code === 'ERR_KEY_PENDING') {
           remaining.push(item)
@@ -242,7 +292,10 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
 
       let room = await mockBridge.request('getRoom', [payload.room_id])
       if (!room) {
-        room = { id: payload.room_id, key_history: [] }
+        room = {
+          id: payload.room_id,
+          key_history: []
+        }
       }
       room.key_history.push({
         epoch_id: payload.epoch_id || 1,
@@ -252,11 +305,19 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
 
       await flushPendingMessagesForRoom(payload.room_id)
 
-      postedMessages.push({ id: rpcId, type: 'worker:process_new_room_key', result: { success: true } })
+      postedMessages.push({
+        id: rpcId,
+        type: 'worker:process_new_room_key',
+        result: { success: true }
+      })
     }
 
     // Step 1: Out-of-order message arrives BEFORE room key
-    const msgRecord = createMessageRecord({ id: 'raced_msg_1', roomId: 'room_race_1', content: 'Raced message' })
+    const msgRecord = createMessageRecord({
+      id: 'raced_msg_1',
+      roomId: 'room_race_1',
+      content: 'Raced message'
+    })
     await processIncomingMessage(101, msgRecord)
 
     // Verify status queued_for_key and buffer state
@@ -267,7 +328,11 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
     assert.strictEqual(pendingKeyReplayBuffer.get('room_race_1')?.length, 1)
 
     // Step 2: Room key arrives
-    const keyPayload = createWrappedRoomKeyPayload({ roomId: 'room_race_1', roomKey: roomKeyEpoch1, epochId: 1 })
+    const keyPayload = createWrappedRoomKeyPayload({
+      roomId: 'room_race_1',
+      roomKey: roomKeyEpoch1,
+      epochId: 1
+    })
     await processNewRoomKey(102, keyPayload)
 
     // Verify buffer drained and broadcasts sent
@@ -291,7 +356,10 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
     const dbRooms = new Map([
       ['room_epoch_test', {
         id: 'room_epoch_test',
-        key_history: [{ epoch_id: 1, key: epochKey1B64 }]
+        key_history: [{
+          epoch_id: 1,
+          key: epochKey1B64
+        }]
       }]
     ])
     const dbMessages = new Map()
@@ -299,9 +367,15 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
 
     const mockBridge = {
       request: async (method, args) => {
-        if (method === 'getRoom') return dbRooms.get(args[0]) || null
-        if (method === 'saveRoom') { dbRooms.set(args[0].id, args[0]); return true }
-        if (method === 'saveMessage') { dbMessages.set(args[0].local_uuid, args[0]); return true }
+        if (method === 'getRoom') {
+          return dbRooms.get(args[0]) || null
+        }
+        if (method === 'saveRoom') {
+          dbRooms.set(args[0].id, args[0]); return true
+        }
+        if (method === 'saveMessage') {
+          dbMessages.set(args[0].local_uuid, args[0]); return true
+        }
         return null
       }
     }
@@ -318,14 +392,21 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
 
     // Simulate buffering due to missing Epoch 2 key
     let queue = pendingKeyReplayBuffer.get('room_epoch_test') || []
-    queue.push({ id: 'msg_e2', record: msgEpoch2, receivedAt: Date.now() })
+    queue.push({
+      id: 'msg_e2',
+      record: msgEpoch2,
+      receivedAt: Date.now()
+    })
     pendingKeyReplayBuffer.set('room_epoch_test', queue)
 
     assert.strictEqual(pendingKeyReplayBuffer.get('room_epoch_test').length, 1)
 
     // Now Epoch 2 room key arrives
     const room = dbRooms.get('room_epoch_test')
-    room.key_history.push({ epoch_id: 2, key: epochKey2B64 })
+    room.key_history.push({
+      epoch_id: 2,
+      key: epochKey2B64
+    })
 
     // Drain buffer
     const items = pendingKeyReplayBuffer.get('room_epoch_test')
@@ -354,7 +435,10 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
   await t.test('3. Forged Signature Rejection (Never Queued)', async () => {
     const pendingKeyReplayBuffer = new Map()
 
-    const forgedRecord = createMessageRecord({ id: 'forged_1', roomId: 'room_1' })
+    const forgedRecord = createMessageRecord({
+      id: 'forged_1',
+      roomId: 'room_1'
+    })
     // Corrupt signature
     forgedRecord.signature = sodium.to_base64(new Uint8Array(64).fill(7), sodium.base64_variants.ORIGINAL)
 
@@ -377,12 +461,26 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
     const pendingKeyReplayBuffer = new Map()
 
     const now = Date.now()
-    const expiredRecord = createMessageRecord({ id: 'expired_msg', roomId: 'room_ttl' })
-    const validRecord = createMessageRecord({ id: 'valid_msg', roomId: 'room_ttl' })
+    const expiredRecord = createMessageRecord({
+      id: 'expired_msg',
+      roomId: 'room_ttl'
+    })
+    const validRecord = createMessageRecord({
+      id: 'valid_msg',
+      roomId: 'room_ttl'
+    })
 
     pendingKeyReplayBuffer.set('room_ttl', [
-      { id: 'expired_msg', record: expiredRecord, receivedAt: now - 65000 }, // 65 seconds old
-      { id: 'valid_msg', record: validRecord, receivedAt: now - 1000 } // 1 second old
+      {
+        id: 'expired_msg',
+        record: expiredRecord,
+        receivedAt: now - 65000
+      }, // 65 seconds old
+      {
+        id: 'valid_msg',
+        record: validRecord,
+        receivedAt: now - 1000
+      } // 1 second old
     ])
 
     // Filter TTL pass
@@ -399,12 +497,20 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
 
     // Enqueue 55 messages
     for (let i = 1; i <= 55; i++) {
-      const record = createMessageRecord({ id: `msg_${i}`, roomId: 'room_cap', localUuid: `uuid_${i}` })
+      const record = createMessageRecord({
+        id: `msg_${i}`,
+        roomId: 'room_cap',
+        localUuid: `uuid_${i}`
+      })
       queue = queue.filter(item => (now - item.receivedAt) <= 60000)
       while (queue.length >= 50) {
         queue.shift() // drop oldest
       }
-      queue.push({ id: `msg_${i}`, record, receivedAt: now })
+      queue.push({
+        id: `msg_${i}`,
+        record,
+        receivedAt: now
+      })
     }
 
     assert.strictEqual(queue.length, 50)
@@ -414,8 +520,14 @@ test('Worker Key-Arrival Replay Buffer & Late Key Synchronization Race Unit Test
 
   await t.test('6. Logout / worker:wipe_keys Clears Replay Buffer', async () => {
     const pendingKeyReplayBuffer = new Map([
-      ['room_1', [{ id: 'msg_1', receivedAt: Date.now() }]],
-      ['room_2', [{ id: 'msg_2', receivedAt: Date.now() }]]
+      ['room_1', [{
+        id: 'msg_1',
+        receivedAt: Date.now()
+      }]],
+      ['room_2', [{
+        id: 'msg_2',
+        receivedAt: Date.now()
+      }]]
     ])
 
     assert.strictEqual(pendingKeyReplayBuffer.size, 2)

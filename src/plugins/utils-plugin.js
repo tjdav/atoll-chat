@@ -654,7 +654,10 @@ export default definePlugin({
                 options = optionsOrSignal
               }
             }
-            return media.decrypt(asset, { isThumbnail: true, ...options })
+            return media.decrypt(asset, {
+              isThumbnail: true,
+              ...options
+            })
           }
         }
 

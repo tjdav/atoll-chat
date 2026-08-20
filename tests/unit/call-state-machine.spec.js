@@ -81,12 +81,20 @@ test('CallStateMachine - Valid state transitions and callbacks', async (t) => {
     const fsm = createCallStateMachine()
     const received = []
     const unsubscribe = fsm.subscribe((newState, prevState, ctx) => {
-      received.push({ newState, prevState, ctx })
+      received.push({
+        newState,
+        prevState,
+        ctx
+      })
     })
 
     fsm.transition(CALL_STATES.OUTGOING, { reason: 'user_call' })
     assert.equal(received.length, 1)
-    assert.deepEqual(received[0], { newState: 'outgoing', prevState: 'idle', ctx: { reason: 'user_call' } })
+    assert.deepEqual(received[0], {
+      newState: 'outgoing',
+      prevState: 'idle',
+      ctx: { reason: 'user_call' }
+    })
 
     unsubscribe()
     fsm.transition(CALL_STATES.CONNECTED)
