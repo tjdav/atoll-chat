@@ -65,6 +65,14 @@
 
       const { playRingtone, stopRingtone, playRingback, stopRingback, stopAll } = await import('../../utils/call/callSoundManager.js')
       let isActionInFlight = false
+      let declineTeardownTimer = null
+
+      signal.addEventListener('abort', () => {
+        if (declineTeardownTimer) {
+          clearTimeout(declineTeardownTimer)
+          declineTeardownTimer = null
+        }
+      })
 
       /**
        * Toggles bootstrap call overlay visibility on the viewport.
@@ -144,6 +152,10 @@
        * @returns {void}
        */
       const resetCallState = () => {
+        if (declineTeardownTimer) {
+          clearTimeout(declineTeardownTimer)
+          declineTeardownTimer = null
+        }
         state.remoteOffer = null
         state.incomingMediaTypes = ['audio', 'video']
         state.callId = null
@@ -176,7 +188,7 @@
 
       /**
        * Infers current track enablement states back to the reactive state model.
-       * @param {MediaStream} stream - Active input media stream.
+       * @param {Object} stream - Active input media stream.
        * @returns {void}
        */
       const updateTrackStates = (stream) => {
@@ -354,7 +366,22 @@
         }
 
         if ($state.activeCallRoomId === room_id || !room_id) {
-          resetCallState()
+          stopAll()
+          if (['busy', 'missed', 'timeout', 'declined'].includes(reason) && $state.callStatus === 'outgoing') {
+            $bus.emit('call:participant_declined', {
+              participant_id: 'remote-user',
+              reason
+            })
+            if (declineTeardownTimer) {
+              clearTimeout(declineTeardownTimer)
+            }
+            declineTeardownTimer = setTimeout(() => {
+              declineTeardownTimer = null
+              resetCallState()
+            }, 2500)
+          } else {
+            resetCallState()
+          }
 
           if (reason === 'connection_failed' || reason === 'timeout_disconnected') {
             $bus.emit('ui:show_toast', {

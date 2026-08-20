@@ -58,12 +58,43 @@
       let lastLayoutMode = null
       let lastDisplayIds = ''
       let lastRailIds = ''
+      let lastStatuses = ''
+      let renderCount = 0
+
+      const activeTimers = new Set()
+
+      /**
+       * Creates an AbortSignal-aware setTimeout that cleans itself up
+       * and automatically prevents execution if the component unmounts.
+       * @param {Function} callback - Function to execute.
+       * @param {number} delay - Delay in milliseconds.
+       * @returns {number|null} Timer ID.
+       */
+      const setSafeTimeout = (callback, delay) => {
+        if (signal.aborted) {
+          return null
+        }
+        const timer = setTimeout(() => {
+          activeTimers.delete(timer)
+          if (!signal.aborted) {
+            callback()
+          }
+        }, delay)
+        activeTimers.add(timer)
+        return timer
+      }
+
+      signal.addEventListener('abort', () => {
+        activeTimers.forEach(timer => clearTimeout(timer))
+        activeTimers.clear()
+      })
 
       /**
        * Determines active call participants list and triggers grid UI updates.
        * @returns {Promise<void>}
        */
       const renderGrid = async () => {
+        const thisRenderId = ++renderCount
         const roomId = $state.activeCallRoomId
         let rawParticipants = []
 
@@ -80,6 +111,10 @@
               throw err
             }
           }
+        }
+
+        if (thisRenderId !== renderCount) {
+          return
         }
 
         updateGridWithParticipants(rawParticipants)
@@ -143,6 +178,25 @@
             defaultVideo = Boolean($state.hasRemoteVideo)
           }
 
+          const existingP = state.participants ? state.participants.find(item => item.id === p.id) : null
+          let status = p.status || (existingP ? existingP.status : null)
+          let isAnswered = false
+
+          if (p.hasAnswered !== undefined) {
+            isAnswered = Boolean(p.hasAnswered)
+            if (!status) {
+              status = isAnswered ? 'connected' : 'calling'
+            }
+          } else if (status === 'declined' || status === 'unavailable') {
+            isAnswered = false
+          } else if (['connected', 'active'].includes($state.callStatus) && (Boolean($state.remoteStream) || Boolean(p.isConnected))) {
+            isAnswered = true
+            status = 'connected'
+          } else {
+            isAnswered = false
+            status = 'calling'
+          }
+
           list.push({
             id: p.id,
             name: p.name || p.username || 'Remote Participant',
@@ -151,12 +205,28 @@
             isLocal: false,
             isMuted: p.isMuted !== undefined ? p.isMuted : remoteMuted,
             isSpeaking: p.isSpeaking !== undefined ? p.isSpeaking : defaultSpeaking,
-            isVideoEnabled: p.isVideoEnabled !== undefined ? p.isVideoEnabled : defaultVideo
+            isVideoEnabled: p.isVideoEnabled !== undefined ? p.isVideoEnabled : defaultVideo,
+            hasAnswered: isAnswered,
+            status
           })
         })
 
         const hasRemoteInList = list.some(p => !p.isLocal)
-        if (!hasRemoteInList && (activeCallStates.includes($state.callStatus) || $state.remoteStream)) {
+        if (!hasRemoteInList && ($state.callStatus === 'outgoing' || activeCallStates.includes($state.callStatus) || $state.remoteStream)) {
+          const existingP = state.participants ? state.participants.find(item => item.id === 'remote-user') : null
+          let status = existingP ? existingP.status : null
+          let isAnswered = false
+
+          if (status === 'declined' || status === 'unavailable') {
+            isAnswered = false
+          } else if (['connected', 'active'].includes($state.callStatus) && Boolean($state.remoteStream)) {
+            isAnswered = true
+            status = 'connected'
+          } else {
+            isAnswered = false
+            status = 'calling'
+          }
+
           list.push({
             id: 'remote-user',
             name: 'Remote Participant',
@@ -165,7 +235,9 @@
             isLocal: false,
             isMuted: !$state.remoteStream || !$state.remoteStream.getAudioTracks().some(t => t.enabled),
             isSpeaking: Boolean($state.isRemoteSpeaking),
-            isVideoEnabled: Boolean($state.hasRemoteVideo)
+            isVideoEnabled: Boolean($state.hasRemoteVideo),
+            hasAnswered: isAnswered,
+            status
           })
         }
 
@@ -215,15 +287,18 @@
         const currentLayoutMode = hero ? 'hero' : 'grid'
         const currentDisplayIds = displayList.map(p => p.id).join(',')
         const currentRailIds = railList.map(p => p.id).join(',')
+        const currentStatuses = displayList.map(p => `${p.id}:${p.hasAnswered}:${p.status}`).join(';')
 
         const needsReconstruct =
           container.children.length === 0 ||
           currentLayoutMode !== lastLayoutMode ||
           currentHeroId !== lastHeroId ||
           currentDisplayIds !== lastDisplayIds ||
-          currentRailIds !== lastRailIds
+          currentRailIds !== lastRailIds ||
+          currentStatuses !== lastStatuses
 
         if (needsReconstruct) {
+          lastStatuses = currentStatuses
           lastLayoutMode = currentLayoutMode
           lastHeroId = currentHeroId
           lastDisplayIds = currentDisplayIds
@@ -313,10 +388,65 @@
 
             // Update pin/unpin button icon and title state
             const pinBtn = tile.querySelector('.pin-btn')
-            const pinIcon = pinBtn.querySelector('atoll-icon')
-            const isPinned = state.pinnedParticipantId === p.id
-            pinIcon.setAttribute('active', isPinned ? 'true' : 'false')
-            pinBtn.setAttribute('title', isPinned ? 'Unpin Participant' : 'Pin Participant')
+            if (pinBtn) {
+              const pinIcon = pinBtn.querySelector('atoll-icon')
+              const isPinned = state.pinnedParticipantId === p.id
+              if (pinIcon) {
+                pinIcon.setAttribute('active', isPinned ? 'true' : 'false')
+              }
+              pinBtn.setAttribute('title', isPinned ? 'Unpin Participant' : 'Pin Participant')
+            }
+
+            // Update calling / answered spinner and status elements
+            const callingSpinnerWrapper = tile.querySelector('.calling-spinner-wrapper')
+            const statusSubtext = tile.querySelector('.tile-status-subtext')
+            const statusBadge = tile.querySelector('.participant-status-badge')
+
+            const isAnswered = p.isLocal || Boolean(p.hasAnswered)
+            const isDeclinedOrUnavailable = p.status === 'declined' || p.status === 'unavailable'
+            const hideSpinner = isAnswered || isDeclinedOrUnavailable
+
+            if (callingSpinnerWrapper) {
+              if (hideSpinner) {
+                callingSpinnerWrapper.classList.add('d-none')
+              } else {
+                callingSpinnerWrapper.classList.remove('d-none')
+              }
+            }
+
+            if (statusSubtext) {
+              if (isAnswered) {
+                statusSubtext.classList.add('d-none')
+              } else {
+                statusSubtext.classList.remove('d-none')
+                if (p.status === 'declined' || p.status === 'unavailable') {
+                  statusSubtext.innerHTML = `
+                    <atoll-icon name="phone-hangup" size="14" color="var(--atoll-danger, #FF334B)"></atoll-icon>
+                    <span class="text-danger fw-semibold me-1">${p.status === 'declined' ? 'Declined' : 'Unavailable'}</span>
+                  `
+                } else {
+                  statusSubtext.innerHTML = `
+                    <span class="spinner-border spinner-border-sm text-primary me-1" role="status" aria-hidden="true" style="width: 1rem; height: 1rem; border-width: 0.15em;"></span>
+                    <span>Calling…</span>
+                  `
+                }
+              }
+            }
+
+            if (statusBadge) {
+              if (isAnswered) {
+                statusBadge.classList.add('d-none')
+              } else {
+                statusBadge.classList.remove('d-none')
+                if (p.status === 'declined' || p.status === 'unavailable') {
+                  statusBadge.className = 'participant-status-badge badge bg-danger text-white ms-2'
+                  statusBadge.textContent = p.status === 'declined' ? 'Declined' : 'Unavailable'
+                } else {
+                  statusBadge.className = 'participant-status-badge badge bg-secondary bg-opacity-75 text-white-50 ms-2'
+                  statusBadge.textContent = 'Calling…'
+                }
+              }
+            }
 
             // Update video element srcObject safely without resetting active/playing streams
             const videoEl = tile.querySelector('.tile-video')
@@ -326,14 +456,14 @@
               let stream = null
               if (p.isLocal) {
                 stream = $state.localStream
-              } else {
-                const firstRemote = state.participants.find(part => !part.isLocal)
+              } else if (isAnswered) {
+                const firstRemote = state.participants.find(part => !part.isLocal && part.hasAnswered)
                 if (firstRemote && p.id === firstRemote.id) {
                   stream = $state.remoteStream
                 }
               }
 
-              if (stream) {
+              if (stream && isAnswered) {
                 if (videoEl.srcObject !== stream) {
                   videoEl.srcObject = stream
                   videoEl.play().catch(() => {
@@ -418,12 +548,50 @@
 
         const isPinned = state.pinnedParticipantId === p.id
 
+        const isAnswered = p.isLocal || Boolean(p.hasAnswered)
+        const isDeclinedOrUnavailable = p.status === 'declined' || p.status === 'unavailable'
+        const hideSpinner = isAnswered || isDeclinedOrUnavailable
+
+        let statusSubtextHtml = ''
+        if (!isAnswered) {
+          if (isDeclinedOrUnavailable) {
+            statusSubtextHtml = `
+              <div class="tile-status-subtext text-center px-2 mt-1 d-flex align-items-center justify-content-center gap-1" style="font-size: 0.85rem;">
+                <atoll-icon name="phone-hangup" size="14" color="var(--atoll-danger, #FF334B)"></atoll-icon>
+                <span class="text-danger fw-semibold">${p.status === 'declined' ? 'Declined' : 'Unavailable'}</span>
+              </div>
+            `
+          } else {
+            statusSubtextHtml = `
+              <div class="tile-status-subtext text-center px-2 mt-1 d-flex align-items-center justify-content-center gap-1 text-white-50" style="font-size: 0.85rem;">
+                <span class="spinner-border spinner-border-sm text-primary" role="status" aria-hidden="true" style="width: 1rem; height: 1rem; border-width: 0.15em;"></span>
+                <span>Calling…</span>
+              </div>
+            `
+          }
+        }
+
+        let statusBadgeHtml = ''
+        if (!isAnswered) {
+          if (isDeclinedOrUnavailable) {
+            statusBadgeHtml = `<span class="participant-status-badge badge bg-danger text-white ms-2">${p.status === 'declined' ? 'Declined' : 'Unavailable'}</span>`
+          } else {
+            statusBadgeHtml = `<span class="participant-status-badge badge bg-secondary bg-opacity-75 text-white-50 ms-2">Calling…</span>`
+          }
+        }
+
         tile.innerHTML = `
           <video class="tile-video w-100 h-100 object-fit-cover d-none" autoplay playsinline ${p.isLocal ? 'muted' : ''}></video>
 
           <div class="tile-avatar-overlay position-absolute top-0 start-0 w-100 h-100 d-flex flex-column align-items-center justify-content-center text-white bg-dark">
-            <atoll-profile size="${isMini ? 'md' : '2xl'}" src="${avatarUrl}" alt="${p.name}" user-id="${p.id || ''}" class="mb-2 shadow"></atoll-profile>
+            <div class="position-relative d-inline-flex align-items-center justify-content-center mb-2">
+              <div class="calling-spinner-wrapper position-absolute top-50 start-50 translate-middle pointer-events-none ${hideSpinner ? 'd-none' : ''}" style="width: calc(100% + 12px); height: calc(100% + 12px); z-index: 1;">
+                <div class="spinner-border text-primary w-100 h-100" role="status" style="border-width: 2.5px;"></div>
+              </div>
+              <atoll-profile size="${isMini ? 'md' : '2xl'}" src="${avatarUrl}" alt="${p.name}" user-id="${p.id || ''}" class="shadow" style="position: relative; z-index: 2;"></atoll-profile>
+            </div>
             <div class="tile-avatar-name text-center px-2" style="font-size: ${isMini ? '0.8rem' : '1rem'};">${p.name}</div>
+            ${statusSubtextHtml}
           </div>
 
           <div class="audio-status-container position-absolute top-0 end-0 m-2" style="z-index: 15;">
@@ -438,6 +606,7 @@
             <span class="participant-name" style="text-shadow: 1px 1px 2px rgba(0,0,0,0.8); font-size: 0.9rem; font-weight: 500;">
               ${p.isLocal ? 'You' : p.name}
             </span>
+            ${statusBadgeHtml}
           </div>
         `
 
@@ -579,10 +748,27 @@
       })
 
       $state.subscribe('callStatus', (status) => {
-        if (callStates.includes(status)) {
+        if (['outgoing', ...callStates].includes(status)) {
           renderGrid()
         }
       })
+
+      $bus.on('call:participant_declined', ({ participant_id, reason }) => {
+        const participant = state.participants.find(p => p.id === participant_id || (!p.isLocal && participant_id === 'remote-user'))
+        if (participant) {
+          participant.hasAnswered = false
+          if (reason === 'missed' || reason === 'timeout') {
+            participant.status = 'unavailable'
+          } else {
+            participant.status = 'declined'
+          }
+          renderGrid()
+          setSafeTimeout(() => {
+            state.participants = state.participants.filter(p => p.id !== participant.id)
+            renderGrid()
+          }, 2500)
+        }
+      }, { signal })
 
       $bus.on('video-grid:sync', () => {
         renderGrid()

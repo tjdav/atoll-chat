@@ -167,9 +167,15 @@
               if (typeof Image !== 'undefined') {
                 const measurePromise = new Promise((resolve) => {
                   if (img.complete && img.naturalWidth) {
-                    resolve({ width: img.naturalWidth, height: img.naturalHeight })
+                    resolve({
+                      width: img.naturalWidth,
+                      height: img.naturalHeight
+                    })
                   } else {
-                    img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight })
+                    img.onload = () => resolve({
+                      width: img.naturalWidth,
+                      height: img.naturalHeight
+                    })
                     img.onerror = () => resolve(null)
                   }
                 })

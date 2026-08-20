@@ -81,12 +81,21 @@
         const mimeType = (item.mimeType || item.file?.type || '').toLowerCase()
 
         if (item.isAudio || mimeType.startsWith('audio/') || /\.(mp3|wav|m4a|aac|flac|ogg)$/i.test(fileName)) {
-          return { name: 'music', color: 'var(--atoll-brand-primary, #06C755)' }
+          return {
+            name: 'music',
+            color: 'var(--atoll-brand-primary, #06C755)'
+          }
         }
         if (/\.(zip|rar|7z|tar|gz)$/i.test(fileName) || mimeType.includes('zip') || mimeType.includes('compressed')) {
-          return { name: 'folder', color: 'var(--atoll-brand-primary, #06C755)' }
+          return {
+            name: 'folder',
+            color: 'var(--atoll-brand-primary, #06C755)'
+          }
         }
-        return { name: 'document', color: 'var(--atoll-brand-primary, #06C755)' }
+        return {
+          name: 'document',
+          color: 'var(--atoll-brand-primary, #06C755)'
+        }
       }
 
       const getEffectiveAttachments = () => {
