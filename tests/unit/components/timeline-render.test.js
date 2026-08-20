@@ -463,4 +463,44 @@ describe('Atoll Chat Timeline Component Render Path', () => {
     const newRow = el.querySelector('atoll-chat-timeline-row[message-id="msg-999"]')
     assert.ok(newRow, 'Target row msg-999 should be rendered after getMessagesByRoomAround resolves')
   })
+
+  test('should NOT re-pin to bottom on ui:media_loaded after scrollToAnchor disengages stickToBottom', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    const container = el.querySelector('.atoll-chat-timeline-container')
+    assert.ok(container)
+
+    let currentScrollTop = 500
+    Object.defineProperty(container, 'scrollHeight', {
+      value: 1500,
+      configurable: true
+    })
+    Object.defineProperty(container, 'clientHeight', {
+      value: 400,
+      configurable: true
+    })
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => currentScrollTop,
+      set: (v) => {
+        currentScrollTop = v
+      },
+      configurable: true
+    })
+
+    // Trigger anchor jump to msg-5
+    mockBus.emit('message:scroll_to', { messageId: 'msg-5' })
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    // Simulate scroll top after scrollIntoView
+    currentScrollTop = 300
+
+    // Emit media loaded event (asynchronous thumbnail/image load)
+    mockBus.emit('ui:media_loaded')
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    assert.strictEqual(currentScrollTop, 300, 'ui:media_loaded after an anchor jump must not re-pin to the bottom')
+  })
 })
