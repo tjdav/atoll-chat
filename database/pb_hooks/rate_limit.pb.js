@@ -41,5 +41,36 @@ routerAdd('POST', '/api/custom/recover_account', (e) => {
   recentIpAttempts.push(now)
   recoveryAttempts.set(ipKey, recentIpAttempts)
 
-  return e.json(200, { success: true })
+  if (!username) {
+    return e.json(400, { error: 'Invalid recovery request.' })
+  }
+
+  const records = $app.findRecordsByFilter('users', 'username = {:username}', '', 1, 0, { username })
+  if (records.length === 0) {
+    return e.json(400, { error: 'Invalid recovery request.' })
+  }
+
+  const user = records[0]
+  let recoveryWraps = user.get('recovery_wraps') || []
+  if (typeof recoveryWraps === 'string') {
+    try {
+      recoveryWraps = JSON.parse(recoveryWraps)
+    } catch {
+    }
+  }
+
+  if (!recoveryWraps || (Array.isArray(recoveryWraps) && recoveryWraps.length === 0)) {
+    return e.json(400, { error: 'Invalid recovery request.' })
+  }
+
+  return e.json(200, {
+    success: true,
+    user: {
+      id: user.id,
+      username: user.get('username'),
+      recovery_wraps: recoveryWraps,
+      encrypted_private_keys: user.get('encrypted_private_keys'),
+      encrypted_master_keys: user.get('encrypted_master_keys')
+    }
+  })
 })

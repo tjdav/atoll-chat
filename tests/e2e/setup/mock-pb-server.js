@@ -946,29 +946,96 @@ export function createServer () {
         recentIpAttempts.push(now)
         db.recoveryAttempts[ipKey] = recentIpAttempts
 
+        if (!username) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid recovery request.' }))
+          return
+        }
+
+        const usernameCanonical = username.trim().toLowerCase()
+        const user = db.users.find(u => u.username === usernameCanonical)
+
+        if (!user || !user.recovery_wraps || user.recovery_wraps.length === 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({ error: 'Invalid recovery request.' }))
+          return
+        }
+
         res.writeHead(200, { 'Content-Type': 'application/json' })
-        res.end(JSON.stringify({ success: true }))
+        res.end(JSON.stringify({
+          success: true,
+          user: {
+            id: user.id,
+            username: user.username,
+            recovery_wraps: user.recovery_wraps,
+            encrypted_private_keys: user.encrypted_private_keys,
+            encrypted_master_keys: user.encrypted_master_keys
+          }
+        }))
         return
       }
 
       // Custom route for rotate password
       if (pathname === '/api/custom/rotate_password' && req.method === 'POST') {
         const authHeader = req.headers.authorization || ''
-        const userId = getUserIdFromToken(authHeader)
-        const user = db.users.find(u => u.id === userId)
+        const authUserId = getUserIdFromToken(authHeader)
+        let user = authUserId ? db.users.find(u => u.id === authUserId) : null
 
-        if (!user) {
-          res.writeHead(401, { 'Content-Type': 'application/json' })
-          res.end(JSON.stringify({ error: 'Unauthorized' }))
-          return
-        }
-
-        const { newKeyBHash, newWrappedVMK, remainingWraps } = body
+        const { userId, username, newKeyBHash, newWrappedVMK, remainingWraps } = body
 
         if (!newKeyBHash || !newWrappedVMK) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
           res.end(JSON.stringify({ error: 'Missing required rotation payload' }))
           return
+        }
+
+        let isUnauthenticatedRecovery = false
+        if (!user) {
+          const targetId = (userId || '').trim()
+          const targetUsername = (username || '').trim().toLowerCase()
+
+          if (!targetId && !targetUsername) {
+            res.writeHead(401, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Unauthorized' }))
+            return
+          }
+
+          if (targetId) {
+            user = db.users.find(u => u.id === targetId)
+          }
+          if (!user && targetUsername) {
+            user = db.users.find(u => u.username === targetUsername)
+          }
+
+          if (!user) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Invalid recovery request.' }))
+            return
+          }
+
+          isUnauthenticatedRecovery = true
+
+          // Verify recovery wrap reduction rules
+          const existingWraps = user.recovery_wraps || []
+          const remainingWrapsArr = remainingWraps || []
+
+          if (existingWraps.length < 1 || remainingWrapsArr.length !== existingWraps.length - 1) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Invalid recovery request.' }))
+            return
+          }
+
+          const existingStrings = existingWraps.map(w => (typeof w === 'string' ? w : JSON.stringify(w)))
+          const allMatch = remainingWrapsArr.every(w => {
+            const str = typeof w === 'string' ? w : JSON.stringify(w)
+            return existingStrings.includes(str)
+          })
+
+          if (!allMatch) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Invalid recovery request.' }))
+            return
+          }
         }
 
         // Update in-memory mock database atomically
@@ -980,6 +1047,17 @@ export function createServer () {
         user.updated = new Date().toISOString()
 
         broadcast(db, 'users', 'update', user)
+
+        if (isUnauthenticatedRecovery) {
+          const token = generateMockJWT(user.id)
+          res.writeHead(200, { 'Content-Type': 'application/json' })
+          res.end(JSON.stringify({
+            success: true,
+            token,
+            record: user
+          }))
+          return
+        }
 
         res.writeHead(200, { 'Content-Type': 'application/json' })
         res.end(JSON.stringify({ success: true }))
@@ -1464,7 +1542,7 @@ export function createServer () {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = process.env.MOCK_PB_PORT || 8091
   const server = createServer()
-  server.listen(port, '127.0.0.1', () => {
-    console.log(`Mock PocketBase server started on http://127.0.0.1:${port}`)
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`Mock PocketBase server started on http://0.0.0.0:${port}`)
   })
 }

@@ -2,7 +2,7 @@
   <div class="atoll-auth-card">
     
     <!-- LOGIN VIEW -->
-    <div ref="viewLogin" class="d-flex flex-column h-100">
+    <div ref="viewLogin" data-testid="viewLogin" class="d-flex flex-column h-100">
       <!-- Zone 2: Hero Greeting -->
       <div class="atoll-auth-hero-zone">
         <atoll-profile size="3xl" class="d-inline-block mb-3" src="/icon-192x192.png"></atoll-profile>
@@ -51,7 +51,108 @@
             <div ref="biometricContainer" data-testid="biometricContainer" class="d-flex flex-column gap-2"></div>
           </div>
 
+          <div class="mt-2 mb-2">
+            <atoll-button type="button" variant="ghost" block="true" ref="btnShowRecovery" test-id="btnShowRecovery" text="Forgot password? Recover with code">Forgot password? Recover with code</atoll-button>
+          </div>
+
           <atoll-button type="button" variant="ghost" block="true" ref="linkRegister" test-id="linkRegister">Don't have an account? Register</atoll-button>
+        </div>
+      </form>
+    </div>
+
+    <!-- VIEW 2: RECOVERY CODE ENTRY -->
+    <div ref="viewRecovery" data-testid="viewRecovery" class="d-none flex-column h-100">
+      <!-- Zone 1: Header (Top Navigation) -->
+      <div class="atoll-auth-header-zone">
+        <atoll-list-header variant="list" title="Recover Account">
+          <div slot="leading">
+            <atoll-button type="button" variant="ghost" leading-icon="chevron-left" icon-only="true" ref="btnCancelRecovery" test-id="btnCancelRecovery"></atoll-button>
+          </div>
+        </atoll-list-header>
+      </div>
+
+      <!-- Zone 2: Hero Greeting -->
+      <div class="atoll-auth-hero-zone">
+        <h3 class="mb-1">Use Recovery Code</h3>
+        <p class="text-muted small">Enter your username and single-use recovery code to recover your account and set a new password.</p>
+      </div>
+
+      <!-- Zone 3: Form Input Zone -->
+      <form ref="recoveryForm" class="atoll-auth-form-zone" novalidate>
+        <atoll-input 
+          ref="recoveryUsername" 
+          name="recoveryUsername"
+          label="Username" 
+          placeholder="Enter username" 
+          required="true"
+          autocomplete="username"
+          test-id="recoveryUsername"
+          feedback-test-id="recoveryUsername-feedback"
+        ></atoll-input>
+
+        <atoll-input 
+          ref="recoveryCodeInput" 
+          name="recoveryCodeInput"
+          label="Recovery Code" 
+          placeholder="RC-XXXX-XXXX-XXXX-XXXX" 
+          required="true"
+          class="text-center font-monospace fs-5"
+          test-id="recoveryCodeInput"
+          feedback-test-id="recoveryCodeInput-feedback"
+        ></atoll-input>
+
+        <!-- Zone 4: Bottom Action Zone -->
+        <div class="atoll-auth-bottom-zone">
+          <atoll-button type="submit" variant="primary" block="true" ref="btnVerifyRecovery" test-id="btnVerifyRecovery">Verify Recovery Code</atoll-button>
+        </div>
+      </form>
+    </div>
+
+    <!-- VIEW 3: FORCE NEW PASSWORD CREATION -->
+    <div ref="viewNewPassword" data-testid="viewNewPassword" class="d-none flex-column h-100">
+      <!-- Zone 2: Hero Greeting -->
+      <div class="atoll-auth-hero-zone">
+        <h3 class="mb-1">Set New Password</h3>
+        <p class="text-muted small">Recovery successful! Please choose a new password. This will re-encrypt your Master Key and restore full access.</p>
+      </div>
+
+      <!-- Zone 3: Form Input Zone -->
+      <form ref="newPasswordForm" class="atoll-auth-form-zone" novalidate>
+        <div>
+          <atoll-input 
+            ref="newPassword" 
+            name="newPassword"
+            type="password"
+            label="New Password" 
+            placeholder="Enter New Password" 
+            required="true"
+            minlength="12"
+            autocomplete="new-password"
+            test-id="newPassword"
+            feedback-test-id="newPassword-feedback"
+          ></atoll-input>
+          <div class="progress mt-2" style="height: 5px;">
+            <div ref="newStrengthBar" class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+          </div>
+          <div ref="newStrengthText" class="form-text small mt-1">Minimum 12 characters.</div>
+        </div>
+
+        <atoll-input 
+          ref="newPasswordConfirm" 
+          name="newPasswordConfirm"
+          type="password"
+          label="Confirm New Password" 
+          placeholder="Confirm New Password" 
+          required="true"
+          minlength="12"
+          autocomplete="new-password"
+          test-id="newPasswordConfirm"
+          feedback-test-id="newPasswordConfirm-feedback"
+        ></atoll-input>
+
+        <!-- Zone 4: Bottom Action Zone -->
+        <div class="atoll-auth-bottom-zone">
+          <atoll-button type="submit" variant="primary" block="true" ref="btnSaveNewPassword" test-id="btnSaveNewPassword" disabled="true">Save Password & Log In</atoll-button>
         </div>
       </form>
     </div>
@@ -65,7 +166,7 @@
 
   export default defineComponent({
     client: async ({ refs, pocketbase, globalStore, storage, eventBus, realtimeSync, cryptoWorker, utils, biometric, _root }) => {
-      const { pb } = pocketbase
+      const { pb, auth: authApi } = pocketbase
       const { $storage } = storage
       const { $state } = globalStore
       const { $bus } = eventBus
@@ -73,20 +174,44 @@
       const { $worker } = cryptoWorker
       const { $url } = utils
 
+      const viewLogin = refs('viewLogin')
+      const viewRecovery = refs('viewRecovery')
+      const viewNewPassword = refs('viewNewPassword')
+
       const loginForm = refs('loginForm')
       const loginSubmit = refs('loginSubmit')
       const altchaContainer = refs('altchaContainer')
       const identityInput = refs('identity')
       const passwordInput = refs('password')
 
+      const btnShowRecovery = refs('btnShowRecovery')
       const linkRegister = refs('linkRegister')
       const statusMsg = refs('statusMsg')
       const biometricSection = refs('biometricSection')
       const biometricContainer = refs('biometricContainer')
 
+      const btnCancelRecovery = refs('btnCancelRecovery')
+      const recoveryForm = refs('recoveryForm')
+      const recoveryUsernameInput = refs('recoveryUsername')
+      const recoveryCodeInput = refs('recoveryCodeInput')
+      const btnVerifyRecovery = refs('btnVerifyRecovery')
+
+      const newPasswordForm = refs('newPasswordForm')
+      const newPasswordInput = refs('newPassword')
+      const newPasswordConfirmInput = refs('newPasswordConfirm')
+      const newStrengthBar = refs('newStrengthBar')
+      const newStrengthText = refs('newStrengthText')
+      const btnSaveNewPassword = refs('btnSaveNewPassword')
+
       let activeAltchaWidget = null
       let loginSubmitPending = false
       let altchaPayload = null
+
+      let decryptedMasterKeyHex = null
+      let matchedWrapIndex = -1
+      let fetchedUserPayload = null
+      let decryptedKeysLocal = null
+      let zxcvbnScore = 0
 
       const isTesting = import.meta.env.MODE === 'testing' || (typeof window !== 'undefined' && (window.__playwright_test_id__ || window.PLAYWRIGHT_TEST))
 
@@ -135,8 +260,9 @@
           const isValid = input.checkValidity()
           if (!isValid) {
             input.setAttribute('invalid', 'true')
-            const innerInput = input.querySelector('input')
-            const validationMsg = innerInput ? innerInput.validationMessage : 'Invalid value.'
+            const existingMsg = input.getAttribute('error-message') || input.errorMessage
+            const innerInput = input.shadowRoot ? input.shadowRoot.querySelector('input') : input.querySelector('input')
+            const validationMsg = existingMsg || (innerInput ? innerInput.validationMessage : 'Invalid value.')
             input.setAttribute('error-message', validationMsg)
           } else {
             input.removeAttribute('invalid')
@@ -159,6 +285,7 @@
             return
           }
   
+          input.setCustomValidity('')
           input.removeAttribute('invalid')
           input.removeAttribute('error-message')
           updateStatus('')
@@ -166,6 +293,68 @@
       }
 
       registerInputReset(loginForm)
+      registerInputReset(recoveryForm)
+      registerInputReset(newPasswordForm)
+
+      recoveryCodeInput.addEventListener('input', () => {
+        const val = recoveryCodeInput.value || ''
+        const clean = val.replace(/[^A-Za-z0-9]/g, '').toUpperCase()
+        let raw = clean
+        if (raw.startsWith('RC')) {
+          raw = raw.slice(2)
+        }
+        let formatted = 'RC'
+        if (raw.length > 0) {
+          formatted += '-' + raw.substring(0, 4)
+        }
+        if (raw.length > 4) {
+          formatted += '-' + raw.substring(4, 8)
+        }
+        if (raw.length > 8) {
+          formatted += '-' + raw.substring(8, 12)
+        }
+        if (raw.length > 12) {
+          formatted += '-' + raw.substring(12, 16)
+        }
+        recoveryCodeInput.value = formatted
+      })
+
+      btnShowRecovery.addEventListener('click', (e) => {
+        e.preventDefault()
+        viewLogin.classList.add('d-none')
+        viewLogin.classList.remove('d-flex')
+        viewRecovery.classList.remove('d-none')
+        viewRecovery.classList.add('d-flex')
+        if (identityInput.value) {
+          recoveryUsernameInput.value = identityInput.value
+        }
+        updateStatus('')
+        showGlobalAlert('')
+        recoveryForm.classList.remove('was-validated')
+        recoveryUsernameInput.setCustomValidity('')
+        recoveryUsernameInput.removeAttribute('invalid')
+        recoveryUsernameInput.removeAttribute('error-message')
+        recoveryCodeInput.setCustomValidity('')
+        recoveryCodeInput.removeAttribute('invalid')
+        recoveryCodeInput.removeAttribute('error-message')
+      })
+
+      btnCancelRecovery.addEventListener('click', () => {
+        viewRecovery.classList.add('d-none')
+        viewRecovery.classList.remove('d-flex')
+        viewLogin.classList.remove('d-none')
+        viewLogin.classList.add('d-flex')
+        recoveryCodeInput.value = ''
+        updateStatus('')
+        showGlobalAlert('')
+        recoveryForm.classList.remove('was-validated')
+        recoveryUsernameInput.setCustomValidity('')
+        recoveryUsernameInput.removeAttribute('invalid')
+        recoveryUsernameInput.removeAttribute('error-message')
+        recoveryCodeInput.setCustomValidity('')
+        recoveryCodeInput.removeAttribute('invalid')
+        recoveryCodeInput.removeAttribute('error-message')
+      })
 
       linkRegister.addEventListener('click', (e) => {
         e.preventDefault()
@@ -313,6 +502,7 @@
             passwordInput.setAttribute('disabled', 'true')
             loginSubmit.setAttribute('disabled', 'true')
             linkRegister.setAttribute('disabled', 'true')
+            btnShowRecovery.setAttribute('disabled', 'true')
             showGlobalAlert('')
             updateStatus('')
 
@@ -354,6 +544,7 @@
                 passwordInput.removeAttribute('disabled')
                 loginSubmit.removeAttribute('disabled')
                 linkRegister.removeAttribute('disabled')
+                btnShowRecovery.removeAttribute('disabled')
                 updateStatus('Security challenge is required. Please wait for it to load.', true)
                 return
               }
@@ -489,6 +680,7 @@
               passwordInput.removeAttribute('disabled')
               loginSubmit.removeAttribute('disabled')
               linkRegister.removeAttribute('disabled')
+              btnShowRecovery.removeAttribute('disabled')
 
               updateStatus(error.message || 'Failed to log in', true)
               showGlobalAlert(error.message || 'Failed to log in')
@@ -532,6 +724,7 @@
         identityInput.setAttribute('disabled', 'true')
         passwordInput.setAttribute('disabled', 'true')
         linkRegister.setAttribute('disabled', 'true')
+        btnShowRecovery.setAttribute('disabled', 'true')
 
         if (!currentPayload) {
           loginSubmitPending = true
@@ -691,10 +884,283 @@
           identityInput.removeAttribute('disabled')
           passwordInput.removeAttribute('disabled')
           linkRegister.removeAttribute('disabled')
+          btnShowRecovery.removeAttribute('disabled')
 
           updateStatus(error.message || 'Failed to log in', true)
           showGlobalAlert(error.message || 'Failed to log in')
           activeAltchaWidget.reset()
+        }
+      })
+
+      recoveryForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        showGlobalAlert('')
+        updateValidationFeedback(recoveryForm)
+
+        if (!recoveryForm.checkValidity()) {
+          e.stopPropagation()
+          recoveryForm.classList.add('was-validated')
+          return
+        }
+
+        const username = recoveryUsernameInput.value.trim()
+        const code = recoveryCodeInput.value.trim()
+
+        try {
+          recoveryForm.classList.remove('was-validated')
+          updateStatus('Verifying recovery limit...')
+          btnVerifyRecovery.setAttribute('loading', 'true')
+          recoveryUsernameInput.setAttribute('disabled', 'true')
+          recoveryCodeInput.setAttribute('disabled', 'true')
+          btnCancelRecovery.setAttribute('disabled', 'true')
+
+          let recoverRes
+          try {
+            const recoverFn = authApi && typeof authApi.recoverAccount === 'function' ? authApi.recoverAccount : (u) => pb.send('/api/custom/recover_account', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ username: u })
+            })
+            recoverRes = await recoverFn(username)
+          } catch (err) {
+            if (err.status === 429) {
+              throw new Error(err.message || 'Too many recovery attempts. Please try again later.')
+            }
+            throw new Error('Invalid or expired recovery code.')
+          }
+
+          if (!recoverRes || !recoverRes.user || !recoverRes.user.recovery_wraps) {
+            throw new Error('Invalid or expired recovery code.')
+          }
+
+          fetchedUserPayload = recoverRes.user
+          const { recovery_wraps: recoveryWraps, encrypted_private_keys: encryptedPrivateKeys } = fetchedUserPayload
+
+          if (!recoveryWraps || recoveryWraps.length === 0) {
+            throw new Error('Invalid or expired recovery code.')
+          }
+
+          updateStatus('Verifying recovery code...')
+          let decryptedMasterKey = null
+          matchedWrapIndex = -1
+
+          for (let i = 0; i < recoveryWraps.length; i++) {
+            try {
+              decryptedMasterKey = await $worker.execute('worker:decrypt_master_key_with_code', {
+                code,
+                wrap: recoveryWraps[i]
+              })
+              if (decryptedMasterKey) {
+                matchedWrapIndex = i
+                break
+              }
+            } catch {
+              /* Keep searching */
+            }
+          }
+
+          if (!decryptedMasterKey) {
+            throw new Error('Invalid or expired recovery code.')
+          }
+
+          if (!encryptedPrivateKeys) {
+            throw new Error('This account is missing vault key data.')
+          }
+
+          decryptedMasterKeyHex = decryptedMasterKey
+
+          updateStatus('Decrypting private keys...')
+          decryptedKeysLocal = await $worker.execute('worker:decrypt_vault', {
+            encrypted_private_keys: encryptedPrivateKeys,
+            master_key: decryptedMasterKeyHex
+          })
+
+          btnVerifyRecovery.removeAttribute('loading')
+          recoveryUsernameInput.removeAttribute('disabled')
+          recoveryCodeInput.removeAttribute('disabled')
+          btnCancelRecovery.removeAttribute('disabled')
+
+          viewRecovery.classList.add('d-none')
+          viewRecovery.classList.remove('d-flex')
+          viewNewPassword.classList.remove('d-none')
+          viewNewPassword.classList.add('d-flex')
+          updateStatus('Code verified! Please set a new password.')
+          newPasswordForm.classList.remove('was-validated')
+          newPasswordInput.setCustomValidity('')
+          newPasswordConfirmInput.setCustomValidity('')
+          newPasswordInput.removeAttribute('invalid')
+          newPasswordInput.removeAttribute('error-message')
+          newPasswordConfirmInput.removeAttribute('invalid')
+          newPasswordConfirmInput.removeAttribute('error-message')
+        } catch (err) {
+          btnVerifyRecovery.removeAttribute('loading')
+          recoveryUsernameInput.removeAttribute('disabled')
+          recoveryCodeInput.removeAttribute('disabled')
+          btnCancelRecovery.removeAttribute('disabled')
+
+          if (err.status && err.status >= 500) {
+            showGlobalAlert(err.message || 'Recovery failed.')
+          } else {
+            const errorMsg = err.message || 'Invalid or expired recovery code.'
+            recoveryCodeInput.errorMessage = errorMsg
+            recoveryCodeInput.invalid = true
+            recoveryCodeInput.setCustomValidity(errorMsg)
+            recoveryCodeInput.setAttribute('error-message', errorMsg)
+            recoveryCodeInput.setAttribute('invalid', 'true')
+            recoveryForm.classList.add('was-validated')
+          }
+          updateStatus('')
+        }
+      })
+
+      /**
+       * Evaluates password complexity and updates the visual strength meter bar synchronously.
+       *
+       * @returns {Promise<void>}
+       */
+      const updateNewStrength = async () => {
+        const password = newPasswordInput.value
+        const confirmPassword = newPasswordConfirmInput.value
+
+        const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
+        const { score, width, colorClass, text } = await evaluatePasswordStrength(password, 12)
+        zxcvbnScore = score
+        newStrengthBar.style.width = width
+        newStrengthBar.className = colorClass
+        newStrengthText.textContent = text
+
+        if (password.length >= 12 && zxcvbnScore >= 3 && password === confirmPassword) {
+          btnSaveNewPassword.removeAttribute('disabled')
+        } else {
+          btnSaveNewPassword.setAttribute('disabled', 'true')
+        }
+      }
+
+      newPasswordInput.addEventListener('input', updateNewStrength)
+      newPasswordConfirmInput.addEventListener('input', updateNewStrength)
+
+      newPasswordForm.addEventListener('submit', async (e) => {
+        e.preventDefault()
+        showGlobalAlert('')
+
+        const newPassword = newPasswordInput.value
+        const newPasswordConfirm = newPasswordConfirmInput.value
+
+        const { evaluatePasswordStrength } = await import('../../utils/passwordUtils.js')
+        const { score } = await evaluatePasswordStrength(newPassword, 12)
+
+        if (newPassword.length < 12) {
+          newPasswordInput.setCustomValidity('Password must be at least 12 characters.')
+        } else if (score < 3) {
+          newPasswordInput.setCustomValidity('Password is too weak. Please use a stronger password.')
+        } else {
+          newPasswordInput.setCustomValidity('')
+        }
+
+        if (newPassword !== newPasswordConfirm) {
+          newPasswordConfirmInput.setCustomValidity('Passwords do not match.')
+        } else {
+          newPasswordConfirmInput.setCustomValidity('')
+        }
+
+        updateValidationFeedback(newPasswordForm)
+
+        if (!newPasswordForm.checkValidity()) {
+          e.stopPropagation()
+          newPasswordForm.classList.add('was-validated')
+          return
+        }
+
+        try {
+          newPasswordForm.classList.remove('was-validated')
+          updateStatus('Deriving new vault password...')
+          btnSaveNewPassword.setAttribute('loading', 'true')
+          newPasswordInput.setAttribute('disabled', 'true')
+          newPasswordConfirmInput.setAttribute('disabled', 'true')
+
+          const { deriveAuthAndVaultKeys, purgeVaultKey } = await import('../../utils/keys.js')
+          const { keyA: newKeyA, keyB: newKeyB } = await deriveAuthAndVaultKeys(fetchedUserPayload.username, newPassword)
+
+          updateStatus('Re-encrypting Master Key...')
+          const newPasswordWrap = await $worker.execute('worker:encrypt_master_key_with_kek', {
+            master_key: decryptedMasterKeyHex,
+            KEK: newKeyA
+          })
+
+          /* Client-Side Purge of the matched recovery code wrap */
+          const remainingWraps = [...fetchedUserPayload.recovery_wraps]
+          if (matchedWrapIndex !== -1) {
+            remainingWraps.splice(matchedWrapIndex, 1)
+          }
+
+          updateStatus('Updating password and vault on server...')
+          const rotateFn = authApi && typeof authApi.rotatePassword === 'function' ? authApi.rotatePassword : (kb, vmk, rw, uid) => pb.send('/api/custom/rotate_password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              newKeyBHash: kb,
+              newWrappedVMK: vmk,
+              remainingWraps: rw,
+              userId: uid
+            })
+          })
+          const rotateRes = await rotateFn(newKeyB, newPasswordWrap, remainingWraps, fetchedUserPayload.id)
+
+          if (!rotateRes || !rotateRes.token || !rotateRes.record) {
+            throw new Error('Password rotation failed.')
+          }
+
+          const authRecord = rotateRes.record
+          const token = rotateRes.token
+
+          updateStatus('Initializing session...')
+          await $worker.execute('worker:set_token', { token })
+          await $worker.execute('worker:init_keys', {
+            ...decryptedKeysLocal,
+            id: authRecord.id
+          })
+
+          pb.authStore.save(token, authRecord)
+          await $storage.saveConfigs([
+            {
+              key: 'pb_url',
+              value: pb.baseUrl
+            },
+            {
+              key: 'pb_token',
+              value: pb.authStore.token
+            }
+          ])
+
+          purgeVaultKey()
+
+          $state.currentUser = {
+            ...authRecord,
+            ...decryptedKeysLocal
+          }
+          $bus.emit('auth:unlocked', {
+            keys: decryptedKeysLocal,
+            userRecord: authRecord
+          })
+          $state.isAuthenticated = true
+          $state.isVaultUnlocked = true
+          $state.pendingRegistrationInvite = null
+
+          try {
+            await $sync.startSubscriptions()
+          } catch (err) {
+            if (err && err.message && !err.message.includes('subscription')) {
+              throw err
+            }
+          }
+
+          updateStatus('Recovery and password reset complete!')
+        } catch (err) {
+          btnSaveNewPassword.removeAttribute('loading')
+          newPasswordInput.removeAttribute('disabled')
+          newPasswordConfirmInput.removeAttribute('disabled')
+          showGlobalAlert(err.message || 'Password rotation failed.')
+          updateStatus('')
         }
       })
     }
