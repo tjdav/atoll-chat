@@ -69,8 +69,7 @@ routerAdd('POST', '/api/custom/recover_account', (e) => {
       id: user.id,
       username: user.get('username'),
       recovery_wraps: recoveryWraps,
-      encrypted_private_keys: user.get('encrypted_private_keys'),
-      encrypted_master_keys: user.get('encrypted_master_keys')
+      encrypted_private_keys: user.get('encrypted_private_keys')
     }
   })
 })

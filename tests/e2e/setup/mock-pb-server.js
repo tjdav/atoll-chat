@@ -968,8 +968,7 @@ export function createServer () {
             id: user.id,
             username: user.username,
             recovery_wraps: user.recovery_wraps,
-            encrypted_private_keys: user.encrypted_private_keys,
-            encrypted_master_keys: user.encrypted_master_keys
+            encrypted_private_keys: user.encrypted_private_keys
           }
         }))
         return
@@ -981,7 +980,7 @@ export function createServer () {
         const authUserId = getUserIdFromToken(authHeader)
         let user = authUserId ? db.users.find(u => u.id === authUserId) : null
 
-        const { userId, username, newKeyBHash, newWrappedVMK, remainingWraps } = body
+        const { userId, username, newKeyBHash, newWrappedVMK, remainingWraps, recoveryAuthProof } = body
 
         if (!newKeyBHash || !newWrappedVMK) {
           res.writeHead(400, { 'Content-Type': 'application/json' })
@@ -990,13 +989,55 @@ export function createServer () {
         }
 
         let isUnauthenticatedRecovery = false
+        let serverRemainingWraps = null
+
         if (!user) {
+          const ip = req.socket.remoteAddress || '127.0.0.1'
+          const now = Date.now()
+
           const targetId = (userId || '').trim()
           const targetUsername = (username || '').trim().toLowerCase()
+
+          db.rotationAttempts = db.rotationAttempts || {}
+
+          const ipKey = `rotation:ip:${ip}`
+          const userKey = (targetId || targetUsername) ? `rotation:user:${targetId || targetUsername}` : ''
+
+          const ipAttempts = db.rotationAttempts[ipKey] || []
+          const recentIpAttempts = ipAttempts.filter(t => now - t < 3600000)
+
+          if (recentIpAttempts.length >= 5) {
+            res.writeHead(429, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Too many recovery attempts. Please try again later.' }))
+            return
+          }
+
+          if (userKey) {
+            const userAttempts = db.rotationAttempts[userKey] || []
+            const recentUserAttempts = userAttempts.filter(t => now - t < 3600000)
+
+            if (recentUserAttempts.length >= 5) {
+              res.writeHead(429, { 'Content-Type': 'application/json' })
+              res.end(JSON.stringify({ error: 'Too many recovery attempts. Please try again later.' }))
+              return
+            }
+
+            recentUserAttempts.push(now)
+            db.rotationAttempts[userKey] = recentUserAttempts
+          }
+
+          recentIpAttempts.push(now)
+          db.rotationAttempts[ipKey] = recentIpAttempts
 
           if (!targetId && !targetUsername) {
             res.writeHead(401, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: 'Unauthorized' }))
+            return
+          }
+
+          if (!recoveryAuthProof) {
+            res.writeHead(400, { 'Content-Type': 'application/json' })
+            res.end(JSON.stringify({ error: 'Invalid recovery request.' }))
             return
           }
 
@@ -1015,33 +1056,35 @@ export function createServer () {
 
           isUnauthenticatedRecovery = true
 
-          // Verify recovery wrap reduction rules
-          const existingWraps = user.recovery_wraps || []
-          const remainingWrapsArr = remainingWraps || []
+          let existingWraps = user.recovery_wraps || []
+          if (typeof existingWraps === 'string') {
+            try {
+              existingWraps = JSON.parse(existingWraps)
+            } catch {
+            }
+          }
+          if (!Array.isArray(existingWraps)) {
+            existingWraps = []
+          }
 
-          if (existingWraps.length < 1 || remainingWrapsArr.length !== existingWraps.length - 1) {
+          const candidateVerifier = crypto.createHash('sha256').update('atoll-recovery-verifier:' + recoveryAuthProof).digest('base64')
+          const matchedIdx = existingWraps.findIndex(w => (typeof w === 'object' && w !== null ? w.verifier : null) === candidateVerifier)
+
+          if (matchedIdx === -1) {
             res.writeHead(400, { 'Content-Type': 'application/json' })
             res.end(JSON.stringify({ error: 'Invalid recovery request.' }))
             return
           }
 
-          const existingStrings = existingWraps.map(w => (typeof w === 'string' ? w : JSON.stringify(w)))
-          const allMatch = remainingWrapsArr.every(w => {
-            const str = typeof w === 'string' ? w : JSON.stringify(w)
-            return existingStrings.includes(str)
-          })
-
-          if (!allMatch) {
-            res.writeHead(400, { 'Content-Type': 'application/json' })
-            res.end(JSON.stringify({ error: 'Invalid recovery request.' }))
-            return
-          }
+          serverRemainingWraps = existingWraps.filter((_, idx) => idx !== matchedIdx)
         }
 
         // Update in-memory mock database atomically
         user.password = newKeyBHash
         user.encrypted_master_keys = newWrappedVMK
-        if (remainingWraps !== undefined) {
+        if (serverRemainingWraps !== null) {
+          user.recovery_wraps = serverRemainingWraps
+        } else if (remainingWraps !== undefined) {
           user.recovery_wraps = remainingWraps
         }
         user.updated = new Date().toISOString()
@@ -1541,8 +1584,9 @@ export function createServer () {
 // Start the server if run directly
 if (import.meta.url === `file://${process.argv[1]}`) {
   const port = process.env.MOCK_PB_PORT || 8091
+  const host = process.env.MOCK_PB_HOST || '127.0.0.1'
   const server = createServer()
-  server.listen(port, '0.0.0.0', () => {
-    console.log(`Mock PocketBase server started on http://0.0.0.0:${port}`)
+  server.listen(port, host, () => {
+    console.log(`Mock PocketBase server started on http://${host}:${port}`)
   })
 }
