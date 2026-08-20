@@ -122,6 +122,11 @@ describe('Atoll Chat Input Text Component', () => {
       globalStore: {
         $state: globalState
       },
+      utils: {
+        $device: {
+          isTouch: () => globalState.isTouchDevice ?? false
+        }
+      },
       eventBus: {
         $bus: {
           emit: (name, payload) => {
@@ -314,5 +319,64 @@ describe('Atoll Chat Input Text Component', () => {
     assert.ok(pbMock.updates.length > 0, 'Should have reset the typing state via pocketbase update')
     const lastUpdate = pbMock.updates[pbMock.updates.length - 1]
     assert.equal(lastUpdate.data.is_typing, false, 'is_typing should be set to false for the old room')
+  })
+
+  test('should focus messageInput on ui:focus_input even when isTouch is true', async () => {
+    globalState.isTouchDevice = true
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const textarea = el.querySelector('textarea')
+    let focused = false
+    textarea.focus = () => {
+      focused = true
+    }
+
+    // Trigger ui:focus_input
+    if (globalState.busListeners && globalState.busListeners['ui:focus_input']) {
+      globalState.busListeners['ui:focus_input'].forEach(cb => cb())
+    }
+
+    // Wait for requestAnimationFrame
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    assert.equal(focused, true, 'messageInput.focus() should be called even on touch devices')
+    const scrollEvent = emittedEvents.find(e => e.name === 'ui:scroll_to_bottom')
+    assert.ok(scrollEvent, 'ui:scroll_to_bottom should be emitted on touch devices')
+  })
+
+  test('should prevent default on sendButton pointerdown to keep focus on textarea', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const sendButton = el.querySelector('.atoll-chat-input-btn-send')
+    assert.ok(sendButton, 'Send button should exist')
+
+    let defaultPrevented = false
+    const pointerDownEvent = new Event('pointerdown', {
+      bubbles: true,
+      cancelable: true
+    })
+    pointerDownEvent.preventDefault = () => {
+      defaultPrevented = true
+    }
+
+    sendButton.dispatchEvent(pointerDownEvent)
+    assert.equal(defaultPrevented, true, 'pointerdown event default action should be prevented on sendButton')
+  })
+
+  test('should keep messageInput enabled when isSending is true but isUploading/isCompressing are false', async () => {
+    const el = document.createElement(tagName)
+    el.setAttribute('is-sending', 'true')
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const textarea = el.querySelector('textarea')
+    assert.equal(textarea.disabled, false, 'messageInput should not be disabled when isSending is true')
+
+    const sendButton = el.querySelector('.atoll-chat-input-btn-send')
+    assert.equal(sendButton.hasAttribute('disabled'), true, 'sendButton should be disabled when isSending is true')
   })
 })
