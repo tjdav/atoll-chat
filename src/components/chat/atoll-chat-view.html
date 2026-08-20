@@ -69,7 +69,7 @@
     </div>
 
     <!-- Chat Input -->
-    <atoll-chat-input></atoll-chat-input>
+    <atoll-chat-input ref="chatInput"></atoll-chat-input>
   </div>
 </template>
 
@@ -95,6 +95,35 @@
       const { $webrtc } = webrtcPluginContext
       const { pb } = pocketbase || {}
       const headerAvatar = refs('headerAvatar')
+
+      const chatInputEl = refs('chatInput')
+      const chatViewRootEl = refs('chatViewRoot')
+
+      const updateInputHeightPadding = () => {
+        const inputComp = chatInputEl || (chatViewRootEl ? chatViewRootEl.querySelector('atoll-chat-input') : null)
+        const viewRoot = chatViewRootEl || (inputComp ? inputComp.closest('.atoll-chat-view') : null)
+        if (!inputComp || !viewRoot) {
+          return
+        }
+        const inputHeight = inputComp.getBoundingClientRect().height || inputComp.offsetHeight || 0
+        if (inputHeight > 0) {
+          const paddingValue = `${Math.ceil(inputHeight) + 12}px`
+          viewRoot.style.setProperty('--atoll-chat-timeline-padding-bottom', paddingValue)
+          $bus.emit('ui:input_height_changed', { height: inputHeight })
+        }
+      }
+
+      if (chatInputEl && typeof ResizeObserver !== 'undefined') {
+        const resizeObserver = new ResizeObserver(() => {
+          updateInputHeightPadding()
+        })
+        resizeObserver.observe(chatInputEl)
+        signal.addEventListener('abort', () => {
+          resizeObserver.disconnect()
+        })
+      }
+
+      updateInputHeightPadding()
 
       const { Offcanvas } = bootstrap
       const offcanvasEl = refs('roomDetailsOffcanvas')

@@ -4,7 +4,7 @@
       <atoll-icon name="shield-lock" size="xl" class="mb-3 d-block"></atoll-icon>
       <p>Messages are end-to-end encrypted. No one outside of this chat, not even Atoll, can read them.</p>
     </div>
-    <div ref="statusContainer" class="container atoll-chat-message-status-container d-none text-endatoll-chat-header-border px-2 py-1 align-items-center justify-content-end">
+    <div ref="statusContainer" class="container atoll-chat-message-status-container d-none text-end px-2 py-1 align-items-center justify-content-end">
       <span ref="statusText" class="x-small me-1" style="color: var(--atoll-chat-text-muted, #595959) !important;" data-testid="status-text"></span>
       <atoll-icon ref="statusIcon" name="check-circle" size="xs" color="var(--atoll-chat-text-muted)"></atoll-icon>
     </div>
@@ -882,9 +882,11 @@
               }
             } else {
               shouldAutoScroll = true
+              scrollToBottom(false)
               requestAnimationFrame(() => scrollToBottom(false))
-              // Extra safety for media that might load instantly from cache
-              setTimeout(() => scrollToBottom(false), 100)
+              // Extra safety for media and padding updates that complete shortly after mount
+              setTimeout(() => scrollToBottom(false), 50)
+              setTimeout(() => scrollToBottom(false), 150)
             }
           } else if (forceScrollToBottom || wasNearBottom) {
             shouldAutoScroll = true
@@ -906,6 +908,12 @@
         const dist = container.scrollHeight - container.scrollTop - container.clientHeight
         if (shouldAutoScroll || dist < 350) {
           requestAnimationFrame(() => scrollToBottom(true))
+        }
+      })
+
+      $bus.on('ui:input_height_changed', () => {
+        if (shouldAutoScroll) {
+          scrollToBottom(false)
         }
       })
 
