@@ -40,6 +40,8 @@ const predefinedThemes = [
       'input-color': '#111111',
       'input-placeholder-color': '#525252',
       'input-emoji-color': '#525252',
+      'header-btn-bg': 'rgba(0, 0, 0, 0.08)',
+      'header-btn-color': '#111111',
       'waveform-active': '#FFFFFF',
       'waveform-inactive': '#111111',
       'attachment-card-bg': '#767676'
@@ -69,6 +71,8 @@ const predefinedThemes = [
       'input-color': '#FFFFFF',
       'input-placeholder-color': '#B0B0B0',
       'input-emoji-color': '#B0B0B0',
+      'header-btn-bg': 'rgba(255, 255, 255, 0.18)',
+      'header-btn-color': '#FFFFFF',
       'waveform-active': '#00FF66',
       'waveform-inactive': '#FFFFFF',
       'attachment-card-bg': '#6E6E6E'
@@ -98,6 +102,8 @@ const predefinedThemes = [
       'input-color': '#FFFFFF',
       'input-placeholder-color': 'rgba(255, 255, 255, 0.75)',
       'input-emoji-color': 'rgba(255, 255, 255, 0.75)',
+      'header-btn-bg': 'rgba(255, 255, 255, 0.18)',
+      'header-btn-color': '#FFFFFF',
       'waveform-active': '#FFFFFF',
       'waveform-inactive': '#FFFFFF',
       'attachment-card-bg': '#387B91'
@@ -127,6 +133,8 @@ const predefinedThemes = [
       'input-color': '#FFFFFF',
       'input-placeholder-color': '#FFFFFF',
       'input-emoji-color': '#FFFFFF',
+      'header-btn-bg': 'rgba(255, 255, 255, 0.18)',
+      'header-btn-color': '#FFFFFF',
       'waveform-active': '#38ef7d',
       'waveform-inactive': '#FFFFFF',
       'attachment-card-bg': '#707070'
@@ -156,6 +164,8 @@ const predefinedThemes = [
       'input-color': '#FFFFFF',
       'input-placeholder-color': 'rgba(255, 255, 255, 0.75)',
       'input-emoji-color': 'rgba(255, 255, 255, 0.75)',
+      'header-btn-bg': 'rgba(255, 255, 255, 0.18)',
+      'header-btn-color': '#FFFFFF',
       'waveform-active': '#FFD54F',
       'waveform-inactive': '#FFFFFF',
       'attachment-card-bg': '#6E6E6E'
@@ -253,7 +263,12 @@ function generateNormalizedCustomTheme (p) {
 
   const btnSendBg = ensureForegroundContrast(sentBg, glassyFillHex, 3.0)
 
+  const headerBtnBg = isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.08)'
+  const headerBtnColor = ensureForegroundContrast(baseCanvasText, compositeColor(headerBtnBg, glassyFill), 4.5)
+
   return {
+    headerBtnBg,
+    headerBtnColor,
     bgColor: p.bg,
     textPrimary: ensureForegroundContrast(baseCanvasText, rgbBgHex, 4.5),
     textSecondary: ensureForegroundContrast(isDark ? '#B0B0B0' : '#525252', rgbBgHex, 4.5),

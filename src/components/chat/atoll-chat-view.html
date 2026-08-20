@@ -3,7 +3,19 @@
     <!-- Chat Header -->
     <header class="app-header atoll-chat-view-header d-flex justify-content-between align-items-center">
       <div class="d-flex align-items-center">
-        <atoll-button variant="ghost" leading-icon="chevron-left" icon-only="true" pill="true" ref="btnBack" class="d-inline-block d-md-none me-3" data-testid="chatBackBtn" title="Back to chats" aria-label="Back to chats"></atoll-button>
+        <atoll-button 
+          ref="btnBack" 
+          icon-only="true" 
+          variant="secondary" 
+          size="md" 
+          pill="true" 
+          class="d-inline-block d-md-none me-3" 
+          title="Back to chats" 
+          aria-label="Back to chats" 
+          data-testid="chatBackBtn"
+        >
+          <atoll-icon name="chevron-left" size="24"></atoll-icon>
+        </atoll-button>
         <atoll-profile ref="headerAvatar" size="sm" class="d-inline-block me-3" alt="{{ roomName }}"></atoll-profile>
         <div>
           <h6 class="atoll-text-title-2 mb-0">{{ roomName }}</h6>
@@ -69,7 +81,7 @@
     </div>
 
     <!-- Chat Input -->
-    <atoll-chat-input ref="chatInput"></atoll-chat-input>
+    <atoll-chat-input></atoll-chat-input>
   </div>
 </template>
 
@@ -95,35 +107,6 @@
       const { $webrtc } = webrtcPluginContext
       const { pb } = pocketbase || {}
       const headerAvatar = refs('headerAvatar')
-
-      const chatInputEl = refs('chatInput')
-      const chatViewRootEl = refs('chatViewRoot')
-
-      const updateInputHeightPadding = () => {
-        const inputComp = chatInputEl || (chatViewRootEl ? chatViewRootEl.querySelector('atoll-chat-input') : null)
-        const viewRoot = chatViewRootEl || (inputComp ? inputComp.closest('.atoll-chat-view') : null)
-        if (!inputComp || !viewRoot) {
-          return
-        }
-        const inputHeight = inputComp.getBoundingClientRect().height || inputComp.offsetHeight || 0
-        if (inputHeight > 0) {
-          const paddingValue = `${Math.ceil(inputHeight) + 12}px`
-          viewRoot.style.setProperty('--atoll-chat-timeline-padding-bottom', paddingValue)
-          $bus.emit('ui:input_height_changed', { height: inputHeight })
-        }
-      }
-
-      if (chatInputEl && typeof ResizeObserver !== 'undefined') {
-        const resizeObserver = new ResizeObserver(() => {
-          updateInputHeightPadding()
-        })
-        resizeObserver.observe(chatInputEl)
-        signal.addEventListener('abort', () => {
-          resizeObserver.disconnect()
-        })
-      }
-
-      updateInputHeightPadding()
 
       const { Offcanvas } = bootstrap
       const offcanvasEl = refs('roomDetailsOffcanvas')
@@ -320,6 +303,11 @@
         chatViewRoot.style.removeProperty('--atoll-chat-surface-glass')
         chatViewRoot.style.removeProperty('--atoll-chat-border')
 
+        chatViewRoot.style.removeProperty('--atoll-chat-header-btn-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-header-btn-hover-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-header-btn-active-bg')
+        chatViewRoot.style.removeProperty('--atoll-chat-header-btn-color')
+
         chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-bg')
         chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-color')
         chatViewRoot.style.removeProperty('--atoll-chat-bubble-sent-link-color')
@@ -425,6 +413,11 @@
               chatViewRoot.style.setProperty('--atoll-chat-accent', ct.sentBg || '#06C755')
               chatViewRoot.style.setProperty('--atoll-chat-surface-glass', bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.8)' : 'rgba(255, 255, 255, 0.8)')
               chatViewRoot.style.setProperty('--atoll-chat-border', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)')
+
+              chatViewRoot.style.setProperty('--atoll-chat-header-btn-bg', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.08)')
+              chatViewRoot.style.setProperty('--atoll-chat-header-btn-hover-bg', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.28)' : 'rgba(0, 0, 0, 0.14)')
+              chatViewRoot.style.setProperty('--atoll-chat-header-btn-active-bg', bgLuminance < 0.5 ? 'rgba(255, 255, 255, 0.38)' : 'rgba(0, 0, 0, 0.22)')
+              chatViewRoot.style.setProperty('--atoll-chat-header-btn-color', bgLuminance < 0.5 ? '#FFFFFF' : '#111111')
 
               chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-bg', ct.sentBg || '#06C755')
               chatViewRoot.style.setProperty('--atoll-chat-bubble-sent-color', ct.sentColor || '#FFFFFF')

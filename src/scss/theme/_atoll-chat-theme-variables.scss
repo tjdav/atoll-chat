@@ -46,6 +46,10 @@ $atoll-chat-themes: (
     "input-color": var(--#{$prefix}body-color, #111111),
     "input-placeholder-color": var(--#{$prefix}text-secondary, #525252),
     "input-emoji-color": var(--#{$prefix}text-secondary, #525252),
+    "header-btn-bg": var(--#{$prefix}bg-surface-tertiary, #E8E8E8),
+    "header-btn-hover-bg": rgba(0, 0, 0, 0.08),
+    "header-btn-active-bg": rgba(0, 0, 0, 0.16),
+    "header-btn-color": var(--#{$prefix}text-primary, #111111),
     "btn-send-bg": #047835,
     "btn-send-color": $atoll-white
   ),
@@ -66,6 +70,10 @@ $atoll-chat-themes: (
     "input-color": $atoll-chat-theme-classic-dark-received-color,
     "input-placeholder-color": var(--#{$prefix}text-secondary, #B0B0B0),
     "input-emoji-color": var(--#{$prefix}text-secondary, #B0B0B0),
+    "header-btn-bg": rgba(255, 255, 255, 0.15),
+    "header-btn-hover-bg": rgba(255, 255, 255, 0.25),
+    "header-btn-active-bg": rgba(255, 255, 255, 0.35),
+    "header-btn-color": #ffffff,
     "btn-send-bg": #047835,
     "btn-send-color": $atoll-white
   ),
@@ -86,6 +94,10 @@ $atoll-chat-themes: (
     "input-color": #ffffff,
     "input-placeholder-color": rgba(255, 255, 255, 0.65),
     "input-emoji-color": rgba(255, 255, 255, 0.65),
+    "header-btn-bg": rgba(255, 255, 255, 0.18),
+    "header-btn-hover-bg": rgba(255, 255, 255, 0.28),
+    "header-btn-active-bg": rgba(255, 255, 255, 0.38),
+    "header-btn-color": #ffffff,
     "btn-send-bg": #007299,
     "btn-send-color": #ffffff
   ),
@@ -106,6 +118,10 @@ $atoll-chat-themes: (
     "input-color": #ffffff,
     "input-placeholder-color": #ffffff,
     "input-emoji-color": #ffffff,
+    "header-btn-bg": rgba(255, 255, 255, 0.18),
+    "header-btn-hover-bg": rgba(255, 255, 255, 0.28),
+    "header-btn-active-bg": rgba(255, 255, 255, 0.38),
+    "header-btn-color": #ffffff,
     "btn-send-bg": #0B6B5F,
     "btn-send-color": #ffffff
   ),
@@ -126,6 +142,10 @@ $atoll-chat-themes: (
     "input-color": #ffffff,
     "input-placeholder-color": rgba(255, 255, 255, 0.65),
     "input-emoji-color": rgba(255, 255, 255, 0.65),
+    "header-btn-bg": rgba(255, 255, 255, 0.18),
+    "header-btn-hover-bg": rgba(255, 255, 255, 0.28),
+    "header-btn-active-bg": rgba(255, 255, 255, 0.38),
+    "header-btn-color": #ffffff,
     "btn-send-bg": #C91700,
     "btn-send-color": #ffffff
   )

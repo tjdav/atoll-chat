@@ -45,6 +45,7 @@
   --atoll-chat-header-btn-bg: var(--#{$prefix}bg-surface-tertiary, #E8E8E8);
   --atoll-chat-header-btn-hover-bg: rgba(0, 0, 0, 0.08);
   --atoll-chat-header-btn-active-bg: rgba(0, 0, 0, 0.16);
+  --atoll-chat-header-btn-color: var(--atoll-chat-text-primary);
 
   // Cards & Media Waveforms
   --atoll-chat-waveform-active: var(--atoll-chat-accent);
@@ -84,9 +85,10 @@
   --atoll-chat-btn-send-color: #ffffff;
 
   // Header Buttons
-  --atoll-chat-header-btn-bg: #1F1F1F;
-  --atoll-chat-header-btn-hover-bg: rgba(255, 255, 255, 0.08);
-  --atoll-chat-header-btn-active-bg: rgba(255, 255, 255, 0.16);
+  --atoll-chat-header-btn-bg: rgba(255, 255, 255, 0.15);
+  --atoll-chat-header-btn-hover-bg: rgba(255, 255, 255, 0.25);
+  --atoll-chat-header-btn-active-bg: rgba(255, 255, 255, 0.35);
+  --atoll-chat-header-btn-color: #ffffff;
 
   // Cards & Media Waveforms
   --atoll-chat-waveform-active: var(--atoll-chat-accent);
@@ -121,9 +123,10 @@
     --atoll-chat-btn-send-bg: var(--#{$prefix}brand-primary, #06C755);
     --atoll-chat-btn-send-color: #ffffff;
 
-    --atoll-chat-header-btn-bg: #1F1F1F;
-    --atoll-chat-header-btn-hover-bg: rgba(255, 255, 255, 0.08);
-    --atoll-chat-header-btn-active-bg: rgba(255, 255, 255, 0.16);
+    --atoll-chat-header-btn-bg: rgba(255, 255, 255, 0.15);
+    --atoll-chat-header-btn-hover-bg: rgba(255, 255, 255, 0.25);
+    --atoll-chat-header-btn-active-bg: rgba(255, 255, 255, 0.35);
+    --atoll-chat-header-btn-color: #ffffff;
 
     --atoll-chat-waveform-active: var(--atoll-chat-accent);
     --atoll-chat-waveform-inactive: rgba(255, 255, 255, 0.35);
@@ -166,7 +169,7 @@
     }
 
     atoll-button button {
-      color: var(--atoll-chat-text-secondary) !important;
+      color: var(--atoll-chat-header-btn-color, var(--atoll-chat-text-primary)) !important;
       background-color: var(--atoll-chat-header-btn-bg, transparent) !important;
       border-color: var(--atoll-chat-border, transparent) !important;
 
@@ -176,6 +179,10 @@
 
       &:active {
         background-color: var(--atoll-chat-header-btn-active-bg, rgba(255, 255, 255, 0.2)) !important;
+      }
+
+      atoll-icon {
+        color: inherit !important;
       }
     }
   }

@@ -192,6 +192,10 @@ export function validateChatTheme (themeObject, options = {}) {
   const solidBtnSendBg = compositeColor(btnSendBg, glassyFill, tokenMap)
   const btnSendColor = themeObject.btnSendColor || themeObject['btn-send-color'] || '#FFFFFF'
 
+  const headerBtnBg = themeObject.headerBtnBg || themeObject['header-btn-bg'] || themeObject['--atoll-chat-header-btn-bg'] || (isDark ? 'rgba(255, 255, 255, 0.18)' : 'rgba(0, 0, 0, 0.08)')
+  const solidHeaderBtnBg = compositeColor(headerBtnBg, glassyFill, tokenMap)
+  const headerBtnColor = themeObject.headerBtnColor || themeObject['header-btn-color'] || themeObject['--atoll-chat-header-btn-color'] || textPrimary
+
   const inputBg = themeObject.inputBg || themeObject['input-bg'] || (isDark ? '#2A2A2A' : '#F5F5F5')
   const solidInputBg = compositeColor(inputBg, glassyFill, tokenMap)
   const inputColor = themeObject.inputColor || themeObject['input-color'] || textPrimary
@@ -248,6 +252,9 @@ export function validateChatTheme (themeObject, options = {}) {
   check('Generic Tokens', 'Secondary Text vs Glassy Fill', textSecondary, glassyFill, 4.5)
   check('Generic Tokens', 'Muted Text vs Canvas BG', textMuted, rgbBg, 4.5)
   check('Generic Tokens', 'Muted Text vs Glassy Fill', textMuted, glassyFill, 4.5)
+
+  // Header Buttons Group (min 4.5:1)
+  check('Header Buttons', 'Header Btn Text/Icon vs Header Btn BG', headerBtnColor, solidHeaderBtnBg, 4.5)
 
   // Input Container Group (min 4.5:1)
   check('Input Container', 'Input Text vs Input BG', inputColor, solidInputBg, 4.5)
