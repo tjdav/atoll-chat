@@ -159,9 +159,9 @@ export function validateChatTheme (themeObject, options = {}) {
   const textPrimary = themeObject.textPrimary || themeObject['text-primary'] || themeObject['--atoll-chat-text-primary'] || (isDark ? '#FFFFFF' : '#111111')
   const textSecondary = themeObject.textSecondary || themeObject['text-secondary'] || themeObject['--atoll-chat-text-secondary'] || (isDark ? '#B0B0B0' : '#525252')
   const textMuted = themeObject.textMuted || themeObject['text-muted'] || themeObject['--atoll-chat-text-muted'] || (isDark ? '#949494' : '#767676')
-  const accent = themeObject.accent || themeObject['accent'] || themeObject['--atoll-chat-accent'] || themeObject.sentBg || themeObject['bubble-sent-bg'] || (isDark ? '#06C755' : '#047835')
-  const glassColor = themeObject.surfaceGlass || themeObject['surface-glass'] || themeObject['--atoll-chat-surface-glass'] || themeObject.inputContainerBgCustom || themeObject.glassyFill || (isDark ? 'rgba(31, 31, 31, 0.8)' : 'rgba(255, 255, 255, 0.8)')
-  const border = themeObject.border || themeObject['border'] || themeObject['--atoll-chat-border'] || themeObject.attachmentCardBorder || themeObject['attachment-card-border'] || (isDark ? '#888888' : '#767676')
+  const accent = themeObject.accent || themeObject.accentColor || themeObject['accent-color'] || themeObject['--atoll-chat-accent'] || themeObject.sentBg || themeObject['bubble-sent-bg'] || (isDark ? '#06C755' : '#047835')
+  const glassColor = themeObject.surfaceGlass || themeObject['surface-glass'] || themeObject.glassyFill || themeObject['--atoll-chat-surface-glass'] || themeObject.inputContainerBgCustom || (isDark ? 'rgba(31, 31, 31, 0.8)' : 'rgba(255, 255, 255, 0.8)')
+  const border = themeObject.border || themeObject.borderTranslucent || themeObject['border-translucent'] || themeObject['--atoll-chat-border'] || themeObject.attachmentCardBorder || themeObject['attachment-card-border'] || (isDark ? '#888888' : '#767676')
 
   const glassyFill = compositeColor(glassColor, rgbBg, tokenMap)
 
