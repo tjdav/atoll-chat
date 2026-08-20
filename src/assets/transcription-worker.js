@@ -12,13 +12,13 @@ env.backends.onnx.wasm.wasmPaths = '/assets/'
 env.allowLocalModels = false
 
 /**
- * The cached Hugging Face pipeline instance.
- * @type {any|null}
+ * The cached Hugging Face pipeline instances by model name.
+ * @type {Map<string, any>}
  */
-let pipelineInstance = null
+const pipelineCache = new Map()
 
 /**
- * Timer to automatically clean up the pipeline instance.
+ * Timer to automatically clean up the pipeline instances.
  * @type {any|null}
  */
 let idleTimer = null
@@ -35,12 +35,12 @@ function clearIdleTimer () {
 
 /**
  * Start/reset the 5-minute idle cleanup timer.
- * Automatically releases the pipeline instance and frees RAM after 5 minutes of inactivity.
+ * Automatically releases pipeline instances and frees RAM after 5 minutes of inactivity.
  */
 function startIdleTimer () {
   clearIdleTimer()
   idleTimer = setTimeout(() => {
-    pipelineInstance = null
+    pipelineCache.clear()
   }, 5 * 60 * 1000)
 }
 
@@ -51,11 +51,18 @@ function startIdleTimer () {
  * @returns {Promise<any>} The instantiated pipeline.
  */
 async function getPipeline (modelName) {
-  if (pipelineInstance) {
-    return pipelineInstance
+  if (pipelineCache.has(modelName)) {
+    return pipelineCache.get(modelName)
   }
 
-  pipelineInstance = await pipeline('automatic-speech-recognition', modelName, {
+  // To prevent memory pressure on webviews, clear inactive cached model pipelines when switching models
+  for (const [cachedKey] of pipelineCache) {
+    if (cachedKey !== modelName) {
+      pipelineCache.delete(cachedKey)
+    }
+  }
+
+  const instance = await pipeline('automatic-speech-recognition', modelName, {
     progress_callback: (data) => {
       self.postMessage({
         type: 'transcription:progress',
@@ -64,7 +71,8 @@ async function getPipeline (modelName) {
     }
   })
 
-  return pipelineInstance
+  pipelineCache.set(modelName, instance)
+  return instance
 }
 
 self.addEventListener('message', async (event) => {

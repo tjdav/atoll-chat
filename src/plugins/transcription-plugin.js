@@ -54,19 +54,30 @@ export default definePlugin({
 
           if (type === 'transcription:progress') {
             if (pluginContext.$bus) {
-              pluginContext.$bus.emit('transcription:progress', payload)
+              const activeMetrics = pendingRequests.size > 0
+                ? pendingRequests.values().next().value?.metrics
+                : null
+              pluginContext.$bus.emit('transcription:progress', {
+                ...payload,
+                ...(activeMetrics ? { metrics: activeMetrics } : {})
+              })
             }
             return
           }
 
           if (id && pendingRequests.has(id)) {
-            const { resolve, reject } = pendingRequests.get(id)
+            const { resolve, reject, metrics } = pendingRequests.get(id)
             pendingRequests.delete(id)
 
             if (error) {
-              reject(new Error(error))
+              const err = new Error(error)
+              err.metrics = metrics
+              reject(err)
             } else {
-              resolve(payload.text)
+              resolve({
+                text: payload.text,
+                metrics
+              })
             }
           }
         }
@@ -74,8 +85,10 @@ export default definePlugin({
         worker.onerror = (e) => {
           const detail = e.message || e.error?.message || (typeof e === 'string' ? e : 'Unknown worker error')
           console.error('[transcription-plugin] Worker error:', detail, e.filename, e.lineno)
-          for (const [id, { reject }] of pendingRequests) {
-            reject(new Error(`Transcription worker crashed: ${detail}`))
+          for (const [id, { reject, metrics }] of pendingRequests) {
+            const err = new Error(`Transcription worker crashed: ${detail}`)
+            err.metrics = metrics
+            reject(err)
             pendingRequests.delete(id)
           }
         }
@@ -85,9 +98,10 @@ export default definePlugin({
 
       /**
        * Decodes and resamples an audio Blob to a 16,000 Hz mono Float32Array PCM buffer.
+       * Calculates diagnostic amplitude metrics (peak, RMS) and validates non-zero buffer output.
        *
        * @param {Blob} audioBlob - The source audio file/blob.
-       * @returns {Promise<Float32Array>} The resampled PCM audio buffer.
+       * @returns {Promise<{pcmData: Float32Array, metrics: Object}>} Resampled PCM audio buffer and diagnostic metrics.
        */
       const resampleAudioTo16kHz = async (audioBlob) => {
         const arrayBuffer = await audioBlob.arrayBuffer()
@@ -124,7 +138,41 @@ export default definePlugin({
         bufferSource.start()
 
         const renderedBuffer = await offlineCtx.startRendering()
-        return renderedBuffer.getChannelData(0)
+        const pcmData = renderedBuffer.getChannelData(0)
+
+        if (!pcmData || pcmData.length === 0) {
+          throw new Error('Resampled audio buffer is empty')
+        }
+
+        let maxAbsPeak = 0
+        let sumSquares = 0
+        for (let i = 0; i < pcmData.length; i++) {
+          const absVal = Math.abs(pcmData[i])
+          if (absVal > maxAbsPeak) {
+            maxAbsPeak = absVal
+          }
+          sumSquares += pcmData[i] * pcmData[i]
+        }
+
+        const calculatedRms = Math.sqrt(sumSquares / pcmData.length)
+
+        const metrics = {
+          blobSize: audioBlob.size || 0,
+          byteLength: arrayBuffer.byteLength || 0,
+          duration: audioBuffer.duration || 0,
+          channels: audioBuffer.numberOfChannels || 1,
+          sampleRate: audioBuffer.sampleRate || targetSampleRate,
+          peak: maxAbsPeak,
+          rms: calculatedRms,
+          isSilent: maxAbsPeak < 0.0001
+        }
+
+        console.log('[transcription-plugin] Resampled audio diagnostics:', metrics)
+
+        return {
+          pcmData,
+          metrics
+        }
       }
 
       const $transcription = {
@@ -134,17 +182,27 @@ export default definePlugin({
          * @param {Blob} audioBlob - The PCM or container audio blob to transcribe.
          * @param {string} localUuid - Local unique identifier of the message.
          * @param {string|null} [modelName=null] - Optional name of the Hugging Face Whisper model.
-         * @returns {Promise<string>} The transcribed text content.
+         * @returns {Promise<{text: string, metrics: Object}>} The transcribed result and diagnostic metrics.
          */
         transcribe: async (audioBlob, localUuid, modelName = null) => {
           const w = initWorker()
-          const pcmData = await resampleAudioTo16kHz(audioBlob)
+          const { pcmData, metrics } = await resampleAudioTo16kHz(audioBlob)
+
+          if (metrics.isSilent) {
+            console.warn('[transcription-plugin] Digital silence detected (peak < 0.0001):', metrics)
+            return {
+              text: '(No speech detected)',
+              metrics
+            }
+          }
 
           return new Promise((resolve, reject) => {
             const id = crypto.randomUUID()
             pendingRequests.set(id, {
               resolve,
-              reject
+              reject,
+              metrics,
+              localUuid
             })
 
             const model = modelName || (pluginContext.$state?.transcriptionModel || 'onnx-community/moonshine-tiny-ONNX')
@@ -178,6 +236,7 @@ export default definePlugin({
          * @throws {Error} Propagates any internal transcoding, worker, or storage failure.
          */
         const transcribeAndSave = async (audioBlob, localUuid, modelName = null) => {
+          let activeMetrics = null
           if (pluginContext.$bus) {
             pluginContext.$bus.emit('transcription:state_change', {
               localUuid,
@@ -185,8 +244,11 @@ export default definePlugin({
             })
           }
           try {
-            const text = await $transcription.transcribe(audioBlob, localUuid, modelName)
-            if ($storage) {
+            const result = await $transcription.transcribe(audioBlob, localUuid, modelName)
+            const text = typeof result === 'object' && result !== null ? result.text : result
+            activeMetrics = typeof result === 'object' && result !== null ? result.metrics : null
+
+            if ($storage && text) {
               await $storage.updateMessage(localUuid, {
                 transcript: text,
                 transcribed_at: new Date().toISOString()
@@ -196,7 +258,8 @@ export default definePlugin({
               pluginContext.$bus.emit('transcription:state_change', {
                 localUuid,
                 state: 'done',
-                text
+                text,
+                metrics: activeMetrics
               })
             }
             return text
@@ -205,7 +268,8 @@ export default definePlugin({
               pluginContext.$bus.emit('transcription:state_change', {
                 localUuid,
                 state: 'error',
-                error: err.message
+                error: err.message,
+                metrics: err.metrics || activeMetrics
               })
             }
             throw err
