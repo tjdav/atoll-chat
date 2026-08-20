@@ -580,11 +580,12 @@
           /* Find matching recovery wrap by attempting decryption on all of them */
           for (let i = 0; i < recoveryWraps.length; i++) {
             try {
-              decryptedMasterKey = await $worker.execute('worker:decrypt_master_key_with_code', {
+              const decryptedResult = await $worker.execute('worker:decrypt_master_key_with_code', {
                 code,
                 wrap: recoveryWraps[i]
               })
-              if (decryptedMasterKey) {
+              if (decryptedResult) {
+                decryptedMasterKey = typeof decryptedResult === 'object' && decryptedResult !== null ? decryptedResult.master_key : decryptedResult
                 matchedWrapIndex = i
                 break
               }

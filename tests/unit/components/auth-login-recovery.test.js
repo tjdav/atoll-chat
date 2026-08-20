@@ -84,7 +84,10 @@ describe('Auth Login Recovery Workflow', () => {
         execute: async (type, payload) => {
           if (type === 'worker:decrypt_master_key_with_code') {
             if (payload.code === 'RC-1234-5678-9012-3456') {
-              return '00112233445566778899aabbccddeeff'
+              return {
+                master_key: '00112233445566778899aabbccddeeff',
+                auth_proof: 'mockAuthProof'
+              }
             }
             return null
           }

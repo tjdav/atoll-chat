@@ -376,16 +376,21 @@ async function handleEvent (event) {
       let masterKeyBuffer = null
       let codeHash = null
       let nonce = null
+      let authProofBytes = null
+      let verifierBytes = null
       try {
         masterKeyBuffer = typeof master_key === 'string' ? sodium.from_base64(master_key, sodium.base64_variants.ORIGINAL) : master_key
 
         codeHash = sodium.crypto_generichash(32, code)
+        authProofBytes = sodium.crypto_hash_sha256(sodium.from_string('atoll-recovery-auth:' + code))
+        const authProofStr = sodium.to_base64(authProofBytes, sodium.base64_variants.ORIGINAL)
+        verifierBytes = sodium.crypto_hash_sha256(sodium.from_string('atoll-recovery-verifier:' + authProofStr))
 
         nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
         const ciphertext = sodium.crypto_secretbox_easy(masterKeyBuffer, nonce, codeHash)
 
         const result = {
-          hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+          verifier: sodium.to_base64(verifierBytes, sodium.base64_variants.ORIGINAL),
           ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
           nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
         }
@@ -405,6 +410,12 @@ async function handleEvent (event) {
         if (nonce && typeof nonce.fill === 'function') {
           nonce.fill(0)
         }
+        if (authProofBytes && typeof authProofBytes.fill === 'function') {
+          authProofBytes.fill(0)
+        }
+        if (verifierBytes && typeof verifierBytes.fill === 'function') {
+          verifierBytes.fill(0)
+        }
       }
     }
 
@@ -414,6 +425,7 @@ async function handleEvent (event) {
       let cipherBytes = null
       let nonceBytes = null
       let decrypted = null
+      let authProofBytes = null
       try {
         codeHash = sodium.crypto_generichash(32, code)
         cipherBytes = sodium.from_base64(wrap.ciphertext, sodium.base64_variants.ORIGINAL)
@@ -429,7 +441,13 @@ async function handleEvent (event) {
           throw new Error('Failed to decrypt master key. Invalid recovery code.')
         }
 
-        const result = sodium.to_base64(decrypted, sodium.base64_variants.ORIGINAL)
+        authProofBytes = sodium.crypto_hash_sha256(sodium.from_string('atoll-recovery-auth:' + code))
+        const authProof = sodium.to_base64(authProofBytes, sodium.base64_variants.ORIGINAL)
+
+        const result = {
+          master_key: sodium.to_base64(decrypted, sodium.base64_variants.ORIGINAL),
+          auth_proof: authProof
+        }
         self.postMessage({
           id,
           type,
@@ -448,6 +466,9 @@ async function handleEvent (event) {
         }
         if (decrypted && typeof decrypted.fill === 'function') {
           decrypted.fill(0)
+        }
+        if (authProofBytes && typeof authProofBytes.fill === 'function') {
+          authProofBytes.fill(0)
         }
       }
     }

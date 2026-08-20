@@ -74,11 +74,16 @@ function generateSingleRecoveryCode (sodium) {
 function generateRecoveryWraps (masterKeyBytes, sodium) {
   const code = generateSingleRecoveryCode(sodium)
   const codeHash = sodium.crypto_generichash(32, code)
+  const authProofBytes = sodium.crypto_hash_sha256(sodium.from_string('atoll-recovery-auth:' + code))
+  const authProof = sodium.to_base64(authProofBytes, sodium.base64_variants.ORIGINAL)
+  const verifierBytes = sodium.crypto_hash_sha256(sodium.from_string('atoll-recovery-verifier:' + authProof))
+  const verifier = sodium.to_base64(verifierBytes, sodium.base64_variants.ORIGINAL)
+
   const nonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
   const ciphertext = sodium.crypto_secretbox_easy(masterKeyBytes, nonce, codeHash)
 
   const wrap = {
-    hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+    verifier,
     ciphertext: sodium.to_base64(ciphertext, sodium.base64_variants.ORIGINAL),
     nonce: sodium.to_base64(nonce, sodium.base64_variants.ORIGINAL)
   }

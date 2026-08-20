@@ -713,10 +713,15 @@ Atoll administrators cannot recover your credentials or vault.
           const singleCode = `RC-${part()}-${part()}-${part()}-${part()}`
 
           const codeHash = sodium.crypto_generichash(32, singleCode)
+          const authProofBytes = sodium.crypto_hash_sha256(sodium.from_string('atoll-recovery-auth:' + singleCode))
+          const authProof = sodium.to_base64(authProofBytes, sodium.base64_variants.ORIGINAL)
+          const verifierBytes = sodium.crypto_hash_sha256(sodium.from_string('atoll-recovery-verifier:' + authProof))
+          const verifier = sodium.to_base64(verifierBytes, sodium.base64_variants.ORIGINAL)
+
           const recoveryNonce = sodium.randombytes_buf(sodium.crypto_secretbox_NONCEBYTES)
           const recoveryCiphertext = sodium.crypto_secretbox_easy(masterKeyBytes, recoveryNonce, codeHash)
           const singleWrap = {
-            hash: sodium.to_base64(codeHash, sodium.base64_variants.ORIGINAL),
+            verifier,
             ciphertext: sodium.to_base64(recoveryCiphertext, sodium.base64_variants.ORIGINAL),
             nonce: sodium.to_base64(recoveryNonce, sodium.base64_variants.ORIGINAL)
           }
