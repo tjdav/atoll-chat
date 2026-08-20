@@ -3,7 +3,6 @@ import assert from 'node:assert'
 import { checkMediaCompatibility } from '../../../src/utils/media-compatibility.js'
 
 describe('checkMediaCompatibility utility tests', () => {
-  // 1. Edge cases
   test('should return default object when file is null or undefined', () => {
     const expected = {
       requiresConversion: false,
@@ -29,7 +28,6 @@ describe('checkMediaCompatibility utility tests', () => {
   })
 
   test('should handle files with no extension', () => {
-    // A file named 'video-file' with 'video/mp4' mime type (universal)
     const res1 = checkMediaCompatibility({
       name: 'video-file',
       type: 'video/mp4'
@@ -37,8 +35,6 @@ describe('checkMediaCompatibility utility tests', () => {
     assert.strictEqual(res1.requiresConversion, false)
     assert.strictEqual(res1.category, 'none')
 
-    // A file named 'video-file' with 'video/x-matroska' (which starts with 'video/')
-    // Since it doesn't match a universal MIME, it should require conversion
     const res2 = checkMediaCompatibility({
       name: 'video-file',
       type: 'video/x-matroska'
@@ -104,10 +100,6 @@ describe('checkMediaCompatibility utility tests', () => {
         type: 'image/png'
       },
       {
-        name: 'pic.webp',
-        type: 'image/webp'
-      },
-      {
         name: 'pic.gif',
         type: 'image/gif'
       }
@@ -116,6 +108,28 @@ describe('checkMediaCompatibility utility tests', () => {
       const res = checkMediaCompatibility(f)
       assert.strictEqual(res.requiresConversion, false, `Failed for ${f.name}`)
       assert.strictEqual(res.category, 'none')
+    }
+  })
+
+  test('should recognize .lottie, .json, and .webp as stickers with category "sticker"', () => {
+    const stickerFiles = [
+      {
+        name: 'sticker.lottie',
+        type: 'application/json'
+      },
+      {
+        name: 'anim.json',
+        type: 'application/json'
+      },
+      {
+        name: 'pic.webp',
+        type: 'image/webp'
+      }
+    ]
+    for (const f of stickerFiles) {
+      const res = checkMediaCompatibility(f)
+      assert.strictEqual(res.requiresConversion, false, `Failed for ${f.name}`)
+      assert.strictEqual(res.category, 'sticker')
     }
   })
 
@@ -153,7 +167,6 @@ describe('checkMediaCompatibility utility tests', () => {
     }
   })
 
-  // 4. Non-Universal Formats (Requiring Conversion)
   test('should require conversion for non-universal video formats', () => {
     const nonUniversalVideos = [
       {
@@ -298,7 +311,7 @@ describe('checkMediaCompatibility utility tests', () => {
         name: 'track.alac',
         type: 'audio/m4a',
         ext: 'alac'
-      } // .alac ext with generic mime
+      }
     ]
 
     for (const f of nonUniversalAudios) {
@@ -311,7 +324,6 @@ describe('checkMediaCompatibility utility tests', () => {
     }
   })
 
-  // 5. Non-Media Formats
   test('should not require conversion for non-media formats', () => {
     const files = [
       {

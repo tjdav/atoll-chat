@@ -65,7 +65,9 @@
       let pendingFocusTarget = null
 
       const getFocusableElements = () => {
-        if (!itemsContainer) return []
+        if (!itemsContainer) {
+          return []
+        }
         const cards = Array.from(itemsContainer.children).filter(el => el.hasAttribute('tabindex'))
         if (addMoreTile && !addMoreTile.hidden) {
           cards.push(addMoreTile)
@@ -247,8 +249,12 @@
               statusText = item.uploadStatus || item.status
             }
             const labelParts = [`Attachment 1: ${filename}`]
-            if (formattedSize) labelParts.push(formattedSize)
-            if (statusText) labelParts.push(statusText)
+            if (formattedSize) {
+              labelParts.push(formattedSize)
+            }
+            if (statusText) {
+              labelParts.push(statusText)
+            }
             existingChild.setAttribute('aria-label', labelParts.join(', '))
             existingChild.setAttribute('tabindex', '0')
 
@@ -301,8 +307,12 @@
               statusText = item.uploadStatus || item.status
             }
             const labelParts = [`Attachment 1: ${filename}`]
-            if (formattedSize) labelParts.push(formattedSize)
-            if (statusText) labelParts.push(statusText)
+            if (formattedSize) {
+              labelParts.push(formattedSize)
+            }
+            if (statusText) {
+              labelParts.push(statusText)
+            }
             existingChild.setAttribute('aria-label', labelParts.join(', '))
             existingChild.setAttribute('tabindex', '0')
 
@@ -372,8 +382,12 @@
           }
 
           const labelParts = [`Attachment ${index + 1}: ${filename}`]
-          if (formattedSize) labelParts.push(formattedSize)
-          if (statusText) labelParts.push(statusText)
+          if (formattedSize) {
+            labelParts.push(formattedSize)
+          }
+          if (statusText) {
+            labelParts.push(statusText)
+          }
           const ariaLabel = labelParts.join(', ')
 
           if (isMedia) {

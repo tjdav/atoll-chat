@@ -213,15 +213,43 @@
         handleTypingActivity()
       }, { signal })
 
+      const isStickerCandidate = (file) => {
+        if (!file) {
+          return false
+        }
+        const rawType = (file.type || '').toLowerCase().split(';')[0].trim()
+        const fileName = (file.name || '').toLowerCase()
+        const ext = fileName.lastIndexOf('.') !== -1 ? fileName.substring(fileName.lastIndexOf('.') + 1) : ''
+        const stickerMimes = ['image/webp', 'image/png', 'image/gif', 'application/json']
+        const stickerExts = ['webp', 'png', 'gif', 'json', 'lottie']
+        return stickerMimes.includes(rawType) || stickerExts.includes(ext)
+      }
+
       // Handle paste: convert HTML to Markdown or dispatch clipboard file
       messageInput.addEventListener('paste', async (e) => {
-        const files = e.clipboardData?.files
+        let files = Array.from(e.clipboardData?.files || [])
+        if (files.length === 0 && e.clipboardData?.items) {
+          const items = Array.from(e.clipboardData.items)
+          files = items
+            .filter(item => item.kind === 'file')
+            .map(item => item.getAsFile())
+            .filter(Boolean)
+        }
+
         if (files && files.length > 0) {
-          const fileList = Array.from(files).filter(f => f.type || f.size > 0)
+          const fileList = files.filter(f => f && (f.type || f.size > 0))
           if (fileList.length === 1) {
-            e.preventDefault()
-            $bus.emit('ui:file_selected', { file: fileList[0] })
-            return
+            const targetFile = fileList[0]
+            const isTextEmpty = !messageInput.value.trim()
+            if (isStickerCandidate(targetFile) && targetFile.size <= 2 * 1024 * 1024 && isTextEmpty) {
+              e.preventDefault()
+              $bus.emit('ui:sticker_pasted', { file: targetFile })
+              return
+            } else {
+              e.preventDefault()
+              $bus.emit('ui:file_selected', { file: targetFile })
+              return
+            }
           } else if (fileList.length > 1) {
             e.preventDefault()
             $bus.emit('ui:files_selected', { files: fileList })
@@ -440,6 +468,14 @@
         e.preventDefault()
         e.stopPropagation()
         const files = Array.from(e.dataTransfer?.files || [])
+        if (files.length === 1) {
+          const targetFile = files[0]
+          const isTextEmpty = !messageInput.value.trim()
+          if (isStickerCandidate(targetFile) && targetFile.size <= 2 * 1024 * 1024 && isTextEmpty) {
+            $bus.emit('ui:sticker_pasted', { file: targetFile })
+            return
+          }
+        }
         if (files.length > 0) {
           $bus.emit('ui:files_selected', { files })
         }

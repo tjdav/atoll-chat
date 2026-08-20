@@ -834,6 +834,33 @@
         await Promise.all(newItems.map(item => processAttachmentItem(item, currentToken)))
       }
 
+      $bus.on('ui:sticker_pasted', async ({ file }) => {
+        if (!file) {
+          return
+        }
+        state.isSending = true
+        state.isUploading = true
+        try {
+          await dispatchMessage({
+            type: 'sticker',
+            file,
+            filename: file.name,
+            mime_type: file.type || 'image/webp',
+            timestamp: Date.now()
+          })
+          resetUI()
+          $bus.emit('ui:focus_input')
+        } catch (err) {
+          state.isSending = false
+          state.isUploading = false
+          resetUI()
+          $bus.emit('ui:show_toast', {
+            message: 'Failed to send sticker: ' + err.message,
+            type: 'danger'
+          })
+        }
+      })
+
       $bus.on('ui:file_selected', (payload) => {
         if (payload.file) {
           handleFilesSelected([payload.file])

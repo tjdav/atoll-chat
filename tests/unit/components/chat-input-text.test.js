@@ -253,7 +253,7 @@ describe('Atoll Chat Input Text Component', () => {
     await new Promise(resolve => setTimeout(resolve, 20))
 
     const textarea = el.querySelector('textarea')
-    const file = new File(['dummy content'], 'screenshot.png', { type: 'image/png' })
+    const file = new File(['dummy content'], 'document.pdf', { type: 'application/pdf' })
 
     const pasteEvent = new Event('paste', {
       bubbles: true,
@@ -268,7 +268,94 @@ describe('Atoll Chat Input Text Component', () => {
 
     const fileSelectedEvent = emittedEvents.find(e => e.name === 'ui:file_selected')
     assert.ok(fileSelectedEvent, 'Should emit ui:file_selected event')
-    assert.equal(fileSelectedEvent.payload.file.name, 'screenshot.png', 'Should carry the correct file payload')
+    assert.equal(fileSelectedEvent.payload.file.name, 'document.pdf', 'Should carry the correct file payload')
+  })
+
+  test('should emit ui:sticker_pasted when pasting a WebP sticker file with empty input', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const textarea = el.querySelector('textarea')
+    textarea.value = ''
+    globalState.currentMessageText = ''
+
+    const stickerFile = new File(['sticker bytes'], 'cat.webp', { type: 'image/webp' })
+
+    const pasteEvent = new Event('paste', {
+      bubbles: true,
+      cancelable: true
+    })
+    pasteEvent.clipboardData = {
+      files: [stickerFile],
+      getData: () => ''
+    }
+
+    textarea.dispatchEvent(pasteEvent)
+
+    const stickerEvent = emittedEvents.find(e => e.name === 'ui:sticker_pasted')
+    assert.ok(stickerEvent, 'Should emit ui:sticker_pasted event for empty input')
+    assert.equal(stickerEvent.payload.file.name, 'cat.webp', 'Should carry the sticker file payload')
+    assert.equal(textarea.value, '', 'Text input value should be preserved from corruption')
+  })
+
+  test('should emit ui:sticker_pasted when dropping a WebP sticker file with empty input', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const textarea = el.querySelector('textarea')
+    textarea.value = ''
+    globalState.currentMessageText = ''
+
+    const containerEl = el.querySelector('.atoll-chat-input-text') || textarea
+    const stickerFile = new File(['sticker bytes'], 'animated_sticker.webp', { type: 'image/webp' })
+
+    const dropEvent = new Event('drop', {
+      bubbles: true,
+      cancelable: true
+    })
+    dropEvent.dataTransfer = {
+      files: [stickerFile]
+    }
+
+    containerEl.dispatchEvent(dropEvent)
+
+    const stickerEvent = emittedEvents.find(e => e.name === 'ui:sticker_pasted')
+    assert.ok(stickerEvent, 'Should emit ui:sticker_pasted event on drop with empty input')
+    assert.equal(stickerEvent.payload.file.name, 'animated_sticker.webp', 'Should carry dropped sticker file payload')
+    assert.equal(textarea.value, '', 'Text input value should remain clean')
+  })
+
+  test('should fall back to ui:file_selected when pasting a WebP sticker file into non-empty input', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const textarea = el.querySelector('textarea')
+    textarea.value = 'Existing text'
+    globalState.currentMessageText = 'Existing text'
+
+    const stickerFile = new File(['sticker bytes'], 'cat.webp', { type: 'image/webp' })
+
+    const pasteEvent = new Event('paste', {
+      bubbles: true,
+      cancelable: true
+    })
+    pasteEvent.clipboardData = {
+      files: [stickerFile],
+      getData: () => ''
+    }
+
+    textarea.dispatchEvent(pasteEvent)
+
+    const stickerEvent = emittedEvents.find(e => e.name === 'ui:sticker_pasted')
+    assert.equal(stickerEvent, undefined, 'Should not emit ui:sticker_pasted when text input is non-empty')
+
+    const fileSelectedEvent = emittedEvents.find(e => e.name === 'ui:file_selected')
+    assert.ok(fileSelectedEvent, 'Should fall back to ui:file_selected')
+    assert.equal(fileSelectedEvent.payload.file.name, 'cat.webp', 'Should carry sticker file in fallback payload')
+    assert.equal(textarea.value, 'Existing text', 'Text input value should be preserved')
   })
 
   test('should clean up typing indicators on disconnect/abort', async () => {

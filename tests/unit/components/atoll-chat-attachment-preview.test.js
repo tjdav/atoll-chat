@@ -385,10 +385,33 @@ describe('Atoll Chat Attachment Preview Component', () => {
     await new Promise(resolve => setTimeout(resolve, 20))
 
     el.attachments = [
-      { id: 'img-1', isImage: true, fileName: 'pic1.jpg', fileSize: 1048576, status: 'Ready to send' },
-      { id: 'img-2', isImage: true, fileName: 'pic2.png', fileSize: 2097152, status: 'Ready to send' },
-      { id: 'vid-1', isVideo: true, fileName: 'clip.mp4', fileSize: 5242880, status: 'Ready to send' },
-      { id: 'doc-1', fileName: 'summary.pdf', fileSize: 512000, status: 'Ready to send' }
+      {
+        id: 'img-1',
+        isImage: true,
+        fileName: 'pic1.jpg',
+        fileSize: 1048576,
+        status: 'Ready to send'
+      },
+      {
+        id: 'img-2',
+        isImage: true,
+        fileName: 'pic2.png',
+        fileSize: 2097152,
+        status: 'Ready to send'
+      },
+      {
+        id: 'vid-1',
+        isVideo: true,
+        fileName: 'clip.mp4',
+        fileSize: 5242880,
+        status: 'Ready to send'
+      },
+      {
+        id: 'doc-1',
+        fileName: 'summary.pdf',
+        fileSize: 512000,
+        status: 'Ready to send'
+      }
     ]
 
     await new Promise(resolve => setTimeout(resolve, 20))
@@ -416,7 +439,12 @@ describe('Atoll Chat Attachment Preview Component', () => {
     await new Promise(resolve => setTimeout(resolve, 20))
 
     el.attachments = [
-      { id: 'video-card', isVideo: true, fileName: 'test-video.mp4', fileSize: 15728640 }
+      {
+        id: 'video-card',
+        isVideo: true,
+        fileName: 'test-video.mp4',
+        fileSize: 15728640
+      }
     ]
 
     await new Promise(resolve => setTimeout(resolve, 20))
@@ -439,7 +467,11 @@ describe('Atoll Chat Attachment Preview Component', () => {
     await new Promise(resolve => setTimeout(resolve, 20))
 
     el.attachments = [
-      { id: 'doc-card', fileName: 'financial_report.xlsx', fileSize: 3145728 }
+      {
+        id: 'doc-card',
+        fileName: 'financial_report.xlsx',
+        fileSize: 3145728
+      }
     ]
 
     await new Promise(resolve => setTimeout(resolve, 20))
@@ -466,7 +498,13 @@ describe('Atoll Chat Attachment Preview Component', () => {
     await new Promise(resolve => setTimeout(resolve, 20))
 
     el.attachments = [
-      { id: 'comp-item', isVideo: true, isCompressing: true, progress: 75, status: 'Compressing...' }
+      {
+        id: 'comp-item',
+        isVideo: true,
+        isCompressing: true,
+        progress: 75,
+        status: 'Compressing...'
+      }
     ]
 
     await new Promise(resolve => setTimeout(resolve, 20))
@@ -483,7 +521,10 @@ describe('Atoll Chat Attachment Preview Component', () => {
     await new Promise(resolve => setTimeout(resolve, 20))
 
     el.attachments = [
-      { id: 'target-id', fileName: 'sample.pdf' }
+      {
+        id: 'target-id',
+        fileName: 'sample.pdf'
+      }
     ]
 
     await new Promise(resolve => setTimeout(resolve, 20))
@@ -506,8 +547,16 @@ describe('Atoll Chat Attachment Preview Component', () => {
     await new Promise(resolve => setTimeout(resolve, 20))
 
     el.attachments = [
-      { id: 'video-1', isVideo: true, fileName: 'v1.mp4' },
-      { id: 'video-2', isVideo: true, fileName: 'v2.mp4' }
+      {
+        id: 'video-1',
+        isVideo: true,
+        fileName: 'v1.mp4'
+      },
+      {
+        id: 'video-2',
+        isVideo: true,
+        fileName: 'v2.mp4'
+      }
     ]
 
     await new Promise(resolve => setTimeout(resolve, 20))
@@ -559,8 +608,14 @@ describe('Atoll Chat Attachment Preview Component', () => {
     await new Promise(resolve => setTimeout(resolve, 20))
 
     el.attachments = [
-      { id: 'del-item-1', fileName: 'file1.pdf' },
-      { id: 'del-item-2', fileName: 'file2.pdf' }
+      {
+        id: 'del-item-1',
+        fileName: 'file1.pdf'
+      },
+      {
+        id: 'del-item-2',
+        fileName: 'file2.pdf'
+      }
     ]
 
     await new Promise(resolve => setTimeout(resolve, 20))
@@ -570,7 +625,11 @@ describe('Atoll Chat Attachment Preview Component', () => {
 
     pill1.focus()
 
-    const backspaceEvent = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
+    const backspaceEvent = new KeyboardEvent('keydown', {
+      key: 'Backspace',
+      bubbles: true,
+      cancelable: true
+    })
     pill1.dispatchEvent(backspaceEvent)
 
     const emitted = emittedEvents.find(e => e.event === 'ui:remove_attachment')

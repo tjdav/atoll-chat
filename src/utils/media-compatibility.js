@@ -59,6 +59,18 @@ export function checkMediaCompatibility (file) {
   const rawMime = (file.type || '').toLowerCase()
   const mime = rawMime.split(';')[0].trim()
 
+  // Check Sticker / Vector Animation Compatibility (.lottie, .json, .webp)
+  const isStickerType = extension === 'lottie' || extension === 'json' || mime === 'application/json' || extension === 'webp' || mime === 'image/webp'
+  if (isStickerType) {
+    return {
+      requiresConversion: false,
+      category: 'sticker',
+      reason: '',
+      targetFormat: '',
+      targetExtension: ''
+    }
+  }
+
   // Check Video Compatibility
   const isVideoType = mime.startsWith('video/') || NON_UNIVERSAL_VIDEO_EXTENSIONS.has(extension)
   if (isVideoType) {
