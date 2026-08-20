@@ -50,11 +50,17 @@ test('compositeColor correctly alpha composites translucent over solid backgroun
   assert.deepEqual(compositeColor('rgba(255, 255, 255, 0.75)', '#000000'), [191, 191, 191])
 })
 
-test('validateChatTheme passes for standard predefined themes', () => {
+test('validateChatTheme passes for standard predefined themes with generic tokens', () => {
   const predefinedThemes = [
     {
       name: 'classic',
       bg: '#FFFFFF',
+      textPrimary: '#111111',
+      textSecondary: '#525252',
+      textMuted: '#767676',
+      accent: '#047835',
+      surfaceGlass: 'rgba(255, 255, 255, 0.8)',
+      border: '#767676',
       'bubble-sent-bg': '#047835',
       'bubble-sent-color': '#FFFFFF',
       'bubble-sent-link-color': '#FFFFFF',
@@ -62,31 +68,26 @@ test('validateChatTheme passes for standard predefined themes', () => {
       'bubble-received-bg': '#F5F5F5',
       'bubble-received-color': '#111111',
       'bubble-received-link-color': '#047835',
-      'bubble-received-timestamp-color': '#595959',
-      'header-color': '#111111',
-      'header-subtitle-color': '#595959',
-      'sender-name-color': '#595959',
-      'sent-status-color': '#595959',
-      'date-separator-color': '#4A4A4A',
-      'date-separator-border': '#767676',
-      'reaction-pill-color': '#4A4A4A',
-      'reaction-pill-border': '#767676',
-      'btn-attach-color': '#595959',
-      'btn-voice-color': '#595959',
+      'bubble-received-timestamp-color': '#525252',
       'btn-send-bg': '#047835',
       'btn-send-color': '#FFFFFF',
       'input-bg': '#F5F5F5',
       'input-color': '#111111',
-      'input-placeholder-color': '#595959',
-      'input-emoji-color': '#595959',
+      'input-placeholder-color': '#525252',
+      'input-emoji-color': '#525252',
       'waveform-active': '#FFFFFF',
       'waveform-inactive': '#111111',
-      'attachment-card-bg': '#767676',
-      'attachment-card-border': '#767676'
+      'attachment-card-bg': '#767676'
     },
     {
       name: 'classic-dark',
       bg: '#1F1F1F',
+      textPrimary: '#FFFFFF',
+      textSecondary: '#B0B0B0',
+      textMuted: '#949494',
+      accent: '#06C755',
+      surfaceGlass: 'rgba(31, 31, 31, 0.8)',
+      border: '#888888',
       'bubble-sent-bg': '#047835',
       'bubble-sent-color': '#FFFFFF',
       'bubble-sent-link-color': '#FFFFFF',
@@ -95,17 +96,7 @@ test('validateChatTheme passes for standard predefined themes', () => {
       'bubble-received-color': '#FFFFFF',
       'bubble-received-link-color': '#06C755',
       'bubble-received-timestamp-color': '#B0B0B0',
-      'header-color': '#FFFFFF',
-      'header-subtitle-color': '#B0B0B0',
-      'sender-name-color': '#B0B0B0',
-      'sent-status-color': '#CCCCCC',
-      'date-separator-color': '#E0E0E0',
-      'date-separator-border': '#888888',
-      'reaction-pill-color': '#E0E0E0',
-      'reaction-pill-border': '#888888',
-      'btn-attach-color': '#B0B0B0',
-      'btn-voice-color': '#B0B0B0',
-      'btn-send-bg': '#047835',
+      'btn-send-bg': '#05883C',
       'btn-send-color': '#FFFFFF',
       'input-bg': '#2A2A2A',
       'input-color': '#FFFFFF',
@@ -113,31 +104,56 @@ test('validateChatTheme passes for standard predefined themes', () => {
       'input-emoji-color': '#B0B0B0',
       'waveform-active': '#00FF66',
       'waveform-inactive': '#FFFFFF',
-      'attachment-card-bg': '#6E6E6E',
-      'attachment-card-border': '#888888'
+      'attachment-card-bg': '#6E6E6E'
     }
   ]
 
   for (const theme of predefinedThemes) {
     const res = validateChatTheme(theme)
     assert.equal(res.pass, true, `Theme ${theme.name} failed validation: ${JSON.stringify(res.failures)}`)
+    assert.ok(res.groups['Generic Tokens'], 'Generic Tokens group should exist')
+    assert.ok(res.groups['Graphical UI'], 'Graphical UI group should exist')
+    assert.ok(res.groups['Sent Bubble'], 'Sent Bubble group should exist')
+    assert.ok(res.groups['Received Bubble'], 'Received Bubble group should exist')
+    assert.ok(res.groups['Input Container'], 'Input Container group should exist')
   }
 })
 
-test('validateChatTheme validates dynamically normalized custom themes', () => {
+test('validateChatTheme validates dynamically normalized custom themes with generic tokens', () => {
   const customPalettes = [
-    { name: 'Light Pastel', bg: '#FAF0E6', sent: '#2E8B57', recv: '#F0E68C' },
-    { name: 'Dark Navy', bg: '#0A192F', sent: '#1E90FF', recv: '#112240' },
-    { name: 'Vibrant Orange/Purple', bg: '#1A0B2E', sent: '#FF4500', recv: '#301934' },
-    { name: 'Muted Slate', bg: '#2F3E46', sent: '#52B788', recv: '#354F52' }
+    {
+      name: 'Light Pastel',
+      bg: '#FAF0E6',
+      sent: '#2E8B57',
+      recv: '#F0E68C'
+    },
+    {
+      name: 'Dark Navy',
+      bg: '#0A192F',
+      sent: '#1E90FF',
+      recv: '#112240'
+    },
+    {
+      name: 'Vibrant Orange/Purple',
+      bg: '#1A0B2E',
+      sent: '#FF4500',
+      recv: '#301934'
+    },
+    {
+      name: 'Muted Slate',
+      bg: '#2F3E46',
+      sent: '#52B788',
+      recv: '#354F52'
+    }
   ]
 
   for (const p of customPalettes) {
     const rgbBg = compositeColor(p.bg, '#FFFFFF')
     const rgbBgHex = rgbToHex(rgbBg[0], rgbBg[1], rgbBg[2])
     const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
+    const isDark = bgLuminance < 0.5
 
-    const glassyBgHex = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
+    const glassyBgHex = isDark ? 'rgba(31, 31, 31, 0.8)' : 'rgba(255, 255, 255, 0.8)'
     const glassyFill = compositeColor(glassyBgHex, rgbBg)
     const glassyFillHex = rgbToHex(glassyFill[0], glassyFill[1], glassyFill[2])
 
@@ -149,18 +165,27 @@ test('validateChatTheme validates dynamically normalized custom themes', () => {
     const recvBg = compRecv.bgHex
     const recvColor = compRecv.textColor
 
-    const baseCanvasText = bgLuminance < 0.5 ? '#FFFFFF' : '#111111'
-    const inputBg = bgLuminance < 0.5 ? '#2A2A2A' : '#F5F5F5'
+    const baseCanvasText = isDark ? '#FFFFFF' : '#111111'
+    const inputBg = isDark ? '#2A2A2A' : '#F5F5F5'
     const solidInputBg = compositeColor(inputBg, glassyFill)
     const solidInputBgHex = rgbToHex(solidInputBg[0], solidInputBg[1], solidInputBg[2])
 
-    const rawCardBg = bgLuminance < 0.5 ? '#484848' : '#767676'
+    const rawCardBg = isDark ? '#6E6E6E' : '#767676'
     const solidCardBgHex = ensureForegroundContrast(rawCardBg, glassyFillHex, 3.0)
 
-    const defaultBorder = bgLuminance < 0.5 ? '#888888' : '#767676'
+    const rawBorder = isDark ? '#888888' : '#767676'
+    const defaultBorder = ensureForegroundContrast(rawBorder, glassyFillHex, 3.0)
+
+    const btnSendBg = ensureForegroundContrast(sentBg, glassyFillHex, 3.0)
 
     const themeObj = {
       bgColor: p.bg,
+      textPrimary: ensureForegroundContrast(baseCanvasText, rgbBgHex, 4.5),
+      textSecondary: ensureForegroundContrast(isDark ? '#B0B0B0' : '#525252', rgbBgHex, 4.5),
+      textMuted: ensureForegroundContrast(isDark ? '#949494' : '#767676', rgbBgHex, 4.5),
+      accent: sentBg,
+      surfaceGlass: glassyBgHex,
+      border: defaultBorder,
       sentBg,
       sentColor,
       sentLinkColor: ensureForegroundContrast(sentColor, sentBg, 4.5),
@@ -169,31 +194,47 @@ test('validateChatTheme validates dynamically normalized custom themes', () => {
       receivedColor: recvColor,
       receivedLinkColor: ensureForegroundContrast(sentBg, recvBg, 4.5),
       receivedTimestampColor: ensureForegroundContrast(recvColor, recvBg, 4.5),
-      senderNameColor: ensureForegroundContrast(baseCanvasText, rgbBgHex, 4.5),
-      sentStatusColor: ensureForegroundContrast(baseCanvasText, rgbBgHex, 4.5),
-      headerColor: ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5),
-      headerSubtitleColor: ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5),
-      btnAttachColor: ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5),
-      btnVoiceColor: ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5),
-      btnSendBg: sentBg,
+      btnSendBg,
       btnSendColor: sentColor,
       inputBg,
       inputColor: ensureForegroundContrast(baseCanvasText, solidInputBgHex, 4.5),
-      inputPlaceholderColor: ensureForegroundContrast(bgLuminance < 0.5 ? '#B0B0B0' : '#595959', solidInputBgHex, 4.5),
-      inputEmojiColor: ensureForegroundContrast(bgLuminance < 0.5 ? '#B0B0B0' : '#595959', solidInputBgHex, 4.5),
-      dateSeparatorColor: ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5),
-      dateSeparatorBorder: ensureForegroundContrast(defaultBorder, glassyFillHex, 3.0),
-      reactionPillColor: ensureForegroundContrast(baseCanvasText, glassyFillHex, 4.5),
-      reactionPillBorder: ensureForegroundContrast(defaultBorder, glassyFillHex, 3.0),
+      inputPlaceholderColor: ensureForegroundContrast(isDark ? '#B0B0B0' : '#525252', solidInputBgHex, 4.5),
+      inputEmojiColor: ensureForegroundContrast(isDark ? '#B0B0B0' : '#525252', solidInputBgHex, 4.5),
       waveformActive: ensureForegroundContrast(sentBg, solidCardBgHex, 3.0),
-      waveformInactive: ensureForegroundContrast(bgLuminance < 0.5 ? '#A0A0A0' : '#4A4A4A', solidCardBgHex, 3.0),
-      attachmentCardBg: solidCardBgHex,
-      attachmentCardBorder: ensureForegroundContrast(defaultBorder, glassyFillHex, 3.0)
+      waveformInactive: ensureForegroundContrast(isDark ? '#FFFFFF' : '#111111', solidCardBgHex, 3.0),
+      attachmentCardBg: solidCardBgHex
     }
 
     const res = validateChatTheme(themeObj)
     assert.equal(res.pass, true, `Palette ${p.name} failed validation: ${JSON.stringify(res.failures)}`)
   }
+})
+
+test('validateChatTheme correctly derives fallbacks for legacy custom themes missing explicit generic tokens', () => {
+  const legacyLight = {
+    bg: '#FFFFFF',
+    'bubble-sent-bg': '#047835',
+    'bubble-sent-color': '#FFFFFF',
+    'bubble-received-bg': '#F5F5F5',
+    'bubble-received-color': '#111111'
+  }
+
+  const resLight = validateChatTheme(legacyLight)
+  assert.equal(resLight.pass, true)
+  assert.ok(resLight.groups['Generic Tokens'])
+
+  const legacyDark = {
+    bg: '#121212',
+    'bubble-sent-bg': '#007299',
+    'bubble-sent-color': '#FFFFFF',
+    'bubble-received-bg': '#222222',
+    'bubble-received-color': '#FFFFFF',
+    'bubble-received-link-color': '#06C755'
+  }
+
+  const resDark = validateChatTheme(legacyDark)
+  assert.equal(resDark.pass, true)
+  assert.ok(resDark.groups['Generic Tokens'])
 })
 
 test('validateChatTheme handles malformed input gracefully', () => {

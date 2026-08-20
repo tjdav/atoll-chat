@@ -144,7 +144,8 @@ function createMockEnvironment () {
     $bus: bus
   }
 
-  const clientContext = plugin.client.context(pluginContext)
+  const contextFn = plugin.client?.context || plugin.context
+  const clientContext = contextFn(pluginContext)
   const instanceContext = clientContext({
     cryptoWorker: { $worker: worker },
     globalStore,

@@ -114,10 +114,14 @@ export function parseColorToRgb (colorStr, tokenMap = {}) {
  * @returns {[number, number, number]} [r, g, b] solid RGB array
  */
 export function compositeColor (fgColor, bgColor, tokenMap = {}) {
-  const fg = typeof fgColor === 'string' ? parseColorToRgb(fgColor, tokenMap) : fgColor
-  const bg = typeof bgColor === 'string' ? parseColorToRgb(bgColor, tokenMap) : bgColor
+  const fg = typeof fgColor === 'string'
+    ? parseColorToRgb(fgColor, tokenMap)
+    : (Array.isArray(fgColor) && fgColor.length === 3 ? [...fgColor, 1] : fgColor)
+  const bg = typeof bgColor === 'string'
+    ? parseColorToRgb(bgColor, tokenMap)
+    : (Array.isArray(bgColor) && bgColor.length === 3 ? [...bgColor, 1] : bgColor)
 
-  const alpha = fg[3]
+  const alpha = fg[3] !== undefined ? fg[3] : 1
   if (alpha >= 1) {
     return [fg[0], fg[1], fg[2]]
   }
@@ -145,65 +149,54 @@ export function validateChatTheme (themeObject, options = {}) {
   const failures = []
   const groups = {}
 
-  // Standardize theme properties
+  // Standardize background & luminance
   const bgColor = themeObject.bgColor || themeObject.bg || '#FFFFFF'
   const rgbBg = compositeColor(bgColor, '#FFFFFF', tokenMap)
   const bgLuminance = getRelativeLuminance(rgbBg[0], rgbBg[1], rgbBg[2])
+  const isDark = bgLuminance < 0.5
 
-  // Glassy background selection: dark glass when bgLuminance < 0.5, light glass when >= 0.5
-  const defaultGlass = bgLuminance < 0.5 ? 'rgba(31, 31, 31, 0.75)' : 'rgba(255, 255, 255, 0.75)'
-  const glassColor = themeObject.inputContainerBgCustom || themeObject.glassyFill || defaultGlass
+  // Flexible resolution of generic tokens with fallbacks for legacy custom themes
+  const textPrimary = themeObject.textPrimary || themeObject['text-primary'] || themeObject['--atoll-chat-text-primary'] || (isDark ? '#FFFFFF' : '#111111')
+  const textSecondary = themeObject.textSecondary || themeObject['text-secondary'] || themeObject['--atoll-chat-text-secondary'] || (isDark ? '#B0B0B0' : '#525252')
+  const textMuted = themeObject.textMuted || themeObject['text-muted'] || themeObject['--atoll-chat-text-muted'] || (isDark ? '#949494' : '#767676')
+  const accent = themeObject.accent || themeObject['accent'] || themeObject['--atoll-chat-accent'] || themeObject.sentBg || themeObject['bubble-sent-bg'] || (isDark ? '#06C755' : '#047835')
+  const glassColor = themeObject.surfaceGlass || themeObject['surface-glass'] || themeObject['--atoll-chat-surface-glass'] || themeObject.inputContainerBgCustom || themeObject.glassyFill || (isDark ? 'rgba(31, 31, 31, 0.8)' : 'rgba(255, 255, 255, 0.8)')
+  const border = themeObject.border || themeObject['border'] || themeObject['--atoll-chat-border'] || themeObject.attachmentCardBorder || themeObject['attachment-card-border'] || (isDark ? '#888888' : '#767676')
+
   const glassyFill = compositeColor(glassColor, rgbBg, tokenMap)
 
   // Sent bubble
-  const sentBg = themeObject.sentBg || themeObject['bubble-sent-bg'] || '#06C755'
+  const sentBg = themeObject.sentBg || themeObject['bubble-sent-bg'] || accent
   const solidSentBg = compositeColor(sentBg, rgbBg, tokenMap)
   const sentText = themeObject.sentColor || themeObject['bubble-sent-color'] || '#FFFFFF'
   const sentLink = themeObject.sentLinkColor || themeObject['bubble-sent-link-color'] || themeObject['bubble-sent-link-color-custom'] || sentText
   const sentTime = themeObject.sentTimestampColor || themeObject['bubble-sent-timestamp-color'] || sentText
 
   // Received bubble
-  const receivedBg = themeObject.receivedBg || themeObject['bubble-received-bg'] || '#EEEEEE'
+  const receivedBg = themeObject.receivedBg || themeObject['bubble-received-bg'] || (isDark ? '#2A2A2A' : '#F5F5F5')
   const solidReceivedBg = compositeColor(receivedBg, rgbBg, tokenMap)
-  const receivedText = themeObject.receivedColor || themeObject['bubble-received-color'] || '#111111'
-  const receivedLink = themeObject.receivedLinkColor || themeObject['bubble-received-link-color'] || themeObject['bubble-received-link-color-custom'] || receivedText
-  const receivedTime = themeObject.receivedTimestampColor || themeObject['bubble-received-timestamp-color'] || receivedText
+  const receivedText = themeObject.receivedColor || themeObject['bubble-received-color'] || (isDark ? '#FFFFFF' : '#111111')
+  const receivedLink = themeObject.receivedLinkColor || themeObject['bubble-received-link-color'] || accent
+  const receivedTime = themeObject.receivedTimestampColor || themeObject['bubble-received-timestamp-color'] || textSecondary
 
   // Attachment card bg
-  const attachmentCardBg = themeObject.attachmentCardBg || themeObject['attachment-card-bg'] || solidReceivedBg
+  const attachmentCardBg = themeObject.attachmentCardBg || themeObject['attachment-card-bg'] || (isDark ? '#6E6E6E' : '#767676')
   const solidAttachmentCardBg = compositeColor(attachmentCardBg, glassyFill, tokenMap)
 
   // Waveforms
-  const waveformActive = themeObject.waveformActive || themeObject['waveform-active'] || sentBg
-  const waveformInactive = themeObject.waveformInactive || themeObject['waveform-inactive'] || 'rgba(6, 199, 85, 0.25)'
+  const waveformActive = themeObject.waveformActive || themeObject['waveform-active'] || (isDark ? '#00FF66' : '#FFFFFF')
+  const waveformInactive = themeObject.waveformInactive || themeObject['waveform-inactive'] || (isDark ? '#FFFFFF' : '#111111')
 
-  // Header & Input bar
-  const headerTitle = themeObject.headerColor || themeObject['header-color'] || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111')
-  const headerSubtitle = themeObject.headerSubtitleColor || themeObject['header-subtitle-color'] || themeObject.senderNameColor || headerTitle
-
-  const btnAttachColor = themeObject.btnAttachColor || themeObject['btn-attach-color'] || headerTitle
-  const btnVoiceColor = themeObject.btnVoiceColor || themeObject['btn-voice-color'] || headerTitle
-  const btnSendBg = themeObject.btnSendBg || themeObject['btn-send-bg'] || sentBg
+  // Input & Buttons
+  const btnSendBg = themeObject.btnSendBg || themeObject['btn-send-bg'] || accent
   const solidBtnSendBg = compositeColor(btnSendBg, glassyFill, tokenMap)
   const btnSendColor = themeObject.btnSendColor || themeObject['btn-send-color'] || '#FFFFFF'
 
-  const inputBg = themeObject.inputBg || themeObject['input-bg'] || (bgLuminance < 0.5 ? '#2A2A2A' : '#F5F5F5')
+  const inputBg = themeObject.inputBg || themeObject['input-bg'] || (isDark ? '#2A2A2A' : '#F5F5F5')
   const solidInputBg = compositeColor(inputBg, glassyFill, tokenMap)
-  const inputColor = themeObject.inputColor || themeObject['input-color'] || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111')
-  const inputPlaceholder = themeObject.inputPlaceholderColor || themeObject['input-placeholder-color'] || inputColor
-  const inputEmoji = themeObject.inputEmojiColor || themeObject['input-emoji-color'] || inputColor
-
-  // Canvas elements
-  const senderName = themeObject.senderNameColor || themeObject['sender-name-color'] || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111')
-  const sentStatus = themeObject.sentStatusColor || themeObject['sent-status-color'] || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111')
-
-  // Pills and Separators
-  const datePillText = themeObject.dateSeparatorColor || themeObject['date-separator-color'] || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111')
-  const rxnPillText = themeObject.reactionPillColor || themeObject['reaction-pill-color'] || (bgLuminance < 0.5 ? '#FFFFFF' : '#111111')
-
-  const datePillBorder = themeObject.dateSeparatorBorder || themeObject['date-separator-border'] || 'rgba(0, 0, 0, 0.08)'
-  const rxnPillBorder = themeObject.reactionPillBorder || themeObject['reaction-pill-border'] || 'rgba(0, 0, 0, 0.08)'
-  const attachmentCardBorder = themeObject.attachmentCardBorder || themeObject['attachment-card-border'] || 'rgba(0, 0, 0, 0.08)'
+  const inputColor = themeObject.inputColor || themeObject['input-color'] || textPrimary
+  const inputPlaceholder = themeObject.inputPlaceholderColor || themeObject['input-placeholder-color'] || textSecondary
+  const inputEmoji = themeObject.inputEmojiColor || themeObject['input-emoji-color'] || textSecondary
 
   // Check Helper
   const check = (groupName, checkName, fg, bg, minRatio) => {
@@ -245,34 +238,29 @@ export function validateChatTheme (themeObject, options = {}) {
 
   // Received Bubble Group (min 4.5:1)
   check('Received Bubble', 'Text vs Received BG', receivedText, solidReceivedBg, 4.5)
-  check('Received Bubble', 'Link vs Received BG', receivedLink, solidReceivedBg, 4.5)
+  check('Received Bubble', 'Accent Link vs Received BG', receivedLink, solidReceivedBg, 4.5)
   check('Received Bubble', 'Timestamp vs Received BG', receivedTime, solidReceivedBg, 4.5)
 
-  // Glassy Header & Floating Glass (min 4.5:1)
-  check('Glassy Glass', 'Header Title vs Glassy Fill', headerTitle, glassyFill, 4.5)
-  check('Glassy Glass', 'Header Subtitle vs Glassy Fill', headerSubtitle, glassyFill, 4.5)
-  check('Glassy Glass', 'Btn Attach Icon vs Glassy Fill', btnAttachColor, glassyFill, 4.5)
-  check('Glassy Glass', 'Btn Voice Icon vs Glassy Fill', btnVoiceColor, glassyFill, 4.5)
-  check('Glassy Glass', 'Date Pill Text vs Glassy Fill', datePillText, glassyFill, 4.5)
-  check('Glassy Glass', 'Reaction Pill Text vs Glassy Fill', rxnPillText, glassyFill, 4.5)
+  // Generic Tokens Group (min 4.5:1)
+  check('Generic Tokens', 'Primary Text vs Canvas BG', textPrimary, rgbBg, 4.5)
+  check('Generic Tokens', 'Primary Text vs Glassy Fill', textPrimary, glassyFill, 4.5)
+  check('Generic Tokens', 'Secondary Text vs Canvas BG', textSecondary, rgbBg, 4.5)
+  check('Generic Tokens', 'Secondary Text vs Glassy Fill', textSecondary, glassyFill, 4.5)
+  check('Generic Tokens', 'Muted Text vs Canvas BG', textMuted, rgbBg, 4.5)
+  check('Generic Tokens', 'Muted Text vs Glassy Fill', textMuted, glassyFill, 4.5)
 
-  // Input Container (min 4.5:1)
+  // Input Container Group (min 4.5:1)
   check('Input Container', 'Input Text vs Input BG', inputColor, solidInputBg, 4.5)
   check('Input Container', 'Input Placeholder vs Input BG', inputPlaceholder, solidInputBg, 4.5)
   check('Input Container', 'Emoji Icon vs Input BG', inputEmoji, solidInputBg, 4.5)
   check('Input Container', 'Send Btn Icon vs Send Btn BG', btnSendColor, solidBtnSendBg, 4.5)
 
-  // Canvas Direct Elements (min 4.5:1)
-  check('Canvas Elements', 'Sender Name vs Canvas BG', senderName, rgbBg, 4.5)
-  check('Canvas Elements', 'Sent Status vs Canvas BG', sentStatus, rgbBg, 4.5)
-
-  // Graphical / UI Elements (min 3.0:1)
+  // Graphical UI Group (min 3.0:1)
   check('Graphical UI', 'Waveform Active vs Card BG', waveformActive, solidAttachmentCardBg, 3.0)
   check('Graphical UI', 'Waveform Inactive vs Card BG', waveformInactive, solidAttachmentCardBg, 3.0)
-  check('Graphical UI', 'Attachment Card BG vs Canvas/Glass', solidAttachmentCardBg, glassyFill, 3.0)
-  check('Graphical UI', 'Date Pill Border vs Canvas/Glass', datePillBorder, glassyFill, 3.0)
-  check('Graphical UI', 'Reaction Pill Border vs Canvas/Glass', rxnPillBorder, glassyFill, 3.0)
-  check('Graphical UI', 'Attachment Card Border vs Canvas/Glass', attachmentCardBorder, glassyFill, 3.0)
+  check('Graphical UI', 'Attachment Card BG vs Glassy Fill', solidAttachmentCardBg, glassyFill, 3.0)
+  check('Graphical UI', 'Border vs Glassy Fill', border, glassyFill, 3.0)
+  check('Graphical UI', 'Send Btn BG vs Glassy Fill', solidBtnSendBg, glassyFill, 3.0)
 
   const overallPass = failures.length === 0
 
