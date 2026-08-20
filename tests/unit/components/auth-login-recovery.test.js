@@ -139,7 +139,7 @@ describe('Auth Login Recovery Workflow', () => {
     document.body.appendChild(el)
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const btnShowRecovery = el.querySelector('[data-testid$="btnShowRecovery"]') || el.querySelector('[ref="btnShowRecovery"]')
+    const btnShowRecovery = el.querySelector('[ref$="btnShowRecovery"]')
     assert.ok(btnShowRecovery, 'btnShowRecovery should be rendered')
     const textAttr = btnShowRecovery.getAttribute('text') || btnShowRecovery.textContent.trim()
     assert.ok(textAttr.includes('Forgot password? Recover with code'))
@@ -150,24 +150,24 @@ describe('Auth Login Recovery Workflow', () => {
     document.body.appendChild(el)
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const usernameInput = el.querySelector('[data-testid$="username"]') || el.querySelector('[ref="identity"]')
+    const usernameInput = el.querySelector('[ref$="identity"]')
     if (usernameInput) {
       usernameInput.value = 'john_doe'
       usernameInput.dispatchEvent(new Event('input', { bubbles: true }))
     }
 
-    const btnShowRecovery = el.querySelector('[data-testid$="btnShowRecovery"]') || el.querySelector('[ref="btnShowRecovery"]')
+    const btnShowRecovery = el.querySelector('[ref$="btnShowRecovery"]')
     const innerBtn = btnShowRecovery.querySelector('button') || btnShowRecovery
     innerBtn.click()
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const viewLogin = el.querySelector('[data-testid$="viewLogin"]') || el.querySelector('[ref="viewLogin"]')
-    const viewRecovery = el.querySelector('[data-testid$="viewRecovery"]') || el.querySelector('[ref="viewRecovery"]')
+    const viewLogin = el.querySelector('[ref$="viewLogin"]')
+    const viewRecovery = el.querySelector('[ref$="viewRecovery"]')
 
     assert.ok(viewLogin.classList.contains('d-none'), 'viewLogin should be hidden')
     assert.ok(!viewRecovery.classList.contains('d-none'), 'viewRecovery should be visible')
 
-    const recoveryUsernameInput = el.querySelector('[data-testid$="recoveryUsername"]') || el.querySelector('[ref="recoveryUsername"]')
+    const recoveryUsernameInput = el.querySelector('[ref$="recoveryUsername"]')
     assert.ok(recoveryUsernameInput, 'recoveryUsername input should exist')
     assert.equal(recoveryUsernameInput.value, 'john_doe', 'recoveryUsername should be prefilled from identity input')
   })
@@ -177,21 +177,21 @@ describe('Auth Login Recovery Workflow', () => {
     document.body.appendChild(el)
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const btnShowRecovery = el.querySelector('[data-testid$="btnShowRecovery"]') || el.querySelector('[ref="btnShowRecovery"]')
+    const btnShowRecovery = el.querySelector('[ref$="btnShowRecovery"]')
     const innerShowBtn = btnShowRecovery.querySelector('button') || btnShowRecovery
     innerShowBtn.click()
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const recoveryCodeInput = el.querySelector('[data-testid$="recoveryCodeInput"]') || el.querySelector('[ref="recoveryCodeInput"]')
+    const recoveryCodeInput = el.querySelector('[ref$="recoveryCodeInput"]')
     recoveryCodeInput.value = 'RC-1234-5678-9012-3456'
 
-    const btnCancelRecovery = el.querySelector('[data-testid$="btnCancelRecovery"]') || el.querySelector('[ref="btnCancelRecovery"]')
+    const btnCancelRecovery = el.querySelector('[ref$="btnCancelRecovery"]')
     const innerCancelBtn = btnCancelRecovery.querySelector('button') || btnCancelRecovery
     innerCancelBtn.click()
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const viewLogin = el.querySelector('[data-testid$="viewLogin"]') || el.querySelector('[ref="viewLogin"]')
-    const viewRecovery = el.querySelector('[data-testid$="viewRecovery"]') || el.querySelector('[ref="viewRecovery"]')
+    const viewLogin = el.querySelector('[ref$="viewLogin"]')
+    const viewRecovery = el.querySelector('[ref$="viewRecovery"]')
 
     assert.ok(!viewLogin.classList.contains('d-none'), 'viewLogin should be visible')
     assert.ok(viewRecovery.classList.contains('d-none'), 'viewRecovery should be hidden')
@@ -203,7 +203,7 @@ describe('Auth Login Recovery Workflow', () => {
     document.body.appendChild(el)
     await new Promise((resolve) => setTimeout(resolve, 50))
 
-    const recoveryCodeInput = el.querySelector('[data-testid$="recoveryCodeInput"]') || el.querySelector('[ref="recoveryCodeInput"]')
+    const recoveryCodeInput = el.querySelector('[ref$="recoveryCodeInput"]')
 
     recoveryCodeInput.value = '1234567890123456'
     recoveryCodeInput.dispatchEvent(new Event('input', { bubbles: true }))
