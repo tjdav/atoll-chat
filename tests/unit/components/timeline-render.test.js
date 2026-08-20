@@ -148,17 +148,31 @@ describe('Atoll Chat Timeline Component Render Path', () => {
     }
   })
 
-  test('should scroll to bottom on room entry', async () => {
+  test('should scroll to bottom on room entry instantly without magic timers', async () => {
     const el = document.createElement(tagName)
     document.body.appendChild(el)
 
     await new Promise(resolve => setTimeout(resolve, 150))
 
-    const container = el.shadowRoot ? el.shadowRoot.querySelector('.atoll-chat-timeline-container') : el.querySelector('.atoll-chat-timeline-container')
+    const container = el.querySelector('.atoll-chat-timeline-container')
     assert.ok(container, 'Timeline container should exist')
+
+    Object.defineProperty(container, 'scrollHeight', {
+      value: 1200,
+      configurable: true
+    })
+    Object.defineProperty(container, 'clientHeight', {
+      value: 400,
+      configurable: true
+    })
+
+    mockBus.emit('room:select', { room_id: 'room-1' })
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    assert.strictEqual(container.scrollTop, 1200, 'container.scrollTop should equal scrollHeight on room entry')
   })
 
-  test('should scroll to bottom on db:new_local_data from another user when near bottom', async () => {
+  test('should pin to bottom on db:new_local_data from another user when near bottom', async () => {
     const el = document.createElement(tagName)
     document.body.appendChild(el)
 
@@ -167,10 +181,22 @@ describe('Atoll Chat Timeline Component Render Path', () => {
     const container = el.querySelector('.atoll-chat-timeline-container')
     assert.ok(container)
 
-    let scrollCalled = false
-    container.scrollTo = () => {
-      scrollCalled = true
-    }
+    let currentScrollTop = 800
+    Object.defineProperty(container, 'scrollHeight', {
+      value: 1200,
+      configurable: true
+    })
+    Object.defineProperty(container, 'clientHeight', {
+      value: 400,
+      configurable: true
+    })
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => currentScrollTop,
+      set: (v) => {
+        currentScrollTop = v
+      },
+      configurable: true
+    })
 
     // Simulate incoming message from Bob
     const newMessage = {
@@ -184,7 +210,6 @@ describe('Atoll Chat Timeline Component Render Path', () => {
       status: 'sent'
     }
 
-    // Mock storage returning the updated messages list
     mockStorage.$storage.getMessagesByRoom = async () => [
       ...Array.from({ length: 10 }, (_, i) => ({
         id: `msg-${i + 1}`,
@@ -204,12 +229,12 @@ describe('Atoll Chat Timeline Component Render Path', () => {
       message: newMessage
     })
 
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await new Promise(resolve => setTimeout(resolve, 100))
 
-    assert.ok(scrollCalled, 'container.scrollTo should have been invoked for auto-scrolling near bottom')
+    assert.strictEqual(currentScrollTop, 1200, 'scrollTop should be set to scrollHeight when near bottom')
   })
 
-  test('should NOT force scroll to bottom on db:new_local_data when user is scrolled up', async () => {
+  test('should NOT pin to bottom on db:new_local_data when user is scrolled up', async () => {
     const el = document.createElement(tagName)
     document.body.appendChild(el)
 
@@ -218,7 +243,6 @@ describe('Atoll Chat Timeline Component Render Path', () => {
     const container = el.querySelector('.atoll-chat-timeline-container')
     assert.ok(container)
 
-    // Simulate scrolled up state: large scrollHeight, small scrollTop
     let scrollVal = 100
     Object.defineProperty(container, 'scrollHeight', {
       value: 2000,
@@ -236,13 +260,8 @@ describe('Atoll Chat Timeline Component Render Path', () => {
       configurable: true
     })
 
-    // Fire scroll event to trigger updateAutoScrollState() inside component
+    // Fire scroll event (dist = 2000 - 100 - 500 = 1400 > 150) -> sets stickToBottom = false
     container.dispatchEvent(new Event('scroll'))
-
-    let scrollCalled = false
-    container.scrollTo = () => {
-      scrollCalled = true
-    }
 
     const newMessage = {
       id: 'msg-12',
@@ -260,12 +279,12 @@ describe('Atoll Chat Timeline Component Render Path', () => {
       message: newMessage
     })
 
-    await new Promise(resolve => setTimeout(resolve, 200))
+    await new Promise(resolve => setTimeout(resolve, 100))
 
-    assert.strictEqual(scrollCalled, false, 'container.scrollTo should NOT have been called when user is scrolled up')
+    assert.strictEqual(scrollVal, 100, 'scrollTop should NOT change when stickToBottom is false')
   })
 
-  test('should re-anchor scroll to bottom when ui:media_loaded is emitted and shouldAutoScroll is true', async () => {
+  test('should re-anchor scroll to bottom when ui:media_loaded is emitted and stickToBottom is true', async () => {
     const el = document.createElement(tagName)
     document.body.appendChild(el)
 
@@ -274,15 +293,100 @@ describe('Atoll Chat Timeline Component Render Path', () => {
     const container = el.querySelector('.atoll-chat-timeline-container')
     assert.ok(container)
 
-    let scrollCalled = false
-    container.scrollTo = () => {
-      scrollCalled = true
-    }
+    let scrollVal = 500
+    Object.defineProperty(container, 'scrollHeight', {
+      value: 1500,
+      configurable: true
+    })
+    Object.defineProperty(container, 'clientHeight', {
+      value: 400,
+      configurable: true
+    })
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => scrollVal,
+      set: (v) => {
+        scrollVal = v
+      },
+      configurable: true
+    })
 
     mockBus.emit('ui:media_loaded')
 
-    await new Promise(resolve => setTimeout(resolve, 100))
+    await new Promise(resolve => setTimeout(resolve, 50))
 
-    assert.ok(scrollCalled, 'container.scrollTo should be invoked on media load when shouldAutoScroll is active')
+    assert.strictEqual(scrollVal, 1500, 'scrollTop should be set to scrollHeight on ui:media_loaded when stickToBottom is true')
+  })
+
+  test('should run bounded convergence loop up to max 5 frames when dist > 1px', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    const container = el.querySelector('.atoll-chat-timeline-container')
+    assert.ok(container)
+
+    let rawScrollTop = 0
+    let dynamicScrollHeight = 1000
+    const clientHeightVal = 400
+
+    Object.defineProperty(container, 'clientHeight', {
+      value: clientHeightVal,
+      configurable: true
+    })
+    Object.defineProperty(container, 'scrollHeight', {
+      get: () => dynamicScrollHeight,
+      configurable: true
+    })
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => rawScrollTop,
+      set: (v) => {
+        rawScrollTop = Math.min(v, Math.max(0, dynamicScrollHeight - clientHeightVal))
+      },
+      configurable: true
+    })
+
+    // Trigger ui:scroll_to_bottom to start convergence loop
+    mockBus.emit('ui:scroll_to_bottom')
+
+    // Simulate content height growth from 1000 to 1050 during convergence
+    dynamicScrollHeight = 1050
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    // Expected scroll top clamped to max scrollable offset (1050 - 400 = 650)
+    assert.strictEqual(rawScrollTop, 650, 'Convergence should update scrollTop as content expands')
+  })
+
+  test('should re-pin on document.fonts.ready resolution and loadingdone event', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    const container = el.querySelector('.atoll-chat-timeline-container')
+    assert.ok(container)
+
+    let currentScrollTop = 0
+    Object.defineProperty(container, 'scrollHeight', {
+      value: 1600,
+      configurable: true
+    })
+    Object.defineProperty(container, 'clientHeight', {
+      value: 400,
+      configurable: true
+    })
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => currentScrollTop,
+      set: (v) => {
+        currentScrollTop = v
+      },
+      configurable: true
+    })
+
+    if (typeof document !== 'undefined' && document.fonts?.addEventListener) {
+      document.fonts.dispatchEvent(new Event('loadingdone'))
+      await new Promise(resolve => setTimeout(resolve, 50))
+      assert.strictEqual(currentScrollTop, 1600, 'document.fonts loadingdone should re-pin timeline')
+    }
   })
 })

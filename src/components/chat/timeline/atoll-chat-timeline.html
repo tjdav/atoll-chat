@@ -4,6 +4,7 @@
       <atoll-icon name="shield-lock" size="xl" class="mb-3 d-block"></atoll-icon>
       <p>Messages are end-to-end encrypted. No one outside of this chat, not even Atoll, can read them.</p>
     </div>
+    <div ref="messageWrapper" class="atoll-chat-timeline-messages flex-grow-1 d-flex flex-column justify-content-end"></div>
     <div ref="statusContainer" class="container atoll-chat-message-status-container d-none text-end px-2 py-1 align-items-center justify-content-end">
       <span ref="statusText" class="x-small me-1" style="color: var(--atoll-chat-text-muted, #595959) !important;" data-testid="status-text"></span>
       <atoll-icon ref="statusIcon" name="check-circle" size="xs" color="var(--atoll-chat-text-muted)"></atoll-icon>
@@ -25,6 +26,7 @@
       const { $worker } = cryptoWorker
       const container = refs('timelineContainer')
       const emptyState = refs('emptyState')
+      const messageWrapper = refs('messageWrapper')
       const statusContainer = refs('statusContainer')
       const statusText = refs('statusText')
       const statusIcon = refs('statusIcon')
@@ -36,22 +38,65 @@
       let lastRenderedMessageId = null
       let forceScrollToBottom = false
       let isRestorePending = false
-      let shouldAutoScroll = true
+      let stickToBottom = true
       let ephemeralMessages = []
       let storedMessagesCache = []
       let isFetchingOlder = false
       let hasMoreOlder = true
       const renderedRows = new Map()
 
-      const scrollToBottom = (smooth = false) => {
-        if (smooth) {
-          container.scrollTo({
-            top: container.scrollHeight,
-            behavior: 'smooth'
-          })
-        } else {
-          container.scrollTop = container.scrollHeight
+      const pinToBottom = (force = false) => {
+        if (!stickToBottom && !force) {
+          return
         }
+        container.scrollTop = container.scrollHeight
+      }
+
+      let convergenceFrame = 0
+      const maxConvergenceFrames = 5
+
+      const converge = () => {
+        if (!stickToBottom) {
+          return
+        }
+        const dist = container.scrollHeight - container.scrollTop - container.clientHeight
+        if (dist > 1 && convergenceFrame < maxConvergenceFrames) {
+          convergenceFrame++
+          container.scrollTop = container.scrollHeight
+          requestAnimationFrame(converge)
+        }
+      }
+
+      const beginConvergence = () => {
+        convergenceFrame = 0
+        requestAnimationFrame(converge)
+      }
+
+      const contentObserver = typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => {
+          if (stickToBottom) {
+            pinToBottom()
+          }
+        })
+        : null
+
+      if (contentObserver && messageWrapper) {
+        contentObserver.observe(messageWrapper)
+      }
+
+      if (typeof document !== 'undefined' && document.fonts) {
+        document.fonts.ready.then(() => {
+          if (stickToBottom) {
+            pinToBottom()
+            beginConvergence()
+          }
+        })
+        document.fonts.addEventListener?.('loadingdone', () => {
+          if (stickToBottom) {
+            pinToBottom()
+            beginConvergence()
+          }
+        })
       }
 
       /**
@@ -95,16 +140,16 @@
       }
 
       /**
-       * Evaluates container distance from bottom and updates auto-scroll state.
+       * Evaluates container distance from bottom and updates stickToBottom state.
        *
        * @returns {void}
        */
       const updateAutoScrollState = () => {
         const dist = container.scrollHeight - container.scrollTop - container.clientHeight
-        if (dist < 150 || container.scrollHeight <= container.clientHeight) {
-          shouldAutoScroll = true
+        if (dist <= 150 || container.scrollHeight <= container.clientHeight) {
+          stickToBottom = true
         } else {
-          shouldAutoScroll = false
+          stickToBottom = false
         }
       }
 
@@ -192,7 +237,7 @@
             if (p.id === $state.currentUser?.id) {
               return
             }
-  
+
             if (p.last_read_message_id) {
               if (!seenByMessageId.has(p.last_read_message_id)) {
                 seenByMessageId.set(p.last_read_message_id, [])
@@ -284,11 +329,11 @@
             }
           }
         }
-  
+
         return new IntersectionObserver((entries) => {
           entries.forEach(entry => {
             if (entry.isIntersecting) {
-              shouldAutoScroll = true
+              stickToBottom = true
             } else {
               updateAutoScrollState()
             }
@@ -307,6 +352,7 @@
       signal.addEventListener('abort', () => {
         intersectionObserver.disconnect()
         bottomObserver.disconnect()
+        contentObserver?.disconnect()
       })
 
       let currentRenderId = 0
@@ -325,14 +371,13 @@
           last_room_id = room_id
           lastView = type
           lastRenderedMessageId = null
-          container.innerHTML = ''
+          messageWrapper.innerHTML = ''
           intersectionObserver.disconnect()
           bottomObserver.disconnect()
           renderedRows.clear()
           hasMoreOlder = true
-          shouldAutoScroll = true
+          stickToBottom = true
           if (bottomSentinel) {
-            container.appendChild(bottomSentinel)
             bottomObserver.observe(bottomSentinel)
           }
         }
@@ -373,17 +418,19 @@
             const timeB = new Date(b.created_at || b.timestamp).getTime()
             return timeA - timeB
           })
-  
+
           if (messages.length === 0) {
             if (isNewRoom) {
-              container.appendChild(emptyState)
+              if (emptyState.parentNode !== container) {
+                container.insertBefore(emptyState, messageWrapper)
+              }
             }
             return
           }
 
           // If we have messages, remove empty state if present
-          if (emptyState.parentNode === container) {
-            container.removeChild(emptyState)
+          if (emptyState.parentNode) {
+            emptyState.remove()
           }
 
           const participants = room?.participants || []
@@ -479,7 +526,7 @@
               const firstNew = messagesToRender[0]
               const prevIndex = messageIndexMap.get(lastRenderedMessageId)
               const prevMsg = prevIndex !== undefined ? visibleMessages[prevIndex] : null
-  
+
               if (prevMsg && prevMsg.created_at && firstNew.created_at) {
                 // date separator logic
                 const prevTime = new Date(prevMsg.created_at).getTime()
@@ -504,7 +551,7 @@
             const isSent = message.sender_id === $state.currentUser?.id
             const nextMessage = (index !== undefined) ? visibleMessages[index + 1] : null
             const prevMessage = (index !== undefined) ? visibleMessages[index - 1] : null
-  
+
             // date separator logic
             let showSeparator = false
             if (prevMessage) {
@@ -534,7 +581,7 @@
 
             const isLastInBlock = !nextMessage || nextMessage.sender_id !== message.sender_id || nextShowSeparator
             const isFirstInBlock = !prevMessage || prevMessage.sender_id !== message.sender_id || showSeparator
-  
+
             const row = document.createElement('atoll-chat-timeline-row')
             row.setAttribute('is-sent', isSent)
             row.setAttribute('is-first-in-block', isFirstInBlock)
@@ -654,7 +701,7 @@
                 preview.setAttribute('status', message.status)
                 preview.setAttribute('is-sent', isSent)
                 row.appendChild(preview)
-  
+
                 if (message.content) {
                   const text = document.createElement('atoll-chat-timeline-item-text')
                   text.setAttribute('local-uuid', message.local_uuid)
@@ -772,9 +819,9 @@
           })
 
           const distBeforeAppend = container.scrollHeight - container.scrollTop - container.clientHeight
-          const wasNearBottom = shouldAutoScroll || container.scrollHeight <= container.clientHeight || distBeforeAppend < 150
+          const wasNearBottom = stickToBottom || container.scrollHeight <= container.clientHeight || distBeforeAppend <= 150
 
-          container.appendChild(fragment)
+          messageWrapper.appendChild(fragment)
 
           // Update and re-append global status indicator
           const lastMessage = messages[messages.length - 1]
@@ -782,7 +829,7 @@
             statusContainer.classList.remove('d-none')
             statusText.textContent = lastMessage.status === 'pending' ? 'Sending...' : 'Sent'
             statusIcon.setAttribute('name', lastMessage.status === 'pending' ? 'clock' : 'check')
-  
+
             container.appendChild(statusContainer)
           } else {
             statusContainer.classList.add('d-none')
@@ -794,11 +841,11 @@
 
           // sort messages chronologically if we added something new and it is NOT a new room
           if (!isNewRoom && messagesToRender.length > 0) {
-            const children = Array.from(container.children).filter(el => el.tagName === 'ATOLL-CHAT-TIMELINE-ROW' ||
+            const children = Array.from(messageWrapper.children).filter(el => el.tagName === 'ATOLL-CHAT-TIMELINE-ROW' ||
               el.tagName === 'ATOLL-CHAT-TIMELINE-SYSTEM-MESSAGE' ||
               el.tagName === 'ATOLL-CHAT-TIMELINE-DATE-SEPARATOR'
             )
-  
+
             // create timestamp lookup map
             const timestampMap = new Map()
             messages.forEach(m => {
@@ -838,7 +885,7 @@
               elementData.sort((a, b) => a.timestamp - b.timestamp)
               elementData.forEach(item => {
                 // re-append in order
-                container.insertBefore(item.el, statusContainer.parentNode === container ? statusContainer : null)
+                messageWrapper.appendChild(item.el)
               })
             }
           }
@@ -881,20 +928,15 @@
                 requestAnimationFrame(scrollAndCleanup)
               }
             } else {
-              shouldAutoScroll = true
-              scrollToBottom(false)
-              requestAnimationFrame(() => scrollToBottom(false))
-              // Extra safety for media and padding updates that complete shortly after mount
-              setTimeout(() => scrollToBottom(false), 50)
-              setTimeout(() => scrollToBottom(false), 150)
+              stickToBottom = true
+              pinToBottom()
+              beginConvergence()
             }
           } else if (forceScrollToBottom || wasNearBottom) {
-            shouldAutoScroll = true
+            stickToBottom = true
             forceScrollToBottom = false
-            scrollToBottom(true)
-            requestAnimationFrame(() => scrollToBottom(true))
-            setTimeout(() => scrollToBottom(true), 50)
-            setTimeout(() => scrollToBottom(true), 150)
+            pinToBottom()
+            beginConvergence()
           }
         } catch (err) {
           throw err
@@ -905,15 +947,15 @@
       debouncedRender()
 
       $bus.on('ui:media_loaded', () => {
-        const dist = container.scrollHeight - container.scrollTop - container.clientHeight
-        if (shouldAutoScroll || dist < 350) {
-          requestAnimationFrame(() => scrollToBottom(true))
+        if (stickToBottom) {
+          pinToBottom()
+          beginConvergence()
         }
       })
 
       $bus.on('ui:input_height_changed', () => {
-        if (shouldAutoScroll) {
-          scrollToBottom(false)
+        if (stickToBottom) {
+          pinToBottom()
         }
       })
 
@@ -923,7 +965,7 @@
         if ($state.decryptionCache && typeof $state.decryptionCache.setActiveRoom === 'function') {
           $state.decryptionCache.setActiveRoom(val)
         }
-  
+
         ephemeralMessages = []
         debouncedRender()
       })
@@ -951,7 +993,7 @@
 
           if (payload.message && payload.message.sender_id === $state.currentUser?.id && payload.message.status === 'pending') {
             forceScrollToBottom = true
-            shouldAutoScroll = true
+            stickToBottom = true
           }
 
           if (payload.message && ['call_offer', 'call_answer', 'call_end'].includes(payload.message.type)) {
@@ -969,7 +1011,7 @@
 
       $bus.on('message:send_reaction', async (payload) => {
         const room_id = $state.activeSelectionId
-  
+
         if (!room_id) {
           return
         }
@@ -1009,7 +1051,7 @@
           ...params
         })
       })
-  
+
       // Update participants seen status in real-time
       $bus.on('room:member_updated', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId) {
@@ -1018,14 +1060,17 @@
         }
       })
 
-      $bus.on('ui:scroll_to_bottom', (payload) => {
-        const smooth = payload ? payload.smooth !== false : true
-        scrollToBottom(smooth)
+      $bus.on('ui:scroll_to_bottom', () => {
+        stickToBottom = true
+        pinToBottom(true)
+        beginConvergence()
       })
 
       $bus.on('room:select', (payload) => {
         if (payload && payload.room_id === $state.activeSelectionId && !$state.isJumpingToMessage) {
-          scrollToBottom(false)
+          stickToBottom = true
+          pinToBottom(true)
+          beginConvergence()
         }
       })
 
@@ -1036,7 +1081,7 @@
         }
 
         const { messageId } = payload
-  
+
         if (!messageId) {
           $state.isJumpingToMessage = false
           return
@@ -1045,7 +1090,7 @@
         let targetEl = container.querySelector(`#timeline-item-${messageId}`) ||
                        container.querySelector(`atoll-chat-timeline-row[data-message-id="${messageId}"]`) ||
                        container.querySelector(`atoll-chat-timeline-row[data-local-uuid="${messageId}"]`)
-  
+
         if (!targetEl) {
           $state.isJumpingToMessage = true
           $state.jumpToMessageId = messageId
@@ -1054,7 +1099,7 @@
             const contextMsgs = await $storage.getMessagesByRoomAround(room_id, messageId, 50)
             if (contextMsgs && contextMsgs.length > 0) {
               storedMessagesCache = contextMsgs
-              container.innerHTML = ''
+              messageWrapper.innerHTML = ''
               renderedRows.clear()
               await renderTimeline({ preserveMessages: true })
             }
