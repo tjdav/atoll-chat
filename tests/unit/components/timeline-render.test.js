@@ -28,6 +28,8 @@ describe('Atoll Chat Timeline Component Render Path', () => {
   const mockState = {
     activeSelectionId: 'room-1',
     activeSelectionType: 'chats',
+    isJumpingToMessage: false,
+    jumpToMessageId: null,
     currentUser: {
       id: 'user-1',
       name: 'Alice'
@@ -53,6 +55,8 @@ describe('Atoll Chat Timeline Component Render Path', () => {
 
     mockState.activeSelectionId = 'room-1'
     mockState.activeSelectionType = 'chats'
+    mockState.isJumpingToMessage = false
+    mockState.jumpToMessageId = null
     mockState.currentUser = {
       id: 'user-1',
       name: 'Alice'
@@ -528,5 +532,85 @@ describe('Atoll Chat Timeline Component Render Path', () => {
     await new Promise(resolve => requestAnimationFrame(resolve))
 
     assert.strictEqual(scrollIntoViewCalls, callsAfterJump, 'Should not re-anchor after user scrolled past threshold')
+  })
+
+  test('should gate checkScrollPagination during pendingAnchor state', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    const container = el.querySelector('.atoll-chat-timeline-container')
+    assert.ok(container)
+
+    let currentScrollTop = 100
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => currentScrollTop,
+      set: (v) => {
+        currentScrollTop = v
+      },
+      configurable: true
+    })
+
+    let getBeforeCalled = false
+    mockStorage.$storage.getMessagesByRoomBefore = async () => {
+      getBeforeCalled = true
+      return []
+    }
+
+    mockBus.emit('message:scroll_to', { messageId: 'msg-5' })
+    await new Promise(resolve => setTimeout(resolve, 50))
+
+    // Trigger scroll event while pendingAnchor is active
+    container.dispatchEvent(new Event('scroll'))
+
+    assert.strictEqual(getBeforeCalled, false, 'getMessagesByRoomBefore should not be called when pendingAnchor is active')
+  })
+
+  test('should preserve scroll position on viewer return and centering target', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 150))
+
+    const container = el.querySelector('.atoll-chat-timeline-container')
+    assert.ok(container)
+
+    let scrollVal = 600
+    Object.defineProperty(container, 'scrollHeight', {
+      value: 1800,
+      configurable: true
+    })
+    Object.defineProperty(container, 'clientHeight', {
+      value: 400,
+      configurable: true
+    })
+    Object.defineProperty(container, 'scrollTop', {
+      get: () => scrollVal,
+      set: (v) => {
+        scrollVal = v
+      },
+      configurable: true
+    })
+
+    const targetRow = el.querySelector('atoll-chat-timeline-row[message-id="msg-5"]')
+    let centered = false
+    targetRow.scrollIntoView = (options) => {
+      if (options?.block === 'center') {
+        centered = true
+      }
+    }
+
+    mockState.isJumpingToMessage = true
+    mockState.jumpToMessageId = 'msg-5'
+
+    // Switch selection type back from pictures/videos to 'chats' while jumping
+    mockState.activeSelectionType = 'chats'
+
+    mockBus.emit('message:scroll_to', { messageId: 'msg-5' })
+    await new Promise(resolve => setTimeout(resolve, 100))
+
+    assert.ok(centered, 'Target message row should be centered')
+    assert.notStrictEqual(scrollVal, 1800, 'scrollTop should not pin to bottom scrollHeight when returning from viewer')
   })
 })

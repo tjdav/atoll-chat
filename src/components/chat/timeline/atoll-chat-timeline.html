@@ -55,9 +55,14 @@
         if (!targetId) {
           return null
         }
-        return container.querySelector(`#timeline-item-${targetId}`) ||
-               container.querySelector(`[data-message-id="${targetId}"]`) ||
-               container.querySelector(`[data-local-uuid="${targetId}"]`)
+        const fromMap = renderedRows?.get(targetId)
+        if (fromMap && fromMap.isConnected) {
+          return fromMap
+        }
+        return container.querySelector(`[data-message-id="${targetId}"]`) ||
+               container.querySelector(`[data-local-uuid="${targetId}"]`) ||
+               container.querySelector(`[message-id="${targetId}"]`) ||
+               container.querySelector(`[local-uuid="${targetId}"]`)
       }
 
       const cancelPendingAnchor = () => {
@@ -182,7 +187,14 @@
        * @returns {Promise<void>} Resolves when scroll pagination completes.
        */
       const checkScrollPagination = async () => {
-        if (isFetchingOlder || !hasMoreOlder || container.scrollTop > 200 || !last_room_id) {
+        if (
+          isFetchingOlder ||
+          !hasMoreOlder ||
+          container.scrollTop > 200 ||
+          !last_room_id ||
+          pendingAnchor ||
+          $state.isJumpingToMessage
+        ) {
           return
         }
         const oldest = storedMessagesCache?.[0]
@@ -222,6 +234,10 @@
        * @returns {void}
        */
       const updateAutoScrollState = () => {
+        if (pendingAnchor || $state.isJumpingToMessage) {
+          stickToBottom = false
+          return
+        }
         const dist = container.scrollHeight - container.scrollTop - container.clientHeight
         if (dist <= 150 || container.scrollHeight <= container.clientHeight) {
           stickToBottom = true
@@ -452,6 +468,10 @@
 
         return new IntersectionObserver((entries) => {
           entries.forEach(entry => {
+            if (pendingAnchor || $state.isJumpingToMessage) {
+              stickToBottom = false
+              return
+            }
             if (entry.isIntersecting) {
               stickToBottom = true
             } else {
@@ -1042,10 +1062,12 @@
               }
             }
           } else if (forceScrollToBottom || wasNearBottom) {
-            stickToBottom = true
+            if (!pendingAnchor && !$state.isJumpingToMessage) {
+              stickToBottom = true
+              pinToBottom()
+              beginConvergence()
+            }
             forceScrollToBottom = false
-            pinToBottom()
-            beginConvergence()
           }
         } catch (err) {
           throw err
@@ -1209,6 +1231,18 @@
           const room_id = $state.activeSelectionId
           if (room_id) {
             const contextMsgs = await $storage.getMessagesByRoomAround(room_id, targetId, 50)
+            const hasTarget = contextMsgs?.some(m => m.id === targetId || m.local_uuid === targetId)
+            if (!hasTarget) {
+              $bus.emit('ui:show_toast', {
+                message: 'Could not locate original chat message',
+                type: 'warning'
+              })
+              stickToBottom = false
+              $state.isJumpingToMessage = false
+              $state.jumpToMessageId = null
+              return
+            }
+
             if (contextMsgs && contextMsgs.length > 0) {
               storedMessagesCache = contextMsgs
               messageWrapper.innerHTML = ''
@@ -1220,8 +1254,8 @@
                 skipAnchorResolution: true
               })
             }
+            targetEl = resolveAnchorEl(targetId)
           }
-          targetEl = resolveAnchorEl(targetId)
         }
 
         if (targetEl) {
@@ -1240,6 +1274,9 @@
                 block,
                 inline
               })
+              if (pendingAnchor) {
+                pendingAnchor.lastScrollTop = container.scrollTop
+              }
               requestAnimationFrame(convergeAnchor)
             }
           }
@@ -1255,6 +1292,8 @@
             reAnchorFrame: null,
             quietTimer: setTimeout(cancelPendingAnchor, anchorQuietMs)
           }
+        } else {
+          stickToBottom = false
         }
 
         $state.isJumpingToMessage = false
