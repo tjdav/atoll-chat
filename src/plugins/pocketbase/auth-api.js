@@ -50,17 +50,24 @@ export function createAuthApi (pb) {
      * @param {object} newWrappedVMK newly wrapped VMK.
      * @param {array} remainingWraps remaining recovery wraps.
      * @param {string} [userId] Optional user ID for unauthenticated recovery.
+     * @param {string} [recoveryAuthProof] Optional proof of possession for unauthenticated recovery.
      * @returns {Promise<object>} response JSON.
      */
-    async rotatePassword (newKeyBHash, newWrappedVMK, remainingWraps, userId) {
+    async rotatePassword (newKeyBHash, newWrappedVMK, remainingWraps, userId, recoveryAuthProof) {
       const payload = {
         newKeyBHash,
         newWrappedVMK,
         remainingWraps
       }
+
       if (userId) {
         payload.userId = userId
       }
+
+      if (recoveryAuthProof) {
+        payload.recoveryAuthProof = recoveryAuthProof
+      }
+
       return await pb.send('/api/custom/rotate_password', {
         method: 'POST',
         headers: {

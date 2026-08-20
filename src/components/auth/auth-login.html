@@ -212,6 +212,7 @@
       let fetchedUserPayload = null
       let decryptedKeysLocal = null
       let zxcvbnScore = 0
+      let currentRecoveryAuthProof = null
 
       const isTesting = import.meta.env.MODE === 'testing' || (typeof window !== 'undefined' && (window.__playwright_test_id__ || window.PLAYWRIGHT_TEST))
 
@@ -943,6 +944,7 @@
           updateStatus('Verifying recovery code...')
           let decryptedMasterKey = null
           matchedWrapIndex = -1
+          currentRecoveryAuthProof = null
 
           for (let i = 0; i < recoveryWraps.length; i++) {
             try {
@@ -952,6 +954,9 @@
               })
               if (decryptedResult) {
                 decryptedMasterKey = typeof decryptedResult === 'object' && decryptedResult !== null ? decryptedResult.master_key : decryptedResult
+                if (typeof decryptedResult === 'object' && decryptedResult !== null && decryptedResult.auth_proof) {
+                  currentRecoveryAuthProof = decryptedResult.auth_proof
+                }
                 matchedWrapIndex = i
                 break
               }
@@ -1095,20 +1100,25 @@
           }
 
           updateStatus('Updating password and vault on server...')
-          const rotateFn = authApi && typeof authApi.rotatePassword === 'function' ? authApi.rotatePassword : (kb, vmk, rw, uid) => pb.send('/api/custom/rotate_password', {
+          const rotateFn = authApi && typeof authApi.rotatePassword === 'function' ? authApi.rotatePassword : (kb, vmk, rw, uid, proof) => pb.send('/api/custom/rotate_password', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               newKeyBHash: kb,
               newWrappedVMK: vmk,
               remainingWraps: rw,
-              userId: uid
+              userId: uid,
+              recoveryAuthProof: proof
             })
           })
-          const rotateRes = await rotateFn(newKeyB, newPasswordWrap, remainingWraps, fetchedUserPayload.id)
+          const rotateRes = await rotateFn(newKeyB, newPasswordWrap, remainingWraps, fetchedUserPayload.id, currentRecoveryAuthProof)
 
           if (!rotateRes || !rotateRes.token || !rotateRes.record) {
             throw new Error('Password rotation failed.')
+          }
+
+          if (rotateRes.record.id !== fetchedUserPayload.id) {
+            throw new Error('User mismatch after password rotation.')
           }
 
           const authRecord = rotateRes.record
