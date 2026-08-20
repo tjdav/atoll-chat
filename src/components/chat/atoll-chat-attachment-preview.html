@@ -62,6 +62,92 @@
       const reel = refs('reel')
 
       let targetCoverAttachmentId = null
+      let pendingFocusTarget = null
+
+      const getFocusableElements = () => {
+        if (!itemsContainer) return []
+        const cards = Array.from(itemsContainer.children).filter(el => el.hasAttribute('tabindex'))
+        if (addMoreTile && !addMoreTile.hidden) {
+          cards.push(addMoreTile)
+        }
+        return cards
+      }
+
+      const handleKeyDown = (e) => {
+        const key = e.key
+        if (!['ArrowRight', 'ArrowLeft', 'Delete', 'Backspace', 'Enter', ' '].includes(key)) {
+          return
+        }
+
+        const focusables = getFocusableElements()
+        const activeEl = e.target || document.activeElement
+        const currentTarget = focusables.find(el => el === activeEl || el.contains(activeEl))
+        const idx = currentTarget ? focusables.indexOf(currentTarget) : -1
+
+        if (key === 'ArrowRight') {
+          e.preventDefault()
+          if (idx >= 0 && idx < focusables.length - 1) {
+            focusables[idx + 1].focus()
+          } else if (idx === focusables.length - 1 && focusables[idx]) {
+            focusables[idx].focus()
+          }
+        } else if (key === 'ArrowLeft') {
+          e.preventDefault()
+          if (idx > 0) {
+            focusables[idx - 1].focus()
+          } else if (idx === 0 && focusables[0]) {
+            focusables[0].focus()
+          }
+        } else if (key === 'Delete' || key === 'Backspace') {
+          const card = activeEl ? activeEl.closest('[data-item-id]') : null
+          if (card && card.dataset.itemId) {
+            e.preventDefault()
+            const itemId = card.dataset.itemId
+            const list = getEffectiveAttachments()
+            const cardIdx = list.findIndex(i => i.id === itemId)
+
+            if (cardIdx !== -1) {
+              if (list.length > 1) {
+                pendingFocusTarget = cardIdx < list.length - 1 ? cardIdx : cardIdx - 1
+              } else {
+                pendingFocusTarget = 'addMoreOrTextarea'
+              }
+
+              if (itemId === 'legacy-item-1') {
+                $bus.emit('ui:cancel')
+              } else {
+                $bus.emit('ui:remove_attachment', { id: itemId })
+              }
+            }
+          }
+        } else if (key === 'Enter' || key === ' ') {
+          if (activeEl === addMoreTile || (addMoreTile && addMoreTile.contains(activeEl))) {
+            e.preventDefault()
+            addMoreInput.click()
+          } else {
+            const card = activeEl ? activeEl.closest('[data-item-id]') : null
+            if (card && card.dataset.itemId) {
+              e.preventDefault()
+              const itemId = card.dataset.itemId
+              const list = getEffectiveAttachments()
+              const item = list.find(i => i.id === itemId)
+              if (item) {
+                if (item.isVideo) {
+                  const isCustom = Boolean(item.isCustomCover || item.isCustom || state.effectiveIsCustom)
+                  if (isCustom) {
+                    $bus.emit('ui:attachment_cover_removed', { id: item.id === 'legacy-item-1' ? (state._attachments && state._attachments[0]?.id) : item.id })
+                  } else {
+                    targetCoverAttachmentId = item.id === 'legacy-item-1' ? (state._attachments && state._attachments[0]?.id) : item.id
+                    coverInput.click()
+                  }
+                } else if (item.isError) {
+                  $bus.emit('ui:retry_attachment_processing', { id: item.id })
+                }
+              }
+            }
+          }
+        }
+      }
 
       const formatSize = (bytes) => {
         if (!bytes || isNaN(bytes)) {
@@ -133,7 +219,7 @@
 
         // Fast-path in-place update for single item to preserve DOM element references
         const existingChild = itemsContainer.firstElementChild
-        if (list.length === 1 && existingChild) {
+        if (list.length === 1 && existingChild && existingChild.dataset.itemId === list[0].id) {
           while (itemsContainer.children.length > 1) {
             itemsContainer.lastElementChild.remove()
           }
@@ -148,6 +234,29 @@
           )
 
           if (isMedia && existingChild.classList.contains('atoll-chat-attachment-tile')) {
+            existingChild.setAttribute('data-testid', `media-tile-${item.id}`)
+            existingChild.dataset.itemId = item.id
+            const filename = item.fileName || item.filename || item.file?.name || 'Attachment'
+            const formattedSize = formatSize(item.fileSize || item.file?.size)
+            let statusText = 'Ready to send'
+            if (item.isError) {
+              statusText = item.errorMessage || 'Processing failed'
+            } else if (item.isCompressing || item.isUploading || item.status === 'Processing...') {
+              statusText = item.uploadStatus || item.status || 'Processing'
+            } else if (item.uploadStatus || item.status) {
+              statusText = item.uploadStatus || item.status
+            }
+            const labelParts = [`Attachment 1: ${filename}`]
+            if (formattedSize) labelParts.push(formattedSize)
+            if (statusText) labelParts.push(statusText)
+            existingChild.setAttribute('aria-label', labelParts.join(', '))
+            existingChild.setAttribute('tabindex', '0')
+
+            const removeBtn = existingChild.querySelector('.atoll-chat-tile-remove-btn')
+            if (removeBtn) {
+              removeBtn.setAttribute('data-testid', `btn-remove-${item.id}`)
+            }
+
             const img = existingChild.querySelector('img')
             const thumbUrl = item.thumbnailPreviewUrl || item.thumbnailUrl || ''
             if (img) {
@@ -179,6 +288,29 @@
             }
             return
           } else if (!isMedia && existingChild.classList.contains('atoll-chat-attachment-chip')) {
+            existingChild.setAttribute('data-testid', `document-pill-${item.id}`)
+            existingChild.dataset.itemId = item.id
+            const filename = item.fileName || item.filename || item.file?.name || 'Attachment'
+            const formattedSize = formatSize(item.fileSize || item.file?.size)
+            let statusText = 'Ready to send'
+            if (item.isError) {
+              statusText = item.errorMessage || 'Processing failed'
+            } else if (item.isCompressing || item.isUploading || item.status === 'Processing...') {
+              statusText = item.uploadStatus || item.status || 'Processing'
+            } else if (item.uploadStatus || item.status) {
+              statusText = item.uploadStatus || item.status
+            }
+            const labelParts = [`Attachment 1: ${filename}`]
+            if (formattedSize) labelParts.push(formattedSize)
+            if (statusText) labelParts.push(statusText)
+            existingChild.setAttribute('aria-label', labelParts.join(', '))
+            existingChild.setAttribute('tabindex', '0')
+
+            const removeBtn = existingChild.querySelector('.atoll-chip-remove-btn')
+            if (removeBtn) {
+              removeBtn.setAttribute('data-testid', `btn-remove-${item.id}`)
+            }
+
             const nameEl = existingChild.querySelector('.atoll-chip-filename')
             if (nameEl) {
               nameEl.textContent = item.fileName || item.filename || 'File'
@@ -186,7 +318,6 @@
 
             const statusEl = existingChild.querySelector('.atoll-chip-subtext')
             if (statusEl) {
-              const formattedSize = formatSize(item.fileSize || item.file?.size)
               statusEl.textContent = formattedSize || item.uploadStatus || item.status || 'Ready'
             }
 
@@ -220,7 +351,7 @@
 
         itemsContainer.innerHTML = ''
 
-        list.forEach((item) => {
+        list.forEach((item, index) => {
           const isMedia = Boolean(
             item.isVideo ||
             item.thumbnailPreviewUrl ||
@@ -229,11 +360,30 @@
             (item.file && item.file.type && (item.file.type.startsWith('image/') || item.file.type.startsWith('video/')))
           )
 
+          const filename = item.fileName || item.filename || item.file?.name || 'Attachment'
+          const formattedSize = formatSize(item.fileSize || item.file?.size)
+          let statusText = 'Ready to send'
+          if (item.isError) {
+            statusText = item.errorMessage || 'Processing failed'
+          } else if (item.isCompressing || item.isUploading || item.status === 'Processing...') {
+            statusText = item.uploadStatus || item.status || 'Processing'
+          } else if (item.uploadStatus || item.status) {
+            statusText = item.uploadStatus || item.status
+          }
+
+          const labelParts = [`Attachment ${index + 1}: ${filename}`]
+          if (formattedSize) labelParts.push(formattedSize)
+          if (statusText) labelParts.push(statusText)
+          const ariaLabel = labelParts.join(', ')
+
           if (isMedia) {
             // Media Card Tile
             const tile = document.createElement('div')
             tile.className = 'atoll-chat-attachment-tile atoll-chat-attachment-preview-thumbnail-container'
             tile.setAttribute('data-testid', `media-tile-${item.id}`)
+            tile.setAttribute('tabindex', '0')
+            tile.setAttribute('aria-label', ariaLabel)
+            tile.dataset.itemId = item.id
 
             // Hidden generic document icon for test compatibility
             const hiddenDocIcon = document.createElement('atoll-icon')
@@ -381,6 +531,9 @@
             const chip = document.createElement('div')
             chip.className = 'atoll-chat-attachment-chip'
             chip.setAttribute('data-testid', `document-pill-${item.id}`)
+            chip.setAttribute('tabindex', '0')
+            chip.setAttribute('aria-label', ariaLabel)
+            chip.dataset.itemId = item.id
 
             // Hidden thumbnail container for test compatibility
             const hiddenThumbContainer = document.createElement('div')
@@ -479,6 +632,23 @@
           }
         })
 
+        // Focus restoration management after re-render
+        if (pendingFocusTarget !== null) {
+          const focusables = getFocusableElements()
+          if (typeof pendingFocusTarget === 'number' && focusables[pendingFocusTarget]) {
+            focusables[pendingFocusTarget].focus()
+          } else if (addMoreTile && !addMoreTile.hidden) {
+            addMoreTile.focus()
+          } else {
+            const textarea = root.ownerDocument?.querySelector('textarea')
+            if (textarea) {
+              textarea.focus()
+            }
+            $bus.emit('ui:focus_input')
+          }
+          pendingFocusTarget = null
+        }
+
         // Auto-scroll reel to the far right on item changes
         if (reel) {
           reel.scrollLeft = reel.scrollWidth
@@ -521,8 +691,14 @@
       observe('is-uploading', render)
       observe('progress', render)
 
-      // Add More tile click -> trigger addMoreInput
+      // Attach keydown listener on itemsContainer and addMoreTile
+      if (itemsContainer) {
+        itemsContainer.addEventListener('keydown', handleKeyDown, { signal })
+      }
       if (addMoreTile) {
+        addMoreTile.addEventListener('keydown', handleKeyDown, { signal })
+
+        // Add More tile click -> trigger addMoreInput
         addMoreTile.addEventListener('click', (e) => {
           e.preventDefault()
           addMoreInput.click()

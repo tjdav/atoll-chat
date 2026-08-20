@@ -377,4 +377,204 @@ describe('Atoll Chat Attachment Preview Component', () => {
     assert.ok(emitted, 'ui:attachment_cover_removed event should be emitted on $bus')
     assert.equal(emitted.payload.id, 'vid-custom')
   })
+
+  test('Test 1: should render multiple mixed items (2 images, 1 video, 1 document) simultaneously in the rail', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      { id: 'img-1', isImage: true, fileName: 'pic1.jpg', fileSize: 1048576, status: 'Ready to send' },
+      { id: 'img-2', isImage: true, fileName: 'pic2.png', fileSize: 2097152, status: 'Ready to send' },
+      { id: 'vid-1', isVideo: true, fileName: 'clip.mp4', fileSize: 5242880, status: 'Ready to send' },
+      { id: 'doc-1', fileName: 'summary.pdf', fileSize: 512000, status: 'Ready to send' }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const tile1 = el.querySelector('[data-testid$="media-tile-img-1"]')
+    const tile2 = el.querySelector('[data-testid$="media-tile-img-2"]')
+    const tile3 = el.querySelector('[data-testid$="media-tile-vid-1"]')
+    const pill = el.querySelector('[data-testid$="document-pill-doc-1"]')
+
+    assert.ok(tile1, 'First image tile should exist')
+    assert.ok(tile2, 'Second image tile should exist')
+    assert.ok(tile3, 'Video tile should exist')
+    assert.ok(pill, 'Document pill should exist')
+
+    assert.equal(tile1.getAttribute('tabindex'), '0')
+    assert.equal(tile1.getAttribute('aria-label'), 'Attachment 1: pic1.jpg, 1.0 MB, Ready to send')
+    assert.equal(pill.getAttribute('tabindex'), '0')
+    assert.equal(pill.getAttribute('aria-label'), 'Attachment 4: summary.pdf, 500 KB, Ready to send')
+  })
+
+  test('Test 2: should render video card with cover edit button and bottom-left video indicator', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      { id: 'video-card', isVideo: true, fileName: 'test-video.mp4', fileSize: 15728640 }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const tile = el.querySelector('[data-testid$="media-tile-video-card"]')
+    assert.ok(tile)
+
+    const videoBadge = tile.querySelector('.atoll-chat-tile-video-badge')
+    assert.ok(videoBadge, 'Bottom-left video indicator badge should be rendered')
+
+    const coverBtn = tile.querySelector('[data-testid$="btn-change-cover"]')
+    assert.ok(coverBtn, 'Cover change button should be rendered')
+    assert.equal(coverBtn.textContent.trim(), 'Change Cover')
+  })
+
+  test('Test 3: should render document pill with filename, filesize, and remove button', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      { id: 'doc-card', fileName: 'financial_report.xlsx', fileSize: 3145728 }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const pill = el.querySelector('[data-testid$="document-pill-doc-card"]')
+    assert.ok(pill)
+
+    const filenameEl = pill.querySelector('.atoll-chip-filename')
+    assert.ok(filenameEl)
+    assert.equal(filenameEl.textContent.trim(), 'financial_report.xlsx')
+
+    const filesizeEl = pill.querySelector('.atoll-chip-subtext')
+    assert.ok(filesizeEl)
+    assert.equal(filesizeEl.textContent.trim(), '3.0 MB')
+
+    const removeBtn = pill.querySelector('[data-testid$="btn-remove-doc-card"]')
+    assert.ok(removeBtn)
+  })
+
+  test('Test 4: should render processing overlay and progress bar when isCompressing is true', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      { id: 'comp-item', isVideo: true, isCompressing: true, progress: 75, status: 'Compressing...' }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const overlay = el.querySelector('[data-testid$="processing-overlay-comp-item"]')
+    assert.ok(overlay)
+    assert.ok(overlay.textContent.includes('75%'))
+  })
+
+  test('Test 5: should emit ui:remove_attachment with { id: "target-id" } when clicking a specific item remove button', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      { id: 'target-id', fileName: 'sample.pdf' }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const removeBtn = el.querySelector('[data-testid$="btn-remove-target-id"]')
+    assert.ok(removeBtn)
+
+    const innerBtn = removeBtn.querySelector('button') || removeBtn
+    innerBtn.click()
+
+    const emitted = emittedEvents.find(e => e.event === 'ui:remove_attachment')
+    assert.ok(emitted)
+    assert.equal(emitted.payload.id, 'target-id')
+  })
+
+  test('Test 6: should emit ui:attachment_cover_selected with correct { id: "video-2", file } when changing cover on a specific video', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      { id: 'video-1', isVideo: true, fileName: 'v1.mp4' },
+      { id: 'video-2', isVideo: true, fileName: 'v2.mp4' }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const coverInput = el.querySelector('[data-testid$="cover-file-input"]')
+    assert.ok(coverInput)
+
+    const tile2 = el.querySelector('[data-testid$="media-tile-video-2"]')
+    const coverBtn = tile2.querySelector('[data-testid$="btn-change-cover"]')
+    assert.ok(coverBtn)
+    coverBtn.click()
+
+    const newCoverFile = new File(['thumb payload'], 'new-cover.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(coverInput, 'files', {
+      value: [newCoverFile],
+      configurable: true
+    })
+
+    coverInput.dispatchEvent(new Event('change'))
+
+    const emitted = emittedEvents.find(e => e.event === 'ui:attachment_cover_selected')
+    assert.ok(emitted)
+    assert.equal(emitted.payload.id, 'video-2')
+    assert.equal(emitted.payload.file.name, 'new-cover.jpg')
+  })
+
+  test('Test 7: should hide Add More tile when attachments.length >= 10', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = Array.from({ length: 10 }, (_, i) => ({
+      id: `att-${i}`,
+      fileName: `file-${i}.txt`
+    }))
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const addMoreTile = el.querySelector('[data-testid$="add-more-tile"]')
+    assert.ok(addMoreTile)
+    assert.equal(addMoreTile.hidden, true)
+  })
+
+  test('Test 8: should remove focused attachment when Backspace or Delete key is pressed', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    el.attachments = [
+      { id: 'del-item-1', fileName: 'file1.pdf' },
+      { id: 'del-item-2', fileName: 'file2.pdf' }
+    ]
+
+    await new Promise(resolve => setTimeout(resolve, 20))
+
+    const pill1 = el.querySelector('[data-testid$="document-pill-del-item-1"]')
+    assert.ok(pill1)
+
+    pill1.focus()
+
+    const backspaceEvent = new KeyboardEvent('keydown', { key: 'Backspace', bubbles: true, cancelable: true })
+    pill1.dispatchEvent(backspaceEvent)
+
+    const emitted = emittedEvents.find(e => e.event === 'ui:remove_attachment')
+    assert.ok(emitted, 'ui:remove_attachment should be emitted on Backspace keydown')
+    assert.equal(emitted.payload.id, 'del-item-1')
+  })
 })
