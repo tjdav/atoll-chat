@@ -25,6 +25,7 @@ export default function syncPlugin () {
         let isSubscribed = false
         let catchUpPromise = null
         let lifecycleListenersRegistered = false
+        let lastRoomSyncTime = null
 
         return (instanceContext) => {
           const { pb } = instanceContext.pocketbase
@@ -39,6 +40,7 @@ export default function syncPlugin () {
             pluginContext.$bus.on('auth:logout', () => {
               isSubscribed = false
               catchUpPromise = null
+              lastRoomSyncTime = null
               try {
                 if (pb && pb.realtime) {
                   pb.realtime.disconnect()
@@ -100,9 +102,13 @@ export default function syncPlugin () {
                 : defaultDate
 
               try {
-                // Fetch room keys first (fetch all member records to guarantee zero dropped room keys)
+                // Fetch room keys (use watermark filter if lastRoomSyncTime is set)
+                const roomMembersFilter = lastRoomSyncTime
+                  ? `user_id = "${pb.authStore.model.id}" && updated >= "${lastRoomSyncTime}"`
+                  : `user_id = "${pb.authStore.model.id}"`
+
                 const missedKeys = await pb.collection('room_members').getFullList({
-                  filter: `user_id = "${pb.authStore.model.id}"`,
+                  filter: roomMembersFilter,
                   sort: 'updated'
                 })
 
@@ -147,7 +153,10 @@ export default function syncPlugin () {
                   console.warn('[sync] Failed to flush pending messages after catch-up:', flushErr)
                 }
 
+                lastRoomSyncTime = new Date().toISOString().replace('T', ' ')
+
                 // Notify UI that catch-up is done
+                $state.isCatchingUp = false
                 if (pluginContext.$bus) {
                   /** @type {CustomWindow & typeof globalThis} */
                   const win = window

@@ -562,12 +562,19 @@
         }
       })
       $bus.on('db:new_local_data', async (payload) => {
+        if ($state.isCatchingUp) {
+          return
+        }
         if (payload && payload.room_id === $state.activeSelectionId && $state.currentAppView === 'chats') {
           await markAsRead(payload.room_id)
         }
-        await handleUpdateInPlace(payload.room_id)
+        await handleUpdateInPlace(payload?.room_id)
       })
-      $bus.on('db:new_local_room', (payload) => handleUpdateInPlace(payload.room_id))
+      $bus.on('db:new_local_room', (payload) => {
+        if (!$state.isCatchingUp) {
+          handleUpdateInPlace(payload?.room_id)
+        }
+      })
       $bus.on('db:room_deleted', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('room:member_updated', (payload) => handleUpdateInPlace(payload.room_id))
       $bus.on('room:read_state_changed', (room_id) => handleUpdateInPlace(room_id))

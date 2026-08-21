@@ -80,8 +80,14 @@
       })
       $state.subscribe('activeSelectionType', () => debouncedRender())
       $state.subscribe('listSearchQuery', () => debouncedRender())
-      $bus.on('db:new_local_data', () => {
-        manager.reset(); debouncedRender()
+      $bus.on('db:new_local_data', (payload) => {
+        const msg = payload?.message
+        const isMatch = msg?.mime_type?.startsWith('video/') ||
+          msg?.attachments?.some(a => a.mime_type?.startsWith('video/')) ||
+          payload?.mime_type?.startsWith('video/')
+        if (isMatch) {
+          manager.reset(); debouncedRender()
+        }
       })
 
       debouncedRender()

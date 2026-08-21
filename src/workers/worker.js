@@ -2351,6 +2351,14 @@ async function fetchRoomSettingsAndStates (room_id, unwrappedKeyBuffer) {
   }
 }
 
+function shouldSkipRoomKeyProcessing (existingRoom, payload, currentUserId) {
+  const effectiveEpochId = payload?.epoch_id || 1
+  const isSameUser = existingRoom?.synced_user_id === currentUserId
+  const hasEpochKey = existingRoom?.key_history?.some(h => h.epoch_id === effectiveEpochId && !!h.key)
+  const isUpToDate = existingRoom?.updated_at && payload?.updated && existingRoom.updated_at >= payload.updated
+  return Boolean(isSameUser && hasEpochKey && isUpToDate)
+}
+
 async function processNewRoomKey (rpcId, payload) {
   let encryptedRoomKeyBuffer = null
   let nonceBuffer = null
@@ -2383,6 +2391,17 @@ async function processNewRoomKey (rpcId, payload) {
     }
 
     const effectiveEpochId = epoch_id || 1
+
+    const existingRoom = await workerBridge.request('getRoom', [room_id])
+    if (shouldSkipRoomKeyProcessing(existingRoom, payload, self.currentUserKeys?.id)) {
+      await flushPendingMessagesForRoom(room_id)
+      self.postMessage({
+        id: rpcId,
+        type: 'worker:process_new_room_key',
+        result: { success: true, skipped: true }
+      })
+      return
+    }
 
     if (!self.currentUserKeys || !self.currentUserKeys.private_box_key) {
       throw new Error('User keys not initialized in worker')
@@ -2546,7 +2565,7 @@ async function processNewRoomKey (rpcId, payload) {
     }
 
     // epoch management and local storage
-    let room = await workerBridge.request('getRoom', [room_id])
+    let room = existingRoom || await workerBridge.request('getRoom', [room_id])
     if (!room) {
       room = {
         id: room_id,
@@ -2615,6 +2634,7 @@ async function processNewRoomKey (rpcId, payload) {
       })
     }
 
+    room.synced_user_id = self.currentUserKeys?.id
     await workerBridge.request('saveRoom', [room])
 
     await flushPendingMessagesForRoom(room_id)

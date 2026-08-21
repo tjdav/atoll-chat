@@ -105,8 +105,16 @@
       })
       $state.subscribe('activeSelectionType', () => debouncedRender())
       $state.subscribe('listSearchQuery', () => debouncedRender())
-      $bus.on('db:new_local_data', () => {
-        manager.reset(); debouncedRender()
+      $bus.on('db:new_local_data', (payload) => {
+        const msg = payload?.message
+        const isMediaMime = (mime) => mime?.startsWith('image/') || mime?.startsWith('video/') || mime?.startsWith('audio/')
+        const hasDocMime = msg?.mime_type && !isMediaMime(msg.mime_type)
+        const hasDocAttachment = msg?.attachments?.some(a => a.mime_type && !isMediaMime(a.mime_type))
+        const isDocType = msg?.type === 'file' || msg?.type === 'document' || payload?.type === 'file' || payload?.type === 'document'
+        if (hasDocMime || hasDocAttachment || isDocType) {
+          manager.reset()
+          debouncedRender()
+        }
       })
 
       debouncedRender()

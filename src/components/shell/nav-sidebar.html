@@ -106,6 +106,9 @@
           state.totalUnread = 0
           return
         }
+        if ($state.isCatchingUp) {
+          return
+        }
         try {
           const rooms = await $storage.getAllRoomsSorted()
           let unreadCount = 0
@@ -134,8 +137,15 @@
         }
       }
 
+      let unreadDebounceTimer = null
       const updateUnread = () => {
-        calculateTotalUnread().catch(console.error)
+        if (unreadDebounceTimer) {
+          clearTimeout(unreadDebounceTimer)
+        }
+        unreadDebounceTimer = setTimeout(() => {
+          unreadDebounceTimer = null
+          calculateTotalUnread().catch(console.error)
+        }, 150)
       }
 
       $bus.on('db:new_local_data', updateUnread)

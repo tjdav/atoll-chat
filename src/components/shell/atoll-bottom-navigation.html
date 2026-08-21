@@ -105,13 +105,11 @@
       activeSelectionType: null
     }),
     getters: {
-      isChatsActive: (state) => state.currentAppView === 'chats',
       isChatsActiveClass: (state) => (state.currentAppView === 'chats' ? 'active' : ''),
       isMediaActive: (state) => ['music', 'pictures', 'videos'].includes(state.currentAppView),
       isMediaActiveClass: (state) => (['music', 'pictures', 'videos'].includes(state.currentAppView) ? 'active' : ''),
       isFilesActive: (state) => ['documents', 'links'].includes(state.currentAppView),
       isFilesActiveClass: (state) => (['documents', 'links'].includes(state.currentAppView) ? 'active' : ''),
-      isSettingsActive: (state) => state.currentAppView === 'settings',
       isSettingsActiveClass: (state) => (state.currentAppView === 'settings' ? 'active' : ''),
       isHidden: (state) => {
         // Automatically hide the entire bottom navigation bar when a chat conversation
@@ -167,6 +165,9 @@
           state.totalUnread = 0
           return
         }
+        if ($state.isCatchingUp) {
+          return
+        }
         try {
           const rooms = await $storage.getAllRoomsSorted()
           let unreadCount = 0
@@ -194,9 +195,15 @@
         }
       }
 
+      let unreadDebounceTimer = null
       const updateUnread = () => {
-        calculateTotalUnread().catch(() => {
-        })
+        if (unreadDebounceTimer) {
+          clearTimeout(unreadDebounceTimer)
+        }
+        unreadDebounceTimer = setTimeout(() => {
+          unreadDebounceTimer = null
+          calculateTotalUnread().catch(() => {})
+        }, 150)
       }
 
       // Define helper functions first, then subscribe/bind events
@@ -234,9 +241,14 @@
       }
 
       // Dropdown instances
+      const rootEl = refs('root')
       const btnMedia = refs('btnMedia')
       const btnFiles = refs('btnFiles')
       const btnProfile = refs('btnProfile')
+      const mediaDropdownMenu = refs('mediaDropdownMenu')
+      const filesDropdownMenu = refs('filesDropdownMenu')
+      const profileDropdownMenu = refs('profileDropdownMenu')
+      void rootEl; void mediaDropdownMenu; void filesDropdownMenu; void profileDropdownMenu
 
       let mediaDropdown = btnMedia ? new Dropdown(btnMedia) : null
       let filesDropdown = btnFiles ? new Dropdown(btnFiles) : null

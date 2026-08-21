@@ -788,13 +788,6 @@
         }
       })
 
-      window.addEventListener('online', () => {
-        handleReconnectionHandshake().catch((err) => {
-          // Reconnection background error recovery path
-          return
-        })
-      }, { signal })
-
       $bus.on('app:request_reconnect', async () => {
         await attemptReconnect(true)
       })
