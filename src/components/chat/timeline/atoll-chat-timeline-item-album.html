@@ -47,13 +47,11 @@
         if (!message || !item) {
           return
         }
-        const isVideo = item.isVideo || (item.mime_type || '').startsWith('video/')
-        const targetView = isVideo ? 'videos' : 'pictures'
-        $state.mediaViewerSourceChatRoomId = message.room_id
-        $state.mediaViewerSourceMessageId = state.localUuid
-        $state.currentAppView = targetView
-        $state.activeSelectionType = targetView
-        $state.activeSelectionId = item.media_id || item.id
+        $bus.emit('ui:open_chat_media_modal', {
+          roomId: message.room_id,
+          localUuid: state.localUuid,
+          mediaId: item.media_id || item.id
+        })
       }
 
       const loadAlbum = async () => {
@@ -117,7 +115,14 @@
 
             // Resolve Image / Thumbnail URL
             const isVideo = item.isVideo || (item.mime_type || '').startsWith('video/')
-            const itemId = item.id ? `${state.localUuid}_${item.id}` : (i === 0 ? state.localUuid : `${state.localUuid}_${i}`)
+            let itemId = state.localUuid
+  
+            if (item.id) {
+              itemId = `${state.localUuid}_${item.id}`
+            } else if (i > 0) {
+              itemId = `${state.localUuid}_${i}`
+            }
+
             const localKey = `local:${itemId}`
             const localThumbKey = `thumb:${itemId}`
             const thumbKey = `thumb:${item.thumbnail?.media_id || item.media_id || item.id}`

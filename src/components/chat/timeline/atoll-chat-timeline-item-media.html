@@ -52,20 +52,16 @@
           ? msg.attachments.filter(a => a.isImage || a.isVideo || (a.mime_type || '').startsWith('image/') || (a.mime_type || '').startsWith('video/'))
           : []
         const singleAtt = mediaAtts[0] || null
-        const mediaId = singleAtt?.media_id || msg?.media_id
-        if (!mediaId) {
-          return
-        }
-        const mimeType = singleAtt?.mime_type || msg?.mime_type || ''
-        const targetView = mimeType.startsWith('image/') ? 'pictures' : 'videos'
-        $state.mediaViewerSourceChatRoomId = msg.room_id
-        $state.mediaViewerSourceMessageId = state.localUuid
-        $state.currentAppView = targetView
-        $state.activeSelectionType = targetView
-        $state.activeSelectionId = mediaId
+        const mediaId = singleAtt?.media_id || singleAtt?.id || msg?.media_id
+
+        $bus.emit('ui:open_chat_media_modal', {
+          roomId: msg.room_id,
+          localUuid: state.localUuid,
+          mediaId
+        })
       }
 
-      const renderVideoPlaceholder = (duration = 0) => {
+      const renderVideoPlaceholder = (_duration = 0) => {
         container.innerHTML = ''
         container.appendChild(loading)
         loading.classList.add('d-none')

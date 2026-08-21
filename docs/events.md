@@ -47,6 +47,7 @@ Manage user interface states, modals, and notifications.
 | `ui:open_mobile_nav` | Opens the mobile navigation drawer. | None |
 | `ui:prompt_p2p_consent` | Opens the consent modal for large direct peer-to-peer file transfer. | `{ transferId, senderName, filename, size }` |
 | `ui:prompt_p2p_reroute` | Opens the prompt to reroute an upload to P2P direct transfer. | `{ file, targetUserId }` |
+| `ui:open_chat_media_modal` | Opens the full-screen media modal in the active chat view. | `{ roomId, localUuid, mediaId }` |
 
 ### Database & Sync (`db:`, `sync:`)
 Handle data persistence and server synchronization states.

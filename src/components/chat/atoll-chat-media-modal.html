@@ -1,0 +1,830 @@
+<template id="atoll-chat-media-modal">
+  <dialog ref="modalElement" class="atoll-chat-media-modal-dialog" aria-labelledby="{{ ref_modalTitle }}">
+    <!-- Top Header -->
+    <header class="chat-media-modal-header d-flex justify-content-between align-items-center px-3 py-2 position-absolute top-0 start-0 w-100 z-3">
+      <div class="d-flex align-items-center gap-3 text-truncate me-2">
+        <atoll-profile ref="senderAvatar" size="sm" class="flex-shrink-0"></atoll-profile>
+        <div class="text-truncate text-white">
+          <h6 id="{{ ref_modalTitle }}" class="mb-0 text-truncate text-white fw-semibold fs-6">{{ activeTitle }}</h6>
+          <small class="text-white-50 x-small text-truncate d-block">{{ activeSubtitle }}</small>
+        </div>
+      </div>
+      <div class="d-flex align-items-center gap-2 flex-shrink-0">
+        <atoll-button
+          ref="btnDownload"
+          variant="secondary"
+          size="md"
+          pill="true"
+          icon-only="true"
+          title="Download Media"
+          aria-label="Download Media"
+          class="chat-media-modal-btn"
+        >
+          <atoll-icon name="download" size="20"></atoll-icon>
+        </atoll-button>
+        <ui-share-button ref="btnShare" class="chat-media-modal-share-btn"></ui-share-button>
+        <atoll-button
+          ref="btnClose"
+          variant="secondary"
+          size="md"
+          pill="true"
+          icon-only="true"
+          title="Close Modal"
+          aria-label="Close Modal"
+          class="chat-media-modal-btn"
+        >
+          <atoll-icon name="close" size="20"></atoll-icon>
+        </atoll-button>
+      </div>
+    </header>
+
+    <!-- Carousel Body -->
+    <div ref="modalBody" class="chat-media-modal-body w-100 h-100 d-flex align-items-center justify-content-center position-relative">
+      <div ref="carouselEl" class="carousel slide w-100 h-100 d-flex align-items-center justify-content-center" data-bs-interval="false">
+        <div ref="carouselInner" class="carousel-inner w-100 h-100 d-flex align-items-center">
+          <!-- Slides rendered dynamically -->
+        </div>
+
+        <!-- Carousel Navigation Controls -->
+        <button ref="btnPrev" class="carousel-control-prev chat-media-control" type="button" aria-label="Previous Media">
+          <atoll-icon name="chevron-left" size="32"></atoll-icon>
+        </button>
+        <button ref="btnNext" class="carousel-control-next chat-media-control" type="button" aria-label="Next Media">
+          <atoll-icon name="chevron-right" size="32"></atoll-icon>
+        </button>
+      </div>
+    </div>
+
+    <!-- Bottom Thumbnail Filmstrip -->
+    <footer class="chat-media-modal-footer position-absolute bottom-0 start-0 w-100 z-3 p-2">
+      <div ref="thumbnailTrack" class="chat-media-thumbnail-track d-flex gap-2 overflow-x-auto justify-content-start align-items-center mx-auto px-2">
+        <!-- Thumbnails rendered dynamically -->
+      </div>
+    </footer>
+  </dialog>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    server: ({ id }) => ({
+      ref_modalTitle: `mediaModalTitle_${id || '0'}`,
+      activeTitle: 'Media',
+      activeSubtitle: '',
+      activeSlideIndex: 0
+    }),
+    client: async ({ root, refs, state, globalStore, storage, eventBus, bootstrap, utils, pocketbase, signal }) => {
+      const { Carousel } = bootstrap
+      const { $state } = globalStore
+      const { $storage } = storage
+      const { $bus } = eventBus
+      const { $time, $media } = utils
+      const { pb } = pocketbase || {}
+
+      const modalElement = refs('modalElement')
+      const modalBody = refs('modalBody')
+      const carouselEl = refs('carouselEl')
+      const carouselInner = refs('carouselInner')
+      const thumbnailTrack = refs('thumbnailTrack')
+      const senderAvatar = refs('senderAvatar')
+      const btnDownload = refs('btnDownload')
+      const btnClose = refs('btnClose')
+      const btnPrev = refs('btnPrev')
+      const btnNext = refs('btnNext')
+
+      let carouselInstance = null
+      let mediaSlides = []
+      let activeRoom = null
+      let initialMediaId = null
+      let isInitialOpenVideo = false
+      let currentAbortController = null
+      let currentVolume = typeof $state.mediaVolume === 'number' ? $state.mediaVolume : 1
+
+      // Track active thumb elements and intersection observer
+      let thumbObserver = null
+
+      const BUFFER_SIZE = 3
+      const CLEANUP_MARGIN = 2
+
+      // Native dialog cancel event (Escape key)
+      modalElement.addEventListener('cancel', (e) => {
+        e.preventDefault()
+        hideModal()
+      })
+
+      // Close button handler
+      btnClose.addEventListener('click', () => {
+        hideModal()
+      }, { signal })
+
+      // Navigation handlers
+      btnPrev.addEventListener('click', (e) => {
+        e.stopPropagation()
+        carouselInstance?.prev()
+      }, { signal })
+
+      btnNext.addEventListener('click', (e) => {
+        e.stopPropagation()
+        carouselInstance?.next()
+      }, { signal })
+
+      // Controls toggle on background/media tap
+      modalBody.addEventListener('click', (e) => {
+        // Exempt buttons, controls, or video element direct interactions
+        if (e.target.closest('button') || e.target.closest('a') || e.target.closest('video') || e.target.closest('.atoll-video-overlay-btn')) {
+          return
+        }
+        modalElement.classList.toggle('controls-hidden')
+      }, { signal })
+
+      // Sync media volume from global store
+      $state.subscribe('mediaVolume', (vol) => {
+        if (typeof vol === 'number') {
+          currentVolume = vol
+          // Update any playing video in the carousel
+          const activeVideo = carouselInner.querySelector('.carousel-item.active video')
+          if (activeVideo) {
+            activeVideo.volume = vol
+          }
+        }
+      })
+
+      // Keyboard event delegation
+      const handleKeyDown = (e) => {
+        if (!modalElement.open) {
+          return
+        }
+        const activeTag = document.activeElement ? document.activeElement.tagName.toLowerCase() : ''
+        if (activeTag === 'input' || activeTag === 'textarea') {
+          return
+        }
+
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault()
+          carouselInstance?.prev()
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault()
+          carouselInstance?.next()
+        } else if (e.key === ' ' || e.code === 'Space') {
+          // Spacebar play/pause video if active slide is video and controls aren't directly focused
+          const activeItem = carouselInner.children[state.activeSlideIndex]
+          const video = activeItem?.querySelector('video')
+          if (video && document.activeElement !== video) {
+            e.preventDefault()
+            if (video.paused) {
+              video.play().catch(() => {
+              })
+            } else {
+              video.pause()
+            }
+          }
+        }
+      }
+
+      window.addEventListener('keydown', handleKeyDown, { signal })
+
+      // Download button handler
+      btnDownload.addEventListener('click', async () => {
+        const slide = mediaSlides[state.activeSlideIndex]
+        if (!slide) {
+          return
+        }
+        btnDownload.setAttribute('loading', 'true')
+        try {
+          let objectUrl = null
+          const isVideo = slide.isVideo || (slide.mime_type || '').startsWith('video/')
+          const localKey = `local:${slide.local_uuid}_${slide.id || '0'}`
+          const mediaKey = `media:${slide.media_id}`
+          const cached = $state.decryptionCache?.get(localKey) || $state.decryptionCache?.get(mediaKey)
+
+          if (cached) {
+            objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
+          }
+
+          if (!objectUrl) {
+            objectUrl = await $media.decrypt({
+              media_id: slide.media_id,
+              file_key: slide.file_key,
+              file_nonce: slide.file_nonce,
+              mime_type: slide.mime_type,
+              localUuid: slide.local_uuid
+            }, { signal: currentAbortController?.signal })
+          }
+
+          if (objectUrl) {
+            const a = document.createElement('a')
+            a.href = objectUrl
+            a.download = slide.filename || (isVideo ? 'video.mp4' : 'image.jpg')
+            document.body.appendChild(a)
+            a.click()
+            a.remove()
+          }
+        } catch (err) {
+          console.error('[atoll-chat-media-modal] Download failed:', err)
+          $bus.emit('ui:show_toast', {
+            message: 'Failed to download media file',
+            type: 'danger'
+          })
+        } finally {
+          btnDownload.removeAttribute('loading')
+        }
+      }, { signal })
+
+      /**
+       * Flattens and normalizes messages from active room into chronological media slides.
+       */
+      const loadMediaSlides = async (roomId) => {
+        const rawMessages = await $storage.getMessagesByRoom(roomId)
+        activeRoom = await $storage.getRoom(roomId)
+
+        const filteredMessages = (rawMessages || []).filter(msg => {
+          const type = msg.type || ''
+          return !['reaction', 'ice_candidate', 'p2p_offer', 'p2p_answer', 'call_offer', 'call_answer', 'call_end'].includes(type)
+        })
+
+        const slides = []
+
+        filteredMessages.forEach(msg => {
+          const attachments = Array.isArray(msg.attachments) ? msg.attachments : []
+          const mediaAttachments = attachments.filter(a => {
+            const mime = a.mime_type || ''
+            return a.isImage || a.isVideo || mime.startsWith('image/') || mime.startsWith('video/')
+          })
+
+          if (mediaAttachments.length > 0) {
+            mediaAttachments.forEach((att, attIdx) => {
+              const mime = att.mime_type || msg.mime_type || ''
+              const isVideo = att.isVideo || mime.startsWith('video/')
+              slides.push({
+                id: att.id || `${msg.local_uuid}_${attIdx}`,
+                media_id: att.media_id || att.id || msg.media_id,
+                file_key: att.file_key || msg.file_key,
+                file_nonce: att.file_nonce || msg.file_nonce,
+                mime_type: mime,
+                isVideo,
+                isImage: !isVideo,
+                filename: att.filename || msg.filename || (isVideo ? 'Video' : 'Image'),
+                duration: att.duration || msg.duration || 0,
+                thumbnail: att.thumbnail || msg.thumbnail,
+                sender_id: msg.sender_id || msg.user_id,
+                created_at: msg.created_at || msg.timestamp || 0,
+                local_uuid: msg.local_uuid,
+                message_id: msg.message_id || msg.id,
+                status: msg.status,
+                attIndex: attIdx
+              })
+            })
+          } else if (msg.media_id && (msg.file_key || msg.isImage || msg.isVideo || (msg.mime_type || '').startsWith('image/') || (msg.mime_type || '').startsWith('video/'))) {
+            const mime = msg.mime_type || ''
+            const isVideo = msg.isVideo || mime.startsWith('video/')
+            slides.push({
+              id: msg.media_id,
+              media_id: msg.media_id,
+              file_key: msg.file_key,
+              file_nonce: msg.file_nonce,
+              mime_type: mime,
+              isVideo,
+              isImage: !isVideo,
+              filename: msg.filename || (isVideo ? 'Video' : 'Image'),
+              duration: msg.duration || 0,
+              thumbnail: msg.thumbnail,
+              sender_id: msg.sender_id || msg.user_id,
+              created_at: msg.created_at || msg.timestamp || 0,
+              local_uuid: msg.local_uuid,
+              message_id: msg.message_id || msg.id,
+              status: msg.status,
+              attIndex: 0
+            })
+          }
+        })
+
+        // Sort chronologically ascending by created_at (or timestamp) with tiebreaking by attachment index
+        slides.sort((a, b) => {
+          const tA = new Date(a.created_at).getTime() || Number(a.created_at) || 0
+          const tB = new Date(b.created_at).getTime() || Number(b.created_at) || 0
+          if (tA !== tB) {
+            return tA - tB
+          }
+          return (a.attIndex || 0) - (b.attIndex || 0)
+        })
+
+        return slides
+      }
+
+      /**
+       * Renders the carousel slides container shell and thumbnail filmstrip track.
+       */
+      const renderSlidesAndFilmstrip = () => {
+        carouselInner.innerHTML = ''
+        thumbnailTrack.innerHTML = ''
+
+        if (thumbObserver) {
+          thumbObserver.disconnect()
+          thumbObserver = null
+        }
+
+        thumbObserver = new IntersectionObserver((entries) => {
+          entries.forEach(entry => {
+            if (entry.isIntersecting) {
+              const thumbEl = entry.target
+              const slideIdx = parseInt(thumbEl.getAttribute('data-slide-index'), 10)
+              loadThumbnail(slideIdx, thumbEl)
+            }
+          })
+        }, {
+          root: thumbnailTrack,
+          threshold: 0.1
+        })
+
+        mediaSlides.forEach((slide, idx) => {
+          // Carousel Item Shell
+          const slideDiv = document.createElement('div')
+          slideDiv.className = `carousel-item h-100 ${idx === state.activeSlideIndex ? 'active' : ''}`
+          slideDiv.setAttribute('data-slide-index', idx)
+
+          const container = document.createElement('div')
+          container.className = 'w-100 h-100 d-flex align-items-center justify-content-center position-relative p-2 p-md-4'
+          container.setAttribute('ref-slide-content', idx)
+
+          slideDiv.appendChild(container)
+          carouselInner.appendChild(slideDiv)
+
+          // Thumbnail Filmstrip Tile
+          const thumbTile = document.createElement('div')
+          thumbTile.className = `chat-media-thumb-item position-relative rounded-2 overflow-hidden flex-shrink-0 cursor-pointer ${idx === state.activeSlideIndex ? 'active-thumb' : ''}`
+          thumbTile.setAttribute('data-slide-index', idx)
+
+          if (slide.isVideo) {
+            const badge = document.createElement('div')
+            badge.className = 'position-absolute top-50 start-50 translate-middle bg-dark bg-opacity-75 rounded-circle d-flex align-items-center justify-content-center p-1 z-1'
+            badge.innerHTML = '<atoll-icon name="play" size="14" color="#ffffff"></atoll-icon>'
+            thumbTile.appendChild(badge)
+          }
+
+          thumbTile.addEventListener('click', (e) => {
+            e.stopPropagation()
+            carouselInstance?.to(idx)
+          })
+
+          thumbnailTrack.appendChild(thumbTile)
+          thumbObserver.observe(thumbTile)
+        })
+      }
+
+      /**
+       * Decrypts and renders a thumbnail image onto a filmstrip tile.
+       */
+      const loadThumbnail = async (idx, thumbTile) => {
+        const slide = mediaSlides[idx]
+        if (!slide || thumbTile.querySelector('img')) {
+          return
+        }
+
+        try {
+          const itemId = slide.id ? `${slide.local_uuid}_${slide.id}` : slide.local_uuid
+          const localThumbKey = `thumb:${itemId}`
+          const thumbKey = `thumb:${slide.thumbnail?.media_id || slide.media_id}`
+
+          let cached = $state.decryptionCache?.get(localThumbKey) ||
+                     $state.decryptionCache?.get(thumbKey) ||
+                     $state.decryptionCache?.get(`local:${itemId}`) ||
+                     $state.decryptionCache?.get(`media:${slide.media_id}`)
+
+          let objectUrl = typeof cached === 'string' ? cached : cached?.blobUrl
+
+          if (!objectUrl) {
+            if (slide.isVideo && slide.thumbnail) {
+              objectUrl = await $media.decrypt(slide.thumbnail, {
+                isThumbnail: true,
+                signal: currentAbortController?.signal
+              }).catch(() => null)
+            } else if (slide.file_key && slide.media_id) {
+              objectUrl = await $media.decrypt({
+                media_id: slide.media_id,
+                file_key: slide.file_key,
+                file_nonce: slide.file_nonce,
+                mime_type: slide.mime_type,
+                localUuid: itemId
+              }, { signal: currentAbortController?.signal }).catch(() => null)
+            }
+          }
+
+          if (objectUrl && !thumbTile.querySelector('img')) {
+            const img = document.createElement('img')
+            img.className = 'w-100 h-100 object-fit-cover'
+            img.src = objectUrl
+            img.alt = slide.filename || 'Thumbnail'
+            thumbTile.appendChild(img)
+          }
+        } catch {
+          // Silently handle thumbnail decryption error
+        }
+      }
+
+      /**
+       * Updates top header metadata (avatar, title, subtitle).
+       */
+      const updateHeaderMetadata = (idx) => {
+        const slide = mediaSlides[idx]
+        if (!slide) {
+          return
+        }
+
+        state.activeTitle = slide.filename || (slide.isVideo ? 'Video' : 'Image')
+
+        // Resolve sender display name and profile avatar
+        let senderName = 'Member'
+        let senderParticipant = null
+
+        if (activeRoom) {
+          const participants = activeRoom.participants || []
+          senderParticipant = participants.find(p => p.id === slide.sender_id || p.user_id === slide.sender_id)
+          if (slide.sender_id === $state.currentUser?.id) {
+            senderName = 'You'
+          } else if (senderParticipant) {
+            senderName = (activeRoom.nicknames && activeRoom.nicknames[slide.sender_id]) || senderParticipant.name || senderParticipant.username || 'Member'
+          }
+        }
+
+        const date = new Date(slide.created_at)
+        const formattedTime = !isNaN(date.getTime()) ? date.toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit'
+        }) : ''
+        state.activeSubtitle = `${senderName}${formattedTime ? ' • ' + formattedTime : ''}`
+
+        // Update Sender Avatar
+        if (senderAvatar) {
+          const existingSlot = senderAvatar.querySelector('[slot="image"]')
+          if (existingSlot) {
+            existingSlot.remove()
+          }
+          senderAvatar.setAttribute('size', 'sm')
+          senderAvatar.setAttribute('name', senderName)
+          senderAvatar.setAttribute('alt', senderName)
+
+          if (senderParticipant?.id) {
+            senderAvatar.setAttribute('user-id', senderParticipant.id)
+          } else {
+            senderAvatar.removeAttribute('user-id')
+          }
+
+          if (senderParticipant?.avatar && pb?.files) {
+            senderAvatar.setAttribute('src', pb.files.getURL(senderParticipant, senderParticipant.avatar, { thumb: '42x42' }))
+          } else {
+            senderAvatar.removeAttribute('src')
+          }
+        }
+      }
+
+      /**
+       * Loads media payload into slide container at specified index.
+       */
+      const loadSlideContent = async (idx, isAutoPlayVideo = false) => {
+        const slide = mediaSlides[idx]
+        if (!slide) {
+          return
+        }
+
+        const slideItem = carouselInner.children[idx]
+        if (!slideItem) {
+          return
+        }
+
+        const container = slideItem.querySelector('[ref-slide-content]')
+        if (!container) {
+          return
+        }
+
+        // If content is already rendered (e.g. image or video), skip re-render
+        if (container.querySelector('img') || container.querySelector('video') || container.querySelector('.atoll-video-placeholder')) {
+          if (isAutoPlayVideo && slide.isVideo) {
+            const video = container.querySelector('video')
+            if (video) {
+              video.volume = currentVolume
+              video.play().catch(() => {
+              })
+            }
+          }
+          return
+        }
+
+        container.innerHTML = `
+          <div class="chat-media-loading d-flex flex-column align-items-center justify-content-center text-white">
+            <div class="spinner-border text-light mb-2" role="status"></div>
+            <span class="x-small">Loading media...</span>
+          </div>
+        `
+
+        try {
+          let objectUrl = null
+          const itemId = slide.id ? `${slide.local_uuid}_${slide.id}` : slide.local_uuid
+          const localKey = `local:${itemId}`
+          const mediaKey = `media:${slide.media_id}`
+
+          const cached = $state.decryptionCache?.get(localKey) || $state.decryptionCache?.get(mediaKey)
+          if (cached) {
+            objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
+          }
+
+          if (!objectUrl && slide.file_key && slide.media_id) {
+            objectUrl = await $media.decrypt({
+              media_id: slide.media_id,
+              file_key: slide.file_key,
+              file_nonce: slide.file_nonce,
+              mime_type: slide.mime_type,
+              localUuid: itemId
+            }, { signal: currentAbortController?.signal })
+          }
+
+          if (!objectUrl) {
+            throw new Error('Could not decrypt media asset')
+          }
+
+          container.innerHTML = ''
+
+          if (slide.isVideo) {
+            if (isAutoPlayVideo) {
+              const video = document.createElement('video')
+              video.className = 'chat-media-content video-content mw-100 mh-100 rounded-3 shadow-lg'
+              video.controls = true
+              video.playsInline = true
+              video.src = objectUrl
+              video.volume = currentVolume
+              container.appendChild(video)
+              video.play().catch(() => {
+              })
+            } else {
+              // Click-to-Play Overlay Placeholder
+              const placeholder = document.createElement('div')
+              placeholder.className = 'atoll-video-placeholder w-100 h-100 d-flex flex-column align-items-center justify-content-center position-relative'
+
+              // Check if thumbnail is available
+              const thumbKey = `thumb:${slide.thumbnail?.media_id || slide.media_id}`
+              const cachedThumb = $state.decryptionCache?.get(thumbKey) || $state.decryptionCache?.get(`thumb:${itemId}`)
+              const thumbUrl = typeof cachedThumb === 'string' ? cachedThumb : cachedThumb?.blobUrl
+
+              if (thumbUrl) {
+                const bgImg = document.createElement('img')
+                bgImg.className = 'position-absolute top-0 start-0 w-100 h-100 object-fit-contain opacity-50'
+                bgImg.src = thumbUrl
+                bgImg.alt = 'Video thumbnail'
+                placeholder.appendChild(bgImg)
+              }
+
+              const playBtn = document.createElement('button')
+              playBtn.type = 'button'
+              playBtn.className = 'btn btn-lg btn-light rounded-circle shadow-lg p-3 z-2 atoll-video-overlay-btn d-flex align-items-center justify-content-center'
+              playBtn.setAttribute('aria-label', 'Play video')
+              playBtn.innerHTML = '<atoll-icon name="play" size="36"></atoll-icon>'
+
+              playBtn.addEventListener('click', (e) => {
+                e.stopPropagation()
+                container.innerHTML = ''
+                const video = document.createElement('video')
+                video.className = 'chat-media-content video-content mw-100 mh-100 rounded-3 shadow-lg'
+                video.controls = true
+                video.playsInline = true
+                video.src = objectUrl
+                video.volume = currentVolume
+                container.appendChild(video)
+                video.play().catch(() => {
+                })
+              })
+
+              placeholder.appendChild(playBtn)
+              container.appendChild(placeholder)
+            }
+          } else {
+            const img = document.createElement('img')
+            img.className = 'chat-media-content img-content mw-100 mh-100 object-fit-contain rounded-3 shadow-lg'
+            img.src = objectUrl
+            img.alt = slide.filename || 'Image'
+            container.appendChild(img)
+          }
+
+        } catch (err) {
+          if (err.name === 'AbortError') {
+            return
+          }
+          console.error('[atoll-chat-media-modal] Failed to load slide content:', err)
+          container.innerHTML = `
+            <div class="text-danger d-flex flex-column align-items-center">
+              <atoll-icon name="warning" size="32"></atoll-icon>
+              <span class="x-small mt-1">Failed to display media</span>
+            </div>
+          `
+        }
+      }
+
+      /**
+       * Evicts slide content DOM elements outside the window buffer.
+       */
+      const enforceWindowBuffer = (activeIdx) => {
+        const total = mediaSlides.length
+        for (let i = 0; i < total; i++) {
+          if (Math.abs(i - activeIdx) > CLEANUP_MARGIN) {
+            const slideItem = carouselInner.children[i]
+            if (slideItem) {
+              const container = slideItem.querySelector('[ref-slide-content]')
+              if (container) {
+                // Pause any video before clearing
+                const video = container.querySelector('video')
+                if (video) {
+                  video.pause()
+                  video.src = ''
+                  video.load()
+                }
+                container.innerHTML = ''
+              }
+            }
+          }
+        }
+
+        // Preload nearby slides in window buffer
+        for (let i = Math.max(0, activeIdx - BUFFER_SIZE); i <= Math.min(total - 1, activeIdx + BUFFER_SIZE); i++) {
+          if (i !== activeIdx) {
+            loadSlideContent(i, false)
+          }
+        }
+      }
+
+      /**
+       * Pause active video playback across all slides.
+       */
+      const pauseAllVideos = () => {
+        const videos = carouselInner.querySelectorAll('video')
+        videos.forEach(v => {
+          try {
+            v.pause()
+          } catch {
+          }
+        })
+      }
+
+      /**
+       * Opens the media modal for a specified room and target media item.
+       */
+      const openModal = async ({ roomId, targetMediaId, mediaId, localUuid }) => {
+        if (!roomId) {
+          return
+        }
+
+        currentAbortController = new AbortController()
+
+        initialMediaId = mediaId || targetMediaId
+
+        // Load media slides
+        mediaSlides = await loadMediaSlides(roomId)
+        if (mediaSlides.length === 0) {
+          $bus.emit('ui:show_toast', {
+            message: 'No media items found in this chat',
+            type: 'info'
+          })
+          return
+        }
+
+        // Find initial target slide index
+        let targetIdx = 0
+        if (initialMediaId) {
+          const foundIdx = mediaSlides.findIndex(s => s.media_id === initialMediaId || s.id === initialMediaId)
+          if (foundIdx !== -1) {
+            targetIdx = foundIdx
+          }
+        } else if (localUuid) {
+          const foundIdx = mediaSlides.findIndex(s => s.local_uuid === localUuid)
+          if (foundIdx !== -1) {
+            targetIdx = foundIdx
+          }
+        }
+
+        state.activeSlideIndex = targetIdx
+        const initialSlide = mediaSlides[targetIdx]
+        isInitialOpenVideo = Boolean(initialSlide && initialSlide.isVideo)
+
+        // Render carousel shell and thumbnail strip
+        renderSlidesAndFilmstrip()
+
+        // Initialize or update Carousel
+        if (carouselInstance) {
+          carouselInstance.dispose()
+          carouselInstance = null
+        }
+
+        carouselInstance = new Carousel(carouselEl, {
+          interval: false,
+          touch: true,
+          wrap: false
+        })
+
+        // Hook slide event to pause video playback immediately before transition begins
+        carouselEl.addEventListener('slide.bs.carousel', () => {
+          pauseAllVideos()
+        }, { signal: currentAbortController.signal })
+
+        // Hook slid event to update header, active thumbnail, and buffer manager
+        carouselEl.addEventListener('slid.bs.carousel', (e) => {
+          const newIdx = parseInt(e.relatedTarget.getAttribute('data-slide-index'), 10)
+          if (isNaN(newIdx)) {
+            return
+          }
+          state.activeSlideIndex = newIdx
+
+          // Update header & thumbnail highlight
+          updateHeaderMetadata(newIdx)
+
+          // Highlight and scroll active thumbnail
+          const thumbs = thumbnailTrack.children
+          Array.from(thumbs).forEach((t, i) => {
+            if (i === newIdx) {
+              t.classList.add('active-thumb')
+              t.scrollIntoView({
+                behavior: 'smooth',
+                inline: 'center',
+                block: 'nearest'
+              })
+            } else {
+              t.classList.remove('active-thumb')
+            }
+          })
+
+          // Load slide content and enforce buffer
+          loadSlideContent(newIdx, false)
+          enforceWindowBuffer(newIdx)
+        }, { signal: currentAbortController.signal })
+
+        // Set initial header metadata
+        updateHeaderMetadata(targetIdx)
+
+        // Show native modal
+        modalElement.showModal()
+        modalElement.classList.remove('controls-hidden')
+
+        // Jump carousel to initial target slide index
+        carouselInstance.to(targetIdx)
+
+        // Load initial slide content (autoplay initial video if clicked media was a video)
+        loadSlideContent(targetIdx, isInitialOpenVideo)
+        enforceWindowBuffer(targetIdx)
+
+        // Scroll initial thumbnail into view
+        const initialThumb = thumbnailTrack.children[targetIdx]
+        if (initialThumb) {
+          initialThumb.scrollIntoView({
+            behavior: 'instant',
+            inline: 'center',
+            block: 'nearest'
+          })
+        }
+      }
+
+      /**
+       * Closes and cleans up the modal dialog.
+       */
+      const hideModal = () => {
+        pauseAllVideos()
+
+        if (currentAbortController) {
+          currentAbortController.abort()
+          currentAbortController = null
+        }
+
+        if (thumbObserver) {
+          thumbObserver.disconnect()
+          thumbObserver = null
+        }
+
+        if (carouselInstance) {
+          carouselInstance.dispose()
+          carouselInstance = null
+        }
+
+        carouselInner.innerHTML = ''
+        thumbnailTrack.innerHTML = ''
+        mediaSlides = []
+
+        if (modalElement.open) {
+          modalElement.close()
+        }
+      }
+
+      // Expose open and hide host methods
+      root.open = openModal
+      root.hide = hideModal
+
+      // Listen for bus events to open modal
+      $bus.on('ui:open_chat_media_modal', (payload) => {
+        if (payload) {
+          openModal(payload)
+        }
+      })
+
+      $bus.on('chat:open_media_modal', (payload) => {
+        if (payload) {
+          openModal(payload)
+        }
+      })
+    }
+  })
+</script>
