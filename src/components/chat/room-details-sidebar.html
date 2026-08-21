@@ -177,7 +177,8 @@
       hideEditRoom: (state) => !state.isAdmin,
       deleteLabel: (state) => (state.isGroup ? 'Leave group' : 'Delete chat')
     },
-    client: ({ refs, state, pocketbase, eventBus, globalStore, storage, cryptoWorker, utils, signal }) => {
+    client: async ({ refs, state, pocketbase, eventBus, globalStore, storage, cryptoWorker, utils, signal }) => {
+      const { resolveRoomName } = await import('../../utils/room-name.js')
       const { pb } = pocketbase
       const { $crypto } = utils
       const { $worker } = cryptoWorker
@@ -212,14 +213,10 @@
 
             // Parse room name avatar
             participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
-            if (!room.is_group && participants.length > 0) {
-              const other = participants[0]
-              // Check local nicknames first
-              const localNicks = room.nicknames || {}
-              state.roomName = localNicks[other.id] || other.name || other.username
-            } else {
-              state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
-            }
+            state.roomName = resolveRoomName(room, {
+              currentUser: $state.currentUser,
+              nicknames: room.nicknames
+            })
 
             // Sync room avatar
             const roomAvatarComp = refs('roomAvatar')
@@ -325,7 +322,7 @@
               }),
               { requestKey: null }
             )
-          } catch (e) {
+          } catch (_e) {
             // Lazy creation on-demand
           }
 
@@ -560,7 +557,7 @@
             settingsRecord = await pb.collection('room_settings').getFirstListItem(
               `room_id="${room_id}" && user_id="${$state.currentUser.id}"`, { requestKey: null }
             )
-          } catch (e) {
+          } catch (_e) {
           }
 
           if (settingsRecord?.settings?.ciphertext) {

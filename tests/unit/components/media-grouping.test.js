@@ -87,11 +87,41 @@ describe('Media Chat Room Grouping Utility Tests', () => {
     assert.equal(avatar2.getAttribute('split-count'), '2')
   })
 
-  it('media-room-header component renders title and item count correctly', async () => {
+  it('media-room-header component renders title, secondary badge variant and handles navigation click', async () => {
+    const mockState = {
+      currentAppView: 'pictures',
+      activeSelectionId: null,
+      activeSelectionType: null
+    }
+    const mockBus = {
+      listeners: {},
+      on (event, cb) {
+        if (!this.listeners[event]) {
+          this.listeners[event] = []
+        }
+        this.listeners[event].push(cb)
+      },
+      emit (event, payload) {
+        if (this.listeners[event]) {
+          this.listeners[event].forEach(cb => cb(payload))
+        }
+      }
+    }
+
+    const eventsEmitted = []
+    mockBus.on('room:select', (payload) => eventsEmitted.push({
+      type: 'room:select',
+      payload
+    }))
+    mockBus.on('ui:selection_made', () => eventsEmitted.push({ type: 'ui:selection_made' }))
+
     await loadComponent('atoll-badge')
     await loadComponent('atoll-list-item')
     await loadComponent('atoll-profile')
-    await loadComponent('media-room-header')
+    await loadComponent('media-room-header', {
+      globalStore: { $state: mockState },
+      eventBus: { $bus: mockBus }
+    })
 
     const el = document.createElement('media-room-header')
     el.setAttribute('room-id', 'room-100')
@@ -105,5 +135,21 @@ describe('Media Chat Room Grouping Utility Tests', () => {
     assert.ok(listItem)
     assert.equal(listItem.getAttribute('title'), 'General Room')
     assert.equal(listItem.getAttribute('badge'), '5')
+    assert.equal(listItem.getAttribute('badge-variant'), 'secondary')
+
+    // Simulate click
+    const innerItemRoot = listItem.querySelector('[ref$="itemRoot"]') || listItem
+    innerItemRoot.click()
+
+    assert.equal(mockState.currentAppView, 'chats')
+    assert.equal(mockState.activeSelectionId, 'room-100')
+    assert.equal(mockState.activeSelectionType, 'chats')
+
+    assert.equal(eventsEmitted.length, 2)
+    assert.deepEqual(eventsEmitted[0], {
+      type: 'room:select',
+      payload: { room_id: 'room-100' }
+    })
+    assert.deepEqual(eventsEmitted[1], { type: 'ui:selection_made' })
   })
 })

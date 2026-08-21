@@ -1,3 +1,5 @@
+import { resolveRoomName } from './room-name.js'
+
 /**
  * Creates an atoll-profile element configured for a chat room.
  *
@@ -16,7 +18,7 @@ export function createRoomAvatar (room, { roomName = '', size = 'sm', currentUse
   profile.setAttribute('size', size)
 
   const participants = (room?.participants || []).filter(p => p.id !== currentUser?.id)
-  const resolvedName = roomName || room?.name || (room?.is_group ? 'Unnamed Group' : 'Direct Message')
+  const resolvedName = roomName || resolveRoomName(room, { currentUser })
 
   if (room?.avatar) {
     try {

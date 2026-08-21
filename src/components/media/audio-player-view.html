@@ -38,6 +38,7 @@
       fileName: 'Untitled Audio'
     }),
     client: async ({ state, signal, refs, storage, globalStore, pocketbase, bootstrap }) => {
+      const { resolveRoomName } = await import('../../utils/room-name.js')
       const { $storage } = storage
       const { $state } = globalStore
       const { pb } = pocketbase
@@ -65,7 +66,7 @@
 
       const updateItemUI = async (item, container) => {
         const room = await $storage.getRoom(item.room_id)
-        const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
+        const roomName = resolveRoomName(room, { currentUser: $state.currentUser })
 
         let artistAlbum = ''
         if (item.music_metadata) {

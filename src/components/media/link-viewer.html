@@ -32,6 +32,7 @@
       domain: ''
     }),
     client: async ({ state, signal, refs, storage, globalStore, utils, bootstrap }) => {
+      const { resolveRoomName } = await import('../../utils/room-name.js')
       const { $storage } = storage
       const { $state } = globalStore
       const { $media } = utils
@@ -60,7 +61,7 @@
       const updateItemUI = async (item, container) => {
         const { message: msg, link, linkIndex } = item
         const room = await $storage.getRoom(msg.room_id)
-        const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
+        const roomName = resolveRoomName(room, { currentUser: $state.currentUser })
         let senderName = 'Unknown'
         if (room && room.participants) {
           const sender = room.participants.find(p => p.id === msg.sender_id)

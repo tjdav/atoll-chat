@@ -101,6 +101,7 @@
     },
     client: async ({ refs, state, globalStore, storage, pocketbase, utils, signal, eventBus, webrtc: webrtcPluginContext, bootstrap }) => {
       const { hexToRgb, getRelativeLuminance, updateNativeStatusBar } = await import('../../utils/color-contrast.js')
+      const { resolveRoomName } = await import('../../utils/room-name.js')
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -266,7 +267,7 @@
 
       /**
        * Clears all inline CSS custom properties of custom themes on the chatViewRoot.
-       * @param {HTMLElement} chatViewRoot
+       * @param {HTMLElement} chatViewRoot - The root element of the chat view.
        */
       const clearCustomThemeProperties = (chatViewRoot) => {
         if (!chatViewRoot) {
@@ -368,12 +369,10 @@
             })
 
             const participants = (room.participants || []).filter(p => p.id !== $state.currentUser?.id)
-            if (!room.is_group && participants.length > 0) {
-              const other = participants[0]
-              state.roomName = state.nicknames[other.id] || other.name || other.username
-            } else {
-              state.roomName = room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')
-            }
+            state.roomName = resolveRoomName(room, {
+              currentUser: $state.currentUser,
+              nicknames: state.nicknames
+            })
   
             const typingParticipants = participants.filter(p => p.is_typing === true)
             let baseStatus = room.is_group ? 'Group Chat' : 'Private'

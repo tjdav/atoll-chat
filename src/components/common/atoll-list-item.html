@@ -46,7 +46,7 @@
       <slot name="right"></slot>
 
       <!-- Unread Count Badge -->
-      <atoll-badge hidden="{{ hideBadge }}" count="{{ badge }}" size="sm"></atoll-badge>
+      <atoll-badge hidden="{{ hideBadge }}" count="{{ badge }}" variant="{{ badgeVariant }}" size="sm"></atoll-badge>
 
       <!-- Navigation Directional Chevron -->
       <span class="atoll-list-item-chevron" hidden="{{ hideChevron }}">
@@ -69,6 +69,10 @@
       title: {
         type: String,
         default: ''
+      },
+      badgeVariant: {
+        type: String,
+        default: 'danger'
       },
       description: {
         type: String,
@@ -236,6 +240,15 @@
         )
       })
 
+      if (typeof observe === 'function') {
+        observe('badgeVariant', (val) => {
+          state.badgeVariant = val
+        })
+        observe('badge-variant', (val) => {
+          state.badgeVariant = val
+        })
+      }
+
       checkbox.addEventListener('change', (e) => {
         e.stopPropagation()
         state.checked = e.detail.checked
@@ -260,6 +273,16 @@
         },
         set (val) {
           state.checked = Boolean(val)
+        },
+        configurable: true
+      })
+
+      Object.defineProperty(root, 'badgeVariant', {
+        get () {
+          return state.badgeVariant
+        },
+        set (val) {
+          state.badgeVariant = val || 'danger'
         },
         configurable: true
       })

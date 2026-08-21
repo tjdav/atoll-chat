@@ -3,6 +3,7 @@
     ref="itemRoot"
     title="{{ displayRoomName }}"
     badge="{{ countBadgeText }}"
+    badge-variant="secondary"
     clickable="true"
     chevron="true"
     size="sm"
@@ -30,6 +31,7 @@
     },
     client: async ({ refs, state, storage, pocketbase, globalStore, eventBus, utils, signal, observe }) => {
       const { createRoomAvatar } = await import('../../utils/room-avatar.js')
+      const { resolveRoomName } = await import('../../utils/room-name.js')
       const { $storage } = storage
       const { pb } = pocketbase
       const { $state } = globalStore
@@ -53,8 +55,14 @@
           room = await $storage.getRoom(roomId)
         }
 
+        const resolvedRoomName = state.roomName || resolveRoomName(room, { currentUser: $state.currentUser })
+        if (!state.roomName && resolvedRoomName) {
+          state.roomName = resolvedRoomName
+          updateHeader()
+        }
+
         const avatarEl = createRoomAvatar(room, {
-          roomName: state.roomName,
+          roomName: resolvedRoomName,
           size: 'sm',
           currentUser: $state.currentUser,
           pb,
@@ -105,6 +113,8 @@
             return
           }
           $state.currentAppView = 'chats'
+          $state.activeSelectionId = state.roomId
+          $state.activeSelectionType = 'chats'
           $bus.emit('room:select', { room_id: state.roomId })
           $bus.emit('ui:selection_made')
         }, { signal })

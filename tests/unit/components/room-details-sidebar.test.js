@@ -64,7 +64,7 @@ describe('Room Details Sidebar Component Avatar State Retention', () => {
     },
     room2: {
       id: 'room2',
-      name: 'Alice & Charlie',
+      name: null,
       is_group: false,
       avatar: null,
       participants: [

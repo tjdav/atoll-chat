@@ -10,7 +10,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, storage, eventBus, globalStore, refs, utils, fuse, pocketbase, cryptoWorker, signal }) => {
+    client: async ({ state, storage, eventBus, globalStore, refs, utils, fuse, pocketbase, cryptoWorker, signal }) => {
+      const { resolveRoomName } = await import('../../utils/room-name.js')
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
@@ -77,14 +78,11 @@
 
       const enrichItem = async (item) => {
         const latestMsg = await getLatestMessage(item.id)
-        let roomName = ''
         const participants = item.participants || []
-        if (!item.is_group) {
-          const otherParticipants = participants.filter(p => p.id !== $state.currentUser?.id)
-          roomName = otherParticipants.length > 0 ? (otherParticipants[0].name || otherParticipants[0].username) : (item.name || 'Direct Message')
-        } else {
-          roomName = item.name || 'Unnamed Group'
-        }
+        const roomName = resolveRoomName(item, {
+          currentUser: $state.currentUser,
+          nicknames: item.nicknames
+        })
         const previewText = getPreviewText(latestMsg, participants, item.is_group)
         const me = participants.find(p => p.id === $state.currentUser?.id)
         let isUnread = latestMsg && (

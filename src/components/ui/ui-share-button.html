@@ -21,7 +21,8 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, root, storage, globalStore, eventBus, pocketbase, cryptoWorker, signal }) => {
+    client: async ({ refs, root, storage, globalStore, eventBus, pocketbase, cryptoWorker, signal }) => {
+      const { resolveRoomName } = await import('../../utils/room-name.js')
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
@@ -69,20 +70,29 @@
         }
       }
 
-      const getCurrentUserId = () => $state.currentUser?.id || pb?.authStore?.model?.id
+      const getCurrentUserId = () => {
+        if ($state.currentUser?.id) {
+          return $state.currentUser.id
+        }
+        const authModel = pb?.authStore ? pb.authStore.model : null
+        return authModel ? authModel.id : null
+      }
 
       const createAvatarEl = (room) => {
         const profile = document.createElement('atoll-profile')
         profile.setAttribute('size', 'sm')
 
-        let roomName = room.name
+        const roomName = resolveRoomName(room, {
+          currentUser: getCurrentUserId(),
+          nicknames: room.nicknames
+        })
+        profile.setAttribute('name', roomName)
+        profile.setAttribute('alt', roomName)
+
         if (!room.is_group) {
           const currentUserId = getCurrentUserId()
           const otherUser = (room.participants || []).find(p => p && (p.id || p.user_id) !== currentUserId)
-          roomName = otherUser ? (otherUser.name || otherUser.username) : 'Direct Message'
           if (otherUser) {
-            profile.setAttribute('name', roomName)
-            profile.setAttribute('alt', roomName)
             if (otherUser.id || otherUser.user_id) {
               profile.setAttribute('user-id', otherUser.id || otherUser.user_id)
             }
@@ -90,9 +100,6 @@
               profile.setAttribute('src', pb.files.getURL(otherUser, otherUser.avatar, { thumb: '42x42' }))
             }
           }
-        } else {
-          profile.setAttribute('name', roomName || 'Unnamed Room')
-          profile.setAttribute('alt', roomName || 'Unnamed Room')
         }
 
         return profile
@@ -128,18 +135,14 @@
 
           const avatar = createAvatarEl(room)
   
-          let roomName = ''
-          const participants = room.participants || []
-          if (!room.is_group) {
-            const otherParticipants = participants.filter(p => p && (p.id || p.user_id) !== currentUserId)
-            roomName = otherParticipants.length > 0 ? (otherParticipants[0].name || otherParticipants[0].username) : (room.name || 'Direct Message')
-          } else {
-            roomName = room.name || 'Unnamed Group'
-          }
+          const roomName = resolveRoomName(room, {
+            currentUser: currentUserId,
+            nicknames: room.nicknames
+          })
 
           const nameSpan = document.createElement('span')
           nameSpan.className = 'text-truncate fw-medium'
-          nameSpan.textContent = roomName || 'Unnamed Room'
+          nameSpan.textContent = roomName
 
           label.appendChild(checkbox)
           label.appendChild(avatar)
