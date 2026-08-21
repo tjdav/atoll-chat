@@ -86,10 +86,24 @@ test('Sync Foreground Optimization & Event Avalanche Unit Tests', async (t) => {
 
       if (isSameUser && hasEpochKey && isUpToDate) {
         await mockFlushPendingMessagesForRoom(room_id)
-        return { id: rpcId, type: 'worker:process_new_room_key', result: { success: true, skipped: true } }
+        return {
+          id: rpcId,
+          type: 'worker:process_new_room_key',
+          result: {
+            success: true,
+            skipped: true
+          }
+        }
       }
 
-      return { id: rpcId, type: 'worker:process_new_room_key', result: { success: true, skipped: false } }
+      return {
+        id: rpcId,
+        type: 'worker:process_new_room_key',
+        result: {
+          success: true,
+          skipped: false
+        }
+      }
     }
 
     const payload = createWrappedRoomKeyPayload({
@@ -142,11 +156,25 @@ test('Sync Foreground Optimization & Event Avalanche Unit Tests', async (t) => {
       const isUpToDate = existingRoom?.updated_at && updated && existingRoom.updated_at >= updated
 
       if (isSameUser && hasEpochKey && isUpToDate) {
-        return { id: rpcId, type: 'worker:process_new_room_key', result: { success: true, skipped: true } }
+        return {
+          id: rpcId,
+          type: 'worker:process_new_room_key',
+          result: {
+            success: true,
+            skipped: true
+          }
+        }
       }
 
       // Full processing required because user differs
-      return { id: rpcId, type: 'worker:process_new_room_key', result: { success: true, skipped: false } }
+      return {
+        id: rpcId,
+        type: 'worker:process_new_room_key',
+        result: {
+          success: true,
+          skipped: false
+        }
+      }
     }
 
     const payload = createWrappedRoomKeyPayload({
@@ -168,12 +196,18 @@ test('Sync Foreground Optimization & Event Avalanche Unit Tests', async (t) => {
 
     const mockBus = {
       emit: (event, payload) => {
-        emittedEventsPush(event, { isCatchingUp: $state.isCatchingUp, payload })
+        emittedEventsPush(event, {
+          isCatchingUp: $state.isCatchingUp,
+          payload
+        })
       }
     }
 
     function emittedEventsPush (event, data) {
-      emittedEvents.push({ event, ...data })
+      emittedEvents.push({
+        event,
+        ...data
+      })
     }
 
     function handleLogout () {
@@ -266,19 +300,66 @@ test('Sync Foreground Optimization & Event Avalanche Unit Tests', async (t) => {
     }
 
     // Test cases
-    const plainTextPayload = { room_id: 'r1', message: { type: 'text', content: 'Hello world' } }
-    const imagePayload = { room_id: 'r1', message: { type: 'media', mime_type: 'image/png', filename: 'pic.png' } }
-    const videoPayload = { room_id: 'r1', message: { type: 'media', mime_type: 'video/mp4', filename: 'clip.mp4' } }
-    const audioPayload = { room_id: 'r1', message: { type: 'media', mime_type: 'audio/mp3', filename: 'song.mp3' } }
-    const docPayload = { room_id: 'r1', message: { type: 'media', mime_type: 'application/pdf', filename: 'doc.pdf' } }
-    const linkPayload = { room_id: 'r1', message: { type: 'link', content: 'https://example.com', links: [{ url: 'https://example.com' }] } }
+    const plainTextPayload = {
+      room_id: 'r1',
+      message: {
+        type: 'text',
+        content: 'Hello world'
+      }
+    }
+    const imagePayload = {
+      room_id: 'r1',
+      message: {
+        type: 'media',
+        mime_type: 'image/png',
+        filename: 'pic.png'
+      }
+    }
+    const videoPayload = {
+      room_id: 'r1',
+      message: {
+        type: 'media',
+        mime_type: 'video/mp4',
+        filename: 'clip.mp4'
+      }
+    }
+    const audioPayload = {
+      room_id: 'r1',
+      message: {
+        type: 'media',
+        mime_type: 'audio/mp3',
+        filename: 'song.mp3'
+      }
+    }
+    const docPayload = {
+      room_id: 'r1',
+      message: {
+        type: 'media',
+        mime_type: 'application/pdf',
+        filename: 'doc.pdf'
+      }
+    }
+    const linkPayload = {
+      room_id: 'r1',
+      message: {
+        type: 'link',
+        content: 'https://example.com',
+        links: [{ url: 'https://example.com' }]
+      }
+    }
     const mixedAttachmentsPayload = {
       room_id: 'r1',
       message: {
         type: 'media',
         attachments: [
-          { mime_type: 'image/jpeg', filename: 'photo.jpg' },
-          { mime_type: 'application/zip', filename: 'archive.zip' }
+          {
+            mime_type: 'image/jpeg',
+            filename: 'photo.jpg'
+          },
+          {
+            mime_type: 'application/zip',
+            filename: 'archive.zip'
+          }
         ]
       }
     }
@@ -342,7 +423,10 @@ test('Sync Foreground Optimization & Event Avalanche Unit Tests', async (t) => {
       id: 'r1',
       synced_user_id: 'userA',
       updated_at: '2026-08-21 12:00:05.000Z',
-      key_history: [{ epoch_id: 1, key: 'validKey' }]
+      key_history: [{
+        epoch_id: 1,
+        key: 'validKey'
+      }]
     }
 
     const matchingPayload = {
@@ -358,11 +442,17 @@ test('Sync Foreground Optimization & Event Avalanche Unit Tests', async (t) => {
     assert.strictEqual(shouldSkipRoomKeyProcessing(validRoom, matchingPayload, 'userB'), false)
 
     // Missing epoch key -> DO NOT SKIP
-    const missingKeyRoom = { ...validRoom, key_history: [] }
+    const missingKeyRoom = {
+      ...validRoom,
+      key_history: []
+    }
     assert.strictEqual(shouldSkipRoomKeyProcessing(missingKeyRoom, matchingPayload, 'userA'), false)
 
     // Newer payload updated -> DO NOT SKIP
-    const newerPayload = { ...matchingPayload, updated: '2026-08-21 12:05:00.000Z' }
+    const newerPayload = {
+      ...matchingPayload,
+      updated: '2026-08-21 12:05:00.000Z'
+    }
     assert.strictEqual(shouldSkipRoomKeyProcessing(validRoom, newerPayload, 'userA'), false)
   })
 })

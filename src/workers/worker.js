@@ -2398,7 +2398,10 @@ async function processNewRoomKey (rpcId, payload) {
       self.postMessage({
         id: rpcId,
         type: 'worker:process_new_room_key',
-        result: { success: true, skipped: true }
+        result: {
+          success: true,
+          skipped: true
+        }
       })
       return
     }

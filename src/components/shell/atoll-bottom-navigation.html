@@ -202,7 +202,8 @@
         }
         unreadDebounceTimer = setTimeout(() => {
           unreadDebounceTimer = null
-          calculateTotalUnread().catch(() => {})
+          calculateTotalUnread().catch(() => {
+          })
         }, 150)
       }
 

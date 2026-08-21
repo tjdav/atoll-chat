@@ -1,8 +1,8 @@
 <template id="video-list">
   <div class="video-list h-100 overflow-y-auto p-3" ref="scrollRoot">
-    <atoll-media-grid columns="3" aspect-ratio="square" gap="xs" ref="gridContainer">
-      <!-- Videos will be rendered here -->
-    </atoll-media-grid>
+    <div ref="listContainer">
+      <!-- Room groups containing media headers and grids will be rendered here -->
+    </div>
   </div>
 </template>
 
@@ -10,13 +10,14 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+    client: async ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+      const { groupItemsByRoom } = await import('../../utils/room-grouping.js')
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $list } = utils
       const { $Fuse } = fuse
-      const gridContainer = refs('gridContainer')
+      const listContainer = refs('listContainer')
       const scrollRoot = refs('scrollRoot')
 
       const BATCH_SIZE = 24
@@ -29,39 +30,82 @@
         globalStore,
         bus: eventBus,
         Fuse: $Fuse,
-        searchKeys: ['filename'],
         fetchNextBatch: async (lastItem) => {
-          const items = await $storage.getAssetsByCategory('video', lastItem, BATCH_SIZE)
+          const rawItems = await $storage.getAssetsByCategory('video', lastItem?.item || lastItem, BATCH_SIZE)
+          const items = await Promise.all(rawItems.map(async (asset) => {
+            const room = await $storage.getRoom(asset.room_id)
+            const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
+            const searchContent = `${asset.filename || ''} ${roomName}`.toLowerCase()
+            const dt = new Date(asset.created_at)
+            return {
+              id: asset.id,
+              item: asset,
+              roomId: asset.room_id,
+              room,
+              roomName,
+              createdAt: asset.created_at,
+              timestamp: `${dt.toLocaleDateString()} ${dt.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+              })}`,
+              searchContent
+            }
+          }))
           return { items }
         },
         render: async (itemsToDisplay, query) => {
-          const gridWrapper = gridContainer.querySelector('.atoll-media-grid') || gridContainer
           if (itemsToDisplay.length === 0) {
-            gridWrapper.innerHTML = `<div class="p-4 text-center text-body-secondary w-100" style="grid-column: span 3;">${query ? 'No matches found' : 'No videos found'}</div>`
+            listContainer.innerHTML = `<div class="p-4 text-center text-body-secondary w-100">${query ? 'No matches found' : 'No videos found'}</div>`
             return
           }
-  
+
+          const grouped = groupItemsByRoom(itemsToDisplay)
           const fragment = document.createDocumentFragment()
-          itemsToDisplay.forEach((item) => {
-            const isActive = (item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos').toString()
-            const dt = new Date(item.created_at)
-            const card = document.createElement('atoll-media-card')
-            card.setAttribute('asset-id', item.id)
-            card.setAttribute('media-id', item.media_id)
-            card.setAttribute('mime-type', item.mime_type)
-            card.setAttribute('selected', isActive)
-            card.setAttribute('type', 'videos')
-            card.setAttribute('media-type', 'video')
-            card.setAttribute('title', dt.toLocaleDateString())
-            card.setAttribute('subtitle', dt.toLocaleTimeString([], {
-              hour: '2-digit',
-              minute: '2-digit'
-            }))
-            card.setAttribute('file-key', item.file_key)
-            card.setAttribute('file-nonce', item.file_nonce)
-            fragment.appendChild(card)
-          })
-          gridWrapper.innerHTML = ''; gridWrapper.appendChild(fragment)
+
+          for (const group of grouped) {
+            const groupSection = document.createElement('div')
+            groupSection.className = 'media-room-group mb-3'
+
+            const header = document.createElement('media-room-header')
+            header.setAttribute('room-id', group.roomId)
+            header.setAttribute('room-name', group.roomName)
+            header.setAttribute('item-count', group.items.length)
+            groupSection.appendChild(header)
+
+            const grid = document.createElement('atoll-media-grid')
+            grid.setAttribute('columns', '3')
+            grid.setAttribute('aspect-ratio', 'square')
+            grid.setAttribute('gap', 'xs')
+
+            const gridWrapper = grid.querySelector('.atoll-media-grid') || grid
+
+            group.items.forEach((entry) => {
+              const item = entry.item || entry
+              const isActive = (item.id === $state.activeSelectionId && $state.activeSelectionType === 'videos').toString()
+              const dt = new Date(item.created_at)
+              const card = document.createElement('atoll-media-card')
+              card.setAttribute('asset-id', item.id)
+              card.setAttribute('media-id', item.media_id)
+              card.setAttribute('mime-type', item.mime_type)
+              card.setAttribute('selected', isActive)
+              card.setAttribute('type', 'videos')
+              card.setAttribute('media-type', 'video')
+              card.setAttribute('title', dt.toLocaleDateString())
+              card.setAttribute('subtitle', dt.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit'
+              }))
+              card.setAttribute('file-key', item.file_key)
+              card.setAttribute('file-nonce', item.file_nonce)
+              gridWrapper.appendChild(card)
+            })
+
+            groupSection.appendChild(grid)
+            fragment.appendChild(groupSection)
+          }
+
+          listContainer.innerHTML = ''
+          listContainer.appendChild(fragment)
         }
       })
 

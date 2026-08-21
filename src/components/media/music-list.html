@@ -1,8 +1,8 @@
 <template id="music-list">
   <div class="music-list h-100 overflow-y-auto" ref="scrollRoot">
-    <atoll-list divided ref="listGroup" data-testid="music-list-group">
+    <div ref="listContainer" data-testid="music-list-group">
       <!-- Music will be rendered here -->
-    </atoll-list>
+    </div>
   </div>
 </template>
 
@@ -10,13 +10,14 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+    client: async ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+      const { groupItemsByRoom } = await import('../../utils/room-grouping.js')
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $list } = utils
       const { $Fuse } = fuse
-      const listGroup = refs('listGroup')
+      const listContainer = refs('listContainer')
       const scrollRoot = refs('scrollRoot')
 
       const BATCH_SIZE = 24
@@ -30,15 +31,20 @@
         bus: eventBus,
         Fuse: $Fuse,
         fetchNextBatch: async (lastItem) => {
-          const rawItems = await $storage.getAssetsByCategory('audio', lastItem ? lastItem.asset : null, BATCH_SIZE)
+          const rawItems = await $storage.getAssetsByCategory('audio', lastItem?.item || lastItem?.asset || null, BATCH_SIZE)
           const items = await Promise.all(rawItems.map(async (asset) => {
             const room = await $storage.getRoom(asset.room_id)
             const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
             const metadata = asset.music_metadata || {}
             const searchContent = `${asset.filename || ''} ${metadata.title || ''} ${metadata.artist || ''} ${metadata.album || ''} ${roomName}`.toLowerCase()
             return {
+              id: asset.id,
+              item: asset,
               asset,
+              roomId: asset.room_id,
+              room,
               roomName,
+              createdAt: asset.created_at,
               timestamp: new Date(asset.created_at).toLocaleString(),
               searchContent
             }
@@ -46,23 +52,44 @@
           return { items }
         },
         render: async (itemsToDisplay, query) => {
-          const groupContainer = listGroup.querySelector('.atoll-list') || listGroup
           if (itemsToDisplay.length === 0) {
-            groupContainer.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No music found'}</div>`
+            listContainer.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No music found'}</div>`
             return
           }
+
+          const grouped = groupItemsByRoom(itemsToDisplay)
           const fragment = document.createDocumentFragment()
-          for (const { asset, roomName, timestamp } of itemsToDisplay) {
-            const isActive = asset.id === $state.activeSelectionId && $state.activeSelectionType === 'music'
-            const listItem = document.createElement('music-list-item')
-            listItem.setAttribute('asset-id', asset.id)
-            listItem.setAttribute('room-name', roomName)
-            listItem.setAttribute('filename', asset.filename || 'Unnamed Audio')
-            listItem.setAttribute('timestamp', timestamp)
-            listItem.setAttribute('is-active', isActive.toString())
-            fragment.appendChild(listItem)
+
+          for (const group of grouped) {
+            const groupSection = document.createElement('div')
+            groupSection.className = 'media-room-group mb-3'
+
+            const header = document.createElement('media-room-header')
+            header.setAttribute('room-id', group.roomId)
+            header.setAttribute('room-name', group.roomName)
+            header.setAttribute('item-count', group.items.length)
+            groupSection.appendChild(header)
+
+            const listEl = document.createElement('atoll-list')
+            listEl.setAttribute('divided', 'true')
+
+            for (const { asset, roomName, timestamp } of group.items) {
+              const isActive = asset.id === $state.activeSelectionId && $state.activeSelectionType === 'music'
+              const listItem = document.createElement('music-list-item')
+              listItem.setAttribute('asset-id', asset.id)
+              listItem.setAttribute('room-name', roomName)
+              listItem.setAttribute('filename', asset.filename || 'Unnamed Audio')
+              listItem.setAttribute('timestamp', timestamp)
+              listItem.setAttribute('is-active', isActive.toString())
+              listEl.appendChild(listItem)
+            }
+
+            groupSection.appendChild(listEl)
+            fragment.appendChild(groupSection)
           }
-          groupContainer.innerHTML = ''; groupContainer.appendChild(fragment)
+
+          listContainer.innerHTML = ''
+          listContainer.appendChild(fragment)
         }
       })
 

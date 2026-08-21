@@ -1,0 +1,114 @@
+<template id="media-room-header">
+  <atoll-list-item
+    ref="itemRoot"
+    title="{{ displayRoomName }}"
+    badge="{{ countBadgeText }}"
+    clickable="true"
+    chevron="true"
+    size="sm"
+    data-testid="media-room-header"
+  >
+    <div slot="leading" ref="avatarContainer" class="d-flex align-items-center justify-content-center"></div>
+  </atoll-list-item>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      roomId: String,
+      roomName: String,
+      itemCount: {
+        type: Number,
+        default: 0
+      }
+    },
+    getters: {
+      displayRoomName: (state) => state.roomName || '',
+      countBadgeText: (state) => (state.itemCount && Number(state.itemCount) > 0 ? String(state.itemCount) : '')
+    },
+    client: async ({ refs, state, storage, pocketbase, globalStore, eventBus, utils, signal, observe }) => {
+      const { createRoomAvatar } = await import('../../utils/room-avatar.js')
+      const { $storage } = storage
+      const { pb } = pocketbase
+      const { $state } = globalStore
+      const { $bus } = eventBus
+      const { $media } = utils
+      const itemRoot = refs('itemRoot')
+      const avatarContainer = refs('avatarContainer')
+
+      const renderAvatar = async () => {
+        if (!avatarContainer) {
+          return
+        }
+        avatarContainer.innerHTML = ''
+        const roomId = state.roomId
+        if (!roomId) {
+          return
+        }
+
+        let room = state._roomData
+        if (!room && $storage?.getRoom) {
+          room = await $storage.getRoom(roomId)
+        }
+
+        const avatarEl = createRoomAvatar(room, {
+          roomName: state.roomName,
+          size: 'sm',
+          currentUser: $state.currentUser,
+          pb,
+          $media,
+          signal
+        })
+        avatarContainer.appendChild(avatarEl)
+      }
+
+      const updateHeader = () => {
+        if (!itemRoot) {
+          return
+        }
+        if (state.roomName) {
+          itemRoot.setAttribute('title', state.roomName)
+        }
+        if (state.countBadgeText) {
+          itemRoot.setAttribute('badge', state.countBadgeText)
+        }
+      }
+
+      observe('roomId', () => renderAvatar())
+      observe('room-id', () => renderAvatar())
+      observe('roomName', (val) => {
+        state.roomName = val
+        updateHeader()
+      })
+      observe('room-name', (val) => {
+        state.roomName = val
+        updateHeader()
+      })
+      observe('itemCount', (val) => {
+        state.itemCount = val
+        updateHeader()
+      })
+      observe('item-count', (val) => {
+        state.itemCount = val
+        updateHeader()
+      })
+
+      renderAvatar()
+
+      if (itemRoot) {
+        updateHeader()
+        itemRoot.addEventListener('atoll-item-click', (e) => {
+          e.stopPropagation()
+          if (!state.roomId) {
+            return
+          }
+          $state.currentAppView = 'chats'
+          $bus.emit('room:select', { room_id: state.roomId })
+          $bus.emit('ui:selection_made')
+        }, { signal })
+      }
+    }
+  })
+</script>

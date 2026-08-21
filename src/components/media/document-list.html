@@ -1,8 +1,8 @@
 <template id="document-list">
   <div class="document-list h-100 overflow-y-auto" ref="scrollRoot">
-    <atoll-list divided ref="listGroup" data-testid="document-list-group">
+    <div ref="listContainer" data-testid="document-list-group">
       <!-- Documents will be rendered here -->
-    </atoll-list>
+    </div>
   </div>
 </template>
 
@@ -10,13 +10,14 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+    client: async ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+      const { groupItemsByRoom } = await import('../../utils/room-grouping.js')
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $list } = utils
       const { $Fuse } = fuse
-      const listGroup = refs('listGroup')
+      const listContainer = refs('listContainer')
       const scrollRoot = refs('scrollRoot')
 
       const BATCH_SIZE = 24
@@ -30,14 +31,18 @@
         bus: eventBus,
         Fuse: $Fuse,
         fetchNextBatch: async (lastItem) => {
-          const rawItems = await $storage.getAssetsByCategory('document', lastItem ? lastItem.item : null, BATCH_SIZE)
+          const rawItems = await $storage.getAssetsByCategory('document', lastItem?.item || lastItem, BATCH_SIZE)
           const items = await Promise.all(rawItems.map(async (asset) => {
             const room = await $storage.getRoom(asset.room_id)
             const roomName = room ? (room.name || (room.is_group ? 'Unnamed Group' : 'Direct Message')) : 'Unknown Chat'
             const searchContent = `${asset.filename || ''} ${roomName}`.toLowerCase()
             return {
+              id: asset.id,
               item: asset,
+              roomId: asset.room_id,
+              room,
               roomName,
+              createdAt: asset.created_at,
               timestamp: new Date(asset.created_at).toLocaleString(),
               searchContent
             }
@@ -45,56 +50,77 @@
           return { items }
         },
         render: async (itemsToDisplay, query) => {
-          const groupContainer = listGroup.querySelector('.atoll-list') || listGroup
           if (itemsToDisplay.length === 0) {
-            groupContainer.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No documents found'}</div>`
+            listContainer.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No documents found'}</div>`
             return
           }
+
+          const grouped = groupItemsByRoom(itemsToDisplay)
           const fragment = document.createDocumentFragment()
-          itemsToDisplay.forEach(({ item, roomName, timestamp }) => {
-            const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'documents'
-            const filename = item.filename || 'Unnamed File'
 
-            const listItem = document.createElement('atoll-list-item')
-            listItem.setAttribute('title', filename)
-            listItem.setAttribute('description', `${roomName} • ${timestamp}`)
-            listItem.setAttribute('selected', isActive.toString())
-            listItem.setAttribute('clickable', 'true')
-            listItem.setAttribute('size', 'md')
+          for (const group of grouped) {
+            const groupSection = document.createElement('div')
+            groupSection.className = 'media-room-group mb-3'
 
-            // Create circular avatar/profile slot using optional palette attribute and explicit projection binding
-            const profile = document.createElement('atoll-profile')
-            profile.setAttribute('slot', 'leading')
-            profile.setAttribute('size', 'md')
-            profile.setAttribute('palette', 'true')
-            profile.setAttribute('name', filename)
-            profile.setAttribute('has-projected-image', 'true')
+            const header = document.createElement('media-room-header')
+            header.setAttribute('room-id', group.roomId)
+            header.setAttribute('room-name', group.roomName)
+            header.setAttribute('item-count', group.items.length)
+            groupSection.appendChild(header)
 
-            const iconContainer = document.createElement('div')
-            iconContainer.setAttribute('slot', 'image')
-            iconContainer.className = 'w-100 h-100 d-flex align-items-center justify-content-center'
+            const listEl = document.createElement('atoll-list')
+            listEl.setAttribute('divided', 'true')
 
-            const icon = document.createElement('atoll-icon')
-            icon.setAttribute('name', 'document')
-            icon.setAttribute('size', '24')
-            icon.setAttribute('color', '#FFFFFF')
+            group.items.forEach(({ item, roomName, timestamp }) => {
+              const isActive = item.id === $state.activeSelectionId && $state.activeSelectionType === 'documents'
+              const filename = item.filename || 'Unnamed File'
 
-            iconContainer.appendChild(icon)
-            profile.appendChild(iconContainer)
-            listItem.appendChild(profile)
+              const listItem = document.createElement('atoll-list-item')
+              listItem.setAttribute('title', filename)
+              listItem.setAttribute('description', `${roomName} • ${timestamp}`)
+              listItem.setAttribute('selected', isActive.toString())
+              listItem.setAttribute('clickable', 'true')
+              listItem.setAttribute('size', 'md')
 
-            listItem.setAttribute('chevron', 'true')
+              // Create circular avatar/profile slot using optional palette attribute and explicit projection binding
+              const profile = document.createElement('atoll-profile')
+              profile.setAttribute('slot', 'leading')
+              profile.setAttribute('size', 'md')
+              profile.setAttribute('palette', 'true')
+              profile.setAttribute('name', filename)
+              profile.setAttribute('has-projected-image', 'true')
 
-            listItem.addEventListener('atoll-item-click', () => {
-              $state.activeSelectionId = item.id
-              $state.activeSelectionType = 'documents'
-              $bus.emit('ui:selection_made')
-              debouncedRender()
+              const iconContainer = document.createElement('div')
+              iconContainer.setAttribute('slot', 'image')
+              iconContainer.className = 'w-100 h-100 d-flex align-items-center justify-content-center'
+
+              const icon = document.createElement('atoll-icon')
+              icon.setAttribute('name', 'document')
+              icon.setAttribute('size', '24')
+              icon.setAttribute('color', '#FFFFFF')
+
+              iconContainer.appendChild(icon)
+              profile.appendChild(iconContainer)
+              listItem.appendChild(profile)
+
+              listItem.setAttribute('chevron', 'true')
+
+              listItem.addEventListener('atoll-item-click', () => {
+                $state.activeSelectionId = item.id
+                $state.activeSelectionType = 'documents'
+                $bus.emit('ui:selection_made')
+                debouncedRender()
+              })
+
+              listEl.appendChild(listItem)
             })
 
-            fragment.appendChild(listItem)
-          })
-          groupContainer.innerHTML = ''; groupContainer.appendChild(fragment)
+            groupSection.appendChild(listEl)
+            fragment.appendChild(groupSection)
+          }
+
+          listContainer.innerHTML = ''
+          listContainer.appendChild(fragment)
         }
       })
 

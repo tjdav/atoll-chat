@@ -1,8 +1,8 @@
 <template id="link-list">
   <div class="link-list h-100 overflow-y-auto" ref="scrollRoot">
-    <atoll-list divided ref="listGroup" data-testid="link-list-group">
+    <div ref="listContainer" data-testid="link-list-group">
       <!-- Links will be rendered here -->
-    </atoll-list>
+    </div>
   </div>
 </template>
 
@@ -10,13 +10,14 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+    client: async ({ state, storage, eventBus, globalStore, refs, utils, fuse }) => {
+      const { groupItemsByRoom } = await import('../../utils/room-grouping.js')
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
       const { $list } = utils
       const { $Fuse } = fuse
-      const listGroup = refs('listGroup')
+      const listContainer = refs('listContainer')
       const scrollRoot = refs('scrollRoot')
 
       const BATCH_SIZE = 24
@@ -34,7 +35,8 @@
 
           let startIndex = 0
           if (lastItem) {
-            startIndex = allMessages.findIndex(m => m.created_at === lastItem.message.created_at) + 1
+            const lastCreatedAt = lastItem.createdAt || lastItem.item?.created_at || lastItem.message?.created_at
+            startIndex = allMessages.findIndex(m => m.created_at === lastCreatedAt) + 1
           }
 
           const rawItems = allMessages.slice(startIndex, startIndex + BATCH_SIZE)
@@ -60,12 +62,17 @@
               const selectionId = messageLinks.length > 1 ? `${message.local_uuid}:${idx}` : message.local_uuid
               const searchContent = `${link.title || ''} ${link.domain || ''} ${link.url || ''} ${senderName} ${roomName}`.toLowerCase()
               items.push({
+                id: selectionId,
+                item: message,
                 message,
                 link,
                 selectionId,
+                roomId: message.room_id,
+                room,
                 roomName,
                 senderName,
                 searchContent,
+                createdAt: message.created_at,
                 timestamp: new Date(message.created_at).toLocaleString()
               })
             })
@@ -73,56 +80,77 @@
           return { items }
         },
         render: async (itemsToDisplay, query) => {
-          const groupContainer = listGroup.querySelector('.atoll-list') || listGroup
           if (itemsToDisplay.length === 0) {
-            groupContainer.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No links found'}</div>`
+            listContainer.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No links found'}</div>`
             return
           }
+
+          const grouped = groupItemsByRoom(itemsToDisplay)
           const fragment = document.createDocumentFragment()
-          itemsToDisplay.forEach(({ link, selectionId, roomName, senderName }) => {
-            const isActive = selectionId === $state.activeSelectionId && $state.activeSelectionType === 'links'
-            const domainStr = link.domain ? `${link.domain} • ` : ''
-            const linkTitle = link.title || link.url || 'Untitled Link'
 
-            const listItem = document.createElement('atoll-list-item')
-            listItem.setAttribute('title', linkTitle)
-            listItem.setAttribute('description', `${domainStr}${senderName} in ${roomName}`)
-            listItem.setAttribute('selected', isActive.toString())
-            listItem.setAttribute('clickable', 'true')
-            listItem.setAttribute('chevron', 'true')
-            listItem.setAttribute('size', 'md')
+          for (const group of grouped) {
+            const groupSection = document.createElement('div')
+            groupSection.className = 'media-room-group mb-3'
 
-            // Create circular avatar/profile slot using optional palette attribute and explicit projection binding
-            const profile = document.createElement('atoll-profile')
-            profile.setAttribute('slot', 'leading')
-            profile.setAttribute('size', 'md')
-            profile.setAttribute('palette', 'true')
-            profile.setAttribute('name', linkTitle)
-            profile.setAttribute('has-projected-image', 'true')
+            const header = document.createElement('media-room-header')
+            header.setAttribute('room-id', group.roomId)
+            header.setAttribute('room-name', group.roomName)
+            header.setAttribute('item-count', group.items.length)
+            groupSection.appendChild(header)
 
-            const iconContainer = document.createElement('div')
-            iconContainer.setAttribute('slot', 'image')
-            iconContainer.className = 'w-100 h-100 d-flex align-items-center justify-content-center'
+            const listEl = document.createElement('atoll-list')
+            listEl.setAttribute('divided', 'true')
 
-            const icon = document.createElement('atoll-icon')
-            icon.setAttribute('name', 'link')
-            icon.setAttribute('size', '24')
-            icon.setAttribute('color', '#FFFFFF')
+            group.items.forEach(({ link, selectionId, roomName, senderName }) => {
+              const isActive = selectionId === $state.activeSelectionId && $state.activeSelectionType === 'links'
+              const domainStr = link.domain ? `${link.domain} • ` : ''
+              const linkTitle = link.title || link.url || 'Untitled Link'
 
-            iconContainer.appendChild(icon)
-            profile.appendChild(iconContainer)
-            listItem.appendChild(profile)
+              const listItem = document.createElement('atoll-list-item')
+              listItem.setAttribute('title', linkTitle)
+              listItem.setAttribute('description', `${domainStr}${senderName} in ${roomName}`)
+              listItem.setAttribute('selected', isActive.toString())
+              listItem.setAttribute('clickable', 'true')
+              listItem.setAttribute('chevron', 'true')
+              listItem.setAttribute('size', 'md')
 
-            listItem.addEventListener('atoll-item-click', () => {
-              $state.activeSelectionType = 'links'
-              $state.activeSelectionId = selectionId
-              $bus.emit('ui:selection_made')
-              debouncedRender()
+              // Create circular avatar/profile slot using optional palette attribute and explicit projection binding
+              const profile = document.createElement('atoll-profile')
+              profile.setAttribute('slot', 'leading')
+              profile.setAttribute('size', 'md')
+              profile.setAttribute('palette', 'true')
+              profile.setAttribute('name', linkTitle)
+              profile.setAttribute('has-projected-image', 'true')
+
+              const iconContainer = document.createElement('div')
+              iconContainer.setAttribute('slot', 'image')
+              iconContainer.className = 'w-100 h-100 d-flex align-items-center justify-content-center'
+
+              const icon = document.createElement('atoll-icon')
+              icon.setAttribute('name', 'link')
+              icon.setAttribute('size', '24')
+              icon.setAttribute('color', '#FFFFFF')
+
+              iconContainer.appendChild(icon)
+              profile.appendChild(iconContainer)
+              listItem.appendChild(profile)
+
+              listItem.addEventListener('atoll-item-click', () => {
+                $state.activeSelectionType = 'links'
+                $state.activeSelectionId = selectionId
+                $bus.emit('ui:selection_made')
+                debouncedRender()
+              })
+
+              listEl.appendChild(listItem)
             })
 
-            fragment.appendChild(listItem)
-          })
-          groupContainer.innerHTML = ''; groupContainer.appendChild(fragment)
+            groupSection.appendChild(listEl)
+            fragment.appendChild(groupSection)
+          }
+
+          listContainer.innerHTML = ''
+          listContainer.appendChild(fragment)
         }
       })
 
@@ -136,7 +164,7 @@
       $bus.on('db:new_local_data', (payload) => {
         const msg = payload?.message
         const isMatch = msg?.type === 'link' || (Array.isArray(msg?.links) && msg.links.length > 0) || payload?.type === 'link' || (Array.isArray(payload?.links) && payload.links.length > 0)
-  
+
         if (isMatch) {
           manager.reset(); debouncedRender()
         }
