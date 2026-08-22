@@ -16,8 +16,8 @@
 
     <!-- 3-1. Left Area (Avatar, Thumbnail, Selection Control) -->
     <div class="atoll-list-item-left" hidden="{{ hideOnLoading }}">
-      <atoll-checkbox ref="checkbox" hidden="{{ hideCheckbox }}" checked="{{ checked }}"></atoll-checkbox>
-      <atoll-icon ref="deleteIcon" name="minus-circle" size="24" color="var(--atoll-danger, #FF334B)" hidden="{{ hideDeleteIcon }}" class="atoll-list-item-delete-icon"></atoll-icon>
+      <slot name="checkbox"></slot>
+      <slot name="deleteIcon"></slot>
       <slot name="leading"></slot>
       <slot name="left"></slot>
     </div>
@@ -46,17 +46,13 @@
       <slot name="right"></slot>
 
       <!-- Unread Count Badge -->
-      <atoll-badge hidden="{{ hideBadge }}" count="{{ badge }}" variant="{{ badgeVariant }}" size="sm"></atoll-badge>
+      <slot name="badge"></slot>
 
       <!-- Navigation Directional Chevron -->
-      <span class="atoll-list-item-chevron" hidden="{{ hideChevron }}">
-        <atoll-icon name="chevron-right" size="18"></atoll-icon>
-      </span>
+      <slot name="chevron"></slot>
 
       <!-- Reorder Drag Handle -->
-      <span class="atoll-list-item-reorder" hidden="{{ hideReorderHandle }}">
-        <atoll-icon name="reorder" size="24" color="var(--atoll-text-secondary, #777777)"></atoll-icon>
-      </span>
+      <slot name="reorder"></slot>
     </div>
   </div>
 </template>
@@ -107,20 +103,118 @@
       }
     },
 
+    slots: {
+      checkbox (nodes, { state, signal, root }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+        if (!state.loading && state.mode === 'selection') {
+          const cb = document.createElement('atoll-checkbox')
+          if (state.checked) {
+            cb.setAttribute('checked', 'true')
+          }
+          cb.addEventListener('change', (e) => {
+            e.stopPropagation()
+            state.checked = e.detail ? e.detail.checked : cb.checked
+            root.dispatchEvent(
+              new CustomEvent('atoll-selection-change', {
+                bubbles: true,
+                composed: true,
+                detail: [
+                  {
+                    checked: state.checked,
+                    value: state.value || state.title
+                  }
+                ]
+              })
+            )
+          }, { signal })
+          return [cb]
+        }
+        return null
+      },
+
+      deleteIcon (nodes, { state, signal, root }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+        if (!state.loading && state.mode === 'edit') {
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', 'minus-circle')
+          icon.setAttribute('size', '24')
+          icon.setAttribute('color', 'var(--atoll-danger, #FF334B)')
+          icon.className = 'atoll-list-item-delete-icon'
+          icon.addEventListener('click', (e) => {
+            e.stopPropagation()
+            e.preventDefault()
+            root.dispatchEvent(
+              new CustomEvent('atoll-item-action', {
+                bubbles: true,
+                composed: true,
+                detail: {
+                  action: 'delete',
+                  value: state.value || state.title
+                }
+              })
+            )
+          }, { signal })
+          return [icon]
+        }
+        return null
+      },
+
+      badge (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+        if (!state.loading && state.badge && state.mode === 'default') {
+          const badgeEl = document.createElement('atoll-badge')
+          badgeEl.setAttribute('count', state.badge)
+          badgeEl.setAttribute('variant', state.badgeVariant || 'danger')
+          badgeEl.setAttribute('size', 'sm')
+          return [badgeEl]
+        }
+        return null
+      },
+
+      chevron (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+        if (!state.loading && state.chevron && state.mode === 'default') {
+          const span = document.createElement('span')
+          span.className = 'atoll-list-item-chevron'
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', 'chevron-right')
+          icon.setAttribute('size', '18')
+          span.appendChild(icon)
+          return [span]
+        }
+        return null
+      },
+
+      reorder (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+        if (!state.loading && state.mode === 'reorder') {
+          const span = document.createElement('span')
+          span.className = 'atoll-list-item-reorder'
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', 'reorder')
+          icon.setAttribute('size', '24')
+          icon.setAttribute('color', 'var(--atoll-text-secondary, #777777)')
+          span.appendChild(icon)
+          return [span]
+        }
+        return null
+      }
+    },
+
     getters: {
       hideDescription: (state) => (!state.description ? 'true' : null),
 
       hideTimestamp: (state) => (!state.timestamp ? 'true' : null),
-
-      hideBadge: (state) => (!state.badge || state.mode !== 'default' ? 'true' : null),
-
-      hideChevron: (state) => (!state.chevron || state.mode !== 'default' ? 'true' : null),
-
-      hideCheckbox: (state) => (state.mode === 'selection' ? null : 'true'),
-
-      hideDeleteIcon: (state) => (state.mode === 'edit' ? null : 'true'),
-
-      hideReorderHandle: (state) => (state.mode === 'reorder' ? null : 'true'),
 
       isClickable: (state) => state.clickable || state.chevron || state.mode === 'selection',
 
@@ -177,8 +271,6 @@
 
     client: ({ state, refs, root, observe }) => {
       const itemRoot = refs('itemRoot')
-      const deleteIcon = refs('deleteIcon')
-      const checkbox = refs('checkbox')
 
       const handleTrigger = () => {
         if (state.disabled || state.loading) {
@@ -225,21 +317,6 @@
         }
       })
 
-      deleteIcon.addEventListener('click', (e) => {
-        e.stopPropagation()
-        e.preventDefault()
-        root.dispatchEvent(
-          new CustomEvent('atoll-item-action', {
-            bubbles: true,
-            composed: true,
-            detail: {
-              action: 'delete',
-              value: state.value || state.title
-            }
-          })
-        )
-      })
-
       if (typeof observe === 'function') {
         observe('badgeVariant', (val) => {
           state.badgeVariant = val
@@ -248,23 +325,6 @@
           state.badgeVariant = val
         })
       }
-
-      checkbox.addEventListener('change', (e) => {
-        e.stopPropagation()
-        state.checked = e.detail.checked
-        root.dispatchEvent(
-          new CustomEvent('atoll-selection-change', {
-            bubbles: true,
-            composed: true,
-            detail: [
-              {
-                checked: state.checked,
-                value: state.value || state.title
-              }
-            ]
-          })
-        )
-      })
 
       // Expose properties on host element
       Object.defineProperty(root, 'checked', {

@@ -14,12 +14,7 @@
 
     <!-- Status Indicators (Right Slot) -->
     <div slot="right" class="d-flex align-items-center gap-1">
-      <atoll-icon 
-        hidden="{{ hideMuteIcon }}" 
-        name="bell-off" 
-        size="16" 
-        color="var(--atoll-text-tertiary, #999999)"
-      ></atoll-icon>
+      <slot name="muteIcon"></slot>
     </div>
   </atoll-list-item>
 </template>
@@ -43,14 +38,32 @@
       isMuted: Boolean
     },
 
+    slots: {
+      muteIcon (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+  
+        const isMuted = state.isMuted === 'true' || state.isMuted === true || state.isMuted === ''
+
+        if (isMuted) {
+          const icon = document.createElement('atoll-icon')
+
+          icon.setAttribute('name', 'bell-off')
+          icon.setAttribute('size', '16')
+          icon.setAttribute('color', 'var(--atoll-text-tertiary, #999999)')
+  
+          return [icon]
+        }
+        return null
+      }
+    },
+
     getters: {
       unreadBadgeCount: (state) => {
         const isUnread = state.isUnread === 'true' || state.isUnread === true || state.isUnread === ''
+  
         return isUnread ? String(state.unreadCount || 1) : ''
-      },
-      hideMuteIcon: (state) => {
-        const isMuted = state.isMuted === 'true' || state.isMuted === true || state.isMuted === ''
-        return !isMuted
       }
     },
 

@@ -1,22 +1,7 @@
 <template id="ui-waveform-player">
   <div class="w-100 position-relative">
-    <!-- Waveform layout -->
-    <div class="atoll-chat-waveform-player w-100" hidden="{{ hideWaveform }}">
-      <atoll-button variant="primary" icon-only="true" pill="true" ref="playBtn" class="play-pause-btn" style="z-index: 2;">
-        <div ref="spinner" class="spinner-border spinner-border-sm text-light" hidden role="status" style="width: 1rem; height: 1rem;">
-          <span class="visually-hidden">Loading...</span>
-        </div>
-        <atoll-icon ref="playIcon" name="play" size="18" color="var(--atoll-chat-btn-send-color, #ffffff)"></atoll-icon>
-      </atoll-button>
-      <div ref="waveContainer" class="waveform-container">
-        <!-- background waveform -->
-        <div ref="waveBg" class="position-relative w-100 h-100"></div>
-        <!-- progress waveform with clipping -->
-        <div ref="waveProgress" class="waveform-progress"></div>
-        <div ref="seeker" class="waveform-seeker"></div>
-      </div>
-      <div ref="timeDisplay" class="x-small text-muted font-monospace">0:00</div>
-    </div>
+    <!-- Waveform layout Slot -->
+    <slot name="waveform"></slot>
 
     <!-- Fallback native audio controls layout -->
     <div class="w-100" hidden="{{ hasWaveform }}">
@@ -45,23 +30,87 @@
       hasWaveform: false,
       playbackStatus: 'idle'
     }),
-    getters: {
-      hideWaveform: (state) => !state.hasWaveform
+    slots: {
+      waveform (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+
+        if (state.hasWaveform) {
+          const container = document.createElement('div')
+          container.className = 'atoll-chat-waveform-player w-100'
+
+          const playBtn = document.createElement('atoll-button')
+          playBtn.setAttribute('variant', 'primary')
+          playBtn.setAttribute('icon-only', 'true')
+          playBtn.setAttribute('pill', 'true')
+          playBtn.className = 'play-pause-btn'
+          playBtn.style.zIndex = '2'
+
+          const spinner = document.createElement('div')
+          spinner.className = 'spinner-border spinner-border-sm text-light'
+          spinner.hidden = true
+          spinner.setAttribute('role', 'status')
+          spinner.style.width = '1rem'
+          spinner.style.height = '1rem'
+
+          const spinnerSpan = document.createElement('span')
+          spinnerSpan.className = 'visually-hidden'
+          spinnerSpan.textContent = 'Loading...'
+          spinner.appendChild(spinnerSpan)
+
+          const playIcon = document.createElement('atoll-icon')
+          playIcon.setAttribute('name', 'play')
+          playIcon.setAttribute('size', '18')
+          playIcon.setAttribute('color', 'var(--atoll-chat-btn-send-color, #ffffff)')
+
+          playBtn.appendChild(spinner)
+          playBtn.appendChild(playIcon)
+
+          const waveContainer = document.createElement('div')
+          waveContainer.className = 'waveform-container'
+
+          const waveBg = document.createElement('div')
+          waveBg.className = 'position-relative w-100 h-100 wave-bg'
+
+          const waveProgress = document.createElement('div')
+          waveProgress.className = 'waveform-progress'
+
+          const seeker = document.createElement('div')
+          seeker.className = 'waveform-seeker'
+
+          waveContainer.appendChild(waveBg)
+          waveContainer.appendChild(waveProgress)
+          waveContainer.appendChild(seeker)
+
+          const formatTime = (seconds) => {
+            if (!seconds || isNaN(seconds)) {
+              return '0:00'
+            }
+            const mins = Math.floor(seconds / 60)
+            const secs = Math.floor(seconds % 60)
+            return `${mins}:${secs.toString().padStart(2, '0')}`
+          }
+
+          const timeDisplay = document.createElement('div')
+          timeDisplay.className = 'x-small text-muted font-monospace time-display'
+          timeDisplay.textContent = formatTime(state.duration)
+
+          container.appendChild(playBtn)
+          container.appendChild(waveContainer)
+          container.appendChild(timeDisplay)
+
+          return [container]
+        }
+        return null
+      }
     },
-    client: async ({ state, refs, utils, signal, storage, globalStore, eventBus, observe }) => {
+    client: async ({ root, state, refs, utils, signal, storage, globalStore, eventBus, observe }) => {
       const { $storage } = storage
       const { $state } = globalStore
       const { $media } = utils
       const { $bus } = eventBus
 
-      const waveContainer = refs('waveContainer')
-      const waveBg = refs('waveBg')
-      const waveProgress = refs('waveProgress')
-      const seeker = refs('seeker')
-      const playBtn = refs('playBtn')
-      const playIcon = refs('playIcon')
-      const spinner = refs('spinner')
-      const timeDisplay = refs('timeDisplay')
       const internalAudio = refs('internalAudio')
       const fallbackAudio = refs('fallbackAudio')
 
@@ -106,7 +155,10 @@
       }
 
       if (state.duration) {
-        timeDisplay.textContent = formatTime(state.duration)
+        const timeDisplay = root.querySelector('.time-display')
+        if (timeDisplay) {
+          timeDisplay.textContent = formatTime(state.duration)
+        }
       }
 
       const updateProgress = () => {
@@ -119,9 +171,19 @@
         }
         const current = audio.currentTime || 0
         const percent = (dur && dur > 0) ? Math.min(100, Math.max(0, (current / dur) * 100)) : 0
-        waveProgress.style.width = `${percent}%`
-        seeker.style.left = `${percent}%`
-        timeDisplay.textContent = formatTime(current)
+        const waveProgress = root.querySelector('.waveform-progress')
+        const seeker = root.querySelector('.waveform-seeker')
+        const timeDisplay = root.querySelector('.time-display')
+
+        if (waveProgress) {
+          waveProgress.style.width = `${percent}%`
+        }
+        if (seeker) {
+          seeker.style.left = `${percent}%`
+        }
+        if (timeDisplay) {
+          timeDisplay.textContent = formatTime(current)
+        }
       }
 
       const tick = () => {
@@ -182,21 +244,47 @@
       }
 
       const updatePlaybackUI = () => {
+        const playBtn = root.querySelector('.play-pause-btn')
+        if (!playBtn) {
+          return
+        }
+        const spinner = playBtn.querySelector('.spinner-border')
+        const playIcon = playBtn.querySelector('atoll-icon')
+
         if (state.playbackStatus === 'loading') {
-          spinner.hidden = false
-          playIcon.hidden = true
+          if (spinner) {
+            spinner.hidden = false
+          }
+          if (playIcon) {
+            playIcon.hidden = true
+          }
         } else if (state.playbackStatus === 'playing') {
-          spinner.hidden = true
-          playIcon.hidden = false
-          playIcon.setAttribute('name', 'pause')
+          if (spinner) {
+            spinner.hidden = true
+          }
+          if (playIcon) {
+            playIcon.hidden = false
+            playIcon.setAttribute('name', 'pause')
+          }
         } else {
-          spinner.hidden = true
-          playIcon.hidden = false
-          playIcon.setAttribute('name', 'play')
+          if (spinner) {
+            spinner.hidden = true
+          }
+          if (playIcon) {
+            playIcon.hidden = false
+            playIcon.setAttribute('name', 'play')
+          }
         }
       }
 
       const renderWaveform = (waveformData) => {
+        const waveContainer = root.querySelector('.waveform-container')
+        const waveBg = root.querySelector('.wave-bg')
+        const waveProgress = root.querySelector('.waveform-progress')
+        if (!waveContainer || !waveBg || !waveProgress) {
+          return
+        }
+
         waveBg.innerHTML = ''
         waveProgress.innerHTML = ''
 
@@ -273,6 +361,7 @@
               objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             } else {
               const asset = await $storage.getAsset(state.audioId)
+  
               if (asset) {
                 objectUrl = await $media.decrypt(asset, { signal })
               }
@@ -296,6 +385,7 @@
         if (!waveformData && state.audioId) {
           try {
             const asset = await $storage.getAsset(state.audioId)
+
             if (asset && asset.message_id) {
               const msg = await $storage.getMessage(asset.message_id)
               if (msg && msg.waveform_data) {
@@ -310,6 +400,12 @@
         if (waveformData) {
           state.hasWaveform = true
           renderWaveform(waveformData)
+          if (state.duration) {
+            const timeDisplay = root.querySelector('.time-display')
+            if (timeDisplay) {
+              timeDisplay.textContent = formatTime(state.duration)
+            }
+          }
         } else {
           state.hasWaveform = false
           setupFallbackAudio()
@@ -349,9 +445,11 @@
               objectUrl = typeof cached === 'string' ? cached : cached.blobUrl
             } else {
               const asset = await $storage.getAsset(state.audioId)
+
               if (!asset) {
                 throw new Error('Asset not found in local database')
               }
+  
               objectUrl = await $media.decrypt(asset, { signal })
             }
           }
@@ -390,21 +488,26 @@
         })
       }
 
-      playBtn.onclick = (e) => {
-        e.stopPropagation()
-        playAudio()
-      }
-
-      waveContainer.onclick = (e) => {
-        e.stopPropagation()
-        if (!audio || !isLoaded || isNaN(audio.duration)) {
+      root.addEventListener('click', (e) => {
+        const playBtn = e.target.closest('.play-pause-btn')
+        if (playBtn && root.contains(playBtn)) {
+          e.stopPropagation()
+          playAudio()
           return
         }
-        const rect = waveContainer.getBoundingClientRect()
-        const percent = (e.clientX - rect.left) / rect.width
-        audio.currentTime = percent * audio.duration
-        updateProgress()
-      }
+
+        const waveContainer = e.target.closest('.waveform-container')
+        if (waveContainer && root.contains(waveContainer)) {
+          e.stopPropagation()
+          if (!audio || !isLoaded || isNaN(audio.duration)) {
+            return
+          }
+          const rect = waveContainer.getBoundingClientRect()
+          const percent = (e.clientX - rect.left) / rect.width
+          audio.currentTime = percent * audio.duration
+          updateProgress()
+        }
+      }, { signal })
 
       // Sync settings volume
       $state.subscribe('mediaVolume', (vol) => {
@@ -448,6 +551,13 @@
         cleanup()
         loadWaveform()
       }
+
+      observe('duration', (dur) => {
+        const timeDisplay = root.querySelector('.time-display')
+        if (timeDisplay) {
+          timeDisplay.textContent = formatTime(dur)
+        }
+      })
 
       observe('audioId', handleSourceChange)
       observe('src', handleSourceChange)

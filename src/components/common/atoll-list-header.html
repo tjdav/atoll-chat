@@ -15,13 +15,11 @@
           <span>{{ title }}</span>
           <slot></slot> <!-- Default slot for custom inline title content -->
 
-          <!-- Count Badge -->
-          <atoll-badge hidden="{{ hideBadge }}" count="{{ badge }}" size="sm"></atoll-badge>
+          <!-- Count Badge Slot -->
+          <slot name="badge"></slot>
 
-          <!-- Sorting Dropdown Indicator -->
-          <span class="atoll-list-header-dropdown-icon" hidden="{{ hideDropdown }}">
-            <atoll-icon name="down" size="14"></atoll-icon>
-          </span>
+          <!-- Sorting Dropdown Indicator Slot -->
+          <slot name="dropdown"></slot>
         </div>
 
         <!-- Optional Subtitle -->
@@ -36,19 +34,11 @@
       <!-- Trailing Action Slot -->
       <slot name="action"></slot>
 
-      <!-- Action Button / Link -->
-      <atoll-button 
-        hidden="{{ hideActionButton }}" 
-        variant="ghost" 
-        size="sm"
-        text="{{ actionText }}"
-      >
-      </atoll-button>
+      <!-- Action Button Slot -->
+      <slot name="actionButton"></slot>
 
-      <!-- Accordion Chevron Trigger -->
-      <span class="atoll-list-header-chevron" hidden="{{ hideChevron }}">
-        <atoll-icon name="chevron-down" size="18"></atoll-icon>
-      </span>
+      <!-- Accordion Chevron Trigger Slot -->
+      <slot name="chevron"></slot>
     </div>
   </div>
 </template>
@@ -87,6 +77,67 @@
       collapsible: Boolean
     },
 
+    slots: {
+      badge (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+        if (state.badge) {
+          const badgeEl = document.createElement('atoll-badge')
+          badgeEl.setAttribute('count', state.badge)
+          badgeEl.setAttribute('size', 'sm')
+          return [badgeEl]
+        }
+        return null
+      },
+
+      dropdown (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+        if (state.dropdown) {
+          const span = document.createElement('span')
+          span.className = 'atoll-list-header-dropdown-icon'
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', 'down')
+          icon.setAttribute('size', '14')
+          span.appendChild(icon)
+          return [span]
+        }
+        return null
+      },
+
+      actionButton (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+        if (state.actionText) {
+          const btn = document.createElement('atoll-button')
+          btn.setAttribute('variant', 'ghost')
+          btn.setAttribute('size', 'sm')
+          btn.setAttribute('text', state.actionText)
+          return [btn]
+        }
+        return null
+      },
+
+      chevron (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+        if (state.variant === 'accordion' || Boolean(state.collapsible)) {
+          const span = document.createElement('span')
+          span.className = 'atoll-list-header-chevron'
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', 'chevron-down')
+          icon.setAttribute('size', '18')
+          span.appendChild(icon)
+          return [span]
+        }
+        return null
+      }
+    },
+
     getters: {
       isAccordion: (state) => state.variant === 'accordion' || Boolean(state.collapsible),
 
@@ -101,15 +152,7 @@
         return state.expanded ? 'true' : 'false'
       },
 
-      hideBadge: (state) => !state.badge,
-
       hideSubtitle: (state) => !state.subtitle,
-
-      hideDropdown: (state) => !state.dropdown,
-
-      hideActionButton: (state) => !state.actionText,
-
-      hideChevron: (state) => !(state.variant === 'accordion' || Boolean(state.collapsible)),
 
       headerClasses: (state) => {
         const classes = ['atoll-list-header']

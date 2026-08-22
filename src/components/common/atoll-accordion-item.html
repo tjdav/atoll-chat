@@ -9,16 +9,14 @@
       aria-expanded="{{ isAriaExpanded }}"
     >
       <div class="atoll-accordion-item-header-left d-flex align-items-center">
-        <!-- Optional Left Icon -->
-        <span class="atoll-accordion-item-icon-wrapper" hidden="{{ hideIcon }}">
-          <atoll-icon ref="iconElement" name="{{ icon }}" size="20"></atoll-icon>
-        </span>
+        <!-- Optional Left Icon Slot -->
+        <slot name="icon"></slot>
 
         <!-- Title & Count Badge -->
         <span class="atoll-accordion-item-title-text fw-bold">{{ title }}</span>
         
-        <!-- LINE Accordion adjacent badge count -->
-        <span class="atoll-accordion-item-badge text-success fw-bold ms-2" hidden="{{ hideBadge }}">{{ badge }}</span>
+        <!-- Accordion adjacent badge count Slot -->
+        <slot name="badge"></slot>
       </div>
 
       <div class="atoll-accordion-item-header-right d-flex align-items-center">
@@ -48,7 +46,6 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    dependencies: ['atoll-icon'],
     attributes: {
       title: {
         type: String,
@@ -72,9 +69,43 @@
       }
     },
 
+    slots: {
+      icon (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+
+        if (state.icon) {
+          const wrapper = document.createElement('span')
+          wrapper.className = 'atoll-accordion-item-icon-wrapper'
+
+          const iconEl = document.createElement('atoll-icon')
+          iconEl.setAttribute('name', state.icon)
+          iconEl.setAttribute('size', '20')
+          wrapper.appendChild(iconEl)
+  
+          return [wrapper]
+        }
+        return null
+      },
+
+      badge (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+
+        if (state.badge) {
+          const badgeEl = document.createElement('span')
+          badgeEl.className = 'atoll-accordion-item-badge text-success fw-bold ms-2'
+          badgeEl.textContent = state.badge
+          return [badgeEl]
+        }
+  
+        return null
+      }
+    },
+
     getters: {
-      hideIcon: (state) => !state.icon,
-      hideBadge: (state) => !state.badge,
       isAriaExpanded: (state) => (state.expanded ? 'true' : 'false'),
       showBodyClass: (state) => (state.expanded ? 'show' : '')
     },
@@ -146,12 +177,6 @@
         }
       })
 
-      observe('icon', (val) => {
-        const iconEl = refs('iconElement')
-        if (iconEl && val) {
-          iconEl.setAttribute('name', val)
-        }
-      })
     }
   })
 </script>

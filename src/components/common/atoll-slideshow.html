@@ -8,16 +8,7 @@
       </div>
     </div>
 
-    <div class="atoll-slideshow-controls" hidden="{{ hideControls }}">
-      <slot name="controls">
-        <button ref="btnPrev" type="button" class="atoll-slideshow-nav-btn prev" aria-label="Previous slide">
-          <atoll-icon name="chevron-left" size="32"></atoll-icon>
-        </button>
-        <button ref="btnNext" type="button" class="atoll-slideshow-nav-btn next" aria-label="Next slide">
-          <atoll-icon name="chevron-right" size="32"></atoll-icon>
-        </button>
-      </slot>
-    </div>
+    <slot name="controls"></slot>
 
     <slot name="overlay"></slot>
     <slot name="footer"></slot>
@@ -29,21 +20,84 @@
 
   export default defineComponent({
     attributes: {
-      loop: { type: Boolean, default: false },
-      dragFree: { type: Boolean, default: false },
-      align: { type: String, default: 'center' },
-      axis: { type: String, default: 'x' },
-      containScroll: { type: String, default: 'trimSnaps' },
-      hideControls: { type: Boolean, default: false },
-      watchSlides: { type: Boolean, default: true },
-      keyboard: { type: Boolean, default: true },
-      layoutClasses: { type: String, default: '' }
+      loop: {
+        type: Boolean,
+        default: false
+      },
+      dragFree: {
+        type: Boolean,
+        default: false
+      },
+      align: {
+        type: String,
+        default: 'center'
+      },
+      axis: {
+        type: String,
+        default: 'x'
+      },
+      containScroll: {
+        type: String,
+        default: 'trimSnaps'
+      },
+      hideControls: {
+        type: Boolean,
+        default: false
+      },
+      watchSlides: {
+        type: Boolean,
+        default: true
+      },
+      keyboard: {
+        type: Boolean,
+        default: true
+      },
+      layoutClasses: {
+        type: String,
+        default: ''
+      }
+    },
+    slots: {
+      controls (nodes, { state }) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+
+        if (!state.hideControls) {
+          const wrapper = document.createElement('div')
+          wrapper.className = 'atoll-slideshow-controls'
+
+          const btnPrev = document.createElement('button')
+          btnPrev.type = 'button'
+          btnPrev.className = 'atoll-slideshow-nav-btn prev'
+          btnPrev.setAttribute('aria-label', 'Previous slide')
+
+          const iconPrev = document.createElement('atoll-icon')
+          iconPrev.setAttribute('name', 'chevron-left')
+          iconPrev.setAttribute('size', '32')
+          btnPrev.appendChild(iconPrev)
+
+          const btnNext = document.createElement('button')
+          btnNext.type = 'button'
+          btnNext.className = 'atoll-slideshow-nav-btn next'
+          btnNext.setAttribute('aria-label', 'Next slide')
+  
+          const iconNext = document.createElement('atoll-icon')
+          iconNext.setAttribute('name', 'chevron-right')
+          iconNext.setAttribute('size', '32')
+          btnNext.appendChild(iconNext)
+
+          wrapper.appendChild(btnPrev)
+          wrapper.appendChild(btnNext)
+          return [wrapper]
+        }
+
+        return null
+      }
     },
     client: async ({ root, refs, state, observe, signal }) => {
       const viewport = refs('viewport')
       const container = refs('container')
-      const btnPrev = refs('btnPrev')
-      const btnNext = refs('btnNext')
 
       let embla = null
       let mutationObserver = null
@@ -61,9 +115,9 @@
       // Expose public methods on host immediately
       root.getContainer = () => container
       root.getViewport = () => viewport
-      root.getSelectedIndex = () => embla ? embla.selectedScrollSnap() : 0
-      root.canScrollPrev = () => embla ? embla.canScrollPrev() : false
-      root.canScrollNext = () => embla ? embla.canScrollNext() : false
+      root.getSelectedIndex = () => (embla ? embla.selectedScrollSnap() : 0)
+      root.canScrollPrev = () => (embla ? embla.canScrollPrev() : false)
+      root.canScrollNext = () => (embla ? embla.canScrollNext() : false)
       root.prev = () => embla?.scrollPrev()
       root.scrollPrev = () => embla?.scrollPrev()
       root.next = () => embla?.scrollNext()
@@ -75,13 +129,24 @@
       root.getEmbla = () => embla
 
       const updateNavButtons = () => {
-        if (!btnPrev || !btnNext || !embla) return
+        const btnPrev = root.querySelector('.atoll-slideshow-nav-btn.prev')
+        const btnNext = root.querySelector('.atoll-slideshow-nav-btn.next')
+  
+        if (!embla) {
+          return
+        }
+
         const canPrev = embla.canScrollPrev()
         const canNext = embla.canScrollNext()
-        btnPrev.disabled = !canPrev
-        btnNext.disabled = !canNext
-        btnPrev.setAttribute('aria-disabled', String(!canPrev))
-        btnNext.setAttribute('aria-disabled', String(!canNext))
+        if (btnPrev) {
+          btnPrev.disabled = !canPrev
+          btnPrev.setAttribute('aria-disabled', String(!canPrev))
+        }
+
+        if (btnNext) {
+          btnNext.disabled = !canNext
+          btnNext.setAttribute('aria-disabled', String(!canNext))
+        }
       }
 
       const EmblaCarousel = (await import('embla-carousel')).default
@@ -99,7 +164,10 @@
             root.dispatchEvent(new CustomEvent('atoll-slideshow-select', {
               bubbles: true,
               composed: true,
-              detail: { index: newIndex, previousIndex: prevIndex }
+              detail: {
+                index: newIndex,
+                previousIndex: prevIndex
+              }
             }))
           }
           updateNavButtons()
@@ -137,13 +205,23 @@
         }))
       }, { signal })
 
-      btnPrev?.addEventListener('click', () => embla?.scrollPrev(), { signal })
-      btnNext?.addEventListener('click', () => embla?.scrollNext(), { signal })
+      root.addEventListener('click', (e) => {
+        const btnPrev = e.target.closest('.atoll-slideshow-nav-btn.prev')
+        const btnNext = e.target.closest('.atoll-slideshow-nav-btn.next')
+        if (btnPrev) {
+          embla?.scrollPrev()
+        } else if (btnNext) {
+          embla?.scrollNext()
+        }
+      }, { signal })
 
       if (state.keyboard) {
         window.addEventListener('keydown', (e) => {
           const tag = document.activeElement?.tagName?.toLowerCase()
-          if (tag === 'input' || tag === 'textarea') return
+          if (tag === 'input' || tag === 'textarea') {
+            return
+          }
+  
           if (e.key === 'ArrowLeft') {
             e.preventDefault()
             embla?.scrollPrev()
@@ -181,7 +259,10 @@
       root.dispatchEvent(new CustomEvent('atoll-slideshow-init', {
         bubbles: true,
         composed: true,
-        detail: { embla, index: lastIndex }
+        detail: {
+          embla,
+          index: lastIndex
+        }
       }))
 
       // Automatic teardown on unmount
