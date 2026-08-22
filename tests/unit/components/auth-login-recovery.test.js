@@ -6,18 +6,149 @@ import { loadComponent } from '../helpers/load-component.js'
 
 describe('Auth Login Recovery Workflow', () => {
   let tagName
-  let mockAuthApi
-  let mockGlobalStore
-  let mockPocketbase
-  let mockEventBus
-  let mockCryptoWorker
-  let mockStorage
-  let mockRealtimeSync
   let calls
+
+  const mockGlobalStore = {
+    $state: {
+      isAuthenticated: false,
+      isVaultUnlocked: false,
+      currentUser: null,
+      pendingRegistrationInvite: null,
+      subscribe: (_key, _cb) => {
+        return () => {
+        }
+      }
+    }
+  }
+
+  const mockAuthApi = {
+    recoverAccount: async (username) => {
+      calls.recoverAccount.push(username)
+      if (username === 'validuser') {
+        return {
+          user: {
+            id: 'user123',
+            username: 'validuser',
+            recovery_wraps: [{
+              salt: 'mockSalt',
+              nonce: 'mockNonce',
+              ciphertext: 'mockCt'
+            }],
+            encrypted_private_keys: { ciphertext: 'mockKey' },
+            encrypted_master_keys: { ciphertext: 'mockMaster' }
+          }
+        }
+      }
+      throw new Error('Invalid or expired recovery code.')
+    },
+    rotatePassword: async (...args) => {
+      calls.rotatePassword.push(args)
+      return {
+        token: 'mockToken123',
+        record: {
+          id: 'user123',
+          username: 'validuser'
+        }
+      }
+    }
+  }
+
+  const mockPocketbase = {
+    pb: {
+      baseUrl: '/',
+      authStore: {
+        token: '',
+        model: null,
+        isValid: false,
+        save (token, record) {
+          this.token = token
+          this.model = record
+          this.isValid = Boolean(token)
+          calls.authStoreSave.push([token, record])
+        }
+      },
+      buildURL: (path) => path,
+      send: async () => ({})
+    },
+    auth: mockAuthApi
+  }
+
+  const mockBiometric = {
+    isAvailable: async () => false
+  }
+
+  const mockEventBus = {
+    $bus: {
+      on: () => {
+      },
+      emit: (event, payload) => {
+        calls.busEmit.push({
+          event,
+          payload
+        })
+      },
+      off: () => {
+      }
+    }
+  }
+
+  const mockCryptoWorker = {
+    $worker: {
+      execute: async (type, payload) => {
+        calls.workerExecute.push({
+          type,
+          payload
+        })
+        if (type === 'worker:decrypt_master_key_with_code') {
+          if (payload.code === 'RC-1234-5678-9012-3456') {
+            return {
+              master_key: '00112233445566778899aabbccddeeff',
+              auth_proof: 'mockAuthProof123'
+            }
+          }
+          return null
+        }
+        if (type === 'worker:decrypt_vault') {
+          return {
+            box_public_key: 'pub',
+            box_private_key: 'priv'
+          }
+        }
+        if (type === 'worker:encrypt_master_key_with_kek') {
+          return { ciphertext: 'newWrap' }
+        }
+        return null
+      }
+    }
+  }
+
+  const mockStorage = {
+    $storage: {
+      saveConfigs: async (configs) => {
+        calls.storageSaveConfigs.push(configs)
+      }
+    }
+  }
+
+  const mockRealtimeSync = {
+    $sync: {
+      startSubscriptions: async () => {
+        calls.startSubscriptions.push(true)
+      }
+    }
+  }
 
   beforeEach(async () => {
     document.body.innerHTML = ''
     localStorage.clear()
+
+    mockGlobalStore.$state.isAuthenticated = false
+    mockGlobalStore.$state.isVaultUnlocked = false
+    mockGlobalStore.$state.currentUser = null
+    mockGlobalStore.$state.pendingRegistrationInvite = null
+    mockPocketbase.pb.authStore.token = ''
+    mockPocketbase.pb.authStore.model = null
+    mockPocketbase.pb.authStore.isValid = false
 
     calls = {
       recoverAccount: [],
@@ -32,127 +163,6 @@ describe('Auth Login Recovery Workflow', () => {
     await loadComponent('atoll-icon')
     await loadComponent('atoll-button')
     await loadComponent('atoll-input')
-
-    mockGlobalStore = {
-      $state: {
-        isAuthenticated: false,
-        isVaultUnlocked: false,
-        currentUser: null,
-        pendingRegistrationInvite: null,
-        subscribe: (_key, _cb) => {
-          return () => {}
-        }
-      }
-    }
-
-    mockAuthApi = {
-      recoverAccount: async (username) => {
-        calls.recoverAccount.push(username)
-        if (username === 'validuser') {
-          return {
-            user: {
-              id: 'user123',
-              username: 'validuser',
-              recovery_wraps: [{
-                salt: 'mockSalt',
-                nonce: 'mockNonce',
-                ciphertext: 'mockCt'
-              }],
-              encrypted_private_keys: { ciphertext: 'mockKey' },
-              encrypted_master_keys: { ciphertext: 'mockMaster' }
-            }
-          }
-        }
-        throw new Error('Invalid or expired recovery code.')
-      },
-      rotatePassword: async (...args) => {
-        calls.rotatePassword.push(args)
-        return {
-          token: 'mockToken123',
-          record: {
-            id: 'user123',
-            username: 'validuser'
-          }
-        }
-      }
-    }
-
-    mockPocketbase = {
-      pb: {
-        baseUrl: '/',
-        authStore: {
-          token: '',
-          model: null,
-          isValid: false,
-          save: (token, record) => {
-            mockPocketbase.pb.authStore.token = token
-            mockPocketbase.pb.authStore.model = record
-            mockPocketbase.pb.authStore.isValid = Boolean(token)
-            calls.authStoreSave.push([token, record])
-          }
-        },
-        buildURL: (path) => path,
-        send: async () => ({})
-      },
-      auth: mockAuthApi
-    }
-
-    const mockBiometric = {
-      isAvailable: async () => false
-    }
-
-    mockEventBus = {
-      $bus: {
-        on: () => {},
-        emit: (event, payload) => {
-          calls.busEmit.push({ event, payload })
-        },
-        off: () => {}
-      }
-    }
-
-    mockCryptoWorker = {
-      $worker: {
-        execute: async (type, payload) => {
-          calls.workerExecute.push({ type, payload })
-          if (type === 'worker:decrypt_master_key_with_code') {
-            if (payload.code === 'RC-1234-5678-9012-3456') {
-              return {
-                master_key: '00112233445566778899aabbccddeeff',
-                auth_proof: 'mockAuthProof123'
-              }
-            }
-            return null
-          }
-          if (type === 'worker:decrypt_vault') {
-            return {
-              box_public_key: 'pub',
-              box_private_key: 'priv'
-            }
-          }
-          if (type === 'worker:encrypt_master_key_with_kek') {
-            return { ciphertext: 'newWrap' }
-          }
-          return null
-        }
-      }
-    }
-
-    mockStorage = {
-      $storage: {
-        saveConfigs: async (configs) => {
-          calls.storageSaveConfigs.push(configs)
-        }
-      }
-    }
-
-    mockRealtimeSync = {
-      $sync: {
-        startSubscriptions: async () => {
-          calls.startSubscriptions.push(true)
-        }
-      }
-    }
 
     tagName = await loadComponent('auth-login', {
       globalStore: mockGlobalStore,
@@ -259,7 +269,10 @@ describe('Auth Login Recovery Workflow', () => {
       recoveryCodeInput.value = 'RC-1234-5678-9012-3456'
 
       const recoveryForm = el.querySelector('[ref$="recoveryForm"]')
-      recoveryForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      recoveryForm.dispatchEvent(new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      }))
       await new Promise((resolve) => setTimeout(resolve, 100))
 
       assert.deepEqual(calls.recoverAccount, ['validuser'])
@@ -295,7 +308,10 @@ describe('Auth Login Recovery Workflow', () => {
       recoveryCodeInput.value = 'RC-1234-5678-9012-3456'
 
       const recoveryForm = el.querySelector('[ref$="recoveryForm"]')
-      recoveryForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      recoveryForm.dispatchEvent(new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      }))
       await new Promise((resolve) => setTimeout(resolve, 100))
 
       assert.deepEqual(calls.recoverAccount, ['unknownuser'])
@@ -328,7 +344,10 @@ describe('Auth Login Recovery Workflow', () => {
       recoveryCodeInput.value = 'RC-9999-9999-9999-9999'
 
       const recoveryForm = el.querySelector('[ref$="recoveryForm"]')
-      recoveryForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      recoveryForm.dispatchEvent(new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      }))
       await new Promise((resolve) => setTimeout(resolve, 100))
 
       assert.deepEqual(calls.recoverAccount, ['validuser'])
@@ -357,7 +376,10 @@ describe('Auth Login Recovery Workflow', () => {
       await new Promise((resolve) => setTimeout(resolve, 50))
 
       const recoveryForm = el.querySelector('[ref$="recoveryForm"]')
-      recoveryForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      recoveryForm.dispatchEvent(new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      }))
       await new Promise((resolve) => setTimeout(resolve, 50))
 
       assert.ok(recoveryForm.classList.contains('was-validated'), 'recoveryForm should have was-validated class')
@@ -387,7 +409,10 @@ describe('Auth Login Recovery Workflow', () => {
       recoveryCodeInput.value = 'RC-1234-5678-9012-3456'
 
       const recoveryForm = el.querySelector('[ref$="recoveryForm"]')
-      recoveryForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      recoveryForm.dispatchEvent(new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      }))
       await new Promise((resolve) => setTimeout(resolve, 100))
 
       const btnSaveNewPassword = el.querySelector('[ref$="btnSaveNewPassword"]')
@@ -440,7 +465,10 @@ describe('Auth Login Recovery Workflow', () => {
       recoveryCodeInput.value = 'RC-1234-5678-9012-3456'
 
       const recoveryForm = el.querySelector('[ref$="recoveryForm"]')
-      recoveryForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      recoveryForm.dispatchEvent(new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      }))
       await new Promise((resolve) => setTimeout(resolve, 100))
 
       const newPasswordComp = el.querySelector('[ref$="newPassword"]')
@@ -455,7 +483,10 @@ describe('Auth Login Recovery Workflow', () => {
       await new Promise((resolve) => setTimeout(resolve, 50))
 
       const newPasswordForm = el.querySelector('[ref$="newPasswordForm"]')
-      newPasswordForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      newPasswordForm.dispatchEvent(new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      }))
       await new Promise((resolve) => setTimeout(resolve, 50))
 
       assert.ok(newPasswordForm.classList.contains('was-validated'), 'newPasswordForm should have was-validated class')
@@ -486,7 +517,10 @@ describe('Auth Login Recovery Workflow', () => {
       recoveryCodeInput.value = 'RC-1234-5678-9012-3456'
 
       const recoveryForm = el.querySelector('[ref$="recoveryForm"]')
-      recoveryForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+      recoveryForm.dispatchEvent(new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      }))
       await new Promise((resolve) => setTimeout(resolve, 100))
 
       // 3. Enter new strong matching password
@@ -503,8 +537,11 @@ describe('Auth Login Recovery Workflow', () => {
 
       // 4. Submit new password form
       const newPasswordForm = el.querySelector('[ref$="newPasswordForm"]')
-      newPasswordForm.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
-      await new Promise((resolve) => setTimeout(resolve, 150))
+      newPasswordForm.dispatchEvent(new Event('submit', {
+        bubbles: true,
+        cancelable: true
+      }))
+      await new Promise((resolve) => setTimeout(resolve, 500))
 
       // Assert worker:encrypt_master_key_with_kek
       const encryptKekCall = calls.workerExecute.find(c => c.type === 'worker:encrypt_master_key_with_kek')
@@ -537,8 +574,14 @@ describe('Auth Login Recovery Workflow', () => {
       // Assert $storage.saveConfigs
       assert.equal(calls.storageSaveConfigs.length, 1)
       assert.deepEqual(calls.storageSaveConfigs[0], [
-        { key: 'pb_url', value: '/' },
-        { key: 'pb_token', value: 'mockToken123' }
+        {
+          key: 'pb_url',
+          value: '/'
+        },
+        {
+          key: 'pb_token',
+          value: 'mockToken123'
+        }
       ])
 
       // Assert bus unlock event and realtime sync
