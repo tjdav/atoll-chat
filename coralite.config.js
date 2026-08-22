@@ -328,17 +328,20 @@ export default defineConfig({
                 async verifyOTP (otpId, code) {
                   return await instance.collection('users').authWithOTP(otpId, code)
                 },
-                async rotatePassword (newKeyBHash, newWrappedVMK, remainingWraps) {
+                async rotatePassword (newKeyBHash, newWrappedVMK, remainingWraps, userId, recoveryAuthProof) {
+                  const payload = {
+                    newKeyBHash,
+                    newWrappedVMK,
+                    remainingWraps
+                  }
+                  if (userId) payload.userId = userId
+                  if (recoveryAuthProof) payload.recoveryAuthProof = recoveryAuthProof
                   return await instance.send('/api/custom/rotate_password', {
                     method: 'POST',
                     headers: {
                       'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                      newKeyBHash,
-                      newWrappedVMK,
-                      remainingWraps
-                    })
+                    body: JSON.stringify(payload)
                   })
                 },
                 async recoverAccount (username) {

@@ -172,6 +172,7 @@
       let fetchedRecord = null
       let decryptedKeysLocal = null
       let zxcvbnScore = 0
+      let currentRecoveryAuthProof = null
 
       // Hydrate user profile avatar if available
       const user = pb.authStore.model
@@ -563,11 +564,28 @@
           btnCancelRecovery.setAttribute('disabled', 'true')
 
           const username = pb.authStore.model ? pb.authStore.model.username : ''
-          await pocketbase.auth.recoverAccount(username)
+          const recoverRes = await pocketbase.auth.recoverAccount(username)
 
-          updateStatus('Fetching account details...')
-          fetchedRecord = await pb.collection('users').getOne(pb.authStore.model.id)
-          const { recovery_wraps: recoveryWraps, encrypted_private_keys: encryptedPrivateKeys } = fetchedRecord
+          if (!recoverRes || !recoverRes.user || !recoverRes.user.recovery_wraps) {
+            throw new Error('No recovery codes configured for this account.')
+          }
+
+          fetchedRecord = recoverRes.user
+          let recoveryWraps = fetchedRecord.recovery_wraps || []
+          if (typeof recoveryWraps === 'string') {
+            try {
+              recoveryWraps = JSON.parse(recoveryWraps)
+            } catch (_) {
+              recoveryWraps = []
+            }
+          }
+          let encryptedPrivateKeys = fetchedRecord.encrypted_private_keys
+          if (typeof encryptedPrivateKeys === 'string') {
+            try {
+              encryptedPrivateKeys = JSON.parse(encryptedPrivateKeys)
+            } catch (_) {
+            }
+          }
 
           if (!recoveryWraps || recoveryWraps.length === 0) {
             throw new Error('No recovery codes configured for this account.')
@@ -576,6 +594,7 @@
           updateStatus('Verifying recovery code...')
           let decryptedMasterKey = null
           matchedWrapIndex = -1
+          currentRecoveryAuthProof = null
 
           /* Find matching recovery wrap by attempting decryption on all of them */
           for (let i = 0; i < recoveryWraps.length; i++) {
@@ -586,6 +605,9 @@
               })
               if (decryptedResult) {
                 decryptedMasterKey = typeof decryptedResult === 'object' && decryptedResult !== null ? decryptedResult.master_key : decryptedResult
+                if (typeof decryptedResult === 'object' && decryptedResult !== null && decryptedResult.auth_proof) {
+                  currentRecoveryAuthProof = decryptedResult.auth_proof
+                }
                 matchedWrapIndex = i
                 break
               }
@@ -730,7 +752,7 @@
           }
 
           updateStatus('Updating vault configuration on server...')
-          await pocketbase.auth.rotatePassword(newKeyB, newPasswordWrap, remainingWraps)
+          await pocketbase.auth.rotatePassword(newKeyB, newPasswordWrap, remainingWraps, fetchedRecord.id, currentRecoveryAuthProof)
 
           /* Perform auth refresh to sync changes */
           const refreshedRecord = await pb.collection('users').authRefresh()

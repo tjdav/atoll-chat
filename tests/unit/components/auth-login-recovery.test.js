@@ -81,10 +81,14 @@ describe('Auth Login Recovery Workflow', () => {
       pb: {
         baseUrl: '/',
         authStore: {
+          token: '',
           model: null,
           isValid: false,
-          save: (...args) => {
-            calls.authStoreSave.push(args)
+          save: (token, record) => {
+            mockPocketbase.pb.authStore.token = token
+            mockPocketbase.pb.authStore.model = record
+            mockPocketbase.pb.authStore.isValid = Boolean(token)
+            calls.authStoreSave.push([token, record])
           }
         },
         buildURL: (path) => path,
