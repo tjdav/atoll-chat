@@ -3,14 +3,19 @@
 const recoveryAttempts = new Map()
 
 routerAdd('POST', '/api/custom/recover_account', (e) => {
-  const ip = e.realIP ? e.realIP() : (e.requestInfo ? e.requestInfo.ip : '127.0.0.1')
+  const info = typeof e.requestInfo === 'function' ? e.requestInfo() : (e.requestInfo || null)
+  const ip = info ? (info.ip || info.remoteIP || '127.0.0.1') : '127.0.0.1'
   const now = Date.now()
 
   const data = new DynamicModel({
     identity: '',
     username: ''
   })
-  e.bindBody(data)
+  try {
+    e.bindBody(data)
+  } catch (err) {
+    return e.json(400, { error: 'Invalid recovery request.' })
+  }
 
   const username = (data.username || data.identity || '').trim().toLowerCase()
 
@@ -45,17 +50,32 @@ routerAdd('POST', '/api/custom/recover_account', (e) => {
     return e.json(400, { error: 'Invalid recovery request.' })
   }
 
-  const records = $app.findRecordsByFilter('users', 'username = {:username}', '', 1, 0, { username })
-  if (records.length === 0) {
+  const userModel = new DynamicModel({
+    id: '',
+    username: '',
+    recovery_wraps: '',
+    encrypted_private_keys: ''
+  })
+
+  try {
+    $app.db()
+      .select('id', 'username', 'recovery_wraps', 'encrypted_private_keys')
+      .from('users')
+      .where($dbx.exp('username = {:username}', { username }))
+      .one(userModel)
+  } catch (err) {
     return e.json(400, { error: 'Invalid recovery request.' })
   }
 
-  const user = records[0]
-  let recoveryWraps = user.get('recovery_wraps') || []
+  if (!userModel.id) {
+    return e.json(400, { error: 'Invalid recovery request.' })
+  }
+
+  let recoveryWraps = userModel.recovery_wraps || []
   if (typeof recoveryWraps === 'string') {
     try {
       recoveryWraps = JSON.parse(recoveryWraps)
-    } catch {
+    } catch (err) {
     }
   }
 
@@ -63,13 +83,21 @@ routerAdd('POST', '/api/custom/recover_account', (e) => {
     return e.json(400, { error: 'Invalid recovery request.' })
   }
 
+  let encryptedPrivateKeys = userModel.encrypted_private_keys
+  if (typeof encryptedPrivateKeys === 'string') {
+    try {
+      encryptedPrivateKeys = JSON.parse(encryptedPrivateKeys)
+    } catch (err) {
+    }
+  }
+
   return e.json(200, {
     success: true,
     user: {
-      id: user.id,
-      username: user.get('username'),
+      id: userModel.id,
+      username: userModel.username,
       recovery_wraps: recoveryWraps,
-      encrypted_private_keys: user.get('encrypted_private_keys')
+      encrypted_private_keys: encryptedPrivateKeys
     }
   })
 })

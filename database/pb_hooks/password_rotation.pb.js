@@ -194,7 +194,8 @@ function sha256Base64 (str) {
 }
 
 routerAdd('POST', '/api/custom/rotate_password', (e) => {
-  const authRecord = e.auth || (e.requestInfo ? e.requestInfo.authRecord : null) || (typeof e.requestInfo === 'function' ? e.requestInfo().auth : null)
+  const info = typeof e.requestInfo === 'function' ? e.requestInfo() : (e.requestInfo || null)
+  const authRecord = e.auth || (info ? (info.authRecord || info.auth) : null)
 
   const data = new DynamicModel({
     userId: '',
@@ -205,7 +206,11 @@ routerAdd('POST', '/api/custom/rotate_password', (e) => {
     remainingWraps: '',
     recoveryAuthProof: ''
   })
-  e.bindBody(data)
+  try {
+    e.bindBody(data)
+  } catch (err) {
+    return e.json(400, { error: 'Invalid rotation request.' })
+  }
 
   const keyToHash = data.newKeyB || data.newKeyBHash
   const newWrappedVMK = data.newWrappedVMK
@@ -219,7 +224,7 @@ routerAdd('POST', '/api/custom/rotate_password', (e) => {
 
   if (!targetUser) {
     // Rate limiting for unauthenticated rotation attempts
-    const ip = e.realIP ? e.realIP() : (e.requestInfo ? e.requestInfo.ip : '127.0.0.1')
+    const ip = info ? (info.ip || info.remoteIP || '127.0.0.1') : '127.0.0.1'
     const now = Date.now()
 
     const targetId = (data.userId || '').trim()
