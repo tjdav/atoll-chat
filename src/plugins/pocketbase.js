@@ -62,8 +62,12 @@ export default function pocketbase (options = {}) {
         newWrappedVMK,
         remainingWraps
       }
-      if (userId) payload.userId = userId
-      if (recoveryAuthProof) payload.recoveryAuthProof = recoveryAuthProof
+      if (userId) {
+        payload.userId = userId
+      }
+      if (recoveryAuthProof) {
+        payload.recoveryAuthProof = recoveryAuthProof
+      }
       return await pb.send('/api/custom/rotate_password', {
         method: 'POST',
         headers: {
@@ -366,8 +370,12 @@ export default function pocketbase (options = {}) {
               newWrappedVMK,
               remainingWraps
             }
-            if (userId) payload.userId = userId
-            if (recoveryAuthProof) payload.recoveryAuthProof = recoveryAuthProof
+            if (userId) {
+              payload.userId = userId
+            }
+            if (recoveryAuthProof) {
+              payload.recoveryAuthProof = recoveryAuthProof
+            }
             return await instance.send('/api/custom/rotate_password', {
               method: 'POST',
               headers: {

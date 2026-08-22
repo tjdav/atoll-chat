@@ -1,9 +1,54 @@
 <template id="account-info">
-  <section>
+  <section class="mb-4">
     <h6 class="text-uppercase text-muted fw-bold small mb-3">Account Information</h6>
     <div class="mb-0">
       <label class="form-label small text-muted text-uppercase fw-bold">Username</label>
       <div class="form-control bg-body-tertiary">{{ username }}</div>
+    </div>
+  </section>
+
+  <section class="mt-4">
+    <h6 class="text-uppercase text-muted fw-bold small mb-3">Local Storage & Cache</h6>
+    <div class="card shadow-sm border bg-body">
+      <div class="card-body">
+        <!-- Media & Attachments Card -->
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+          <div>
+            <div class="fw-semibold text-body mb-1">
+              Media & Attachments
+              <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 fw-normal">{{ mediaUsageText }}</span>
+            </div>
+            <div class="small text-muted">Clear cached images, videos, audio clips, and document files stored locally.</div>
+          </div>
+          <button ref="btnClearMedia" data-testid="btnClearMedia" class="btn btn-outline-secondary btn-sm ms-3 text-nowrap">
+            Clear Media
+          </button>
+        </div>
+
+        <!-- Chat Messages Card -->
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+          <div>
+            <div class="fw-semibold text-body mb-1">
+              Chat Messages
+              <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 fw-normal">{{ messagesUsageText }}</span>
+            </div>
+            <div class="small text-muted">Clear cached message history stored on this device.</div>
+          </div>
+          <button ref="btnClearMessages" data-testid="btnClearMessages" class="btn btn-outline-secondary btn-sm ms-3 text-nowrap">
+            Clear Messages
+          </button>
+        </div>
+
+        <!-- Total Storage Footer -->
+        <div class="d-flex align-items-center justify-content-between pt-1">
+          <div class="fw-semibold text-body">
+            Total Local Storage: <span>{{ totalUsageText }}</span>
+          </div>
+          <button ref="btnClearAllCache" data-testid="btnClearAllCache" class="btn btn-outline-primary btn-sm text-nowrap">
+            Clear All Cache
+          </button>
+        </div>
+      </div>
     </div>
   </section>
 </template>
@@ -13,19 +58,116 @@
 
   export default defineComponent({
     server: () => ({
-      username: 'User'
+      username: 'User',
+      mediaUsageText: '0 B',
+      messagesUsageText: '0 B',
+      totalUsageText: '0 B'
     }),
-    client: async ({ state, globalStore }) => {
+    client: async ({ state, globalStore, storage, eventBus, refs, signal }) => {
       const { $state } = globalStore
+      const { $bus } = eventBus
+      const { $storage } = storage
+
+      const formatBytes = (bytes) => {
+        if (!bytes || bytes <= 0) {
+          return '0 B'
+        }
+        const units = ['B', 'KB', 'MB', 'GB', 'TB']
+        const i = Math.floor(Math.log(bytes) / Math.log(1024))
+        if (i === 0) {
+          return `${bytes} B`
+        }
+        const num = bytes / Math.pow(1024, i)
+        const formatted = num % 1 === 0 ? num.toFixed(0) : num.toFixed(1)
+        return `${formatted} ${units[i]}`
+      }
 
       const loadUserData = () => {
         const user = $state.currentUser
         state.username = user?.username || 'User'
       }
 
-      loadUserData()
+      const refreshStorageUsage = async () => {
+        if (!$storage || typeof $storage.getStorageUsage !== 'function') {
+          return
+        }
+        try {
+          const usage = await $storage.getStorageUsage()
+          const { mediaBytes, mediaCount, messagesBytes, messagesCount, totalBytes } = usage || {}
 
-      $state.subscribe('currentUser', loadUserData)
+          const mBytes = mediaBytes || 0
+          const mCount = mediaCount || 0
+          const msgBytes = messagesBytes || 0
+          const msgCount = messagesCount || 0
+          const totBytes = totalBytes || 0
+
+          state.mediaUsageText = mCount === 0
+            ? '0 B'
+            : `${formatBytes(mBytes)} • ${mCount} ${mCount === 1 ? 'file' : 'files'}`
+
+          state.messagesUsageText = msgCount === 0
+            ? '0 B'
+            : `${formatBytes(msgBytes)} • ${msgCount} ${msgCount === 1 ? 'message' : 'messages'}`
+
+          state.totalUsageText = formatBytes(totBytes)
+        } catch (err) {
+          console.error('[account-info] Failed to calculate storage usage:', err)
+        }
+      }
+
+      loadUserData()
+      await refreshStorageUsage()
+
+      $state.subscribe('currentUser', loadUserData, { signal })
+
+      $bus.on('db:new_local_data', refreshStorageUsage, { signal })
+      $bus.on('db:history_cleared', refreshStorageUsage, { signal })
+
+      const btnClearMedia = refs('btnClearMedia')
+      const btnClearMessages = refs('btnClearMessages')
+      const btnClearAllCache = refs('btnClearAllCache')
+
+      if (btnClearMedia) {
+        btnClearMedia.addEventListener('click', async () => {
+          if ($storage && typeof $storage.clearLocalMediaCache === 'function') {
+            await $storage.clearLocalMediaCache()
+            await refreshStorageUsage()
+            $bus.emit('ui:show_toast', {
+              message: 'Local media cache cleared.',
+              variant: 'success',
+              type: 'success'
+            })
+          }
+        }, { signal })
+      }
+
+      if (btnClearMessages) {
+        btnClearMessages.addEventListener('click', async () => {
+          if ($storage && typeof $storage.clearLocalMessagesCache === 'function') {
+            await $storage.clearLocalMessagesCache()
+            await refreshStorageUsage()
+            $bus.emit('ui:show_toast', {
+              message: 'Local messages cache cleared.',
+              variant: 'success',
+              type: 'success'
+            })
+          }
+        }, { signal })
+      }
+
+      if (btnClearAllCache) {
+        btnClearAllCache.addEventListener('click', async () => {
+          if ($storage && typeof $storage.clearLocalHistory === 'function') {
+            await $storage.clearLocalHistory()
+            await refreshStorageUsage()
+            $bus.emit('ui:show_toast', {
+              message: 'All local cache cleared.',
+              variant: 'success',
+              type: 'success'
+            })
+          }
+        }, { signal })
+      }
     }
   })
 </script>

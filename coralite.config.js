@@ -334,8 +334,12 @@ export default defineConfig({
                     newWrappedVMK,
                     remainingWraps
                   }
-                  if (userId) payload.userId = userId
-                  if (recoveryAuthProof) payload.recoveryAuthProof = recoveryAuthProof
+                  if (userId) {
+                    payload.userId = userId
+                  }
+                  if (recoveryAuthProof) {
+                    payload.recoveryAuthProof = recoveryAuthProof
+                  }
                   return await instance.send('/api/custom/rotate_password', {
                     method: 'POST',
                     headers: {

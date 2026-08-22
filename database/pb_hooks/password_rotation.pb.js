@@ -70,7 +70,11 @@ routerAdd('POST', '/api/custom/rotate_password', (e) => {
       function getAttempts (key) {
         let val = store.get(key)
         if (typeof val === 'string') {
-          try { val = JSON.parse(val) } catch (_) { val = [] }
+          try {
+            val = JSON.parse(val)
+          } catch (_) {
+            val = []
+          }
         }
         return Array.isArray(val) ? val : []
       }

@@ -24,7 +24,11 @@ routerAdd('POST', '/api/custom/recover_account', (e) => {
     function getAttempts (key) {
       let val = store.get(key)
       if (typeof val === 'string') {
-        try { val = JSON.parse(val) } catch (_) { val = [] }
+        try {
+          val = JSON.parse(val)
+        } catch (_) {
+          val = []
+        }
       }
       return Array.isArray(val) ? val : []
     }
@@ -73,7 +77,11 @@ routerAdd('POST', '/api/custom/recover_account', (e) => {
 
     let recoveryWraps = userModel.recovery_wraps || []
     if (typeof recoveryWraps === 'string') {
-      try { recoveryWraps = JSON.parse(recoveryWraps) } catch (err) { recoveryWraps = [] }
+      try {
+        recoveryWraps = JSON.parse(recoveryWraps)
+      } catch (err) {
+        recoveryWraps = []
+      }
     }
 
     if (!recoveryWraps || (Array.isArray(recoveryWraps) && recoveryWraps.length === 0)) {
@@ -82,7 +90,10 @@ routerAdd('POST', '/api/custom/recover_account', (e) => {
 
     let encryptedPrivateKeys = userModel.encrypted_private_keys
     if (typeof encryptedPrivateKeys === 'string') {
-      try { encryptedPrivateKeys = JSON.parse(encryptedPrivateKeys) } catch (err) {}
+      try {
+        encryptedPrivateKeys = JSON.parse(encryptedPrivateKeys)
+      } catch (err) {
+      }
     }
 
     return e.json(200, {

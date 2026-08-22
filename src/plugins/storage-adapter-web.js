@@ -656,6 +656,126 @@ export function createWebStorageAdapter () {
     },
 
     /**
+     * Calculates storage metrics for local files, local assets, and local messages.
+     *
+     * @returns {Promise<{ mediaBytes: number, mediaCount: number, messagesBytes: number, messagesCount: number, totalBytes: number }>}
+     */
+    getStorageUsage: async () => {
+      if (!dbInstance) {
+        return {
+          mediaBytes: 0,
+          mediaCount: 0,
+          messagesBytes: 0,
+          messagesCount: 0,
+          totalBytes: 0
+        }
+      }
+
+      let mediaBytes = 0
+      let mediaCount = 0
+
+      // Sum local_files sizes
+      const files = await dbInstance.table('local_files').toArray()
+      for (const file of files) {
+        mediaCount++
+        if (file.blob && typeof file.blob.size === 'number') {
+          mediaBytes += file.blob.size
+        } else if (file.size && typeof file.size === 'number') {
+          mediaBytes += file.size
+        }
+      }
+
+      // Sum local_assets sizes (if file size stored in metadata)
+      const assets = await dbInstance.local_assets.toArray()
+      for (const asset of assets) {
+        if (asset.size && typeof asset.size === 'number') {
+          mediaBytes += asset.size
+        }
+      }
+
+      // Sum local_messages
+      let messagesBytes = 0
+      let messagesCount = 0
+      const messages = await dbInstance.local_messages.toArray()
+      messagesCount = messages.length
+      for (const msg of messages) {
+        try {
+          const str = JSON.stringify(msg)
+          messagesBytes += new TextEncoder().encode(str).length
+        } catch (_) {
+          messagesBytes += 100 // fallback estimate per record
+        }
+      }
+
+      return {
+        mediaBytes,
+        mediaCount,
+        messagesBytes,
+        messagesCount,
+        totalBytes: mediaBytes + messagesBytes
+      }
+    },
+
+    /**
+     * Clears local media files and local assets cache.
+     *
+     * @returns {Promise<boolean>}
+     */
+    clearLocalMediaCache: async () => {
+      if (!dbInstance) {
+        return false
+      }
+      await dbInstance.table('local_files').clear()
+      await dbInstance.local_assets.clear()
+      return true
+    },
+
+    /**
+     * Clears local messages cache.
+     *
+     * @returns {Promise<boolean>}
+     */
+    clearLocalMessagesCache: async () => {
+      if (!dbInstance) {
+        return false
+      }
+      await dbInstance.local_messages.clear()
+      return true
+    },
+
+    /**
+     * Clears all local history (messages, assets, and files).
+     *
+     * @returns {Promise<boolean>}
+     */
+    clearLocalHistory: async () => {
+      if (!dbInstance) {
+        return false
+      }
+      await dbInstance.local_messages.clear()
+      await dbInstance.local_assets.clear()
+      await dbInstance.table('local_files').clear()
+      return true
+    },
+
+    /**
+     * Completely purges all tables in local storage.
+     *
+     * @returns {Promise<boolean>}
+     */
+    purgeAllData: async () => {
+      if (!dbInstance) {
+        return false
+      }
+      await dbInstance.local_messages.clear()
+      await dbInstance.local_assets.clear()
+      await dbInstance.local_rooms.clear()
+      await dbInstance.local_config.clear()
+      await dbInstance.table('local_files').clear()
+      return true
+    },
+
+    /**
      * Retrieves an asset record by ID.
      *
      * @param {string} id - The unique ID of the asset.

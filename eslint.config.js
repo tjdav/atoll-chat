@@ -253,6 +253,7 @@ export default [
       '**/.coralite-testing/',
       '**/.coralite-dev/',
       '**/.coralite-prod/',
+      '**/tests/',
       'android/'
     ]
   }

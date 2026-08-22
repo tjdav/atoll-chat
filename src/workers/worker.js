@@ -201,7 +201,8 @@ self.onmessage = (event) => {
     'worker:decrypt_master_key_with_code',
     'worker:decrypt_vault',
     'worker:crypto_box_seal',
-    'worker:crypto_box_seal_open'
+    'worker:crypto_box_seal_open',
+    'worker:clear_local_history'
   ]
 
   if (parallelTasks.includes(type)) {
@@ -661,6 +662,16 @@ async function handleEvent (event) {
         id,
         type,
         result: 'ACK'
+      })
+      return
+    }
+
+    if (type === 'worker:clear_local_history') {
+      pendingKeyReplayBuffer.clear()
+      self.postMessage({
+        id,
+        type,
+        result: { success: true }
       })
       return
     }

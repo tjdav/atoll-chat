@@ -304,7 +304,20 @@ export default definePlugin({
           // Asset Domain
           getAsset: (id) => initialAdapter.getAsset(id),
           saveAsset: (asset) => initialAdapter.saveAsset(asset),
-          getAssetsByCategory: (category, lastItem, batchSize) => initialAdapter.getAssetsByCategory(category, lastItem, batchSize)
+          getAssetsByCategory: (category, lastItem, batchSize) => initialAdapter.getAssetsByCategory(category, lastItem, batchSize),
+
+          // Cache & History Domain
+          getStorageUsage: () => initialAdapter.getStorageUsage(),
+          clearLocalMediaCache: () => initialAdapter.clearLocalMediaCache(),
+          clearLocalMessagesCache: () => initialAdapter.clearLocalMessagesCache(),
+          clearLocalHistory: async () => {
+            const res = await initialAdapter.clearLocalHistory()
+            if (pluginContext.$bus) {
+              pluginContext.$bus.emit('db:history_cleared')
+            }
+            return res
+          },
+          purgeAllData: () => initialAdapter.purgeAllData()
         }
 
         api.$storage = api

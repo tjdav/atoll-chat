@@ -40,7 +40,9 @@
       let initSequence = 0
 
       const updateItemUI = async (item, container) => {
-        if (!container) return
+        if (!container) {
+          return
+        }
         const room = await $storage.getRoom(item.room_id)
         const roomName = resolveRoomName(room, { currentUser: $state.currentUser })
 
@@ -174,7 +176,9 @@
 
       const renderBatch = (items, activeId) => {
         const container = slideshow.getContainer()
-        if (!container) return
+        if (!container) {
+          return
+        }
         items.forEach(item => {
           const isActive = item.id === activeId
           const el = createCarouselItem(item, isActive)

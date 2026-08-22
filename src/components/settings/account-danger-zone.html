@@ -1,0 +1,314 @@
+<template id="account-danger-zone">
+  <section class="mt-4">
+    <h6 class="text-uppercase text-danger fw-bold small mb-3">Danger Zone</h6>
+
+    <!-- Delete Message History Card -->
+    <div class="card shadow-sm border border-danger-subtle mb-3 bg-body">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="fw-semibold text-danger mb-1">Delete Message History</div>
+            <div class="small text-muted">
+              Permanently delete all messages and media you have sent across all rooms. Your rooms and memberships will remain intact.
+            </div>
+          </div>
+          <button ref="btnDeleteHistory" data-testid="btnDeleteHistory" class="btn btn-outline-danger btn-sm ms-3 text-nowrap">
+            Delete Message History
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Account Card -->
+    <div class="card shadow-sm border border-danger mb-0 bg-body">
+      <div class="card-body">
+        <div class="d-flex align-items-center justify-content-between">
+          <div>
+            <div class="fw-semibold text-danger mb-1">Delete Account</div>
+            <div class="small text-muted">
+              Permanently delete your account record, encrypted keys, biometric credentials, memberships, and all sent content. This action is irreversible.
+            </div>
+          </div>
+          <button ref="btnDeleteAccount" data-testid="btnDeleteAccount" class="btn btn-danger btn-sm ms-3 text-nowrap">
+            Delete Account
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Delete History Modal -->
+  <atoll-popup
+    ref="historyModal"
+    title="Delete Message History"
+    variant="danger"
+  >
+    <div class="text-start">
+      <p class="small text-muted mb-3">
+        Are you sure you want to delete your entire message history? All messages and media uploaded by you will be permanently removed from the server and local storage.
+      </p>
+
+      <form ref="historyForm" class="text-start">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Confirm Account Password</label>
+          <input
+            type="password"
+            class="form-control"
+            ref="historyPasswordInput"
+            data-testid="historyPasswordInput"
+            required
+            placeholder="Enter your password"
+          />
+        </div>
+        <div ref="historyError" class="alert alert-danger d-none small p-2 mb-0"></div>
+      </form>
+    </div>
+
+    <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end gap-2">
+      <button type="button" class="btn btn-danger" ref="btnConfirmDeleteHistory" data-testid="btnConfirmDeleteHistory">
+        Delete History
+      </button>
+    </div>
+  </atoll-popup>
+
+  <!-- Delete Account Modal -->
+  <atoll-popup
+    ref="accountModal"
+    title="Delete Account"
+    variant="danger"
+  >
+    <div class="text-start">
+      <p class="small text-muted mb-3">
+        This will permanently destroy your user account, room memberships, authored messages, and cryptographic vault. This action cannot be undone.
+      </p>
+
+      <form ref="accountForm" class="text-start">
+        <div class="mb-3">
+          <label class="form-label small fw-bold">Confirm Account Password</label>
+          <input
+            type="password"
+            class="form-control"
+            ref="accountPasswordInput"
+            data-testid="accountPasswordInput"
+            required
+            placeholder="Enter your password"
+          />
+        </div>
+        <div ref="accountError" class="alert alert-danger d-none small p-2 mb-0"></div>
+      </form>
+    </div>
+
+    <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end gap-2">
+      <button type="button" class="btn btn-danger" ref="btnConfirmDeleteAccount" data-testid="btnConfirmDeleteAccount">
+        Permanently Delete Account
+      </button>
+    </div>
+  </atoll-popup>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    client: async ({ refs, pocketbase, storage, cryptoWorker, biometric, eventBus, signal }) => {
+      const { pb } = pocketbase
+      const { $bus } = eventBus
+      const { $storage } = storage
+      const { $worker } = cryptoWorker
+
+      const btnDeleteHistory = refs('btnDeleteHistory')
+      const btnDeleteAccount = refs('btnDeleteAccount')
+
+      const historyModal = refs('historyModal')
+      const historyForm = refs('historyForm')
+      const historyPasswordInput = refs('historyPasswordInput')
+      const historyError = refs('historyError')
+      const btnConfirmDeleteHistory = refs('btnConfirmDeleteHistory')
+
+      const accountModal = refs('accountModal')
+      const accountForm = refs('accountForm')
+      const accountPasswordInput = refs('accountPasswordInput')
+      const accountError = refs('accountError')
+      const btnConfirmDeleteAccount = refs('btnConfirmDeleteAccount')
+
+      // Open History Modal
+      if (btnDeleteHistory) {
+        btnDeleteHistory.addEventListener('click', () => {
+          if (historyPasswordInput) {
+            historyPasswordInput.value = ''
+          }
+          if (historyError) {
+            historyError.classList.add('d-none')
+          }
+          if (historyModal && typeof historyModal.show === 'function') {
+            historyModal.show()
+            setTimeout(() => historyPasswordInput?.focus(), 100)
+          }
+        }, { signal })
+      }
+
+      // Open Account Modal
+      if (btnDeleteAccount) {
+        btnDeleteAccount.addEventListener('click', () => {
+          if (accountPasswordInput) {
+            accountPasswordInput.value = ''
+          }
+          if (accountError) {
+            accountError.classList.add('d-none')
+          }
+          if (accountModal && typeof accountModal.show === 'function') {
+            accountModal.show()
+            setTimeout(() => accountPasswordInput?.focus(), 100)
+          }
+        }, { signal })
+      }
+
+      // Delete History Action
+      const handleHistorySubmit = async () => {
+        const password = historyPasswordInput ? historyPasswordInput.value : ''
+        if (historyError) {
+          historyError.classList.add('d-none')
+        }
+
+        if (!password) {
+          if (historyError) {
+            historyError.textContent = 'Password is required.'
+            historyError.classList.remove('d-none')
+          }
+          return
+        }
+
+        try {
+          const res = await pb.send('/api/custom/history/delete', {
+            method: 'POST',
+            body: { password }
+          })
+
+          if (res && res.success) {
+            if ($storage && typeof $storage.clearLocalHistory === 'function') {
+              await $storage.clearLocalHistory()
+            }
+            if ($worker && typeof $worker.execute === 'function') {
+              await $worker.execute('worker:clear_local_history').catch(() => {
+              })
+            }
+
+            if (historyModal && typeof historyModal.hide === 'function') {
+              historyModal.hide()
+            }
+
+            $bus.emit('db:history_cleared')
+            $bus.emit('ui:show_toast', {
+              message: 'Message history deleted successfully.',
+              variant: 'success',
+              type: 'success'
+            })
+          } else {
+            throw new Error(res?.message || 'Failed to delete message history.')
+          }
+        } catch (err) {
+          console.error('[account-danger-zone] Delete history error:', err)
+          if (historyError) {
+            historyError.textContent = err.message || err.data?.message || 'Failed to delete message history.'
+            historyError.classList.remove('d-none')
+          }
+        }
+      }
+
+      if (btnConfirmDeleteHistory) {
+        btnConfirmDeleteHistory.onclick = handleHistorySubmit
+      }
+      if (historyForm) {
+        historyForm.addEventListener('submit', (e) => {
+          e.preventDefault()
+          handleHistorySubmit()
+        }, { signal })
+      }
+
+      // Delete Account Action
+      const handleAccountSubmit = async () => {
+        const password = accountPasswordInput ? accountPasswordInput.value : ''
+        if (accountError) {
+          accountError.classList.add('d-none')
+        }
+
+        if (!password) {
+          if (accountError) {
+            accountError.textContent = 'Password is required.'
+            accountError.classList.remove('d-none')
+          }
+          return
+        }
+
+        const userId = pb.authStore.model?.id
+
+        try {
+          const res = await pb.send('/api/custom/account/delete', {
+            method: 'POST',
+            body: { password }
+          })
+
+          if (res && res.success) {
+            if (accountModal && typeof accountModal.hide === 'function') {
+              accountModal.hide()
+            }
+
+            // Teardown Sequence
+            if (userId) {
+              if (biometric && typeof biometric.deleteMasterKey === 'function') {
+                await biometric.deleteMasterKey(userId).catch(() => {
+                })
+              }
+              localStorage.removeItem(`atoll_biometric_credentials_${userId}`)
+              try {
+                const bioUsers = JSON.parse(localStorage.getItem('atoll_biometric_users') || '[]')
+                const filtered = bioUsers.filter(u => u.id !== userId)
+                localStorage.setItem('atoll_biometric_users', JSON.stringify(filtered))
+              } catch (_) {
+              }
+            }
+
+            if ($worker && typeof $worker.execute === 'function') {
+              await $worker.execute('worker:wipe_keys').catch(() => {
+              })
+            }
+
+            const activeInstanceId = localStorage.getItem('atoll_active_instance_id')
+            if (activeInstanceId && typeof indexedDB !== 'undefined') {
+              try {
+                indexedDB.deleteDatabase('atoll_data_' + activeInstanceId)
+              } catch (_) {
+              }
+            }
+
+            localStorage.removeItem('device_trust_token')
+            localStorage.removeItem('atoll_active_instance_id')
+
+            pb.authStore.clear()
+            $bus.emit('auth:logout')
+
+            window.location.reload()
+          } else {
+            throw new Error(res?.message || 'Failed to delete account.')
+          }
+        } catch (err) {
+          console.error('[account-danger-zone] Delete account error:', err)
+          if (accountError) {
+            accountError.textContent = err.message || err.data?.message || 'Failed to delete account.'
+            accountError.classList.remove('d-none')
+          }
+        }
+      }
+
+      if (btnConfirmDeleteAccount) {
+        btnConfirmDeleteAccount.onclick = handleAccountSubmit
+      }
+      if (accountForm) {
+        accountForm.addEventListener('submit', (e) => {
+          e.preventDefault()
+          handleAccountSubmit()
+        }, { signal })
+      }
+    }
+  })
+</script>

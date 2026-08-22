@@ -635,6 +635,150 @@ export function createNativeStorageAdapter () {
       return Array.from(localMessages.values()).filter(m => ids.includes(m.target_id))
     },
 
+    /**
+     * Calculates storage metrics for local files, local assets, and local messages.
+     *
+     * @returns {Promise<{ mediaBytes: number, mediaCount: number, messagesBytes: number, messagesCount: number, totalBytes: number }>}
+     */
+    getStorageUsage: async () => {
+      let mediaBytes = 0
+      let mediaCount = 0
+
+      for (const file of localFiles.values()) {
+        mediaCount++
+        if (file.blob && typeof file.blob.size === 'number') {
+          mediaBytes += file.blob.size
+        } else if (file.size && typeof file.size === 'number') {
+          mediaBytes += file.size
+        }
+      }
+
+      for (const asset of localAssets.values()) {
+        if (asset.size && typeof asset.size === 'number') {
+          mediaBytes += asset.size
+        }
+      }
+
+      let messagesBytes = 0
+      let messagesCount = 0
+      for (const msg of localMessages.values()) {
+        messagesCount++
+        try {
+          const str = JSON.stringify(msg)
+          messagesBytes += new TextEncoder().encode(str).length
+        } catch (_) {
+          messagesBytes += 100
+        }
+      }
+
+      return {
+        mediaBytes,
+        mediaCount,
+        messagesBytes,
+        messagesCount,
+        totalBytes: mediaBytes + messagesBytes
+      }
+    },
+
+    /**
+     * Clears local media files and local assets cache.
+     *
+     * @returns {Promise<boolean>}
+     */
+    clearLocalMediaCache: async () => {
+      localFiles.clear()
+      localAssets.clear()
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const keysToRemove = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i)
+            if (k && (k.includes('_files_') || k.includes('_assets_'))) {
+              keysToRemove.push(k)
+            }
+          }
+          keysToRemove.forEach(k => localStorage.removeItem(k))
+        } catch (_) {
+        }
+      }
+      return true
+    },
+
+    /**
+     * Clears local messages cache.
+     *
+     * @returns {Promise<boolean>}
+     */
+    clearLocalMessagesCache: async () => {
+      localMessages.clear()
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const keysToRemove = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i)
+            if (k && k.includes('_messages_')) {
+              keysToRemove.push(k)
+            }
+          }
+          keysToRemove.forEach(k => localStorage.removeItem(k))
+        } catch (_) {
+        }
+      }
+      return true
+    },
+
+    /**
+     * Clears all local history (messages, assets, and files).
+     *
+     * @returns {Promise<boolean>}
+     */
+    clearLocalHistory: async () => {
+      localMessages.clear()
+      localAssets.clear()
+      localFiles.clear()
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const keysToRemove = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i)
+            if (k && (k.includes('_messages_') || k.includes('_assets_') || k.includes('_files_'))) {
+              keysToRemove.push(k)
+            }
+          }
+          keysToRemove.forEach(k => localStorage.removeItem(k))
+        } catch (_) {
+        }
+      }
+      return true
+    },
+
+    /**
+     * Completely purges all tables in local storage.
+     *
+     * @returns {Promise<boolean>}
+     */
+    purgeAllData: async () => {
+      localRooms.clear()
+      localMessages.clear()
+      localAssets.clear()
+      localConfig.clear()
+      localFiles.clear()
+      if (typeof localStorage !== 'undefined') {
+        try {
+          const keysToRemove = []
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i)
+            if (k && k.startsWith('atoll_sqlite_')) {
+              keysToRemove.push(k)
+            }
+          }
+          keysToRemove.forEach(k => localStorage.removeItem(k))
+        } catch (_) {
+        }
+      }
+      return true
+    },
+
     // Asset Domain
     /**
      * Retrieves an asset record by its ID.

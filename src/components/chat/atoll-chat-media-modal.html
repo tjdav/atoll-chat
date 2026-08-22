@@ -166,7 +166,8 @@
             if (video && document.activeElement !== video) {
               e.preventDefault()
               if (video.paused) {
-                video.play().catch(() => {})
+                video.play().catch(() => {
+                })
               } else {
                 video.pause()
               }
@@ -325,9 +326,13 @@
        * Renders the carousel slides container shell and thumbnail filmstrip track.
        */
       const renderSlidesAndFilmstrip = () => {
-        if (!slideshowEl || typeof slideshowEl.getContainer !== 'function') return
+        if (!slideshowEl || typeof slideshowEl.getContainer !== 'function') {
+          return
+        }
         const container = slideshowEl.getContainer()
-        if (!container) return
+        if (!container) {
+          return
+        }
         container.innerHTML = ''
         thumbnailTrack.innerHTML = ''
 
@@ -515,7 +520,8 @@
             const video = container.querySelector('video')
             if (video) {
               video.volume = currentVolume
-              video.play().catch(() => {})
+              video.play().catch(() => {
+              })
             }
           }
           return
@@ -564,7 +570,8 @@
               video.src = objectUrl
               video.volume = currentVolume
               container.appendChild(video)
-              video.play().catch(() => {})
+              video.play().catch(() => {
+              })
             } else {
               // Click-to-Play Overlay Placeholder
               const placeholder = document.createElement('div')
@@ -599,7 +606,8 @@
                 video.src = objectUrl
                 video.volume = currentVolume
                 container.appendChild(video)
-                video.play().catch(() => {})
+                video.play().catch(() => {
+                })
               })
 
               placeholder.appendChild(playBtn)
@@ -632,9 +640,13 @@
        */
       const enforceWindowBuffer = (activeIdx) => {
         const total = mediaSlides.length
-        if (!slideshowEl || typeof slideshowEl.getContainer !== 'function') return
+        if (!slideshowEl || typeof slideshowEl.getContainer !== 'function') {
+          return
+        }
         const slideContainer = slideshowEl.getContainer()
-        if (!slideContainer) return
+        if (!slideContainer) {
+          return
+        }
 
         for (let i = 0; i < total; i++) {
           if (Math.abs(i - activeIdx) > CLEANUP_MARGIN) {
@@ -667,9 +679,13 @@
        * Pause active video playback across all slides.
        */
       const pauseAllVideos = () => {
-        if (!slideshowEl || typeof slideshowEl.getContainer !== 'function') return
+        if (!slideshowEl || typeof slideshowEl.getContainer !== 'function') {
+          return
+        }
         const slideContainer = slideshowEl.getContainer()
-        if (!slideContainer) return
+        if (!slideContainer) {
+          return
+        }
         const videos = slideContainer.querySelectorAll('video')
         videos.forEach(v => {
           try {

@@ -47,7 +47,9 @@
         }
 
         const container = slideshow.getContainer()
-        if (!container) return
+        if (!container) {
+          return
+        }
 
         const start = Math.max(0, currentIndex - BUFFER_SIZE)
         const end = Math.min(loadedItems.length - 1, currentIndex + BUFFER_SIZE)
@@ -157,7 +159,9 @@
 
       const renderBatch = (items, activeId) => {
         const container = slideshow.getContainer()
-        if (!container) return
+        if (!container) {
+          return
+        }
         items.forEach(item => {
           const isActive = item.id === activeId
           const el = createCarouselItem(item, isActive)
