@@ -133,29 +133,6 @@ describe('Atoll Chat Media Modal Component Tests', () => {
     }
   }
 
-  const bootstrapMock = {
-    Carousel: class MockCarousel {
-      constructor (el, options) {
-        this.el = el
-        this.options = options
-        this.currentSlide = 0
-      }
-      to (idx) {
-        this.currentSlide = idx
-      }
-      prev () {
-        if (this.currentSlide > 0) {
-          this.currentSlide--
-        }
-      }
-      next () {
-        this.currentSlide++
-      }
-      dispose () {
-      }
-    }
-  }
-
   beforeEach(async () => {
     document.body.innerHTML = ''
     emittedEvents.length = 0
@@ -219,12 +196,12 @@ describe('Atoll Chat Media Modal Component Tests', () => {
     await loadComponent('atoll-button')
     await loadComponent('atoll-profile')
     await loadComponent('ui-share-button')
+    await loadComponent('atoll-slideshow')
 
     const mocks = {
       eventBus: { $bus: busMock },
       storage: { $storage: storageMock },
       globalStore: globalStoreMock,
-      bootstrap: bootstrapMock,
       utils: {
         $time: {
           formatTime: () => '10:00 AM',
@@ -268,6 +245,9 @@ describe('Atoll Chat Media Modal Component Tests', () => {
 
     const thumbs = element.querySelectorAll('.chat-media-thumb-item')
     assert.strictEqual(thumbs.length, 3, 'Should render 3 thumbnail items for all 3 media attachments in room')
+
+    const slideshow = element.querySelector('atoll-slideshow')
+    assert.ok(slideshow, '<atoll-slideshow> should be mounted in modal')
 
     element.remove()
   })

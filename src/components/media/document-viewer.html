@@ -7,20 +7,8 @@
       theme="light">
     </viewer-header>
 
-    <div ref="carousel" class="carousel slide flex-grow-1 overflow-hidden" data-bs-interval="false">
-      <div class="carousel-inner h-100" ref="carouselInner">
-        <!-- Carousel items will be rendered here -->
-      </div>
-      
-      <button class="carousel-control-prev" type="button" ref="btnPrev">
-        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Previous</span>
-      </button>
-      <button class="carousel-control-next" type="button" ref="btnNext">
-        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Next</span>
-      </button>
-    </div>
+    <atoll-slideshow ref="slideshow" class="flex-grow-1 overflow-hidden">
+    </atoll-slideshow>
 
     <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}" style="z-index: 1050;">
       {{ errorMessage }}
@@ -37,17 +25,12 @@
       errorMessage: '',
       fileName: 'Untitled Document'
     }),
-    client: async ({ state, signal, refs, storage, globalStore, utils, bootstrap }) => {
+    client: async ({ state, signal, refs, storage, globalStore, utils }) => {
       const { $storage } = storage
       const { $state } = globalStore
       const { $media } = utils
-      const { Carousel } = bootstrap
-      const carouselEl = refs('carousel')
-      const carouselInner = refs('carouselInner')
-      const btnPrev = refs('btnPrev')
-      const btnNext = refs('btnNext')
+      const slideshow = refs('slideshow')
 
-      let carouselInstance = null
       let loadedItems = []
       let hasMore = true
       let lastTimestamp = null
@@ -55,15 +38,8 @@
       let isInternalChange = false
       let initSequence = 0
 
-      const cleanup = () => {
-        if (carouselInstance) {
-          carouselInstance.dispose()
-          carouselInstance = null
-        }
-      }
-      signal.addEventListener('abort', cleanup)
-
       const decryptAndLoad = async (item, container) => {
+        if (!container) return
         const loader = container.querySelector('.spinner-border')
         const content = container.querySelector('.doc-content')
         if (loader) {
@@ -103,7 +79,7 @@
 
       const createCarouselItem = (item, isActive) => {
         const carouselItem = document.createElement('div')
-        carouselItem.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        carouselItem.className = `carousel-item atoll-slideshow-slide h-100 ${isActive ? 'active' : ''}`
         carouselItem.dataset.id = item.id
 
         const wrapper = document.createElement('div')
@@ -112,7 +88,7 @@
         const spinner = document.createElement('div')
         spinner.className = 'spinner-border text-primary d-none'
         spinner.setAttribute('role', 'status')
-  
+
         const spinnerText = document.createElement('span')
         spinnerText.className = 'visually-hidden'
         spinnerText.textContent = 'Loading...'
@@ -122,10 +98,10 @@
         const card = document.createElement('div')
         card.className = 'doc-content d-none card shadow-sm p-4 text-center'
         card.style.maxWidth = '400px'
-  
+
         const iconWrapper = document.createElement('div')
         iconWrapper.className = 'mb-4'
-  
+
         const icon = document.createElement('atoll-icon')
         icon.setAttribute('name', 'document')
         icon.setAttribute('size', '80')
@@ -155,7 +131,7 @@
 
         btnWrapper.appendChild(downloadBtn)
         card.appendChild(btnWrapper)
-  
+
         wrapper.appendChild(card)
         carouselItem.appendChild(wrapper)
 
@@ -181,10 +157,12 @@
       }
 
       const renderBatch = (items, activeId) => {
+        const container = slideshow.getContainer()
+        if (!container) return
         items.forEach(item => {
           const isActive = item.id === activeId
           const el = createCarouselItem(item, isActive)
-          carouselInner.appendChild(el)
+          container.appendChild(el)
           if (isActive) {
             state.fileName = item.filename || 'Untitled Document'
             decryptAndLoad(item, el)
@@ -194,8 +172,10 @@
 
       const initCarousel = async () => {
         const seq = ++initSequence
-        cleanup()
-        carouselInner.innerHTML = ''
+        const container = slideshow.getContainer()
+        if (container) {
+          container.innerHTML = ''
+        }
         loadedItems = []
         lastTimestamp = null
         hasMore = true
@@ -227,50 +207,43 @@
         const actualActiveId = isValidActive ? activeId : (loadedItems[0]?.id || null)
 
         renderBatch(loadedItems, actualActiveId)
-  
-        carouselInstance = new Carousel(carouselEl, {
-          interval: false,
-          touch: true,
-          wrap: false
-        })
 
-        carouselEl.addEventListener('slid.bs.carousel', (e) => {
-          const activeItem = e.relatedTarget
-          const id = activeItem.dataset.id
-          const item = loadedItems.find(i => i.id === id)
-          if (item) {
-            isInternalChange = true
-            $state.activeSelectionId = id
-            state.fileName = item.filename || 'Untitled Document'
-            decryptAndLoad(item, activeItem)
-            isInternalChange = false
-          }
-          const index = loadedItems.findIndex(i => i.id === id)
-          if (index >= loadedItems.length - 3 && hasMore) {
-            fetchNextBatch().then(batch => renderBatch(batch, null))
-          }
-        })
+        const activeIndex = loadedItems.findIndex(i => i.id === actualActiveId)
+        if (activeIndex !== -1) {
+          slideshow.to(activeIndex, true)
+        }
       }
 
-      btnPrev.onclick = () => carouselInstance?.prev()
-      btnNext.onclick = async () => {
-        const activeItem = carouselInner.querySelector('.carousel-item.active')
-        if (!activeItem) {
-          return
+      slideshow.addEventListener('atoll-slideshow-select', (e) => {
+        const index = e.detail.index
+        const item = loadedItems[index]
+        if (item) {
+          isInternalChange = true
+          $state.activeSelectionId = item.id
+          state.fileName = item.filename || 'Untitled Document'
+
+          const container = slideshow.getContainer()
+          if (container) {
+            Array.from(container.children).forEach((child, i) => {
+              if (i === index) {
+                child.classList.add('active')
+                decryptAndLoad(item, child)
+              } else {
+                child.classList.remove('active')
+              }
+            })
+          }
+          isInternalChange = false
         }
-        const id = activeItem.dataset.id
-        const index = loadedItems.findIndex(i => i.id === id)
-  
-        if (index === loadedItems.length - 1 && hasMore) {
+      }, { signal })
+
+      slideshow.addEventListener('atoll-slideshow-settle', async (e) => {
+        const index = e.detail.index
+        if (index >= loadedItems.length - 3 && hasMore) {
           const nextBatch = await fetchNextBatch()
-          if (nextBatch.length > 0) {
-            renderBatch(nextBatch, null)
-            setTimeout(() => carouselInstance?.next(), 0)
-          }
-        } else {
-          carouselInstance?.next()
+          renderBatch(nextBatch, null)
         }
-      }
+      }, { signal })
 
       $state.subscribe('activeSelectionId', (id) => {
         if (isInternalChange || $state.activeSelectionType !== 'documents') {
@@ -278,7 +251,7 @@
         }
         const index = loadedItems.findIndex(i => i.id === id)
         if (index !== -1) {
-          carouselInstance?.to(index)
+          slideshow.to(index)
         } else {
           initCarousel()
         }

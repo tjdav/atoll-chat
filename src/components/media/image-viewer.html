@@ -7,20 +7,8 @@
       theme="dark">
     </viewer-header>
 
-    <div ref="carousel" class="carousel slide flex-grow-1 overflow-hidden" data-bs-interval="false">
-      <div class="carousel-inner h-100" ref="carouselInner">
-        <!-- Carousel items will be rendered here -->
-      </div>
-      
-      <button class="carousel-control-prev" type="button" ref="btnPrev">
-        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Previous</span>
-      </button>
-      <button class="carousel-control-next" type="button" ref="btnNext">
-        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Next</span>
-      </button>
-    </div>
+    <atoll-slideshow ref="slideshow" class="flex-grow-1 overflow-hidden">
+    </atoll-slideshow>
 
     <div class="alert alert-danger m-3 position-absolute top-0 start-0 end-0" hidden="{{ isErrorHidden }}" style="z-index: 1050;">
       {{ errorMessage }}
@@ -37,17 +25,12 @@
       errorMessage: '',
       fileName: ''
     }),
-    client: async ({ state, signal, refs, storage, globalStore, utils, bootstrap }) => {
+    client: async ({ state, signal, refs, storage, globalStore, utils }) => {
       const { $storage } = storage
       const { $state } = globalStore
       const { $media } = utils
-      const { Carousel } = bootstrap
-      const carouselEl = refs('carousel')
-      const carouselInner = refs('carouselInner')
-      const btnPrev = refs('btnPrev')
-      const btnNext = refs('btnNext')
+      const slideshow = refs('slideshow')
 
-      let carouselInstance = null
       let loadedItems = []
       let hasMore = true
       let lastTimestamp = null
@@ -58,39 +41,31 @@
       const BUFFER_SIZE = 3
       const CLEANUP_MARGIN = 2
 
-      const cleanup = () => {
-        if (carouselInstance) {
-          carouselInstance.dispose()
-          carouselInstance = null
-        }
-      }
-
-      signal.addEventListener('abort', cleanup)
-
       const manageBuffer = async (currentIndex) => {
         if (currentIndex === -1) {
           return
         }
 
+        const container = slideshow.getContainer()
+        if (!container) return
+
         const start = Math.max(0, currentIndex - BUFFER_SIZE)
         const end = Math.min(loadedItems.length - 1, currentIndex + BUFFER_SIZE)
 
-  
         for (let i = start; i <= end; i++) {
           const item = loadedItems[i]
-          const container = carouselInner.children[i]
-          if (container) {
-            decryptImage(item, container, i === currentIndex)
+          const child = container.children[i]
+          if (child) {
+            decryptImage(item, child, i === currentIndex)
           }
         }
 
-  
         const cleanupThreshold = BUFFER_SIZE + CLEANUP_MARGIN
         for (let i = 0; i < loadedItems.length; i++) {
           if (i < currentIndex - cleanupThreshold || i > currentIndex + cleanupThreshold) {
-            const container = carouselInner.children[i]
-            if (container) {
-              const img = container.querySelector('img')
+            const child = container.children[i]
+            if (child) {
+              const img = child.querySelector('img')
               if (img) {
                 img.removeAttribute('src')
                 img.classList.add('d-none')
@@ -136,7 +111,7 @@
 
       const createCarouselItem = (item, isActive) => {
         const carouselItem = document.createElement('div')
-        carouselItem.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        carouselItem.className = `carousel-item atoll-slideshow-slide h-100 ${isActive ? 'active' : ''}`
         carouselItem.dataset.id = item.id
 
         const wrapper = document.createElement('div')
@@ -181,10 +156,12 @@
       }
 
       const renderBatch = (items, activeId) => {
+        const container = slideshow.getContainer()
+        if (!container) return
         items.forEach(item => {
           const isActive = item.id === activeId
           const el = createCarouselItem(item, isActive)
-          carouselInner.appendChild(el)
+          container.appendChild(el)
           if (isActive) {
             state.fileName = item.filename || 'Untitled Image'
           }
@@ -193,8 +170,10 @@
 
       const initCarousel = async () => {
         const seq = ++initSequence
-        cleanup()
-        carouselInner.innerHTML = ''
+        const container = slideshow.getContainer()
+        if (container) {
+          container.innerHTML = ''
+        }
         loadedItems = []
         lastTimestamp = null
         hasMore = true
@@ -225,55 +204,43 @@
         renderBatch(loadedItems, actualActiveId)
 
         const activeIndex = loadedItems.findIndex(i => i.id === actualActiveId)
-        manageBuffer(activeIndex)
-  
-        carouselInstance = new Carousel(carouselEl, {
-          interval: false,
-          touch: true,
-          wrap: false
-        })
-
-        carouselEl.addEventListener('slid.bs.carousel', async (e) => {
-          const activeItem = e.relatedTarget
-          const id = activeItem.dataset.id
-          const index = loadedItems.findIndex(i => i.id === id)
-          const item = loadedItems[index]
-  
-          if (item) {
-            isInternalChange = true
-            $state.activeSelectionId = id
-            state.fileName = item.filename || 'Untitled Image'
-            isInternalChange = false
-            manageBuffer(index)
-          }
-
-  
-          if (index >= loadedItems.length - 3 && hasMore) {
-            const nextBatch = await fetchNextBatch()
-            renderBatch(nextBatch, null)
-          }
-        })
+        if (activeIndex !== -1) {
+          slideshow.to(activeIndex, true)
+          manageBuffer(activeIndex)
+        }
       }
 
-      btnPrev.onclick = () => carouselInstance?.prev()
-      btnNext.onclick = async () => {
-        const activeItem = carouselInner.querySelector('.carousel-item.active')
-        if (!activeItem) {
-          return
+      slideshow.addEventListener('atoll-slideshow-select', (e) => {
+        const index = e.detail.index
+        const item = loadedItems[index]
+        if (item) {
+          isInternalChange = true
+          $state.activeSelectionId = item.id
+          state.fileName = item.filename || 'Untitled Image'
+          isInternalChange = false
+
+          const container = slideshow.getContainer()
+          if (container) {
+            Array.from(container.children).forEach((child, i) => {
+              if (i === index) {
+                child.classList.add('active')
+              } else {
+                child.classList.remove('active')
+              }
+            })
+          }
         }
-        const id = activeItem.dataset.id
-        const index = loadedItems.findIndex(i => i.id === id)
-  
-        if (index === loadedItems.length - 1 && hasMore) {
+      }, { signal })
+
+      slideshow.addEventListener('atoll-slideshow-settle', async (e) => {
+        const index = e.detail.index
+        manageBuffer(index)
+
+        if (index >= loadedItems.length - 3 && hasMore) {
           const nextBatch = await fetchNextBatch()
-          if (nextBatch.length > 0) {
-            renderBatch(nextBatch, null)
-            setTimeout(() => carouselInstance?.next(), 0)
-          }
-        } else {
-          carouselInstance?.next()
+          renderBatch(nextBatch, null)
         }
-      }
+      }, { signal })
 
       $state.subscribe('activeSelectionId', (id) => {
         if (isInternalChange || $state.activeSelectionType !== 'pictures') {
@@ -281,7 +248,7 @@
         }
         const index = loadedItems.findIndex(i => i.id === id)
         if (index !== -1) {
-          carouselInstance?.to(index)
+          slideshow.to(index)
         } else {
           initCarousel()
         }

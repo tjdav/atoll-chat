@@ -7,20 +7,8 @@
       theme="light">
     </viewer-header>
 
-    <div ref="carousel" class="carousel slide flex-grow-1 overflow-hidden" data-bs-interval="false">
-      <div class="carousel-inner h-100" ref="carouselInner">
-        <!-- Carousel items will be rendered here -->
-      </div>
-      
-      <button class="carousel-control-prev" type="button" ref="btnPrev">
-        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Previous</span>
-      </button>
-      <button class="carousel-control-next" type="button" ref="btnNext">
-        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Next</span>
-      </button>
-    </div>
+    <atoll-slideshow ref="slideshow" class="flex-grow-1 overflow-hidden">
+    </atoll-slideshow>
   </div>
 </template>
 
@@ -31,18 +19,13 @@
     server: () => ({
       domain: ''
     }),
-    client: async ({ state, signal, refs, storage, globalStore, utils, bootstrap }) => {
+    client: async ({ state, signal, refs, storage, globalStore, utils }) => {
       const { resolveRoomName } = await import('../../utils/room-name.js')
       const { $storage } = storage
       const { $state } = globalStore
       const { $media } = utils
-      const { Carousel } = bootstrap
-      const carouselEl = refs('carousel')
-      const carouselInner = refs('carouselInner')
-      const btnPrev = refs('btnPrev')
-      const btnNext = refs('btnNext')
+      const slideshow = refs('slideshow')
 
-      let carouselInstance = null
       let loadedItems = []
       let hasMore = true
       let lastTimestamp = null
@@ -50,15 +33,8 @@
       let isInternalChange = false
       let initSequence = 0
 
-      const cleanup = () => {
-        if (carouselInstance) {
-          carouselInstance.dispose()
-          carouselInstance = null
-        }
-      }
-      signal.addEventListener('abort', cleanup)
-
       const updateItemUI = async (item, container) => {
+        if (!container) return
         const { message: msg, link, linkIndex } = item
         const room = await $storage.getRoom(msg.room_id)
         const roomName = resolveRoomName(room, { currentUser: $state.currentUser })
@@ -123,7 +99,7 @@
 
       const createCarouselItem = (item, isActive) => {
         const div = document.createElement('div')
-        div.className = `carousel-item h-100 ${isActive ? 'active' : ''}`
+        div.className = `carousel-item atoll-slideshow-slide h-100 ${isActive ? 'active' : ''}`
         div.dataset.id = item.id
         div.innerHTML = `
           <div class="link-viewer h-100 overflow-y-auto p-4">
@@ -178,7 +154,7 @@
         if (rawMessages.length < BATCH_SIZE) {
           hasMore = false
         }
-  
+
         const explodedItems = []
         rawMessages.forEach(msg => {
           const links = msg.links || [{
@@ -205,10 +181,12 @@
       }
 
       const renderBatch = (items, activeId) => {
+        const container = slideshow.getContainer()
+        if (!container) return
         items.forEach(item => {
           const isActive = item.id === activeId
           const el = createCarouselItem(item, isActive)
-          carouselInner.appendChild(el)
+          container.appendChild(el)
           if (isActive) {
             state.domain = item.link.domain || ''
             updateItemUI(item, el)
@@ -218,8 +196,10 @@
 
       const initCarousel = async () => {
         const seq = ++initSequence
-        cleanup()
-        carouselInner.innerHTML = ''
+        const container = slideshow.getContainer()
+        if (container) {
+          container.innerHTML = ''
+        }
         loadedItems = []
         lastTimestamp = null
         hasMore = true
@@ -249,50 +229,43 @@
         const actualActiveId = isValidActive ? activeId : (loadedItems[0]?.id || null)
 
         renderBatch(loadedItems, actualActiveId)
-  
-        carouselInstance = new Carousel(carouselEl, {
-          interval: false,
-          touch: true,
-          wrap: false
-        })
 
-        carouselEl.addEventListener('slid.bs.carousel', (e) => {
-          const activeItem = e.relatedTarget
-          const id = activeItem.dataset.id
-          const item = loadedItems.find(i => i.id === id)
-          if (item) {
-            isInternalChange = true
-            $state.activeSelectionId = id
-            state.domain = item.link.domain || ''
-            updateItemUI(item, activeItem)
-            isInternalChange = false
-          }
-          const index = loadedItems.findIndex(i => i.id === id)
-          if (index >= loadedItems.length - 3 && hasMore) {
-            fetchNextBatch().then(batch => renderBatch(batch, null))
-          }
-        })
+        const activeIndex = loadedItems.findIndex(i => i.id === actualActiveId)
+        if (activeIndex !== -1) {
+          slideshow.to(activeIndex, true)
+        }
       }
 
-      btnPrev.onclick = () => carouselInstance?.prev()
-      btnNext.onclick = async () => {
-        const activeItem = carouselInner.querySelector('.carousel-item.active')
-        if (!activeItem) {
-          return
+      slideshow.addEventListener('atoll-slideshow-select', (e) => {
+        const index = e.detail.index
+        const item = loadedItems[index]
+        if (item) {
+          isInternalChange = true
+          $state.activeSelectionId = item.id
+          state.domain = item.link.domain || ''
+
+          const container = slideshow.getContainer()
+          if (container) {
+            Array.from(container.children).forEach((child, i) => {
+              if (i === index) {
+                child.classList.add('active')
+                updateItemUI(item, child)
+              } else {
+                child.classList.remove('active')
+              }
+            })
+          }
+          isInternalChange = false
         }
-        const id = activeItem.dataset.id
-        const index = loadedItems.findIndex(i => i.id === id)
-  
-        if (index === loadedItems.length - 1 && hasMore) {
+      }, { signal })
+
+      slideshow.addEventListener('atoll-slideshow-settle', async (e) => {
+        const index = e.detail.index
+        if (index >= loadedItems.length - 3 && hasMore) {
           const nextBatch = await fetchNextBatch()
-          if (nextBatch.length > 0) {
-            renderBatch(nextBatch, null)
-            setTimeout(() => carouselInstance?.next(), 0)
-          }
-        } else {
-          carouselInstance?.next()
+          renderBatch(nextBatch, null)
         }
-      }
+      }, { signal })
 
       $state.subscribe('activeSelectionId', (id) => {
         if (isInternalChange || $state.activeSelectionType !== 'links') {
@@ -300,7 +273,7 @@
         }
         const index = loadedItems.findIndex(i => i.id === id)
         if (index !== -1) {
-          carouselInstance?.to(index)
+          slideshow.to(index)
         } else {
           initCarousel()
         }

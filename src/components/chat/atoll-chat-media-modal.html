@@ -40,19 +40,13 @@
 
     <!-- Carousel Body -->
     <div ref="modalBody" class="chat-media-modal-body w-100 h-100 d-flex align-items-center justify-content-center position-relative">
-      <div ref="carouselEl" class="carousel slide w-100 h-100 d-flex align-items-center justify-content-center" data-bs-interval="false">
-        <div ref="carouselInner" class="carousel-inner w-100 h-100 d-flex align-items-center">
-          <!-- Slides rendered dynamically -->
-        </div>
-
-        <!-- Carousel Navigation Controls -->
-        <button ref="btnPrev" class="carousel-control-prev chat-media-control" type="button" aria-label="Previous Media">
-          <atoll-icon name="chevron-left" size="32"></atoll-icon>
-        </button>
-        <button ref="btnNext" class="carousel-control-next chat-media-control" type="button" aria-label="Next Media">
-          <atoll-icon name="chevron-right" size="32"></atoll-icon>
-        </button>
-      </div>
+      <!-- Navigation Controls -->
+      <button ref="btnPrev" class="carousel-control-prev chat-media-control" type="button" aria-label="Previous Media">
+        <atoll-icon name="chevron-left" size="32"></atoll-icon>
+      </button>
+      <button ref="btnNext" class="carousel-control-next chat-media-control" type="button" aria-label="Next Media">
+        <atoll-icon name="chevron-right" size="32"></atoll-icon>
+      </button>
     </div>
 
     <!-- Bottom Thumbnail Filmstrip -->
@@ -74,8 +68,7 @@
       activeSubtitle: '',
       activeSlideIndex: 0
     }),
-    client: async ({ root, refs, state, globalStore, storage, eventBus, bootstrap, utils, pocketbase, signal }) => {
-      const { Carousel } = bootstrap
+    client: async ({ root, refs, state, globalStore, storage, eventBus, utils, pocketbase, signal }) => {
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -84,8 +77,6 @@
 
       const modalElement = refs('modalElement')
       const modalBody = refs('modalBody')
-      const carouselEl = refs('carouselEl')
-      const carouselInner = refs('carouselInner')
       const thumbnailTrack = refs('thumbnailTrack')
       const senderAvatar = refs('senderAvatar')
       const btnDownload = refs('btnDownload')
@@ -93,7 +84,7 @@
       const btnPrev = refs('btnPrev')
       const btnNext = refs('btnNext')
 
-      let carouselInstance = null
+      let slideshowEl = null
       let mediaSlides = []
       let activeRoom = null
       let initialMediaId = null
@@ -121,18 +112,18 @@
       // Navigation handlers
       btnPrev.addEventListener('click', (e) => {
         e.stopPropagation()
-        carouselInstance?.prev()
+        slideshowEl?.prev()
       }, { signal })
 
       btnNext.addEventListener('click', (e) => {
         e.stopPropagation()
-        carouselInstance?.next()
+        slideshowEl?.next()
       }, { signal })
 
       // Controls toggle on background/media tap
       modalBody.addEventListener('click', (e) => {
         // Exempt buttons, controls, or video element direct interactions
-        if (e.target.closest('button') || e.target.closest('a') || e.target.closest('video') || e.target.closest('.atoll-video-overlay-btn')) {
+        if (e.target.closest('button') || e.target.closest('a') || e.target.closest('video') || e.target.closest('.atoll-video-overlay-btn') || e.target.closest('.atoll-slideshow-nav-btn')) {
           return
         }
         modalElement.classList.toggle('controls-hidden')
@@ -142,8 +133,8 @@
       $state.subscribe('mediaVolume', (vol) => {
         if (typeof vol === 'number') {
           currentVolume = vol
-          // Update any playing video in the carousel
-          const activeVideo = carouselInner.querySelector('.carousel-item.active video')
+          // Update any playing video in the slideshow
+          const activeVideo = slideshowEl?.getContainer?.()?.querySelector('.carousel-item.active video')
           if (activeVideo) {
             activeVideo.volume = vol
           }
@@ -162,21 +153,23 @@
 
         if (e.key === 'ArrowLeft') {
           e.preventDefault()
-          carouselInstance?.prev()
+          slideshowEl?.prev()
         } else if (e.key === 'ArrowRight') {
           e.preventDefault()
-          carouselInstance?.next()
+          slideshowEl?.next()
         } else if (e.key === ' ' || e.code === 'Space') {
           // Spacebar play/pause video if active slide is video and controls aren't directly focused
-          const activeItem = carouselInner.children[state.activeSlideIndex]
-          const video = activeItem?.querySelector('video')
-          if (video && document.activeElement !== video) {
-            e.preventDefault()
-            if (video.paused) {
-              video.play().catch(() => {
-              })
-            } else {
-              video.pause()
+          const slideContainer = slideshowEl?.getContainer?.()
+          if (slideContainer) {
+            const activeItem = slideContainer.children[state.activeSlideIndex]
+            const video = activeItem?.querySelector('video')
+            if (video && document.activeElement !== video) {
+              e.preventDefault()
+              if (video.paused) {
+                video.play().catch(() => {})
+              } else {
+                video.pause()
+              }
             }
           }
         }
@@ -312,11 +305,30 @@
         return slides
       }
 
+      const highlightActiveThumbnail = (newIdx) => {
+        const thumbs = thumbnailTrack.children
+        Array.from(thumbs).forEach((t, i) => {
+          if (i === newIdx) {
+            t.classList.add('active-thumb')
+            t.scrollIntoView({
+              behavior: 'smooth',
+              inline: 'center',
+              block: 'nearest'
+            })
+          } else {
+            t.classList.remove('active-thumb')
+          }
+        })
+      }
+
       /**
        * Renders the carousel slides container shell and thumbnail filmstrip track.
        */
       const renderSlidesAndFilmstrip = () => {
-        carouselInner.innerHTML = ''
+        if (!slideshowEl || typeof slideshowEl.getContainer !== 'function') return
+        const container = slideshowEl.getContainer()
+        if (!container) return
+        container.innerHTML = ''
         thumbnailTrack.innerHTML = ''
 
         if (thumbObserver) {
@@ -340,15 +352,15 @@
         mediaSlides.forEach((slide, idx) => {
           // Carousel Item Shell
           const slideDiv = document.createElement('div')
-          slideDiv.className = `carousel-item h-100 ${idx === state.activeSlideIndex ? 'active' : ''}`
+          slideDiv.className = `carousel-item atoll-slideshow-slide h-100 ${idx === state.activeSlideIndex ? 'active' : ''}`
           slideDiv.setAttribute('data-slide-index', idx)
 
-          const container = document.createElement('div')
-          container.className = 'w-100 h-100 d-flex align-items-center justify-content-center position-relative p-2 p-md-4'
-          container.setAttribute('ref-slide-content', idx)
+          const containerDiv = document.createElement('div')
+          containerDiv.className = 'w-100 h-100 d-flex align-items-center justify-content-center position-relative p-2 p-md-4'
+          containerDiv.setAttribute('ref-slide-content', idx)
 
-          slideDiv.appendChild(container)
-          carouselInner.appendChild(slideDiv)
+          slideDiv.appendChild(containerDiv)
+          container.appendChild(slideDiv)
 
           // Thumbnail Filmstrip Tile
           const thumbTile = document.createElement('div')
@@ -364,7 +376,7 @@
 
           thumbTile.addEventListener('click', (e) => {
             e.stopPropagation()
-            carouselInstance?.to(idx)
+            slideshowEl?.to(idx)
           })
 
           thumbnailTrack.appendChild(thumbTile)
@@ -483,11 +495,11 @@
        */
       const loadSlideContent = async (idx, isAutoPlayVideo = false) => {
         const slide = mediaSlides[idx]
-        if (!slide) {
+        if (!slide || !slideshowEl || typeof slideshowEl.getContainer !== 'function') {
           return
         }
 
-        const slideItem = carouselInner.children[idx]
+        const slideItem = slideshowEl.getContainer()?.children[idx]
         if (!slideItem) {
           return
         }
@@ -503,8 +515,7 @@
             const video = container.querySelector('video')
             if (video) {
               video.volume = currentVolume
-              video.play().catch(() => {
-              })
+              video.play().catch(() => {})
             }
           }
           return
@@ -553,8 +564,7 @@
               video.src = objectUrl
               video.volume = currentVolume
               container.appendChild(video)
-              video.play().catch(() => {
-              })
+              video.play().catch(() => {})
             } else {
               // Click-to-Play Overlay Placeholder
               const placeholder = document.createElement('div')
@@ -589,8 +599,7 @@
                 video.src = objectUrl
                 video.volume = currentVolume
                 container.appendChild(video)
-                video.play().catch(() => {
-                })
+                video.play().catch(() => {})
               })
 
               placeholder.appendChild(playBtn)
@@ -623,9 +632,13 @@
        */
       const enforceWindowBuffer = (activeIdx) => {
         const total = mediaSlides.length
+        if (!slideshowEl || typeof slideshowEl.getContainer !== 'function') return
+        const slideContainer = slideshowEl.getContainer()
+        if (!slideContainer) return
+
         for (let i = 0; i < total; i++) {
           if (Math.abs(i - activeIdx) > CLEANUP_MARGIN) {
-            const slideItem = carouselInner.children[i]
+            const slideItem = slideContainer.children[i]
             if (slideItem) {
               const container = slideItem.querySelector('[ref-slide-content]')
               if (container) {
@@ -654,7 +667,10 @@
        * Pause active video playback across all slides.
        */
       const pauseAllVideos = () => {
-        const videos = carouselInner.querySelectorAll('video')
+        if (!slideshowEl || typeof slideshowEl.getContainer !== 'function') return
+        const slideContainer = slideshowEl.getContainer()
+        if (!slideContainer) return
+        const videos = slideContainer.querySelectorAll('video')
         videos.forEach(v => {
           try {
             v.pause()
@@ -703,56 +719,58 @@
         const initialSlide = mediaSlides[targetIdx]
         isInitialOpenVideo = Boolean(initialSlide && initialSlide.isVideo)
 
-        // Render carousel shell and thumbnail strip
-        renderSlidesAndFilmstrip()
-
-        // Initialize or update Carousel
-        if (carouselInstance) {
-          carouselInstance.dispose()
-          carouselInstance = null
+        // Clean up previous slideshow if any
+        if (slideshowEl) {
+          slideshowEl.remove()
+          slideshowEl = null
         }
 
-        carouselInstance = new Carousel(carouselEl, {
-          interval: false,
-          touch: true,
-          wrap: false
-        })
+        // Create slideshow instance
+        slideshowEl = document.createElement('atoll-slideshow')
+        slideshowEl.setAttribute('keyboard', 'false')
+        slideshowEl.setAttribute('hide-controls', 'true')
+        slideshowEl.className = 'w-100 h-100'
 
-        // Hook slide event to pause video playback immediately before transition begins
-        carouselEl.addEventListener('slide.bs.carousel', () => {
+        slideshowEl.addEventListener('atoll-slideshow-dragstart', () => {
           pauseAllVideos()
         }, { signal: currentAbortController.signal })
 
-        // Hook slid event to update header, active thumbnail, and buffer manager
-        carouselEl.addEventListener('slid.bs.carousel', (e) => {
-          const newIdx = parseInt(e.relatedTarget.getAttribute('data-slide-index'), 10)
-          if (isNaN(newIdx)) {
-            return
-          }
-          state.activeSlideIndex = newIdx
-
-          // Update header & thumbnail highlight
-          updateHeaderMetadata(newIdx)
-
-          // Highlight and scroll active thumbnail
-          const thumbs = thumbnailTrack.children
-          Array.from(thumbs).forEach((t, i) => {
-            if (i === newIdx) {
-              t.classList.add('active-thumb')
-              t.scrollIntoView({
-                behavior: 'smooth',
-                inline: 'center',
-                block: 'nearest'
-              })
-            } else {
-              t.classList.remove('active-thumb')
+        slideshowEl.addEventListener('atoll-slideshow-select', (e) => {
+          pauseAllVideos()
+          const newIdx = e.detail.index
+          if (typeof newIdx === 'number') {
+            state.activeSlideIndex = newIdx
+            // Update active class on slides
+            if (typeof slideshowEl.getContainer === 'function') {
+              const container = slideshowEl.getContainer()
+              if (container) {
+                Array.from(container.children).forEach((child, i) => {
+                  if (i === newIdx) {
+                    child.classList.add('active')
+                  } else {
+                    child.classList.remove('active')
+                  }
+                })
+              }
             }
-          })
-
-          // Load slide content and enforce buffer
-          loadSlideContent(newIdx, false)
-          enforceWindowBuffer(newIdx)
+            updateHeaderMetadata(newIdx)
+            highlightActiveThumbnail(newIdx)
+          }
         }, { signal: currentAbortController.signal })
+
+        slideshowEl.addEventListener('atoll-slideshow-settle', (e) => {
+          const newIdx = e.detail.index
+          if (typeof newIdx === 'number') {
+            loadSlideContent(newIdx, false)
+            enforceWindowBuffer(newIdx)
+          }
+        }, { signal: currentAbortController.signal })
+
+        modalBody.appendChild(slideshowEl)
+        await new Promise(r => setTimeout(r, 0))
+
+        // Render carousel shell and thumbnail strip
+        renderSlidesAndFilmstrip()
 
         // Set initial header metadata
         updateHeaderMetadata(targetIdx)
@@ -761,8 +779,10 @@
         modalElement.showModal()
         modalElement.classList.remove('controls-hidden')
 
-        // Jump carousel to initial target slide index
-        carouselInstance.to(targetIdx)
+        // Jump slideshow to initial target slide index
+        if (typeof slideshowEl.to === 'function') {
+          slideshowEl.to(targetIdx, true)
+        }
 
         // Load initial slide content (autoplay initial video if clicked media was a video)
         loadSlideContent(targetIdx, isInitialOpenVideo)
@@ -795,12 +815,11 @@
           thumbObserver = null
         }
 
-        if (carouselInstance) {
-          carouselInstance.dispose()
-          carouselInstance = null
+        if (slideshowEl) {
+          slideshowEl.remove()
+          slideshowEl = null
         }
 
-        carouselInner.innerHTML = ''
         thumbnailTrack.innerHTML = ''
         mediaSlides = []
 

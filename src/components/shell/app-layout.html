@@ -21,27 +21,7 @@
           <p class="text-muted mb-0">Select a conversation or item</p>
         </div>
       </div>
-      <div class="h-100" hidden="{{ hideChatView }}">
-        <atoll-chat-view></atoll-chat-view>
-      </div>
-      <div class="h-100" hidden="{{ hideImageViewer }}">
-        <image-viewer></image-viewer>
-      </div>
-      <div class="h-100" hidden="{{ hideVideoPlayer }}">
-        <video-player-view></video-player-view>
-      </div>
-      <div class="h-100" hidden="{{ hideAudioPlayer }}">
-        <audio-player-view></audio-player-view>
-      </div>
-      <div class="h-100" hidden="{{ hideDocumentViewer }}">
-        <document-viewer></document-viewer>
-      </div>
-      <div class="h-100" hidden="{{ hideLinkViewer }}">
-        <link-viewer></link-viewer>
-      </div>
-      <div class="h-100" hidden="{{ hideSettingsMain }}">
-        <settings-main></settings-main>
-      </div>
+      <div ref="detailHost" class="h-100" hidden="{{ !isDetailView }}"></div>
     </div>
 
     <!-- Mobile Bottom Navigation Bar -->
@@ -66,14 +46,7 @@
         }
         return !!(state.activeSelectionId && ['chats', 'pictures', 'videos', 'music', 'documents', 'links'].includes(state.activeSelectionType))
       },
-      layoutClasses: (state) => (state.isDetailView ? 'chat-active' : ''),
-      hideChatView: (state) => !(state.activeSelectionId && state.activeSelectionType === 'chats'),
-      hideImageViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'pictures'),
-      hideVideoPlayer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'videos'),
-      hideAudioPlayer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'music'),
-      hideDocumentViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'documents'),
-      hideLinkViewer: (state) => !(state.activeSelectionId && state.activeSelectionType === 'links'),
-      hideSettingsMain: (state) => !(state.currentAppView === 'settings')
+      layoutClasses: (state) => (state.isDetailView ? 'chat-active' : '')
     },
     client: ({ state, globalStore, eventBus, bootstrap, refs, root }) => {
       const { $state } = globalStore
@@ -85,6 +58,7 @@
       state.currentAppView = $state.currentAppView
 
       const mobileNavEl = refs('mobileNav')
+      const detailHost = refs('detailHost')
       const mobileNav = new Offcanvas(mobileNavEl)
 
       // Swipe to close left offcanvas (swipe left)
@@ -136,8 +110,41 @@
         }
       })
 
+      const typeTagMap = {
+        chats: 'atoll-chat-view',
+        pictures: 'image-viewer',
+        videos: 'video-player-view',
+        music: 'audio-player-view',
+        documents: 'document-viewer',
+        links: 'link-viewer',
+        settings: 'settings-main'
+      }
+
+      let currentMountedTag = null
+
+      const syncActiveViewer = () => {
+        const isSettings = $state.currentAppView === 'settings'
+        const activeType = isSettings ? 'settings' : $state.activeSelectionType
+        const hasSelection = isSettings ? (window.innerWidth >= 768 || !!$state.activeSelectionId) : Boolean($state.activeSelectionId && typeTagMap[activeType])
+
+        if (!hasSelection) {
+          if (detailHost.hasChildNodes()) {
+            detailHost.replaceChildren()
+            currentMountedTag = null
+          }
+          return
+        }
+
+        const targetTag = typeTagMap[activeType]
+        if (targetTag && currentMountedTag !== targetTag) {
+          detailHost.replaceChildren(document.createElement(targetTag))
+          currentMountedTag = targetTag
+        }
+      }
+
       $state.subscribe('currentAppView', (val) => {
         state.currentAppView = val
+        syncActiveViewer()
       })
       $state.subscribe('activeSelectionId', (val) => {
         state.activeSelectionId = val
@@ -145,10 +152,14 @@
         if (window.innerWidth < 768 && !$state.isSidebarNavigating) {
           mobileNav.hide()
         }
+        syncActiveViewer()
       })
       $state.subscribe('activeSelectionType', (val) => {
         state.activeSelectionType = val
+        syncActiveViewer()
       })
+
+      syncActiveViewer()
     }
   })
 </script>

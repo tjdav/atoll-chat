@@ -4,9 +4,23 @@ const window = new Window({
   url: 'http://localhost'
 })
 
-// Polyfill ResizeObserver for unit tests if not present
+// Polyfill ResizeObserver and IntersectionObserver for unit tests if not present
 if (window.ResizeObserver === undefined) {
   window.ResizeObserver = class ResizeObserver {
+    observe () {
+    }
+    unobserve () {
+    }
+    disconnect () {
+    }
+  }
+}
+
+if (window.IntersectionObserver === undefined) {
+  window.IntersectionObserver = class IntersectionObserver {
+    constructor (callback) {
+      this.callback = callback
+    }
     observe () {
     }
     unobserve () {
@@ -55,6 +69,7 @@ const props = [
   'Blob',
   'FileReader',
   'ResizeObserver',
+  'IntersectionObserver',
   'indexedDB'
 ]
 
