@@ -124,11 +124,11 @@ importers:
         specifier: ^26.1.0
         version: 26.1.2
       coralite:
-        specifier: ^0.47.0
-        version: 0.47.0(@noble/hashes@2.3.0)
+        specifier: ^0.47.1
+        version: 0.47.1(@noble/hashes@2.3.0)
       coralite-scripts:
-        specifier: ^0.47.0
-        version: 0.47.0(@noble/hashes@2.3.0)(supports-color@5.5.0)
+        specifier: ^0.47.1
+        version: 0.47.1(@noble/hashes@2.3.0)(supports-color@5.5.0)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1394,13 +1394,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@0.47.0:
-    resolution: {integrity: sha512-3CNiaOOWZVhpN0zip/1C4NKfV7zRUaUenA6h0JCkpfMeyiqf2aOz8ReU+o9wrI/R4ne83e3A9QtAEeI5iwk2cg==}
+  coralite-scripts@0.47.1:
+    resolution: {integrity: sha512-xg/IVRTab79w/aQkRaKi7lTdwfKOK//vfdq5TsPeWsxPANby1eSOy7TzlYZRmF64xOY5/hN479ngx83K5uXYoQ==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  coralite@0.47.0:
-    resolution: {integrity: sha512-Pp4PL8M0DS+N1nf7RcwfiEduUm9Mkm/WQJLDK9cZqh4fFJ3NXXIiW1Gn0lO+2GW5dwViQxm2y9s2ZWHUPiWnQQ==}
+  coralite@0.47.1:
+    resolution: {integrity: sha512-RwWlyW7Nwmb7uVcfqimEkIPYXtLHQAh+zoLv5bhNYMVdzERVbjYWMk/3JIrpALAt1bnyIQLxS7Fed5QOZAS1rQ==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -4552,11 +4552,11 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@0.47.0(@noble/hashes@2.3.0)(supports-color@5.5.0):
+  coralite-scripts@0.47.1(@noble/hashes@2.3.0)(supports-color@5.5.0):
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 0.47.0(@noble/hashes@2.3.0)
+      coralite: 0.47.1(@noble/hashes@2.3.0)
       cross-env: 10.1.0
       express: 5.2.1(supports-color@5.5.0)
       kleur: 4.1.5
@@ -4570,7 +4570,7 @@ snapshots:
       - canvas
       - supports-color
 
-  coralite@0.47.0(@noble/hashes@2.3.0):
+  coralite@0.47.1(@noble/hashes@2.3.0):
     dependencies:
       acorn: 8.18.0
       acorn-walk: 8.3.5
