@@ -308,13 +308,32 @@ export default definePlugin({
 
           // Cache & History Domain
           getStorageUsage: () => initialAdapter.getStorageUsage(),
-          clearLocalMediaCache: () => initialAdapter.clearLocalMediaCache(),
-          clearLocalMessagesCache: () => initialAdapter.clearLocalMessagesCache(),
+          clearLocalMediaCache: async () => {
+            const res = await initialAdapter.clearLocalMediaCache()
+
+            pluginContext.$bus.emit('db:history_cleared')
+
+            return res
+          },
+          clearLocalVoiceCache: async () => {
+            const res = await initialAdapter.clearLocalVoiceCache()
+
+            pluginContext.$bus.emit('db:history_cleared')
+
+            return res
+          },
+          clearLocalMessagesCache: async () => {
+            const res = await initialAdapter.clearLocalMessagesCache()
+
+            pluginContext.$bus.emit('db:history_cleared')
+
+            return res
+          },
           clearLocalHistory: async () => {
             const res = await initialAdapter.clearLocalHistory()
-            if (pluginContext.$bus) {
-              pluginContext.$bus.emit('db:history_cleared')
-            }
+
+            pluginContext.$bus.emit('db:history_cleared')
+
             return res
           },
           purgeAllData: () => initialAdapter.purgeAllData()

@@ -297,13 +297,15 @@ export default definePlugin({
               let body = ''
               if (message.type === 'text') {
                 body = message.content
+              } else if (message.type === 'voice') {
+                body = 'Sent a voice message'
               } else if (message.type === 'media') {
                 if (message.mime_type?.startsWith('image/')) {
                   body = 'Sent an image'
                 } else if (message.mime_type?.startsWith('video/')) {
                   body = 'Sent a video'
                 } else if (message.mime_type?.startsWith('audio/')) {
-                  body = 'Sent a voice message'
+                  body = message.waveform_data ? 'Sent a voice message' : 'Sent an audio file'
                 } else {
                   body = 'Sent a file'
                 }

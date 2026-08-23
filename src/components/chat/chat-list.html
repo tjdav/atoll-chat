@@ -56,6 +56,8 @@
         let content = ''
         if (msg.type === 'text') {
           content = msg.content
+        } else if (msg.type === 'voice') {
+          content = fallbacks.voice
         } else if (['call_offer', 'call_answer', 'call_end'].includes(msg.type)) {
           content = fallbacks[msg.type]
         } else if (msg.type === 'media') {

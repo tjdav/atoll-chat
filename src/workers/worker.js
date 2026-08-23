@@ -1147,7 +1147,7 @@ async function sendMessage (rpcId, payload) {
       headers.Authorization = self.authToken
     }
 
-    if (type === 'media' && Array.isArray(payload.attachments) && payload.attachments.length > 0) {
+    if ((type === 'media' || type === 'voice') && Array.isArray(payload.attachments) && payload.attachments.length > 0) {
       encryptedAttachments = []
       for (const att of payload.attachments) {
         let attMediaId = att.media_id || null
@@ -1260,7 +1260,7 @@ async function sendMessage (rpcId, payload) {
           transfer_mode: att.transfer_mode
         })
       }
-    } else if (type === 'media' && file && !mediaId) {
+    } else if ((type === 'media' || type === 'voice') && file && !mediaId) {
       // Encrypt and upload album art if present
       if (album_art_blob) {
         artBuffer = new Uint8Array(await album_art_blob.arrayBuffer())
@@ -1371,7 +1371,7 @@ async function sendMessage (rpcId, payload) {
       plaintextObj.links = links
     }
 
-    if (type === 'media') {
+    if (type === 'media' || type === 'voice') {
       if (encryptedAttachments) {
         plaintextObj.attachments = encryptedAttachments
       } else {
@@ -1388,6 +1388,9 @@ async function sendMessage (rpcId, payload) {
         plaintextObj.transfer_mode = transfer_mode
       }
       plaintextObj.status = status || 'sent'
+      if (type === 'voice') {
+        plaintextObj.category = 'voice'
+      }
 
       console.info('[worker] plaintextObj inside media block:', {
         media_id: plaintextObj.media_id,
@@ -1487,7 +1490,7 @@ async function sendMessage (rpcId, payload) {
         created_at: pbRecord.created
       }
 
-      if (type === 'media') {
+      if (type === 'media' || type === 'voice') {
         if (encryptedAttachments) {
           updateData.attachments = encryptedAttachments
           for (const att of encryptedAttachments) {
@@ -1499,13 +1502,15 @@ async function sendMessage (rpcId, payload) {
                 message_id: localUuid,
                 filename: att.filename,
                 mime_type: att.mime_type,
+                category: type === 'voice' ? 'voice' : (('category' in att && typeof att.category === 'string') ? att.category : undefined),
                 file_key: att.file_key,
                 file_nonce: att.file_nonce,
                 created_at: pbRecord.created,
                 music_metadata: att.music_metadata,
                 album_art: att.album_art,
                 thumbnail: att.thumbnail,
-                duration: att.duration
+                duration: att.duration,
+                waveform_data: att.waveform_data
               }])
             }
           }
@@ -1515,9 +1520,11 @@ async function sendMessage (rpcId, payload) {
           updateData.file_nonce = fileNonceBase64
           updateData.filename = filename
           updateData.mime_type = mime_type
+          updateData.category = type === 'voice' ? 'voice' : undefined
           updateData.album_art = albumArtInfo
           updateData.thumbnail = thumbnailInfo
           updateData.duration = duration
+          updateData.waveform_data = waveform_data
 
           await workerBridge.request('saveAsset', [{
             id: mediaId || localUuid,
@@ -1526,13 +1533,15 @@ async function sendMessage (rpcId, payload) {
             message_id: localUuid,
             filename,
             mime_type,
+            category: type === 'voice' ? 'voice' : undefined,
             file_key: fileKeyBase64,
             file_nonce: fileNonceBase64,
             created_at: pbRecord.created,
             music_metadata,
             album_art: albumArtInfo,
             thumbnail: thumbnailInfo,
-            duration
+            duration,
+            waveform_data
           }])
         }
       }
@@ -1905,7 +1914,7 @@ async function processIncomingMessageInternal (record) {
       }
     }
 
-    if (type === 'media') {
+    if (type === 'media' || type === 'voice') {
       if (Array.isArray(decryptedPayload.attachments) && decryptedPayload.attachments.length > 0) {
         decryptedMessage.attachments = decryptedPayload.attachments
         for (const att of decryptedPayload.attachments) {
@@ -1917,13 +1926,15 @@ async function processIncomingMessageInternal (record) {
               message_id: decryptedMessage.local_uuid,
               filename: att.filename,
               mime_type: att.mime_type,
+              category: type === 'voice' ? 'voice' : (('category' in att && typeof att.category === 'string') ? att.category : undefined),
               file_key: att.file_key,
               file_nonce: att.file_nonce,
               created_at: created,
               music_metadata: att.music_metadata,
               album_art: att.album_art,
               thumbnail: att.thumbnail,
-              duration: att.duration
+              duration: att.duration,
+              waveform_data: att.waveform_data
             }])
           }
         }
@@ -1949,13 +1960,15 @@ async function processIncomingMessageInternal (record) {
             message_id: decryptedMessage.local_uuid,
             filename,
             mime_type,
+            category: type === 'voice' ? 'voice' : undefined,
             file_key,
             file_nonce,
             created_at: created,
             music_metadata,
             album_art,
             thumbnail,
-            duration
+            duration,
+            waveform_data
           }])
         }
       }

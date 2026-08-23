@@ -656,68 +656,105 @@ export function createWebStorageAdapter () {
     },
 
     /**
-     * Calculates storage metrics for local files, local assets, and local messages.
+     * Calculates storage metrics across 3 categories: Chat Messages, Voice Messages, and Media & Files.
      *
-     * @returns {Promise<{ mediaBytes: number, mediaCount: number, messagesBytes: number, messagesCount: number, totalBytes: number }>}
+     * @returns {Promise<{ messagesBytes: number, messagesCount: number, voiceBytes: number, voiceCount: number, mediaBytes: number, mediaCount: number, totalBytes: number }>}
      */
     getStorageUsage: async () => {
       if (!dbInstance) {
         return {
-          mediaBytes: 0,
-          mediaCount: 0,
           messagesBytes: 0,
           messagesCount: 0,
+          voiceBytes: 0,
+          voiceCount: 0,
+          mediaBytes: 0,
+          mediaCount: 0,
           totalBytes: 0
         }
       }
 
+      let messagesBytes = 0
+      let messagesCount = 0
+      let voiceBytes = 0
+      let voiceCount = 0
       let mediaBytes = 0
       let mediaCount = 0
 
-      // Sum local_files sizes
+      // Categorize local_messages
+      const messages = await dbInstance.local_messages.toArray()
+      for (const msg of messages) {
+        let recBytes = 100
+        try {
+          recBytes = new TextEncoder().encode(JSON.stringify(msg)).length
+        } catch (_) {
+        }
+
+        const isVoiceMsg = msg.type === 'voice' || msg.category === 'voice' ||
+          (msg.mime_type?.startsWith('audio/') && Boolean(msg.waveform_data))
+
+        if (isVoiceMsg) {
+          voiceCount++
+          voiceBytes += recBytes
+        } else if (msg.type === 'text' || msg.type === 'link') {
+          messagesCount++
+          messagesBytes += recBytes
+        } else if (msg.type === 'media') {
+          // If it's a media message record without assets table row
+          mediaCount++
+          mediaBytes += recBytes
+        } else {
+          messagesCount++
+          messagesBytes += recBytes
+        }
+      }
+
+      // Categorize local_assets
+      const assets = await dbInstance.local_assets.toArray()
+      const voiceAssetIds = new Set()
+      for (const asset of assets) {
+        const isVoiceAsset = asset.category === 'voice' || (asset.mime_type?.startsWith('audio/') && Boolean(asset.waveform_data))
+        const sz = (typeof asset.size === 'number') ? asset.size : 0
+        if (isVoiceAsset) {
+          voiceAssetIds.add(asset.id)
+          voiceAssetIds.add(asset.media_id)
+          if (sz > 0) {
+            voiceBytes += sz
+          }
+        } else if (sz > 0) {
+          mediaCount++
+          mediaBytes += sz
+        }
+      }
+
+      // Categorize local_files blobs
       const files = await dbInstance.table('local_files').toArray()
       for (const file of files) {
-        mediaCount++
-        if (file.blob && typeof file.blob.size === 'number') {
-          mediaBytes += file.blob.size
-        } else if (file.size && typeof file.size === 'number') {
-          mediaBytes += file.size
-        }
-      }
+        const fSize = file.blob && typeof file.blob.size === 'number'
+          ? file.blob.size
+          : (typeof file.size === 'number' ? file.size : 0)
 
-      // Sum local_assets sizes (if file size stored in metadata)
-      const assets = await dbInstance.local_assets.toArray()
-      for (const asset of assets) {
-        if (asset.size && typeof asset.size === 'number') {
-          mediaBytes += asset.size
-        }
-      }
-
-      // Sum local_messages
-      let messagesBytes = 0
-      let messagesCount = 0
-      const messages = await dbInstance.local_messages.toArray()
-      messagesCount = messages.length
-      for (const msg of messages) {
-        try {
-          const str = JSON.stringify(msg)
-          messagesBytes += new TextEncoder().encode(str).length
-        } catch (_) {
-          messagesBytes += 100 // fallback estimate per record
+        const isVoiceFile = file.name && (file.name.includes('voice') || voiceAssetIds.has(file.name))
+        if (isVoiceFile) {
+          voiceBytes += fSize
+        } else {
+          mediaCount++
+          mediaBytes += fSize
         }
       }
 
       return {
-        mediaBytes,
-        mediaCount,
         messagesBytes,
         messagesCount,
-        totalBytes: mediaBytes + messagesBytes
+        voiceBytes,
+        voiceCount,
+        mediaBytes,
+        mediaCount,
+        totalBytes: messagesBytes + voiceBytes + mediaBytes
       }
     },
 
     /**
-     * Clears local media files and local assets cache.
+     * Clears local media files and local assets cache (excluding voice notes).
      *
      * @returns {Promise<boolean>}
      */
@@ -725,13 +762,89 @@ export function createWebStorageAdapter () {
       if (!dbInstance) {
         return false
       }
-      await dbInstance.table('local_files').clear()
-      await dbInstance.local_assets.clear()
+      // Remove media assets (category !== 'voice')
+      const assets = await dbInstance.local_assets.toArray()
+      const voiceAssetIds = new Set()
+      const nonVoiceAssetKeys = []
+      for (const asset of assets) {
+        if (asset.category === 'voice' || (asset.mime_type?.startsWith('audio/') && Boolean(asset.waveform_data))) {
+          voiceAssetIds.add(asset.id)
+          voiceAssetIds.add(asset.media_id)
+        } else {
+          nonVoiceAssetKeys.push(asset.id)
+        }
+      }
+
+      if (nonVoiceAssetKeys.length > 0) {
+        await dbInstance.local_assets.bulkDelete(nonVoiceAssetKeys)
+      }
+
+      // Remove files excluding voice files
+      const files = await dbInstance.table('local_files').toArray()
+      const nonVoiceFileNames = files
+        .filter(f => !f.name.includes('voice') && !voiceAssetIds.has(f.name))
+        .map(f => f.name)
+
+      if (nonVoiceFileNames.length > 0) {
+        await dbInstance.table('local_files').bulkDelete(nonVoiceFileNames)
+      }
       return true
     },
 
     /**
-     * Clears local messages cache.
+     * Clears local voice messages, voice assets, and voice files.
+     *
+     * @returns {Promise<boolean>}
+     */
+    clearLocalVoiceCache: async () => {
+      if (!dbInstance) {
+        return false
+      }
+      // Delete local_messages where type === 'voice' or category === 'voice' or audio with waveform_data
+      const messages = await dbInstance.local_messages.toArray()
+      const voiceMsgUuids = messages
+        .filter(m => m.type === 'voice' || m.category === 'voice' || (m.mime_type?.startsWith('audio/') && Boolean(m.waveform_data)))
+        .map(m => m.local_uuid)
+
+      if (voiceMsgUuids.length > 0) {
+        await dbInstance.local_messages.bulkDelete(voiceMsgUuids)
+      }
+
+      // Delete local_assets where category === 'voice' or audio with waveform_data
+      const assets = await dbInstance.local_assets.toArray()
+      const voiceAssetKeys = []
+      const voiceFileNames = new Set()
+      for (const asset of assets) {
+        if (asset.category === 'voice' || (asset.mime_type?.startsWith('audio/') && Boolean(asset.waveform_data))) {
+          voiceAssetKeys.push(asset.id)
+          if (asset.id) {
+            voiceFileNames.add(asset.id)
+          }
+          if (asset.media_id) {
+            voiceFileNames.add(asset.media_id)
+          }
+        }
+      }
+
+      if (voiceAssetKeys.length > 0) {
+        await dbInstance.local_assets.bulkDelete(voiceAssetKeys)
+      }
+
+      // Delete voice files in local_files
+      const files = await dbInstance.table('local_files').toArray()
+      const filesToDelete = files
+        .filter(f => f.name.includes('voice') || voiceFileNames.has(f.name))
+        .map(f => f.name)
+
+      if (filesToDelete.length > 0) {
+        await dbInstance.table('local_files').bulkDelete(filesToDelete)
+      }
+
+      return true
+    },
+
+    /**
+     * Clears local text and link messages cache while preserving room data and configs.
      *
      * @returns {Promise<boolean>}
      */
@@ -739,7 +852,14 @@ export function createWebStorageAdapter () {
       if (!dbInstance) {
         return false
       }
-      await dbInstance.local_messages.clear()
+      const messages = await dbInstance.local_messages.toArray()
+      const textMsgUuids = messages
+        .filter(m => m.type === 'text' || m.type === 'link')
+        .map(m => m.local_uuid)
+
+      if (textMsgUuids.length > 0) {
+        await dbInstance.local_messages.bulkDelete(textMsgUuids)
+      }
       return true
     },
 
@@ -823,9 +943,11 @@ export function createWebStorageAdapter () {
       } else if (category === 'video') {
         query = dbInstance.local_assets.where('mime_type').startsWith('video/').reverse()
       } else if (category === 'audio') {
-        query = dbInstance.local_assets.where('mime_type').startsWith('audio/').reverse()
+        query = dbInstance.local_assets.where('mime_type').startsWith('audio/').and(a => a.category !== 'voice' && !a.waveform_data).reverse()
+      } else if (category === 'voice') {
+        query = dbInstance.local_assets.filter(a => a.category === 'voice' || (a.mime_type?.startsWith('audio/') && Boolean(a.waveform_data)))
       } else if (category === 'document') {
-        query = dbInstance.local_assets.where('mime_type').notEqual('image/').and(a => !a.mime_type.startsWith('video/') && !a.mime_type.startsWith('audio/')).reverse()
+        query = dbInstance.local_assets.where('mime_type').notEqual('image/').and(a => !a.mime_type.startsWith('video/') && !a.mime_type.startsWith('audio/') && a.category !== 'voice').reverse()
       } else {
         query = dbInstance.local_assets.reverse()
       }

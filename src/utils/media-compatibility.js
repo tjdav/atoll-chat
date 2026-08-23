@@ -41,7 +41,7 @@ const UNIVERSAL_AUDIO_MIMES = new Set([
  * Evaluates whether a media file is in a non-universal format that requires format conversion for HTML5 web playback.
  *
  * @param {File} file - Selected media file.
- * @returns {{ requiresConversion: boolean, category: 'video'|'image'|'audio'|'none', reason: string, targetFormat: string, targetExtension: string }}
+ * @returns {{ requiresConversion: boolean, category: 'video'|'image'|'audio'|'sticker'|'none', reason: string, targetFormat: string, targetExtension: string }}
  */
 export function checkMediaCompatibility (file) {
   if (!file || !file.name) {

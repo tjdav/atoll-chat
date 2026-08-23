@@ -178,6 +178,10 @@
           return
         }
 
+        if (btnConfirmDeleteHistory) {
+          btnConfirmDeleteHistory.disabled = true
+        }
+
         try {
           const res = await pb.send('/api/custom/history/delete', {
             method: 'POST',
@@ -209,8 +213,12 @@
         } catch (err) {
           console.error('[account-danger-zone] Delete history error:', err)
           if (historyError) {
-            historyError.textContent = err.message || err.data?.message || 'Failed to delete message history.'
+            historyError.textContent = err.data?.message || err.message || 'Failed to delete message history.'
             historyError.classList.remove('d-none')
+          }
+        } finally {
+          if (btnConfirmDeleteHistory) {
+            btnConfirmDeleteHistory.disabled = false
           }
         }
       }
@@ -241,6 +249,10 @@
         }
 
         const userId = pb.authStore.model?.id
+
+        if (btnConfirmDeleteAccount) {
+          btnConfirmDeleteAccount.disabled = true
+        }
 
         try {
           const res = await pb.send('/api/custom/account/delete', {
@@ -294,8 +306,12 @@
         } catch (err) {
           console.error('[account-danger-zone] Delete account error:', err)
           if (accountError) {
-            accountError.textContent = err.message || err.data?.message || 'Failed to delete account.'
+            accountError.textContent = err.data?.message || err.message || 'Failed to delete account.'
             accountError.classList.remove('d-none')
+          }
+        } finally {
+          if (btnConfirmDeleteAccount) {
+            btnConfirmDeleteAccount.disabled = false
           }
         }
       }

@@ -636,92 +636,156 @@ export function createNativeStorageAdapter () {
     },
 
     /**
-     * Calculates storage metrics for local files, local assets, and local messages.
+     * Calculates storage metrics across 3 categories: Chat Messages, Voice Messages, and Media & Files.
      *
-     * @returns {Promise<{ mediaBytes: number, mediaCount: number, messagesBytes: number, messagesCount: number, totalBytes: number }>}
+     * @returns {Promise<{ messagesBytes: number, messagesCount: number, voiceBytes: number, voiceCount: number, mediaBytes: number, mediaCount: number, totalBytes: number }>}
      */
     getStorageUsage: async () => {
+      let messagesBytes = 0
+      let messagesCount = 0
+      let voiceBytes = 0
+      let voiceCount = 0
       let mediaBytes = 0
       let mediaCount = 0
 
-      for (const file of localFiles.values()) {
-        mediaCount++
-        if (file.blob && typeof file.blob.size === 'number') {
-          mediaBytes += file.blob.size
-        } else if (file.size && typeof file.size === 'number') {
-          mediaBytes += file.size
-        }
-      }
-
-      for (const asset of localAssets.values()) {
-        if (asset.size && typeof asset.size === 'number') {
-          mediaBytes += asset.size
-        }
-      }
-
-      let messagesBytes = 0
-      let messagesCount = 0
       for (const msg of localMessages.values()) {
-        messagesCount++
+        let recBytes = 100
         try {
-          const str = JSON.stringify(msg)
-          messagesBytes += new TextEncoder().encode(str).length
+          recBytes = new TextEncoder().encode(JSON.stringify(msg)).length
         } catch (_) {
-          messagesBytes += 100
+        }
+
+        const isVoiceMsg = msg.type === 'voice' || msg.category === 'voice' ||
+          (msg.mime_type?.startsWith('audio/') && Boolean(msg.waveform_data))
+
+        if (isVoiceMsg) {
+          voiceCount++
+          voiceBytes += recBytes
+        } else if (msg.type === 'text' || msg.type === 'link') {
+          messagesCount++
+          messagesBytes += recBytes
+        } else if (msg.type === 'media') {
+          mediaCount++
+          mediaBytes += recBytes
+        } else {
+          messagesCount++
+          messagesBytes += recBytes
+        }
+      }
+
+      const voiceAssetIds = new Set()
+      for (const asset of localAssets.values()) {
+        const isVoiceAsset = asset.category === 'voice' || (asset.mime_type?.startsWith('audio/') && Boolean(asset.waveform_data))
+        const sz = (typeof asset.size === 'number') ? asset.size : 0
+        if (isVoiceAsset) {
+          voiceAssetIds.add(asset.id)
+          voiceAssetIds.add(asset.media_id)
+          if (sz > 0) {
+            voiceBytes += sz
+          }
+        } else if (sz > 0) {
+          mediaCount++
+          mediaBytes += sz
+        }
+      }
+
+      for (const file of localFiles.values()) {
+        const fSize = file.blob && typeof file.blob.size === 'number'
+          ? file.blob.size
+          : (typeof file.size === 'number' ? file.size : 0)
+
+        const isVoiceFile = file.name && (file.name.includes('voice') || voiceAssetIds.has(file.name))
+        if (isVoiceFile) {
+          voiceBytes += fSize
+        } else {
+          mediaCount++
+          mediaBytes += fSize
         }
       }
 
       return {
-        mediaBytes,
-        mediaCount,
         messagesBytes,
         messagesCount,
-        totalBytes: mediaBytes + messagesBytes
+        voiceBytes,
+        voiceCount,
+        mediaBytes,
+        mediaCount,
+        totalBytes: messagesBytes + voiceBytes + mediaBytes
       }
     },
 
     /**
-     * Clears local media files and local assets cache.
+     * Clears local media files and local assets cache (excluding voice notes).
      *
      * @returns {Promise<boolean>}
      */
     clearLocalMediaCache: async () => {
-      localFiles.clear()
-      localAssets.clear()
-      if (typeof localStorage !== 'undefined') {
-        try {
-          const keysToRemove = []
-          for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i)
-            if (k && (k.includes('_files_') || k.includes('_assets_'))) {
-              keysToRemove.push(k)
-            }
+      const voiceAssetIds = new Set()
+      for (const [id, asset] of localAssets.entries()) {
+        if (asset.category === 'voice' || (asset.mime_type?.startsWith('audio/') && Boolean(asset.waveform_data))) {
+          voiceAssetIds.add(id)
+          if (asset.media_id) {
+            voiceAssetIds.add(asset.media_id)
           }
-          keysToRemove.forEach(k => localStorage.removeItem(k))
-        } catch (_) {
+        } else {
+          localAssets.delete(id)
+          removeFromLocalStorage('assets', id)
+        }
+      }
+
+      for (const [fileName, file] of localFiles.entries()) {
+        if (!fileName.includes('voice') && !voiceAssetIds.has(fileName)) {
+          localFiles.delete(fileName)
+          removeFromLocalStorage('files', fileName)
         }
       }
       return true
     },
 
     /**
-     * Clears local messages cache.
+     * Clears local voice messages, voice assets, and voice files.
+     *
+     * @returns {Promise<boolean>}
+     */
+    clearLocalVoiceCache: async () => {
+      const voiceAssetIds = new Set()
+      for (const [uuid, msg] of localMessages.entries()) {
+        if (msg.type === 'voice' || msg.category === 'voice' || (msg.mime_type?.startsWith('audio/') && Boolean(msg.waveform_data))) {
+          localMessages.delete(uuid)
+          removeFromLocalStorage('messages', uuid)
+        }
+      }
+
+      for (const [id, asset] of localAssets.entries()) {
+        if (asset.category === 'voice' || (asset.mime_type?.startsWith('audio/') && Boolean(asset.waveform_data))) {
+          voiceAssetIds.add(id)
+          if (asset.media_id) {
+            voiceAssetIds.add(asset.media_id)
+          }
+          localAssets.delete(id)
+          removeFromLocalStorage('assets', id)
+        }
+      }
+
+      for (const [fileName] of localFiles.entries()) {
+        if (fileName.includes('voice') || voiceAssetIds.has(fileName)) {
+          localFiles.delete(fileName)
+          removeFromLocalStorage('files', fileName)
+        }
+      }
+      return true
+    },
+
+    /**
+     * Clears local text and link messages cache while preserving room data and configs.
      *
      * @returns {Promise<boolean>}
      */
     clearLocalMessagesCache: async () => {
-      localMessages.clear()
-      if (typeof localStorage !== 'undefined') {
-        try {
-          const keysToRemove = []
-          for (let i = 0; i < localStorage.length; i++) {
-            const k = localStorage.key(i)
-            if (k && k.includes('_messages_')) {
-              keysToRemove.push(k)
-            }
-          }
-          keysToRemove.forEach(k => localStorage.removeItem(k))
-        } catch (_) {
+      for (const [uuid, msg] of localMessages.entries()) {
+        if (msg.type === 'text' || msg.type === 'link') {
+          localMessages.delete(uuid)
+          removeFromLocalStorage('messages', uuid)
         }
       }
       return true
@@ -817,11 +881,13 @@ export function createNativeStorageAdapter () {
       } else if (category === 'video') {
         assets = assets.filter(a => (a.mime_type || '').startsWith('video/'))
       } else if (category === 'audio') {
-        assets = assets.filter(a => (a.mime_type || '').startsWith('audio/'))
+        assets = assets.filter(a => (a.mime_type || '').startsWith('audio/') && a.category !== 'voice' && !a.waveform_data)
+      } else if (category === 'voice') {
+        assets = assets.filter(a => a.category === 'voice' || ((a.mime_type || '').startsWith('audio/') && Boolean(a.waveform_data)))
       } else if (category === 'document') {
         assets = assets.filter(a => {
           const mime = a.mime_type || ''
-          return !mime.startsWith('image/') && !mime.startsWith('video/') && !mime.startsWith('audio/')
+          return !mime.startsWith('image/') && !mime.startsWith('video/') && !mime.startsWith('audio/') && a.category !== 'voice'
         })
       }
 

@@ -11,6 +11,34 @@
     <h6 class="text-uppercase text-muted fw-bold small mb-3">Local Storage & Cache</h6>
     <div class="card shadow-sm border bg-body">
       <div class="card-body">
+        <!-- Chat Messages Card -->
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+          <div>
+            <div class="fw-semibold text-body mb-1">
+              Chat Messages
+              <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 fw-normal">{{ messagesUsageText }}</span>
+            </div>
+            <div class="small text-muted">Clear cached text and link message history stored on this device.</div>
+          </div>
+          <button ref="btnClearMessages" data-testid="btnClearMessages" class="btn btn-outline-secondary btn-sm ms-3 text-nowrap">
+            Clear Messages
+          </button>
+        </div>
+
+        <!-- Voice Messages Card -->
+        <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
+          <div>
+            <div class="fw-semibold text-body mb-1">
+              Voice Notes
+              <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 fw-normal">{{ voiceUsageText }}</span>
+            </div>
+            <div class="small text-muted">Clear cached voice recordings and waveforms stored locally.</div>
+          </div>
+          <button ref="btnClearVoice" data-testid="btnClearVoice" class="btn btn-outline-secondary btn-sm ms-3 text-nowrap">
+            Clear Voice Notes
+          </button>
+        </div>
+
         <!-- Media & Attachments Card -->
         <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
           <div>
@@ -22,20 +50,6 @@
           </div>
           <button ref="btnClearMedia" data-testid="btnClearMedia" class="btn btn-outline-secondary btn-sm ms-3 text-nowrap">
             Clear Media
-          </button>
-        </div>
-
-        <!-- Chat Messages Card -->
-        <div class="d-flex align-items-center justify-content-between mb-3 pb-3 border-bottom">
-          <div>
-            <div class="fw-semibold text-body mb-1">
-              Chat Messages
-              <span class="badge bg-secondary-subtle text-secondary-emphasis ms-2 fw-normal">{{ messagesUsageText }}</span>
-            </div>
-            <div class="small text-muted">Clear cached message history stored on this device.</div>
-          </div>
-          <button ref="btnClearMessages" data-testid="btnClearMessages" class="btn btn-outline-secondary btn-sm ms-3 text-nowrap">
-            Clear Messages
           </button>
         </div>
 
@@ -59,8 +73,9 @@
   export default defineComponent({
     server: () => ({
       username: 'User',
-      mediaUsageText: '0 B',
       messagesUsageText: '0 B',
+      voiceUsageText: '0 B',
+      mediaUsageText: '0 B',
       totalUsageText: '0 B'
     }),
     client: async ({ state, globalStore, storage, eventBus, refs, signal }) => {
@@ -93,21 +108,27 @@
         }
         try {
           const usage = await $storage.getStorageUsage()
-          const { mediaBytes, mediaCount, messagesBytes, messagesCount, totalBytes } = usage || {}
+          const { messagesBytes, messagesCount, voiceBytes, voiceCount, mediaBytes, mediaCount, totalBytes } = usage || {}
 
-          const mBytes = mediaBytes || 0
-          const mCount = mediaCount || 0
           const msgBytes = messagesBytes || 0
           const msgCount = messagesCount || 0
+          const vBytes = voiceBytes || 0
+          const vCount = voiceCount || 0
+          const mBytes = mediaBytes || 0
+          const mCount = mediaCount || 0
           const totBytes = totalBytes || 0
-
-          state.mediaUsageText = mCount === 0
-            ? '0 B'
-            : `${formatBytes(mBytes)} • ${mCount} ${mCount === 1 ? 'file' : 'files'}`
 
           state.messagesUsageText = msgCount === 0
             ? '0 B'
             : `${formatBytes(msgBytes)} • ${msgCount} ${msgCount === 1 ? 'message' : 'messages'}`
+
+          state.voiceUsageText = vCount === 0
+            ? '0 B'
+            : `${formatBytes(vBytes)} • ${vCount} ${vCount === 1 ? 'note' : 'notes'}`
+
+          state.mediaUsageText = mCount === 0
+            ? '0 B'
+            : `${formatBytes(mBytes)} • ${mCount} ${mCount === 1 ? 'file' : 'files'}`
 
           state.totalUsageText = formatBytes(totBytes)
         } catch (err) {
@@ -124,6 +145,7 @@
       $bus.on('db:history_cleared', refreshStorageUsage, { signal })
 
       const btnClearMedia = refs('btnClearMedia')
+      const btnClearVoice = refs('btnClearVoice')
       const btnClearMessages = refs('btnClearMessages')
       const btnClearAllCache = refs('btnClearAllCache')
 
@@ -134,6 +156,20 @@
             await refreshStorageUsage()
             $bus.emit('ui:show_toast', {
               message: 'Local media cache cleared.',
+              variant: 'success',
+              type: 'success'
+            })
+          }
+        }, { signal })
+      }
+
+      if (btnClearVoice) {
+        btnClearVoice.addEventListener('click', async () => {
+          if ($storage && typeof $storage.clearLocalVoiceCache === 'function') {
+            await $storage.clearLocalVoiceCache()
+            await refreshStorageUsage()
+            $bus.emit('ui:show_toast', {
+              message: 'Local voice notes cache cleared.',
               variant: 'success',
               type: 'success'
             })

@@ -287,7 +287,7 @@ const onPush = (event) => {
         created_at: record.created
       }
 
-      if (plaintextObj.type === 'media') {
+      if (plaintextObj.type === 'media' || plaintextObj.type === 'voice') {
         const { media_id, file_key, file_nonce, filename, mime_type, waveform_data, music_metadata, album_art, thumbnail, duration } = plaintextObj
         decryptedMessage.media_id = media_id
         decryptedMessage.file_key = file_key
@@ -307,13 +307,15 @@ const onPush = (event) => {
           message_id: decryptedMessage.local_uuid,
           filename,
           mime_type,
+          category: plaintextObj.type === 'voice' ? 'voice' : undefined,
           file_key,
           file_nonce,
           created_at: record.created,
           music_metadata,
           album_art,
           thumbnail,
-          duration
+          duration,
+          waveform_data
         })
       }
 

@@ -785,7 +785,22 @@
             }
 
             // Project content into slot
-            if (message.type === 'media' && (message.attachments || message.file_key || message.status === 'pending')) {
+            if (message.type === 'voice' || (message.type === 'media' && message.mime_type?.startsWith('audio/') && Boolean(message.waveform_data))) {
+              const player = document.createElement('atoll-chat-timeline-item-voice')
+              player.setAttribute('local-uuid', message.local_uuid)
+              player.setAttribute('status', message.status)
+              player.setAttribute('is-sent', isSent)
+              row.appendChild(player)
+
+              if (message.content) {
+                const text = document.createElement('atoll-chat-timeline-item-text')
+                text.setAttribute('local-uuid', message.local_uuid)
+                text.setAttribute('content', message.content)
+                text.setAttribute('is-sent', isSent)
+                text.setAttribute('status', message.status)
+                row.appendChild(text)
+              }
+            } else if (message.type === 'media' && (message.attachments || message.file_key || message.status === 'pending')) {
               if (message.attachments && Array.isArray(message.attachments) && message.attachments.length > 0) {
                 const mediaAttachments = message.attachments.filter(a => a.isImage || a.isVideo || (a.mime_type || '').startsWith('image/') || (a.mime_type || '').startsWith('video/'))
                 const nonMediaAttachments = message.attachments.filter(a => !a.isImage && !a.isVideo && !(a.mime_type || '').startsWith('image/') && !(a.mime_type || '').startsWith('video/'))
@@ -1092,9 +1107,7 @@
         }
       })
 
-      let prevSelectionId = $state.activeSelectionId
       $state.subscribe('activeSelectionId', (val) => {
-        prevSelectionId = val
         if ($state.decryptionCache && typeof $state.decryptionCache.setActiveRoom === 'function') {
           $state.decryptionCache.setActiveRoom(val)
         }
@@ -1102,9 +1115,7 @@
         ephemeralMessages = []
         debouncedRender()
       })
-      let prevSelectionType = $state.activeSelectionType
       $state.subscribe('activeSelectionType', (val) => {
-        prevSelectionType = val
         debouncedRender()
       })
 

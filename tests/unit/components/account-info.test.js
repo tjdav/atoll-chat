@@ -6,19 +6,23 @@ describe('Account Info Component Storage Management', () => {
   let tagName
   let storageUsage
   let mediaCleared
+  let voiceCleared
   let messagesCleared
   let historyCleared
 
   beforeEach(async () => {
     document.body.innerHTML = ''
     storageUsage = {
-      mediaBytes: 14889779, // ~14.2 MB
-      mediaCount: 28,
       messagesBytes: 250880, // ~245 KB
       messagesCount: 120,
-      totalBytes: 15140659 // ~14.4 MB
+      voiceBytes: 3984588, // ~3.8 MB
+      voiceCount: 15,
+      mediaBytes: 10905190, // ~10.4 MB
+      mediaCount: 28,
+      totalBytes: 15140658 // ~14.4 MB
     }
     mediaCleared = false
+    voiceCleared = false
     messagesCleared = false
     historyCleared = false
 
@@ -40,20 +44,29 @@ describe('Account Info Component Storage Management', () => {
           mediaCleared = true
           storageUsage.mediaBytes = 0
           storageUsage.mediaCount = 0
-          storageUsage.totalBytes = storageUsage.messagesBytes
+          storageUsage.totalBytes = storageUsage.messagesBytes + storageUsage.voiceBytes
+          return true
+        },
+        clearLocalVoiceCache: async () => {
+          voiceCleared = true
+          storageUsage.voiceBytes = 0
+          storageUsage.voiceCount = 0
+          storageUsage.totalBytes = storageUsage.messagesBytes + storageUsage.mediaBytes
           return true
         },
         clearLocalMessagesCache: async () => {
           messagesCleared = true
           storageUsage.messagesBytes = 0
           storageUsage.messagesCount = 0
-          storageUsage.totalBytes = storageUsage.mediaBytes
+          storageUsage.totalBytes = storageUsage.mediaBytes + storageUsage.voiceBytes
           return true
         },
         clearLocalHistory: async () => {
           historyCleared = true
           storageUsage.mediaBytes = 0
           storageUsage.mediaCount = 0
+          storageUsage.voiceBytes = 0
+          storageUsage.voiceCount = 0
           storageUsage.messagesBytes = 0
           storageUsage.messagesCount = 0
           storageUsage.totalBytes = 0
@@ -87,20 +100,28 @@ describe('Account Info Component Storage Management', () => {
     const usernameEl = el.querySelector('.form-control')
     assert.equal(usernameEl.textContent.trim(), 'alice')
 
-    const btnClearMedia = el.querySelector('[data-testid="btnClearMedia"]')
     const btnClearMessages = el.querySelector('[data-testid="btnClearMessages"]')
+    const btnClearVoice = el.querySelector('[data-testid="btnClearVoice"]')
+    const btnClearMedia = el.querySelector('[data-testid="btnClearMedia"]')
     const btnClearAllCache = el.querySelector('[data-testid="btnClearAllCache"]')
 
-    assert.ok(btnClearMedia, 'Clear Media button should render')
     assert.ok(btnClearMessages, 'Clear Messages button should render')
+    assert.ok(btnClearVoice, 'Clear Voice Notes button should render')
+    assert.ok(btnClearMedia, 'Clear Media button should render')
     assert.ok(btnClearAllCache, 'Clear All Cache button should render')
   })
 
-  test('should execute clear media, messages, and all cache actions', async () => {
+  test('should execute clear media, voice, messages, and all cache actions', async () => {
     const el = document.createElement(tagName)
     document.body.appendChild(el)
 
     await new Promise((resolve) => setTimeout(resolve, 50))
+
+    const btnClearVoice = el.querySelector('[data-testid="btnClearVoice"]')
+    btnClearVoice.click()
+
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    assert.equal(voiceCleared, true, 'clearLocalVoiceCache should be invoked')
 
     const btnClearMedia = el.querySelector('[data-testid="btnClearMedia"]')
     btnClearMedia.click()
