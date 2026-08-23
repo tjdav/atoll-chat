@@ -3,15 +3,8 @@
     <ui-offline-banner></ui-offline-banner>
     <div ref="container" class="flex-grow-1 position-relative"></div>
 
-    <!-- Global Toast Container -->
-    <div class="toast-container position-fixed bottom-0 start-0 p-3" style="z-index: 1100">
-      <div ref="globalToast" class="toast align-items-center border-0 shadow" role="alert" aria-live="assertive" aria-atomic="true">
-        <div class="d-flex">
-          <div class="toast-body" ref="toastBody"></div>
-          <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-      </div>
-    </div>
+    <!-- Global Toast Component -->
+    <atoll-toast data-testid="globalToast"></atoll-toast>
   </div>
 </template>
 
@@ -40,38 +33,6 @@
       const { $push } = push
       const { $worker } = cryptoWorker
       const container = refs('container')
-
-      // Initialize global toast
-      let toastInstance = null
-      const toastEl = refs('globalToast')
-      const toastBody = refs('toastBody')
-
-      try {
-        const { Toast } = bootstrap
-        if (Toast) {
-          toastInstance = new Toast(toastEl)
-        }
-      } catch {
-        // Safe recovery: fallback gracefully if toast initialization fails.
-        toastInstance = null
-      }
-
-      $bus.on('ui:show_toast', ({ message, variant = 'primary', type = 'primary' }) => {
-        const toastType = variant || type
-        toastBody.textContent = message
-        toastEl.className = `toast align-items-center text-white bg-${toastType} border-0 shadow`
-        if (!toastInstance && bootstrap?.Toast) {
-          try {
-            toastInstance = new bootstrap.Toast(toastEl)
-          } catch {
-          }
-        }
-        if (toastInstance) {
-          toastInstance.show()
-        } else {
-          toastEl.classList.add('show')
-        }
-      })
 
       // Global Context Menu Controller
       let activeContextMenu = null

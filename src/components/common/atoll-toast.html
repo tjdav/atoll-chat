@@ -1,0 +1,406 @@
+<template id="atoll-toast">
+  <div 
+    ref="popoverContainer" 
+    popover="manual" 
+    class="{{ popoverContainerClasses }}"
+    data-has-toasts="{{ hasActiveToasts }}"
+  >
+    <!-- Dynamic Toast Cards Stack Container -->
+    <div ref="stackHost" class="atoll-toast-stack"></div>
+  </div>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      placement: {
+        type: String,
+        default: 'bottom-start'
+      },
+      maxToasts: {
+        type: Number,
+        default: 3
+      },
+      duration: {
+        type: Number,
+        default: 4000
+      }
+    },
+
+    getters: {
+      popoverContainerClasses: (state) => {
+        const classes = ['atoll-toast-container']
+        const placement = state.placement || 'bottom-start'
+        classes.push(`placement-${placement}`)
+        return classes.join(' ')
+      },
+      hasActiveToasts: (state) => Boolean(state.toasts && state.toasts.length > 0)
+    },
+
+    client: ({ state, refs, root, signal, eventBus }) => {
+      const popoverContainer = refs('popoverContainer')
+      const stackHost = refs('stackHost')
+      const { $bus } = eventBus || {}
+
+      state.toasts = []
+      const toastEntries = new Map()
+      let nextId = 1
+
+      /**
+       * Resolves icon name per toast variant or explicit override.
+       * @param {string} variant
+       * @param {string} [customIcon]
+       * @returns {string}
+       */
+      const resolveIconName = (variant, customIcon) => {
+        if (customIcon) {
+          return customIcon
+        }
+        switch (variant) {
+          case 'success': return 'check-circle'
+          case 'danger': return 'alert-circle'
+          case 'warning': return 'alert-triangle'
+          case 'info':
+          case 'primary':
+          case 'secondary':
+          default: return 'info'
+        }
+      }
+
+      /**
+       * Shows the top layer popover container if not currently shown.
+       */
+      const ensurePopoverVisible = () => {
+        if (popoverContainer && typeof popoverContainer.showPopover === 'function') {
+          try {
+            popoverContainer.showPopover()
+          } catch {
+            // Safe recovery if popover state is already open or manual fallback
+          }
+        }
+      }
+
+      /**
+       * Hides the top layer popover container if stack is empty.
+       */
+      const ensurePopoverHidden = () => {
+        if (state.toasts.length === 0 && popoverContainer && typeof popoverContainer.hidePopover === 'function') {
+          try {
+            popoverContainer.hidePopover()
+          } catch {
+            // Safe recovery
+          }
+        }
+      }
+
+      /**
+       * Dismisses and removes a toast by ID with a 150ms exit transition.
+       * @param {string|number} id
+       */
+      const hideToast = (id) => {
+        state.toasts = state.toasts.filter(t => t.id !== id)
+        const entry = toastEntries.get(id)
+        if (!entry || entry.isClosing) {
+          ensurePopoverHidden()
+          return
+        }
+
+        entry.isClosing = true
+        if (entry.timerId) {
+          clearTimeout(entry.timerId)
+          entry.timerId = null
+        }
+
+        const { cardEl } = entry
+        cardEl.classList.remove('atoll-toast-visible')
+        cardEl.classList.add('atoll-toast-closing')
+
+        const removeCard = () => {
+          if (cardEl.parentNode) {
+            cardEl.parentNode.removeChild(cardEl)
+          }
+          toastEntries.delete(id)
+          ensurePopoverHidden()
+        }
+
+        // Wait for 150ms transition
+        let transitioned = false
+        const handleTransitionEnd = (e) => {
+          if (e.target === cardEl) {
+            transitioned = true
+            cardEl.removeEventListener('transitionend', handleTransitionEnd)
+            removeCard()
+          }
+        }
+        cardEl.addEventListener('transitionend', handleTransitionEnd, { signal })
+        setTimeout(() => {
+          if (!transitioned) {
+            removeCard()
+          }
+        }, 180)
+      }
+
+      /**
+       * Clears all active toasts immediately.
+       */
+      const clearAll = () => {
+        toastEntries.forEach((entry) => {
+          if (entry.timerId) {
+            clearTimeout(entry.timerId)
+          }
+          if (entry.cardEl.parentNode) {
+            entry.cardEl.parentNode.removeChild(entry.cardEl)
+          }
+        })
+        toastEntries.clear()
+        state.toasts = []
+        ensurePopoverHidden()
+      }
+
+      /**
+       * Pauses auto-dismiss countdown for a toast entry.
+       * @param {object} entry
+       */
+      const pauseTimer = (entry) => {
+        if (!entry || entry.remainingTime <= 0 || entry.isPaused) {
+          return
+        }
+        if (entry.timerId) {
+          clearTimeout(entry.timerId)
+          entry.timerId = null
+        }
+        const elapsed = Date.now() - entry.startTime
+        entry.remainingTime = Math.max(0, entry.remainingTime - elapsed)
+        entry.isPaused = true
+        entry.cardEl.classList.add('atoll-toast-paused')
+        if (entry.progressBarEl) {
+          entry.progressBarEl.style.animationPlayState = 'paused'
+        }
+      }
+
+      /**
+       * Resumes auto-dismiss countdown for a toast entry.
+       * @param {object} entry
+       */
+      const resumeTimer = (entry) => {
+        if (!entry || entry.remainingTime <= 0 || !entry.isPaused) {
+          return
+        }
+        entry.isPaused = false
+        entry.startTime = Date.now()
+        entry.cardEl.classList.remove('atoll-toast-paused')
+        if (entry.progressBarEl) {
+          entry.progressBarEl.style.animationPlayState = 'running'
+        }
+        entry.timerId = setTimeout(() => {
+          hideToast(entry.toast.id)
+        }, entry.remainingTime)
+      }
+
+      /**
+       * Adds and displays a new toast notification.
+       * @param {object|string} options
+       * @returns {string|number} Toast ID
+       */
+      const showToast = (options) => {
+        let toastObj = typeof options === 'string' ? { message: options } : { ...options }
+
+        const id = toastObj.id || `toast-${nextId++}`
+        const variant = toastObj.variant || toastObj.type || 'primary'
+        const duration = typeof toastObj.duration === 'number' ? toastObj.duration : state.duration
+        const message = toastObj.message || ''
+        const action = toastObj.action || null
+        const iconName = resolveIconName(variant, toastObj.icon)
+
+        const toast = {
+          id,
+          variant,
+          duration,
+          message,
+          action,
+          icon: iconName
+        }
+
+        // Enforce max capacity limit (default 3)
+        const maxCapacity = state.maxToasts || 3
+        while (state.toasts.length >= maxCapacity) {
+          const oldest = state.toasts[0]
+          hideToast(oldest.id)
+        }
+
+        // Ensure Top-Layer Popover container is active
+        ensurePopoverVisible()
+
+        // Create Card DOM element
+        const card = document.createElement('div')
+        card.className = `atoll-toast-card atoll-toast-card-${variant}`
+        card.dataset.toastId = String(id)
+
+        // WCAG Live Region & ARIA attributes
+        if (variant === 'danger' || variant === 'warning') {
+          card.setAttribute('role', 'alert')
+          card.setAttribute('aria-live', 'assertive')
+        } else {
+          card.setAttribute('role', 'status')
+          card.setAttribute('aria-live', 'polite')
+        }
+        card.setAttribute('aria-atomic', 'true')
+        card.setAttribute('tabindex', '0')
+
+        // Inner Card HTML Layout
+        const bodyWrapper = document.createElement('div')
+        bodyWrapper.className = 'atoll-toast-body'
+
+        // Icon
+        const iconWrapper = document.createElement('div')
+        iconWrapper.className = 'atoll-toast-icon'
+        const iconEl = document.createElement('atoll-icon')
+        iconEl.setAttribute('name', iconName)
+        iconEl.setAttribute('size', '20')
+        iconWrapper.appendChild(iconEl)
+        bodyWrapper.appendChild(iconWrapper)
+
+        // Message
+        const msgEl = document.createElement('div')
+        msgEl.className = 'atoll-toast-message'
+        msgEl.textContent = message
+        bodyWrapper.appendChild(msgEl)
+
+        // Action Button (if present)
+        if (action && action.label) {
+          const actionBtn = document.createElement('button')
+          actionBtn.type = 'button'
+          actionBtn.className = 'atoll-toast-action-btn'
+          actionBtn.textContent = action.label
+          actionBtn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            if (typeof action.onClick === 'function') {
+              action.onClick(toast)
+            }
+            hideToast(id)
+          }, { signal })
+          bodyWrapper.appendChild(actionBtn)
+        }
+
+        // Close / Dismiss Button
+        const closeBtn = document.createElement('button')
+        closeBtn.type = 'button'
+        closeBtn.className = 'atoll-toast-close-btn'
+        closeBtn.setAttribute('aria-label', 'Dismiss notification')
+        const closeIcon = document.createElement('atoll-icon')
+        closeIcon.setAttribute('name', 'close')
+        closeIcon.setAttribute('size', '16')
+        closeBtn.appendChild(closeIcon)
+        closeBtn.addEventListener('click', (e) => {
+          e.stopPropagation()
+          hideToast(id)
+        }, { signal })
+        bodyWrapper.appendChild(closeBtn)
+
+        card.appendChild(bodyWrapper)
+
+        // Progress Timer Bar (if duration > 0 and finite)
+        let progressBarEl = null
+        if (duration > 0 && Number.isFinite(duration)) {
+          const progressWrapper = document.createElement('div')
+          progressWrapper.className = 'atoll-toast-progress-wrapper'
+          progressBarEl = document.createElement('div')
+          progressBarEl.className = 'atoll-toast-progress-bar'
+          progressBarEl.style.animationDuration = `${duration}ms`
+          progressWrapper.appendChild(progressBarEl)
+          card.appendChild(progressWrapper)
+        }
+
+        // Mouse & Focus Pause / Resume Handlers
+        card.addEventListener('mouseenter', () => {
+          const entry = toastEntries.get(id)
+          if (entry) {
+            pauseTimer(entry)
+          }
+        }, { signal })
+
+        card.addEventListener('mouseleave', () => {
+          const entry = toastEntries.get(id)
+          if (entry) {
+            resumeTimer(entry)
+          }
+        }, { signal })
+
+        card.addEventListener('focusin', () => {
+          const entry = toastEntries.get(id)
+          if (entry) {
+            pauseTimer(entry)
+          }
+        }, { signal })
+
+        card.addEventListener('focusout', () => {
+          const entry = toastEntries.get(id)
+          if (entry) {
+            resumeTimer(entry)
+          }
+        }, { signal })
+
+        // Mount Card in Stack Host
+        stackHost.appendChild(card)
+
+        // Trigger 200ms spring enter animation
+        requestAnimationFrame(() => {
+          card.classList.add('atoll-toast-visible')
+        })
+
+        // Timer entry
+        const entry = {
+          toast,
+          cardEl: card,
+          progressBarEl,
+          timerId: null,
+          startTime: Date.now(),
+          remainingTime: duration > 0 && Number.isFinite(duration) ? duration : 0,
+          isPaused: false,
+          isClosing: false
+        }
+
+        if (duration > 0 && Number.isFinite(duration)) {
+          entry.timerId = setTimeout(() => {
+            hideToast(id)
+          }, duration)
+        }
+
+        toastEntries.set(id, entry)
+        state.toasts = [...state.toasts, toast]
+
+        return id
+      }
+
+      // EventBus listener
+      if ($bus) {
+        $bus.on('ui:show_toast', (payload) => {
+          showToast(payload)
+        })
+      }
+
+      // Keyboard Esc handler to close active toast
+      popoverContainer.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && state.toasts.length > 0) {
+          const lastToast = state.toasts[state.toasts.length - 1]
+          if (lastToast) {
+            hideToast(lastToast.id)
+          }
+        }
+      }, { signal })
+
+      // Public Imperative API exposed on component host
+      root.show = showToast
+      root.toast = showToast
+      root.hide = hideToast
+      root.clear = clearAll
+
+      // Cleanup on component abort
+      signal.addEventListener('abort', () => {
+        clearAll()
+      })
+    }
+  })
+</script>
