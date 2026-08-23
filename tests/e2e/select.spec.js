@@ -28,8 +28,8 @@ test.describe('Atoll Select Component', () => {
     const selectHost = page.locator('#test-select-init')
     await expect(selectHost).toBeVisible()
 
-    // Inner toggle button class verification
-    const toggleBtn = selectHost.locator('button.atoll-select-toggle')
+    // Inner toggle summary class verification
+    const toggleBtn = selectHost.locator('.atoll-select-toggle')
     await expect(toggleBtn).toBeVisible()
     await expect(toggleBtn).toHaveClass(/btn-primary/)
     await expect(toggleBtn).toHaveAttribute('data-testid', 'my-atoll-select')
@@ -56,7 +56,7 @@ test.describe('Atoll Select Component', () => {
     })
 
     const selectHost = page.locator('#test-select-selection')
-    const toggleBtn = selectHost.locator('button.atoll-select-toggle')
+    const toggleBtn = selectHost.locator('.atoll-select-toggle')
     const label = selectHost.locator('.atoll-select-label')
 
     // On load, value=1 is selected, so selectedLabel should be "Option One"
@@ -65,8 +65,10 @@ test.describe('Atoll Select Component', () => {
     // Open dropdown menu
     await toggleBtn.click()
 
+    const detailsEl = selectHost.locator('details.atoll-select')
+    await expect(detailsEl).toHaveAttribute('open', '')
+
     const menu = selectHost.locator('.atoll-select-menu')
-    await expect(menu).toHaveClass(/show/)
 
     // Option 1 should be active
     const opt1 = menu.locator('button[data-value="1"]')
@@ -93,7 +95,7 @@ test.describe('Atoll Select Component', () => {
     expect(currentValue).toBe('2')
 
     // Menu should close
-    await expect(menu).not.toHaveClass(/show/)
+    await expect(detailsEl).not.toHaveAttribute('open', '')
   })
 
   test('should support programmatic API for value and disabled', async ({ page }) => {
@@ -109,7 +111,7 @@ test.describe('Atoll Select Component', () => {
 
     const selectHost = page.locator('#test-select-api')
     const label = selectHost.locator('.atoll-select-label')
-    const toggleBtn = selectHost.locator('button.atoll-select-toggle')
+    const toggleBtn = selectHost.locator('.atoll-select-toggle')
 
     // Check placeholder
     await expect(label).toHaveText('Select an option...')
@@ -131,7 +133,7 @@ test.describe('Atoll Select Component', () => {
       select.disabled = true
     })
 
-    await expect(toggleBtn).toBeDisabled()
+    await expect(toggleBtn).toHaveClass(/disabled/)
 
     const isDisabled = await selectHost.evaluate((el) => el.disabled)
     expect(isDisabled).toBe(true)
@@ -142,7 +144,7 @@ test.describe('Atoll Select Component', () => {
       select.disabled = false
     })
 
-    await expect(toggleBtn).not.toBeDisabled()
+    await expect(toggleBtn).not.toHaveClass(/disabled/)
   })
 
   test('should support clean slots and programmatically set leading icons with zero wrapper nodes when empty', async ({ page }) => {

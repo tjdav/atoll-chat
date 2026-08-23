@@ -233,7 +233,7 @@ test.describe.serial('Call Device Settings', () => {
 
     await test.step('Switch microphone via dropdown and verify hot-swapping', async () => {
       const micSelect = alicePage.locator('call-overlay [ref$="micSelect"]')
-      const toggleBtn = micSelect.locator('button.atoll-select-toggle')
+      const toggleBtn = micSelect.locator('.atoll-select-toggle')
 
       await toggleBtn.click()
 
@@ -256,7 +256,7 @@ test.describe.serial('Call Device Settings', () => {
     await test.step('Switch speaker via dropdown and verify setSinkId application', async () => {
       // Verify mock track swaps for speaker/setSinkId if applicable
       const speakerSelect = alicePage.locator('call-overlay [ref$="speakerSelect"]')
-      const toggleBtn = speakerSelect.locator('button.atoll-select-toggle')
+      const toggleBtn = speakerSelect.locator('.atoll-select-toggle')
       await toggleBtn.click()
 
       const secondarySpeakerOption = speakerSelect.locator('.dropdown-item[data-value="speaker-2"]')
@@ -312,7 +312,7 @@ test.describe.serial('Call Device Settings', () => {
 
       // Change microphone, toggle NC, toggle Background blur
       const micSelect = alicePage.locator('call-overlay [ref$="micSelect"]')
-      const toggleBtn = micSelect.locator('button.atoll-select-toggle')
+      const toggleBtn = micSelect.locator('.atoll-select-toggle')
       await toggleBtn.click()
 
       const secondaryMicOption = micSelect.locator('.dropdown-item[data-value="mic-2"]')
@@ -370,7 +370,7 @@ test.describe.serial('Call Device Settings', () => {
 
     await test.step('Switch camera via dropdown and verify hot-swapping', async () => {
       const camSelect = alicePage.locator('call-overlay [ref$="camSelect"]')
-      const toggleBtn = camSelect.locator('button.atoll-select-toggle')
+      const toggleBtn = camSelect.locator('.atoll-select-toggle')
       await toggleBtn.click()
 
       // Choose secondary camera
@@ -379,7 +379,7 @@ test.describe.serial('Call Device Settings', () => {
       await secondaryCamOption.click({ force: true })
 
       // Ensure camera dropdown menu is closed to prevent overlapping issues
-      await expect(camSelect.locator('.atoll-select-menu')).not.toBeVisible()
+      await expect(camSelect.locator('details.atoll-select')).not.toHaveAttribute('open', '')
 
       // Check localStorage update
       const storedCamId = await alicePage.evaluate(() => localStorage.getItem('atoll_active_camera'))
