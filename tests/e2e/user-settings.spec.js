@@ -259,4 +259,40 @@ test.describe('User Settings & Profile', () => {
       await expect(page.locator('.offcanvas-sm')).toBeVisible()
     })
   })
+
+  test.describe('GDPR Data Export', () => {
+    test.beforeEach(async ({ loginApp }) => {
+      await loginApp('alice', 'Password123!', 'VaultPassword123!')
+    })
+
+    test('export account data via settings account info', async ({ page }) => {
+      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
+      await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+
+      // Click Export Data button
+      const exportBtn = page.locator('[data-testid$="btnExportData"]')
+      await expect(exportBtn).toBeVisible()
+
+      // Setup download event listener
+      const downloadPromise = page.waitForEvent('download')
+
+      await exportBtn.click()
+
+      // Fill in permission modal password
+      const passwordInput = page.locator('[data-testid$="passwordInput"] input, [data-testid$="passwordInput"]').first()
+      await expect(passwordInput).toBeVisible()
+      await passwordInput.fill('VaultPassword123!')
+
+      // Click Confirm/Export Data button inside permission modal
+      const modalPrimaryBtn = page.locator('[data-testid$="permissionModalPopup"] button.btn-primary, [data-testid$="permissionModal"] button.btn-primary').first()
+      await modalPrimaryBtn.click()
+
+      // Wait for download to complete
+      const download = await downloadPromise
+      expect(download.suggestedFilename()).toMatch(/^atoll-data-export-alice-\d{4}-\d{2}-\d{2}\.json$/)
+
+      // Verify success toast
+      await expect(page.locator('.toast.show')).toContainText('Account data exported successfully.')
+    })
+  })
 })

@@ -187,6 +187,20 @@ export function createNativeStorageAdapter () {
     },
 
     /**
+     * Exports all records from local in-memory/localStorage stores for data archive compilation.
+     *
+     * @returns {Promise<{ rooms: Array<Object>, messages: Array<Object>, config: Array<Object>, assets: Array<Object> }>}
+     */
+    exportLocalData: async () => {
+      return {
+        rooms: Array.from(localRooms.values()),
+        messages: Array.from(localMessages.values()),
+        config: Array.from(localConfig.values()),
+        assets: Array.from(localAssets.values())
+      }
+    },
+
+    /**
      * Bulk saves multiple records to the designated local store.
      *
      * @param {string} storeName - The name of the target database store.

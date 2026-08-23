@@ -336,7 +336,8 @@ export default definePlugin({
 
             return res
           },
-          purgeAllData: () => initialAdapter.purgeAllData()
+          purgeAllData: () => initialAdapter.purgeAllData(),
+          exportLocalData: () => initialAdapter.exportLocalData()
         }
 
         api.$storage = api

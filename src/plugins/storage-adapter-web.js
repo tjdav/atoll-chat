@@ -879,6 +879,32 @@ export function createWebStorageAdapter () {
     },
 
     /**
+     * Exports all records from local stores (rooms, messages, config, assets) for data archive compilation.
+     *
+     * @returns {Promise<{ rooms: Array<Object>, messages: Array<Object>, config: Array<Object>, assets: Array<Object> }>}
+     */
+    exportLocalData: async () => {
+      if (!dbInstance) {
+        return {
+          rooms: [],
+          messages: [],
+          config: [],
+          assets: []
+        }
+      }
+      const rooms = await dbInstance.local_rooms.toArray()
+      const messages = await dbInstance.local_messages.toArray()
+      const config = await dbInstance.local_config.toArray()
+      const assets = await dbInstance.local_assets.toArray()
+      return {
+        rooms,
+        messages,
+        config,
+        assets
+      }
+    },
+
+    /**
      * Completely purges all tables in local storage.
      *
      * @returns {Promise<boolean>}
