@@ -1,0 +1,555 @@
+<template id="atoll-permission-modal">
+  <atoll-popup
+    ref="popup"
+    open="{{ open }}"
+    title="{{ title }}"
+    description="{{ description }}"
+    variant="{{ variant }}"
+    primary-text="{{ actionLabel }}"
+    secondary-text="{{ secondaryText }}"
+    primary-disabled="{{ primaryDisabled }}"
+    primary-loading="{{ primaryLoading }}"
+    data-testid="permissionModalPopup"
+  >
+    <div class="text-start">
+      <!-- Slot for caller-provided custom warning content/badges -->
+      <slot></slot>
+
+      <!-- Biometric Option Section -->
+      <div ref="biometricSection" class="d-none mb-3">
+        <atoll-button
+          ref="btnBiometric"
+          variant="outline-primary"
+          block="true"
+          icon="fingerprint"
+          text="Authenticate with Biometrics"
+          data-testid="btnBiometric"
+        ></atoll-button>
+
+        <div class="d-flex align-items-center my-3">
+          <hr class="flex-grow-1 my-0 text-muted opacity-25" />
+          <span class="px-2 small text-muted">or enter password</span>
+          <hr class="flex-grow-1 my-0 text-muted opacity-25" />
+        </div>
+      </div>
+
+      <!-- Password Verification Form -->
+      <form ref="passwordForm" onsubmit="return false;">
+        <div class="mb-3">
+          <atoll-input
+            ref="passwordInput"
+            type="password"
+            label="Vault Password"
+            placeholder="Enter your password"
+            required="true"
+            data-testid="passwordInput"
+          ></atoll-input>
+        </div>
+
+        <!-- TOTP Step-Up Verification Code Section -->
+        <div ref="totpSection" class="mb-3 d-none">
+          <label class="form-label small fw-bold mb-1">2-Step Verification Code</label>
+          <input
+            type="text"
+            class="form-control text-center fs-5 font-monospace"
+            ref="totpInput"
+            data-testid="totpInput"
+            placeholder="000000"
+            maxlength="6"
+            pattern="\d{6}"
+          />
+        </div>
+
+        <!-- Error Alert Box -->
+        <div ref="errorAlert" class="alert alert-danger d-none small p-2 mb-0" data-testid="errorAlert"></div>
+      </form>
+    </div>
+  </atoll-popup>
+</template>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      open: Boolean,
+      variant: {
+        type: String,
+        // 'confirm' | 'danger'
+        default: 'confirm'
+      },
+      title: {
+        type: String,
+        default: 'Confirm Password'
+      },
+      description: {
+        type: String,
+        default: ''
+      },
+      actionLabel: {
+        type: String,
+        default: 'Confirm'
+      },
+      secondaryText: {
+        type: String,
+        default: 'Cancel'
+      },
+      allowBiometric: {
+        type: Boolean,
+        default: true
+      },
+      autoBiometric: {
+        type: Boolean,
+        default: true
+      },
+      requireTotp: {
+        type: Boolean,
+        default: false
+      },
+      primaryDisabled: Boolean,
+      primaryLoading: Boolean
+    },
+
+    client: async ({ state, refs, root, pocketbase, cryptoWorker, biometric, eventBus, totp, signal }) => {
+      const { pb } = pocketbase
+      const { $worker } = cryptoWorker
+      const { $bus } = eventBus
+
+      const popup = refs('popup')
+      const biometricSection = refs('biometricSection')
+      const btnBiometric = refs('btnBiometric')
+      const passwordForm = refs('passwordForm')
+      const passwordInput = refs('passwordInput')
+      const totpSection = refs('totpSection')
+      const totpInput = refs('totpInput')
+      const errorAlert = refs('errorAlert')
+
+      let activeResolver = null
+      let autoBioTimeout = null
+
+      /**
+       * Clears error state and resets input fields.
+       */
+      const resetForm = () => {
+        if (errorAlert) {
+          errorAlert.classList.add('d-none')
+          errorAlert.textContent = ''
+        }
+        if (passwordInput) {
+          passwordInput.value = ''
+        }
+        if (totpInput) {
+          totpInput.value = ''
+        }
+        state.primaryDisabled = false
+        state.primaryLoading = false
+      }
+
+      /**
+       * Checks biometric status and updates UI availability.
+       *
+       * @returns {Promise<boolean>} True if biometrics are available and credentials exist.
+       */
+      const checkBiometricAvailability = async () => {
+        if (!state.allowBiometric) {
+          if (biometricSection) {
+            biometricSection.classList.add('d-none')
+          }
+          return false
+        }
+
+        const userId = pb.authStore.model?.id
+        if (!userId) {
+          if (biometricSection) {
+            biometricSection.classList.add('d-none')
+          }
+          return false
+        }
+
+        const isAvail = biometric && typeof biometric.isAvailable === 'function' ? await biometric.isAvailable() : false
+        const credsRaw = localStorage.getItem(`atoll_biometric_credentials_${userId}`)
+
+        if (isAvail && credsRaw) {
+          if (biometricSection) {
+            biometricSection.classList.remove('d-none')
+          }
+          return true
+        } else {
+          if (biometricSection) {
+            biometricSection.classList.add('d-none')
+          }
+          return false
+        }
+      }
+
+      /**
+       * Attempts biometric authentication using stored credentials.
+       *
+       * @param {boolean} isAuto - Whether this call was auto-triggered on open.
+       * @returns {Promise<boolean>} Resolves true on success, false on cancellation/error.
+       */
+      const triggerBiometricAuth = async (isAuto = false) => {
+        const userId = pb.authStore.model?.id
+        if (!userId) {
+          return false
+        }
+
+        try {
+          state.primaryLoading = true
+          if (errorAlert) {
+            errorAlert.classList.add('d-none')
+          }
+
+          // Fetch user record from PocketBase or authStore
+          let record = pb.authStore.model
+          if (!record?.encrypted_master_keys && pb.collection) {
+            record = await pb.collection('users').getOne(userId)
+          }
+
+          // Retrieve unlocked Master Key via biometric prompt
+          const masterKey = await biometric.retrieveMasterKey(userId, record)
+          if (!masterKey) {
+            throw new Error('Biometric verification cancelled or failed.')
+          }
+
+          // Decrypt stored credentials payload
+          const credsRaw = localStorage.getItem(`atoll_biometric_credentials_${userId}`)
+          if (!credsRaw) {
+            throw new Error('No biometric credentials registered on this device.')
+          }
+
+          const credsObj = JSON.parse(credsRaw)
+          const decryptedJson = await $worker.execute('worker:crypto_secretbox_open_easy', {
+            ciphertext: credsObj.ciphertext,
+            nonce: credsObj.nonce,
+            key: masterKey
+          })
+
+          if (!decryptedJson) {
+            throw new Error('Failed to decrypt biometric credentials.')
+          }
+
+          const { keyB, username } = JSON.parse(decryptedJson)
+
+          const payload = {
+            success: true,
+            method: 'biometric',
+            keyB,
+            password: keyB,
+            masterKey,
+            username,
+            record
+          }
+
+          if (activeResolver) {
+            const resolve = activeResolver
+            activeResolver = null
+            resolve(payload)
+          }
+
+          root.dispatchEvent(new CustomEvent('atoll-permission-success', {
+            bubbles: true,
+            composed: true,
+            detail: payload
+          }))
+
+          root.hide()
+          return true
+        } catch (err) {
+          console.warn('[atoll-permission-modal] Biometric auth notice:', err.message || err)
+          if (!isAuto) {
+            if (errorAlert) {
+              errorAlert.textContent = err.message || 'Biometric authentication failed.'
+              errorAlert.classList.remove('d-none')
+            }
+          }
+          if (passwordInput) {
+            setTimeout(() => passwordInput.focus(), 100)
+          }
+          return false
+        } finally {
+          state.primaryLoading = false
+        }
+      }
+
+      /**
+       * Handles password + TOTP verification.
+       */
+      const handlePasswordVerification = async () => {
+        const password = passwordInput ? passwordInput.value : ''
+        const totpCode = totpInput ? totpInput.value.trim() : ''
+
+        if (errorAlert) {
+          errorAlert.classList.add('d-none')
+          errorAlert.textContent = ''
+        }
+
+        if (!password) {
+          if (errorAlert) {
+            errorAlert.textContent = 'Password is required.'
+            errorAlert.classList.remove('d-none')
+          }
+          return
+        }
+
+        const userId = pb.authStore.model?.id
+        if (!userId) {
+          if (errorAlert) {
+            errorAlert.textContent = 'User authentication required.'
+            errorAlert.classList.remove('d-none')
+          }
+          return
+        }
+
+        state.primaryLoading = true
+
+        try {
+          let record = pb.authStore.model
+          if ((!record?.encrypted_master_keys || record?.totp_enabled === undefined) && pb.collection) {
+            record = await pb.collection('users').getOne(userId)
+          }
+
+          // Check TOTP if enabled on user record or required via attribute
+          const isTotpEnabled = record?.totp_enabled || state.requireTotp
+          if (isTotpEnabled) {
+            if (!totpCode) {
+              throw new Error('2-step verification code is required.')
+            }
+            if (totp) {
+              const { $totp } = await totp
+              const isTotpValid = await $totp.verify(totpCode, record.totp_secret)
+              if (!isTotpValid) {
+                throw new Error('Invalid 2-step verification code.')
+              }
+            }
+          }
+
+          // Derive Auth and Vault Keys
+          const { deriveAuthAndVaultKeys, purgeVaultKey } = await import('../../utils/keys.js')
+          const username = record.username || pb.authStore.model.username
+          const { keyA, keyB } = await deriveAuthAndVaultKeys(username, password)
+
+          // Validate keyA against encrypted_master_keys
+          let masterKey
+          try {
+            masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
+              ciphertext: record.encrypted_master_keys.ciphertext,
+              nonce: record.encrypted_master_keys.nonce,
+              key: keyA
+            })
+            purgeVaultKey()
+            if (!masterKey) {
+              throw new Error('Invalid Master Password.')
+            }
+          } catch {
+            purgeVaultKey()
+            throw new Error('Invalid Master Password.')
+          }
+
+          const payload = {
+            success: true,
+            method: 'password',
+            keyA,
+            keyB,
+            password: keyB,
+            masterKey,
+            username,
+            record
+          }
+
+          if (activeResolver) {
+            const resolve = activeResolver
+            activeResolver = null
+            resolve(payload)
+          }
+
+          root.dispatchEvent(new CustomEvent('atoll-permission-success', {
+            bubbles: true,
+            composed: true,
+            detail: payload
+          }))
+
+          root.hide()
+        } catch (err) {
+          console.error('[atoll-permission-modal] Verification error:', err)
+          if (errorAlert) {
+            errorAlert.textContent = err.message || 'Invalid password or verification code.'
+            errorAlert.classList.remove('d-none')
+          }
+        } finally {
+          state.primaryLoading = false
+        }
+      }
+
+      /**
+       * Opens the modal dialog and begins verification process.
+       *
+       * @param {Object} options
+       * @returns {Promise<Object|null>}
+       */
+      const promptModal = (options = {}) => {
+        if (options.title !== undefined) {
+          state.title = options.title
+        }
+
+        if (options.description !== undefined) {
+          state.description = options.description
+        }
+
+        if (options.variant !== undefined) {
+          state.variant = options.variant
+        }
+
+        if (options.actionLabel !== undefined) {
+          state.actionLabel = options.actionLabel
+        }
+
+        if (options.primaryText !== undefined) {
+          state.actionLabel = options.primaryText
+        }
+
+        if (options.secondaryText !== undefined) {
+          state.secondaryText = options.secondaryText
+        }
+
+        if (options.allowBiometric !== undefined) {
+          state.allowBiometric = Boolean(options.allowBiometric)
+        }
+
+        if (options.autoBiometric !== undefined) {
+          state.autoBiometric = Boolean(options.autoBiometric)
+        }
+
+        if (options.requireTotp !== undefined) {
+          state.requireTotp = Boolean(options.requireTotp)
+        }
+
+        resetForm()
+
+        // Configure TOTP Section
+        const isTotpRequired = pb.authStore.model?.totp_enabled || state.requireTotp
+        if (isTotpRequired) {
+          if (totpSection) {
+            totpSection.classList.remove('d-none')
+          }
+
+          if (totpInput) {
+            totpInput.setAttribute('required', '')
+          }
+
+        } else {
+          if (totpSection) {
+            totpSection.classList.add('d-none')
+          }
+  
+          if (totpInput) {
+            totpInput.removeAttribute('required')
+          }
+        }
+
+        return new Promise((resolve) => {
+          if (activeResolver) {
+            activeResolver(null)
+          }
+          activeResolver = resolve
+
+          if (popup && typeof popup.show === 'function') {
+            popup.show()
+          } else {
+            state.open = true
+          }
+
+          checkBiometricAvailability().then((hasBiometrics) => {
+            if (hasBiometrics && state.autoBiometric) {
+              autoBioTimeout = setTimeout(() => {
+                triggerBiometricAuth(true)
+              }, 150)
+            } else {
+              if (passwordInput) {
+                setTimeout(() => passwordInput.focus(), 100)
+              }
+            }
+          })
+        })
+      }
+
+      /**
+       * Cancels and closes the modal dialog.
+       */
+      const cancelModal = () => {
+        if (autoBioTimeout) {
+          clearTimeout(autoBioTimeout)
+          autoBioTimeout = null
+        }
+
+        if (activeResolver) {
+          const resolve = activeResolver
+          activeResolver = null
+          resolve(null)
+        }
+
+        root.dispatchEvent(new CustomEvent('atoll-permission-cancel', {
+          bubbles: true,
+          composed: true
+        }))
+
+        if (popup && typeof popup.hide === 'function') {
+          popup.hide()
+        } else {
+          state.open = false
+        }
+      }
+
+      // Event Listeners
+      if (btnBiometric) {
+        btnBiometric.addEventListener('click', () => {
+          triggerBiometricAuth(false)
+        }, { signal })
+      }
+
+      root.addEventListener('atoll-popup-primary', () => {
+        handlePasswordVerification()
+      }, { signal })
+
+      root.addEventListener('atoll-popup-secondary', () => {
+        cancelModal()
+      }, { signal })
+
+      root.addEventListener('atoll-popup-close', () => {
+        cancelModal()
+      }, { signal })
+
+      if (passwordForm) {
+        passwordForm.addEventListener('submit', (e) => {
+          e.preventDefault()
+          handlePasswordVerification()
+        }, { signal })
+      }
+
+      // Global EventBus Bridge Listener
+      const unbus = $bus.on('ui:prompt_permission', async (payload = {}) => {
+        const res = await promptModal(payload)
+        if (typeof payload.callback === 'function') {
+          payload.callback(res)
+        }
+        if (typeof payload.resolve === 'function') {
+          payload.resolve(res)
+        }
+      })
+
+      signal.addEventListener('abort', () => {
+        if (unbus && typeof unbus === 'function') {
+          unbus()
+        }
+        if (autoBioTimeout) {
+          clearTimeout(autoBioTimeout)
+        }
+      })
+
+      // Public DOM Methods
+      root.prompt = promptModal
+      root.show = promptModal
+      root.hide = cancelModal
+    }
+  })
+</script>

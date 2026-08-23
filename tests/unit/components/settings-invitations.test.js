@@ -11,6 +11,10 @@ describe('Atoll Settings Invitations Component', () => {
     document.body.innerHTML = ''
     mockList = []
 
+    await loadComponent('atoll-icon')
+    await loadComponent('atoll-badge')
+    await loadComponent('atoll-list-item')
+
     mockSendHandler = async (path, opts = {}) => {
       if (path === '/api/custom/admin/overview') {
         return {
@@ -130,9 +134,9 @@ describe('Atoll Settings Invitations Component', () => {
 
     const item = invitationsList.querySelector('atoll-list-item')
     assert.ok(item, 'An atoll-list-item should be rendered')
-    assert.ok(item.textContent.includes('INV-1111-2222'), 'List item should contain invite code')
+    assert.ok(item.innerHTML.includes('INV-1111-2222'), 'List item should contain invite code')
     assert.equal(item.getAttribute('description'), '1 / 3 uses • Claimed by @bob', 'Description should contain usages and claimed user handle')
-    assert.ok(item.textContent.includes('Active'), 'List item should contain status badge')
+    assert.ok(item.innerHTML.includes('Active'), 'List item should contain status badge')
   })
 
   test('should generate invitation and insert atoll-list-item at top of list', async () => {
@@ -153,6 +157,6 @@ describe('Atoll Settings Invitations Component', () => {
     assert.ok(emptyCard.classList.contains('d-none'), 'Empty state should hide after generation')
     const firstItem = invitationsList.querySelector('atoll-list-item')
     assert.ok(firstItem, 'First item should be an atoll-list-item')
-    assert.ok(firstItem.textContent.includes('INV-TEST-9999'), 'List should contain newly generated code')
+    assert.ok(firstItem.innerHTML.includes('INV-TEST-9999'), 'List should contain newly generated code')
   })
 })

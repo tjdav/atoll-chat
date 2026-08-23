@@ -179,6 +179,7 @@
 
         const createdText = formatRelativeTime(inv.created)
 
+        item.setAttribute('title', inv.code)
         item.setAttribute('description', description)
         item.setAttribute('timestamp', createdText)
 

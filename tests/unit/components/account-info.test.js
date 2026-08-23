@@ -13,13 +13,13 @@ describe('Account Info Component Storage Management', () => {
   beforeEach(async () => {
     document.body.innerHTML = ''
     storageUsage = {
-      messagesBytes: 250880, // ~245 KB
+      messagesBytes: 250880,
       messagesCount: 120,
-      voiceBytes: 3984588, // ~3.8 MB
+      voiceBytes: 3984588,
       voiceCount: 15,
-      mediaBytes: 10905190, // ~10.4 MB
+      mediaBytes: 10905190,
       mediaCount: 28,
-      totalBytes: 15140658 // ~14.4 MB
+      totalBytes: 15140658
     }
     mediaCleared = false
     voiceCleared = false

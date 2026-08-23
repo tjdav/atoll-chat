@@ -93,7 +93,7 @@ if (typeof globalThis.RTCSessionDescription === 'undefined') {
   }
 }
 
-function createMockEnvironment () {
+async function createMockEnvironment () {
   const listeners = new Map()
   const bus = {
     on (event, callback) {
@@ -145,7 +145,7 @@ function createMockEnvironment () {
   }
 
   const contextFn = plugin.client?.context || plugin.context
-  const clientContext = contextFn(pluginContext)
+  const clientContext = await contextFn(pluginContext)
   const instanceContext = clientContext({
     cryptoWorker: { $worker: worker },
     globalStore,
@@ -164,7 +164,7 @@ function createMockEnvironment () {
 
 test('WebRTC Failure Recovery & Candidate Flushing Tests', async (t) => {
   await t.test('1. Explicit Connection Failure Signaling - sends call_end with connection_failed on pc failure', async () => {
-    const env = createMockEnvironment()
+    const env = await createMockEnvironment()
     const mockTrack = {
       stop: () => {
       }
@@ -196,7 +196,7 @@ test('WebRTC Failure Recovery & Candidate Flushing Tests', async (t) => {
   })
 
   await t.test('2. ICE Disconnection & Grace Timer / Offerer Restart', async () => {
-    const env = createMockEnvironment()
+    const env = await createMockEnvironment()
     const mockTrack = {
       stop: () => {
       }
@@ -238,7 +238,7 @@ test('WebRTC Failure Recovery & Candidate Flushing Tests', async (t) => {
   })
 
   await t.test('3. Answerer renegotiation offer handling', async () => {
-    const env = createMockEnvironment()
+    const env = await createMockEnvironment()
     const mockTrack = {
       stop: () => {
       }
@@ -294,7 +294,7 @@ test('WebRTC Failure Recovery & Candidate Flushing Tests', async (t) => {
   })
 
   await t.test('4. 12s Grace Timer Expiry terminates call with timeout_disconnected', async () => {
-    const env = createMockEnvironment()
+    const env = await createMockEnvironment()
     const mockTrack = {
       stop: () => {
       }
@@ -337,7 +337,7 @@ test('WebRTC Failure Recovery & Candidate Flushing Tests', async (t) => {
   })
 
   await t.test('5. Session-guarded and awaited candidate flush', async () => {
-    const env = createMockEnvironment()
+    const env = await createMockEnvironment()
     const mockTrack = {
       stop: () => {
       }

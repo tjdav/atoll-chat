@@ -13,44 +13,8 @@
     ></atoll-button>
   </div>
 
-  <!-- Password Verification Popup -->
-  <atoll-popup
-    ref="verifyModal"
-    title="Verify Vault Password"
-  >
-    <div class="text-start">
-      <p class="small text-muted mb-4">To {{ passkeyActionVerb }} biometric unlock, please enter your current vault password to confirm your identity and access your cryptographic keys.</p>
-      <form ref="verifyForm">
-        <div class="mb-3">
-          <atoll-input
-            ref="vaultPasswordInput"
-            type="password"
-            label="Vault Password"
-            placeholder="Enter Vault Password"
-            required="true"
-            data-testid="vaultPasswordInput"
-          ></atoll-input>
-        </div>
-        
-        <!-- TOTP Step-up Verification -->
-        <div class="mb-3 d-none" ref="totpStepUpSection">
-          <label class="form-label small fw-bold">2-Step Verification Code</label>
-          <input type="text" class="form-control text-center fs-5 font-monospace" ref="totpStepUpInput" data-testid="totpStepUpInput" placeholder="000000" maxlength="6" pattern="\d{6}">
-        </div>
-
-        <div ref="verifyError" class="alert alert-danger d-none small p-2 mb-0" data-testid="verifyError"></div>
-      </form>
-    </div>
-
-    <div slot="actions" class="atoll-popup-actions atoll-popup-actions-horizontal d-flex justify-content-end gap-2">
-      <atoll-button type="button" variant="secondary" ref="btnCancelVerify" data-testid="btnCancelVerify">
-        Cancel
-      </atoll-button>
-      <atoll-button type="button" variant="primary" ref="btnVerifyPassword" data-testid="btnVerifyPassword">
-        Verify & Continue
-      </atoll-button>
-    </div>
-  </atoll-popup>
+  <!-- Permission & Password Verification Modal -->
+  <atoll-permission-modal ref="permissionModal" data-testid="permissionModal"></atoll-permission-modal>
 </template>
 
 <script type="module">
@@ -65,12 +29,11 @@
     getters: {
       passkeyStatus: (state) => (state.hasPasskey ? 'Enabled on this device' : 'Disabled')
     },
-    client: async ({ refs, state, globalStore, pocketbase, cryptoWorker, eventBus, totp, biometric, signal }) => {
+    client: async ({ refs, state, globalStore, pocketbase, cryptoWorker, eventBus, biometric, signal }) => {
       const { $state } = globalStore
       const { pb } = pocketbase
       const { $worker } = cryptoWorker
       const { $bus } = eventBus
-      const { $totp } = await totp
 
       /**
        * Updates the state of the biometric unlock based on whether the local vault wrap key is stored.
@@ -87,19 +50,11 @@
       }
 
       await updatePasskeyState()
-  
+
       $state.subscribe('currentUser', updatePasskeyState)
 
       const btnManagePasskey = refs('btnManagePasskey')
-      const verifyModal = refs('verifyModal')
-      const verifyForm = refs('verifyForm')
-      const vaultPasswordInput = refs('vaultPasswordInput')
-      const verifyError = refs('verifyError')
-      const btnVerifyPassword = refs('btnVerifyPassword')
-      const btnCancelVerify = refs('btnCancelVerify')
-
-      const totpStepUpSection = refs('totpStepUpSection')
-      const totpStepUpInput = refs('totpStepUpInput')
+      const permissionModal = refs('permissionModal')
 
       /**
        * Checks if biometric capability is available on the current device.
@@ -115,188 +70,117 @@
       }
       await checkBiometricSupport()
 
-      btnManagePasskey.addEventListener('click', () => {
-        verifyError.classList.add('d-none')
-        vaultPasswordInput.value = ''
-        totpStepUpInput.value = ''
-
-        /* Check if TOTP Step-up is required */
-        if (pb.authStore.model?.totp_enabled) {
-          totpStepUpSection.classList.remove('d-none')
-          totpStepUpInput.setAttribute('required', '')
-        } else {
-          totpStepUpSection.classList.add('d-none')
-          totpStepUpInput.removeAttribute('required')
+      btnManagePasskey.addEventListener('click', async () => {
+        if (!permissionModal || typeof permissionModal.prompt !== 'function') {
+          return
         }
 
-        verifyModal.show()
-        setTimeout(() => vaultPasswordInput.focus(), 100)
-      }, { signal })
+        const isDisabling = state.hasPasskey
 
-      btnCancelVerify.addEventListener('click', () => {
-        verifyModal.hide()
-      }, { signal })
+        if (isDisabling) {
+          // Disabling biometrics allows password or biometric verification
+          const result = await permissionModal.prompt({
+            title: 'Disable Biometric Unlock',
+            description: 'Are you sure you want to disable biometric unlock on this device?',
+            actionLabel: 'Disable Biometrics',
+            variant: 'danger',
+            allowBiometric: true
+          })
 
-      /**
-       * Validates user password, verifies 2-step TOTP if required,
-       * and toggles biometric state (stores or deletes the Master Key).
-       * Automatically disables interactive inputs and buttons during processing.
-       *
-       * @returns {Promise<void>} Resolves on successful validation and state toggling.
-       * @throws {Error} Re-throws unexpected database, network, or system failures.
-       */
-      const handleVerification = async () => {
-        const password = vaultPasswordInput.value
-  
-        verifyError.classList.add('d-none')
-
-        // Disable elements to prevent duplicate submission and concurrent click events
-        vaultPasswordInput.setAttribute('disabled', 'true')
-        totpStepUpInput.setAttribute('disabled', 'true')
-        btnCancelVerify.setAttribute('disabled', 'true')
-        btnVerifyPassword.setAttribute('loading', 'true')
-
-        try {
-          const record = await pb.collection('users').getOne(pb.authStore.model.id)
-
-          /* Enforce TOTP Step-Up if enabled */
-          if (record.totp_enabled) {
-            const totpCode = totpStepUpInput.value.trim()
-            const isTotpValid = await $totp.verify(totpCode, record.totp_secret)
-  
-            if (!isTotpValid) {
-              throw new Error('Invalid 2-step verification code.')
-            }
+          if (!result) {
+            return
           }
 
-          const wasConfigured = state.hasPasskey
-
-          if (wasConfigured) {
-            await biometric.deleteMasterKey(record.id)
-            localStorage.removeItem(`atoll_biometric_credentials_${record.id}`)
+          const userId = pb.authStore.model?.id || result.record?.id
+          if (userId) {
+            await biometric.deleteMasterKey(userId)
+            localStorage.removeItem(`atoll_biometric_credentials_${userId}`)
 
             const biometricUsers = JSON.parse(localStorage.getItem('atoll_biometric_users') || '[]')
-            const filteredUsers = biometricUsers.filter(u => u.id !== record.id)
-  
+            const filteredUsers = biometricUsers.filter(u => u.id !== userId)
+
             localStorage.setItem('atoll_biometric_users', JSON.stringify(filteredUsers))
 
             await updatePasskeyState()
-  
-            verifyModal.hide()
 
             $bus.emit('ui:show_toast', {
               message: 'Biometric unlock successfully disabled!',
               type: 'success'
             })
-          } else {
-            const { deriveAuthAndVaultKeys, purgeVaultKey } = await import('../../utils/keys.js')
-            const { keyA, keyB } = await deriveAuthAndVaultKeys(record.username, password)
-
-            let masterKey
-            try {
-              masterKey = await $worker.execute('worker:crypto_secretbox_open_easy', {
-                ciphertext: record.encrypted_master_keys.ciphertext,
-                nonce: record.encrypted_master_keys.nonce,
-                key: keyA
-              })
-              purgeVaultKey()
-              if (!masterKey) {
-                throw new Error('Invalid Master Password')
-              }
-            } catch {
-              purgeVaultKey()
-              throw new Error('Invalid Master Password')
-            }
-
-            await biometric.storeMasterKey(masterKey, record.username, record.id)
-
-            // Encrypt Key B and username with masterKey and save
-            const payloadObj = {
-              keyB,
-              username: record.username
-            }
-            const payloadStr = JSON.stringify(payloadObj)
-            const nonce = window.crypto.getRandomValues(new Uint8Array(24))
-            let nonceB64 = ''
-  
-            for (let i = 0; i < nonce.length; i++) {
-              nonceB64 += String.fromCharCode(nonce[i])
-            }
-  
-            nonceB64 = btoa(nonceB64)
-
-            const encryptedBuffer = await $worker.execute('worker:crypto_secretbox_easy', {
-              message: payloadStr,
-              nonce: nonceB64,
-              key: masterKey
-            })
-
-            let encryptedB64 = ''
-            for (let i = 0; i < encryptedBuffer.length; i++) {
-              encryptedB64 += String.fromCharCode(encryptedBuffer[i])
-            }
-            encryptedB64 = btoa(encryptedB64)
-
-            const credsObj = {
-              ciphertext: encryptedB64,
-              nonce: nonceB64
-            }
-            localStorage.setItem(`atoll_biometric_credentials_${record.id}`, JSON.stringify(credsObj))
-
-            // Add user to the registry
-            const biometricUsers = JSON.parse(localStorage.getItem('atoll_biometric_users') || '[]')
-            const existingIndex = biometricUsers.findIndex(u => u.id === record.id)
-            const userEntry = {
-              id: record.id,
-              username: record.username,
-              avatar: record.avatar || ''
-            }
-            if (existingIndex !== -1) {
-              biometricUsers[existingIndex] = userEntry
-            } else {
-              biometricUsers.push(userEntry)
-            }
-            localStorage.setItem('atoll_biometric_users', JSON.stringify(biometricUsers))
-
-            await updatePasskeyState()
-  
-            verifyModal.hide()
-
-            $bus.emit('ui:show_toast', {
-              message: 'Biometric unlock successfully enabled!',
-              type: 'success'
-            })
           }
-        } catch (error) {
-          const expectedMessages = ['Invalid 2-step verification code.', 'Invalid Master Password']
-          if (expectedMessages.includes(error.message)) {
-            verifyError.textContent = error.message
-            verifyError.classList.remove('d-none')
-          } else {
-            verifyError.textContent = 'An unexpected system error occurred. Please try again.'
-            verifyError.classList.remove('d-none')
-            throw error
+        } else {
+          // Enabling biometrics requires password verification (allowBiometric: false)
+          const result = await permissionModal.prompt({
+            title: 'Verify Vault Password',
+            description: 'To enable biometric unlock, please enter your current vault password to confirm your identity and access your cryptographic keys.',
+            actionLabel: 'Verify & Continue',
+            allowBiometric: false
+          })
+
+          if (!result || !result.masterKey) {
+            return
           }
-        } finally {
-          vaultPasswordInput.removeAttribute('disabled')
-          totpStepUpInput.removeAttribute('disabled')
-          btnCancelVerify.removeAttribute('disabled')
-          btnVerifyPassword.removeAttribute('loading')
-        }
-      }
-  
-      btnVerifyPassword.addEventListener('click', handleVerification, { signal })
 
-      verifyForm.addEventListener('submit', (e) => {
-        e.preventDefault()
-        handleVerification()
-      }, { signal })
+          const record = result.record || await pb.collection('users').getOne(pb.authStore.model.id)
+          const masterKey = result.masterKey
+          const keyB = result.keyB
 
-      // Pressing enter should submit the form
-      vaultPasswordInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-          e.preventDefault()
-          handleVerification()
+          await biometric.storeMasterKey(masterKey, record.username, record.id)
+
+          // Encrypt Key B and username with masterKey and save
+          const payloadObj = {
+            keyB,
+            username: record.username
+          }
+          const payloadStr = JSON.stringify(payloadObj)
+          const nonce = window.crypto.getRandomValues(new Uint8Array(24))
+          let nonceB64 = ''
+
+          for (let i = 0; i < nonce.length; i++) {
+            nonceB64 += String.fromCharCode(nonce[i])
+          }
+
+          nonceB64 = btoa(nonceB64)
+
+          const encryptedBuffer = await $worker.execute('worker:crypto_secretbox_easy', {
+            message: payloadStr,
+            nonce: nonceB64,
+            key: masterKey
+          })
+
+          let encryptedB64 = ''
+          for (let i = 0; i < encryptedBuffer.length; i++) {
+            encryptedB64 += String.fromCharCode(encryptedBuffer[i])
+          }
+          encryptedB64 = btoa(encryptedB64)
+
+          const credsObj = {
+            ciphertext: encryptedB64,
+            nonce: nonceB64
+          }
+          localStorage.setItem(`atoll_biometric_credentials_${record.id}`, JSON.stringify(credsObj))
+
+          // Add user to the registry
+          const biometricUsers = JSON.parse(localStorage.getItem('atoll_biometric_users') || '[]')
+          const existingIndex = biometricUsers.findIndex(u => u.id === record.id)
+          const userEntry = {
+            id: record.id,
+            username: record.username,
+            avatar: record.avatar || ''
+          }
+          if (existingIndex !== -1) {
+            biometricUsers[existingIndex] = userEntry
+          } else {
+            biometricUsers.push(userEntry)
+          }
+          localStorage.setItem('atoll_biometric_users', JSON.stringify(biometricUsers))
+
+          await updatePasskeyState()
+
+          $bus.emit('ui:show_toast', {
+            message: 'Biometric unlock successfully enabled!',
+            type: 'success'
+          })
         }
       }, { signal })
     }

@@ -8,13 +8,26 @@ describe('Account Danger Zone Component', () => {
   let accountDeleted
 
   beforeEach(async () => {
+    process.env.NODE_ENV = 'test'
     document.body.innerHTML = ''
     historyDeleted = false
     accountDeleted = false
 
     await loadComponent('atoll-icon')
     await loadComponent('atoll-button')
+    await loadComponent('atoll-input')
     await loadComponent('atoll-popup')
+    await loadComponent('atoll-permission-modal', {
+      pocketbase: {
+        pb: {
+          authStore: { model: { id: 'usr-1', username: 'alice' } }
+        }
+      },
+      cryptoWorker: { $worker: { execute: async () => new Uint8Array([1, 2, 3]) } },
+      biometric: { isAvailable: async () => false },
+      eventBus: { $bus: { emit: () => {}, on: () => (() => {}) } },
+      totp: Promise.resolve({ $totp: { verify: async () => true } })
+    })
 
     const mockGlobalStore = {
       $state: {
@@ -32,8 +45,7 @@ describe('Account Danger Zone Component', () => {
             id: 'usr-1',
             username: 'alice'
           },
-          clear: () => {
-          }
+          clear: () => {}
         },
         send: async (path, options) => {
           if (path === '/api/custom/history/delete') {
@@ -79,10 +91,8 @@ describe('Account Danger Zone Component', () => {
 
     const mockEventBus = {
       $bus: {
-        emit: () => {
-        },
-        on: () => {
-        }
+        emit: () => {},
+        on: () => {}
       }
     }
 
@@ -109,24 +119,24 @@ describe('Account Danger Zone Component', () => {
     assert.ok(btnAccount, 'Delete Account button should render')
   })
 
-  test('should handle history deletion password submission', async () => {
+  test('should handle history deletion via permission modal', async () => {
     const el = document.createElement(tagName)
     document.body.appendChild(el)
 
     await new Promise((resolve) => setTimeout(resolve, 50))
 
+    const permModal = el.querySelector('[data-testid="permissionModal"]')
+    assert.ok(permModal, 'Permission modal element should exist')
+
+    permModal.prompt = async () => ({
+      success: true,
+      method: 'password',
+      keyB: 'secret123',
+      password: 'secret123'
+    })
+
     const btnHistory = el.querySelector('[data-testid="btnDeleteHistory"]')
     btnHistory.click()
-
-    await new Promise((resolve) => setTimeout(resolve, 50))
-
-    const historyInput = el.querySelector('[data-testid="historyPasswordInput"]')
-    assert.ok(historyInput, 'History password input should exist')
-
-    historyInput.value = 'secret123'
-
-    const btnConfirmHistory = el.querySelector('[data-testid="btnConfirmDeleteHistory"]')
-    btnConfirmHistory.click()
 
     await new Promise((resolve) => setTimeout(resolve, 50))
 
