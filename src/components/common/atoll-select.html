@@ -553,14 +553,12 @@
       // Observe reactive state and attributes
       if (observe) {
         observe('value', (val) => {
-          state.value = String(val || '')
           if (hiddenInput) {
-            hiddenInput.value = state.value
+            hiddenInput.value = String(val || '')
           }
           updateSelectedLabel()
         })
-        observe('disabled', (val) => {
-          state.disabled = val === 'true' || val === true || val === ''
+        observe('disabled', () => {
           syncDisabledState()
         })
         observe('open', (val) => {

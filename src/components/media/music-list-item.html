@@ -42,28 +42,9 @@
       isSelected: (state) => (state.isActive === 'true' || state.isActive === true),
       descriptionText: (state) => `${state.roomName} • ${state.timestamp}`
     },
-    client: ({ refs, state, eventBus, signal, observe }) => {
+    client: ({ refs, state, eventBus, signal }) => {
       const { $bus } = eventBus
       const container = refs('container')
-
-      observe('filename', (val) => {
-        state.filename = val
-      })
-      observe('roomName', (val) => {
-        state.roomName = val
-      })
-      observe('room-name', (val) => {
-        state.roomName = val
-      })
-      observe('timestamp', (val) => {
-        state.timestamp = val
-      })
-      observe('isActive', (val) => {
-        state.isActive = val
-      })
-      observe('is-active', (val) => {
-        state.isActive = val
-      })
 
       container.addEventListener('atoll-item-click', () => {
         $bus.emit('media:select', {

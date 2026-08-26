@@ -269,7 +269,7 @@
       }
     },
 
-    client: ({ state, refs, root, observe }) => {
+    client: ({ state, refs, root }) => {
       const itemRoot = refs('itemRoot')
 
       const handleTrigger = () => {
@@ -316,15 +316,6 @@
           handleTrigger(event)
         }
       })
-
-      if (typeof observe === 'function') {
-        observe('badgeVariant', (val) => {
-          state.badgeVariant = val
-        })
-        observe('badge-variant', (val) => {
-          state.badgeVariant = val
-        })
-      }
 
       // Expose properties on host element
       Object.defineProperty(root, 'checked', {

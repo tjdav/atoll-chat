@@ -304,14 +304,6 @@
           input.value = newVal || ''
         }
       })
-
-      observe('invalid', (val) => {
-        state.invalid = Boolean(val)
-      })
-
-      observe('errorMessage', (val) => {
-        state.errorMessage = val || ''
-      })
     }
   })
 </script>

@@ -15,11 +15,7 @@
       }
     },
 
-    client: ({ state, root, observe }) => {
-      observe('multiple', (val) => {
-        state.multiple = val === 'true' || val === true || val === ''
-      })
-
+    client: ({ state, root }) => {
       // Coordinate nested accordion items if single-expansion (multiple="false") is active
       const handleToggle = (event) => {
         if (state.multiple) {

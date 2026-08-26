@@ -167,8 +167,8 @@
 
       // Synchronize dynamic attributes
       observe('expanded', (val) => {
-        state.expanded = val === 'true' || val === true || val === ''
-        if (state.expanded) {
+        const isExp = val === 'true' || val === true || val === ''
+        if (isExp) {
           body?.classList.add('show')
           header?.setAttribute('aria-expanded', 'true')
         } else {

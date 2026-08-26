@@ -53,8 +53,7 @@
       if (observe) {
         observe('mode', (newMode) => {
           const prevMode = state.mode
-          const resolvedMode = newMode || 'default'
-          state.mode = resolvedMode
+          const resolvedMode = newMode || state.mode || 'default'
           syncModeToChildren(resolvedMode)
 
           root.dispatchEvent(

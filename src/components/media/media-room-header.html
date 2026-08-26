@@ -86,20 +86,16 @@
 
       observe('roomId', () => renderAvatar())
       observe('room-id', () => renderAvatar())
-      observe('roomName', (val) => {
-        state.roomName = val
+      observe('roomName', () => {
         updateHeader()
       })
-      observe('room-name', (val) => {
-        state.roomName = val
+      observe('room-name', () => {
         updateHeader()
       })
-      observe('itemCount', (val) => {
-        state.itemCount = val
+      observe('itemCount', () => {
         updateHeader()
       })
-      observe('item-count', (val) => {
-        state.itemCount = val
+      observe('item-count', () => {
         updateHeader()
       })
 

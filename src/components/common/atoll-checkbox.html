@@ -157,15 +157,15 @@
 
       if (observe) {
         observe('checked', (val) => {
-          state.checked = val === 'true' || val === true || val === ''
-          root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
+          const isChecked = val === 'true' || val === true || val === ''
+          root.setAttribute('aria-checked', isChecked ? 'true' : 'false')
           if (nativeInput) {
-            nativeInput.checked = state.checked
+            nativeInput.checked = isChecked
           }
         })
         observe('disabled', (val) => {
-          state.disabled = val === 'true' || val === true || val === ''
-          root.setAttribute('tabindex', state.disabled ? '-1' : '0')
+          const isDisabled = val === 'true' || val === true || val === ''
+          root.setAttribute('tabindex', isDisabled ? '-1' : '0')
         })
       }
     }

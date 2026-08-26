@@ -177,7 +177,7 @@
       }
     },
 
-    client: ({ state, refs, root, observe }) => {
+    client: ({ state, refs, root }) => {
       const header = refs('headerRoot')
 
       const toggleAccordion = () => {
@@ -202,11 +202,6 @@
           event.preventDefault()
           toggleAccordion()
         }
-      })
-
-      // Observe the dynamic "expanded" attribute from parent updates
-      observe('expanded', (val) => {
-        state.expanded = Boolean(val)
       })
     }
   })
