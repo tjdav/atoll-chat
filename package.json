@@ -38,7 +38,9 @@
     "test:e2e": "node scripts/generate-test-video.js && pnpm exec playwright test",
     "test:e2e:ui": "node scripts/generate-test-video.js && pnpm exec playwright test --ui",
     "test:components": "coralite validate-components --coverage",
-    "test:plugins": "coralite validate-plugins"
+    "test:plugins": "coralite validate-plugins",
+    "check": "coralite-scripts check",
+    "fix": "coralite-scripts fix"
   },
   "devDependencies": {
     "@axe-core/playwright": "^4.12.1",
@@ -48,8 +50,8 @@
     "@playwright/test": "^1.61.0",
     "@stylistic/eslint-plugin": "^5.9.0",
     "@types/node": "^26.1.0",
-    "coralite": "^0.47.1",
-    "coralite-scripts": "^0.47.1",
+    "coralite": "^1.0.0-rc.0",
+    "coralite-scripts": "^1.0.0-rc.0",
     "cross-env": "^10.1.0",
     "dotenv": "^17.3.1",
     "eslint": "^10.0.2",
@@ -57,6 +59,7 @@
     "eslint-plugin-jsdoc": "^62.8.1",
     "happy-dom": "20.10.6",
     "mitata": "^1.0.34",
+    "node-gyp": "^13.0.1",
     "sirv-cli": "^3.0.1",
     "typescript": "^6.0.3"
   },
