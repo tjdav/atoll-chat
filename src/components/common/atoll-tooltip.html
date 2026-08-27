@@ -36,6 +36,181 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: inline-flex;
+    position: relative;
+  }
+
+  :host([hidden]) {
+    display: none !important;
+  }
+
+  .atoll-tooltip-wrapper {
+    display: inline-flex;
+    position: relative;
+  }
+
+  .atoll-tooltip-bubble {
+    position: absolute;
+    z-index: var(--atoll-tooltip-z-index, 1080);
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    width: max-content;
+    max-width: var(--atoll-tooltip-max-width, 280px);
+    padding: var(--atoll-tooltip-padding-y, 8px) var(--atoll-tooltip-padding-x, 12px);
+    background-color: var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222));
+    color: var(--atoll-tooltip-color, #FFFFFF);
+    border: 1px solid var(--atoll-tooltip-border, transparent);
+    border-radius: var(--atoll-tooltip-radius, 8px);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    line-height: 1.35;
+    box-sizing: border-box;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
+  }
+
+  .atoll-tooltip-bubble.atoll-tooltip-visible {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .atoll-tooltip-bubble::after {
+    content: "";
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-style: solid;
+  }
+
+  .atoll-tooltip-top {
+    bottom: calc(100% + var(--atoll-tooltip-arrow-size, 6px) + 4px);
+    left: 50%;
+    transform: translateX(-50%) translateY(4px);
+  }
+
+  .atoll-tooltip-top.atoll-tooltip-visible {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .atoll-tooltip-top::after {
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px) 0;
+    border-color: var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222)) transparent transparent;
+  }
+
+  .atoll-tooltip-bottom {
+    top: calc(100% + var(--atoll-tooltip-arrow-size, 6px) + 4px);
+    left: 50%;
+    transform: translateX(-50%) translateY(-4px);
+  }
+
+  .atoll-tooltip-bottom.atoll-tooltip-visible {
+    transform: translateX(-50%) translateY(0);
+  }
+
+  .atoll-tooltip-bottom::after {
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    border-width: 0 var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px);
+    border-color: transparent transparent var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222));
+  }
+
+  .atoll-tooltip-left {
+    right: calc(100% + var(--atoll-tooltip-arrow-size, 6px) + 4px);
+    top: 50%;
+    transform: translateY(-50%) translateX(4px);
+  }
+
+  .atoll-tooltip-left.atoll-tooltip-visible {
+    transform: translateY(-50%) translateX(0);
+  }
+
+  .atoll-tooltip-left::after {
+    left: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: var(--atoll-tooltip-arrow-size, 6px) 0 var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px);
+    border-color: transparent transparent transparent var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222));
+  }
+
+  .atoll-tooltip-right {
+    left: calc(100% + var(--atoll-tooltip-arrow-size, 6px) + 4px);
+    top: 50%;
+    transform: translateY(-50%) translateX(-4px);
+  }
+
+  .atoll-tooltip-right.atoll-tooltip-visible {
+    transform: translateY(-50%) translateX(0);
+  }
+
+  .atoll-tooltip-right::after {
+    right: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    border-width: var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px) 0;
+    border-color: transparent var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222)) transparent transparent;
+  }
+
+  .atoll-tooltip-action {
+    --atoll-tooltip-bg: var(--atoll-bg-surface-primary, #FFFFFF);
+    --atoll-tooltip-color: var(--atoll-text-primary, #111111);
+    --atoll-tooltip-border: var(--atoll-border-subtle, #EFEFEF);
+    --atoll-tooltip-padding-x: 16px;
+    --atoll-tooltip-padding-y: 12px;
+    --atoll-tooltip-radius: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  }
+
+  .atoll-tooltip-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-weight: var(--atoll-font-weight-bold, 700);
+    font-size: var(--atoll-font-size-body-2, 14px);
+  }
+
+  .atoll-tooltip-close {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--atoll-text-tertiary, #999999);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+  }
+
+  .atoll-tooltip-close:hover {
+    color: var(--atoll-text-primary, #111111);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-tooltip-bubble,
+  :host-context([data-bs-theme="dark"]) .atoll-tooltip-bubble,
+  [data-atoll-theme="dark"] .atoll-tooltip-bubble,
+  [data-bs-theme="dark"] .atoll-tooltip-bubble {
+    --atoll-tooltip-bg: var(--atoll-bg-surface-tertiary, #2A2A2A);
+    --atoll-tooltip-color: #FFFFFF;
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-tooltip-action,
+  :host-context([data-bs-theme="dark"]) .atoll-tooltip-action,
+  [data-atoll-theme="dark"] .atoll-tooltip-action,
+  [data-bs-theme="dark"] .atoll-tooltip-action {
+    --atoll-tooltip-bg: var(--atoll-bg-surface-secondary, #1F1F1F);
+    --atoll-tooltip-color: var(--atoll-text-primary, #FFFFFF);
+    --atoll-tooltip-border: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

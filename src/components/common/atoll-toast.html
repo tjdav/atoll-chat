@@ -10,6 +10,318 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: contents !important;
+  }
+
+  .atoll-toast-container {
+    position: fixed;
+    margin: 0;
+    padding: 0;
+    border: none;
+    background: transparent;
+    overflow: visible;
+    z-index: 1200;
+    pointer-events: none;
+  }
+
+  .atoll-toast-container:popover-open {
+    display: block;
+  }
+
+  .atoll-toast-container.placement-bottom-start {
+    bottom: 24px;
+    left: 24px;
+    right: auto;
+    top: auto;
+  }
+
+  .atoll-toast-container.placement-bottom-center {
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    right: auto;
+    top: auto;
+  }
+
+  .atoll-toast-container.placement-bottom-end {
+    bottom: 24px;
+    right: 24px;
+    left: auto;
+    top: auto;
+  }
+
+  .atoll-toast-container.placement-top-center {
+    top: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: auto;
+    right: auto;
+  }
+
+  .atoll-toast-container.placement-top-end {
+    top: 24px;
+    right: 24px;
+    left: auto;
+    bottom: auto;
+  }
+
+  @media (max-width: 767.98px) {
+    .atoll-toast-container.placement-bottom-start,
+    .atoll-toast-container.placement-bottom-center,
+    .atoll-toast-container.placement-bottom-end {
+      bottom: calc(var(--atoll-bottom-nav-height, 64px) + 16px);
+      left: 50%;
+      right: auto;
+      transform: translateX(-50%);
+      width: calc(100% - 32px);
+      max-width: 400px;
+    }
+  }
+
+  .atoll-toast-stack {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    pointer-events: none;
+  }
+
+  .atoll-toast-card {
+    position: relative;
+    pointer-events: auto;
+    width: min(380px, calc(100vw - 32px));
+    padding: 12px 16px;
+    border-radius: var(--atoll-radius-md, 12px);
+    background-color: var(--atoll-bg-surface-primary, #ffffff);
+    border: 1px solid var(--atoll-border-subtle, rgba(0, 0, 0, 0.08));
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12), 0 2px 6px rgba(0, 0, 0, 0.04);
+    color: var(--atoll-text-primary, #111111);
+    overflow: hidden;
+    outline: none;
+
+    opacity: 0;
+    transform: translateY(16px) scale(0.96);
+    transition: opacity 200ms cubic-bezier(0.16, 1, 0.3, 1),
+                transform 200ms cubic-bezier(0.16, 1, 0.3, 1);
+    will-change: transform, opacity;
+  }
+
+  .atoll-toast-card.atoll-toast-visible {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  .atoll-toast-card.atoll-toast-closing {
+    opacity: 0 !important;
+    transform: translateY(10px) scale(0.96) !important;
+    transition: opacity 150ms cubic-bezier(0.4, 0, 1, 1),
+                transform 150ms cubic-bezier(0.4, 0, 1, 1) !important;
+  }
+
+  .atoll-toast-card-success {
+    --toast-accent-color: var(--atoll-success, #06C755);
+  }
+
+  .atoll-toast-card-success .atoll-toast-icon {
+    color: var(--atoll-success, #06C755);
+  }
+
+  .atoll-toast-card-danger {
+    --toast-accent-color: var(--atoll-danger, #FF334B);
+  }
+
+  .atoll-toast-card-danger .atoll-toast-icon {
+    color: var(--atoll-danger, #FF334B);
+  }
+
+  .atoll-toast-card-warning {
+    --toast-accent-color: var(--atoll-warning, #FF9500);
+  }
+
+  .atoll-toast-card-warning .atoll-toast-icon {
+    color: var(--atoll-warning, #FF9500);
+  }
+
+  .atoll-toast-card-info,
+  .atoll-toast-card-primary {
+    --toast-accent-color: var(--atoll-info, #007AFF);
+  }
+
+  .atoll-toast-card-info .atoll-toast-icon,
+  .atoll-toast-card-primary .atoll-toast-icon {
+    color: var(--atoll-info, #007AFF);
+  }
+
+  .atoll-toast-card-secondary {
+    --toast-accent-color: var(--atoll-text-muted, #8E8E93);
+  }
+
+  .atoll-toast-card-secondary .atoll-toast-icon {
+    color: var(--atoll-text-muted, #8E8E93);
+  }
+
+  .atoll-toast-body {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .atoll-toast-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .atoll-toast-message {
+    flex-grow: 1;
+    font-size: 14px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: var(--atoll-text-primary, #111111);
+    word-break: break-word;
+  }
+
+  .atoll-toast-action-btn {
+    background: transparent;
+    border: none;
+    padding: 4px 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--toast-accent-color, var(--atoll-accent, #06C755));
+    cursor: pointer;
+    border-radius: 6px;
+    flex-shrink: 0;
+    transition: background-color 150ms ease;
+  }
+
+  .atoll-toast-action-btn:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .atoll-toast-action-btn:focus-visible {
+    outline: 2px solid var(--toast-accent-color, var(--atoll-accent, #06C755));
+    outline-offset: 1px;
+  }
+
+  .atoll-toast-close-btn {
+    background: transparent;
+    border: none;
+    padding: 4px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--atoll-text-muted, #8E8E93);
+    cursor: pointer;
+    border-radius: 50%;
+    flex-shrink: 0;
+    opacity: 0.7;
+    transition: opacity 150ms ease, background-color 150ms ease;
+  }
+
+  .atoll-toast-close-btn:hover {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.05);
+  }
+
+  .atoll-toast-close-btn:focus-visible {
+    outline: 2px solid var(--atoll-text-muted, #8E8E93);
+    outline-offset: 1px;
+  }
+
+  .atoll-toast-progress-wrapper {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    overflow: hidden;
+    background-color: rgba(0, 0, 0, 0.06);
+    border-bottom-left-radius: var(--atoll-radius-md, 12px);
+    border-bottom-right-radius: var(--atoll-radius-md, 12px);
+  }
+
+  .atoll-toast-progress-bar {
+    height: 100%;
+    width: 100%;
+    background-color: var(--toast-accent-color, var(--atoll-accent, #06C755));
+    transform-origin: left center;
+    animation: atoll-toast-shrink linear forwards;
+  }
+
+  .atoll-toast-paused .atoll-toast-progress-bar {
+    animation-play-state: paused !important;
+  }
+
+  @keyframes atoll-toast-shrink {
+    from {
+      transform: scaleX(1);
+    }
+    to {
+      transform: scaleX(0);
+    }
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-toast-card,
+  :host-context([data-bs-theme="dark"]) .atoll-toast-card,
+  [data-atoll-theme="dark"] .atoll-toast-card,
+  [data-bs-theme="dark"] .atoll-toast-card {
+    background-color: #1f1f1f;
+    border-color: rgba(255, 255, 255, 0.12);
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4), 0 2px 6px rgba(0, 0, 0, 0.2);
+    color: #ffffff;
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-toast-message,
+  :host-context([data-bs-theme="dark"]) .atoll-toast-message,
+  [data-atoll-theme="dark"] .atoll-toast-message,
+  [data-bs-theme="dark"] .atoll-toast-message {
+    color: #ffffff;
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-toast-action-btn:hover,
+  :host-context([data-bs-theme="dark"]) .atoll-toast-action-btn:hover,
+  [data-atoll-theme="dark"] .atoll-toast-action-btn:hover,
+  [data-bs-theme="dark"] .atoll-toast-action-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-toast-close-btn,
+  :host-context([data-bs-theme="dark"]) .atoll-toast-close-btn,
+  [data-atoll-theme="dark"] .atoll-toast-close-btn,
+  [data-bs-theme="dark"] .atoll-toast-close-btn {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-toast-close-btn:hover,
+  :host-context([data-bs-theme="dark"]) .atoll-toast-close-btn:hover,
+  [data-atoll-theme="dark"] .atoll-toast-close-btn:hover,
+  [data-bs-theme="dark"] .atoll-toast-close-btn:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-toast-progress-wrapper,
+  :host-context([data-bs-theme="dark"]) .atoll-toast-progress-wrapper,
+  [data-atoll-theme="dark"] .atoll-toast-progress-wrapper,
+  [data-bs-theme="dark"] .atoll-toast-progress-wrapper {
+    background-color: rgba(255, 255, 255, 0.1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .atoll-toast-card {
+      transition: none !important;
+      transform: none !important;
+      opacity: 1 !important;
+    }
+
+    .atoll-toast-progress-bar {
+      animation: none !important;
+    }
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

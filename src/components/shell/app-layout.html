@@ -29,6 +29,109 @@
   </div>
 </template>
 
+<style>
+  /* Global Hardware Acceleration & Layer Promotion for Smooth Offcanvas Transitions */
+  .offcanvas,
+  .offcanvas-sm,
+  .offcanvas-md,
+  .offcanvas-lg,
+  .offcanvas-xl,
+  .offcanvas-xxl {
+    will-change: transform;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+  }
+
+  .offcanvas-backdrop {
+    will-change: opacity;
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    background-color: var(--atoll-backdrop-bg, rgba(0, 0, 0, 0.45)) !important;
+    -webkit-backdrop-filter: var(--atoll-backdrop-filter, blur(8px)) !important;
+    backdrop-filter: var(--atoll-backdrop-filter, blur(8px)) !important;
+  }
+
+  @media (max-width: 767.98px) {
+    .offcanvas,
+    .offcanvas-sm,
+    .offcanvas-md,
+    .offcanvas-lg,
+    .offcanvas-xl,
+    .offcanvas-xxl {
+      --atoll-offcanvas-width: min(calc(100vw - 60px), 410px);
+      width: var(--atoll-offcanvas-width);
+    }
+
+    .offcanvas.show,
+    .offcanvas-md.show {
+      display: block !important;
+    }
+
+    .offcanvas-start,
+    div[ref="mobileNav"] {
+      --atoll-offcanvas-width: 100vw !important;
+      width: 100vw !important;
+      max-width: 100vw !important;
+    }
+
+    .offcanvas-start > .d-flex,
+    .offcanvas-md > .d-flex,
+    div[ref="mobileNav"] > .d-flex {
+      width: 100% !important;
+    }
+
+    .offcanvas-start .atoll-sidebar-pane,
+    .offcanvas-start .contextual-list,
+    .offcanvas-md .atoll-sidebar-pane,
+    .offcanvas-md .contextual-list,
+    div[ref="mobileNav"] .atoll-sidebar-pane,
+    div[ref="mobileNav"] .contextual-list {
+      width: 100% !important;
+      max-width: 100% !important;
+      min-width: 0 !important;
+    }
+
+    .offcanvas,
+    .offcanvas-md {
+      transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    }
+
+    .atoll-main-layout:not(.chat-active) .offcanvas-md,
+    .layout-container:not(.chat-active) .offcanvas-md {
+      transform: none !important;
+      visibility: visible !important;
+      position: relative !important;
+      z-index: 1 !important;
+      display: block !important;
+      width: 100% !important;
+      max-width: 100% !important;
+    }
+
+    .atoll-main-layout:not(.chat-active) .offcanvas-backdrop,
+    .layout-container:not(.chat-active) .offcanvas-backdrop {
+      display: none !important;
+    }
+
+    .atoll-main-layout.chat-active .offcanvas-md,
+    .layout-container.chat-active .offcanvas-md {
+      background-color: var(--atoll-bg-surface-tertiary, #1F1F1F);
+    }
+  }
+
+  @media (min-width: 768px) {
+    .offcanvas-md {
+      background-color: transparent !important;
+      border: none !important;
+    }
+
+    .offcanvas-md > .d-flex {
+      gap: 1rem !important;
+    }
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

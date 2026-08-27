@@ -19,6 +19,71 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :host([hidden]) {
+    display: none !important;
+  }
+
+  .atoll-checkbox {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: var(--atoll-checkbox-size, 22px);
+    height: var(--atoll-checkbox-size, 22px);
+    cursor: pointer;
+    box-sizing: border-box;
+    user-select: none;
+    flex-shrink: 0;
+    border: 1.5px solid var(--atoll-border-subtle, var(--atoll-gray-300, #D0D5DD));
+    border-radius: 4px;
+    background-color: transparent;
+    transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-checkbox,
+  :host-context([data-bs-theme="dark"]) .atoll-checkbox,
+  [data-atoll-theme="dark"] .atoll-checkbox,
+  [data-bs-theme="dark"] .atoll-checkbox {
+    border: 1.5px solid var(--atoll-border-subtle, var(--atoll-gray-700, #344054));
+  }
+
+  .atoll-checkbox:focus-visible,
+  :host(:focus-visible) .atoll-checkbox {
+    outline: none;
+    border-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
+  }
+
+  .atoll-checkbox.checked {
+    background-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755)) !important;
+    border-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755)) !important;
+  }
+
+  .atoll-checkbox .atoll-checkbox-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.15s ease, opacity 0.15s ease;
+  }
+
+  .atoll-checkbox:hover .atoll-checkbox-icon {
+    transform: scale(1.05);
+  }
+
+  .atoll-checkbox.disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 
@@ -44,7 +109,6 @@
       isChecked: (state) => Boolean(state.checked),
       isDisabled: (state) => Boolean(state.disabled),
       ariaChecked: (state) => (state.checked ? 'true' : 'false'),
-      tabIndex: (state) => (state.disabled ? '-1' : '0'),
       iconSize: (state) => state.size || 22,
       iconName: (state) => state.name || 'check',
       checkboxAriaLabel: (state) => state.label || 'Toggle selection',

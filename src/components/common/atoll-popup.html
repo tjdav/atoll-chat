@@ -39,6 +39,348 @@
   </dialog>
 </template>
 
+<style>
+  :host {
+    display: contents !important;
+  }
+
+  dialog.atoll-popup-dialog-native {
+    border: none;
+    background: transparent;
+    padding: 0;
+    margin: auto;
+    overflow: visible;
+    max-width: 90vw;
+    box-shadow: none;
+  }
+
+  dialog.atoll-popup-dialog-native::backdrop {
+    background-color: var(--atoll-backdrop-bg, rgba(0, 0, 0, 0.45));
+    -webkit-backdrop-filter: var(--atoll-backdrop-filter, blur(8px));
+    backdrop-filter: var(--atoll-backdrop-filter, blur(8px));
+  }
+
+  dialog.atoll-popup-dialog-native[open] {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: atollPopupScaleIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  dialog.atoll-popup-dialog-native[open]::backdrop {
+    animation: atollPopupFadeIn 0.2s ease-out forwards;
+  }
+
+  dialog.atoll-popup-dialog-native.atoll-popup-closing {
+    pointer-events: none !important;
+    animation: atollPopupScaleOut 0.2s ease-in forwards !important;
+  }
+
+  dialog.atoll-popup-dialog-native.atoll-popup-closing::backdrop {
+    pointer-events: none !important;
+    animation: atollPopupFadeOut 0.2s ease-in forwards !important;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    dialog.atoll-popup-dialog-native[open],
+    dialog.atoll-popup-dialog-native.atoll-popup-closing {
+      animation: none !important;
+    }
+  }
+
+  @keyframes atollPopupScaleIn {
+    from {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  @keyframes atollPopupScaleOut {
+    from {
+      opacity: 1;
+      transform: scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: scale(0.92);
+    }
+  }
+
+  @keyframes atollPopupFadeIn {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  @keyframes atollPopupFadeOut {
+    from {
+      opacity: 1;
+    }
+    to {
+      opacity: 0;
+    }
+  }
+
+  .atoll-popup-dialog {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: flex-start;
+    pointer-events: auto;
+
+    width: 100%;
+    width: calc(100% - 32px);
+    min-height: auto;
+    max-height: 85vh;
+    margin: auto;
+
+    --atoll-popup-radius: 20px;
+    --atoll-popup-padding: 24px;
+    --atoll-popup-max-width-sm: 300px;
+    --atoll-popup-max-width-md: 360px;
+    --atoll-popup-max-width-lg: 480px;
+
+    --atoll-popup-bg: var(--atoll-bg-surface-primary, #ffffff);
+    --atoll-popup-title-color: var(--atoll-text-primary, #111111);
+    --atoll-popup-desc-color: var(--atoll-text-secondary, #666666);
+    --atoll-popup-backdrop-bg: var(--atoll-backdrop-bg, rgba(0, 0, 0, 0.45));
+    --atoll-popup-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    --atoll-popup-scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --atoll-popup-scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+
+    background-color: var(--atoll-popup-bg);
+    border: none;
+    border-radius: var(--atoll-popup-radius);
+    padding: var(--atoll-popup-padding);
+    box-shadow: var(--atoll-popup-shadow);
+    box-sizing: border-box;
+    text-align: center;
+    overflow: hidden;
+  }
+
+  .atoll-popup-dialog .modal-content {
+    display: flex;
+    flex-direction: column;
+    flex: 1 1 auto;
+    min-height: 0;
+    height: 100%;
+    background-color: transparent !important;
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
+    overflow: hidden;
+  }
+
+  .modal-backdrop.show {
+    opacity: 1 !important;
+    background-color: var(--atoll-backdrop-bg, rgba(0, 0, 0, 0.45)) !important;
+    -webkit-backdrop-filter: var(--atoll-backdrop-filter, blur(8px)) !important;
+    backdrop-filter: var(--atoll-backdrop-filter, blur(8px)) !important;
+  }
+
+  .atoll-popup-hero {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 16px;
+    flex-shrink: 0;
+  }
+
+  .atoll-popup-hero img,
+  .atoll-popup-hero svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  .atoll-popup-hero:empty:not([data-has-icon="true"]) {
+    display: none;
+  }
+
+  .atoll-popup-hero .atoll-icon-badge-green {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 64px;
+    height: 64px;
+    border-radius: 50%;
+    background-color: rgba(6, 199, 85, 0.1);
+    color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+  }
+
+  .atoll-popup-header {
+    flex-shrink: 0;
+    width: 100%;
+  }
+
+  .atoll-popup-body {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 24px;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow-y: auto;
+    text-align: left;
+    padding-right: 4px;
+
+    scrollbar-width: thin;
+    scrollbar-color: var(--atoll-popup-scrollbar-thumb) transparent;
+  }
+
+  .atoll-popup-body::-webkit-scrollbar {
+    width: 6px;
+  }
+
+  .atoll-popup-body::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .atoll-popup-body::-webkit-scrollbar-thumb {
+    background-color: var(--atoll-popup-scrollbar-thumb);
+    border-radius: 10px;
+  }
+
+  .atoll-popup-body::-webkit-scrollbar-thumb:hover {
+    background-color: var(--atoll-popup-scrollbar-thumb-hover);
+  }
+
+  .atoll-popup-body:focus {
+    outline: none;
+  }
+
+  .atoll-popup-body:focus-visible {
+    outline: 2px solid var(--atoll-primary, #06C755);
+    outline-offset: -2px;
+    border-radius: 4px;
+  }
+
+  .atoll-popup-title {
+    font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
+    font-size: var(--atoll-font-size-body-1, 16px);
+    font-weight: var(--atoll-font-weight-bold, 700);
+    color: var(--atoll-popup-title-color);
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  .atoll-popup-description {
+    font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
+    font-size: var(--atoll-font-size-body-2, 14px);
+    color: var(--atoll-popup-desc-color);
+    line-height: 1.45;
+    margin: 0;
+    flex-shrink: 0;
+  }
+
+  .atoll-popup-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    flex-shrink: 0;
+    margin-top: auto;
+  }
+
+  .atoll-popup-actions > atoll-button {
+    flex: 1;
+    width: 100%;
+  }
+
+  .atoll-popup-actions > atoll-button .atoll-btn {
+    width: 100%;
+  }
+
+  .atoll-popup-actions > .atoll-btn {
+    flex: 1;
+    width: 100%;
+  }
+
+  .atoll-popup-actions.atoll-popup-actions-horizontal {
+    flex-direction: row;
+    gap: 8px;
+  }
+
+  .atoll-popup-actions.atoll-popup-actions-horizontal > atoll-button {
+    flex: 1 1 0%;
+    width: 100%;
+  }
+
+  .atoll-popup-actions.atoll-popup-actions-horizontal > .atoll-btn {
+    flex: 1 1 0%;
+    width: 100%;
+  }
+
+  .atoll-popup-actions.atoll-popup-actions-vertical,
+  .atoll-popup-actions.atoll-popup-actions-stacked {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .atoll-popup-actions.atoll-popup-actions-vertical > atoll-button,
+  .atoll-popup-actions.atoll-popup-actions-stacked > atoll-button {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .atoll-popup-actions.atoll-popup-actions-vertical > .atoll-btn,
+  .atoll-popup-actions.atoll-popup-actions-stacked > .atoll-btn {
+    flex: 0 0 auto;
+    width: 100%;
+  }
+
+  .atoll-popup-sm {
+    max-width: var(--atoll-popup-max-width-sm);
+    --atoll-popup-padding: 24px;
+  }
+
+  .atoll-popup-md {
+    max-width: var(--atoll-popup-max-width-md);
+  }
+
+  .atoll-popup-lg {
+    max-width: var(--atoll-popup-max-width-lg);
+    --atoll-popup-padding: 32px;
+  }
+
+  .atoll-popup-lg .atoll-popup-title {
+    font-size: var(--atoll-font-size-title-2, 18px);
+  }
+
+  .modal-backdrop {
+    z-index: 1040 !important;
+  }
+
+  .offcanvas {
+    z-index: 1050 !important;
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-popup-dialog,
+  :host-context([data-bs-theme="dark"]) .atoll-popup-dialog,
+  [data-atoll-theme="dark"] .atoll-popup-dialog,
+  [data-bs-theme="dark"] .atoll-popup-dialog {
+    --atoll-popup-bg: var(--atoll-bg-surface-primary, #1F1F1F);
+    --atoll-popup-title-color: var(--atoll-text-primary, #FFFFFF);
+    --atoll-popup-desc-color: var(--atoll-text-secondary, #A0A0A0);
+    --atoll-popup-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    --atoll-popup-scrollbar-thumb: rgba(255, 255, 255, 0.15);
+    --atoll-popup-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-popup-hero .atoll-icon-badge-green,
+  :host-context([data-bs-theme="dark"]) .atoll-popup-hero .atoll-icon-badge-green,
+  [data-atoll-theme="dark"] .atoll-popup-hero .atoll-icon-badge-green,
+  [data-bs-theme="dark"] .atoll-popup-hero .atoll-icon-badge-green {
+    background-color: rgba(6, 199, 85, 0.15);
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 
@@ -94,8 +436,7 @@
       },
       staticBackdrop: Boolean,
       disableBackdrop: Boolean,
-      disableKeyboard: Boolean,
-      disableFocus: Boolean
+      disableKeyboard: Boolean
     },
 
     slots: {
@@ -237,7 +578,6 @@
     },
 
     getters: {
-      primaryVariant: (state) => (state.variant === 'danger' ? 'danger' : 'primary'),
       hideDescription: (state) => !state.description,
       hideHeader: (state) => !state.title,
       ref_modalTitle: (_state, { instanceId }) => (instanceId ? `${instanceId}-title` : 'atoll-popup-title'),

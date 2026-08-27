@@ -155,6 +155,42 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block !important;
+    height: 100% !important;
+    min-height: 0 !important;
+  }
+
+  .room-details-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    min-height: 0;
+  }
+
+  .room-details-container .offcanvas-body {
+    flex: 1;
+    min-height: 0;
+  }
+
+  #roomDetailsOffcanvas,
+  div[ref="roomDetailsOffcanvas"] {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  #roomDetailsOffcanvas.showing,
+  #roomDetailsOffcanvas.show,
+  #roomDetailsOffcanvas.hiding,
+  div[ref="roomDetailsOffcanvas"].showing,
+  div[ref="roomDetailsOffcanvas"].show,
+  div[ref="roomDetailsOffcanvas"].hiding {
+    display: flex !important;
+    flex-direction: column !important;
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

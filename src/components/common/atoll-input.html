@@ -69,6 +69,188 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+
+  :host([hidden]) {
+    display: none !important;
+  }
+
+  .atoll-input-group {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    position: relative;
+    font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
+    box-sizing: border-box;
+
+    --atoll-input-height-sm: 36px;
+    --atoll-input-height-md: 44px;
+    --atoll-input-height-lg: 52px;
+    --atoll-input-height: var(--atoll-input-height-md);
+
+    --atoll-input-text-color: var(--atoll-text-primary, #111111);
+    --atoll-input-placeholder-color: var(--atoll-text-tertiary, #949494);
+    --atoll-input-underline-color: var(--atoll-border-subtle, #E8E8E8);
+    --atoll-input-underline-focus: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --atoll-input-underline-error: var(--atoll-rainbow-red, #FF334B);
+    --atoll-input-label-color: var(--atoll-text-secondary, #555555);
+  }
+
+  .atoll-input-group.disabled {
+    opacity: 0.5;
+    pointer-events: none;
+  }
+
+  .atoll-input-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 4px;
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    color: var(--atoll-input-label-color);
+    font-weight: var(--atoll-font-weight-medium, 500);
+  }
+
+  .atoll-input-label {
+    display: inline-flex;
+    align-items: center;
+    gap: 2px;
+  }
+
+  .atoll-input-required-mark {
+    color: var(--atoll-rainbow-red, #FF334B);
+    font-weight: bold;
+  }
+
+  .atoll-input-counter {
+    font-size: var(--atoll-font-size-caption-2, 11px);
+    color: var(--atoll-text-tertiary, #999999);
+    margin-left: auto;
+  }
+
+  .atoll-input-wrapper {
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    height: var(--atoll-input-height);
+    background-color: var(--atoll-input-bg, transparent);
+    border-bottom: 1px solid var(--atoll-input-underline-color);
+    transition: border-color 0.15s ease-in-out, border-width 0.1s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+
+  .atoll-input-wrapper:focus-within {
+    border-bottom: 2px solid var(--atoll-input-underline-focus);
+    box-shadow: 0 2px 8px color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
+  }
+
+  .atoll-input-field {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    font-size: var(--atoll-font-size-body-2, 14px);
+    color: var(--atoll-input-text-color);
+  }
+
+  .atoll-input-field::placeholder {
+    color: var(--atoll-input-placeholder-color);
+  }
+
+  .atoll-input-field:disabled {
+    cursor: not-allowed;
+  }
+
+  .atoll-input-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding-left: 8px;
+    flex-shrink: 0;
+  }
+
+  .atoll-input-action-btn {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--atoll-text-secondary, #666666);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0.7;
+    transition: opacity 0.15s ease-in-out;
+  }
+
+  .atoll-input-action-btn:hover {
+    opacity: 1;
+  }
+
+  .atoll-input-action-btn:focus-visible {
+    outline: none;
+  }
+
+  .atoll-input-timer {
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    font-weight: var(--atoll-font-weight-semibold, 600);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .atoll-input-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 4px;
+    font-size: var(--atoll-font-size-caption-2, 11px);
+    color: var(--atoll-text-secondary, #666666);
+    min-height: 16px;
+  }
+
+  .atoll-input-error .atoll-input-wrapper {
+    border-bottom: 2px solid var(--atoll-input-underline-error) !important;
+  }
+
+  .atoll-input-error .atoll-input-footer {
+    color: var(--atoll-rainbow-red, #FF334B);
+  }
+
+  .atoll-input-sm {
+    --atoll-input-height: var(--atoll-input-height-sm);
+  }
+
+  .atoll-input-sm .atoll-input-field {
+    font-size: var(--atoll-font-size-caption-1, 12px);
+  }
+
+  .atoll-input-lg {
+    --atoll-input-height: var(--atoll-input-height-lg);
+  }
+
+  .atoll-input-lg .atoll-input-field {
+    font-size: var(--atoll-font-size-body-1, 16px);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-input-group,
+  :host-context([data-bs-theme="dark"]) .atoll-input-group,
+  [data-atoll-theme="dark"] .atoll-input-group,
+  [data-bs-theme="dark"] .atoll-input-group {
+    --atoll-input-text-color: var(--atoll-text-primary, #FFFFFF);
+    --atoll-input-placeholder-color: var(--atoll-text-tertiary, #949494);
+    --atoll-input-underline-color: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
+    --atoll-input-label-color: var(--atoll-text-secondary, #B0B0B0);
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

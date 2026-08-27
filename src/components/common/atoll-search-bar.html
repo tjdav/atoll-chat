@@ -51,6 +51,178 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+
+  :host([hidden]) {
+    display: none !important;
+  }
+
+  .atoll-search-bar-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    position: relative;
+    font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
+    box-sizing: border-box;
+
+    --atoll-search-height-sm: 32px;
+    --atoll-search-height-md: 38px;
+    --atoll-search-height-lg: 44px;
+    --atoll-search-height: var(--atoll-search-height-md);
+
+    --atoll-search-bg: var(--atoll-input-bg, var(--atoll-bg-surface-secondary, #F5F5F5));
+    --atoll-search-bg-focus: var(--atoll-input-bg, var(--atoll-bg-surface-primary, #FFFFFF));
+    --atoll-search-text: var(--atoll-text-primary, #111111);
+    --atoll-search-placeholder: var(--atoll-text-tertiary, #949494);
+    --atoll-search-border: var(--atoll-border-subtle, transparent);
+    --atoll-search-border-focus: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+  }
+
+  .atoll-search-bar-container.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  .atoll-search-bar-field {
+    display: flex;
+    align-items: center;
+    flex: 1;
+    gap: 8px;
+    height: var(--atoll-search-height);
+    padding: 0 14px;
+    background-color: var(--atoll-search-bg);
+    border: 1px solid var(--atoll-search-border);
+    border-radius: 9999px;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+  }
+
+  .atoll-search-bar-field:focus-within {
+    background-color: var(--atoll-search-bg-focus);
+    border-color: var(--atoll-search-border-focus);
+    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
+  }
+
+  .atoll-search-bar-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--atoll-text-secondary, #666666);
+    flex-shrink: 0;
+  }
+
+  .atoll-search-bar-input {
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    border: none;
+    outline: none;
+    padding: 0;
+    margin: 0;
+    font-family: inherit;
+    font-size: var(--atoll-font-size-body-2, 14px);
+    color: var(--atoll-search-text);
+  }
+
+  .atoll-search-bar-input::placeholder {
+    color: var(--atoll-search-placeholder);
+  }
+
+  .atoll-search-bar-input::-webkit-search-decoration,
+  .atoll-search-bar-input::-webkit-search-cancel-button,
+  .atoll-search-bar-input::-webkit-search-results-button,
+  .atoll-search-bar-input::-webkit-search-results-decoration {
+    display: none;
+  }
+
+  .atoll-search-bar-actions {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+  }
+
+  .atoll-search-bar-clear {
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin: 0;
+    color: var(--atoll-text-tertiary, #999999);
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out;
+    width: 24px;
+    height: 24px;
+  }
+
+  .atoll-search-bar-clear:hover {
+    color: var(--atoll-text-primary, #111111);
+    background-color: rgba(0, 0, 0, 0.08);
+  }
+
+  .atoll-search-bar-clear:focus-visible {
+    outline: none;
+  }
+
+  .atoll-search-bar-cancel {
+    flex-shrink: 0;
+    animation: atoll-search-cancel-fade 0.2s ease-in-out;
+  }
+
+  @keyframes atoll-search-cancel-fade {
+    from {
+      opacity: 0;
+      transform: translateX(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateX(0);
+    }
+  }
+
+  .atoll-search-bar-sm .atoll-search-bar-field {
+    --atoll-search-height: var(--atoll-search-height-sm);
+    padding: 0 10px;
+  }
+
+  .atoll-search-bar-sm .atoll-search-bar-input {
+    font-size: var(--atoll-font-size-caption-1, 12px);
+  }
+
+  .atoll-search-bar-lg .atoll-search-bar-field {
+    --atoll-search-height: var(--atoll-search-height-lg);
+    padding: 0 18px;
+  }
+
+  .atoll-search-bar-lg .atoll-search-bar-input {
+    font-size: var(--atoll-font-size-body-1, 16px);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-search-bar-container,
+  :host-context([data-bs-theme="dark"]) .atoll-search-bar-container,
+  [data-atoll-theme="dark"] .atoll-search-bar-container,
+  [data-bs-theme="dark"] .atoll-search-bar-container {
+    --atoll-search-bg: var(--atoll-input-bg, var(--atoll-bg-surface-tertiary, #1F1F1F));
+    --atoll-search-bg-focus: var(--atoll-input-bg, var(--atoll-bg-surface-secondary, #161616));
+    --atoll-search-text: var(--atoll-text-primary, #FFFFFF);
+    --atoll-search-placeholder: var(--atoll-text-tertiary, #949494);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-search-bar-clear:hover,
+  :host-context([data-bs-theme="dark"]) .atoll-search-bar-clear:hover,
+  [data-atoll-theme="dark"] .atoll-search-bar-clear:hover,
+  [data-bs-theme="dark"] .atoll-search-bar-clear:hover {
+    color: var(--atoll-text-primary, #FFFFFF);
+    background-color: rgba(255, 255, 255, 0.12);
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 
