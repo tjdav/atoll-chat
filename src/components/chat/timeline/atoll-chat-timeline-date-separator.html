@@ -1,11 +1,38 @@
 <template id="atoll-chat-timeline-date-separator">
   <div class="atoll-chat-date-separator text-center w-100" style="background-color: transparent !important;">
-    <span class="badge rounded-pill atoll-chat-date-separator-pill px-3 py-1 text-uppercase font-monospace" style="background-color: var(--atoll-chat-date-separator-bg, var(--atoll-bg-surface-tertiary, #EEEEEE)); color: var(--atoll-chat-date-separator-color, var(--atoll-secondary-color, #777777)); font-size: 0.7rem; font-weight: 500;">
+    <span class="badge rounded-pill atoll-chat-date-separator-pill px-3 py-1 text-uppercase font-monospace">
       {{ formattedDate }}
     </span>
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+
+  .atoll-chat-date-separator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    color: var(--atoll-chat-text-primary) !important;
+    margin: 20px 0;
+    font-weight: 500;
+  }
+
+  .atoll-chat-date-separator .badge,
+  .atoll-chat-date-separator .atoll-chat-date-separator-pill {
+    background-color: var(--atoll-chat-surface-glass) !important;
+    border: 1px solid var(--atoll-chat-border) !important;
+    color: var(--atoll-chat-text-primary) !important;
+    backdrop-filter: var(--atoll-chat-date-separator-backdrop-filter, blur(12px));
+    -webkit-backdrop-filter: var(--atoll-chat-date-separator-backdrop-filter, blur(12px));
+    font-size: 0.7rem;
+    font-weight: 500;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

@@ -4,6 +4,85 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+
+  .atoll-chat-reactions {
+    display: flex;
+    margin-top: -14px;
+    position: relative;
+    z-index: 10;
+    pointer-events: none;
+    min-height: 24px;
+    width: 100%;
+  }
+
+  :host-context(.sent) .atoll-chat-reactions,
+  .sent .atoll-chat-reactions {
+    justify-content: flex-end;
+  }
+
+  :host-context(.received) .atoll-chat-reactions,
+  .received .atoll-chat-reactions {
+    justify-content: flex-start;
+  }
+
+  .atoll-chat-reaction-consolidated-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 2px 8px;
+    background-color: var(--atoll-chat-surface-glass) !important;
+    border: 1px solid var(--atoll-chat-border) !important;
+    color: var(--atoll-chat-text-primary) !important;
+    backdrop-filter: var(--atoll-chat-reaction-pill-backdrop-filter, blur(12px));
+    -webkit-backdrop-filter: var(--atoll-chat-reaction-pill-backdrop-filter, blur(12px));
+    border-radius: 20px;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    cursor: pointer;
+    user-select: none;
+    pointer-events: auto;
+    transition: transform 0.1s ease;
+    height: 24px;
+    margin: 0 4px;
+  }
+
+  .atoll-chat-reaction-consolidated-pill:hover {
+    transform: scale(1.1);
+    background-color: var(--bs-tertiary-bg, #f8f9fa);
+  }
+
+  .atoll-chat-reaction-emoji-list {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+  }
+
+  .atoll-chat-reaction-emoji-item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    font-size: 0.9rem;
+    margin-right: -2px;
+  }
+
+  .atoll-chat-reaction-count {
+    color: var(--atoll-chat-text-primary) !important;
+    font-weight: 600;
+    font-size: 0.75rem;
+    margin-left: 2px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

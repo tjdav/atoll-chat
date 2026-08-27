@@ -18,8 +18,8 @@
         </atoll-button>
         <atoll-profile ref="headerAvatar" size="sm" class="d-inline-block me-3" alt="{{ roomName }}"></atoll-profile>
         <div>
-          <h6 class="atoll-text-title-2 mb-0">{{ roomName }}</h6>
-          <small class="atoll-chat-view-header-subtitle mb-0" aria-live="polite" aria-atomic="true">{{ roomStatus }}</small>
+          <h6 class="atoll-text-title-2 mb-0 header-title atoll-chat-header-title">{{ roomName }}</h6>
+          <small class="atoll-chat-view-header-subtitle header-subtitle mb-0" aria-live="polite" aria-atomic="true">{{ roomStatus }}</small>
         </div>
       </div>
       <div class="d-flex gap-2">
@@ -88,6 +88,86 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    height: 100%;
+  }
+
+  .atoll-chat-view {
+    height: 100%;
+    background-color: var(--atoll-chat-bg);
+    background-image: var(--atoll-chat-bg-image);
+    transition: background 0.3s ease-in-out;
+    position: relative;
+  }
+
+  .atoll-chat-view .avatar-placeholder {
+    font-size: 1.2rem;
+  }
+
+  .atoll-chat-view atoll-chat-input {
+    display: block !important;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+    pointer-events: none;
+  }
+
+  .atoll-chat-view .atoll-chat-view-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 10;
+  }
+
+  .atoll-chat-view .offcanvas room-details-sidebar {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+    min-height: 0 !important;
+    flex-grow: 1 !important;
+  }
+
+  .atoll-chat-view-header {
+    border-bottom: 1px solid var(--atoll-chat-border) !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    background-color: var(--atoll-chat-surface-glass) !important;
+    backdrop-filter: var(--atoll-chat-header-backdrop-filter, blur(12px));
+    -webkit-backdrop-filter: var(--atoll-chat-header-backdrop-filter, blur(12px));
+    color: var(--atoll-chat-text-primary);
+  }
+
+  .atoll-chat-view-header .header-title,
+  .atoll-chat-view-header .atoll-chat-header-title {
+    color: var(--atoll-chat-text-primary) !important;
+  }
+
+  .atoll-chat-view-header .header-subtitle,
+  .atoll-chat-view-header .atoll-chat-header-subtitle {
+    color: var(--atoll-chat-text-secondary) !important;
+  }
+
+  .atoll-chat-view-header button,
+  .atoll-chat-view-header .btn,
+  .atoll-chat-view-header atoll-icon {
+    color: var(--atoll-chat-text-secondary);
+  }
+
+  .audio-player-container {
+    width: 100%;
+    height: 100%;
+  }
+
+  .video-player-container {
+    background-color: #000000;
+    width: 100%;
+    height: 100%;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

@@ -7,6 +7,41 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    max-width: 80%;
+  }
+
+  .media-preview-container {
+    cursor: pointer;
+  }
+
+  .media-hover-overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    border-radius: 0.5rem;
+  }
+
+  .media-preview-container:hover .media-hover-overlay {
+    opacity: 1;
+  }
+
+  .media-hover-icon {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.65);
+    color: #ffffff;
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

@@ -31,6 +31,131 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 48px;
+  }
+
+  :host([is-sent="true"]) {
+    &[is-first-in-block="true"][is-last-in-block="false"] .message-bubble {
+      border-bottom-right-radius: 0.25rem;
+    }
+
+    &[is-first-in-block="false"][is-last-in-block="false"] .message-bubble {
+      border-top-right-radius: 0.25rem;
+      border-bottom-right-radius: 0.25rem;
+    }
+
+    &[is-first-in-block="false"][is-last-in-block="true"] .message-bubble {
+      border-top-right-radius: 0.25rem;
+    }
+  }
+
+  :host([is-sent="false"]) {
+    &[is-first-in-block="true"][is-last-in-block="false"] .message-bubble {
+      border-bottom-left-radius: 0.25rem;
+    }
+
+    &[is-first-in-block="false"][is-last-in-block="false"] .message-bubble {
+      border-top-left-radius: 0.25rem;
+      border-bottom-left-radius: 0.25rem;
+    }
+
+    &[is-first-in-block="false"][is-last-in-block="true"] .message-bubble {
+      border-top-left-radius: 0.25rem;
+    }
+  }
+
+  :host([has-reactions="true"]) {
+    .atoll-chat-timeline-row-container {
+      margin-bottom: 14px;
+    }
+  }
+
+  .atoll-chat-timeline-row {
+    display: block;
+  }
+
+  .timeline-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: var(--bs-secondary-bg, #E9ECEF);
+  }
+
+  .seen-avatar {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    object-fit: cover;
+    border: 1px solid var(--bs-body-bg, #FFFFFF);
+  }
+
+  .atoll-chat-sender-name {
+    font-size: 0.75rem;
+    color: var(--atoll-chat-text-secondary);
+    margin-left: 40px;
+    margin-bottom: 2px;
+  }
+
+  .atoll-chat-timeline-row-container {
+    display: grid;
+    grid-template-columns: 32px 1fr;
+    column-gap: 8px;
+    margin-bottom: 2px;
+  }
+
+  .atoll-chat-timeline-row-container.sent {
+    grid-template-columns: 1fr;
+    padding-left: 36px;
+  }
+
+  .atoll-chat-timeline-row-container.sent .reaction-trigger-icon {
+    left: -36px;
+  }
+
+  .atoll-chat-timeline-row-container.received {
+    padding-right: 36px;
+  }
+
+  .atoll-chat-timeline-row-container.received .reaction-trigger-icon {
+    right: -36px;
+  }
+
+  @media (hover: hover) {
+    .atoll-chat-timeline-row-container:hover .reaction-trigger-icon {
+      opacity: 1 !important;
+      visibility: visible !important;
+    }
+  }
+
+  .atoll-chat-timeline-row.show-reaction-btn .reaction-trigger-icon {
+    opacity: 1 !important;
+    visibility: visible !important;
+  }
+
+  .reaction-trigger-icon {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: var(--bs-body-bg, #FFFFFF);
+    border: 1px solid var(--bs-border-color, rgba(0, 0, 0, 0.175));
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s ease, visibility 0.2s ease;
+    z-index: 15;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

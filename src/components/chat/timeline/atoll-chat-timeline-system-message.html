@@ -7,6 +7,39 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+
+  .atoll-chat-system-message {
+    width: 100%;
+    text-align: center;
+    margin-top: 1rem;
+    margin-bottom: 1rem;
+  }
+
+  .system-message-pill {
+    background-color: var(--atoll-chat-surface-glass) !important;
+    color: var(--atoll-chat-text-secondary) !important;
+    border-color: var(--atoll-chat-border) !important;
+    font-size: 0.7rem;
+  }
+
+  .system-message-pill .text-success {
+    color: var(--atoll-chat-accent, #06C755) !important;
+  }
+
+  .system-message-pill .text-primary {
+    color: var(--atoll-chat-accent, #0d6efd) !important;
+  }
+
+  .system-message-pill .text-danger {
+    color: var(--bs-danger, #dc3545) !important;
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

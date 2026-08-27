@@ -52,6 +52,128 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+
+  atoll-chat-voice-recorder {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .atoll-chat-input-container {
+    background-color: var(--atoll-chat-surface-glass) !important;
+    border: 1px solid var(--atoll-chat-border) !important;
+    backdrop-filter: var(--atoll-chat-input-backdrop-filter, blur(12px)) !important;
+    -webkit-backdrop-filter: var(--atoll-chat-input-backdrop-filter, blur(12px)) !important;
+    pointer-events: auto;
+    padding-bottom: calc(1rem + var(--atoll-safe-area-bottom, env(safe-area-inset-bottom, 0px))) !important;
+  }
+
+  .atoll-chat-input-container textarea,
+  .atoll-chat-input-container input {
+    background-color: var(--atoll-chat-input-bg) !important;
+    color: var(--atoll-chat-input-color) !important;
+  }
+
+  .atoll-chat-input-container textarea::placeholder,
+  .atoll-chat-input-container input::placeholder {
+    color: var(--atoll-chat-input-placeholder-color) !important;
+  }
+
+  .atoll-chat-input-container textarea {
+    transition: border-radius 0.2s ease !important;
+  }
+
+  .atoll-chat-input-container textarea.is-multiline {
+    border-radius: 16px !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-input-btn-attach button {
+    background-color: var(--atoll-chat-btn-attach-bg, transparent) !important;
+    color: var(--atoll-chat-text-secondary) !important;
+    border-color: transparent !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-input-btn-attach button atoll-icon {
+    color: var(--atoll-chat-text-secondary) !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-input-btn-voice button {
+    background-color: var(--atoll-chat-btn-voice-bg, transparent) !important;
+    color: var(--atoll-chat-text-secondary) !important;
+    border-color: transparent !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-input-btn-voice button atoll-icon {
+    color: var(--atoll-chat-text-secondary) !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-input-btn-send button {
+    background-color: var(--atoll-chat-btn-send-bg, #047835) !important;
+    color: var(--atoll-chat-btn-send-color, #ffffff) !important;
+    border-color: transparent !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-input-btn-send button atoll-icon {
+    color: var(--atoll-chat-btn-send-color, #ffffff) !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-emoji-button button {
+    background-color: transparent !important;
+    color: var(--atoll-chat-input-emoji-color, inherit) !important;
+    border-color: transparent !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-emoji-button button atoll-icon {
+    color: var(--atoll-chat-input-emoji-color, inherit) !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-input-btn-discard {
+    color: var(--atoll-chat-text-secondary) !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-input-btn-discard:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-recording-controls {
+    background-color: var(--atoll-chat-input-bg, var(--bs-body-bg, #ffffff)) !important;
+    border: 1px solid var(--atoll-chat-border) !important;
+    color: var(--atoll-chat-input-color) !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-recording-controls .atoll-chat-recording-btn-pause-resume button {
+    background-color: var(--atoll-chat-accent, var(--bs-primary, #0d6efd)) !important;
+    color: var(--atoll-chat-bubble-sent-color, #ffffff) !important;
+    border-color: transparent !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-recording-controls .atoll-chat-recording-btn-pause-resume button .atoll-icon {
+    --atoll-icon-out-stroke: #FFFFFF !important;
+    --atoll-icon-out-fill: rgba(255, 255, 255, 0.25) !important;
+    --atoll-icon-inner-stroke: #FFFFFF !important;
+    --atoll-icon-inner-fill: #FFFFFF !important;
+    --solar-secondary-color: currentColor !important;
+    --solar-secondary-opacity: 0.6 !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-recording-controls .atoll-chat-recording-btn-redo,
+  .atoll-chat-input-container .atoll-chat-recording-controls .atoll-chat-recording-btn-resume {
+    color: var(--atoll-chat-text-secondary) !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-recording-controls .atoll-chat-recording-btn-redo:hover,
+  .atoll-chat-input-container .atoll-chat-recording-controls .atoll-chat-recording-btn-resume:hover {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+  }
+
+  .atoll-chat-input-container .atoll-chat-recording-controls .atoll-chat-recording-timer {
+    color: var(--atoll-chat-input-color) !important;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

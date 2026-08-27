@@ -103,21 +103,6 @@ $utilities: map-merge($utilities,
 @import "display";
 @import "markdown";
 
-// Atoll Chat View Component Partials
-@import "atoll-chat-view";
-@import "atoll-chat-header";
-@import "atoll-chat-timeline";
-@import "atoll-chat-bubbles";
-@import "atoll-chat-date-separator";
-@import "atoll-chat-system-message";
-@import "atoll-chat-reactions";
-@import "atoll-chat-file-attachment";
-@import "atoll-chat-waveform-player";
-@import "atoll-chat-link-preview";
-@import "atoll-chat-input";
-@import "atoll-chat-attachment-preview";
-@import "atoll-chat-media-modal";
-
 // New component-level partials
 @import "pip-video";
 @import "media-components";

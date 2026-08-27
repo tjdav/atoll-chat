@@ -4,6 +4,22 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: contents;
+  }
+
+  .atoll-chat-reaction-picker {
+    overflow: hidden;
+  }
+
+  .atoll-chat-reaction-picker emoji-picker {
+    width: 100%;
+    height: 100%;
+    --num-columns: 8;
+    --category-emoji-size: 1.25rem;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
