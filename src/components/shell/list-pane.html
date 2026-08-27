@@ -25,6 +25,27 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    height: 100%;
+    width: 100%;
+  }
+
+  .list-pane-custom {
+    background-color: var(--atoll-pane-bg, transparent) !important;
+  }
+
+  .list-pane-header {
+    border-bottom: none !important;
+    background-color: var(--atoll-pane-bg, transparent) !important;
+  }
+
+  /* Search bar refinements */
+  .search-container-pill {
+    padding: 0 var(--atoll-item-padding-x, 1rem) 1rem var(--atoll-item-padding-x, 1rem);
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

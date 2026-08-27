@@ -103,9 +103,22 @@
 
     style: {
       '--atoll-icon-size': (s) => {
-        const presets = { xs: '16px', sm: '20px', md: '24px', lg: '32px', xl: '48px' }
-        if (s.size && presets[s.size]) return presets[s.size]
-        if (s.size && !isNaN(s.size)) return `${s.size}px`
+        const presets = {
+          xs: '16px',
+          sm: '20px',
+          md: '24px',
+          lg: '32px',
+          xl: '48px'
+        }
+
+        if (s.size && presets[s.size]) {
+          return presets[s.size]
+        }
+
+        if (s.size && !isNaN(s.size)) {
+          return `${s.size}px`
+        }
+  
         return '24px'
       },
       '--atoll-icon-primary-color': (s) => s.color || 'currentColor',
@@ -136,7 +149,9 @@
 
       const render = () => {
         const wrapper = refs('iconWrapper')
-        if (!wrapper) return
+        if (!wrapper) {
+          return
+        }
 
         let numericSize = 24
         if (state.size) {

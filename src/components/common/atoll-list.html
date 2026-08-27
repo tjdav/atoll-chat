@@ -4,6 +4,37 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+
+  /* Base List Container */
+  .atoll-list {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+    box-sizing: border-box;
+  }
+
+  /* Separator Lines Option */
+  .atoll-list.atoll-list-divided ::slotted(atoll-list-item:not(:last-child)),
+  .atoll-list.atoll-list-divided .atoll-list-item:not(:last-child) {
+    border-bottom: 1px solid var(--atoll-border-subtle, #DFDFDF);
+  }
+
+  [data-atoll-theme="dark"] .atoll-list.atoll-list-divided ::slotted(atoll-list-item:not(:last-child)),
+  [data-atoll-theme="dark"] .atoll-list.atoll-list-divided .atoll-list-item:not(:last-child),
+  [data-bs-theme="dark"] .atoll-list.atoll-list-divided ::slotted(atoll-list-item:not(:last-child)),
+  [data-bs-theme="dark"] .atoll-list.atoll-list-divided .atoll-list-item:not(:last-child) {
+    border-bottom: 1px solid var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

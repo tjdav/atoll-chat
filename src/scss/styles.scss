@@ -119,13 +119,9 @@ $utilities: map-merge($utilities,
 @import "atoll-chat-media-modal";
 
 // New component-level partials
-@import "nav-sidebar";
-@import "app-list";
-@import "chat-list";
 @import "pip-video";
 @import "media-components";
 @import "atoll-media";
-@import "ui-panes";
 @import "video-docs";
 @import "btn";
 @import "password-toggle";
@@ -136,7 +132,6 @@ $utilities: map-merge($utilities,
 @import "atoll-input";
 @import "atoll-search-bar";
 @import "atoll-tooltip";
-@import "atoll-list";
 @import "atoll-list-header";
 @import "atoll-checkbox";
 @import "atoll-popup";

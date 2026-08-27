@@ -34,11 +34,11 @@
                 ref="profileBtn" 
                 data-testid="profileBtn" 
                 title="Account">
-          <div ref="avatarContainer" class="d-flex align-items-center justify-content-center" style="width: 44px; height: 44px;">
+          <div ref="avatarContainer" class="d-flex align-items-center justify-content-center avatar-container">
             <!-- Render avatar dynamically or standard fallback inside client -->
           </div>
         </button>
-        <ul class="dropdown-menu shadow p-0 overflow-hidden" style="min-width: 200px; margin-bottom: 8px;" ref="profileDropdownMenu" data-testid="profileDropdownMenu">
+        <ul class="dropdown-menu shadow p-0 overflow-hidden profile-dropdown-menu" ref="profileDropdownMenu" data-testid="profileDropdownMenu">
           <!-- Settings Section -->
           <li>
             <button class="dropdown-item d-flex align-items-center gap-2 py-2 px-3 {{ isSettingsActive }}" ref="btnSettings" data-testid="btnSettings">
@@ -61,6 +61,88 @@
     </div>
   </nav>
 </template>
+
+<style>
+  :host {
+    display: block;
+    height: 100%;
+  }
+
+  .nav-sidebar {
+    width: var(--atoll-sidebar-width, 72px);
+    transition: width 0.2s ease-in-out;
+    border-right: none !important;
+    background-color: var(--atoll-body-bg, #ffffff) !important;
+    z-index: 11;
+  }
+
+  @media (max-width: 767.98px) {
+    .nav-sidebar {
+      padding: calc(0.75rem + var(--atoll-safe-area-top, 0px)) 0.2rem 0.75rem 0.2rem !important;
+    }
+  }
+
+  .nav-sidebar .nav-link {
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    border-radius: 12px;
+    color: var(--atoll-secondary-color, #6c757d);
+    padding: 0.75rem !important;
+    background-color: transparent;
+    border-left: 3px solid transparent;
+    overflow: visible !important;
+  }
+
+  @media (max-width: 767.98px) {
+    .nav-sidebar .nav-link {
+      padding: 0.5rem !important;
+    }
+  }
+
+  .nav-sidebar .nav-link:hover {
+    background-color: rgba(0, 0, 0, 0.04);
+  }
+
+  [data-atoll-theme="dark"] .nav-sidebar .nav-link:hover,
+  [data-bs-theme="dark"] .nav-sidebar .nav-link:hover {
+    background-color: rgba(255, 255, 255, 0.06);
+  }
+
+  .nav-sidebar .nav-link.active {
+    background-color: rgba(0, 0, 0, 0.04) !important;
+    color: var(--atoll-brand-primary, #06C755) !important;
+    border-left: 3px solid var(--atoll-brand-primary, #06C755) !important;
+    border-radius: 12px;
+    padding-left: calc(0.75rem - 3px) !important;
+  }
+
+  @media (max-width: 767.98px) {
+    .nav-sidebar .nav-link.active {
+      padding-left: calc(0.5rem - 3px) !important;
+    }
+  }
+
+  .nav-sidebar .nav-link.active atoll-icon {
+    --atoll-icon-out-stroke: var(--atoll-brand-primary, #06C755) !important;
+    --atoll-icon-out-fill: var(--atoll-brand-primary, #06C755) !important;
+  }
+
+  [data-atoll-theme="dark"] .nav-sidebar .nav-link.active,
+  [data-bs-theme="dark"] .nav-sidebar .nav-link.active {
+    background-color: rgba(255, 255, 255, 0.06) !important;
+    color: var(--atoll-brand-primary, #06C755) !important;
+  }
+
+  .avatar-container {
+    width: 44px;
+    height: 44px;
+  }
+
+  .profile-dropdown-menu {
+    min-width: 200px;
+    margin-bottom: 8px;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'

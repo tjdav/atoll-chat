@@ -19,6 +19,85 @@
   </atoll-list-item>
 </template>
 
+<style>
+  :host {
+    display: block;
+    container-type: inline-size;
+    width: 100%;
+  }
+
+  :host([hidden]) {
+    display: none !important;
+  }
+
+  .chat-list-item .group-avatar-container {
+    background-color: transparent !important;
+    overflow: visible;
+  }
+
+  .chat-list-item .stacked-avatar-1,
+  .chat-list-item .stacked-avatar-2,
+  .chat-list-item .stacked-avatar-3 {
+    position: absolute;
+    border: 2px solid var(--atoll-body-bg, #ffffff);
+    box-shadow: 0 0 0 1px rgba(var(--atoll-black-rgb, 0, 0, 0), 0.05);
+  }
+
+  .chat-list-item.active .stacked-avatar-1,
+  .chat-list-item.active .stacked-avatar-2,
+  .chat-list-item.active .stacked-avatar-3 {
+    border-color: var(--atoll-primary, #06C755);
+  }
+
+  .chat-list-item .group-avatar-container:has(.stacked-avatar-2):not(:has(.stacked-avatar-3)) .stacked-avatar-1 {
+    top: 0;
+    right: 0;
+    z-index: 2;
+  }
+
+  .chat-list-item .group-avatar-container:has(.stacked-avatar-2):not(:has(.stacked-avatar-3)) .stacked-avatar-2 {
+    bottom: 0;
+    left: 0;
+    z-index: 1;
+  }
+
+  .chat-list-item .group-avatar-container:has(.stacked-avatar-3) .stacked-avatar-1 {
+    top: 0;
+    left: 10px;
+    z-index: 3;
+  }
+
+  .chat-list-item .group-avatar-container:has(.stacked-avatar-3) .stacked-avatar-2 {
+    bottom: 0;
+    left: 0;
+    z-index: 2;
+  }
+
+  .chat-list-item .group-avatar-container:has(.stacked-avatar-3) .stacked-avatar-3 {
+    bottom: 0;
+    right: 0;
+    z-index: 1;
+  }
+
+  .chat-list-item:hover .group-hover-visible {
+    opacity: 1 !important;
+  }
+
+  .chat-list-item .unread-dot {
+    right: var(--atoll-list-item-padding-x, 16px);
+    width: 10px;
+    height: 10px;
+  }
+
+  /* Container Query: Narrow/Compact Containers */
+  @container (max-width: 260px) {
+    ::slotted(atoll-list-item),
+    atoll-list-item {
+      --atoll-list-item-padding-x: 10px;
+    }
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 
