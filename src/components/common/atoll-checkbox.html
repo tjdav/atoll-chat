@@ -112,13 +112,11 @@
           toggle()
         })
 
-        if (checkboxRoot) {
-          checkboxRoot.addEventListener('click', (e) => {
-            e.preventDefault()
-            e.stopPropagation()
-            toggle()
-          })
-        }
+        checkboxRoot.addEventListener('click', (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          toggle()
+        })
 
         root.addEventListener('keydown', (e) => {
           if (e.key === ' ' || e.key === 'Enter') {

@@ -1,6 +1,6 @@
 import { defineConfig } from 'coralite-scripts'
 import configPlugin from './src/plugins/config-plugin.js'
-import pocketbasePlugin from './src/plugins/pocketbase.js'
+import pocketbasePlugin from './src/plugins/pocketbase/index.js'
 import eventBus from './src/plugins/event-bus.js'
 import statePlugin from './src/plugins/state-plugin.js'
 import storagePlugin from './src/plugins/storage-plugin.js'

@@ -303,15 +303,13 @@
 
       // Tap Chats tab active action
       const btnChats = refs('btnChats')
-      if (btnChats) {
-        btnChats.addEventListener('click', () => {
-          if ($state.currentAppView === 'chats' && !$state.activeSelectionId) {
-            $bus.emit('ui:scroll_chats_top')
-          } else {
-            triggerViewChange('chats')
-          }
-        })
-      }
+      btnChats.addEventListener('click', () => {
+        if ($state.currentAppView === 'chats' && !$state.activeSelectionId) {
+          $bus.emit('ui:scroll_chats_top')
+        } else {
+          triggerViewChange('chats')
+        }
+      })
 
       // Media and Files sub-items view change handlers
       const subItemBtns = {
@@ -343,21 +341,15 @@
 
       // Logout handler
       const btnLogout = refs('btnLogout')
-      if (btnLogout) {
-        btnLogout.addEventListener('click', async () => {
-          if (profileDropdown) {
-            profileDropdown.hide()
-          }
-          pb.authStore.clear()
-          $state.authView = 'login'
-          $bus.emit('auth:logout')
-          try {
-            await $worker.execute('worker:wipe_keys')
-          } catch (err) {
-            // fail-silent
-          }
-        })
-      }
+      btnLogout.addEventListener('click', async () => {
+        if (profileDropdown) {
+          profileDropdown.hide()
+        }
+        pb.authStore.clear()
+        $state.authView = 'login'
+        $bus.emit('auth:logout')
+        await $worker.execute('worker:wipe_keys')
+      })
 
       updateAvatar()
 

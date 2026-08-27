@@ -138,9 +138,7 @@
       const testId = root.getAttribute('data-testid') || root.__testId
       if (testId) {
         root.__testId = testId
-        if (input) {
-          input.setAttribute('data-testid', testId)
-        }
+        input.setAttribute('data-testid', testId)
         root.removeAttribute('data-testid')
       }
 
@@ -152,87 +150,81 @@
       }
 
       // Input Focus and Blur Observers
-      if (input) {
-        input.addEventListener('focus', () => {
-          state.isFocused = true
-        }, { signal })
+      input.addEventListener('focus', () => {
+        state.isFocused = true
+      }, { signal })
 
-        input.addEventListener('blur', () => {
-          state.isFocused = false
-        }, { signal })
+      input.addEventListener('blur', () => {
+        state.isFocused = false
+      }, { signal })
 
-        input.addEventListener('input', () => {
-          state.value = input.value
-          dispatchEvents('input')
-          dispatchEvents('change')
-        }, { signal })
+      input.addEventListener('input', () => {
+        state.value = input.value
+        dispatchEvents('input')
+        dispatchEvents('change')
+      }, { signal })
 
-        // Prevent native search event from bubbling and conflicting
-        input.addEventListener('search', (event) => {
-          event.stopPropagation()
-        }, { signal })
+      // Prevent native search event from bubbling and conflicting
+      input.addEventListener('search', (event) => {
+        event.stopPropagation()
+      }, { signal })
 
-        input.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter') {
-            event.preventDefault()
-            root.dispatchEvent(
-              new CustomEvent('search', {
-                bubbles: true,
-                composed: true,
-                detail: { value: state.value }
-              })
-            )
-          } else if (event.key === 'Escape') {
-            if (state.value) {
-              state.value = ''
-              input.value = ''
-              dispatchEvents('input')
-              dispatchEvents('change')
-            } else {
-              input.blur()
-            }
-          }
-        }, { signal })
-      }
-
-      // Clear Button Trigger Handler (Touch-safe using pointerdown/mousedown with preventDefault)
-      if (clearBtn) {
-        const handleClear = (event) => {
-          // Prevents input blur on tap
+      input.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
           event.preventDefault()
-          state.value = ''
-          if (input) {
-            input.value = ''
-            input.focus()
-          }
-          dispatchEvents('input')
-          dispatchEvents('change')
-        }
-        clearBtn.addEventListener('pointerdown', handleClear, { signal })
-        clearBtn.addEventListener('mousedown', handleClear, { signal })
-      }
-
-      // Cancel Button Handler
-      if (cancelBtn) {
-        cancelBtn.addEventListener('click', () => {
-          state.value = ''
-          state.isFocused = false
-          if (input) {
-            input.value = ''
-            input.blur()
-          }
-
-          dispatchEvents('input')
-          dispatchEvents('change')
-
           root.dispatchEvent(
-            new CustomEvent('cancel', {
+            new CustomEvent('search', {
               bubbles: true,
-              composed: true
+              composed: true,
+              detail: { value: state.value }
             })
           )
-        }, { signal })
+        } else if (event.key === 'Escape') {
+          if (state.value) {
+            state.value = ''
+            input.value = ''
+            dispatchEvents('input')
+            dispatchEvents('change')
+          } else {
+            input.blur()
+          }
+        }
+      }, { signal })
+
+      // Clear Button Trigger Handler (Touch-safe using pointerdown/mousedown with preventDefault)
+      const handleClear = (event) => {
+        // Prevents input blur on tap
+        event.preventDefault()
+        state.value = ''
+        if (input) {
+          input.value = ''
+          input.focus()
+        }
+        dispatchEvents('input')
+        dispatchEvents('change')
       }
+      clearBtn.addEventListener('pointerdown', handleClear, { signal })
+      clearBtn.addEventListener('mousedown', handleClear, { signal })
+
+      // Cancel Button Handler
+      cancelBtn.addEventListener('click', () => {
+        state.value = ''
+        state.isFocused = false
+        if (input) {
+          input.value = ''
+          input.blur()
+        }
+
+        dispatchEvents('input')
+        dispatchEvents('change')
+
+        root.dispatchEvent(
+          new CustomEvent('cancel', {
+            bubbles: true,
+            composed: true
+          })
+        )
+      }, { signal })
 
       // Programmatic External Sync for value property/attribute
       observe('value', (newVal) => {

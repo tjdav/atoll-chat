@@ -485,9 +485,7 @@
       }
 
       const bottomObserver = createBottomObserver()
-      if (bottomSentinel) {
-        bottomObserver.observe(bottomSentinel)
-      }
+      bottomObserver.observe(bottomSentinel)
 
       signal.addEventListener('abort', () => {
         cancelPendingAnchor()

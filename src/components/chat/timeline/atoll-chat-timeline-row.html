@@ -228,17 +228,15 @@
       const getMsgId = () => state.messageId || state.localUuid
 
       // Hover is handled by CSS, but we need click for picker
-      if (reactionBtn) {
-        reactionBtn.onclick = (e) => {
-          e.stopPropagation()
-          const rect = reactionBtn.getBoundingClientRect()
-          $bus.emit('ui:show_reaction_picker', {
-            x: rect.left,
-            y: rect.bottom + 5,
-            targetId: getMsgId()
-          })
-          container.classList.remove('show-reaction-btn')
-        }
+      reactionBtn.onclick = (e) => {
+        e.stopPropagation()
+        const rect = reactionBtn.getBoundingClientRect()
+        $bus.emit('ui:show_reaction_picker', {
+          x: rect.left,
+          y: rect.bottom + 5,
+          targetId: getMsgId()
+        })
+        container.classList.remove('show-reaction-btn')
       }
 
       // Tap-to-toggle reaction button next to message bubble on mobile/touch

@@ -222,8 +222,6 @@
 
       hideBadge: (state) => (!state.badge ? 'true' : null),
 
-      hideOverlayIcon: (state) => (!state.iconName ? 'true' : null),
-
       hideBadgeOrLoading: (state) => (state.loading || !state.badge ? 'true' : null),
 
       hideOverlayIconOrLoading: (state) => (state.loading || !state.iconName ? 'true' : null),
@@ -352,15 +350,13 @@
 
       const img = refs('avatarImage')
 
-      if (img) {
-        img.addEventListener('error', () => {
-          state.hasError = true
-        })
+      img.addEventListener('error', () => {
+        state.hasError = true
+      })
 
-        img.addEventListener('load', () => {
-          state.hasError = false
-        })
-      }
+      img.addEventListener('load', () => {
+        state.hasError = false
+      })
 
       const updateSrc = (newSrc) => {
         if (!img) {

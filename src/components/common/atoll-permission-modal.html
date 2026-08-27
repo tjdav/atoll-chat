@@ -501,11 +501,9 @@
       }
 
       // Event Listeners
-      if (btnBiometric) {
-        btnBiometric.addEventListener('click', () => {
-          triggerBiometricAuth(false)
-        }, { signal })
-      }
+      btnBiometric.addEventListener('click', () => {
+        triggerBiometricAuth(false)
+      }, { signal })
 
       root.addEventListener('atoll-popup-primary', () => {
         handlePasswordVerification()
@@ -519,12 +517,10 @@
         cancelModal()
       }, { signal })
 
-      if (passwordForm) {
-        passwordForm.addEventListener('submit', (e) => {
-          e.preventDefault()
-          handlePasswordVerification()
-        }, { signal })
-      }
+      passwordForm.addEventListener('submit', (e) => {
+        e.preventDefault()
+        handlePasswordVerification()
+      }, { signal })
 
       // Global EventBus Bridge Listener
       const unbus = $bus.on('ui:prompt_permission', async (payload = {}) => {

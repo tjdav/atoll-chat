@@ -706,46 +706,38 @@
       observe('progress', render)
 
       // Attach keydown listener on itemsContainer and addMoreTile
-      if (itemsContainer) {
-        itemsContainer.addEventListener('keydown', handleKeyDown, { signal })
-      }
-      if (addMoreTile) {
-        addMoreTile.addEventListener('keydown', handleKeyDown, { signal })
+      itemsContainer.addEventListener('keydown', handleKeyDown, { signal })
+      addMoreTile.addEventListener('keydown', handleKeyDown, { signal })
 
-        // Add More tile click -> trigger addMoreInput
-        addMoreTile.addEventListener('click', (e) => {
-          e.preventDefault()
-          addMoreInput.click()
-        }, { signal })
-      }
+      // Add More tile click -> trigger addMoreInput
+      addMoreTile.addEventListener('click', (e) => {
+        e.preventDefault()
+        addMoreInput.click()
+      }, { signal })
 
       // Add More input change -> dispatch ui:files_selected
-      if (addMoreInput) {
-        addMoreInput.addEventListener('change', () => {
-          const files = Array.from(addMoreInput.files || [])
-          if (files.length > 0) {
-            $bus.emit('ui:files_selected', { files })
-            addMoreInput.value = ''
-          }
-        }, { signal })
-      }
+      addMoreInput.addEventListener('change', () => {
+        const files = Array.from(addMoreInput.files || [])
+        if (files.length > 0) {
+          $bus.emit('ui:files_selected', { files })
+          addMoreInput.value = ''
+        }
+      }, { signal })
 
       // Cover input change -> dispatch ui:attachment_cover_selected
-      if (coverInput) {
-        coverInput.addEventListener('change', () => {
-          const file = coverInput.files[0]
-          if (file) {
-            const list = getEffectiveAttachments()
-            const targetId = targetCoverAttachmentId || (list[0] ? list[0].id : null)
-            $bus.emit('ui:attachment_cover_selected', {
-              id: targetId === 'legacy-item-1' ? (state._attachments && state._attachments[0]?.id) : targetId,
-              file
-            })
-            targetCoverAttachmentId = null
-            coverInput.value = ''
-          }
-        }, { signal })
-      }
+      coverInput.addEventListener('change', () => {
+        const file = coverInput.files[0]
+        if (file) {
+          const list = getEffectiveAttachments()
+          const targetId = targetCoverAttachmentId || (list[0] ? list[0].id : null)
+          $bus.emit('ui:attachment_cover_selected', {
+            id: targetId === 'legacy-item-1' ? (state._attachments && state._attachments[0]?.id) : targetId,
+            file
+          })
+          targetCoverAttachmentId = null
+          coverInput.value = ''
+        }
+      }, { signal })
 
       // Initial render
       render()

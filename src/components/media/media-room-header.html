@@ -101,20 +101,18 @@
 
       renderAvatar()
 
-      if (itemRoot) {
-        updateHeader()
-        itemRoot.addEventListener('atoll-item-click', (e) => {
-          e.stopPropagation()
-          if (!state.roomId) {
-            return
-          }
-          $state.currentAppView = 'chats'
-          $state.activeSelectionId = state.roomId
-          $state.activeSelectionType = 'chats'
-          $bus.emit('room:select', { room_id: state.roomId })
-          $bus.emit('ui:selection_made')
-        }, { signal })
-      }
+      updateHeader()
+      itemRoot.addEventListener('atoll-item-click', (e) => {
+        e.stopPropagation()
+        if (!state.roomId) {
+          return
+        }
+        $state.currentAppView = 'chats'
+        $state.activeSelectionId = state.roomId
+        $state.activeSelectionType = 'chats'
+        $bus.emit('room:select', { room_id: state.roomId })
+        $bus.emit('ui:selection_made')
+      }, { signal })
     }
   })
 </script>

@@ -109,51 +109,47 @@
       }
 
       // Event Listeners for Hover Trigger
-      if (triggerEl) {
-        triggerEl.addEventListener('mouseenter', () => {
-          if (state.trigger === 'hover') {
-            show()
-          }
-        })
+      triggerEl.addEventListener('mouseenter', () => {
+        if (state.trigger === 'hover') {
+          show()
+        }
+      })
 
-        triggerEl.addEventListener('mouseleave', () => {
-          if (state.trigger === 'hover') {
-            hide()
-          }
-        })
+      triggerEl.addEventListener('mouseleave', () => {
+        if (state.trigger === 'hover') {
+          hide()
+        }
+      })
 
-        triggerEl.addEventListener('focusin', () => {
-          if (state.trigger === 'hover') {
-            show()
-          }
-        })
+      triggerEl.addEventListener('focusin', () => {
+        if (state.trigger === 'hover') {
+          show()
+        }
+      })
 
-        triggerEl.addEventListener('focusout', () => {
-          if (state.trigger === 'hover') {
-            hide()
-          }
-        })
+      triggerEl.addEventListener('focusout', () => {
+        if (state.trigger === 'hover') {
+          hide()
+        }
+      })
 
-        triggerEl.addEventListener('click', () => {
-          if (state.trigger === 'click') {
-            state.open = !state.open
-          }
-        })
-      }
+      triggerEl.addEventListener('click', () => {
+        if (state.trigger === 'click') {
+          state.open = !state.open
+        }
+      })
 
       // Close Button Handler
-      if (closeBtn) {
-        closeBtn.addEventListener('click', (event) => {
-          event.stopPropagation()
-          hide()
-          root.dispatchEvent(
-            new CustomEvent('atoll-tooltip-close', {
-              bubbles: true,
-              composed: true
-            })
-          )
-        })
-      }
+      closeBtn.addEventListener('click', (event) => {
+        event.stopPropagation()
+        hide()
+        root.dispatchEvent(
+          new CustomEvent('atoll-tooltip-close', {
+            bubbles: true,
+            composed: true
+          })
+        )
+      })
 
       // Escape key listener & click-outside listener helper
       const onKeyDown = (event) => {

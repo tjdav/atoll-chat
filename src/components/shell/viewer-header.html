@@ -46,7 +46,6 @@
       iconContainerClass: (state) => (state.theme === 'dark' ? 'bg-secondary text-white' : 'bg-primary-subtle text-primary'),
       textClass: (state) => (state.theme === 'dark' ? 'text-white' : 'text-body'),
       subtitleClass: (state) => (state.theme === 'dark' ? 'text-white-50' : 'text-muted'),
-      backButtonIconClass: (state) => (state.theme === 'dark' ? 'text-white' : ''),
       isCloseHidden: (state) => !state.hasSourceChat
     },
     client: ({ state, refs, eventBus, globalStore, signal }) => {

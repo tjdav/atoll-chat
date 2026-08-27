@@ -91,17 +91,15 @@
         }
       }
 
-      if (card) {
-        card.onclick = (e) => {
+      card.onclick = (e) => {
+        e.preventDefault()
+        triggerSelect()
+      }
+
+      card.onkeydown = (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault()
           triggerSelect()
-        }
-
-        card.onkeydown = (e) => {
-          if (e.key === ' ' || e.key === 'Enter') {
-            e.preventDefault()
-            triggerSelect()
-          }
         }
       }
 

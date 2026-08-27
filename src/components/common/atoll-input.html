@@ -180,9 +180,7 @@
       const initialVal = root.value || root.getAttribute('value') || state.value || ''
       if (initialVal) {
         state.value = initialVal
-        if (input) {
-          input.value = initialVal
-        }
+        input.value = initialVal
       }
 
       // Forward test-id / data-testid and standard attributes

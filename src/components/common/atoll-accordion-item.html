@@ -154,16 +154,14 @@
         )
       }
 
-      if (header) {
-        header.addEventListener('click', toggle, { signal })
+      header.addEventListener('click', toggle, { signal })
 
-        header.addEventListener('keydown', (event) => {
-          if (event.key === 'Enter' || event.key === ' ') {
-            event.preventDefault()
-            toggle()
-          }
-        }, { signal })
-      }
+      header.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          toggle()
+        }
+      }, { signal })
 
       // Synchronize dynamic attributes
       observe('expanded', (val) => {

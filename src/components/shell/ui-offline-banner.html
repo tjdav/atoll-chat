@@ -23,11 +23,9 @@
       })
 
       const retryBtn = refs('retryBtn')
-      if (retryBtn) {
-        retryBtn.addEventListener('click', () => {
-          $bus.emit('app:request_reconnect')
-        })
-      }
+      retryBtn.addEventListener('click', () => {
+        $bus.emit('app:request_reconnect')
+      })
     }
   })
 </script>

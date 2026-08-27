@@ -372,41 +372,35 @@
 
       setupFileInput('attachButton', 'fileInput')
 
-      if (micButton) {
-        micButton.addEventListener('click', () => {
-          $bus.emit('ui:mic_clicked')
-        }, { signal })
-      }
+      micButton.addEventListener('click', () => {
+        $bus.emit('ui:mic_clicked')
+      }, { signal })
 
-      if (sendButton) {
-        sendButton.addEventListener('pointerdown', (e) => {
-          // Keep textarea focused on touch/pointer down
-          e.preventDefault()
-        }, { signal })
+      sendButton.addEventListener('pointerdown', (e) => {
+        // Keep textarea focused on touch/pointer down
+        e.preventDefault()
+      }, { signal })
 
-        sendButton.addEventListener('mousedown', (e) => {
-          e.preventDefault()
-        }, { signal })
+      sendButton.addEventListener('mousedown', (e) => {
+        e.preventDefault()
+      }, { signal })
 
-        sendButton.addEventListener('click', () => {
-          resetTyping()
-          $bus.emit('ui:send_clicked')
-          requestAnimationFrame(() => {
-            messageInput.focus()
-          })
-        }, { signal })
-      }
+      sendButton.addEventListener('click', () => {
+        resetTyping()
+        $bus.emit('ui:send_clicked')
+        requestAnimationFrame(() => {
+          messageInput.focus()
+        })
+      }, { signal })
 
-      if (emojiButton) {
-        emojiButton.addEventListener('click', () => {
-          const rect = emojiButton.getBoundingClientRect()
-          $bus.emit('ui:show_reaction_picker', {
-            x: rect.left - 300,
-            y: rect.top - 410,
-            targetId: 'CHAT_INPUT'
-          })
-        }, { signal })
-      }
+      emojiButton.addEventListener('click', () => {
+        const rect = emojiButton.getBoundingClientRect()
+        $bus.emit('ui:show_reaction_picker', {
+          x: rect.left - 300,
+          y: rect.top - 410,
+          targetId: 'CHAT_INPUT'
+        })
+      }, { signal })
 
       $bus.on('ui:emoji_selected', (payload) => {
         const emoji = payload.emoji

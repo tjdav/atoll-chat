@@ -3,16 +3,13 @@
  */
 
 import { definePlugin } from 'coralite'
-import { createAuthApi } from './auth-api.js'
-import { createRecordApi } from './record-api.js'
-import { createRealtimeApi } from './realtime-api.js'
-import { createFileApi } from './file-api.js'
 
 /**
  * PocketBase Coralite plugin loader with Abstraction API layer.
  *
  * @param {Object} [options={}] Plugin configuration options.
  * @param {string} [options.baseUrl='/'] PocketBase backend API base URL.
+ * @param {string} [options.appUrl=''] Native app URL override.
  * @returns {Object} Coralite plugin definition.
  */
 export default function pocketbase (options = {}) {
@@ -23,6 +20,11 @@ export default function pocketbase (options = {}) {
     server: {
       context: async () => {
         const { default: PocketBase } = await import('pocketbase')
+        const { createAuthApi } = await import('./auth-api.js')
+        const { createRecordApi } = await import('./record-api.js')
+        const { createRealtimeApi } = await import('./realtime-api.js')
+        const { createFileApi } = await import('./file-api.js')
+
         const pb = new PocketBase(url)
         pb.autoCancellation(false)
 
@@ -31,45 +33,69 @@ export default function pocketbase (options = {}) {
         const realtime = createRealtimeApi(pb)
         const files = createFileApi(pb)
 
-        return () => {
-          return {
-            pb,
-            auth,
-            records,
-            realtime,
-            files
-          }
-        }
+        return () => ({
+          pb,
+          auth,
+          records,
+          realtime,
+          files
+        })
       }
     },
     client: {
       config: {
-        url
+        url,
+        appUrl: options.appUrl || ''
       },
       context: async (pluginContext) => {
         const { default: PocketBase } = await import('pocketbase')
-        const pb = new PocketBase(pluginContext.config.url)
-        pb.autoCancellation(false)
+        const { createAuthApi } = await import('./auth-api.js')
+        const { createRecordApi } = await import('./record-api.js')
+        const { createRealtimeApi } = await import('./realtime-api.js')
+        const { createFileApi } = await import('./file-api.js')
 
-        const originalBuildURL = pb.buildURL.bind(pb)
-        pb.buildURL = (path, params) => {
-          return originalBuildURL(path, params)
+        let targetUrl = pluginContext.config.url || '/'
+        const isNative = typeof window !== 'undefined' && window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()
+
+        if (isNative) {
+          const appUrl = pluginContext.config.appUrl
+          if (appUrl) {
+            targetUrl = appUrl
+          } else if (targetUrl === '/' || targetUrl.startsWith('http:') || targetUrl.includes('localhost') || targetUrl.includes('127.0.0.1')) {
+            targetUrl = targetUrl.replace(/^http:\/\//, 'https://').replace(/:8090$/, ':3443')
+          }
         }
+
+        const pb = new PocketBase(targetUrl)
+        pb.autoCancellation(false)
 
         const auth = createAuthApi(pb)
         const records = createRecordApi(pb)
         const realtime = createRealtimeApi(pb)
         const files = createFileApi(pb)
 
-        return () => {
-          return {
-            pb,
-            auth,
-            records,
-            realtime,
-            files
-          }
+        const contextObj = {
+          pb,
+          auth,
+          records,
+          realtime,
+          files
         }
+
+        const proxyContext = new Proxy(contextObj, {
+          get (target, prop) {
+            if (prop in target) {
+              return target[prop]
+            }
+            const val = pb[prop]
+            if (typeof val === 'function') {
+              return val.bind(pb)
+            }
+            return val
+          }
+        })
+
+        return () => proxyContext
       }
     }
   })

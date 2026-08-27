@@ -175,324 +175,314 @@
       const btnClearMessages = refs('btnClearMessages')
       const btnClearAllCache = refs('btnClearAllCache')
 
-      if (btnExportData) {
-        btnExportData.addEventListener('click', async () => {
-          try {
-            if (!permissionModal || typeof permissionModal.prompt !== 'function') {
-              return
+      btnExportData.addEventListener('click', async () => {
+        try {
+          if (!permissionModal || typeof permissionModal.prompt !== 'function') {
+            return
+          }
+
+          const authRes = await permissionModal.prompt({
+            title: 'Export Account Data',
+            description: 'Export all personal account data, room metadata, cryptographic keys, and decrypted chat history in compliance with GDPR Article 15 & 20.',
+            actionLabel: 'Export Data',
+            allowBiometric: true
+          })
+
+          if (!authRes || (!authRes.keyB && !authRes.password)) {
+            return
+          }
+
+          const password = authRes.keyB || authRes.password
+          const username = $state.currentUser?.username || pb?.authStore?.model?.username || 'user'
+          const userId = $state.currentUser?.id || pb?.authStore?.model?.id || ''
+
+          let localData = {
+            rooms: [],
+            messages: [],
+            config: [],
+            assets: []
+          }
+          if ($storage && typeof $storage.exportLocalData === 'function') {
+            try {
+              localData = await $storage.exportLocalData()
+            } catch (err) {
+              console.warn('[account-info] Local data export warning:', err)
             }
+          }
 
-            const authRes = await permissionModal.prompt({
-              title: 'Export Account Data',
-              description: 'Export all personal account data, room metadata, cryptographic keys, and decrypted chat history in compliance with GDPR Article 15 & 20.',
-              actionLabel: 'Export Data',
-              allowBiometric: true
-            })
+          let isOffline = false
+          let serverData = null
 
-            if (!authRes || (!authRes.keyB && !authRes.password)) {
-              return
-            }
-
-            const password = authRes.keyB || authRes.password
-            const username = $state.currentUser?.username || pb?.authStore?.model?.username || 'user'
-            const userId = $state.currentUser?.id || pb?.authStore?.model?.id || ''
-
-            let localData = {
-              rooms: [],
-              messages: [],
-              config: [],
-              assets: []
-            }
-            if ($storage && typeof $storage.exportLocalData === 'function') {
-              try {
-                localData = await $storage.exportLocalData()
-              } catch (err) {
-                console.warn('[account-info] Local data export warning:', err)
-              }
-            }
-
-            let isOffline = false
-            let serverData = null
-
-            if (pb && typeof pb.send === 'function') {
-              try {
-                const res = await pb.send('/api/custom/account/export', {
-                  method: 'POST',
-                  body: { password }
-                })
-                if (res && res.success && res.data) {
-                  serverData = res.data
-                } else {
-                  isOffline = true
-                }
-              } catch (err) {
-                console.warn('[account-info] Server data export request failed, falling back to offline export:', err)
+          if (pb && typeof pb.send === 'function') {
+            try {
+              const res = await pb.send('/api/custom/account/export', {
+                method: 'POST',
+                body: { password }
+              })
+              if (res && res.success && res.data) {
+                serverData = res.data
+              } else {
                 isOffline = true
               }
-            } else {
+            } catch (err) {
+              console.warn('[account-info] Server data export request failed, falling back to offline export:', err)
               isOffline = true
             }
+          } else {
+            isOffline = true
+          }
 
-            // Process client preferences from local config
-            const clientPreferences = {}
-            if (Array.isArray(localData.config)) {
-              for (const item of localData.config) {
-                if (item && item.key) {
-                  clientPreferences[item.key] = item.value
-                }
+          // Process client preferences from local config
+          const clientPreferences = {}
+          if (Array.isArray(localData.config)) {
+            for (const item of localData.config) {
+              if (item && item.key) {
+                clientPreferences[item.key] = item.value
               }
             }
+          }
 
-            // Process room conversations from local messages
-            const roomConversations = {}
-            const localMsgMap = new Map()
-            if (Array.isArray(localData.messages)) {
-              for (const locMsg of localData.messages) {
-                if (locMsg.id) {
-                  localMsgMap.set(locMsg.id, locMsg)
-                }
-                if (locMsg.local_uuid) {
-                  localMsgMap.set(locMsg.local_uuid, locMsg)
-                }
-
-                const rId = locMsg.room_id
-                if (!rId) {
-                  continue
-                }
-                if (!roomConversations[rId]) {
-                  roomConversations[rId] = []
-                }
-                roomConversations[rId].push({
-                  local_uuid: locMsg.local_uuid || '',
-                  id: locMsg.id || locMsg.local_uuid || '',
-                  room_id: rId,
-                  sender_id: locMsg.sender_id || '',
-                  sender_name: locMsg.sender_name || locMsg.sender || '',
-                  type: locMsg.type || 'text',
-                  text: locMsg.text || locMsg.content || '',
-                  created_at: locMsg.created_at || locMsg.timestamp || 0
-                })
+          // Process room conversations from local messages
+          const roomConversations = {}
+          const localMsgMap = new Map()
+          if (Array.isArray(localData.messages)) {
+            for (const locMsg of localData.messages) {
+              if (locMsg.id) {
+                localMsgMap.set(locMsg.id, locMsg)
               }
-            }
+              if (locMsg.local_uuid) {
+                localMsgMap.set(locMsg.local_uuid, locMsg)
+              }
 
-            let finalExport = null
-
-            if (!isOffline && serverData) {
-            // Merge decrypted_content into authored_messages if local message exists
-              const mergedAuthoredMessages = (serverData.authored_messages || []).map((m) => {
-                const locMsg = localMsgMap.get(m.id) || localMsgMap.get(m.previous_msg_uuid)
-                const decrypted_content = locMsg
-                  ? {
-                    type: locMsg.type || 'text',
-                    text: locMsg.text || '',
-                    reactions: locMsg.reactions || []
-                  }
-                  : {
-                    type: 'text',
-                    text: '',
-                    reactions: []
-                  }
-                return {
-                  ...m,
-                  decrypted_content
-                }
+              const rId = locMsg.room_id
+              if (!rId) {
+                continue
+              }
+              if (!roomConversations[rId]) {
+                roomConversations[rId] = []
+              }
+              roomConversations[rId].push({
+                local_uuid: locMsg.local_uuid || '',
+                id: locMsg.id || locMsg.local_uuid || '',
+                room_id: rId,
+                sender_id: locMsg.sender_id || '',
+                sender_name: locMsg.sender_name || locMsg.sender || '',
+                type: locMsg.type || 'text',
+                text: locMsg.text || locMsg.content || '',
+                created_at: locMsg.created_at || locMsg.timestamp || 0
               })
+            }
+          }
 
-              finalExport = {
-                gdpr_compliance: {
-                  standard: 'GDPR (EU 2016/679)',
-                  rights_covered: [
-                    'Article 15 (Right of Access)',
-                    'Article 20 (Right to Data Portability)'
-                  ],
-                  exported_at: new Date().toISOString(),
-                  export_version: '1.0',
-                  offline_export: false
-                },
-                user_profile: serverData.user_profile,
-                cryptographic_credentials: serverData.cryptographic_credentials,
-                trust_and_governance: serverData.trust_and_governance,
-                rooms: serverData.rooms,
-                authored_messages: mergedAuthoredMessages,
-                room_conversations: roomConversations,
-                media_records: serverData.media_records,
-                invitations: serverData.invitations,
-                invite_requests: serverData.invite_requests,
-                client_preferences: clientPreferences
-              }
-            } else {
-            // Offline fallback export construction
-              const user = $state.currentUser || pb?.authStore?.model || {}
-              finalExport = {
-                gdpr_compliance: {
-                  standard: 'GDPR (EU 2016/679)',
-                  rights_covered: [
-                    'Article 15 (Right of Access)',
-                    'Article 20 (Right to Data Portability)'
-                  ],
-                  exported_at: new Date().toISOString(),
-                  export_version: '1.0',
-                  offline_export: true
-                },
-                user_profile: {
-                  id: user.id || userId,
-                  username: user.username || username,
-                  email: user.email || '',
-                  name: user.name || user.username || username,
-                  avatar: user.avatar || '',
-                  created: user.created || null,
-                  updated: user.updated || null
-                },
-                cryptographic_credentials: {
-                  public_box_key: user.public_box_key || '',
-                  public_sign_key: user.public_sign_key || '',
-                  vault_salt: user.vault_salt || '',
-                  passkey_credential_id: user.passkey_credential_id || null,
-                  passkey_public_key: user.passkey_public_key || null,
-                  passkey_counter: user.passkey_counter || 0
-                },
-                trust_and_governance: null,
-                rooms: (localData.rooms || []).map((r) => ({
-                  id: r.id,
-                  name: r.name || '',
-                  is_group: Boolean(r.is_group),
-                  created_by: r.created_by || '',
-                  role: r.role || 'member',
-                  is_muted: Boolean(r.is_muted),
-                  last_seen_message_id: r.last_seen_message_id || null,
-                  last_seen_at: r.last_seen_at || null,
-                  custom_name: r.custom_name || '',
-                  theme: r.theme || '',
-                  is_pinned: Boolean(r.is_pinned),
-                  is_archived: Boolean(r.is_archived),
-                  draft: r.draft || ''
-                })),
-                authored_messages: (localData.messages || [])
-                  .filter((m) => m.sender_id === userId)
-                  .map((m) => ({
-                    id: m.id || m.local_uuid,
-                    room_id: m.room_id,
-                    sender_id: m.sender_id,
-                    epoch_id: m.epoch_id || 0,
-                    previous_msg_uuid: m.previous_msg_uuid || null,
-                    signature: m.signature || '',
-                    media_id: m.media_id || null,
-                    created: m.created || new Date(m.created_at || Date.now()).toISOString(),
-                    decrypted_content: {
-                      type: m.type || 'text',
-                      text: m.text || '',
-                      reactions: m.reactions || []
-                    }
-                  })),
-                room_conversations: roomConversations,
-                media_records: (localData.assets || []).map((a) => ({
-                  id: a.id,
-                  file: a.file || a.fileName || '',
-                  mime_type: a.mime_type || '',
-                  size: a.size || 0,
-                  created: a.created || new Date(a.created_at || Date.now()).toISOString()
-                })),
-                invitations: [],
-                invite_requests: [],
-                client_preferences: clientPreferences
-              }
-            }
+          let finalExport = null
 
-            // Trigger JSON File Download
-            const dateStr = new Date().toISOString().split('T')[0]
-            const jsonContent = JSON.stringify(finalExport, null, 2)
-            const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8' })
-            let downloadUrl = ''
-            try {
-              downloadUrl = URL.createObjectURL(blob)
-            } catch (_) {
-              downloadUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonContent)
-            }
-            const a = document.createElement('a')
-            a.href = downloadUrl
-            a.download = `atoll-data-export-${username}-${dateStr}.json`
-            try {
-              document.body.appendChild(a)
-              a.click()
-              document.body.removeChild(a)
-            } catch (clickErr) {
-              console.warn('[account-info] Download click notice:', clickErr)
-            }
-            if (downloadUrl.startsWith('blob:')) {
-              setTimeout(() => {
-                try {
-                  URL.revokeObjectURL(downloadUrl)
-                } catch (_) {
+          if (!isOffline && serverData) {
+            // Merge decrypted_content into authored_messages if local message exists
+            const mergedAuthoredMessages = (serverData.authored_messages || []).map((m) => {
+              const locMsg = localMsgMap.get(m.id) || localMsgMap.get(m.previous_msg_uuid)
+              const decrypted_content = locMsg
+                ? {
+                  type: locMsg.type || 'text',
+                  text: locMsg.text || '',
+                  reactions: locMsg.reactions || []
                 }
-              }, 1000)
+                : {
+                  type: 'text',
+                  text: '',
+                  reactions: []
+                }
+              return {
+                ...m,
+                decrypted_content
+              }
+            })
+
+            finalExport = {
+              gdpr_compliance: {
+                standard: 'GDPR (EU 2016/679)',
+                rights_covered: [
+                  'Article 15 (Right of Access)',
+                  'Article 20 (Right to Data Portability)'
+                ],
+                exported_at: new Date().toISOString(),
+                export_version: '1.0',
+                offline_export: false
+              },
+              user_profile: serverData.user_profile,
+              cryptographic_credentials: serverData.cryptographic_credentials,
+              trust_and_governance: serverData.trust_and_governance,
+              rooms: serverData.rooms,
+              authored_messages: mergedAuthoredMessages,
+              room_conversations: roomConversations,
+              media_records: serverData.media_records,
+              invitations: serverData.invitations,
+              invite_requests: serverData.invite_requests,
+              client_preferences: clientPreferences
             }
-
-            $bus.emit('ui:show_toast', {
-              message: 'Account data exported successfully.',
-              variant: 'success',
-              type: 'success'
-            })
-          } catch (exportError) {
-            console.error('[account-info] GDPR export error:', exportError)
+          } else {
+            // Offline fallback export construction
+            const user = $state.currentUser || pb?.authStore?.model || {}
+            finalExport = {
+              gdpr_compliance: {
+                standard: 'GDPR (EU 2016/679)',
+                rights_covered: [
+                  'Article 15 (Right of Access)',
+                  'Article 20 (Right to Data Portability)'
+                ],
+                exported_at: new Date().toISOString(),
+                export_version: '1.0',
+                offline_export: true
+              },
+              user_profile: {
+                id: user.id || userId,
+                username: user.username || username,
+                email: user.email || '',
+                name: user.name || user.username || username,
+                avatar: user.avatar || '',
+                created: user.created || null,
+                updated: user.updated || null
+              },
+              cryptographic_credentials: {
+                public_box_key: user.public_box_key || '',
+                public_sign_key: user.public_sign_key || '',
+                vault_salt: user.vault_salt || '',
+                passkey_credential_id: user.passkey_credential_id || null,
+                passkey_public_key: user.passkey_public_key || null,
+                passkey_counter: user.passkey_counter || 0
+              },
+              trust_and_governance: null,
+              rooms: (localData.rooms || []).map((r) => ({
+                id: r.id,
+                name: r.name || '',
+                is_group: Boolean(r.is_group),
+                created_by: r.created_by || '',
+                role: r.role || 'member',
+                is_muted: Boolean(r.is_muted),
+                last_seen_message_id: r.last_seen_message_id || null,
+                last_seen_at: r.last_seen_at || null,
+                custom_name: r.custom_name || '',
+                theme: r.theme || '',
+                is_pinned: Boolean(r.is_pinned),
+                is_archived: Boolean(r.is_archived),
+                draft: r.draft || ''
+              })),
+              authored_messages: (localData.messages || [])
+                .filter((m) => m.sender_id === userId)
+                .map((m) => ({
+                  id: m.id || m.local_uuid,
+                  room_id: m.room_id,
+                  sender_id: m.sender_id,
+                  epoch_id: m.epoch_id || 0,
+                  previous_msg_uuid: m.previous_msg_uuid || null,
+                  signature: m.signature || '',
+                  media_id: m.media_id || null,
+                  created: m.created || new Date(m.created_at || Date.now()).toISOString(),
+                  decrypted_content: {
+                    type: m.type || 'text',
+                    text: m.text || '',
+                    reactions: m.reactions || []
+                  }
+                })),
+              room_conversations: roomConversations,
+              media_records: (localData.assets || []).map((a) => ({
+                id: a.id,
+                file: a.file || a.fileName || '',
+                mime_type: a.mime_type || '',
+                size: a.size || 0,
+                created: a.created || new Date(a.created_at || Date.now()).toISOString()
+              })),
+              invitations: [],
+              invite_requests: [],
+              client_preferences: clientPreferences
+            }
           }
-        }, { signal })
-      }
 
-      if (btnClearMedia) {
-        btnClearMedia.addEventListener('click', async () => {
-          if ($storage && typeof $storage.clearLocalMediaCache === 'function') {
-            await $storage.clearLocalMediaCache()
-            await refreshStorageUsage()
-            $bus.emit('ui:show_toast', {
-              message: 'Local media cache cleared.',
-              variant: 'success',
-              type: 'success'
-            })
+          // Trigger JSON File Download
+          const dateStr = new Date().toISOString().split('T')[0]
+          const jsonContent = JSON.stringify(finalExport, null, 2)
+          const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8' })
+          let downloadUrl = ''
+          try {
+            downloadUrl = URL.createObjectURL(blob)
+          } catch (_) {
+            downloadUrl = 'data:application/json;charset=utf-8,' + encodeURIComponent(jsonContent)
           }
-        }, { signal })
-      }
+          const a = document.createElement('a')
+          a.href = downloadUrl
+          a.download = `atoll-data-export-${username}-${dateStr}.json`
+          try {
+            document.body.appendChild(a)
+            a.click()
+            document.body.removeChild(a)
+          } catch (clickErr) {
+            console.warn('[account-info] Download click notice:', clickErr)
+          }
+          if (downloadUrl.startsWith('blob:')) {
+            setTimeout(() => {
+              try {
+                URL.revokeObjectURL(downloadUrl)
+              } catch (_) {
+              }
+            }, 1000)
+          }
 
-      if (btnClearVoice) {
-        btnClearVoice.addEventListener('click', async () => {
-          if ($storage && typeof $storage.clearLocalVoiceCache === 'function') {
-            await $storage.clearLocalVoiceCache()
-            await refreshStorageUsage()
-            $bus.emit('ui:show_toast', {
-              message: 'Local voice notes cache cleared.',
-              variant: 'success',
-              type: 'success'
-            })
-          }
-        }, { signal })
-      }
+          $bus.emit('ui:show_toast', {
+            message: 'Account data exported successfully.',
+            variant: 'success',
+            type: 'success'
+          })
+        } catch (exportError) {
+          console.error('[account-info] GDPR export error:', exportError)
+        }
+      }, { signal })
 
-      if (btnClearMessages) {
-        btnClearMessages.addEventListener('click', async () => {
-          if ($storage && typeof $storage.clearLocalMessagesCache === 'function') {
-            await $storage.clearLocalMessagesCache()
-            await refreshStorageUsage()
-            $bus.emit('ui:show_toast', {
-              message: 'Local messages cache cleared.',
-              variant: 'success',
-              type: 'success'
-            })
-          }
-        }, { signal })
-      }
+      btnClearMedia.addEventListener('click', async () => {
+        if ($storage && typeof $storage.clearLocalMediaCache === 'function') {
+          await $storage.clearLocalMediaCache()
+          await refreshStorageUsage()
+          $bus.emit('ui:show_toast', {
+            message: 'Local media cache cleared.',
+            variant: 'success',
+            type: 'success'
+          })
+        }
+      }, { signal })
 
-      if (btnClearAllCache) {
-        btnClearAllCache.addEventListener('click', async () => {
-          if ($storage && typeof $storage.clearLocalHistory === 'function') {
-            await $storage.clearLocalHistory()
-            await refreshStorageUsage()
-            $bus.emit('ui:show_toast', {
-              message: 'All local cache cleared.',
-              variant: 'success',
-              type: 'success'
-            })
-          }
-        }, { signal })
-      }
+      btnClearVoice.addEventListener('click', async () => {
+        if ($storage && typeof $storage.clearLocalVoiceCache === 'function') {
+          await $storage.clearLocalVoiceCache()
+          await refreshStorageUsage()
+          $bus.emit('ui:show_toast', {
+            message: 'Local voice notes cache cleared.',
+            variant: 'success',
+            type: 'success'
+          })
+        }
+      }, { signal })
+
+      btnClearMessages.addEventListener('click', async () => {
+        if ($storage && typeof $storage.clearLocalMessagesCache === 'function') {
+          await $storage.clearLocalMessagesCache()
+          await refreshStorageUsage()
+          $bus.emit('ui:show_toast', {
+            message: 'Local messages cache cleared.',
+            variant: 'success',
+            type: 'success'
+          })
+        }
+      }, { signal })
+
+      btnClearAllCache.addEventListener('click', async () => {
+        if ($storage && typeof $storage.clearLocalHistory === 'function') {
+          await $storage.clearLocalHistory()
+          await refreshStorageUsage()
+          $bus.emit('ui:show_toast', {
+            message: 'All local cache cleared.',
+            variant: 'success',
+            type: 'success'
+          })
+        }
+      }, { signal })
     }
   })
 </script>

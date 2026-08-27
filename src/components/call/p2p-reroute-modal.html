@@ -101,11 +101,9 @@
         }
       })
 
-      if (btnCancel) {
-        btnCancel.onclick = () => {
-          if (modal) {
-            modal.hide()
-          }
+      btnCancel.onclick = () => {
+        if (modal) {
+          modal.hide()
         }
       }
     }

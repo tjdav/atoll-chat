@@ -56,138 +56,134 @@
       const permissionModal = refs('permissionModal')
 
       // Delete History Action
-      if (btnDeleteHistory) {
-        btnDeleteHistory.addEventListener('click', async () => {
-          if (!permissionModal || typeof permissionModal.prompt !== 'function') {
-            return
-          }
+      btnDeleteHistory.addEventListener('click', async () => {
+        if (!permissionModal || typeof permissionModal.prompt !== 'function') {
+          return
+        }
 
-          const result = await permissionModal.prompt({
-            title: 'Delete Message History',
-            description: 'Are you sure you want to delete your entire message history? All messages and media uploaded by you will be permanently removed from the server and local storage.',
-            actionLabel: 'Delete History',
-            variant: 'danger',
-            allowBiometric: true
+        const result = await permissionModal.prompt({
+          title: 'Delete Message History',
+          description: 'Are you sure you want to delete your entire message history? All messages and media uploaded by you will be permanently removed from the server and local storage.',
+          actionLabel: 'Delete History',
+          variant: 'danger',
+          allowBiometric: true
+        })
+
+        if (!result || (!result.keyB && !result.password)) {
+          return
+        }
+
+        const password = result.keyB || result.password
+
+        try {
+          const res = await pb.send('/api/custom/history/delete', {
+            method: 'POST',
+            body: { password }
           })
 
-          if (!result || (!result.keyB && !result.password)) {
-            return
-          }
-
-          const password = result.keyB || result.password
-
-          try {
-            const res = await pb.send('/api/custom/history/delete', {
-              method: 'POST',
-              body: { password }
-            })
-
-            if (res && res.success) {
-              if ($storage && typeof $storage.clearLocalHistory === 'function') {
-                await $storage.clearLocalHistory()
-              }
-              if ($worker && typeof $worker.execute === 'function') {
-                await $worker.execute('worker:clear_local_history').catch(() => {
-                })
-              }
-
-              $bus.emit('db:history_cleared')
-              $bus.emit('ui:show_toast', {
-                message: 'Message history deleted successfully.',
-                variant: 'success',
-                type: 'success'
-              })
-            } else {
-              throw new Error(res?.message || 'Failed to delete message history.')
+          if (res && res.success) {
+            if ($storage && typeof $storage.clearLocalHistory === 'function') {
+              await $storage.clearLocalHistory()
             }
-          } catch (err) {
-            console.error('[account-danger-zone] Delete history error:', err)
+            if ($worker && typeof $worker.execute === 'function') {
+              await $worker.execute('worker:clear_local_history').catch(() => {
+              })
+            }
+
+            $bus.emit('db:history_cleared')
             $bus.emit('ui:show_toast', {
-              message: err.data?.message || err.message || 'Failed to delete message history.',
-              variant: 'danger',
-              type: 'danger'
+              message: 'Message history deleted successfully.',
+              variant: 'success',
+              type: 'success'
             })
+          } else {
+            throw new Error(res?.message || 'Failed to delete message history.')
           }
-        }, { signal })
-      }
+        } catch (err) {
+          console.error('[account-danger-zone] Delete history error:', err)
+          $bus.emit('ui:show_toast', {
+            message: err.data?.message || err.message || 'Failed to delete message history.',
+            variant: 'danger',
+            type: 'danger'
+          })
+        }
+      }, { signal })
 
       // Delete Account Action
-      if (btnDeleteAccount) {
-        btnDeleteAccount.addEventListener('click', async () => {
-          if (!permissionModal || typeof permissionModal.prompt !== 'function') {
-            return
-          }
+      btnDeleteAccount.addEventListener('click', async () => {
+        if (!permissionModal || typeof permissionModal.prompt !== 'function') {
+          return
+        }
 
-          const result = await permissionModal.prompt({
-            title: 'Delete Account',
-            description: 'This will permanently destroy your user account, room memberships, authored messages, and cryptographic vault. This action cannot be undone.',
-            actionLabel: 'Permanently Delete Account',
-            variant: 'danger',
-            allowBiometric: true
+        const result = await permissionModal.prompt({
+          title: 'Delete Account',
+          description: 'This will permanently destroy your user account, room memberships, authored messages, and cryptographic vault. This action cannot be undone.',
+          actionLabel: 'Permanently Delete Account',
+          variant: 'danger',
+          allowBiometric: true
+        })
+
+        if (!result || (!result.keyB && !result.password)) {
+          return
+        }
+
+        const password = result.keyB || result.password
+        const userId = pb.authStore.model?.id
+
+        try {
+          const res = await pb.send('/api/custom/account/delete', {
+            method: 'POST',
+            body: { password }
           })
 
-          if (!result || (!result.keyB && !result.password)) {
-            return
-          }
-
-          const password = result.keyB || result.password
-          const userId = pb.authStore.model?.id
-
-          try {
-            const res = await pb.send('/api/custom/account/delete', {
-              method: 'POST',
-              body: { password }
-            })
-
-            if (res && res.success) {
-              // Teardown Sequence
-              if (userId) {
-                if (biometric && typeof biometric.deleteMasterKey === 'function') {
-                  await biometric.deleteMasterKey(userId).catch(() => {
-                  })
-                }
-                localStorage.removeItem(`atoll_biometric_credentials_${userId}`)
-                try {
-                  const bioUsers = JSON.parse(localStorage.getItem('atoll_biometric_users') || '[]')
-                  const filtered = bioUsers.filter(u => u.id !== userId)
-                  localStorage.setItem('atoll_biometric_users', JSON.stringify(filtered))
-                } catch (_) {
-                }
-              }
-
-              if ($worker && typeof $worker.execute === 'function') {
-                await $worker.execute('worker:wipe_keys').catch(() => {
+          if (res && res.success) {
+            // Teardown Sequence
+            if (userId) {
+              if (biometric && typeof biometric.deleteMasterKey === 'function') {
+                await biometric.deleteMasterKey(userId).catch(() => {
                 })
               }
-
-              const activeInstanceId = localStorage.getItem('atoll_active_instance_id')
-              if (activeInstanceId && typeof indexedDB !== 'undefined') {
-                try {
-                  indexedDB.deleteDatabase('atoll_data_' + activeInstanceId)
-                } catch (_) {
-                }
+              localStorage.removeItem(`atoll_biometric_credentials_${userId}`)
+              try {
+                const bioUsers = JSON.parse(localStorage.getItem('atoll_biometric_users') || '[]')
+                const filtered = bioUsers.filter(u => u.id !== userId)
+                localStorage.setItem('atoll_biometric_users', JSON.stringify(filtered))
+              } catch (_) {
               }
-
-              localStorage.removeItem('device_trust_token')
-              localStorage.removeItem('atoll_active_instance_id')
-
-              pb.authStore.clear()
-              $bus.emit('auth:logout')
-
-              window.location.reload()
-            } else {
-              throw new Error(res?.message || 'Failed to delete account.')
             }
-          } catch (err) {
-            console.error('[account-danger-zone] Delete account error:', err)
-            $bus.emit('ui:show_toast', {
-              message: err.data?.message || err.message || 'Failed to delete account.',
-              variant: 'danger',
-              type: 'danger'
-            })
+
+            if ($worker && typeof $worker.execute === 'function') {
+              await $worker.execute('worker:wipe_keys').catch(() => {
+              })
+            }
+
+            const activeInstanceId = localStorage.getItem('atoll_active_instance_id')
+            if (activeInstanceId && typeof indexedDB !== 'undefined') {
+              try {
+                indexedDB.deleteDatabase('atoll_data_' + activeInstanceId)
+              } catch (_) {
+              }
+            }
+
+            localStorage.removeItem('device_trust_token')
+            localStorage.removeItem('atoll_active_instance_id')
+
+            pb.authStore.clear()
+            $bus.emit('auth:logout')
+
+            window.location.reload()
+          } else {
+            throw new Error(res?.message || 'Failed to delete account.')
           }
-        }, { signal })
-      }
+        } catch (err) {
+          console.error('[account-danger-zone] Delete account error:', err)
+          $bus.emit('ui:show_toast', {
+            message: err.data?.message || err.message || 'Failed to delete account.',
+            variant: 'danger',
+            type: 'danger'
+          })
+        }
+      }, { signal })
     }
   })
 </script>

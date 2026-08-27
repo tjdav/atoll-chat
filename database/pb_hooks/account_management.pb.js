@@ -33,12 +33,12 @@ routerAdd('POST', '/api/custom/history/delete', (e) => {
     const userId = authRecord.id
 
     $app.runInTransaction((txApp) => {
-      // 1. Delete media records linked to user's messages
+      // Delete media records linked to user's messages
       txApp.db().newQuery(
         'DELETE FROM media WHERE id IN (SELECT media_id FROM messages WHERE sender_id = {:userId})'
       ).bind({ userId }).execute()
 
-      // 2. Delete all messages sent by the user
+      // Delete all messages sent by the user
       txApp.db().newQuery(
         'DELETE FROM messages WHERE sender_id = {:userId}'
       ).bind({ userId }).execute()
@@ -267,7 +267,7 @@ routerAdd('POST', '/api/custom/account/delete', (e) => {
         isOwner = true
       }
 
-      // 1. Delete user's media and messages
+      // Delete user's media and messages
       txApp.db().newQuery(
         'DELETE FROM media WHERE id IN (SELECT media_id FROM messages WHERE sender_id = {:userId})'
       ).bind({ userId }).execute()
@@ -276,35 +276,35 @@ routerAdd('POST', '/api/custom/account/delete', (e) => {
         'DELETE FROM messages WHERE sender_id = {:userId}'
       ).bind({ userId }).execute()
 
-      // 2. Delete user's room memberships
+      //  Delete user's room memberships
       txApp.db().newQuery(
         'DELETE FROM room_members WHERE user_id = {:userId}'
       ).bind({ userId }).execute()
 
-      // 3. Delete orphaned 1:1 rooms that no longer have active members
+      // Delete orphaned 1:1 rooms that no longer have active members
       txApp.db().newQuery(
         'DELETE FROM rooms WHERE (is_group = 0 OR is_group = false) AND id NOT IN (SELECT DISTINCT room_id FROM room_members)'
       ).execute()
 
-      // 4. Delete pending invite requests created by the user
+      // Delete pending invite requests created by the user
       txApp.db().newQuery(
         'DELETE FROM invite_requests WHERE requester = {:userId}'
       ).bind({ userId }).execute()
 
-      // 5. Delete invitations created by the user
+      // Delete invitations created by the user
       txApp.db().newQuery(
         'DELETE FROM invitations WHERE created_by = {:userId}'
       ).bind({ userId }).execute()
 
-      // 6. Delete user_trust record
+      // Delete user_trust record
       txApp.db().newQuery(
         'DELETE FROM user_trust WHERE user = {:userId}'
       ).bind({ userId }).execute()
 
-      // 7. Delete the user record
+      // Delete the user record
       txApp.delete(authRecord)
 
-      // 8. Handle owner promotion if deleting user was an owner
+      // Handle owner promotion if deleting user was an owner
       if (isOwner) {
         const remainingUsers = txApp.findRecordsByFilter('users', 'id != {:userId}', 'created', 1, 0, { userId })
         if (remainingUsers.length > 0) {
