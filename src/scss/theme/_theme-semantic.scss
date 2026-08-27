@@ -1,15 +1,10 @@
 :root {
+  /* Default Color Scheme */
   color-scheme: light dark;
 
-  /* Global Overlay & Backdrop Tokens */
-  --#{$prefix}backdrop-filter: blur(8px);
-  --#{$prefix}backdrop-bg: rgba(0, 0, 0, 0.45);
-
-  /* Native Bootstrap Overrides */
+  /* Bootstrap & Semantic Backgrounds */
   --#{$prefix}body-bg: light-dark(#{map-get($grays, "100")}, #{map-get($grays, "900")});
-  --#{$prefix}body-bg-rgb: #{to-rgb(map-get($grays, "100"))};
   --#{$prefix}body-color: light-dark(#{map-get($grays, "900")}, #{map-get($grays, "000")});
-  --#{$prefix}body-color-rgb: #{to-rgb(map-get($grays, "900"))};
   --#{$prefix}secondary-bg: light-dark(#{map-get($grays, "100")}, #{map-get($grays, "850")});
   --#{$prefix}tertiary-bg: light-dark(#{map-get($grays, "200")}, #{map-get($grays, "800")});
   --#{$prefix}border-color: light-dark(#{map-get($grays, "200")}, #{map-get($grays, "800")});
@@ -21,8 +16,6 @@
   --#{$prefix}bg-surface-secondary: light-dark(#{map-get($grays, "100")}, #{map-get($grays, "850")});
   --#{$prefix}bg-surface-tertiary: light-dark(#{map-get($grays, "200")}, #{map-get($grays, "800")});
   --#{$prefix}bg-surface-elevated: light-dark(#{map-get($grays, "100")}, #{map-get($grays, "900")});
-
-  /* Pane and Input Background custom properties */
   --#{$prefix}pane-bg: light-dark(#{map-get($grays, "000")}, #{map-get($grays, "850")});
   --#{$prefix}input-bg: light-dark(#{map-get($grays, "100")}, #{map-get($grays, "800")});
 
@@ -36,29 +29,37 @@
   /* Atoll Semantic Extensions - Borders & Dividers */
   --#{$prefix}border-subtle: light-dark(#{map-get($grays, "200")}, #{map-get($grays, "800")});
   --#{$prefix}border-strong: light-dark(#{map-get($grays, "300")}, #{map-get($grays, "750")});
-  --#{$prefix}border-interactive: light-dark(#{$atoll-green-500}, #{$atoll-green-500});
+  --#{$prefix}border-interactive: #{$atoll-green-500};
 
   /* Atoll Semantic Extensions - Brand Identity */
-  --#{$prefix}brand-primary: light-dark(#{$atoll-green-500}, #{$atoll-green-500});
+  --#{$prefix}brand-primary: #{$atoll-green-500};
   --#{$prefix}brand-primary-rgb: #{to-rgb($atoll-green-500)};
   --#{$prefix}brand-secondary: light-dark(#{$atoll-green-600}, #{$atoll-green-400});
   --#{$prefix}brand-subtle-bg: light-dark(#E6F9EE, #0A2E16);
+
+  /* Global Overlay & Backdrop Tokens */
+  --#{$prefix}backdrop-filter: blur(8px);
+  --#{$prefix}backdrop-bg: rgba(0, 0, 0, 0.45);
 }
 
+/* Explicit Theme Controls */
+:root,
 [data-atoll-theme="light"],
-[data-#{$prefix}theme="light"] {
+[data-#{$prefix}theme="light"],
+[data-bs-theme="light"] {
   color-scheme: light;
   --#{$prefix}body-bg-rgb: #{to-rgb(map-get($grays, "100"))};
   --#{$prefix}body-color-rgb: #{to-rgb(map-get($grays, "900"))};
 }
 
 [data-atoll-theme="dark"],
-[data-#{$prefix}theme="dark"] {
+[data-#{$prefix}theme="dark"],
+[data-bs-theme="dark"] {
   color-scheme: dark;
   --#{$prefix}body-bg-rgb: #{to-rgb(map-get($grays, "900"))};
   --#{$prefix}body-color-rgb: #{to-rgb(map-get($grays, "000"))};
 
-  // Override avatar text/initials contrast in dark mode subtle backgrounds to be white
+  /* Backward-compatible text contrast overrides */
   .bg-primary-subtle.text-primary,
   .bg-primary-subtle .text-primary {
     color: #ffffff !important;
