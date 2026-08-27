@@ -17,6 +17,372 @@
   </button>
 </template>
 
+<style>
+  :host {
+    display: inline-block;
+  }
+
+  :host([hidden]) {
+    display: none !important;
+  }
+
+  :host([disabled]),
+  :host([loading]) {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  :host([block]) {
+    display: block;
+    width: 100%;
+  }
+
+  /* Base Button Styling */
+  .atoll-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
+    border: 1px solid transparent;
+    white-space: nowrap;
+    user-select: none;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, opacity 0.15s ease-in-out;
+    box-sizing: border-box;
+    width: 100%;
+    height: 100%;
+  }
+
+  .atoll-btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.35);
+  }
+
+  .atoll-btn:disabled,
+  .atoll-btn.disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Internal Layout Elements */
+  .atoll-btn-content {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    transition: opacity 0.15s ease-in-out;
+  }
+
+  .atoll-btn-label {
+    display: inline-block;
+    line-height: 1;
+  }
+
+  /* Loading Spinner Overlay */
+  .atoll-btn-spinner {
+    position: absolute;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: atoll-spin 0.8s linear infinite;
+  }
+
+  @keyframes atoll-spin {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+  }
+
+  /* Variant Modifiers */
+  .atoll-btn-primary,
+  :host([variant="primary"]) .atoll-btn {
+    background-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    color: var(--atoll-text-on-brand, #FFFFFF);
+    border-color: transparent;
+  }
+
+  .atoll-btn-primary:hover:not(:disabled),
+  :host([variant="primary"]) .atoll-btn:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 88%, #000000);
+  }
+
+  .atoll-btn-primary:active:not(:disabled),
+  :host([variant="primary"]) .atoll-btn:active:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 80%, #000000);
+  }
+
+  .atoll-btn-secondary,
+  :host([variant="secondary"]) .atoll-btn {
+    background-color: var(--atoll-bg-surface-tertiary, #E8E8E8);
+    color: var(--atoll-text-primary, #111111);
+    border-color: transparent;
+  }
+
+  .atoll-btn-secondary:hover:not(:disabled),
+  :host([variant="secondary"]) .atoll-btn:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #E8E8E8) 92%, #000000);
+  }
+
+  .atoll-btn-secondary:active:not(:disabled),
+  :host([variant="secondary"]) .atoll-btn:active:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #E8E8E8) 84%, #000000);
+  }
+
+  .atoll-btn-outline,
+  :host([variant="outline"]) .atoll-btn {
+    background-color: transparent;
+    color: var(--atoll-text-primary, #111111);
+    border-color: var(--atoll-border-strong, #D4D4D4);
+  }
+
+  .atoll-btn-outline:hover:not(:disabled),
+  :host([variant="outline"]) .atoll-btn:hover:not(:disabled) {
+    background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
+  }
+
+  .atoll-btn-outline:active:not(:disabled),
+  :host([variant="outline"]) .atoll-btn:active:not(:disabled) {
+    background-color: var(--atoll-bg-surface-tertiary, #E8E8E8);
+  }
+
+  .atoll-btn-ghost,
+  :host([variant="ghost"]) .atoll-btn {
+    background-color: transparent;
+    color: var(--atoll-text-primary, #111111);
+    border-color: transparent;
+  }
+
+  .atoll-btn-ghost:hover:not(:disabled),
+  :host([variant="ghost"]) .atoll-btn:hover:not(:disabled) {
+    background-color: var(--atoll-brand-subtle, rgba(6, 199, 85, 0.12));
+  }
+
+  .atoll-btn-ghost:active:not(:disabled),
+  :host([variant="ghost"]) .atoll-btn:active:not(:disabled) {
+    background-color: var(--atoll-bg-surface-tertiary, #E8E8E8);
+  }
+
+  .atoll-btn-danger,
+  :host([variant="danger"]) .atoll-btn {
+    background-color: var(--atoll-rainbow-red, #FF334B);
+    color: #FFFFFF;
+    border-color: transparent;
+  }
+
+  .atoll-btn-danger:hover:not(:disabled),
+  :host([variant="danger"]) .atoll-btn:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 90%, #000000);
+  }
+
+  .atoll-btn-danger:active:not(:disabled),
+  :host([variant="danger"]) .atoll-btn:active:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 80%, #000000);
+  }
+
+  /* Size Modifiers */
+  .atoll-btn-sm,
+  :host([size="sm"]) .atoll-btn {
+    height: var(--atoll-btn-height-sm, 32px);
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    font-weight: var(--atoll-font-weight-semibold, 600);
+  }
+
+  .atoll-btn-md,
+  :host([size="md"]) .atoll-btn {
+    height: var(--atoll-btn-height-md, 44px);
+    padding: 0 16px;
+    border-radius: 10px;
+    font-size: var(--atoll-font-size-body-2, 14px);
+    font-weight: var(--atoll-font-weight-semibold, 600);
+  }
+
+  .atoll-btn-lg,
+  :host([size="lg"]) .atoll-btn {
+    height: var(--atoll-btn-height-lg, 52px);
+    padding: 0 24px;
+    border-radius: 12px;
+    font-size: var(--atoll-font-size-body-1, 16px);
+    font-weight: var(--atoll-font-weight-semibold, 600);
+  }
+
+  /* Shape & Layout Modifiers */
+  .atoll-btn-block,
+  :host([block]) .atoll-btn {
+    width: 100%;
+  }
+
+  .atoll-btn-pill,
+  :host([pill]) .atoll-btn {
+    border-radius: 9999px !important;
+  }
+
+  .atoll-btn-pill.atoll-btn-sm,
+  :host([pill][size="sm"]) .atoll-btn {
+    height: 28px;
+    padding: 0 12px;
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    position: relative;
+  }
+
+  .atoll-btn-pill.atoll-btn-sm::before,
+  :host([pill][size="sm"]) .atoll-btn::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 44px;
+    width: 44px;
+  }
+
+  .atoll-btn-pill.atoll-btn-md,
+  :host([pill][size="md"]) .atoll-btn {
+    height: 36px;
+    padding: 0 16px;
+    font-size: var(--atoll-font-size-body-2, 14px);
+  }
+
+  .atoll-btn-pill.atoll-btn-lg,
+  :host([pill][size="lg"]) .atoll-btn {
+    height: 44px;
+    padding: 0 20px;
+    font-size: var(--atoll-font-size-body-1, 16px);
+  }
+
+  /* Dark Mode Overrides */
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-secondary,
+  :host-context([data-bs-theme="dark"]) .atoll-btn-secondary {
+    background-color: var(--atoll-bg-surface-tertiary, #1F1F1F);
+    color: var(--atoll-text-primary, #FFFFFF);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-secondary:hover:not(:disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-btn-secondary:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #1F1F1F) 88%, #FFFFFF);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-secondary:active:not(:disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-btn-secondary:active:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #1F1F1F) 78%, #FFFFFF);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-outline,
+  :host-context([data-bs-theme="dark"]) .atoll-btn-outline {
+    background-color: transparent;
+    color: var(--atoll-text-primary, #FFFFFF);
+    border-color: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-outline:hover:not(:disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-btn-outline:hover:not(:disabled) {
+    background-color: var(--atoll-bg-surface-secondary, #161616);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-outline:active:not(:disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-btn-outline:active:not(:disabled) {
+    background-color: var(--atoll-bg-surface-tertiary, #1F1F1F);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-ghost,
+  :host-context([data-bs-theme="dark"]) .atoll-btn-ghost {
+    color: var(--atoll-text-primary, #FFFFFF);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-ghost:hover:not(:disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-btn-ghost:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-bg-surface-primary, #161616) 90%, #FFFFFF);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-ghost:active:not(:disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-btn-ghost:active:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-bg-surface-primary, #161616) 80%, #FFFFFF);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-primary:hover:not(:disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-btn-primary:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 90%, #FFFFFF);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-btn-danger:hover:not(:disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-btn-danger:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 90%, #FFFFFF);
+  }
+
+  .atoll-btn-loading .atoll-btn-content {
+    opacity: 0;
+  }
+
+  /* Icon-Only Button Modifiers */
+  .atoll-btn-icon,
+  :host([icon-only]) .atoll-btn {
+    padding: 0 !important;
+    aspect-ratio: 1 / 1;
+    flex-shrink: 0;
+  }
+
+  .atoll-btn-icon .atoll-btn-content,
+  :host([icon-only]) .atoll-btn .atoll-btn-content {
+    gap: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  .atoll-btn-icon .atoll-btn-label,
+  :host([icon-only]) .atoll-btn .atoll-btn-label {
+    display: contents;
+  }
+
+  .atoll-btn-icon .atoll-btn-text,
+  :host([icon-only]) .atoll-btn .atoll-btn-text {
+    display: none !important;
+  }
+
+  .atoll-btn-icon.atoll-btn-sm,
+  :host([icon-only][size="sm"]) .atoll-btn {
+    width: var(--atoll-btn-height-sm, 32px);
+    height: var(--atoll-btn-height-sm, 32px);
+    position: relative;
+  }
+
+  .atoll-btn-icon.atoll-btn-sm::before,
+  :host([icon-only][size="sm"]) .atoll-btn::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  .atoll-btn-icon.atoll-btn-md,
+  :host([icon-only][size="md"]) .atoll-btn {
+    width: var(--atoll-btn-height-md, 44px);
+    height: var(--atoll-btn-height-md, 44px);
+  }
+
+  .atoll-btn-icon.atoll-btn-lg,
+  :host([icon-only][size="lg"]) .atoll-btn {
+    width: var(--atoll-btn-height-lg, 52px);
+    height: var(--atoll-btn-height-lg, 52px);
+  }
+
+  .atoll-btn-icon.atoll-btn-pill,
+  :host([icon-only][pill]) .atoll-btn {
+    border-radius: 50% !important;
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

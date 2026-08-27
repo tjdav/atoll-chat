@@ -94,9 +94,6 @@ $utilities: map-merge($utilities,
 
 @import "theme/theme-typography";
 
-// Iconography Sizing and Layer Rules
-@import "atoll-icon";
-
 // Utility Classes & Component Stylesheets
 @import "theme/typography-utilities";
 
@@ -135,15 +132,9 @@ $utilities: map-merge($utilities,
 @import "carousel-custom";
 @import "captcha";
 @import "device-management";
-@import "atoll-badge";
-@import "atoll-button";
 @import "atoll-select";
-@import "atoll-chip";
 @import "atoll-input";
 @import "atoll-search-bar";
-@import "atoll-profile";
-@import "atoll-profile-multiparty";
-@import "atoll-profile-grouped";
 @import "atoll-tooltip";
 @import "atoll-list";
 @import "atoll-list-header";

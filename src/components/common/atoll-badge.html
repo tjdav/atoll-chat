@@ -4,6 +4,131 @@
   </span>
 </template>
 
+<style>
+  :host {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+  }
+
+  :host([hidden]) {
+    display: none !important;
+    opacity: 0 !important;
+    transform: scale(0.6) !important;
+    pointer-events: none !important;
+  }
+
+  /* Base Badge Component Styling */
+  .atoll-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    border-radius: 9999px;
+    font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
+    white-space: nowrap;
+    user-select: none;
+    box-sizing: border-box;
+    background-color: var(--atoll-badge-bg, var(--atoll-rainbow-red, #FF334B));
+    color: var(--atoll-badge-color, #FFFFFF);
+    line-height: 1;
+    transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease-in-out;
+  }
+
+  .atoll-badge.bg-primary {
+    background-color: transparent !important;
+  }
+
+  .atoll-badge.rounded-circle {
+    border-radius: 0 !important;
+  }
+
+  .atoll-badge[hidden] {
+    display: none !important;
+    opacity: 0 !important;
+    transform: scale(0.6) !important;
+    pointer-events: none !important;
+  }
+
+  /* Badge Color Variant Modifiers */
+  .atoll-badge-danger,
+  :host([variant="danger"]) .atoll-badge {
+    --atoll-badge-bg: var(--atoll-rainbow-red, #FF334B);
+    --atoll-badge-color: #FFFFFF;
+  }
+
+  .atoll-badge-primary,
+  :host([variant="primary"]) .atoll-badge {
+    --atoll-badge-bg: var(--atoll-brand-primary, #06C755);
+    --atoll-badge-color: #FFFFFF;
+  }
+
+  .atoll-badge-secondary,
+  :host([variant="secondary"]) .atoll-badge {
+    --atoll-badge-bg: var(--atoll-bg-surface-tertiary, #E8E8E8);
+    --atoll-badge-color: var(--atoll-text-secondary, #555555);
+  }
+
+  .atoll-badge-info,
+  :host([variant="info"]) .atoll-badge {
+    --atoll-badge-bg: var(--atoll-rainbow-blue, #4270ED);
+    --atoll-badge-color: #FFFFFF;
+  }
+
+  /* Badge Size Modifiers */
+  .atoll-badge-dot,
+  :host([dot]) .atoll-badge {
+    width: var(--atoll-badge-dot-size, 8px);
+    height: var(--atoll-badge-dot-size, 8px);
+    min-width: var(--atoll-badge-dot-size, 8px);
+    padding: 0;
+  }
+
+  .atoll-badge-sm,
+  :host([size="sm"]) .atoll-badge {
+    height: var(--atoll-badge-height-sm, 16px);
+    min-width: var(--atoll-badge-height-sm, 16px);
+    padding: 0 4px;
+    font-size: var(--atoll-font-size-caption-2, 10px);
+    font-weight: var(--atoll-font-weight-medium, 500);
+  }
+
+  .atoll-badge-md,
+  :host([size="md"]) .atoll-badge {
+    height: var(--atoll-badge-height-md, 20px);
+    min-width: var(--atoll-badge-height-md, 20px);
+    padding: 0 6px;
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    font-weight: var(--atoll-font-weight-semibold, 600);
+  }
+
+  .atoll-badge-lg,
+  :host([size="lg"]) .atoll-badge {
+    height: var(--atoll-badge-height-lg, 24px);
+    min-width: var(--atoll-badge-height-lg, 24px);
+    padding: 0 8px;
+    font-size: var(--atoll-font-size-body-2, 14px);
+    font-weight: var(--atoll-font-weight-semibold, 600);
+  }
+
+  /* Relative Positioning Wrapper Helpers */
+  .atoll-badge-container {
+    position: relative;
+    display: inline-flex;
+    overflow: visible !important;
+  }
+
+  .atoll-badge-positioned {
+    position: absolute;
+    top: 0;
+    right: 0;
+    transform: translate(35%, -35%);
+    z-index: 2;
+    box-shadow: 0 0 0 2px var(--atoll-body-bg, #FFFFFF);
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

@@ -2,6 +2,74 @@
   <span ref="iconWrapper" class="atoll-icon {{ iconClasses }}"></span>
 </template>
 
+<style>
+  :host {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  :host([hidden]) {
+    display: none !important;
+  }
+
+  /* Base Icon Class */
+  .atoll-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+    width: var(--atoll-icon-size, 24px);
+    height: var(--atoll-icon-size, 24px);
+    flex-shrink: 0;
+  }
+
+  .atoll-icon svg {
+    width: 100%;
+    height: 100%;
+    display: block;
+  }
+
+  /* Size Modifier Classes */
+  .atoll-icon-xs {
+    --atoll-icon-size: var(--atoll-icon-size-xs, 16px);
+  }
+
+  .atoll-icon-sm {
+    --atoll-icon-size: var(--atoll-icon-size-sm, 20px);
+  }
+
+  .atoll-icon-md {
+    --atoll-icon-size: var(--atoll-icon-size-md, 24px);
+  }
+
+  .atoll-icon-lg {
+    --atoll-icon-size: var(--atoll-icon-size-lg, 32px);
+  }
+
+  .atoll-icon-xl {
+    --atoll-icon-size: var(--atoll-icon-size-xl, 48px);
+  }
+
+  .atoll-icon-hangup {
+    display: inline-block;
+    transform: rotate(135deg);
+  }
+
+  /* Contrast Adjustments for Solid Buttons */
+  .atoll-btn-primary .atoll-icon,
+  .btn-primary .atoll-icon,
+  .atoll-btn-danger .atoll-icon,
+  .btn-danger .atoll-icon {
+    --atoll-icon-out-stroke: #FFFFFF;
+    --atoll-icon-out-fill: rgba(255, 255, 255, 0.25);
+    --atoll-icon-inner-stroke: #FFFFFF;
+    --atoll-icon-inner-fill: #FFFFFF;
+    --solar-secondary-color: currentColor;
+    --solar-secondary-opacity: 0.6;
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 
@@ -33,6 +101,19 @@
       }
     },
 
+    style: {
+      '--atoll-icon-size': (s) => {
+        const presets = { xs: '16px', sm: '20px', md: '24px', lg: '32px', xl: '48px' }
+        if (s.size && presets[s.size]) return presets[s.size]
+        if (s.size && !isNaN(s.size)) return `${s.size}px`
+        return '24px'
+      },
+      '--atoll-icon-primary-color': (s) => s.color || 'currentColor',
+      '--atoll-icon-secondary-color': (s) => s.secondaryColor || null,
+      '--atoll-icon-out-stroke': (s) => s.color || 'currentColor',
+      '--atoll-icon-out-fill': (s) => s.secondaryColor || null
+    },
+
     getters: {
       iconClasses: (state) => {
         const classes = []
@@ -55,6 +136,7 @@
 
       const render = () => {
         const wrapper = refs('iconWrapper')
+        if (!wrapper) return
 
         let numericSize = 24
         if (state.size) {
@@ -81,14 +163,13 @@
           active: state.active
         })
 
-        // Handle explicit numeric size (e.g., size="28") if not a token name
+        // Apply style variables to inner wrapper
         if (state.size && !['xs', 'sm', 'md', 'lg', 'xl'].includes(state.size) && !isNaN(state.size)) {
           wrapper.style.setProperty('--atoll-icon-size', `${state.size}px`)
         } else {
           wrapper.style.removeProperty('--atoll-icon-size')
         }
 
-        // Apply inline color overrides if explicitly passed
         if (state.color) {
           wrapper.style.setProperty('--atoll-icon-out-stroke', state.color)
           wrapper.style.setProperty('--atoll-icon-primary-color', state.color)

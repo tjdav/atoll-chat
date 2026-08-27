@@ -14,6 +14,262 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: inline-flex;
+    align-items: center;
+  }
+
+  :host([hidden]) {
+    display: none !important;
+  }
+
+  :host([disabled]),
+  :host(.disabled) {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  /* Base Chip Modifier */
+  .atoll-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
+    background-color: var(--atoll-chip-custom-bg, var(--atoll-chip-bg, var(--atoll-bg-surface-secondary, #F5F5F5)));
+    color: var(--atoll-chip-custom-color, var(--atoll-chip-color, var(--atoll-text-primary, #111111)));
+    border: 1px solid var(--atoll-chip-border, transparent);
+    border-radius: 9999px;
+    white-space: nowrap;
+    user-select: none;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    box-sizing: border-box;
+  }
+
+  .atoll-chip:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.35);
+  }
+
+  .atoll-chip.disabled,
+  .atoll-chip[disabled] {
+    opacity: 0.45;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Slotted Avatar / Thumbnail Images */
+  .atoll-chip img[slot="leading"],
+  .atoll-chip [slot="leading"] img,
+  .atoll-chip .atoll-chip-avatar {
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+    display: block;
+  }
+
+  /* Content Container & Slots */
+  .atoll-chip-content {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    line-height: 1;
+    position: relative;
+    z-index: 1;
+  }
+
+  .atoll-chip-label {
+    display: inline-block;
+    line-height: 1;
+  }
+
+  /* Removable Close Button Trigger */
+  .atoll-chip-remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: none;
+    padding: 0;
+    margin-left: 2px;
+    color: currentColor;
+    opacity: 0.65;
+    cursor: pointer;
+    border-radius: 50%;
+    transition: opacity 0.15s ease-in-out, background-color 0.15s ease-in-out;
+    position: relative;
+    z-index: 2;
+  }
+
+  .atoll-chip-remove:hover {
+    opacity: 1;
+    background-color: rgba(0, 0, 0, 0.1);
+  }
+
+  .atoll-chip-remove:focus-visible {
+    outline: none;
+    opacity: 1;
+  }
+
+  /* Variant Modifiers */
+  .atoll-chip-secondary,
+  :host([variant="secondary"]) .atoll-chip {
+    --atoll-chip-bg: var(--atoll-bg-surface-secondary, #F5F5F5);
+    --atoll-chip-color: var(--atoll-text-primary, #111111);
+    --atoll-chip-border: transparent;
+  }
+
+  .atoll-chip-secondary:hover:not(.disabled),
+  :host([variant="secondary"]) .atoll-chip:hover:not(.disabled) {
+    background-color: color-mix(in srgb, var(--atoll-bg-surface-secondary, #F5F5F5) 92%, #000000);
+  }
+
+  .atoll-chip-outline,
+  :host([variant="outline"]) .atoll-chip {
+    --atoll-chip-bg: transparent;
+    --atoll-chip-color: var(--atoll-text-primary, #111111);
+    --atoll-chip-border: var(--atoll-border-subtle, #E8E8E8);
+  }
+
+  .atoll-chip-outline:hover:not(.disabled),
+  :host([variant="outline"]) .atoll-chip:hover:not(.disabled) {
+    background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
+  }
+
+  .atoll-chip-primary,
+  :host([variant="primary"]) .atoll-chip {
+    --atoll-chip-bg: var(--atoll-brand-primary, #06C755);
+    --atoll-chip-color: #FFFFFF;
+    --atoll-chip-border: transparent;
+  }
+
+  .atoll-chip-primary:hover:not(.disabled),
+  :host([variant="primary"]) .atoll-chip:hover:not(.disabled) {
+    background-color: color-mix(in srgb, var(--atoll-brand-primary, #06C755) 90%, #000000);
+  }
+
+  /* Selected State Modifier */
+  .atoll-chip-selected,
+  :host([selected]) .atoll-chip {
+    --atoll-chip-bg: var(--atoll-brand-primary, #06C755) !important;
+    --atoll-chip-color: #FFFFFF !important;
+    --atoll-chip-border: transparent !important;
+    font-weight: var(--atoll-font-weight-semibold, 600);
+  }
+
+  .atoll-chip-selected .atoll-chip-remove:hover,
+  :host([selected]) .atoll-chip .atoll-chip-remove:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
+  /* Size Modifiers */
+  .atoll-chip-sm,
+  :host([size="sm"]) .atoll-chip {
+    height: var(--atoll-chip-height-sm, 28px);
+    padding: 0 10px;
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    font-weight: var(--atoll-font-weight-medium, 500);
+  }
+
+  .atoll-chip-sm img[slot="leading"],
+  .atoll-chip-sm [slot="leading"] img,
+  .atoll-chip-sm .atoll-chip-avatar,
+  :host([size="sm"]) .atoll-chip img[slot="leading"],
+  :host([size="sm"]) .atoll-chip [slot="leading"] img,
+  :host([size="sm"]) .atoll-chip .atoll-chip-avatar {
+    width: 20px;
+    height: 20px;
+  }
+
+  .atoll-chip-sm::before,
+  :host([size="sm"]) .atoll-chip::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 44px;
+    width: 44px;
+    z-index: 0;
+  }
+
+  .atoll-chip-md,
+  :host([size="md"]) .atoll-chip {
+    height: var(--atoll-chip-height-md, 32px);
+    padding: 0 12px;
+    font-size: var(--atoll-font-size-body-2, 14px);
+    font-weight: var(--atoll-font-weight-medium, 500);
+  }
+
+  .atoll-chip-md img[slot="leading"],
+  .atoll-chip-md [slot="leading"] img,
+  .atoll-chip-md .atoll-chip-avatar,
+  :host([size="md"]) .atoll-chip img[slot="leading"],
+  :host([size="md"]) .atoll-chip [slot="leading"] img,
+  :host([size="md"]) .atoll-chip .atoll-chip-avatar {
+    width: 24px;
+    height: 24px;
+  }
+
+  .atoll-chip-md::before,
+  :host([size="md"]) .atoll-chip::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 44px;
+    width: 44px;
+    z-index: 0;
+  }
+
+  .atoll-chip-lg,
+  :host([size="lg"]) .atoll-chip {
+    height: var(--atoll-chip-height-lg, 38px);
+    padding: 0 16px;
+    font-size: var(--atoll-font-size-body-1, 16px);
+    font-weight: var(--atoll-font-weight-medium, 500);
+  }
+
+  .atoll-chip-lg img[slot="leading"],
+  .atoll-chip-lg [slot="leading"] img,
+  .atoll-chip-lg .atoll-chip-avatar,
+  :host([size="lg"]) .atoll-chip img[slot="leading"],
+  :host([size="lg"]) .atoll-chip [slot="leading"] img,
+  :host([size="lg"]) .atoll-chip .atoll-chip-avatar {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* Dark Mode Overrides */
+  :host-context([data-atoll-theme="dark"]) .atoll-chip-secondary,
+  :host-context([data-bs-theme="dark"]) .atoll-chip-secondary {
+    --atoll-chip-bg: var(--atoll-bg-surface-tertiary, #1F1F1F);
+    --atoll-chip-color: var(--atoll-text-primary, #FFFFFF);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-chip-secondary:hover:not(.disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-chip-secondary:hover:not(.disabled) {
+    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #1F1F1F) 88%, #FFFFFF);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-chip-outline,
+  :host-context([data-bs-theme="dark"]) .atoll-chip-outline {
+    --atoll-chip-color: var(--atoll-text-primary, #FFFFFF);
+    --atoll-chip-border: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-chip-outline:hover:not(.disabled),
+  :host-context([data-bs-theme="dark"]) .atoll-chip-outline:hover:not(.disabled) {
+    background-color: var(--atoll-bg-surface-secondary, #161616);
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 
@@ -37,7 +293,20 @@
       text: {
         type: String,
         default: ''
+      },
+      bgColor: {
+        type: String,
+        default: ''
+      },
+      textColor: {
+        type: String,
+        default: ''
       }
+    },
+
+    style: {
+      '--atoll-chip-custom-bg': (s) => s.bgColor || null,
+      '--atoll-chip-custom-color': (s) => s.textColor || null
     },
 
     slots: {
@@ -230,15 +499,8 @@
       // Observe reactive attribute updates
       observe('removable', syncRemoveButton)
       observe('size', syncRemoveButton)
-      observe('value', () => {
-        /* Value updates automatically reflect in state.value, which the removeBtnEl click handler reads synchronously. */
-      })
 
       syncRemoveButton()
-
-      return () => {
-        /* Event listeners are automatically removed when using abort signal, but keeping cleanup return function consistent as optional extra safety. */
-      }
     }
   })
 </script>
