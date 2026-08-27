@@ -28,7 +28,7 @@ describe('Atoll Icon Component', () => {
     assert.ok(svg.className.includes('solar-music'))
   })
 
-  test('should support standard token and explicit numeric sizes', async () => {
+  test('should support standard preset token and explicit numeric sizes on host element', async () => {
     const el = document.createElement(tagName)
     el.setAttribute('name', 'search')
     el.setAttribute('size', '42')
@@ -36,12 +36,18 @@ describe('Atoll Icon Component', () => {
 
     await new Promise(resolve => setTimeout(resolve, 10))
 
-    const innerWrapper = el.querySelector('.atoll-icon')
-    const styleAttr = innerWrapper.getAttribute('style') || ''
-    assert.ok(/--atoll-icon-size:\s*42px/.test(styleAttr), 'Should apply explicit numeric size')
+    const styleAttr = el.getAttribute('style') || ''
+    assert.ok(/--atoll-icon-size:\s*42px/.test(styleAttr), 'Should apply explicit numeric size on custom element host')
+
+    // Reactive attribute update
+    el.setAttribute('size', 'xl')
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const updatedStyleAttr = el.getAttribute('style') || ''
+    assert.ok(/--atoll-icon-size:\s*48px/.test(updatedStyleAttr), 'Should reactively update preset size variable on host')
   })
 
-  test('should support inline colors and secondary colors', async () => {
+  test('should support inline colors and secondary colors on host element', async () => {
     const el = document.createElement(tagName)
     el.setAttribute('name', 'settings')
     el.setAttribute('color', '#ff0000')
@@ -50,10 +56,16 @@ describe('Atoll Icon Component', () => {
 
     await new Promise(resolve => setTimeout(resolve, 10))
 
-    const innerWrapper = el.querySelector('.atoll-icon')
-    const styleAttr = innerWrapper.getAttribute('style') || ''
-    assert.ok(/--atoll-icon-primary-color:\s*#ff0000/.test(styleAttr), 'Should apply primary color variable')
-    assert.ok(/--atoll-icon-secondary-color:\s*#00ff00/.test(styleAttr), 'Should apply secondary color variable')
+    const styleAttr = el.getAttribute('style') || ''
+    assert.ok(/--atoll-icon-primary-color:\s*#ff0000/.test(styleAttr), 'Should apply primary color variable on host')
+    assert.ok(/--atoll-icon-secondary-color:\s*#00ff00/.test(styleAttr), 'Should apply secondary color variable on host')
+
+    // Reactive color update
+    el.setAttribute('color', '#0000ff')
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const updatedStyleAttr = el.getAttribute('style') || ''
+    assert.ok(/--atoll-icon-primary-color:\s*#0000ff/.test(updatedStyleAttr), 'Should reactively update primary color on host')
   })
 
   test('should handle accessibility and aria attributes correctly', async () => {

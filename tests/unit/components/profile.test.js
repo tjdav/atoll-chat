@@ -67,9 +67,12 @@ describe('Atoll Profile Component', () => {
     assert.ok(wrapper, 'Profile wrapper element should exist')
     assert.ok(wrapper.classList.contains('atoll-profile-lg'), 'Should contain atoll-profile-lg class')
     assert.ok(wrapper.classList.contains('atoll-profile-ring'), 'Should contain atoll-profile-ring class')
+
+    const styleAttr = el.getAttribute('style') || ''
+    assert.ok(/--atoll-profile-size:\s*56px/.test(styleAttr), 'Should map size="lg" to 56px')
   })
 
-  test('should compute initials and deterministic background style for user names', async () => {
+  test('should compute initials and deterministic background style on host element', async () => {
     const el = document.createElement(tagName)
     el.setAttribute('name', 'John Doe')
     document.body.appendChild(el)
@@ -80,10 +83,15 @@ describe('Atoll Profile Component', () => {
     assert.ok(initialsSpan, 'Initials span should exist')
     assert.equal(initialsSpan.textContent.trim(), 'JD')
 
-    const fallbackSpan = el.querySelector('.atoll-profile-fallback')
-    assert.ok(fallbackSpan, 'Fallback span should exist')
-    const styleAttr = fallbackSpan.getAttribute('style') || ''
-    assert.ok(styleAttr.includes('background-color:'), 'Style should contain background-color')
+    const styleAttr = el.getAttribute('style') || ''
+    assert.ok(styleAttr.includes('--atoll-profile-bg:'), 'Host style should contain --atoll-profile-bg variable')
+
+    // Test explicit bg-color attribute override
+    el.setAttribute('bg-color', '#FF0055')
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const updatedStyleAttr = el.getAttribute('style') || ''
+    assert.ok(/--atoll-profile-bg:\s*#FF0055/.test(updatedStyleAttr), 'Host should reactively update --atoll-profile-bg to explicit bg-color')
   })
 
   test('should render overlay icon using atoll-icon tag', async () => {

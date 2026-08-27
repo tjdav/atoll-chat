@@ -178,29 +178,6 @@
           active: state.active
         })
 
-        // Apply style variables to inner wrapper
-        if (state.size && !['xs', 'sm', 'md', 'lg', 'xl'].includes(state.size) && !isNaN(state.size)) {
-          wrapper.style.setProperty('--atoll-icon-size', `${state.size}px`)
-        } else {
-          wrapper.style.removeProperty('--atoll-icon-size')
-        }
-
-        if (state.color) {
-          wrapper.style.setProperty('--atoll-icon-out-stroke', state.color)
-          wrapper.style.setProperty('--atoll-icon-primary-color', state.color)
-        } else {
-          wrapper.style.removeProperty('--atoll-icon-out-stroke')
-          wrapper.style.removeProperty('--atoll-icon-primary-color')
-        }
-
-        if (state.secondaryColor) {
-          wrapper.style.setProperty('--atoll-icon-out-fill', state.secondaryColor)
-          wrapper.style.setProperty('--atoll-icon-secondary-color', state.secondaryColor)
-        } else {
-          wrapper.style.removeProperty('--atoll-icon-out-fill')
-          wrapper.style.removeProperty('--atoll-icon-secondary-color')
-        }
-
         // Accessibility handling
         if (state.ariaLabel) {
           root.setAttribute('role', 'img')

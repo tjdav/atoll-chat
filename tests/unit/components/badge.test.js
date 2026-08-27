@@ -77,7 +77,7 @@ describe('Atoll Badge Component', () => {
     assert.equal(el.getAttribute('hidden'), '')
   })
 
-  test('should support text/tag label mode', async () => {
+  test('should support text/tag label mode, color variants, and size classes reactively', async () => {
     const el = document.createElement(tagName)
     el.setAttribute('label', 'BOT')
     el.setAttribute('variant', 'secondary')
@@ -92,5 +92,13 @@ describe('Atoll Badge Component', () => {
     assert.equal(el.getAttribute('aria-label'), 'BOT')
     assert.ok(innerBadge.className.includes('atoll-badge-secondary'))
     assert.ok(innerBadge.className.includes('atoll-badge-sm'))
+
+    // Reactive attribute mutation
+    el.setAttribute('variant', 'info')
+    el.setAttribute('size', 'lg')
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    assert.ok(innerBadge.className.includes('atoll-badge-info'))
+    assert.ok(innerBadge.className.includes('atoll-badge-lg'))
   })
 })

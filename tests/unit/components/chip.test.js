@@ -31,6 +31,27 @@ describe('Atoll Chip Component', () => {
     assert.equal(innerChip.getAttribute('tabindex'), '0')
   })
 
+  test('should support custom bg-color and text-color variables reactively', async () => {
+    const el = document.createElement(tagName)
+    el.setAttribute('bg-color', '#123456')
+    el.setAttribute('text-color', '#ffffff')
+    el.textContent = 'Custom Color'
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const styleAttr = el.getAttribute('style') || ''
+    assert.ok(/--atoll-chip-custom-bg:\s*#123456/.test(styleAttr), 'Should apply custom background color on host')
+    assert.ok(/--atoll-chip-custom-color:\s*#ffffff/.test(styleAttr), 'Should apply custom text color on host')
+
+    // Reactive update
+    el.setAttribute('bg-color', '#654321')
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const updatedStyleAttr = el.getAttribute('style') || ''
+    assert.ok(/--atoll-chip-custom-bg:\s*#654321/.test(updatedStyleAttr), 'Should reactively update custom background color')
+  })
+
   test('should render correct default values', async () => {
     const el = document.createElement(tagName)
     el.textContent = 'Default'
@@ -44,7 +65,7 @@ describe('Atoll Chip Component', () => {
     assert.equal(innerChip.getAttribute('role'), 'button')
   })
 
-  test('should handle disabled state correctly', async () => {
+  test('should handle disabled state and capture-phase click interception', async () => {
     const el = document.createElement(tagName)
     el.setAttribute('disabled', 'true')
     el.textContent = 'Disabled'
@@ -61,9 +82,12 @@ describe('Atoll Chip Component', () => {
     assert.ok(innerChip.className.includes('disabled'))
     assert.equal(innerChip.getAttribute('tabindex'), '-1')
 
-    // Click suppression is handled inside the component or via disabled rules. Let's dispatch a click on the host.
-    el.click()
-    assert.equal(chipClicked, false, 'Click should be suppressed or ignored when disabled')
+    // Click on inner element and host should both be intercepted
+    innerChip.click()
+    assert.equal(chipClicked, false, 'Click on inner chip should be suppressed when disabled')
+
+    el.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    assert.equal(chipClicked, false, 'Click on host should be intercepted when disabled')
   })
 
   test('should sync and handle removable behavior', async () => {

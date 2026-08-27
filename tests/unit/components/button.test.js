@@ -29,7 +29,33 @@ describe('Atoll Button Component', () => {
     assert.equal(label.textContent.trim(), 'Click Me')
   })
 
-  test('should propagate disabled attribute and block clicks', async () => {
+  test('should support variants, sizes, pill, block, and reactive attribute updates', async () => {
+    const el = document.createElement(tagName)
+    el.setAttribute('variant', 'secondary')
+    el.setAttribute('size', 'sm')
+    el.setAttribute('pill', 'true')
+    el.setAttribute('block', 'true')
+    el.textContent = 'Styled Button'
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const button = el.querySelector('button')
+    assert.ok(button.className.includes('atoll-btn-secondary'), 'Should have secondary variant class')
+    assert.ok(button.className.includes('atoll-btn-sm'), 'Should have small size class')
+    assert.ok(button.className.includes('atoll-btn-pill'), 'Should have pill shape class')
+    assert.ok(button.className.includes('atoll-btn-block'), 'Should have block layout class')
+
+    // Reactive attribute updates on live DOM node
+    el.setAttribute('variant', 'danger')
+    el.setAttribute('size', 'lg')
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    assert.ok(button.className.includes('atoll-btn-danger'), 'Should reactively update to danger variant class')
+    assert.ok(button.className.includes('atoll-btn-lg'), 'Should reactively update to large size class')
+  })
+
+  test('should propagate disabled attribute and block clicks in capture and bubble phases', async () => {
     const el = document.createElement(tagName)
     el.setAttribute('disabled', 'true')
     el.textContent = 'Disabled Action'

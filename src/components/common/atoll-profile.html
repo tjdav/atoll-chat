@@ -5,14 +5,14 @@
       <div class="placeholder rounded-circle w-100 h-100"></div>
     </div>
 
-    <div class="atoll-profile-circle {{ gridClass }}" style="{{ circleStyle }}" hidden="{{ showLoading }}">
+    <div class="atoll-profile-circle {{ gridClass }}" hidden="{{ showLoading }}">
       <slot name="image">
         <img 
           ref="avatarImage" 
           alt="{{ computedAlt }}" 
           hidden="{{ hideImage }}" 
         />
-        <span class="atoll-profile-fallback" hidden="{{ hideFallback }}" style="{{ fallbackStyle }}">
+        <span class="atoll-profile-fallback" hidden="{{ hideFallback }}">
           <span hidden="{{ hideInitials }}" class="atoll-profile-initials">{{ initials }}</span>
           <atoll-icon hidden="{{ showInitials }}" name="user" size="{{ iconSize }}"></atoll-icon>
         </span>
@@ -35,10 +35,12 @@
 
 <style>
   :host {
-    display: inline-block;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     position: relative;
-    width: var(--atoll-profile-size, 50px);
-    height: var(--atoll-profile-size, 50px);
+    width: var(--atoll-profile-size, 40px);
+    height: var(--atoll-profile-size, 40px);
     flex-shrink: 0;
     user-select: none;
     box-sizing: border-box;
@@ -74,8 +76,8 @@
   /* Inner Profile Circle Container */
   .atoll-profile-circle {
     position: relative;
-    width: 100%;
-    height: 100%;
+    width: var(--atoll-profile-size, 40px);
+    height: var(--atoll-profile-size, 40px);
     border-radius: 50%;
     overflow: hidden;
     background-color: var(--atoll-profile-bg, var(--atoll-profile-placeholder-bg, var(--atoll-bg-surface-tertiary, #DFDFDF)));
@@ -105,7 +107,8 @@
     justify-content: center;
     width: 100%;
     height: 100%;
-    color: var(--atoll-text-tertiary, #949494);
+    background-color: var(--atoll-profile-bg, var(--atoll-brand-primary, #06C755));
+    color: var(--atoll-text-on-brand, #FFFFFF);
   }
 
   .atoll-profile-fallback[hidden] {
@@ -382,6 +385,10 @@
         type: Boolean,
         default: false
       },
+      bgColor: {
+        type: String,
+        default: ''
+      },
       palette: {
         type: String,
         default: ''
@@ -398,8 +405,11 @@
 
     style: {
       '--atoll-profile-bg': (s) => {
-        if (s.palette) {
-          let seedStr = typeof s.palette === 'string' && s.palette !== 'true' ? s.palette : (s.name || s.alt || '')
+        if (s.bgColor || s.palette) {
+          let seedStr = s.bgColor || (typeof s.palette === 'string' && s.palette !== 'true' ? s.palette : (s.name || s.alt || ''))
+          if (seedStr.startsWith('#') || seedStr.startsWith('rgb') || seedStr.startsWith('hsl') || seedStr.startsWith('var(')) {
+            return seedStr
+          }
           if (seedStr && seedStr !== 'User profile') {
             let hash = 0
             for (let i = 0; i < seedStr.length; i++) {
@@ -414,22 +424,37 @@
             return palettes[Math.abs(hash) % palettes.length]
           }
         }
+        if (s.src) return 'transparent'
+        const seedStr = s.userId || s.name || s.alt || ''
+        if (seedStr && seedStr !== 'User profile') {
+          let hash = 0
+          for (let i = 0; i < seedStr.length; i++) {
+            hash = seedStr.charCodeAt(i) + ((hash << 5) - hash)
+          }
+          const palettes = [
+            '#06C755', '#15BD66', '#19BFA1', '#1CB8B8',
+            '#0093C4', '#0279D4', '#2F59CC', '#4545D1',
+            '#6B3CC9', '#AF36C7', '#DE2C7F', '#E5172F',
+            '#FF5E1F', '#FCB321'
+          ]
+          return palettes[Math.abs(hash) % palettes.length]
+        }
         return null
       },
       '--atoll-profile-size': (s) => {
-        const sizes = {
-          '2xs': '30px',
-          'xs': '32px',
-          'sm': '42px',
-          'md': '50px',
+        const presets = {
+          '2xs': '20px',
+          'xs': '24px',
+          'sm': '32px',
+          'md': '40px',
           'lg': '56px',
-          'xl': '60px',
-          '2xl': '87px',
-          '3xl': '95px'
+          'xl': '80px',
+          '2xl': '96px',
+          '3xl': '128px'
         }
-        if (s.size && sizes[s.size]) return sizes[s.size]
+        if (s.size && presets[s.size]) return presets[s.size]
         if (s.size && !isNaN(s.size)) return `${s.size}px`
-        return '50px'
+        return '40px'
       }
     },
 
@@ -519,20 +544,6 @@
         return str.trim().length > 0 ? null : 'true'
       },
 
-      fallbackStyle: (state) => {
-        const seedStr = state.name || state.alt
-        if (seedStr && seedStr !== 'User profile') {
-          let hash = 0
-          for (let i = 0; i < seedStr.length; i++) {
-            hash = seedStr.charCodeAt(i) + ((hash << 5) - hash)
-          }
-  
-          const color = state.palettes[Math.abs(hash) % state.palettes.length]
-          return `background-color: ${color}; color: #FFFFFF;`
-        }
-        return ''
-      },
-
       hideImage: (state) => (state.palette || state.hasProjectedImage === 'true' || state.hasProjectedImage === true || !state.src || state.hasError ? 'true' : null),
 
       hideFallback: (state) => (state.palette || state.hasProjectedImage === 'true' || state.hasProjectedImage === true || (Boolean(state.src) && !state.hasError) || state.type === 'multiparty' ? 'true' : null),
@@ -600,25 +611,6 @@
         return classes.join(' ')
       },
 
-      circleStyle: (state) => {
-        if (state.palette) {
-          let seedStr = ''
-          if (typeof state.palette === 'string' && state.palette !== 'true') {
-            seedStr = state.palette
-          } else {
-            seedStr = state.name || state.alt || ''
-          }
-          if (seedStr && seedStr !== 'User profile') {
-            let hash = 0
-            for (let i = 0; i < seedStr.length; i++) {
-              hash = seedStr.charCodeAt(i) + ((hash << 5) - hash)
-            }
-            const color = state.palettes[Math.abs(hash) % state.palettes.length]
-            return `--atoll-profile-placeholder-bg: ${color}; background-color: ${color}; color: #FFFFFF;`
-          }
-        }
-        return ''
-      }
     },
 
     client: ({ state, refs, root, observe, globalStore, pocketbase, storage, signal }) => {
@@ -665,15 +657,13 @@
 
       const img = refs('avatarImage')
 
-      if (img) {
-        img.addEventListener('error', () => {
-          state.hasError = true
-        })
+      img.addEventListener('error', () => {
+        state.hasError = true
+      })
 
-        img.addEventListener('load', () => {
-          state.hasError = false
-        })
-      }
+      img.addEventListener('load', () => {
+        state.hasError = false
+      })
 
       const updateSrc = (newSrc) => {
         if (!img) {
