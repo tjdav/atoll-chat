@@ -43,6 +43,140 @@
   </div>
 </template>
 
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+
+  .atoll-list-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    min-height: var(--atoll-list-header-height, 44px);
+    padding: 8px 16px;
+    background-color: var(--atoll-list-header-bg, transparent);
+    box-sizing: border-box;
+    user-select: none;
+  }
+
+  .atoll-list-header-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+
+  .atoll-list-header-titles {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    min-width: 0;
+  }
+
+  .atoll-list-header-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--atoll-font-sans-serif, sans-serif);
+    font-size: var(--atoll-font-size-body-2, 14px);
+    font-weight: var(--atoll-font-weight-semibold, 600);
+    color: var(--atoll-text-primary, #111111);
+    line-height: 1.2;
+  }
+
+  .atoll-list-header-dropdown-icon {
+    display: inline-flex;
+    align-items: center;
+    color: var(--atoll-text-secondary, #666666);
+    transition: transform 0.15s ease-in-out;
+  }
+
+  .atoll-list-header-subtitle {
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    color: var(--atoll-text-secondary, #555555);
+    font-weight: var(--atoll-font-weight-regular, 400);
+    margin-top: 2px;
+  }
+
+  .atoll-list-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+    margin-left: 12px;
+  }
+
+  .atoll-list-header-chevron {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--atoll-text-secondary, #666666);
+    transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .atoll-list-header-list {
+    border-bottom: 1px solid var(--atoll-border-subtle, #DFDFDF);
+  }
+
+  .atoll-list-header-card {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--atoll-border-subtle, #DFDFDF);
+    background-color: var(--atoll-bg-surface-primary, #FFFFFF);
+    border-top-left-radius: var(--atoll-card-border-radius, 12px);
+    border-top-right-radius: var(--atoll-card-border-radius, 12px);
+  }
+
+  .atoll-list-header-accordion {
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out;
+
+    &:hover {
+      background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
+    }
+
+    &.atoll-list-header-expanded .atoll-list-header-chevron {
+      transform: rotate(180deg);
+    }
+  }
+
+  .atoll-list-header-sm {
+    --atoll-list-header-height: 36px;
+    padding-top: 4px;
+    padding-bottom: 4px;
+
+    .atoll-list-header-title-row {
+      font-size: var(--atoll-font-size-caption-1, 12px);
+    }
+  }
+
+  .atoll-list-header-lg {
+    --atoll-list-header-height: 52px;
+
+    .atoll-list-header-title-row {
+      font-size: var(--atoll-font-size-body-1, 16px);
+    }
+  }
+
+  [data-atoll-theme="dark"] .atoll-list-header,
+  [data-bs-theme="dark"] .atoll-list-header {
+    --atoll-list-header-title-color: var(--atoll-text-primary, #FFFFFF);
+    --atoll-list-header-subtitle-color: var(--atoll-text-secondary, #B0B0B0);
+    --atoll-list-header-border: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
+  }
+
+  [data-atoll-theme="dark"] .atoll-list-header-card,
+  [data-bs-theme="dark"] .atoll-list-header-card {
+    background-color: var(--atoll-bg-surface-primary, #161616);
+  }
+
+  [data-atoll-theme="dark"] .atoll-list-header-accordion:hover,
+  [data-bs-theme="dark"] .atoll-list-header-accordion:hover {
+    background-color: var(--atoll-bg-surface-secondary, #1F1F1F);
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 
