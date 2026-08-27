@@ -65,7 +65,6 @@ describe('Atoll Profile Component', () => {
 
     const wrapper = el.querySelector('.atoll-profile')
     assert.ok(wrapper, 'Profile wrapper element should exist')
-    assert.ok(wrapper.classList.contains('atoll-profile-lg'), 'Should contain atoll-profile-lg class')
     assert.ok(wrapper.classList.contains('atoll-profile-ring'), 'Should contain atoll-profile-ring class')
 
     const styleAttr = el.getAttribute('style') || ''
@@ -183,6 +182,17 @@ describe('Atoll Profile Component', () => {
     const circle = el.querySelector('.atoll-profile-circle')
     assert.ok(circle, 'Profile circle container should exist')
     assert.ok(circle.classList.contains('multiparty-3'), 'Should apply multiparty-3 grid class')
+  })
+
+  test('should handle invalid attribute inputs gracefully', async () => {
+    const el = document.createElement(tagName)
+    el.setAttribute('type', 'invalid-type')
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const wrapper = el.querySelector('.atoll-profile')
+    assert.ok(wrapper, 'Profile element exists')
   })
 
   test('should render initials and colored fallbacks for images without src in multiparty mode', async () => {

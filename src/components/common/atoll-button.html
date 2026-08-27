@@ -98,103 +98,107 @@
     to { transform: translate(-50%, -50%) rotate(360deg); }
   }
 
-  /* Variant Modifiers */
-  .atoll-btn-primary,
+  /* Variant Modifiers (Default: primary) */
+  :host .atoll-btn,
   :host([variant="primary"]) .atoll-btn {
     background-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
     color: var(--atoll-text-on-brand, #FFFFFF);
     border-color: transparent;
   }
 
-  .atoll-btn-primary:hover:not(:disabled),
+  :host .atoll-btn:hover:not(:disabled),
   :host([variant="primary"]) .atoll-btn:hover:not(:disabled) {
     background-color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 88%, #000000);
   }
 
-  .atoll-btn-primary:active:not(:disabled),
+  :host .atoll-btn:active:not(:disabled),
   :host([variant="primary"]) .atoll-btn:active:not(:disabled) {
     background-color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 80%, #000000);
   }
 
-  .atoll-btn-secondary,
   :host([variant="secondary"]) .atoll-btn {
     background-color: var(--atoll-bg-surface-tertiary, #E8E8E8);
     color: var(--atoll-text-primary, #111111);
     border-color: transparent;
   }
 
-  .atoll-btn-secondary:hover:not(:disabled),
   :host([variant="secondary"]) .atoll-btn:hover:not(:disabled) {
     background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #E8E8E8) 92%, #000000);
   }
 
-  .atoll-btn-secondary:active:not(:disabled),
   :host([variant="secondary"]) .atoll-btn:active:not(:disabled) {
     background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #E8E8E8) 84%, #000000);
   }
 
-  .atoll-btn-outline,
   :host([variant="outline"]) .atoll-btn {
     background-color: transparent;
     color: var(--atoll-text-primary, #111111);
     border-color: var(--atoll-border-strong, #D4D4D4);
   }
 
-  .atoll-btn-outline:hover:not(:disabled),
   :host([variant="outline"]) .atoll-btn:hover:not(:disabled) {
     background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
   }
 
-  .atoll-btn-outline:active:not(:disabled),
   :host([variant="outline"]) .atoll-btn:active:not(:disabled) {
     background-color: var(--atoll-bg-surface-tertiary, #E8E8E8);
   }
 
-  .atoll-btn-ghost,
   :host([variant="ghost"]) .atoll-btn {
     background-color: transparent;
     color: var(--atoll-text-primary, #111111);
     border-color: transparent;
   }
 
-  .atoll-btn-ghost:hover:not(:disabled),
   :host([variant="ghost"]) .atoll-btn:hover:not(:disabled) {
     background-color: var(--atoll-brand-subtle, rgba(6, 199, 85, 0.12));
   }
 
-  .atoll-btn-ghost:active:not(:disabled),
   :host([variant="ghost"]) .atoll-btn:active:not(:disabled) {
     background-color: var(--atoll-bg-surface-tertiary, #E8E8E8);
   }
 
-  .atoll-btn-danger,
   :host([variant="danger"]) .atoll-btn {
     background-color: var(--atoll-rainbow-red, #FF334B);
     color: #FFFFFF;
     border-color: transparent;
   }
 
-  .atoll-btn-danger:hover:not(:disabled),
   :host([variant="danger"]) .atoll-btn:hover:not(:disabled) {
     background-color: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 90%, #000000);
   }
 
-  .atoll-btn-danger:active:not(:disabled),
   :host([variant="danger"]) .atoll-btn:active:not(:disabled) {
     background-color: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 80%, #000000);
   }
 
-  /* Size Modifiers */
-  .atoll-btn-sm,
-  :host([size="sm"]) .atoll-btn {
-    height: var(--atoll-btn-height-sm, 32px);
-    padding: 0 12px;
-    border-radius: 8px;
-    font-size: var(--atoll-font-size-caption-1, 12px);
-    font-weight: var(--atoll-font-weight-semibold, 600);
+  :host([variant="info"]) .atoll-btn {
+    background-color: var(--atoll-rainbow-blue, #4270ED);
+    color: #FFFFFF;
+    border-color: transparent;
   }
 
-  .atoll-btn-md,
+  :host([variant="info"]) .atoll-btn:hover:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-rainbow-blue, #4270ED) 90%, #000000);
+  }
+
+  :host([variant="info"]) .atoll-btn:active:not(:disabled) {
+    background-color: color-mix(in srgb, var(--atoll-rainbow-blue, #4270ED) 80%, #000000);
+  }
+
+  :host([variant="link"]) .atoll-btn {
+    background-color: transparent;
+    color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    border-color: transparent;
+    text-decoration: underline;
+  }
+
+  :host([variant="link"]) .atoll-btn:hover:not(:disabled) {
+    color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 85%, #000000);
+  }
+
+  /* Size Modifiers (Default: md) */
+  :host .atoll-btn,
   :host([size="md"]) .atoll-btn {
     height: var(--atoll-btn-height-md, 44px);
     padding: 0 16px;
@@ -203,7 +207,14 @@
     font-weight: var(--atoll-font-weight-semibold, 600);
   }
 
-  .atoll-btn-lg,
+  :host([size="sm"]) .atoll-btn {
+    height: var(--atoll-btn-height-sm, 32px);
+    padding: 0 12px;
+    border-radius: 8px;
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    font-weight: var(--atoll-font-weight-semibold, 600);
+  }
+
   :host([size="lg"]) .atoll-btn {
     height: var(--atoll-btn-height-lg, 52px);
     padding: 0 24px;
@@ -213,17 +224,14 @@
   }
 
   /* Shape & Layout Modifiers */
-  .atoll-btn-block,
   :host([block]) .atoll-btn {
     width: 100%;
   }
 
-  .atoll-btn-pill,
   :host([pill]) .atoll-btn {
     border-radius: 9999px !important;
   }
 
-  .atoll-btn-pill.atoll-btn-sm,
   :host([pill][size="sm"]) .atoll-btn {
     height: 28px;
     padding: 0 12px;
@@ -231,7 +239,6 @@
     position: relative;
   }
 
-  .atoll-btn-pill.atoll-btn-sm::before,
   :host([pill][size="sm"]) .atoll-btn::before {
     content: "";
     position: absolute;
@@ -243,14 +250,12 @@
     width: 44px;
   }
 
-  .atoll-btn-pill.atoll-btn-md,
   :host([pill][size="md"]) .atoll-btn {
     height: 36px;
     padding: 0 16px;
     font-size: var(--atoll-font-size-body-2, 14px);
   }
 
-  .atoll-btn-pill.atoll-btn-lg,
   :host([pill][size="lg"]) .atoll-btn {
     height: 44px;
     padding: 0 20px;
@@ -321,38 +326,32 @@
   }
 
   /* Icon-Only Button Modifiers */
-  .atoll-btn-icon,
   :host([icon-only]) .atoll-btn {
     padding: 0 !important;
     aspect-ratio: 1 / 1;
     flex-shrink: 0;
   }
 
-  .atoll-btn-icon .atoll-btn-content,
   :host([icon-only]) .atoll-btn .atoll-btn-content {
     gap: 0;
     width: 100%;
     height: 100%;
   }
 
-  .atoll-btn-icon .atoll-btn-label,
   :host([icon-only]) .atoll-btn .atoll-btn-label {
     display: contents;
   }
 
-  .atoll-btn-icon .atoll-btn-text,
   :host([icon-only]) .atoll-btn .atoll-btn-text {
     display: none !important;
   }
 
-  .atoll-btn-icon.atoll-btn-sm,
   :host([icon-only][size="sm"]) .atoll-btn {
     width: var(--atoll-btn-height-sm, 32px);
     height: var(--atoll-btn-height-sm, 32px);
     position: relative;
   }
 
-  .atoll-btn-icon.atoll-btn-sm::before,
   :host([icon-only][size="sm"]) .atoll-btn::before {
     content: "";
     position: absolute;
@@ -365,19 +364,16 @@
     height: 44px;
   }
 
-  .atoll-btn-icon.atoll-btn-md,
   :host([icon-only][size="md"]) .atoll-btn {
     width: var(--atoll-btn-height-md, 44px);
     height: var(--atoll-btn-height-md, 44px);
   }
 
-  .atoll-btn-icon.atoll-btn-lg,
   :host([icon-only][size="lg"]) .atoll-btn {
     width: var(--atoll-btn-height-lg, 52px);
     height: var(--atoll-btn-height-lg, 52px);
   }
 
-  .atoll-btn-icon.atoll-btn-pill,
   :host([icon-only][pill]) .atoll-btn {
     border-radius: 50% !important;
   }
@@ -390,15 +386,18 @@
     attributes: {
       type: {
         type: String,
-        default: 'button'
+        default: 'button',
+        values: ['button', 'submit', 'reset']
       },
       variant: {
         type: String,
-        default: 'primary'
+        default: 'primary',
+        values: ['primary', 'secondary', 'ghost', 'danger', 'outline', 'info', 'link']
       },
       size: {
         type: String,
-        default: 'md'
+        default: 'md',
+        values: ['sm', 'md', 'lg']
       },
       disabled: Boolean,
       loading: Boolean,
@@ -539,39 +538,7 @@
     },
 
     getters: {
-      btnClasses: (state) => {
-        const classes = ['atoll-btn']
-
-        // Variant modifier
-        if (state.variant) {
-          classes.push(`atoll-btn-${state.variant}`)
-        } else {
-          classes.push('atoll-btn-primary')
-        }
-
-        // Size modifier
-        if (state.size) {
-          classes.push(`atoll-btn-${state.size}`)
-        } else {
-          classes.push('atoll-btn-md')
-        }
-
-        // Layout modifiers
-        if (state.iconOnly) {
-          classes.push('atoll-btn-icon')
-        }
-        if (state.block) {
-          classes.push('atoll-btn-block')
-        }
-        if (state.pill) {
-          classes.push('atoll-btn-pill')
-        }
-        if (state.loading && state.spinnerPlacement === 'center') {
-          classes.push('atoll-btn-loading')
-        }
-
-        return classes.join(' ')
-      },
+      btnClasses: (state) => (state.loading && state.spinnerPlacement === 'center' ? 'atoll-btn atoll-btn-loading' : 'atoll-btn'),
 
       isDisabled: (state) => Boolean(state.disabled || state.loading)
     },

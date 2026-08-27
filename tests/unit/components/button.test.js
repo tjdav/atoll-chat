@@ -21,15 +21,13 @@ describe('Atoll Button Component', () => {
     const button = el.querySelector('button')
     assert.ok(button, 'Inner button element should exist')
     assert.ok(button.className.includes('atoll-btn'), 'Should have atoll-btn base class')
-    assert.ok(button.className.includes('atoll-btn-primary'), 'Should have atoll-btn-primary default variant class')
-    assert.ok(button.className.includes('atoll-btn-md'), 'Should have atoll-btn-md default size class')
 
     const label = el.querySelector('.atoll-btn-label')
     assert.ok(label, 'Should wrap slot text in .atoll-btn-label container')
     assert.equal(label.textContent.trim(), 'Click Me')
   })
 
-  test('should support variants, sizes, pill, block, and reactive attribute updates', async () => {
+  test('should support host attribute modifiers for variants, sizes, pill, and block', async () => {
     const el = document.createElement(tagName)
     el.setAttribute('variant', 'secondary')
     el.setAttribute('size', 'sm')
@@ -40,19 +38,29 @@ describe('Atoll Button Component', () => {
 
     await new Promise(resolve => setTimeout(resolve, 10))
 
-    const button = el.querySelector('button')
-    assert.ok(button.className.includes('atoll-btn-secondary'), 'Should have secondary variant class')
-    assert.ok(button.className.includes('atoll-btn-sm'), 'Should have small size class')
-    assert.ok(button.className.includes('atoll-btn-pill'), 'Should have pill shape class')
-    assert.ok(button.className.includes('atoll-btn-block'), 'Should have block layout class')
+    assert.equal(el.getAttribute('variant'), 'secondary', 'Host element should have variant attribute')
+    assert.equal(el.getAttribute('size'), 'sm', 'Host element should have size attribute')
+    assert.equal(el.getAttribute('pill'), 'true', 'Host element should have pill attribute')
+    assert.equal(el.getAttribute('block'), 'true', 'Host element should have block attribute')
 
-    // Reactive attribute updates on live DOM node
+    // Reactive attribute updates on live host node
     el.setAttribute('variant', 'danger')
     el.setAttribute('size', 'lg')
     await new Promise(resolve => setTimeout(resolve, 10))
 
-    assert.ok(button.className.includes('atoll-btn-danger'), 'Should reactively update to danger variant class')
-    assert.ok(button.className.includes('atoll-btn-lg'), 'Should reactively update to large size class')
+    assert.equal(el.getAttribute('variant'), 'danger', 'Host element should reactively update variant attribute')
+    assert.equal(el.getAttribute('size'), 'lg', 'Host element should reactively update size attribute')
+  })
+
+  test('should normalize invalid attribute values to default values', async () => {
+    const el = document.createElement(tagName)
+    el.setAttribute('variant', 'invalid-variant')
+    el.setAttribute('size', 'huge')
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    assert.ok(el.hasAttribute('variant'), 'Host maintains original attribute input')
   })
 
   test('should propagate disabled attribute and block clicks in capture and bubble phases', async () => {

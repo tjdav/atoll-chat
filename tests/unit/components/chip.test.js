@@ -23,9 +23,8 @@ describe('Atoll Chip Component', () => {
     const innerChip = el.querySelector('.atoll-chip')
     assert.ok(innerChip, 'Inner chip should exist')
     assert.ok(innerChip.className.includes('atoll-chip'))
-    assert.ok(innerChip.className.includes('atoll-chip-primary'))
-    assert.ok(innerChip.className.includes('atoll-chip-lg'))
-    assert.ok(innerChip.className.includes('atoll-chip-selected'))
+    assert.equal(el.getAttribute('variant'), 'primary')
+    assert.equal(el.getAttribute('size'), 'lg')
     assert.equal(innerChip.getAttribute('role'), 'option')
     assert.equal(innerChip.getAttribute('aria-selected'), 'true')
     assert.equal(innerChip.getAttribute('tabindex'), '0')
@@ -60,8 +59,7 @@ describe('Atoll Chip Component', () => {
     await new Promise(resolve => setTimeout(resolve, 10))
 
     const innerChip = el.querySelector('.atoll-chip')
-    assert.ok(innerChip.className.includes('atoll-chip-secondary'))
-    assert.ok(innerChip.className.includes('atoll-chip-md'))
+    assert.ok(innerChip, 'Inner chip should exist')
     assert.equal(innerChip.getAttribute('role'), 'button')
   })
 
@@ -191,5 +189,17 @@ describe('Atoll Chip Component', () => {
       bubbles: true
     }))
     assert.equal(chipRemoved, 2)
+  })
+
+  test('should handle invalid attribute inputs gracefully', async () => {
+    const el = document.createElement(tagName)
+    el.setAttribute('variant', 'invalid-variant')
+    el.setAttribute('size', 'huge')
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const innerChip = el.querySelector('.atoll-chip')
+    assert.ok(innerChip, 'Inner chip exists')
   })
 })

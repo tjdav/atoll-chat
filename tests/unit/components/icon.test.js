@@ -88,4 +88,21 @@ describe('Atoll Icon Component', () => {
     assert.equal(el.getAttribute('aria-label'), 'Logout of Application')
     assert.equal(el.hasAttribute('aria-hidden'), false)
   })
+
+  test('should handle required name attribute and missing name gracefully', async () => {
+    const el = document.createElement(tagName)
+    document.body.appendChild(el)
+
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const innerWrapper = el.querySelector('.atoll-icon')
+    assert.ok(innerWrapper, 'Inner wrapper should exist even if name is missing initially')
+
+    // Setting required name attribute
+    el.setAttribute('name', 'check')
+    await new Promise(resolve => setTimeout(resolve, 10))
+
+    const svg = innerWrapper.querySelector('svg.solar')
+    assert.ok(svg, 'Solar SVG should render after required name attribute is set')
+  })
 })

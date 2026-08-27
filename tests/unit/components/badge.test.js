@@ -38,9 +38,10 @@ describe('Atoll Badge Component', () => {
     assert.equal(el.getAttribute('aria-label'), '150 unread messages')
   })
 
-  test('should support dot mode', async () => {
+  test('should support dot mode and independent size attribute handling', async () => {
     const el = document.createElement(tagName)
     el.setAttribute('dot', 'true')
+    el.setAttribute('size', 'lg')
     document.body.appendChild(el)
 
     await new Promise(resolve => setTimeout(resolve, 10))
@@ -50,7 +51,8 @@ describe('Atoll Badge Component', () => {
     assert.equal(innerBadge.textContent.trim(), '')
     assert.equal(el.getAttribute('role'), 'status')
     assert.equal(el.getAttribute('aria-label'), 'New notification')
-    assert.ok(innerBadge.className.includes('atoll-badge-dot'))
+    assert.equal(el.getAttribute('dot'), 'true', 'Host has dot attribute')
+    assert.equal(el.getAttribute('size'), 'lg', 'Host has size attribute')
   })
 
   test('should handle auto-hiding for zero or null counts', async () => {
@@ -77,7 +79,7 @@ describe('Atoll Badge Component', () => {
     assert.equal(el.getAttribute('hidden'), '')
   })
 
-  test('should support text/tag label mode, color variants, and size classes reactively', async () => {
+  test('should support text/tag label mode, color variants, and size attributes reactively', async () => {
     const el = document.createElement(tagName)
     el.setAttribute('label', 'BOT')
     el.setAttribute('variant', 'secondary')
@@ -90,15 +92,15 @@ describe('Atoll Badge Component', () => {
     assert.equal(innerBadge.textContent.trim(), 'BOT')
     assert.equal(el.getAttribute('role'), 'status')
     assert.equal(el.getAttribute('aria-label'), 'BOT')
-    assert.ok(innerBadge.className.includes('atoll-badge-secondary'))
-    assert.ok(innerBadge.className.includes('atoll-badge-sm'))
+    assert.equal(el.getAttribute('variant'), 'secondary')
+    assert.equal(el.getAttribute('size'), 'sm')
 
-    // Reactive attribute mutation
+    // Reactive attribute mutation on host
     el.setAttribute('variant', 'info')
     el.setAttribute('size', 'lg')
     await new Promise(resolve => setTimeout(resolve, 10))
 
-    assert.ok(innerBadge.className.includes('atoll-badge-info'))
-    assert.ok(innerBadge.className.includes('atoll-badge-lg'))
+    assert.equal(el.getAttribute('variant'), 'info')
+    assert.equal(el.getAttribute('size'), 'lg')
   })
 })

@@ -114,45 +114,70 @@
     opacity: 1;
   }
 
-  /* Variant Modifiers */
-  .atoll-chip-secondary,
+  /* Variant Modifiers (Default: secondary) */
+  :host .atoll-chip,
   :host([variant="secondary"]) .atoll-chip {
     --atoll-chip-bg: var(--atoll-bg-surface-secondary, #F5F5F5);
     --atoll-chip-color: var(--atoll-text-primary, #111111);
     --atoll-chip-border: transparent;
   }
 
-  .atoll-chip-secondary:hover:not(.disabled),
+  :host .atoll-chip:hover:not(.disabled),
   :host([variant="secondary"]) .atoll-chip:hover:not(.disabled) {
     background-color: color-mix(in srgb, var(--atoll-bg-surface-secondary, #F5F5F5) 92%, #000000);
   }
 
-  .atoll-chip-outline,
   :host([variant="outline"]) .atoll-chip {
     --atoll-chip-bg: transparent;
     --atoll-chip-color: var(--atoll-text-primary, #111111);
     --atoll-chip-border: var(--atoll-border-subtle, #E8E8E8);
   }
 
-  .atoll-chip-outline:hover:not(.disabled),
   :host([variant="outline"]) .atoll-chip:hover:not(.disabled) {
     background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
   }
 
-  .atoll-chip-primary,
   :host([variant="primary"]) .atoll-chip {
     --atoll-chip-bg: var(--atoll-brand-primary, #06C755);
     --atoll-chip-color: #FFFFFF;
     --atoll-chip-border: transparent;
   }
 
-  .atoll-chip-primary:hover:not(.disabled),
   :host([variant="primary"]) .atoll-chip:hover:not(.disabled) {
     background-color: color-mix(in srgb, var(--atoll-brand-primary, #06C755) 90%, #000000);
   }
 
+  :host([variant="ghost"]) .atoll-chip {
+    --atoll-chip-bg: transparent;
+    --atoll-chip-color: var(--atoll-text-primary, #111111);
+    --atoll-chip-border: transparent;
+  }
+
+  :host([variant="ghost"]) .atoll-chip:hover:not(.disabled) {
+    background-color: var(--atoll-brand-subtle, rgba(6, 199, 85, 0.12));
+  }
+
+  :host([variant="info"]) .atoll-chip {
+    --atoll-chip-bg: rgba(66, 112, 237, 0.12);
+    --atoll-chip-color: var(--atoll-rainbow-blue, #4270ED);
+    --atoll-chip-border: transparent;
+  }
+
+  :host([variant="info"]) .atoll-chip:hover:not(.disabled) {
+    background-color: rgba(66, 112, 237, 0.2);
+  }
+
+  :host([variant="danger"]) .atoll-chip {
+    --atoll-chip-bg: rgba(255, 51, 75, 0.12);
+    --atoll-chip-color: var(--atoll-rainbow-red, #FF334B);
+    --atoll-chip-border: transparent;
+  }
+
+  :host([variant="danger"]) .atoll-chip:hover:not(.disabled) {
+    background-color: rgba(255, 51, 75, 0.2);
+  }
+
   /* Selected State Modifier */
-  .atoll-chip-selected,
   :host([selected]) .atoll-chip {
     --atoll-chip-bg: var(--atoll-brand-primary, #06C755) !important;
     --atoll-chip-color: #FFFFFF !important;
@@ -160,44 +185,12 @@
     font-weight: var(--atoll-font-weight-semibold, 600);
   }
 
-  .atoll-chip-selected .atoll-chip-remove:hover,
   :host([selected]) .atoll-chip .atoll-chip-remove:hover {
     background-color: rgba(255, 255, 255, 0.2);
   }
 
-  /* Size Modifiers */
-  .atoll-chip-sm,
-  :host([size="sm"]) .atoll-chip {
-    height: var(--atoll-chip-height-sm, 24px);
-    padding: 0 8px;
-    font-size: var(--atoll-font-size-caption-1, 12px);
-    font-weight: var(--atoll-font-weight-medium, 500);
-  }
-
-  .atoll-chip-sm img[slot="leading"],
-  .atoll-chip-sm [slot="leading"] img,
-  .atoll-chip-sm .atoll-chip-avatar,
-  :host([size="sm"]) .atoll-chip img[slot="leading"],
-  :host([size="sm"]) .atoll-chip [slot="leading"] img,
-  :host([size="sm"]) .atoll-chip .atoll-chip-avatar {
-    width: 20px;
-    height: 20px;
-  }
-
-  .atoll-chip-sm::before,
-  :host([size="sm"]) .atoll-chip::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    min-width: 100%;
-    min-height: 44px;
-    width: 44px;
-    z-index: 0;
-  }
-
-  .atoll-chip-md,
+  /* Size Modifiers (Default: md) */
+  :host .atoll-chip,
   :host([size="md"]) .atoll-chip {
     height: var(--atoll-chip-height-md, 32px);
     padding: 0 12px;
@@ -205,9 +198,9 @@
     font-weight: var(--atoll-font-weight-medium, 500);
   }
 
-  .atoll-chip-md img[slot="leading"],
-  .atoll-chip-md [slot="leading"] img,
-  .atoll-chip-md .atoll-chip-avatar,
+  :host .atoll-chip img[slot="leading"],
+  :host .atoll-chip [slot="leading"] img,
+  :host .atoll-chip .atoll-chip-avatar,
   :host([size="md"]) .atoll-chip img[slot="leading"],
   :host([size="md"]) .atoll-chip [slot="leading"] img,
   :host([size="md"]) .atoll-chip .atoll-chip-avatar {
@@ -215,7 +208,7 @@
     height: 24px;
   }
 
-  .atoll-chip-md::before,
+  :host .atoll-chip::before,
   :host([size="md"]) .atoll-chip::before {
     content: "";
     position: absolute;
@@ -228,7 +221,32 @@
     z-index: 0;
   }
 
-  .atoll-chip-lg,
+  :host([size="sm"]) .atoll-chip {
+    height: var(--atoll-chip-height-sm, 24px);
+    padding: 0 8px;
+    font-size: var(--atoll-font-size-caption-1, 12px);
+    font-weight: var(--atoll-font-weight-medium, 500);
+  }
+
+  :host([size="sm"]) .atoll-chip img[slot="leading"],
+  :host([size="sm"]) .atoll-chip [slot="leading"] img,
+  :host([size="sm"]) .atoll-chip .atoll-chip-avatar {
+    width: 20px;
+    height: 20px;
+  }
+
+  :host([size="sm"]) .atoll-chip::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 44px;
+    width: 44px;
+    z-index: 0;
+  }
+
   :host([size="lg"]) .atoll-chip {
     height: var(--atoll-chip-height-lg, 40px);
     padding: 0 16px;
@@ -236,9 +254,6 @@
     font-weight: var(--atoll-font-weight-medium, 500);
   }
 
-  .atoll-chip-lg img[slot="leading"],
-  .atoll-chip-lg [slot="leading"] img,
-  .atoll-chip-lg .atoll-chip-avatar,
   :host([size="lg"]) .atoll-chip img[slot="leading"],
   :host([size="lg"]) .atoll-chip [slot="leading"] img,
   :host([size="lg"]) .atoll-chip .atoll-chip-avatar {
@@ -277,11 +292,13 @@
     attributes: {
       variant: {
         type: String,
-        default: 'secondary'
+        default: 'secondary',
+        values: ['primary', 'secondary', 'outline', 'ghost', 'info', 'danger']
       },
       size: {
         type: String,
-        default: 'md'
+        default: 'md',
+        values: ['sm', 'md', 'lg']
       },
       selected: Boolean,
       removable: Boolean,
@@ -379,36 +396,16 @@
     getters: {
       chipClasses: (state) => {
         const classes = ['atoll-chip']
-
-        // Variant modifier
-        if (state.variant) {
-          classes.push(`atoll-chip-${state.variant}`)
-        } else {
-          classes.push('atoll-chip-secondary')
-        }
-
-        // Size modifier
-        if (state.size) {
-          classes.push(`atoll-chip-${state.size}`)
-        } else {
-          classes.push('atoll-chip-md')
-        }
-
-        // State modifiers
-        if (state.selected) {
-          classes.push('atoll-chip-selected')
-        }
         if (state.removable) {
           classes.push('atoll-chip-removable')
         }
         if (state.disabled) {
           classes.push('disabled')
         }
-
         return classes.join(' ')
       },
 
-      chipRole: (state) => (state.selected !== undefined ? 'option' : 'button'),
+      chipRole: (state) => (state.selected !== undefined && state.selected !== false ? 'option' : 'button'),
       isAriaSelected: (state) => (state.selected ? 'true' : 'false'),
       chipTabindex: (state) => (state.disabled ? '-1' : '0')
     },

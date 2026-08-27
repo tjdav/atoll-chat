@@ -1,5 +1,5 @@
 <template id="atoll-badge">
-  <span class="atoll-badge {{ badgeClasses }}" hidden="{{ isHidden }}">
+  <span class="atoll-badge" hidden="{{ isHidden }}">
     {{ displayText }}
   </span>
 </template>
@@ -51,50 +51,40 @@
     pointer-events: none !important;
   }
 
-  /* Badge Color Variant Modifiers */
-  .atoll-badge-danger,
+  /* Badge Color Variant Modifiers (Default: danger) */
+  :host .atoll-badge,
   :host([variant="danger"]) .atoll-badge {
     --atoll-badge-bg: var(--atoll-rainbow-red, #FF334B);
     --atoll-badge-color: #FFFFFF;
   }
 
-  .atoll-badge-primary,
   :host([variant="primary"]) .atoll-badge {
     --atoll-badge-bg: var(--atoll-brand-primary, #06C755);
     --atoll-badge-color: #FFFFFF;
   }
 
-  .atoll-badge-secondary,
   :host([variant="secondary"]) .atoll-badge {
     --atoll-badge-bg: var(--atoll-bg-surface-tertiary, #E8E8E8);
     --atoll-badge-color: var(--atoll-text-secondary, #555555);
   }
 
-  .atoll-badge-info,
   :host([variant="info"]) .atoll-badge {
     --atoll-badge-bg: var(--atoll-rainbow-blue, #4270ED);
     --atoll-badge-color: #FFFFFF;
   }
 
-  /* Badge Size Modifiers */
-  .atoll-badge-dot,
-  :host([dot]) .atoll-badge {
-    width: var(--atoll-badge-dot-size, 8px);
-    height: var(--atoll-badge-dot-size, 8px);
-    min-width: var(--atoll-badge-dot-size, 8px);
-    padding: 0;
+  :host([variant="success"]) .atoll-badge {
+    --atoll-badge-bg: var(--atoll-brand-primary, #06C755);
+    --atoll-badge-color: #FFFFFF;
   }
 
-  .atoll-badge-sm,
-  :host([size="sm"]) .atoll-badge {
-    height: var(--atoll-badge-height-sm, 16px);
-    min-width: var(--atoll-badge-height-sm, 16px);
-    padding: 0 4px;
-    font-size: var(--atoll-font-size-caption-2, 10px);
-    font-weight: var(--atoll-font-weight-medium, 500);
+  :host([variant="warning"]) .atoll-badge {
+    --atoll-badge-bg: var(--atoll-rainbow-yellow, #FCB321);
+    --atoll-badge-color: #FFFFFF;
   }
 
-  .atoll-badge-md,
+  /* Badge Size Modifiers (Default: md) */
+  :host .atoll-badge,
   :host([size="md"]) .atoll-badge {
     height: var(--atoll-badge-height-md, 20px);
     min-width: var(--atoll-badge-height-md, 20px);
@@ -103,13 +93,28 @@
     font-weight: var(--atoll-font-weight-semibold, 600);
   }
 
-  .atoll-badge-lg,
+  :host([size="sm"]) .atoll-badge {
+    height: var(--atoll-badge-height-sm, 16px);
+    min-width: var(--atoll-badge-height-sm, 16px);
+    padding: 0 4px;
+    font-size: var(--atoll-font-size-caption-2, 10px);
+    font-weight: var(--atoll-font-weight-medium, 500);
+  }
+
   :host([size="lg"]) .atoll-badge {
     height: var(--atoll-badge-height-lg, 24px);
     min-width: var(--atoll-badge-height-lg, 24px);
     padding: 0 8px;
     font-size: var(--atoll-font-size-body-2, 14px);
     font-weight: var(--atoll-font-weight-semibold, 600);
+  }
+
+  /* Dot Mode Modifier */
+  :host([dot]) .atoll-badge {
+    width: var(--atoll-badge-dot-size, 8px) !important;
+    height: var(--atoll-badge-dot-size, 8px) !important;
+    min-width: var(--atoll-badge-dot-size, 8px) !important;
+    padding: 0 !important;
   }
 
   /* Relative Positioning Wrapper Helpers */
@@ -145,11 +150,13 @@
       dot: Boolean,
       variant: {
         type: String,
-        default: 'danger'
+        default: 'danger',
+        values: ['danger', 'primary', 'secondary', 'info', 'success', 'warning']
       },
       size: {
         type: String,
-        default: 'md'
+        default: 'md',
+        values: ['sm', 'md', 'lg']
       },
       label: {
         type: String,
@@ -159,28 +166,6 @@
     },
 
     getters: {
-      badgeClasses: (state) => {
-        const classes = []
-
-        // Variant modifier
-        if (state.variant) {
-          classes.push(`atoll-badge-${state.variant}`)
-        } else {
-          classes.push('atoll-badge-danger')
-        }
-
-        // Size / Dot modifier
-        if (state.dot) {
-          classes.push('atoll-badge-dot')
-        } else if (state.size) {
-          classes.push(`atoll-badge-${state.size}`)
-        } else {
-          classes.push('atoll-badge-md')
-        }
-
-        return classes.join(' ')
-      },
-
       isHidden: (state) => {
         if (state.dot) {
           return false
