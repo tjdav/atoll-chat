@@ -9,52 +9,7 @@ export default definePlugin({
   name: 'storage',
   client: {
     context: async (pluginContext) => {
-      /**
-       * Traverses an object deeply to identify and gather all transferable objects
-       * (e.g. ArrayBuffer, TypedArray buffers) to optimize postMessage operations.
-       *
-       * @param {*} obj - The target object to scan.
-       * @param {Set<*>} [seen=new Set()] - A set used to prevent cyclic references during traversal.
-       * @returns {Array<ArrayBuffer>} An array containing unique transferable objects.
-       * @throws {TypeError} Re-throws unexpected type errors not related to non-serializable properties.
-       */
-      function getTransferables (obj, seen = new Set()) {
-        if (!obj || typeof obj !== 'object') {
-          return []
-        }
-        if (seen.has(obj)) {
-          return []
-        }
-        seen.add(obj)
-
-        const transferables = []
-
-        if (obj instanceof ArrayBuffer) {
-          transferables.push(obj)
-        } else if (ArrayBuffer.isView(obj) && obj.buffer instanceof ArrayBuffer) {
-          transferables.push(obj.buffer)
-        } else {
-          try {
-            const keys = Object.keys(obj)
-            for (let i = 0; i < keys.length; i++) {
-              const val = obj[keys[i]]
-              if (val && typeof val === 'object') {
-                transferables.push(...getTransferables(val, seen))
-              }
-            }
-          } catch (err) {
-            /* Re-throw unexpected system or network errors.
-               Ignore only expected TypeErrors or SecurityErrors (non-serializable/restricted properties),
-               returning whatever transferables we have already gathered up to this point. */
-            if (err instanceof TypeError || (err instanceof Error && err.name === 'SecurityError')) {
-              return Array.from(new Set(transferables))
-            }
-            throw err
-          }
-        }
-
-        return Array.from(new Set(transferables))
-      }
+      const { getTransferables } = await import('../utils/transferables.js')
 
       let resolvedAdapter = null
 

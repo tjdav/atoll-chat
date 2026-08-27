@@ -41,38 +41,6 @@ const rawSelf = self
 /** @type {WorkerScope} */
 const workerSelf = rawSelf
 
-function getTransferables (obj, seen = new Set()) {
-  if (!obj || typeof obj !== 'object') {
-    return []
-  }
-  if (seen.has(obj)) {
-    return []
-  }
-  seen.add(obj)
-
-  const transferables = []
-
-  if (obj instanceof ArrayBuffer) {
-    transferables.push(obj)
-  } else if (ArrayBuffer.isView(obj) && obj.buffer instanceof ArrayBuffer) {
-    transferables.push(obj.buffer)
-  } else {
-    try {
-      const keys = Object.keys(obj)
-      for (let i = 0; i < keys.length; i++) {
-        const val = obj[keys[i]]
-        if (val && typeof val === 'object') {
-          transferables.push(...getTransferables(val, seen))
-        }
-      }
-    } catch (_) {
-      // ignore non-serializable properties or errors
-    }
-  }
-
-  return Array.from(new Set(transferables))
-}
-
 const nativePostMessage = self.postMessage
 self.postMessage = function (message, transferOrOptions) {
   const transferables = getTransferables(message)

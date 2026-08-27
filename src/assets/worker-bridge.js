@@ -52,6 +52,8 @@ function getTransferables (obj, seen = new Set()) {
   return Array.from(new Set(transferables))
 }
 
+self.getTransferables = getTransferables
+
 self.workerBridge = {
   /**
    * Sends an asynchronous storage request to the main thread.
