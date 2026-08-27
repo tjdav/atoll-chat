@@ -34,13 +34,6 @@ export function getVaultKey () {
 }
 
 /**
- *
- */
-export function setVaultKey (key) {
-  ephemeralVaultKey = key
-}
-
-/**
  * Derives Auth and Vault Keys using Argon2id.
  * Uses compile-time environment evaluation for production tree-shaking.
  */
