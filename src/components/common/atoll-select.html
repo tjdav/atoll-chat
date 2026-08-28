@@ -1,7 +1,7 @@
 <template id="atoll-select">
   <details 
     ref="detailsElement"
-    class="{{ selectContainerClasses }}"
+    class="atoll-select"
   >
     <!-- Hidden Input for Form Submission Integration -->
     <input 
@@ -14,13 +14,14 @@
     <!-- Summary Toggle Button (role="combobox") -->
     <summary 
       ref="toggleElement"
-      class="{{ toggleClasses }}"
+      class="atoll-select-toggle"
       role="combobox"
       aria-haspopup="listbox"
       aria-expanded="{{ isExpanded }}"
       aria-controls="{{ ref_menuList }}"
       aria-disabled="{{ isDisabled }}"
       tabindex="{{ summaryTabIndex }}"
+      data-variant="{{ variant }}"
     >
       <span class="atoll-select-label-group">
         <slot name="leading"></slot>
@@ -47,6 +48,17 @@
     display: inline-block;
     position: relative;
     width: 100%;
+    vertical-align: middle;
+
+    --select-padding-y: 0.5rem;
+    --select-padding-x: 0.75rem;
+    --select-font-size: var(--atoll-font-size-body-2, 14px);
+    --select-radius: var(--atoll-radius-md, 12px);
+    --select-bg: var(--atoll-input-bg, var(--atoll-bg-surface-secondary, #F5F5F5));
+    --select-color: var(--atoll-text-primary, #111111);
+    --select-border: var(--atoll-border-subtle, #E8E8E8);
+    --select-focus-border: var(--atoll-primary, #06C755);
+    --select-focus-ring: color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
   }
 
   :host([hidden]) {
@@ -56,6 +68,21 @@
   :host([block]) {
     display: block;
     width: 100%;
+  }
+
+  /* Size Modifiers */
+  :host([size="sm"]) {
+    --select-padding-y: 0.25rem;
+    --select-padding-x: 0.5rem;
+    --select-font-size: 12px;
+    --select-radius: var(--atoll-radius-sm, 8px);
+  }
+
+  :host([size="lg"]) {
+    --select-padding-y: 0.75rem;
+    --select-padding-x: 1rem;
+    --select-font-size: 16px;
+    --select-radius: var(--atoll-radius-lg, 14px);
   }
 
   .atoll-select {
@@ -73,19 +100,42 @@
     display: none;
   }
 
+  /* Variants */
+  :host([variant="primary"]) {
+    --select-bg: var(--atoll-primary, #06C755);
+    --select-color: #FFFFFF;
+    --select-border: var(--atoll-primary, #06C755);
+  }
+
+  :host([variant="outline"]) {
+    --select-bg: transparent;
+    --select-border: var(--atoll-border-subtle, #E8E8E8);
+  }
+
+  :host([variant="ghost"]) {
+    --select-bg: transparent;
+    --select-border: transparent;
+  }
+
+  :host([variant="danger"]) {
+    --select-bg: var(--atoll-danger, #FF3B30);
+    --select-color: #FFFFFF;
+    --select-border: var(--atoll-danger, #FF3B30);
+  }
+
   /* Summary Toggle Button */
   .atoll-select-toggle {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    padding: 0.5rem 0.75rem;
+    padding: var(--select-padding-y) var(--select-padding-x);
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
-    font-size: var(--atoll-font-size-body-2, 14px);
-    color: var(--atoll-text-primary, #111111);
-    background-color: var(--atoll-input-bg, var(--atoll-bg-surface-secondary, #F5F5F5));
-    border: 1px solid var(--atoll-border-subtle, #E8E8E8);
-    border-radius: var(--atoll-radius-md, 12px);
+    font-size: var(--select-font-size);
+    color: var(--select-color);
+    background-color: var(--select-bg);
+    border: 1px solid var(--select-border);
+    border-radius: var(--select-radius);
     cursor: pointer;
     user-select: none;
     transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.15s ease-in-out;
@@ -98,11 +148,13 @@
   .atoll-select-toggle:focus,
   .atoll-select-toggle:focus-visible {
     background-color: var(--atoll-bg-surface-primary, #FFFFFF);
-    border-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
-    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
+    border-color: var(--select-focus-border);
+    box-shadow: 0 0 0 0.25rem var(--select-focus-ring);
     outline: none;
   }
 
+  :host([disabled]) .atoll-select-toggle,
+  :host([aria-disabled="true"]) .atoll-select-toggle,
   .atoll-select-toggle.disabled,
   .atoll-select-toggle[aria-disabled="true"] {
     opacity: 0.5;
@@ -185,6 +237,8 @@
     transform: translateY(0) scale(1);
   }
 
+  /* Dropup Placement */
+  :host([placement="up"]) .atoll-select-menu,
   .atoll-select.atoll-select-dropup .atoll-select-menu {
     top: auto;
     bottom: calc(100% + 4px);
@@ -192,16 +246,20 @@
     transform-origin: bottom center;
   }
 
+  :host([placement="up"]) details[open] > .atoll-select-menu,
   .atoll-select.atoll-select-dropup details[open] > .atoll-select-menu {
     opacity: 1;
     transform: translateY(0) scale(1);
   }
 
+  /* Alignment Modifiers */
+  :host([align="end"]) .atoll-select-menu,
   .atoll-select.atoll-select-align-end .atoll-select-menu {
     left: auto;
     right: 0;
   }
 
+  /* Exit Closing Transition */
   .atoll-select.atoll-select-closing > .atoll-select-menu {
     opacity: 0 !important;
     transform: translateY(-6px) scale(0.98) !important;
@@ -209,7 +267,8 @@
                 transform 140ms cubic-bezier(0.4, 0, 1, 1) !important;
   }
 
-  .atoll-select.atoll-select-dropup.atoll-select-closing > .atoll-select-menu {
+  .atoll-select.atoll-select-dropup.atoll-select-closing > .atoll-select-menu,
+  :host([placement="up"]) .atoll-select.atoll-select-closing > .atoll-select-menu {
     transform: translateY(6px) scale(0.98) !important;
   }
 
@@ -223,16 +282,6 @@
   .atoll-select-trailing {
     display: inline-flex;
     align-items: center;
-  }
-
-  .atoll-select.atoll-select-sm .atoll-select-toggle {
-    padding: 0.25rem 0.5rem;
-    font-size: 12px;
-  }
-
-  .atoll-select.atoll-select-lg .atoll-select-toggle {
-    padding: 0.75rem 1rem;
-    font-size: 16px;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -308,22 +357,23 @@
       },
       size: {
         type: String,
-        // 'sm' | 'md' | 'lg'
-        default: 'md'
+        default: 'md',
+        values: ['sm', 'md', 'lg']
       },
       variant: {
         type: String,
-        default: 'secondary'
+        default: 'secondary',
+        values: ['primary', 'secondary', 'outline', 'ghost', 'danger', 'info', 'link']
       },
       placement: {
         type: String,
-        // 'down' | 'up'
-        default: 'down'
+        default: 'down',
+        values: ['down', 'up']
       },
       align: {
         type: String,
-        // 'start' | 'end'
-        default: 'start'
+        default: 'start',
+        values: ['start', 'end']
       },
       disabled: Boolean,
       block: Boolean,
@@ -352,9 +402,7 @@
 
     slots: {
       leading (nodes, state) {
-        if (typeof document === 'undefined') {
-          return null
-        }
+        if (typeof document === 'undefined') return null
 
         if (state.leadingIcon) {
           const span = document.createElement('span')
@@ -377,9 +425,7 @@
       },
 
       trailing (nodes, state) {
-        if (typeof document === 'undefined') {
-          return null
-        }
+        if (typeof document === 'undefined') return null
 
         if (nodes && nodes.length > 0) {
           const span = document.createElement('span')
@@ -399,49 +445,15 @@
     },
 
     getters: {
-      selectContainerClasses: (state) => {
-        const classes = ['atoll-select']
-        if (state.size) {
-          classes.push(`atoll-select-${state.size}`)
-        }
-        if (state.block) {
-          classes.push('w-100')
-        }
-        if (state.placement === 'up' || state.isFlipped) {
-          classes.push('atoll-select-dropup')
-        }
-        if (state.align === 'end') {
-          classes.push('atoll-select-align-end')
-        }
-        return classes.join(' ')
-      },
-
-      toggleClasses: (state) => {
-        const classes = ['atoll-select-toggle']
-        if (state.variant) {
-          classes.push(`btn-${state.variant}`)
-        }
-        if (state.disabled) {
-          classes.push('disabled')
-        }
-        return classes.join(' ')
-      },
-
       isDisabled: (state) => Boolean(state.disabled),
-
       isExpanded: (state) => Boolean(state.open),
-
       summaryTabIndex: (state) => (state.disabled ? -1 : 0),
-
       selectedLabel: (state) => state.selectedLabelText || state.placeholder,
-
       ref_menuList: (_state, { instanceId }) => (instanceId ? `${instanceId}-menu` : 'atoll-select-menu')
     },
 
     client: ({ state, refs, root, observe, signal }) => {
-      if (root.__initialized) {
-        return
-      }
+      if (root.__initialized) return
       root.__initialized = true
 
       const detailsEl = refs('detailsElement')
@@ -450,7 +462,6 @@
       const hiddenInput = refs('hiddenInput')
       const labelEl = refs('labelElement')
 
-      // Self-healing pre-hydration attributes
       const preExistingValue = root.value !== undefined ? root.value : root.getAttribute('value')
       if (preExistingValue !== undefined && preExistingValue !== null) {
         state.value = String(preExistingValue)
@@ -466,7 +477,6 @@
         state.open = Boolean(preExistingOpen)
       }
 
-      // Forward test-id / data-testid to inner toggle button summary
       const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
       if (testId) {
         root.__testId = testId
@@ -483,7 +493,7 @@
       const checkAutoFlip = () => {
         if (state.autoFlip === false || state.placement === 'up') {
           if (state.placement === 'up') {
-            state.isFlipped = true
+            detailsEl.classList.add('atoll-select-dropup')
           }
           return
         }
@@ -491,28 +501,27 @@
         const spaceBelow = window.innerHeight - rect.bottom
         const spaceAbove = rect.top
         const menuEstimatedHeight = 260
-        state.isFlipped = spaceBelow < menuEstimatedHeight && spaceAbove > spaceBelow
+        const shouldFlip = spaceBelow < menuEstimatedHeight && spaceAbove > spaceBelow
+        if (shouldFlip) {
+          detailsEl.classList.add('atoll-select-dropup')
+        } else {
+          detailsEl.classList.remove('atoll-select-dropup')
+        }
       }
 
       const syncDisabledState = () => {
-        if (toggleEl) {
-          toggleEl.setAttribute('aria-disabled', state.disabled ? 'true' : 'false')
-          toggleEl.setAttribute('tabindex', state.disabled ? '-1' : '0')
-          if (state.disabled) {
-            toggleEl.classList.add('disabled')
-          } else {
-            toggleEl.classList.remove('disabled')
-          }
+        toggleEl.setAttribute('aria-disabled', state.disabled ? 'true' : 'false')
+        toggleEl.setAttribute('tabindex', state.disabled ? '-1' : '0')
+        if (state.disabled) {
+          toggleEl.classList.add('disabled')
+        } else {
+          toggleEl.classList.remove('disabled')
         }
       }
 
       const show = () => {
-        if (state.disabled || state.open) {
-          return
-        }
-        if (closeTimeout) {
-          clearTimeout(closeTimeout)
-        }
+        if (state.disabled || (state.open && detailsEl.hasAttribute('open'))) return
+        if (closeTimeout) clearTimeout(closeTimeout)
         isClosing = false
         detailsEl.classList.remove('atoll-select-closing')
         state.open = true
@@ -522,24 +531,18 @@
       }
 
       const hide = () => {
-        if (!state.open || isClosing) {
-          return
-        }
+        if (!state.open || isClosing) return
         isClosing = true
         detailsEl.classList.add('atoll-select-closing')
 
         let transitionHandled = false
         const handleEnd = () => {
-          if (transitionHandled) {
-            return
-          }
+          if (transitionHandled) return
           transitionHandled = true
-          if (closeTimeout) {
-            clearTimeout(closeTimeout)
-          }
+          if (closeTimeout) clearTimeout(closeTimeout)
           state.open = false
-          state.isFlipped = false
           detailsEl.classList.remove('atoll-select-closing')
+          detailsEl.classList.remove('atoll-select-dropup')
           detailsEl.removeAttribute('open')
           root.removeAttribute('open')
           isClosing = false
@@ -564,7 +567,6 @@
         }
       }
 
-      // Sync active state and selected label text from options in default slot
       const updateSelectedLabel = () => {
         const items = menuEl.querySelectorAll('.dropdown-item, [data-value], option')
         let foundLabel = ''
@@ -590,12 +592,9 @@
         }
       }
 
-      // Option selection handler
       const handleMenuClick = (event) => {
         const item = event.target.closest('.dropdown-item:not([disabled]), [data-value]:not([disabled]), option:not([disabled])')
-        if (!item || state.disabled) {
-          return
-        }
+        if (!item || state.disabled) return
 
         const selectedValue = item.getAttribute('data-value') ?? item.getAttribute('value') ?? item.value ?? item.textContent.trim()
         const selectedLabel = item.textContent.trim()
@@ -626,20 +625,14 @@
 
       menuEl.addEventListener('click', handleMenuClick, { signal })
 
-      // Toggle click handler on summary
       toggleEl.addEventListener('click', (e) => {
         e.preventDefault()
-        if (state.disabled) {
-          return
-        }
+        if (state.disabled) return
         toggle()
       }, { signal })
 
-      // Prevent details native toggle from firing out of order
       detailsEl.addEventListener('toggle', () => {
-        if (isClosing) {
-          return
-        }
+        if (isClosing) return
         const isDetailsOpen = detailsEl.hasAttribute('open')
         if (isDetailsOpen && !state.open) {
           show()
@@ -648,7 +641,6 @@
         }
       }, { signal })
 
-      // Outside click handler
       const handleOutsideClick = (e) => {
         const isOutside = !root.contains(e.target) && e.target !== root
         if (state.open && isOutside) {
@@ -658,20 +650,31 @@
       document.addEventListener('pointerdown', handleOutsideClick, { signal })
       document.addEventListener('mousedown', handleOutsideClick, { signal })
 
-      // Keyboard navigation handler (WAI-ARIA APG pattern)
       let typeaheadQuery = ''
       let typeaheadTimer = null
 
       const getOptions = () => Array.from(menuEl.querySelectorAll('.dropdown-item:not([disabled]), [data-value]:not([disabled]), option:not([disabled])'))
 
       const handleKeyDown = (e) => {
-        if (state.disabled) {
-          return
-        }
+        if (state.disabled) return
 
         const options = getOptions()
         const activeEl = document.activeElement
         const currentIndex = options.indexOf(activeEl)
+
+        // Typeahead character query search
+        if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
+          typeaheadQuery += e.key.toLowerCase()
+          clearTimeout(typeaheadTimer)
+          typeaheadTimer = setTimeout(() => { typeaheadQuery = '' }, 500)
+
+          const match = options.find(opt => opt.textContent.trim().toLowerCase().startsWith(typeaheadQuery))
+          if (match) {
+            if (!state.open) show()
+            match.focus()
+          }
+          return
+        }
 
         switch (e.key) {
           case 'Enter':
@@ -691,14 +694,10 @@
               show()
               requestAnimationFrame(() => {
                 const opts = getOptions()
-                if (opts.length > 0) {
-                  opts[0].focus()
-                }
+                if (opts.length > 0) opts[0].focus()
               })
             } else if (currentIndex === -1) {
-              if (options.length > 0) {
-                options[0].focus()
-              }
+              if (options.length > 0) options[0].focus()
             } else {
               const nextIndex = (currentIndex + 1) % options.length
               options[nextIndex].focus()
@@ -711,14 +710,10 @@
               show()
               requestAnimationFrame(() => {
                 const opts = getOptions()
-                if (opts.length > 0) {
-                  opts[opts.length - 1].focus()
-                }
+                if (opts.length > 0) opts[opts.length - 1].focus()
               })
             } else if (currentIndex === -1) {
-              if (options.length > 0) {
-                options[options.length - 1].focus()
-              }
+              if (options.length > 0) options[options.length - 1].focus()
             } else {
               const prevIndex = (currentIndex - 1 + options.length) % options.length
               options[prevIndex].focus()
@@ -752,32 +747,11 @@
               hide()
             }
             break
-
-          default:
-            if (e.key.length === 1 && !e.ctrlKey && !e.metaKey && !e.altKey) {
-              if (typeaheadTimer) {
-                clearTimeout(typeaheadTimer)
-              }
-              typeaheadQuery += e.key.toLowerCase()
-              typeaheadTimer = setTimeout(() => {
-                typeaheadQuery = ''
-              }, 500)
-
-              const match = options.find(opt => opt.textContent.trim().toLowerCase().startsWith(typeaheadQuery))
-              if (match) {
-                if (!state.open) {
-                  show()
-                }
-                requestAnimationFrame(() => match.focus())
-              }
-            }
-            break
         }
       }
 
-      root.addEventListener('keydown', handleKeyDown, { signal })
+      detailsEl.addEventListener('keydown', handleKeyDown, { signal })
 
-      // MutationObserver for slot changes (async options)
       const observer = new MutationObserver(() => {
         updateSelectedLabel()
       })
@@ -788,43 +762,51 @@
       })
       signal.addEventListener('abort', () => observer.disconnect())
 
-      // Form reset handler (listens at document level to catch reset events regardless of mount order)
       document.addEventListener('reset', (e) => {
         const form = root.closest('form')
         if (form && (e.target === form || form.contains(e.target))) {
-          const resetVal = root.getAttribute('value') ?? hiddenInput?.getAttribute('value') ?? ''
-          state.value = resetVal
-          if (hiddenInput) {
-            hiddenInput.value = resetVal
-          }
-          updateSelectedLabel()
+          setTimeout(() => {
+            const resetVal = root.getAttribute('value') ?? hiddenInput?.getAttribute('value') ?? ''
+            state.value = resetVal
+            if (hiddenInput) hiddenInput.value = resetVal
+            updateSelectedLabel()
+          }, 0)
         }
       }, { signal })
 
-      // Observe reactive state and attributes
       if (observe) {
-        observe('value', (val) => {
-          if (hiddenInput) {
-            hiddenInput.value = String(val || '')
+        observe('value', () => {
+          if (hiddenInput && hiddenInput.value !== state.value) {
+            hiddenInput.value = state.value || ''
           }
           updateSelectedLabel()
         })
+
         observe('disabled', () => {
           syncDisabledState()
         })
-        observe('open', (val) => {
-          const isOpen = val === 'true' || val === true || val === ''
-          if (isOpen) {
+
+        observe('open', () => {
+          if (state.open) {
             show()
           } else {
             hide()
           }
         })
       }
+
       updateSelectedLabel()
       syncDisabledState()
+      if (state.open) {
+        show()
+      }
 
-      // Define properties directly on custom element host
+      root.show = show
+      root.hide = hide
+      root.toggle = toggle
+      root.focus = () => toggleEl?.focus()
+      root.blur = () => toggleEl?.blur()
+
       Object.defineProperty(root, 'disabled', {
         get () {
           return Boolean(state.disabled)
@@ -848,9 +830,7 @@
         },
         set (val) {
           state.value = String(val || '')
-          if (hiddenInput) {
-            hiddenInput.value = state.value
-          }
+          if (hiddenInput) hiddenInput.value = state.value
           updateSelectedLabel()
         },
         configurable: true
@@ -871,12 +851,10 @@
         configurable: true
       })
 
-      // Public imperative API
-      root.show = show
-      root.hide = hide
-      root.toggle = toggle
-      root.focus = () => toggleEl?.focus()
-      root.blur = () => toggleEl?.blur()
+      signal.addEventListener('abort', () => {
+        if (closeTimeout) clearTimeout(closeTimeout)
+        clearTimeout(typeaheadTimer)
+      })
     }
   })
 </script>
