@@ -1,11 +1,11 @@
 <template id="atoll-popup">
   <dialog 
     ref="modalElement"
-    class="modal atoll-popup-dialog-native {{ dialogClasses }}" 
+    class="modal atoll-popup-dialog-native" 
     aria-labelledby="{{ ref_modalTitle }}"
     aria-describedby="{{ ref_modalDesc }}"
   >
-    <div class="modal-dialog modal-dialog-centered atoll-popup-dialog {{ dialogClasses }}">
+    <div class="modal-dialog modal-dialog-centered atoll-popup-dialog">
       <div class="modal-content">
         <!-- Optional Hero Graphic / Illustration Slot -->
         <slot name="hero"></slot>
@@ -42,6 +42,27 @@
 <style>
   :host {
     display: contents !important;
+
+    --popup-radius: 20px;
+    --popup-padding: 24px;
+    --popup-max-width: 360px;
+    --popup-bg: var(--atoll-bg-surface-primary, #ffffff);
+    --popup-title-color: var(--atoll-text-primary, #111111);
+    --popup-desc-color: var(--atoll-text-secondary, #666666);
+    --popup-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
+    --popup-scrollbar-thumb: rgba(0, 0, 0, 0.15);
+    --popup-scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  }
+
+  /* Size Modifiers */
+  :host([size="sm"]) {
+    --popup-max-width: 300px;
+    --popup-padding: 20px;
+  }
+
+  :host([size="lg"]) {
+    --popup-max-width: 480px;
+    --popup-padding: 32px;
   }
 
   dialog.atoll-popup-dialog-native {
@@ -111,21 +132,23 @@
   }
 
   @keyframes atollPopupFadeIn {
-    from {
-      opacity: 0;
-    }
-    to {
-      opacity: 1;
-    }
+    from { opacity: 0; }
+    to { opacity: 1; }
   }
 
   @keyframes atollPopupFadeOut {
-    from {
-      opacity: 1;
-    }
-    to {
-      opacity: 0;
-    }
+    from { opacity: 1; }
+    to { opacity: 0; }
+  }
+
+  @keyframes atollPopupShake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-6px); }
+    40%, 80% { transform: translateX(6px); }
+  }
+
+  .atoll-popup-static-shake {
+    animation: atollPopupShake 0.3s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
   }
 
   .atoll-popup-dialog {
@@ -137,29 +160,16 @@
 
     width: 100%;
     width: calc(100% - 32px);
+    max-width: var(--popup-max-width);
     min-height: auto;
     max-height: 85vh;
     margin: auto;
 
-    --atoll-popup-radius: 20px;
-    --atoll-popup-padding: 24px;
-    --atoll-popup-max-width-sm: 300px;
-    --atoll-popup-max-width-md: 360px;
-    --atoll-popup-max-width-lg: 480px;
-
-    --atoll-popup-bg: var(--atoll-bg-surface-primary, #ffffff);
-    --atoll-popup-title-color: var(--atoll-text-primary, #111111);
-    --atoll-popup-desc-color: var(--atoll-text-secondary, #666666);
-    --atoll-popup-backdrop-bg: var(--atoll-backdrop-bg, rgba(0, 0, 0, 0.45));
-    --atoll-popup-shadow: 0 12px 32px rgba(0, 0, 0, 0.18);
-    --atoll-popup-scrollbar-thumb: rgba(0, 0, 0, 0.15);
-    --atoll-popup-scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
-
-    background-color: var(--atoll-popup-bg);
+    background-color: var(--popup-bg);
     border: none;
-    border-radius: var(--atoll-popup-radius);
-    padding: var(--atoll-popup-padding);
-    box-shadow: var(--atoll-popup-shadow);
+    border-radius: var(--popup-radius);
+    padding: var(--popup-padding);
+    box-shadow: var(--popup-shadow);
     box-sizing: border-box;
     text-align: center;
     overflow: hidden;
@@ -176,13 +186,6 @@
     border: none !important;
     box-shadow: none !important;
     overflow: hidden;
-  }
-
-  .modal-backdrop.show {
-    opacity: 1 !important;
-    background-color: var(--atoll-backdrop-bg, rgba(0, 0, 0, 0.45)) !important;
-    -webkit-backdrop-filter: var(--atoll-backdrop-filter, blur(8px)) !important;
-    backdrop-filter: var(--atoll-backdrop-filter, blur(8px)) !important;
   }
 
   .atoll-popup-hero {
@@ -231,7 +234,7 @@
     padding-right: 4px;
 
     scrollbar-width: thin;
-    scrollbar-color: var(--atoll-popup-scrollbar-thumb) transparent;
+    scrollbar-color: var(--popup-scrollbar-thumb) transparent;
   }
 
   .atoll-popup-body::-webkit-scrollbar {
@@ -243,12 +246,12 @@
   }
 
   .atoll-popup-body::-webkit-scrollbar-thumb {
-    background-color: var(--atoll-popup-scrollbar-thumb);
+    background-color: var(--popup-scrollbar-thumb);
     border-radius: 10px;
   }
 
   .atoll-popup-body::-webkit-scrollbar-thumb:hover {
-    background-color: var(--atoll-popup-scrollbar-thumb-hover);
+    background-color: var(--popup-scrollbar-thumb-hover);
   }
 
   .atoll-popup-body:focus {
@@ -265,15 +268,19 @@
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
     font-size: var(--atoll-font-size-body-1, 16px);
     font-weight: var(--atoll-font-weight-bold, 700);
-    color: var(--atoll-popup-title-color);
+    color: var(--popup-title-color);
     line-height: 1.35;
     margin: 0;
+  }
+
+  :host([size="lg"]) .atoll-popup-title {
+    font-size: var(--atoll-font-size-title-2, 18px);
   }
 
   .atoll-popup-description {
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
     font-size: var(--atoll-font-size-body-2, 14px);
-    color: var(--atoll-popup-desc-color);
+    color: var(--popup-desc-color);
     line-height: 1.45;
     margin: 0;
     flex-shrink: 0;
@@ -335,42 +342,17 @@
     width: 100%;
   }
 
-  .atoll-popup-sm {
-    max-width: var(--atoll-popup-max-width-sm);
-    --atoll-popup-padding: 24px;
-  }
-
-  .atoll-popup-md {
-    max-width: var(--atoll-popup-max-width-md);
-  }
-
-  .atoll-popup-lg {
-    max-width: var(--atoll-popup-max-width-lg);
-    --atoll-popup-padding: 32px;
-  }
-
-  .atoll-popup-lg .atoll-popup-title {
-    font-size: var(--atoll-font-size-title-2, 18px);
-  }
-
-  .modal-backdrop {
-    z-index: 1040 !important;
-  }
-
-  .offcanvas {
-    z-index: 1050 !important;
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-popup-dialog,
-  :host-context([data-bs-theme="dark"]) .atoll-popup-dialog,
-  [data-atoll-theme="dark"] .atoll-popup-dialog,
-  [data-bs-theme="dark"] .atoll-popup-dialog {
-    --atoll-popup-bg: var(--atoll-bg-surface-primary, #1F1F1F);
-    --atoll-popup-title-color: var(--atoll-text-primary, #FFFFFF);
-    --atoll-popup-desc-color: var(--atoll-text-secondary, #A0A0A0);
-    --atoll-popup-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
-    --atoll-popup-scrollbar-thumb: rgba(255, 255, 255, 0.15);
-    --atoll-popup-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  /* Dark Mode Overrides */
+  :host-context([data-atoll-theme="dark"]),
+  :host-context([data-bs-theme="dark"]),
+  [data-atoll-theme="dark"] atoll-popup,
+  [data-bs-theme="dark"] atoll-popup {
+    --popup-bg: var(--atoll-bg-surface-primary, #1F1F1F);
+    --popup-title-color: var(--atoll-text-primary, #FFFFFF);
+    --popup-desc-color: var(--atoll-text-secondary, #A0A0A0);
+    --popup-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+    --popup-scrollbar-thumb: rgba(255, 255, 255, 0.15);
+    --popup-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
   }
 
   :host-context([data-atoll-theme="dark"]) .atoll-popup-hero .atoll-icon-badge-green,
@@ -401,13 +383,13 @@
       },
       variant: {
         type: String,
-        // 'alert' | 'confirm' | 'danger' | 'graphic'
-        default: 'confirm'
+        default: 'confirm',
+        values: ['alert', 'confirm', 'danger', 'graphic']
       },
       size: {
         type: String,
-        // 'sm' | 'md' | 'lg'
-        default: 'md'
+        default: 'md',
+        values: ['sm', 'md', 'lg']
       },
       primaryText: {
         type: String,
@@ -428,7 +410,8 @@
       stackedActions: Boolean,
       actionsLayout: {
         type: String,
-        default: 'horizontal'
+        default: 'horizontal',
+        values: ['horizontal', 'vertical', 'stacked']
       },
       tertiaryText: {
         type: String,
@@ -440,16 +423,8 @@
     },
 
     slots: {
-      /**
-       * Slot transformer for hero section.
-       * @param {Node[]} nodes Slotted DOM nodes
-       * @param {Object} state Component reactive state
-       * @returns {HTMLElement[]|undefined} Transformed hero container nodes
-       */
       hero (nodes, state) {
-        if (typeof document === 'undefined') {
-          return undefined
-        }
+        if (typeof document === 'undefined') return undefined
 
         if (state.heroIcon) {
           const wrapper = document.createElement('div')
@@ -464,27 +439,17 @@
         if (nodes && nodes.length > 0) {
           const wrapper = document.createElement('div')
           wrapper.className = 'atoll-popup-hero'
-          nodes.forEach(node => {
-            wrapper.appendChild(node)
-          })
+          nodes.forEach(node => wrapper.appendChild(node))
           return [wrapper]
         }
 
         return undefined
       },
 
-      /**
-       * Slot transformer for action buttons.
-       * @param {Node[]} nodes Slotted DOM nodes
-       * @param {Object} state Component reactive state
-       * @returns {HTMLElement[]|undefined} Transformed actions container nodes
-       */
       actions (nodes, state) {
-        if (typeof document === 'undefined') {
-          return undefined
-        }
+        if (typeof document === 'undefined') return undefined
 
-        const isVertical = Boolean(state.tertiaryText || state.stackedActions || state.actionsLayout === 'vertical')
+        const isVertical = Boolean(state.tertiaryText || state.stackedActions || state.actionsLayout === 'vertical' || state.actionsLayout === 'stacked')
         const actionClasses = isVertical
           ? 'atoll-popup-actions atoll-popup-actions-vertical atoll-popup-actions-stacked'
           : 'atoll-popup-actions atoll-popup-actions-horizontal'
@@ -492,9 +457,7 @@
         if (nodes && nodes.length > 0) {
           const wrapper = document.createElement('div')
           wrapper.className = actionClasses
-          nodes.forEach(node => {
-            wrapper.appendChild(node)
-          })
+          nodes.forEach(node => wrapper.appendChild(node))
           return [wrapper]
         }
 
@@ -502,9 +465,7 @@
         const hideSecondary = state.variant === 'alert' || !state.secondaryText
         const hideTertiary = !state.tertiaryText
 
-        if (hidePrimary && hideSecondary && hideTertiary) {
-          return undefined
-        }
+        if (hidePrimary && hideSecondary && hideTertiary) return undefined
 
         const wrapper = document.createElement('div')
         wrapper.className = actionClasses
@@ -515,15 +476,9 @@
           const primaryVariant = state.variant === 'danger' ? 'danger' : 'primary'
           btn.setAttribute('variant', primaryVariant)
           btn.setAttribute('size', 'md')
-          if (isVertical) {
-            btn.setAttribute('block', 'true')
-          }
-          if (state.primaryDisabled) {
-            btn.setAttribute('disabled', 'true')
-          }
-          if (state.primaryLoading) {
-            btn.setAttribute('loading', 'true')
-          }
+          if (isVertical) btn.setAttribute('block', 'true')
+          if (state.primaryDisabled) btn.setAttribute('disabled', 'true')
+          if (state.primaryLoading) btn.setAttribute('loading', 'true')
           btn.textContent = state.primaryText
           return btn
         }
@@ -533,9 +488,7 @@
           btn.setAttribute('ref', 'secondaryBtn')
           btn.setAttribute('variant', 'secondary')
           btn.setAttribute('size', 'md')
-          if (isVertical) {
-            btn.setAttribute('block', 'true')
-          }
+          if (isVertical) btn.setAttribute('block', 'true')
           btn.textContent = state.secondaryText
           return btn
         }
@@ -545,32 +498,18 @@
           btn.setAttribute('ref', 'tertiaryBtn')
           btn.setAttribute('variant', 'outline')
           btn.setAttribute('size', 'md')
-          if (isVertical) {
-            btn.setAttribute('block', 'true')
-          }
+          if (isVertical) btn.setAttribute('block', 'true')
           btn.textContent = state.tertiaryText
           return btn
         }
 
         if (isVertical) {
-          // Visual Order: Affirmative (Top) -> Tertiary (Mid) -> Dismissive (Bottom)
-          if (!hidePrimary) {
-            wrapper.appendChild(createPrimaryBtn())
-          }
-          if (!hideTertiary) {
-            wrapper.appendChild(createTertiaryBtn())
-          }
-          if (!hideSecondary) {
-            wrapper.appendChild(createSecondaryBtn())
-          }
+          if (!hidePrimary) wrapper.appendChild(createPrimaryBtn())
+          if (!hideTertiary) wrapper.appendChild(createTertiaryBtn())
+          if (!hideSecondary) wrapper.appendChild(createSecondaryBtn())
         } else {
-          // Visual Order: Dismissive (Left) -> Affirmative (Right)
-          if (!hideSecondary) {
-            wrapper.appendChild(createSecondaryBtn())
-          }
-          if (!hidePrimary) {
-            wrapper.appendChild(createPrimaryBtn())
-          }
+          if (!hideSecondary) wrapper.appendChild(createSecondaryBtn())
+          if (!hidePrimary) wrapper.appendChild(createPrimaryBtn())
         }
 
         return [wrapper]
@@ -581,24 +520,12 @@
       hideDescription: (state) => !state.description,
       hideHeader: (state) => !state.title,
       ref_modalTitle: (_state, { instanceId }) => (instanceId ? `${instanceId}-title` : 'atoll-popup-title'),
-      ref_modalDesc: (_state, { instanceId }) => (instanceId ? `${instanceId}-desc` : 'atoll-popup-desc'),
-      dialogClasses: (state) => {
-        const classes = []
-        if (state.size) {
-          classes.push(`atoll-popup-${state.size}`)
-        } else {
-          classes.push('atoll-popup-md')
-        }
-        return classes.join(' ')
-      }
+      ref_modalDesc: (_state, { instanceId }) => (instanceId ? `${instanceId}-desc` : 'atoll-popup-desc')
     },
 
     client: ({ state, refs, root, observe, signal }) => {
       const dialogEl = refs('modalElement')
 
-      /**
-       * Opens the modal dialog and adds body locks.
-       */
       const showModal = () => {
         if (!dialogEl.open) {
           dialogEl.classList.remove('atoll-popup-closing')
@@ -625,20 +552,13 @@
         }
       }
 
-      /**
-       * Closes the modal dialog and removes body locks.
-       */
       const hideModal = () => {
-        if (!dialogEl.open && !state.open) {
-          return
-        }
+        if (!dialogEl.open && !state.open) return
 
         dialogEl.classList.remove('atoll-popup-closing')
         dialogEl.classList.remove('show')
         document.body.classList.remove('modal-open')
-        if (dialogEl.open) {
-          dialogEl.close()
-        }
+        if (dialogEl.open) dialogEl.close()
         state.open = false
         root.dispatchEvent(
           new CustomEvent('atoll-popup-close', {
@@ -653,37 +573,30 @@
         )
       }
 
-      /**
-       * Triggers CSS shake animation feedback when static backdrop is clicked or Esc is pressed.
-       */
       const triggerShake = () => {
         const dialogBox = dialogEl.querySelector('.modal-dialog')
-        dialogBox.classList.remove('atoll-popup-static-shake')
-        void dialogBox.offsetWidth
-        dialogBox.classList.add('atoll-popup-static-shake')
+        if (dialogBox) {
+          dialogBox.classList.remove('atoll-popup-static-shake')
+          void dialogBox.offsetWidth
+          dialogBox.classList.add('atoll-popup-static-shake')
+        }
       }
 
-      // Cleanup on component disconnect
       signal.addEventListener('abort', () => {
         document.body.classList.remove('modal-open')
       })
 
-      // Handle native Escape key (cancel event)
       dialogEl.addEventListener('cancel', (e) => {
         if (state.staticBackdrop || state.disableKeyboard) {
           e.preventDefault()
-          if (state.staticBackdrop) {
-            triggerShake()
-          }
+          if (state.staticBackdrop) triggerShake()
         } else {
           e.preventDefault()
           hideModal()
         }
       }, { signal })
 
-      // Handle backdrop click detection and event delegation
       dialogEl.addEventListener('click', (e) => {
-        // If click target is dialogEl itself (backdrop click)
         if (e.target === dialogEl) {
           if (state.staticBackdrop) {
             triggerShake()
@@ -693,11 +606,8 @@
           return
         }
 
-        // Event delegation for primary, secondary, tertiary buttons
         const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
-        if (!target) {
-          return
-        }
+        if (!target) return
 
         const refAttr = target.getAttribute('ref') || ''
         const isPrimary = refAttr === 'primaryBtn' || refAttr.endsWith('__primaryBtn')
@@ -744,7 +654,6 @@
         }
       }, { signal })
 
-      // Reactive observer for [open] attribute
       observe('open', (isOpen) => {
         if (isOpen) {
           showModal()
@@ -753,11 +662,9 @@
         }
       })
 
-      // Expose public DOM interface methods on component host
       root.show = showModal
       root.hide = hideModal
 
-      // Initial Sync if open attribute is set on mount
       if (state.open) {
         showModal()
       }
