@@ -9,7 +9,7 @@
     <div 
       ref="bubble"
       id="{{ ref_bubble }}"
-      class="{{ tooltipClasses }}"
+      class="atoll-tooltip-bubble"
       role="{{ computedRole }}"
       aria-hidden="{{ isAriaHidden }}"
     >
@@ -17,15 +17,17 @@
       <div class="atoll-tooltip-header" hidden="{{ hideHeader }}">
         <span>{{ title }}</span>
         
-        <button 
+        <atoll-button 
           ref="closeBtn" 
-          type="button" 
-          class="atoll-tooltip-close" 
+          variant="ghost"
+          size="sm"
+          icon-only="true"
+          pill="true"
           aria-label="Close tooltip"
           hidden="{{ hideCloseBtn }}"
         >
           <atoll-icon name="close" size="14"></atoll-icon>
-        </button>
+        </atoll-button>
       </div>
 
       <!-- Content Slot / Text Message -->
@@ -40,6 +42,21 @@
   :host {
     display: inline-flex;
     position: relative;
+    vertical-align: middle;
+
+    /* Tooltip Geometry Tokens */
+    --tooltip-radius: 8px;
+    --tooltip-padding-x: 12px;
+    --tooltip-padding-y: 8px;
+    --tooltip-max-width: 280px;
+    --tooltip-arrow-size: 6px;
+    --tooltip-z-index: 1080;
+
+    /* Plain Variant Color Tokens (Default) */
+    --tooltip-bg: var(--atoll-bg-surface-inverse, #222222);
+    --tooltip-color: #FFFFFF;
+    --tooltip-border: transparent;
+    --tooltip-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
   }
 
   :host([hidden]) {
@@ -51,20 +68,24 @@
     position: relative;
   }
 
+  /* -------------------------------------------------------------------------- */
+  /* Tooltip Bubble Base (Declared ONCE)                                        */
+  /* -------------------------------------------------------------------------- */
+
   .atoll-tooltip-bubble {
     position: absolute;
-    z-index: var(--atoll-tooltip-z-index, 1080);
+    z-index: var(--tooltip-z-index);
     display: flex;
     flex-direction: column;
     gap: 4px;
     width: max-content;
-    max-width: var(--atoll-tooltip-max-width, 280px);
-    padding: var(--atoll-tooltip-padding-y, 8px) var(--atoll-tooltip-padding-x, 12px);
-    background-color: var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222));
-    color: var(--atoll-tooltip-color, #FFFFFF);
-    border: 1px solid var(--atoll-tooltip-border, transparent);
-    border-radius: var(--atoll-tooltip-radius, 8px);
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.18);
+    max-width: var(--tooltip-max-width);
+    padding: var(--tooltip-padding-y) var(--tooltip-padding-x);
+    background-color: var(--tooltip-bg);
+    color: var(--tooltip-color);
+    border: 1px solid var(--tooltip-border);
+    border-radius: var(--tooltip-radius);
+    box-shadow: var(--tooltip-shadow);
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
     font-size: var(--atoll-font-size-caption-1, 12px);
     line-height: 1.35;
@@ -74,7 +95,7 @@
     transition: opacity 0.15s ease-in-out, transform 0.15s ease-in-out;
   }
 
-  .atoll-tooltip-bubble.atoll-tooltip-visible {
+  :host([open]) .atoll-tooltip-bubble {
     opacity: 1;
     pointer-events: auto;
   }
@@ -87,86 +108,106 @@
     border-style: solid;
   }
 
-  .atoll-tooltip-top {
-    bottom: calc(100% + var(--atoll-tooltip-arrow-size, 6px) + 4px);
+  /* -------------------------------------------------------------------------- */
+  /* Placement Variants (Top, Bottom, Left, Right)                              */
+  /* -------------------------------------------------------------------------- */
+
+  /* TOP Placement (Default) */
+  :host .atoll-tooltip-bubble,
+  :host([placement="top"]) .atoll-tooltip-bubble {
+    bottom: calc(100% + var(--tooltip-arrow-size) + 4px);
     left: 50%;
     transform: translateX(-50%) translateY(4px);
   }
 
-  .atoll-tooltip-top.atoll-tooltip-visible {
+  :host([open]) .atoll-tooltip-bubble,
+  :host([placement="top"][open]) .atoll-tooltip-bubble {
     transform: translateX(-50%) translateY(0);
   }
 
-  .atoll-tooltip-top::after {
+  :host .atoll-tooltip-bubble::after,
+  :host([placement="top"]) .atoll-tooltip-bubble::after {
     top: 100%;
     left: 50%;
     transform: translateX(-50%);
-    border-width: var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px) 0;
-    border-color: var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222)) transparent transparent;
+    border-width: var(--tooltip-arrow-size) var(--tooltip-arrow-size) 0;
+    border-color: var(--tooltip-bg) transparent transparent;
   }
 
-  .atoll-tooltip-bottom {
-    top: calc(100% + var(--atoll-tooltip-arrow-size, 6px) + 4px);
+  /* BOTTOM Placement */
+  :host([placement="bottom"]) .atoll-tooltip-bubble {
+    top: calc(100% + var(--tooltip-arrow-size) + 4px);
+    bottom: auto;
     left: 50%;
     transform: translateX(-50%) translateY(-4px);
   }
 
-  .atoll-tooltip-bottom.atoll-tooltip-visible {
+  :host([placement="bottom"][open]) .atoll-tooltip-bubble {
     transform: translateX(-50%) translateY(0);
   }
 
-  .atoll-tooltip-bottom::after {
+  :host([placement="bottom"]) .atoll-tooltip-bubble::after {
     bottom: 100%;
+    top: auto;
     left: 50%;
     transform: translateX(-50%);
-    border-width: 0 var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px);
-    border-color: transparent transparent var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222));
+    border-width: 0 var(--tooltip-arrow-size) var(--tooltip-arrow-size);
+    border-color: transparent transparent var(--tooltip-bg);
   }
 
-  .atoll-tooltip-left {
-    right: calc(100% + var(--atoll-tooltip-arrow-size, 6px) + 4px);
+  /* LEFT Placement */
+  :host([placement="left"]) .atoll-tooltip-bubble {
+    right: calc(100% + var(--tooltip-arrow-size) + 4px);
+    left: auto;
     top: 50%;
+    bottom: auto;
     transform: translateY(-50%) translateX(4px);
   }
 
-  .atoll-tooltip-left.atoll-tooltip-visible {
+  :host([placement="left"][open]) .atoll-tooltip-bubble {
     transform: translateY(-50%) translateX(0);
   }
 
-  .atoll-tooltip-left::after {
+  :host([placement="left"]) .atoll-tooltip-bubble::after {
     left: 100%;
     top: 50%;
     transform: translateY(-50%);
-    border-width: var(--atoll-tooltip-arrow-size, 6px) 0 var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px);
-    border-color: transparent transparent transparent var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222));
+    border-width: var(--tooltip-arrow-size) 0 var(--tooltip-arrow-size) var(--tooltip-arrow-size);
+    border-color: transparent transparent transparent var(--tooltip-bg);
   }
 
-  .atoll-tooltip-right {
-    left: calc(100% + var(--atoll-tooltip-arrow-size, 6px) + 4px);
+  /* RIGHT Placement */
+  :host([placement="right"]) .atoll-tooltip-bubble {
+    left: calc(100% + var(--tooltip-arrow-size) + 4px);
     top: 50%;
+    bottom: auto;
     transform: translateY(-50%) translateX(-4px);
   }
 
-  .atoll-tooltip-right.atoll-tooltip-visible {
+  :host([placement="right"][open]) .atoll-tooltip-bubble {
     transform: translateY(-50%) translateX(0);
   }
 
-  .atoll-tooltip-right::after {
+  :host([placement="right"]) .atoll-tooltip-bubble::after {
     right: 100%;
     top: 50%;
     transform: translateY(-50%);
-    border-width: var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px) var(--atoll-tooltip-arrow-size, 6px) 0;
-    border-color: transparent var(--atoll-tooltip-bg, var(--atoll-bg-surface-inverse, #222222)) transparent transparent;
+    border-width: var(--tooltip-arrow-size) var(--tooltip-arrow-size) var(--tooltip-arrow-size) 0;
+    border-color: transparent var(--tooltip-bg) transparent transparent;
   }
 
-  .atoll-tooltip-action {
-    --atoll-tooltip-bg: var(--atoll-bg-surface-primary, #FFFFFF);
-    --atoll-tooltip-color: var(--atoll-text-primary, #111111);
-    --atoll-tooltip-border: var(--atoll-border-subtle, #EFEFEF);
-    --atoll-tooltip-padding-x: 16px;
-    --atoll-tooltip-padding-y: 12px;
-    --atoll-tooltip-radius: 12px;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+  /* -------------------------------------------------------------------------- */
+  /* Action Variant Modifiers                                                   */
+  /* -------------------------------------------------------------------------- */
+
+  :host([variant="action"]) {
+    --tooltip-bg: var(--atoll-bg-surface-primary, #FFFFFF);
+    --tooltip-color: var(--atoll-text-primary, #111111);
+    --tooltip-border: var(--atoll-border-subtle, #EFEFEF);
+    --tooltip-padding-x: 16px;
+    --tooltip-padding-y: 12px;
+    --tooltip-radius: 12px;
+    --tooltip-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   }
 
   .atoll-tooltip-header {
@@ -176,38 +217,6 @@
     gap: 8px;
     font-weight: var(--atoll-font-weight-bold, 700);
     font-size: var(--atoll-font-size-body-2, 14px);
-  }
-
-  .atoll-tooltip-close {
-    background: transparent;
-    border: none;
-    padding: 0;
-    margin: 0;
-    color: var(--atoll-text-tertiary, #999999);
-    cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-  }
-
-  .atoll-tooltip-close:hover {
-    color: var(--atoll-text-primary, #111111);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-tooltip-bubble,
-  :host-context([data-bs-theme="dark"]) .atoll-tooltip-bubble,
-  [data-atoll-theme="dark"] .atoll-tooltip-bubble,
-  [data-bs-theme="dark"] .atoll-tooltip-bubble {
-    --atoll-tooltip-bg: var(--atoll-bg-surface-tertiary, #2A2A2A);
-    --atoll-tooltip-color: #FFFFFF;
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-tooltip-action,
-  :host-context([data-bs-theme="dark"]) .atoll-tooltip-action,
-  [data-atoll-theme="dark"] .atoll-tooltip-action,
-  [data-bs-theme="dark"] .atoll-tooltip-action {
-    --atoll-tooltip-bg: var(--atoll-bg-surface-secondary, #1F1F1F);
-    --atoll-tooltip-color: var(--atoll-text-primary, #FFFFFF);
-    --atoll-tooltip-border: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
   }
 </style>
 
@@ -226,15 +235,18 @@
       },
       placement: {
         type: String,
-        default: 'top'
+        default: 'top',
+        values: ['top', 'bottom', 'left', 'right']
       },
       variant: {
         type: String,
-        default: 'plain'
+        default: 'plain',
+        values: ['plain', 'action']
       },
       trigger: {
         type: String,
-        default: 'hover'
+        default: 'hover',
+        values: ['hover', 'click', 'manual']
       },
       open: Boolean,
       closeable: Boolean
@@ -242,79 +254,61 @@
 
     getters: {
       computedRole: (state) => (state.variant === 'action' ? 'dialog' : 'tooltip'),
-
       isAriaHidden: (state) => (state.open ? 'false' : 'true'),
-
       hideHeader: (state) => !state.title && !state.closeable,
-
-      hideCloseBtn: (state) => !state.closeable,
-
-      tooltipClasses: (state) => {
-        const classes = ['atoll-tooltip-bubble']
-
-        if (state.placement) {
-          classes.push(`atoll-tooltip-${state.placement}`)
-        } else {
-          classes.push('atoll-tooltip-top')
-        }
-
-        if (state.variant) {
-          classes.push(`atoll-tooltip-${state.variant}`)
-        } else {
-          classes.push('atoll-tooltip-plain')
-        }
-
-        if (state.open) {
-          classes.push('atoll-tooltip-visible')
-        }
-
-        return classes.join(' ')
-      }
+      hideCloseBtn: (state) => !state.closeable
     },
 
-    client: ({ state, refs, root }) => {
+    client: ({ state, refs, root, observe, signal }) => {
       const triggerEl = refs('trigger')
       const closeBtn = refs('closeBtn')
 
-      const show = () => {
-        state.open = true
-      }
-      const hide = () => {
-        state.open = false
+      const setOpen = (isOpen) => {
+        state.open = isOpen
+        if (isOpen) {
+          if (!root.hasAttribute('open')) {
+            root.setAttribute('open', '')
+          }
+        } else {
+          if (root.hasAttribute('open')) {
+            root.removeAttribute('open')
+          }
+        }
       }
 
-      // Event Listeners for Hover Trigger
+      const show = () => setOpen(true)
+      const hide = () => setOpen(false)
+
       triggerEl.addEventListener('mouseenter', () => {
         if (state.trigger === 'hover') {
           show()
         }
-      })
+      }, { signal })
 
       triggerEl.addEventListener('mouseleave', () => {
         if (state.trigger === 'hover') {
           hide()
         }
-      })
+      }, { signal })
 
       triggerEl.addEventListener('focusin', () => {
         if (state.trigger === 'hover') {
           show()
         }
-      })
+      }, { signal })
 
       triggerEl.addEventListener('focusout', () => {
         if (state.trigger === 'hover') {
           hide()
         }
-      })
+      }, { signal })
 
       triggerEl.addEventListener('click', () => {
         if (state.trigger === 'click') {
-          state.open = !state.open
+          setOpen(!state.open)
         }
-      })
+      }, { signal })
 
-      // Close Button Handler
       closeBtn.addEventListener('click', (event) => {
         event.stopPropagation()
         hide()
@@ -324,36 +318,37 @@
             composed: true
           })
         )
-      })
+      }, { signal })
 
-      // Escape key listener & click-outside listener helper
-      const onKeyDown = (event) => {
+      document.addEventListener('keydown', (event) => {
         if (event.key === 'Escape' && state.open) {
           hide()
         }
-      }
+      }, { signal })
 
-      const onClickOutside = (event) => {
+      document.addEventListener('pointerdown', (event) => {
         if (state.open && state.trigger === 'click') {
-          // Check if clicked outside of the root component
           const isClickInside = root.contains(event.target) || (event.composedPath && event.composedPath().includes(root))
           if (!isClickInside) {
             hide()
           }
         }
+      }, { signal })
+
+      if (observe) {
+        observe('open', (val) => {
+          const isOpen = Boolean(val === true || val === 'true' || val === '')
+          setOpen(isOpen)
+        })
       }
 
-      document.addEventListener('keydown', onKeyDown)
-      document.addEventListener('pointerdown', onClickOutside)
+      // Initial check on mount
+      if (root.hasAttribute('open') || state.open) {
+        setOpen(true)
+      }
 
-      // Public DOM interface
       root.show = show
       root.hide = hide
-
-      return () => {
-        document.removeEventListener('keydown', onKeyDown)
-        document.removeEventListener('pointerdown', onClickOutside)
-      }
     }
   })
 </script>
