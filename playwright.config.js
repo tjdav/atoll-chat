@@ -5,7 +5,8 @@ import path from 'path'
 const getExecutablePath = (path) => (existsSync(path) ? path : undefined)
 
 export default defineConfig({
-  testDir: './tests/e2e',
+  testDir: './tests',
+  testMatch: /.*\.spec\.js$/,
   timeout: 30000,
   expect: {
     timeout: 4000

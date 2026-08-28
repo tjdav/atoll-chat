@@ -2,7 +2,7 @@
   <button 
     ref="btnElement" 
     type="{{ type }}" 
-    class="{{ btnClasses }}" 
+    class="atoll-btn" 
     disabled="{{ isDisabled }}"
     aria-label="{{ ariaLabel }}"
     aria-pressed="{{ ariaPressed }}"
@@ -20,6 +20,20 @@
 <style>
   :host {
     display: inline-block;
+    vertical-align: middle;
+
+    /* Default Host Tokens (variant: primary, size: md) */
+    --btn-bg: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --btn-color: var(--atoll-text-on-brand, #FFFFFF);
+    --btn-border: transparent;
+    --btn-hover-bg: color-mix(in srgb, var(--atoll-primary, #06C755) 88%, #000000);
+    --btn-active-bg: color-mix(in srgb, var(--atoll-primary, #06C755) 80%, #000000);
+    --btn-hover-color: var(--btn-color);
+    --btn-height: var(--atoll-btn-height-md, 44px);
+    --btn-padding: 0 16px;
+    --btn-radius: 10px;
+    --btn-font-size: var(--atoll-font-size-body-2, 14px);
+    --btn-font-weight: var(--atoll-font-weight-semibold, 600);
   }
 
   :host([hidden]) {
@@ -37,22 +51,143 @@
     width: 100%;
   }
 
-  /* Base Button Styling */
+  /* -------------------------------------------------------------------------- */
+  /* Variant Modifiers (Attribute Selectors)                                    */
+  /* -------------------------------------------------------------------------- */
+
+  :host([variant="secondary"]) {
+    --btn-bg: var(--atoll-bg-surface-tertiary, #E8E8E8);
+    --btn-color: var(--atoll-text-primary, #111111);
+    --btn-border: transparent;
+    --btn-hover-bg: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #E8E8E8) 92%, #000000);
+    --btn-active-bg: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #E8E8E8) 84%, #000000);
+  }
+
+  :host([variant="outline"]) {
+    --btn-bg: transparent;
+    --btn-color: var(--atoll-text-primary, #111111);
+    --btn-border: var(--atoll-border-strong, #D4D4D4);
+    --btn-hover-bg: var(--atoll-bg-surface-secondary, #F5F5F5);
+    --btn-active-bg: var(--atoll-bg-surface-tertiary, #E8E8E8);
+  }
+
+  :host([variant="ghost"]) {
+    --btn-bg: transparent;
+    --btn-color: var(--atoll-text-primary, #111111);
+    --btn-border: transparent;
+    --btn-hover-bg: var(--atoll-brand-subtle, rgba(6, 199, 85, 0.12));
+    --btn-active-bg: var(--atoll-bg-surface-tertiary, #E8E8E8);
+  }
+
+  :host([variant="danger"]) {
+    --btn-bg: var(--atoll-rainbow-red, #FF334B);
+    --btn-color: #FFFFFF;
+    --btn-border: transparent;
+    --btn-hover-bg: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 90%, #000000);
+    --btn-active-bg: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 80%, #000000);
+  }
+
+  :host([variant="info"]) {
+    --btn-bg: var(--atoll-rainbow-blue, #4270ED);
+    --btn-color: #FFFFFF;
+    --btn-border: transparent;
+    --btn-hover-bg: color-mix(in srgb, var(--atoll-rainbow-blue, #4270ED) 90%, #000000);
+    --btn-active-bg: color-mix(in srgb, var(--atoll-rainbow-blue, #4270ED) 80%, #000000);
+  }
+
+  :host([variant="link"]) {
+    --btn-bg: transparent;
+    --btn-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --btn-border: transparent;
+    --btn-hover-color: color-mix(in srgb, var(--atoll-primary, #06C755) 85%, #000000);
+    --btn-padding: 0;
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* Size Modifiers (Attribute Selectors)                                       */
+  /* -------------------------------------------------------------------------- */
+
+  :host([size="sm"]) {
+    --btn-height: var(--atoll-btn-height-sm, 32px);
+    --btn-padding: 0 12px;
+    --btn-radius: 8px;
+    --btn-font-size: var(--atoll-font-size-caption-1, 12px);
+  }
+
+  :host([size="lg"]) {
+    --btn-height: var(--atoll-btn-height-lg, 52px);
+    --btn-padding: 0 24px;
+    --btn-radius: 12px;
+    --btn-font-size: var(--atoll-font-size-body-1, 16px);
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* Shape Modifiers: Pill & Icon-Only (Declared after sizes to override radius)*/
+  /* -------------------------------------------------------------------------- */
+
+  :host([pill]) {
+    --btn-radius: 9999px;
+  }
+
+  :host([pill][size="sm"]) {
+    --btn-height: 28px;
+    --btn-padding: 0 12px;
+  }
+
+  :host([pill][size="md"]) {
+    --btn-height: 36px;
+    --btn-padding: 0 16px;
+  }
+
+  :host([pill][size="lg"]) {
+    --btn-height: 44px;
+    --btn-padding: 0 20px;
+  }
+
+  :host([icon-only]) {
+    --btn-padding: 0;
+    width: var(--btn-height);
+    height: var(--btn-height);
+  }
+
+  :host([icon-only][pill]) {
+    --btn-radius: 50%;
+  }
+
+  /* -------------------------------------------------------------------------- */
+  /* Base Internal Button & Layout Elements (Declared ONCE)                     */
+  /* -------------------------------------------------------------------------- */
+
   .atoll-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     position: relative;
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
-    border: 1px solid transparent;
+    font-size: var(--btn-font-size);
+    font-weight: var(--btn-font-weight);
+    height: var(--btn-height);
+    padding: var(--btn-padding);
+    border-radius: var(--btn-radius);
+    background-color: var(--btn-bg);
+    color: var(--btn-color);
+    border: 1px solid var(--btn-border);
     white-space: nowrap;
     user-select: none;
     text-decoration: none;
     cursor: pointer;
-    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, opacity 0.15s ease-in-out;
     box-sizing: border-box;
     width: 100%;
-    height: 100%;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s ease-in-out, opacity 0.15s ease-in-out, color 0.15s ease-in-out;
+  }
+
+  .atoll-btn:hover:not(:disabled) {
+    background-color: var(--btn-hover-bg, var(--btn-bg));
+    color: var(--btn-hover-color, var(--btn-color));
+  }
+
+  .atoll-btn:active:not(:disabled) {
+    background-color: var(--btn-active-bg, var(--btn-hover-bg, var(--btn-bg)));
   }
 
   .atoll-btn:focus-visible {
@@ -67,7 +202,26 @@
     pointer-events: none;
   }
 
-  /* Internal Layout Elements */
+  /* Link Variant Text Decoration */
+  :host([variant="link"]) .atoll-btn {
+    text-decoration: underline;
+  }
+
+  /* Touch Target Expansions (44px min hit box) */
+  :host([pill][size="sm"]) .atoll-btn::before,
+  :host([icon-only][size="sm"]) .atoll-btn::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 44px;
+    min-height: 44px;
+    width: 44px;
+    height: 44px;
+  }
+
+  /* Content Wrapper */
   .atoll-btn-content {
     display: inline-flex;
     align-items: center;
@@ -81,7 +235,21 @@
     line-height: 1;
   }
 
-  /* Loading Spinner Overlay */
+  :host([icon-only]) .atoll-btn-content {
+    gap: 0;
+    width: 100%;
+    height: 100%;
+  }
+
+  :host([icon-only]) .atoll-btn-label {
+    display: contents;
+  }
+
+  /* Loading State: Content hidden natively via host attribute */
+  :host([loading]) .atoll-btn-content {
+    opacity: 0;
+  }
+
   .atoll-btn-spinner {
     position: absolute;
     display: inline-flex;
@@ -93,289 +261,16 @@
     animation: atoll-spin 0.8s linear infinite;
   }
 
-  @keyframes atoll-spin {
-    from { transform: translate(-50%, -50%) rotate(0deg); }
-    to { transform: translate(-50%, -50%) rotate(360deg); }
-  }
-
-  /* Variant Modifiers (Default: primary) */
-  :host .atoll-btn,
-  :host([variant="primary"]) .atoll-btn {
-    background-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
-    color: var(--atoll-text-on-brand, #FFFFFF);
-    border-color: transparent;
-  }
-
-  :host .atoll-btn:hover:not(:disabled),
-  :host([variant="primary"]) .atoll-btn:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 88%, #000000);
-  }
-
-  :host .atoll-btn:active:not(:disabled),
-  :host([variant="primary"]) .atoll-btn:active:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 80%, #000000);
-  }
-
-  :host([variant="secondary"]) .atoll-btn {
-    background-color: var(--atoll-bg-surface-tertiary, #E8E8E8);
-    color: var(--atoll-text-primary, #111111);
-    border-color: transparent;
-  }
-
-  :host([variant="secondary"]) .atoll-btn:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #E8E8E8) 92%, #000000);
-  }
-
-  :host([variant="secondary"]) .atoll-btn:active:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #E8E8E8) 84%, #000000);
-  }
-
-  :host([variant="outline"]) .atoll-btn {
-    background-color: transparent;
-    color: var(--atoll-text-primary, #111111);
-    border-color: var(--atoll-border-strong, #D4D4D4);
-  }
-
-  :host([variant="outline"]) .atoll-btn:hover:not(:disabled) {
-    background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
-  }
-
-  :host([variant="outline"]) .atoll-btn:active:not(:disabled) {
-    background-color: var(--atoll-bg-surface-tertiary, #E8E8E8);
-  }
-
-  :host([variant="ghost"]) .atoll-btn {
-    background-color: transparent;
-    color: var(--atoll-text-primary, #111111);
-    border-color: transparent;
-  }
-
-  :host([variant="ghost"]) .atoll-btn:hover:not(:disabled) {
-    background-color: var(--atoll-brand-subtle, rgba(6, 199, 85, 0.12));
-  }
-
-  :host([variant="ghost"]) .atoll-btn:active:not(:disabled) {
-    background-color: var(--atoll-bg-surface-tertiary, #E8E8E8);
-  }
-
-  :host([variant="danger"]) .atoll-btn {
-    background-color: var(--atoll-rainbow-red, #FF334B);
-    color: #FFFFFF;
-    border-color: transparent;
-  }
-
-  :host([variant="danger"]) .atoll-btn:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 90%, #000000);
-  }
-
-  :host([variant="danger"]) .atoll-btn:active:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 80%, #000000);
-  }
-
-  :host([variant="info"]) .atoll-btn {
-    background-color: var(--atoll-rainbow-blue, #4270ED);
-    color: #FFFFFF;
-    border-color: transparent;
-  }
-
-  :host([variant="info"]) .atoll-btn:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-rainbow-blue, #4270ED) 90%, #000000);
-  }
-
-  :host([variant="info"]) .atoll-btn:active:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-rainbow-blue, #4270ED) 80%, #000000);
-  }
-
-  :host([variant="link"]) .atoll-btn {
-    background-color: transparent;
-    color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
-    border-color: transparent;
-    text-decoration: underline;
-  }
-
-  :host([variant="link"]) .atoll-btn:hover:not(:disabled) {
-    color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 85%, #000000);
-  }
-
-  /* Size Modifiers (Default: md) */
-  :host .atoll-btn,
-  :host([size="md"]) .atoll-btn {
-    height: var(--atoll-btn-height-md, 44px);
-    padding: 0 16px;
-    border-radius: 10px;
-    font-size: var(--atoll-font-size-body-2, 14px);
-    font-weight: var(--atoll-font-weight-semibold, 600);
-  }
-
-  :host([size="sm"]) .atoll-btn {
-    height: var(--atoll-btn-height-sm, 32px);
-    padding: 0 12px;
-    border-radius: 8px;
-    font-size: var(--atoll-font-size-caption-1, 12px);
-    font-weight: var(--atoll-font-weight-semibold, 600);
-  }
-
-  :host([size="lg"]) .atoll-btn {
-    height: var(--atoll-btn-height-lg, 52px);
-    padding: 0 24px;
-    border-radius: 12px;
-    font-size: var(--atoll-font-size-body-1, 16px);
-    font-weight: var(--atoll-font-weight-semibold, 600);
-  }
-
-  /* Shape & Layout Modifiers */
-  :host([block]) .atoll-btn {
-    width: 100%;
-  }
-
-  :host([pill]) .atoll-btn {
-    border-radius: 9999px !important;
-  }
-
-  :host([pill][size="sm"]) .atoll-btn {
-    height: 28px;
-    padding: 0 12px;
-    font-size: var(--atoll-font-size-caption-1, 12px);
-    position: relative;
-  }
-
-  :host([pill][size="sm"]) .atoll-btn::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    min-width: 100%;
-    min-height: 44px;
-    width: 44px;
-  }
-
-  :host([pill][size="md"]) .atoll-btn {
-    height: 36px;
-    padding: 0 16px;
-    font-size: var(--atoll-font-size-body-2, 14px);
-  }
-
-  :host([pill][size="lg"]) .atoll-btn {
-    height: 44px;
-    padding: 0 20px;
-    font-size: var(--atoll-font-size-body-1, 16px);
-  }
-
-  /* Dark Mode Overrides */
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-secondary,
-  :host-context([data-bs-theme="dark"]) .atoll-btn-secondary {
-    background-color: var(--atoll-bg-surface-tertiary, #1F1F1F);
-    color: var(--atoll-text-primary, #FFFFFF);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-secondary:hover:not(:disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-btn-secondary:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #1F1F1F) 88%, #FFFFFF);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-secondary:active:not(:disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-btn-secondary:active:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #1F1F1F) 78%, #FFFFFF);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-outline,
-  :host-context([data-bs-theme="dark"]) .atoll-btn-outline {
-    background-color: transparent;
-    color: var(--atoll-text-primary, #FFFFFF);
-    border-color: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-outline:hover:not(:disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-btn-outline:hover:not(:disabled) {
-    background-color: var(--atoll-bg-surface-secondary, #161616);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-outline:active:not(:disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-btn-outline:active:not(:disabled) {
-    background-color: var(--atoll-bg-surface-tertiary, #1F1F1F);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-ghost,
-  :host-context([data-bs-theme="dark"]) .atoll-btn-ghost {
-    color: var(--atoll-text-primary, #FFFFFF);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-ghost:hover:not(:disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-btn-ghost:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-bg-surface-primary, #161616) 90%, #FFFFFF);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-ghost:active:not(:disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-btn-ghost:active:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-bg-surface-primary, #161616) 80%, #FFFFFF);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-primary:hover:not(:disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-btn-primary:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-primary, var(--atoll-brand-primary, #06C755)) 90%, #FFFFFF);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-btn-danger:hover:not(:disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-btn-danger:hover:not(:disabled) {
-    background-color: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 90%, #FFFFFF);
-  }
-
-  .atoll-btn-loading .atoll-btn-content {
-    opacity: 0;
-  }
-
-  /* Icon-Only Button Modifiers */
-  :host([icon-only]) .atoll-btn {
-    padding: 0 !important;
-    aspect-ratio: 1 / 1;
+  .atoll-btn-spinner-inline {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
     flex-shrink: 0;
   }
 
-  :host([icon-only]) .atoll-btn .atoll-btn-content {
-    gap: 0;
-    width: 100%;
-    height: 100%;
-  }
-
-  :host([icon-only]) .atoll-btn .atoll-btn-label {
-    display: contents;
-  }
-
-  :host([icon-only]) .atoll-btn .atoll-btn-text {
-    display: none !important;
-  }
-
-  :host([icon-only][size="sm"]) .atoll-btn {
-    width: var(--atoll-btn-height-sm, 32px);
-    height: var(--atoll-btn-height-sm, 32px);
-    position: relative;
-  }
-
-  :host([icon-only][size="sm"]) .atoll-btn::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    min-width: 44px;
-    min-height: 44px;
-    width: 44px;
-    height: 44px;
-  }
-
-  :host([icon-only][size="md"]) .atoll-btn {
-    width: var(--atoll-btn-height-md, 44px);
-    height: var(--atoll-btn-height-md, 44px);
-  }
-
-  :host([icon-only][size="lg"]) .atoll-btn {
-    width: var(--atoll-btn-height-lg, 52px);
-    height: var(--atoll-btn-height-lg, 52px);
-  }
-
-  :host([icon-only][pill]) .atoll-btn {
-    border-radius: 50% !important;
+  @keyframes atoll-spin {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
   }
 </style>
 
@@ -434,7 +329,8 @@
       },
       spinnerPlacement: {
         type: String,
-        default: 'center'
+        default: 'center',
+        values: ['center', 'leading', 'trailing']
       }
     },
 
@@ -538,8 +434,6 @@
     },
 
     getters: {
-      btnClasses: (state) => (state.loading && state.spinnerPlacement === 'center' ? 'atoll-btn atoll-btn-loading' : 'atoll-btn'),
-
       isDisabled: (state) => Boolean(state.disabled || state.loading)
     },
 
