@@ -13,6 +13,9 @@ describe('Atoll Settings Invitations Component', () => {
 
     await loadComponent('atoll-icon')
     await loadComponent('atoll-badge')
+    await loadComponent('atoll-button')
+    await loadComponent('atoll-select')
+    await loadComponent('atoll-list')
     await loadComponent('atoll-list-item')
 
     mockSendHandler = async (path, opts = {}) => {

@@ -1,8 +1,8 @@
 <template id="atoll-slideshow">
-  <div class="atoll-slideshow d-flex flex-column position-relative w-100 h-100 overflow-hidden {{ layoutClasses }}">
+  <div class="atoll-slideshow d-flex flex-column position-relative w-100 h-100 overflow-hidden">
     <slot name="header"></slot>
 
-    <div ref="viewport" class="atoll-slideshow-viewport flex-grow-1 w-100 h-100 position-relative overflow-hidden">
+    <div ref="viewport" class="atoll-slideshow-viewport flex-grow-1 flex-shrink-1 w-100 position-relative overflow-hidden">
       <div ref="container" class="atoll-slideshow-container d-flex h-100 w-100">
         <slot></slot>
       </div>
@@ -20,6 +20,14 @@
     display: block;
     width: 100%;
     height: 100%;
+    position: relative;
+
+    --slideshow-nav-bg: rgba(0, 0, 0, 0.4);
+    --slideshow-nav-hover-bg: rgba(0, 0, 0, 0.7);
+    --slideshow-nav-color: #ffffff;
+    --slideshow-nav-size: 48px;
+    --slideshow-nav-offset: 1rem;
+    --slideshow-z-index: 5;
   }
 
   .atoll-slideshow {
@@ -32,25 +40,29 @@
   .atoll-slideshow-viewport {
     position: relative;
     width: 100%;
-    height: 100%;
+    flex: 1 1 0% !important;
+    min-height: 0 !important;
+    height: 0 !important;
     overflow: hidden;
     touch-action: pan-y pinch-zoom;
   }
 
-  .atoll-slideshow-container {
+  .atoll-slideshow-container,
+  .atoll-slideshow-container slot:not([name]) {
     display: flex;
     height: 100%;
     width: 100%;
     user-select: none;
     -webkit-user-select: none;
     -webkit-touch-callout: none;
+  }
 
-    > * {
-      flex: 0 0 100%;
-      min-width: 0;
-      height: 100%;
-      position: relative;
-    }
+  .atoll-slideshow-container > *,
+  .atoll-slideshow-container slot:not([name]) > * {
+    flex: 0 0 100%;
+    min-width: 0;
+    height: 100%;
+    position: relative;
   }
 
   .atoll-slideshow-controls {
@@ -61,12 +73,12 @@
     position: absolute;
     top: 50%;
     transform: translateY(-50%);
-    z-index: 5;
-    width: 48px;
-    height: 48px;
+    z-index: var(--slideshow-z-index);
+    width: var(--slideshow-nav-size);
+    height: var(--slideshow-nav-size);
     border-radius: 50%;
-    background-color: rgba(0, 0, 0, 0.4);
-    color: #ffffff;
+    background-color: var(--slideshow-nav-bg);
+    color: var(--slideshow-nav-color);
     border: none;
     display: flex;
     align-items: center;
@@ -74,28 +86,29 @@
     transition: opacity 0.2s ease, background-color 0.2s ease, transform 0.1s ease;
     cursor: pointer;
     pointer-events: auto;
+  }
 
-    &:hover {
-      background-color: rgba(0, 0, 0, 0.7);
-    }
+  .atoll-slideshow-nav-btn:hover {
+    background-color: var(--slideshow-nav-hover-bg);
+  }
 
-    &:active {
-      transform: translateY(-50%) scale(0.95);
-    }
+  .atoll-slideshow-nav-btn:active {
+    transform: translateY(-50%) scale(0.95);
+  }
 
-    &:disabled,
-    &[aria-disabled="true"] {
-      opacity: 0;
-      pointer-events: none;
-    }
+  .atoll-slideshow-nav-btn:disabled,
+  .atoll-slideshow-nav-btn[aria-disabled="true"],
+  .atoll-slideshow-nav-btn[disabled] {
+    opacity: 0;
+    pointer-events: none;
+  }
 
-    &.prev {
-      left: 1rem;
-    }
+  .atoll-slideshow-nav-btn.prev {
+    left: var(--slideshow-nav-offset);
+  }
 
-    &.next {
-      right: 1rem;
-    }
+  .atoll-slideshow-nav-btn.next {
+    right: var(--slideshow-nav-offset);
   }
 </style>
 
@@ -104,30 +117,24 @@
 
   export default defineComponent({
     attributes: {
-      loop: {
-        type: Boolean,
-        default: false
-      },
-      dragFree: {
-        type: Boolean,
-        default: false
-      },
+      loop: Boolean,
+      dragFree: Boolean,
       align: {
         type: String,
-        default: 'center'
+        default: 'center',
+        values: ['start', 'center', 'end']
       },
       axis: {
         type: String,
-        default: 'x'
+        default: 'x',
+        values: ['x', 'y']
       },
       containScroll: {
         type: String,
-        default: 'trimSnaps'
+        default: 'trimSnaps',
+        values: ['trimSnaps', 'keepSnaps', 'false']
       },
-      hideControls: {
-        type: Boolean,
-        default: false
-      },
+      hideControls: Boolean,
       watchSlides: {
         type: Boolean,
         default: true
@@ -135,12 +142,9 @@
       keyboard: {
         type: Boolean,
         default: true
-      },
-      layoutClasses: {
-        type: String,
-        default: ''
       }
     },
+
     slots: {
       controls (nodes, { state }) {
         if (nodes && nodes.length > 0) {
@@ -151,8 +155,11 @@
           const wrapper = document.createElement('div')
           wrapper.className = 'atoll-slideshow-controls'
 
-          const btnPrev = document.createElement('button')
-          btnPrev.type = 'button'
+          const btnPrev = document.createElement('atoll-button')
+          btnPrev.setAttribute('variant', 'ghost')
+          btnPrev.setAttribute('size', 'lg')
+          btnPrev.setAttribute('icon-only', 'true')
+          btnPrev.setAttribute('pill', 'true')
           btnPrev.className = 'atoll-slideshow-nav-btn prev'
           btnPrev.setAttribute('aria-label', 'Previous slide')
 
@@ -161,11 +168,14 @@
           iconPrev.setAttribute('size', '32')
           btnPrev.appendChild(iconPrev)
 
-          const btnNext = document.createElement('button')
-          btnNext.type = 'button'
+          const btnNext = document.createElement('atoll-button')
+          btnNext.setAttribute('variant', 'ghost')
+          btnNext.setAttribute('size', 'lg')
+          btnNext.setAttribute('icon-only', 'true')
+          btnNext.setAttribute('pill', 'true')
           btnNext.className = 'atoll-slideshow-nav-btn next'
           btnNext.setAttribute('aria-label', 'Next slide')
-  
+
           const iconNext = document.createElement('atoll-icon')
           iconNext.setAttribute('name', 'chevron-right')
           iconNext.setAttribute('size', '32')
@@ -179,6 +189,7 @@
         return null
       }
     },
+
     client: async ({ root, refs, state, observe, signal }) => {
       const viewport = refs('viewport')
       const container = refs('container')
@@ -187,7 +198,27 @@
       let mutationObserver = null
       let reInitTimeout = null
 
+      const getSlideNodes = () => {
+        const slotEl = container ? container.querySelector('slot:not([name])') : null
+        if (slotEl) {
+          const assigned = typeof slotEl.assignedElements === 'function' ? slotEl.assignedElements() : []
+          if (assigned.length > 0) return assigned
+          const slotChildren = Array.from(slotEl.children).filter(el => el.nodeType === 1)
+          if (slotChildren.length > 0) return slotChildren
+        }
+        // Fallback to non-slotted children or direct root children
+        const directChildren = Array.from(root.children).filter(el => {
+          if (el.nodeType !== 1) return false
+          const slotAttr = el.getAttribute('slot')
+          return !slotAttr || (slotAttr !== 'header' && slotAttr !== 'footer' && slotAttr !== 'controls' && slotAttr !== 'overlay')
+        })
+        if (directChildren.length > 0) return directChildren
+
+        return Array.from(container?.children || []).filter(el => el.tagName !== 'SLOT')
+      }
+
       const getOptions = () => ({
+        slides: getSlideNodes(),
         loop: state.loop,
         dragFree: state.dragFree,
         align: state.align || 'center',
@@ -215,31 +246,40 @@
       const updateNavButtons = () => {
         const btnPrev = root.querySelector('.atoll-slideshow-nav-btn.prev')
         const btnNext = root.querySelector('.atoll-slideshow-nav-btn.next')
-  
-        if (!embla) {
-          return
-        }
+
+        if (!embla) return
 
         const canPrev = embla.canScrollPrev()
         const canNext = embla.canScrollNext()
         if (btnPrev) {
-          btnPrev.disabled = !canPrev
-          btnPrev.setAttribute('aria-disabled', String(!canPrev))
+          if (canPrev) {
+            btnPrev.removeAttribute('disabled')
+            btnPrev.setAttribute('aria-disabled', 'false')
+          } else {
+            btnPrev.setAttribute('disabled', 'true')
+            btnPrev.setAttribute('aria-disabled', 'true')
+          }
         }
 
         if (btnNext) {
-          btnNext.disabled = !canNext
-          btnNext.setAttribute('aria-disabled', String(!canNext))
+          if (canNext) {
+            btnNext.removeAttribute('disabled')
+            btnNext.setAttribute('aria-disabled', 'false')
+          } else {
+            btnNext.setAttribute('disabled', 'true')
+            btnNext.setAttribute('aria-disabled', 'true')
+          }
         }
       }
 
       const EmblaCarousel = (await import('embla-carousel')).default
 
-      // Initialize Embla
       embla = EmblaCarousel(viewport, getOptions())
       let lastIndex = embla ? embla.selectedScrollSnap() : 0
 
       if (embla) {
+        embla.on('init', updateNavButtons)
+        embla.on('reInit', updateNavButtons)
         embla.on('select', () => {
           const newIndex = embla.selectedScrollSnap()
           if (newIndex !== lastIndex) {
@@ -248,10 +288,7 @@
             root.dispatchEvent(new CustomEvent('atoll-slideshow-select', {
               bubbles: true,
               composed: true,
-              detail: {
-                index: newIndex,
-                previousIndex: prevIndex
-              }
+              detail: { index: newIndex, previousIndex: prevIndex }
             }))
           }
           updateNavButtons()
@@ -287,7 +324,7 @@
           bubbles: true,
           composed: true
         }))
-      }, { signal })
+      }, { signal, passive: true })
 
       root.addEventListener('click', (e) => {
         const btnPrev = e.target.closest('.atoll-slideshow-nav-btn.prev')
@@ -302,10 +339,8 @@
       if (state.keyboard) {
         window.addEventListener('keydown', (e) => {
           const tag = document.activeElement?.tagName?.toLowerCase()
-          if (tag === 'input' || tag === 'textarea') {
-            return
-          }
-  
+          if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+
           if (e.key === 'ArrowLeft') {
             e.preventDefault()
             embla?.scrollPrev()
@@ -321,13 +356,13 @@
           clearTimeout(reInitTimeout)
           reInitTimeout = setTimeout(() => {
             if (embla) {
-              embla.reInit()
+              embla.reInit(getOptions())
               updateNavButtons()
             }
-          }, 16)
+          }, 0)
         }
       })
-      mutationObserver.observe(container, { childList: true })
+      mutationObserver.observe(container, { childList: true, subtree: true })
 
       ;['loop', 'dragFree', 'align', 'axis', 'containScroll'].forEach(attr => {
         observe(attr, () => {
@@ -343,13 +378,9 @@
       root.dispatchEvent(new CustomEvent('atoll-slideshow-init', {
         bubbles: true,
         composed: true,
-        detail: {
-          embla,
-          index: lastIndex
-        }
+        detail: { embla, index: lastIndex }
       }))
 
-      // Automatic teardown on unmount
       signal.addEventListener('abort', () => {
         clearTimeout(reInitTimeout)
         mutationObserver?.disconnect()

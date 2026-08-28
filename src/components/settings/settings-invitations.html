@@ -160,13 +160,13 @@
         }
 
         // Determine status badge
-        let statusBadge = '<span class="badge bg-success-subtle text-success border border-success-subtle ms-2">Active</span>'
+        let statusBadge = '<span slot="badge" class="badge bg-success-subtle text-success border border-success-subtle ms-2">Active</span>'
         if (inv.is_used || inv.used_count >= inv.max_uses) {
-          statusBadge = '<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-2">Used</span>'
+          statusBadge = '<span slot="badge" class="badge bg-secondary-subtle text-secondary border border-secondary-subtle ms-2">Used</span>'
         } else if (inv.expires_at) {
           const expiresTime = new Date(inv.expires_at).getTime()
           if (expiresTime < Date.now()) {
-            statusBadge = '<span class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2">Expired</span>'
+            statusBadge = '<span slot="badge" class="badge bg-danger-subtle text-danger border border-danger-subtle ms-2">Expired</span>'
           }
         }
 
@@ -187,10 +187,7 @@
           <div slot="leading" class="bg-primary-subtle text-primary p-2 rounded-circle d-flex align-items-center justify-content-center" style="width: 36px; height: 36px;">
             <atoll-icon name="key" size="18"></atoll-icon>
           </div>
-          <div class="d-flex align-items-center">
-            <code class="fw-bold text-primary user-select-all fs-6 mb-0">${inv.code}</code>
-            ${statusBadge}
-          </div>
+          ${statusBadge}
           <div slot="right" class="d-inline-flex gap-1 align-items-center">
             <button type="button" class="btn btn-sm btn-outline-primary btn-copy-link d-inline-flex align-items-center gap-1" data-code="${inv.code}">
               <atoll-icon name="link" size="14"></atoll-icon>
