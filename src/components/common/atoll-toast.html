@@ -2,7 +2,7 @@
   <div 
     ref="popoverContainer" 
     popover="manual" 
-    class="{{ popoverContainerClasses }}"
+    class="atoll-toast-container"
     data-has-toasts="{{ hasActiveToasts }}"
   >
     <!-- Dynamic Toast Cards Stack Container -->
@@ -30,14 +30,16 @@
     display: block;
   }
 
-  .atoll-toast-container.placement-bottom-start {
+  /* Placement Anchors */
+  :host([placement="bottom-start"]) .atoll-toast-container,
+  :host .atoll-toast-container {
     bottom: 24px;
     left: 24px;
     right: auto;
     top: auto;
   }
 
-  .atoll-toast-container.placement-bottom-center {
+  :host([placement="bottom-center"]) .atoll-toast-container {
     bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
@@ -45,14 +47,14 @@
     top: auto;
   }
 
-  .atoll-toast-container.placement-bottom-end {
+  :host([placement="bottom-end"]) .atoll-toast-container {
     bottom: 24px;
     right: 24px;
     left: auto;
     top: auto;
   }
 
-  .atoll-toast-container.placement-top-center {
+  :host([placement="top-center"]) .atoll-toast-container {
     top: 24px;
     left: 50%;
     transform: translateX(-50%);
@@ -60,7 +62,7 @@
     right: auto;
   }
 
-  .atoll-toast-container.placement-top-end {
+  :host([placement="top-end"]) .atoll-toast-container {
     top: 24px;
     right: 24px;
     left: auto;
@@ -68,9 +70,10 @@
   }
 
   @media (max-width: 767.98px) {
-    .atoll-toast-container.placement-bottom-start,
-    .atoll-toast-container.placement-bottom-center,
-    .atoll-toast-container.placement-bottom-end {
+    :host([placement="bottom-start"]) .atoll-toast-container,
+    :host([placement="bottom-center"]) .atoll-toast-container,
+    :host([placement="bottom-end"]) .atoll-toast-container,
+    :host .atoll-toast-container {
       bottom: calc(var(--atoll-bottom-nav-height, 64px) + 16px);
       left: 50%;
       right: auto;
@@ -87,6 +90,7 @@
     pointer-events: none;
   }
 
+  /* Toast Card Surface */
   .atoll-toast-card {
     position: relative;
     pointer-events: auto;
@@ -119,46 +123,26 @@
                 transform 150ms cubic-bezier(0.4, 0, 1, 1) !important;
   }
 
-  .atoll-toast-card-success {
-    --toast-accent-color: var(--atoll-success, #06C755);
+  /* Variant Accent Color Mapping */
+  .atoll-toast-card[data-variant="success"], .atoll-toast-card-success {
+    --toast-accent: var(--atoll-success, #06C755);
   }
 
-  .atoll-toast-card-success .atoll-toast-icon {
-    color: var(--atoll-success, #06C755);
+  .atoll-toast-card[data-variant="danger"], .atoll-toast-card-danger {
+    --toast-accent: var(--atoll-danger, #FF334B);
   }
 
-  .atoll-toast-card-danger {
-    --toast-accent-color: var(--atoll-danger, #FF334B);
+  .atoll-toast-card[data-variant="warning"], .atoll-toast-card-warning {
+    --toast-accent: var(--atoll-warning, #FF9500);
   }
 
-  .atoll-toast-card-danger .atoll-toast-icon {
-    color: var(--atoll-danger, #FF334B);
+  .atoll-toast-card[data-variant="info"], .atoll-toast-card-info,
+  .atoll-toast-card[data-variant="primary"], .atoll-toast-card-primary {
+    --toast-accent: var(--atoll-info, #007AFF);
   }
 
-  .atoll-toast-card-warning {
-    --toast-accent-color: var(--atoll-warning, #FF9500);
-  }
-
-  .atoll-toast-card-warning .atoll-toast-icon {
-    color: var(--atoll-warning, #FF9500);
-  }
-
-  .atoll-toast-card-info,
-  .atoll-toast-card-primary {
-    --toast-accent-color: var(--atoll-info, #007AFF);
-  }
-
-  .atoll-toast-card-info .atoll-toast-icon,
-  .atoll-toast-card-primary .atoll-toast-icon {
-    color: var(--atoll-info, #007AFF);
-  }
-
-  .atoll-toast-card-secondary {
-    --toast-accent-color: var(--atoll-text-muted, #8E8E93);
-  }
-
-  .atoll-toast-card-secondary .atoll-toast-icon {
-    color: var(--atoll-text-muted, #8E8E93);
+  .atoll-toast-card[data-variant="secondary"], .atoll-toast-card-secondary {
+    --toast-accent: var(--atoll-text-muted, #8E8E93);
   }
 
   .atoll-toast-body {
@@ -172,6 +156,7 @@
     align-items: center;
     justify-content: center;
     flex-shrink: 0;
+    color: var(--toast-accent, var(--atoll-info, #007AFF));
   }
 
   .atoll-toast-message {
@@ -184,52 +169,10 @@
   }
 
   .atoll-toast-action-btn {
-    background: transparent;
-    border: none;
-    padding: 4px 8px;
-    font-size: 13px;
-    font-weight: 600;
-    color: var(--toast-accent-color, var(--atoll-accent, #06C755));
-    cursor: pointer;
-    border-radius: 6px;
-    flex-shrink: 0;
-    transition: background-color 150ms ease;
+    color: var(--toast-accent, var(--atoll-accent, #06C755)) !important;
   }
 
-  .atoll-toast-action-btn:hover {
-    background-color: rgba(0, 0, 0, 0.05);
-  }
-
-  .atoll-toast-action-btn:focus-visible {
-    outline: 2px solid var(--toast-accent-color, var(--atoll-accent, #06C755));
-    outline-offset: 1px;
-  }
-
-  .atoll-toast-close-btn {
-    background: transparent;
-    border: none;
-    padding: 4px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--atoll-text-muted, #8E8E93);
-    cursor: pointer;
-    border-radius: 50%;
-    flex-shrink: 0;
-    opacity: 0.7;
-    transition: opacity 150ms ease, background-color 150ms ease;
-  }
-
-  .atoll-toast-close-btn:hover {
-    opacity: 1;
-    background-color: rgba(0, 0, 0, 0.05);
-  }
-
-  .atoll-toast-close-btn:focus-visible {
-    outline: 2px solid var(--atoll-text-muted, #8E8E93);
-    outline-offset: 1px;
-  }
-
+  /* Countdown Progress Bar */
   .atoll-toast-progress-wrapper {
     position: absolute;
     bottom: 0;
@@ -245,7 +188,7 @@
   .atoll-toast-progress-bar {
     height: 100%;
     width: 100%;
-    background-color: var(--toast-accent-color, var(--atoll-accent, #06C755));
+    background-color: var(--toast-accent, var(--atoll-accent, #06C755));
     transform-origin: left center;
     animation: atoll-toast-shrink linear forwards;
   }
@@ -280,28 +223,6 @@
     color: #ffffff;
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-toast-action-btn:hover,
-  :host-context([data-bs-theme="dark"]) .atoll-toast-action-btn:hover,
-  [data-atoll-theme="dark"] .atoll-toast-action-btn:hover,
-  [data-bs-theme="dark"] .atoll-toast-action-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-toast-close-btn,
-  :host-context([data-bs-theme="dark"]) .atoll-toast-close-btn,
-  [data-atoll-theme="dark"] .atoll-toast-close-btn,
-  [data-bs-theme="dark"] .atoll-toast-close-btn {
-    color: rgba(255, 255, 255, 0.6);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-toast-close-btn:hover,
-  :host-context([data-bs-theme="dark"]) .atoll-toast-close-btn:hover,
-  [data-atoll-theme="dark"] .atoll-toast-close-btn:hover,
-  [data-bs-theme="dark"] .atoll-toast-close-btn:hover {
-    background-color: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-  }
-
   :host-context([data-atoll-theme="dark"]) .atoll-toast-progress-wrapper,
   :host-context([data-bs-theme="dark"]) .atoll-toast-progress-wrapper,
   [data-atoll-theme="dark"] .atoll-toast-progress-wrapper,
@@ -329,7 +250,8 @@
     attributes: {
       placement: {
         type: String,
-        default: 'bottom-start'
+        default: 'bottom-start',
+        values: ['bottom-start', 'bottom-center', 'bottom-end', 'top-center', 'top-end']
       },
       maxToasts: {
         type: Number,
@@ -342,12 +264,6 @@
     },
 
     getters: {
-      popoverContainerClasses: (state) => {
-        const classes = ['atoll-toast-container']
-        const placement = state.placement || 'bottom-start'
-        classes.push(`placement-${placement}`)
-        return classes.join(' ')
-      },
       hasActiveToasts: (state) => Boolean(state.toasts && state.toasts.length > 0)
     },
 
@@ -360,17 +276,8 @@
       const toastEntries = new Map()
       let nextId = 1
 
-      /**
-       * Resolves icon name per toast variant or explicit override.
-       * @param {string} variant
-       * @param {string} [customIcon]
-       * @returns {string}
-       */
       const resolveIconName = (variant, customIcon) => {
-        if (customIcon) {
-          return customIcon
-        }
-  
+        if (customIcon) return customIcon
         switch (variant) {
           case 'success': return 'check-circle'
           case 'danger': return 'alert-circle'
@@ -382,36 +289,18 @@
         }
       }
 
-      /**
-       * Shows the top layer popover container if not currently shown.
-       */
       const ensurePopoverVisible = () => {
         if (popoverContainer && typeof popoverContainer.showPopover === 'function') {
-          try {
-            popoverContainer.showPopover()
-          } catch {
-            // Safe recovery if popover state is already open or manual fallback
-          }
+          try { popoverContainer.showPopover() } catch {}
         }
       }
 
-      /**
-       * Hides the top layer popover container if stack is empty.
-       */
       const ensurePopoverHidden = () => {
         if (state.toasts.length === 0 && popoverContainer && typeof popoverContainer.hidePopover === 'function') {
-          try {
-            popoverContainer.hidePopover()
-          } catch {
-            // Safe recovery
-          }
+          try { popoverContainer.hidePopover() } catch {}
         }
       }
 
-      /**
-       * Dismisses and removes a toast by ID with a 150ms exit transition.
-       * @param {string|number} id
-       */
       const hideToast = (id) => {
         state.toasts = state.toasts.filter(t => t.id !== id)
         const entry = toastEntries.get(id)
@@ -438,7 +327,6 @@
           ensurePopoverHidden()
         }
 
-        // Wait for 150ms transition
         let transitioned = false
         const handleTransitionEnd = (e) => {
           if (e.target === cardEl) {
@@ -449,37 +337,22 @@
         }
         cardEl.addEventListener('transitionend', handleTransitionEnd, { signal })
         setTimeout(() => {
-          if (!transitioned) {
-            removeCard()
-          }
+          if (!transitioned) removeCard()
         }, 180)
       }
 
-      /**
-       * Clears all active toasts immediately.
-       */
       const clearAll = () => {
         toastEntries.forEach((entry) => {
-          if (entry.timerId) {
-            clearTimeout(entry.timerId)
-          }
-          if (entry.cardEl.parentNode) {
-            entry.cardEl.parentNode.removeChild(entry.cardEl)
-          }
+          if (entry.timerId) clearTimeout(entry.timerId)
+          if (entry.cardEl.parentNode) entry.cardEl.parentNode.removeChild(entry.cardEl)
         })
         toastEntries.clear()
         state.toasts = []
         ensurePopoverHidden()
       }
 
-      /**
-       * Pauses auto-dismiss countdown for a toast entry.
-       * @param {object} entry
-       */
       const pauseTimer = (entry) => {
-        if (!entry || entry.remainingTime <= 0 || entry.isPaused) {
-          return
-        }
+        if (!entry || entry.remainingTime <= 0 || entry.isPaused) return
         if (entry.timerId) {
           clearTimeout(entry.timerId)
           entry.timerId = null
@@ -488,70 +361,43 @@
         entry.remainingTime = Math.max(0, entry.remainingTime - elapsed)
         entry.isPaused = true
         entry.cardEl.classList.add('atoll-toast-paused')
-        if (entry.progressBarEl) {
-          entry.progressBarEl.style.animationPlayState = 'paused'
-        }
+        if (entry.progressBarEl) entry.progressBarEl.style.animationPlayState = 'paused'
       }
 
-      /**
-       * Resumes auto-dismiss countdown for a toast entry.
-       * @param {object} entry
-       */
       const resumeTimer = (entry) => {
-        if (!entry || entry.remainingTime <= 0 || !entry.isPaused) {
-          return
-        }
+        if (!entry || entry.remainingTime <= 0 || !entry.isPaused) return
         entry.isPaused = false
         entry.startTime = Date.now()
         entry.cardEl.classList.remove('atoll-toast-paused')
-        if (entry.progressBarEl) {
-          entry.progressBarEl.style.animationPlayState = 'running'
-        }
-        entry.timerId = setTimeout(() => {
-          hideToast(entry.toast.id)
-        }, entry.remainingTime)
+        if (entry.progressBarEl) entry.progressBarEl.style.animationPlayState = 'running'
+        entry.timerId = setTimeout(() => hideToast(entry.toast.id), entry.remainingTime)
       }
 
-      /**
-       * Adds and displays a new toast notification.
-       * @param {object|string} options
-       * @returns {string|number} Toast ID
-       */
       const showToast = (options) => {
-        let toastObj = typeof options === 'string' ? { message: options } : { ...options }
-
+        const toastObj = typeof options === 'string' ? { message: options } : { ...options }
         const id = toastObj.id || `toast-${nextId++}`
         const variant = toastObj.variant || toastObj.type || 'primary'
         const duration = typeof toastObj.duration === 'number' ? toastObj.duration : state.duration
         const message = toastObj.message || ''
         const action = toastObj.action || null
+        const dismissible = toastObj.dismissible !== false
         const iconName = resolveIconName(variant, toastObj.icon)
 
-        const toast = {
-          id,
-          variant,
-          duration,
-          message,
-          action,
-          icon: iconName
-        }
+        const toast = { id, variant, duration, message, action, icon: iconName, dismissible }
 
-        // Enforce max capacity limit (default 3)
         const maxCapacity = state.maxToasts || 3
         while (state.toasts.length >= maxCapacity) {
           const oldest = state.toasts[0]
           hideToast(oldest.id)
         }
 
-        // Ensure Top-Layer Popover container is active
         ensurePopoverVisible()
 
-        // Create Card DOM element
         const card = document.createElement('div')
         card.className = `atoll-toast-card atoll-toast-card-${variant}`
         card.dataset.toastId = String(id)
+        card.dataset.variant = variant
 
-        // WCAG Live Region & ARIA attributes
         if (variant === 'danger' || variant === 'warning') {
           card.setAttribute('role', 'alert')
           card.setAttribute('aria-live', 'assertive')
@@ -562,11 +408,9 @@
         card.setAttribute('aria-atomic', 'true')
         card.setAttribute('tabindex', '0')
 
-        // Inner Card HTML Layout
         const bodyWrapper = document.createElement('div')
         bodyWrapper.className = 'atoll-toast-body'
 
-        // Icon
         const iconWrapper = document.createElement('div')
         iconWrapper.className = 'atoll-toast-icon'
         const iconEl = document.createElement('atoll-icon')
@@ -575,46 +419,46 @@
         iconWrapper.appendChild(iconEl)
         bodyWrapper.appendChild(iconWrapper)
 
-        // Message
         const msgEl = document.createElement('div')
         msgEl.className = 'atoll-toast-message'
         msgEl.textContent = message
         bodyWrapper.appendChild(msgEl)
 
-        // Action Button (if present)
         if (action && action.label) {
-          const actionBtn = document.createElement('button')
-          actionBtn.type = 'button'
+          const actionBtn = document.createElement('atoll-button')
+          actionBtn.setAttribute('variant', 'ghost')
+          actionBtn.setAttribute('size', 'sm')
+          actionBtn.setAttribute('pill', 'true')
           actionBtn.className = 'atoll-toast-action-btn'
           actionBtn.textContent = action.label
           actionBtn.addEventListener('click', (e) => {
             e.stopPropagation()
-            if (typeof action.onClick === 'function') {
-              action.onClick(toast)
-            }
+            if (typeof action.onClick === 'function') action.onClick(toast)
             hideToast(id)
           }, { signal })
           bodyWrapper.appendChild(actionBtn)
         }
 
-        // Close / Dismiss Button
-        const closeBtn = document.createElement('button')
-        closeBtn.type = 'button'
-        closeBtn.className = 'atoll-toast-close-btn'
-        closeBtn.setAttribute('aria-label', 'Dismiss notification')
-        const closeIcon = document.createElement('atoll-icon')
-        closeIcon.setAttribute('name', 'close')
-        closeIcon.setAttribute('size', '16')
-        closeBtn.appendChild(closeIcon)
-        closeBtn.addEventListener('click', (e) => {
-          e.stopPropagation()
-          hideToast(id)
-        }, { signal })
-        bodyWrapper.appendChild(closeBtn)
+        if (dismissible) {
+          const closeBtn = document.createElement('atoll-button')
+          closeBtn.setAttribute('variant', 'ghost')
+          closeBtn.setAttribute('size', 'sm')
+          closeBtn.setAttribute('icon-only', 'true')
+          closeBtn.setAttribute('pill', 'true')
+          closeBtn.setAttribute('aria-label', 'Dismiss notification')
+          const closeIcon = document.createElement('atoll-icon')
+          closeIcon.setAttribute('name', 'close')
+          closeIcon.setAttribute('size', '14')
+          closeBtn.appendChild(closeIcon)
+          closeBtn.addEventListener('click', (e) => {
+            e.stopPropagation()
+            hideToast(id)
+          }, { signal })
+          bodyWrapper.appendChild(closeBtn)
+        }
 
         card.appendChild(bodyWrapper)
 
-        // Progress Timer Bar (if duration > 0 and finite)
         let progressBarEl = null
         if (duration > 0 && Number.isFinite(duration)) {
           const progressWrapper = document.createElement('div')
@@ -626,44 +470,43 @@
           card.appendChild(progressWrapper)
         }
 
-        // Mouse & Focus Pause / Resume Handlers
+        // Mouse, Focus, and Touch Pause/Resume Handlers
         card.addEventListener('mouseenter', () => {
           const entry = toastEntries.get(id)
-          if (entry) {
-            pauseTimer(entry)
-          }
+          if (entry) pauseTimer(entry)
         }, { signal })
 
         card.addEventListener('mouseleave', () => {
           const entry = toastEntries.get(id)
-          if (entry) {
-            resumeTimer(entry)
-          }
+          if (entry) resumeTimer(entry)
         }, { signal })
 
         card.addEventListener('focusin', () => {
           const entry = toastEntries.get(id)
-          if (entry) {
-            pauseTimer(entry)
-          }
+          if (entry) pauseTimer(entry)
         }, { signal })
 
         card.addEventListener('focusout', () => {
           const entry = toastEntries.get(id)
-          if (entry) {
-            resumeTimer(entry)
-          }
+          if (entry) resumeTimer(entry)
         }, { signal })
 
-        // Mount Card in Stack Host
+        card.addEventListener('touchstart', () => {
+          const entry = toastEntries.get(id)
+          if (entry) pauseTimer(entry)
+        }, { signal, passive: true })
+
+        card.addEventListener('touchend', () => {
+          const entry = toastEntries.get(id)
+          if (entry) resumeTimer(entry)
+        }, { signal, passive: true })
+
         stackHost.appendChild(card)
 
-        // Trigger 200ms spring enter animation
         requestAnimationFrame(() => {
           card.classList.add('atoll-toast-visible')
         })
 
-        // Timer entry
         const entry = {
           toast,
           cardEl: card,
@@ -676,9 +519,7 @@
         }
 
         if (duration > 0 && Number.isFinite(duration)) {
-          entry.timerId = setTimeout(() => {
-            hideToast(id)
-          }, duration)
+          entry.timerId = setTimeout(() => hideToast(id), duration)
         }
 
         toastEntries.set(id, entry)
@@ -687,30 +528,24 @@
         return id
       }
 
-      // EventBus listener
       if ($bus) {
         $bus.on('ui:show_toast', (payload) => {
           showToast(payload)
         })
       }
 
-      // Keyboard Esc handler to close active toast
       popoverContainer.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && state.toasts.length > 0) {
           const lastToast = state.toasts[state.toasts.length - 1]
-          if (lastToast) {
-            hideToast(lastToast.id)
-          }
+          if (lastToast) hideToast(lastToast.id)
         }
       }, { signal })
 
-      // Public Imperative API exposed on component host
       root.show = showToast
       root.toast = showToast
       root.hide = hideToast
       root.clear = clearAll
 
-      // Cleanup on component abort
       signal.addEventListener('abort', () => {
         clearAll()
       })
