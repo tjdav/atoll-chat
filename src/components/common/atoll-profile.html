@@ -56,8 +56,7 @@
     display: contents !important;
   }
 
-  ::slotted(img),
-  :host > img {
+  ::slotted(img) {
     width: 100%;
     height: 100%;
     border-radius: 50%;
@@ -118,8 +117,7 @@
   }
 
   /* Slotted grid items participate directly in host CSS Grid */
-  :host([type="multiparty"]) ::slotted(*),
-  :host([type="multiparty"]) > * {
+  :host([type="multiparty"]) ::slotted(*) {
     min-width: 0 !important;
     min-height: 0 !important;
     width: 100% !important;
@@ -138,34 +136,27 @@
     grid-template-rows: 1fr;
   }
 
-  :host([split-count="2"]) ::slotted(*:first-child),
-  :host([split-count="2"]) > *:first-child {
+  :host([split-count="2"]) ::slotted(*:first-child) {
     grid-row: 1;
     grid-column: 1;
   }
 
   /* 3-split (default multiparty layout): Left half tall, right half two stacked quadrants */
   :host([split-count="3"]) ::slotted(*:first-child),
-  :host([type="multiparty"]:not([split-count])) ::slotted(*:first-child),
-  :host([split-count="3"]) > *:first-child,
-  :host([type="multiparty"]:not([split-count])) > *:first-child {
+  :host([type="multiparty"]:not([split-count])) ::slotted(*:first-child) {
     grid-row: 1 / span 2;
     grid-column: 1;
     height: 100%;
   }
 
   :host([split-count="3"]) ::slotted(*:nth-child(2)),
-  :host([type="multiparty"]:not([split-count])) ::slotted(*:nth-child(2)),
-  :host([split-count="3"]) > *:nth-child(2),
-  :host([type="multiparty"]:not([split-count])) > *:nth-child(2) {
+  :host([type="multiparty"]:not([split-count])) ::slotted(*:nth-child(2)) {
     grid-row: 1;
     grid-column: 2;
   }
 
   :host([split-count="3"]) ::slotted(*:nth-child(3)),
-  :host([type="multiparty"]:not([split-count])) ::slotted(*:nth-child(3)),
-  :host([split-count="3"]) > *:nth-child(3),
-  :host([type="multiparty"]:not([split-count])) > *:nth-child(3) {
+  :host([type="multiparty"]:not([split-count])) ::slotted(*:nth-child(3)) {
     grid-row: 2;
     grid-column: 2;
   }
@@ -212,17 +203,13 @@
 
   /* Dark Mode Overrides */
   :host-context([data-atoll-theme="dark"]),
-  :host-context([data-bs-theme="dark"]),
-  [data-atoll-theme="dark"] atoll-profile,
-  [data-bs-theme="dark"] atoll-profile {
+  [data-atoll-theme="dark"] atoll-profile {
     --profile-cutout-border: var(--atoll-bg-surface-primary, #161616);
     --profile-placeholder-bg: var(--atoll-bg-surface-tertiary, #2A2A2A);
   }
 
   :host-context([data-atoll-theme="dark"]) .atoll-profile-icon,
-  :host-context([data-bs-theme="dark"]) .atoll-profile-icon,
-  [data-atoll-theme="dark"] .atoll-profile-icon,
-  [data-bs-theme="dark"] .atoll-profile-icon {
+  [data-atoll-theme="dark"] .atoll-profile-icon {
     background-color: var(--atoll-bg-surface-primary, #161616);
   }
 </style>
@@ -282,30 +269,52 @@
       hasError: Boolean
     },
 
-    style: {
-      '--profile-bg': (s) => {
-        const palettes = [
-          '#06C755', '#15BD66', '#19BFA1', '#1CB8B8', '#0093C4',
-          '#0279D4', '#2F59CC', '#4545D1', '#6B3CC9', '#AF36C7',
-          '#DE2C7F', '#E5172F', '#FF5E1F', '#FCB321'
+    server () {
+      return {
+        palettes: [
+          '#06C755',
+          '#15BD66',
+          '#19BFA1',
+          '#1CB8B8',
+          '#0093C4',
+          '#0279D4',
+          '#2F59CC',
+          '#4545D1',
+          '#6B3CC9',
+          '#AF36C7',
+          '#DE2C7F',
+          '#E5172F',
+          '#FF5E1F',
+          '#FCB321'
         ]
-        if (s.bgColor || s.palette) {
-          let seedStr = s.bgColor || (typeof s.palette === 'string' && s.palette !== 'true' ? s.palette : (s.name || s.alt || ''))
+      }
+    },
+
+    style: {
+      '--profile-bg': (state) => {
+        const palettes = state.palettes
+  
+        if (state.bgColor || state.palette) {
+          let seedStr = state.bgColor || (typeof state.palette === 'string' && state.palette !== 'true' ? state.palette : (state.name || state.alt || ''))
+  
           if (seedStr.startsWith('#') || seedStr.startsWith('rgb') || seedStr.startsWith('hsl') || seedStr.startsWith('var(')) {
             return seedStr
           }
+
           if (seedStr && seedStr !== 'User profile') {
             let hash = 0
             for (let i = 0; i < seedStr.length; i++) {
               hash = seedStr.charCodeAt(i) + ((hash << 5) - hash)
             }
-            return palettes[Math.abs(hash) % palettes.length]
+            return palettes[Math.abs(hash) % palettestate.length]
           }
         }
-        if (s.src) {
+
+        if (state.src) {
           return 'transparent'
         }
-        const seedStr = s.userId || s.name || s.alt || ''
+  
+        const seedStr = state.userId || state.name || state.alt || ''
         if (seedStr && seedStr !== 'User profile') {
           let hash = 0
           for (let i = 0; i < seedStr.length; i++) {
@@ -313,6 +322,7 @@
           }
           return palettes[Math.abs(hash) % palettes.length]
         }
+  
         return null
       }
     },
@@ -499,7 +509,9 @@
         }
       }
 
-      if (state.size) syncSize(state.size)
+      if (state.size) {
+        syncSize(state.size)
+      }
       observe('size', syncSize)
 
       if (root.getAttribute('type')) {
@@ -508,8 +520,16 @@
       if (root.getAttribute('split-count')) {
         state.splitCount = parseInt(root.getAttribute('split-count'), 10)
       }
-      observe('type', (t) => { if (t) state.type = t })
-      observe('splitCount', (c) => { if (c) state.splitCount = parseInt(c, 10) })
+      observe('type', (t) => {
+        if (t) {
+          state.type = t
+        }
+      })
+      observe('splitCount', (c) => {
+        if (c) {
+          state.splitCount = parseInt(c, 10)
+        }
+      })
 
       // User store synchronization
       const { $state } = globalStore || {}
@@ -519,7 +539,9 @@
       const fetchingUserIds = new Set()
 
       const fetchAndCacheUser = async (uid) => {
-        if (!uid || fetchingUserIds.has(uid)) return
+        if (!uid || fetchingUserIds.has(uid)) {
+          return
+        }
         fetchingUserIds.add(uid)
 
         try {
@@ -555,7 +577,9 @@
       }
 
       const syncFromUserStore = (uid) => {
-        if (!uid || !$state) return
+        if (!uid || !$state) {
+          return
+        }
         let user = $state.users?.[uid]
         if (!user && $state.currentUser?.id === uid) {
           user = $state.currentUser
@@ -588,10 +612,14 @@
         syncFromUserStore(state.userId)
         if ($state) {
           unsubUsers = $state.subscribe('users', (newUsers) => {
-            if (state.userId && newUsers?.[state.userId]) syncFromUserStore(state.userId)
+            if (state.userId && newUsers?.[state.userId]) {
+              syncFromUserStore(state.userId)
+            }
           })
           unsubCurrentUser = $state.subscribe('currentUser', (newUser) => {
-            if (state.userId && newUser?.id === state.userId) syncFromUserStore(state.userId)
+            if (state.userId && newUser?.id === state.userId) {
+              syncFromUserStore(state.userId)
+            }
           })
         }
       }
@@ -602,24 +630,36 @@
           if ($state) {
             if (!unsubUsers) {
               unsubUsers = $state.subscribe('users', (newUsers) => {
-                if (state.userId && newUsers?.[state.userId]) syncFromUserStore(state.userId)
+                if (state.userId && newUsers?.[state.userId]) {
+                  syncFromUserStore(state.userId)
+                }
               })
             }
             if (!unsubCurrentUser) {
               unsubCurrentUser = $state.subscribe('currentUser', (newUser) => {
-                if (state.userId && newUser?.id === state.userId) syncFromUserStore(state.userId)
+                if (state.userId && newUser?.id === state.userId) {
+                  syncFromUserStore(state.userId)
+                }
               })
             }
           }
         } else {
-          if (unsubUsers) { unsubUsers(); unsubUsers = null }
-          if (unsubCurrentUser) { unsubCurrentUser(); unsubCurrentUser = null }
+          if (unsubUsers) {
+            unsubUsers(); unsubUsers = null
+          }
+          if (unsubCurrentUser) {
+            unsubCurrentUser(); unsubCurrentUser = null
+          }
         }
       })
 
       signal.addEventListener('abort', () => {
-        if (unsubUsers) unsubUsers()
-        if (unsubCurrentUser) unsubCurrentUser()
+        if (unsubUsers) {
+          unsubUsers()
+        }
+        if (unsubCurrentUser) {
+          unsubCurrentUser()
+        }
       })
     }
   })
