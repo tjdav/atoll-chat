@@ -75,21 +75,21 @@ test.describe('atoll-slideshow Component Tests', () => {
     `)
 
     const slideshowHost = page.locator('#test-component-root')
+    await expect(slideshowHost.locator('.atoll-slideshow-viewport')).toBeVisible()
+    await page.waitForFunction(() => {
+      const el = document.getElementById('test-component-root')
+      return el && typeof el.getEmbla === 'function' && el.getEmbla() !== null
+    })
+
     await slideshowHost.evaluate(el => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', keyCode: 39, bubbles: true, cancelable: true }))
     })
-    await page.waitForTimeout(300)
-
-    const index = await slideshowHost.evaluate(el => el.getSelectedIndex())
-    expect(index).toBe(1)
+    await expect.poll(async () => slideshowHost.evaluate(el => el.getSelectedIndex())).toBe(1)
 
     await slideshowHost.evaluate(el => {
       window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft', keyCode: 37, bubbles: true, cancelable: true }))
     })
-    await page.waitForTimeout(300)
-
-    const backIndex = await slideshowHost.evaluate(el => el.getSelectedIndex())
-    expect(backIndex).toBe(0)
+    await expect.poll(async () => slideshowHost.evaluate(el => el.getSelectedIndex())).toBe(0)
   })
 
   test('should render comprehensive visual matrix and generate verification screenshots', async ({ page, setTheme, takeVerificationScreenshot }) => {
