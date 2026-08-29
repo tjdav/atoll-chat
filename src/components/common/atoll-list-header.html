@@ -1,7 +1,7 @@
 <template id="atoll-list-header">
   <div 
     ref="headerRoot"
-    class="{{ headerClasses }}" 
+    class="atoll-list-header" 
     role="{{ headerRole }}"
     tabindex="{{ headerTabindex }}"
     aria-expanded="{{ isAriaExpanded }}"
@@ -47,18 +47,77 @@
   :host {
     display: block;
     width: 100%;
+
+    --list-header-height: 44px;
+    --list-header-padding: 8px 16px;
+    --list-header-font-size: var(--atoll-font-size-body-2, 14px);
+    --list-header-font-weight: 600;
+    --list-header-bg: transparent;
+    --list-header-bg-hover: var(--atoll-bg-surface-secondary, #F5F5F5);
+    --list-header-title-color: var(--atoll-text-primary, #111111);
+    --list-header-subtitle-color: var(--atoll-text-secondary, #555555);
+    --list-header-dropdown-color: var(--atoll-text-secondary, #666666);
+    --list-header-border: var(--atoll-border-subtle, #DFDFDF);
+    --list-header-border-radius: 0;
   }
 
+  :host([hidden]) {
+    display: none !important;
+  }
+
+  /* Size Modifiers */
+  :host([size="sm"]) {
+    --list-header-height: 36px;
+    --list-header-padding: 4px 16px;
+    --list-header-font-size: var(--atoll-font-size-caption-1, 12px);
+  }
+
+  :host([size="lg"]) {
+    --list-header-height: 52px;
+    --list-header-padding: 8px 16px;
+    --list-header-font-size: var(--atoll-font-size-body-1, 16px);
+  }
+
+  /* Variant Modifiers */
+  :host([variant="list"]),
+  :host(:not([variant])) {
+    border-bottom: 1px solid var(--list-header-border);
+  }
+
+  :host([variant="card"]) {
+    --list-header-padding: 12px 20px;
+    --list-header-bg: var(--atoll-bg-surface-primary, #FFFFFF);
+    --list-header-border-radius: var(--atoll-card-border-radius, 12px) var(--atoll-card-border-radius, 12px) 0 0;
+    border-bottom: 1px solid var(--list-header-border);
+  }
+
+  :host([variant="accordion"]),
+  :host([collapsible]) {
+    cursor: pointer;
+  }
+
+  :host([variant="accordion"]:hover),
+  :host([collapsible]:hover) {
+    background-color: var(--list-header-bg-hover);
+  }
+
+  :host([expanded]) .atoll-list-header-chevron {
+    transform: rotate(180deg);
+  }
+
+  /* Base Container Layout */
   .atoll-list-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     width: 100%;
-    min-height: var(--atoll-list-header-height, 44px);
-    padding: 8px 16px;
-    background-color: var(--atoll-list-header-bg, transparent);
+    min-height: var(--list-header-height);
+    padding: var(--list-header-padding);
+    background-color: var(--list-header-bg);
+    border-radius: var(--list-header-border-radius);
     box-sizing: border-box;
     user-select: none;
+    transition: background-color 0.15s ease-in-out;
   }
 
   .atoll-list-header-main {
@@ -80,22 +139,22 @@
     align-items: center;
     gap: 6px;
     font-family: var(--atoll-font-sans-serif, sans-serif);
-    font-size: var(--atoll-font-size-body-2, 14px);
-    font-weight: var(--atoll-font-weight-semibold, 600);
-    color: var(--atoll-text-primary, #111111);
+    font-size: var(--list-header-font-size);
+    font-weight: var(--list-header-font-weight);
+    color: var(--list-header-title-color);
     line-height: 1.2;
   }
 
   .atoll-list-header-dropdown-icon {
     display: inline-flex;
     align-items: center;
-    color: var(--atoll-text-secondary, #666666);
+    color: var(--list-header-dropdown-color);
     transition: transform 0.15s ease-in-out;
   }
 
   .atoll-list-header-subtitle {
     font-size: var(--atoll-font-size-caption-1, 12px);
-    color: var(--atoll-text-secondary, #555555);
+    color: var(--list-header-subtitle-color);
     font-weight: var(--atoll-font-weight-regular, 400);
     margin-top: 2px;
   }
@@ -112,68 +171,26 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    color: var(--atoll-text-secondary, #666666);
+    color: var(--list-header-dropdown-color);
     transition: transform 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   }
 
-  .atoll-list-header-list {
-    border-bottom: 1px solid var(--atoll-border-subtle, #DFDFDF);
+  /* Dark Theme Overrides */
+  :host-context([data-atoll-theme="dark"]),
+  :host-context([data-bs-theme="dark"]),
+  [data-atoll-theme="dark"] atoll-list-header,
+  [data-bs-theme="dark"] atoll-list-header {
+    --list-header-title-color: var(--atoll-text-primary, #FFFFFF);
+    --list-header-subtitle-color: var(--atoll-text-secondary, #B0B0B0);
+    --list-header-border: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
+    --list-header-bg-hover: var(--atoll-bg-surface-secondary, #1F1F1F);
   }
 
-  .atoll-list-header-card {
-    padding: 12px 20px;
-    border-bottom: 1px solid var(--atoll-border-subtle, #DFDFDF);
-    background-color: var(--atoll-bg-surface-primary, #FFFFFF);
-    border-top-left-radius: var(--atoll-card-border-radius, 12px);
-    border-top-right-radius: var(--atoll-card-border-radius, 12px);
-  }
-
-  .atoll-list-header-accordion {
-    cursor: pointer;
-    transition: background-color 0.15s ease-in-out;
-
-    &:hover {
-      background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
-    }
-
-    &.atoll-list-header-expanded .atoll-list-header-chevron {
-      transform: rotate(180deg);
-    }
-  }
-
-  .atoll-list-header-sm {
-    --atoll-list-header-height: 36px;
-    padding-top: 4px;
-    padding-bottom: 4px;
-
-    .atoll-list-header-title-row {
-      font-size: var(--atoll-font-size-caption-1, 12px);
-    }
-  }
-
-  .atoll-list-header-lg {
-    --atoll-list-header-height: 52px;
-
-    .atoll-list-header-title-row {
-      font-size: var(--atoll-font-size-body-1, 16px);
-    }
-  }
-
-  [data-atoll-theme="dark"] .atoll-list-header,
-  [data-bs-theme="dark"] .atoll-list-header {
-    --atoll-list-header-title-color: var(--atoll-text-primary, #FFFFFF);
-    --atoll-list-header-subtitle-color: var(--atoll-text-secondary, #B0B0B0);
-    --atoll-list-header-border: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
-  }
-
-  [data-atoll-theme="dark"] .atoll-list-header-card,
-  [data-bs-theme="dark"] .atoll-list-header-card {
-    background-color: var(--atoll-bg-surface-primary, #161616);
-  }
-
-  [data-atoll-theme="dark"] .atoll-list-header-accordion:hover,
-  [data-bs-theme="dark"] .atoll-list-header-accordion:hover {
-    background-color: var(--atoll-bg-surface-secondary, #1F1F1F);
+  :host-context([data-atoll-theme="dark"]) :host([variant="card"]),
+  :host-context([data-bs-theme="dark"]) :host([variant="card"]),
+  [data-atoll-theme="dark"] atoll-list-header[variant="card"],
+  [data-bs-theme="dark"] atoll-list-header[variant="card"] {
+    --list-header-bg: var(--atoll-bg-surface-primary, #161616);
   }
 </style>
 
@@ -192,11 +209,13 @@
       },
       variant: {
         type: String,
-        default: 'list'
+        default: 'list',
+        values: ['list', 'card', 'accordion']
       },
       size: {
         type: String,
-        default: 'md'
+        default: 'md',
+        values: ['sm', 'md', 'lg']
       },
       badge: {
         type: String,
@@ -213,9 +232,8 @@
 
     slots: {
       badge (nodes, { state }) {
-        if (nodes && nodes.length > 0) {
-          return nodes
-        }
+        if (nodes && nodes.length > 0) return nodes
+
         if (state.badge) {
           const badgeEl = document.createElement('atoll-badge')
           badgeEl.setAttribute('count', state.badge)
@@ -226,9 +244,8 @@
       },
 
       dropdown (nodes, { state }) {
-        if (nodes && nodes.length > 0) {
-          return nodes
-        }
+        if (nodes && nodes.length > 0) return nodes
+
         if (state.dropdown) {
           const span = document.createElement('span')
           span.className = 'atoll-list-header-dropdown-icon'
@@ -242,9 +259,8 @@
       },
 
       actionButton (nodes, { state }) {
-        if (nodes && nodes.length > 0) {
-          return nodes
-        }
+        if (nodes && nodes.length > 0) return nodes
+
         if (state.actionText) {
           const btn = document.createElement('atoll-button')
           btn.setAttribute('variant', 'ghost')
@@ -256,9 +272,8 @@
       },
 
       chevron (nodes, { state }) {
-        if (nodes && nodes.length > 0) {
-          return nodes
-        }
+        if (nodes && nodes.length > 0) return nodes
+
         if (state.variant === 'accordion' || Boolean(state.collapsible)) {
           const span = document.createElement('span')
           span.className = 'atoll-list-header-chevron'
@@ -273,70 +288,46 @@
     },
 
     getters: {
-      isAccordion: (state) => state.variant === 'accordion' || Boolean(state.collapsible),
-
       headerRole: (state) => (state.variant === 'accordion' || Boolean(state.collapsible) ? 'button' : 'region'),
-
       headerTabindex: (state) => (state.variant === 'accordion' || Boolean(state.collapsible) ? '0' : '-1'),
-
       isAriaExpanded: (state) => {
-        if (!state.isAccordion) {
-          return null
-        }
+        if (state.variant !== 'accordion' && !state.collapsible) return null
         return state.expanded ? 'true' : 'false'
       },
-
-      hideSubtitle: (state) => !state.subtitle,
-
-      headerClasses: (state) => {
-        const classes = ['atoll-list-header']
-
-        if (state.variant) {
-          classes.push(`atoll-list-header-${state.variant}`)
-        } else {
-          classes.push('atoll-list-header-list')
-        }
-
-        if (state.size) {
-          classes.push(`atoll-list-header-${state.size}`)
-        } else {
-          classes.push('atoll-list-header-md')
-        }
-
-        if (state.expanded && (state.variant === 'accordion' || state.collapsible)) {
-          classes.push('atoll-list-header-expanded')
-        }
-
-        return classes.join(' ')
-      }
+      hideSubtitle: (state) => !state.subtitle
     },
 
-    client: ({ state, refs, root }) => {
+    client: ({ state, refs, root, signal }) => {
       const header = refs('headerRoot')
 
       const toggleAccordion = () => {
         if (state.variant === 'accordion' || state.collapsible) {
-          state.expanded = !state.expanded
+          const isExpanded = !state.expanded
+          state.expanded = isExpanded
+          if (isExpanded) {
+            root.setAttribute('expanded', '')
+          } else {
+            root.removeAttribute('expanded')
+          }
 
-          // Dispatch custom event for parent accordion containers
           root.dispatchEvent(
             new CustomEvent('atoll-header-toggle', {
               bubbles: true,
               composed: true,
-              detail: { expanded: state.expanded }
+              detail: { expanded: isExpanded }
             })
           )
         }
       }
 
-      header.addEventListener('click', toggleAccordion)
+      header.addEventListener('click', toggleAccordion, { signal })
 
       header.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           toggleAccordion()
         }
-      })
+      }, { signal })
     }
   })
 </script>
