@@ -1,7 +1,7 @@
 <template id="atoll-list-item">
   <div 
     ref="itemRoot"
-    class="{{ itemClasses }}" 
+    class="atoll-list-item" 
     role="{{ itemRole }}"
     tabindex="{{ itemTabindex }}"
   >
@@ -14,7 +14,7 @@
       </div>
     </div>
 
-    <!-- 3-1. Left Area (Avatar, Thumbnail, Selection Control) -->
+    <!-- 1. Left Area (Avatar, Thumbnail, Selection Control) -->
     <div class="atoll-list-item-left" hidden="{{ hideOnLoading }}">
       <slot name="checkbox"></slot>
       <slot name="deleteIcon"></slot>
@@ -22,7 +22,7 @@
       <slot name="left"></slot>
     </div>
 
-    <!-- 3-2. Center Text Area -->
+    <!-- 2. Center Text Area -->
     <div class="atoll-list-item-content" hidden="{{ hideOnLoading }}">
       <div class="atoll-list-item-title-row">
         <span class="atoll-list-item-title">
@@ -41,81 +41,128 @@
       </span>
     </div>
 
-    <!-- 3-3. Right Area (Switch, Badge, Chevron, Custom Action) -->
+    <!-- 3. Right Area (Badge, Chevron, Reorder Handle, Custom Actions) -->
     <div class="atoll-list-item-right" hidden="{{ hideOnLoading }}">
       <slot name="right"></slot>
-
-      <!-- Unread Count Badge -->
       <slot name="badge"></slot>
-
-      <!-- Navigation Directional Chevron -->
       <slot name="chevron"></slot>
-
-      <!-- Reorder Drag Handle -->
       <slot name="reorder"></slot>
     </div>
   </div>
 </template>
 
 <style>
-  :host {
+  :host,
+  atoll-list-item {
     display: block;
     container-type: inline-size;
     width: 100%;
+
+    --list-item-min-height: 60px;
+    --list-item-padding-x: 16px;
+    --list-item-padding-y: 10px;
+    --list-item-bg: transparent;
+    --list-item-bg-hover: var(--atoll-bg-surface-secondary, #F5F5F5);
+    --list-item-bg-active: var(--atoll-bg-surface-tertiary, #E8E8E8);
+    --list-item-bg-highlighted: rgba(6, 199, 85, 0.08);
+    --list-item-title-color: var(--atoll-text-primary, #111111);
+    --list-item-desc-color: var(--atoll-text-secondary, #555555);
+    --list-item-timestamp-color: var(--atoll-text-tertiary, #999999);
+    --list-item-accent: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
   }
 
-  :host([hidden]) {
+  :host([hidden]),
+  atoll-list-item[hidden] {
     display: none !important;
   }
 
-  /* List Item Geometry & Custom Tokens */
+  :host([size="sm"]),
+  atoll-list-item[size="sm"] {
+    --list-item-min-height: 48px;
+    --list-item-padding-y: 6px;
+  }
+
+  :host([size="lg"]),
+  atoll-list-item[size="lg"] {
+    --list-item-min-height: 72px;
+    --list-item-padding-y: 12px;
+  }
+
+  :host([highlighted]),
+  atoll-list-item[highlighted] {
+    --list-item-bg: var(--list-item-bg-highlighted);
+  }
+
+  :host([selected]),
+  atoll-list-item[selected] {
+    --list-item-bg: var(--list-item-bg-highlighted);
+    position: relative;
+  }
+
+  :host([selected])::before,
+  atoll-list-item[selected]::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background-color: var(--list-item-accent);
+    z-index: 1;
+  }
+
+  :host([disabled]),
+  :host(.disabled),
+  atoll-list-item[disabled],
+  atoll-list-item.disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+
+  /* Base Row Layout */
   .atoll-list-item {
-    --atoll-list-item-min-height-sm: 48px;
-    --atoll-list-item-min-height-md: 60px;
-    --atoll-list-item-min-height-lg: 72px;
-    --atoll-list-item-padding-x: 16px;
-    --atoll-list-item-padding-y: 10px;
-
-    --atoll-list-item-bg: transparent;
-    --atoll-list-item-bg-hover: var(--atoll-bg-surface-secondary, #F5F5F5);
-    --atoll-list-item-bg-active: var(--atoll-bg-surface-tertiary, #E8E8E8);
-    --atoll-list-item-bg-highlighted: rgba(6, 199, 85, 0.08);
-    --atoll-list-item-title-color: var(--atoll-text-primary, #111111);
-    --atoll-list-item-desc-color: var(--atoll-text-secondary, #555555);
-    --atoll-list-item-divider: var(--atoll-border-subtle, #DFDFDF);
-
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 12px;
     width: 100%;
-    min-height: var(--atoll-list-item-min-height, var(--atoll-list-item-min-height-md));
-    padding: var(--atoll-list-item-padding-y) var(--atoll-list-item-padding-x);
-    background-color: var(--atoll-list-item-bg);
+    min-height: var(--list-item-min-height);
+    padding: var(--list-item-padding-y) var(--list-item-padding-x);
+    background-color: var(--list-item-bg);
     box-sizing: border-box;
     transition: background-color 0.15s ease-in-out;
     user-select: none;
     overflow: visible !important;
   }
 
-  .atoll-list-item.atoll-list-item-clickable {
+  :host([clickable]) .atoll-list-item,
+  :host([chevron]) .atoll-list-item,
+  :host([mode="selection"]) .atoll-list-item,
+  atoll-list-item[clickable] .atoll-list-item,
+  atoll-list-item[chevron] .atoll-list-item,
+  atoll-list-item[mode="selection"] .atoll-list-item {
     cursor: pointer;
   }
 
-  .atoll-list-item.atoll-list-item-clickable:hover {
-    background-color: var(--atoll-list-item-bg-hover);
+  :host([clickable]:hover) .atoll-list-item,
+  :host([chevron]:hover) .atoll-list-item,
+  :host([mode="selection"]:hover) .atoll-list-item,
+  atoll-list-item[clickable]:hover .atoll-list-item,
+  atoll-list-item[chevron]:hover .atoll-list-item,
+  atoll-list-item[mode="selection"]:hover .atoll-list-item {
+    background-color: var(--list-item-bg-hover);
   }
 
-  .atoll-list-item.atoll-list-item-clickable:active {
-    background-color: var(--atoll-list-item-bg-active);
+  :host([clickable]:active) .atoll-list-item,
+  :host([chevron]:active) .atoll-list-item,
+  :host([mode="selection"]:active) .atoll-list-item,
+  atoll-list-item[clickable]:active .atoll-list-item,
+  atoll-list-item[chevron]:active .atoll-list-item,
+  atoll-list-item[mode="selection"]:active .atoll-list-item {
+    background-color: var(--list-item-bg-active);
   }
 
-  .atoll-list-item.disabled {
-    opacity: 0.45;
-    pointer-events: none;
-  }
-
-  /* 3-1. Left Area */
+  /* Left Area */
   .atoll-list-item-left {
     display: flex;
     align-items: center;
@@ -124,7 +171,7 @@
     gap: 12px;
   }
 
-  /* 3-2. Center Text Area */
+  /* Center Content Area */
   .atoll-list-item-content {
     display: flex;
     flex-direction: column;
@@ -146,16 +193,26 @@
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
     font-size: var(--atoll-font-size-body-1, 15px);
     font-weight: var(--atoll-font-weight-semibold, 600);
-    color: var(--atoll-list-item-title-color);
+    color: var(--list-item-title-color);
     line-height: 1.3;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
+  :host([size="sm"]) .atoll-list-item-title,
+  atoll-list-item[size="sm"] .atoll-list-item-title {
+    font-size: var(--atoll-font-size-body-2, 13px);
+  }
+
+  :host([size="lg"]) .atoll-list-item-title,
+  atoll-list-item[size="lg"] .atoll-list-item-title {
+    font-size: var(--atoll-font-size-body-1, 16px);
+  }
+
   .atoll-list-item-timestamp {
     font-size: var(--atoll-font-size-caption-2, 11px);
-    color: var(--atoll-text-tertiary, #999999);
+    color: var(--list-item-timestamp-color);
     flex-shrink: 0;
     font-variant-numeric: tabular-nums;
   }
@@ -163,14 +220,14 @@
   .atoll-list-item-description {
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
     font-size: var(--atoll-font-size-body-2, 13px);
-    color: var(--atoll-list-item-desc-color);
+    color: var(--list-item-desc-color);
     line-height: 1.35;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
   }
 
-  /* 3-3. Right Area */
+  /* Right Area */
   .atoll-list-item-right {
     display: flex;
     align-items: center;
@@ -183,48 +240,10 @@
   .atoll-list-item-chevron {
     display: inline-flex;
     align-items: center;
-    color: var(--atoll-text-tertiary, #999999);
+    color: var(--list-item-timestamp-color);
   }
 
-  /* State & Size Modifiers */
-  .atoll-list-item-highlighted {
-    background-color: var(--atoll-list-item-bg-highlighted);
-  }
-
-  .atoll-list-item-selected {
-    background-color: var(--atoll-list-item-bg-highlighted);
-    position: relative;
-  }
-
-  .atoll-list-item-selected::before {
-    content: "";
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
-    width: 3px;
-    background-color: var(--atoll-brand-primary, #06C755);
-  }
-
-  .atoll-list-item-sm {
-    --atoll-list-item-min-height: var(--atoll-list-item-min-height-sm);
-    --atoll-list-item-padding-y: 6px;
-  }
-
-  .atoll-list-item-sm .atoll-list-item-title {
-    font-size: var(--atoll-font-size-body-2, 13px);
-  }
-
-  .atoll-list-item-lg {
-    --atoll-list-item-min-height: var(--atoll-list-item-min-height-lg);
-    --atoll-list-item-padding-y: 12px;
-  }
-
-  .atoll-list-item-lg .atoll-list-item-title {
-    font-size: var(--atoll-font-size-body-1, 16px);
-  }
-
-  /* Loading Skeleton Dimensions & Classes */
+  /* Loading Placeholders */
   .atoll-list-item-avatar-placeholder-sm {
     width: var(--atoll-profile-size-sm, 42px);
     height: var(--atoll-profile-size-sm, 42px);
@@ -250,7 +269,8 @@
     border-radius: 3px;
   }
 
-  .atoll-list-item-loading {
+  :host([loading]) .atoll-list-item,
+  atoll-list-item[loading] .atoll-list-item {
     pointer-events: none;
     cursor: default;
   }
@@ -267,14 +287,16 @@
   }
 
   /* Dark Theme Overrides */
-  [data-atoll-theme="dark"] .atoll-list-item,
-  [data-bs-theme="dark"] .atoll-list-item {
-    --atoll-list-item-bg-hover: var(--atoll-bg-surface-secondary, #161616);
-    --atoll-list-item-bg-active: var(--atoll-bg-surface-tertiary, #1F1F1F);
-    --atoll-list-item-title-color: var(--atoll-text-primary, #FFFFFF);
-    --atoll-list-item-desc-color: var(--atoll-text-secondary, #B0B0B0);
-    --atoll-list-item-divider: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
-    --atoll-list-item-bg-highlighted: rgba(6, 199, 85, 0.15);
+  :host-context([data-atoll-theme="dark"]),
+  :host-context([data-bs-theme="dark"]),
+  [data-atoll-theme="dark"] atoll-list-item,
+  [data-bs-theme="dark"] atoll-list-item {
+    --list-item-bg-hover: var(--atoll-bg-surface-secondary, #161616);
+    --list-item-bg-active: var(--atoll-bg-surface-tertiary, #1F1F1F);
+    --list-item-title-color: var(--atoll-text-primary, #FFFFFF);
+    --list-item-desc-color: var(--atoll-text-secondary, #B0B0B0);
+    --list-item-timestamp-color: var(--atoll-text-tertiary, #888888);
+    --list-item-bg-highlighted: rgba(6, 199, 85, 0.15);
   }
 </style>
 
@@ -305,7 +327,8 @@
       },
       size: {
         type: String,
-        default: 'md'
+        default: 'md',
+        values: ['sm', 'md', 'lg']
       },
       chevron: Boolean,
       clickable: Boolean,
@@ -315,7 +338,8 @@
       loading: Boolean,
       mode: {
         type: String,
-        default: 'default'
+        default: 'default',
+        values: ['default', 'selection', 'edit', 'reorder']
       },
       checked: Boolean,
       value: {
@@ -326,17 +350,21 @@
 
     slots: {
       checkbox (nodes, { state, signal, root }) {
-        if (nodes && nodes.length > 0) {
-          return nodes
-        }
+        if (nodes && nodes.length > 0) return nodes
+
         if (!state.loading && state.mode === 'selection') {
           const cb = document.createElement('atoll-checkbox')
-          if (state.checked) {
-            cb.setAttribute('checked', 'true')
-          }
+          if (state.checked) cb.setAttribute('checked', 'true')
+
+          const opts = signal ? { signal } : {}
           cb.addEventListener('change', (e) => {
             e.stopPropagation()
             state.checked = e.detail ? e.detail.checked : cb.checked
+            if (state.checked) {
+              root.setAttribute('checked', '')
+            } else {
+              root.removeAttribute('checked')
+            }
             root.dispatchEvent(
               new CustomEvent('atoll-selection-change', {
                 bubbles: true,
@@ -349,22 +377,22 @@
                 ]
               })
             )
-          }, { signal })
+          }, opts)
           return [cb]
         }
         return null
       },
 
       deleteIcon (nodes, { state, signal, root }) {
-        if (nodes && nodes.length > 0) {
-          return nodes
-        }
+        if (nodes && nodes.length > 0) return nodes
+
         if (!state.loading && state.mode === 'edit') {
           const icon = document.createElement('atoll-icon')
           icon.setAttribute('name', 'minus-circle')
           icon.setAttribute('size', '24')
           icon.setAttribute('color', 'var(--atoll-danger, #FF334B)')
           icon.className = 'atoll-list-item-delete-icon'
+          const opts = signal ? { signal } : {}
           icon.addEventListener('click', (e) => {
             e.stopPropagation()
             e.preventDefault()
@@ -378,16 +406,15 @@
                 }
               })
             )
-          }, { signal })
+          }, opts)
           return [icon]
         }
         return null
       },
 
       badge (nodes, { state }) {
-        if (nodes && nodes.length > 0) {
-          return nodes
-        }
+        if (nodes && nodes.length > 0) return nodes
+
         if (!state.loading && state.badge && state.mode === 'default') {
           const badgeEl = document.createElement('atoll-badge')
           badgeEl.setAttribute('count', state.badge)
@@ -399,9 +426,8 @@
       },
 
       chevron (nodes, { state }) {
-        if (nodes && nodes.length > 0) {
-          return nodes
-        }
+        if (nodes && nodes.length > 0) return nodes
+
         if (!state.loading && state.chevron && state.mode === 'default') {
           const span = document.createElement('span')
           span.className = 'atoll-list-item-chevron'
@@ -415,9 +441,8 @@
       },
 
       reorder (nodes, { state }) {
-        if (nodes && nodes.length > 0) {
-          return nodes
-        }
+        if (nodes && nodes.length > 0) return nodes
+
         if (!state.loading && state.mode === 'reorder') {
           const span = document.createElement('span')
           span.className = 'atoll-list-item-reorder'
@@ -434,72 +459,40 @@
 
     getters: {
       hideDescription: (state) => (!state.description ? 'true' : null),
-
       hideTimestamp: (state) => (!state.timestamp ? 'true' : null),
-
       isClickable: (state) => state.clickable || state.chevron || state.mode === 'selection',
-
       itemRole: (state) => (state.isClickable && !state.loading ? 'button' : 'listitem'),
-
       itemTabindex: (state) => (state.isClickable && !state.disabled && !state.loading ? '0' : '-1'),
-
       hideOnLoading: (state) => (state.loading ? 'true' : null),
-
       showOnLoading: (state) => (state.loading ? null : 'true'),
-
       avatarPlaceholderClasses: (state) => {
-        if (state.size === 'sm') {
-          return 'atoll-list-item-avatar-placeholder-sm'
-        }
-        if (state.size === 'lg') {
-          return 'atoll-list-item-avatar-placeholder-lg'
-        }
+        if (state.size === 'sm') return 'atoll-list-item-avatar-placeholder-sm'
+        if (state.size === 'lg') return 'atoll-list-item-avatar-placeholder-lg'
         return 'atoll-list-item-avatar-placeholder-md'
-      },
-
-      itemClasses: (state) => {
-        const classes = ['atoll-list-item']
-
-        if (state.size) {
-          classes.push(`atoll-list-item-${state.size}`)
-        } else {
-          classes.push('atoll-list-item-md')
-        }
-
-        if (state.isClickable && !state.loading) {
-          classes.push('atoll-list-item-clickable')
-        }
-        if (state.highlighted) {
-          classes.push('atoll-list-item-highlighted')
-        }
-        if (state.selected) {
-          classes.push('atoll-list-item-selected')
-          classes.push('active')
-        }
-        if (state.disabled) {
-          classes.push('disabled')
-        }
-        if (state.mode && state.mode !== 'default') {
-          classes.push(`atoll-list-item-mode-${state.mode}`)
-        }
-        if (state.loading) {
-          classes.push('atoll-list-item-loading')
-        }
-
-        return classes.join(' ')
       }
     },
 
-    client: ({ state, refs, root }) => {
+    client: ({ state, refs, root, signal, observe }) => {
       const itemRoot = refs('itemRoot')
 
+      if (observe) {
+        observe('mode', () => {})
+        observe('checked', () => {})
+      }
+
       const handleTrigger = () => {
-        if (state.disabled || state.loading) {
-          return
-        }
+        if (state.disabled || state.loading) return
 
         if (state.mode === 'selection') {
           state.checked = !state.checked
+          if (state.checked) {
+            root.setAttribute('checked', '')
+          } else {
+            root.removeAttribute('checked')
+          }
+          const cb = root.querySelector('atoll-checkbox')
+          if (cb) cb.checked = state.checked
+
           root.dispatchEvent(
             new CustomEvent('atoll-selection-change', {
               bubbles: true,
@@ -527,24 +520,32 @@
         )
       }
 
+      const listenerOpts = signal ? { signal } : {}
+
       itemRoot.addEventListener('click', (e) => {
         handleTrigger(e)
-      })
+      }, listenerOpts)
 
       itemRoot.addEventListener('keydown', (event) => {
         if (state.isClickable && !state.loading && (event.key === 'Enter' || event.key === ' ')) {
           event.preventDefault()
           handleTrigger(event)
         }
-      })
+      }, listenerOpts)
 
-      // Expose properties on host element
       Object.defineProperty(root, 'checked', {
         get () {
           return state.checked
         },
         set (val) {
           state.checked = Boolean(val)
+          if (state.checked) {
+            root.setAttribute('checked', '')
+          } else {
+            root.removeAttribute('checked')
+          }
+          const cb = root.querySelector('atoll-checkbox')
+          if (cb) cb.checked = state.checked
         },
         configurable: true
       })

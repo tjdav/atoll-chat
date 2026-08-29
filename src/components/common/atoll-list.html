@@ -1,13 +1,16 @@
 <template id="atoll-list">
-  <div class="{{ listClasses }}" role="list">
+  <div class="atoll-list" role="list">
     <slot></slot>
   </div>
 </template>
 
 <style>
-  :host {
+  :host,
+  atoll-list {
     display: block;
     width: 100%;
+
+    --list-divider: var(--atoll-border-subtle, #DFDFDF);
   }
 
   /* Base List Container */
@@ -22,16 +25,19 @@
   }
 
   /* Separator Lines Option */
-  .atoll-list.atoll-list-divided ::slotted(atoll-list-item:not(:last-child)),
-  .atoll-list.atoll-list-divided .atoll-list-item:not(:last-child) {
-    border-bottom: 1px solid var(--atoll-border-subtle, #DFDFDF);
+  :host([divided]) ::slotted(atoll-list-item:not(:last-child)),
+  :host([divided]) .atoll-list-item:not(:last-child),
+  atoll-list[divided] ::slotted(atoll-list-item:not(:last-child)),
+  atoll-list[divided] .atoll-list-item:not(:last-child) {
+    border-bottom: 1px solid var(--list-divider);
   }
 
-  [data-atoll-theme="dark"] .atoll-list.atoll-list-divided ::slotted(atoll-list-item:not(:last-child)),
-  [data-atoll-theme="dark"] .atoll-list.atoll-list-divided .atoll-list-item:not(:last-child),
-  [data-bs-theme="dark"] .atoll-list.atoll-list-divided ::slotted(atoll-list-item:not(:last-child)),
-  [data-bs-theme="dark"] .atoll-list.atoll-list-divided .atoll-list-item:not(:last-child) {
-    border-bottom: 1px solid var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
+  /* Dark Theme Overrides */
+  :host-context([data-atoll-theme="dark"]),
+  :host-context([data-bs-theme="dark"]),
+  [data-atoll-theme="dark"] atoll-list,
+  [data-bs-theme="dark"] atoll-list {
+    --list-divider: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
   }
 </style>
 
@@ -43,36 +49,24 @@
       divided: Boolean,
       mode: {
         type: String,
-        // 'default' | 'selection' | 'edit' | 'reorder'
-        default: 'default'
+        default: 'default',
+        values: ['default', 'selection', 'edit', 'reorder']
       }
     },
 
-    getters: {
-      listClasses: (state) => {
-        const classes = ['atoll-list']
-
-        if (state.divided) {
-          classes.push('atoll-list-divided')
-        }
-
-        if (state.mode && state.mode !== 'default') {
-          classes.push(`atoll-list-mode-${state.mode}`)
-        }
-
-        return classes.join(' ')
-      }
-    },
-
-    client: ({ state, root, observe }) => {
+    client: ({ state, root, observe, signal }) => {
       // Sync list mode down to all child atoll-list-item components
       const syncModeToChildren = (mode) => {
         const items = root.querySelectorAll('atoll-list-item')
         items.forEach(item => {
-          if (mode && mode !== 'default') {
-            item.setAttribute('mode', mode)
+          const m = mode && mode !== 'default' ? mode : 'default'
+          if (m !== 'default') {
+            item.setAttribute('mode', m)
           } else {
             item.removeAttribute('mode')
+          }
+          if (typeof item.mode !== 'undefined') {
+            item.mode = m
           }
         })
       }
@@ -112,6 +106,12 @@
         subtree: true
       })
 
+      if (signal) {
+        signal.addEventListener('abort', () => {
+          mutObserver.disconnect()
+        })
+      }
+
       // Public instance API methods on component root DOM element
       root.setMode = (newMode) => {
         state.mode = newMode || 'default'
@@ -127,6 +127,9 @@
         const items = root.querySelectorAll('atoll-list-item')
         items.forEach(item => {
           item.setAttribute('checked', 'true')
+          if (typeof item.checked !== 'undefined') {
+            item.checked = true
+          }
         })
       }
 
@@ -134,16 +137,15 @@
         const items = root.querySelectorAll('atoll-list-item')
         items.forEach(item => {
           item.removeAttribute('checked')
+          if (typeof item.checked !== 'undefined') {
+            item.checked = false
+          }
         })
       }
 
       root.getSelectedItems = () => {
         const items = Array.from(root.querySelectorAll('atoll-list-item'))
         return items.filter(item => item.hasAttribute('checked') || item.checked)
-      }
-
-      return () => {
-        mutObserver.disconnect()
       }
     }
   })
