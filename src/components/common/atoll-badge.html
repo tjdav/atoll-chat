@@ -10,6 +10,15 @@
     align-items: center;
     justify-content: center;
     vertical-align: middle;
+
+    --badge-height: 20px;
+    --badge-min-width: 20px;
+    --badge-padding: 0 6px;
+    --badge-font-size: var(--atoll-font-size-caption-1, 12px);
+    --badge-font-weight: 600;
+    --badge-bg: var(--atoll-danger, var(--atoll-rainbow-red, #FF334B));
+    --badge-color: #FFFFFF;
+    --badge-dot-size: 8px;
   }
 
   :host([hidden]) {
@@ -19,7 +28,53 @@
     pointer-events: none !important;
   }
 
-  /* Base Badge Component Styling */
+  /* Size Modifiers */
+  :host([size="sm"]) {
+    --badge-height: 16px;
+    --badge-min-width: 16px;
+    --badge-padding: 0 4px;
+    --badge-font-size: var(--atoll-font-size-caption-2, 10px);
+    --badge-font-weight: 500;
+  }
+
+  :host([size="lg"]) {
+    --badge-height: 24px;
+    --badge-min-width: 24px;
+    --badge-padding: 0 8px;
+    --badge-font-size: var(--atoll-font-size-body-2, 14px);
+    --badge-font-weight: 600;
+  }
+
+  /* Dot Mode Modifier */
+  :host([dot]) {
+    --badge-height: var(--badge-dot-size);
+    --badge-min-width: var(--badge-dot-size);
+    --badge-padding: 0;
+  }
+
+  /* Variant Modifiers */
+  :host([variant="primary"]),
+  :host([variant="success"]) {
+    --badge-bg: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --badge-color: #FFFFFF;
+  }
+
+  :host([variant="secondary"]) {
+    --badge-bg: var(--atoll-bg-surface-tertiary, #E8E8E8);
+    --badge-color: var(--atoll-text-secondary, #555555);
+  }
+
+  :host([variant="info"]) {
+    --badge-bg: var(--atoll-rainbow-blue, #4270ED);
+    --badge-color: #FFFFFF;
+  }
+
+  :host([variant="warning"]) {
+    --badge-bg: var(--atoll-rainbow-yellow, #FCB321);
+    --badge-color: #FFFFFF;
+  }
+
+  /* Base Badge Inner Span */
   .atoll-badge {
     display: inline-flex;
     align-items: center;
@@ -27,21 +82,18 @@
     vertical-align: middle;
     border-radius: 9999px;
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
+    font-size: var(--badge-font-size);
+    font-weight: var(--badge-font-weight);
+    height: var(--badge-height);
+    min-width: var(--badge-min-width);
+    padding: var(--badge-padding);
+    background-color: var(--badge-bg);
+    color: var(--badge-color);
     white-space: nowrap;
     user-select: none;
     box-sizing: border-box;
-    background-color: var(--atoll-badge-bg, var(--atoll-rainbow-red, #FF334B));
-    color: var(--atoll-badge-color, #FFFFFF);
     line-height: 1;
     transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.15s ease-in-out;
-  }
-
-  .atoll-badge.bg-primary {
-    background-color: transparent !important;
-  }
-
-  .atoll-badge.rounded-circle {
-    border-radius: 0 !important;
   }
 
   .atoll-badge[hidden] {
@@ -49,72 +101,6 @@
     opacity: 0 !important;
     transform: scale(0.6) !important;
     pointer-events: none !important;
-  }
-
-  /* Badge Color Variant Modifiers (Default: danger) */
-  :host .atoll-badge,
-  :host([variant="danger"]) .atoll-badge {
-    --atoll-badge-bg: var(--atoll-rainbow-red, #FF334B);
-    --atoll-badge-color: #FFFFFF;
-  }
-
-  :host([variant="primary"]) .atoll-badge {
-    --atoll-badge-bg: var(--atoll-brand-primary, #06C755);
-    --atoll-badge-color: #FFFFFF;
-  }
-
-  :host([variant="secondary"]) .atoll-badge {
-    --atoll-badge-bg: var(--atoll-bg-surface-tertiary, #E8E8E8);
-    --atoll-badge-color: var(--atoll-text-secondary, #555555);
-  }
-
-  :host([variant="info"]) .atoll-badge {
-    --atoll-badge-bg: var(--atoll-rainbow-blue, #4270ED);
-    --atoll-badge-color: #FFFFFF;
-  }
-
-  :host([variant="success"]) .atoll-badge {
-    --atoll-badge-bg: var(--atoll-brand-primary, #06C755);
-    --atoll-badge-color: #FFFFFF;
-  }
-
-  :host([variant="warning"]) .atoll-badge {
-    --atoll-badge-bg: var(--atoll-rainbow-yellow, #FCB321);
-    --atoll-badge-color: #FFFFFF;
-  }
-
-  /* Badge Size Modifiers (Default: md) */
-  :host .atoll-badge,
-  :host([size="md"]) .atoll-badge {
-    height: var(--atoll-badge-height-md, 20px);
-    min-width: var(--atoll-badge-height-md, 20px);
-    padding: 0 6px;
-    font-size: var(--atoll-font-size-caption-1, 12px);
-    font-weight: var(--atoll-font-weight-semibold, 600);
-  }
-
-  :host([size="sm"]) .atoll-badge {
-    height: var(--atoll-badge-height-sm, 16px);
-    min-width: var(--atoll-badge-height-sm, 16px);
-    padding: 0 4px;
-    font-size: var(--atoll-font-size-caption-2, 10px);
-    font-weight: var(--atoll-font-weight-medium, 500);
-  }
-
-  :host([size="lg"]) .atoll-badge {
-    height: var(--atoll-badge-height-lg, 24px);
-    min-width: var(--atoll-badge-height-lg, 24px);
-    padding: 0 8px;
-    font-size: var(--atoll-font-size-body-2, 14px);
-    font-weight: var(--atoll-font-weight-semibold, 600);
-  }
-
-  /* Dot Mode Modifier */
-  :host([dot]) .atoll-badge {
-    width: var(--atoll-badge-dot-size, 8px) !important;
-    height: var(--atoll-badge-dot-size, 8px) !important;
-    min-width: var(--atoll-badge-dot-size, 8px) !important;
-    padding: 0 !important;
   }
 
   /* Relative Positioning Wrapper Helpers */
@@ -167,34 +153,18 @@
 
     getters: {
       isHidden: (state) => {
-        if (state.dot) {
-          return false
-        }
-        if (state.label && state.label.trim() !== '') {
-          return false
-        }
-        if (state.count === null || state.count === undefined) {
-          return true
-        }
-        if (state.count === 0 && !state.showZero) {
-          return true
-        }
+        if (state.dot) return false
+        if (state.label && state.label.trim() !== '') return false
+        if (state.count === null || state.count === undefined) return true
+        if (state.count === 0 && !state.showZero) return true
         return false
       },
 
       displayText: (state) => {
-        if (state.dot) {
-          return ''
-        }
-        if (state.label && state.label.trim() !== '') {
-          return state.label
-        }
-        if (state.count === null || state.count === undefined) {
-          return ''
-        }
-        if (state.count > state.maxCount) {
-          return `${state.maxCount}+`
-        }
+        if (state.dot) return ''
+        if (state.label && state.label.trim() !== '') return state.label
+        if (state.count === null || state.count === undefined) return ''
+        if (state.count > state.maxCount) return `${state.maxCount}+`
         return String(state.count)
       }
     },
@@ -204,6 +174,8 @@
         if (state.isHidden) {
           root.setAttribute('hidden', '')
           root.setAttribute('aria-hidden', 'true')
+          root.removeAttribute('role')
+          root.removeAttribute('aria-label')
         } else {
           root.removeAttribute('hidden')
           root.removeAttribute('aria-hidden')
@@ -214,14 +186,13 @@
             accessibleText = 'New notification'
           } else if (state.label) {
             accessibleText = state.label
-          } else if (state.count !== null) {
+          } else if (state.count !== null && state.count !== undefined) {
             accessibleText = `${state.displayText} unread messages`
           }
           root.setAttribute('aria-label', accessibleText)
         }
       }
 
-      // Observe attribute changes to update host visibility and accessibility
       observe('count', updateAccessibility)
       observe('maxCount', updateAccessibility)
       observe('dot', updateAccessibility)
