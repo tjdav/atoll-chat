@@ -1,7 +1,7 @@
 <template id="atoll-chip">
   <div 
     ref="chipElement" 
-    class="{{ chipClasses }}" 
+    class="atoll-chip" 
     role="{{ chipRole }}" 
     tabindex="{{ chipTabindex }}"
     aria-selected="{{ isAriaSelected }}"
@@ -18,6 +18,17 @@
   :host {
     display: inline-flex;
     align-items: center;
+
+    --chip-height: 32px;
+    --chip-padding: 0 12px;
+    --chip-font-size: var(--atoll-font-size-body-2, 14px);
+    --chip-font-weight: 500;
+    --chip-bg: var(--atoll-bg-surface-secondary, #F5F5F5);
+    --chip-color: var(--atoll-text-primary, #111111);
+    --chip-border: transparent;
+    --chip-avatar-size: 24px;
+    --chip-avatar-padding: 4px;
+    --chip-focus-ring: rgba(6, 199, 85, 0.35);
   }
 
   :host([hidden]) {
@@ -30,16 +41,74 @@
     pointer-events: none;
   }
 
-  /* Base Chip Modifier */
+  /* Size Modifiers */
+  :host([size="sm"]) {
+    --chip-height: 28px;
+    --chip-padding: 0 10px;
+    --chip-font-size: var(--atoll-font-size-caption-1, 12px);
+    --chip-avatar-size: 20px;
+    --chip-avatar-padding: 4px;
+  }
+
+  :host([size="lg"]) {
+    --chip-height: 38px;
+    --chip-padding: 0 16px;
+    --chip-font-size: var(--atoll-font-size-body-1, 16px);
+    --chip-avatar-size: 28px;
+    --chip-avatar-padding: 6px;
+  }
+
+  /* Variant Modifiers */
+  :host([variant="outline"]) {
+    --chip-bg: transparent;
+    --chip-border: var(--atoll-border-subtle, #E8E8E8);
+  }
+
+  :host([variant="primary"]) {
+    --chip-bg: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --chip-color: #FFFFFF;
+    --chip-border: transparent;
+  }
+
+  :host([variant="ghost"]) {
+    --chip-bg: transparent;
+    --chip-border: transparent;
+  }
+
+  :host([variant="info"]) {
+    --chip-bg: rgba(66, 112, 237, 0.12);
+    --chip-color: var(--atoll-rainbow-blue, #4270ED);
+    --chip-border: transparent;
+  }
+
+  :host([variant="danger"]) {
+    --chip-bg: rgba(255, 51, 75, 0.12);
+    --chip-color: var(--atoll-rainbow-red, #FF334B);
+    --chip-border: transparent;
+  }
+
+  /* Selected State Modifier */
+  :host([selected]) {
+    --chip-bg: var(--atoll-primary, var(--atoll-brand-primary, #06C755)) !important;
+    --chip-color: #FFFFFF !important;
+    --chip-border: transparent !important;
+    --chip-font-weight: 600;
+  }
+
+  /* Base Chip Wrapper */
   .atoll-chip {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     position: relative;
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
-    background-color: var(--atoll-chip-custom-bg, var(--atoll-chip-bg, var(--atoll-bg-surface-secondary, #F5F5F5)));
-    color: var(--atoll-chip-custom-color, var(--atoll-chip-color, var(--atoll-text-primary, #111111)));
-    border: 1px solid var(--atoll-chip-border, transparent);
+    font-size: var(--chip-font-size);
+    font-weight: var(--chip-font-weight);
+    height: var(--chip-height);
+    padding: var(--chip-padding);
+    background-color: var(--atoll-chip-custom-bg, var(--chip-bg));
+    color: var(--atoll-chip-custom-color, var(--chip-color));
+    border: 1px solid var(--chip-border);
     border-radius: 9999px;
     white-space: nowrap;
     user-select: none;
@@ -50,7 +119,7 @@
 
   .atoll-chip:focus-visible {
     outline: none;
-    box-shadow: 0 0 0 3px rgba(6, 199, 85, 0.35);
+    box-shadow: 0 0 0 3px var(--chip-focus-ring);
   }
 
   .atoll-chip.disabled,
@@ -66,8 +135,31 @@
   .atoll-chip .atoll-chip-avatar {
     border-radius: 50%;
     object-fit: cover;
+    width: var(--chip-avatar-size);
+    height: var(--chip-avatar-size);
     flex-shrink: 0;
     display: block;
+  }
+
+  .atoll-chip:has(img[slot="leading"]),
+  .atoll-chip:has([slot="leading"] img),
+  .atoll-chip:has(.atoll-chip-avatar) {
+    padding-left: var(--chip-avatar-padding);
+  }
+
+  /* Mobile Touch Target Expansion (sm and md sizes) */
+  :host([size="sm"]) .atoll-chip::before,
+  :host([size="md"]) .atoll-chip::before,
+  :host(:not([size])) .atoll-chip::before {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    min-width: 100%;
+    min-height: 44px;
+    width: 44px;
+    z-index: 0;
   }
 
   /* Content Container & Slots */
@@ -109,178 +201,62 @@
     background-color: rgba(0, 0, 0, 0.1);
   }
 
+  :host([selected]) .atoll-chip-remove:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+  }
+
   .atoll-chip-remove:focus-visible {
     outline: none;
     opacity: 1;
   }
 
-  /* Variant Modifiers (Default: secondary) */
-  :host .atoll-chip,
-  :host([variant="secondary"]) .atoll-chip {
-    --atoll-chip-bg: var(--atoll-bg-surface-secondary, #F5F5F5);
-    --atoll-chip-color: var(--atoll-text-primary, #111111);
-    --atoll-chip-border: transparent;
-  }
-
-  :host .atoll-chip:hover:not(.disabled),
-  :host([variant="secondary"]) .atoll-chip:hover:not(.disabled) {
+  /* Hover States */
+  :host([variant="secondary"]:not([selected])) .atoll-chip:hover:not(.disabled),
+  :host(:not([variant]):not([selected])) .atoll-chip:hover:not(.disabled) {
     background-color: color-mix(in srgb, var(--atoll-bg-surface-secondary, #F5F5F5) 92%, #000000);
   }
 
-  :host([variant="outline"]) .atoll-chip {
-    --atoll-chip-bg: transparent;
-    --atoll-chip-color: var(--atoll-text-primary, #111111);
-    --atoll-chip-border: var(--atoll-border-subtle, #E8E8E8);
-  }
-
-  :host([variant="outline"]) .atoll-chip:hover:not(.disabled) {
+  :host([variant="outline"]:not([selected])) .atoll-chip:hover:not(.disabled) {
     background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
   }
 
-  :host([variant="primary"]) .atoll-chip {
-    --atoll-chip-bg: var(--atoll-brand-primary, #06C755);
-    --atoll-chip-color: #FFFFFF;
-    --atoll-chip-border: transparent;
-  }
-
-  :host([variant="primary"]) .atoll-chip:hover:not(.disabled) {
+  :host([variant="primary"]:not([selected])) .atoll-chip:hover:not(.disabled) {
     background-color: color-mix(in srgb, var(--atoll-brand-primary, #06C755) 90%, #000000);
   }
 
-  :host([variant="ghost"]) .atoll-chip {
-    --atoll-chip-bg: transparent;
-    --atoll-chip-color: var(--atoll-text-primary, #111111);
-    --atoll-chip-border: transparent;
-  }
-
-  :host([variant="ghost"]) .atoll-chip:hover:not(.disabled) {
+  :host([variant="ghost"]:not([selected])) .atoll-chip:hover:not(.disabled) {
     background-color: var(--atoll-brand-subtle, rgba(6, 199, 85, 0.12));
   }
 
-  :host([variant="info"]) .atoll-chip {
-    --atoll-chip-bg: rgba(66, 112, 237, 0.12);
-    --atoll-chip-color: var(--atoll-rainbow-blue, #4270ED);
-    --atoll-chip-border: transparent;
-  }
-
-  :host([variant="info"]) .atoll-chip:hover:not(.disabled) {
+  :host([variant="info"]:not([selected])) .atoll-chip:hover:not(.disabled) {
     background-color: rgba(66, 112, 237, 0.2);
   }
 
-  :host([variant="danger"]) .atoll-chip {
-    --atoll-chip-bg: rgba(255, 51, 75, 0.12);
-    --atoll-chip-color: var(--atoll-rainbow-red, #FF334B);
-    --atoll-chip-border: transparent;
-  }
-
-  :host([variant="danger"]) .atoll-chip:hover:not(.disabled) {
+  :host([variant="danger"]:not([selected])) .atoll-chip:hover:not(.disabled) {
     background-color: rgba(255, 51, 75, 0.2);
   }
 
-  /* Selected State Modifier */
-  :host([selected]) .atoll-chip {
-    --atoll-chip-bg: var(--atoll-brand-primary, #06C755) !important;
-    --atoll-chip-color: #FFFFFF !important;
-    --atoll-chip-border: transparent !important;
-    font-weight: var(--atoll-font-weight-semibold, 600);
-  }
-
-  :host([selected]) .atoll-chip .atoll-chip-remove:hover {
-    background-color: rgba(255, 255, 255, 0.2);
-  }
-
-  /* Size Modifiers (Default: md) */
-  :host .atoll-chip,
-  :host([size="md"]) .atoll-chip {
-    height: var(--atoll-chip-height-md, 32px);
-    padding: 0 12px;
-    font-size: var(--atoll-font-size-body-2, 14px);
-    font-weight: var(--atoll-font-weight-medium, 500);
-  }
-
-  :host .atoll-chip img[slot="leading"],
-  :host .atoll-chip [slot="leading"] img,
-  :host .atoll-chip .atoll-chip-avatar,
-  :host([size="md"]) .atoll-chip img[slot="leading"],
-  :host([size="md"]) .atoll-chip [slot="leading"] img,
-  :host([size="md"]) .atoll-chip .atoll-chip-avatar {
-    width: 24px;
-    height: 24px;
-  }
-
-  :host .atoll-chip::before,
-  :host([size="md"]) .atoll-chip::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    min-width: 100%;
-    min-height: 44px;
-    width: 44px;
-    z-index: 0;
-  }
-
-  :host([size="sm"]) .atoll-chip {
-    height: var(--atoll-chip-height-sm, 24px);
-    padding: 0 8px;
-    font-size: var(--atoll-font-size-caption-1, 12px);
-    font-weight: var(--atoll-font-weight-medium, 500);
-  }
-
-  :host([size="sm"]) .atoll-chip img[slot="leading"],
-  :host([size="sm"]) .atoll-chip [slot="leading"] img,
-  :host([size="sm"]) .atoll-chip .atoll-chip-avatar {
-    width: 20px;
-    height: 20px;
-  }
-
-  :host([size="sm"]) .atoll-chip::before {
-    content: "";
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    min-width: 100%;
-    min-height: 44px;
-    width: 44px;
-    z-index: 0;
-  }
-
-  :host([size="lg"]) .atoll-chip {
-    height: var(--atoll-chip-height-lg, 40px);
-    padding: 0 16px;
-    font-size: var(--atoll-font-size-body-1, 16px);
-    font-weight: var(--atoll-font-weight-medium, 500);
-  }
-
-  :host([size="lg"]) .atoll-chip img[slot="leading"],
-  :host([size="lg"]) .atoll-chip [slot="leading"] img,
-  :host([size="lg"]) .atoll-chip .atoll-chip-avatar {
-    width: 28px;
-    height: 28px;
-  }
-
   /* Dark Mode Overrides */
-  :host-context([data-atoll-theme="dark"]) .atoll-chip-secondary,
-  :host-context([data-bs-theme="dark"]) .atoll-chip-secondary {
-    --atoll-chip-bg: var(--atoll-bg-surface-tertiary, #1F1F1F);
-    --atoll-chip-color: var(--atoll-text-primary, #FFFFFF);
+  :host-context([data-atoll-theme="dark"]),
+  :host-context([data-bs-theme="dark"]),
+  [data-atoll-theme="dark"] atoll-chip,
+  [data-bs-theme="dark"] atoll-chip {
+    --chip-bg: var(--atoll-bg-surface-tertiary, #1F1F1F);
+    --chip-color: var(--atoll-text-primary, #FFFFFF);
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-chip-secondary:hover:not(.disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-chip-secondary:hover:not(.disabled) {
-    background-color: color-mix(in srgb, var(--atoll-bg-surface-tertiary, #1F1F1F) 88%, #FFFFFF);
+  :host-context([data-atoll-theme="dark"]) :host([variant="outline"]),
+  :host-context([data-bs-theme="dark"]) :host([variant="outline"]),
+  [data-atoll-theme="dark"] atoll-chip[variant="outline"],
+  [data-bs-theme="dark"] atoll-chip[variant="outline"] {
+    --chip-color: var(--atoll-text-primary, #FFFFFF);
+    --chip-border: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-chip-outline,
-  :host-context([data-bs-theme="dark"]) .atoll-chip-outline {
-    --atoll-chip-color: var(--atoll-text-primary, #FFFFFF);
-    --atoll-chip-border: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-chip-outline:hover:not(.disabled),
-  :host-context([data-bs-theme="dark"]) .atoll-chip-outline:hover:not(.disabled) {
+  :host-context([data-atoll-theme="dark"]) :host([variant="outline"]:not([selected])) .atoll-chip:hover:not(.disabled),
+  :host-context([data-bs-theme="dark"]) :host([variant="outline"]:not([selected])) .atoll-chip:hover:not(.disabled),
+  [data-atoll-theme="dark"] atoll-chip[variant="outline"]:not([selected]) .atoll-chip:hover:not(.disabled),
+  [data-bs-theme="dark"] atoll-chip[variant="outline"]:not([selected]) .atoll-chip:hover:not(.disabled) {
     background-color: var(--atoll-bg-surface-secondary, #161616);
   }
 </style>
@@ -335,9 +311,7 @@
         if (nodes && nodes.length > 0) {
           const span = document.createElement('span')
           span.className = 'atoll-chip-leading'
-          nodes.forEach(node => {
-            span.appendChild(node)
-          })
+          nodes.forEach(node => span.appendChild(node))
           return [span]
         }
 
@@ -352,9 +326,7 @@
         if (nodes && nodes.length > 0) {
           const span = document.createElement('span')
           span.className = 'atoll-chip-trailing'
-          nodes.forEach(node => {
-            span.appendChild(node)
-          })
+          nodes.forEach(node => span.appendChild(node))
           return [span]
         }
 
@@ -383,9 +355,7 @@
         if (hasContent) {
           const span = document.createElement('span')
           span.className = 'atoll-chip-label'
-          nodes.forEach(node => {
-            span.appendChild(node)
-          })
+          nodes.forEach(node => span.appendChild(node))
           return [span]
         }
 
@@ -394,17 +364,6 @@
     },
 
     getters: {
-      chipClasses: (state) => {
-        const classes = ['atoll-chip']
-        if (state.removable) {
-          classes.push('atoll-chip-removable')
-        }
-        if (state.disabled) {
-          classes.push('disabled')
-        }
-        return classes.join(' ')
-      },
-
       chipRole: (state) => (state.selected !== undefined && state.selected !== false ? 'option' : 'button'),
       isAriaSelected: (state) => (state.selected ? 'true' : 'false'),
       chipTabindex: (state) => (state.disabled ? '-1' : '0')
@@ -414,7 +373,6 @@
       const chip = refs('chipElement')
       let removeBtnEl = null
 
-      // Imperatively sync the close/remove button when removable="true"
       const syncRemoveButton = () => {
         if (state.removable) {
           if (!removeBtnEl) {
@@ -423,7 +381,6 @@
             removeBtnEl.className = 'atoll-chip-remove'
             removeBtnEl.setAttribute('aria-label', 'Remove filter')
 
-            // Imperative Web Component creation for remove icon
             const icon = document.createElement('atoll-icon')
             icon.setAttribute('name', 'close')
             icon.setAttribute('size', state.size === 'sm' ? '14' : '16')
@@ -434,7 +391,6 @@
               event.stopPropagation()
               event.preventDefault()
 
-              // Dispatch custom remove event with payload
               root.dispatchEvent(
                 new CustomEvent('atoll-chip-remove', {
                   bubbles: true,
@@ -444,7 +400,6 @@
               )
             }, { signal })
           } else {
-            // Update the icon size dynamically if size changes
             const icon = removeBtnEl.querySelector('atoll-icon')
             if (icon) {
               icon.setAttribute('size', state.size === 'sm' ? '14' : '16')
@@ -459,7 +414,6 @@
         }
       }
 
-      // Intercept and prevent click events in capture phase when disabled to block host listeners
       const preventClickWhenDisabled = (event) => {
         if (state.disabled) {
           event.preventDefault()
@@ -473,7 +427,6 @@
         signal
       })
 
-      // Handle keyboard navigation (Enter / Space toggles or activates chip)
       chip.addEventListener('keydown', (event) => {
         if (state.disabled) {
           return
@@ -490,10 +443,8 @@
         }
       }, { signal })
 
-      // Also add click listener to the inner chip element for consistency
       chip.addEventListener('click', preventClickWhenDisabled, { signal })
 
-      // Observe reactive attribute updates
       observe('removable', syncRemoveButton)
       observe('size', syncRemoveButton)
 
