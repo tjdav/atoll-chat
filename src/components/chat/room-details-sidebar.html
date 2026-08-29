@@ -299,7 +299,12 @@
                 }
   
                 if (other.avatar && pb?.files) {
-                  roomAvatarComp.setAttribute('src', pb.files.getURL(other, other.avatar, { thumb: '100x100' }))
+                  const getUrlFn = pb.files.getUrl || pb.files.getURL
+                  if (typeof getUrlFn === 'function') {
+                    roomAvatarComp.setAttribute('src', getUrlFn.call(pb.files, other, other.avatar, { thumb: '100x100' }))
+                  } else {
+                    roomAvatarComp.removeAttribute('src')
+                  }
                 } else {
                   roomAvatarComp.removeAttribute('src')
                 }

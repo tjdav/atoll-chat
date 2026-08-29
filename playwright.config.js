@@ -5,7 +5,6 @@ import path from 'path'
 const getExecutablePath = (path) => (existsSync(path) ? path : undefined)
 
 export default defineConfig({
-  testDir: './tests/e2e',
   testMatch: /.*\.spec\.js$/,
   timeout: 30000,
   expect: {
@@ -19,12 +18,26 @@ export default defineConfig({
   globalTeardown: './tests/e2e/setup/global-teardown.js',
   use: {
     baseURL: 'http://localhost:3000',
-    trace: 'on-first-retry'
+    trace: 'on-first-retry',
+    screenshot: {
+      animations: 'allow'
+    }
   },
 
   projects: [
     {
+      name: 'components',
+      testDir: './tests/components',
+      use: {
+        ...devices['Desktop Chrome'],
+        launchOptions: {
+          executablePath: getExecutablePath('/usr/bin/google-chrome') || getExecutablePath('/usr/bin/chromium')
+        }
+      }
+    },
+    {
       name: 'chromium',
+      testDir: './tests/e2e',
       use: {
         ...devices['Desktop Chrome'],
         permissions: ['clipboard-read', 'clipboard-write'],
@@ -43,6 +56,7 @@ export default defineConfig({
     },
     {
       name: 'firefox',
+      testDir: './tests/e2e',
       testMatch: /firefox-.*\.spec\.js$/,
       use: {
         ...devices['Desktop Firefox'],
@@ -63,7 +77,7 @@ export default defineConfig({
   webServer: {
     command: 'pnpm run test:server',
     url: 'http://localhost:3000',
-    reuseExistingServer: false,
+    reuseExistingServer: !process.env.CI,
     env: {
       LOCAL_ICE_SERVER: `turn:127.0.0.1:${process.env.TURN_PORT || 3478}`,
       ATOLL_NOTIFICATION_SOUND_DEBOUNCE_MS: '5000',

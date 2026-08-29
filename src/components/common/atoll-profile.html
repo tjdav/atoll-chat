@@ -1,36 +1,7 @@
 <template id="atoll-profile">
-  <div class="{{ profileClasses }}" role="img" aria-label="{{ computedAlt }}">
-    <!-- Standalone Loading / Skeleton state -->
-    <div hidden="{{ hideLoading }}" class="placeholder-wave w-100 h-100 position-absolute top-0 start-0" style="z-index: 5;">
-      <div class="placeholder rounded-circle w-100 h-100"></div>
-    </div>
-
-    <div class="atoll-profile-circle {{ gridClass }}" hidden="{{ showLoading }}">
-      <slot name="image">
-        <img 
-          ref="avatarImage" 
-          alt="{{ computedAlt }}" 
-          hidden="{{ hideImage }}" 
-        />
-        <span class="atoll-profile-fallback" hidden="{{ hideFallback }}">
-          <span hidden="{{ hideInitials }}" class="atoll-profile-initials">{{ initials }}</span>
-          <atoll-icon hidden="{{ showInitials }}" name="user" size="{{ iconSize }}"></atoll-icon>
-        </span>
-      </slot>
-    </div>
-
-    <div class="atoll-profile-badge" hidden="{{ hideBadgeOrLoading }}">
-      <slot name="badge">
-        <atoll-badge size="sm" count="{{ badge }}"></atoll-badge>
-      </slot>
-    </div>
-
-    <div class="atoll-profile-icon" hidden="{{ hideOverlayIconOrLoading }}">
-      <slot name="icon">
-        <atoll-icon name="{{ iconName }}" size="{{ overlayIconSize }}"></atoll-icon>
-      </slot>
-    </div>
-  </div>
+  <slot name="image"></slot>
+  <slot name="badge"></slot>
+  <slot name="icon"></slot>
 </template>
 
 <style>
@@ -39,63 +10,57 @@
     align-items: center;
     justify-content: center;
     position: relative;
-    width: var(--atoll-profile-size, 40px);
-    height: var(--atoll-profile-size, 40px);
+    width: var(--profile-size, var(--atoll-profile-size, 50px));
+    height: var(--profile-size, var(--atoll-profile-size, 50px));
+    border-radius: 50%;
+    overflow: hidden;
     flex-shrink: 0;
     user-select: none;
     box-sizing: border-box;
+    background-color: var(--profile-bg, var(--atoll-profile-bg, var(--atoll-brand-primary, #06C755)));
+
+    --profile-size: var(--atoll-profile-size, 50px);
+    --profile-initials-size: 18px;
+    --profile-bg: var(--atoll-profile-bg, var(--atoll-brand-primary, #06C755));
+    --profile-placeholder-bg: var(--atoll-profile-placeholder-bg, var(--atoll-bg-surface-tertiary, #DFDFDF));
+    --profile-cutout-border: var(--atoll-profile-cutout-border, #FFFFFF);
   }
 
   :host([hidden]) {
     display: none !important;
   }
 
-  :host(.atoll-profile-loading),
+  /* Badge and Icon overlays need overflow: visible on host */
+  :host([badge]),
+  :host([icon-name]),
+  :host([ring]) {
+    overflow: visible;
+  }
+
   :host([loading]) {
     overflow: hidden;
     border-radius: 50%;
   }
 
-  .atoll-profile {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    width: 100%;
-    height: 100%;
-    flex-shrink: 0;
-    user-select: none;
-    box-sizing: border-box;
-  }
+  /* Strict 8-Tier Sizing Scale */
+  :host([size="2xs"]) { --profile-size: 30px; --profile-initials-size: 11px; }
+  :host([size="xs"])  { --profile-size: 32px; --profile-initials-size: 12px; }
+  :host([size="sm"])  { --profile-size: 42px; --profile-initials-size: 15px; }
+  :host([size="md"])  { --profile-size: 50px; --profile-initials-size: 18px; }
+  :host([size="lg"])  { --profile-size: 56px; --profile-initials-size: 20px; }
+  :host([size="xl"])  { --profile-size: 60px; --profile-initials-size: 22px; }
+  :host([size="2xl"]) { --profile-size: 87px; --profile-initials-size: 30px; }
+  :host([size="3xl"]) { --profile-size: 95px; --profile-initials-size: 34px; }
 
-  .atoll-profile.atoll-profile-loading {
-    overflow: hidden;
-    border-radius: 50%;
-  }
-
-  /* Inner Profile Circle Container */
-  .atoll-profile-circle {
-    position: relative;
-    width: var(--atoll-profile-size, 40px);
-    height: var(--atoll-profile-size, 40px);
-    border-radius: 50%;
-    overflow: hidden;
-    background-color: var(--atoll-profile-bg, var(--atoll-profile-placeholder-bg, var(--atoll-bg-surface-tertiary, #DFDFDF)));
-    display: flex;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .atoll-profile-circle slot[name="image"],
-  .atoll-profile-circle div[slot="image"],
-  .atoll-profile-circle [slot="image"] {
+  slot[name="image"] {
     display: contents !important;
   }
 
-  .atoll-profile-circle img,
-  .atoll-profile-circle slot[name="image"] > img {
+  ::slotted(img),
+  :host > img {
     width: 100%;
     height: 100%;
+    border-radius: 50%;
     object-fit: cover;
     display: block;
   }
@@ -107,19 +72,9 @@
     justify-content: center;
     width: 100%;
     height: 100%;
-    background-color: var(--atoll-profile-bg, var(--atoll-brand-primary, #06C755));
+    border-radius: 50%;
+    background-color: var(--profile-bg);
     color: var(--atoll-text-on-brand, #FFFFFF);
-  }
-
-  .atoll-profile-fallback[hidden] {
-    display: none !important;
-  }
-
-  .atoll-profile-fallback atoll-icon,
-  .atoll-profile-fallback .atoll-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
   }
 
   /* Initials Fallback Typography */
@@ -129,132 +84,109 @@
     text-transform: uppercase;
     user-select: none;
     line-height: 1;
+    font-size: var(--profile-initials-size);
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
   }
 
   /* Story / Status Ring Area */
-  .atoll-profile-ring {
+  :host([ring]) {
     padding: 3px;
   }
 
-  .atoll-profile-ring::before {
+  :host([ring])::before {
     content: "";
     position: absolute;
     inset: 0;
     border-radius: 50%;
     padding: 2px;
-    background: linear-gradient(135deg, var(--atoll-brand-primary, #06C755) 0%, color-mix(in srgb, var(--atoll-brand-primary, #06C755) 85%, #000000) 100%);
+    background: linear-gradient(135deg, var(--atoll-primary, #06C755) 0%, color-mix(in srgb, var(--atoll-primary, #06C755) 85%, #000000) 100%);
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
     mask-composite: exclude;
   }
 
   /* Multiparty Group Avatar Grid (Split Quadrants) */
-  .atoll-profile-multiparty .atoll-profile-circle {
-    display: grid;
+  :host([type="multiparty"]) {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
     gap: 1px;
-    background-color: var(--atoll-profile-cutout-border, var(--atoll-profile-border-color, #ffffff));
+    background-color: var(--profile-cutout-border, #FFFFFF);
     border-radius: 50%;
     overflow: hidden;
+    padding: 0;
   }
 
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-2,
-  .atoll-profile-multiparty .atoll-profile-circle.atoll-profile-grid-2 {
+  /* Slotted grid items participate directly in host CSS Grid */
+  :host([type="multiparty"]) ::slotted(*),
+  :host([type="multiparty"]) > * {
+    min-width: 0 !important;
+    min-height: 0 !important;
+    width: 100% !important;
+    height: 100% !important;
+    border-radius: 0 !important;
+    object-fit: cover !important;
+    display: flex !important;
+    align-items: center;
+    justify-content: center;
+    margin: 0 !important;
+  }
+
+  /* 2-split: Two vertical columns */
+  :host([split-count="2"]) {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr;
   }
 
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-2 > img,
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-2 > .atoll-profile-fallback,
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-2 slot[name="image"] > *,
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-2 [slot="image"] > * {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  :host([split-count="2"]) ::slotted(*:first-child),
+  :host([split-count="2"]) > *:first-child {
+    grid-row: 1;
+    grid-column: 1;
   }
 
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3,
-  .atoll-profile-multiparty .atoll-profile-circle.atoll-profile-grid-3 {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr 1fr;
-  }
-
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 > img:first-child,
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 > .atoll-profile-fallback:first-child,
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 slot[name="image"] > *:first-child,
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 [slot="image"] > *:first-child {
+  /* 3-split (default multiparty layout): Left half tall, right half two stacked quadrants */
+  :host([split-count="3"]) ::slotted(*:first-child),
+  :host([type="multiparty"]:not([split-count])) ::slotted(*:first-child),
+  :host([split-count="3"]) > *:first-child,
+  :host([type="multiparty"]:not([split-count])) > *:first-child {
     grid-row: 1 / span 2;
     grid-column: 1;
     height: 100%;
   }
 
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 > img:nth-child(2),
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 > .atoll-profile-fallback:nth-child(2),
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 slot[name="image"] > *:nth-child(2),
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 [slot="image"] > *:nth-child(2) {
+  :host([split-count="3"]) ::slotted(*:nth-child(2)),
+  :host([type="multiparty"]:not([split-count])) ::slotted(*:nth-child(2)),
+  :host([split-count="3"]) > *:nth-child(2),
+  :host([type="multiparty"]:not([split-count])) > *:nth-child(2) {
     grid-row: 1;
     grid-column: 2;
   }
 
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 > img:nth-child(3),
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 > .atoll-profile-fallback:nth-child(3),
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 slot[name="image"] > *:nth-child(3),
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-3 [slot="image"] > *:nth-child(3) {
+  :host([split-count="3"]) ::slotted(*:nth-child(3)),
+  :host([type="multiparty"]:not([split-count])) ::slotted(*:nth-child(3)),
+  :host([split-count="3"]) > *:nth-child(3),
+  :host([type="multiparty"]:not([split-count])) > *:nth-child(3) {
     grid-row: 2;
     grid-column: 2;
   }
 
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-4,
-  .atoll-profile-multiparty .atoll-profile-circle.atoll-profile-grid-4 {
+  /* 4-split: 2x2 equal quadrant grid */
+  :host([split-count="4"]) {
     grid-template-columns: 1fr 1fr;
     grid-template-rows: 1fr 1fr;
   }
 
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-4 > img,
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-4 > .atoll-profile-fallback,
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-4 slot[name="image"] > *,
-  .atoll-profile-multiparty .atoll-profile-circle.multiparty-4 [slot="image"] > * {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
   /* Scale initial typography so initials fit comfortably inside multiparty quadrants */
-  .atoll-profile-multiparty.atoll-profile-2xs .atoll-profile-initials { font-size: 8px; }
-  .atoll-profile-multiparty.atoll-profile-xs .atoll-profile-initials { font-size: 9px; }
-  .atoll-profile-multiparty.atoll-profile-sm .atoll-profile-initials { font-size: 11px; }
-  .atoll-profile-multiparty.atoll-profile-md .atoll-profile-initials { font-size: 13px; }
-  .atoll-profile-multiparty.atoll-profile-lg .atoll-profile-initials { font-size: 14px; }
-  .atoll-profile-multiparty.atoll-profile-xl .atoll-profile-initials { font-size: 15px; }
-  .atoll-profile-multiparty.atoll-profile-2xl .atoll-profile-initials { font-size: 20px; }
-  .atoll-profile-multiparty.atoll-profile-3xl .atoll-profile-initials { font-size: 22px; }
+  :host([type="multiparty"][size="2xs"]) .atoll-profile-initials { font-size: 8px; }
+  :host([type="multiparty"][size="xs"]) .atoll-profile-initials { font-size: 9px; }
+  :host([type="multiparty"][size="sm"]) .atoll-profile-initials { font-size: 11px; }
+  :host([type="multiparty"][size="md"]) .atoll-profile-initials { font-size: 13px; }
+  :host([type="multiparty"][size="lg"]) .atoll-profile-initials { font-size: 14px; }
+  :host([type="multiparty"][size="xl"]) .atoll-profile-initials { font-size: 15px; }
+  :host([type="multiparty"][size="2xl"]) .atoll-profile-initials { font-size: 20px; }
+  :host([type="multiparty"][size="3xl"]) .atoll-profile-initials { font-size: 22px; }
 
-  /* Grouped Overlapping Row (type="grouped") */
-  .atoll-profile-group-row {
-    display: inline-flex;
-    align-items: center;
-    flex-direction: row;
-  }
-
-  .atoll-profile-group-row > atoll-profile,
-  .atoll-profile-group-row > .atoll-profile {
-    display: inline-block;
-    margin-left: calc(var(--atoll-profile-size, 50px) * -0.26);
-    position: relative;
-  }
-
-  .atoll-profile-group-row > atoll-profile:first-child,
-  .atoll-profile-group-row > .atoll-profile:first-child {
-    margin-left: 0;
-  }
-
-  .atoll-profile-group-row > atoll-profile:nth-child(1), .atoll-profile-group-row > .atoll-profile:nth-child(1) { z-index: 20; }
-  .atoll-profile-group-row > atoll-profile:nth-child(2), .atoll-profile-group-row > .atoll-profile:nth-child(2) { z-index: 19; }
-  .atoll-profile-group-row > atoll-profile:nth-child(3), .atoll-profile-group-row > .atoll-profile:nth-child(3) { z-index: 18; }
-  .atoll-profile-group-row > atoll-profile:nth-child(4), .atoll-profile-group-row > .atoll-profile:nth-child(4) { z-index: 17; }
-  .atoll-profile-group-row > atoll-profile:nth-child(5), .atoll-profile-group-row > .atoll-profile:nth-child(5) { z-index: 16; }
-
-  /* Badge (Top-Right) & Icon (Bottom-Right) Overlays */
+  /* Badge & Icon Overlays */
   .atoll-profile-badge {
     position: absolute;
     top: 0;
@@ -278,40 +210,19 @@
     box-shadow: 0 2px 4px rgba(0, 0, 0, 0.15);
   }
 
-  /* Size Modifiers */
-  :host([size="2xs"]), .atoll-profile-2xs { --atoll-profile-size: 30px; }
-  :host([size="2xs"]) .atoll-profile-initials, .atoll-profile-2xs .atoll-profile-initials { font-size: 11px; }
-
-  :host([size="xs"]), .atoll-profile-xs { --atoll-profile-size: 32px; }
-  :host([size="xs"]) .atoll-profile-initials, .atoll-profile-xs .atoll-profile-initials { font-size: 12px; }
-
-  :host([size="sm"]), .atoll-profile-sm { --atoll-profile-size: 42px; }
-  :host([size="sm"]) .atoll-profile-initials, .atoll-profile-sm .atoll-profile-initials { font-size: 15px; }
-
-  :host([size="md"]), .atoll-profile-md { --atoll-profile-size: 50px; }
-  :host([size="md"]) .atoll-profile-initials, .atoll-profile-md .atoll-profile-initials { font-size: 18px; }
-
-  :host([size="lg"]), .atoll-profile-lg { --atoll-profile-size: 56px; }
-  :host([size="lg"]) .atoll-profile-initials, .atoll-profile-lg .atoll-profile-initials { font-size: 20px; }
-
-  :host([size="xl"]), .atoll-profile-xl { --atoll-profile-size: 60px; }
-  :host([size="xl"]) .atoll-profile-initials, .atoll-profile-xl .atoll-profile-initials { font-size: 22px; }
-
-  :host([size="2xl"]), .atoll-profile-2xl { --atoll-profile-size: 87px; }
-  :host([size="2xl"]) .atoll-profile-initials, .atoll-profile-2xl .atoll-profile-initials { font-size: 30px; }
-
-  :host([size="3xl"]), .atoll-profile-3xl { --atoll-profile-size: 95px; }
-  :host([size="3xl"]) .atoll-profile-initials, .atoll-profile-3xl .atoll-profile-initials { font-size: 34px; }
-
   /* Dark Mode Overrides */
-  :host-context([data-atoll-theme="dark"]) .atoll-profile,
-  :host-context([data-bs-theme="dark"]) .atoll-profile {
-    --atoll-profile-border-color: var(--atoll-bg-surface-primary, #161616);
-    --atoll-profile-placeholder-bg: var(--atoll-bg-surface-tertiary, #2A2A2A);
+  :host-context([data-atoll-theme="dark"]),
+  :host-context([data-bs-theme="dark"]),
+  [data-atoll-theme="dark"] atoll-profile,
+  [data-bs-theme="dark"] atoll-profile {
+    --profile-cutout-border: var(--atoll-bg-surface-primary, #161616);
+    --profile-placeholder-bg: var(--atoll-bg-surface-tertiary, #2A2A2A);
   }
 
   :host-context([data-atoll-theme="dark"]) .atoll-profile-icon,
-  :host-context([data-bs-theme="dark"]) .atoll-profile-icon {
+  :host-context([data-bs-theme="dark"]) .atoll-profile-icon,
+  [data-atoll-theme="dark"] .atoll-profile-icon,
+  [data-bs-theme="dark"] .atoll-profile-icon {
     background-color: var(--atoll-bg-surface-primary, #161616);
   }
 </style>
@@ -320,26 +231,6 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    server () {
-      return {
-        palettes: [
-          '#06C755',
-          '#15BD66',
-          '#19BFA1',
-          '#1CB8B8',
-          '#0093C4',
-          '#0279D4',
-          '#2F59CC',
-          '#4545D1',
-          '#6B3CC9',
-          '#AF36C7',
-          '#DE2C7F',
-          '#E5172F',
-          '#FF5E1F',
-          '#FCB321'
-        ]
-      }
-    },
     attributes: {
       userId: {
         type: String,
@@ -355,7 +246,7 @@
       },
       alt: {
         type: String,
-        default: 'User profile'
+        default: ''
       },
       size: {
         type: String,
@@ -378,14 +269,7 @@
         type: Number,
         default: 1
       },
-      ring: {
-        type: Boolean,
-        default: false
-      },
-      hasError: {
-        type: Boolean,
-        default: false
-      },
+      ring: Boolean,
       bgColor: {
         type: String,
         default: ''
@@ -394,18 +278,17 @@
         type: String,
         default: ''
       },
-      hasProjectedImage: {
-        type: Boolean,
-        default: false
-      },
-      loading: {
-        type: Boolean,
-        default: false
-      }
+      loading: Boolean,
+      hasError: Boolean
     },
 
     style: {
-      '--atoll-profile-bg': (s) => {
+      '--profile-bg': (s) => {
+        const palettes = [
+          '#06C755', '#15BD66', '#19BFA1', '#1CB8B8', '#0093C4',
+          '#0279D4', '#2F59CC', '#4545D1', '#6B3CC9', '#AF36C7',
+          '#DE2C7F', '#E5172F', '#FF5E1F', '#FCB321'
+        ]
         if (s.bgColor || s.palette) {
           let seedStr = s.bgColor || (typeof s.palette === 'string' && s.palette !== 'true' ? s.palette : (s.name || s.alt || ''))
           if (seedStr.startsWith('#') || seedStr.startsWith('rgb') || seedStr.startsWith('hsl') || seedStr.startsWith('var(')) {
@@ -416,22 +299,6 @@
             for (let i = 0; i < seedStr.length; i++) {
               hash = seedStr.charCodeAt(i) + ((hash << 5) - hash)
             }
-            const palettes = [
-              '#06C755',
-              '#15BD66',
-              '#19BFA1',
-              '#1CB8B8',
-              '#0093C4',
-              '#0279D4',
-              '#2F59CC',
-              '#4545D1',
-              '#6B3CC9',
-              '#AF36C7',
-              '#DE2C7F',
-              '#E5172F',
-              '#FF5E1F',
-              '#FCB321'
-            ]
             return palettes[Math.abs(hash) % palettes.length]
           }
         }
@@ -444,98 +311,21 @@
           for (let i = 0; i < seedStr.length; i++) {
             hash = seedStr.charCodeAt(i) + ((hash << 5) - hash)
           }
-          const palettes = [
-            '#06C755',
-            '#15BD66',
-            '#19BFA1',
-            '#1CB8B8',
-            '#0093C4',
-            '#0279D4',
-            '#2F59CC',
-            '#4545D1',
-            '#6B3CC9',
-            '#AF36C7',
-            '#DE2C7F',
-            '#E5172F',
-            '#FF5E1F',
-            '#FCB321'
-          ]
           return palettes[Math.abs(hash) % palettes.length]
         }
         return null
-      },
-      '--atoll-profile-size': (s) => {
-        const presets = {
-          '2xs': '20px',
-          xs: '24px',
-          sm: '32px',
-          md: '40px',
-          lg: '56px',
-          xl: '80px',
-          '2xl': '96px',
-          '3xl': '128px'
-        }
-        if (s.size && presets[s.size]) {
-          return presets[s.size]
-        }
-        if (s.size && !isNaN(s.size)) {
-          return `${s.size}px`
-        }
-        return '40px'
-      }
-    },
-
-    slots: {
-      /**
-       * Dynamic slot evaluation for profile badge.
-       * @param {Node[]} originalNodes - Slotted light DOM nodes.
-       * @param {Object} state - Component state.
-       * @returns {string|Node[]|null} Evaluated slot content.
-       */
-      badge (originalNodes, state) {
-        if (!state.badge || state.loading) {
-          return null
-        }
-        if (originalNodes && originalNodes.length > 0) {
-          return originalNodes
-        }
-
-        if (typeof document !== 'undefined') {
-          const atollBadgeElement = document.createElement('atoll-badge')
-          atollBadgeElement.setAttribute('size', 'sm')
-          atollBadgeElement.setAttribute('count', state.badge)
-          return [atollBadgeElement]
-        }
-
-        return `<atoll-badge size="sm" count="${state.badge}"></atoll-badge>`
-      },
-
-      /**
-       * Dynamic slot evaluation for overlay icon.
-       * @param {Node[]} originalNodes - Slotted light DOM nodes.
-       * @param {Object} state - Component state.
-       * @returns {string|Node[]|null} Evaluated slot content.
-       */
-      icon (originalNodes, state) {
-        if (!state.iconName || state.loading) {
-          return null
-        }
-        if (originalNodes && originalNodes.length > 0) {
-          return originalNodes
-        }
-
-        if (typeof document !== 'undefined') {
-          const atollIconElement = document.createElement('atoll-icon')
-          atollIconElement.setAttribute('size', state.overlayIconSize)
-          atollIconElement.setAttribute('name', state.iconName)
-          return [atollIconElement]
-        }
-
-        return `<atoll-icon name="${state.iconName}" size="${state.overlayIconSize}"></atoll-icon>`
       }
     },
 
     getters: {
+      gridClass: (state) => {
+        if (state.type === 'multiparty') {
+          const count = Math.min(Math.max(state.splitCount || 2, 2), 4)
+          return `multiparty-${count}`
+        }
+        return ''
+      },
+
       computedAlt: (state) => state.alt || state.name || 'User profile',
 
       initials: (state) => {
@@ -554,34 +344,6 @@
         }
         return clean.slice(0, 2).toUpperCase()
       },
-
-      showInitials: (state) => {
-        const str = state.name || state.alt
-        if (!str || str === 'User profile') {
-          return false
-        }
-        return str.trim().length > 0
-      },
-
-      hideInitials: (state) => {
-        const str = state.name || state.alt
-        if (!str || str === 'User profile') {
-          return 'true'
-        }
-        return str.trim().length > 0 ? null : 'true'
-      },
-
-      hideImage: (state) => (state.palette || state.hasProjectedImage === 'true' || state.hasProjectedImage === true || !state.src || state.hasError ? 'true' : null),
-
-      hideFallback: (state) => (state.palette || state.hasProjectedImage === 'true' || state.hasProjectedImage === true || (Boolean(state.src) && !state.hasError) || state.type === 'multiparty' ? 'true' : null),
-
-      hideBadgeOrLoading: (state) => (state.loading || !state.badge ? 'true' : null),
-
-      hideOverlayIconOrLoading: (state) => (state.loading || !state.iconName ? 'true' : null),
-
-      hideLoading: (state) => (!state.loading ? 'true' : null),
-
-      showLoading: (state) => (state.loading ? 'true' : null),
 
       iconSize: (state) => {
         if (state.size === '2xs' || state.size === 'xs') {
@@ -604,206 +366,164 @@
           return '14'
         }
         return '18'
-      },
+      }
+    },
 
-      gridClass: (state) => {
-        if (state.type === 'multiparty') {
-          const count = Math.min(Math.max(state.splitCount, 2), 4)
-          return `multiparty-${count}`
-        }
-        return ''
-      },
-
-      profileClasses: (state) => {
-        const classes = ['atoll-profile']
-
-        if (state.ring) {
-          classes.push('atoll-profile-ring')
+    slots: {
+      image (originalNodes, { state, signal }) {
+        if (typeof document === 'undefined') {
+          return null
         }
 
         if (state.loading) {
-          classes.push('atoll-profile-loading')
+          const wave = document.createElement('div')
+          wave.className = 'placeholder-wave w-100 h-100 position-absolute top-0 start-0'
+          wave.style.zIndex = '5'
+          wave.innerHTML = '<div class="placeholder rounded-circle w-100 h-100"></div>'
+          return [wave]
         }
 
-        return classes.join(' ')
+        if (originalNodes && originalNodes.length > 0) {
+          return Array.from(originalNodes).map(n => n.cloneNode(true))
+        }
+
+        if (state.type === 'multiparty') {
+          const raw = state.splitCount ?? state['split-count'] ?? 3
+          const count = Math.min(Math.max(parseInt(raw, 10) || 3, 2), 4)
+          const colors = ['#4270ED', '#FCB321', '#FF334B', '#06C755']
+          const items = []
+          for (let i = 0; i < count; i++) {
+            const span = document.createElement('span')
+            span.className = 'atoll-profile-fallback'
+            span.style.setProperty('background-color', colors[i], 'important')
+            span.style.setProperty('color', '#FFFFFF', 'important')
+            const icon = document.createElement('atoll-icon')
+            icon.setAttribute('name', 'user')
+            icon.setAttribute('size', i === 0 && count === 3 ? '16' : '12')
+            span.appendChild(icon)
+            items.push(span)
+          }
+          return items
+        }
+
+        if (state.src && !state.hasError && state.type !== 'multiparty') {
+          const img = document.createElement('img')
+          img.src = state.src
+          img.alt = state.computedAlt
+          img.addEventListener('error', () => {
+            state.hasError = true
+          }, { signal })
+          return [img]
+        }
+
+        const fallback = document.createElement('span')
+        fallback.className = 'atoll-profile-fallback'
+        fallback.style.backgroundColor = state.computedBgColor
+
+        if (state.initials && state.type !== 'multiparty') {
+          const initSpan = document.createElement('span')
+          initSpan.className = 'atoll-profile-initials'
+          initSpan.textContent = state.initials
+          fallback.appendChild(initSpan)
+        } else {
+          const icon = document.createElement('atoll-icon')
+          icon.setAttribute('name', 'user')
+          icon.setAttribute('size', state.iconSize)
+          fallback.appendChild(icon)
+        }
+
+        return [fallback]
+      },
+
+      badge (originalNodes, { state }) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (originalNodes && originalNodes.length > 0) {
+          return originalNodes
+        }
+
+        if (!state.badge || state.loading) {
+          return null
+        }
+
+        const badgeEl = document.createElement('atoll-badge')
+        badgeEl.className = 'atoll-profile-badge'
+        badgeEl.setAttribute('size', 'sm')
+        badgeEl.setAttribute('count', state.badge)
+        return [badgeEl]
+      },
+
+      icon (originalNodes, { state }) {
+        if (typeof document === 'undefined') {
+          return null
+        }
+
+        if (originalNodes && originalNodes.length > 0) {
+          return originalNodes
+        }
+
+        if (!state.iconName || state.loading) {
+          return null
+        }
+
+        const container = document.createElement('span')
+        container.className = 'atoll-profile-icon'
+        const iconEl = document.createElement('atoll-icon')
+        iconEl.setAttribute('name', state.iconName)
+        iconEl.setAttribute('size', state.overlayIconSize)
+        container.appendChild(iconEl)
+        return [container]
+      }
+    },
+
+    client: ({ state, root, observe, globalStore, pocketbase, storage, signal }) => {
+      root.setAttribute('role', 'img')
+
+      const updateAriaLabel = () => {
+        root.setAttribute('aria-label', state.computedAlt)
       }
 
-  },
+      observe('name', updateAriaLabel)
+      observe('alt', updateAriaLabel)
+      updateAriaLabel()
 
-    client: ({ state, refs, root, observe, globalStore, pocketbase, storage, signal }) => {
+      const syncSize = (val) => {
+        if (val && !isNaN(val)) {
+          root.style.setProperty('--profile-size', `${val}px`)
+        } else if (val && typeof val === 'string' && val.endsWith('px')) {
+          root.style.setProperty('--profile-size', val)
+        } else {
+          root.style.removeProperty('--profile-size')
+        }
+      }
+
+      if (state.size) syncSize(state.size)
+      observe('size', syncSize)
+
+      if (root.getAttribute('type')) {
+        state.type = root.getAttribute('type')
+      }
+      if (root.getAttribute('split-count')) {
+        state.splitCount = parseInt(root.getAttribute('split-count'), 10)
+      }
+      observe('type', (t) => { if (t) state.type = t })
+      observe('splitCount', (c) => { if (c) state.splitCount = parseInt(c, 10) })
+
+      // User store synchronization
       const { $state } = globalStore || {}
       const { pb } = pocketbase || {}
       const { $storage } = storage || {}
 
-      /**
-       * Extracts up to 2 initial characters from a string.
-       * @param {string} str - Input name or alt text.
-       * @returns {string} Two-character uppercase initials or empty string.
-       */
-      const extractInitials = (str) => {
-        if (!str || str === 'User profile') {
-          return ''
-        }
-        const clean = str.trim()
-        if (!clean) {
-          return ''
-        }
-        const words = clean.split(/\s+/)
-        if (words.length >= 2 && words[0][0] && words[1][0]) {
-          return (words[0][0] + words[1][0]).toUpperCase()
-        }
-        return clean.slice(0, 2).toUpperCase()
-      }
-
-      /**
-       * Computes a deterministic color hex from a string.
-       * @param {string} str - Input string to hash.
-       * @returns {string} Hex color string.
-       */
-      const getDeterministicColor = (str) => {
-        if (!str || str === 'User profile') {
-          return state.palettes[0]
-        }
-  
-        let hash = 0
-        for (let i = 0; i < str.length; i++) {
-          hash = str.charCodeAt(i) + ((hash << 5) - hash)
-        }
-        return state.palettes[Math.abs(hash) % state.palettes.length]
-      }
-
-      const img = refs('avatarImage')
-
-      if (img) {
-        img.addEventListener('error', () => {
-          state.hasError = true
-        })
-
-        img.addEventListener('load', () => {
-          state.hasError = false
-        })
-      }
-
-      const updateSrc = (newSrc) => {
-        if (!img) {
-          return
-        }
-        if (newSrc) {
-          state.hasError = false
-          img.src = newSrc
-        } else {
-          state.hasError = true
-          img.removeAttribute('src')
-        }
-      }
-
-      if (state.src) {
-        updateSrc(state.src)
-      }
-      observe('src', updateSrc)
-
-      // Self-cleaning slot default contents: completely remove standard img and fallback span when a custom slot="image" node is projected
-      const cleanDefaultSlot = () => {
-        const hasImageSlot = root.querySelector('[slot="image"]') !== null
-        const circle = root.querySelector('.atoll-profile-circle')
-        if (hasImageSlot) {
-          state.hasProjectedImage = true
-
-          if (circle) {
-            const defaultImg = circle.querySelector('img[ref="avatarImage"]') || circle.querySelector('img')
-            if (defaultImg && !defaultImg.getAttribute('slot')) {
-              defaultImg.style.setProperty('display', 'none', 'important')
-              defaultImg.setAttribute('hidden', 'true')
-            }
-            const defaultFallback = circle.querySelector('.atoll-profile-fallback')
-            if (defaultFallback) {
-              defaultFallback.style.setProperty('display', 'none', 'important')
-              defaultFallback.setAttribute('hidden', 'true')
-            }
-          }
-        } else {
-          state.hasProjectedImage = false
-
-          if (circle) {
-            const defaultImg = circle.querySelector('img[ref="avatarImage"]') || circle.querySelector('img')
-            if (defaultImg && !defaultImg.getAttribute('slot')) {
-              defaultImg.style.removeProperty('display')
-            }
-            const defaultFallback = circle.querySelector('.atoll-profile-fallback')
-            if (defaultFallback) {
-              defaultFallback.style.removeProperty('display')
-            }
-          }
-        }
-      }
-
-      const circle = root.querySelector('.atoll-profile-circle')
-
-      const checkAndRelocateImageSlot = () => {
-        const slotImg = root.querySelector('[slot="image"]')
-        if (slotImg && circle && slotImg.parentElement !== circle) {
-          circle.appendChild(slotImg)
-        }
-        cleanDefaultSlot()
-      }
-
-      checkAndRelocateImageSlot()
-
-      const rootObserver = new MutationObserver((mutations) => {
-        let shouldCheck = false
-        for (const mutation of mutations) {
-          if (mutation.type === 'childList') {
-            for (const node of mutation.addedNodes) {
-              if (node.nodeType === Node.ELEMENT_NODE && (node.getAttribute('slot') === 'image' || node.querySelector('[slot="image"]'))) {
-                shouldCheck = true
-                break
-              }
-            }
-            for (const node of mutation.removedNodes) {
-              if (node.nodeType === Node.ELEMENT_NODE && (node.getAttribute('slot') === 'image' || node.querySelector('[slot="image"]'))) {
-                shouldCheck = true
-                break
-              }
-            }
-          }
-          if (shouldCheck) {
-            break
-          }
-        }
-        if (shouldCheck) {
-          checkAndRelocateImageSlot()
-          if (state.type === 'multiparty') {
-            if (disconnectMultiparty) {
-              disconnectMultiparty()
-              disconnectMultiparty = null
-            }
-            handleMultiparty()
-          }
-        }
-      })
-      rootObserver.observe(root, {
-        childList: true,
-        subtree: true
-      })
-
-      // Real-time user profile state synchronization
       const fetchingUserIds = new Set()
 
-      /**
-       * Fetches user profile on-demand from local storage or PocketBase and updates global store cache.
-       * @param {string} uid - User ID to fetch.
-       * @returns {Promise<void>}
-       */
       const fetchAndCacheUser = async (uid) => {
-        if (!uid || fetchingUserIds.has(uid)) {
-          return
-        }
+        if (!uid || fetchingUserIds.has(uid)) return
         fetchingUserIds.add(uid)
 
         try {
           let userRecord = null
-
-          // Try local storage database rooms
           if ($storage && typeof $storage.getAllRoomsSorted === 'function') {
             const rooms = await $storage.getAllRoomsSorted()
             for (const r of rooms) {
@@ -815,7 +535,6 @@
             }
           }
 
-          // Try PocketBase fetch
           if (!userRecord && pb && typeof pb.collection === 'function') {
             userRecord = await pb.collection('users').getOne(uid)
           }
@@ -830,17 +549,13 @@
             }
           }
         } catch {
-          // Fail gracefully without console error logging
         } finally {
           fetchingUserIds.delete(uid)
         }
       }
 
       const syncFromUserStore = (uid) => {
-        if (!uid || !$state) {
-          return
-        }
-
+        if (!uid || !$state) return
         let user = $state.users?.[uid]
         if (!user && $state.currentUser?.id === uid) {
           user = $state.currentUser
@@ -871,18 +586,12 @@
 
       if (state.userId) {
         syncFromUserStore(state.userId)
-
         if ($state) {
           unsubUsers = $state.subscribe('users', (newUsers) => {
-            if (state.userId && newUsers?.[state.userId]) {
-              syncFromUserStore(state.userId)
-            }
+            if (state.userId && newUsers?.[state.userId]) syncFromUserStore(state.userId)
           })
-
           unsubCurrentUser = $state.subscribe('currentUser', (newUser) => {
-            if (state.userId && newUser?.id === state.userId) {
-              syncFromUserStore(state.userId)
-            }
+            if (state.userId && newUser?.id === state.userId) syncFromUserStore(state.userId)
           })
         }
       }
@@ -890,170 +599,27 @@
       observe('userId', (newUserId) => {
         if (newUserId) {
           syncFromUserStore(newUserId)
-
           if ($state) {
             if (!unsubUsers) {
               unsubUsers = $state.subscribe('users', (newUsers) => {
-                if (state.userId && newUsers?.[state.userId]) {
-                  syncFromUserStore(state.userId)
-                }
+                if (state.userId && newUsers?.[state.userId]) syncFromUserStore(state.userId)
               })
             }
             if (!unsubCurrentUser) {
               unsubCurrentUser = $state.subscribe('currentUser', (newUser) => {
-                if (state.userId && newUser?.id === state.userId) {
-                  syncFromUserStore(state.userId)
-                }
+                if (state.userId && newUser?.id === state.userId) syncFromUserStore(state.userId)
               })
             }
           }
         } else {
-          if (unsubUsers) {
-            unsubUsers()
-            unsubUsers = null
-          }
-          if (unsubCurrentUser) {
-            unsubCurrentUser()
-            unsubCurrentUser = null
-          }
+          if (unsubUsers) { unsubUsers(); unsubUsers = null }
+          if (unsubCurrentUser) { unsubCurrentUser(); unsubCurrentUser = null }
         }
-      })
-
-      let disconnectMultiparty = null
-
-      const handleMultiparty = () => {
-        if (state.type !== 'multiparty') {
-          return
-        }
-
-        let container = root.querySelector('[slot="image"]')
-        if (!container) {
-          container = document.createElement('div')
-          container.setAttribute('slot', 'image')
-          if (circle) {
-            circle.appendChild(container)
-          } else {
-            root.appendChild(container)
-          }
-          cleanDefaultSlot()
-        }
-
-        const targetCount = Math.min(Math.max(state.splitCount || 2, 2), 4)
-
-        const syncImages = () => {
-          const defaultImg = container.querySelector('[ref="avatarImage"]')
-          if (defaultImg && !defaultImg.getAttribute('src')) {
-            defaultImg.remove()
-          }
-
-          const children = Array.from(container.children)
-
-          children.forEach((child) => {
-            if (child.tagName === 'IMG' && !child.dataset.fallbackBound) {
-              child.dataset.fallbackBound = 'true'
-
-              const replaceWithFallback = () => {
-                const fallback = document.createElement('span')
-                fallback.className = 'atoll-profile-fallback'
-                const altText = child.alt || child.getAttribute('alt') || ''
-                const inits = extractInitials(altText)
-                if (inits) {
-                  fallback.style.backgroundColor = getDeterministicColor(altText)
-                  fallback.style.color = '#FFFFFF'
-                  const initSpan = document.createElement('span')
-                  initSpan.className = 'atoll-profile-initials'
-                  initSpan.textContent = inits
-                  fallback.appendChild(initSpan)
-                } else {
-                  const icon = document.createElement('atoll-icon')
-                  icon.setAttribute('name', 'user')
-                  icon.setAttribute('size', state.iconSize)
-                  fallback.appendChild(icon)
-                }
-                child.replaceWith(fallback)
-              }
-
-              child.addEventListener('error', replaceWithFallback)
-
-              if (!child.getAttribute('src') || child.getAttribute('src') === '') {
-                replaceWithFallback()
-              }
-            }
-          })
-
-          const defaultFallbacks = Array.from(container.querySelectorAll('.atoll-profile-fallback[data-default-fallback="true"]'))
-          const defaultCount = defaultFallbacks.length
-
-          const nonDefaultChildren = Array.from(container.children).filter(child => {
-            return child.dataset.defaultFallback !== 'true'
-          })
-          const nonDefaultCount = nonDefaultChildren.length
-
-          const neededDefaultCount = Math.max(0, targetCount - nonDefaultCount)
-
-          if (defaultCount > neededDefaultCount) {
-            const excessCount = defaultCount - neededDefaultCount
-            for (let i = 0; i < excessCount; i++) {
-              defaultFallbacks[i].remove()
-            }
-          } else if (defaultCount < neededDefaultCount) {
-            const missingCount = neededDefaultCount - defaultCount
-            for (let i = 0; i < missingCount; i++) {
-              const fallback = document.createElement('span')
-              fallback.className = 'atoll-profile-fallback'
-              fallback.dataset.defaultFallback = 'true'
-
-              const icon = document.createElement('atoll-icon')
-              icon.setAttribute('name', 'user')
-              icon.setAttribute('size', state.iconSize)
-
-              fallback.appendChild(icon)
-              container.appendChild(fallback)
-            }
-          }
-        }
-
-        syncImages()
-
-        const mutObserver = new MutationObserver(syncImages)
-        mutObserver.observe(container, { childList: true })
-
-        disconnectMultiparty = () => {
-          mutObserver.disconnect()
-        }
-      }
-
-      handleMultiparty()
-
-      observe('type', () => {
-        if (disconnectMultiparty) {
-          disconnectMultiparty()
-          disconnectMultiparty = null
-        }
-        handleMultiparty()
-      })
-
-      observe('splitCount', () => {
-        if (disconnectMultiparty) {
-          disconnectMultiparty()
-          disconnectMultiparty = null
-        }
-        handleMultiparty()
       })
 
       signal.addEventListener('abort', () => {
-        if (rootObserver) {
-          rootObserver.disconnect()
-        }
-        if (disconnectMultiparty) {
-          disconnectMultiparty()
-        }
-        if (unsubUsers) {
-          unsubUsers()
-        }
-        if (unsubCurrentUser) {
-          unsubCurrentUser()
-        }
+        if (unsubUsers) unsubUsers()
+        if (unsubCurrentUser) unsubCurrentUser()
       })
     }
   })

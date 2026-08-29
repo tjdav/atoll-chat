@@ -1,4 +1,4 @@
-import { test as base, expect } from '@playwright/test'
+import { test as base, expect } from '../../e2e/fixtures/base-test.js'
 import path from 'path'
 import fs from 'fs'
 
@@ -44,7 +44,7 @@ export const test = base.extend({
       }
       const target = locator || page.locator('#component-mount-point')
       const targetPath = path.join(screenshotDir, `${name}.png`)
-      await target.screenshot({ path: targetPath })
+      await target.screenshot({ path: targetPath, animations: 'allow' })
       return targetPath
     })
   }

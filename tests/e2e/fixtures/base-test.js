@@ -398,8 +398,12 @@ export const test = base.extend({
     }, testId)
 
     page.on('console', msg => {
+      const text = msg.text()
+      if (text.includes('data:text/css;base64,KiwgKjo6YmVmb3JlL')) {
+        return
+      }
       if (isVerbose || msg.type() === 'error') {
-        console.log(`[BROWSER] ${msg.type()}: ${msg.text()}`)
+        console.log(`[BROWSER] ${msg.type()}: ${text}`)
       }
     })
     page.on('pageerror', err => {
