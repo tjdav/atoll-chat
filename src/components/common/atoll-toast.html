@@ -277,7 +277,9 @@
       let nextId = 1
 
       const resolveIconName = (variant, customIcon) => {
-        if (customIcon) return customIcon
+        if (customIcon) {
+          return customIcon
+        }
         switch (variant) {
           case 'success': return 'check-circle'
           case 'danger': return 'alert-circle'
@@ -291,13 +293,19 @@
 
       const ensurePopoverVisible = () => {
         if (popoverContainer && typeof popoverContainer.showPopover === 'function') {
-          try { popoverContainer.showPopover() } catch {}
+          try {
+            popoverContainer.showPopover()
+          } catch {
+          }
         }
       }
 
       const ensurePopoverHidden = () => {
         if (state.toasts.length === 0 && popoverContainer && typeof popoverContainer.hidePopover === 'function') {
-          try { popoverContainer.hidePopover() } catch {}
+          try {
+            popoverContainer.hidePopover()
+          } catch {
+          }
         }
       }
 
@@ -337,14 +345,20 @@
         }
         cardEl.addEventListener('transitionend', handleTransitionEnd, { signal })
         setTimeout(() => {
-          if (!transitioned) removeCard()
+          if (!transitioned) {
+            removeCard()
+          }
         }, 180)
       }
 
       const clearAll = () => {
         toastEntries.forEach((entry) => {
-          if (entry.timerId) clearTimeout(entry.timerId)
-          if (entry.cardEl.parentNode) entry.cardEl.parentNode.removeChild(entry.cardEl)
+          if (entry.timerId) {
+            clearTimeout(entry.timerId)
+          }
+          if (entry.cardEl.parentNode) {
+            entry.cardEl.parentNode.removeChild(entry.cardEl)
+          }
         })
         toastEntries.clear()
         state.toasts = []
@@ -352,7 +366,9 @@
       }
 
       const pauseTimer = (entry) => {
-        if (!entry || entry.remainingTime <= 0 || entry.isPaused) return
+        if (!entry || entry.remainingTime <= 0 || entry.isPaused) {
+          return
+        }
         if (entry.timerId) {
           clearTimeout(entry.timerId)
           entry.timerId = null
@@ -361,15 +377,21 @@
         entry.remainingTime = Math.max(0, entry.remainingTime - elapsed)
         entry.isPaused = true
         entry.cardEl.classList.add('atoll-toast-paused')
-        if (entry.progressBarEl) entry.progressBarEl.style.animationPlayState = 'paused'
+        if (entry.progressBarEl) {
+          entry.progressBarEl.style.animationPlayState = 'paused'
+        }
       }
 
       const resumeTimer = (entry) => {
-        if (!entry || entry.remainingTime <= 0 || !entry.isPaused) return
+        if (!entry || entry.remainingTime <= 0 || !entry.isPaused) {
+          return
+        }
         entry.isPaused = false
         entry.startTime = Date.now()
         entry.cardEl.classList.remove('atoll-toast-paused')
-        if (entry.progressBarEl) entry.progressBarEl.style.animationPlayState = 'running'
+        if (entry.progressBarEl) {
+          entry.progressBarEl.style.animationPlayState = 'running'
+        }
         entry.timerId = setTimeout(() => hideToast(entry.toast.id), entry.remainingTime)
       }
 
@@ -383,7 +405,15 @@
         const dismissible = toastObj.dismissible !== false
         const iconName = resolveIconName(variant, toastObj.icon)
 
-        const toast = { id, variant, duration, message, action, icon: iconName, dismissible }
+        const toast = {
+          id,
+          variant,
+          duration,
+          message,
+          action,
+          icon: iconName,
+          dismissible
+        }
 
         const maxCapacity = state.maxToasts || 3
         while (state.toasts.length >= maxCapacity) {
@@ -433,7 +463,9 @@
           actionBtn.textContent = action.label
           actionBtn.addEventListener('click', (e) => {
             e.stopPropagation()
-            if (typeof action.onClick === 'function') action.onClick(toast)
+            if (typeof action.onClick === 'function') {
+              action.onClick(toast)
+            }
             hideToast(id)
           }, { signal })
           bodyWrapper.appendChild(actionBtn)
@@ -473,33 +505,51 @@
         // Mouse, Focus, and Touch Pause/Resume Handlers
         card.addEventListener('mouseenter', () => {
           const entry = toastEntries.get(id)
-          if (entry) pauseTimer(entry)
+          if (entry) {
+            pauseTimer(entry)
+          }
         }, { signal })
 
         card.addEventListener('mouseleave', () => {
           const entry = toastEntries.get(id)
-          if (entry) resumeTimer(entry)
+          if (entry) {
+            resumeTimer(entry)
+          }
         }, { signal })
 
         card.addEventListener('focusin', () => {
           const entry = toastEntries.get(id)
-          if (entry) pauseTimer(entry)
+          if (entry) {
+            pauseTimer(entry)
+          }
         }, { signal })
 
         card.addEventListener('focusout', () => {
           const entry = toastEntries.get(id)
-          if (entry) resumeTimer(entry)
+          if (entry) {
+            resumeTimer(entry)
+          }
         }, { signal })
 
         card.addEventListener('touchstart', () => {
           const entry = toastEntries.get(id)
-          if (entry) pauseTimer(entry)
-        }, { signal, passive: true })
+          if (entry) {
+            pauseTimer(entry)
+          }
+        }, {
+          signal,
+          passive: true
+        })
 
         card.addEventListener('touchend', () => {
           const entry = toastEntries.get(id)
-          if (entry) resumeTimer(entry)
-        }, { signal, passive: true })
+          if (entry) {
+            resumeTimer(entry)
+          }
+        }, {
+          signal,
+          passive: true
+        })
 
         stackHost.appendChild(card)
 
@@ -537,7 +587,9 @@
       popoverContainer.addEventListener('keydown', (e) => {
         if (e.key === 'Escape' && state.toasts.length > 0) {
           const lastToast = state.toasts[state.toasts.length - 1]
-          if (lastToast) hideToast(lastToast.id)
+          if (lastToast) {
+            hideToast(lastToast.id)
+          }
         }
       }, { signal })
 

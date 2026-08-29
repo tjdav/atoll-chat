@@ -1,5 +1,5 @@
 <template id="atoll-input">
-  <div class="{{ groupClasses }}">
+  <div class="atoll-input-group">
     <!-- Optional Header (Label + Required Asterisk + Character Counter) -->
     <div class="atoll-input-header" hidden="{{ hideHeader }}">
       <label class="atoll-input-label" for="{{ ref_input }}">
@@ -73,10 +73,40 @@
   :host {
     display: block;
     width: 100%;
+
+    --input-height: 44px;
+    --input-font-size: var(--atoll-font-size-body-2, 14px);
+    --input-label-size: var(--atoll-font-size-caption-1, 12px);
+    --input-text-color: var(--atoll-text-primary, #111111);
+    --input-placeholder-color: var(--atoll-text-tertiary, #949494);
+    --input-underline-color: var(--atoll-border-subtle, #E8E8E8);
+    --input-underline-focus: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --input-underline-error: var(--atoll-danger, var(--atoll-rainbow-red, #FF334B));
+    --input-label-color: var(--atoll-text-secondary, #555555);
+    --input-focus-ring: color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
   }
 
   :host([hidden]) {
     display: none !important;
+  }
+
+  /* Size Modifiers */
+  :host([size="sm"]) {
+    --input-height: 36px;
+    --input-font-size: 12px;
+    --input-label-size: 11px;
+  }
+
+  :host([size="lg"]) {
+    --input-height: 52px;
+    --input-font-size: 16px;
+    --input-label-size: 14px;
+  }
+
+  :host([disabled]),
+  :host([aria-disabled="true"]) {
+    opacity: 0.5;
+    pointer-events: none;
   }
 
   .atoll-input-group {
@@ -86,23 +116,6 @@
     position: relative;
     font-family: var(--atoll-font-sans-serif, system-ui, -apple-system, sans-serif);
     box-sizing: border-box;
-
-    --atoll-input-height-sm: 36px;
-    --atoll-input-height-md: 44px;
-    --atoll-input-height-lg: 52px;
-    --atoll-input-height: var(--atoll-input-height-md);
-
-    --atoll-input-text-color: var(--atoll-text-primary, #111111);
-    --atoll-input-placeholder-color: var(--atoll-text-tertiary, #949494);
-    --atoll-input-underline-color: var(--atoll-border-subtle, #E8E8E8);
-    --atoll-input-underline-focus: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
-    --atoll-input-underline-error: var(--atoll-rainbow-red, #FF334B);
-    --atoll-input-label-color: var(--atoll-text-secondary, #555555);
-  }
-
-  .atoll-input-group.disabled {
-    opacity: 0.5;
-    pointer-events: none;
   }
 
   .atoll-input-header {
@@ -110,9 +123,9 @@
     align-items: center;
     justify-content: space-between;
     margin-bottom: 4px;
-    font-size: var(--atoll-font-size-caption-1, 12px);
-    color: var(--atoll-input-label-color);
-    font-weight: var(--atoll-font-weight-medium, 500);
+    font-size: var(--input-label-size);
+    color: var(--input-label-color);
+    font-weight: 500;
   }
 
   .atoll-input-label {
@@ -122,12 +135,12 @@
   }
 
   .atoll-input-required-mark {
-    color: var(--atoll-rainbow-red, #FF334B);
+    color: var(--input-underline-error);
     font-weight: bold;
   }
 
   .atoll-input-counter {
-    font-size: var(--atoll-font-size-caption-2, 11px);
+    font-size: 11px;
     color: var(--atoll-text-tertiary, #999999);
     margin-left: auto;
   }
@@ -137,18 +150,30 @@
     align-items: center;
     position: relative;
     width: 100%;
-    height: var(--atoll-input-height);
+    height: var(--input-height);
     background-color: var(--atoll-input-bg, transparent);
-    border-bottom: 1px solid var(--atoll-input-underline-color);
+    border-bottom: 1px solid var(--input-underline-color);
     transition: border-color 0.15s ease-in-out, border-width 0.1s ease-in-out, box-shadow 0.15s ease-in-out;
   }
 
   .atoll-input-wrapper:focus-within {
-    border-bottom: 2px solid var(--atoll-input-underline-focus);
-    box-shadow: 0 2px 8px color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
+    border-bottom: 2px solid var(--input-underline-focus);
+    box-shadow: 0 2px 8px var(--input-focus-ring);
+  }
+
+  :host([invalid]) .atoll-input-wrapper,
+  :host([aria-invalid="true"]) .atoll-input-wrapper {
+    border-bottom: 2px solid var(--input-underline-error) !important;
+  }
+
+  :host([invalid]) .atoll-input-footer,
+  :host([aria-invalid="true"]) .atoll-input-footer {
+    color: var(--input-underline-error);
   }
 
   .atoll-input-field {
+    flex: 1;
+    min-width: 0;
     width: 100%;
     height: 100%;
     background: transparent;
@@ -157,12 +182,12 @@
     padding: 0;
     margin: 0;
     font-family: inherit;
-    font-size: var(--atoll-font-size-body-2, 14px);
-    color: var(--atoll-input-text-color);
+    font-size: var(--input-font-size);
+    color: var(--input-text-color);
   }
 
   .atoll-input-field::placeholder {
-    color: var(--atoll-input-placeholder-color);
+    color: var(--input-placeholder-color);
   }
 
   .atoll-input-field:disabled {
@@ -200,9 +225,9 @@
   }
 
   .atoll-input-timer {
-    font-size: var(--atoll-font-size-caption-1, 12px);
-    color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
-    font-weight: var(--atoll-font-weight-semibold, 600);
+    font-size: 12px;
+    color: var(--atoll-primary, #06C755);
+    font-weight: 600;
     font-variant-numeric: tabular-nums;
   }
 
@@ -211,43 +236,20 @@
     align-items: center;
     justify-content: space-between;
     margin-top: 4px;
-    font-size: var(--atoll-font-size-caption-2, 11px);
+    font-size: 11px;
     color: var(--atoll-text-secondary, #666666);
     min-height: 16px;
   }
 
-  .atoll-input-error .atoll-input-wrapper {
-    border-bottom: 2px solid var(--atoll-input-underline-error) !important;
-  }
-
-  .atoll-input-error .atoll-input-footer {
-    color: var(--atoll-rainbow-red, #FF334B);
-  }
-
-  .atoll-input-sm {
-    --atoll-input-height: var(--atoll-input-height-sm);
-  }
-
-  .atoll-input-sm .atoll-input-field {
-    font-size: var(--atoll-font-size-caption-1, 12px);
-  }
-
-  .atoll-input-lg {
-    --atoll-input-height: var(--atoll-input-height-lg);
-  }
-
-  .atoll-input-lg .atoll-input-field {
-    font-size: var(--atoll-font-size-body-1, 16px);
-  }
-
+  /* Dark Mode Overrides */
   :host-context([data-atoll-theme="dark"]) .atoll-input-group,
   :host-context([data-bs-theme="dark"]) .atoll-input-group,
   [data-atoll-theme="dark"] .atoll-input-group,
   [data-bs-theme="dark"] .atoll-input-group {
-    --atoll-input-text-color: var(--atoll-text-primary, #FFFFFF);
-    --atoll-input-placeholder-color: var(--atoll-text-tertiary, #949494);
-    --atoll-input-underline-color: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
-    --atoll-input-label-color: var(--atoll-text-secondary, #B0B0B0);
+    --input-text-color: var(--atoll-text-primary, #FFFFFF);
+    --input-placeholder-color: var(--atoll-text-tertiary, #949494);
+    --input-underline-color: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
+    --input-label-color: var(--atoll-text-secondary, #B0B0B0);
   }
 </style>
 
@@ -258,8 +260,8 @@
     attributes: {
       type: {
         type: String,
-        // 'text' | 'password' | 'email' | 'tel' | 'code'
-        default: 'text'
+        default: 'text',
+        values: ['text', 'password', 'email', 'tel', 'code']
       },
       value: {
         type: String,
@@ -287,7 +289,8 @@
       },
       size: {
         type: String,
-        default: 'md'
+        default: 'md',
+        values: ['sm', 'md', 'lg']
       },
       maxlength: {
         type: Number,
@@ -311,61 +314,30 @@
       },
 
       passwordIconName: (state) => (state.showPassword ? 'eye-off' : 'eye'),
-
       currentLength: (state) => (state.value ? String(state.value).length : 0),
-
       isAriaInvalid: (state) => (state.invalid || Boolean(state.errorMessage) ? 'true' : 'false'),
 
-      // Operator-free boolean getters for template attributes
       hideHeader: (state) => !state.label && !state.showCounter,
-
       hideRequiredMark: (state) => !state.required,
-
       hideCounter: (state) => !state.showCounter,
-
       hideClearBtn: (state) => !state.clearable || !state.value || state.disabled || state.readonly,
-
       hidePasswordToggle: (state) => state.type !== 'password',
-
       hideTimer: (state) => !state.timer,
-
       hideFooter: (state) => !state.errorMessage && !state.helperText,
-
-      displayMessage: (state) => (state.invalid && state.errorMessage ? state.errorMessage : state.helperText),
-
-      groupClasses: (state) => {
-        const classes = ['atoll-input-group']
-
-        if (state.size) {
-          classes.push(`atoll-input-${state.size}`)
-        } else {
-          classes.push('atoll-input-md')
-        }
-
-        if (state.invalid || state.errorMessage) {
-          classes.push('atoll-input-error')
-        }
-        if (state.disabled) {
-          classes.push('disabled')
-        }
-
-        return classes.join(' ')
-      }
+      displayMessage: (state) => (state.invalid && state.errorMessage ? state.errorMessage : state.helperText)
     },
 
-    client: ({ state, refs, root, observe }) => {
+    client: ({ state, refs, root, observe, signal }) => {
       const input = refs('input')
       const clearBtn = refs('clearBtn')
       const passBtn = refs('passwordToggleBtn')
 
-      // Capture initial value from property or attribute if set prior to / during hydration
       const initialVal = root.value || root.getAttribute('value') || state.value || ''
-      if (initialVal) {
+      if (initialVal && input) {
         state.value = initialVal
         input.value = initialVal
       }
 
-      // Forward test-id / data-testid and standard attributes
       const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
       if (testId) {
         root.__testId = testId
@@ -378,7 +350,7 @@
 
       const feedbackTestId = root.getAttribute('feedback-test-id')
       const footer = refs('footer')
-      if (feedbackTestId) {
+      if (feedbackTestId && footer) {
         footer.setAttribute('data-testid', feedbackTestId)
       }
 
@@ -390,7 +362,6 @@
         }
       })
 
-      // Native validity and validation delegates
       root.checkValidity = () => input.checkValidity()
       root.reportValidity = () => input.reportValidity()
       root.setCustomValidity = (msg) => {
@@ -403,6 +374,7 @@
           state.errorMessage = ''
         }
       }
+
       Object.defineProperty(root, 'validity', {
         get () {
           return input.validity
@@ -410,7 +382,6 @@
         configurable: true
       })
 
-      // Expose properties on root for bidirectional data binding
       Object.defineProperty(root, 'value', {
         get () {
           return state.value
@@ -420,6 +391,16 @@
           if (input && input.value !== (newVal || '')) {
             input.value = newVal || ''
           }
+        },
+        configurable: true
+      })
+
+      Object.defineProperty(root, 'showPassword', {
+        get () {
+          return state.showPassword
+        },
+        set (val) {
+          state.showPassword = Boolean(val)
         },
         configurable: true
       })
@@ -444,7 +425,6 @@
         configurable: true
       })
 
-      // Focus / blur forwarding
       root.focus = () => input.focus()
       root.blur = () => input.blur()
 
@@ -459,26 +439,22 @@
         }))
       }
 
-      // Sync native user typing back to state and trigger form events
       input.addEventListener('input', () => {
         state.value = input.value
         dispatchEvents()
-      })
+      }, { signal })
 
-      // Clear button handler
       clearBtn.addEventListener('click', () => {
         state.value = ''
         input.value = ''
         input.focus()
         dispatchEvents()
-      })
+      }, { signal })
 
-      // Password visibility toggle handler
       passBtn.addEventListener('click', () => {
         state.showPassword = !state.showPassword
-      })
+      }, { signal })
 
-      // Two-way sync: Update native input if value changes programmatically from outside
       observe('value', (newVal) => {
         if (input.value !== (newVal || '')) {
           input.value = newVal || ''

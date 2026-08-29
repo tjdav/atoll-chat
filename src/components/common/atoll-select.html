@@ -18,7 +18,7 @@
       role="combobox"
       aria-haspopup="listbox"
       aria-expanded="{{ isExpanded }}"
-      aria-controls="{{ ref_menuList }}"
+      aria-controls="{{ ref_menuElement }}"
       aria-disabled="{{ isDisabled }}"
       tabindex="{{ summaryTabIndex }}"
       data-variant="{{ variant }}"
@@ -33,7 +33,7 @@
     <!-- Dropdown / Dropup Options Menu (role="listbox") -->
     <ul 
       ref="menuElement" 
-      id="{{ ref_menuList }}"
+      id="{{ ref_menuElement }}"
       class="atoll-select-menu"
       role="listbox"
       aria-orientation="vertical"
@@ -402,7 +402,9 @@
 
     slots: {
       leading (nodes, state) {
-        if (typeof document === 'undefined') return null
+        if (typeof document === 'undefined') {
+          return null
+        }
 
         if (state.leadingIcon) {
           const span = document.createElement('span')
@@ -425,7 +427,9 @@
       },
 
       trailing (nodes, state) {
-        if (typeof document === 'undefined') return null
+        if (typeof document === 'undefined') {
+          return null
+        }
 
         if (nodes && nodes.length > 0) {
           const span = document.createElement('span')
@@ -448,12 +452,13 @@
       isDisabled: (state) => Boolean(state.disabled),
       isExpanded: (state) => Boolean(state.open),
       summaryTabIndex: (state) => (state.disabled ? -1 : 0),
-      selectedLabel: (state) => state.selectedLabelText || state.placeholder,
-      ref_menuList: (_state, { instanceId }) => (instanceId ? `${instanceId}-menu` : 'atoll-select-menu')
+      selectedLabel: (state) => state.selectedLabelText || state.placeholder
     },
 
     client: ({ state, refs, root, observe, signal }) => {
-      if (root.__initialized) return
+      if (root.__initialized) {
+        return
+      }
       root.__initialized = true
 
       const detailsEl = refs('detailsElement')
@@ -520,8 +525,12 @@
       }
 
       const show = () => {
-        if (state.disabled || (state.open && detailsEl.hasAttribute('open'))) return
-        if (closeTimeout) clearTimeout(closeTimeout)
+        if (state.disabled || (state.open && detailsEl.hasAttribute('open'))) {
+          return
+        }
+        if (closeTimeout) {
+          clearTimeout(closeTimeout)
+        }
         isClosing = false
         detailsEl.classList.remove('atoll-select-closing')
         state.open = true
@@ -531,15 +540,21 @@
       }
 
       const hide = () => {
-        if (!state.open || isClosing) return
+        if (!state.open || isClosing) {
+          return
+        }
         isClosing = true
         detailsEl.classList.add('atoll-select-closing')
 
         let transitionHandled = false
         const handleEnd = () => {
-          if (transitionHandled) return
+          if (transitionHandled) {
+            return
+          }
           transitionHandled = true
-          if (closeTimeout) clearTimeout(closeTimeout)
+          if (closeTimeout) {
+            clearTimeout(closeTimeout)
+          }
           state.open = false
           detailsEl.classList.remove('atoll-select-closing')
           detailsEl.classList.remove('atoll-select-dropup')
@@ -594,7 +609,9 @@
 
       const handleMenuClick = (event) => {
         const item = event.target.closest('.dropdown-item:not([disabled]), [data-value]:not([disabled]), option:not([disabled])')
-        if (!item || state.disabled) return
+        if (!item || state.disabled) {
+          return
+        }
 
         const selectedValue = item.getAttribute('data-value') ?? item.getAttribute('value') ?? item.value ?? item.textContent.trim()
         const selectedLabel = item.textContent.trim()
@@ -627,12 +644,16 @@
 
       toggleEl.addEventListener('click', (e) => {
         e.preventDefault()
-        if (state.disabled) return
+        if (state.disabled) {
+          return
+        }
         toggle()
       }, { signal })
 
       detailsEl.addEventListener('toggle', () => {
-        if (isClosing) return
+        if (isClosing) {
+          return
+        }
         const isDetailsOpen = detailsEl.hasAttribute('open')
         if (isDetailsOpen && !state.open) {
           show()
@@ -656,7 +677,9 @@
       const getOptions = () => Array.from(menuEl.querySelectorAll('.dropdown-item:not([disabled]), [data-value]:not([disabled]), option:not([disabled])'))
 
       const handleKeyDown = (e) => {
-        if (state.disabled) return
+        if (state.disabled) {
+          return
+        }
 
         const options = getOptions()
         const activeEl = document.activeElement
@@ -666,11 +689,15 @@
         if (e.key.length === 1 && !e.ctrlKey && !e.altKey && !e.metaKey) {
           typeaheadQuery += e.key.toLowerCase()
           clearTimeout(typeaheadTimer)
-          typeaheadTimer = setTimeout(() => { typeaheadQuery = '' }, 500)
+          typeaheadTimer = setTimeout(() => {
+            typeaheadQuery = ''
+          }, 500)
 
           const match = options.find(opt => opt.textContent.trim().toLowerCase().startsWith(typeaheadQuery))
           if (match) {
-            if (!state.open) show()
+            if (!state.open) {
+              show()
+            }
             match.focus()
           }
           return
@@ -694,10 +721,14 @@
               show()
               requestAnimationFrame(() => {
                 const opts = getOptions()
-                if (opts.length > 0) opts[0].focus()
+                if (opts.length > 0) {
+                  opts[0].focus()
+                }
               })
             } else if (currentIndex === -1) {
-              if (options.length > 0) options[0].focus()
+              if (options.length > 0) {
+                options[0].focus()
+              }
             } else {
               const nextIndex = (currentIndex + 1) % options.length
               options[nextIndex].focus()
@@ -710,10 +741,14 @@
               show()
               requestAnimationFrame(() => {
                 const opts = getOptions()
-                if (opts.length > 0) opts[opts.length - 1].focus()
+                if (opts.length > 0) {
+                  opts[opts.length - 1].focus()
+                }
               })
             } else if (currentIndex === -1) {
-              if (options.length > 0) options[options.length - 1].focus()
+              if (options.length > 0) {
+                options[options.length - 1].focus()
+              }
             } else {
               const prevIndex = (currentIndex - 1 + options.length) % options.length
               options[prevIndex].focus()
@@ -768,7 +803,9 @@
           setTimeout(() => {
             const resetVal = root.getAttribute('value') ?? hiddenInput?.getAttribute('value') ?? ''
             state.value = resetVal
-            if (hiddenInput) hiddenInput.value = resetVal
+            if (hiddenInput) {
+              hiddenInput.value = resetVal
+            }
             updateSelectedLabel()
           }, 0)
         }
@@ -830,7 +867,9 @@
         },
         set (val) {
           state.value = String(val || '')
-          if (hiddenInput) hiddenInput.value = state.value
+          if (hiddenInput) {
+            hiddenInput.value = state.value
+          }
           updateSelectedLabel()
         },
         configurable: true
@@ -852,7 +891,9 @@
       })
 
       signal.addEventListener('abort', () => {
-        if (closeTimeout) clearTimeout(closeTimeout)
+        if (closeTimeout) {
+          clearTimeout(closeTimeout)
+        }
         clearTimeout(typeaheadTimer)
       })
     }

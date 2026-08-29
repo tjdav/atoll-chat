@@ -196,8 +196,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    server: ({ id }) => ({
-      ref_modalTitle: `mediaModalTitle_${id || '0'}`,
+    server: () => ({
       activeTitle: 'Media',
       activeSubtitle: '',
       activeSlideIndex: 0

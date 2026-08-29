@@ -202,17 +202,25 @@
         const slotEl = container ? container.querySelector('slot:not([name])') : null
         if (slotEl) {
           const assigned = typeof slotEl.assignedElements === 'function' ? slotEl.assignedElements() : []
-          if (assigned.length > 0) return assigned
+          if (assigned.length > 0) {
+            return assigned
+          }
           const slotChildren = Array.from(slotEl.children).filter(el => el.nodeType === 1)
-          if (slotChildren.length > 0) return slotChildren
+          if (slotChildren.length > 0) {
+            return slotChildren
+          }
         }
         // Fallback to non-slotted children or direct root children
         const directChildren = Array.from(root.children).filter(el => {
-          if (el.nodeType !== 1) return false
+          if (el.nodeType !== 1) {
+            return false
+          }
           const slotAttr = el.getAttribute('slot')
           return !slotAttr || (slotAttr !== 'header' && slotAttr !== 'footer' && slotAttr !== 'controls' && slotAttr !== 'overlay')
         })
-        if (directChildren.length > 0) return directChildren
+        if (directChildren.length > 0) {
+          return directChildren
+        }
 
         return Array.from(container?.children || []).filter(el => el.tagName !== 'SLOT')
       }
@@ -247,7 +255,9 @@
         const btnPrev = root.querySelector('.atoll-slideshow-nav-btn.prev')
         const btnNext = root.querySelector('.atoll-slideshow-nav-btn.next')
 
-        if (!embla) return
+        if (!embla) {
+          return
+        }
 
         const canPrev = embla.canScrollPrev()
         const canNext = embla.canScrollNext()
@@ -288,7 +298,10 @@
             root.dispatchEvent(new CustomEvent('atoll-slideshow-select', {
               bubbles: true,
               composed: true,
-              detail: { index: newIndex, previousIndex: prevIndex }
+              detail: {
+                index: newIndex,
+                previousIndex: prevIndex
+              }
             }))
           }
           updateNavButtons()
@@ -324,7 +337,10 @@
           bubbles: true,
           composed: true
         }))
-      }, { signal, passive: true })
+      }, {
+        signal,
+        passive: true
+      })
 
       root.addEventListener('click', (e) => {
         const btnPrev = e.target.closest('.atoll-slideshow-nav-btn.prev')
@@ -339,7 +355,9 @@
       if (state.keyboard) {
         window.addEventListener('keydown', (e) => {
           const tag = document.activeElement?.tagName?.toLowerCase()
-          if (tag === 'input' || tag === 'textarea' || tag === 'select') return
+          if (tag === 'input' || tag === 'textarea' || tag === 'select') {
+            return
+          }
 
           if (e.key === 'ArrowLeft') {
             e.preventDefault()
@@ -362,7 +380,10 @@
           }, 0)
         }
       })
-      mutationObserver.observe(container, { childList: true, subtree: true })
+      mutationObserver.observe(container, {
+        childList: true,
+        subtree: true
+      })
 
       ;['loop', 'dragFree', 'align', 'axis', 'containScroll'].forEach(attr => {
         observe(attr, () => {
@@ -378,7 +399,10 @@
       root.dispatchEvent(new CustomEvent('atoll-slideshow-init', {
         bubbles: true,
         composed: true,
-        detail: { embla, index: lastIndex }
+        detail: {
+          embla,
+          index: lastIndex
+        }
       }))
 
       signal.addEventListener('abort', () => {

@@ -424,7 +424,9 @@
 
     slots: {
       hero (nodes, state) {
-        if (typeof document === 'undefined') return undefined
+        if (typeof document === 'undefined') {
+          return undefined
+        }
 
         if (state.heroIcon) {
           const wrapper = document.createElement('div')
@@ -447,7 +449,9 @@
       },
 
       actions (nodes, state) {
-        if (typeof document === 'undefined') return undefined
+        if (typeof document === 'undefined') {
+          return undefined
+        }
 
         const isVertical = Boolean(state.tertiaryText || state.stackedActions || state.actionsLayout === 'vertical' || state.actionsLayout === 'stacked')
         const actionClasses = isVertical
@@ -465,7 +469,9 @@
         const hideSecondary = state.variant === 'alert' || !state.secondaryText
         const hideTertiary = !state.tertiaryText
 
-        if (hidePrimary && hideSecondary && hideTertiary) return undefined
+        if (hidePrimary && hideSecondary && hideTertiary) {
+          return undefined
+        }
 
         const wrapper = document.createElement('div')
         wrapper.className = actionClasses
@@ -476,9 +482,15 @@
           const primaryVariant = state.variant === 'danger' ? 'danger' : 'primary'
           btn.setAttribute('variant', primaryVariant)
           btn.setAttribute('size', 'md')
-          if (isVertical) btn.setAttribute('block', 'true')
-          if (state.primaryDisabled) btn.setAttribute('disabled', 'true')
-          if (state.primaryLoading) btn.setAttribute('loading', 'true')
+          if (isVertical) {
+            btn.setAttribute('block', 'true')
+          }
+          if (state.primaryDisabled) {
+            btn.setAttribute('disabled', 'true')
+          }
+          if (state.primaryLoading) {
+            btn.setAttribute('loading', 'true')
+          }
           btn.textContent = state.primaryText
           return btn
         }
@@ -488,7 +500,9 @@
           btn.setAttribute('ref', 'secondaryBtn')
           btn.setAttribute('variant', 'secondary')
           btn.setAttribute('size', 'md')
-          if (isVertical) btn.setAttribute('block', 'true')
+          if (isVertical) {
+            btn.setAttribute('block', 'true')
+          }
           btn.textContent = state.secondaryText
           return btn
         }
@@ -498,18 +512,30 @@
           btn.setAttribute('ref', 'tertiaryBtn')
           btn.setAttribute('variant', 'outline')
           btn.setAttribute('size', 'md')
-          if (isVertical) btn.setAttribute('block', 'true')
+          if (isVertical) {
+            btn.setAttribute('block', 'true')
+          }
           btn.textContent = state.tertiaryText
           return btn
         }
 
         if (isVertical) {
-          if (!hidePrimary) wrapper.appendChild(createPrimaryBtn())
-          if (!hideTertiary) wrapper.appendChild(createTertiaryBtn())
-          if (!hideSecondary) wrapper.appendChild(createSecondaryBtn())
+          if (!hidePrimary) {
+            wrapper.appendChild(createPrimaryBtn())
+          }
+          if (!hideTertiary) {
+            wrapper.appendChild(createTertiaryBtn())
+          }
+          if (!hideSecondary) {
+            wrapper.appendChild(createSecondaryBtn())
+          }
         } else {
-          if (!hideSecondary) wrapper.appendChild(createSecondaryBtn())
-          if (!hidePrimary) wrapper.appendChild(createPrimaryBtn())
+          if (!hideSecondary) {
+            wrapper.appendChild(createSecondaryBtn())
+          }
+          if (!hidePrimary) {
+            wrapper.appendChild(createPrimaryBtn())
+          }
         }
 
         return [wrapper]
@@ -518,9 +544,7 @@
 
     getters: {
       hideDescription: (state) => !state.description,
-      hideHeader: (state) => !state.title,
-      ref_modalTitle: (_state, { instanceId }) => (instanceId ? `${instanceId}-title` : 'atoll-popup-title'),
-      ref_modalDesc: (_state, { instanceId }) => (instanceId ? `${instanceId}-desc` : 'atoll-popup-desc')
+      hideHeader: (state) => !state.title
     },
 
     client: ({ state, refs, root, observe, signal }) => {
@@ -553,12 +577,16 @@
       }
 
       const hideModal = () => {
-        if (!dialogEl.open && !state.open) return
+        if (!dialogEl.open && !state.open) {
+          return
+        }
 
         dialogEl.classList.remove('atoll-popup-closing')
         dialogEl.classList.remove('show')
         document.body.classList.remove('modal-open')
-        if (dialogEl.open) dialogEl.close()
+        if (dialogEl.open) {
+          dialogEl.close()
+        }
         state.open = false
         root.dispatchEvent(
           new CustomEvent('atoll-popup-close', {
@@ -589,7 +617,9 @@
       dialogEl.addEventListener('cancel', (e) => {
         if (state.staticBackdrop || state.disableKeyboard) {
           e.preventDefault()
-          if (state.staticBackdrop) triggerShake()
+          if (state.staticBackdrop) {
+            triggerShake()
+          }
         } else {
           e.preventDefault()
           hideModal()
@@ -607,7 +637,9 @@
         }
 
         const target = e.target.closest('atoll-button') || e.target.closest('.atoll-btn')
-        if (!target) return
+        if (!target) {
+          return
+        }
 
         const refAttr = target.getAttribute('ref') || ''
         const isPrimary = refAttr === 'primaryBtn' || refAttr.endsWith('__primaryBtn')
