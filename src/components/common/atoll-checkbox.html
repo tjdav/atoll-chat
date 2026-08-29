@@ -1,5 +1,5 @@
 <template id="atoll-checkbox">
-  <div class="{{ wrapperClasses }}" ref="checkboxRoot">
+  <div class="atoll-checkbox" ref="checkboxRoot">
     <input 
       type="checkbox" 
       class="atoll-checkbox-input visually-hidden" 
@@ -24,10 +24,31 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+
+    --checkbox-size: 22px;
+    --checkbox-border-radius: 4px;
+    --checkbox-border: var(--atoll-border-subtle, var(--atoll-gray-300, #D0D5DD));
+    --checkbox-bg: transparent;
+    --checkbox-checked-bg: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --checkbox-checked-border: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --checkbox-focus-ring: color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
   }
 
   :host([hidden]) {
     display: none !important;
+  }
+
+  :host([disabled]),
+  :host(.disabled) {
+    opacity: 0.5;
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+
+  /* Checked Host Modifier */
+  :host([checked]) {
+    --checkbox-bg: var(--checkbox-checked-bg);
+    --checkbox-border: var(--checkbox-checked-border);
   }
 
   .atoll-checkbox {
@@ -35,35 +56,23 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: var(--atoll-checkbox-size, 22px);
-    height: var(--atoll-checkbox-size, 22px);
+    width: var(--atoll-checkbox-size, var(--checkbox-size));
+    height: var(--atoll-checkbox-size, var(--checkbox-size));
     cursor: pointer;
     box-sizing: border-box;
     user-select: none;
     flex-shrink: 0;
-    border: 1.5px solid var(--atoll-border-subtle, var(--atoll-gray-300, #D0D5DD));
-    border-radius: 4px;
-    background-color: transparent;
+    border: 1.5px solid var(--checkbox-border);
+    border-radius: var(--checkbox-border-radius);
+    background-color: var(--checkbox-bg);
     transition: background-color 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-checkbox,
-  :host-context([data-bs-theme="dark"]) .atoll-checkbox,
-  [data-atoll-theme="dark"] .atoll-checkbox,
-  [data-bs-theme="dark"] .atoll-checkbox {
-    border: 1.5px solid var(--atoll-border-subtle, var(--atoll-gray-700, #344054));
-  }
-
-  .atoll-checkbox:focus-visible,
-  :host(:focus-visible) .atoll-checkbox {
+  :host(:focus-visible) .atoll-checkbox,
+  .atoll-checkbox:focus-visible {
     outline: none;
-    border-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
-    box-shadow: 0 0 0 0.25rem color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
-  }
-
-  .atoll-checkbox.checked {
-    background-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755)) !important;
-    border-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755)) !important;
+    border-color: var(--checkbox-checked-border);
+    box-shadow: 0 0 0 0.25rem var(--checkbox-focus-ring);
   }
 
   .atoll-checkbox .atoll-checkbox-icon {
@@ -73,14 +82,17 @@
     transition: transform 0.15s ease, opacity 0.15s ease;
   }
 
+  :host(:hover:not([disabled])) .atoll-checkbox .atoll-checkbox-icon,
   .atoll-checkbox:hover .atoll-checkbox-icon {
     transform: scale(1.05);
   }
 
-  .atoll-checkbox.disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    pointer-events: none;
+  /* Dark Mode Overrides */
+  :host-context([data-atoll-theme="dark"]),
+  :host-context([data-bs-theme="dark"]),
+  [data-atoll-theme="dark"] atoll-checkbox,
+  [data-bs-theme="dark"] atoll-checkbox {
+    --checkbox-border: var(--atoll-border-subtle, var(--atoll-gray-700, #344054));
   }
 </style>
 
@@ -105,102 +117,102 @@
       }
     },
 
+    style: {
+      '--checkbox-size': (s) => (s.size ? `${s.size}px` : '22px'),
+      '--atoll-checkbox-size': (s) => (s.size ? `${s.size}px` : '22px')
+    },
+
     getters: {
       isChecked: (state) => Boolean(state.checked),
       isDisabled: (state) => Boolean(state.disabled),
-      ariaChecked: (state) => (state.checked ? 'true' : 'false'),
       iconSize: (state) => state.size || 22,
       iconName: (state) => state.name || 'check',
       checkboxAriaLabel: (state) => state.label || 'Toggle selection',
-      iconColor: (state) => (state.checked ? '#FFFFFF' : 'transparent'),
-      wrapperClasses: (state) => {
-        const classes = ['atoll-checkbox']
-        if (state.checked) {
-          classes.push('checked')
-        }
-        if (state.disabled) {
-          classes.push('disabled')
-        }
-        return classes.join(' ')
-      }
+      iconColor: (state) => (state.checked ? '#FFFFFF' : 'transparent')
     },
 
-    client: ({ state, refs, root, observe }) => {
-      if (root.__initialized) {
-        return
-      }
-      root.__initialized = true
+    client: ({ state, refs, root, observe, signal }) => {
       const checkboxRoot = refs('checkboxRoot')
       const nativeInput = refs('nativeInput')
 
       root.setAttribute('role', 'checkbox')
       root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
       root.setAttribute('tabindex', state.disabled ? '-1' : '0')
+      if (state.checked) {
+        root.setAttribute('checked', '')
+      } else {
+        root.removeAttribute('checked')
+      }
+      if (state.disabled) {
+        root.setAttribute('disabled', '')
+      } else {
+        root.removeAttribute('disabled')
+      }
 
       const toggle = () => {
-        if (state.disabled) {
-          return
+        if (state.disabled) return
+
+        const nextChecked = !Boolean(state.checked)
+        state.checked = nextChecked
+        root.setAttribute('aria-checked', nextChecked ? 'true' : 'false')
+        if (nextChecked) {
+          root.setAttribute('checked', '')
+        } else {
+          root.removeAttribute('checked')
         }
-        state.checked = !state.checked
-        root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
 
         if (nativeInput) {
-          nativeInput.checked = state.checked
+          nativeInput.checked = nextChecked
         }
 
         root.dispatchEvent(new CustomEvent('change', {
           bubbles: true,
           composed: true,
-          detail: { checked: state.checked }
+          detail: { checked: nextChecked }
         }))
         root.dispatchEvent(new CustomEvent('input', {
           bubbles: true,
           composed: true,
-          detail: { checked: state.checked }
+          detail: { checked: nextChecked }
         }))
       }
 
-      if (root.__listenersBound) {
-        // Safe-guard for reconnects
-      } else {
-        root.__listenersBound = true
+      root.addEventListener('click', (e) => {
+        if (e.target !== root) return
+        e.preventDefault()
+        e.stopPropagation()
+        toggle()
+      }, { signal })
 
-        root.addEventListener('click', (e) => {
-          // If clicked on the label or input or icon, let the label click handle it or prevent default to avoid double-toggle
-          if (e.target !== root) {
-            // let nested elements bubble up
-            return
-          }
+      checkboxRoot.addEventListener('click', (e) => {
+        e.preventDefault()
+        e.stopPropagation()
+        toggle()
+      }, { signal })
+
+      root.addEventListener('keydown', (e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault()
           e.stopPropagation()
           toggle()
-        })
+        }
+      }, { signal })
 
-        checkboxRoot.addEventListener('click', (e) => {
-          e.preventDefault()
-          e.stopPropagation()
-          toggle()
-        })
-
-        root.addEventListener('keydown', (e) => {
-          if (e.key === ' ' || e.key === 'Enter') {
-            e.preventDefault()
-            e.stopPropagation()
-            toggle()
-          }
-        })
-      }
-
-      // Expose property on host element
       Object.defineProperty(root, 'checked', {
         get () {
-          return state.checked
+          return Boolean(state.checked)
         },
         set (val) {
-          state.checked = Boolean(val)
-          root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
+          const isChecked = Boolean(val)
+          state.checked = isChecked
+          root.setAttribute('aria-checked', isChecked ? 'true' : 'false')
+          if (isChecked) {
+            root.setAttribute('checked', '')
+          } else {
+            root.removeAttribute('checked')
+          }
           if (nativeInput) {
-            nativeInput.checked = state.checked
+            nativeInput.checked = isChecked
           }
         },
         configurable: true
@@ -208,28 +220,45 @@
 
       Object.defineProperty(root, 'disabled', {
         get () {
-          return state.disabled
+          return Boolean(state.disabled)
         },
         set (val) {
-          state.disabled = Boolean(val)
-          root.setAttribute('tabindex', state.disabled ? '-1' : '0')
+          const isDisabled = Boolean(val)
+          state.disabled = isDisabled
+          root.setAttribute('tabindex', isDisabled ? '-1' : '0')
+          if (isDisabled) {
+            root.setAttribute('disabled', '')
+          } else {
+            root.removeAttribute('disabled')
+          }
         },
         configurable: true
       })
 
-      if (observe) {
-        observe('checked', (val) => {
-          const isChecked = val === 'true' || val === true || val === ''
-          root.setAttribute('aria-checked', isChecked ? 'true' : 'false')
-          if (nativeInput) {
-            nativeInput.checked = isChecked
-          }
-        })
-        observe('disabled', (val) => {
-          const isDisabled = val === 'true' || val === true || val === ''
-          root.setAttribute('tabindex', isDisabled ? '-1' : '0')
-        })
-      }
+      root.toggle = toggle
+
+      observe('checked', (val) => {
+        const isChecked = val === 'true' || val === true || val === ''
+        root.setAttribute('aria-checked', isChecked ? 'true' : 'false')
+        if (isChecked) {
+          root.setAttribute('checked', '')
+        } else {
+          root.removeAttribute('checked')
+        }
+        if (nativeInput) {
+          nativeInput.checked = isChecked
+        }
+      })
+
+      observe('disabled', (val) => {
+        const isDisabled = val === 'true' || val === true || val === ''
+        root.setAttribute('tabindex', isDisabled ? '-1' : '0')
+        if (isDisabled) {
+          root.setAttribute('disabled', '')
+        } else {
+          root.removeAttribute('disabled')
+        }
+      })
     }
   })
 </script>
