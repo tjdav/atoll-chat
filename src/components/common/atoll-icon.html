@@ -1,5 +1,5 @@
 <template id="atoll-icon">
-  <span ref="iconWrapper" class="atoll-icon {{ iconClasses }}"></span>
+  <span ref="iconWrapper" class="atoll-icon"></span>
 </template>
 
 <style>
@@ -7,20 +7,39 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    vertical-align: middle;
+
+    --icon-size: 24px;
+    --icon-primary-color: currentColor;
+    --icon-secondary-color: currentColor;
   }
 
   :host([hidden]) {
     display: none !important;
   }
 
-  /* Base Icon Class */
+  /* Preset Sizes */
+  :host([size="xs"]) { --icon-size: 16px; }
+  :host([size="sm"]) { --icon-size: 20px; }
+  :host([size="md"]) { --icon-size: 24px; }
+  :host([size="lg"]) { --icon-size: 32px; }
+  :host([size="xl"]) { --icon-size: 48px; }
+
+  /* Hangup rotation modifier */
+  :host([name="hangup"]),
+  :host([name="phone-hangup"]),
+  :host([variant="hangup"]) {
+    transform: rotate(135deg);
+  }
+
   .atoll-icon {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     vertical-align: middle;
-    width: var(--atoll-icon-size, 24px);
-    height: var(--atoll-icon-size, 24px);
+    width: var(--icon-size, 24px);
+    height: var(--icon-size, 24px);
+    color: var(--icon-primary-color, currentColor);
     flex-shrink: 0;
   }
 
@@ -28,45 +47,6 @@
     width: 100%;
     height: 100%;
     display: block;
-  }
-
-  /* Size Modifier Classes */
-  .atoll-icon-xs {
-    --atoll-icon-size: var(--atoll-icon-size-xs, 16px);
-  }
-
-  .atoll-icon-sm {
-    --atoll-icon-size: var(--atoll-icon-size-sm, 20px);
-  }
-
-  .atoll-icon-md {
-    --atoll-icon-size: var(--atoll-icon-size-md, 24px);
-  }
-
-  .atoll-icon-lg {
-    --atoll-icon-size: var(--atoll-icon-size-lg, 32px);
-  }
-
-  .atoll-icon-xl {
-    --atoll-icon-size: var(--atoll-icon-size-xl, 48px);
-  }
-
-  .atoll-icon-hangup {
-    display: inline-block;
-    transform: rotate(135deg);
-  }
-
-  /* Contrast Adjustments for Solid Buttons */
-  .atoll-btn-primary .atoll-icon,
-  .btn-primary .atoll-icon,
-  .atoll-btn-danger .atoll-icon,
-  .btn-danger .atoll-icon {
-    --atoll-icon-out-stroke: #FFFFFF;
-    --atoll-icon-out-fill: rgba(255, 255, 255, 0.25);
-    --atoll-icon-inner-stroke: #FFFFFF;
-    --atoll-icon-inner-fill: #FFFFFF;
-    --solar-secondary-color: currentColor;
-    --solar-secondary-opacity: 0.6;
   }
 </style>
 
@@ -102,6 +82,27 @@
     },
 
     style: {
+      '--icon-size': (s) => {
+        const presets = {
+          xs: '16px',
+          sm: '20px',
+          md: '24px',
+          lg: '32px',
+          xl: '48px'
+        }
+
+        if (s.size && presets[s.size]) {
+          return presets[s.size]
+        }
+
+        if (s.size && !isNaN(s.size)) {
+          return `${s.size}px`
+        }
+
+        return '24px'
+      },
+      '--icon-primary-color': (s) => s.color || 'currentColor',
+      '--icon-secondary-color': (s) => s.secondaryColor || null,
       '--atoll-icon-size': (s) => {
         const presets = {
           xs: '16px',
@@ -118,37 +119,18 @@
         if (s.size && !isNaN(s.size)) {
           return `${s.size}px`
         }
-  
+
         return '24px'
       },
       '--atoll-icon-primary-color': (s) => s.color || 'currentColor',
-      '--atoll-icon-secondary-color': (s) => s.secondaryColor || null,
-      '--atoll-icon-out-stroke': (s) => s.color || 'currentColor',
-      '--atoll-icon-out-fill': (s) => s.secondaryColor || null
-    },
-
-    getters: {
-      iconClasses: (state) => {
-        const classes = []
-
-        // Size modifier class
-        if (state.size) {
-          if (['xs', 'sm', 'md', 'lg', 'xl'].includes(state.size)) {
-            classes.push(`atoll-icon-${state.size}`)
-          }
-        } else {
-          classes.push('atoll-icon-md')
-        }
-
-        return classes.join(' ')
-      }
+      '--atoll-icon-secondary-color': (s) => s.secondaryColor || null
     },
 
     client: async ({ state, refs, root, observe }) => {
       const { renderIcon } = await import('../../utils/icon-registry.js')
+      const wrapper = refs('iconWrapper')
 
       const render = () => {
-        const wrapper = refs('iconWrapper')
         if (!wrapper) {
           return
         }
@@ -178,7 +160,6 @@
           active: state.active
         })
 
-        // Accessibility handling
         if (state.ariaLabel) {
           root.setAttribute('role', 'img')
           root.setAttribute('aria-label', state.ariaLabel)
@@ -190,7 +171,6 @@
         }
       }
 
-      // Re-render when attributes update
       observe('name', render)
       observe('size', render)
       observe('color', render)
