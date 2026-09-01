@@ -34,6 +34,7 @@
     --btn-radius: 10px;
     --btn-font-size: var(--atoll-font-size-body-2, 14px);
     --btn-font-weight: var(--atoll-font-weight-semibold, 600);
+    --btn-icon-size: 18px;
   }
 
   :host([hidden]) {
@@ -112,6 +113,7 @@
     --btn-padding: 0 12px;
     --btn-radius: 8px;
     --btn-font-size: var(--atoll-font-size-caption-1, 12px);
+    --btn-icon-size: 16px;
   }
 
   :host([size="lg"]) {
@@ -119,6 +121,7 @@
     --btn-padding: 0 24px;
     --btn-radius: 12px;
     --btn-font-size: var(--atoll-font-size-body-1, 16px);
+    --btn-icon-size: 22px;
   }
 
   /* -------------------------------------------------------------------------- */
@@ -219,6 +222,28 @@
     min-height: 44px;
     width: 44px;
     height: 44px;
+  }
+
+  /* Slotted Elements Sizing & Layout Rules */
+  slot[name="leading"],
+  slot[name="trailing"] {
+    display: contents !important;
+  }
+
+  ::slotted(atoll-icon[slot="leading"]),
+  ::slotted(atoll-icon[slot="trailing"]) {
+    --atoll-icon-size: var(--btn-icon-size, 18px);
+    --icon-size: var(--btn-icon-size, 18px);
+  }
+
+  ::slotted(svg[slot="leading"]),
+  ::slotted(svg[slot="trailing"]) {
+    width: var(--btn-icon-size, 18px);
+    height: var(--btn-icon-size, 18px);
+  }
+
+  ::slotted(atoll-badge[slot="trailing"]) {
+    margin-left: 2px;
   }
 
   /* Content Wrapper */

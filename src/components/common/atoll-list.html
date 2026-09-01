@@ -1,20 +1,7 @@
-<template id="atoll-list">
-  <div class="atoll-list" role="list">
-    <slot></slot>
-  </div>
-</template>
+<template id="atoll-list"><slot></slot></template>
 
 <style>
-  :host,
-  atoll-list {
-    display: block;
-    width: 100%;
-
-    --list-divider: var(--atoll-border-subtle, #DFDFDF);
-  }
-
-  /* Base List Container */
-  .atoll-list {
+  :host {
     display: flex;
     flex-direction: column;
     width: 100%;
@@ -22,21 +9,19 @@
     margin: 0;
     list-style: none;
     box-sizing: border-box;
+
+    --list-divider: var(--atoll-border-subtle, #DFDFDF);
   }
 
   /* Separator Lines Option */
   :host([divided]) ::slotted(atoll-list-item:not(:last-child)),
-  :host([divided]) .atoll-list-item:not(:last-child),
-  atoll-list[divided] ::slotted(atoll-list-item:not(:last-child)),
-  atoll-list[divided] .atoll-list-item:not(:last-child) {
+  :host([divided]) ::slotted(*:not(:last-child)) {
     border-bottom: 1px solid var(--list-divider);
   }
 
   /* Dark Theme Overrides */
   :host-context([data-atoll-theme="dark"]),
-  :host-context([data-bs-theme="dark"]),
-  [data-atoll-theme="dark"] atoll-list,
-  [data-bs-theme="dark"] atoll-list {
+  :host-context([data-bs-theme="dark"]) {
     --list-divider: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
   }
 </style>
@@ -55,6 +40,10 @@
     },
 
     client: ({ state, root, observe, signal }) => {
+      if (!root.hasAttribute('role')) {
+        root.setAttribute('role', 'list')
+      }
+
       // Sync list mode down to all child atoll-list-item components
       const syncModeToChildren = (mode) => {
         const items = root.querySelectorAll('atoll-list-item')

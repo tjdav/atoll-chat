@@ -203,13 +203,13 @@
 
   /* Dark Mode Overrides */
   :host-context([data-atoll-theme="dark"]),
-  [data-atoll-theme="dark"] atoll-profile {
+  :host-context([data-bs-theme="dark"]) {
     --profile-cutout-border: var(--atoll-bg-surface-primary, #161616);
     --profile-placeholder-bg: var(--atoll-bg-surface-tertiary, #2A2A2A);
   }
 
   :host-context([data-atoll-theme="dark"]) .atoll-profile-icon,
-  [data-atoll-theme="dark"] .atoll-profile-icon {
+  :host-context([data-bs-theme="dark"]) .atoll-profile-icon {
     background-color: var(--atoll-bg-surface-primary, #161616);
   }
 </style>

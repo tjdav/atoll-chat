@@ -52,8 +52,7 @@
 </template>
 
 <style>
-  :host,
-  atoll-list-item {
+  :host {
     display: block;
     container-type: inline-size;
     width: 100%;
@@ -71,36 +70,30 @@
     --list-item-accent: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
   }
 
-  :host([hidden]),
-  atoll-list-item[hidden] {
+  :host([hidden]) {
     display: none !important;
   }
 
-  :host([size="sm"]),
-  atoll-list-item[size="sm"] {
+  :host([size="sm"]) {
     --list-item-min-height: 48px;
     --list-item-padding-y: 6px;
   }
 
-  :host([size="lg"]),
-  atoll-list-item[size="lg"] {
+  :host([size="lg"]) {
     --list-item-min-height: 72px;
     --list-item-padding-y: 12px;
   }
 
-  :host([highlighted]),
-  atoll-list-item[highlighted] {
+  :host([highlighted]) {
     --list-item-bg: var(--list-item-bg-highlighted);
   }
 
-  :host([selected]),
-  atoll-list-item[selected] {
+  :host([selected]) {
     --list-item-bg: var(--list-item-bg-highlighted);
     position: relative;
   }
 
-  :host([selected])::before,
-  atoll-list-item[selected]::before {
+  :host([selected])::before {
     content: "";
     position: absolute;
     left: 0;
@@ -112,11 +105,23 @@
   }
 
   :host([disabled]),
-  :host(.disabled),
-  atoll-list-item[disabled],
-  atoll-list-item.disabled {
+  :host(.disabled) {
     opacity: 0.45;
     pointer-events: none;
+  }
+
+  /* Slotted Elements Sizing & Styling Rules */
+  ::slotted(atoll-profile[slot="leading"]),
+  ::slotted(atoll-profile[slot="left"]) {
+    flex-shrink: 0;
+  }
+
+  ::slotted(atoll-badge[slot="badge"]) {
+    flex-shrink: 0;
+  }
+
+  ::slotted(atoll-icon[slot="chevron"]) {
+    flex-shrink: 0;
   }
 
   /* Base Row Layout */
@@ -137,28 +142,19 @@
 
   :host([clickable]) .atoll-list-item,
   :host([chevron]) .atoll-list-item,
-  :host([mode="selection"]) .atoll-list-item,
-  atoll-list-item[clickable] .atoll-list-item,
-  atoll-list-item[chevron] .atoll-list-item,
-  atoll-list-item[mode="selection"] .atoll-list-item {
+  :host([mode="selection"]) .atoll-list-item {
     cursor: pointer;
   }
 
   :host([clickable]:hover) .atoll-list-item,
   :host([chevron]:hover) .atoll-list-item,
-  :host([mode="selection"]:hover) .atoll-list-item,
-  atoll-list-item[clickable]:hover .atoll-list-item,
-  atoll-list-item[chevron]:hover .atoll-list-item,
-  atoll-list-item[mode="selection"]:hover .atoll-list-item {
+  :host([mode="selection"]:hover) .atoll-list-item {
     background-color: var(--list-item-bg-hover);
   }
 
   :host([clickable]:active) .atoll-list-item,
   :host([chevron]:active) .atoll-list-item,
-  :host([mode="selection"]:active) .atoll-list-item,
-  atoll-list-item[clickable]:active .atoll-list-item,
-  atoll-list-item[chevron]:active .atoll-list-item,
-  atoll-list-item[mode="selection"]:active .atoll-list-item {
+  :host([mode="selection"]:active) .atoll-list-item {
     background-color: var(--list-item-bg-active);
   }
 
@@ -200,13 +196,11 @@
     white-space: nowrap;
   }
 
-  :host([size="sm"]) .atoll-list-item-title,
-  atoll-list-item[size="sm"] .atoll-list-item-title {
+  :host([size="sm"]) .atoll-list-item-title {
     font-size: var(--atoll-font-size-body-2, 13px);
   }
 
-  :host([size="lg"]) .atoll-list-item-title,
-  atoll-list-item[size="lg"] .atoll-list-item-title {
+  :host([size="lg"]) .atoll-list-item-title {
     font-size: var(--atoll-font-size-body-1, 16px);
   }
 
@@ -269,8 +263,7 @@
     border-radius: 3px;
   }
 
-  :host([loading]) .atoll-list-item,
-  atoll-list-item[loading] .atoll-list-item {
+  :host([loading]) .atoll-list-item {
     pointer-events: none;
     cursor: default;
   }
@@ -288,9 +281,7 @@
 
   /* Dark Theme Overrides */
   :host-context([data-atoll-theme="dark"]),
-  :host-context([data-bs-theme="dark"]),
-  [data-atoll-theme="dark"] atoll-list-item,
-  [data-bs-theme="dark"] atoll-list-item {
+  :host-context([data-bs-theme="dark"]) {
     --list-item-bg-hover: var(--atoll-bg-surface-secondary, #161616);
     --list-item-bg-active: var(--atoll-bg-surface-tertiary, #1F1F1F);
     --list-item-title-color: var(--atoll-text-primary, #FFFFFF);
