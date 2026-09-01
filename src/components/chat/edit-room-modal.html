@@ -66,7 +66,8 @@
       canSave: (state) => Boolean((state.roomName || '').trim()) && !state.isSaving && state.isDirty,
       disableSave: (state) => !state.canSave
     },
-    client: ({ root, refs, state, pocketbase, eventBus, storage, cryptoWorker, utils, signal }) => {
+    client: async ({ root, refs, state, pocketbase, eventBus, storage, cryptoWorker, utils, signal }) => {
+      const { getParsedAvatar } = await import('../../utils/room-avatar.js')
       const { pb } = pocketbase
       const { $crypto, $media } = utils
       const { $worker } = cryptoWorker
@@ -171,8 +172,8 @@
 
         if (room.avatar) {
           try {
-            const avatarData = typeof room.avatar === 'string' ? JSON.parse(room.avatar) : room.avatar
-            if ($media && typeof $media.decrypt === 'function' && (avatarData.media_id || avatarData.id)) {
+            const avatarData = getParsedAvatar(room)
+            if (avatarData && $media && typeof $media.decrypt === 'function' && (avatarData.media_id || avatarData.id)) {
               currentBlobUrl = await $media.decrypt(avatarData, signal)
               if (currentBlobUrl) {
                 renderAvatarPreview(currentBlobUrl)

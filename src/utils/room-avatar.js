@@ -1,5 +1,36 @@
 import { resolveRoomName } from './room-name.js'
 
+const avatarCache = new WeakMap()
+
+/**
+ * Parses and caches avatar data for a given room object.
+ *
+ * @param {Object} room - The room record.
+ * @returns {Object|null} The parsed avatar object or null if unavailable/invalid.
+ */
+export function getParsedAvatar (room) {
+  if (!room || !room.avatar) {
+    return null
+  }
+
+  if (typeof room.avatar !== 'string') {
+    return room.avatar
+  }
+
+  const cached = avatarCache.get(room)
+  if (cached && cached.raw === room.avatar) {
+    return cached.parsed
+  }
+
+  try {
+    const parsed = JSON.parse(room.avatar)
+    avatarCache.set(room, { raw: room.avatar, parsed })
+    return parsed
+  } catch {
+    return null
+  }
+}
+
 /**
  * Creates an atoll-profile element configured for a chat room.
  *
@@ -21,11 +52,11 @@ export function createRoomAvatar (room, { roomName = '', size = 'sm', currentUse
   const resolvedName = roomName || resolveRoomName(room, { currentUser })
 
   if (room?.avatar) {
-    try {
-      const avatarData = typeof room.avatar === 'string' ? JSON.parse(room.avatar) : room.avatar
+    const avatarData = getParsedAvatar(room)
+    if (avatarData) {
       profile.setAttribute('name', resolvedName)
       profile.setAttribute('alt', resolvedName)
-      if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
+      if ($media && typeof $media.decrypt === 'function' && (avatarData.media_id || avatarData.id)) {
         $media.decrypt(avatarData, {
           roomId: room.id,
           signal
@@ -35,7 +66,7 @@ export function createRoomAvatar (room, { roomName = '', size = 'sm', currentUse
           console.error('[room-avatar] Failed to decrypt room avatar:', err)
         })
       }
-    } catch {
+    } else {
       profile.setAttribute('name', resolvedName)
     }
   } else if (room && !room.is_group && participants.length > 0) {

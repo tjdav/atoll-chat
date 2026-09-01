@@ -215,6 +215,7 @@
     },
     client: async ({ refs, state, pocketbase, eventBus, globalStore, storage, cryptoWorker, utils, signal }) => {
       const { resolveRoomName } = await import('../../utils/room-name.js')
+      const { getParsedAvatar } = await import('../../utils/room-avatar.js')
       const { pb } = pocketbase
       const { $crypto } = utils
       const { $worker } = cryptoWorker
@@ -261,8 +262,8 @@
               existingSlots.forEach(el => el.remove())
 
               if (room.avatar) {
-                try {
-                  const avatarData = typeof room.avatar === 'string' ? JSON.parse(room.avatar) : room.avatar
+                const avatarData = getParsedAvatar(room)
+                if (avatarData) {
                   roomAvatarComp.setAttribute('type', 'single')
                   roomAvatarComp.setAttribute('size', '3xl')
                   roomAvatarComp.setAttribute('name', state.roomName)
@@ -271,7 +272,7 @@
                   roomAvatarComp.removeAttribute('src')
 
                   const $media = utils.$media
-                  if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
+                  if ($media && typeof $media.decrypt === 'function' && (avatarData.media_id || avatarData.id)) {
                     $media.decrypt(avatarData, signal).then((url) => {
                       roomAvatarComp.setAttribute('src', url)
                     }).catch(err => {
@@ -279,8 +280,7 @@
                       roomAvatarComp.removeAttribute('src')
                     })
                   }
-                } catch (e) {
-                  console.error('Failed to parse avatar:', e)
+                } else {
                   roomAvatarComp.removeAttribute('src')
                   roomAvatarComp.removeAttribute('user-id')
                 }

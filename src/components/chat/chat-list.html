@@ -28,6 +28,7 @@
   export default defineComponent({
     client: async ({ state, storage, eventBus, globalStore, refs, utils, fuse, pocketbase, cryptoWorker, signal }) => {
       const { resolveRoomName } = await import('../../utils/room-name.js')
+      const { getParsedAvatar } = await import('../../utils/room-avatar.js')
       const { $storage } = storage
       const { $bus } = eventBus
       const { $state } = globalStore
@@ -173,8 +174,8 @@
       const createAvatarComponent = (item, roomName, avatarKey) => {
         const participants = (item.participants || []).filter(p => p.id !== $state.currentUser?.id)
         if (item.avatar) {
-          try {
-            const avatarData = typeof item.avatar === 'string' ? JSON.parse(item.avatar) : item.avatar
+          const avatarData = getParsedAvatar(item)
+          if (avatarData) {
             const profile = document.createElement('atoll-profile')
             profile.setAttribute('slot', 'avatar')
             profile.setAttribute('size', 'md')
@@ -183,7 +184,7 @@
             profile.setAttribute('data-avatar-key', avatarKey)
 
             const $media = utils?.$media
-            if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
+            if ($media && typeof $media.decrypt === 'function' && (avatarData.media_id || avatarData.id)) {
               $media.decrypt(avatarData, signal).then((url) => {
                 profile.setAttribute('src', url)
               }).catch(err => {
@@ -191,8 +192,6 @@
               })
             }
             return profile
-          } catch (err) {
-            console.error('[chat-list] Failed to parse room avatar:', err)
           }
         }
         if (!item.is_group && participants.length > 0) {

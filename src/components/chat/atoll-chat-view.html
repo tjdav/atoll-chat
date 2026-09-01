@@ -185,6 +185,7 @@
     client: async ({ refs, state, globalStore, storage, pocketbase, utils, signal, eventBus, webrtc: webrtcPluginContext, bootstrap }) => {
       const { hexToRgb, getRelativeLuminance, updateNativeStatusBar } = await import('../../utils/color-contrast.js')
       const { resolveRoomName } = await import('../../utils/room-name.js')
+      const { getParsedAvatar } = await import('../../utils/room-avatar.js')
       const { $state } = globalStore
       const { $storage } = storage
       const { $bus } = eventBus
@@ -275,15 +276,15 @@
         }
 
         if (room.avatar) {
-          try {
-            const avatarData = typeof room.avatar === 'string' ? JSON.parse(room.avatar) : room.avatar
+          const avatarData = getParsedAvatar(room)
+          if (avatarData) {
             headerAvatar.setAttribute('type', 'single')
             headerAvatar.setAttribute('size', 'sm')
             headerAvatar.setAttribute('name', state.roomName)
             headerAvatar.setAttribute('alt', state.roomName)
 
             const $media = utils?.$media
-            if ($media && typeof $media.decrypt === 'function' && avatarData.media_id) {
+            if ($media && typeof $media.decrypt === 'function' && (avatarData.media_id || avatarData.id)) {
               $media.decrypt(avatarData, signal).then((url) => {
                 headerAvatar.setAttribute('src', url)
               }).catch(() => {
@@ -291,8 +292,6 @@
               })
             }
             return
-          } catch {
-            // Proceed with fallback single or multiparty rendering on parsing error
           }
         }
 
