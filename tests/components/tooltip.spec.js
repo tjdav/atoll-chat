@@ -169,30 +169,79 @@ test.describe('atoll-tooltip Component Tests', () => {
         mountPoint.id = 'component-mount-point'
         document.body.appendChild(mountPoint)
       }
-      mountPoint.innerHTML = `
-        <div id="visual-matrix" style="display: flex; flex-direction: column; gap: 48px; padding: 48px; background: var(--atoll-body-bg, #ffffff); color: var(--atoll-text-primary, #111111); font-family: system-ui, sans-serif;">
-          <h2 style="margin: 0; font-size: 20px;">atoll-tooltip Visual Verification Matrix</h2>
+      mountPoint.innerHTML = ''
 
-          <div>
-            <div style="font-weight: 600; margin-bottom: 24px;">Placement Quadrants (Plain)</div>
-            <div style="display: flex; gap: 48px; align-items: center; justify-content: space-around; padding: 32px 0;">
-              <atoll-tooltip id="vis-top" placement="top" open="true" text="Top Tooltip"><atoll-button size="sm">Top</atoll-button></atoll-tooltip>
-              <atoll-tooltip id="vis-bottom" placement="bottom" open="true" text="Bottom Tooltip"><atoll-button size="sm">Bottom</atoll-button></atoll-tooltip>
-              <atoll-tooltip id="vis-left" placement="left" open="true" text="Left Tooltip"><atoll-button size="sm">Left</atoll-button></atoll-tooltip>
-              <atoll-tooltip id="vis-right" placement="right" open="true" text="Right Tooltip"><atoll-button size="sm">Right</atoll-button></atoll-tooltip>
-            </div>
-          </div>
+      const matrix = document.createElement('div')
+      matrix.id = 'visual-matrix'
+      matrix.style.cssText = 'display: flex; flex-direction: column; gap: 48px; padding: 48px; background: var(--atoll-body-bg, #ffffff); color: var(--atoll-text-primary, #111111); font-family: system-ui, sans-serif;'
 
-          <div>
-            <div style="font-weight: 600; margin-bottom: 24px;">Action Balloon Variant</div>
-            <div style="display: flex; gap: 32px; align-items: center; padding-top: 16px;">
-              <atoll-tooltip id="vis-action" variant="action" title="Feature Info" closeable="true" open="true" text="Action balloon with header and close trigger.">
-                <atoll-button variant="secondary">Action Anchor</atoll-button>
-              </atoll-tooltip>
-            </div>
-          </div>
-        </div>
-      `
+      const title = document.createElement('h2')
+      title.style.cssText = 'margin: 0; font-size: 20px;'
+      title.textContent = 'atoll-tooltip Visual Verification Matrix'
+      matrix.appendChild(title)
+
+      // Section 1: Placement Quadrants
+      const sec1 = document.createElement('div')
+      const sec1Title = document.createElement('div')
+      sec1Title.style.cssText = 'font-weight: 600; margin-bottom: 24px;'
+      sec1Title.textContent = 'Placement Quadrants (Plain)'
+      sec1.appendChild(sec1Title)
+
+      const quadrantsRow = document.createElement('div')
+      quadrantsRow.style.cssText = 'display: flex; gap: 80px; align-items: center; justify-content: space-around; padding: 48px 80px;'
+
+      ;[
+        { id: 'vis-top', placement: 'top', text: 'Top Tooltip', btnText: 'Top' },
+        { id: 'vis-bottom', placement: 'bottom', text: 'Bottom Tooltip', btnText: 'Bottom' },
+        { id: 'vis-left', placement: 'left', text: 'Left Tooltip', btnText: 'Left' },
+        { id: 'vis-right', placement: 'right', text: 'Right Tooltip', btnText: 'Right' }
+      ].forEach(item => {
+        const tt = document.createElement('atoll-tooltip')
+        tt.id = item.id
+        tt.setAttribute('placement', item.placement)
+        tt.setAttribute('open', 'true')
+        tt.setAttribute('trigger', 'manual')
+        tt.setAttribute('text', item.text)
+
+        const btn = document.createElement('atoll-button')
+        btn.setAttribute('size', 'sm')
+        btn.textContent = item.btnText
+        tt.appendChild(btn)
+
+        quadrantsRow.appendChild(tt)
+      })
+      sec1.appendChild(quadrantsRow)
+      matrix.appendChild(sec1)
+
+      // Section 2: Action Balloon Variant
+      const sec2 = document.createElement('div')
+      const sec2Title = document.createElement('div')
+      sec2Title.style.cssText = 'font-weight: 600; margin-bottom: 24px;'
+      sec2Title.textContent = 'Action Balloon Variant'
+      sec2.appendChild(sec2Title)
+
+      const actionRow = document.createElement('div')
+      actionRow.style.cssText = 'display: flex; gap: 32px; align-items: center; padding: 60px 80px 48px 80px;'
+
+      const actTt = document.createElement('atoll-tooltip')
+      actTt.id = 'vis-action'
+      actTt.setAttribute('variant', 'action')
+      actTt.setAttribute('title', 'Feature Info')
+      actTt.setAttribute('closeable', 'true')
+      actTt.setAttribute('open', 'true')
+      actTt.setAttribute('trigger', 'manual')
+      actTt.setAttribute('text', 'Action balloon with header and close trigger.')
+
+      const actBtn = document.createElement('atoll-button')
+      actBtn.setAttribute('variant', 'secondary')
+      actBtn.textContent = 'Action Anchor'
+      actTt.appendChild(actBtn)
+
+      actionRow.appendChild(actTt)
+      sec2.appendChild(actionRow)
+      matrix.appendChild(sec2)
+
+      mountPoint.appendChild(matrix)
     })
 
     const matrix = page.locator('#visual-matrix')

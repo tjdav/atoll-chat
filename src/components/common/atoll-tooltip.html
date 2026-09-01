@@ -113,25 +113,29 @@
   /* -------------------------------------------------------------------------- */
 
   /* TOP Placement (Default) */
-  :host .atoll-tooltip-bubble,
+  :host:not([placement]) .atoll-tooltip-bubble,
   :host([placement="top"]) .atoll-tooltip-bubble {
     bottom: calc(100% + var(--tooltip-arrow-size) + 4px);
+    top: auto;
     left: 50%;
+    right: auto;
     transform: translateX(-50%) translateY(4px);
   }
 
-  :host([open]) .atoll-tooltip-bubble,
+  :host:not([placement])[open] .atoll-tooltip-bubble,
   :host([placement="top"][open]) .atoll-tooltip-bubble {
     transform: translateX(-50%) translateY(0);
   }
 
-  :host .atoll-tooltip-bubble::after,
+  :host:not([placement]) .atoll-tooltip-bubble::after,
   :host([placement="top"]) .atoll-tooltip-bubble::after {
     top: 100%;
+    bottom: auto;
     left: 50%;
+    right: auto;
     transform: translateX(-50%);
-    border-width: var(--tooltip-arrow-size) var(--tooltip-arrow-size) 0;
-    border-color: var(--tooltip-bg) transparent transparent;
+    border-width: var(--tooltip-arrow-size) var(--tooltip-arrow-size) 0 var(--tooltip-arrow-size);
+    border-color: var(--tooltip-bg) transparent transparent transparent;
   }
 
   /* BOTTOM Placement */
@@ -139,6 +143,7 @@
     top: calc(100% + var(--tooltip-arrow-size) + 4px);
     bottom: auto;
     left: 50%;
+    right: auto;
     transform: translateX(-50%) translateY(-4px);
   }
 
@@ -150,9 +155,10 @@
     bottom: 100%;
     top: auto;
     left: 50%;
+    right: auto;
     transform: translateX(-50%);
-    border-width: 0 var(--tooltip-arrow-size) var(--tooltip-arrow-size);
-    border-color: transparent transparent var(--tooltip-bg);
+    border-width: 0 var(--tooltip-arrow-size) var(--tooltip-arrow-size) var(--tooltip-arrow-size);
+    border-color: transparent transparent var(--tooltip-bg) transparent;
   }
 
   /* LEFT Placement */
@@ -170,7 +176,9 @@
 
   :host([placement="left"]) .atoll-tooltip-bubble::after {
     left: 100%;
+    right: auto;
     top: 50%;
+    bottom: auto;
     transform: translateY(-50%);
     border-width: var(--tooltip-arrow-size) 0 var(--tooltip-arrow-size) var(--tooltip-arrow-size);
     border-color: transparent transparent transparent var(--tooltip-bg);
@@ -179,6 +187,7 @@
   /* RIGHT Placement */
   :host([placement="right"]) .atoll-tooltip-bubble {
     left: calc(100% + var(--tooltip-arrow-size) + 4px);
+    right: auto;
     top: 50%;
     bottom: auto;
     transform: translateY(-50%) translateX(-4px);
@@ -190,7 +199,9 @@
 
   :host([placement="right"]) .atoll-tooltip-bubble::after {
     right: 100%;
+    left: auto;
     top: 50%;
+    bottom: auto;
     transform: translateY(-50%);
     border-width: var(--tooltip-arrow-size) var(--tooltip-arrow-size) var(--tooltip-arrow-size) 0;
     border-color: transparent var(--tooltip-bg) transparent transparent;
@@ -263,8 +274,7 @@
       const triggerEl = refs('trigger')
       const closeBtn = refs('closeBtn')
 
-      const setOpen = (isOpen) => {
-        state.open = isOpen
+      const syncOpenAttr = (isOpen) => {
         if (isOpen) {
           if (!root.hasAttribute('open')) {
             root.setAttribute('open', '')
@@ -274,6 +284,11 @@
             root.removeAttribute('open')
           }
         }
+      }
+
+      const setOpen = (isOpen) => {
+        state.open = isOpen
+        syncOpenAttr(isOpen)
       }
 
       const show = () => setOpen(true)
@@ -338,7 +353,7 @@
       if (observe) {
         observe('open', (val) => {
           const isOpen = Boolean(val === true || val === 'true' || val === '')
-          setOpen(isOpen)
+          syncOpenAttr(isOpen)
         })
       }
 
