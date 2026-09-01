@@ -504,7 +504,7 @@ export function createServer () {
           const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
           let res = ''
           for (let i = 0; i < len; i++) {
-            res += chars.charAt(Math.floor(Math.random() * chars.length))
+            res += chars.charAt(crypto.randomInt(0, chars.length))
           }
           return res
         }

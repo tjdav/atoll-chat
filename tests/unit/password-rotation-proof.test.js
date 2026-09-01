@@ -50,6 +50,15 @@ describe('Password Rotation & Account Recovery Proof Verification Unit Tests', (
     return data.code
   }
 
+  test('invitation code generation should produce formatted valid codes', async () => {
+    const testId = 'invite-format-test'
+    const code = await createInvite(testId)
+    assert.match(code, /^INV-[A-Z0-9]{4}-[A-Z0-9]{4}$/, 'Invite code should match INV-XXXX-XXXX format')
+
+    const code2 = await createInvite(testId)
+    assert.notEqual(code, code2, 'Subsequent generated invite codes should be unique')
+  })
+
   test('recover_account should omit encrypted_master_keys from user payload', async () => {
     const testId = 'recovery-test-1'
     const code = await createInvite(testId)

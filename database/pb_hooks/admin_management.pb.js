@@ -362,15 +362,10 @@ routerAdd('POST', '/api/custom/invites/generate', (e) => {
       $app.save(trustRecord)
     }
 
-    function randSeg (len) {
-      const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
-      let res = ''
-      for (let i = 0; i < len; i++) {
-        res += chars.charAt(Math.floor(Math.random() * chars.length))
-      }
-      return res
-    }
-    const code = `INV-${randSeg(4)}-${randSeg(4)}`
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789'
+    const part1 = $security.randomStringWithAlphabet(4, chars)
+    const part2 = $security.randomStringWithAlphabet(4, chars)
+    const code = `INV-${part1}-${part2}`
 
     const invitationsColl = $app.findCollectionByNameOrId('invitations')
     const inviteRecord = new Record(invitationsColl)
