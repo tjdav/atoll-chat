@@ -4,7 +4,8 @@
     class="atoll-chip" 
     role="{{ chipRole }}" 
     tabindex="{{ chipTabindex }}"
-    aria-selected="{{ isAriaSelected }}"
+    aria-selected="{{ ariaSelectedAttr }}"
+    aria-disabled="{{ ariaDisabledAttr }}"
   >
     <span class="atoll-chip-content">
       <slot name="leading"></slot>
@@ -28,7 +29,7 @@
     --chip-border: transparent;
     --chip-avatar-size: 24px;
     --chip-avatar-padding: 4px;
-    --chip-focus-ring: rgba(6, 199, 85, 0.35);
+    --chip-focus-ring: rgba(4, 120, 53, 0.35);
   }
 
   :host([hidden]) {
@@ -65,7 +66,7 @@
   }
 
   :host([variant="primary"]) {
-    --chip-bg: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --chip-bg: var(--atoll-primary, var(--atoll-brand-primary, #047835));
     --chip-color: #FFFFFF;
     --chip-border: transparent;
   }
@@ -76,20 +77,20 @@
   }
 
   :host([variant="info"]) {
-    --chip-bg: rgba(66, 112, 237, 0.12);
-    --chip-color: var(--atoll-rainbow-blue, #4270ED);
+    --chip-bg: rgba(42, 84, 209, 0.12);
+    --chip-color: var(--atoll-info, #2A54D1);
     --chip-border: transparent;
   }
 
   :host([variant="danger"]) {
-    --chip-bg: rgba(255, 51, 75, 0.12);
-    --chip-color: var(--atoll-rainbow-red, #FF334B);
+    --chip-bg: rgba(206, 17, 38, 0.12);
+    --chip-color: var(--atoll-danger, #CE1126);
     --chip-border: transparent;
   }
 
   /* Selected State Modifier */
   :host([selected]) {
-    --chip-bg: var(--atoll-primary, var(--atoll-brand-primary, #06C755)) !important;
+    --chip-bg: var(--atoll-primary, var(--atoll-brand-primary, #047835)) !important;
     --chip-color: #FFFFFF !important;
     --chip-border: transparent !important;
     --chip-font-weight: 600;
@@ -192,22 +193,28 @@
     line-height: 1;
   }
 
-  /* Removable Close Button Trigger */
+  /* Removable Close Button Trigger (Minimum 24px touch target) */
   .atoll-chip-remove {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
     background: transparent;
     border: none;
     padding: 0;
     margin-left: 2px;
+    margin-right: -4px;
     color: currentColor;
-    opacity: 0.65;
+    opacity: 0.75;
     cursor: pointer;
     border-radius: 50%;
     transition: opacity 0.15s ease-in-out, background-color 0.15s ease-in-out;
     position: relative;
     z-index: 2;
+    box-sizing: border-box;
   }
 
   .atoll-chip-remove:hover {
@@ -222,6 +229,7 @@
   .atoll-chip-remove:focus-visible {
     outline: none;
     opacity: 1;
+    box-shadow: 0 0 0 2px var(--chip-focus-ring);
   }
 
   /* Hover States */
@@ -235,19 +243,19 @@
   }
 
   :host([variant="primary"]:not([selected])) .atoll-chip:hover:not(.disabled) {
-    background-color: color-mix(in srgb, var(--atoll-brand-primary, #06C755) 90%, #000000);
+    background-color: color-mix(in srgb, var(--atoll-brand-primary, #047835) 90%, #000000);
   }
 
   :host([variant="ghost"]:not([selected])) .atoll-chip:hover:not(.disabled) {
-    background-color: var(--atoll-brand-subtle, rgba(6, 199, 85, 0.12));
+    background-color: var(--atoll-brand-subtle, rgba(4, 120, 53, 0.12));
   }
 
   :host([variant="info"]:not([selected])) .atoll-chip:hover:not(.disabled) {
-    background-color: rgba(66, 112, 237, 0.2);
+    background-color: rgba(42, 84, 209, 0.2);
   }
 
   :host([variant="danger"]:not([selected])) .atoll-chip:hover:not(.disabled) {
-    background-color: rgba(255, 51, 75, 0.2);
+    background-color: rgba(206, 17, 38, 0.2);
   }
 
   /* Dark Mode Overrides */
@@ -366,14 +374,40 @@
     },
 
     getters: {
-      chipRole: (state) => (state.selected !== undefined && state.selected !== false ? 'option' : 'button'),
-      isAriaSelected: (state) => (state.selected ? 'true' : 'false'),
-      chipTabindex: (state) => (state.disabled ? '-1' : '0')
+      chipRole: (state) => {
+        if (state.selected !== undefined && state.selected !== false) return 'option'
+        if (state.removable) return 'group'
+        return 'button'
+      },
+      ariaSelectedAttr: (state) => (state.selected ? 'true' : null),
+      ariaDisabledAttr: (state) => (state.disabled ? 'true' : null),
+      chipTabindex: (state) => {
+        if (state.disabled) return '-1'
+        if (state.removable) return '-1'
+        return '0'
+      }
     },
 
     client: ({ state, refs, root, observe, signal }) => {
       const chip = refs('chipElement')
       let removeBtnEl = null
+
+      const syncHostAttributes = () => {
+        if (state.selected) {
+          root.setAttribute('role', 'listbox')
+          const labelText = state.text || root.textContent?.trim() || 'Filter option'
+          root.setAttribute('aria-label', labelText)
+        } else {
+          root.removeAttribute('role')
+          root.removeAttribute('aria-label')
+        }
+
+        if (state.disabled) {
+          root.setAttribute('aria-disabled', 'true')
+        } else {
+          root.removeAttribute('aria-disabled')
+        }
+      }
 
       const syncRemoveButton = () => {
         if (state.removable) {
@@ -429,28 +463,31 @@
         signal
       })
 
-      chip.addEventListener('keydown', (event) => {
+      root.addEventListener('keydown', (event) => {
         if (state.disabled) {
           return
         }
 
-        if (event.key === 'Enter' || event.key === ' ') {
-          event.preventDefault()
-          chip.click()
-        } else if ((event.key === 'Backspace' || event.key === 'Delete') && state.removable) {
+        if ((event.key === 'Backspace' || event.key === 'Delete') && state.removable) {
           event.preventDefault()
           if (removeBtnEl) {
             removeBtnEl.click()
           }
+        } else if ((event.key === 'Enter' || event.key === ' ') && !state.removable) {
+          event.preventDefault()
+          chip.click()
         }
       }, { signal })
 
       chip.addEventListener('click', preventClickWhenDisabled, { signal })
 
+      syncHostAttributes()
+      syncRemoveButton()
+
+      observe('selected', syncHostAttributes)
+      observe('disabled', syncHostAttributes)
       observe('removable', syncRemoveButton)
       observe('size', syncRemoveButton)
-
-      syncRemoveButton()
     }
   })
 </script>
