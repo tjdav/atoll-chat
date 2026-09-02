@@ -61,6 +61,7 @@ test.describe('atoll-chip Component Tests', () => {
       el.addEventListener('click', () => { window.__chipClicked = true })
     })
 
+    await innerChip.scrollIntoViewIfNeeded()
     await innerChip.click({ force: true })
     const clicked = await page.evaluate(() => window.__chipClicked)
     expect(clicked).toBe(false)

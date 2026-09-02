@@ -54,6 +54,7 @@ test.describe('atoll-button Component Tests', () => {
       })
     })
 
+    await innerBtn.scrollIntoViewIfNeeded()
     await innerBtn.click({ force: true })
     const clicked = await page.evaluate(() => window.__btnClicked)
     expect(clicked).toBe(false)
