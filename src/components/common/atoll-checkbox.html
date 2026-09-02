@@ -7,6 +7,7 @@
       checked="{{ isChecked }}"
       disabled="{{ isDisabled }}"
       aria-label="{{ checkboxAriaLabel }}"
+      aria-hidden="true"
       tabindex="-1"
     />
     <atoll-icon 
@@ -29,9 +30,9 @@
     --checkbox-border-radius: 4px;
     --checkbox-border: var(--atoll-border-subtle, var(--atoll-gray-300, #D0D5DD));
     --checkbox-bg: transparent;
-    --checkbox-checked-bg: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
-    --checkbox-checked-border: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
-    --checkbox-focus-ring: color-mix(in srgb, var(--atoll-primary, #06C755) 20%, transparent);
+    --checkbox-checked-bg: var(--atoll-primary, var(--atoll-brand-primary, #047835));
+    --checkbox-checked-border: var(--atoll-primary, var(--atoll-brand-primary, #047835));
+    --checkbox-focus-ring: color-mix(in srgb, var(--atoll-primary, #047835) 20%, transparent);
   }
 
   :host([hidden]) {
@@ -138,6 +139,7 @@
       root.setAttribute('role', 'checkbox')
       root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
       root.setAttribute('tabindex', state.disabled ? '-1' : '0')
+      root.setAttribute('aria-label', state.label || 'Toggle selection')
       if (state.checked) {
         root.setAttribute('checked', '')
       } else {
@@ -258,6 +260,10 @@
         } else {
           root.removeAttribute('disabled')
         }
+      })
+
+      observe('label', (val) => {
+        root.setAttribute('aria-label', val || 'Toggle selection')
       })
     }
   })
