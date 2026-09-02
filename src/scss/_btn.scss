@@ -28,16 +28,16 @@
 // Accessible, WCAG 2.2 compliant text contrast overrides for primary buttons inside dark mode
 [data-#{$prefix}theme="dark"] {
   .btn-primary {
-    --#{$prefix}btn-color: #{map-get($grays, "870")};
+    --#{$prefix}btn-color: var(--#{$prefix}text-on-brand, #FFFFFF);
     --#{$prefix}btn-bg: var(--#{$prefix}primary);
     --#{$prefix}btn-border-color: var(--#{$prefix}primary);
-    --#{$prefix}btn-hover-color: #{map-get($grays, "870")};
+    --#{$prefix}btn-hover-color: var(--#{$prefix}text-on-brand, #FFFFFF);
     --#{$prefix}btn-hover-bg: var(--#{$prefix}primary);
     --#{$prefix}btn-hover-border-color: var(--#{$prefix}primary);
-    --#{$prefix}btn-active-color: #{map-get($grays, "870")};
+    --#{$prefix}btn-active-color: var(--#{$prefix}text-on-brand, #FFFFFF);
     --#{$prefix}btn-active-bg: var(--#{$prefix}primary);
     --#{$prefix}btn-active-border-color: var(--#{$prefix}primary);
-    --#{$prefix}btn-disabled-color: #{map-get($grays, "870")};
+    --#{$prefix}btn-disabled-color: var(--#{$prefix}text-on-brand, #FFFFFF);
     --#{$prefix}btn-disabled-bg: var(--#{$prefix}primary);
     --#{$prefix}btn-disabled-border-color: var(--#{$prefix}primary);
   }

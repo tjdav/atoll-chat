@@ -19,6 +19,7 @@
   :host {
     display: inline-flex;
     align-items: center;
+    color-scheme: inherit;
 
     --chip-height: 32px;
     --chip-padding: 0 12px;
@@ -60,8 +61,15 @@
   }
 
   /* Variant Modifiers */
+  :host([variant="secondary"]),
+  :host(:not([variant])) {
+    --chip-bg: var(--atoll-bg-surface-secondary, #F5F5F5);
+    --chip-color: var(--atoll-text-primary, #111111);
+  }
+
   :host([variant="outline"]) {
     --chip-bg: transparent;
+    --chip-color: var(--atoll-text-primary, #111111);
     --chip-border: var(--atoll-border-subtle, #E8E8E8);
   }
 
@@ -77,14 +85,14 @@
   }
 
   :host([variant="info"]) {
-    --chip-bg: rgba(42, 84, 209, 0.12);
-    --chip-color: var(--atoll-info, #2A54D1);
+    --chip-bg: light-dark(rgba(42, 84, 209, 0.12), rgba(145, 179, 255, 0.16));
+    --chip-color: light-dark(var(--atoll-info, #2A54D1), #91B3FF);
     --chip-border: transparent;
   }
 
   :host([variant="danger"]) {
-    --chip-bg: rgba(206, 17, 38, 0.12);
-    --chip-color: var(--atoll-danger, #CE1126);
+    --chip-bg: light-dark(rgba(206, 17, 38, 0.12), rgba(255, 153, 165, 0.16));
+    --chip-color: light-dark(var(--atoll-danger, #CE1126), #FF99A5);
     --chip-border: transparent;
   }
 
@@ -258,23 +266,6 @@
     background-color: rgba(206, 17, 38, 0.2);
   }
 
-  /* Dark Mode Overrides */
-  :host-context([data-atoll-theme="dark"]),
-  :host-context([data-bs-theme="dark"]) {
-    --chip-bg: var(--atoll-bg-surface-tertiary, #1F1F1F);
-    --chip-color: var(--atoll-text-primary, #FFFFFF);
-  }
-
-  :host-context([data-atoll-theme="dark"]):host([variant="outline"]),
-  :host-context([data-bs-theme="dark"]):host([variant="outline"]) {
-    --chip-color: var(--atoll-text-primary, #FFFFFF);
-    --chip-border: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
-  }
-
-  :host-context([data-atoll-theme="dark"]):host([variant="outline"]:not([selected])) .atoll-chip:hover:not(.disabled),
-  :host-context([data-bs-theme="dark"]):host([variant="outline"]:not([selected])) .atoll-chip:hover:not(.disabled) {
-    background-color: var(--atoll-bg-surface-secondary, #161616);
-  }
 </style>
 
 <script type="module">

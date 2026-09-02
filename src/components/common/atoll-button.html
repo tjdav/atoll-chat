@@ -21,6 +21,7 @@
   :host {
     display: inline-block;
     vertical-align: middle;
+    color-scheme: inherit;
 
     /* Default Host Tokens (variant: primary, size: md) */
     --btn-bg: var(--atoll-primary, var(--atoll-brand-primary, #047835));
@@ -98,16 +99,10 @@
 
   :host([variant="link"]) {
     --btn-bg: transparent;
-    --btn-color: var(--atoll-primary, var(--atoll-brand-primary, #047835));
+    --btn-color: var(--atoll-brand-secondary, #00A843);
+    --btn-hover-color: color-mix(in srgb, var(--btn-color) 85%, currentColor);
     --btn-border: transparent;
-    --btn-hover-color: color-mix(in srgb, var(--atoll-primary, #047835) 85%, #000000);
     --btn-padding: 0;
-  }
-
-  :host-context([data-atoll-theme="dark"]):host([variant="link"]),
-  :host-context([data-bs-theme="dark"]):host([variant="link"]) {
-    --btn-color: var(--atoll-brand-secondary, #4CC764);
-    --btn-hover-color: color-mix(in srgb, var(--atoll-brand-secondary, #4CC764) 85%, #FFFFFF);
   }
 
   /* -------------------------------------------------------------------------- */

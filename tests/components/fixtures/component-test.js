@@ -110,6 +110,8 @@ export const test = base.extend({
       await page.evaluate((theme) => {
         document.documentElement.setAttribute('data-atoll-theme', theme)
       }, themeName)
+      // Allow 0.15s CSS transitions to fully settle before snapshotting
+      await page.waitForTimeout(200)
     })
   },
 
