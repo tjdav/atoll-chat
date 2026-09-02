@@ -35,6 +35,10 @@
     --checkbox-focus-ring: color-mix(in srgb, var(--atoll-primary, #047835) 20%, transparent);
   }
 
+  .atoll-checkbox-input {
+    display: none !important;
+  }
+
   :host([hidden]) {
     display: none !important;
   }
@@ -146,13 +150,17 @@
         root.removeAttribute('checked')
       }
       if (state.disabled) {
+        root.setAttribute('aria-disabled', 'true')
         root.setAttribute('disabled', '')
       } else {
+        root.removeAttribute('aria-disabled')
         root.removeAttribute('disabled')
       }
 
       const toggle = () => {
-        if (state.disabled) return
+        if (state.disabled) {
+          return
+        }
 
         const nextChecked = !Boolean(state.checked)
         state.checked = nextChecked
@@ -180,7 +188,9 @@
       }
 
       root.addEventListener('click', (e) => {
-        if (e.target !== root) return
+        if (e.target !== root) {
+          return
+        }
         e.preventDefault()
         e.stopPropagation()
         toggle()
@@ -229,8 +239,10 @@
           state.disabled = isDisabled
           root.setAttribute('tabindex', isDisabled ? '-1' : '0')
           if (isDisabled) {
+            root.setAttribute('aria-disabled', 'true')
             root.setAttribute('disabled', '')
           } else {
+            root.removeAttribute('aria-disabled')
             root.removeAttribute('disabled')
           }
         },
@@ -256,8 +268,10 @@
         const isDisabled = val === 'true' || val === true || val === ''
         root.setAttribute('tabindex', isDisabled ? '-1' : '0')
         if (isDisabled) {
+          root.setAttribute('aria-disabled', 'true')
           root.setAttribute('disabled', '')
         } else {
+          root.removeAttribute('aria-disabled')
           root.removeAttribute('disabled')
         }
       })
