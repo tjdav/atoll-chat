@@ -2,10 +2,7 @@
   <div class="atoll-input-group">
     <!-- Optional Header (Label + Required Asterisk + Character Counter) -->
     <div class="atoll-input-header" hidden="{{ hideHeader }}">
-      <label class="atoll-input-label" for="{{ ref_input }}">
-        {{ label }}
-        <span class="atoll-input-required-mark" hidden="{{ hideRequiredMark }}">*</span>
-      </label>
+      {{ labelMarkup }}
       <span class="atoll-input-counter" hidden="{{ hideCounter }}">
         {{ currentLength }} / {{ maxlength }}
       </span>
@@ -23,6 +20,7 @@
         disabled="{{ disabled }}"
         readonly="{{ readonly }}"
         required="{{ required }}"
+        aria-label="{{ computedAriaLabel }}"
         aria-invalid="{{ isAriaInvalid }}"
         aria-describedby="{{ ref_footer }}"
         class="atoll-input-field"
@@ -296,6 +294,10 @@
         type: Number,
         default: null
       },
+      ariaLabel: {
+        type: String,
+        default: ''
+      },
       required: Boolean,
       disabled: Boolean,
       readonly: Boolean,
@@ -313,12 +315,26 @@
         return state.type === 'code' ? 'text' : state.type
       },
 
+      labelMarkup: (state) => {
+        if (!state.label) {
+          return ''
+        }
+        const req = state.required ? '<span class="atoll-input-required-mark">*</span>' : ''
+        return `<label class="atoll-input-label" for="${state.ref_input}">${state.label}${req}</label>`
+      },
+
+      computedAriaLabel: (state) => {
+        if (state.label) {
+          return null
+        }
+        return state.ariaLabel || state.placeholder || (state.type === 'password' ? 'Password' : state.type === 'code' ? 'Verification code' : state.type === 'email' ? 'Email' : 'Text input')
+      },
+
       passwordIconName: (state) => (state.showPassword ? 'eye-off' : 'eye'),
       currentLength: (state) => (state.value ? String(state.value).length : 0),
       isAriaInvalid: (state) => (state.invalid || Boolean(state.errorMessage) ? 'true' : 'false'),
 
       hideHeader: (state) => !state.label && !state.showCounter,
-      hideRequiredMark: (state) => !state.required,
       hideCounter: (state) => !state.showCounter,
       hideClearBtn: (state) => !state.clearable || !state.value || state.disabled || state.readonly,
       hidePasswordToggle: (state) => state.type !== 'password',
@@ -354,7 +370,7 @@
         footer.setAttribute('data-testid', feedbackTestId)
       }
 
-      const attributesToForward = ['name', 'autocomplete', 'autofocus', 'minlength', 'pattern']
+      const attributesToForward = ['name', 'autocomplete', 'autofocus', 'minlength', 'pattern', 'aria-label']
       attributesToForward.forEach(attrName => {
         const val = root.getAttribute(attrName)
         if (val !== null) {
