@@ -32,8 +32,8 @@
   --#{$prefix}border-interactive: #{$atoll-green-500};
 
   /* Atoll Semantic Extensions - Brand Identity */
-  --#{$prefix}brand-primary: #{$atoll-green-500};
-  --#{$prefix}brand-primary-rgb: #{to-rgb($atoll-green-500)};
+  --#{$prefix}brand-primary: #047835;
+  --#{$prefix}brand-primary-rgb: #{to-rgb(#047835)};
   --#{$prefix}brand-secondary: light-dark(#{$atoll-green-600}, #{$atoll-green-400});
   --#{$prefix}brand-subtle-bg: light-dark(#E6F9EE, #0A2E16);
 

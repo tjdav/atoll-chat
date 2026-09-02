@@ -23,11 +23,11 @@
     vertical-align: middle;
 
     /* Default Host Tokens (variant: primary, size: md) */
-    --btn-bg: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --btn-bg: var(--atoll-primary, var(--atoll-brand-primary, #047835));
     --btn-color: var(--atoll-text-on-brand, #FFFFFF);
     --btn-border: transparent;
-    --btn-hover-bg: color-mix(in srgb, var(--atoll-primary, #06C755) 88%, #000000);
-    --btn-active-bg: color-mix(in srgb, var(--atoll-primary, #06C755) 80%, #000000);
+    --btn-hover-bg: color-mix(in srgb, var(--atoll-primary, #047835) 88%, #000000);
+    --btn-active-bg: color-mix(in srgb, var(--atoll-primary, #047835) 80%, #000000);
     --btn-hover-color: var(--btn-color);
     --btn-height: var(--atoll-btn-height-md, 44px);
     --btn-padding: 0 16px;
@@ -81,26 +81,26 @@
   }
 
   :host([variant="danger"]) {
-    --btn-bg: var(--atoll-rainbow-red, #FF334B);
+    --btn-bg: var(--atoll-danger, #CE1126);
     --btn-color: #FFFFFF;
     --btn-border: transparent;
-    --btn-hover-bg: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 90%, #000000);
-    --btn-active-bg: color-mix(in srgb, var(--atoll-rainbow-red, #FF334B) 80%, #000000);
+    --btn-hover-bg: color-mix(in srgb, var(--atoll-danger, #CE1126) 90%, #000000);
+    --btn-active-bg: color-mix(in srgb, var(--atoll-danger, #CE1126) 80%, #000000);
   }
 
   :host([variant="info"]) {
-    --btn-bg: var(--atoll-rainbow-blue, #4270ED);
+    --btn-bg: var(--atoll-info, #2A54D1);
     --btn-color: #FFFFFF;
     --btn-border: transparent;
-    --btn-hover-bg: color-mix(in srgb, var(--atoll-rainbow-blue, #4270ED) 90%, #000000);
-    --btn-active-bg: color-mix(in srgb, var(--atoll-rainbow-blue, #4270ED) 80%, #000000);
+    --btn-hover-bg: color-mix(in srgb, var(--atoll-info, #2A54D1) 90%, #000000);
+    --btn-active-bg: color-mix(in srgb, var(--atoll-info, #2A54D1) 80%, #000000);
   }
 
   :host([variant="link"]) {
     --btn-bg: transparent;
-    --btn-color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
+    --btn-color: var(--atoll-primary, var(--atoll-brand-primary, #047835));
     --btn-border: transparent;
-    --btn-hover-color: color-mix(in srgb, var(--atoll-primary, #06C755) 85%, #000000);
+    --btn-hover-color: color-mix(in srgb, var(--atoll-primary, #047835) 85%, #000000);
     --btn-padding: 0;
   }
 

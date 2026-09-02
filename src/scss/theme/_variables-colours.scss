@@ -7,7 +7,7 @@ $atoll-colours: (
   "green-500": #56E265,
   "green-510": #53E062,
   "green-580": #47C84E,
-  "green-600": #01CC55,
+  "green-600": #047835,
   "green-700": #38A33E,
   "green-750": #3E8B3E,
   "green-800": #197319,
@@ -205,21 +205,21 @@ $atoll-colours: (
   "navy-900": #202A43,
 
   // Base Alias Fallbacks
-  "red": #FF334B,
+  "red": #CE1126,
   "orange": #FF5E1F,
   "yellow": #FFF200,
-  "green": #01CC55,
+  "green": #047835,
   "blue": #2A54D1,
   "purple": #B431CC
 );
 
 // Native Bootstrap Theme Colors Overrides
-$primary: #01CC55;
+$primary: #047835;
 $secondary: #777777;
-$success: #01CC55;
-$info: #3D70F2;
+$success: #047835;
+$info: #2A54D1;
 $warning: #FF8A00;
-$danger: #FF334B;
+$danger: #CE1126;
 $light: #F5F5F5;
 $dark: #111111;
 
