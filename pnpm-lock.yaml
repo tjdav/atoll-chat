@@ -124,11 +124,11 @@ importers:
         specifier: ^26.1.0
         version: 26.3.0
       coralite:
-        specifier: ^1.0.0-rc.1
-        version: 1.0.0-rc.1(@noble/hashes@2.3.0)
+        specifier: ^1.0.0-rc.2
+        version: 1.0.0-rc.2(@noble/hashes@2.3.0)
       coralite-scripts:
-        specifier: ^1.0.0-rc.1
-        version: 1.0.0-rc.1(@noble/hashes@2.3.0)
+        specifier: ^1.0.0-rc.2
+        version: 1.0.0-rc.2(@noble/hashes@2.3.0)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1240,13 +1240,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@1.0.0-rc.1:
-    resolution: {integrity: sha512-Q8Ep29u+WLkPSfkMHbiarcA7qZGUu0DvBU31GYlmzhvuRk42ZCygWZhkLm3vT5fAE/7owXT7RHsyyukaUqwMFA==}
+  coralite-scripts@1.0.0-rc.2:
+    resolution: {integrity: sha512-Bvi4xQGCThD+W+7HitRpSUnIeH7DWzXhCWaS7Eyzo20tNENoCEmOu766KV1oqLFASTQOQipwt6O8cXz4xYY8HQ==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
-  coralite@1.0.0-rc.1:
-    resolution: {integrity: sha512-t6jAq9t6Ud28xMfZfjzZkjEXr5WiRPSoBFD8PUxYFzDuyAsOp52v7+F/7/se1ulVA4GBnE6IIA05f88D6Ctczg==}
+  coralite@1.0.0-rc.2:
+    resolution: {integrity: sha512-Qvq/qrbJOuuaommk5anAFsTYRVKUbSAoC8H88HvCaLO7xG0Vvys4OoXYl87iNsU+EXkopWgMumhQzHmH/4RKRQ==}
     engines: {node: '>=20.19.0'}
     hasBin: true
 
@@ -1822,6 +1822,7 @@ packages:
   isomorphic-dompurify@3.23.0:
     resolution: {integrity: sha512-RuYFgdNApoTlR3QxVUyWdS/1ATpLEWEVg3H2tMImbfr6HkYPnuW1sdEtW4PRGlFhp04VbQQjcjXnucHYpXT44A==}
     engines: {node: ^22.22.2 || ^24.15.0 || >=26.0.0}
+    deprecated: Raised the minimum Node.js version (breaking) without a major bump. Use 4.x for the same code with correct semver, or pin 3.19.0 for Node < 22.22.2.
 
   jsdoc-type-pratt-parser@7.2.0:
     resolution: {integrity: sha512-dh140MMgjyg3JhJZY/+iEzW+NO5xR2gpbDFKHqotCmexElVntw7GjWjt511+C/Ef02RU5TKYrJo/Xlzk+OLaTw==}
@@ -3321,7 +3322,7 @@ snapshots:
       '@ionic/utils-stream': 3.1.6
       '@ionic/utils-terminal': 2.3.4
       cross-spawn: 7.0.6
-      debug: 4.3.4
+      debug: 4.4.3
       tslib: 2.6.2
     transitivePeerDependencies:
       - supports-color
@@ -3816,11 +3817,11 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@1.0.0-rc.1(@noble/hashes@2.3.0):
+  coralite-scripts@1.0.0-rc.2(@noble/hashes@2.3.0):
     dependencies:
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 1.0.0-rc.1(@noble/hashes@2.3.0)
+      coralite: 1.0.0-rc.2(@noble/hashes@2.3.0)
       cross-env: 10.1.0
       express: 5.2.1
       kleur: 4.1.5
@@ -3834,7 +3835,7 @@ snapshots:
       - canvas
       - supports-color
 
-  coralite@1.0.0-rc.1(@noble/hashes@2.3.0):
+  coralite@1.0.0-rc.2(@noble/hashes@2.3.0):
     dependencies:
       acorn: 8.18.0
       acorn-walk: 8.3.5
