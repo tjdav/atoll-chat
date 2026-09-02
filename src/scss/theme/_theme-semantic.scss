@@ -29,11 +29,11 @@
   /* Atoll Semantic Extensions - Borders & Dividers */
   --#{$prefix}border-subtle: light-dark(#{map-get($grays, "200")}, #{map-get($grays, "800")});
   --#{$prefix}border-strong: light-dark(#{map-get($grays, "300")}, #{map-get($grays, "750")});
-  --#{$prefix}border-interactive: #{$atoll-green-500};
+  --#{$prefix}border-interactive: #{map-get($atoll-colours, "green-800")};
 
   /* Atoll Semantic Extensions - Brand Identity */
-  --#{$prefix}brand-primary: #047835;
-  --#{$prefix}brand-primary-rgb: #{to-rgb(#047835)};
+  --#{$prefix}brand-primary: #{map-get($atoll-colours, "green-800")};
+  --#{$prefix}brand-primary-rgb: #{to-rgb(map-get($atoll-colours, "green-800"))};
   --#{$prefix}brand-secondary: light-dark(#{$atoll-green-600}, #{$atoll-green-400});
   --#{$prefix}brand-subtle-bg: light-dark(#E6F9EE, #0A2E16);
 

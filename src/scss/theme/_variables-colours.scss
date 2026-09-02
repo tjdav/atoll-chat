@@ -7,10 +7,10 @@ $atoll-colours: (
   "green-500": #56E265,
   "green-510": #53E062,
   "green-580": #47C84E,
-  "green-600": #047835,
+  "green-600": #01CC55,
   "green-700": #38A33E,
   "green-750": #3E8B3E,
-  "green-800": #197319,
+  "green-800": #047835,
   "green-900": #1A521A,
 
   // Light Green
@@ -214,12 +214,12 @@ $atoll-colours: (
 );
 
 // Native Bootstrap Theme Colors Overrides
-$primary: #047835;
+$primary: map-get($atoll-colours, "green-800");
 $secondary: #777777;
-$success: #047835;
-$info: #2A54D1;
+$success: map-get($atoll-colours, "green-800");
+$info: map-get($atoll-colours, "blue-700");
 $warning: #FF8A00;
-$danger: #CE1126;
+$danger: map-get($atoll-colours, "red-800");
 $light: #F5F5F5;
 $dark: #111111;
 

@@ -104,6 +104,12 @@
     --btn-padding: 0;
   }
 
+  :host-context([data-atoll-theme="dark"]):host([variant="link"]),
+  :host-context([data-bs-theme="dark"]):host([variant="link"]) {
+    --btn-color: var(--atoll-brand-secondary, #4CC764);
+    --btn-hover-color: color-mix(in srgb, var(--atoll-brand-secondary, #4CC764) 85%, #FFFFFF);
+  }
+
   /* -------------------------------------------------------------------------- */
   /* Size Modifiers (Attribute Selectors)                                       */
   /* -------------------------------------------------------------------------- */
