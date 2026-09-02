@@ -451,8 +451,8 @@
     getters: {
       hideDescription: (state) => (!state.description ? 'true' : null),
       hideTimestamp: (state) => (!state.timestamp ? 'true' : null),
-      isClickable: (state) => state.clickable || state.chevron || state.mode === 'selection',
-      itemRole: (state) => (state.isClickable && !state.loading ? 'button' : 'listitem'),
+      isClickable: (state) => Boolean(state.clickable || state.chevron),
+      itemRole: (state) => (state.isClickable && !state.loading ? 'button' : null),
       itemTabindex: (state) => (state.isClickable && !state.disabled && !state.loading ? '0' : '-1'),
       hideOnLoading: (state) => (state.loading ? 'true' : null),
       showOnLoading: (state) => (state.loading ? null : 'true'),

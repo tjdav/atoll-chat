@@ -48,6 +48,9 @@
       const syncModeToChildren = (mode) => {
         const items = root.querySelectorAll('atoll-list-item')
         items.forEach(item => {
+          if (!item.hasAttribute('role')) {
+            item.setAttribute('role', 'listitem')
+          }
           const m = mode && mode !== 'default' ? mode : 'default'
           if (m !== 'default') {
             item.setAttribute('mode', m)
@@ -85,9 +88,7 @@
 
       // Observe DOM child additions to automatically sync mode for dynamically added items
       const mutObserver = new MutationObserver(() => {
-        if (state.mode && state.mode !== 'default') {
-          syncModeToChildren(state.mode)
-        }
+        syncModeToChildren(state.mode)
       })
 
       mutObserver.observe(root, {

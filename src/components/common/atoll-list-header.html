@@ -4,7 +4,6 @@
     class="atoll-list-header" 
     role="{{ headerRole }}"
     tabindex="{{ headerTabindex }}"
-    aria-expanded="{{ isAriaExpanded }}"
   >
     <!-- Left Main Content Area -->
     <div class="atoll-list-header-main">
@@ -297,8 +296,22 @@
       hideSubtitle: (state) => !state.subtitle
     },
 
-    client: ({ state, refs, root, signal }) => {
+    client: ({ state, refs, root, signal, observe }) => {
       const header = refs('headerRoot')
+
+      const syncAriaExpanded = () => {
+        if (state.variant === 'accordion' || state.collapsible) {
+          header.setAttribute('aria-expanded', state.expanded ? 'true' : 'false')
+        } else {
+          header.removeAttribute('aria-expanded')
+        }
+      }
+      syncAriaExpanded()
+      if (observe) {
+        observe('expanded', syncAriaExpanded)
+        observe('variant', syncAriaExpanded)
+        observe('collapsible', syncAriaExpanded)
+      }
 
       const toggleAccordion = () => {
         if (state.variant === 'accordion' || state.collapsible) {
