@@ -67,7 +67,10 @@
       }
 
       root.expandAll = () => {
-        if (!state.multiple) return
+        if (!state.multiple) {
+          return
+        }
+  
         const items = Array.from(root.querySelectorAll('atoll-accordion-item')).filter(
           item => item.closest('atoll-accordion') === root
         )
