@@ -44,12 +44,12 @@
     "fix": "coralite-scripts fix"
   },
   "devDependencies": {
-    "@axe-core/playwright": "^4.12.1",
-    "@capacitor/android": "^8.5.0",
+    "@axe-core/playwright": "^4.13.0",
+    "@capacitor/android": "^8.5.2",
     "@capacitor/assets": "^3.0.5",
-    "@capacitor/cli": "^8.5.0",
-    "@playwright/test": "^1.61.0",
-    "@stylistic/eslint-plugin": "^5.9.0",
+    "@capacitor/cli": "^8.5.2",
+    "@playwright/test": "^1.63.0",
+    "@stylistic/eslint-plugin": "^5.10.0",
     "@types/node": "^26.1.0",
     "coralite": "^1.0.0-rc.3",
     "coralite-scripts": "^1.0.0-rc.3",
