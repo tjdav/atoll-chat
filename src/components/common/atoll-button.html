@@ -460,23 +460,12 @@
     },
 
     getters: {
-      isDisabled: (state) => Boolean(state.disabled || state.loading)
+      isDisabled: ({ state }) => Boolean(state.disabled || state.loading)
     },
 
     client: ({ state, refs, root, observe, signal }) => {
       const btn = refs('btnElement')
       let spinnerEl = null
-
-      // Forward test-id / data-testid to inner button
-      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
-      if (testId) {
-        root.__testId = testId
-        btn.setAttribute('data-testid', testId)
-        root.removeAttribute('test-id')
-        requestAnimationFrame(() => {
-          root.removeAttribute('data-testid')
-        })
-      }
 
       // Intercept clicks on the root custom element host during capture phase if disabled/loading
       root.addEventListener('click', (event) => {

@@ -1,34 +1,32 @@
 <template id="atoll-back-button">
-  <div class="d-inline-block me-3">
-    <atoll-button 
-      variant="ghost" 
-      leading-icon="chevron-left" 
-      icon-only="true" 
-      pill="true"
-      ref="btn"
-      aria-label="Go back"
-    ></atoll-button>
-  </div>
+  <atoll-button 
+    variant="ghost" 
+    leading-icon="chevron-left" 
+    icon-only="true" 
+    pill="true"
+    aria-label="Go back"
+  ></atoll-button>
 </template>
+
+<style>
+  :host {
+    display: inline-block;
+  }
+</style>
 
 <script type="module">
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
-    client: ({ refs, root, eventBus, signal }) => {
-      const { $bus } = eventBus
-      const btn = refs('btn')
-      const testId = root.getAttribute('data-testid')
-  
-      if (testId && btn) {
-        btn.setAttribute('data-testid', testId)
-      }
-
-      // Dispatches a unified router:back event on button click.
+    client: ({ root, emit, eventBus, signal }) => {
       root.addEventListener('click', (event) => {
         event.preventDefault()
         event.stopPropagation()
-        $bus.emit('router:back')
+
+        if (eventBus?.$bus?.emit) {
+          eventBus.$bus.emit('router:back')
+        }
+        emit('back')
       }, { signal })
     }
   })
