@@ -28,28 +28,52 @@
       }
     },
 
-    client: ({ state, root }) => {
+    provide: {
+      'atoll-accordion-context': ({ state }) => ({
+        multiple: state.multiple
+      })
+    },
+
+    client: ({ state, root, signal }) => {
       // Coordinate nested accordion items if single-expansion (multiple="false") is active
       const handleToggle = (event) => {
         if (state.multiple) {
           return
         }
 
-        const toggledItem = event.target
-        if (toggledItem && toggledItem.tagName === 'ATOLL-ACCORDION-ITEM' && event.detail.expanded) {
-          const items = root.querySelectorAll('atoll-accordion-item')
+        const toggledItem = event.target?.closest ? event.target.closest('atoll-accordion-item') : event.target
+        if (toggledItem && event.detail?.expanded) {
+          const items = Array.from(root.querySelectorAll('atoll-accordion-item')).filter(
+            item => item.closest('atoll-accordion') === root
+          )
           items.forEach(item => {
             if (item !== toggledItem) {
-              item.removeAttribute('expanded')
+              item.expanded = false
             }
           })
         }
       }
 
-      root.addEventListener('atoll-accordion-item-toggle', handleToggle)
+      root.addEventListener('atoll-accordion-item-toggle', handleToggle, { signal })
 
-      return () => {
-        root.removeEventListener('atoll-accordion-item-toggle', handleToggle)
+      // Container helper methods
+      root.collapseAll = () => {
+        const items = Array.from(root.querySelectorAll('atoll-accordion-item')).filter(
+          item => item.closest('atoll-accordion') === root
+        )
+        items.forEach(item => {
+          item.expanded = false
+        })
+      }
+
+      root.expandAll = () => {
+        if (!state.multiple) return
+        const items = Array.from(root.querySelectorAll('atoll-accordion-item')).filter(
+          item => item.closest('atoll-accordion') === root
+        )
+        items.forEach(item => {
+          item.expanded = true
+        })
       }
     }
   })

@@ -31,10 +31,7 @@
     </div>
 
     <!-- Accordion Body Content Wrapper -->
-    <div 
-      ref="bodyElement"
-      class="atoll-accordion-item-body collapse {{ showBodyClass }}"
-    >
+    <div class="atoll-accordion-item-body collapse {{ showBodyClass }}">
       <div class="atoll-accordion-item-content">
         <slot></slot>
       </div>
@@ -89,7 +86,7 @@
 
   .atoll-accordion-item-badge {
     font-size: var(--atoll-font-size-body-2, 14px);
-    color: var(--atoll-brand-primary, #06C755) !important;
+    color: var(--atoll-brand-primary, #047835);
   }
 
   .atoll-accordion-item-chevron {
@@ -113,25 +110,40 @@
     background-color: var(--atoll-bg-surface-primary, #FFFFFF);
   }
 
+  :host-context([data-atoll-theme="dark"]) .atoll-accordion-item,
+  :host-context([data-bs-theme="dark"]) .atoll-accordion-item,
   [data-atoll-theme="dark"] .atoll-accordion-item,
   [data-bs-theme="dark"] .atoll-accordion-item {
     border-bottom: 1px solid var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.1));
     background-color: var(--atoll-bg-surface-primary, #161616);
   }
 
+  :host-context([data-atoll-theme="dark"]) .atoll-accordion-item-header:hover,
+  :host-context([data-bs-theme="dark"]) .atoll-accordion-item-header:hover,
   [data-atoll-theme="dark"] .atoll-accordion-item-header:hover,
   [data-bs-theme="dark"] .atoll-accordion-item-header:hover {
     background-color: var(--atoll-bg-surface-secondary, #1F1F1F);
   }
 
+  :host-context([data-atoll-theme="dark"]) .atoll-accordion-item-title-text,
+  :host-context([data-bs-theme="dark"]) .atoll-accordion-item-title-text,
   [data-atoll-theme="dark"] .atoll-accordion-item-title-text,
   [data-bs-theme="dark"] .atoll-accordion-item-title-text {
     color: var(--atoll-text-primary, #FFFFFF);
   }
 
+  :host-context([data-atoll-theme="dark"]) .atoll-accordion-item-content,
+  :host-context([data-bs-theme="dark"]) .atoll-accordion-item-content,
   [data-atoll-theme="dark"] .atoll-accordion-item-content,
   [data-bs-theme="dark"] .atoll-accordion-item-content {
     background-color: var(--atoll-bg-surface-primary, #161616);
+  }
+
+  :host-context([data-atoll-theme="dark"]) .atoll-accordion-item-badge,
+  :host-context([data-bs-theme="dark"]) .atoll-accordion-item-badge,
+  [data-atoll-theme="dark"] .atoll-accordion-item-badge,
+  [data-bs-theme="dark"] .atoll-accordion-item-badge {
+    color: var(--atoll-badge-success, #22C55E) !important;
   }
 
   /* Room Settings Sidebar specific styling */
@@ -220,119 +232,92 @@
       expanded: {
         type: Boolean,
         default: false
-      },
-      bodyTestid: {
-        type: String,
-        default: ''
       }
     },
 
     slots: {
-      icon (nodes, { state }) {
+      icon (nodes, { state, observe }) {
         if (nodes && nodes.length > 0) {
           return nodes
         }
 
-        if (state.icon) {
-          const wrapper = document.createElement('span')
-          wrapper.className = 'atoll-accordion-item-icon-wrapper'
+        const renderIcon = () => {
+          if (state.icon) {
+            const wrapper = document.createElement('span')
+            wrapper.className = 'atoll-accordion-item-icon-wrapper'
 
-          const iconEl = document.createElement('atoll-icon')
-          iconEl.setAttribute('name', state.icon)
-          iconEl.setAttribute('size', '20')
-          wrapper.appendChild(iconEl)
-  
-          return [wrapper]
+            const iconEl = document.createElement('atoll-icon')
+            iconEl.setAttribute('name', state.icon)
+            iconEl.setAttribute('size', '20')
+            wrapper.appendChild(iconEl)
+
+            return [wrapper]
+          }
+          return null
         }
-        return null
+
+        if (observe) {
+          observe('icon', renderIcon)
+        }
+
+        return renderIcon()
       },
 
-      badge (nodes, { state }) {
+      badge (nodes, { state, observe }) {
         if (nodes && nodes.length > 0) {
           return nodes
         }
 
-        if (state.badge) {
-          const badgeEl = document.createElement('span')
-          badgeEl.className = 'atoll-accordion-item-badge text-success fw-bold ms-2'
-          badgeEl.textContent = state.badge
-          return [badgeEl]
+        const renderBadge = () => {
+          if (state.badge) {
+            const badgeEl = document.createElement('span')
+            badgeEl.className = 'atoll-accordion-item-badge fw-bold ms-2'
+            badgeEl.textContent = state.badge
+            return [badgeEl]
+          }
+          return null
         }
-  
-        return null
+
+        if (observe) {
+          observe('badge', renderBadge)
+        }
+
+        return renderBadge()
       }
     },
 
     getters: {
-      isAriaExpanded: (state) => (state.expanded ? 'true' : 'false'),
-      showBodyClass: (state) => (state.expanded ? 'show' : '')
+      isAriaExpanded: ({ state }) => (state.expanded ? 'true' : 'false'),
+      showBodyClass: ({ state }) => (state.expanded ? 'show' : '')
     },
 
-    client: ({ state, refs, root, observe, signal }) => {
+    client: ({ state, refs, root, emit, signal }) => {
       const header = refs('headerElement')
-      const body = refs('bodyElement')
-
-      // Forward test-id / data-testid to inner header button for E2E testing
-      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
-      if (testId && header) {
-        root.__testId = testId
-        header.setAttribute('data-testid', testId)
-        root.removeAttribute('test-id')
-        requestAnimationFrame(() => {
-          root.removeAttribute('data-testid')
-        })
-      }
-
-      // Forward body-testid to bodyElement for collapse E2E assertions
-      const bodyTestid = root.getAttribute('body-testid') || state.bodyTestid
-      if (bodyTestid && body) {
-        body.setAttribute('data-testid', bodyTestid)
-        root.removeAttribute('body-testid')
-      }
 
       const toggle = () => {
         state.expanded = !state.expanded
 
         // Dispatch events for coordinate triggers or E2E assertions
-        root.dispatchEvent(
-          new CustomEvent('atoll-accordion-item-toggle', {
-            bubbles: true,
-            composed: true,
-            detail: { expanded: state.expanded }
-          })
-        )
+        emit('atoll-accordion-item-toggle', { expanded: state.expanded })
 
         // Compatibility event to match old room-details-sidebar/atoll-header-toggle expectations
-        root.dispatchEvent(
-          new CustomEvent('atoll-header-toggle', {
-            bubbles: true,
-            composed: true,
-            detail: { expanded: state.expanded }
-          })
-        )
+        emit('atoll-header-toggle', { expanded: state.expanded })
       }
 
-      header.addEventListener('click', toggle, { signal })
+      header?.addEventListener('click', toggle, { signal })
 
-      header.addEventListener('keydown', (event) => {
+      header?.addEventListener('keydown', (event) => {
         if (event.key === 'Enter' || event.key === ' ') {
           event.preventDefault()
           toggle()
         }
       }, { signal })
 
-      // Synchronize dynamic attributes
-      observe('expanded', (val) => {
-        const isExp = val === 'true' || val === true || val === ''
-        if (isExp) {
-          body?.classList.add('show')
-          header?.setAttribute('aria-expanded', 'true')
-        } else {
-          body?.classList.remove('show')
-          header?.setAttribute('aria-expanded', 'false')
-        }
-      })
-
+      // Host delegation methods
+      root.toggle = toggle
+      root.click = () => header?.click()
+      root.focus = () => header?.focus()
+      root.blur = () => header?.blur()
     }
   })
 </script>
