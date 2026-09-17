@@ -5,7 +5,7 @@
     role="{{ chipRole }}" 
     tabindex="{{ chipTabindex }}"
     aria-selected="{{ ariaSelectedAttr }}"
-    aria-disabled="{{ ariaDisabledAttr }}"
+    aria-disabled="{{ disabled }}"
   >
     <span class="atoll-chip-content">
       <slot name="leading"></slot>
@@ -365,21 +365,20 @@
     },
 
     getters: {
-      chipRole: (state) => {
+      chipRole: ({ state }) => {
         if (state.selected !== undefined && state.selected !== false) return 'option'
         if (state.removable) return 'group'
         return 'button'
       },
-      ariaSelectedAttr: (state) => (state.selected ? 'true' : null),
-      ariaDisabledAttr: (state) => (state.disabled ? 'true' : null),
-      chipTabindex: (state) => {
+      ariaSelectedAttr: ({ state }) => (state.selected ? 'true' : null),
+      chipTabindex: ({ state }) => {
         if (state.disabled) return '-1'
         if (state.removable) return '-1'
         return '0'
       }
     },
 
-    client: ({ state, refs, root, observe, signal }) => {
+    client: ({ state, refs, root, emit, observe, signal }) => {
       const chip = refs('chipElement')
       let removeBtnEl = null
 
@@ -418,13 +417,7 @@
               event.stopPropagation()
               event.preventDefault()
 
-              root.dispatchEvent(
-                new CustomEvent('atoll-chip-remove', {
-                  bubbles: true,
-                  composed: true,
-                  detail: { value: state.value }
-                })
-              )
+              emit('atoll-chip-remove', { value: state.value })
             }, { signal })
           } else {
             const icon = removeBtnEl.querySelector('atoll-icon')

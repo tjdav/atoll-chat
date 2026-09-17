@@ -152,7 +152,7 @@
     },
 
     getters: {
-      isHidden: (state) => {
+      isHidden: ({ state }) => {
         if (state.dot) return false
         if (state.label && state.label.trim() !== '') return false
         if (state.count === null || state.count === undefined) return true
@@ -160,7 +160,7 @@
         return false
       },
 
-      displayText: (state) => {
+      displayText: ({ state }) => {
         if (state.dot) return ''
         if (state.label && state.label.trim() !== '') return state.label
         if (state.count === null || state.count === undefined) return ''
