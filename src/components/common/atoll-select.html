@@ -1,7 +1,8 @@
 <template id="atoll-select">
   <details 
     ref="detailsElement"
-    class="atoll-select"
+    open="{{ isOpen }}"
+    class="atoll-select {{ dropupClass }}"
   >
     <!-- Hidden Input for Form Submission Integration -->
     <input 
@@ -14,18 +15,19 @@
     <!-- Summary Toggle Button (role="combobox") -->
     <summary 
       ref="toggleElement"
-      class="atoll-select-toggle"
+      class="atoll-select-toggle {{ toggleClasses }}"
       role="combobox"
       aria-haspopup="listbox"
       aria-expanded="{{ isExpanded }}"
       aria-controls="{{ ref_menuElement }}"
       aria-disabled="{{ isDisabled }}"
+      aria-label="{{ computedAriaLabel }}"
       tabindex="{{ summaryTabIndex }}"
       data-variant="{{ variant }}"
     >
       <span class="atoll-select-label-group">
         <slot name="leading"></slot>
-        <span ref="labelElement" class="atoll-select-label">{{ selectedLabel }}</span>
+        <span class="atoll-select-label">{{ selectedLabel }}</span>
       </span>
       <slot name="trailing"></slot>
     </summary>
@@ -196,7 +198,9 @@
     will-change: transform, opacity;
   }
 
-  .atoll-select-menu .dropdown-item {
+  ::slotted(.dropdown-item),
+  ::slotted(li) .dropdown-item,
+  ::slotted(option) {
     display: flex;
     align-items: center;
     gap: 8px;
@@ -210,23 +214,31 @@
     white-space: nowrap;
   }
 
-  .atoll-select-menu .dropdown-item:hover,
-  .atoll-select-menu .dropdown-item:focus,
-  .atoll-select-menu .dropdown-item:focus-visible {
+  ::slotted(.dropdown-item:hover),
+  ::slotted(.dropdown-item:focus),
+  ::slotted(.dropdown-item:focus-visible),
+  ::slotted(li) .dropdown-item:hover,
+  ::slotted(option:hover) {
     background-color: var(--atoll-bg-surface-secondary, #F5F5F5);
     color: var(--atoll-text-primary, #111111);
     outline: none;
   }
 
-  .atoll-select-menu .dropdown-item.active,
-  .atoll-select-menu .dropdown-item[aria-selected="true"] {
+  ::slotted(.dropdown-item.active),
+  ::slotted(.dropdown-item[aria-selected="true"]),
+  ::slotted(li) .dropdown-item.active,
+  ::slotted(option[selected]),
+  ::slotted(option:checked) {
     background-color: var(--atoll-brand-green-tint, rgba(6, 199, 85, 0.12));
     color: var(--atoll-primary, var(--atoll-brand-primary, #06C755));
     font-weight: 600;
   }
 
-  .atoll-select-menu .dropdown-item.disabled,
-  .atoll-select-menu .dropdown-item[disabled] {
+  ::slotted(.dropdown-item.disabled),
+  ::slotted(.dropdown-item[disabled]),
+  ::slotted(li) .dropdown-item.disabled,
+  ::slotted(option[disabled]),
+  ::slotted(option:disabled) {
     opacity: 0.5;
     cursor: not-allowed;
     pointer-events: none;
@@ -253,23 +265,9 @@
   }
 
   /* Alignment Modifiers */
-  :host([align="end"]) .atoll-select-menu,
-  .atoll-select.atoll-select-align-end .atoll-select-menu {
+  :host([align="end"]) .atoll-select-menu {
     left: auto;
     right: 0;
-  }
-
-  /* Exit Closing Transition */
-  .atoll-select.atoll-select-closing > .atoll-select-menu {
-    opacity: 0 !important;
-    transform: translateY(-6px) scale(0.98) !important;
-    transition: opacity 140ms cubic-bezier(0.4, 0, 1, 1),
-                transform 140ms cubic-bezier(0.4, 0, 1, 1) !important;
-  }
-
-  .atoll-select.atoll-select-dropup.atoll-select-closing > .atoll-select-menu,
-  :host([placement="up"]) .atoll-select.atoll-select-closing > .atoll-select-menu {
-    transform: translateY(6px) scale(0.98) !important;
   }
 
   .atoll-select-label-group {
@@ -285,60 +283,10 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .atoll-select .atoll-select-menu,
-    .atoll-select .atoll-select-trailing atoll-icon {
+    .atoll-select-menu,
+    .atoll-select-trailing atoll-icon {
       transition: none !important;
     }
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-select .atoll-select-toggle,
-  :host-context([data-bs-theme="dark"]) .atoll-select .atoll-select-toggle,
-  [data-atoll-theme="dark"] .atoll-select .atoll-select-toggle,
-  [data-bs-theme="dark"] .atoll-select .atoll-select-toggle {
-    color: var(--atoll-text-primary, #FFFFFF);
-    background-color: var(--atoll-input-bg, var(--atoll-bg-surface-tertiary, #1F1F1F));
-    border-color: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.12));
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-select .atoll-select-toggle:focus,
-  :host-context([data-atoll-theme="dark"]) .atoll-select .atoll-select-toggle:focus-visible,
-  :host-context([data-bs-theme="dark"]) .atoll-select .atoll-select-toggle:focus,
-  :host-context([data-bs-theme="dark"]) .atoll-select .atoll-select-toggle:focus-visible,
-  [data-atoll-theme="dark"] .atoll-select .atoll-select-toggle:focus,
-  [data-atoll-theme="dark"] .atoll-select .atoll-select-toggle:focus-visible,
-  [data-bs-theme="dark"] .atoll-select .atoll-select-toggle:focus,
-  [data-bs-theme="dark"] .atoll-select .atoll-select-toggle:focus-visible {
-    background-color: var(--atoll-bg-surface-secondary, #161616);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-select .atoll-select-menu,
-  :host-context([data-bs-theme="dark"]) .atoll-select .atoll-select-menu,
-  [data-atoll-theme="dark"] .atoll-select .atoll-select-menu,
-  [data-bs-theme="dark"] .atoll-select .atoll-select-menu {
-    background-color: var(--atoll-bg-surface-secondary, #161616);
-    border-color: var(--atoll-border-color-translucent, rgba(255, 255, 255, 0.15));
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-select .atoll-select-menu .dropdown-item,
-  :host-context([data-bs-theme="dark"]) .atoll-select .atoll-select-menu .dropdown-item,
-  [data-atoll-theme="dark"] .atoll-select .atoll-select-menu .dropdown-item,
-  [data-bs-theme="dark"] .atoll-select .atoll-select-menu .dropdown-item {
-    color: var(--atoll-text-primary, #FFFFFF);
-  }
-
-  :host-context([data-atoll-theme="dark"]) .atoll-select .atoll-select-menu .dropdown-item:hover,
-  :host-context([data-atoll-theme="dark"]) .atoll-select .atoll-select-menu .dropdown-item:focus,
-  :host-context([data-atoll-theme="dark"]) .atoll-select .atoll-select-menu .dropdown-item:focus-visible,
-  :host-context([data-bs-theme="dark"]) .atoll-select .atoll-select-menu .dropdown-item:hover,
-  :host-context([data-bs-theme="dark"]) .atoll-select .atoll-select-menu .dropdown-item:focus,
-  :host-context([data-bs-theme="dark"]) .atoll-select .atoll-select-menu .dropdown-item:focus-visible,
-  [data-atoll-theme="dark"] .atoll-select .atoll-select-menu .dropdown-item:hover,
-  [data-atoll-theme="dark"] .atoll-select .atoll-select-menu .dropdown-item:focus,
-  [data-atoll-theme="dark"] .atoll-select .atoll-select-menu .dropdown-item:focus-visible,
-  [data-bs-theme="dark"] .atoll-select .atoll-select-menu .dropdown-item:hover,
-  [data-bs-theme="dark"] .atoll-select .atoll-select-menu .dropdown-item:focus,
-  [data-bs-theme="dark"] .atoll-select .atoll-select-menu .dropdown-item:focus-visible {
-    background-color: var(--atoll-bg-surface-tertiary, #2A2A2A);
   }
 </style>
 
@@ -358,7 +306,8 @@
       size: {
         type: String,
         default: 'md',
-        values: ['sm', 'md', 'lg']
+        values: ['sm', 'md', 'lg'],
+        reflect: true
       },
       variant: {
         type: String,
@@ -400,8 +349,17 @@
       open: Boolean
     },
 
+    provide: {
+      'atoll-select-context': ({ state }) => ({
+        value: state.value,
+        size: state.size,
+        disabled: state.disabled,
+        variant: state.variant
+      })
+    },
+
     slots: {
-      leading (nodes, state) {
+      leading (nodes, { state }) {
         if (typeof document === 'undefined') {
           return null
         }
@@ -426,7 +384,7 @@
         return null
       },
 
-      trailing (nodes, state) {
+      trailing (nodes, { state }) {
         if (typeof document === 'undefined') {
           return null
         }
@@ -449,129 +407,94 @@
     },
 
     getters: {
-      isDisabled: (state) => Boolean(state.disabled),
-      isExpanded: (state) => Boolean(state.open),
-      summaryTabIndex: (state) => (state.disabled ? -1 : 0),
-      selectedLabel: (state) => state.selectedLabelText || state.placeholder
+      isOpen: ({ state }) => Boolean(state.open),
+      isDisabled: ({ state }) => Boolean(state.disabled),
+      isExpanded: ({ state }) => Boolean(state.open),
+      summaryTabIndex: ({ state }) => (state.disabled ? -1 : 0),
+      toggleClasses: ({ state }) => (state.disabled ? 'disabled' : ''),
+      dropupClass: ({ state }) => (state.isDropup ? 'atoll-select-dropup' : ''),
+      selectedLabel: ({ state, root }) => {
+        if (state.value) {
+          const item = root?.querySelector?.(`[data-value="${state.value}"], option[value="${state.value}"]`)
+          const txt = item?.textContent?.trim()
+          if (txt) {
+            return txt
+          }
+        }
+        const selectedItem = root?.querySelector?.('[data-value][selected], option[selected]')
+        if (selectedItem) {
+          const txt = selectedItem.textContent?.trim()
+          if (txt) {
+            return txt
+          }
+        }
+        return state.placeholder
+      },
+      computedAriaLabel: ({ state, root }) => {
+        const hostAria = root?.getAttribute?.('aria-label') || root?.ariaLabel
+        if (hostAria) {
+          return hostAria
+        }
+
+        const hostLabel = root?.getAttribute?.('label')
+        if (hostLabel) {
+          return hostLabel
+        }
+
+        if (state.value) {
+          const item = root?.querySelector?.(`[data-value="${state.value}"], option[value="${state.value}"]`)
+          const txt = item?.textContent?.trim()
+          if (txt) {
+            return txt
+          }
+        }
+
+        const selectedItem = root?.querySelector?.('[data-value][selected], option[selected]')
+        if (selectedItem) {
+          const txt = selectedItem.textContent?.trim()
+          if (txt) {
+            return txt
+          }
+        }
+
+        return state.placeholder || 'Select an option'
+      }
     },
 
-    client: ({ state, refs, root, observe, signal }) => {
-      if (root.__initialized) {
-        return
-      }
-      root.__initialized = true
-
+    client: ({ state, refs, root, observe, signal, emit }) => {
       const detailsEl = refs('detailsElement')
       const toggleEl = refs('toggleElement')
       const menuEl = refs('menuElement')
       const hiddenInput = refs('hiddenInput')
-      const labelEl = refs('labelElement')
-
-      const preExistingValue = root.value !== undefined ? root.value : root.getAttribute('value')
-      if (preExistingValue !== undefined && preExistingValue !== null) {
-        state.value = String(preExistingValue)
-      }
-
-      const preExistingDisabled = root.disabled !== undefined ? root.disabled : root.hasAttribute('disabled')
-      if (preExistingDisabled !== undefined && preExistingDisabled !== null) {
-        state.disabled = Boolean(preExistingDisabled)
-      }
-
-      const preExistingOpen = root.open !== undefined ? root.open : root.hasAttribute('open')
-      if (preExistingOpen !== undefined && preExistingOpen !== null) {
-        state.open = Boolean(preExistingOpen)
-      }
-
-      const testId = root.getAttribute('test-id') || root.getAttribute('data-testid') || root.__testId
-      if (testId) {
-        root.__testId = testId
-        toggleEl.setAttribute('data-testid', testId)
-        root.removeAttribute('test-id')
-        requestAnimationFrame(() => {
-          root.removeAttribute('data-testid')
-        })
-      }
-
-      let isClosing = false
-      let closeTimeout = null
 
       const checkAutoFlip = () => {
         if (state.autoFlip === false || state.placement === 'up') {
-          if (state.placement === 'up') {
-            detailsEl.classList.add('atoll-select-dropup')
-          }
+          state.isDropup = state.placement === 'up'
           return
         }
         const rect = detailsEl.getBoundingClientRect()
         const spaceBelow = window.innerHeight - rect.bottom
         const spaceAbove = rect.top
         const menuEstimatedHeight = 260
-        const shouldFlip = spaceBelow < menuEstimatedHeight && spaceAbove > spaceBelow
-        if (shouldFlip) {
-          detailsEl.classList.add('atoll-select-dropup')
-        } else {
-          detailsEl.classList.remove('atoll-select-dropup')
-        }
-      }
-
-      const syncDisabledState = () => {
-        toggleEl.setAttribute('aria-disabled', state.disabled ? 'true' : 'false')
-        toggleEl.setAttribute('tabindex', state.disabled ? '-1' : '0')
-        if (state.disabled) {
-          toggleEl.classList.add('disabled')
-        } else {
-          toggleEl.classList.remove('disabled')
-        }
+        state.isDropup = spaceBelow < menuEstimatedHeight && spaceAbove > spaceBelow
       }
 
       const show = () => {
         if (state.disabled || (state.open && detailsEl.hasAttribute('open'))) {
           return
         }
-        if (closeTimeout) {
-          clearTimeout(closeTimeout)
-        }
-        isClosing = false
-        detailsEl.classList.remove('atoll-select-closing')
         state.open = true
-        root.setAttribute('open', '')
         detailsEl.setAttribute('open', '')
         checkAutoFlip()
       }
 
       const hide = () => {
-        if (!state.open || isClosing) {
+        if (!state.open) {
           return
         }
-        isClosing = true
-        detailsEl.classList.add('atoll-select-closing')
-
-        let transitionHandled = false
-        const handleEnd = () => {
-          if (transitionHandled) {
-            return
-          }
-          transitionHandled = true
-          if (closeTimeout) {
-            clearTimeout(closeTimeout)
-          }
-          state.open = false
-          detailsEl.classList.remove('atoll-select-closing')
-          detailsEl.classList.remove('atoll-select-dropup')
-          detailsEl.removeAttribute('open')
-          root.removeAttribute('open')
-          isClosing = false
-        }
-
-        const onTransitionEnd = (e) => {
-          if (e.target === menuEl || e.target?.classList?.contains('atoll-select-menu')) {
-            menuEl.removeEventListener('transitionend', onTransitionEnd)
-            handleEnd()
-          }
-        }
-
-        menuEl.addEventListener('transitionend', onTransitionEnd, { signal })
-        closeTimeout = setTimeout(handleEnd, 160)
+        state.open = false
+        state.isDropup = false
+        detailsEl.removeAttribute('open')
       }
 
       const toggle = () => {
@@ -584,27 +507,25 @@
 
       const updateSelectedLabel = () => {
         const items = menuEl.querySelectorAll('.dropdown-item, [data-value], option')
-        let foundLabel = ''
 
         items.forEach((item) => {
+          if (item.tagName !== 'OPTION' && !item.hasAttribute('role')) {
+            item.setAttribute('role', 'option')
+          }
+          if (item.parentElement && item.parentElement.tagName === 'LI') {
+            item.parentElement.setAttribute('role', 'presentation')
+          }
+
           const itemVal = item.getAttribute('data-value') ?? item.getAttribute('value') ?? item.value ?? item.textContent.trim()
-          if (itemVal === state.value || (!state.value && item.hasAttribute('selected'))) {
+          const isSelected = Boolean(itemVal === state.value || (!state.value && item.hasAttribute('selected')))
+          if (isSelected) {
             item.classList.add('active')
             item.setAttribute('aria-selected', 'true')
-            foundLabel = item.textContent.trim()
-            if (!state.value) {
-              state.value = itemVal
-            }
           } else {
             item.classList.remove('active')
             item.removeAttribute('aria-selected')
           }
         })
-
-        state.selectedLabelText = foundLabel || ''
-        if (labelEl) {
-          labelEl.textContent = state.selectedLabelText || state.placeholder
-        }
       }
 
       const handleMenuClick = (event) => {
@@ -628,16 +549,10 @@
           hide()
         }
 
-        root.dispatchEvent(
-          new CustomEvent('atoll-change', {
-            bubbles: true,
-            composed: true,
-            detail: {
-              value: selectedValue,
-              label: selectedLabel
-            }
-          })
-        )
+        emit('atoll-change', {
+          value: selectedValue,
+          label: selectedLabel
+        })
       }
 
       menuEl.addEventListener('click', handleMenuClick, { signal })
@@ -651,9 +566,6 @@
       }, { signal })
 
       detailsEl.addEventListener('toggle', () => {
-        if (isClosing) {
-          return
-        }
         const isDetailsOpen = detailsEl.hasAttribute('open')
         if (isDetailsOpen && !state.open) {
           show()
@@ -669,7 +581,6 @@
         }
       }
       document.addEventListener('pointerdown', handleOutsideClick, { signal })
-      document.addEventListener('mousedown', handleOutsideClick, { signal })
 
       let typeaheadQuery = ''
       let typeaheadTimer = null
@@ -797,9 +708,9 @@
       })
       signal.addEventListener('abort', () => observer.disconnect())
 
-      document.addEventListener('reset', (e) => {
-        const form = root.closest('form')
-        if (form && (e.target === form || form.contains(e.target))) {
+      const form = root.closest('form')
+      if (form) {
+        form.addEventListener('reset', () => {
           setTimeout(() => {
             const resetVal = root.getAttribute('value') ?? hiddenInput?.getAttribute('value') ?? ''
             state.value = resetVal
@@ -808,8 +719,8 @@
             }
             updateSelectedLabel()
           }, 0)
-        }
-      }, { signal })
+        }, { signal })
+      }
 
       if (observe) {
         observe('value', () => {
@@ -817,10 +728,6 @@
             hiddenInput.value = state.value || ''
           }
           updateSelectedLabel()
-        })
-
-        observe('disabled', () => {
-          syncDisabledState()
         })
 
         observe('open', () => {
@@ -833,7 +740,6 @@
       }
 
       updateSelectedLabel()
-      syncDisabledState()
       if (state.open) {
         show()
       }
@@ -844,57 +750,9 @@
       root.focus = () => toggleEl?.focus()
       root.blur = () => toggleEl?.blur()
 
-      Object.defineProperty(root, 'disabled', {
-        get () {
-          return Boolean(state.disabled)
-        },
-        set (val) {
-          const isD = val === 'true' || val === true || val === ''
-          state.disabled = isD
-          syncDisabledState()
-          if (isD) {
-            root.setAttribute('disabled', 'true')
-          } else {
-            root.removeAttribute('disabled')
-          }
-        },
-        configurable: true
-      })
-
-      Object.defineProperty(root, 'value', {
-        get () {
-          return state.value
-        },
-        set (val) {
-          state.value = String(val || '')
-          if (hiddenInput) {
-            hiddenInput.value = state.value
-          }
-          updateSelectedLabel()
-        },
-        configurable: true
-      })
-
-      Object.defineProperty(root, 'open', {
-        get () {
-          return Boolean(state.open)
-        },
-        set (val) {
-          const isOpen = val === 'true' || val === true || val === ''
-          if (isOpen) {
-            show()
-          } else {
-            hide()
-          }
-        },
-        configurable: true
-      })
-
       signal.addEventListener('abort', () => {
-        if (closeTimeout) {
-          clearTimeout(closeTimeout)
-        }
         clearTimeout(typeaheadTimer)
+        typeaheadQuery = ''
       })
     }
   })
