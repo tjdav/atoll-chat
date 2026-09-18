@@ -231,7 +231,9 @@
 
     slots: {
       badge (nodes, { state }) {
-        if (nodes && nodes.length > 0) return nodes
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
 
         if (state.badge) {
           const badgeEl = document.createElement('atoll-badge')
@@ -243,7 +245,9 @@
       },
 
       dropdown (nodes, { state }) {
-        if (nodes && nodes.length > 0) return nodes
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
 
         if (state.dropdown) {
           const span = document.createElement('span')
@@ -258,7 +262,9 @@
       },
 
       actionButton (nodes, { state }) {
-        if (nodes && nodes.length > 0) return nodes
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
 
         if (state.actionText) {
           const btn = document.createElement('atoll-button')
@@ -271,7 +277,9 @@
       },
 
       chevron (nodes, { state }) {
-        if (nodes && nodes.length > 0) return nodes
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
 
         if (state.variant === 'accordion' || Boolean(state.collapsible)) {
           const span = document.createElement('span')

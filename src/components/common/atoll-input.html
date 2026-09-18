@@ -362,8 +362,12 @@
       if (onFormReset) {
         onFormReset(() => {
           state.value = ''
-          if (input) input.value = ''
-          if (setFormValue) setFormValue('')
+          if (input) {
+            input.value = ''
+          }
+          if (setFormValue) {
+            setFormValue('')
+          }
         })
       }
 

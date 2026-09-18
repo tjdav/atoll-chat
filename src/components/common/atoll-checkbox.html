@@ -158,8 +158,12 @@
       if (onFormReset) {
         onFormReset(() => {
           state.checked = false
-          if (setFormValue) setFormValue(null)
-          if (nativeInput) nativeInput.checked = false
+          if (setFormValue) {
+            setFormValue(null)
+          }
+          if (nativeInput) {
+            nativeInput.checked = false
+          }
           root.setAttribute('aria-checked', 'false')
         })
       }

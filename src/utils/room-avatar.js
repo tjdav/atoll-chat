@@ -24,7 +24,10 @@ export function getParsedAvatar (room) {
 
   try {
     const parsed = JSON.parse(room.avatar)
-    avatarCache.set(room, { raw: room.avatar, parsed })
+    avatarCache.set(room, {
+      raw: room.avatar,
+      parsed
+    })
     return parsed
   } catch {
     return null

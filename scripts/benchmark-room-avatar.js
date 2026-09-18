@@ -10,8 +10,14 @@ const createMockRooms = () => Array.from({ length: 100 }, (_, i) => ({
     nonce: 'dGVzdG5vbmNlMTIzNDU2Nzg5MDEyMzQ='
   }),
   participants: [
-    { id: 'user_1', name: 'User 1' },
-    { id: 'user_2', name: 'User 2' }
+    {
+      id: 'user_1',
+      name: 'User 1'
+    },
+    {
+      id: 'user_2',
+      name: 'User 2'
+    }
   ]
 }))
 

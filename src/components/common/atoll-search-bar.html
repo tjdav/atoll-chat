@@ -338,7 +338,10 @@
       input.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault()
-          emit('search', { query: state.value, value: state.value })
+          emit('search', {
+            query: state.value,
+            value: state.value
+          })
         } else if (event.key === 'Escape') {
           if (state.value) {
             state.value = ''
