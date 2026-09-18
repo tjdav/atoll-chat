@@ -76,6 +76,11 @@ $utilities: map-merge($utilities,
   @import "bootstrap/scss/transitions";
   @import "bootstrap/scss/helpers";
   @import "bootstrap/scss/utilities/api";
+
+  // Ensure standard HTML5 [hidden] attribute takes precedence over Bootstrap !important utilities
+  [hidden] {
+    display: none !important;
+  }
 }
 
 // 4. Global Semantic Token Matrix (light-dark() & Overlay Tokens)

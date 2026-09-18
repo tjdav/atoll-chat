@@ -139,9 +139,6 @@
   border-bottom-right-radius: 50rem !important;
 }
 
-[hidden] {
-  display: none !important;
-}
 
 .offline-banner {
   @include media-breakpoint-down(md) {
