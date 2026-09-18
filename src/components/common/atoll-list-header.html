@@ -175,8 +175,8 @@
   }
 
   /* Dark Theme Overrides */
-  :host-context([data-atoll-theme="dark"]),
-  :host-context([data-bs-theme="dark"]),
+  [data-atoll-theme="dark"] :host,
+  [data-bs-theme="dark"] :host,
   [data-atoll-theme="dark"] atoll-list-header,
   [data-bs-theme="dark"] atoll-list-header {
     --list-header-title-color: var(--atoll-text-primary, #FFFFFF);
@@ -185,8 +185,8 @@
     --list-header-bg-hover: var(--atoll-bg-surface-secondary, #1F1F1F);
   }
 
-  :host-context([data-atoll-theme="dark"]) :host([variant="card"]),
-  :host-context([data-bs-theme="dark"]) :host([variant="card"]),
+  [data-atoll-theme="dark"] :host([variant="card"]),
+  [data-bs-theme="dark"] :host([variant="card"]),
   [data-atoll-theme="dark"] atoll-list-header[variant="card"],
   [data-bs-theme="dark"] atoll-list-header[variant="card"] {
     --list-header-bg: var(--atoll-bg-surface-primary, #161616);
@@ -287,16 +287,12 @@
     },
 
     getters: {
-      headerRole: (state) => (state.variant === 'accordion' || Boolean(state.collapsible) ? 'button' : 'region'),
-      headerTabindex: (state) => (state.variant === 'accordion' || Boolean(state.collapsible) ? '0' : '-1'),
-      isAriaExpanded: (state) => {
-        if (state.variant !== 'accordion' && !state.collapsible) return null
-        return state.expanded ? 'true' : 'false'
-      },
-      hideSubtitle: (state) => !state.subtitle
+      headerRole: ({ state }) => (state.variant === 'accordion' || Boolean(state.collapsible) ? 'button' : 'region'),
+      headerTabindex: ({ state }) => (state.variant === 'accordion' || Boolean(state.collapsible) ? '0' : '-1'),
+      hideSubtitle: ({ state }) => !state.subtitle
     },
 
-    client: ({ state, refs, root, signal, observe }) => {
+    client: ({ state, refs, root, emit, signal, observe }) => {
       const header = refs('headerRoot')
 
       const syncAriaExpanded = () => {
@@ -323,13 +319,7 @@
             root.removeAttribute('expanded')
           }
 
-          root.dispatchEvent(
-            new CustomEvent('atoll-header-toggle', {
-              bubbles: true,
-              composed: true,
-              detail: { expanded: isExpanded }
-            })
-          )
+          emit('atoll-header-toggle', { expanded: isExpanded })
         }
       }
 

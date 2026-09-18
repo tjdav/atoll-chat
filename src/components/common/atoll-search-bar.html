@@ -204,8 +204,8 @@
     font-size: var(--atoll-font-size-body-1, 16px);
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-search-bar-container,
-  :host-context([data-bs-theme="dark"]) .atoll-search-bar-container,
+  [data-atoll-theme="dark"] :host .atoll-search-bar-container,
+  [data-bs-theme="dark"] :host .atoll-search-bar-container,
   [data-atoll-theme="dark"] .atoll-search-bar-container,
   [data-bs-theme="dark"] .atoll-search-bar-container {
     --atoll-search-bg: var(--atoll-input-bg, var(--atoll-bg-surface-tertiary, #1F1F1F));
@@ -214,8 +214,8 @@
     --atoll-search-placeholder: var(--atoll-text-tertiary, #949494);
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-search-bar-clear:hover,
-  :host-context([data-bs-theme="dark"]) .atoll-search-bar-clear:hover,
+  [data-atoll-theme="dark"] :host .atoll-search-bar-clear:hover,
+  [data-bs-theme="dark"] :host .atoll-search-bar-clear:hover,
   [data-atoll-theme="dark"] .atoll-search-bar-clear:hover,
   [data-bs-theme="dark"] .atoll-search-bar-clear:hover {
     color: var(--atoll-text-primary, #FFFFFF);
@@ -252,9 +252,9 @@
     },
 
     getters: {
-      computedAriaLabel: (state) => state.placeholder || 'Search',
+      computedAriaLabel: ({ state }) => state.placeholder || 'Search',
 
-      iconSize: (state) => {
+      iconSize: ({ state }) => {
         if (state.size === 'sm') {
           return '16'
         }
@@ -264,24 +264,24 @@
         return '20'
       },
 
-      hideClearBtn: (state) => !state.value || state.disabled || state.readonly,
+      hideClearBtn: ({ state }) => !state.value || state.disabled || state.readonly,
 
-      hideCancelBtn: (state) => {
+      hideCancelBtn: ({ state }) => {
         if (!state.showCancel || state.disabled) {
           return true
         }
         return !state.isFocused && !state.value
       },
 
-      clearBtnTabIndex: (state) => {
+      clearBtnTabIndex: ({ state }) => {
         return state.disabled ? '-1' : '0'
       },
 
-      cancelBtnTabIndex: (state) => {
+      cancelBtnTabIndex: ({ state }) => {
         return state.disabled ? '-1' : '0'
       },
 
-      containerClasses: (state) => {
+      containerClasses: ({ state }) => {
         const classes = ['atoll-search-bar-container']
 
         if (state.size) {
@@ -301,24 +301,14 @@
       }
     },
 
-    client: ({ state, refs, root, observe, signal }) => {
+    client: ({ state, refs, root, emit, observe, signal }) => {
       const input = refs('input')
       const clearBtn = refs('clearBtn')
       const cancelBtn = refs('cancelBtn')
 
-      // Forward data-testid from host to the nested native input, preserving across reconnects
-      const testId = root.getAttribute('data-testid') || root.__testId
-      if (testId) {
-        root.__testId = testId
-        input.setAttribute('data-testid', testId)
-        root.removeAttribute('data-testid')
-      }
-
-      const dispatchEvents = (eventName) => {
-        root.dispatchEvent(new Event(eventName, {
-          bubbles: true,
-          composed: true
-        }))
+      const dispatchEvents = () => {
+        emit('input')
+        emit('change')
       }
 
       // Input Focus and Blur Observers
@@ -332,8 +322,12 @@
 
       input.addEventListener('input', () => {
         state.value = input.value
-        dispatchEvents('input')
-        dispatchEvents('change')
+        if (state.value) {
+          root.setAttribute('value', state.value)
+        } else {
+          root.removeAttribute('value')
+        }
+        dispatchEvents()
       }, { signal })
 
       // Prevent native search event from bubbling and conflicting
@@ -344,19 +338,12 @@
       input.addEventListener('keydown', (event) => {
         if (event.key === 'Enter') {
           event.preventDefault()
-          root.dispatchEvent(
-            new CustomEvent('search', {
-              bubbles: true,
-              composed: true,
-              detail: { value: state.value }
-            })
-          )
+          emit('search', { query: state.value, value: state.value })
         } else if (event.key === 'Escape') {
           if (state.value) {
             state.value = ''
             input.value = ''
-            dispatchEvents('input')
-            dispatchEvents('change')
+            dispatchEvents()
           } else {
             input.blur()
           }
@@ -368,12 +355,12 @@
         // Prevents input blur on tap
         event.preventDefault()
         state.value = ''
+        root.removeAttribute('value')
         if (input) {
           input.value = ''
           input.focus()
         }
-        dispatchEvents('input')
-        dispatchEvents('change')
+        dispatchEvents()
       }
       clearBtn.addEventListener('pointerdown', handleClear, { signal })
       clearBtn.addEventListener('mousedown', handleClear, { signal })
@@ -381,27 +368,28 @@
       // Cancel Button Handler
       cancelBtn.addEventListener('click', () => {
         state.value = ''
+        root.removeAttribute('value')
         state.isFocused = false
         if (input) {
           input.value = ''
           input.blur()
         }
 
-        dispatchEvents('input')
-        dispatchEvents('change')
-
-        root.dispatchEvent(
-          new CustomEvent('cancel', {
-            bubbles: true,
-            composed: true
-          })
-        )
+        dispatchEvents()
+        emit('cancel')
       }, { signal })
 
       // Programmatic External Sync for value property/attribute
       observe('value', (newVal) => {
         if (input && input.value !== (newVal || '')) {
           input.value = newVal || ''
+        }
+        if (clearBtn) {
+          if (!newVal || state.disabled || state.readonly) {
+            clearBtn.setAttribute('hidden', '')
+          } else {
+            clearBtn.removeAttribute('hidden')
+          }
         }
       })
 
@@ -413,20 +401,8 @@
         if (input) {
           input.value = ''
         }
-        dispatchEvents('input')
-        dispatchEvents('change')
+        dispatchEvents()
       }
-
-      // Define property descriptor for bidirectional sync
-      Object.defineProperty(root, 'value', {
-        get () {
-          return state.value
-        },
-        set (newVal) {
-          state.value = newVal || ''
-        },
-        configurable: true
-      })
     }
   })
 </script>

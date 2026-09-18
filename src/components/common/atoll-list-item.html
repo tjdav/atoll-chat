@@ -280,8 +280,8 @@
   }
 
   /* Dark Theme Overrides */
-  :host-context([data-atoll-theme="dark"]),
-  :host-context([data-bs-theme="dark"]) {
+  [data-atoll-theme="dark"] :host,
+  [data-bs-theme="dark"] :host {
     --list-item-bg-hover: var(--atoll-bg-surface-secondary, #161616);
     --list-item-bg-active: var(--atoll-bg-surface-tertiary, #1F1F1F);
     --list-item-title-color: var(--atoll-text-primary, #FFFFFF);
@@ -340,7 +340,7 @@
     },
 
     slots: {
-      checkbox (nodes, { state, signal, root }) {
+      checkbox (nodes, { state, signal, root, emit }) {
         if (nodes && nodes.length > 0) return nodes
 
         if (!state.loading && state.mode === 'selection') {
@@ -356,25 +356,19 @@
             } else {
               root.removeAttribute('checked')
             }
-            root.dispatchEvent(
-              new CustomEvent('atoll-selection-change', {
-                bubbles: true,
-                composed: true,
-                detail: [
-                  {
-                    checked: state.checked,
-                    value: state.value || state.title
-                  }
-                ]
-              })
-            )
+            emit('atoll-selection-change', [
+              {
+                checked: state.checked,
+                value: state.value || state.title
+              }
+            ])
           }, opts)
           return [cb]
         }
         return null
       },
 
-      deleteIcon (nodes, { state, signal, root }) {
+      deleteIcon (nodes, { state, signal, emit }) {
         if (nodes && nodes.length > 0) return nodes
 
         if (!state.loading && state.mode === 'edit') {
@@ -387,16 +381,10 @@
           icon.addEventListener('click', (e) => {
             e.stopPropagation()
             e.preventDefault()
-            root.dispatchEvent(
-              new CustomEvent('atoll-item-action', {
-                bubbles: true,
-                composed: true,
-                detail: {
-                  action: 'delete',
-                  value: state.value || state.title
-                }
-              })
-            )
+            emit('atoll-item-action', {
+              action: 'delete',
+              value: state.value || state.title
+            })
           }, opts)
           return [icon]
         }
@@ -449,26 +437,38 @@
     },
 
     getters: {
-      hideDescription: (state) => (!state.description ? 'true' : null),
-      hideTimestamp: (state) => (!state.timestamp ? 'true' : null),
-      isClickable: (state) => Boolean(state.clickable || state.chevron),
-      itemRole: (state) => (state.isClickable && !state.loading ? 'button' : null),
-      itemTabindex: (state) => (state.isClickable && !state.disabled && !state.loading ? '0' : '-1'),
-      hideOnLoading: (state) => (state.loading ? 'true' : null),
-      showOnLoading: (state) => (state.loading ? null : 'true'),
-      avatarPlaceholderClasses: (state) => {
+      hideDescription: ({ state }) => (!state.description ? 'true' : null),
+      hideTimestamp: ({ state }) => (!state.timestamp ? 'true' : null),
+      isClickable: ({ state }) => Boolean(state.clickable || state.chevron),
+      itemRole: ({ state }) => (state.isClickable && !state.loading ? 'button' : null),
+      itemTabindex: ({ state }) => (state.isClickable && !state.disabled && !state.loading ? '0' : '-1'),
+      hideOnLoading: ({ state }) => (state.loading ? 'true' : null),
+      showOnLoading: ({ state }) => (state.loading ? null : 'true'),
+      avatarPlaceholderClasses: ({ state }) => {
         if (state.size === 'sm') return 'atoll-list-item-avatar-placeholder-sm'
         if (state.size === 'lg') return 'atoll-list-item-avatar-placeholder-lg'
         return 'atoll-list-item-avatar-placeholder-md'
       }
     },
 
-    client: ({ state, refs, root, signal, observe }) => {
+    client: ({ state, refs, root, emit, signal }) => {
       const itemRoot = refs('itemRoot')
 
-      if (observe) {
-        observe('mode', () => {})
-        observe('checked', () => {})
+      const mutObs = new MutationObserver((mutations) => {
+        for (const mut of mutations) {
+          if (mut.attributeName === 'checked') {
+            const val = root.getAttribute('checked')
+            if (val === 'true') {
+              root.setAttribute('checked', '')
+            }
+            const cb = root.querySelector('atoll-checkbox')
+            if (cb) cb.checked = root.hasAttribute('checked')
+          }
+        }
+      })
+      mutObs.observe(root, { attributes: true, attributeFilter: ['checked'] })
+      if (signal) {
+        signal.addEventListener('abort', () => mutObs.disconnect())
       }
 
       const handleTrigger = () => {
@@ -484,92 +484,33 @@
           const cb = root.querySelector('atoll-checkbox')
           if (cb) cb.checked = state.checked
 
-          root.dispatchEvent(
-            new CustomEvent('atoll-selection-change', {
-              bubbles: true,
-              composed: true,
-              detail: [
-                {
-                  checked: state.checked,
-                  value: state.value || state.title
-                }
-              ]
-            })
-          )
+          emit('atoll-selection-change', [
+            {
+              checked: state.checked,
+              value: state.value || state.title
+            }
+          ])
           return
         }
 
-        root.dispatchEvent(
-          new CustomEvent('atoll-item-click', {
-            bubbles: true,
-            composed: true,
-            detail: {
-              title: state.title,
-              selected: state.selected
-            }
-          })
-        )
+        emit('atoll-item-click', {
+          title: state.title,
+          selected: state.selected
+        })
       }
 
       const listenerOpts = signal ? { signal } : {}
 
-      itemRoot.addEventListener('click', (e) => {
-        handleTrigger(e)
+      itemRoot.addEventListener('click', () => {
+        handleTrigger()
       }, listenerOpts)
 
       itemRoot.addEventListener('keydown', (event) => {
         if (state.isClickable && !state.loading && (event.key === 'Enter' || event.key === ' ')) {
           event.preventDefault()
-          handleTrigger(event)
+          handleTrigger()
         }
       }, listenerOpts)
-
-      Object.defineProperty(root, 'checked', {
-        get () {
-          return state.checked
-        },
-        set (val) {
-          state.checked = Boolean(val)
-          if (state.checked) {
-            root.setAttribute('checked', '')
-          } else {
-            root.removeAttribute('checked')
-          }
-          const cb = root.querySelector('atoll-checkbox')
-          if (cb) cb.checked = state.checked
-        },
-        configurable: true
-      })
-
-      Object.defineProperty(root, 'badgeVariant', {
-        get () {
-          return state.badgeVariant
-        },
-        set (val) {
-          state.badgeVariant = val || 'danger'
-        },
-        configurable: true
-      })
-
-      Object.defineProperty(root, 'mode', {
-        get () {
-          return state.mode
-        },
-        set (val) {
-          state.mode = val || 'default'
-        },
-        configurable: true
-      })
-
-      Object.defineProperty(root, 'value', {
-        get () {
-          return state.value
-        },
-        set (val) {
-          state.value = val || ''
-        },
-        configurable: true
-      })
     }
   })
 </script>
