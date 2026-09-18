@@ -109,9 +109,9 @@
        * @returns {void}
        */
       const syncVideoGrid = () => {
-        const videoGrid = getElementRef('videoGrid')
-        const pipVideo = getElementRef('pipVideo')
-        const fullScreenContainer = getElementRef('fullScreenVideoContainer')
+        const videoGrid = refs('videoGrid') || getElementRef('videoGrid')
+        const pipVideo = refs('pipVideo') || getElementRef('pipVideo')
+        const fullScreenContainer = refs('fullScreenVideoContainer') || getElementRef('fullScreenVideoContainer')
         if (!videoGrid || !fullScreenContainer) {
           return
         }

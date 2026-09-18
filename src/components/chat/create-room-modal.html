@@ -9,18 +9,18 @@
     <div class="d-flex flex-column gap-3">
 
       <!-- Creation Error Banner -->
-      <div class="alert alert-danger py-2 px-3 small mb-0" hidden="{{ hideCreationError }}" ref="creationErrorEl" data-testid="creationError">
+      <div class="alert alert-danger py-2 px-3 small mb-0" hidden="{{ hideCreationError }}" data-testid="creationError">
         {{ creationError }}
       </div>
       
       <!-- Room Name (shown conditionally for group rooms) -->
-      <div class="mb-1" ref="roomNameContainer" hidden="{{ hideGroupFields }}">
+      <div class="mb-1" hidden="{{ hideGroupFields }}">
         <label class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.05em;">Room Name</label>
         <input type="text" class="form-control" placeholder="Enter group name" ref="roomNameInput" data-testid="roomNameInput">
       </div>
 
       <!-- Room Avatar (shown conditionally for group rooms) -->
-      <div class="mb-1" ref="roomAvatarContainer" hidden="{{ hideGroupFields }}">
+      <div class="mb-1" hidden="{{ hideGroupFields }}">
         <label class="form-label fw-bold small text-uppercase" style="letter-spacing: 0.05em;">Room Avatar (Optional)</label>
         <div class="d-flex align-items-center gap-3">
           <div class="room-avatar-preview bg-body-tertiary border d-flex align-items-center justify-content-center overflow-hidden" ref="avatarPreview" style="width: 64px; height: 64px; border-radius: 12px;">
@@ -540,8 +540,8 @@
           return
         }
         const refAttr = target.getAttribute('ref') || ''
-        const isSubmit = refAttr === 'btnSubmit' || refAttr.endsWith('__btnSubmit')
-        const isCancel = refAttr === 'btnCancel' || refAttr.endsWith('__btnCancel')
+        const isSubmit = Boolean(refs('btnSubmit')) && (refAttr === 'btnSubmit' || refAttr.endsWith('__btnSubmit'))
+        const isCancel = Boolean(refs('btnCancel')) && (refAttr === 'btnCancel' || refAttr.endsWith('__btnCancel'))
 
         if (isCancel) {
           close()

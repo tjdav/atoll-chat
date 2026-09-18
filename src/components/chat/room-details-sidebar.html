@@ -6,7 +6,7 @@
         <atoll-icon name="settings" size="20"></atoll-icon>
         Room Settings
       </h5>
-      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close" ref="btnClose" data-testid="sidebar-close-btn"></button>
+      <button type="button" class="btn-close" data-bs-dismiss="offcanvas" aria-label="Close" data-testid="sidebar-close-btn"></button>
     </div>
 
     <!-- Scrollable Body Content -->
@@ -18,7 +18,7 @@
           <div class="mb-3 d-flex justify-content-center">
             <atoll-profile ref="roomAvatar" size="3xl"></atoll-profile>
           </div>
-          <h4 class="fw-bold mb-2 text-primary-emphasis" ref="roomNameText">{{ roomName }}</h4>
+          <h4 class="fw-bold mb-2 text-primary-emphasis">{{ roomName }}</h4>
           <div class="d-flex justify-content-center">
             <atoll-chip size="sm" variant="outline" class="e2e-badge">
               <span slot="leading"><atoll-icon name="lock" size="14"></atoll-icon></span>
@@ -37,7 +37,6 @@
             expanded="false" 
             data-testid="accordion-customise-btn" 
             body-testid="collapse-customise"
-            ref="headerCustomise"
             class="room-settings-card overflow-hidden"
           >
             <atoll-list>
@@ -72,7 +71,6 @@
             expanded="false" 
             data-testid="accordion-privacy-btn" 
             body-testid="collapse-privacy"
-            ref="headerPrivacy"
             class="room-settings-card overflow-hidden"
           >
             <atoll-list>
@@ -127,7 +125,6 @@
             expanded="false" 
             data-testid="accordion-members-btn" 
             body-testid="collapse-members"
-            ref="headerMembers"
             class="room-settings-card overflow-hidden"
           >
             <div class="member-list list-group list-group-flush py-2" ref="memberList" data-testid="memberListContainer">
@@ -141,7 +138,7 @@
     </div>
 
     <!-- Loading Overlay -->
-    <div class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-75 {{ loadingClass }} align-items-center justify-content-center" style="z-index: 1060;" ref="loadingOverlay">
+    <div class="position-absolute top-0 start-0 w-100 h-100 bg-body bg-opacity-75 {{ loadingClass }} align-items-center justify-content-center" style="z-index: 1060;">
       <div class="text-center">
         <div class="spinner-border text-primary mb-2" role="status"></div>
         <div class="small fw-bold">{{ loadingMessage }}</div>

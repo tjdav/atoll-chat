@@ -103,7 +103,6 @@
       currentMessageText: ''
     }),
     getters: {
-      isDisabled: ({ state }) => Boolean(state.isSending || state.isUploading || state.isCompressing),
       isInputDisabled: ({ state }) => Boolean(state.isUploading || state.isCompressing),
       isButtonDisabled: ({ state }) => Boolean(state.isSending || state.isUploading || state.isCompressing)
     },
@@ -352,15 +351,15 @@
       // Initial expand
       autoExpand()
 
-      const setupFileInput = (btnRef, inputRef) => {
-        const btn = refs(btnRef)
-        const input = refs(inputRef)
+      const setupFileInput = (btn, input) => {
 
         const clickHandler = (e) => {
           if (e) {
             e.preventDefault()
           }
-          input.click()
+          if (input) {
+            input.click()
+          }
         }
 
         if (btn) {
@@ -380,7 +379,7 @@
         }
       }
 
-      setupFileInput('attachButton', 'fileInput')
+      setupFileInput(refs('attachButton'), refs('fileInput'))
 
       micButton.addEventListener('click', () => {
         $bus.emit('ui:mic_clicked')

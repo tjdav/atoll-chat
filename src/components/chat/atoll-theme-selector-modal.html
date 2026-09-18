@@ -3,8 +3,8 @@
     <div class="atoll-theme-selector-wrapper d-flex flex-column gap-3 p-2">
       <!-- Top Section: Theme Selection & Controls -->
       <div class="theme-selection-section border-bottom pb-3" ref="themeListContainer">
-        <atoll-list divided="true" ref="themeList" class="d-flex flex-column gap-2">
-          <atoll-list-item ref="themeClassic" clickable="true" title="Classic" description="Standard layout & colors" data-theme-id="classic" data-testid="theme-classic-item">
+        <atoll-list divided="true" class="d-flex flex-column gap-2">
+          <atoll-list-item clickable="true" title="Classic" description="Standard layout & colors" data-theme-id="classic" data-testid="theme-classic-item">
             <span slot="leading">
               <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background-color: var(--atoll-pane-bg, #FFFFFF);"></span>
             </span>
@@ -12,7 +12,7 @@
               <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
             </span>
           </atoll-list-item>
-          <atoll-list-item ref="themeOcean" clickable="true" title="Ocean" description="Deep blue gradients" data-theme-id="ocean" data-testid="theme-ocean-item">
+          <atoll-list-item clickable="true" title="Ocean" description="Deep blue gradients" data-theme-id="ocean" data-testid="theme-ocean-item">
             <span slot="leading">
               <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #0f2027, #2c5364);"></span>
             </span>
@@ -20,7 +20,7 @@
               <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
             </span>
           </atoll-list-item>
-          <atoll-list-item ref="themeForest" clickable="true" title="Forest" description="Verdant emerald trees" data-theme-id="forest" data-testid="theme-forest-item">
+          <atoll-list-item clickable="true" title="Forest" description="Verdant emerald trees" data-theme-id="forest" data-testid="theme-forest-item">
             <span slot="leading">
               <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #11998e, #38ef7d);"></span>
             </span>
@@ -28,7 +28,7 @@
               <atoll-icon name="check" size="18" color="var(--atoll-brand-primary, #06C755)"></atoll-icon>
             </span>
           </atoll-list-item>
-          <atoll-list-item ref="themeSunset" clickable="true" title="Sunset" description="Warm orange skies" data-theme-id="sunset" data-testid="theme-sunset-item">
+          <atoll-list-item clickable="true" title="Sunset" description="Warm orange skies" data-theme-id="sunset" data-testid="theme-sunset-item">
             <span slot="leading">
               <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: linear-gradient(135deg, #f12711, #f5af19);"></span>
             </span>
@@ -37,7 +37,7 @@
             </span>
           </atoll-list-item>
           <!-- Custom Theme List Item -->
-          <atoll-list-item ref="themeCustom" clickable="true" title="Custom Theme" description="Upload image & generate palette" data-theme-id="custom" data-testid="theme-custom-item">
+          <atoll-list-item clickable="true" title="Custom Theme" description="Upload image & generate palette" data-theme-id="custom" data-testid="theme-custom-item">
             <span slot="leading">
               <span class="d-inline-block rounded-circle border" style="width: 24px; height: 24px; background: conic-gradient(red, yellow, lime, aqua, blue, magenta, red);"></span>
             </span>
@@ -101,7 +101,7 @@
       </div>
 
       <!-- Bottom Section: Live Preview Section -->
-      <div class="theme-preview-section p-3 d-flex flex-column align-items-stretch" ref="themePreviewContainer" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); border-radius: 8px;">
+      <div class="theme-preview-section p-3 d-flex flex-column align-items-stretch" style="background-color: var(--atoll-bg-surface-secondary, #F5F5F5); border-radius: 8px;">
         <div class="preview-chat-window atoll-chat-view d-flex flex-column gap-2 flex-grow-1 p-3 rounded-3 shadow-sm position-relative overflow-hidden" ref="previewChatWindow" style="min-height: 220px; transition: background 0.3s ease;">
           
           <!-- Responsive Background Image Layer -->
@@ -133,7 +133,7 @@
               <button type="button" class="play-pause-btn" aria-label="Play audio preview" style="border: none; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
                 <atoll-icon name="play" size="14" color="#ffffff"></atoll-icon>
               </button>
-              <div class="waveform-container" style="flex-grow: 1; height: 24px; display: flex; align-items: center; position: relative;" ref="previewWaveform">
+              <div class="waveform-container" style="flex-grow: 1; height: 24px; display: flex; align-items: center; position: relative;">
                 <!-- Fallback Waveform Rectangles -->
                 <svg viewBox="0 0 100 24" style="width: 100%; height: 100%; fill: var(--atoll-chat-waveform-inactive, rgba(6,199,85,0.2));" class="preview-waveform-svg">
                   <rect x="2" y="4" width="3" height="16" rx="1" />
@@ -198,7 +198,7 @@
           </div>
 
           <!-- Complete Chat Input Bar -->
-          <div ref="previewInputBar" class="atoll-chat-input-container mt-auto d-flex align-items-center gap-2 p-2 border-top" style="z-index: 2; margin-top: 15px !important; border-radius: 8px;">
+          <div class="atoll-chat-input-container mt-auto d-flex align-items-center gap-2 p-2 border-top" style="z-index: 2; margin-top: 15px !important; border-radius: 8px;">
             <button type="button" class="btn atoll-chat-input-btn-attach" style="width: 28px; height: 28px; padding: 0; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
               <atoll-icon name="attach" size="16"></atoll-icon>
             </button>
@@ -238,12 +238,6 @@
       const { $worker } = cryptoWorker
       const { $crypto } = utils
 
-      /**
-       * Helper to resolve template refs safely across slotted component boundaries.
-       * @param {string} name - The ref name to resolve.
-       * @returns {Element|null} The resolved DOM element.
-       */
-      const getRef = (name) => refs(name) || root.querySelector(`[ref$="${name}"], [ref="${name}"]`)
 
       let highlightedTheme = 'classic'
       let isSaving = false
@@ -345,7 +339,7 @@
         }
         isControlListenersBound = true
 
-        getRef('themeListContainer').addEventListener('click', (e) => {
+        refs('themeListContainer').addEventListener('click', (e) => {
           const item = e.target.closest('atoll-list-item')
           if (item) {
             const themeId = item.getAttribute('data-theme-id')
@@ -356,7 +350,7 @@
           }
         }, { signal })
 
-        getRef('btnApplySent').addEventListener('click', () => {
+        refs('btnApplySent').addEventListener('click', () => {
           if (!selectedSwatchColor) {
             return
           }
@@ -366,7 +360,7 @@
           updateLivePreviewStyles()
         }, { signal })
 
-        getRef('btnApplyReceived').addEventListener('click', () => {
+        refs('btnApplyReceived').addEventListener('click', () => {
           if (!selectedSwatchColor) {
             return
           }
@@ -376,7 +370,7 @@
           updateLivePreviewStyles()
         }, { signal })
 
-        getRef('btnApplyBackground').addEventListener('click', () => {
+        refs('btnApplyBackground').addEventListener('click', () => {
           if (!selectedSwatchColor) {
             return
           }
@@ -386,7 +380,7 @@
           updateLivePreviewStyles()
         }, { signal })
 
-        const imageUploader = getRef('imageUploader')
+        const imageUploader = refs('imageUploader')
         imageUploader.addEventListener('change', async (e) => {
           const file = e.target.files[0]
           if (!file) {
@@ -425,7 +419,7 @@
           reader.readAsDataURL(file)
         }, { signal })
 
-        getRef('btnGeneratePalette').addEventListener('click', () => {
+        refs('btnGeneratePalette').addEventListener('click', () => {
           if (!customBgImage || !offscreenImg) {
             return
           }
@@ -457,7 +451,7 @@
           }
         }, { signal })
 
-        getRef('btnRandomizeColors').addEventListener('click', () => {
+        refs('btnRandomizeColors').addEventListener('click', () => {
           if (!customPalette || customPalette.length < 2) {
             return
           }
@@ -476,10 +470,10 @@
           updateLivePreviewStyles()
         }, { signal })
 
-        const useBgImageToggle = getRef('useBgImageToggle')
+        const useBgImageToggle = refs('useBgImageToggle')
         useBgImageToggle.addEventListener('change', (e) => {
           customUseBgImage = e.target.checked
-          const bgSlidersContainer = getRef('bgSlidersContainer')
+          const bgSlidersContainer = refs('bgSlidersContainer')
           if (customUseBgImage) {
             bgSlidersContainer.classList.remove('d-none')
           } else {
@@ -488,23 +482,23 @@
           updateLivePreviewStyles()
         }, { signal })
 
-        const blurSlider = getRef('blurSlider')
+        const blurSlider = refs('blurSlider')
         blurSlider.addEventListener('input', (e) => {
           customBgBlur = parseInt(e.target.value)
           blurSlider.setAttribute('aria-valuenow', customBgBlur)
-          getRef('blurValueText').textContent = `${customBgBlur}px`
+          refs('blurValueText').textContent = `${customBgBlur}px`
           updateLivePreviewStyles()
         }, { signal })
 
-        const dimSlider = getRef('dimSlider')
+        const dimSlider = refs('dimSlider')
         dimSlider.addEventListener('input', (e) => {
           customBgDim = parseInt(e.target.value)
           dimSlider.setAttribute('aria-valuenow', customBgDim)
-          getRef('dimValueText').textContent = `${customBgDim}%`
+          refs('dimValueText').textContent = `${customBgDim}%`
           updateLivePreviewStyles()
         }, { signal })
 
-        getRef('themeModal').addEventListener('atoll-popup-primary', async () => {
+        refs('themeModal').addEventListener('atoll-popup-primary', async () => {
           if (isSaving) {
             return
           }
@@ -646,7 +640,7 @@
               message: `Theme updated to ${highlightedTheme}`,
               type: 'success'
             })
-            getRef('themeModal').hide()
+            refs('themeModal').hide()
           } catch (err) {
             $bus.emit('ui:show_toast', {
               message: 'Failed to save theme: ' + err.message,
@@ -757,26 +751,26 @@
 
         bindControlListeners()
 
-        getRef('swatchActionsContainer').classList.add('d-none')
-        getRef('imageUploader').value = ''
+        refs('swatchActionsContainer').classList.add('d-none')
+        refs('imageUploader').value = ''
 
         // Apply state values to UI controls
-        const blurSlider = getRef('blurSlider')
+        const blurSlider = refs('blurSlider')
         blurSlider.value = customBgBlur
         blurSlider.setAttribute('aria-valuenow', customBgBlur)
-        getRef('blurValueText').textContent = `${customBgBlur}px`
+        refs('blurValueText').textContent = `${customBgBlur}px`
 
-        const dimSlider = getRef('dimSlider')
+        const dimSlider = refs('dimSlider')
         dimSlider.value = customBgDim
         dimSlider.setAttribute('aria-valuenow', customBgDim)
-        getRef('dimValueText').textContent = `${customBgDim}%`
+        refs('dimValueText').textContent = `${customBgDim}%`
 
-        getRef('useBgImageToggle').checked = customUseBgImage
+        refs('useBgImageToggle').checked = customUseBgImage
 
-        const btnGeneratePalette = getRef('btnGeneratePalette')
-        const btnRandomizeColors = getRef('btnRandomizeColors')
-        const paletteContainer = getRef('paletteContainer')
-        const swatchList = getRef('swatchList')
+        const btnGeneratePalette = refs('btnGeneratePalette')
+        const btnRandomizeColors = refs('btnRandomizeColors')
+        const paletteContainer = refs('paletteContainer')
+        const swatchList = refs('swatchList')
 
         if (customBgImage) {
           btnGeneratePalette.removeAttribute('disabled')
@@ -790,14 +784,14 @@
         }
 
         updateThemeListHighlight()
-        getRef('themeModal').show()
+        refs('themeModal').show()
       }
 
       /**
        * Hides the theme selector modal popup.
        */
       const hideModal = () => {
-        getRef('themeModal').hide()
+        refs('themeModal').hide()
       }
 
       // Expose public methods on component host root
@@ -812,11 +806,11 @@
        */
       const updateThemeListHighlight = () => {
         const checkRefs = {
-          classic: getRef('checkClassic'),
-          ocean: getRef('checkOcean'),
-          forest: getRef('checkForest'),
-          sunset: getRef('checkSunset'),
-          custom: getRef('checkCustom')
+          classic: refs('checkClassic'),
+          ocean: refs('checkOcean'),
+          forest: refs('checkForest'),
+          sunset: refs('checkSunset'),
+          custom: refs('checkCustom')
         }
 
         themes.forEach(tName => {
@@ -830,12 +824,19 @@
           }
         })
 
-        const previewChatWindow = getRef('previewChatWindow')
+        const previewChatWindow = refs('previewChatWindow')
         previewChatWindow.setAttribute('data-theme', highlightedTheme)
 
-        const customThemeControls = getRef('customThemeControls')
-        const bgSlidersContainer = getRef('bgSlidersContainer')
-        const themeListContainer = getRef('themeListContainer')
+        const customThemeControls = refs('customThemeControls')
+        const bgSlidersContainer = refs('bgSlidersContainer')
+        const themeListContainer = refs('themeListContainer')
+        const previewBgPicture = refs('previewBgPicture')
+        const previewBgSourceLg = refs('previewBgSourceLg')
+        const previewBgSourceMd = refs('previewBgSourceMd')
+        const previewBgImg = refs('previewBgImg')
+        const previewBubbleOutgoing = refs('previewBubbleOutgoing')
+        const previewBubbleIncoming = refs('previewBubbleIncoming')
+        void previewBgPicture; void previewBgSourceLg; void previewBgSourceMd; void previewBgImg; void previewBubbleOutgoing; void previewBubbleIncoming
 
         if (highlightedTheme === 'custom') {
           customThemeControls.classList.remove('d-none')
@@ -860,10 +861,10 @@
        * Renders palette swatches as keyboard-accessible interactive buttons.
        */
       const renderPaletteSwatches = () => {
-        const paletteContainer = getRef('paletteContainer')
-        const swatchList = getRef('swatchList')
-        const swatchActionsContainer = getRef('swatchActionsContainer')
-        const selectedColorText = getRef('selectedColorText')
+        const paletteContainer = refs('paletteContainer')
+        const swatchList = refs('swatchList')
+        const swatchActionsContainer = refs('swatchActionsContainer')
+        const selectedColorText = refs('selectedColorText')
 
         if (!customPalette || customPalette.length === 0) {
           paletteContainer.classList.add('d-none')
@@ -988,11 +989,11 @@
        * Updates the live preview window styles and CSS custom properties.
        */
       const updateLivePreviewStyles = () => {
-        const previewChatWindow = getRef('previewChatWindow')
-        const previewBgPicture = getRef('previewBgPicture')
-        const previewBgSourceLg = getRef('previewBgSourceLg')
-        const previewBgSourceMd = getRef('previewBgSourceMd')
-        const previewBgImg = getRef('previewBgImg')
+        const previewChatWindow = refs('previewChatWindow')
+        const previewBgPicture = refs('previewBgPicture')
+        const previewBgSourceLg = refs('previewBgSourceLg')
+        const previewBgSourceMd = refs('previewBgSourceMd')
+        const previewBgImg = refs('previewBgImg')
 
         if (highlightedTheme) {
           previewChatWindow.setAttribute('data-theme', highlightedTheme)
@@ -1021,8 +1022,8 @@
           previewBgImg.removeAttribute('src')
         }
   
-        const previewBubbleOutgoing = getRef('previewBubbleOutgoing')
-        const previewBubbleIncoming = getRef('previewBubbleIncoming')
+        const previewBubbleOutgoing = refs('previewBubbleOutgoing')
+        const previewBubbleIncoming = refs('previewBubbleIncoming')
 
         previewBubbleOutgoing.style.backgroundColor = ''
         previewBubbleOutgoing.style.color = ''
@@ -1154,8 +1155,8 @@
             }
           }
 
-          getRef('btnGeneratePalette').removeAttribute('disabled')
-          getRef('btnRandomizeColors').removeAttribute('disabled')
+          refs('btnGeneratePalette').removeAttribute('disabled')
+          refs('btnRandomizeColors').removeAttribute('disabled')
 
           renderPaletteSwatches()
           updateLivePreviewStyles()
