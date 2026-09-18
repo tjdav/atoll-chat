@@ -264,13 +264,13 @@
     },
 
     getters: {
-      computedRole: (state) => (state.variant === 'action' ? 'dialog' : 'tooltip'),
-      isAriaHidden: (state) => (state.open ? 'false' : 'true'),
-      hideHeader: (state) => !state.title && !state.closeable,
-      hideCloseBtn: (state) => !state.closeable
+      computedRole: ({ state }) => (state.variant === 'action' ? 'dialog' : 'tooltip'),
+      isAriaHidden: ({ state }) => (state.open ? 'false' : 'true'),
+      hideHeader: ({ state }) => !state.title && !state.closeable,
+      hideCloseBtn: ({ state }) => !state.closeable
     },
 
-    client: ({ state, refs, root, observe, signal }) => {
+    client: ({ state, refs, root, observe, signal, emit }) => {
       const triggerEl = refs('trigger')
       const closeBtn = refs('closeBtn')
 
@@ -327,12 +327,7 @@
       closeBtn.addEventListener('click', (event) => {
         event.stopPropagation()
         hide()
-        root.dispatchEvent(
-          new CustomEvent('atoll-tooltip-close', {
-            bubbles: true,
-            composed: true
-          })
-        )
+        emit('atoll-tooltip-close')
       }, { signal })
 
       document.addEventListener('keydown', (event) => {

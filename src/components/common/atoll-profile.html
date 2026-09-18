@@ -202,14 +202,14 @@
   }
 
   /* Dark Mode Overrides */
-  :host-context([data-atoll-theme="dark"]),
-  :host-context([data-bs-theme="dark"]) {
+  [data-atoll-theme="dark"] :host,
+  [data-bs-theme="dark"] :host {
     --profile-cutout-border: var(--atoll-bg-surface-primary, #161616);
     --profile-placeholder-bg: var(--atoll-bg-surface-tertiary, #2A2A2A);
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-profile-icon,
-  :host-context([data-bs-theme="dark"]) .atoll-profile-icon {
+  [data-atoll-theme="dark"] :host .atoll-profile-icon,
+  [data-bs-theme="dark"] :host .atoll-profile-icon {
     background-color: var(--atoll-bg-surface-primary, #161616);
   }
 </style>
@@ -367,7 +367,7 @@
     },
 
     getters: {
-      gridClass: (state) => {
+      gridClass: ({ state }) => {
         if (state.type === 'multiparty') {
           const count = Math.min(Math.max(state.splitCount || 2, 2), 4)
           return `multiparty-${count}`
@@ -375,9 +375,9 @@
         return ''
       },
 
-      computedAlt: (state) => state.alt || state.name || 'User profile',
+      computedAlt: ({ state }) => state.alt || state.name || 'User profile',
 
-      initials: (state) => {
+      initials: ({ state }) => {
         const str = state.name || state.alt
         if (!str || str === 'User profile') {
           return ''
@@ -394,7 +394,7 @@
         return clean.slice(0, 2).toUpperCase()
       },
 
-      iconSize: (state) => {
+      iconSize: ({ state }) => {
         if (state.size === '2xs' || state.size === 'xs') {
           return '16'
         }
@@ -407,7 +407,7 @@
         return '48'
       },
 
-      overlayIconSize: (state) => {
+      overlayIconSize: ({ state }) => {
         if (state.size === '2xs' || state.size === 'xs') {
           return '10'
         }
@@ -433,7 +433,13 @@
         }
 
         if (originalNodes && originalNodes.length > 0) {
-          return Array.from(originalNodes).map(n => n.cloneNode(true))
+          return Array.from(originalNodes).map(n => {
+            const clone = n.cloneNode(true)
+            if (clone.tagName === 'IMG' && !clone.hasAttribute('alt')) {
+              clone.setAttribute('alt', state.computedAlt || '')
+            }
+            return clone
+          })
         }
 
         if (state.type === 'multiparty') {
@@ -559,16 +565,6 @@
       if (root.getAttribute('split-count')) {
         state.splitCount = parseInt(root.getAttribute('split-count'), 10)
       }
-      observe('type', (t) => {
-        if (t) {
-          state.type = t
-        }
-      })
-      observe('splitCount', (c) => {
-        if (c) {
-          state.splitCount = parseInt(c, 10)
-        }
-      })
 
       // User store synchronization
       const { $state } = globalStore || {}

@@ -343,8 +343,8 @@
   }
 
   /* Dark Mode Overrides */
-  :host-context([data-atoll-theme="dark"]),
-  :host-context([data-bs-theme="dark"]),
+  [data-atoll-theme="dark"] :host,
+  [data-bs-theme="dark"] :host,
   [data-atoll-theme="dark"] atoll-popup,
   [data-bs-theme="dark"] atoll-popup {
     --popup-bg: var(--atoll-bg-surface-primary, #1F1F1F);
@@ -355,8 +355,8 @@
     --popup-scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-popup-hero .atoll-icon-badge-green,
-  :host-context([data-bs-theme="dark"]) .atoll-popup-hero .atoll-icon-badge-green,
+  [data-atoll-theme="dark"] :host .atoll-popup-hero .atoll-icon-badge-green,
+  [data-bs-theme="dark"] :host .atoll-popup-hero .atoll-icon-badge-green,
   [data-atoll-theme="dark"] .atoll-popup-hero .atoll-icon-badge-green,
   [data-bs-theme="dark"] .atoll-popup-hero .atoll-icon-badge-green {
     background-color: rgba(6, 199, 85, 0.15);
@@ -543,11 +543,12 @@
     },
 
     getters: {
-      hideDescription: (state) => !state.description,
-      hideHeader: (state) => !state.title
+      hideDescription: ({ state }) => !state.description,
+      hideHeader: ({ state }) => !state.title,
+      isOpen: ({ state }) => Boolean(state.open)
     },
 
-    client: ({ state, refs, root, observe, signal }) => {
+    client: ({ state, refs, root, observe, signal, emit }) => {
       const dialogEl = refs('modalElement')
 
       const showModal = () => {
@@ -562,17 +563,11 @@
 
           document.body.classList.add('modal-open')
           state.open = true
-          root.dispatchEvent(
-            new CustomEvent('atoll-popup-open', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                variant: state.variant,
-                size: state.size,
-                title: state.title
-              }
-            })
-          )
+          emit('atoll-popup-open', {
+            variant: state.variant,
+            size: state.size,
+            title: state.title
+          })
         }
       }
 
@@ -588,17 +583,11 @@
           dialogEl.close()
         }
         state.open = false
-        root.dispatchEvent(
-          new CustomEvent('atoll-popup-close', {
-            bubbles: true,
-            composed: true,
-            detail: {
-              variant: state.variant,
-              size: state.size,
-              title: state.title
-            }
-          })
-        )
+        emit('atoll-popup-close', {
+          variant: state.variant,
+          size: state.size,
+          title: state.title
+        })
       }
 
       const triggerShake = () => {
@@ -647,42 +636,24 @@
         const isTertiary = refAttr === 'tertiaryBtn' || refAttr.endsWith('__tertiaryBtn')
 
         if (isPrimary) {
-          root.dispatchEvent(
-            new CustomEvent('atoll-popup-primary', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                variant: state.variant,
-                size: state.size,
-                title: state.title
-              }
-            })
-          )
+          emit('atoll-popup-primary', {
+            variant: state.variant,
+            size: state.size,
+            title: state.title
+          })
         } else if (isSecondary) {
-          root.dispatchEvent(
-            new CustomEvent('atoll-popup-secondary', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                variant: state.variant,
-                size: state.size,
-                title: state.title
-              }
-            })
-          )
+          emit('atoll-popup-secondary', {
+            variant: state.variant,
+            size: state.size,
+            title: state.title
+          })
           hideModal()
         } else if (isTertiary) {
-          root.dispatchEvent(
-            new CustomEvent('atoll-popup-tertiary', {
-              bubbles: true,
-              composed: true,
-              detail: {
-                variant: state.variant,
-                size: state.size,
-                title: state.title
-              }
-            })
-          )
+          emit('atoll-popup-tertiary', {
+            variant: state.variant,
+            size: state.size,
+            title: state.title
+          })
         }
       }, { signal })
 

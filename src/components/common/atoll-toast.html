@@ -32,7 +32,7 @@
 
   /* Placement Anchors */
   :host([placement="bottom-start"]) .atoll-toast-container,
-  :host .atoll-toast-container {
+  .atoll-toast-container {
     bottom: 24px;
     left: 24px;
     right: auto;
@@ -73,7 +73,7 @@
     :host([placement="bottom-start"]) .atoll-toast-container,
     :host([placement="bottom-center"]) .atoll-toast-container,
     :host([placement="bottom-end"]) .atoll-toast-container,
-    :host .atoll-toast-container {
+    .atoll-toast-container {
       bottom: calc(var(--atoll-bottom-nav-height, 64px) + 16px);
       left: 50%;
       right: auto;
@@ -206,8 +206,8 @@
     }
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-toast-card,
-  :host-context([data-bs-theme="dark"]) .atoll-toast-card,
+  [data-atoll-theme="dark"] :host .atoll-toast-card,
+  [data-bs-theme="dark"] :host .atoll-toast-card,
   [data-atoll-theme="dark"] .atoll-toast-card,
   [data-bs-theme="dark"] .atoll-toast-card {
     background-color: #1f1f1f;
@@ -216,15 +216,15 @@
     color: #ffffff;
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-toast-message,
-  :host-context([data-bs-theme="dark"]) .atoll-toast-message,
+  [data-atoll-theme="dark"] :host .atoll-toast-message,
+  [data-bs-theme="dark"] :host .atoll-toast-message,
   [data-atoll-theme="dark"] .atoll-toast-message,
   [data-bs-theme="dark"] .atoll-toast-message {
     color: #ffffff;
   }
 
-  :host-context([data-atoll-theme="dark"]) .atoll-toast-progress-wrapper,
-  :host-context([data-bs-theme="dark"]) .atoll-toast-progress-wrapper,
+  [data-atoll-theme="dark"] :host .atoll-toast-progress-wrapper,
+  [data-bs-theme="dark"] :host .atoll-toast-progress-wrapper,
   [data-atoll-theme="dark"] .atoll-toast-progress-wrapper,
   [data-bs-theme="dark"] .atoll-toast-progress-wrapper {
     background-color: rgba(255, 255, 255, 0.1);
@@ -264,7 +264,7 @@
     },
 
     getters: {
-      hasActiveToasts: (state) => Boolean(state.toasts && state.toasts.length > 0)
+      hasActiveToasts: ({ state }) => Boolean(state.toasts && state.toasts.length > 0)
     },
 
     client: ({ state, refs, root, signal, eventBus }) => {
