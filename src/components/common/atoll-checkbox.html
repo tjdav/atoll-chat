@@ -93,10 +93,10 @@
   }
 
   /* Dark Mode Overrides */
-  :host-context([data-atoll-theme="dark"]),
-  :host-context([data-bs-theme="dark"]),
-  [data-atoll-theme="dark"] atoll-checkbox,
-  [data-bs-theme="dark"] atoll-checkbox {
+  [data-atoll-theme="dark"] :host,
+  [data-bs-theme="dark"] :host,
+  [data-atoll-theme="dark"] .atoll-checkbox,
+  [data-bs-theme="dark"] .atoll-checkbox {
     --checkbox-border: var(--atoll-border-subtle, var(--atoll-gray-700, #344054));
   }
 </style>
@@ -105,6 +105,7 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    formAssociated: true,
     attributes: {
       checked: Boolean,
       disabled: Boolean,
@@ -128,15 +129,15 @@
     },
 
     getters: {
-      isChecked: (state) => Boolean(state.checked),
-      isDisabled: (state) => Boolean(state.disabled),
-      iconSize: (state) => state.size || 22,
-      iconName: (state) => state.name || 'check',
-      checkboxAriaLabel: (state) => state.label || 'Toggle selection',
-      iconColor: (state) => (state.checked ? '#FFFFFF' : 'transparent')
+      isChecked: ({ state }) => Boolean(state.checked),
+      isDisabled: ({ state }) => Boolean(state.disabled),
+      iconSize: ({ state }) => state.size || 22,
+      iconName: ({ state }) => state.name || 'check',
+      checkboxAriaLabel: ({ state }) => state.label || 'Toggle selection',
+      iconColor: ({ state }) => (state.checked ? '#FFFFFF' : 'transparent')
     },
 
-    client: ({ state, refs, root, observe, signal }) => {
+    client: ({ state, refs, root, observe, emit, setFormValue, onFormReset, signal }) => {
       const checkboxRoot = refs('checkboxRoot')
       const nativeInput = refs('nativeInput')
 
@@ -144,17 +145,23 @@
       root.setAttribute('aria-checked', state.checked ? 'true' : 'false')
       root.setAttribute('tabindex', state.disabled ? '-1' : '0')
       root.setAttribute('aria-label', state.label || 'Toggle selection')
-      if (state.checked) {
-        root.setAttribute('checked', '')
-      } else {
-        root.removeAttribute('checked')
-      }
       if (state.disabled) {
         root.setAttribute('aria-disabled', 'true')
-        root.setAttribute('disabled', '')
       } else {
         root.removeAttribute('aria-disabled')
-        root.removeAttribute('disabled')
+      }
+
+      if (setFormValue) {
+        setFormValue(state.checked ? (state.value || 'on') : null)
+      }
+
+      if (onFormReset) {
+        onFormReset(() => {
+          state.checked = false
+          if (setFormValue) setFormValue(null)
+          if (nativeInput) nativeInput.checked = false
+          root.setAttribute('aria-checked', 'false')
+        })
       }
 
       const toggle = () => {
@@ -165,26 +172,17 @@
         const nextChecked = !Boolean(state.checked)
         state.checked = nextChecked
         root.setAttribute('aria-checked', nextChecked ? 'true' : 'false')
-        if (nextChecked) {
-          root.setAttribute('checked', '')
-        } else {
-          root.removeAttribute('checked')
-        }
 
         if (nativeInput) {
           nativeInput.checked = nextChecked
         }
 
-        root.dispatchEvent(new CustomEvent('change', {
-          bubbles: true,
-          composed: true,
-          detail: { checked: nextChecked }
-        }))
-        root.dispatchEvent(new CustomEvent('input', {
-          bubbles: true,
-          composed: true,
-          detail: { checked: nextChecked }
-        }))
+        if (setFormValue) {
+          setFormValue(nextChecked ? (state.value || 'on') : null)
+        }
+
+        emit('change', { checked: nextChecked })
+        emit('input', { checked: nextChecked })
       }
 
       root.addEventListener('click', (e) => {
@@ -210,57 +208,16 @@
         }
       }, { signal })
 
-      Object.defineProperty(root, 'checked', {
-        get () {
-          return Boolean(state.checked)
-        },
-        set (val) {
-          const isChecked = Boolean(val)
-          state.checked = isChecked
-          root.setAttribute('aria-checked', isChecked ? 'true' : 'false')
-          if (isChecked) {
-            root.setAttribute('checked', '')
-          } else {
-            root.removeAttribute('checked')
-          }
-          if (nativeInput) {
-            nativeInput.checked = isChecked
-          }
-        },
-        configurable: true
-      })
-
-      Object.defineProperty(root, 'disabled', {
-        get () {
-          return Boolean(state.disabled)
-        },
-        set (val) {
-          const isDisabled = Boolean(val)
-          state.disabled = isDisabled
-          root.setAttribute('tabindex', isDisabled ? '-1' : '0')
-          if (isDisabled) {
-            root.setAttribute('aria-disabled', 'true')
-            root.setAttribute('disabled', '')
-          } else {
-            root.removeAttribute('aria-disabled')
-            root.removeAttribute('disabled')
-          }
-        },
-        configurable: true
-      })
-
       root.toggle = toggle
 
       observe('checked', (val) => {
         const isChecked = val === 'true' || val === true || val === ''
         root.setAttribute('aria-checked', isChecked ? 'true' : 'false')
-        if (isChecked) {
-          root.setAttribute('checked', '')
-        } else {
-          root.removeAttribute('checked')
-        }
         if (nativeInput) {
           nativeInput.checked = isChecked
+        }
+        if (setFormValue) {
+          setFormValue(isChecked ? (state.value || 'on') : null)
         }
       })
 
@@ -269,10 +226,8 @@
         root.setAttribute('tabindex', isDisabled ? '-1' : '0')
         if (isDisabled) {
           root.setAttribute('aria-disabled', 'true')
-          root.setAttribute('disabled', '')
         } else {
           root.removeAttribute('aria-disabled')
-          root.removeAttribute('disabled')
         }
       })
 

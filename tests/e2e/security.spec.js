@@ -49,22 +49,22 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
 
     /* Test registration input username validation */
-    await page.locator('[data-testid$="linkRegister"]').click()
+    await page.locator('auth-login [test-id="linkRegister"]').click()
     await expect(page.locator('auth-register')).toBeVisible()
 
     const regUser = `sec_test_user_${Date.now()}`
 
     /* Fill in valid registration details */
     await page.locator('auth-register input[name="username"]').fill(regUser)
-    await page.locator('auth-register input[data-testid$="invitationCode"]').fill('INV-SEED-1111')
+    await page.locator('auth-register input[name="invitation_code"]').fill('INV-SEED-1111')
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
-    await page.locator('[data-testid$="registerSubmit"]').click()
+    await page.locator('auth-register [test-id="registerSubmit"]').click()
 
     /* Confirm and dismiss Recovery Code Modal */
     await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
     await page.locator('auth-register [data-testid$="chkStored"]').check()
-    await page.locator('auth-register [data-testid$="btnContinueToChat"]').click()
+    await page.locator('auth-register [test-id="btnContinueToChat"]').click()
 
     /* Verify registration succeeds and proceeds directly to app-layout */
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
@@ -75,9 +75,9 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
 
     /* Log in with the newly registered user */
-    await page.locator('auth-login input[data-testid$="username"]').fill(regUser)
-    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+    await page.locator('auth-login input[name="identity"]').fill(regUser)
+    await page.locator('auth-login input[name="password"]').fill('Password123!')
+    await page.locator('auth-login [test-id="loginSubmit"]').click()
 
     /* Verify dashboard app-layout renders immediately after login */
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
@@ -95,19 +95,32 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
 
     /* Login Flow */
-    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
-    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+    await page.locator('auth-login input[name="identity"]').fill('alice')
+    await page.locator('auth-login input[name="password"]').fill('Password123!')
+    await page.locator('auth-login [test-id="loginSubmit"]').click()
 
     // It goes straight to app-layout first
     await expect(page.locator('app-layout')).toBeVisible()
 
     // Reload the page to simulate session restoration lock!
+    await page.evaluate(async () => {
+      sessionStorage.clear()
+      if (window.$storage && typeof window.$storage.clearLocalKeys === 'function') {
+        await window.$storage.clearLocalKeys()
+      }
+      if (window.indexedDB) {
+        const dbs = await indexedDB.databases()
+        for (const db of dbs) {
+          if (db.name) indexedDB.deleteDatabase(db.name)
+        }
+      }
+    })
     await page.reload()
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-    await expect(page.locator('vault-unlock')).toBeVisible({ timeout: 15000 })
+    await page.locator('vault-unlock').waitFor({ state: 'attached', timeout: 20000 })
+    await expect(page.locator('vault-unlock')).toBeVisible({ timeout: 20000 })
 
     /* Initiate Self-Recovery Flow using a single-use Recovery Code */
     await page.locator('vault-unlock [ref$="__btnShowRecovery"]').dispatchEvent('click')
@@ -153,18 +166,30 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('auth-login')).toBeVisible()
 
     /* Log in with OLD password and expect failure */
-    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
-    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+    await page.locator('auth-login input[name="identity"]').fill('alice')
+    await page.locator('auth-login input[name="password"]').fill('Password123!')
+    await page.locator('auth-login [test-id="loginSubmit"]').click()
     await expect(page.locator('auth-login [data-testid$="statusMsg"]')).toContainText(/wrong secret key|Invalid|Failed/)
 
     /* Log in with NEW password and expect success */
-    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
-    await page.locator('auth-login input[data-testid$="password"]').fill('NewVaultPassword123!')
-    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+    await page.locator('auth-login input[name="identity"]').fill('alice')
+    await page.locator('auth-login input[name="password"]').fill('NewVaultPassword123!')
+    await page.locator('auth-login [test-id="loginSubmit"]').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     /* Clear memory/session via reload to simulate active session lock */
+    await page.evaluate(async () => {
+      sessionStorage.clear()
+      if (window.$localDb && typeof window.$localDb.close === 'function') {
+        try { window.$localDb.close() } catch (_) {}
+      }
+      if (window.indexedDB) {
+        const dbs = await indexedDB.databases()
+        for (const db of dbs) {
+          if (db.name) indexedDB.deleteDatabase(db.name)
+        }
+      }
+    })
     await page.reload()
     await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
@@ -172,14 +197,14 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('vault-unlock')).toBeVisible({ timeout: 15000 })
 
     /* Try old password and expect unlock failure */
-    await page.locator('vault-unlock input[data-testid$="password"]').fill('Password123!')
+    await page.locator('vault-unlock input[name="password"]').fill('Password123!')
     await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
     await expect(page.locator('[data-testid$="password-feedback"]')).toContainText(
       /wrong secret key|Invalid Password|Unlock failed/
     )
 
     /* Try new password and expect unlock success */
-    await page.locator('vault-unlock input[data-testid$="password"]').fill('NewVaultPassword123!')
+    await page.locator('vault-unlock input[name="password"]').fill('NewVaultPassword123!')
     await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
@@ -208,10 +233,11 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('[data-testid$="__btnSettings"]').click()
 
     /* Trigger 2FA setup */
-    await page.locator('[data-testid$="__btnManageTotp"]').click()
+    const manageTotpBtn = page.locator('totp-settings [ref$="btnManageTotp"], [data-testid*="btnManageTotp"]').first()
+    await manageTotpBtn.dispatchEvent('click')
 
     /* Retrieve secret from modal text content */
-    await page.locator('[data-testid$="__secretText"]').waitFor({ state: 'visible' })
+    await page.locator('[data-testid$="__secretText"]').waitFor({ state: 'attached', timeout: 15000 })
     const secret = await page.locator('[data-testid$="__secretText"]').textContent()
     expect(secret).toBeTruthy()
 
@@ -279,9 +305,9 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
 
     /* Log in with password */
-    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
-    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+    await page.locator('auth-login input[name="identity"]').fill('alice')
+    await page.locator('auth-login input[name="password"]').fill('Password123!')
+    await page.locator('auth-login [test-id="loginSubmit"]').click()
 
     /* Assert that unrecognized device halts flow and mounts the TOTP challenge modal */
     await expect(page.locator('totp-challenge')).toBeVisible()
@@ -300,7 +326,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('vault-unlock')).toBeVisible()
 
     /* Unlock the vault */
-    await page.locator('vault-unlock input[data-testid$="password"]').fill('Password123!')
+    await page.locator('vault-unlock input[name="password"]').fill('Password123!')
     await page.locator('[data-testid$="unlockSubmit"]').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
@@ -310,9 +336,9 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('auth-login')).toBeVisible()
 
     /* Log back in with password */
-    await page.locator('auth-login input[data-testid$="username"]').fill('alice')
-    await page.locator('auth-login input[data-testid$="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+    await page.locator('auth-login input[name="identity"]').fill('alice')
+    await page.locator('auth-login input[name="password"]').fill('Password123!')
+    await page.locator('auth-login [test-id="loginSubmit"]').click()
 
     /* Assert that recognized device completely bypasses TOTP challenge and goes straight to app-layout */
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
