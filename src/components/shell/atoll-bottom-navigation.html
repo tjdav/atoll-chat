@@ -95,11 +95,32 @@
 <style>
   :host {
     display: block;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
     width: 100%;
+    z-index: 1030;
+  }
+
+  :host([hidden]),
+  :host(:has(.atoll-bottom-navigation[hidden])) {
+    display: none !important;
+  }
+
+  @media (min-width: 768px) {
+    :host {
+      display: none !important;
+    }
+
+    .atoll-bottom-navigation {
+      display: none !important;
+    }
   }
 
   .atoll-bottom-navigation {
-    height: 56px;
+    height: var(--atoll-total-bottom-bar-height, 56px);
+    padding-bottom: var(--atoll-safe-area-bottom, 0px);
     background-color: var(--atoll-body-bg, #ffffff);
     z-index: 1030;
   }
@@ -161,8 +182,8 @@
       isFilesActiveClass: ({ state }) => (['documents', 'links'].includes(state.currentAppView) ? 'active' : ''),
       isSettingsActiveClass: ({ state }) => (state.currentAppView === 'settings' ? 'active' : ''),
       isHidden: ({ state }) => {
-        // Automatically hide the entire bottom navigation bar when a chat conversation
-        // thread is actively open to maximize typing and message scroll area.
+        /* Automatically hide the entire bottom navigation bar when a chat conversation
+           thread is actively open to maximize typing and message scroll area. */
         return !state.isAuthenticated || !state.isVaultUnlocked || (!!state.activeSelectionId && state.activeSelectionType === 'chats')
       }
     },
@@ -239,7 +260,7 @@
             }
           }
           state.totalUnread = unreadCount
-        } catch (err) {
+        } catch (_err) {
           state.totalUnread = 0
         }
       }
@@ -303,16 +324,6 @@
       let mediaDropdown = btnMedia ? new Dropdown(btnMedia) : null
       let filesDropdown = btnFiles ? new Dropdown(btnFiles) : null
       let profileDropdown = btnProfile ? new Dropdown(btnProfile) : null
-
-      const navigationViews = {
-        btnChats: 'chats',
-        btnMusic: 'music',
-        btnPictures: 'pictures',
-        btnVideos: 'videos',
-        btnDocuments: 'documents',
-        btnLinks: 'links',
-        btnSettings: 'settings'
-      }
 
       function triggerViewChange (viewName) {
         if ($state.currentAppView === viewName) {

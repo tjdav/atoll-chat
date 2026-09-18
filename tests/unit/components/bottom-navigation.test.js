@@ -64,16 +64,16 @@ test('Atoll Bottom Navigation Component Tests', async (t) => {
 
     assert.ok(bottomNav, 'Component should instantiate successfully')
 
-    const chatsBtn = bottomNav.querySelector('[data-testid="bottomBtnChats"]')
+    const chatsBtn = bottomNav.querySelector('[ref$="__btnChats"], [data-testid$="bottomBtnChats"]')
     assert.ok(chatsBtn, 'Chats direct tab should exist')
 
-    const mediaBtn = bottomNav.querySelector('[data-testid="bottomBtnMedia"]')
+    const mediaBtn = bottomNav.querySelector('[ref$="__btnMedia"], [data-testid$="bottomBtnMedia"]')
     assert.ok(mediaBtn, 'Media tab trigger should exist')
 
-    const filesBtn = bottomNav.querySelector('[data-testid="bottomBtnFiles"]')
+    const filesBtn = bottomNav.querySelector('[ref$="__btnFiles"], [data-testid$="bottomBtnFiles"]')
     assert.ok(filesBtn, 'Files tab trigger should exist')
 
-    const profileBtn = bottomNav.querySelector('[data-testid="bottomBtnProfile"]')
+    const profileBtn = bottomNav.querySelector('[ref$="__btnProfile"], [data-testid$="bottomBtnProfile"]')
     assert.ok(profileBtn, 'Profile tab trigger should exist')
 
     bottomNav.remove()
@@ -87,7 +87,7 @@ test('Atoll Bottom Navigation Component Tests', async (t) => {
     // Wait for initial render cycle
     await new Promise(resolve => setTimeout(resolve, 50))
 
-    const chatsBtn = bottomNav.querySelector('[data-testid="bottomBtnChats"]')
+    const chatsBtn = bottomNav.querySelector('[ref$="__btnChats"], [data-testid$="bottomBtnChats"]')
     assert.ok(chatsBtn.classList.contains('active'), 'Chats tab should have active class by default')
 
     // Simulate switching views
@@ -96,7 +96,7 @@ test('Atoll Bottom Navigation Component Tests', async (t) => {
 
     assert.ok(!chatsBtn.classList.contains('active'), 'Chats tab should lose active class when currentAppView is pictures')
 
-    const mediaBtn = bottomNav.querySelector('[data-testid="bottomBtnMedia"]')
+    const mediaBtn = bottomNav.querySelector('[ref$="__btnMedia"], [data-testid$="bottomBtnMedia"]')
     assert.ok(mediaBtn.classList.contains('active'), 'Media tab should acquire active class when currentAppView is pictures')
 
     bottomNav.remove()
