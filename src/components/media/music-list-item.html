@@ -39,8 +39,8 @@
       isActive: String
     },
     getters: {
-      isSelected: (state) => (state.isActive === 'true' || state.isActive === true),
-      descriptionText: (state) => `${state.roomName} • ${state.timestamp}`
+      isSelected: ({ state }) => (state.isActive === 'true' || state.isActive === true),
+      descriptionText: ({ state }) => `${state.roomName} • ${state.timestamp}`
     },
     client: ({ refs, state, eventBus, signal }) => {
       const { $bus } = eventBus

@@ -94,8 +94,8 @@
       fileNonce: String
     },
     getters: {
-      imageDisplayClass: (state) => (state.title ? '' : 'd-none'),
-      urlHref: (state) => state.url
+      imageDisplayClass: ({ state }) => (state.title ? '' : 'd-none'),
+      urlHref: ({ state }) => state.url
     },
     client: ({ state, refs, storage, globalStore, eventBus, utils, signal, observe }) => {
       const { $storage } = storage

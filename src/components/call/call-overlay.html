@@ -48,8 +48,8 @@
       callId: null
     }),
     getters: {
-      activeClass: (state) => (['connected', 'active', 'outgoing'].includes(state.callStatus) && !state.isPipMode ? 'd-block' : 'd-none'),
-      pipClass: (state) => (['connected', 'active'].includes(state.callStatus) && state.isPipMode ? 'd-block' : 'd-none')
+      activeClass: ({ state }) => (['connected', 'active', 'outgoing'].includes(state.callStatus) && !state.isPipMode ? 'd-block' : 'd-none'),
+      pipClass: ({ state }) => (['connected', 'active'].includes(state.callStatus) && state.isPipMode ? 'd-block' : 'd-none')
     },
     client: async ({ state, globalStore, eventBus, webrtc: webrtcPluginContext, storage, refs, signal, bootstrap }) => {
       const { $state } = globalStore

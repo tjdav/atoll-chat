@@ -22,8 +22,8 @@
       incomingMediaTypes: ['audio', 'video']
     }),
     getters: {
-      incomingClass: (state) => (state.callStatus === 'incoming' ? 'd-flex' : 'd-none'),
-      incomingCallTypeText: (state) => {
+      incomingClass: ({ state }) => (state.callStatus === 'incoming' ? 'd-flex' : 'd-none'),
+      incomingCallTypeText: ({ state }) => {
         const hasVideo = state.incomingMediaTypes && state.incomingMediaTypes.includes('video')
         return hasVideo ? 'Incoming Video Call...' : 'Incoming Audio Call...'
       }

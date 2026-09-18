@@ -52,7 +52,7 @@
       mediaTypes: String
     },
     getters: {
-      iconClass: (state) => {
+      iconClass: ({ state }) => {
         switch (state.type) {
           case 'call_offer': return 'bi-telephone-plus-fill text-success'
           case 'call_answer': return 'bi-telephone-forward-fill text-primary'
@@ -60,7 +60,7 @@
           default: return 'bi-info-circle-fill'
         }
       },
-      message: (state) => {
+      message: ({ state }) => {
         switch (state.type) {
           case 'call_offer': {
             const hasVideo = !state.mediaTypes || state.mediaTypes.split(',').includes('video')

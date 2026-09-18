@@ -26,8 +26,8 @@
       }
     },
     getters: {
-      displayRoomName: (state) => state.roomName || '',
-      countBadgeText: (state) => (state.itemCount && Number(state.itemCount) > 0 ? String(state.itemCount) : '')
+      displayRoomName: ({ state }) => state.roomName || '',
+      countBadgeText: ({ state }) => (state.itemCount && Number(state.itemCount) > 0 ? String(state.itemCount) : '')
     },
     client: async ({ refs, state, storage, pocketbase, globalStore, eventBus, utils, signal, observe }) => {
       const { createRoomAvatar } = await import('../../utils/room-avatar.js')

@@ -105,13 +105,13 @@
       activeSelectionType: null
     }),
     getters: {
-      isChatsActiveClass: (state) => (state.currentAppView === 'chats' ? 'active' : ''),
-      isMediaActive: (state) => ['music', 'pictures', 'videos'].includes(state.currentAppView),
-      isMediaActiveClass: (state) => (['music', 'pictures', 'videos'].includes(state.currentAppView) ? 'active' : ''),
-      isFilesActive: (state) => ['documents', 'links'].includes(state.currentAppView),
-      isFilesActiveClass: (state) => (['documents', 'links'].includes(state.currentAppView) ? 'active' : ''),
-      isSettingsActiveClass: (state) => (state.currentAppView === 'settings' ? 'active' : ''),
-      isHidden: (state) => {
+      isChatsActiveClass: ({ state }) => (state.currentAppView === 'chats' ? 'active' : ''),
+      isMediaActive: ({ state }) => ['music', 'pictures', 'videos'].includes(state.currentAppView),
+      isMediaActiveClass: ({ state }) => (['music', 'pictures', 'videos'].includes(state.currentAppView) ? 'active' : ''),
+      isFilesActive: ({ state }) => ['documents', 'links'].includes(state.currentAppView),
+      isFilesActiveClass: ({ state }) => (['documents', 'links'].includes(state.currentAppView) ? 'active' : ''),
+      isSettingsActiveClass: ({ state }) => (state.currentAppView === 'settings' ? 'active' : ''),
+      isHidden: ({ state }) => {
         // Automatically hide the entire bottom navigation bar when a chat conversation
         // thread is actively open to maximize typing and message scroll area.
         return !state.isAuthenticated || !state.isVaultUnlocked || (!!state.activeSelectionId && state.activeSelectionType === 'chats')

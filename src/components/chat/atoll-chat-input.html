@@ -190,10 +190,10 @@
       ignoredUrls: {}
     }),
     getters: {
-      attachmentPreviewClass: (state) => (state.hasFile ? 'd-block' : 'd-none'),
-      linkPreviewClass: (state) => (state.pendingLinkData.length > 0 ? 'd-block' : 'd-none'),
-      inputGroupClass: (state) => (state.isRecording ? 'd-none' : 'd-block'),
-      recordingUIClass: (state) => (state.isRecording ? 'd-flex w-100' : 'd-none')
+      attachmentPreviewClass: ({ state }) => (state.hasFile ? 'd-block' : 'd-none'),
+      linkPreviewClass: ({ state }) => (state.pendingLinkData.length > 0 ? 'd-block' : 'd-none'),
+      inputGroupClass: ({ state }) => (state.isRecording ? 'd-none' : 'd-block'),
+      recordingUIClass: ({ state }) => (state.isRecording ? 'd-flex w-100' : 'd-none')
     },
     client: ({ root, state, globalStore, storage, eventBus, refs, signal, cryptoWorker, pocketbase, utils, media, config }) => {
       if (root) {

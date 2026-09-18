@@ -39,7 +39,7 @@
       isReconnecting: false
     }),
     getters: {
-      pipClass: (state) => (state.isPipMode ? 'is-pip' : '')
+      pipClass: ({ state }) => (state.isPipMode ? 'is-pip' : '')
     },
     client: ({ refs, state, eventBus, signal, globalStore, storage, pocketbase }) => {
       const { $bus } = eventBus

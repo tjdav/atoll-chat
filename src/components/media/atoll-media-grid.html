@@ -23,8 +23,8 @@
       }
     },
     getters: {
-      gridClass: (state) => `atoll-media-grid-${state.columns || '3'}`,
-      gapClass: (state) => `atoll-media-gap-${state.gap || 'xs'}`
+      gridClass: ({ state }) => `atoll-media-grid-${state.columns || '3'}`,
+      gapClass: ({ state }) => `atoll-media-gap-${state.gap || 'xs'}`
     }
   })
 </script>

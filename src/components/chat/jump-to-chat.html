@@ -53,11 +53,11 @@
       }
     },
     getters: {
-      buttonVariant: (state) => state.variant || 'primary',
-      buttonSize: (state) => state.size || 'md',
-      buttonIcon: (state) => state.icon || 'chat',
-      buttonLabel: (state) => state.label || 'Jump to Chat',
-      isIconOnly: (state) => Boolean(state.iconOnly || (state.responsive && state.isMobile))
+      buttonVariant: ({ state }) => state.variant || 'primary',
+      buttonSize: ({ state }) => state.size || 'md',
+      buttonIcon: ({ state }) => state.icon || 'chat',
+      buttonLabel: ({ state }) => state.label || 'Jump to Chat',
+      isIconOnly: ({ state }) => Boolean(state.iconOnly || (state.responsive && state.isMobile))
     },
     server: () => ({
       isMobile: false

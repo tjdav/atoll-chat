@@ -143,14 +143,14 @@
       toastMessage: ''
     }),
     getters: {
-      isDetailView: (state) => {
+      isDetailView: ({ state }) => {
         if (state.currentAppView === 'settings') {
           return window.innerWidth >= 768 || !!state.activeSelectionId
         }
         return !!(state.activeSelectionId && ['chats', 'pictures', 'videos', 'music', 'documents', 'links'].includes(state.activeSelectionType))
       },
-      layoutClasses: (state) => (state.isDetailView ? 'chat-active' : ''),
-      hideDetailHost: (state) => !state.isDetailView
+      layoutClasses: ({ state }) => (state.isDetailView ? 'chat-active' : ''),
+      hideDetailHost: ({ state }) => !state.isDetailView
     },
     client: ({ state, globalStore, eventBus, bootstrap, refs, root }) => {
       const { $state } = globalStore

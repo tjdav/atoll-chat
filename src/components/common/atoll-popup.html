@@ -544,8 +544,7 @@
 
     getters: {
       hideDescription: ({ state }) => !state.description,
-      hideHeader: ({ state }) => !state.title,
-      isOpen: ({ state }) => Boolean(state.open)
+      hideHeader: ({ state }) => !state.title
     },
 
     client: ({ state, refs, root, observe, signal, emit }) => {

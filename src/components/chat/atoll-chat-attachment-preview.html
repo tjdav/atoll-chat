@@ -418,13 +418,13 @@
       progress: Number
     },
     getters: {
-      effectiveFileName: (state) => state.fileName || state.filename || '',
-      effectiveUploadStatus: (state) => state.uploadStatus || state['upload-status'] || '',
-      effectiveIsVideo: (state) => Boolean(state.isVideo || state['is-video']),
-      effectiveThumbnailUrl: (state) => state.thumbnailUrl || state['thumbnail-url'] || '',
-      effectiveIsCustom: (state) => Boolean(state.isCustom || state['is-custom']),
-      effectiveIsCompressing: (state) => Boolean(state.isCompressing || state['is-compressing']),
-      effectiveIsUploading: (state) => Boolean(state.isUploading || state['is-uploading'])
+      effectiveFileName: ({ state }) => state.fileName || state.filename || '',
+      effectiveUploadStatus: ({ state }) => state.uploadStatus || state['upload-status'] || '',
+      effectiveIsVideo: ({ state }) => Boolean(state.isVideo || state['is-video']),
+      effectiveThumbnailUrl: ({ state }) => state.thumbnailUrl || state['thumbnail-url'] || '',
+      effectiveIsCustom: ({ state }) => Boolean(state.isCustom || state['is-custom']),
+      effectiveIsCompressing: ({ state }) => Boolean(state.isCompressing || state['is-compressing']),
+      effectiveIsUploading: ({ state }) => Boolean(state.isUploading || state['is-uploading'])
     },
     client: ({ root, refs, state, eventBus, signal, observe }) => {
       const { $bus } = eventBus

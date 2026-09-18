@@ -73,11 +73,11 @@
       }
     },
     getters: {
-      bubbleClass: (state) => {
+      bubbleClass: ({ state }) => {
         return state.isSent ? 'atoll-chat-bubble-sent' : 'atoll-chat-bubble-received'
       },
-      glowClass: (state) => (state.status === 'pending' ? 'placeholder-glow' : ''),
-      placeholderClass: (state) => (state.status === 'pending' ? 'placeholder col-12' : '')
+      glowClass: ({ state }) => (state.status === 'pending' ? 'placeholder-glow' : ''),
+      placeholderClass: ({ state }) => (state.status === 'pending' ? 'placeholder col-12' : '')
     },
     client: ({ refs, state, eventBus, observe, markdown }) => {
       const markdownBody = refs('markdownBody')

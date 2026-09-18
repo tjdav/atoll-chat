@@ -139,7 +139,7 @@
     },
 
     getters: {
-      unreadBadgeCount: (state) => {
+      unreadBadgeCount: ({ state }) => {
         const isUnread = state.isUnread === 'true' || state.isUnread === true || state.isUnread === ''
   
         return isUnread ? String(state.unreadCount || 1) : ''

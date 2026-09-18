@@ -103,9 +103,9 @@
       currentMessageText: ''
     }),
     getters: {
-      isDisabled: (state) => Boolean(state.isSending || state.isUploading || state.isCompressing),
-      isInputDisabled: (state) => Boolean(state.isUploading || state.isCompressing),
-      isButtonDisabled: (state) => Boolean(state.isSending || state.isUploading || state.isCompressing)
+      isDisabled: ({ state }) => Boolean(state.isSending || state.isUploading || state.isCompressing),
+      isInputDisabled: ({ state }) => Boolean(state.isUploading || state.isCompressing),
+      isButtonDisabled: ({ state }) => Boolean(state.isSending || state.isUploading || state.isCompressing)
     },
     client: ({ refs, state, globalStore, eventBus, signal, utils, storage, pocketbase }) => {
       const { $state } = globalStore

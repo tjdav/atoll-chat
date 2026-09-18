@@ -42,7 +42,7 @@
       timestamp: String
     },
     getters: {
-      formattedDate: (state) => {
+      formattedDate: ({ state }) => {
         if (!state.timestamp) {
           return ''
         }

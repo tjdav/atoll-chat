@@ -57,14 +57,14 @@
       hasCustomCallSound: false
     }),
     getters: {
-      messageSoundsChecked: (state) => (state.messageSoundsEnabled ? 'checked' : ''),
-      callSoundsChecked: (state) => (state.callSoundsEnabled ? 'checked' : ''),
-      messageSoundsExpanded: (state) => (state.messageSoundsEnabled ? 'true' : 'false'),
-      callSoundsExpanded: (state) => (state.callSoundsEnabled ? 'true' : 'false'),
-      messageSoundControlsClass: (state) => (state.messageSoundsEnabled ? 'd-block' : 'd-none'),
-      callSoundControlsClass: (state) => (state.callSoundsEnabled ? 'd-block' : 'd-none'),
-      resetMessageSoundClass: (state) => (state.hasCustomMessageSound ? 'd-inline-block' : 'd-none'),
-      resetCallSoundClass: (state) => (state.hasCustomCallSound ? 'd-inline-block' : 'd-none')
+      messageSoundsChecked: ({ state }) => (state.messageSoundsEnabled ? 'checked' : ''),
+      callSoundsChecked: ({ state }) => (state.callSoundsEnabled ? 'checked' : ''),
+      messageSoundsExpanded: ({ state }) => (state.messageSoundsEnabled ? 'true' : 'false'),
+      callSoundsExpanded: ({ state }) => (state.callSoundsEnabled ? 'true' : 'false'),
+      messageSoundControlsClass: ({ state }) => (state.messageSoundsEnabled ? 'd-block' : 'd-none'),
+      callSoundControlsClass: ({ state }) => (state.callSoundsEnabled ? 'd-block' : 'd-none'),
+      resetMessageSoundClass: ({ state }) => (state.hasCustomMessageSound ? 'd-inline-block' : 'd-none'),
+      resetCallSoundClass: ({ state }) => (state.hasCustomCallSound ? 'd-inline-block' : 'd-none')
     },
     client: async ({ refs, state, globalStore, storage }) => {
       const { $state } = globalStore

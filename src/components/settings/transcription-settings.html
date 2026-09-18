@@ -50,12 +50,12 @@
       selectedModel: 'onnx-community/moonshine-tiny-ONNX'
     }),
     getters: {
-      isTinyChecked: (state) => (state.selectedModel === 'onnx-community/moonshine-tiny-ONNX' ? 'true' : null),
-      isTinySelected: (state) => (state.selectedModel === 'onnx-community/moonshine-tiny-ONNX' ? 'true' : null),
-      isSmallChecked: (state) => (state.selectedModel === 'onnx-community/moonshine-base-ONNX' ? 'true' : null),
-      isSmallSelected: (state) => (state.selectedModel === 'onnx-community/moonshine-base-ONNX' ? 'true' : null),
-      isMediumChecked: (state) => (state.selectedModel === 'onnx-community/whisper-medium' ? 'true' : null),
-      isMediumSelected: (state) => (state.selectedModel === 'onnx-community/whisper-medium' ? 'true' : null)
+      isTinyChecked: ({ state }) => (state.selectedModel === 'onnx-community/moonshine-tiny-ONNX' ? 'true' : null),
+      isTinySelected: ({ state }) => (state.selectedModel === 'onnx-community/moonshine-tiny-ONNX' ? 'true' : null),
+      isSmallChecked: ({ state }) => (state.selectedModel === 'onnx-community/moonshine-base-ONNX' ? 'true' : null),
+      isSmallSelected: ({ state }) => (state.selectedModel === 'onnx-community/moonshine-base-ONNX' ? 'true' : null),
+      isMediumChecked: ({ state }) => (state.selectedModel === 'onnx-community/whisper-medium' ? 'true' : null),
+      isMediumSelected: ({ state }) => (state.selectedModel === 'onnx-community/whisper-medium' ? 'true' : null)
     },
     client: async ({ refs, state, globalStore, storage, root }) => {
       const { $state } = globalStore

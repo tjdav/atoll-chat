@@ -32,8 +32,8 @@
       hasChanges: false
     }),
     getters: {
-      saveBtnDisabled: (state) => (!state.hasChanges || state.isSaving ? 'disabled' : ''),
-      saveBtnText: (state) => (state.isSaving ? 'Saving...' : 'Save Changes')
+      saveBtnDisabled: ({ state }) => (!state.hasChanges || state.isSaving ? 'disabled' : ''),
+      saveBtnText: ({ state }) => (state.isSaving ? 'Saving...' : 'Save Changes')
     },
     client: async ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker }) => {
       const { $state } = globalStore

@@ -55,7 +55,7 @@
       isError: false
     }),
     getters: {
-      loadingClass: (state) => {
+      loadingClass: ({ state }) => {
         if (state.isLoaded) {
           return 'd-none'
         }

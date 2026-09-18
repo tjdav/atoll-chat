@@ -367,14 +367,6 @@
     },
 
     getters: {
-      gridClass: ({ state }) => {
-        if (state.type === 'multiparty') {
-          const count = Math.min(Math.max(state.splitCount || 2, 2), 4)
-          return `multiparty-${count}`
-        }
-        return ''
-      },
-
       computedAlt: ({ state }) => state.alt || state.name || 'User profile',
 
       initials: ({ state }) => {

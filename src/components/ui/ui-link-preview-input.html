@@ -41,7 +41,7 @@
       url: String
     },
     getters: {
-      imageDisplayClass: (state) => (state.image ? 'd-block' : 'd-none')
+      imageDisplayClass: ({ state }) => (state.image ? 'd-block' : 'd-none')
     },
     client: ({ state, refs, eventBus, signal, observe }) => {
       const { $bus } = eventBus

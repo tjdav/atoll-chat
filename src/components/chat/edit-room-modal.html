@@ -58,13 +58,13 @@
       roomId: null
     }),
     getters: {
-      isDirty: (state) => {
+      isDirty: ({ state }) => {
         const nameChanged = (state.roomName || '').trim() !== (state.initialName || '').trim()
         const avatarChanged = state.roomAvatar !== null
         return nameChanged || avatarChanged
       },
-      canSave: (state) => Boolean((state.roomName || '').trim()) && !state.isSaving && state.isDirty,
-      disableSave: (state) => !state.canSave
+      canSave: ({ state }) => Boolean((state.roomName || '').trim()) && !state.isSaving && state.isDirty,
+      disableSave: ({ state }) => !state.canSave
     },
     client: async ({ root, refs, state, pocketbase, eventBus, storage, cryptoWorker, utils, signal }) => {
       const { getParsedAvatar } = await import('../../utils/room-avatar.js')

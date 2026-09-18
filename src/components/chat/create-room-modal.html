@@ -87,13 +87,13 @@
       roomAvatar: null
     }),
     getters: {
-      isGroup: (state) => (state.selectedParticipants || []).length > 1,
-      canCreate: (state) => (state.selectedParticipants || []).length > 0,
-      hideGroupFields: (state) => (state.selectedParticipants || []).length <= 1,
-      disableSubmit: (state) => !state.canCreate || state.isCreating,
-      hasSelectedUsers: (state) => (state.selectedParticipants || []).length > 0,
-      hideSelectedTokens: (state) => (state.selectedParticipants || []).length === 0,
-      hideCreationError: (state) => !state.creationError
+      isGroup: ({ state }) => (state.selectedParticipants || []).length > 1,
+      canCreate: ({ state }) => (state.selectedParticipants || []).length > 0,
+      hideGroupFields: ({ state }) => (state.selectedParticipants || []).length <= 1,
+      disableSubmit: ({ state }) => !state.canCreate || state.isCreating,
+      hasSelectedUsers: ({ state }) => (state.selectedParticipants || []).length > 0,
+      hideSelectedTokens: ({ state }) => (state.selectedParticipants || []).length === 0,
+      hideCreationError: ({ state }) => !state.creationError
     },
     client: (context) => {
       const { refs, root, state, pocketbase, eventBus, globalStore, storage, utils, cryptoWorker, signal } = context

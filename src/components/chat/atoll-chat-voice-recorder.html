@@ -89,9 +89,9 @@
       recordingDuration: 0
     }),
     getters: {
-      pauseResumeIcon: (state) => (state.isPaused ? 'play' : 'pause'),
-      hideRedoControls: (state) => (!state.isPaused),
-      formattedDuration: (state) => {
+      pauseResumeIcon: ({ state }) => (state.isPaused ? 'play' : 'pause'),
+      hideRedoControls: ({ state }) => (!state.isPaused),
+      formattedDuration: ({ state }) => {
         const mins = Math.floor(state.recordingDuration / 60)
         const secs = state.recordingDuration % 60
         return `${mins}:${secs.toString().padStart(2, '0')}`

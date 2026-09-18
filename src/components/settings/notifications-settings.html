@@ -33,10 +33,10 @@
       isNative: false
     }),
     getters: {
-      notifChecked: (state) => (state.notificationsEnabled && state.permissionStatus !== 'denied' ? 'checked' : ''),
-      permissionAlertClass: (state) => (state.permissionStatus === 'denied' && state.isSupported ? 'd-flex' : 'd-none'),
-      supportAlertClass: (state) => (!state.isSupported && !state.isNative ? 'd-flex' : 'd-none'),
-      notifDisabled: (state) => (!state.isSupported && !state.isNative ? 'disabled' : '')
+      notifChecked: ({ state }) => (state.notificationsEnabled && state.permissionStatus !== 'denied' ? 'checked' : ''),
+      permissionAlertClass: ({ state }) => (state.permissionStatus === 'denied' && state.isSupported ? 'd-flex' : 'd-none'),
+      supportAlertClass: ({ state }) => (!state.isSupported && !state.isNative ? 'd-flex' : 'd-none'),
+      notifDisabled: ({ state }) => (!state.isSupported && !state.isNative ? 'disabled' : '')
     },
     client: async ({ refs, state, globalStore, notifications, push, pocketbase }) => {
       const { $state } = globalStore

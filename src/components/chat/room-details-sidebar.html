@@ -208,10 +208,10 @@
       isGroup: false
     }),
     getters: {
-      memberCount: (state) => (state.members || []).length,
-      loadingClass: (state) => (state.isLoading ? 'd-flex' : 'd-none'),
-      hideEditRoom: (state) => !state.isAdmin,
-      deleteLabel: (state) => (state.isGroup ? 'Leave group' : 'Delete chat')
+      memberCount: ({ state }) => (state.members || []).length,
+      loadingClass: ({ state }) => (state.isLoading ? 'd-flex' : 'd-none'),
+      hideEditRoom: ({ state }) => !state.isAdmin,
+      deleteLabel: ({ state }) => (state.isGroup ? 'Leave group' : 'Delete chat')
     },
     client: async ({ refs, state, pocketbase, eventBus, globalStore, storage, cryptoWorker, utils, signal }) => {
       const { resolveRoomName } = await import('../../utils/room-name.js')

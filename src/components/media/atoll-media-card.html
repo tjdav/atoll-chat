@@ -41,9 +41,9 @@
       fileNonce: String
     },
     getters: {
-      aspectClass: (state) => `aspect-${state.aspectRatio || 'square'}`,
-      selectedClass: (state) => (state.selected === 'true' || state.selected === true ? 'selected' : ''),
-      placeholderIcon: (state) => {
+      aspectClass: ({ state }) => `aspect-${state.aspectRatio || 'square'}`,
+      selectedClass: ({ state }) => (state.selected === 'true' || state.selected === true ? 'selected' : ''),
+      placeholderIcon: ({ state }) => {
         if (state.mediaType === 'video') {
           return 'videocam'
         }

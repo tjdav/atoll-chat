@@ -27,7 +27,7 @@
       passkeyActionVerb: 'enable'
     }),
     getters: {
-      passkeyStatus: (state) => (state.hasPasskey ? 'Enabled on this device' : 'Disabled')
+      passkeyStatus: ({ state }) => (state.hasPasskey ? 'Enabled on this device' : 'Disabled')
     },
     client: async ({ refs, state, globalStore, pocketbase, cryptoWorker, eventBus, biometric, signal }) => {
       const { $state } = globalStore

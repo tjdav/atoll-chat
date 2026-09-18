@@ -175,22 +175,22 @@
       hasReactions: Boolean
     },
     getters: {
-      rowClass: (state) => {
+      rowClass: ({ state }) => {
         return state.isSent ? 'sent' : 'received'
       },
-      alignmentClass: (state) => {
+      alignmentClass: ({ state }) => {
         return state.isSent ? 'align-items-end' : 'align-items-start'
       },
-      senderNameDisplayClass: (state) => {
+      senderNameDisplayClass: ({ state }) => {
         return state.senderName ? 'd-block' : 'd-none'
       },
-      avatarColDisplayClass: (state) => {
+      avatarColDisplayClass: ({ state }) => {
         return state.isSent ? 'd-none' : 'd-flex'
       },
-      marginClass: (state) => {
+      marginClass: ({ state }) => {
         return state.isLastInBlock ? 'mb-3' : 'mb-1'
       },
-      seenJustifyClass: (state) => {
+      seenJustifyClass: ({ state }) => {
         return state.isSent ? 'justify-content-end' : 'justify-content-start'
       }
     },

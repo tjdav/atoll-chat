@@ -158,15 +158,15 @@
       isSpeakerSelectionSupported: true
     }),
     getters: {
-      audioBtnVariant: (state) => (state.isAudioEnabled ? 'secondary' : 'danger'),
-      videoBtnVariant: (state) => (state.isVideoEnabled ? 'secondary' : 'danger'),
-      videoBtnClass: (state) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
-      audioBtnClass: (state) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
-      audioIconName: (state) => (state.isAudioEnabled ? 'mic' : 'mic-off'),
-      videoIconName: (state) => (state.isVideoEnabled ? 'videocam' : 'camera-off'),
-      audioPressed: (state) => (!state.isAudioEnabled ? 'true' : 'false'),
-      videoPressed: (state) => (!state.isVideoEnabled ? 'true' : 'false'),
-      audioSpeakingClass: (state) => {
+      audioBtnVariant: ({ state }) => (state.isAudioEnabled ? 'secondary' : 'danger'),
+      videoBtnVariant: ({ state }) => (state.isVideoEnabled ? 'secondary' : 'danger'),
+      videoBtnClass: ({ state }) => (state.isVideoEnabled ? 'btn-light' : 'btn-danger'),
+      audioBtnClass: ({ state }) => (state.isAudioEnabled ? 'btn-light' : 'btn-danger'),
+      audioIconName: ({ state }) => (state.isAudioEnabled ? 'mic' : 'mic-off'),
+      videoIconName: ({ state }) => (state.isVideoEnabled ? 'videocam' : 'camera-off'),
+      audioPressed: ({ state }) => (!state.isAudioEnabled ? 'true' : 'false'),
+      videoPressed: ({ state }) => (!state.isVideoEnabled ? 'true' : 'false'),
+      audioSpeakingClass: ({ state }) => {
         return (state.isAudioEnabled && state.isLocalSpeaking) ? 'speaking-btn-glow atoll-call-speaking' : ''
       }
     },

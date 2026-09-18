@@ -155,19 +155,19 @@
       totalUnread: 0
     }),
     getters: {
-      isChatsActive: (state) => (state.currentAppView === 'chats' ? 'active' : ''),
-      isMusicActive: (state) => (state.currentAppView === 'music' ? 'active' : ''),
-      isPicturesActive: (state) => (state.currentAppView === 'pictures' ? 'active' : ''),
-      isVideosActive: (state) => (state.currentAppView === 'videos' ? 'active' : ''),
-      isDocumentsActive: (state) => (state.currentAppView === 'documents' ? 'active' : ''),
-      isLinksActive: (state) => (state.currentAppView === 'links' ? 'active' : ''),
-      isSettingsActive: (state) => (state.currentAppView === 'settings' ? 'active' : ''),
-      isMusicActiveBool: (state) => state.currentAppView === 'music',
-      isPicturesActiveBool: (state) => state.currentAppView === 'pictures',
-      isVideosActiveBool: (state) => state.currentAppView === 'videos',
-      isDocumentsActiveBool: (state) => state.currentAppView === 'documents',
-      isLinksActiveBool: (state) => state.currentAppView === 'links',
-      isSidebarMenuHidden: (state) => !(state.isAuthenticated && state.isVaultUnlocked)
+      isChatsActive: ({ state }) => (state.currentAppView === 'chats' ? 'active' : ''),
+      isMusicActive: ({ state }) => (state.currentAppView === 'music' ? 'active' : ''),
+      isPicturesActive: ({ state }) => (state.currentAppView === 'pictures' ? 'active' : ''),
+      isVideosActive: ({ state }) => (state.currentAppView === 'videos' ? 'active' : ''),
+      isDocumentsActive: ({ state }) => (state.currentAppView === 'documents' ? 'active' : ''),
+      isLinksActive: ({ state }) => (state.currentAppView === 'links' ? 'active' : ''),
+      isSettingsActive: ({ state }) => (state.currentAppView === 'settings' ? 'active' : ''),
+      isMusicActiveBool: ({ state }) => state.currentAppView === 'music',
+      isPicturesActiveBool: ({ state }) => state.currentAppView === 'pictures',
+      isVideosActiveBool: ({ state }) => state.currentAppView === 'videos',
+      isDocumentsActiveBool: ({ state }) => state.currentAppView === 'documents',
+      isLinksActiveBool: ({ state }) => state.currentAppView === 'links',
+      isSidebarMenuHidden: ({ state }) => !(state.isAuthenticated && state.isVaultUnlocked)
     },
     client: async ({ refs, state, globalStore, pocketbase, eventBus, cryptoWorker, bootstrap, storage }) => {
       const { $state } = globalStore
