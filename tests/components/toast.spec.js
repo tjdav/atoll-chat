@@ -94,6 +94,9 @@ test.describe('atoll-toast Component Tests', () => {
 
     const triggered = await page.evaluate(() => window.__actionTriggered)
     expect(triggered).toBe(true)
+
+    // Assert that clicking the action button triggers dismissal and unmounts the card
+    await expect(card).toHaveCount(0)
   })
 
   test('should pause and resume countdown timer on mouse, focus, and touch interaction', async ({ page, mountComponent }) => {

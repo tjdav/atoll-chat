@@ -121,6 +121,7 @@
     transform: translateY(10px) scale(0.96) !important;
     transition: opacity 150ms cubic-bezier(0.4, 0, 1, 1),
                 transform 150ms cubic-bezier(0.4, 0, 1, 1) !important;
+    pointer-events: none;
   }
 
   /* Variant Accent Color Mapping */
@@ -326,6 +327,8 @@
         const { cardEl } = entry
         cardEl.classList.remove('atoll-toast-visible')
         cardEl.classList.add('atoll-toast-closing')
+        cardEl.setAttribute('aria-hidden', 'true')
+        cardEl.setAttribute('inert', '')
 
         const removeCard = () => {
           if (cardEl.parentNode) {
