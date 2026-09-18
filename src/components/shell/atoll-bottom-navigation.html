@@ -92,6 +92,55 @@
   </nav>
 </template>
 
+<style>
+  :host {
+    display: block;
+    width: 100%;
+  }
+
+  .atoll-bottom-navigation {
+    height: 56px;
+    background-color: var(--atoll-body-bg, #ffffff);
+    z-index: 1030;
+  }
+
+  .nav-link-mobile {
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--atoll-secondary-color, #6c757d);
+    cursor: pointer;
+    transition: color 0.15s ease-in-out;
+  }
+
+  .nav-link-mobile:hover,
+  .nav-link-mobile:focus-visible {
+    color: var(--atoll-brand-primary, #06C755);
+  }
+
+  .nav-link-mobile.active {
+    color: var(--atoll-brand-primary, #06C755) !important;
+  }
+
+  .nav-link-mobile.active atoll-icon {
+    --atoll-icon-out-stroke: var(--atoll-brand-primary, #06C755) !important;
+    --atoll-icon-out-fill: var(--atoll-brand-primary, #06C755) !important;
+    --icon-primary-color: var(--atoll-brand-primary, #06C755) !important;
+  }
+
+  .bottom-logo-img {
+    width: 24px;
+    height: 24px;
+  }
+
+  .bottom-tab-label {
+    font-size: 11px;
+    font-weight: 500;
+    margin-top: 2px;
+    line-height: 1.1;
+  }
+</style>
+
 <script type="module">
   import { defineComponent } from 'coralite'
 

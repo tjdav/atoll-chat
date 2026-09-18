@@ -1,43 +1,43 @@
 <template id="nav-sidebar">
   <nav class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100" data-testid="navSidebar" role="navigation" aria-label="Main menu">
-    <div class="nav flex-column nav-pills w-100 gap-2" hidden="{{ isSidebarMenuHidden }}">
-      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isChatsActive }}" ref="btnChats" title="Chats" data-testid="btnChats">
+    <div class="nav flex-column nav-pills w-100 gap-2 align-items-center" hidden="{{ isSidebarMenuHidden }}">
+      <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isChatsActive }}" ref="btnChats" title="Chats" aria-label="Chats" data-testid="btnChats">
         <div class="atoll-badge-container">
-          <img src="/logo.svg" alt="Atoll chat logo" class="img-fluid">
+          <img src="/logo.svg" alt="Atoll chat logo" class="img-fluid" style="width: 28px; height: 28px;">
           <atoll-badge count="{{ totalUnread }}" size="sm" class="atoll-badge-positioned" data-testid="chats-unread-badge"></atoll-badge>
         </div>
-      </button>
-      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isMusicActive }}" ref="btnMusic" title="Music" data-testid="btnMusic">
+      </atoll-button>
+      <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isMusicActive }}" ref="btnMusic" title="Music" aria-label="Music" data-testid="btnMusic">
         <atoll-icon name="music" size="24" active="{{ isMusicActiveBool }}"></atoll-icon>
-      </button>
-      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isPicturesActive }}" ref="btnPictures" title="Pictures" data-testid="btnPictures">
+      </atoll-button>
+      <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isPicturesActive }}" ref="btnPictures" title="Pictures" aria-label="Pictures" data-testid="btnPictures">
         <atoll-icon name="gallery" size="24" active="{{ isPicturesActiveBool }}"></atoll-icon>
-      </button>
-      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isVideosActive }}" ref="btnVideos" title="Videos" data-testid="btnVideos">
+      </atoll-button>
+      <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isVideosActive }}" ref="btnVideos" title="Videos" aria-label="Videos" data-testid="btnVideos">
         <atoll-icon name="videocam" size="24" active="{{ isVideosActiveBool }}"></atoll-icon>
-      </button>
-      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isDocumentsActive }}" ref="btnDocuments" title="Documents" data-testid="btnDocuments">
+      </atoll-button>
+      <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isDocumentsActive }}" ref="btnDocuments" title="Documents" aria-label="Documents" data-testid="btnDocuments">
         <atoll-icon name="document" size="24" active="{{ isDocumentsActiveBool }}"></atoll-icon>
-      </button>
-      <button class="nav-link d-flex align-items-center justify-content-center atoll-touch-target {{ isLinksActive }}" ref="btnLinks" title="Links" data-testid="btnLinks">
+      </atoll-button>
+      <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isLinksActive }}" ref="btnLinks" title="Links" aria-label="Links" data-testid="btnLinks">
         <atoll-icon name="link" size="24" active="{{ isLinksActiveBool }}"></atoll-icon>
-      </button>
+      </atoll-button>
     </div>
     
     <div class="mt-auto w-100 px-2 d-flex flex-column gap-3 position-relative align-items-center">
       <!-- Profile Avatar / Settings Dropup -->
       <div class="dropup w-100 d-flex justify-content-center align-items-center" ref="profileDropupContainer">
-        <button class="btn p-0 border-0 d-flex align-items-center justify-content-center atoll-touch-target" 
-                type="button" 
+        <atoll-button variant="ghost" size="lg" icon-only="true" pill="true" class="profile-btn-trigger"
                 data-bs-toggle="dropdown" 
                 aria-expanded="false" 
                 ref="profileBtn" 
                 data-testid="profileBtn" 
-                title="Account">
+                title="Account"
+                aria-label="Account">
           <div ref="avatarContainer" class="d-flex align-items-center justify-content-center avatar-container">
             <!-- Render avatar dynamically or standard fallback inside client -->
           </div>
-        </button>
+        </atoll-button>
         <ul class="dropdown-menu shadow p-0 overflow-hidden profile-dropdown-menu" ref="profileDropdownMenu" data-testid="profileDropdownMenu">
           <!-- Settings Section -->
           <li>
@@ -82,55 +82,31 @@
     }
   }
 
-  .nav-sidebar .nav-link {
+  .nav-sidebar-btn {
     cursor: pointer;
     transition: all 0.2s ease-in-out;
     border-radius: 12px;
-    color: var(--atoll-secondary-color, #6c757d);
-    padding: 0.75rem !important;
-    background-color: transparent;
     border-left: 3px solid transparent;
     overflow: visible !important;
   }
 
-  @media (max-width: 767.98px) {
-    .nav-sidebar .nav-link {
-      padding: 0.5rem !important;
-    }
-  }
-
-  .nav-sidebar .nav-link:hover {
-    background-color: rgba(0, 0, 0, 0.04);
-  }
-
-  [data-atoll-theme="dark"] .nav-sidebar .nav-link:hover,
-  [data-bs-theme="dark"] .nav-sidebar .nav-link:hover {
-    background-color: rgba(255, 255, 255, 0.06);
-  }
-
-  .nav-sidebar .nav-link.active {
-    background-color: rgba(0, 0, 0, 0.04) !important;
-    color: var(--atoll-brand-primary, #06C755) !important;
+  .nav-sidebar-btn.active {
+    --btn-bg: rgba(0, 0, 0, 0.04);
+    --btn-color: var(--atoll-brand-primary, #06C755);
     border-left: 3px solid var(--atoll-brand-primary, #06C755) !important;
     border-radius: 12px;
-    padding-left: calc(0.75rem - 3px) !important;
   }
 
-  @media (max-width: 767.98px) {
-    .nav-sidebar .nav-link.active {
-      padding-left: calc(0.5rem - 3px) !important;
-    }
-  }
-
-  .nav-sidebar .nav-link.active atoll-icon {
+  .nav-sidebar-btn.active atoll-icon {
     --atoll-icon-out-stroke: var(--atoll-brand-primary, #06C755) !important;
     --atoll-icon-out-fill: var(--atoll-brand-primary, #06C755) !important;
+    --icon-primary-color: var(--atoll-brand-primary, #06C755) !important;
   }
 
-  [data-atoll-theme="dark"] .nav-sidebar .nav-link.active,
-  [data-bs-theme="dark"] .nav-sidebar .nav-link.active {
-    background-color: rgba(255, 255, 255, 0.06) !important;
-    color: var(--atoll-brand-primary, #06C755) !important;
+  [data-atoll-theme="dark"] .nav-sidebar-btn.active,
+  [data-bs-theme="dark"] .nav-sidebar-btn.active {
+    --btn-bg: rgba(255, 255, 255, 0.06);
+    --btn-color: var(--atoll-brand-primary, #06C755);
   }
 
   .avatar-container {
@@ -148,10 +124,12 @@
   import { defineComponent } from 'coralite'
 
   export default defineComponent({
+    attributes: {
+      isAuthenticated: Boolean,
+      isVaultUnlocked: Boolean
+    },
     server: () => ({
       currentAppView: 'chats',
-      isAuthenticated: false,
-      isVaultUnlocked: false,
       totalUnread: 0
     }),
     getters: {
@@ -179,8 +157,8 @@
 
       // Init and subscribe to states
       state.currentAppView = $state.currentAppView || 'chats'
-      state.isAuthenticated = $state.isAuthenticated || false
-      state.isVaultUnlocked = $state.isVaultUnlocked || false
+      state.isAuthenticated = Boolean($state.isAuthenticated || state.isAuthenticated)
+      state.isVaultUnlocked = Boolean($state.isVaultUnlocked || state.isVaultUnlocked)
       state.totalUnread = 0
 
       const calculateTotalUnread = async () => {
@@ -241,12 +219,12 @@
 
       $state.subscribe('currentAppView', (value) => state.currentAppView = value)
       $state.subscribe('isAuthenticated', (value) => {
-        state.isAuthenticated = value
+        state.isAuthenticated = Boolean(value)
         updateAvatar()
         updateUnread()
       })
       $state.subscribe('isVaultUnlocked', (value) => {
-        state.isVaultUnlocked = value
+        state.isVaultUnlocked = Boolean(value)
         updateAvatar()
         updateUnread()
       })
@@ -325,7 +303,8 @@
 
       // Set up dropup trigger & dropdown initialization
       const profileBtn = refs('profileBtn')
-      let dropdownInstance = new Dropdown(profileBtn)
+      const dropdownTarget = profileBtn?.querySelector('button') || profileBtn
+      let dropdownInstance = new Dropdown(dropdownTarget)
 
       // Render profile avatar / fallback inside the dropup button
       const avatarContainer = refs('avatarContainer')
@@ -335,7 +314,7 @@
         const avatar = document.createElement('atoll-profile')
         avatar.setAttribute('size', 'sm')
 
-        if (state.isAuthenticated && pb.authStore.model) {
+        if (state.isAuthenticated && pb?.authStore?.model) {
           const user = pb.authStore.model
           avatar.setAttribute('alt', user.name || user.username || 'User profile')
           if (user.id) {
