@@ -1,7 +1,7 @@
 <template id="vault-unlock">
   <div>
     <!-- VIEW 1: PASSWORD UNLOCK -->
-    <atoll-card ref="viewPassword" data-testid="viewPassword" class="d-flex flex-column h-100" fullscreen shadow="lg" border="none" rounded="lg" hide-header>
+    <atoll-card ref="viewPassword" data-testid="viewPassword" fullscreen="md" shadow="lg" border="none" rounded="lg" hide-header>
       <!-- Zone 2: Hero Greeting -->
       <div class="text-center mb-5">
         <atoll-profile ref="avatarProfile" size="3xl" class="d-inline-block mb-2"></atoll-profile>
@@ -40,7 +40,7 @@
     </atoll-card>
 
     <!-- VIEW 2: RECOVERY CODE ENTRY -->
-    <atoll-card ref="viewRecovery" data-testid="viewRecovery" class="d-none flex-column h-100" fullscreen shadow="lg" border="none" rounded="lg">
+    <atoll-card ref="viewRecovery" data-testid="viewRecovery" class="d-none flex-column h-100" fullscreen="md" shadow="lg" border="none" rounded="lg">
       <!-- Zone 1: Header (Top Navigation) -->
       <div slot="header">
         <atoll-list-header variant="list" title="Recover Vault">
@@ -77,7 +77,7 @@
     </atoll-card>
 
     <!-- VIEW 3: FORCE NEW PASSWORD CREATION -->
-    <atoll-card ref="viewNewPassword" data-testid="viewNewPassword" class="d-none flex-column h-100" fullscreen shadow="lg" border="none" rounded="lg">
+    <atoll-card ref="viewNewPassword" data-testid="viewNewPassword" class="d-none flex-column h-100" fullscreen="md" shadow="lg" border="none" rounded="lg">
       <!-- Zone 1: Header (Top Navigation) -->
       <div slot="header">
         <atoll-list-header variant="list" title="Set New Password">

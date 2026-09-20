@@ -1,7 +1,7 @@
 <template id="auth-login">
   <div>
     <!-- LOGIN VIEW -->
-    <atoll-card ref="viewLogin" data-testid="viewLogin" class="d-flex flex-column h-100" fullscreen shadow="lg" border="none" rounded="lg" hide-header>
+    <atoll-card ref="viewLogin" data-testid="viewLogin" fullscreen="md" shadow="lg" border="none" rounded="lg" hide-header>
       <!-- Zone 2: Hero Greeting -->
       <div class="text-center mb-5">
         <atoll-profile size="3xl" class="d-inline-block mb-3" src="/icon-192x192.png"></atoll-profile>
@@ -60,7 +60,7 @@
     </atoll-card>
 
     <!-- VIEW 2: RECOVERY CODE ENTRY -->
-    <atoll-card ref="viewRecovery" data-testid="viewRecovery" class="d-none flex-column h-100" fullscreen shadow="lg" border="none" rounded="lg">
+    <atoll-card ref="viewRecovery" data-testid="viewRecovery" class="d-none flex-column h-100" fullscreen="md" shadow="lg" border="none" rounded="lg">
       <!-- Zone 1: Header (Top Navigation) -->
       <div slot="header">
         <atoll-list-header variant="list" title="Recover Account">
@@ -108,7 +108,7 @@
     </atoll-card>
 
     <!-- VIEW 3: FORCE NEW PASSWORD CREATION -->
-    <atoll-card ref="viewNewPassword" data-testid="viewNewPassword" class="d-none flex-column h-100" fullscreen shadow="lg" border="none" rounded="lg">
+    <atoll-card ref="viewNewPassword" data-testid="viewNewPassword" class="d-none flex-column h-100" fullscreen="md" shadow="lg" border="none" rounded="lg">
       <!-- Zone 1: Header (Top Navigation) -->
       <div slot="header">
         <atoll-list-header variant="list" title="Set New Password">
