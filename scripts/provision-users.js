@@ -158,39 +158,54 @@ async function provision () {
       const { keyA: keyABytes, keyB: userPasswordKeyB } = await deriveAuthAndVaultKeys(user.username, SHARED_PASSWORD)
 
       let userId
-      // Generate new master keys, KEK wrap, private key ciphertext, and recovery wraps
-      const masterKeys = await generateMasterKeys(sodium)
-      const salt = generateSalt(sodium)
-      const masterKeyBytes = sodium.randombytes_buf(32)
-      const passwordWrap = encryptMasterKeyWithKek(masterKeyBytes, keyABytes, sodium)
-      const encryptedPrivateKeys = encryptPrivateKeys(masterKeys, masterKeyBytes, sodium)
-      const { wraps: recoveryWraps, plaintextCodes } = generateRecoveryWraps(masterKeyBytes, sodium)
+      const forceReprovision = process.env.FORCE_REPROVISION === 'true' || process.argv.includes('--force')
+      const hasExistingKeys = existingRecord && existingRecord.public_box_key && existingRecord.encrypted_private_keys
 
-      console.log(`Recovery code for ${user.username}:`)
-      console.log(plaintextCodes.join('\n'))
-      console.log('----------------------------------------')
-
-      const payload = {
-        username: user.username,
-        name: user.username.charAt(0).toUpperCase() + user.username.slice(1),
-        password: userPasswordKeyB,
-        passwordConfirm: userPasswordKeyB,
-        public_box_key: masterKeys.public_box_key,
-        public_sign_key: masterKeys.public_sign_key,
-        vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
-        encrypted_master_keys: passwordWrap,
-        encrypted_private_keys: encryptedPrivateKeys,
-        recovery_wraps: recoveryWraps
-      }
-
-      if (existingRecord) {
-        await pb.collection('users').update(existingRecord.id, payload, { requestKey: null })
+      if (existingRecord && hasExistingKeys && !forceReprovision) {
         userId = existingRecord.id
-        console.log(`User ${user.username} updated with new keys & wraps successfully.`)
+        // Update password and basic fields if needed, but preserve existing E2EE keys & vault
+        await pb.collection('users').update(existingRecord.id, {
+          username: user.username,
+          name: user.username.charAt(0).toUpperCase() + user.username.slice(1),
+          password: userPasswordKeyB,
+          passwordConfirm: userPasswordKeyB
+        }, { requestKey: null })
+        console.log(`User ${user.username} exists in database; preserved existing E2EE keys & vault.`)
       } else {
-        const createdRecord = await pb.collection('users').create(payload, { requestKey: null })
-        userId = createdRecord.id
-        console.log(`User ${user.username} created successfully.`)
+        // Generate new master keys, KEK wrap, private key ciphertext, and recovery wraps
+        const masterKeys = await generateMasterKeys(sodium)
+        const salt = generateSalt(sodium)
+        const masterKeyBytes = sodium.randombytes_buf(32)
+        const passwordWrap = encryptMasterKeyWithKek(masterKeyBytes, keyABytes, sodium)
+        const encryptedPrivateKeys = encryptPrivateKeys(masterKeys, masterKeyBytes, sodium)
+        const { wraps: recoveryWraps, plaintextCodes } = generateRecoveryWraps(masterKeyBytes, sodium)
+
+        console.log(`Recovery code for ${user.username}:`)
+        console.log(plaintextCodes.join('\n'))
+        console.log('----------------------------------------')
+
+        const payload = {
+          username: user.username,
+          name: user.username.charAt(0).toUpperCase() + user.username.slice(1),
+          password: userPasswordKeyB,
+          passwordConfirm: userPasswordKeyB,
+          public_box_key: masterKeys.public_box_key,
+          public_sign_key: masterKeys.public_sign_key,
+          vault_salt: sodium.to_base64(salt, sodium.base64_variants.ORIGINAL),
+          encrypted_master_keys: passwordWrap,
+          encrypted_private_keys: encryptedPrivateKeys,
+          recovery_wraps: recoveryWraps
+        }
+
+        if (existingRecord) {
+          await pb.collection('users').update(existingRecord.id, payload, { requestKey: null })
+          userId = existingRecord.id
+          console.log(`User ${user.username} updated with fresh E2EE keys & wraps.`)
+        } else {
+          const createdRecord = await pb.collection('users').create(payload, { requestKey: null })
+          userId = createdRecord.id
+          console.log(`User ${user.username} created successfully.`)
+        }
       }
 
 
