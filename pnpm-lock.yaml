@@ -124,11 +124,11 @@ importers:
         specifier: ^26.1.0
         version: 26.3.0
       coralite:
-        specifier: ^1.0.0-rc.3
-        version: 1.0.0-rc.3(@noble/hashes@2.3.0)
+        specifier: ^1.0.0-rc.4
+        version: 1.0.0-rc.4(@noble/hashes@2.3.0)
       coralite-scripts:
-        specifier: ^1.0.0-rc.3
-        version: 1.0.0-rc.3(@noble/hashes@2.3.0)
+        specifier: ^1.0.0-rc.4
+        version: 1.0.0-rc.4(@noble/hashes@2.3.0)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -234,6 +234,12 @@ packages:
     resolution: {integrity: sha512-Xlj8rk5sDq5mAU+leOGAj0XzTelwJMJx8O9cXLyW3rCGhPhCtrAEziFaPHBlEp0Vco3q6hbsZAkQ4KodfcuVZg==}
     peerDependencies:
       '@capacitor/core': '>=8.0.0'
+
+  '@clack/core@0.5.0':
+    resolution: {integrity: sha512-p3y0FIOwaYRUPRcMO7+dlmLh8PSRcrjuTndsiA0WAFbWES0mLZlrjVoBRZ9DzkPFJZG6KGkJmoEAY0ZcVWTkow==}
+
+  '@clack/prompts@0.11.0':
+    resolution: {integrity: sha512-pMN5FcrEw9hUkZA4f+zLlzivQSeQf5dRGJjSUbvVYDLvpKCdQx5OaknvKzgbtXOizhP+SJJJjqEbOe55uKKfAw==}
 
   '@csstools/color-helpers@6.1.1':
     resolution: {integrity: sha512-gLNsunvwf3mCi5u5o46/Z/JcJMnhbHSaZ69rkgPzNM3J4s8hWwpPUQB6/tt0EDFyCiWzxANlx+2LJwpYj4zS1w==}
@@ -1240,13 +1246,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@1.0.0-rc.3:
-    resolution: {integrity: sha512-nLPEFo3TxySqqrCWwL04NUQqCv9LsbAdTewK68xUcYcoBG9HOtPFdcj5ToLXYJcvG6ZuivP+7tdGQ8fzvqSOPQ==}
+  coralite-scripts@1.0.0-rc.4:
+    resolution: {integrity: sha512-WtqKMMAAhWafxUjx97CsIdyiUAM3ED/mPAIEVdtHaM5412fxVMoCvwcTj4kqfJdDHgOnF4As/nXkvkiS7JFqwA==}
     engines: {node: '>=22.22.2'}
     hasBin: true
 
-  coralite@1.0.0-rc.3:
-    resolution: {integrity: sha512-4/XihXHm26lqFibr35KLs9Ym23sOZLrLWH3OwxFcLhPhU/C5u5lfuUvU60wtoxx+lS7ReGy44mg1dv9CCh69Zg==}
+  coralite@1.0.0-rc.4:
+    resolution: {integrity: sha512-3MlX1CcaHzvy6ibOLiUDizvTOX9E75hHoRpKULKMh+s7Lxa1I9SqC+cksoCFQ331eSVkCmUaU+pxoZp/41eTOA==}
     engines: {node: '>=22.22.2'}
     hasBin: true
 
@@ -1636,8 +1642,8 @@ packages:
     resolution: {integrity: sha512-DyFP3BM/3YHTQOCUL/w0OZHR0lpKeGrxotcHWcqNEdnltqFwXVfhEBQ94eIo34AfQpo0rGki4cyIiftY06h2Fg==}
     engines: {node: 6.* || 8.* || >= 10.*}
 
-  get-east-asian-width@1.6.0:
-    resolution: {integrity: sha512-QRbvDIbx6YklUe6RxeTeleMR0yv3cYH6PsPZHcnVn7xv7zO1BHN8r0XETu8n6Ye3Q+ahtSarc3WgtNWmehIBfA==}
+  get-east-asian-width@1.7.0:
+    resolution: {integrity: sha512-XjH1AECxf0giL2V1aU8vKyRR2ppRUb5c0EvT7zuJTokQ74bNo52zOtghqdWIqrhUD79fo3x0WfKZdOqxF6LG1Q==}
     engines: {node: '>=18'}
 
   get-intrinsic@1.3.0:
@@ -2123,8 +2129,8 @@ packages:
     resolution: {integrity: sha512-TYOanM3wGwNGsZN2cVTYPArw454xnXj5qmWF1bEoAc4+cU/ol7GVh7odevjp1FNHduHc3KZMcFduxU5Xc6uJRQ==}
     engines: {node: '>=10'}
 
-  p-limit@7.3.2:
-    resolution: {integrity: sha512-Ll0w3fU24vYpXoZmjjZIee6bJQDgG0oAyo1PdmFYI8UDwJJddaHAypxIH9avUu+t+lSsAwKVsb1jDCMIIChliw==}
+  p-limit@7.3.3:
+    resolution: {integrity: sha512-SKgVvDU5TNIxQ4r30U75BNLC6a+6GOEjngrk/ysM5+Zu3oJuk1SC5ApzIzY/7PjCEjoVPMWJ0zho/4QUiEB7TQ==}
     engines: {node: '>=20'}
 
   p-locate@4.1.0:
@@ -2957,6 +2963,17 @@ snapshots:
   '@capgo/capacitor-native-biometric@8.6.7(@capacitor/core@8.5.0)':
     dependencies:
       '@capacitor/core': 8.5.0
+
+  '@clack/core@0.5.0':
+    dependencies:
+      picocolors: 1.1.1
+      sisteransi: 1.0.5
+
+  '@clack/prompts@0.11.0':
+    dependencies:
+      '@clack/core': 0.5.0
+      picocolors: 1.1.1
+      sisteransi: 1.0.5
 
   '@csstools/color-helpers@6.1.1': {}
 
@@ -3812,11 +3829,12 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@1.0.0-rc.3(@noble/hashes@2.3.0):
+  coralite-scripts@1.0.0-rc.4(@noble/hashes@2.3.0):
     dependencies:
+      '@clack/prompts': 0.11.0
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 1.0.0-rc.3(@noble/hashes@2.3.0)
+      coralite: 1.0.0-rc.4(@noble/hashes@2.3.0)
       cross-env: 10.1.0
       express: 5.2.1
       kleur: 4.1.5
@@ -3830,8 +3848,9 @@ snapshots:
       - canvas
       - supports-color
 
-  coralite@1.0.0-rc.3(@noble/hashes@2.3.0):
+  coralite@1.0.0-rc.4(@noble/hashes@2.3.0):
     dependencies:
+      '@clack/prompts': 0.11.0
       acorn: 8.18.0
       acorn-walk: 8.3.5
       commander: 13.1.0
@@ -3841,7 +3860,7 @@ snapshots:
       htmlparser2: 10.1.0
       isomorphic-dompurify: 3.23.0(@noble/hashes@2.3.0)
       kleur: 4.1.5
-      p-limit: 7.3.2
+      p-limit: 7.3.3
       picomatch: 4.0.7
       postcss: 8.5.28
       postcss-selector-parser: 7.1.6
@@ -4290,7 +4309,7 @@ snapshots:
 
   get-caller-file@2.0.5: {}
 
-  get-east-asian-width@1.6.0: {}
+  get-east-asian-width@1.7.0: {}
 
   get-intrinsic@1.3.0:
     dependencies:
@@ -4783,7 +4802,7 @@ snapshots:
     dependencies:
       yocto-queue: 0.1.0
 
-  p-limit@7.3.2:
+  p-limit@7.3.3:
     dependencies:
       yocto-queue: 1.2.2
 
@@ -5249,7 +5268,7 @@ snapshots:
 
   string-width@8.2.2:
     dependencies:
-      get-east-asian-width: 1.6.0
+      get-east-asian-width: 1.7.0
       strip-ansi: 7.2.0
 
   string_decoder@1.3.0:
