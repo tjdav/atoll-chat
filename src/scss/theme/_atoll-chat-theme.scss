@@ -286,7 +286,7 @@
     }
 
     .atoll-chat-file-icon-wrapper {
-      color: var(--atoll-chat-accent, var(--bs-primary)) !important;
+      color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
     }
   }
 
@@ -319,7 +319,8 @@
   color: var(--atoll-chat-text-primary);
 
   atoll-icon,
-  h5, h6,
+  h5,
+  h6,
   .atoll-chat-empty-state-title {
     color: var(--atoll-chat-text-primary);
   }
@@ -455,27 +456,27 @@
 
   // Accent alignment inside attachments and link previews
   .atoll-chat-file-icon-wrapper {
-    color: var(--atoll-chat-accent, var(--bs-primary)) !important;
+    color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
   }
 
   .btn-outline-primary {
-    color: var(--atoll-chat-accent, var(--bs-primary)) !important;
-    border-color: var(--atoll-chat-accent, var(--bs-primary)) !important;
+    color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
+    border-color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
 
     &:hover {
-      background-color: var(--atoll-chat-accent, var(--bs-primary)) !important;
+      background-color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
       color: #ffffff !important;
     }
   }
 
   .atoll-chat-link-preview .text-primary {
-    color: var(--atoll-chat-accent, var(--bs-primary)) !important;
+    color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
   }
 }
 
 .atoll-chat-link-preview {
-  background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg)) !important;
-  border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color)) !important;
+  background-color: var(--atoll-chat-attachment-card-bg, var(--atoll-tertiary-bg)) !important;
+  border: 1px solid var(--atoll-chat-attachment-card-border, var(--atoll-border-color)) !important;
   backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
   -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
 }

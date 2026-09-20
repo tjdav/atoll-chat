@@ -126,7 +126,7 @@ export default definePlugin({
             const icon = document.createElement('atoll-icon')
             icon.setAttribute('name', 'check-circle')
             icon.setAttribute('size', '18')
-            icon.setAttribute('color', 'var(--bs-success)')
+            icon.setAttribute('color', 'var(--atoll-success)')
 
             const span = document.createElement('span')
             span.className = 'fw-bold'

@@ -30,8 +30,8 @@
   .atoll-chat-file-attachment {
     display: flex;
     align-items: center;
-    background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg, #f8f9fa));
-    border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color, rgba(0, 0, 0, 0.175)));
+    background-color: var(--atoll-chat-attachment-card-bg, var(--atoll-tertiary-bg, #f8f9fa));
+    border: 1px solid var(--atoll-chat-attachment-card-border, var(--atoll-border-color, rgba(0, 0, 0, 0.175)));
     backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
     -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
   }
@@ -49,7 +49,7 @@
 
   .atoll-chat-file-attachment .file-icon-wrapper,
   .atoll-chat-file-attachment .atoll-chat-file-icon-wrapper {
-    color: var(--atoll-chat-accent, var(--bs-primary, #0d6efd)) !important;
+    color: var(--atoll-chat-accent, var(--atoll-primary, #0d6efd)) !important;
   }
 </style>
 
@@ -191,7 +191,7 @@
           console.error('[atoll-chat-timeline-item-file] Error:', err)
           state.isError = true
           loading.innerHTML = `
-            <atoll-icon name="warning" size="24" color="var(--bs-warning)"></atoll-icon>
+            <atoll-icon name="warning" size="24" color="var(--atoll-warning)"></atoll-icon>
             <div class="x-small ms-2">Failed to load file</div>
           `
         }

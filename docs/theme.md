@@ -269,7 +269,7 @@ The default Bootstrap prefix variable `$prefix` is configured centrally to `"ato
 $prefix: "atoll-";
 ```
 
-Defining this renames all CSS custom properties emitted globally by Bootstrap. For example, standard variables such as `--bs-body-bg` and `--bs-primary` are translated globally to:
+Defining this renames all CSS custom properties emitted globally by Bootstrap. For example, standard variables such as `--atoll-body-bg` and `--atoll-primary` are translated globally to:
 - `--atoll-body-bg`
 - `--atoll-primary`
 

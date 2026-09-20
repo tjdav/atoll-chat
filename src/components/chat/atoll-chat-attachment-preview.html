@@ -32,11 +32,11 @@
     overflow-y: hidden;
     transition: max-height 180ms ease-out, opacity 180ms ease-out;
 
-    background-color: var(--atoll-chat-attachment-card-bg, var(--bs-tertiary-bg, #EEEEEE)) !important;
-    border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color-translucent, rgba(0, 0, 0, 0.08))) !important;
+    background-color: var(--atoll-chat-attachment-card-bg, var(--atoll-tertiary-bg, #EEEEEE)) !important;
+    border: 1px solid var(--atoll-chat-attachment-card-border, var(--atoll-border-color-translucent, rgba(0, 0, 0, 0.08))) !important;
     backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
     -webkit-backdrop-filter: var(--atoll-chat-attachment-card-backdrop-filter, none);
-    border-radius: var(--bs-border-radius-lg, 12px) !important;
+    border-radius: var(--atoll-border-radius-lg, 12px) !important;
     padding: 4px 8px;
   }
 
@@ -76,7 +76,7 @@
     position: relative;
     overflow: hidden;
     flex-shrink: 0;
-    background-color: var(--bs-dark-bg-subtle, #1E1E1E);
+    background-color: var(--atoll-dark-bg-subtle, #1E1E1E);
   }
 
   .atoll-chat-attachment-preview .atoll-chat-attachment-tile img {
@@ -243,7 +243,7 @@
     gap: 8px;
     flex-shrink: 0;
     background-color: var(--atoll-chat-attachment-pill-bg, rgba(0, 0, 0, 0.04));
-    border: 1px solid var(--atoll-chat-attachment-card-border, var(--bs-border-color-translucent, rgba(0, 0, 0, 0.08)));
+    border: 1px solid var(--atoll-chat-attachment-card-border, var(--atoll-border-color-translucent, rgba(0, 0, 0, 0.08)));
   }
 
   .atoll-chat-attachment-preview .atoll-chat-attachment-chip.has-error {
@@ -279,7 +279,7 @@
 
   .atoll-chat-attachment-preview .atoll-chat-attachment-chip .atoll-chip-subtext {
     font-size: 0.7rem;
-    color: var(--atoll-chat-text-muted, var(--bs-secondary-color, #767676));
+    color: var(--atoll-chat-text-muted, var(--atoll-secondary-color, #767676));
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -313,7 +313,7 @@
     min-height: 52px;
     max-width: 52px;
     max-height: 52px;
-    border: 1px dashed var(--atoll-border-color, var(--bs-border-color, rgba(0, 0, 0, 0.2)));
+    border: 1px dashed var(--atoll-border-color, var(--atoll-border-color, rgba(0, 0, 0, 0.2)));
     border-radius: 8px !important;
     display: flex;
     flex-direction: column;
@@ -328,7 +328,7 @@
   }
 
   .atoll-chat-attachment-preview .atoll-chat-attachment-add-more:hover {
-    background-color: rgba(var(--bs-body-color-rgb, 0, 0, 0), 0.05);
+    background-color: rgba(var(--atoll-body-color-rgb, 0, 0, 0), 0.05);
     border-color: var(--atoll-chat-accent, #06C755);
     color: var(--atoll-chat-accent, #06C755);
   }

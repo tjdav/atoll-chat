@@ -1,6 +1,6 @@
 <template id="atoll-chat-timeline-item-media">
   <div id="timeline-item-{{ localUuid }}" ref="container" class="media-preview-container rounded-3 overflow-hidden mb-1 position-relative" style="min-height: 200px; min-width: 250px;">
-    <div ref="loading" class="{{ loadingClass }} w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center" style="background: var(--bs-tertiary-bg);">
+    <div ref="loading" class="{{ loadingClass }} w-100 h-100 d-flex flex-column align-items-center justify-content-center p-3 text-center" style="background: var(--atoll-tertiary-bg);">
       <div class="placeholder col-8 mb-2" style="height: 24px;"></div>
       <div class="placeholder col-4" style="height: 16px;"></div>
     </div>
@@ -299,7 +299,7 @@
           console.error('[atoll-chat-timeline-item-media] Error:', err)
           state.isError = true
           loading.innerHTML = `
-            <atoll-icon name="warning" size="24" color="var(--bs-warning)"></atoll-icon>
+            <atoll-icon name="warning" size="24" color="var(--atoll-warning)"></atoll-icon>
             <div class="x-small mt-1">Failed to load</div>
           `
         }
