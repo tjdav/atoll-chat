@@ -10,6 +10,7 @@
       <atoll-icon ref="statusIcon" name="check-circle" size="xs" color="var(--atoll-chat-text-muted)"></atoll-icon>
     </div>
     <div ref="bottomSentinel" style="height: 1px; width: 100%; pointer-events: none; opacity: 0;"></div>
+    <div ref="timelineSpacer" class="atoll-chat-timeline-spacer"></div>
   </div>
 </template>
 
@@ -31,7 +32,13 @@
 
   .atoll-chat-timeline-container {
     padding-top: var(--atoll-chat-timeline-padding-top, calc(64px + var(--atoll-safe-area-top, 0px))) !important;
-    padding-bottom: var(--atoll-chat-timeline-padding-bottom, 100px) !important;
+  }
+
+  .atoll-chat-timeline-spacer {
+    height: var(--atoll-chat-timeline-padding-bottom, 110px);
+    min-height: var(--atoll-chat-timeline-padding-bottom, 110px);
+    flex-shrink: 0;
+    pointer-events: none;
   }
 
   .atoll-chat-message-status-container {
@@ -68,6 +75,7 @@
       const statusText = refs('statusText')
       const statusIcon = refs('statusIcon')
       const bottomSentinel = refs('bottomSentinel')
+      const timelineSpacer = refs('timelineSpacer')
 
       let last_room_id = null
       let lastView = null
@@ -1041,6 +1049,10 @@
             container.appendChild(bottomSentinel)
           }
 
+          if (timelineSpacer) {
+            container.appendChild(timelineSpacer)
+          }
+
           // sort messages chronologically if we added something new and it is NOT a new room
           if (!isNewRoom && messagesToRender.length > 0) {
             const children = Array.from(messageWrapper.children).filter(el => el.tagName === 'ATOLL-CHAT-TIMELINE-ROW' ||
@@ -1136,7 +1148,9 @@
         }
       })
 
-      $bus.on('ui:input_height_changed', () => {
+      $bus.on('ui:input_height_changed', (payload) => {
+        const height = typeof payload === 'number' ? payload : (payload?.height || 110)
+        container.style.setProperty('--atoll-chat-timeline-padding-bottom', `${height}px`)
         if (stickToBottom) {
           pinToBottom()
         }

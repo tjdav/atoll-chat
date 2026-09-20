@@ -1134,6 +1134,20 @@
 
         processAttachmentItem(item, fileProcessingToken)
       })
+
+      // Observe input container height changes and emit dynamic offset for timeline spacer
+      let lastHeight = 0
+      const inputObserver = new ResizeObserver(() => {
+        const rect = root.getBoundingClientRect()
+        const height = Math.round(rect.height || root.offsetHeight || 0)
+        if (height > 0 && height !== lastHeight) {
+          lastHeight = height
+          const totalOffset = Math.max(height + 12, 100)
+          $bus.emit('ui:input_height_changed', { height: totalOffset })
+        }
+      })
+      inputObserver.observe(root)
+      signal.addEventListener('abort', () => inputObserver.disconnect())
     }
   })
 </script>
