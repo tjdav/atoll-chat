@@ -606,10 +606,7 @@
 
         // Update Sender Avatar
         if (senderAvatar) {
-          const existingSlot = senderAvatar.querySelector('[slot="image"]')
-          if (existingSlot) {
-            existingSlot.remove()
-          }
+          senderAvatar.replaceChildren()
           senderAvatar.setAttribute('size', 'sm')
           senderAvatar.setAttribute('name', senderName)
           senderAvatar.setAttribute('alt', senderName)

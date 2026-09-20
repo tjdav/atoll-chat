@@ -426,11 +426,10 @@
 
         if (originalNodes && originalNodes.length > 0) {
           return Array.from(originalNodes).map(n => {
-            const clone = n.cloneNode(true)
-            if (clone.tagName === 'IMG' && !clone.hasAttribute('alt')) {
-              clone.setAttribute('alt', state.computedAlt || '')
+            if (n.nodeType === 1 && n.tagName === 'IMG' && !n.hasAttribute('alt')) {
+              n.setAttribute('alt', state.computedAlt || '')
             }
-            return clone
+            return n
           })
         }
 

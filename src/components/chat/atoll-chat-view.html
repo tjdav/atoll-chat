@@ -270,10 +270,7 @@
         if (!headerAvatar || !room) {
           return
         }
-        const existingSlot = headerAvatar.querySelector('[slot="image"]')
-        if (existingSlot) {
-          existingSlot.remove()
-        }
+        headerAvatar.replaceChildren()
 
         if (room.avatar) {
           const avatarData = getParsedAvatar(room)

@@ -215,7 +215,6 @@
 
         // In received blocks, we only show the avatar for the last message in the block
         if (isLastInBlock && !isSent) {
-          avatarContainer.innerHTML = ''
           const profile = document.createElement('atoll-profile')
 
           profile.setAttribute('size', 'xs')
@@ -233,11 +232,9 @@
           if (state.avatarUrl) {
             profile.setAttribute('src', state.avatarUrl)
           }
-          avatarContainer.appendChild(profile)
+          avatarContainer.replaceChildren(profile)
         } else {
-          if (avatarContainer.innerHTML !== '') {
-            avatarContainer.innerHTML = ''
-          }
+          avatarContainer.replaceChildren()
         }
       }
 

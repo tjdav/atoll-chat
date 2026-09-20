@@ -44,9 +44,9 @@
         if (!avatarContainer) {
           return
         }
-        avatarContainer.innerHTML = ''
         const roomId = state.roomId
         if (!roomId) {
+          avatarContainer.replaceChildren()
           return
         }
 
@@ -69,7 +69,7 @@
           $media,
           signal
         })
-        avatarContainer.appendChild(avatarEl)
+        avatarContainer.replaceChildren(avatarEl)
       }
 
       const updateHeader = () => {

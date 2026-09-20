@@ -255,8 +255,7 @@
             // Sync room avatar
             const roomAvatarComp = refs('roomAvatar')
             if (roomAvatarComp) {
-              const existingSlots = roomAvatarComp.querySelectorAll('[slot="image"]')
-              existingSlots.forEach(el => el.remove())
+              roomAvatarComp.replaceChildren()
 
               if (room.avatar) {
                 const avatarData = getParsedAvatar(room)

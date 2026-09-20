@@ -309,8 +309,6 @@
       // Render profile avatar / fallback inside the dropup button
       const avatarContainer = refs('avatarContainer')
       const updateAvatar = () => {
-        avatarContainer.innerHTML = ''
-
         const avatar = document.createElement('atoll-profile')
         avatar.setAttribute('size', 'sm')
 
@@ -328,7 +326,7 @@
           avatar.setAttribute('alt', 'Guest')
         }
 
-        avatarContainer.appendChild(avatar)
+        avatarContainer.replaceChildren(avatar)
       }
 
       // Button: Logout Action

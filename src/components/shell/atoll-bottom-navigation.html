@@ -208,7 +208,6 @@
         if (!avatarContainer) {
           return
         }
-        avatarContainer.innerHTML = ''
 
         const avatar = document.createElement('atoll-profile')
         avatar.setAttribute('size', 'xs')
@@ -227,7 +226,7 @@
           avatar.setAttribute('alt', 'Guest')
         }
 
-        avatarContainer.appendChild(avatar)
+        avatarContainer.replaceChildren(avatar)
       }
 
       const calculateTotalUnread = async () => {

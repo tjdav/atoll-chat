@@ -87,6 +87,51 @@ test.describe('atoll-profile Component Tests', () => {
     await expect(icon).toHaveAttribute('name', 'check')
   })
 
+  test('should clear and update slots dynamically without logging stale slot cache warnings', async ({ page, mountComponent }) => {
+    const warnings = []
+    page.on('console', (msg) => {
+      if (msg.type() === 'warning' && msg.text().includes('atoll-profile')) {
+        warnings.push(msg.text())
+      }
+    })
+
+    await mountComponent('atoll-profile', { name: 'Dynamic User', badge: '5', 'icon-name': 'star' })
+
+    const profile = page.locator('#test-component-root')
+    await expect(profile).toBeVisible()
+
+    // 1. Clear badge and icon
+    await page.evaluate(() => {
+      const el = document.querySelector('#test-component-root')
+      el.removeAttribute('badge')
+      el.removeAttribute('icon-name')
+    })
+
+    const badge = page.locator('#test-component-root atoll-badge')
+    await expect(badge).toHaveCount(0)
+
+    // 2. Switch to image src and back
+    await page.evaluate(() => {
+      const el = document.querySelector('#test-component-root')
+      el.setAttribute('src', 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7')
+    })
+
+    const img = page.locator('#test-component-root img')
+    await expect(img).toBeVisible()
+
+    await page.evaluate(() => {
+      const el = document.querySelector('#test-component-root')
+      el.removeAttribute('src')
+    })
+
+    const initials = page.locator('#test-component-root .atoll-profile-initials')
+    await expect(initials).toBeVisible()
+    await expect(initials).toHaveText('DU')
+
+    // Verify no stale slot cache warnings occurred
+    expect(warnings).toEqual([])
+  })
+
   test('should render comprehensive visual matrix and generate verification screenshots', async ({ page, mountComponent, setTheme, takeVerificationScreenshot }) => {
     // 1. Initialize component and ensure stylesheet is loaded
     await mountComponent('atoll-profile')
