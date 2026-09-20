@@ -1,0 +1,134 @@
+<template id="atoll-card">
+  <div class="atoll-card">
+    <div class="atoll-card-header" hidden="{{ hideHeader }}">
+      <slot name="header">
+        <div class="atoll-card-title" hidden="{{ hideTitle }}">{{ title }}</div>
+        <div class="atoll-card-subtitle" hidden="{{ hideSubtitle }}">{{ subtitle }}</div>
+      </slot>
+    </div>
+    <div class="atoll-card-body">
+      <slot></slot>
+    </div>
+    <div class="atoll-card-footer" hidden="{{ hideFooter }}">
+      <slot name="footer"></slot>
+    </div>
+  </div>
+</template>
+
+<style>
+  :host {
+    /* token defaults — consume existing theme vars with fallback */
+    --atoll-card-bg:            var(--atoll-pane-bg,          #FFFFFF);
+    --atoll-card-border:        var(--atoll-border-color,     #E0E0E0);
+    --atoll-card-border-radius: var(--atoll-border-radius-xl, 16px);
+    --atoll-card-shadow:        0 10px 30px #00000014;
+    --atoll-card-padding:       2.5rem;
+    --atoll-card-header-pad:    0 0 1rem 0;   /* header has NO padding so atoll-list-header's own padding is not doubled */
+    --atoll-card-footer-pad:    1.5rem 0 0 0;
+    --atoll-card-title-color:   var(--atoll-text-primary,    #111111);
+    --atoll-card-subtitle-color:var(--atoll-text-secondary,  #555555);
+    --atoll-card-fullscreen-pad:
+      calc(1.5rem + var(--atoll-safe-area-top, 0px)) 1.5rem 1.5rem 1.5rem;
+
+    /* outer chrome */
+    display: flex;
+    flex-direction: column;
+    background-color: var(--atoll-card-bg);
+    border: 1px solid var(--atoll-card-border);
+    border-radius: var(--atoll-card-border-radius);
+    box-shadow: var(--atoll-card-shadow);
+    padding: var(--atoll-card-padding);
+    width: 450px;
+    max-width: 100%;
+    margin: 2rem auto;
+    box-sizing: border-box;
+  }
+
+  /* coralite-managed native booleans — no client block needed */
+  :host([hidden]) { display: none !important; }
+
+  /* ---- boolean + string attribute variants (CSS-driven, zero JS) ---- */
+
+  /* display utility classes toggled imperatively via classList (auth views) */
+  :host(.d-none) { display: none !important; }
+  :host(.d-flex) { display: flex !important; }
+
+  /* shadow strength */
+  :host([shadow="sm"])  { --atoll-card-shadow: 0 2px 8px  #0000000A; }
+  :host([shadow="lg"])  { --atoll-card-shadow: 0 20px 40px #00000024; }
+  :host([shadow="xl"])  { --atoll-card-shadow: 0 32px 64px #00000033; }
+  :host([shadow="none"]){ --atoll-card-shadow: 0 0 0 0; }
+
+  /* rounded — lg = 24px (auth fullscreen variant keeps rounded edges) */
+  :host([rounded="none"]){ --atoll-card-border-radius: 0; }
+  :host([rounded="sm"])  { --atoll-card-border-radius: 4px; }
+  :host([rounded="default"]){ --atoll-card-border-radius: var(--atoll-border-radius-xl, 16px); }
+  :host([rounded="lg"])  { --atoll-card-border-radius: 24px; }
+
+  /* border visibility */
+  :host([border="none"])  { border: 0; }
+  :host([border="top"])   { border: 0; border-top: 1px solid var(--atoll-card-border); }
+  :host([border="bottom"]){ border: 0; border-bottom: 1px solid var(--atoll-card-border); }
+
+  /* body side padding */
+  :host([body-padding="none"]){ --atoll-card-padding: 0; }
+  :host([body-padding="sm"])  { --atoll-card-padding: 1.5rem; }
+  :host([body-padding="lg"])  { --atoll-card-padding: 1.5rem; }
+
+  /* body text alignment */
+  :host([center]) .atoll-card-body { text-align: center; }
+
+  /* ---- fullscreen (auth layout) ---- */
+  :host([fullscreen]) {
+    width: 100vw;
+    height: 100dvh;
+    max-width: 100vw;
+    margin: 0;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    padding: var(--atoll-card-fullscreen-pad);
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* ---- slot zone chrome ---- */
+  .atoll-card-header { padding: var(--atoll-card-header-pad); }
+  .atoll-card-body  { flex: 1 1 auto; min-height: 0; width: 100%; box-sizing: border-box; }
+  .atoll-card-footer{ padding: var(--atoll-card-footer-pad); }
+
+  .atoll-card-title    { font-size: 1.25rem; font-weight: 600; color: var(--atoll-card-title-color); }
+  .atoll-card-subtitle { font-size: .875rem; color: var(--atoll-card-subtitle-color); }
+
+  /* mobile: body gets the scrollport role, card chrome stays pinned */
+  @media (max-width: 767.99px) {
+    :host([fullscreen]) {
+      overflow-y: auto;
+      height: 100dvh;
+      padding: var(--atoll-card-fullscreen-pad);
+    }
+  }
+</style>
+
+<script type="module">
+  import { defineComponent } from 'coralite'
+
+  export default defineComponent({
+    attributes: {
+      title: String,
+      subtitle: String,
+      fullscreen: Boolean,
+      center: Boolean,
+      hideHeader: Boolean,
+      hideFooter: Boolean,
+      shadow:      { type: String, default: 'default', values: ['none','sm','default','lg','xl'] },
+      rounded:     { type: String, default: 'default', values: ['none','sm','default','lg'] },
+      border:      { type: String, default: 'default', values: ['default','none','top','bottom'] },
+      'body-padding': { type: String, default: 'lg', values: ['none','sm','lg'] }
+    },
+    getters: {
+      hideTitle: ({ state }) => !state.title,
+      hideSubtitle: ({ state }) => !state.subtitle
+    }
+  })
+</script>

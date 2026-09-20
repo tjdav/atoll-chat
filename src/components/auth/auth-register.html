@@ -1,7 +1,7 @@
 <template id="auth-register">
-  <div class="atoll-auth-card">
+  <atoll-card fullscreen shadow="lg" border="none" rounded="lg">
     <!-- Zone 1: Header (Top Navigation) -->
-    <div class="atoll-auth-header-zone">
+    <div slot="header">
       <atoll-list-header variant="list">
         <div slot="leading">
           <atoll-button type="button" variant="ghost" icon-only="true" ref="linkLogin" test-id="linkLogin">
@@ -136,7 +136,7 @@
         <atoll-button variant="primary" size="lg" block="true" ref="btnContinueToChat" test-id="btnContinueToChat" disabled="true">Continue to Chat</atoll-button>
       </div>
     </div>
-  </div>
+  </atoll-card>
 </template>
 
 <script type="module">

@@ -1,8 +1,7 @@
 <template id="auth-login">
-  <div class="atoll-auth-card">
-    
+  <div>
     <!-- LOGIN VIEW -->
-    <div ref="viewLogin" data-testid="viewLogin" class="d-flex flex-column h-100">
+    <atoll-card ref="viewLogin" data-testid="viewLogin" class="d-flex flex-column h-100" fullscreen shadow="lg" border="none" rounded="lg" hide-header>
       <!-- Zone 2: Hero Greeting -->
       <div class="text-center mb-5">
         <atoll-profile size="3xl" class="d-inline-block mb-3" src="/icon-192x192.png"></atoll-profile>
@@ -58,12 +57,12 @@
           </div>
         </div>
       </form>
-    </div>
+    </atoll-card>
 
     <!-- VIEW 2: RECOVERY CODE ENTRY -->
-    <div ref="viewRecovery" data-testid="viewRecovery" class="d-none flex-column h-100">
+    <atoll-card ref="viewRecovery" data-testid="viewRecovery" class="d-none flex-column h-100" fullscreen shadow="lg" border="none" rounded="lg">
       <!-- Zone 1: Header (Top Navigation) -->
-      <div class="atoll-auth-header-zone">
+      <div slot="header">
         <atoll-list-header variant="list" title="Recover Account">
           <div slot="leading">
             <atoll-button type="button" variant="ghost" leading-icon="chevron-left" icon-only="true" ref="btnCancelRecovery" test-id="btnCancelRecovery"></atoll-button>
@@ -106,10 +105,16 @@
           <atoll-button type="submit" variant="primary" block="true" ref="btnVerifyRecovery" test-id="btnVerifyRecovery">Verify Recovery Code</atoll-button>
         </div>
       </form>
-    </div>
+    </atoll-card>
 
     <!-- VIEW 3: FORCE NEW PASSWORD CREATION -->
-    <div ref="viewNewPassword" data-testid="viewNewPassword" class="d-none flex-column h-100">
+    <atoll-card ref="viewNewPassword" data-testid="viewNewPassword" class="d-none flex-column h-100" fullscreen shadow="lg" border="none" rounded="lg">
+      <!-- Zone 1: Header (Top Navigation) -->
+      <div slot="header">
+        <atoll-list-header variant="list" title="Set New Password">
+        </atoll-list-header>
+      </div>
+
       <!-- Zone 2: Hero Greeting -->
       <div class="text-center mb-5">
         <h3 class="mb-1">Set New Password</h3>
@@ -155,7 +160,7 @@
           <atoll-button type="submit" variant="primary" block="true" ref="btnSaveNewPassword" test-id="btnSaveNewPassword" disabled="true">Save Password & Log In</atoll-button>
         </div>
       </form>
-    </div>
+    </atoll-card>
 
     <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
   </div>

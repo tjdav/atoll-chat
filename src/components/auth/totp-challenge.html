@@ -1,5 +1,5 @@
 <template id="totp-challenge">
-  <div class="atoll-auth-card">
+  <atoll-card fullscreen shadow="lg" border="none" rounded="lg" hide-header>
     <!-- Zone 2: Hero Greeting -->
     <div class="text-center mb-5">
       <atoll-profile ref="avatarProfile" size="3xl" class="d-inline-block mb-3"></atoll-profile>
@@ -29,7 +29,7 @@
     </form>
 
     <div ref="statusMsg" data-testid="statusMsg" class="mt-3 text-muted text-center small" style="min-height: 1.25rem;"></div>
-  </div>
+  </atoll-card>
 </template>
 
 <script type="module">
