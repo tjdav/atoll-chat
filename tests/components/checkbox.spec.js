@@ -21,7 +21,7 @@ test.describe('atoll-checkbox Component Tests', () => {
     await expect(icon).toBeVisible()
     await expect(icon).toHaveAttribute('name', 'check')
     await expect(icon).toHaveAttribute('size', '22')
-    await expect(icon).toHaveAttribute('active', 'false')
+    await expect(icon).not.toHaveAttribute('active')
   })
 
   test('should toggle checked state on click and dispatch change and input events', async ({ page, mountComponent }) => {
