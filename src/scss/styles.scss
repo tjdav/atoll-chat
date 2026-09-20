@@ -1,4 +1,4 @@
-// 1. Primitive Tokens & Custom Prefix Configuration ($prefix: "atoll-")
+// Primitive Tokens & Custom Prefix Configuration ($prefix: "atoll-")
 @import "theme/variables-primitives";
 @import "theme/variables-colours";
 @import "theme/atoll-chat-theme-variables";
@@ -6,7 +6,7 @@
 @import "theme/variables-typography";
 @import "./variables";
 
-// 2. Bootstrap Core Engine & Utilities Configuration
+// Bootstrap Core Engine & Utilities Configuration
 @import "bootstrap/scss/functions";
 @import "bootstrap/scss/variables";
 @import "bootstrap/scss/variables-dark";
@@ -53,7 +53,7 @@ $utilities: map-merge($utilities,
 // Layer declaration to ensure components override Bootstrap defaults
 @layer bootstrap, components;
 
-// 3. Lean Bootstrap Primitives & Grid
+// Lean Bootstrap Primitives & Grid
 @layer bootstrap {
   @import "bootstrap/scss/root";
   @import "bootstrap/scss/reboot";
@@ -83,7 +83,7 @@ $utilities: map-merge($utilities,
   }
 }
 
-// 4. Global Semantic Token Matrix (light-dark() & Overlay Tokens)
+// Global Semantic Token Matrix (light-dark() & Overlay Tokens)
 @import "theme/mixins-states";
 @import "theme/theme-semantic";
 @import "theme/atoll-chat-theme";
@@ -93,12 +93,16 @@ $utilities: map-merge($utilities,
 @import "theme/typography-utilities";
 @import "theme/layout";
 
-// 5. Global Content & Markdown Formatting
+// Global Content & Markdown Formatting
 @import "display";
 @import "markdown";
 @import "btn";
 
-// 6. Global Viewport Reset
+
+// Custom elements
+@import "atoll-auth-card.scss";
+
+// Global Viewport Reset
 html,
 body {
   position: fixed;
