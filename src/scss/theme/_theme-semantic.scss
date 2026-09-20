@@ -17,7 +17,7 @@
   --#{$prefix}bg-surface-tertiary: light-dark(#{map-get($grays, "200")}, #{map-get($grays, "800")});
   --#{$prefix}bg-surface-elevated: light-dark(#{map-get($grays, "100")}, #{map-get($grays, "900")});
   --#{$prefix}pane-bg: light-dark(#{map-get($grays, "000")}, #{map-get($grays, "850")});
-  --#{$prefix}input-bg: light-dark(#{map-get($grays, "100")}, #{map-get($grays, "800")});
+  --#{$prefix}input-bg: transparent;
 
   /* Atoll Semantic Extensions - Typography & Icons */
   --#{$prefix}text-primary: light-dark(#{map-get($grays, "900")}, #{map-get($grays, "000")});
