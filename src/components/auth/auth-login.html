@@ -392,6 +392,18 @@
       }
 
       /**
+       * Safely resets the ALTCHA widget if upgraded and reset method exists.
+       *
+       * @param {HTMLElement} widget - The Altcha widget element.
+       * @returns {void}
+       */
+      const safeResetAltcha = (widget) => {
+        if (widget && typeof widget.reset === 'function') {
+          widget.reset()
+        }
+      }
+
+      /**
        * Renders the ALTCHA challenge widget inside the provided container.
        *
        * @param {HTMLElement} container - The container element for the widget.
@@ -690,7 +702,7 @@
 
               updateStatus(error.message || 'Failed to log in', true)
               showGlobalAlert(error.message || 'Failed to log in')
-              activeAltchaWidget.reset()
+              safeResetAltcha(activeAltchaWidget)
             }
           })
 
@@ -894,7 +906,7 @@
 
           updateStatus(error.message || 'Failed to log in', true)
           showGlobalAlert(error.message || 'Failed to log in')
-          activeAltchaWidget.reset()
+          safeResetAltcha(activeAltchaWidget)
         }
       })
 

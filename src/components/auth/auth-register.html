@@ -509,6 +509,18 @@ Atoll administrators cannot recover your credentials or vault.
       }
 
       /**
+       * Safely resets the ALTCHA widget if upgraded and reset method exists.
+       *
+       * @param {HTMLElement} widget - The Altcha widget element.
+       * @returns {void}
+       */
+      const safeResetAltcha = (widget) => {
+        if (widget && typeof widget.reset === 'function') {
+          widget.reset()
+        }
+      }
+
+      /**
        * Renders the ALTCHA challenge widget inside the registration container.
        *
        * @returns {HTMLElement} The initialized Altcha widget.
@@ -816,7 +828,7 @@ Atoll administrators cannot recover your credentials or vault.
 
           updateStatus(error.message || 'Registration failed', true)
           showGlobalAlert(error.message || 'Registration failed')
-          altchaWidget.reset()
+          safeResetAltcha(altchaWidget)
         }
       })
     }
