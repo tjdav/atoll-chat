@@ -144,7 +144,7 @@ test.describe('atoll-slideshow Component Tests', () => {
 
       const footer = document.createElement('div')
       footer.setAttribute('slot', 'footer')
-      footer.style.cssText = 'padding: 10px 16px; font-size: 13px; color: var(--atoll-text-muted, #6b7280); background: var(--atoll-bg-surface-secondary, #f3f4f6);'
+      footer.style.cssText = 'padding: 10px 16px; font-size: 13px; color: var(--atoll-text-secondary, #6b7280); background: var(--atoll-bg-surface-secondary, #f3f4f6);'
       footer.textContent = 'Swipe or click arrows to navigate'
       slideshow.appendChild(footer)
 
