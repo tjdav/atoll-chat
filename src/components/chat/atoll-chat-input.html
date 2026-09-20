@@ -698,8 +698,21 @@
             item.isImage = true
             if (file.size > 15 * 1024 * 1024) {
               item.status = 'Compressing GIF...'
+              item.progress = 10
+              syncAttachmentPreview()
               try {
-                file = await $media.compressGif(file)
+                file = await $media.compressGif(file, {
+                  onProgress: (progress, status) => {
+                    if (currentToken !== fileProcessingToken) {
+                      return
+                    }
+                    item.progress = progress
+                    if (status) {
+                      item.status = status
+                    }
+                    syncAttachmentPreview()
+                  }
+                })
               } catch {
                 // proceed with original
               }
@@ -709,18 +722,30 @@
             }
             item.file = file
             item.thumbnailPreviewUrl = URL.createObjectURL(file)
+            item.progress = 100
             item.isCompressing = false
             item.status = 'Ready'
           } else if (file.type.startsWith('image/') || compatibility.category === 'image') {
             item.isImage = true
             item.status = 'Compressing image...'
+            item.progress = 10
             syncAttachmentPreview()
             try {
               const compressedBlob = await $media.compressImage(file, {
                 maxWidth: 1200,
                 maxHeight: 1200,
                 quality: 0.8,
-                format: 'image/webp'
+                format: 'image/webp',
+                onProgress: (progress, status) => {
+                  if (currentToken !== fileProcessingToken) {
+                    return
+                  }
+                  item.progress = progress
+                  if (status) {
+                    item.status = status
+                  }
+                  syncAttachmentPreview()
+                }
               })
               if (currentToken !== fileProcessingToken) {
                 return
@@ -745,11 +770,13 @@
               }
             }
             item.thumbnailPreviewUrl = URL.createObjectURL(item.file)
+            item.progress = 100
             item.isCompressing = false
             item.status = 'Ready'
           } else if (file.type.startsWith('video/') || compatibility.category === 'video') {
             item.isVideo = true
             item.status = 'Processing video...'
+            item.progress = 10
             syncAttachmentPreview()
             try {
               const result = await $media.extractThumbnail(file)
@@ -762,6 +789,8 @@
                 item.thumbnailPreviewUrl = URL.createObjectURL(result.thumbnail)
               }
               item.duration = result.duration
+              item.progress = 30
+              syncAttachmentPreview()
 
               const maxServerUploadSizeBytes = $config ? $config.get('maxServerUploadSizeBytes') : 26214400
               const evalResult = await $media.evaluateVideo(file, {
@@ -830,15 +859,28 @@
                 item.status = 'Ready to send (original format)'
               }
             }
+            item.progress = 100
             item.isCompressing = false
             item.status = item.status || 'Ready'
           } else if (file.type.startsWith('audio/') || compatibility.category === 'audio') {
             item.isAudio = true
             item.status = 'Extracting audio...'
+            item.progress = 10
             syncAttachmentPreview()
             try {
               if (compatibility.requiresConversion) {
-                file = await $media.convertAudio(file)
+                file = await $media.convertAudio(file, {
+                  onProgress: (progress, status) => {
+                    if (currentToken !== fileProcessingToken) {
+                      return
+                    }
+                    item.progress = progress
+                    if (status) {
+                      item.status = status
+                    }
+                    syncAttachmentPreview()
+                  }
+                })
                 if (currentToken !== fileProcessingToken) {
                   return
                 }
@@ -876,6 +918,7 @@
               item.waveform_data = await $media.generateWaveform(file)
             } catch {
             }
+            item.progress = 100
             item.isCompressing = false
             item.status = 'Ready'
           } else {
@@ -1134,20 +1177,6 @@
 
         processAttachmentItem(item, fileProcessingToken)
       })
-
-      // Observe input container height changes and emit dynamic offset for timeline spacer
-      let lastHeight = 0
-      const inputObserver = new ResizeObserver(() => {
-        const rect = root.getBoundingClientRect()
-        const height = Math.round(rect.height || root.offsetHeight || 0)
-        if (height > 0 && height !== lastHeight) {
-          lastHeight = height
-          const totalOffset = Math.max(height + 12, 100)
-          $bus.emit('ui:input_height_changed', { height: totalOffset })
-        }
-      })
-      inputObserver.observe(root)
-      signal.addEventListener('abort', () => inputObserver.disconnect())
     }
   })
 </script>

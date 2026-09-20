@@ -130,6 +130,30 @@ test.describe('Media & Attachments', () => {
       await expect(page.locator('atoll-chat-timeline-row img').first()).toBeVisible({ timeout: 15000 })
     })
 
+    test('media attachment progress tracking and overlay teardown when ready', async ({ page, loginCustomPage }) => {
+      await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
+      await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+      await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
+      await page.locator('[data-testid$="search-result-bob"]').click()
+      await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+
+      const imgPath = path.resolve('tests/e2e/fixtures/test-files/test.png')
+      await page.setInputFiles('[data-testid$="__fileInput"]', imgPath)
+
+      // Verify that status reaches 'Ready'
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 45000 })
+
+      // Verify thumbnail img element is present and visible in the preview tile for a single item
+      await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-tile img')).toBeVisible({ timeout: 15000 })
+
+      // Verify processing overlay is NOT present once attachment status is Ready
+      await expect(page.locator('atoll-chat-attachment-preview [data-testid^="processing-overlay-"]')).toHaveCount(0)
+
+      // Send the message
+      await page.locator('[data-testid$="sendButton"]').click()
+      await expect(page.locator('atoll-chat-timeline-row img').first()).toBeVisible({ timeout: 15000 })
+    })
+
     test('custom video cover selection and removal', async ({ page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')

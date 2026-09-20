@@ -52,7 +52,10 @@ self.onmessage = async (event) => {
             self.postMessage({
               id,
               type: 'video:progress',
-              payload: { progress }
+              payload: {
+                progress,
+                status: `Compressing video... ${progress}%`
+              }
             })
           })
           break
@@ -110,7 +113,10 @@ self.onmessage = async (event) => {
         self.postMessage({
           id,
           type: 'audio:progress',
-          payload: { progress }
+          payload: {
+            progress,
+            status: `Converting audio... ${progress}%`
+          }
         })
       })
       self.postMessage({

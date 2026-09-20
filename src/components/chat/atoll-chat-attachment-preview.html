@@ -637,13 +637,23 @@
               removeBtn.setAttribute('data-testid', `btn-remove-${item.id}`)
             }
 
-            const img = existingChild.querySelector('img')
+            let img = existingChild.querySelector('img')
             const thumbUrl = item.thumbnailPreviewUrl || item.thumbnailUrl || ''
-            if (img) {
-              if (thumbUrl) {
-                img.src = thumbUrl
-                img.removeAttribute('hidden')
+            if (thumbUrl) {
+              if (!img) {
+                img = document.createElement('img')
+                img.alt = item.fileName || 'Preview'
+                img.className = 'w-100 h-100 object-fit-cover'
+                img.addEventListener('error', () => {
+                  img.src = ''
+                })
+                existingChild.prepend(img)
               }
+  
+              img.src = thumbUrl
+              img.removeAttribute('hidden')
+            } else if (img) {
+              img.setAttribute('hidden', 'true')
             }
 
             const coverBtn = existingChild.querySelector('[data-testid$="btn-change-cover"]')
@@ -665,6 +675,76 @@
                 coverBtn.setAttribute('hidden', 'true')
                 coverBtn.classList.add('d-none')
               }
+            }
+
+            // Processing Overlay handling in single-item fast path
+            const isProcessingMedia = Boolean(
+              (item.isCompressing || item.isUploading || item.status === 'Processing...') &&
+              item.status !== 'Ready' &&
+              item.status !== 'Ready to send (original format)' &&
+              !item.isError
+            )
+            let overlay = existingChild.querySelector('.atoll-chat-tile-overlay')
+            if (isProcessingMedia) {
+              if (!overlay) {
+                overlay = document.createElement('div')
+                overlay.className = 'atoll-chat-tile-overlay'
+                overlay.setAttribute('data-testid', `processing-overlay-${item.id}`)
+
+                const spinner = document.createElement('div')
+                spinner.className = 'spinner-border spinner-border-sm text-light mb-1'
+                spinner.setAttribute('role', 'status')
+
+                const progressText = document.createElement('span')
+                progressText.className = 'atoll-chat-tile-progress-text'
+
+                overlay.appendChild(spinner)
+                overlay.appendChild(progressText)
+                existingChild.appendChild(overlay)
+              }
+              const progressText = overlay.querySelector('.atoll-chat-tile-progress-text')
+              if (progressText) {
+                const pct = typeof item.progress === 'number' ? Math.min(100, Math.max(0, Math.round(item.progress))) : 0
+                progressText.textContent = `${pct}%`
+              }
+            } else if (overlay) {
+              overlay.remove()
+            }
+
+            // Error Overlay handling in single-item fast path
+            let errOverlay = existingChild.querySelector('.atoll-chat-tile-error-overlay')
+            if (item.isError) {
+              if (!errOverlay) {
+                errOverlay = document.createElement('div')
+                errOverlay.className = 'atoll-chat-tile-error-overlay'
+                errOverlay.setAttribute('data-testid', `error-overlay-${item.id}`)
+
+                const errBadge = document.createElement('div')
+                errBadge.className = 'atoll-chat-tile-error-badge'
+                errBadge.textContent = '!'
+
+                const errText = document.createElement('span')
+                errText.className = 'atoll-chat-tile-error-msg'
+
+                errOverlay.appendChild(errBadge)
+                errOverlay.appendChild(errText)
+                existingChild.appendChild(errOverlay)
+
+                existingChild.addEventListener('click', (e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  $bus.emit('ui:retry_attachment_processing', { id: item.id })
+                })
+              }
+              errOverlay.setAttribute('title', item.errorMessage || 'Processing failed')
+              const errText = errOverlay.querySelector('.atoll-chat-tile-error-msg')
+              if (errText) {
+                errText.textContent = item.errorMessage || 'Processing failed'
+              }
+              existingChild.classList.add('has-error')
+            } else if (errOverlay) {
+              errOverlay.remove()
+              existingChild.classList.remove('has-error')
             }
             return
           } else if (!isMedia && existingChild.classList.contains('atoll-chat-attachment-chip')) {
@@ -867,7 +947,12 @@
             }
 
             // Processing Overlay (In-flight compressing/uploading)
-            const isProcessingMedia = Boolean(item.isCompressing || item.isUploading || item.status === 'Processing...')
+            const isProcessingMedia = Boolean(
+              (item.isCompressing || item.isUploading || item.status === 'Processing...') &&
+              item.status !== 'Ready' &&
+              item.status !== 'Ready to send (original format)' &&
+              !item.isError
+            )
             if (isProcessingMedia) {
               const overlay = document.createElement('div')
               overlay.className = 'atoll-chat-tile-overlay'
@@ -879,7 +964,8 @@
 
               const progressText = document.createElement('span')
               progressText.className = 'atoll-chat-tile-progress-text'
-              progressText.textContent = `${item.progress || 0}%`
+              const pct = typeof item.progress === 'number' ? Math.min(100, Math.max(0, Math.round(item.progress))) : 0
+              progressText.textContent = `${pct}%`
 
               overlay.appendChild(spinner)
               overlay.appendChild(progressText)
@@ -954,7 +1040,12 @@
             statusEl.textContent = formattedSize || item.uploadStatus || item.status || 'Ready'
             textStack.appendChild(statusEl)
 
-            const isComp = Boolean(item.isCompressing || item.isUploading || item.status === 'Processing...' || state.effectiveIsCompressing || state.effectiveIsUploading)
+            const isComp = Boolean(
+              (item.isCompressing || item.isUploading || item.status === 'Processing...' || state.effectiveIsCompressing || state.effectiveIsUploading) &&
+              item.status !== 'Ready' &&
+              item.status !== 'Ready to send (original format)' &&
+              !item.isError
+            )
             if (isComp) {
               const progressWrapper = document.createElement('div')
               progressWrapper.className = 'progress mt-1 atoll-chat-attachment-preview-progress'

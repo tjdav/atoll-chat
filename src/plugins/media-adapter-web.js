@@ -19,11 +19,16 @@ export function createWebMediaAdapter (instanceContext) {
       maxHeight = 1200,
       quality = 0.8,
       format = 'image/webp',
-      cropToSquare = false
+      cropToSquare = false,
+      onProgress
     } = options
 
     let img
     let shouldRevoke = false
+
+    if (onProgress) {
+      onProgress(10, 'Loading image source...')
+    }
 
     if (
       source instanceof HTMLImageElement ||
@@ -48,6 +53,10 @@ export function createWebMediaAdapter (instanceContext) {
       }
 
       await promise
+    }
+
+    if (onProgress) {
+      onProgress(50, 'Resizing image canvas...')
     }
 
     try {
@@ -77,9 +86,16 @@ export function createWebMediaAdapter (instanceContext) {
         ctx.drawImage(img, 0, 0, targetWidth, targetHeight)
       }
 
+      if (onProgress) {
+        onProgress(85, 'Encoding compressed image...')
+      }
+
       return new Promise((resolve, reject) => {
         canvas.toBlob((blob) => {
           if (blob) {
+            if (onProgress) {
+              onProgress(100, 'Image compression complete')
+            }
             resolve(blob)
           } else {
             reject(new Error('Canvas toBlob failed'))
