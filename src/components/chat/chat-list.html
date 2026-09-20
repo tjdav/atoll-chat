@@ -286,7 +286,10 @@
         },
         render: async (itemsToDisplay, query) => {
           if (itemsToDisplay.length === 0) {
-            listGroup.innerHTML = `<div class="p-4 text-center text-body-secondary">${query ? 'No matches found' : 'No chats found'}</div>`
+            const emptyDiv = document.createElement('div')
+            emptyDiv.className = 'p-4 text-center text-body-secondary'
+            emptyDiv.textContent = query ? 'No matches found' : 'No chats found'
+            listGroup.replaceChildren(emptyDiv)
             return
           }
 

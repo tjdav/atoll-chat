@@ -39,6 +39,16 @@
       }
     },
 
+    slots: {
+      default (nodes) {
+        if (nodes && nodes.length > 0) {
+          return nodes
+        }
+  
+        return null
+      }
+    },
+
     client: ({ state, root, observe, signal }) => {
       if (!root.hasAttribute('role')) {
         root.setAttribute('role', 'list')

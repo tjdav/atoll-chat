@@ -56,7 +56,10 @@
         },
         render: async (itemsToDisplay, query) => {
           if (itemsToDisplay.length === 0) {
-            listContainer.innerHTML = `<div class="p-4 text-center text-body-secondary w-100">${query ? 'No matches found' : 'No videos found'}</div>`
+            const emptyDiv = document.createElement('div')
+            emptyDiv.className = 'p-4 text-center text-body-secondary w-100'
+            emptyDiv.textContent = query ? 'No matches found' : 'No videos found'
+            listContainer.replaceChildren(emptyDiv)
             return
           }
 
@@ -105,8 +108,7 @@
             fragment.appendChild(groupSection)
           }
 
-          listContainer.innerHTML = ''
-          listContainer.appendChild(fragment)
+          listContainer.replaceChildren(fragment)
         }
       })
 
