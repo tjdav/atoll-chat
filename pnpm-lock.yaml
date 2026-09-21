@@ -124,11 +124,11 @@ importers:
         specifier: ^26.1.0
         version: 26.3.0
       coralite:
-        specifier: ^1.0.0-rc.4
-        version: 1.0.0-rc.4(@noble/hashes@2.3.0)
+        specifier: ^1.0.0-rc.5
+        version: 1.0.0-rc.5(@noble/hashes@2.3.0)
       coralite-scripts:
-        specifier: ^1.0.0-rc.4
-        version: 1.0.0-rc.4(@noble/hashes@2.3.0)
+        specifier: ^1.0.0-rc.5
+        version: 1.0.0-rc.5(@noble/hashes@2.3.0)
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
@@ -1246,13 +1246,13 @@ packages:
     resolution: {integrity: sha512-yki5XnKuf750l50uGTllt6kKILY4nQ1eNIQatoXEByZ5dWgnKqbnqmTrBE5B4N7lrMJKQ2ytWMiTO2o0v6Ew/w==}
     engines: {node: '>= 0.6'}
 
-  coralite-scripts@1.0.0-rc.4:
-    resolution: {integrity: sha512-WtqKMMAAhWafxUjx97CsIdyiUAM3ED/mPAIEVdtHaM5412fxVMoCvwcTj4kqfJdDHgOnF4As/nXkvkiS7JFqwA==}
+  coralite-scripts@1.0.0-rc.5:
+    resolution: {integrity: sha512-FeKmn4XnN3PZHviLcJyaYiJKQtK1S4wTb/qjPwlFAhIl3GdSSxbKeJgX1K8VMhCZMS7lOz1pvxE2ogYfiyejVw==}
     engines: {node: '>=22.22.2'}
     hasBin: true
 
-  coralite@1.0.0-rc.4:
-    resolution: {integrity: sha512-3MlX1CcaHzvy6ibOLiUDizvTOX9E75hHoRpKULKMh+s7Lxa1I9SqC+cksoCFQ331eSVkCmUaU+pxoZp/41eTOA==}
+  coralite@1.0.0-rc.5:
+    resolution: {integrity: sha512-XoLfZ6+iTu8RFXKVfZhiFUwwLP8NvwPV6lgrzLy0VHV3gaBvOhSW6WUfJa6X1isMpCCDFemYJZRFmF6t0JFB9w==}
     engines: {node: '>=22.22.2'}
     hasBin: true
 
@@ -3829,12 +3829,12 @@ snapshots:
 
   cookie@0.7.2: {}
 
-  coralite-scripts@1.0.0-rc.4(@noble/hashes@2.3.0):
+  coralite-scripts@1.0.0-rc.5(@noble/hashes@2.3.0):
     dependencies:
       '@clack/prompts': 0.11.0
       chokidar: 4.0.3
       commander: 14.0.3
-      coralite: 1.0.0-rc.4(@noble/hashes@2.3.0)
+      coralite: 1.0.0-rc.5(@noble/hashes@2.3.0)
       cross-env: 10.1.0
       express: 5.2.1
       kleur: 4.1.5
@@ -3848,7 +3848,7 @@ snapshots:
       - canvas
       - supports-color
 
-  coralite@1.0.0-rc.4(@noble/hashes@2.3.0):
+  coralite@1.0.0-rc.5(@noble/hashes@2.3.0):
     dependencies:
       '@clack/prompts': 0.11.0
       acorn: 8.18.0
