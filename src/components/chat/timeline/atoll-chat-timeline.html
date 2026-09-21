@@ -865,7 +865,7 @@
 
                 // Render non-media items
                 nonMediaAttachments.forEach((att) => {
-                  if (att.isAudio || (att.mime_type || '').startsWith('audio/')) {
+                  if (att.isAudio || (att.mime_type || '').startsWith('audio/') || /\.(mp3|m4a|aac|wav|ogg|opus|flac|wma|aiff|aif)$/i.test(att.filename || att.fileName || '')) {
                     const player = document.createElement('atoll-chat-timeline-item-voice')
                     player.setAttribute('local-uuid', message.local_uuid)
                     player.setAttribute('status', message.status)

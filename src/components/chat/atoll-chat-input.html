@@ -16,6 +16,7 @@
       <!-- Normal Input Mode -->
       <div class="{{ inputGroupClass }}" data-testid="chat-input-wrapper">
         <atoll-chat-input-text
+          ref="inputTextComp"
           is-sending="{{ isSending }}"
           is-uploading="{{ isUploading }}"
           is-compressing="{{ isCompressing }}"
@@ -258,6 +259,16 @@
        * Synchronizes attachment list to the preview component.
        */
       const syncAttachmentPreview = () => {
+        const isComp = Boolean(state.attachments && state.attachments.some(att => att.isCompressing))
+        state.isCompressing = isComp
+        const inputText = refs('inputTextComp')
+        if (inputText) {
+          if (isComp) {
+            inputText.setAttribute('is-compressing', '')
+          } else {
+            inputText.removeAttribute('is-compressing')
+          }
+        }
         $bus.emit('ui:attachments_updated', { attachments: state.attachments || [] })
         const previewComp = refs('attachmentPreview')
         if (previewComp) {
@@ -405,6 +416,14 @@
           }
         }
 
+        // For single-attachment media messages, promote first attachment's metadata to top level for timeline & player compatibility
+        const firstAtt = params.attachments && params.attachments.length === 1 ? params.attachments[0] : null
+        const firstAttMime = firstAtt ? (firstAtt.mime_type || firstAtt.mimeType || (firstAtt.isAudio || /\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i.test(firstAtt.filename || firstAtt.fileName || '') ? 'audio/mpeg' : undefined)) : undefined
+        const topMimeType = params.mime_type || firstAttMime
+        const topWaveformData = params.waveform_data || (firstAtt ? firstAtt.waveform_data : undefined)
+        const topFilename = params.filename || (firstAtt ? (firstAtt.filename || firstAtt.fileName) : undefined)
+        const topDuration = params.duration || (firstAtt ? firstAtt.duration : undefined)
+
         // Optimistic Write
         const optimisticMessage = {
           local_uuid: localUuid,
@@ -418,8 +437,8 @@
           created_at: new Date().toISOString(),
           attachments: params.attachments ? params.attachments.map(a => ({
             id: a.id,
-            filename: a.filename,
-            mime_type: a.mime_type,
+            filename: a.filename || a.fileName,
+            mime_type: a.mime_type || a.mimeType,
             duration: a.duration,
             waveform_data: a.waveform_data,
             music_metadata: a.music_metadata,
@@ -427,11 +446,11 @@
             isAudio: a.isAudio,
             isImage: a.isImage
           })) : undefined,
-          mime_type: params.mime_type,
-          filename: params.filename,
-          waveform_data: params.waveform_data,
-          music_metadata: params.music_metadata,
-          duration: params.duration,
+          mime_type: topMimeType,
+          filename: topFilename,
+          waveform_data: topWaveformData,
+          music_metadata: params.music_metadata || (firstAtt ? firstAtt.music_metadata : undefined),
+          duration: topDuration,
           links: params.links
         }
 
@@ -862,8 +881,9 @@
             item.progress = 100
             item.isCompressing = false
             item.status = item.status || 'Ready'
-          } else if (file.type.startsWith('audio/') || compatibility.category === 'audio') {
+          } else if (file.type.startsWith('audio/') || compatibility.category === 'audio' || /\.(mp3|m4a|aac|wav|ogg|opus|flac|wma|aiff|aif)$/i.test(file.name || '')) {
             item.isAudio = true
+            item.mimeType = file.type || 'audio/mpeg'
             item.status = 'Extracting audio...'
             item.progress = 10
             syncAttachmentPreview()

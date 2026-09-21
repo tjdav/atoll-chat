@@ -8,6 +8,10 @@ const NON_UNIVERSAL_VIDEO_EXTENSIONS = new Set(['mkv', 'avi', 'mov', 'flv', 'wmv
 const NON_UNIVERSAL_IMAGE_EXTENSIONS = new Set(['heic', 'heif', 'bmp', 'tiff', 'tif', 'raw', 'cr2', 'nef'])
 const NON_UNIVERSAL_AUDIO_EXTENSIONS = new Set(['wav', 'aiff', 'aif', 'wma', 'flac', 'ape', 'alac'])
 
+const UNIVERSAL_VIDEO_EXTENSIONS = new Set(['mp4', 'm4v', 'webm', 'ogv'])
+const UNIVERSAL_IMAGE_EXTENSIONS = new Set(['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'])
+const UNIVERSAL_AUDIO_EXTENSIONS = new Set(['mp3', 'm4a', 'aac', 'ogg', 'opus'])
+
 const UNIVERSAL_VIDEO_MIMES = new Set([
   'video/mp4',
   'video/webm',
@@ -72,9 +76,9 @@ export function checkMediaCompatibility (file) {
   }
 
   // Check Video Compatibility
-  const isVideoType = mime.startsWith('video/') || NON_UNIVERSAL_VIDEO_EXTENSIONS.has(extension)
+  const isVideoType = mime.startsWith('video/') || NON_UNIVERSAL_VIDEO_EXTENSIONS.has(extension) || UNIVERSAL_VIDEO_EXTENSIONS.has(extension)
   if (isVideoType) {
-    const isUniversal = UNIVERSAL_VIDEO_MIMES.has(mime) && !NON_UNIVERSAL_VIDEO_EXTENSIONS.has(extension)
+    const isUniversal = (UNIVERSAL_VIDEO_MIMES.has(mime) || UNIVERSAL_VIDEO_EXTENSIONS.has(extension)) && !NON_UNIVERSAL_VIDEO_EXTENSIONS.has(extension)
     if (!isUniversal) {
       return {
         requiresConversion: true,
@@ -84,12 +88,19 @@ export function checkMediaCompatibility (file) {
         targetExtension: '.mp4'
       }
     }
+    return {
+      requiresConversion: false,
+      category: 'none',
+      reason: '',
+      targetFormat: '',
+      targetExtension: ''
+    }
   }
 
   // Check Image Compatibility
-  const isImageType = mime.startsWith('image/') || NON_UNIVERSAL_IMAGE_EXTENSIONS.has(extension)
+  const isImageType = mime.startsWith('image/') || NON_UNIVERSAL_IMAGE_EXTENSIONS.has(extension) || UNIVERSAL_IMAGE_EXTENSIONS.has(extension)
   if (isImageType) {
-    const isUniversal = UNIVERSAL_IMAGE_MIMES.has(mime) && !NON_UNIVERSAL_IMAGE_EXTENSIONS.has(extension)
+    const isUniversal = (UNIVERSAL_IMAGE_MIMES.has(mime) || UNIVERSAL_IMAGE_EXTENSIONS.has(extension)) && !NON_UNIVERSAL_IMAGE_EXTENSIONS.has(extension)
     if (!isUniversal) {
       return {
         requiresConversion: true,
@@ -99,12 +110,19 @@ export function checkMediaCompatibility (file) {
         targetExtension: '.webp'
       }
     }
+    return {
+      requiresConversion: false,
+      category: 'none',
+      reason: '',
+      targetFormat: '',
+      targetExtension: ''
+    }
   }
 
   // Check Audio Compatibility
-  const isAudioType = mime.startsWith('audio/') || NON_UNIVERSAL_AUDIO_EXTENSIONS.has(extension)
+  const isAudioType = mime.startsWith('audio/') || NON_UNIVERSAL_AUDIO_EXTENSIONS.has(extension) || UNIVERSAL_AUDIO_EXTENSIONS.has(extension)
   if (isAudioType) {
-    const isUniversal = UNIVERSAL_AUDIO_MIMES.has(mime) && !NON_UNIVERSAL_AUDIO_EXTENSIONS.has(extension)
+    const isUniversal = (UNIVERSAL_AUDIO_MIMES.has(mime) || UNIVERSAL_AUDIO_EXTENSIONS.has(extension)) && !NON_UNIVERSAL_AUDIO_EXTENSIONS.has(extension)
     if (!isUniversal) {
       return {
         requiresConversion: true,
@@ -113,6 +131,13 @@ export function checkMediaCompatibility (file) {
         targetFormat: 'audio/mp4',
         targetExtension: '.m4a'
       }
+    }
+    return {
+      requiresConversion: false,
+      category: 'none',
+      reason: '',
+      targetFormat: '',
+      targetExtension: ''
     }
   }
 

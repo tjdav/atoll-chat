@@ -782,7 +782,11 @@
 
             const statusEl = existingChild.querySelector('.atoll-chip-subtext')
             if (statusEl) {
-              statusEl.textContent = formattedSize || item.uploadStatus || item.status || 'Ready'
+              let displayStatus = item.uploadStatus || item.status || 'Ready'
+              if (formattedSize) {
+                displayStatus = `${formattedSize} • ${displayStatus}`
+              }
+              statusEl.textContent = displayStatus
             }
 
             const isComp = Boolean(item.isCompressing || item.isUploading || state.effectiveIsCompressing || state.effectiveIsUploading)
@@ -1037,7 +1041,11 @@
             const statusEl = document.createElement('div')
             statusEl.className = 'atoll-chip-subtext atoll-chat-attachment-preview-status'
             const formattedSize = formatSize(item.fileSize || item.file?.size)
-            statusEl.textContent = formattedSize || item.uploadStatus || item.status || 'Ready'
+            let displayStatus = item.uploadStatus || item.status || 'Ready'
+            if (formattedSize) {
+              displayStatus = `${formattedSize} • ${displayStatus}`
+            }
+            statusEl.textContent = displayStatus
             textStack.appendChild(statusEl)
 
             const isComp = Boolean(

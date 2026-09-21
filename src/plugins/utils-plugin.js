@@ -527,7 +527,9 @@ export default definePlugin({
            * Generates a theme-aware SVG waveform for any audio file.
            */
           generateWaveform: async (file) => {
+            console.log('[generateWaveform] called with file:', file ? { name: file.name, type: file.type, size: file.size } : null)
             if (!file || (!file.type?.startsWith('audio/') && !file.name?.match(/\.(mp3|m4a|aac|wav|ogg|opus|flac)$/i))) {
+              console.log('[generateWaveform] Guard 1 failed')
               return null
             }
             if (file.size > 20 * 1024 * 1024) {
@@ -562,7 +564,59 @@ export default definePlugin({
                 const AudioContextClass = win.AudioContext || win.webkitAudioContext
                 if (AudioContextClass) {
                   audioContext = new AudioContextClass()
-                  const audioBuffer = await audioContext.decodeAudioData(arrayBuffer.slice(0))
+                  if (audioContext.state === 'suspended') {
+                    await audioContext.resume().catch(() => {})
+                  }
+                  const audioBuffer = await new Promise((resolve, reject) => {
+                    let isResolved = false
+                    const timer = setTimeout(() => {
+                      if (!isResolved) {
+                        isResolved = true
+                        reject(new Error('AudioContext decodeAudioData timeout'))
+                      }
+                    }, 500)
+
+                    try {
+                      const res = audioContext.decodeAudioData(
+                        arrayBuffer.slice(0),
+                        (buf) => {
+                          if (!isResolved) {
+                            isResolved = true
+                            clearTimeout(timer)
+                            resolve(buf)
+                          }
+                        },
+                        (err) => {
+                          if (!isResolved) {
+                            isResolved = true
+                            clearTimeout(timer)
+                            reject(err)
+                          }
+                        }
+                      )
+                      if (res && typeof res.then === 'function') {
+                        res.then((buf) => {
+                          if (!isResolved) {
+                            isResolved = true
+                            clearTimeout(timer)
+                            resolve(buf)
+                          }
+                        }).catch((err) => {
+                          if (!isResolved) {
+                            isResolved = true
+                            clearTimeout(timer)
+                            reject(err)
+                          }
+                        })
+                      }
+                    } catch (e) {
+                      if (!isResolved) {
+                        isResolved = true
+                        clearTimeout(timer)
+                        reject(e)
+                      }
+                    }
+                  })
                   const channelData = audioBuffer.getChannelData(0)
                   const barCount = 100
                   const chunkSize = Math.floor(channelData.length / barCount)

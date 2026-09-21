@@ -106,7 +106,7 @@
       isInputDisabled: ({ state }) => Boolean(state.isUploading || state.isCompressing),
       isButtonDisabled: ({ state }) => Boolean(state.isSending || state.isUploading || state.isCompressing)
     },
-    client: ({ refs, state, globalStore, eventBus, signal, utils, storage, pocketbase }) => {
+    client: ({ refs, state, globalStore, eventBus, signal, utils, storage, pocketbase, observe }) => {
       const { $state } = globalStore
       const { $bus } = eventBus
       const { $device } = utils
@@ -120,6 +120,39 @@
       if (!messageInput) {
         return
       }
+
+      const syncDisabledState = () => {
+        const disabled = Boolean(state.isSending || state.isUploading || state.isCompressing)
+        if (sendButton) {
+          if (disabled) {
+            sendButton.setAttribute('disabled', '')
+            sendButton.setAttribute('loading', '')
+          } else {
+            sendButton.removeAttribute('disabled')
+            sendButton.removeAttribute('loading')
+          }
+        }
+        const attachBtn = refs('attachButton')
+        if (attachBtn) {
+          if (disabled) {
+            attachBtn.setAttribute('disabled', '')
+          } else {
+            attachBtn.removeAttribute('disabled')
+          }
+        }
+        if (micButton) {
+          if (disabled) {
+            micButton.setAttribute('disabled', '')
+          } else {
+            micButton.removeAttribute('disabled')
+          }
+        }
+      }
+
+      observe('isSending', syncDisabledState)
+      observe('isUploading', syncDisabledState)
+      observe('isCompressing', syncDisabledState)
+      syncDisabledState()
 
       // Sync initial global state
       state.currentMessageText = $state.currentMessageText || ''

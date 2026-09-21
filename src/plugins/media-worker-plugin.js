@@ -106,11 +106,12 @@ export default definePlugin({
               reject
             })
 
+            const fileClone = file && typeof file.slice === 'function' ? file.slice(0, file.size, file.type) : file
             worker.postMessage({
               id,
               type: 'media:get-metadata',
               payload: {
-                file,
+                file: fileClone,
                 options
               }
             })

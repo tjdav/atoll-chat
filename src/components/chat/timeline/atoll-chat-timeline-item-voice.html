@@ -161,8 +161,9 @@
         // Deduplication check
         const existing = container.querySelectorAll('.atoll-chat-waveform-player, audio')
         if (existing.length > 0) {
+          const existingWaveform = container.querySelector('.atoll-chat-waveform-player')
           const existingAudio = container.querySelector('audio')
-          if (existingAudio && (existingAudio.src === objectUrl || existingAudio.src.endsWith(objectUrl))) {
+          if ((waveformData ? Boolean(existingWaveform) : !existingWaveform) && existingAudio && (existingAudio.src === objectUrl || existingAudio.src.endsWith(objectUrl))) {
             state.isLoaded = true
             lastLoadedUuid = state.localUuid
             loading.classList.add('d-none')
@@ -475,7 +476,8 @@
 
         try {
           const message = await $storage.getMessage(state.localUuid)
-          const audioAtt = Array.isArray(message?.attachments) ? message.attachments.find(a => a.isAudio || (a.mime_type || '').startsWith('audio/')) : null
+          const isAudioAttachment = (a) => Boolean(a && (a.isAudio || (a.mime_type || '').startsWith('audio/') || /\.(mp3|m4a|aac|wav|ogg|opus|flac|wma|aiff|aif)$/i.test(a.filename || a.fileName || '')))
+          const audioAtt = Array.isArray(message?.attachments) ? message.attachments.find(isAudioAttachment) : null
           const attSubId = audioAtt?.id ? `${state.localUuid}_${audioAtt.id}` : state.localUuid
 
           const localKey = `local:${attSubId}`
@@ -658,7 +660,8 @@
             return
           }
 
-          const audioAtt = Array.isArray(message?.attachments) ? message.attachments.find(a => a.isAudio || (a.mime_type || '').startsWith('audio/')) : null
+          const isAudioAttachment = (a) => Boolean(a && (a.isAudio || (a.mime_type || '').startsWith('audio/') || /\.(mp3|m4a|aac|wav|ogg|opus|flac|wma|aiff|aif)$/i.test(a.filename || a.fileName || '')))
+          const audioAtt = Array.isArray(message?.attachments) ? message.attachments.find(isAudioAttachment) : null
           const attSubId = audioAtt?.id ? `${state.localUuid}_${audioAtt.id}` : state.localUuid
 
           const localKey = `local:${attSubId}`

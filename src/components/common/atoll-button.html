@@ -545,14 +545,27 @@
         }
       }
 
+      const syncBtnDisabled = () => {
+        if (btn) {
+          if (state.disabled || state.loading) {
+            btn.setAttribute('disabled', 'true')
+          } else {
+            btn.removeAttribute('disabled')
+          }
+        }
+      }
+
       // The loading spinner is imperative DOM (created/destroyed/positioned inside the
       // <button>), so it can't be a template binding or getter and must be observed.
+      observe('disabled', syncBtnDisabled)
+      observe('loading', syncBtnDisabled)
       observe('loading', syncLoadingState)
       observe('spinnerPlacement', syncLoadingState)
       observe('spinnerVariant', syncLoadingState)
       observe('size', syncLoadingState)
 
       // Initial execution
+      syncBtnDisabled()
       syncLoadingState()
     }
   })
