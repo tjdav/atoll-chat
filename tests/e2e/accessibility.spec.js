@@ -262,7 +262,7 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
 
     // Alice creates a chat room with Bob
     await alicePage.getByTestId('btnCreateRoom').click()
-    await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await alicePage.locator('create-room-modal').getByRole('searchbox', { name: 'Search by username...' }).fill('bob')
     await alicePage.getByTestId('search-result-bob').click()
     await alicePage.getByTestId('btnCreate').click()
 
