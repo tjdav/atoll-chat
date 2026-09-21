@@ -431,12 +431,12 @@ export const test = base.extend({
 
       await page.locator('auth-login input[name="identity"]').fill(username)
       await page.locator('auth-login input[name="password"]').fill(appPassword)
-      await page.locator('auth-login [data-testid="loginSubmit"]').click()
+      await page.locator('auth-login').getByTestId('loginSubmit').click()
 
       const vaultUnlockLocator = page.locator('vault-unlock')
       if (await vaultUnlockLocator.isVisible({ timeout: 2000 }).catch(() => false)) {
         await page.locator('vault-unlock input[name="password"]').fill(vaultPassword || appPassword)
-        await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+        await page.locator('vault-unlock').getByTestId('unlockSubmit').click()
       }
 
       await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
@@ -541,17 +541,17 @@ export const test = base.extend({
 
         if (isVaultUnlockVisible) {
           await vaultUnlockInput.fill(vaultPassword || appPassword)
-          await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+          await targetPage.locator('vault-unlock').getByTestId('unlockSubmit').click()
         } else {
           const usernameInput = targetPage.locator('auth-login input[name="identity"]')
           await expect(usernameInput).toBeVisible({ timeout: 20000 })
           await usernameInput.fill(username)
           await targetPage.locator('auth-login input[name="password"]').fill(appPassword)
-          await targetPage.locator('auth-login [data-testid="loginSubmit"]').click()
+          await targetPage.locator('auth-login').getByTestId('loginSubmit').click()
 
           if (await vaultUnlockInput.isVisible({ timeout: 3000 }).catch(() => false)) {
             await vaultUnlockInput.fill(vaultPassword || appPassword)
-            await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+            await targetPage.locator('vault-unlock').getByTestId('unlockSubmit').click()
           }
         }
       }

@@ -8,10 +8,10 @@ test.describe('Deep Linking & Universal Links', () => {
     await loginCustomPage(alicePage, 'alice', 'Password123!', 'Password123!')
 
     /* Create the room as alice, adding charlie instead of bob */
-    await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('charlie')
-    await alicePage.locator('[data-testid$="search-result-charlie"]').click()
-    await alicePage.locator('[data-testid$="btnCreate"]').click()
+    await alicePage.getByTestId('btnCreateRoom').click()
+    await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('charlie')
+    await alicePage.getByTestId('search-result-charlie').click()
+    await alicePage.getByTestId('btnCreate').click()
 
     /* Wait for room to be created and find the selected room ID from global state */
     await expect(alicePage.locator('chat-list-item')).toBeVisible({ timeout: 15000 })
@@ -40,8 +40,8 @@ test.describe('Deep Linking & Universal Links', () => {
     /* Since this is a fresh page load, we must unlock Bob's vault to display the app UI */
     await expect(bobPage.locator('vault-unlock')).toBeVisible({ timeout: 15000 })
     await expect(bobPage.getByRole('heading', { name: 'Welcome Back' })).toBeVisible({ timeout: 15000 })
-    await bobPage.locator('[data-testid$="password"]').fill('Password123!')
-    await bobPage.locator('[data-testid$="unlockSubmit"]').click()
+    await bobPage.locator('vault-unlock').getByTestId('password').fill('Password123!')
+    await bobPage.locator('vault-unlock').getByTestId('unlockSubmit').click()
 
     /* It should automatically join and select the room in the chat-list once the vault is unlocked */
     await expect(bobPage.locator(`chat-list-item[room-id="${roomId}"]`)).toBeVisible({ timeout: 15000 })
@@ -65,7 +65,7 @@ test.describe('Deep Linking & Universal Links', () => {
     await expect(page.locator('auth-register')).toBeVisible({ timeout: 15000 })
 
     /* Invitation code input should be auto-filled and formatted */
-    const inviteInput = page.locator('auth-register input[data-testid="invitationCode"]')
+    const inviteInput = page.locator('auth-register').getByTestId('invitationCode')
     await expect(inviteInput).toBeVisible()
     await expect(inviteInput).toHaveValue('INV-TEST-1111')
 
@@ -80,7 +80,7 @@ test.describe('Deep Linking & Universal Links', () => {
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
     await expect(page.locator('auth-register')).toBeVisible({ timeout: 15000 })
-    const inviteInput = page.locator('auth-register input[data-testid="invitationCode"]')
+    const inviteInput = page.locator('auth-register').getByTestId('invitationCode')
     await expect(inviteInput).toHaveValue('INV-TEST-2222')
 
     await expect(page).toHaveURL('/')
@@ -98,7 +98,7 @@ test.describe('Deep Linking & Universal Links', () => {
     })
 
     await expect(page.locator('auth-register')).toBeVisible({ timeout: 15000 })
-    const inviteInput = page.locator('auth-register input[data-testid="invitationCode"]')
+    const inviteInput = page.locator('auth-register').getByTestId('invitationCode')
     await expect(inviteInput).toHaveValue('INV-TEST-3333')
 
     await expect(page).toHaveURL('/')

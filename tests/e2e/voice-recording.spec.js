@@ -6,10 +6,10 @@ test.describe('Voice Recording', () => {
     await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
     // Create a room first to have an active chat
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
 
     // Wait for sync
     await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp)
@@ -25,7 +25,7 @@ test.describe('Voice Recording', () => {
     })
 
     // Click mic button to start recording mode
-    await page.locator('[data-testid="atoll-chat-input-text-0__btn-mic-toggle"]').click()
+    await page.getByTestId('btn-mic-toggle').click()
 
     // Check if recorder is visible
     await expect(page.locator('atoll-chat-voice-recorder')).toBeVisible()
@@ -37,7 +37,7 @@ test.describe('Voice Recording', () => {
     await page.waitForTimeout(2000)
 
     // Click send button in recorder
-    await page.locator('[data-testid="atoll-chat-voice-recorder-0__sendVoiceButton"]').click()
+    await page.getByTestId('sendVoiceButton').click()
 
     // Recorder should disappear
     await expect(page.locator('atoll-chat-voice-recorder')).not.toBeVisible()
@@ -54,11 +54,11 @@ test.describe('Voice Recording', () => {
 
   test('should toggle playback on recorded voice note waveform player', async ({ page }) => {
     // Record and send voice note first
-    await page.locator('[data-testid="atoll-chat-input-text-0__btn-mic-toggle"]').click()
+    await page.getByTestId('btn-mic-toggle').click()
     await expect(page.locator('atoll-chat-voice-recorder')).toBeVisible()
     await page.waitForTimeout(1000)
     await page.waitForTimeout(2000)
-    await page.locator('[data-testid="atoll-chat-voice-recorder-0__sendVoiceButton"]').click()
+    await page.getByTestId('sendVoiceButton').click()
 
     const voiceItem = page.locator('atoll-chat-timeline-item-voice').last()
     await expect(voiceItem.locator('.atoll-chat-waveform-player')).toBeVisible({ timeout: 30000 })
@@ -85,13 +85,13 @@ test.describe('Voice Recording', () => {
     await expect(composerTextarea).toHaveValue(draftText)
 
     // Click mic button to start recording mode
-    await page.locator('[data-testid="atoll-chat-input-text-0__btn-mic-toggle"]').click()
+    await page.getByTestId('btn-mic-toggle').click()
     await expect(page.locator('atoll-chat-voice-recorder')).toBeVisible()
     await page.waitForTimeout(1000)
     await page.waitForTimeout(2000)
 
     // Send voice note from recorder
-    await page.locator('[data-testid="atoll-chat-voice-recorder-0__sendVoiceButton"]').click()
+    await page.getByTestId('sendVoiceButton').click()
     await expect(page.locator('atoll-chat-voice-recorder')).not.toBeVisible()
 
     // Verify voice note is dispatched to timeline

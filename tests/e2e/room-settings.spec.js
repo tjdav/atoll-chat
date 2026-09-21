@@ -8,20 +8,20 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await expect(page).toHaveURL(/\/\?view=chats$/)
 
     // Create room with Bob
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
 
     await expect(page.locator('atoll-chat-view')).toBeVisible()
     await expect(page.locator('atoll-chat-view header h6')).toContainText('bob')
   })
 
   test('should open and close the native Bootstrap Offcanvas drawer smoothly', async ({ page }) => {
-    const offcanvas = page.locator('[data-testid$="roomDetailsOffcanvas"]')
+    const offcanvas = page.getByTestId('roomDetailsOffcanvas')
     await expect(offcanvas).not.toBeVisible()
 
-    // Open Offcanvas (Using suffix selector on compiled refs and clicking inner button)
+    // Open Offcanvas
     await page.locator('[ref$="btnDetails"] button').click()
     await expect(offcanvas).toBeVisible()
 
@@ -34,7 +34,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await expect(offcanvas.locator('.e2e-badge')).toContainText('End-to-End Encrypted')
 
     // Close Offcanvas via top-right close button
-    await page.locator('[data-testid$="sidebar-close-btn"]').click()
+    await page.getByTestId('sidebar-close-btn').click()
     await expect(offcanvas).not.toBeVisible()
   })
 
@@ -42,9 +42,9 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     // Open offcanvas
     await page.locator('[ref$="btnDetails"] button').click()
 
-    const customiseCollapse = page.locator('[data-testid$="collapse-customise"]')
-    const privacyCollapse = page.locator('[data-testid$="collapse-privacy"]')
-    const membersCollapse = page.locator('[data-testid$="collapse-members"]')
+    const customiseCollapse = page.getByTestId('collapse-customise')
+    const privacyCollapse = page.getByTestId('collapse-privacy')
+    const membersCollapse = page.getByTestId('collapse-members')
 
     // Verify all 3 sections start collapsed/hidden by default
     await expect(customiseCollapse).not.toBeVisible()
@@ -52,25 +52,25 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await expect(membersCollapse).not.toBeVisible()
 
     // Expand Customise Chat independently
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
+    await page.getByTestId('accordion-customise-btn').click()
     await expect(customiseCollapse).toBeVisible()
     // Verify other sections remain closed/hidden
     await expect(privacyCollapse).not.toBeVisible()
     await expect(membersCollapse).not.toBeVisible()
 
     // Collapse Customise Chat back
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
+    await page.getByTestId('accordion-customise-btn').click()
     await expect(customiseCollapse).not.toBeVisible()
 
     // Expand Privacy & Support independently
-    await page.locator('[data-testid$="accordion-privacy-btn"]').click()
+    await page.getByTestId('accordion-privacy-btn').click()
     await expect(privacyCollapse).toBeVisible()
     // Verify other sections are not affected
     await expect(customiseCollapse).not.toBeVisible()
     await expect(membersCollapse).not.toBeVisible()
 
     // Collapse Privacy & Support back
-    await page.locator('[data-testid$="accordion-privacy-btn"]').click()
+    await page.getByTestId('accordion-privacy-btn').click()
     await expect(privacyCollapse).not.toBeVisible()
   })
 
@@ -78,23 +78,23 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.locator('[ref$="btnDetails"] button').click()
 
     // Expand Customise Chat accordion
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
+    await page.getByTestId('accordion-customise-btn').click()
 
     // Open theme selector modal (Customise Chat is expanded by default)
-    await page.locator('[data-testid$="btnChangeTheme"]').click()
+    await page.getByTestId('btnChangeTheme').click()
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
     await expect(themeModal).toBeVisible()
 
     // Highlight Ocean theme
-    await page.locator('[data-testid$="theme-ocean-item"]').click()
-    await expect(themeModal.locator('[data-testid$="checkOcean"]')).not.toHaveClass(/d-none/)
+    await page.getByTestId('theme-ocean-item').click()
+    await expect(themeModal.getByTestId('checkOcean')).not.toHaveClass(/d-none/)
 
     // Save/Select Theme (Target inner button inside atoll-button wrapper)
     await themeModal.locator('atoll-button[ref$="primaryBtn"] button').click()
     await expect(themeModal).not.toBeVisible()
 
     // Verify main chat view container has data-theme="ocean" applied
-    const chatContainer = page.locator('[data-testid$="atoll-chat-view-container"]')
+    const chatContainer = page.getByTestId('atoll-chat-view-container')
     await expect(chatContainer).toHaveAttribute('data-theme', 'ocean')
   })
 
@@ -102,10 +102,10 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.locator('[ref$="btnDetails"] button').click()
 
     // Expand Customise Chat accordion
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
+    await page.getByTestId('accordion-customise-btn').click()
 
     // Open nicknames modal (Customise Chat is expanded by default)
-    await page.locator('[data-testid$="btnEditNicknames"]').click()
+    await page.getByTestId('btnEditNicknames').click()
     const nicknamesModal = page.locator('.modal').filter({ hasText: 'Nicknames' })
     await expect(nicknamesModal).toBeVisible()
 
@@ -127,7 +127,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await expect(nicknamesModal).not.toBeVisible()
 
     // Nickname is updated in room details text & chat view header!
-    await expect(page.locator('[data-testid$="roomDetailsOffcanvas"] [ref$="roomNameText"]')).toContainText('Bobby')
+    await expect(page.getByTestId('roomDetailsOffcanvas').locator('[ref$="roomNameText"]')).toContainText('Bobby')
     await expect(page.locator('atoll-chat-view header h6')).toContainText('Bobby')
   })
 
@@ -135,18 +135,18 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.locator('[ref$="btnDetails"] button').click()
 
     // Expand Privacy & support accordion
-    await page.locator('[data-testid$="accordion-privacy-btn"]').click()
+    await page.getByTestId('accordion-privacy-btn').click()
 
     // 1. Mute notifications toggle (Privacy & support is expanded by default)
     const muteBadge = page.locator('[ref$="muteStatusBadge"]')
     await expect(muteBadge).toContainText('Off')
-    await page.locator('[data-testid$="btnMuteNotifications"]').click()
+    await page.getByTestId('btnMuteNotifications').click()
     await expect(muteBadge).toContainText('On')
 
     // 2. Read receipts toggle
     const rrStatus = page.locator('[ref$="readReceiptsStatusText"]')
     await expect(rrStatus).toContainText('On')
-    await page.locator('[data-testid$="btnReadReceipts"]').click()
+    await page.getByTestId('btnReadReceipts').click()
     await expect(rrStatus).toContainText('Off')
   })
 
@@ -154,15 +154,15 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.locator('[ref$="btnDetails"] button').click()
 
     // Expand Privacy & support accordion
-    await page.locator('[data-testid$="accordion-privacy-btn"]').click()
+    await page.getByTestId('accordion-privacy-btn').click()
 
     // Open block modal (Privacy & support is expanded by default)
-    await page.locator('[data-testid$="btnBlock"]').click()
+    await page.getByTestId('btnBlock').click()
     const blockModal = page.locator('.modal').filter({ hasText: 'Block User' })
     await expect(blockModal).toBeVisible()
 
     // Verify bold section target user's name warning (matches case-insensitively)
-    await expect(blockModal.locator('[data-testid$="blockTargetTitle"]')).toContainText(/Block bob\?/i)
+    await expect(blockModal.getByTestId('blockTargetTitle')).toContainText(/Block bob\?/i)
 
     // Confirm Block
     await blockModal.locator('atoll-button[ref$="primaryBtn"] button').click()
@@ -222,13 +222,13 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.locator('[ref$="btnDetails"] button').click()
 
     // Expand Customise Chat accordion
-    await page.locator('[data-testid$="accordion-customise-btn"]').click()
+    await page.getByTestId('accordion-customise-btn').click()
 
     // Click Change theme (Customise Chat is expanded by default)
-    await page.locator('[data-testid$="btnChangeTheme"]').click()
+    await page.getByTestId('btnChangeTheme').click()
 
     // Select Ocean theme
-    await page.locator('[data-testid$="theme-ocean-item"]').click()
+    await page.getByTestId('theme-ocean-item').click()
 
     // Save Theme
     const themeModal = page.locator('.modal').filter({ hasText: 'Preview and select theme' })
@@ -238,7 +238,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await page.waitForTimeout(1000)
 
     // Click edit nicknames
-    await page.locator('[data-testid$="btnEditNicknames"]').click()
+    await page.getByTestId('btnEditNicknames').click()
 
     // Highlight Bob
     const nicknamesModal = page.locator('.modal').filter({ hasText: 'Nicknames' })
@@ -252,7 +252,7 @@ test.describe('ADSM Room Settings & Details Offcanvas Sidebar', () => {
     await nicknamesModal.locator('atoll-button[ref$="primaryBtn"] button').click()
 
     // Expand Privacy & support accordion (Customise chat is already expanded)
-    await page.locator('[data-testid$="accordion-privacy-btn"]').click()
+    await page.getByTestId('accordion-privacy-btn').click()
     await page.waitForTimeout(1000)
   })
 })

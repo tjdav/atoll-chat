@@ -21,10 +21,10 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     ])
 
     // Establish DM channel between Alice and Bob
-    await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await alicePage.locator('[data-testid$="search-result-bob"]').click()
-    await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await alicePage.getByTestId('btnCreateRoom').click()
+    await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await alicePage.getByTestId('search-result-bob').click()
+    await alicePage.getByTestId('btnCreate').click()
 
     const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
     await expect(bobChat).toBeVisible({ timeout: 30000 })
@@ -32,16 +32,16 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
 
     // Attach non-universal video (test.mkv)
     const mkvPath = path.join(TEST_FILES_DIR, 'test.mkv')
-    await alicePage.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(mkvPath)
+    await alicePage.getByTestId('fileInput').setInputFiles(mkvPath)
 
     // Verify UI status displays format conversion readiness
     await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 60000 })
 
     await alicePage.fill('atoll-chat-view textarea', 'Sending converted video test.mp4')
-    await alicePage.click('atoll-chat-view [data-testid$="__sendButton"]')
+    await alicePage.getByTestId('sendButton').click()
 
     // Verify Alice's message status turns to Sent
-    await expect(alicePage.locator('atoll-chat-view .atoll-chat-message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
+    await expect(alicePage.getByTestId('status-text').last()).toHaveText('Sent', { timeout: 60000 })
 
     // Verify Bob receives converted video message ending in .mp4
     const bobMessageRow = bobPage.locator('atoll-chat-timeline-row').filter({ hasText: 'test.mp4' }).last()
@@ -55,36 +55,36 @@ test.describe('Non-Universal Media Format Conversion E2E Tests', () => {
     test.setTimeout(120000)
 
     await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
 
     const tiffPath = path.join(TEST_FILES_DIR, 'test.tiff')
-    await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(tiffPath)
+    await page.getByTestId('fileInput').setInputFiles(tiffPath)
 
     // Verify media conversion error popup appears for un-decodable TIFF format
-    await expect(page.locator('[data-testid$="mediaConversionErrorPopup"] dialog')).toBeVisible({ timeout: 30000 })
+    await expect(page.getByTestId('mediaConversionErrorPopup').locator('dialog')).toBeVisible({ timeout: 30000 })
   })
 
   test('converts non-universal audio (.wav) to universal MP4/AAC format', async ({ page, loginCustomPage }) => {
     test.setTimeout(120000)
 
     await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
 
     const wavPath = path.join(TEST_FILES_DIR, 'test.wav')
-    await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(wavPath)
+    await page.getByTestId('fileInput').setInputFiles(wavPath)
 
     await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready', { timeout: 60000 })
 
     await page.fill('atoll-chat-view textarea', 'Sending converted audio test.m4a')
-    await page.click('atoll-chat-view [data-testid$="__sendButton"]')
+    await page.getByTestId('sendButton').click()
 
-    await expect(page.locator('atoll-chat-view .atoll-chat-message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 60000 })
+    await expect(page.getByTestId('status-text').last()).toHaveText('Sent', { timeout: 60000 })
 
     // Verify converted .m4a audio message sends and renders timeline row
     const sentAudioRow = page.locator('atoll-chat-timeline-row').filter({ hasText: 'test.m4a' }).last()

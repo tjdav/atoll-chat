@@ -9,42 +9,42 @@ test.describe('User Settings & Profile', () => {
     })
 
     test('update display name', async ({ browser, page, loginCustomPage }) => {
-      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
-      await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+      await page.getByTestId('profileBtn').click()
+      await page.getByTestId('btnSettings').click()
       const nn = 'Alice Wonderland'
-      await page.locator('[data-testid="profile-settings-0__nameInput"]').fill(nn)
-      await page.locator('[data-testid="profile-settings-0__btnSave"]').click()
+      await page.getByTestId('nameInput').fill(nn)
+      await page.getByTestId('btnSave').click()
       await expect(page.locator('.toast-body')).toContainText('Profile updated successfully!')
       const bc = await browser.newContext()
       const bp = await bc.newPage()
       await loginCustomPage(bp, 'bob', 'Password123!', 'VaultPassword123!')
-      await bp.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-      await bp.locator('[data-testid="create-room-modal-0__searchInput"]').fill('alice')
-      await expect(bp.locator('[data-testid$="search-result-alice"]')).toBeVisible({ timeout: 15000 })
+      await bp.getByTestId('btnCreateRoom').click()
+      await bp.locator('create-room-modal').getByTestId('searchInput').fill('alice')
+      await expect(bp.getByTestId('search-result-alice')).toBeVisible({ timeout: 15000 })
       await bc.close()
     })
 
     test('update avatar', async ({ page }) => {
-      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
-      await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
-      const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.locator('[data-testid="profile-settings-0__avatarContainer"]').click()])
+      await page.getByTestId('profileBtn').click()
+      await page.getByTestId('btnSettings').click()
+      const [fc] = await Promise.all([page.waitForEvent('filechooser'), page.getByTestId('avatarContainer').click()])
       await fc.setFiles({
         name: 'a.png',
         mimeType: 'image/png',
         buffer: Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64')
       })
-      await page.locator('[data-testid="ui-avatar-editor-0__btnApply"]').click()
-      await expect(page.locator('[data-testid="profile-settings-0__btnSave"]')).toBeEnabled()
-      await page.locator('[data-testid="profile-settings-0__btnSave"]').click()
-      await expect(page.locator('[data-testid$="avatarContainer"] atoll-profile img')).toBeVisible()
+      await page.getByTestId('btnApply').click()
+      await expect(page.getByTestId('btnSave')).toBeEnabled()
+      await page.getByTestId('btnSave').click()
+      await expect(page.getByTestId('avatarContainer').locator('atoll-profile img')).toBeVisible()
     })
 
     test('mobile touch editing of avatar (drag and pinch)', async ({ page }) => {
-      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
-      await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+      await page.getByTestId('profileBtn').click()
+      await page.getByTestId('btnSettings').click()
       const [fc] = await Promise.all([
         page.waitForEvent('filechooser'),
-        page.locator('[data-testid="profile-settings-0__avatarContainer"]').click()
+        page.getByTestId('avatarContainer').click()
       ])
       await fc.setFiles({
         name: 'a.png',
@@ -176,10 +176,10 @@ test.describe('User Settings & Profile', () => {
       // Assert that zoom value increased due to pinch-to-zoom
       expect(scales.finalVal).toBeGreaterThan(scales.initialVal)
 
-      await page.locator('[data-testid="ui-avatar-editor-0__btnApply"]').click()
-      await expect(page.locator('[data-testid="profile-settings-0__btnSave"]')).toBeEnabled()
-      await page.locator('[data-testid="profile-settings-0__btnSave"]').click()
-      await expect(page.locator('[data-testid$="avatarContainer"] atoll-profile img')).toBeVisible()
+      await page.getByTestId('btnApply').click()
+      await expect(page.getByTestId('btnSave')).toBeEnabled()
+      await page.getByTestId('btnSave').click()
+      await expect(page.getByTestId('avatarContainer').locator('atoll-profile img')).toBeVisible()
     })
   })
 
@@ -187,14 +187,14 @@ test.describe('User Settings & Profile', () => {
     test('share media', async ({ page, loginCustomPage }) => {
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
       for (const n of ['bob', 'charlie']) {
-        await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-        await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill(n)
-        await page.locator(`[data-testid$="search-result-${n}"]`).click()
-        await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+        await page.getByTestId('btnCreateRoom').click()
+        await page.locator('create-room-modal').getByTestId('searchInput').fill(n)
+        await page.getByTestId(`search-result-${n}`).click()
+        await page.getByTestId('btnCreate').click()
       }
       const ip = path.resolve('tests/e2e/fixtures/test-files/test.png')
-      await page.setInputFiles('[data-testid$="__fileInput"]', ip)
-      await page.click('[data-testid$="__sendButton"]')
+      await page.getByTestId('fileInput').setInputFiles(ip)
+      await page.getByTestId('sendButton').click()
       await page.locator('atoll-chat-timeline-item-media img').first().click()
       await page.locator('ui-share-button button').filter({ visible: true }).click()
       const sm = page.locator('.modal.show, atoll-popup').filter({ hasText: 'Share to...' }).last()
@@ -210,14 +210,14 @@ test.describe('User Settings & Profile', () => {
     })
 
     test('scrollspy binding - active class changes on scroll', async ({ page }) => {
-      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
-      await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+      await page.getByTestId('profileBtn').click()
+      await page.getByTestId('btnSettings').click()
 
       // Expect the first category (Account) to be active initially
-      await expect(page.locator('[data-testid="settings-pane-0__nav-account"]')).toHaveAttribute('selected', 'true')
+      await expect(page.getByTestId('nav-account')).toHaveAttribute('selected', 'true')
 
       // Scroll the container to the Profile section
-      const scrollContainer = page.locator('[data-testid="settings-main-0__scrollContainer"]')
+      const scrollContainer = page.getByTestId('scrollContainer')
       await scrollContainer.evaluate((el) => {
         const target = el.querySelector('#section-profile')
         if (target) {
@@ -226,7 +226,7 @@ test.describe('User Settings & Profile', () => {
       })
 
       // Wait for Scrollspy to detect scroll and verify Profile is active
-      await expect(page.locator('[data-testid="settings-pane-0__nav-profile"]')).toHaveAttribute('selected', 'true', { timeout: 5000 })
+      await expect(page.getByTestId('nav-profile')).toHaveAttribute('selected', 'true', { timeout: 5000 })
     })
 
     test('mobile traversal - offcanvas drawer open/close behavior', async ({ page }) => {
@@ -237,14 +237,14 @@ test.describe('User Settings & Profile', () => {
       })
 
       // Open settings
-      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
-      await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+      await page.getByTestId('profileBtn').click()
+      await page.getByTestId('btnSettings').click()
 
       // The mobile nav offcanvas (drawer) is initially visible
       await expect(page.locator('.offcanvas-sm')).toBeVisible()
 
       // Tap on the Notifications category in settings-pane
-      await page.locator('[data-testid="settings-pane-0__nav-notifications"]').click()
+      await page.getByTestId('nav-notifications').click()
 
       // Tapping must emit ui:selection_made, which hides the mobile drawer offcanvas
       await expect(page.locator('.offcanvas-sm')).not.toBeVisible()
@@ -253,7 +253,7 @@ test.describe('User Settings & Profile', () => {
       await expect(page.locator('settings-main')).toBeVisible()
 
       // Click the Back chevron button in settings-main header to restore the drawer
-      await page.locator('[data-testid="settings-main-0__settingsBackBtn"]').click()
+      await page.getByTestId('settingsBackBtn').click()
 
       // The mobile drawer offcanvas is restored
       await expect(page.locator('.offcanvas-sm')).toBeVisible()
@@ -266,11 +266,11 @@ test.describe('User Settings & Profile', () => {
     })
 
     test('export account data via settings account info', async ({ page }) => {
-      await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
-      await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+      await page.getByTestId('profileBtn').click()
+      await page.getByTestId('btnSettings').click()
 
       // Click Export Data button
-      const exportBtn = page.locator('[data-testid$="btnExportData"]')
+      const exportBtn = page.getByTestId('btnExportData')
       await expect(exportBtn).toBeVisible()
 
       // Setup download event listener
@@ -279,12 +279,12 @@ test.describe('User Settings & Profile', () => {
       await exportBtn.click()
 
       // Fill in permission modal password
-      const passwordInput = page.locator('[data-testid$="passwordInput"] input, [data-testid$="passwordInput"]').first()
+      const passwordInput = page.getByTestId('passwordInput')
       await expect(passwordInput).toBeVisible()
       await passwordInput.fill('VaultPassword123!')
 
       // Click Confirm/Export Data button inside permission modal
-      const modalPrimaryBtn = page.locator('[data-testid$="permissionModalPopup"] button.btn-primary, [data-testid$="permissionModal"] button.btn-primary').first()
+      const modalPrimaryBtn = page.getByTestId('permissionModal').getByRole('button', { name: 'Confirm' })
       await modalPrimaryBtn.click()
 
       // Wait for download to complete

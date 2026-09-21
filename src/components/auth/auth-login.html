@@ -510,7 +510,7 @@
           btn.setAttribute('type', 'button')
           btn.setAttribute('variant', 'outline')
           btn.setAttribute('block', 'true')
-          btn.setAttribute('test-id', `biometric-login-${user.username}`)
+          btn.setAttribute('data-testid', `biometric-login-${user.username}`)
           btn.setAttribute('text', `Log in as @${user.username}`)
 
           btn.addEventListener('click', async () => {

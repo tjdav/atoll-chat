@@ -10,36 +10,36 @@ test.describe('Super-User Administration & Zero-Knowledge Delegated Invite Syste
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     // Navigate to Settings page
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnSettings"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnSettings').click()
 
     // Verify ADMINISTRATION navbar section exists for Owner (Alice)
-    await expect(page.locator('[data-testid$="nav-admin-overview"]')).toBeVisible()
-    await expect(page.locator('[data-testid$="nav-admin-trust"]')).toBeVisible()
-    await expect(page.locator('[data-testid$="nav-admin-requests"]')).toBeVisible()
+    await expect(page.getByTestId('nav-admin-overview')).toBeVisible()
+    await expect(page.getByTestId('nav-admin-trust')).toBeVisible()
+    await expect(page.getByTestId('nav-admin-requests')).toBeVisible()
 
     // Go to overview and verify statistics
-    await page.locator('[data-testid$="nav-admin-overview"]').click()
-    await expect(page.locator('[data-testid$="statTotalUsers"]')).not.toContainText('--')
+    await page.getByTestId('nav-admin-overview').click()
+    await expect(page.getByTestId('statTotalUsers')).not.toContainText('--')
 
     // Change delegation mode and save
-    await page.locator('[data-testid$="modeStrict"]').click()
-    await page.locator('[data-testid$="btnSaveGovernance"]').click()
-    await expect(page.locator('[data-testid$="saveSuccessAlert"]')).toBeVisible()
+    await page.getByTestId('modeStrict').click()
+    await page.getByTestId('btnSaveGovernance').click()
+    await expect(page.getByTestId('saveSuccessAlert')).toBeVisible()
 
     // Restore to delegated mode and save
-    await page.locator('[data-testid$="modeDelegated"]').click()
-    await page.locator('[data-testid$="btnSaveGovernance"]').click()
-    await expect(page.locator('[data-testid$="saveSuccessAlert"]')).toBeVisible()
+    await page.getByTestId('modeDelegated').click()
+    await page.getByTestId('btnSaveGovernance').click()
+    await expect(page.getByTestId('saveSuccessAlert')).toBeVisible()
 
     // Check trust matrix
-    await page.locator('[data-testid$="nav-admin-trust"]').click()
-    await expect(page.locator('[data-testid$="usersTableBody"]')).toContainText('bob')
+    await page.getByTestId('nav-admin-trust').click()
+    await expect(page.getByTestId('usersTableBody')).toContainText('bob')
 
     // Generate an invite link
-    await page.locator('[data-testid$="nav-invitations"]').click()
-    await page.locator('[data-testid$="btnGenerateInvite"]').click()
-    await expect(page.locator('[data-testid$="invitationsList"]')).toContainText('INV-')
+    await page.getByTestId('nav-invitations').click()
+    await page.getByTestId('btnGenerateInvite').click()
+    await expect(page.getByTestId('invitationsList')).toContainText('INV-')
   })
 
   test('should display list of generated invitations and support copying', async ({ page, loginApp }) => {
@@ -50,22 +50,22 @@ test.describe('Super-User Administration & Zero-Knowledge Delegated Invite Syste
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     // Navigate to Settings -> Invitations
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnSettings"]').click()
-    await page.locator('[data-testid$="nav-invitations"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnSettings').click()
+    await page.getByTestId('nav-invitations').click()
 
     // Since Alice is Owner and we have seeded invites in the db, historyCard is visible initially
-    await expect(page.locator('[data-testid$="historyCard"]')).toBeVisible()
+    await expect(page.getByTestId('historyCard')).toBeVisible()
 
     // The invitations list should contain the seeded invite code
-    await expect(page.locator('[data-testid$="invitationsList"]')).toContainText('INV-SEED-1111')
+    await expect(page.getByTestId('invitationsList')).toContainText('INV-SEED-1111')
 
     // Generate a new invite link
-    await page.locator('[data-testid$="btnGenerateInvite"]').click()
+    await page.getByTestId('btnGenerateInvite').click()
 
     // Now historyCard should be visible and contain the newly generated code item at top
-    await expect(page.locator('[data-testid$="historyCard"]')).toBeVisible()
-    const firstItem = page.locator('[data-testid$="invitationsList"] atoll-list-item').first()
+    await expect(page.getByTestId('historyCard')).toBeVisible()
+    const firstItem = page.getByTestId('invitationsList').locator('atoll-list-item').first()
     await expect(firstItem).toContainText('INV-')
 
     // Click on Copy Code button inside the top item

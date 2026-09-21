@@ -15,10 +15,10 @@ test.describe('Atoll Mobile Offcanvas Menu Responsive Breakpoints', () => {
     await page.waitForTimeout(500)
 
     // Open a chat room to enter chat-active state
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
     await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     // Open mobile navigation offcanvas over the chat pane
@@ -26,7 +26,7 @@ test.describe('Atoll Mobile Offcanvas Menu Responsive Breakpoints', () => {
       window.$bus.emit('ui:open_mobile_nav')
     })
 
-    const mobileNav = page.locator('[data-testid$="mobileNav"]')
+    const mobileNav = page.getByTestId('mobileNav')
     await expect(mobileNav).toBeVisible()
 
     // Measure actual bounding box or computed style width of mobileNav
@@ -43,10 +43,10 @@ test.describe('Atoll Mobile Offcanvas Menu Responsive Breakpoints', () => {
     await page.waitForTimeout(500)
 
     // Open a chat room to enter chat-active state
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
     await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     // Open mobile navigation offcanvas over the chat pane
@@ -54,7 +54,7 @@ test.describe('Atoll Mobile Offcanvas Menu Responsive Breakpoints', () => {
       window.$bus.emit('ui:open_mobile_nav')
     })
 
-    const mobileNav = page.locator('[data-testid$="mobileNav"]')
+    const mobileNav = page.getByTestId('mobileNav')
     await expect(mobileNav).toBeVisible()
 
     // Under 768px but above 576px, width should be min(calc(100vw - 60px), 410px) => min(650 - 60, 410) = 410px

@@ -15,21 +15,21 @@ test.describe('Firefox Video Sharing & Conversion E2E Tests', () => {
 
     await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
 
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
 
     const videoPath = path.join(TEST_FILES_DIR, 'test.mp4')
-    await page.locator('atoll-chat-view [data-testid$="__fileInput"]').setInputFiles(videoPath)
+    await page.getByTestId('fileInput').setInputFiles(videoPath)
 
     // Verify UI status reaches Ready to send (either converted or original format fallback)
     await expect(page.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 30000 })
 
     await page.fill('atoll-chat-view textarea', 'Firefox video test')
-    await page.click('atoll-chat-view [data-testid$="__sendButton"]')
+    await page.getByTestId('sendButton').click()
 
-    await expect(page.locator('atoll-chat-view .atoll-chat-message-status-container [data-testid$="status-text"]')).toHaveText('Sent', { timeout: 30000 })
+    await expect(page.getByTestId('status-text').last()).toHaveText('Sent', { timeout: 30000 })
     await expect(page.locator('atoll-chat-timeline-row').last()).toBeVisible({ timeout: 30000 })
   })
 

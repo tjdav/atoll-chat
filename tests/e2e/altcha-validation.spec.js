@@ -22,7 +22,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     })
 
     // Navigate to registration page
-    await page.locator('auth-login [data-testid="linkRegister"]').click()
+    await page.locator('auth-login').getByTestId('linkRegister').click()
     await expect(page.locator('auth-register')).toBeVisible()
 
     // Fill registration info with dynamic unique username
@@ -41,7 +41,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     })
 
     // Verify error status banner is displayed
-    await expect(page.locator('auth-register [data-testid$="statusMsg"]')).toContainText('Security challenge failed')
+    await expect(page.locator('auth-register').getByTestId('statusMsg')).toContainText('Security challenge failed')
 
     // Ensure the username input does NOT have custom validity set
     const usernameValidity = await page.locator('auth-register input[name="username"]').evaluate((el) => el.validationMessage)
@@ -65,12 +65,12 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     })
 
     // Clicking submit again now that ALTCHA is verified should proceed successfully
-    await page.locator('auth-register [data-testid="registerSubmit"]').click()
+    await page.locator('auth-register').getByTestId('registerSubmit').click()
 
     // Confirm and dismiss Recovery Code Modal first
-    await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('auth-register [data-testid$="chkStored"]').check()
-    await page.locator('auth-register [data-testid="btnContinueToChat"]').click()
+    await expect(page.locator('auth-register').getByTestId('recoveryModal')).toBeVisible({ timeout: 15000 })
+    await page.locator('auth-register').getByTestId('chkStored').check()
+    await page.locator('auth-register').getByTestId('btnContinueToChat').click()
 
     // Registration should succeed and transition directly to app-layout
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
@@ -98,7 +98,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     })
 
     // Verify error status banner is displayed
-    await expect(page.locator('auth-login [data-testid$="statusMsg"]')).toContainText('Security challenge failed')
+    await expect(page.locator('auth-login').getByTestId('statusMsg')).toContainText('Security challenge failed')
 
     // Ensure the username input does NOT have custom validity set
     const emailValidity = await page.locator('auth-login input[name="identity"]').evaluate((el) => el.validationMessage)
@@ -118,7 +118,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     })
 
     // Submit login again
-    await page.locator('auth-login [data-testid="loginSubmit"]').click()
+    await page.locator('auth-login').getByTestId('loginSubmit').click()
 
     // Wait for app-layout step to be reached upon successful single-step login
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
@@ -136,7 +136,7 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     })
 
     // Navigate to registration page
-    await page.locator('auth-login [data-testid="linkRegister"]').click()
+    await page.locator('auth-login').getByTestId('linkRegister').click()
     await expect(page.locator('auth-register')).toBeVisible()
 
     // Fill short password (5 chars)
@@ -146,10 +146,10 @@ test.describe('ALTCHA Security Challenge and Global Error UI Verification', () =
     await page.locator('auth-register input[name="passwordConfirm"]').fill('12345')
 
     // Submit form
-    await page.locator('auth-register [data-testid="registerSubmit"]').click()
+    await page.locator('auth-register').getByTestId('registerSubmit').click()
 
     // Password feedback should be visible and contain character count message
-    const feedback = page.locator('auth-register [data-testid$="password-feedback"]')
+    const feedback = page.locator('auth-register').getByTestId('password-feedback')
     await expect(feedback).toBeVisible()
     await expect(feedback).toContainText('8 characters')
   })

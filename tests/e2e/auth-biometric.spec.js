@@ -27,18 +27,18 @@ test.describe('Biometric Login on Login Page', () => {
     })
 
     // Log out to return to the login page and trigger the fresh auth-login component
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnLogout"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnLogout').click()
 
     // Verify we are back on the login page
     await expect(page.locator('auth-login')).toBeVisible()
 
-    // Verify the biometric header/separator is visible using suffix matching
-    const bioSection = page.locator('[data-testid$="biometricSection"]')
+    // Verify the biometric header/separator is visible
+    const bioSection = page.getByTestId('biometricSection')
     await expect(bioSection).toBeVisible({ timeout: 15000 })
 
     // Verify the "Log in as @alice" button is visible
-    const bioBtn = page.locator('[data-testid="biometric-login-alice"]')
+    const bioBtn = page.getByTestId('biometric-login-alice')
     await expect(bioBtn).toBeVisible({ timeout: 15000 })
 
     // Take screenshot for visual verification

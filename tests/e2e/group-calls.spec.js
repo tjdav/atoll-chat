@@ -34,22 +34,22 @@ test.describe.serial('Group Audio and Video Calls', () => {
       if (roomExists) {
         await aliceGroupChat.click()
       } else {
-        await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
-        await expect(alicePage.locator('create-room-modal input[data-testid$="searchInput"]')).toBeVisible()
+        await alicePage.getByTestId('btnCreateRoom').click()
+        await expect(alicePage.locator('create-room-modal').getByTestId('searchInput')).toBeVisible()
 
         // Search and select Bob
-        await alicePage.locator('[data-testid$="create-room-modal-0__searchInput"]').fill('bob')
-        await alicePage.locator('[data-testid$="search-result-bob"]').click()
+        await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+        await alicePage.getByTestId('search-result-bob').click()
 
         // Search and select Charlie
-        await alicePage.locator('[data-testid$="create-room-modal-0__searchInput"]').fill('charlie')
-        await alicePage.locator('[data-testid$="search-result-charlie"]').click()
+        await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('charlie')
+        await alicePage.getByTestId('search-result-charlie').click()
 
         // Fill group room name
-        await alicePage.locator('[data-testid$="create-room-modal-0__roomNameInput"]').fill(groupRoomName)
+        await alicePage.getByTestId('roomNameInput').fill(groupRoomName)
 
         // Click Create Room button
-        await alicePage.locator('[data-testid$="create-room-modal-0__btnCreate"]').click()
+        await alicePage.getByTestId('btnCreate').click()
       }
 
       // Assert Alice has entered group room
@@ -77,7 +77,7 @@ test.describe.serial('Group Audio and Video Calls', () => {
 
   test('Group Audio Call with multi-participant entry and feature verification', async () => {
     await test.step('Alice initiates group audio call', async () => {
-      await alicePage.locator('[data-testid$="btnAudioCall"]').click()
+      await alicePage.getByTestId('btnAudioCall').click()
     })
 
     await test.step('Bob and Charlie receive incoming call overlay', async () => {
@@ -123,7 +123,7 @@ test.describe.serial('Group Audio and Video Calls', () => {
 
   test('Group Video Call with multi-participant video streams, PiP, and messaging', async () => {
     await test.step('Alice initiates group video call', async () => {
-      await alicePage.locator('[data-testid$="btnVideoCall"]').click()
+      await alicePage.getByTestId('btnVideoCall').click()
     })
 
     await test.step('Bob and Charlie receive incoming call overlay and accept', async () => {

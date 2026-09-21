@@ -17,7 +17,7 @@ test.describe('PoW CAPTCHA (ALTCHA) Integration', () => {
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
     // Switch to register page
-    await page.locator('[data-testid$="linkRegister"]').click()
+    await page.getByTestId('linkRegister').click()
 
     const altchaWidget = page.locator('auth-register altcha-widget')
     await expect(altchaWidget).toBeAttached()
@@ -38,21 +38,21 @@ test.describe('PoW CAPTCHA (ALTCHA) Integration', () => {
     await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
     // Navigate to registration
-    await page.locator('[data-testid$="linkRegister"]').click()
+    await page.getByTestId('linkRegister').click()
 
     // Fill in registration form
     await page.locator('auth-register input[name="username"]').fill('test_user_captcha')
-    await page.locator('auth-register [data-testid$="invitationCode"]').fill('INV-SEED-2222')
+    await page.locator('auth-register').getByTestId('invitationCode').fill('INV-SEED-2222')
     await page.locator('auth-register input[name="password"]').fill('Password123!')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!')
 
     // Submit form
-    await page.locator('[data-testid$="registerSubmit"]').click()
+    await page.getByTestId('registerSubmit').click()
 
     /* Confirm and dismiss Recovery Code Modal */
-    await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('auth-register [data-testid$="chkStored"]').check()
-    await page.locator('auth-register [data-testid$="btnContinueToChat"]').click()
+    await expect(page.locator('auth-register').getByTestId('recoveryModal')).toBeVisible({ timeout: 15000 })
+    await page.locator('auth-register').getByTestId('chkStored').check()
+    await page.locator('auth-register').getByTestId('btnContinueToChat').click()
 
     // Registration should succeed and proceed directly to app-layout
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })

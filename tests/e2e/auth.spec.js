@@ -20,26 +20,26 @@ test.describe('Authentication and Vault', () => {
 
     // logout
     console.log('--- Logout 1 ---')
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnLogout"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnLogout').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
     // login again
     console.log('--- Second Login ---')
     await page.locator('auth-login input[name="identity"]').fill('alice')
     await page.locator('auth-login input[name="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid="loginSubmit"]').click()
+    await page.locator('auth-login').getByTestId('loginSubmit').click()
 
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
 
     // Create a room to ensure there is something to sync
     console.log('--- Creating Room ---')
-    await page.locator('[data-testid$="btnCreateRoom"]').click()
+    await page.getByTestId('btnCreateRoom').click()
     await page.locator('create-room-modal input[type="search"]').fill('bob')
-    const bobResult = page.locator('[data-testid*="search-result-bob"]')
+    const bobResult = page.getByTestId('search-result-bob')
     await bobResult.waitFor({ state: 'attached', timeout: 15000 })
     await bobResult.click({ force: true })
-    await page.locator('[data-testid$="btnCreate"]').click()
+    await page.getByTestId('btnCreate').click()
 
     // The modal only closes once the room has been created and cached
     await expect(page.locator('create-room-modal')).toBeHidden({ timeout: 15000 })
@@ -47,15 +47,15 @@ test.describe('Authentication and Vault', () => {
 
     // logout
     console.log('--- Logout 2 ---')
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnLogout"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnLogout').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
     // login again
     console.log('--- Third Login ---')
     await page.locator('auth-login input[name="identity"]').fill('alice')
     await page.locator('auth-login input[name="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid="loginSubmit"]').click()
+    await page.locator('auth-login').getByTestId('loginSubmit').click()
 
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })
 
@@ -65,35 +65,35 @@ test.describe('Authentication and Vault', () => {
 
   test('should fail registration with invalid invitation code', async ({ page }) => {
     await page.goto('/')
-    await page.locator('auth-login [data-testid="linkRegister"]').click()
+    await page.locator('auth-login').getByTestId('linkRegister').click()
     await expect(page.locator('auth-register')).toBeVisible()
 
     await page.locator('auth-register input[name="username"]').fill('newuser')
     await page.locator('auth-register input[name="invitation_code"]').fill('INV-INVALID-CODE')
     await page.locator('auth-register input[name="password"]').fill('Password123!456')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!456')
-    await page.locator('auth-register [data-testid="registerSubmit"]').click()
+    await page.locator('auth-register').getByTestId('registerSubmit').click()
 
     // Should display error message
-    await expect(page.locator('auth-register [data-testid$="statusMsg"]')).toContainText('Invalid or expired invitation code')
+    await expect(page.locator('auth-register').getByTestId('statusMsg')).toContainText('Invalid or expired invitation code')
   })
 
   test('should register successfully with valid invitation code and set up vault', async ({ page }) => {
     await page.goto('/')
-    await page.locator('auth-login [data-testid="linkRegister"]').click()
+    await page.locator('auth-login').getByTestId('linkRegister').click()
     await expect(page.locator('auth-register')).toBeVisible()
 
     await page.locator('auth-register input[name="username"]').fill('sam')
     await page.locator('auth-register input[name="invitation_code"]').fill('INV-SEED-1111')
     await page.locator('auth-register input[name="password"]').fill('Password123!456')
     await page.locator('auth-register input[name="passwordConfirm"]').fill('Password123!456')
-    await page.locator('auth-register [data-testid="registerSubmit"]').click()
+    await page.locator('auth-register').getByTestId('registerSubmit').click()
 
     /* Confirm and dismiss Recovery Code Modal */
-    await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
+    await expect(page.locator('auth-register').getByTestId('recoveryModal')).toBeVisible({ timeout: 15000 })
     await page.screenshot({ path: 'tests/e2e/screenshots/recovery-modal.png' })
-    await page.locator('auth-register [data-testid$="chkStored"]').check()
-    await page.locator('auth-register [data-testid="btnContinueToChat"]').click()
+    await page.locator('auth-register').getByTestId('chkStored').check()
+    await page.locator('auth-register').getByTestId('btnContinueToChat').click()
 
     // Should successfully proceed directly into the application layout
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 15000 })

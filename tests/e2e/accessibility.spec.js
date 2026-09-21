@@ -111,7 +111,7 @@ async function getEffectiveForeground (page, elementLocator, bg) {
 
 // Verification helper for element color contrast assertions
 async function verifyComputedElementContrast (page) {
-  const chatContainer = page.locator('[data-testid$="atoll-chat-view-container"]')
+  const chatContainer = page.getByTestId('atoll-chat-view-container')
   const themeId = await chatContainer.getAttribute('data-theme')
 
   let baseBg = 'rgb(255, 255, 255)' // Default light fallback
@@ -125,7 +125,7 @@ async function verifyComputedElementContrast (page) {
   } else if (themeId === 'sunset') {
     baseBg = 'rgb(241, 39, 17)'
   } else if (themeId === 'custom') {
-    const computedBg = await page.evaluate(() => window.getComputedStyle(document.querySelector('[data-testid$="atoll-chat-view-container"]')).backgroundColor)
+    const computedBg = await page.evaluate(() => window.getComputedStyle(document.querySelector('[data-testid="atoll-chat-view-container"]')).backgroundColor)
     baseBg = computedBg || 'rgb(255, 255, 255)'
   }
 
@@ -261,19 +261,19 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
     await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
     // Alice creates a chat room with Bob
-    await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-    await alicePage.locator('[data-testid$="search-result-bob"]').click()
-    await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await alicePage.getByTestId('btnCreateRoom').click()
+    await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await alicePage.getByTestId('search-result-bob').click()
+    await alicePage.getByTestId('btnCreate').click()
 
     await expect(alicePage.locator('atoll-chat-view')).toBeVisible({ timeout: 15000 })
 
     // Message type 1: Text Sent Message (Alice)
     const textMsg = 'Hello Bob, testing accessibility text message ' + Date.now()
     await alicePage.fill('textarea', textMsg)
-    await alicePage.click('[data-testid$="__sendButton"]')
+    await alicePage.getByTestId('sendButton').click()
     await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-bubble-sent').first()).toBeVisible({ timeout: 15000 })
-    await expect(alicePage.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
+    await expect(alicePage.getByTestId('status-text').last()).toHaveText('Sent', { timeout: 60000 })
 
     // Bob opens the room with Alice
     const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'Alice' }).first()
@@ -283,31 +283,31 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
 
     // Message type 2: Text Received Message (Bob sends to Alice)
     await bobPage.fill('textarea', 'Hi Alice, receiving text message for contrast audit')
-    await bobPage.click('[data-testid$="__sendButton"]')
+    await bobPage.getByTestId('sendButton').click()
     await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-bubble-received').first()).toBeVisible({ timeout: 20000 })
-    await expect(bobPage.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
+    await expect(bobPage.getByTestId('status-text').last()).toHaveText('Sent', { timeout: 60000 })
 
     // Message type 3: Voice / Audio Waveform Player (Alice uploads test.mp3)
     const audioPath = path.resolve('tests/e2e/fixtures/test-files/test.mp3')
-    await alicePage.setInputFiles('[data-testid$="__fileInput"]', audioPath)
+    await alicePage.getByTestId('fileInput').setInputFiles(audioPath)
     await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
-    await alicePage.locator('[data-testid$="sendButton"]').click()
+    await alicePage.getByTestId('sendButton').click()
     await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-waveform-player').first()).toBeVisible({ timeout: 60000 })
-    await expect(alicePage.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
+    await expect(alicePage.getByTestId('status-text').last()).toHaveText('Sent', { timeout: 60000 })
 
     // Message type 4: File Attachment Card (Alice uploads test.doc)
     const filePath = path.resolve('tests/e2e/fixtures/test-files/test.doc')
-    await alicePage.setInputFiles('[data-testid$="__fileInput"]', filePath)
+    await alicePage.getByTestId('fileInput').setInputFiles(filePath)
     await expect(alicePage.locator('atoll-chat-attachment-preview .atoll-chat-attachment-preview-status')).toContainText('Ready to send', { timeout: 45000 })
-    await alicePage.locator('[data-testid$="sendButton"]').click()
+    await alicePage.getByTestId('sendButton').click()
     await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-file-attachment').first()).toBeVisible({ timeout: 60000 })
-    await expect(alicePage.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
+    await expect(alicePage.getByTestId('status-text').last()).toHaveText('Sent', { timeout: 60000 })
 
     // Message type 5: Link Preview Card (Alice sends link)
     await alicePage.fill('textarea', 'Check out https://example.com for documentation')
-    await alicePage.click('[data-testid$="__sendButton"]')
+    await alicePage.getByTestId('sendButton').click()
     await expect(alicePage.locator('atoll-chat-timeline .atoll-chat-bubble-sent').last()).toBeVisible({ timeout: 15000 })
-    await expect(alicePage.locator('.atoll-chat-message-status-container [data-testid$="status-text"]').last()).toHaveText('Sent', { timeout: 60000 })
+    await expect(alicePage.getByTestId('status-text').last()).toHaveText('Sent', { timeout: 60000 })
 
     // Message type 6: Reaction Pill (Bob reacts to Alice's text message)
     const rowOnBob = bobPage.locator('atoll-chat-timeline-row').filter({ hasText: textMsg })
@@ -347,21 +347,21 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
     }
 
     // Open Room Details Offcanvas & Theme Selector Modal
-    const roomSettingsBtn = alicePage.locator('[data-testid$="btnRoomSettings"]')
+    const roomSettingsBtn = alicePage.getByTestId('btnRoomSettings')
     await expect(roomSettingsBtn).toBeVisible({ timeout: 15000 })
     await roomSettingsBtn.click()
 
     // Expand Customise Chat accordion if not already expanded
-    const changeThemeBtn = alicePage.locator('[data-testid$="btnChangeTheme"]')
+    const changeThemeBtn = alicePage.getByTestId('btnChangeTheme')
     const isVisible = await changeThemeBtn.isVisible()
     if (!isVisible) {
-      await alicePage.locator('[data-testid$="accordion-customise-btn"]').click()
+      await alicePage.getByTestId('accordion-customise-btn').click()
     }
 
     await expect(changeThemeBtn).toBeVisible({ timeout: 15000 })
 
     const themeModal = alicePage.locator('.modal').filter({ hasText: 'Preview and select theme' })
-    await alicePage.locator('[data-testid$="btnChangeTheme"]').click()
+    await alicePage.getByTestId('btnChangeTheme').click()
     await expect(themeModal).toBeVisible({ timeout: 15000 })
 
     // Select target theme item
@@ -369,10 +369,10 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
     await alicePage.locator(`[data-theme-id="${selectorId}"]`).click()
 
     if (theme.id === 'custom') {
-      const customControls = alicePage.locator('[data-testid$="custom-theme-controls"]')
+      const customControls = alicePage.getByTestId('custom-theme-controls')
       await expect(customControls).toBeVisible({ timeout: 15000 })
 
-      const fileInput = customControls.locator('[data-testid$="custom-image-uploader"]')
+      const fileInput = customControls.getByTestId('custom-image-uploader')
       const buffer = customImageBuffer || Buffer.from(
         'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5OrkJggg==',
         'base64'
@@ -384,10 +384,10 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
       })
 
       // Wait for image uploader / palette generator to fully finish analysis
-      const btnGenerate = customControls.locator('[data-testid$="btn-generate-palette"]')
+      const btnGenerate = customControls.getByTestId('btn-generate-palette')
       await expect(btnGenerate).toBeEnabled({ timeout: 30000 })
 
-      const bgImageToggle = customControls.locator('[data-testid$="use-bg-image-toggle"]')
+      const bgImageToggle = customControls.getByTestId('use-bg-image-toggle')
       await bgImageToggle.check()
     }
 
@@ -407,7 +407,7 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
     await alicePage.waitForTimeout(1000)
 
     // Assert live Chat View theme data attribute
-    const chatContainer = alicePage.locator('[data-testid$="atoll-chat-view-container"]')
+    const chatContainer = alicePage.getByTestId('atoll-chat-view-container')
     await expect(chatContainer).toHaveAttribute('data-theme', selectorId)
 
     // Wait for layout/style computation to apply the theme's background color on the file card
@@ -445,7 +445,7 @@ test.describe('Automated Accessibility (axe-core) & Theme Matrix Audits', () => 
     } else if (selectorId === 'sunset') {
       baseBg = 'rgb(241, 39, 17)'
     } else if (selectorId === 'custom') {
-      const computedBg = await alicePage.evaluate(() => window.getComputedStyle(document.querySelector('[data-testid$="atoll-chat-view-container"]')).backgroundColor)
+      const computedBg = await alicePage.evaluate(() => window.getComputedStyle(document.querySelector('[data-testid="atoll-chat-view-container"]')).backgroundColor)
       baseBg = computedBg || 'rgb(255, 255, 255)'
     }
 

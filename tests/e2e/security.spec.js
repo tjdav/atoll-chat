@@ -62,9 +62,9 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('auth-register [data-testid="registerSubmit"]').click()
 
     /* Confirm and dismiss Recovery Code Modal */
-    await expect(page.locator('auth-register [ref$="__recoveryModal"]')).toBeVisible({ timeout: 15000 })
-    await page.locator('auth-register [data-testid$="chkStored"]').check()
-    await page.locator('auth-register [data-testid="btnContinueToChat"]').click()
+    await expect(page.locator('auth-register').getByTestId('recoveryModal')).toBeVisible({ timeout: 15000 })
+    await page.locator('auth-register').getByTestId('chkStored').check()
+    await page.locator('auth-register').getByTestId('btnContinueToChat').click()
 
     /* Verify registration succeeds and proceeds directly to app-layout */
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
@@ -129,7 +129,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     /* Verify invalid code shows error message */
     await page.locator('input[name="recoveryCodeInput"]').fill('RC-1111-2222-3333-4444')
     await page.locator('vault-unlock button:has-text("Verify Recovery Code")').click()
-    await expect(page.locator('[data-testid$="recoveryCodeInput-feedback"]')).toContainText('Invalid or expired recovery code')
+    await expect(page.getByTestId('recoveryCodeInput-feedback')).toContainText('Invalid or expired recovery code')
 
     /* Retrieve Alice's actual plaintext recovery codes from mock server */
     const codesRes = await page.evaluate(async () => {
@@ -161,15 +161,15 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     /* LOG OUT and test if new password works and old password fails */
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnLogout"]').dispatchEvent('click')
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnLogout').dispatchEvent('click')
     await expect(page.locator('auth-login')).toBeVisible()
 
     /* Log in with OLD password and expect failure */
     await page.locator('auth-login input[name="identity"]').fill('alice')
     await page.locator('auth-login input[name="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid="loginSubmit"]').click()
-    await expect(page.locator('auth-login [data-testid$="statusMsg"]')).toContainText(/wrong secret key|Invalid|Failed/)
+    await page.locator('auth-login').getByTestId('loginSubmit').click()
+    await expect(page.locator('auth-login').getByTestId('statusMsg')).toContainText(/wrong secret key|Invalid|Failed/)
 
     /* Log in with NEW password and expect success */
     await page.locator('auth-login input[name="identity"]').fill('alice')
@@ -198,14 +198,14 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
 
     /* Try old password and expect unlock failure */
     await page.locator('vault-unlock input[name="password"]').fill('Password123!')
-    await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
-    await expect(page.locator('[data-testid$="password-feedback"]')).toContainText(
+    await page.locator('vault-unlock').getByTestId('unlockSubmit').click()
+    await expect(page.getByTestId('password-feedback')).toContainText(
       /wrong secret key|Invalid Password|Unlock failed/
     )
 
     /* Try new password and expect unlock success */
     await page.locator('vault-unlock input[name="password"]').fill('NewVaultPassword123!')
-    await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+    await page.locator('vault-unlock').getByTestId('unlockSubmit').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     /* Clear memory/session via reload to simulate active session lock again to verify burned code */
@@ -221,7 +221,7 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await page.locator('vault-unlock button:has-text("Verify Recovery Code")').click()
 
     /* Verify rejection */
-    await expect(page.locator('[data-testid$="recoveryCodeInput-feedback"]')).toContainText(/Invalid or expired recovery code|No recovery codes configured/)
+    await expect(page.getByTestId('recoveryCodeInput-feedback')).toContainText(/Invalid or expired recovery code|No recovery codes configured/)
   })
 
   test('should handle TOTP dual modal setup, device trust state machine, and step-up verification', async ({ page, loginApp }) => {
@@ -229,28 +229,28 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     await loginApp('alice', 'Password123!', 'Password123!')
 
     /* Open profile settings modal */
-    await page.locator('[data-testid$="__profileBtn"]').click()
-    await page.locator('[data-testid$="__btnSettings"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnSettings').click()
 
     /* Trigger 2FA setup */
-    const manageTotpBtn = page.locator('totp-settings [ref$="btnManageTotp"], [data-testid*="btnManageTotp"]').first()
+    const manageTotpBtn = page.getByTestId('btnManageTotp')
     await manageTotpBtn.dispatchEvent('click')
 
     /* Retrieve secret from modal text content */
-    await page.locator('[data-testid$="__secretText"]').waitFor({ state: 'attached', timeout: 15000 })
-    const secret = await page.locator('[data-testid$="__secretText"]').textContent()
+    await page.getByTestId('secretText').waitFor({ state: 'attached', timeout: 15000 })
+    const secret = await page.getByTestId('secretText').textContent()
     expect(secret).toBeTruthy()
 
     /* Generate and input current TOTP code */
     const totpCode = await getTotpCode(page, secret)
-    await page.locator('input[data-testid$="__otpInput"]').fill(totpCode)
-    await page.locator('[data-testid$="__btnVerifyEnable"]').click()
+    await page.getByTestId('otpInput').fill(totpCode)
+    await page.getByTestId('btnVerifyEnable').click()
 
     /* Confirm enrollment success toast and button text update */
     await expect(page.locator('.toast-body')).toContainText('Two-Step Authentication enabled successfully!')
     await page.locator('.toast .btn-close').click().catch(() => {
     })
-    await expect(page.locator('[data-testid$="__btnManageTotp"]')).toContainText('Disable 2FA')
+    await expect(page.getByTestId('btnManageTotp')).toContainText('Disable 2FA')
 
     /* Mock WebAuthn credentials API for passkey step-up registration */
     await page.evaluate(() => {
@@ -270,10 +270,10 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     })
 
     /* TEST STEP-UP SECURITY WITH SENSITIVE ACTIONS */
-    await page.locator('[data-testid$="__btnManagePasskey"]').click()
+    await page.getByTestId('btnManagePasskey').click()
 
     /* Step-up modal is immediately mounted and halts UI. Verify TOTP step-up section is visible and required */
-    const totpStepUpInput = page.locator('input[data-testid$="__totpStepUpInput"]')
+    const totpStepUpInput = page.getByTestId('totpInput')
     await expect(totpStepUpInput).toBeVisible()
     const isTotpRequired = await totpStepUpInput.evaluate((el) => {
       return el.hasAttribute('required')
@@ -281,22 +281,22 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     expect(isTotpRequired).toBe(true)
 
     /* Input Vault Password and an invalid TOTP code */
-    await page.locator('input[data-testid$="__vaultPasswordInput"]').fill('Password123!')
+    await page.getByTestId('passwordInput').fill('Password123!')
     await totpStepUpInput.fill('000000')
-    await page.locator('[data-testid$="__btnVerifyPassword"]').click()
-    await expect(page.locator('[data-testid$="__verifyError"]')).toContainText('Invalid 2-step verification code.')
+    await page.getByTestId('permissionModal').getByRole('button', { name: 'Confirm' }).click()
+    await expect(page.getByTestId('errorAlert')).toContainText('Invalid 2-step verification code.')
 
     /* Input Vault Password and valid TOTP code */
     const freshStepUpCode = await getTotpCode(page, secret)
     await totpStepUpInput.fill(freshStepUpCode)
-    await page.locator('[data-testid$="__btnVerifyPassword"]').click()
+    await page.getByTestId('permissionModal').getByRole('button', { name: 'Confirm' }).click()
 
     /* Confirm passkey addition succeeded */
     await expect(page.locator('.toast-body')).toContainText('Biometric unlock successfully enabled!')
 
     /* TEST DEVICE TRUST STATE MACHINE (UNTRUSTED VS TRUSTED) */
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnLogout"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnLogout').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
     /* UNTRUSTED STATE: Clear local storage completely to simulate unrecognized device */
@@ -307,52 +307,52 @@ test.describe('Zero-Knowledge Security and Cryptographic Architectures', () => {
     /* Log in with password */
     await page.locator('auth-login input[name="identity"]').fill('alice')
     await page.locator('auth-login input[name="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid="loginSubmit"]').click()
+    await page.locator('auth-login').getByTestId('loginSubmit').click()
 
     /* Assert that unrecognized device halts flow and mounts the TOTP challenge modal */
     await expect(page.locator('totp-challenge')).toBeVisible()
 
     /* Enter invalid TOTP code */
-    await page.locator('input[data-testid$="totpChallengeInput"]').fill('000000')
-    await page.locator('[data-testid$="totpChallengeSubmit"]').click()
-    await expect(page.locator('[data-testid$="totpChallenge-feedback"]')).toContainText('Invalid verification code.')
+    await page.getByTestId('totpChallengeInput').fill('000000')
+    await page.getByTestId('totpChallengeSubmit').click()
+    await expect(page.getByTestId('totpChallenge-feedback')).toContainText('Invalid verification code.')
 
     /* Enter valid TOTP code */
     const challengeCode = await getTotpCode(page, secret)
-    await page.locator('input[data-testid$="totpChallengeInput"]').fill(challengeCode)
-    await page.locator('[data-testid$="totpChallengeSubmit"]').click()
+    await page.getByTestId('totpChallengeInput').fill(challengeCode)
+    await page.getByTestId('totpChallengeSubmit').click()
 
     /* Recognized device: direct prompt to Unlock Vault is visible now */
     await expect(page.locator('vault-unlock')).toBeVisible()
 
     /* Unlock the vault */
     await page.locator('vault-unlock input[name="password"]').fill('Password123!')
-    await page.locator('[data-testid$="unlockSubmit"]').click()
+    await page.getByTestId('unlockSubmit').click()
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
 
     /* TRUSTED STATE: Log out normally (keep the trust token in local storage) */
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnLogout"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnLogout').click()
     await expect(page.locator('auth-login')).toBeVisible()
 
     /* Log back in with password */
     await page.locator('auth-login input[name="identity"]').fill('alice')
     await page.locator('auth-login input[name="password"]').fill('Password123!')
-    await page.locator('auth-login [data-testid="loginSubmit"]').click()
+    await page.locator('auth-login').getByTestId('loginSubmit').click()
 
     /* Assert that recognized device completely bypasses TOTP challenge and goes straight to app-layout */
     await expect(page.locator('app-layout')).toBeVisible({ timeout: 20000 })
     await expect(page.locator('totp-challenge')).not.toBeVisible()
 
     /* DISABLE TOTP */
-    await page.locator('[data-testid$="__profileBtn"]').click()
-    await page.locator('[data-testid$="__btnSettings"]').click()
-    await page.locator('[data-testid$="__btnManageTotp"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnSettings').click()
+    await page.getByTestId('btnManageTotp').click()
 
     /* Fill valid TOTP to disable */
     const disableCode = await getTotpCode(page, secret)
-    await page.locator('input[data-testid$="__disableOtpInput"]').fill(disableCode)
-    await page.locator('[data-testid$="__btnVerifyDisable"]').click()
+    await page.getByTestId('disableOtpInput').fill(disableCode)
+    await page.getByTestId('btnVerifyDisable').click()
 
     /* Toast confirmation */
     await expect(page.locator('.toast-body')).toContainText('Two-Step Authentication disabled successfully.')

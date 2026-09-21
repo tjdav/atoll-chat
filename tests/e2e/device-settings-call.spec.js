@@ -163,10 +163,10 @@ test.describe.serial('Call Device Settings', () => {
       if (roomExists) {
         await aliceBobChat.click()
       } else {
-        await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-        await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-        await alicePage.locator('[data-testid$="search-result-bob"]').click()
-        await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+        await alicePage.getByTestId('btnCreateRoom').click()
+        await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+        await alicePage.getByTestId('search-result-bob').click()
+        await alicePage.getByTestId('btnCreate').click()
       }
       await expect(alicePage.locator('atoll-chat-view header h6')).toContainText('bob', { timeout: 15000 })
 
@@ -194,7 +194,7 @@ test.describe.serial('Call Device Settings', () => {
 
   test('Device settings structure and hot-swapping during an active Audio Call', async () => {
     await test.step('Alice initiates and Bob accepts audio call', async () => {
-      await alicePage.locator('[data-testid$="btnAudioCall"]').click()
+      await alicePage.getByTestId('btnAudioCall').click()
       const bobAcceptBtn = bobPage.getByRole('button', { name: 'Accept Call' })
       await expect(bobAcceptBtn).toBeVisible({ timeout: 20000 })
       await bobAcceptBtn.click()
@@ -298,7 +298,7 @@ test.describe.serial('Call Device Settings', () => {
 
   test('Revert Rollback behavior on Cancel or backdrop click', async () => {
     await test.step('Alice initiates and Bob accepts audio call', async () => {
-      await alicePage.locator('[data-testid$="btnAudioCall"]').click()
+      await alicePage.getByTestId('btnAudioCall').click()
       const bobAcceptBtn = bobPage.getByRole('button', { name: 'Accept Call' })
       await expect(bobAcceptBtn).toBeVisible({ timeout: 20000 })
       await bobAcceptBtn.click()
@@ -352,7 +352,7 @@ test.describe.serial('Call Device Settings', () => {
 
   test('Video Call device settings and effects', async () => {
     await test.step('Alice initiates and Bob accepts video call', async () => {
-      await alicePage.locator('[data-testid$="btnVideoCall"]').click()
+      await alicePage.getByTestId('btnVideoCall').click()
       const bobAcceptBtn = bobPage.getByRole('button', { name: 'Accept Call' })
       await expect(bobAcceptBtn).toBeVisible({ timeout: 20000 })
       await bobAcceptBtn.click()
@@ -418,7 +418,7 @@ test.describe.serial('Call Device Settings', () => {
     })
 
     await test.step('Alice initiates and Bob accepts call', async () => {
-      await alicePage.locator('[data-testid$="btnAudioCall"]').click()
+      await alicePage.getByTestId('btnAudioCall').click()
       const bobAcceptBtn = bobPage.getByRole('button', { name: 'Accept Call' })
       await expect(bobAcceptBtn).toBeVisible({ timeout: 20000 })
       await bobAcceptBtn.click()

@@ -82,11 +82,11 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     expect(pushRegistered).toBe(true)
 
     // Navigate to Settings
-    await page.locator('[data-testid="nav-sidebar-0__profileBtn"]').click()
-    await page.locator('[data-testid="nav-sidebar-0__btnSettings"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnSettings').click()
 
     // Tap on the Notifications category in settings-pane
-    await page.locator('[data-testid="settings-pane-0__nav-notifications"]').click()
+    await page.getByTestId('nav-notifications').click()
 
     // Find browser notifications switch and assert it is checked by default
     const switchInput = page.locator('notifications-settings input[type="checkbox"]')
@@ -134,20 +134,20 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     })
 
     /* Create a group room involving Alice, Bob, and Charlie */
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+    await page.getByTestId('btnCreateRoom').click()
     await expect(page.locator('.modal-title:has-text("Create New Room")')).toBeVisible()
 
     /* Search and add Bob */
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
 
     /* Search and add Charlie */
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('charlie')
-    await page.locator('[data-testid$="search-result-charlie"]').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('charlie')
+    await page.getByTestId('search-result-charlie').click()
 
     /* Fill Group Name and submit */
-    await page.locator('[data-testid="create-room-modal-0__roomNameInput"]').fill('Push Test Group')
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('roomNameInput').fill('Push Test Group')
+    await page.getByTestId('btnCreate').click()
 
     /* Wait for room list to update and room to be selected */
     await expect(page.locator('atoll-chat-view')).toBeVisible()
@@ -227,15 +227,15 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     })
 
     /* Create a direct room with Bob */
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
+    await page.getByTestId('btnCreateRoom').click()
     await expect(page.locator('.modal-title:has-text("Create New Room")')).toBeVisible()
 
     /* Search and add Bob */
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
 
     /* Submitting direct room with Bob (roomNameInput is hidden for direct chats) */
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreate').click()
 
     /* Wait for room list to update and room to be selected */
     await expect(page.locator('atoll-chat-view')).toBeVisible()
@@ -271,10 +271,10 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp, { timeout: 30000 })
 
     /* Create a room with Bob */
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
     await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     const roomId = await page.evaluate(() => window.$state.activeSelectionId)
@@ -353,10 +353,10 @@ test.describe('Platform-Agnostic Push Notifications Plugin', () => {
     await page.waitForFunction(() => window.$bus && !window.$state.isCatchingUp, { timeout: 30000 })
 
     /* Create a room with Bob */
-    await page.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-    await page.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
     await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     const roomId = await page.evaluate(() => window.$state.activeSelectionId)

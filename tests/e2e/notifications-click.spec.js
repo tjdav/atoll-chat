@@ -14,17 +14,17 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     await expect(page.locator('app-layout')).toBeVisible()
 
     // Create a room to ensure a valid selected room exists
-    await page.locator('[data-testid$="btnCreateRoom"]').click()
-    await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid$="btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
     await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     const roomId = await page.locator('atoll-chat-view').getAttribute('data-room-id') || await page.evaluate(() => window.$state.activeSelectionId)
     expect(roomId).toBeDefined()
 
-    await page.locator('[data-testid$="profileBtn"]').click()
-    await page.locator('[data-testid$="btnSettings"]').click()
+    await page.getByTestId('profileBtn').click()
+    await page.getByTestId('btnSettings').click()
 
     // Assert that we are in settings and NOT in the room
     await expect(page.locator('settings-main')).toBeVisible()
@@ -70,10 +70,10 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     await expect(page.locator('app-layout')).toBeVisible()
 
     // Create a room with Bob
-    await page.locator('[data-testid$="btnCreateRoom"]').click()
-    await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-    await page.locator('[data-testid$="search-result-bob"]').click()
-    await page.locator('[data-testid$="btnCreate"]').click()
+    await page.getByTestId('btnCreateRoom').click()
+    await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+    await page.getByTestId('search-result-bob').click()
+    await page.getByTestId('btnCreate').click()
     await expect(page.locator('atoll-chat-view')).toBeVisible()
 
     const roomId = await page.evaluate(() => window.$state.activeSelectionId)
@@ -107,8 +107,8 @@ test.describe('Notification Click Navigation & Logo Tests', () => {
     await expect(page.getByRole('heading', { name: 'Welcome Back' })).toBeVisible({ timeout: 15000 })
 
     // Unlock the vault
-    await page.locator('vault-unlock input[data-testid$="password"]').fill('Password123!')
-    await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
+    await page.locator('vault-unlock').getByTestId('password').fill('Password123!')
+    await page.locator('vault-unlock').getByTestId('unlockSubmit').click()
 
     // Wait for the app-layout/chats view to load, and verify navigation & message visibility
     await expect(page.locator('app-layout')).toBeVisible()

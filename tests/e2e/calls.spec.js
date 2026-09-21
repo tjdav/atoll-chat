@@ -103,10 +103,10 @@ test.describe.serial('Calls', () => {
       if (roomExists) {
         await aliceBobChat.click()
       } else {
-        await alicePage.locator('[data-testid="list-pane-0__btnCreateRoom"]').click()
-        await alicePage.locator('[data-testid="create-room-modal-0__searchInput"]').fill('bob')
-        await alicePage.locator('[data-testid$="search-result-bob"]').click()
-        await alicePage.locator('[data-testid="create-room-modal-0__btnCreate"]').click()
+        await alicePage.getByTestId('btnCreateRoom').click()
+        await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+        await alicePage.getByTestId('search-result-bob').click()
+        await alicePage.getByTestId('btnCreate').click()
       }
       await expect(alicePage.locator('atoll-chat-view header h6')).toContainText('bob', { timeout: 15000 })
 
@@ -124,7 +124,7 @@ test.describe.serial('Calls', () => {
 
   test('Audio Call between Alice and Bob', async () => {
     await test.step('Alice initiates audio call', async () => {
-      await alicePage.locator('[data-testid$="btnAudioCall"]').click()
+      await alicePage.getByTestId('btnAudioCall').click()
     })
 
     await test.step('Bob receives incoming audio call overlay', async () => {
@@ -207,7 +207,7 @@ test.describe.serial('Calls', () => {
 
   test('Video Call with PiP and Messaging', async () => {
     await test.step('Alice initiates video call', async () => {
-      await alicePage.locator('[data-testid$="btnVideoCall"]').click()
+      await alicePage.getByTestId('btnVideoCall').click()
     })
 
     await test.step('Bob receives incoming video call overlay and accepts', async () => {
@@ -439,7 +439,7 @@ test.describe.serial('Calls', () => {
     })
 
     await test.step('Alice initiates audio call', async () => {
-      await alicePage.locator('[data-testid$="btnAudioCall"]').click()
+      await alicePage.getByTestId('btnAudioCall').click()
     })
 
     await test.step('Both Bob devices receive incoming call overlay', async () => {
@@ -479,7 +479,7 @@ test.describe.serial('Calls', () => {
 
   test('In-Call Device Settings, Effects, and Loss Fail-Safe', async () => {
     await test.step('Alice initiates video call', async () => {
-      await alicePage.locator('[data-testid$="btnVideoCall"]').click()
+      await alicePage.getByTestId('btnVideoCall').click()
     })
 
     await test.step('Bob receives incoming video call overlay and accepts', async () => {
@@ -587,13 +587,13 @@ test.describe.serial('Calls', () => {
 
   test('Call while logged out (cancelled)', async () => {
     await test.step('Alice logs out', async () => {
-      await alicePage.locator('[data-testid$="profileBtn"]').click()
-      await alicePage.locator('[data-testid$="btnLogout"]').click()
+      await alicePage.getByTestId('profileBtn').click()
+      await alicePage.getByTestId('btnLogout').click()
       await expect(alicePage.locator('auth-login')).toBeVisible()
     })
 
     await test.step('Bob initiates a call', async () => {
-      await bobPage.locator('[data-testid$="btnAudioCall"]').click()
+      await bobPage.getByTestId('btnAudioCall').click()
       // Wait to ensure the signaling message is sent and stored
       await bobPage.waitForTimeout(1500)
     })
@@ -606,9 +606,9 @@ test.describe.serial('Calls', () => {
     })
 
     await test.step('Alice logs back in', async () => {
-      await alicePage.locator('auth-login input[data-testid$="username"]').fill('alice')
-      await alicePage.locator('auth-login input[data-testid$="password"]').fill('Password123!')
-      await alicePage.locator('auth-login [data-testid$="loginSubmit"]').click()
+      await alicePage.locator('auth-login input[name="identity"]').fill('alice')
+      await alicePage.locator('auth-login input[name="password"]').fill('Password123!')
+      await alicePage.locator('auth-login').getByTestId('loginSubmit').click()
       await expect(alicePage.locator('app-layout')).toBeVisible({ timeout: 15000 })
     })
 
@@ -621,20 +621,20 @@ test.describe.serial('Calls', () => {
 
   test('Call while logged out (active)', async () => {
     await test.step('Alice logs out', async () => {
-      await alicePage.locator('[data-testid$="profileBtn"]').click()
-      await alicePage.locator('[data-testid$="btnLogout"]').click()
+      await alicePage.getByTestId('profileBtn').click()
+      await alicePage.getByTestId('btnLogout').click()
       await expect(alicePage.locator('auth-login')).toBeVisible()
     })
 
     await test.step('Bob initiates a call and remains active', async () => {
-      await bobPage.locator('[data-testid$="btnAudioCall"]').click()
+      await bobPage.getByTestId('btnAudioCall').click()
       await bobPage.waitForTimeout(1500)
     })
 
     await test.step('Alice logs back in', async () => {
-      await alicePage.locator('auth-login input[data-testid$="username"]').fill('alice')
-      await alicePage.locator('auth-login input[data-testid$="password"]').fill('Password123!')
-      await alicePage.locator('auth-login [data-testid$="loginSubmit"]').click()
+      await alicePage.locator('auth-login input[name="identity"]').fill('alice')
+      await alicePage.locator('auth-login input[name="password"]').fill('Password123!')
+      await alicePage.locator('auth-login').getByTestId('loginSubmit').click()
       await expect(alicePage.locator('app-layout')).toBeVisible({ timeout: 15000 })
     })
 

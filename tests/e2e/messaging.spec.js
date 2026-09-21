@@ -6,16 +6,16 @@ test.describe('Messaging Features', () => {
     test.beforeEach(async ({ page, loginApp }) => {
       test.slow()
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.getByTestId('btnCreate').click()
       await page.fill('textarea', 'Msg 1')
       await page.keyboard.press('Enter')
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('charlie')
-      await page.locator('[data-testid$="search-result-charlie"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('charlie')
+      await page.getByTestId('search-result-charlie').click()
+      await page.getByTestId('btnCreate').click()
     })
 
     test('mute and delete room via room settings offcanvas', async ({ page }) => {
@@ -28,21 +28,21 @@ test.describe('Messaging Features', () => {
 
       console.log('Opening Room Settings offcanvas...')
       await page.locator('[ref$="btnDetails"] button').click()
-      const offcanvas = page.locator('[data-testid$="roomDetailsOffcanvas"]')
+      const offcanvas = page.getByTestId('roomDetailsOffcanvas')
       await expect(offcanvas).toBeVisible()
       await expect(offcanvas.locator('[ref$="roomNameText"]')).toContainText('bob')
 
       console.log('Toggling mute status...')
-      await page.locator('[data-testid$="accordion-privacy-btn"]').click()
+      await page.getByTestId('accordion-privacy-btn').click()
       const muteBadge = page.locator('[ref$="muteStatusBadge"]')
       await expect(muteBadge).toContainText('Off')
-      await page.locator('[data-testid$="btnMuteNotifications"]').getByRole('button').click()
+      await page.getByTestId('btnMuteNotifications').getByRole('button').click()
       await expect(muteBadge).toContainText('On')
 
       console.log('Deleting chat...')
       page.once('dialog', dialog => dialog.accept())
       await page.locator('.overflow-y-auto').first().evaluate(el => el.scrollTop = el.scrollHeight)
-      await page.locator('[data-testid$="btnDelete"]').getByRole('button').click()
+      await page.getByTestId('btnDelete').getByRole('button').click()
       await expect(page.locator('chat-list-item').filter({ hasText: /bob/i })).toHaveCount(0)
     })
   })
@@ -54,10 +54,10 @@ test.describe('Messaging Features', () => {
       const alicePage = await aliceContext.newPage()
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
 
-      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
-      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await alicePage.locator('[data-testid$="search-result-bob"]').click()
-      await alicePage.locator('[data-testid$="btnCreate"]').click()
+      await alicePage.getByTestId('btnCreateRoom').click()
+      await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await alicePage.getByTestId('search-result-bob').click()
+      await alicePage.getByTestId('btnCreate').click()
 
       const aliceInput = alicePage.locator('textarea[placeholder="Type a message..."]')
       for (let i = 0; i < 25; i++) {
@@ -90,10 +90,10 @@ test.describe('Messaging Features', () => {
     test('message ordering', async ({ page, loginApp }) => {
       test.slow()
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.getByTestId('btnCreate').click()
       await expect(page.locator('atoll-chat-view')).toBeVisible()
 
       await page.evaluate(async () => {
@@ -135,10 +135,10 @@ test.describe('Messaging Features', () => {
     test('message bubble roundness strategy', async ({ page, loginApp }) => {
       test.slow()
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.getByTestId('btnCreate').click()
       await expect(page.locator('atoll-chat-view')).toBeVisible()
 
       // Send 3 consecutive text messages
@@ -183,10 +183,10 @@ test.describe('Messaging Features', () => {
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
       // Alice creates room with Bob
-      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
-      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await alicePage.locator('[data-testid$="search-result-bob"]').click()
-      await alicePage.locator('[data-testid$="btnCreate"]').click()
+      await alicePage.getByTestId('btnCreateRoom').click()
+      await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await alicePage.getByTestId('search-result-bob').click()
+      await alicePage.getByTestId('btnCreate').click()
 
       // Fill Alice's timeline with messages
       const aliceInput = alicePage.locator('textarea[placeholder="Type a message..."]')
@@ -245,13 +245,13 @@ test.describe('Messaging Features', () => {
     test('comprehensive markdown', async ({ page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.getByTestId('btnCreate').click()
       const md = '# H1\n## H2\n**B**\n*I*\n- L\n> Q\n`C`\n\n| T | H |\n|---|---|\n| R | V |\n\n[G](https://google.com)'
       await page.fill('textarea', md)
-      await page.click('[data-testid$="__sendButton"]')
+      await page.getByTestId('sendButton').click()
       const row = page.locator('atoll-chat-timeline-row').filter({ hasText: 'H1' })
       await expect(row.locator('h1')).toHaveText('H1')
       await expect(row.locator('h2')).toHaveText('H2')
@@ -267,14 +267,14 @@ test.describe('Messaging Features', () => {
     test('code syntax highlighting', async ({ page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.getByTestId('btnCreate').click()
 
       const md = '```javascript\nconst variable = "value";\n```'
       await page.fill('textarea', md)
-      await page.click('[data-testid$="__sendButton"]')
+      await page.getByTestId('sendButton').click()
 
       const codeBlock = page.locator('pre code.hljs.language-javascript')
       await expect(codeBlock).toBeVisible({ timeout: 15000 })
@@ -285,15 +285,15 @@ test.describe('Messaging Features', () => {
     test('link previews', async ({ page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.getByTestId('btnCreate').click()
       await page.fill('textarea', 'https://google.com https://github.com ')
       await expect(page.locator('ui-link-preview-input')).toHaveCount(2, { timeout: 15000 })
       await page.locator('ui-link-preview-input').first().locator('button[title="Dismiss preview"]').click()
       await expect(page.locator('ui-link-preview-input')).toHaveCount(1)
-      await page.click('[data-testid$="__sendButton"]')
+      await page.getByTestId('sendButton').click()
       await expect(page.locator('atoll-chat-timeline-item-link')).toHaveCount(1)
     })
   })
@@ -307,13 +307,13 @@ test.describe('Messaging Features', () => {
       const bobPage = await bobContext.newPage()
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
-      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
-      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await alicePage.locator('[data-testid$="search-result-bob"]').click()
-      await alicePage.locator('[data-testid$="btnCreate"]').click()
+      await alicePage.getByTestId('btnCreateRoom').click()
+      await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await alicePage.getByTestId('search-result-bob').click()
+      await alicePage.getByTestId('btnCreate').click()
       const msg = 'React ' + Date.now()
       await alicePage.fill('textarea', msg)
-      await alicePage.click('[data-testid$="__sendButton"]')
+      await alicePage.getByTestId('sendButton').click()
       const bobChat = bobPage.locator('chat-list chat-list-item').filter({ hasText: 'alice' }).first()
       await expect(bobChat).toBeVisible({ timeout: 30000 })
       await bobChat.locator('atoll-list-item').click()
@@ -340,18 +340,18 @@ test.describe('Messaging Features', () => {
     test('search and notifications', async ({ browser, page, loginCustomPage }) => {
       test.slow()
       await loginCustomPage(page, 'alice', 'Password123!', 'VaultPassword123!')
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('charlie')
-      await page.locator('[data-testid$="search-result-charlie"]').click()
-      await page.locator('[data-testid$="roomNameInput"]').fill('Project X')
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('charlie')
+      await page.getByTestId('search-result-charlie').click()
+      await page.getByTestId('roomNameInput').fill('Project X')
+      await page.getByTestId('btnCreate').click()
 
       // Wait for room to appear in list
       await expect(page.locator('chat-list chat-list-item:has-text("Project X")')).toBeVisible({ timeout: 15000 })
 
-      await page.locator('list-pane [data-testid$="searchInput"]').fill('Project')
+      await page.locator('list-pane').getByTestId('searchInput').fill('Project')
       await expect(page.locator('chat-list chat-list-item:has-text("Project X")')).toBeVisible()
 
       // Debounce sound
@@ -369,10 +369,10 @@ test.describe('Messaging Features', () => {
       })
       await loginCustomPage(alicePage, 'alice', 'Password123!', 'VaultPassword123!')
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
-      await bobPage.locator('[data-testid$="btnCreateRoom"]').click()
-      await bobPage.locator('create-room-modal [data-testid$="searchInput"]').fill('alice')
-      await bobPage.locator('[data-testid$="search-result-alice"]').click()
-      await bobPage.locator('[data-testid$="btnCreate"]').click()
+      await bobPage.getByTestId('btnCreateRoom').click()
+      await bobPage.locator('create-room-modal').getByTestId('searchInput').fill('alice')
+      await bobPage.getByTestId('search-result-alice').click()
+      await bobPage.getByTestId('btnCreate').click()
       for (let i = 0; i < 3; i++) {
         await bobPage.fill('textarea', `M ${i}`)
         await bobPage.keyboard.press('Enter')
@@ -401,10 +401,10 @@ test.describe('Messaging Features', () => {
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
       // Create a room
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.getByTestId('btnCreate').click()
 
       await expect(page.locator('atoll-chat-view')).toBeVisible({ timeout: 15000 })
 
@@ -425,7 +425,7 @@ test.describe('Messaging Features', () => {
       await textarea.fill('Hello from emulated touch device!')
 
       // Click the send button to simulate mobile tap
-      await page.click('[data-testid$="__sendButton"]')
+      await page.getByTestId('sendButton').click()
 
       // Verify that the input loses focus (textarea.blur() was triggered)
       await expect(textarea).not.toBeFocused({ timeout: 5000 })
@@ -437,35 +437,35 @@ test.describe('Messaging Features', () => {
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
       // Create a room
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.getByTestId('btnCreate').click()
 
       await expect(page.locator('atoll-chat-view')).toBeVisible({ timeout: 15000 })
 
       // Open the mobile navigation offcanvas first by clicking back button in header
-      await page.locator('[data-testid$="chatBackBtn"]').click()
+      await page.getByTestId('chatBackBtn').click()
 
       // Open profile dropdown and navigate to Settings on mobile via bottom navigation
-      await page.locator('[data-testid$="bottomBtnProfile"]').click()
-      await page.locator('[data-testid$="bottomBtnSettings"]').click()
+      await page.getByTestId('bottomBtnProfile').click()
+      await page.getByTestId('bottomBtnSettings').click()
 
       // Verify settings list pane is loaded and mobileNav is visible
       await expect(page.locator('settings-pane')).toBeVisible()
-      await expect(page.locator('[data-testid$="mobileNav"]')).toBeVisible()
+      await expect(page.getByTestId('mobileNav')).toBeVisible()
 
       // Click the chats button in the bottom navigation on mobile
-      await page.locator('[data-testid$="bottomBtnChats"]').click()
+      await page.getByTestId('bottomBtnChats').click()
 
       // Verify that mobileNav (the offcanvas list pane) is STILL visible
-      await expect(page.locator('[data-testid$="mobileNav"]')).toBeVisible()
+      await expect(page.getByTestId('mobileNav')).toBeVisible()
 
       // Click on the chat-list-item in the list pane
       await page.locator('chat-list-item').first().click()
 
       // Verify that mobileNav is now hidden and we navigated to the chat view
-      await expect(page.locator('[data-testid$="mobileNav"]')).toBeHidden()
+      await expect(page.getByTestId('mobileNav')).toBeHidden()
       await expect(page.locator('atoll-chat-view')).toBeVisible()
     })
   })
@@ -476,10 +476,10 @@ test.describe('Messaging Features', () => {
       await loginApp('alice', 'Password123!', 'VaultPassword123!')
 
       // Create a room
-      await page.locator('[data-testid$="btnCreateRoom"]').click()
-      await page.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await page.locator('[data-testid$="search-result-bob"]').click()
-      await page.locator('[data-testid$="btnCreate"]').click()
+      await page.getByTestId('btnCreateRoom').click()
+      await page.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await page.getByTestId('search-result-bob').click()
+      await page.getByTestId('btnCreate').click()
 
       await expect(page.locator('atoll-chat-view')).toBeVisible({ timeout: 15000 })
 
@@ -576,10 +576,10 @@ test.describe('Messaging Features', () => {
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
       // Alice creates a private chat room with Bob
-      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
-      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await alicePage.locator('[data-testid$="search-result-bob"]').click()
-      await alicePage.locator('[data-testid$="btnCreate"]').click()
+      await alicePage.getByTestId('btnCreateRoom').click()
+      await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await alicePage.getByTestId('search-result-bob').click()
+      await alicePage.getByTestId('btnCreate').click()
 
       // Wait for room to be created and active
       await expect(alicePage.locator('atoll-chat-view')).toBeVisible()
@@ -672,13 +672,13 @@ test.describe('Messaging Features', () => {
       await loginCustomPage(bobPage, 'bob', 'Password123!', 'VaultPassword123!')
 
       // Alice creates a Group chat room with Bob and Charlie
-      await alicePage.locator('[data-testid$="btnCreateRoom"]').click()
-      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('bob')
-      await alicePage.locator('[data-testid$="search-result-bob"]').click()
-      await alicePage.locator('create-room-modal [data-testid$="searchInput"]').fill('charlie')
-      await alicePage.locator('[data-testid$="search-result-charlie"]').click()
-      await alicePage.locator('[data-testid$="roomNameInput"]').fill('Group Project')
-      await alicePage.locator('[data-testid$="btnCreate"]').click()
+      await alicePage.getByTestId('btnCreateRoom').click()
+      await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('bob')
+      await alicePage.getByTestId('search-result-bob').click()
+      await alicePage.locator('create-room-modal').getByTestId('searchInput').fill('charlie')
+      await alicePage.getByTestId('search-result-charlie').click()
+      await alicePage.getByTestId('roomNameInput').fill('Group Project')
+      await alicePage.getByTestId('btnCreate').click()
 
       // Wait for group room to appear and active
       await expect(alicePage.locator('chat-list chat-list-item:has-text("Group Project")')).toBeVisible({ timeout: 20000 })
