@@ -1,5 +1,5 @@
 <template id="nav-sidebar">
-  <nav class="nav-sidebar d-flex flex-column align-items-center py-3 border-end bg-body h-100" data-testid="navSidebar" role="navigation" aria-label="Main menu">
+  <nav class="nav-sidebar d-flex flex-column align-items-center py-3 bg-body h-100" data-testid="navSidebar" role="navigation" aria-label="Main menu">
     <div class="nav flex-column nav-pills w-100 gap-2 align-items-center" hidden="{{ isSidebarMenuHidden }}">
       <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isChatsActive }}" ref="btnChats" title="Chats" aria-label="Chats" data-testid="btnChats">
         <div class="atoll-badge-container">
@@ -8,19 +8,19 @@
         </div>
       </atoll-button>
       <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isMusicActive }}" ref="btnMusic" title="Music" aria-label="Music" data-testid="btnMusic">
-        <atoll-icon name="music" size="24" active="{{ isMusicActiveBool }}"></atoll-icon>
+        <atoll-icon name="music" size="22" active="{{ isMusicActiveBool }}"></atoll-icon>
       </atoll-button>
       <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isPicturesActive }}" ref="btnPictures" title="Pictures" aria-label="Pictures" data-testid="btnPictures">
-        <atoll-icon name="gallery" size="24" active="{{ isPicturesActiveBool }}"></atoll-icon>
+        <atoll-icon name="gallery" size="22" active="{{ isPicturesActiveBool }}"></atoll-icon>
       </atoll-button>
       <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isVideosActive }}" ref="btnVideos" title="Videos" aria-label="Videos" data-testid="btnVideos">
-        <atoll-icon name="videocam" size="24" active="{{ isVideosActiveBool }}"></atoll-icon>
+        <atoll-icon name="videocam" size="22" active="{{ isVideosActiveBool }}"></atoll-icon>
       </atoll-button>
       <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isDocumentsActive }}" ref="btnDocuments" title="Documents" aria-label="Documents" data-testid="btnDocuments">
-        <atoll-icon name="document" size="24" active="{{ isDocumentsActiveBool }}"></atoll-icon>
+        <atoll-icon name="document" size="22" active="{{ isDocumentsActiveBool }}"></atoll-icon>
       </atoll-button>
       <atoll-button variant="ghost" size="lg" icon-only="true" class="nav-sidebar-btn {{ isLinksActive }}" ref="btnLinks" title="Links" aria-label="Links" data-testid="btnLinks">
-        <atoll-icon name="link" size="24" active="{{ isLinksActiveBool }}"></atoll-icon>
+        <atoll-icon name="link" size="22" active="{{ isLinksActiveBool }}"></atoll-icon>
       </atoll-button>
     </div>
     
@@ -69,7 +69,7 @@
   }
 
   .nav-sidebar {
-    width: var(--atoll-sidebar-width, 72px);
+    width: var(--atoll-sidebar-width, 54px);
     transition: width 0.2s ease-in-out;
     border-right: none !important;
     background-color: var(--atoll-body-bg, #ffffff) !important;
@@ -110,8 +110,8 @@
   }
 
   .avatar-container {
-    width: 44px;
-    height: 44px;
+    width: 36px;
+    height: 36px;
   }
 
   .profile-dropdown-menu {
@@ -310,7 +310,7 @@
       const avatarContainer = refs('avatarContainer')
       const updateAvatar = () => {
         const avatar = document.createElement('atoll-profile')
-        avatar.setAttribute('size', 'sm')
+        avatar.setAttribute('size', 'xs')
 
         if (state.isAuthenticated && pb?.authStore?.model) {
           const user = pb.authStore.model

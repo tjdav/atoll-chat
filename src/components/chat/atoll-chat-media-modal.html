@@ -692,25 +692,74 @@
           container.innerHTML = ''
 
           if (slide.isVideo) {
+            // Check if thumbnail is available for poster / overlay background
+            const thumbKey = `thumb:${slide.thumbnail?.media_id || slide.media_id}`
+            const cachedThumb = $state.decryptionCache?.get(thumbKey) || $state.decryptionCache?.get(`thumb:${itemId}`)
+            const thumbUrl = typeof cachedThumb === 'string' ? cachedThumb : cachedThumb?.blobUrl
+
             if (isAutoPlayVideo) {
               const video = document.createElement('video')
               video.className = 'chat-media-content video-content mw-100 mh-100 rounded-3 shadow-lg'
               video.controls = true
               video.playsInline = true
-              video.src = objectUrl
+              video.preload = 'auto'
               video.volume = currentVolume
+              if (thumbUrl) {
+                video.poster = thumbUrl
+              }
+
+              const spinnerOverlay = document.createElement('div')
+              spinnerOverlay.className = 'chat-media-loading position-absolute d-flex flex-column align-items-center justify-content-center text-white z-2'
+              spinnerOverlay.innerHTML = `
+                <div class="spinner-border text-light mb-2" role="status"></div>
+                <span class="x-small">Preparing video...</span>
+              `
+
+              container.innerHTML = ''
+              container.appendChild(spinnerOverlay)
               container.appendChild(video)
-              video.play().catch(() => {
-              })
+
+              const removeSpinner = () => {
+                if (spinnerOverlay.parentNode) {
+                  spinnerOverlay.remove()
+                }
+              }
+
+              let hasPlayed = false
+              const attemptPlay = () => {
+                if (hasPlayed) {
+                  return
+                }
+                hasPlayed = true
+                removeSpinner()
+                video.play().catch((err) => {
+                  console.warn('[atoll-chat-media-modal] Autoplay prevented or failed:', err)
+                })
+              }
+
+              video.addEventListener('canplay', attemptPlay, { once: true })
+              video.addEventListener('loadeddata', attemptPlay, { once: true })
+              video.addEventListener('error', (e) => {
+                removeSpinner()
+                console.error('[atoll-chat-media-modal] Video element error:', e)
+              }, { once: true })
+
+              video.src = objectUrl
+              video.load()
+
+              if (video.readyState >= 2) {
+                attemptPlay()
+              } else {
+                setTimeout(() => {
+                  if (spinnerOverlay.parentNode) {
+                    attemptPlay()
+                  }
+                }, 1000)
+              }
             } else {
               // Click-to-Play Overlay Placeholder
               const placeholder = document.createElement('div')
               placeholder.className = 'atoll-video-placeholder w-100 h-100 d-flex flex-column align-items-center justify-content-center position-relative'
-
-              // Check if thumbnail is available
-              const thumbKey = `thumb:${slide.thumbnail?.media_id || slide.media_id}`
-              const cachedThumb = $state.decryptionCache?.get(thumbKey) || $state.decryptionCache?.get(`thumb:${itemId}`)
-              const thumbUrl = typeof cachedThumb === 'string' ? cachedThumb : cachedThumb?.blobUrl
 
               if (thumbUrl) {
                 const bgImg = document.createElement('img')
@@ -733,11 +782,59 @@
                 video.className = 'chat-media-content video-content mw-100 mh-100 rounded-3 shadow-lg'
                 video.controls = true
                 video.playsInline = true
-                video.src = objectUrl
+                video.preload = 'auto'
                 video.volume = currentVolume
+                if (thumbUrl) {
+                  video.poster = thumbUrl
+                }
+
+                const spinnerOverlay = document.createElement('div')
+                spinnerOverlay.className = 'chat-media-loading position-absolute d-flex flex-column align-items-center justify-content-center text-white z-2'
+                spinnerOverlay.innerHTML = `
+                  <div class="spinner-border text-light mb-2" role="status"></div>
+                  <span class="x-small">Preparing video...</span>
+                `
+
+                container.appendChild(spinnerOverlay)
                 container.appendChild(video)
-                video.play().catch(() => {
-                })
+
+                const removeSpinner = () => {
+                  if (spinnerOverlay.parentNode) {
+                    spinnerOverlay.remove()
+                  }
+                }
+
+                let hasPlayed = false
+                const attemptPlay = () => {
+                  if (hasPlayed) {
+                    return
+                  }
+                  hasPlayed = true
+                  removeSpinner()
+                  video.play().catch((err) => {
+                    console.warn('[atoll-chat-media-modal] Video play failed:', err)
+                  })
+                }
+
+                video.addEventListener('canplay', attemptPlay, { once: true })
+                video.addEventListener('loadeddata', attemptPlay, { once: true })
+                video.addEventListener('error', (e) => {
+                  removeSpinner()
+                  console.error('[atoll-chat-media-modal] Video element error:', e)
+                }, { once: true })
+
+                video.src = objectUrl
+                video.load()
+
+                if (video.readyState >= 2) {
+                  attemptPlay()
+                } else {
+                  setTimeout(() => {
+                    if (spinnerOverlay.parentNode) {
+                      attemptPlay()
+                    }
+                  }, 1000)
+                }
               })
 
               placeholder.appendChild(playBtn)

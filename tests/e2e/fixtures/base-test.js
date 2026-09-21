@@ -429,13 +429,13 @@ export const test = base.extend({
       await page.waitForFunction(() => window.__coralite__ && window.__coralite__.lifecycle !== undefined)
       await page.evaluate(() => window.__coralite__.lifecycle.hydrated)
 
-      await page.locator('auth-login input[data-testid$="username"]').fill(username)
-      await page.locator('auth-login input[data-testid$="password"]').fill(appPassword)
-      await page.locator('auth-login [data-testid$="loginSubmit"]').click()
+      await page.locator('auth-login input[name="identity"]').fill(username)
+      await page.locator('auth-login input[name="password"]').fill(appPassword)
+      await page.locator('auth-login [data-testid="loginSubmit"]').click()
 
       const vaultUnlockLocator = page.locator('vault-unlock')
       if (await vaultUnlockLocator.isVisible({ timeout: 2000 }).catch(() => false)) {
-        await page.locator('vault-unlock input[data-testid$="password"]').fill(vaultPassword || appPassword)
+        await page.locator('vault-unlock input[name="password"]').fill(vaultPassword || appPassword)
         await page.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
       }
 
@@ -536,18 +536,18 @@ export const test = base.extend({
       /* Login Flow */
       const isAlreadyLoggedIn = await targetPage.locator('app-layout').isVisible({ timeout: 2000 }).catch(() => false)
       if (!isAlreadyLoggedIn) {
-        const vaultUnlockInput = targetPage.locator('vault-unlock input[data-testid$="password"]')
+        const vaultUnlockInput = targetPage.locator('vault-unlock input[name="password"]')
         const isVaultUnlockVisible = await vaultUnlockInput.isVisible({ timeout: 2000 }).catch(() => false)
 
         if (isVaultUnlockVisible) {
           await vaultUnlockInput.fill(vaultPassword || appPassword)
           await targetPage.locator('vault-unlock [data-testid$="unlockSubmit"]').click()
         } else {
-          const usernameInput = targetPage.locator('auth-login input[data-testid$="username"]')
+          const usernameInput = targetPage.locator('auth-login input[name="identity"]')
           await expect(usernameInput).toBeVisible({ timeout: 20000 })
           await usernameInput.fill(username)
-          await targetPage.locator('auth-login input[data-testid$="password"]').fill(appPassword)
-          await targetPage.locator('auth-login [data-testid$="loginSubmit"]').click()
+          await targetPage.locator('auth-login input[name="password"]').fill(appPassword)
+          await targetPage.locator('auth-login [data-testid="loginSubmit"]').click()
 
           if (await vaultUnlockInput.isVisible({ timeout: 3000 }).catch(() => false)) {
             await vaultUnlockInput.fill(vaultPassword || appPassword)

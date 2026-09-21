@@ -18,7 +18,7 @@
           placeholder="Enter username" 
           required="true" 
           autocomplete="username" 
-          test-id="username"
+          data-testid="username"
           feedback-test-id="identity-feedback"
         ></atoll-input>
 
@@ -30,7 +30,7 @@
           placeholder="Enter password" 
           required="true" 
           autocomplete="current-password" 
-          test-id="password"
+          data-testid="password"
           feedback-test-id="password-feedback"
         ></atoll-input>
 
@@ -38,7 +38,7 @@
 
         <!-- Zone 4: Bottom Action Zone -->
         <div class="atoll-auth-bottom-zone">
-          <atoll-button type="submit" variant="primary" block="true" ref="loginSubmit" test-id="loginSubmit">Log In</atoll-button>
+          <atoll-button type="submit" variant="primary" block="true" ref="loginSubmit" data-testid="loginSubmit">Log In</atoll-button>
           
           <!-- Biometric Login Section -->
           <div ref="biometricSection" data-testid="biometricSection" class="d-none flex-column w-100 mt-3 mb-2">
@@ -50,10 +50,10 @@
             <div ref="biometricContainer" data-testid="biometricContainer" class="d-flex flex-column gap-2"></div>
           </div>
 
-          <atoll-button type="button" variant="ghost" block="true" ref="btnShowRecovery" test-id="btnShowRecovery" text="Forgot password? Recover with code">Forgot password? Recover with code</atoll-button>
+          <atoll-button type="button" variant="ghost" block="true" ref="btnShowRecovery" data-testid="btnShowRecovery" text="Forgot password? Recover with code">Forgot password? Recover with code</atoll-button>
 
           <div class="border-top pt-3">
-            <atoll-button type="button" variant="ghost" block="true" ref="linkRegister" test-id="linkRegister">Don't have an account? Register</atoll-button>
+            <atoll-button type="button" variant="ghost" block="true" ref="linkRegister" data-testid="linkRegister">Don't have an account? Register</atoll-button>
           </div>
         </div>
       </form>
@@ -65,7 +65,7 @@
       <div slot="header">
         <atoll-list-header variant="list" title="Recover Account">
           <div slot="leading">
-            <atoll-button type="button" variant="ghost" leading-icon="chevron-left" icon-only="true" ref="btnCancelRecovery" test-id="btnCancelRecovery"></atoll-button>
+            <atoll-button type="button" variant="ghost" leading-icon="chevron-left" icon-only="true" ref="btnCancelRecovery" data-testid="btnCancelRecovery"></atoll-button>
           </div>
         </atoll-list-header>
       </div>
@@ -85,7 +85,7 @@
           placeholder="Enter username" 
           required="true"
           autocomplete="username"
-          test-id="recoveryUsername"
+          data-testid="recoveryUsername"
           feedback-test-id="recoveryUsername-feedback"
         ></atoll-input>
 
@@ -96,13 +96,13 @@
           placeholder="RC-XXXX-XXXX-XXXX-XXXX" 
           required="true"
           class="text-center font-monospace fs-5"
-          test-id="recoveryCodeInput"
+          data-testid="recoveryCodeInput"
           feedback-test-id="recoveryCodeInput-feedback"
         ></atoll-input>
 
         <!-- Zone 4: Bottom Action Zone -->
         <div class="atoll-auth-bottom-zone">
-          <atoll-button type="submit" variant="primary" block="true" ref="btnVerifyRecovery" test-id="btnVerifyRecovery">Verify Recovery Code</atoll-button>
+          <atoll-button type="submit" variant="primary" block="true" ref="btnVerifyRecovery" data-testid="btnVerifyRecovery">Verify Recovery Code</atoll-button>
         </div>
       </form>
     </atoll-card>
@@ -133,7 +133,7 @@
             required="true"
             minlength="12"
             autocomplete="new-password"
-            test-id="newPassword"
+            data-testid="newPassword"
             feedback-test-id="newPassword-feedback"
           ></atoll-input>
           <div class="progress mt-2" style="height: 5px;">
@@ -151,13 +151,13 @@
           required="true"
           minlength="12"
           autocomplete="new-password"
-          test-id="newPasswordConfirm"
+          data-testid="newPasswordConfirm"
           feedback-test-id="newPasswordConfirm-feedback"
         ></atoll-input>
 
         <!-- Zone 4: Bottom Action Zone -->
         <div class="atoll-auth-bottom-zone">
-          <atoll-button type="submit" variant="primary" block="true" ref="btnSaveNewPassword" test-id="btnSaveNewPassword" disabled="true">Save Password & Log In</atoll-button>
+          <atoll-button type="submit" variant="primary" block="true" ref="btnSaveNewPassword" data-testid="btnSaveNewPassword" disabled="true">Save Password & Log In</atoll-button>
         </div>
       </form>
     </atoll-card>

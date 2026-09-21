@@ -13,10 +13,15 @@
       <input 
         ref="input"
         id="{{ ref_input }}"
+        name="{{ name }}"
         type="{{ computedType }}"
         value="{{ value }}"
         placeholder="{{ placeholder }}"
         maxlength="{{ maxlength }}"
+        minlength="{{ minlength }}"
+        autocomplete="{{ autocomplete }}"
+        autofocus="{{ autofocus }}"
+        pattern="{{ pattern }}"
         disabled="{{ disabled }}"
         readonly="{{ readonly }}"
         required="{{ required }}"
@@ -261,6 +266,10 @@
         default: 'text',
         values: ['text', 'password', 'email', 'tel', 'code']
       },
+      name: {
+        type: String,
+        default: ''
+      },
       value: {
         type: String,
         default: ''
@@ -294,10 +303,23 @@
         type: Number,
         default: null
       },
+      minlength: {
+        type: Number,
+        default: null
+      },
+      autocomplete: {
+        type: String,
+        default: ''
+      },
+      pattern: {
+        type: String,
+        default: ''
+      },
       ariaLabel: {
         type: String,
         default: ''
       },
+      autofocus: Boolean,
       required: Boolean,
       disabled: Boolean,
       readonly: Boolean,
@@ -376,13 +398,6 @@
         footer.setAttribute('data-testid', feedbackTestId)
       }
 
-      const attributesToForward = ['name', 'autocomplete', 'autofocus', 'minlength', 'pattern', 'aria-label']
-      attributesToForward.forEach(attrName => {
-        const val = root.getAttribute(attrName)
-        if (val !== null) {
-          input.setAttribute(attrName, val)
-        }
-      })
 
       root.checkValidity = () => input.checkValidity()
       root.reportValidity = () => input.reportValidity()
