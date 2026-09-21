@@ -282,11 +282,20 @@
     .atoll-chat-file-size {
       color: var(--atoll-chat-text-secondary, inherit) !important;
       background-color: var(--atoll-chat-attachment-card-bg) !important;
-      opacity: 0.85 !important;
     }
 
     .atoll-chat-file-icon-wrapper {
       color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
+    }
+  }
+
+  .btn-outline-primary {
+    color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
+    border-color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
+
+    &:hover {
+      background-color: var(--atoll-chat-accent, var(--atoll-primary)) !important;
+      color: #ffffff !important;
     }
   }
 
