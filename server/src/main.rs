@@ -125,6 +125,18 @@ async fn main() -> anyhow::Result<()> {
             delete(routes::devices::revoke),
         )
         .route("/api/v1/auth/logout", post(routes::sessions::logout))
+        .route(
+            "/api/v1/admin/invites",
+            post(routes::invites::create_invite_handler).get(routes::invites::list_invites_handler),
+        )
+        .route(
+            "/api/v1/admin/invites/{id}",
+            delete(routes::invites::revoke_invite_handler),
+        )
+        .route(
+            "/api/v1/invites/{code}",
+            get(routes::invites::validate_invite_public_handler),
+        )
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(state);

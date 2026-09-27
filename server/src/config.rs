@@ -1,6 +1,17 @@
 use std::env;
 
 #[derive(Debug, Clone)]
+pub struct RateLimitConfig {
+    pub invite_create_hourly: u32,
+    pub invite_create_daily: u32,
+    pub invite_redeem_per_min: u32,
+    pub kp_claim_per_min: u32,
+    pub kp_claim_hourly: u32,
+    pub login_per_min: u32,
+    pub login_lockout_min: u32,
+}
+
+#[derive(Debug, Clone)]
 pub struct Config {
     pub app_env: String,
     pub app_url: Option<String>,
@@ -19,6 +30,12 @@ pub struct Config {
     pub session_sliding: bool,
     pub max_file_size_bytes: u64,
     pub server_max_devices_per_user: u32,
+    pub invite_default_uses: i64,
+    pub invite_expiry_days: i64,
+    pub invite_code_length: usize,
+    pub invite_limited_max_uses: i64,
+    pub invite_limited_max_open: i64,
+    pub rate_limits: RateLimitConfig,
 }
 
 impl Config {
@@ -77,6 +94,76 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(20);
 
+        let invite_default_uses = env::var("INVITE_DEFAULT_USES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1);
+
+        let invite_expiry_days = env::var("INVITE_EXPIRY_DAYS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(0);
+
+        let invite_code_length = env::var("INVITE_CODE_LENGTH")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(8);
+
+        let invite_limited_max_uses = env::var("INVITE_LIMITED_MAX_USES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10);
+
+        let invite_limited_max_open = env::var("INVITE_LIMITED_MAX_OPEN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(50);
+
+        let rate_invite_create_hourly = env::var("RATE_INVITE_CREATE_HOURLY")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(50);
+
+        let rate_invite_create_daily = env::var("RATE_INVITE_CREATE_DAILY")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(200);
+
+        let rate_invite_redeem_per_min = env::var("RATE_INVITE_REDEEM_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10);
+
+        let rate_kp_claim_per_min = env::var("RATE_KP_CLAIM_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
+        let rate_kp_claim_hourly = env::var("RATE_KP_CLAIM_HOURLY")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(200);
+
+        let rate_login_per_min = env::var("RATE_LOGIN_PER_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(10);
+
+        let rate_login_lockout_min = env::var("RATE_LOGIN_LOCKOUT_MIN")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(15);
+
+        let rate_limits = RateLimitConfig {
+            invite_create_hourly: rate_invite_create_hourly,
+            invite_create_daily: rate_invite_create_daily,
+            invite_redeem_per_min: rate_invite_redeem_per_min,
+            kp_claim_per_min: rate_kp_claim_per_min,
+            kp_claim_hourly: rate_kp_claim_hourly,
+            login_per_min: rate_login_per_min,
+            login_lockout_min: rate_login_lockout_min,
+        };
+
         Ok(Self {
             app_env,
             app_url,
@@ -94,6 +181,12 @@ impl Config {
             session_sliding,
             max_file_size_bytes,
             server_max_devices_per_user,
+            invite_default_uses,
+            invite_expiry_days,
+            invite_code_length,
+            invite_limited_max_uses,
+            invite_limited_max_open,
+            rate_limits,
         })
     }
 }

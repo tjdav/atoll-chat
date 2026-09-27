@@ -1,10 +1,13 @@
 use crate::devices::DeviceError;
+use crate::invites::InviteError;
+use crate::rate_limit::RateLimitError;
 use crate::session::SessionError;
 use axum::{
-    http::StatusCode,
+    http::{header, StatusCode},
     response::{IntoResponse, Response},
     Json,
 };
+use chrono::{DateTime, Utc};
 use serde_json::json;
 use tracing::error;
 
@@ -15,33 +18,59 @@ pub enum ApiError {
     Unauthorized(String),
     Forbidden(String),
     Conflict(String),
+    TooManyRequests {
+        message: String,
+        reset_at: DateTime<Utc>,
+    },
     InternalCustom(StatusCode, String),
     Internal(anyhow::Error),
 }
 
 impl IntoResponse for ApiError {
     fn into_response(self) -> Response {
-        let (status, err_msg) = match self {
-            ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
-            ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            ApiError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
-            ApiError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
-            ApiError::Conflict(msg) => (StatusCode::CONFLICT, msg),
-            ApiError::InternalCustom(status, msg) => (status, msg),
-            ApiError::Internal(err) => {
-                error!("Internal server error: {:#}", err);
+        match self {
+            ApiError::TooManyRequests { message, reset_at } => {
+                let now = Utc::now();
+                let retry_after = (reset_at - now).num_seconds().max(1);
+                let body = Json(json!({
+                    "error": "rate_limited",
+                    "message": message,
+                    "details": {
+                        "reset_at": reset_at.to_rfc3339()
+                    }
+                }));
                 (
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    "internal server error".to_string(),
+                    StatusCode::TOO_MANY_REQUESTS,
+                    [(header::RETRY_AFTER, retry_after.to_string())],
+                    body,
                 )
+                    .into_response()
             }
-        };
+            _ => {
+                let (status, err_msg) = match self {
+                    ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
+                    ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+                    ApiError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
+                    ApiError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
+                    ApiError::Conflict(msg) => (StatusCode::CONFLICT, msg),
+                    ApiError::InternalCustom(status, msg) => (status, msg),
+                    ApiError::Internal(err) => {
+                        error!("Internal server error: {:#}", err);
+                        (
+                            StatusCode::INTERNAL_SERVER_ERROR,
+                            "internal server error".to_string(),
+                        )
+                    }
+                    ApiError::TooManyRequests { .. } => unreachable!(),
+                };
 
-        let body = Json(json!({
-            "error": err_msg,
-        }));
+                let body = Json(json!({
+                    "error": err_msg,
+                }));
 
-        (status, body).into_response()
+                (status, body).into_response()
+            }
+        }
     }
 }
 
@@ -78,6 +107,32 @@ impl From<DeviceError> for ApiError {
                 ApiError::BadRequest("device_limit_exceeded".to_string())
             }
             DeviceError::NotFound => ApiError::NotFound("device_not_found".to_string()),
+        }
+    }
+}
+
+// Implement From<RateLimitError> for ApiError
+impl From<RateLimitError> for ApiError {
+    fn from(err: RateLimitError) -> Self {
+        match err {
+            RateLimitError::Database(e) => ApiError::Internal(e.into()),
+            RateLimitError::InvalidKey(msg) => ApiError::BadRequest(msg),
+        }
+    }
+}
+
+// Implement From<InviteError> for ApiError
+impl From<InviteError> for ApiError {
+    fn from(err: InviteError) -> Self {
+        match err {
+            InviteError::Database(e) => ApiError::Internal(e.into()),
+            InviteError::NotFound => ApiError::NotFound("invite_not_found".to_string()),
+            InviteError::Revoked => ApiError::Forbidden("invite_revoked".to_string()),
+            InviteError::Expired => ApiError::Forbidden("invite_expired".to_string()),
+            InviteError::Exhausted => ApiError::Forbidden("invite_exhausted".to_string()),
+            InviteError::CodeGenerationFailed => {
+                ApiError::Internal(anyhow::anyhow!("failed to generate invite code"))
+            }
         }
     }
 }
