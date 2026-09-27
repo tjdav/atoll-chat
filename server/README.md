@@ -330,3 +330,40 @@ curl -s -X POST http://localhost:8080/api/v1/auth/logout \
 - **Immediate Revocation**: Session revocation is immediate and effective on the very next HTTP request.
 - **Disabled User Guard**: Disabled accounts are blocked instantly on every request, revoking active sessions on access attempt.
 - **Cross-User Isolation**: Revocation endpoints strictly enforce ownership checks, returning HTTP 404 for non-existent or other users' session IDs to prevent enumeration.
+
+## Devices
+
+Devices represent distinct client installations (keyed by `client_id`).
+
+### Implicit Device Creation & Limits
+
+- Devices are created implicitly during login (`POST /api/v1/auth/login/finish`).
+- When a client logs in with a `client_id`, the server looks up an existing device for `(user_id, client_id)`.
+- If the device exists, its `last_seen` timestamp is updated, and the new session is linked to its device ID.
+- If the device does not exist, the server checks the user's active device count against `SERVER_MAX_DEVICES_PER_USER` (default `20`). If the count is at or above the limit, login fails with HTTP 400 (`{"error":"device_limit_exceeded"}`). Otherwise, a new device row is created.
+- Optional `device_name` (1–64 trimmed characters, no control characters) can be provided during login finish.
+
+### Identity Pubkey
+- The `users.identity_pubkey` column stores a single identity public key per user (first-device-wins rule).
+
+### Device Endpoints
+
+- **`GET /api/v1/users/me/devices`**: Lists all devices for the authenticated user, ordered by creation date descending. Returns device details (`id`, `client_id`, `name`, `created_at`, `last_seen`) and `is_current: true` for the device associated with the current session.
+- **`DELETE /api/v1/users/me/devices/:id`**: Revokes the specified device.
+  - Attempting to revoke the current session's device returns HTTP 400 (`{"error":"cannot_revoke_current_device"}`). To revoke the current device, users should log out or revoke it from another device.
+  - If the device exists and belongs to the user, revocation executes atomically and returns HTTP 204 No Content.
+  - Non-existent devices or devices belonging to other users return HTTP 404 (`{"error":"device_not_found"}`).
+
+### Revocation Cascade
+
+Device revocation executes within an atomic SQLite database transaction:
+
+1. **Delete Sessions**: Deleting the device row cascades via foreign key (`ON DELETE CASCADE`) to all sessions linked to `device_id`, instantly revoking access across all active tokens for that device.
+2. **Remove KeyPackages**: Unconsumed KeyPackages (`consumed = 0`) matching `(user_id, client_id)` are deleted from `key_packages`.
+3. **Queue MLS Removes**: For every room the user participates in (`room_members`), an entry is inserted into `pending_mls_removes` with a new unique ID, `room_id`, `target_user_id`, and `target_client_id`.
+
+### `pending_mls_removes` Table
+
+The `pending_mls_removes` queue serves as a coordination point for Phase 10:
+- When a device is revoked, MLS Remove proposals are queued per room.
+- Phase 10 consumes this queue to construct and broadcast actual MLS Remove commits for room members.

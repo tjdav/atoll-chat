@@ -18,6 +18,7 @@ pub struct Config {
     pub session_expiry_days: u32,
     pub session_sliding: bool,
     pub max_file_size_bytes: u64,
+    pub server_max_devices_per_user: u32,
 }
 
 impl Config {
@@ -71,6 +72,11 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(104_857_600);
 
+        let server_max_devices_per_user = env::var("SERVER_MAX_DEVICES_PER_USER")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(20);
+
         Ok(Self {
             app_env,
             app_url,
@@ -87,6 +93,7 @@ impl Config {
             session_expiry_days,
             session_sliding,
             max_file_size_bytes,
+            server_max_devices_per_user,
         })
     }
 }

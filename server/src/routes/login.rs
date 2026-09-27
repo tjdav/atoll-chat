@@ -35,6 +35,7 @@ pub struct LoginFinishRequest {
     pub login_id: String,
     pub credential_finalization: String,
     pub identity_pubkey: Option<String>,
+    pub device_name: Option<String>,
 }
 
 #[derive(Debug, Serialize)]
@@ -43,6 +44,7 @@ pub struct LoginFinishResponse {
     pub user_id: String,
     pub username: String,
     pub display_name: Option<String>,
+    pub device_id: String,
     pub is_owner: bool,
     pub expires_at: String,
 }
@@ -200,13 +202,13 @@ pub async fn login_finish(
         .map_err(|_| ApiError::Unauthorized("invalid_credentials".to_string()))?;
 
     // 5. Query user info
-    let stored_user: (String, String) =
-        sqlx::query_as("SELECT username, identity_pubkey FROM users WHERE id = ?")
+    let stored_user: (String, Option<String>, String) =
+        sqlx::query_as("SELECT username, display_name, identity_pubkey FROM users WHERE id = ?")
             .bind(&pending.user_id)
             .fetch_one(&state.pool)
             .await?;
 
-    let (username, stored_identity_pubkey) = stored_user;
+    let (username, display_name, stored_identity_pubkey) = stored_user;
 
     // 6. Handle identity_pubkey
     if let Some(ref pubkey_input) = body.identity_pubkey {
@@ -235,11 +237,53 @@ pub async fn login_finish(
         }
     }
 
-    // 7. Create session
+    // 7. Validate device_name if provided
+    let clean_device_name = match body.device_name {
+        Some(ref name) => {
+            let trimmed = name.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                if trimmed.chars().count() > 64 || trimmed.chars().any(|c| c.is_control()) {
+                    return Err(ApiError::BadRequest("invalid device_name".to_string()));
+                }
+                Some(trimmed.to_string())
+            }
+        }
+        None => None,
+    };
+
+    // 8. Look up or create device
+    let existing_device =
+        crate::devices::find_by_client_id(&state.pool, &pending.user_id, &pending.client_id)
+            .await?;
+
+    let device_id = match existing_device {
+        Some(dev) => {
+            let _ = crate::devices::touch_last_seen(&state.pool, &dev.id).await;
+            dev.id
+        }
+        None => {
+            let count = crate::devices::count_devices(&state.pool, &pending.user_id).await?;
+            if count >= state.config.server_max_devices_per_user {
+                return Err(ApiError::BadRequest("device_limit_exceeded".to_string()));
+            }
+            let new_dev = crate::devices::create_device(
+                &state.pool,
+                &pending.user_id,
+                &pending.client_id,
+                clean_device_name.as_deref(),
+            )
+            .await?;
+            new_dev.id
+        }
+    };
+
+    // 9. Create session
     let token = session::create_session(
         &state.pool,
         &pending.user_id,
-        None,
+        Some(&device_id),
         state.config.session_expiry_days,
     )
     .await?;
@@ -258,7 +302,8 @@ pub async fn login_finish(
         session_token: token.raw,
         user_id: pending.user_id,
         username,
-        display_name: None,
+        display_name,
+        device_id,
         is_owner,
         expires_at,
     }))

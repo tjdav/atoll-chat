@@ -1,4 +1,5 @@
 pub mod capabilities;
+pub mod devices;
 pub mod health;
 pub mod login;
 pub mod register;

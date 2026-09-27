@@ -2,6 +2,7 @@ pub mod altcha;
 pub mod auth;
 pub mod config;
 pub mod db;
+pub mod devices;
 pub mod error;
 pub mod login;
 pub mod opaque;
