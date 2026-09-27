@@ -64,5 +64,15 @@ pub async fn revoke(
 
     devices::revoke_device(&state.pool, &auth.user_id, &target_device_id).await?;
 
+    let _ = crate::audit::log(
+        &state.pool,
+        Some(&auth.user_id),
+        crate::audit::action::DEVICE_REVOKE,
+        Some("device"),
+        Some(&target_device_id),
+        None,
+    )
+    .await;
+
     Ok(StatusCode::NO_CONTENT)
 }

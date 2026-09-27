@@ -1,12 +1,16 @@
 pub mod altcha;
+pub mod audit;
 pub mod auth;
 pub mod config;
+pub mod config_ops;
 pub mod db;
 pub mod devices;
 pub mod error;
 pub mod invites;
+pub mod limits;
 pub mod login;
 pub mod opaque;
+pub mod permission_check;
 pub mod permissions;
 pub mod rate_limit;
 pub mod registration;
@@ -21,6 +25,7 @@ pub use invites::{
     create_invite, get_invite_by_id, list_invites, revoke_invite, validate_and_consume_invite,
     ConsumedInvite, CreateInviteOptions, InviteError, ServerInvite,
 };
+pub use limits::ServerHardMax;
 pub use login::LoginStore;
 pub use opaque::{DefaultCipherSuite, OpaqueServer};
 pub use rate_limit::{RateLimitConfig, RateLimitDecision, RateLimitError, RateLimitKey, Window};
@@ -36,6 +41,7 @@ pub struct AppState {
     pub login_store: Arc<LoginStore>,
     pub altcha_config: Arc<AltchaConfig>,
     pub config: Arc<Config>,
+    pub server_hard_max: Arc<ServerHardMax>,
 }
 
 impl axum::extract::FromRef<AppState> for SqlitePool {
@@ -71,5 +77,11 @@ impl axum::extract::FromRef<AppState> for Arc<AltchaConfig> {
 impl axum::extract::FromRef<AppState> for Arc<Config> {
     fn from_ref(state: &AppState) -> Self {
         state.config.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Arc<ServerHardMax> {
+    fn from_ref(state: &AppState) -> Self {
+        state.server_hard_max.clone()
     }
 }

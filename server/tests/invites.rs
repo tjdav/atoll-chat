@@ -857,6 +857,16 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         },
     };
     let cfg_arc = std::sync::Arc::new(cfg);
+    let server_hard_max = std::sync::Arc::new(server::ServerHardMax {
+        file_size_bytes: 104_857_600,
+        room_size: 1000,
+        rooms_per_user: 500,
+        devices_per_user: 20,
+        keypackages_per_device: 50,
+        message_size_bytes: 65536,
+        attachment_retention_days: 365,
+        call_max_participants: 50,
+    });
 
     let state = server::AppState {
         pool: pool.clone(),
@@ -865,6 +875,7 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         login_store,
         altcha_config,
         config: cfg_arc,
+        server_hard_max,
     };
 
     let app = axum::Router::new()

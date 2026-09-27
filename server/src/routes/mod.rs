@@ -1,8 +1,10 @@
+pub mod admin;
 pub mod capabilities;
 pub mod devices;
 pub mod health;
 pub mod invites;
 pub mod login;
+pub mod ready;
 pub mod register;
 pub mod roles;
 pub mod sessions;

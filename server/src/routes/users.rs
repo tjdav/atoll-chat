@@ -1,5 +1,6 @@
 use crate::auth::AuthUser;
 use crate::error::ApiError;
+use crate::limits;
 use crate::roles;
 use crate::AppState;
 use axum::{extract::State, Json};
@@ -61,10 +62,15 @@ pub async fn get_me(
         .map_err(|e| ApiError::Internal(anyhow::anyhow!("Failed to fetch user roles: {}", e)))?;
     let role_names: Vec<String> = user_roles.into_iter().map(|r| r.name).collect();
 
-    let effective_limit = match user_max_file_size {
-        Some(limit) if limit > 0 => std::cmp::min(limit as u64, state.config.max_file_size_bytes),
-        _ => state.config.max_file_size_bytes,
-    };
+    let instance_limits = limits::get_limits(&state.pool, &state.server_hard_max)
+        .await
+        .map_err(|e| ApiError::Internal(e.into()))?;
+
+    let effective_limit = limits::effective_file_size_limit(
+        user_max_file_size,
+        instance_limits.file_size_bytes,
+        state.server_hard_max.file_size_bytes,
+    ) as u64;
 
     Ok(Json(UserProfileResponse {
         user_id: auth.user_id,

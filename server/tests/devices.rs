@@ -168,13 +168,26 @@ async fn test_04_device_limit_is_enforced() {
             .expect("Failed to init AltchaConfig"),
     );
 
+    let config_arc = Arc::new(config);
+    let server_hard_max = Arc::new(server::ServerHardMax {
+        file_size_bytes: config_arc.max_file_size_bytes as i64,
+        room_size: 1000,
+        rooms_per_user: 500,
+        devices_per_user: config_arc.server_max_devices_per_user as i64,
+        keypackages_per_device: 50,
+        message_size_bytes: 65536,
+        attachment_retention_days: 365,
+        call_max_participants: 50,
+    });
+
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
         registration_store,
         login_store,
         altcha_config,
-        config: Arc::new(config),
+        config: config_arc,
+        server_hard_max,
     };
 
     let app = axum::Router::new()

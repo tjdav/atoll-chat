@@ -190,6 +190,16 @@ pub async fn create_invite_handler(
     )
     .await?;
 
+    let _ = crate::audit::log(
+        &state.pool,
+        Some(&auth.user_id),
+        crate::audit::action::INVITE_CREATE,
+        Some("invite"),
+        Some(&invite.id),
+        None,
+    )
+    .await;
+
     Ok(Json(CreateInviteResponse {
         id: invite.id,
         code: invite.code,
@@ -266,6 +276,15 @@ pub async fn revoke_invite_handler(
 
     let revoked = invites::revoke_invite(&state.pool, &id).await?;
     if revoked {
+        let _ = crate::audit::log(
+            &state.pool,
+            Some(&auth.user_id),
+            crate::audit::action::INVITE_REVOKE,
+            Some("invite"),
+            Some(&id),
+            None,
+        )
+        .await;
         Ok(StatusCode::NO_CONTENT)
     } else {
         Err(ApiError::Conflict("invite_already_revoked".to_string()))
