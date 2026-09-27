@@ -166,6 +166,22 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/rooms/{id}/members",
             get(routes::rooms::list_members).post(routes::rooms::add_member),
+        )
+        .route(
+            "/rooms/{id}/members/{uid}",
+            delete(routes::rooms::kick_member),
+        )
+        .route(
+            "/rooms/{id}/members/{uid}/promote",
+            post(routes::rooms::promote_member),
+        )
+        .route(
+            "/rooms/{id}/members/{uid}/demote",
+            post(routes::rooms::demote_member),
+        )
+        .route(
+            "/rooms/{id}/transfer",
+            post(routes::rooms::transfer_ownership),
         );
 
     let cors = if state.config.app_env == "development" {

@@ -4,6 +4,7 @@ use chrono::{DateTime, Utc};
 use rand::RngCore;
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
+use ulid::Ulid;
 
 use crate::limits::{InstanceLimits, ServerHardMax};
 
@@ -72,6 +73,24 @@ pub enum RoomError {
     InvalidRetention,
     #[error("invalid file size value")]
     InvalidFileSize,
+    #[error("target is not a member of this room")]
+    TargetNotAMember,
+    #[error("cannot kick the room owner")]
+    CannotKickOwner,
+    #[error("cannot kick yourself")]
+    CannotKickSelf,
+    #[error("moderation requires Discord mode")]
+    ModerationDisabled,
+    #[error("target is already a moderator")]
+    AlreadyModerator,
+    #[error("target is not a moderator")]
+    NotAModerator,
+    #[error("cannot promote or demote the room owner")]
+    CannotModifyOwner,
+    #[error("target is already the room owner")]
+    AlreadyOwner,
+    #[error("cannot transfer ownership to yourself")]
+    CannotTransferToSelf,
 }
 
 pub async fn create_room(
@@ -594,4 +613,275 @@ pub async fn add_member(
     tx.commit().await?;
 
     Ok(member)
+}
+
+pub async fn kick_member(
+    pool: &SqlitePool,
+    room_id: &str,
+    requester_id: &str,
+    target_user_id: &str,
+    moderation_mode: &str,
+) -> Result<(), RoomError> {
+    let mut tx = pool.begin().await?;
+
+    // 1. Fetch requester's membership
+    let requester_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(requester_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let req_role = match requester_role {
+        Some((r,)) => r,
+        None => return Err(RoomError::NotAMember),
+    };
+
+    // 2. Fetch target's membership
+    let target_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(target_user_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let targ_role = match target_role {
+        Some((r,)) => r,
+        None => return Err(RoomError::TargetNotAMember),
+    };
+
+    // 3. Authorization check
+    if !(req_role == "owner" || (req_role == "moderator" && moderation_mode == "discord")) {
+        return Err(RoomError::Forbidden);
+    }
+
+    // 4. Target checks
+    if target_user_id == requester_id {
+        return Err(RoomError::CannotKickSelf);
+    }
+    if targ_role == "owner" {
+        return Err(RoomError::CannotKickOwner);
+    }
+
+    // 5. Delete target's room_members row
+    sqlx::query("DELETE FROM room_members WHERE room_id = ? AND user_id = ?")
+        .bind(room_id)
+        .bind(target_user_id)
+        .execute(&mut *tx)
+        .await?;
+
+    // 6. Queue MLS Removes for every device target has
+    let devices: Vec<(String,)> = sqlx::query_as("SELECT client_id FROM devices WHERE user_id = ?")
+        .bind(target_user_id)
+        .fetch_all(&mut *tx)
+        .await?;
+
+    for (client_id,) in devices {
+        let remove_id = Ulid::new().to_string();
+        sqlx::query(
+            r#"
+            INSERT INTO pending_mls_removes (id, room_id, target_user_id, target_client_id)
+            VALUES (?, ?, ?, ?)
+            "#,
+        )
+        .bind(&remove_id)
+        .bind(room_id)
+        .bind(target_user_id)
+        .bind(&client_id)
+        .execute(&mut *tx)
+        .await?;
+    }
+
+    tx.commit().await?;
+
+    Ok(())
+}
+
+pub async fn promote_member(
+    pool: &SqlitePool,
+    room_id: &str,
+    requester_id: &str,
+    target_user_id: &str,
+    moderation_mode: &str,
+) -> Result<(), RoomError> {
+    if moderation_mode != "discord" {
+        return Err(RoomError::ModerationDisabled);
+    }
+
+    let mut tx = pool.begin().await?;
+
+    // 1. Fetch requester's membership
+    let requester_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(requester_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let req_role = match requester_role {
+        Some((r,)) => r,
+        None => return Err(RoomError::NotAMember),
+    };
+
+    if req_role != "owner" {
+        return Err(RoomError::Forbidden);
+    }
+
+    // 2. Fetch target's membership
+    let target_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(target_user_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let targ_role = match target_role {
+        Some((r,)) => r,
+        None => return Err(RoomError::TargetNotAMember),
+    };
+
+    if targ_role == "owner" {
+        return Err(RoomError::CannotModifyOwner);
+    }
+    if targ_role == "moderator" {
+        return Err(RoomError::AlreadyModerator);
+    }
+
+    // 3. Update target role
+    sqlx::query("UPDATE room_members SET role = 'moderator' WHERE room_id = ? AND user_id = ?")
+        .bind(room_id)
+        .bind(target_user_id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(())
+}
+
+pub async fn demote_member(
+    pool: &SqlitePool,
+    room_id: &str,
+    requester_id: &str,
+    target_user_id: &str,
+    moderation_mode: &str,
+) -> Result<(), RoomError> {
+    if moderation_mode != "discord" {
+        return Err(RoomError::ModerationDisabled);
+    }
+
+    let mut tx = pool.begin().await?;
+
+    // 1. Fetch requester's membership
+    let requester_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(requester_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let req_role = match requester_role {
+        Some((r,)) => r,
+        None => return Err(RoomError::NotAMember),
+    };
+
+    if req_role != "owner" {
+        return Err(RoomError::Forbidden);
+    }
+
+    // 2. Fetch target's membership
+    let target_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(target_user_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let targ_role = match target_role {
+        Some((r,)) => r,
+        None => return Err(RoomError::TargetNotAMember),
+    };
+
+    if targ_role == "owner" {
+        return Err(RoomError::CannotModifyOwner);
+    }
+    if targ_role != "moderator" {
+        return Err(RoomError::NotAModerator);
+    }
+
+    // 3. Update target role
+    sqlx::query("UPDATE room_members SET role = 'member' WHERE room_id = ? AND user_id = ?")
+        .bind(room_id)
+        .bind(target_user_id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(())
+}
+
+pub async fn transfer_ownership(
+    pool: &SqlitePool,
+    room_id: &str,
+    requester_id: &str,
+    target_user_id: &str,
+) -> Result<(), RoomError> {
+    let mut tx = pool.begin().await?;
+
+    // 1. Fetch requester's membership
+    let requester_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(requester_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    let req_role = match requester_role {
+        Some((r,)) => r,
+        None => return Err(RoomError::NotAMember),
+    };
+
+    if req_role != "owner" {
+        return Err(RoomError::Forbidden);
+    }
+
+    // 2. Target checks
+    if target_user_id == requester_id {
+        return Err(RoomError::CannotTransferToSelf);
+    }
+
+    let target_role: Option<(String,)> =
+        sqlx::query_as("SELECT role FROM room_members WHERE room_id = ? AND user_id = ?")
+            .bind(room_id)
+            .bind(target_user_id)
+            .fetch_optional(&mut *tx)
+            .await?;
+
+    if target_role.is_none() {
+        return Err(RoomError::TargetNotAMember);
+    }
+
+    // 3. Updates
+    sqlx::query("UPDATE room_members SET role = 'owner' WHERE room_id = ? AND user_id = ?")
+        .bind(room_id)
+        .bind(target_user_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("UPDATE room_members SET role = 'member' WHERE room_id = ? AND user_id = ?")
+        .bind(room_id)
+        .bind(requester_id)
+        .execute(&mut *tx)
+        .await?;
+
+    sqlx::query("UPDATE rooms SET owner_id = ? WHERE id = ?")
+        .bind(target_user_id)
+        .bind(room_id)
+        .execute(&mut *tx)
+        .await?;
+
+    tx.commit().await?;
+
+    Ok(())
 }
