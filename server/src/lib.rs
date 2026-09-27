@@ -1,6 +1,7 @@
 pub mod altcha;
 pub mod audit;
 pub mod auth;
+pub mod cleanup;
 pub mod config;
 pub mod config_ops;
 pub mod db;
@@ -20,6 +21,11 @@ pub mod session;
 
 pub use altcha::{verify_altcha_payload, AltchaConfig, AltchaError};
 pub use auth::AuthUser;
+pub use cleanup::{
+    audit::AuditJob, memory::MemoryStoresJob, rate_limits::RateLimitsJob, sessions::SessionsJob,
+    welcomes::WelcomesJob, CleanupContext, CleanupContextOwned, CleanupError, CleanupJob,
+    CleanupReport, Scheduler,
+};
 pub use config::Config;
 pub use invites::{
     create_invite, get_invite_by_id, list_invites, revoke_invite, validate_and_consume_invite,

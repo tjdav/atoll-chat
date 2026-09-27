@@ -160,6 +160,10 @@ async fn test_04_device_limit_is_enforced() {
             login_per_min: 10,
             login_lockout_min: 15,
         },
+        cleanup_enabled: true,
+        cleanup_interval_minutes: 60,
+        cleanup_startup_delay_secs: 30,
+        audit_retention_days: 90,
     };
 
     let altcha_config = Arc::new(

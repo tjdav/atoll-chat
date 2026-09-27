@@ -466,3 +466,52 @@ The audit logging system records administrative and operational events into the 
   - Checks database connection (`SELECT 1`), OPRF key availability, and Sockudo server health (if `SOCKUDO_URL` is configured).
   - Returns HTTP 200 with `{ "status": "ready", "checks": { "database": "ok", "oprf_key": "ok", "sockudo": "skipped" } }` when all active checks succeed.
   - Returns HTTP 503 with `{ "status": "not_ready", "checks": { ... } }` if any check fails.
+
+## Cleanup Scheduler
+
+The cleanup scheduler runs background maintenance jobs to keep the database bounded and enforce retention policies.
+
+### Environment Variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `CLEANUP_ENABLED` | Enable or disable the cleanup job scheduler (`true` or `false`). | `true` |
+| `CLEANUP_INTERVAL_MINUTES` | Interval in minutes between scheduled cleanup cycles. | `60` |
+| `CLEANUP_STARTUP_DELAY_SECS` | Initial startup delay in seconds before running the first cleanup cycle. | `30` |
+| `AUDIT_RETENTION_DAYS` | Retention period in days for audit log entries. Set to `0` to disable audit log pruning. | `90` |
+
+### Cleanup Jobs & Retention Policies
+
+1. **`sessions`**: Deletes sessions where `expires_at < datetime('now', '-30 days')` or `revoked_at < datetime('now', '-30 days')`. Preserves active and recently expired/revoked sessions within the 30-day grace period.
+2. **`rate_limits`**: Deletes expired rate limit windows older than 24 hours (`window_start < datetime('now', '-24 hours')`).
+3. **`audit`**: Deletes audit log entries older than `AUDIT_RETENTION_DAYS` (`created_at < datetime('now', '-' || AUDIT_RETENTION_DAYS || ' days')`). Skips pruning when `AUDIT_RETENTION_DAYS=0`.
+4. **`welcomes`**: Deletes stale onboarding welcome packets older than 7 days (`created_at < datetime('now', '-7 days')`).
+5. **`memory_stores`**: Purges expired in-memory registration and login correlation states older than 5 minutes (`LOGIN_TTL`/`REGISTRATION_TTL`) from `RegistrationStore` and `LoginStore`.
+
+### Sequential Execution
+
+Cleanup jobs execute sequentially in registration order rather than in parallel. Because SQLite uses a single-writer concurrency model, sequential execution prevents database lock contention between cleanup jobs and minimizes impact on active application traffic.
+
+### Disabling & Verification
+
+For local development or debugging, disable the scheduler by setting:
+
+```env
+CLEANUP_ENABLED=false
+```
+
+When enabled, job execution status can be verified through structured application logs:
+
+```
+cleanup: job=sessions status=ok rows_deleted=0 duration_ms=2
+cleanup: job=rate_limits status=ok rows_deleted=0 duration_ms=1
+cleanup: job=audit status=ok rows_deleted=0 duration_ms=1
+cleanup: job=welcomes status=ok rows_deleted=0 duration_ms=1
+cleanup: job=memory_stores status=ok rows_deleted=0 duration_ms=0
+```
+
+### Future Planned Jobs
+
+The following cleanup jobs are scheduled to be integrated in future phases:
+- **Attachment Pruning**: Prunes orphaned and expired file attachments (Phase 12).
+- **Message Retention Enforcement**: Prunes expired MLS message history according to room retention policies (Phase 10).
