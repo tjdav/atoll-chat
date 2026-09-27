@@ -37,6 +37,8 @@ fn test_config(audit_retention_days: u64) -> Config {
         invite_code_length: 8,
         invite_limited_max_uses: 10,
         invite_limited_max_open: 50,
+        room_invite_default_uses: 1,
+        room_invite_code_length: 8,
         rate_limits: RateLimitConfig {
             invite_create_hourly: 50,
             invite_create_daily: 200,

@@ -18,6 +18,7 @@ pub mod permissions;
 pub mod rate_limit;
 pub mod registration;
 pub mod roles;
+pub mod room_invites;
 pub mod rooms;
 pub mod routes;
 pub mod session;
@@ -158,9 +159,18 @@ pub fn build_app(state: AppState) -> Router {
             "/rooms",
             post(routes::rooms::create).get(routes::rooms::list),
         )
+        .route("/rooms/join", post(routes::room_invites::join))
         .route(
             "/rooms/{id}",
             get(routes::rooms::get).delete(routes::rooms::delete),
+        )
+        .route(
+            "/rooms/{id}/invites",
+            post(routes::room_invites::create).get(routes::room_invites::list),
+        )
+        .route(
+            "/rooms/{id}/invites/{invite_id}",
+            delete(routes::room_invites::revoke),
         )
         .route("/rooms/{id}/leave", post(routes::rooms::leave))
         .route(

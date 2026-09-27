@@ -36,6 +36,8 @@ pub struct Config {
     pub invite_code_length: usize,
     pub invite_limited_max_uses: i64,
     pub invite_limited_max_open: i64,
+    pub room_invite_default_uses: i64,
+    pub room_invite_code_length: usize,
     pub rate_limits: RateLimitConfig,
     pub cleanup_enabled: bool,
     pub cleanup_interval_minutes: u64,
@@ -139,6 +141,16 @@ impl Config {
             .ok()
             .and_then(|s| s.parse().ok())
             .unwrap_or(50);
+
+        let room_invite_default_uses = env::var("ROOM_INVITE_DEFAULT_USES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(1);
+
+        let room_invite_code_length = env::var("ROOM_INVITE_CODE_LENGTH")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(8);
 
         let rate_invite_create_hourly = env::var("RATE_INVITE_CREATE_HOURLY")
             .ok()
@@ -255,6 +267,8 @@ impl Config {
             invite_code_length,
             invite_limited_max_uses,
             invite_limited_max_open,
+            room_invite_default_uses,
+            room_invite_code_length,
             rate_limits,
             cleanup_enabled,
             cleanup_interval_minutes,
