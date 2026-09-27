@@ -8,4 +8,5 @@ pub mod ready;
 pub mod register;
 pub mod roles;
 pub mod sessions;
+pub mod r#static;
 pub mod users;

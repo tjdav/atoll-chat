@@ -43,6 +43,10 @@ pub struct Config {
     pub audit_retention_days: u64,
     pub data_retention_days: u64,
     pub export_rate_limit_hours: u64,
+    pub trust_proxy: bool,
+    pub hsts_max_age: u64,
+    pub hsts_include_subdomains: bool,
+    pub client_static_dir: Option<String>,
 }
 
 impl Config {
@@ -50,8 +54,18 @@ impl Config {
         let app_env = env::var("APP_ENV").unwrap_or_else(|_| "production".to_string());
 
         let app_url = env::var("APP_URL").ok();
-        if app_env == "production" && app_url.is_none() {
-            anyhow::bail!("APP_URL must be set in production mode");
+        if app_env == "production" {
+            match &app_url {
+                Some(url) => {
+                    if !url.starts_with("https://") {
+                        anyhow::bail!(
+                            "FATAL: APP_URL must use https:// in production (got \"{}\")",
+                            url
+                        );
+                    }
+                }
+                None => anyhow::bail!("APP_URL must be set in production mode"),
+            }
         }
 
         let app_name = env::var("APP_NAME").unwrap_or_else(|_| "Encrypted Chat".to_string());
@@ -201,6 +215,24 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(0);
 
+        let trust_proxy = env::var("TRUST_PROXY")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(false);
+
+        let hsts_max_age = env::var("HSTS_MAX_AGE")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(31_536_000);
+
+        let hsts_include_subdomains = env::var("HSTS_INCLUDE_SUBDOMAINS")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
+        let client_static_dir = env::var("CLIENT_STATIC_DIR")
+            .ok()
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty());
+
         Ok(Self {
             app_env,
             app_url,
@@ -230,6 +262,10 @@ impl Config {
             audit_retention_days,
             data_retention_days,
             export_rate_limit_hours,
+            trust_proxy,
+            hsts_max_age,
+            hsts_include_subdomains,
+            client_static_dir,
         })
     }
 }

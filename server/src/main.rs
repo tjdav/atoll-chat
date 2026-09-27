@@ -1,7 +1,3 @@
-use axum::{
-    routing::{delete, get, post},
-    Router,
-};
 use server::altcha::AltchaConfig;
 use server::config::Config;
 use server::db;
@@ -9,14 +5,11 @@ use server::login::LoginStore;
 use server::opaque::OpaqueServer;
 use server::registration::RegistrationStore;
 use server::roles;
-use server::routes;
 use server::AppState;
 use std::path::Path;
 use std::str::FromStr;
 use std::sync::Arc;
-use tower_http::cors::CorsLayer;
-use tower_http::trace::TraceLayer;
-use tracing::{info, Level};
+use tracing::{info, warn, Level};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -42,6 +35,16 @@ async fn main() -> anyhow::Result<()> {
         "Starting {} in {} mode. Bind: {}, DB: {}",
         config.app_name, config.app_env, config.server_bind, config.db_path
     );
+
+    if config.app_env == "production" && !config.trust_proxy {
+        warn!("TRUST_PROXY=false in production. Set TRUST_PROXY=true if behind a reverse proxy.");
+    }
+
+    if let Some(dir) = &config.client_static_dir {
+        info!("serving SPA from {}", dir);
+    } else {
+        info!("SPA serving disabled (CLIENT_STATIC_DIR unset)");
+    }
 
     // 5. Initialize SQLite pool
     let pool = db::init_pool(&config).await?;
@@ -74,24 +77,6 @@ async fn main() -> anyhow::Result<()> {
         server_hard_max,
     };
 
-    // CORS configuration
-    let cors = if config.app_env == "development" {
-        info!("CORS mode: permissive (development)");
-        CorsLayer::permissive()
-    } else {
-        if let Some(app_url) = &config.app_url {
-            info!("CORS mode: restricted to {}", app_url);
-            CorsLayer::new().allow_origin(
-                app_url
-                    .parse::<axum::http::HeaderValue>()
-                    .expect("Invalid APP_URL for CORS"),
-            )
-        } else {
-            info!("CORS mode: no origin allowed (APP_URL missing)");
-            CorsLayer::new()
-        }
-    };
-
     // 6. Check bootstrap state
     if roles::has_any_users(&pool).await? {
         info!("bootstrap: users exist — owner role already assigned");
@@ -100,70 +85,7 @@ async fn main() -> anyhow::Result<()> {
     }
 
     // 7. Build Router
-    let app = Router::new()
-        .route("/health", get(routes::health::handler))
-        .route("/ready", get(routes::ready::handler))
-        .route(
-            "/api/v1/admin/config",
-            get(routes::admin::get_config_handler).patch(routes::admin::patch_config_handler),
-        )
-        .route(
-            "/api/v1/admin/limits",
-            get(routes::admin::get_limits_handler).patch(routes::admin::patch_limits_handler),
-        )
-        .route("/api/v1/admin/audit", get(routes::admin::get_audit_handler))
-        .route("/api/v1/capabilities", get(routes::capabilities::handler))
-        .route("/api/v1/roles", get(routes::roles::handler))
-        .route(
-            "/api/v1/auth/register/challenge",
-            get(routes::register::register_challenge),
-        )
-        .route(
-            "/api/v1/auth/register/start",
-            post(routes::register::register_start),
-        )
-        .route(
-            "/api/v1/auth/register/finish",
-            post(routes::register::register_finish),
-        )
-        .route("/api/v1/auth/login/start", post(routes::login::login_start))
-        .route(
-            "/api/v1/auth/login/finish",
-            post(routes::login::login_finish),
-        )
-        .route(
-            "/api/v1/users/me",
-            get(routes::users::get_me)
-                .patch(routes::users::patch_me)
-                .delete(routes::users::delete_me),
-        )
-        .route("/api/v1/users/me/export", get(routes::users::export_me))
-        .route("/api/v1/users/me/sessions", get(routes::sessions::list))
-        .route(
-            "/api/v1/users/me/sessions/{id}",
-            delete(routes::sessions::revoke),
-        )
-        .route("/api/v1/users/me/devices", get(routes::devices::list))
-        .route(
-            "/api/v1/users/me/devices/{id}",
-            delete(routes::devices::revoke),
-        )
-        .route("/api/v1/auth/logout", post(routes::sessions::logout))
-        .route(
-            "/api/v1/admin/invites",
-            post(routes::invites::create_invite_handler).get(routes::invites::list_invites_handler),
-        )
-        .route(
-            "/api/v1/admin/invites/{id}",
-            delete(routes::invites::revoke_invite_handler),
-        )
-        .route(
-            "/api/v1/invites/{code}",
-            get(routes::invites::validate_invite_public_handler),
-        )
-        .layer(TraceLayer::new_for_http())
-        .layer(cors)
-        .with_state(state);
+    let app = server::build_app(state);
 
     // 8. Setup Cleanup Scheduler
     let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);

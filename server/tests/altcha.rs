@@ -262,6 +262,10 @@ async fn hmac_secret_persisted_in_instance_config() {
         audit_retention_days: 90,
         data_retention_days: 0,
         export_rate_limit_hours: 24,
+        trust_proxy: false,
+        hsts_max_age: 31536000,
+        hsts_include_subdomains: true,
+        client_static_dir: None,
     };
 
     let altcha_config1 = AltchaConfig::from_env(&config, &pool).await.unwrap();

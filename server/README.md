@@ -582,3 +582,67 @@ The endpoint buffers and returns a synchronous ZIP file (`Content-Type: applicat
 
 - The software provides the technical mechanisms for data erasure and portability under GDPR Art. 17 and Art. 20.
 - Instance operators (data controllers) remain responsible for establishing appropriate legal bases, maintaining privacy notices, and adhering to local data protection regulation obligations.
+
+## HTTPS and Static Hosting
+
+### Reverse Proxy Requirement
+TLS termination is performed at a reverse proxy (e.g. Traefik, Caddy, Nginx, or Coolify). The Axum application server listens on plain HTTP and expects reverse proxies to set standard forward headers when `TRUST_PROXY=true`.
+
+#### Reverse Proxy Examples
+
+**Coolify / Traefik (`dynamic.yml`):**
+```yaml
+http:
+  routers:
+    chat-router:
+      rule: "Host(`chat.example.com`)"
+      service: "chat-service"
+      entryPoints: ["websecure"]
+      tls:
+        certResolver: "letsencrypt"
+```
+
+**Caddy (`Caddyfile`):**
+```caddyfile
+chat.example.com {
+    reverse_proxy 127.0.0.1:8080
+}
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `TRUST_PROXY` | Set to `true` when running behind a trusted reverse proxy to read `X-Forwarded-Proto`. | `false` |
+| `HSTS_MAX_AGE` | Duration in seconds for the `Strict-Transport-Security` header. Set to `0` to disable. | `31536000` |
+| `HSTS_INCLUDE_SUBDOMAINS` | Include `; includeSubDomains` in the HSTS header when `true`. | `true` |
+| `CLIENT_STATIC_DIR` | Optional directory path serving compiled SPA static files. Unset/empty in dev returns 404 for unmatched paths. | Unset |
+
+### HTTPS Redirection & HSTS Behavior
+- In `APP_ENV=production`, if `TRUST_PROXY=true` and `X-Forwarded-Proto: http` is received, the server returns `301 Moved Permanently` with a `Location` header directing clients to `{APP_URL}{path_and_query}`.
+- When serving HTTPS requests in production, the `Strict-Transport-Security` header is included on responses if `HSTS_MAX_AGE > 0`.
+- Development mode (`APP_ENV=development`) does not enforce redirects or send HSTS headers.
+
+### Exemptions
+- **`/health` and `/ready`**: Internal orchestrator probes (Kubernetes, Docker, Coolify) perform readiness and liveness checks over plain HTTP on local container networks. Requests to `/health` and `/ready` skip HTTPS redirection checks.
+
+### Startup Validation
+- Startup bails with a fatal error if `APP_ENV=production` and `APP_URL` does not start with `https://`:
+  ```
+  FATAL: APP_URL must use https:// in production (got "http://chat.example.com")
+  ```
+- A warning is logged at startup if `APP_ENV=production` and `TRUST_PROXY=false`:
+  ```
+  warn: TRUST_PROXY=false in production. Set TRUST_PROXY=true if behind a reverse proxy.
+  ```
+
+### Local Testing Middleware
+You can simulate reverse proxy requests locally using `curl`:
+
+```bash
+# Test HTTP to HTTPS redirect
+curl -i -H "X-Forwarded-Proto: http" http://localhost:8080/api/v1/capabilities
+
+# Test HSTS header on HTTPS request
+curl -i -H "X-Forwarded-Proto: https" http://localhost:8080/api/v1/capabilities
+```

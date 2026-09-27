@@ -862,6 +862,10 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
         audit_retention_days: 90,
         data_retention_days: 0,
         export_rate_limit_hours: 24,
+        trust_proxy: false,
+        hsts_max_age: 31536000,
+        hsts_include_subdomains: true,
+        client_static_dir: None,
     };
     let cfg_arc = std::sync::Arc::new(cfg);
     let server_hard_max = std::sync::Arc::new(server::ServerHardMax {
