@@ -43,9 +43,11 @@ impl RegistrationStore {
         }
     }
 
-    pub fn purge_expired(&self, max_age: Duration) {
+    pub fn purge_expired(&self, max_age: Duration) -> usize {
         let mut store = self.inner.lock().expect("lock poisoned");
+        let initial_len = store.len();
         store.retain(|_, p| p.created_at.elapsed() < max_age);
+        initial_len - store.len()
     }
 }
 

@@ -36,6 +36,10 @@ pub struct Config {
     pub invite_limited_max_uses: i64,
     pub invite_limited_max_open: i64,
     pub rate_limits: RateLimitConfig,
+    pub cleanup_enabled: bool,
+    pub cleanup_interval_minutes: u64,
+    pub cleanup_startup_delay_secs: u64,
+    pub audit_retention_days: u64,
 }
 
 impl Config {
@@ -164,6 +168,25 @@ impl Config {
             login_lockout_min: rate_login_lockout_min,
         };
 
+        let cleanup_enabled = env::var("CLEANUP_ENABLED")
+            .map(|v| v.trim().eq_ignore_ascii_case("true") || v.trim() == "1")
+            .unwrap_or(true);
+
+        let cleanup_interval_minutes = env::var("CLEANUP_INTERVAL_MINUTES")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(60);
+
+        let cleanup_startup_delay_secs = env::var("CLEANUP_STARTUP_DELAY_SECS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(30);
+
+        let audit_retention_days = env::var("AUDIT_RETENTION_DAYS")
+            .ok()
+            .and_then(|s| s.parse().ok())
+            .unwrap_or(90);
+
         Ok(Self {
             app_env,
             app_url,
@@ -187,6 +210,10 @@ impl Config {
             invite_limited_max_uses,
             invite_limited_max_open,
             rate_limits,
+            cleanup_enabled,
+            cleanup_interval_minutes,
+            cleanup_startup_delay_secs,
+            audit_retention_days,
         })
     }
 }

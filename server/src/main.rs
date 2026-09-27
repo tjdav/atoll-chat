@@ -67,8 +67,8 @@ async fn main() -> anyhow::Result<()> {
     let state = AppState {
         pool: pool.clone(),
         opaque_server,
-        registration_store,
-        login_store,
+        registration_store: registration_store.clone(),
+        login_store: login_store.clone(),
         altcha_config,
         config: config.clone(),
         server_hard_max,
@@ -162,18 +162,46 @@ async fn main() -> anyhow::Result<()> {
         .layer(cors)
         .with_state(state);
 
-    // 8. Bind to address
+    // 8. Setup Cleanup Scheduler
+    let (shutdown_tx, shutdown_rx) = tokio::sync::watch::channel(false);
+
+    if config.cleanup_enabled {
+        let mut scheduler = server::cleanup::Scheduler::new(std::time::Duration::from_secs(
+            config.cleanup_interval_minutes * 60,
+        ));
+        scheduler.register(Box::new(server::cleanup::sessions::SessionsJob));
+        scheduler.register(Box::new(server::cleanup::rate_limits::RateLimitsJob));
+        scheduler.register(Box::new(server::cleanup::audit::AuditJob));
+        scheduler.register(Box::new(server::cleanup::welcomes::WelcomesJob));
+        scheduler.register(Box::new(server::cleanup::memory::MemoryStoresJob));
+
+        let ctx = server::cleanup::CleanupContextOwned {
+            pool: pool.clone(),
+            config: config.clone(),
+            registration_store: registration_store.clone(),
+            login_store: login_store.clone(),
+        };
+        let scheduler_shutdown = shutdown_rx.clone();
+
+        tokio::spawn(async move {
+            scheduler.run(ctx, scheduler_shutdown).await;
+        });
+    } else {
+        info!("cleanup: scheduler disabled");
+    }
+
+    // 9. Bind to address
     let listener = tokio::net::TcpListener::bind(&config.server_bind).await?;
 
-    // 9. Serve with graceful shutdown
+    // 10. Serve with graceful shutdown
     axum::serve(listener, app)
-        .with_graceful_shutdown(shutdown_signal())
+        .with_graceful_shutdown(shutdown_signal(shutdown_tx))
         .await?;
 
     Ok(())
 }
 
-async fn shutdown_signal() {
+async fn shutdown_signal(shutdown_tx: tokio::sync::watch::Sender<bool>) {
     let ctrl_c = async {
         tokio::signal::ctrl_c()
             .await
@@ -199,4 +227,6 @@ async fn shutdown_signal() {
             info!("Received SIGTERM, starting graceful shutdown");
         },
     }
+
+    let _ = shutdown_tx.send(true);
 }
