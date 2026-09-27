@@ -1,13 +1,17 @@
-mod config;
-mod db;
-mod error;
-mod permissions;
-mod roles;
-mod routes;
-
-use axum::{routing::get, Router};
-use config::Config;
+use axum::{
+    routing::{get, post},
+    Router,
+};
+use server::config::Config;
+use server::db;
+use server::opaque::OpaqueServer;
+use server::registration::RegistrationStore;
+use server::roles;
+use server::routes;
+use server::AppState;
+use std::path::Path;
 use std::str::FromStr;
+use std::sync::Arc;
 use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 use tracing::{info, Level};
@@ -40,6 +44,18 @@ async fn main() -> anyhow::Result<()> {
     // 5. Initialize SQLite pool
     let pool = db::init_pool(&config).await?;
 
+    // Initialize OPAQUE server setup
+    let opaque_server = Arc::new(OpaqueServer::load_or_generate(Path::new(
+        &config.opaque_oprf_key_path,
+    ))?);
+    let registration_store = Arc::new(RegistrationStore::new());
+
+    let state = AppState {
+        pool: pool.clone(),
+        opaque_server,
+        registration_store,
+    };
+
     // CORS configuration
     let cors = if config.app_env == "development" {
         info!("CORS mode: permissive (development)");
@@ -70,9 +86,17 @@ async fn main() -> anyhow::Result<()> {
         .route("/health", get(routes::health::handler))
         .route("/api/v1/capabilities", get(routes::capabilities::handler))
         .route("/api/v1/roles", get(routes::roles::handler))
+        .route(
+            "/api/v1/auth/register/start",
+            post(routes::register::register_start),
+        )
+        .route(
+            "/api/v1/auth/register/finish",
+            post(routes::register::register_finish),
+        )
         .layer(TraceLayer::new_for_http())
         .layer(cors)
-        .with_state(pool);
+        .with_state(state);
 
     // 8. Bind to address
     let listener = tokio::net::TcpListener::bind(&config.server_bind).await?;

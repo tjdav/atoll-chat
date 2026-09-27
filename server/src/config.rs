@@ -10,6 +10,7 @@ pub struct Config {
     pub server_bind: String,
     pub db_path: String,
     pub db_busy_timeout_ms: u64,
+    pub opaque_oprf_key_path: String,
 }
 
 impl Config {
@@ -31,6 +32,9 @@ impl Config {
             .and_then(|s| s.parse().ok())
             .unwrap_or(5000);
 
+        let opaque_oprf_key_path =
+            env::var("OPAQUE_OPRF_KEY_PATH").unwrap_or_else(|_| "./data/oprf.key".to_string());
+
         Ok(Self {
             app_env,
             app_url,
@@ -39,6 +43,7 @@ impl Config {
             server_bind,
             db_path,
             db_busy_timeout_ms,
+            opaque_oprf_key_path,
         })
     }
 }
