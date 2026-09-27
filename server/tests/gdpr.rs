@@ -360,7 +360,8 @@ async fn test_deletion_queues_mls_removes() {
     let token = login_and_get_token(&app, "alice", "password123", CLIENT_1).await;
 
     // Create room and add user as member
-    sqlx::query("INSERT INTO rooms (id, name) VALUES ('room_1', 'General')")
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('room_1', ?)")
+        .bind(&alice_id)
         .execute(&pool)
         .await
         .unwrap();
@@ -405,7 +406,8 @@ async fn test_deletion_removes_room_memberships() {
 
     let token = login_and_get_token(&app, "alice", "password123", CLIENT_1).await;
 
-    sqlx::query("INSERT INTO rooms (id, name) VALUES ('room_1', 'General')")
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES ('room_1', ?)")
+        .bind(&alice_id)
         .execute(&pool)
         .await
         .unwrap();

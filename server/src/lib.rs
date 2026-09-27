@@ -18,6 +18,7 @@ pub mod permissions;
 pub mod rate_limit;
 pub mod registration;
 pub mod roles;
+pub mod rooms;
 pub mod routes;
 pub mod session;
 
@@ -152,6 +153,19 @@ pub fn build_app(state: AppState) -> Router {
         .route(
             "/invites/{code}",
             get(routes::invites::validate_invite_public_handler),
+        )
+        .route(
+            "/rooms",
+            post(routes::rooms::create).get(routes::rooms::list),
+        )
+        .route(
+            "/rooms/{id}",
+            get(routes::rooms::get).delete(routes::rooms::delete),
+        )
+        .route("/rooms/{id}/leave", post(routes::rooms::leave))
+        .route(
+            "/rooms/{id}/members",
+            get(routes::rooms::list_members).post(routes::rooms::add_member),
         );
 
     let cors = if state.config.app_env == "development" {

@@ -438,9 +438,9 @@ async fn test_10_revocation_cascade_queues_mls_removes() {
 
     // Insert room and room_member
     let room_id = "test_room_100";
-    sqlx::query("INSERT INTO rooms (id, name) VALUES (?, ?)")
+    sqlx::query("INSERT INTO rooms (id, owner_id) VALUES (?, ?)")
         .bind(room_id)
-        .bind("Test Room")
+        .bind(&user_id)
         .execute(&pool)
         .await
         .unwrap();
