@@ -1,6 +1,8 @@
 use crate::devices::DeviceError;
 use crate::invites::InviteError;
+use crate::limits::LimitsError;
 use crate::rate_limit::RateLimitError;
+use crate::rooms::RoomError;
 use crate::session::SessionError;
 use axum::{
     http::{header, StatusCode},
@@ -70,6 +72,37 @@ impl IntoResponse for ApiError {
 
                 (status, body).into_response()
             }
+        }
+    }
+}
+
+// Implement From<LimitsError> for ApiError
+impl From<LimitsError> for ApiError {
+    fn from(err: LimitsError) -> Self {
+        match err {
+            LimitsError::Database(e) => ApiError::Internal(e.into()),
+            LimitsError::ExceedsServerMax { .. } | LimitsError::BelowMinimum { .. } => {
+                ApiError::BadRequest(err.to_string())
+            }
+        }
+    }
+}
+
+// Implement From<RoomError> for ApiError
+impl From<RoomError> for ApiError {
+    fn from(err: RoomError) -> Self {
+        match err {
+            RoomError::Database(e) => ApiError::Internal(e.into()),
+            RoomError::RoomNotFound | RoomError::NotAMember => {
+                ApiError::NotFound("room_not_found".to_string())
+            }
+            RoomError::Forbidden => ApiError::Forbidden("forbidden".to_string()),
+            RoomError::RoomFull => ApiError::Conflict("room_full".to_string()),
+            RoomError::UserNotFound => ApiError::NotFound("user_not_found".to_string()),
+            RoomError::AlreadyMember => ApiError::Conflict("already_member".to_string()),
+            RoomError::RoomLimitReached => ApiError::Conflict("room_limit_reached".to_string()),
+            RoomError::InvalidRetention => ApiError::BadRequest("invalid_retention".to_string()),
+            RoomError::InvalidFileSize => ApiError::BadRequest("invalid_file_size".to_string()),
         }
     }
 }
