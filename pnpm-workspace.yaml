@@ -1,9 +1,0 @@
-allowBuilds:
-  '@parcel/watcher': true
-  esbuild: true
-  onnxruntime-node: true
-  protobufjs: true
-  sharp: true
-minimumReleaseAgeExclude:
-  - coralite-scripts@1.0.0-rc.5
-  - coralite@1.0.0-rc.5

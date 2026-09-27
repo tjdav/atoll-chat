@@ -17,7 +17,6 @@ dist-ssr
 public/assets/tts/
 public/assets/models/
 
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -46,3 +45,14 @@ test-results
 tests/e2e/screenshots/
 tests/e2e/fixtures/test-files/test-video.y4m
 tests/e2e/fixtures/test-video.y4m
+
+# Database and App Data
+*.db
+*.db-shm
+*.db-wal
+data/
+db/
+
+# Rust
+target/
+server/target/
