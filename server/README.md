@@ -133,3 +133,42 @@ To manually insert an invite code for testing:
 ```bash
 sqlite3 data/app.db "INSERT INTO server_invites (id, code, max_uses, current_uses) VALUES ('test_inv_1', 'INVITE123', 1, 0);"
 ```
+
+## ALTCHA Configuration
+
+ALTCHA is a privacy-friendly, self-hosted Proof-of-Work (PoW) CAPTCHA alternative that protects registration endpoints from automated bot traffic without tracking users or requiring third-party services.
+
+### Environment Variables
+
+| Variable | Description | Default |
+| --- | --- | --- |
+| `ALTCHA_ENABLED` | Enable or disable ALTCHA protection for registration endpoints. | `true` |
+| `ALTCHA_HMAC_SECRET` | Secret key used to sign and verify ALTCHA challenges. Set to `auto` to generate and persist a 32-byte secret in `instance_config`. | `auto` |
+| `ALTCHA_ALGORITHM` | PoW hash algorithm used for challenge derivation. | `PBKDF2/SHA-256` |
+| `ALTCHA_COST` | PoW difficulty cost (number of iterations). | `5000` |
+
+### Security & Deterministic Mode
+
+A security advisory disclosed in July 2026 affected ALTCHA PoW v2 fallback verification when challenges omitted `keySignature` or verifiers omitted the `hmac_key_signature_secret`. To remain secure against single KDF execution bypasses:
+
+- The server uses **deterministic effort mode with matching HMAC signature secrets** on both challenge creation and verification.
+- Probabilistic mode is not used.
+- The `altcha` crate is pinned to `v0.2.0` or later, which includes the official fix for the advisory.
+
+### Client Integration (`<altcha-widget>`)
+
+Frontend applications integrate the official `<altcha-widget>` web component:
+
+1. Configure the widget `challengeurl` to `GET /api/v1/auth/register/challenge`.
+2. The widget automatically fetches a challenge, solves it in a Web Worker, and populates a hidden form field named `altcha`.
+3. The base64-encoded JSON solution payload is included in `POST /api/v1/auth/register/start` and `POST /api/v1/auth/register/finish` requests as the `altcha` field.
+
+### Local Development
+
+For local development or testing without solving PoW challenges, ALTCHA can be disabled by setting:
+
+```env
+ALTCHA_ENABLED=false
+```
+
+When disabled, `GET /api/v1/auth/register/challenge` returns HTTP 404 (`{"error":"altcha_disabled"}`), and registration endpoints skip ALTCHA payload verification.

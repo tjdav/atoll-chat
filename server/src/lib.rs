@@ -1,3 +1,4 @@
+pub mod altcha;
 pub mod config;
 pub mod db;
 pub mod error;
@@ -7,6 +8,7 @@ pub mod registration;
 pub mod roles;
 pub mod routes;
 
+pub use altcha::{verify_altcha_payload, AltchaConfig, AltchaError};
 pub use opaque::{DefaultCipherSuite, OpaqueServer};
 pub use registration::RegistrationStore;
 use sqlx::SqlitePool;
@@ -17,6 +19,7 @@ pub struct AppState {
     pub pool: SqlitePool,
     pub opaque_server: Arc<OpaqueServer>,
     pub registration_store: Arc<RegistrationStore>,
+    pub altcha_config: Arc<AltchaConfig>,
 }
 
 impl axum::extract::FromRef<AppState> for SqlitePool {
@@ -34,5 +37,11 @@ impl axum::extract::FromRef<AppState> for Arc<OpaqueServer> {
 impl axum::extract::FromRef<AppState> for Arc<RegistrationStore> {
     fn from_ref(state: &AppState) -> Self {
         state.registration_store.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Arc<AltchaConfig> {
+    fn from_ref(state: &AppState) -> Self {
+        state.altcha_config.clone()
     }
 }

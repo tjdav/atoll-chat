@@ -7,7 +7,7 @@ use axum::{
 };
 use base64::engine::general_purpose::{STANDARD, URL_SAFE_NO_PAD};
 use base64::Engine;
-use common::setup_test_app;
+use common::{fetch_and_solve_altcha, setup_test_app};
 use opaque_ke::{ClientRegistration, ClientRegistrationFinishParameters, RegistrationResponse};
 use rand::rngs::OsRng;
 use serde_json::{json, Value};
@@ -21,6 +21,8 @@ async fn do_register(
     password: &str,
     invite_code: Option<&str>,
 ) -> (StatusCode, Value) {
+    let altcha1 = fetch_and_solve_altcha(app).await;
+
     let mut rng = OsRng;
     let client_start =
         ClientRegistration::<DefaultCipherSuite>::start(&mut rng, password.as_bytes())
@@ -36,6 +38,7 @@ async fn do_register(
             json!({
                 "username": username,
                 "registration_request": reg_req_b64,
+                "altcha": altcha1,
             })
             .to_string(),
         ))
@@ -78,6 +81,8 @@ async fn do_register(
 
     let upload_b64 = STANDARD.encode(client_finish.message.serialize());
 
+    let altcha2 = fetch_and_solve_altcha(app).await;
+
     let req2 = Request::builder()
         .method("POST")
         .uri("/api/v1/auth/register/finish")
@@ -87,6 +92,7 @@ async fn do_register(
                 "registration_id": reg_id,
                 "registration_upload": upload_b64,
                 "invite_code": invite_code,
+                "altcha": altcha2,
             })
             .to_string(),
         ))
@@ -228,6 +234,7 @@ async fn duplicate_username_returns_409() {
     assert_eq!(status1, StatusCode::OK);
 
     // Second registration attempt for alice
+    let altcha = fetch_and_solve_altcha(&app).await;
     let mut rng = OsRng;
     let client_start = ClientRegistration::<DefaultCipherSuite>::start(&mut rng, b"password123")
         .expect("ClientRegistration::start failed");
@@ -241,6 +248,7 @@ async fn duplicate_username_returns_409() {
             json!({
                 "username": "Alice", // case insensitive duplicate
                 "registration_request": reg_req_b64,
+                "altcha": altcha,
             })
             .to_string(),
         ))
@@ -260,6 +268,8 @@ async fn duplicate_username_returns_409() {
 async fn invalid_registration_id_returns_400() {
     let (app, _pool) = setup_test_app().await;
 
+    let altcha = fetch_and_solve_altcha(&app).await;
+
     let req = Request::builder()
         .method("POST")
         .uri("/api/v1/auth/register/finish")
@@ -269,6 +279,7 @@ async fn invalid_registration_id_returns_400() {
                 "registration_id": "nonexistent_id",
                 "registration_upload": STANDARD.encode(b"dummy"),
                 "invite_code": null,
+                "altcha": altcha,
             })
             .to_string(),
         ))
@@ -292,6 +303,7 @@ async fn username_validation() {
     let invalid_usernames = vec!["a", "has spaces", "has/slash", "ab", long_username.as_str()];
 
     for invalid_un in invalid_usernames {
+        let altcha = fetch_and_solve_altcha(&app).await;
         let req = Request::builder()
             .method("POST")
             .uri("/api/v1/auth/register/start")
@@ -300,6 +312,7 @@ async fn username_validation() {
                 json!({
                     "username": invalid_un,
                     "registration_request": STANDARD.encode(b"dummy_req"),
+                    "altcha": altcha,
                 })
                 .to_string(),
             ))

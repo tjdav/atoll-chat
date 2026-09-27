@@ -38,7 +38,7 @@ async fn union_across_roles() {
     let pool = setup_test_db().await;
 
     // Insert a test user
-    sqlx::query!("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('user1', 'User 1', 'hash1', X'00', 'pubkey1')")
+    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('user1', 'User 1', 'hash1', X'00', 'pubkey1')")
         .execute(&pool)
         .await
         .unwrap();
@@ -72,7 +72,7 @@ async fn no_roles_means_no_permissions() {
     let pool = setup_test_db().await;
 
     // Insert a test user
-    sqlx::query!("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('user_no_roles', 'User No Roles', 'hash_norole', X'00', 'pubkey_norole')")
+    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('user_no_roles', 'User No Roles', 'hash_norole', X'00', 'pubkey_norole')")
         .execute(&pool)
         .await
         .unwrap();
@@ -97,7 +97,7 @@ async fn seed_idempotency() {
     let pool = setup_test_db().await;
 
     // Test helper automatically ran migrations
-    let count: i64 = sqlx::query_scalar!("SELECT COUNT(*) FROM roles")
+    let count: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM roles")
         .fetch_one(&pool)
         .await
         .unwrap();
@@ -105,7 +105,7 @@ async fn seed_idempotency() {
     assert_eq!(count, 4);
 
     // Run seed migration manually again
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT OR IGNORE INTO roles (id, name, level, permissions) VALUES
         ('role_owner',   'owner',   100, '["*"]'),
@@ -115,7 +115,7 @@ async fn seed_idempotency() {
         "#
     ).execute(&pool).await.unwrap();
 
-    let count2: i64 = sqlx::query_scalar!("SELECT COUNT(*) FROM roles")
+    let count2: i64 = sqlx::query_scalar("SELECT COUNT(*) FROM roles")
         .fetch_one(&pool)
         .await
         .unwrap();
@@ -131,7 +131,7 @@ async fn bootstrap_detection() {
     assert!(!roles::has_any_users(&pool).await.unwrap());
 
     // Insert user
-    sqlx::query!("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('firstuser', 'First User', 'hashfirst', X'00', 'pubkeyfirst')")
+    sqlx::query("INSERT INTO users (id, username, username_hash, opaque_registration, identity_pubkey) VALUES ('firstuser', 'First User', 'hashfirst', X'00', 'pubkeyfirst')")
         .execute(&pool)
         .await
         .unwrap();
