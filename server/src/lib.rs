@@ -11,6 +11,7 @@ pub mod gdpr;
 pub mod invites;
 pub mod limits;
 pub mod login;
+pub mod middleware;
 pub mod opaque;
 pub mod permission_check;
 pub mod permissions;
@@ -19,6 +20,13 @@ pub mod registration;
 pub mod roles;
 pub mod routes;
 pub mod session;
+
+use axum::{
+    routing::{delete, get, post},
+    Router,
+};
+use tower_http::cors::CorsLayer;
+use tower_http::trace::TraceLayer;
 
 pub use altcha::{verify_altcha_payload, AltchaConfig, AltchaError};
 pub use auth::AuthUser;
@@ -92,4 +100,91 @@ impl axum::extract::FromRef<AppState> for Arc<ServerHardMax> {
     fn from_ref(state: &AppState) -> Self {
         state.server_hard_max.clone()
     }
+}
+
+pub fn build_app(state: AppState) -> Router {
+    let api_routes = Router::new()
+        .route(
+            "/admin/config",
+            get(routes::admin::get_config_handler).patch(routes::admin::patch_config_handler),
+        )
+        .route(
+            "/admin/limits",
+            get(routes::admin::get_limits_handler).patch(routes::admin::patch_limits_handler),
+        )
+        .route("/admin/audit", get(routes::admin::get_audit_handler))
+        .route("/capabilities", get(routes::capabilities::handler))
+        .route("/roles", get(routes::roles::handler))
+        .route(
+            "/auth/register/challenge",
+            get(routes::register::register_challenge),
+        )
+        .route(
+            "/auth/register/start",
+            post(routes::register::register_start),
+        )
+        .route(
+            "/auth/register/finish",
+            post(routes::register::register_finish),
+        )
+        .route("/auth/login/start", post(routes::login::login_start))
+        .route("/auth/login/finish", post(routes::login::login_finish))
+        .route(
+            "/users/me",
+            get(routes::users::get_me)
+                .patch(routes::users::patch_me)
+                .delete(routes::users::delete_me),
+        )
+        .route("/users/me/export", get(routes::users::export_me))
+        .route("/users/me/sessions", get(routes::sessions::list))
+        .route("/users/me/sessions/{id}", delete(routes::sessions::revoke))
+        .route("/users/me/devices", get(routes::devices::list))
+        .route("/users/me/devices/{id}", delete(routes::devices::revoke))
+        .route("/auth/logout", post(routes::sessions::logout))
+        .route(
+            "/admin/invites",
+            post(routes::invites::create_invite_handler).get(routes::invites::list_invites_handler),
+        )
+        .route(
+            "/admin/invites/{id}",
+            delete(routes::invites::revoke_invite_handler),
+        )
+        .route(
+            "/invites/{code}",
+            get(routes::invites::validate_invite_public_handler),
+        );
+
+    let cors = if state.config.app_env == "development" {
+        tracing::info!("CORS mode: permissive (development)");
+        CorsLayer::permissive()
+    } else {
+        if let Some(app_url) = &state.config.app_url {
+            tracing::info!("CORS mode: restricted to {}", app_url);
+            CorsLayer::new().allow_origin(
+                app_url
+                    .parse::<axum::http::HeaderValue>()
+                    .expect("Invalid APP_URL for CORS"),
+            )
+        } else {
+            tracing::info!("CORS mode: no origin allowed (APP_URL missing)");
+            CorsLayer::new()
+        }
+    };
+
+    let mut app = Router::new()
+        .route("/health", get(routes::health::handler))
+        .route("/ready", get(routes::ready::handler))
+        .nest("/api/v1", api_routes);
+
+    if let Some(dir) = &state.config.client_static_dir {
+        app = app.fallback_service(routes::r#static::build_spa_service(dir));
+    }
+
+    app.layer(TraceLayer::new_for_http())
+        .layer(cors)
+        .layer(axum::middleware::from_fn_with_state(
+            state.config.clone(),
+            middleware::https::enforce_https,
+        ))
+        .with_state(state)
 }

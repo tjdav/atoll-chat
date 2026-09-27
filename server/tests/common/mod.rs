@@ -14,7 +14,6 @@ use server::config::{Config, RateLimitConfig};
 use server::login::LoginStore;
 use server::opaque::{DefaultCipherSuite, OpaqueServer};
 use server::registration::RegistrationStore;
-use server::routes;
 use server::AppState;
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::sync::Arc;
@@ -94,6 +93,10 @@ pub async fn setup_test_app_with_config(
         audit_retention_days: 90,
         data_retention_days: 0,
         export_rate_limit_hours: 24,
+        trust_proxy: false,
+        hsts_max_age: 31536000,
+        hsts_include_subdomains: true,
+        client_static_dir: None,
     };
 
     let altcha_config = Arc::new(
@@ -125,86 +128,7 @@ pub async fn setup_test_app_with_config(
         server_hard_max,
     };
 
-    let app = Router::new()
-        .route("/ready", axum::routing::get(routes::ready::handler))
-        .route(
-            "/api/v1/admin/config",
-            axum::routing::get(routes::admin::get_config_handler)
-                .patch(routes::admin::patch_config_handler),
-        )
-        .route(
-            "/api/v1/admin/limits",
-            axum::routing::get(routes::admin::get_limits_handler)
-                .patch(routes::admin::patch_limits_handler),
-        )
-        .route(
-            "/api/v1/admin/audit",
-            axum::routing::get(routes::admin::get_audit_handler),
-        )
-        .route(
-            "/api/v1/auth/register/challenge",
-            axum::routing::get(routes::register::register_challenge),
-        )
-        .route(
-            "/api/v1/auth/register/start",
-            axum::routing::post(routes::register::register_start),
-        )
-        .route(
-            "/api/v1/auth/register/finish",
-            axum::routing::post(routes::register::register_finish),
-        )
-        .route(
-            "/api/v1/auth/login/start",
-            axum::routing::post(routes::login::login_start),
-        )
-        .route(
-            "/api/v1/auth/login/finish",
-            axum::routing::post(routes::login::login_finish),
-        )
-        .route(
-            "/api/v1/users/me",
-            axum::routing::get(routes::users::get_me)
-                .patch(routes::users::patch_me)
-                .delete(routes::users::delete_me),
-        )
-        .route(
-            "/api/v1/users/me/export",
-            axum::routing::get(routes::users::export_me),
-        )
-        .route(
-            "/api/v1/users/me/sessions",
-            axum::routing::get(routes::sessions::list),
-        )
-        .route(
-            "/api/v1/users/me/sessions/{id}",
-            axum::routing::delete(routes::sessions::revoke),
-        )
-        .route(
-            "/api/v1/users/me/devices",
-            axum::routing::get(routes::devices::list),
-        )
-        .route(
-            "/api/v1/users/me/devices/{id}",
-            axum::routing::delete(routes::devices::revoke),
-        )
-        .route(
-            "/api/v1/auth/logout",
-            axum::routing::post(routes::sessions::logout),
-        )
-        .route(
-            "/api/v1/admin/invites",
-            axum::routing::post(routes::invites::create_invite_handler)
-                .get(routes::invites::list_invites_handler),
-        )
-        .route(
-            "/api/v1/admin/invites/{id}",
-            axum::routing::delete(routes::invites::revoke_invite_handler),
-        )
-        .route(
-            "/api/v1/invites/{code}",
-            axum::routing::get(routes::invites::validate_invite_public_handler),
-        )
-        .with_state(state);
+    let app = server::build_app(state);
 
     (app, pool, altcha_config)
 }

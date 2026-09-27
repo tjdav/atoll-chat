@@ -53,6 +53,10 @@ fn test_config(audit_retention_days: u64) -> Config {
         audit_retention_days,
         data_retention_days: 0,
         export_rate_limit_hours: 24,
+        trust_proxy: false,
+        hsts_max_age: 31536000,
+        hsts_include_subdomains: true,
+        client_static_dir: None,
     }
 }
 
