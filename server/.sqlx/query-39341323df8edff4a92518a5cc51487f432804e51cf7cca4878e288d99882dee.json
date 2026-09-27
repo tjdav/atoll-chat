@@ -1,0 +1,38 @@
+{
+  "db_name": "SQLite",
+  "query": "SELECT id as `id!`, name as `name!`, level as `level!`, permissions as `permissions!` FROM roles WHERE name = ?",
+  "describe": {
+    "columns": [
+      {
+        "name": "id!",
+        "ordinal": 0,
+        "type_info": "Text"
+      },
+      {
+        "name": "name!",
+        "ordinal": 1,
+        "type_info": "Text"
+      },
+      {
+        "name": "level!",
+        "ordinal": 2,
+        "type_info": "Integer"
+      },
+      {
+        "name": "permissions!",
+        "ordinal": 3,
+        "type_info": "Text"
+      }
+    ],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": [
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "39341323df8edff4a92518a5cc51487f432804e51cf7cca4878e288d99882dee"
+}

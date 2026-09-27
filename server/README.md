@@ -40,3 +40,28 @@ You can verify the created SQLite database using:
 ```bash
 sqlite3 data/app.db ".tables"
 ```
+
+## Roles and Permissions
+
+This system uses a role-based access control (RBAC) model. The following global roles are pre-seeded:
+
+- **owner**: Has full access to everything. Granted the `*` wildcard permission.
+- **admin**: Can manage users, instance config, rooms, backups, and generate unlimited invites.
+- **inviter**: Can generate limited invites.
+- **member**: Basic role allowing room creation, joining, and messaging.
+
+### Wildcard Permission
+The `*` permission satisfies any permission check. The `owner` role uses this to ensure it always has access, even to new permissions added in the future.
+
+### Bootstrap Behavior
+The server checks the number of users on startup. If no users exist, it logs that the first registration will become the owner. If users exist, it assumes the owner role is already assigned.
+
+### Endpoints
+- `GET /api/v1/roles` - Returns the four global roles ordered by descending level. (Unauthenticated)
+
+### Testing
+You can run the unit and integration tests using:
+
+```bash
+cargo test
+```

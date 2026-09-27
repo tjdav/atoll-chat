@@ -1,5 +1,8 @@
 mod config;
 mod db;
+mod error;
+mod permissions;
+mod roles;
 mod routes;
 
 use axum::{routing::get, Router};
@@ -18,7 +21,11 @@ async fn main() -> anyhow::Result<()> {
     let log_level_str = std::env::var("LOG_LEVEL").unwrap_or_else(|_| "info".to_string());
     let log_level = Level::from_str(&log_level_str).unwrap_or(Level::INFO);
     tracing_subscriber::fmt()
-        .with_env_filter(format!("{},tower_http={}", log_level.as_str().to_lowercase(), log_level.as_str().to_lowercase()))
+        .with_env_filter(format!(
+            "{},tower_http={}",
+            log_level.as_str().to_lowercase(),
+            log_level.as_str().to_lowercase()
+        ))
         .init();
 
     // 3. Load Config
@@ -51,18 +58,26 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    // 6. Build Router
+    // 6. Check bootstrap state
+    if roles::has_any_users(&pool).await? {
+        info!("bootstrap: users exist — owner role already assigned");
+    } else {
+        info!("bootstrap: no users exist — first registration will become owner");
+    }
+
+    // 7. Build Router
     let app = Router::new()
         .route("/health", get(routes::health::handler))
         .route("/api/v1/capabilities", get(routes::capabilities::handler))
+        .route("/api/v1/roles", get(routes::roles::handler))
         .layer(TraceLayer::new_for_http())
         .layer(cors)
         .with_state(pool);
 
-    // 7. Bind to address
+    // 8. Bind to address
     let listener = tokio::net::TcpListener::bind(&config.server_bind).await?;
 
-    // 8. Serve with graceful shutdown
+    // 9. Serve with graceful shutdown
     axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())
         .await?;
