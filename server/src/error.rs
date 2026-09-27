@@ -10,6 +10,8 @@ use tracing::error;
 pub enum ApiError {
     NotFound(String),
     BadRequest(String),
+    Forbidden(String),
+    Conflict(String),
     Internal(anyhow::Error),
 }
 
@@ -18,6 +20,8 @@ impl IntoResponse for ApiError {
         let (status, err_msg) = match self {
             ApiError::NotFound(msg) => (StatusCode::NOT_FOUND, msg),
             ApiError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
+            ApiError::Forbidden(msg) => (StatusCode::FORBIDDEN, msg),
+            ApiError::Conflict(msg) => (StatusCode::CONFLICT, msg),
             ApiError::Internal(err) => {
                 error!("Internal server error: {:#}", err);
                 (
@@ -39,5 +43,12 @@ impl IntoResponse for ApiError {
 impl From<anyhow::Error> for ApiError {
     fn from(err: anyhow::Error) -> Self {
         ApiError::Internal(err)
+    }
+}
+
+// Implement From<sqlx::Error> for ApiError
+impl From<sqlx::Error> for ApiError {
+    fn from(err: sqlx::Error) -> Self {
+        ApiError::Internal(err.into())
     }
 }
