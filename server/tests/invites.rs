@@ -854,11 +854,14 @@ async fn test_21_rate_limit_on_invite_creation_is_enforced() {
             kp_claim_hourly: 200,
             login_per_min: 10,
             login_lockout_min: 15,
+            export_rate_limit_hours: 24,
         },
         cleanup_enabled: true,
         cleanup_interval_minutes: 60,
         cleanup_startup_delay_secs: 30,
         audit_retention_days: 90,
+        data_retention_days: 0,
+        export_rate_limit_hours: 24,
     };
     let cfg_arc = std::sync::Arc::new(cfg);
     let server_hard_max = std::sync::Arc::new(server::ServerHardMax {

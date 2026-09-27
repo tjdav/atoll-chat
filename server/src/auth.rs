@@ -20,6 +20,20 @@ pub struct AuthUser {
     pub username: String,
     pub display_name: Option<String>,
     pub expires_at: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+}
+
+impl AuthUser {
+    /// Returns true if the session was created within the last N duration.
+    pub fn is_fresh(&self, max_age: std::time::Duration) -> bool {
+        let max_chrono = match chrono::Duration::from_std(max_age) {
+            Ok(d) => d,
+            Err(_) => return false,
+        };
+        let age = Utc::now().signed_duration_since(self.created_at);
+        // Allow minor negative offset (-60s) for clock skew and SQLite second rounding
+        age >= -chrono::Duration::seconds(60) && age <= max_chrono
+    }
 }
 
 pub enum AuthError {
@@ -132,6 +146,7 @@ where
         let display_name: Option<String> = user_row.get("display_name");
 
         let expires_at_dt = parse_datetime(&session_ctx.expires_at).unwrap_or_else(Utc::now);
+        let created_at_dt = parse_datetime(&session_ctx.created_at).unwrap_or_else(Utc::now);
 
         Ok(AuthUser {
             user_id: session_ctx.user_id,
@@ -140,6 +155,7 @@ where
             username,
             display_name,
             expires_at: expires_at_dt,
+            created_at: created_at_dt,
         })
     }
 }

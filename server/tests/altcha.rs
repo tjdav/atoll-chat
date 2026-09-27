@@ -254,11 +254,14 @@ async fn hmac_secret_persisted_in_instance_config() {
             kp_claim_hourly: 200,
             login_per_min: 10,
             login_lockout_min: 15,
+            export_rate_limit_hours: 24,
         },
         cleanup_enabled: true,
         cleanup_interval_minutes: 60,
         cleanup_startup_delay_secs: 30,
         audit_retention_days: 90,
+        data_retention_days: 0,
+        export_rate_limit_hours: 24,
     };
 
     let altcha_config1 = AltchaConfig::from_env(&config, &pool).await.unwrap();

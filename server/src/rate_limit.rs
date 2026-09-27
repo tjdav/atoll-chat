@@ -15,6 +15,7 @@ pub enum RateLimitKey {
     InviteRedeem { ip: String },
     KpClaim { user_id: String, window: Window },
     Login { ip: String },
+    DataExport { user_id: String },
 }
 
 #[derive(Debug, Clone)]
@@ -32,61 +33,8 @@ pub enum RateLimitError {
     InvalidKey(String),
 }
 
-pub async fn check(
-    pool: &SqlitePool,
-    config: &RateLimitConfig,
-    key: RateLimitKey,
-) -> Result<RateLimitDecision, RateLimitError> {
-    let now = Utc::now();
-
-    let (key_str, window, limit) = match key {
-        RateLimitKey::InviteCreate { user_id, window } => {
-            let limit = match window {
-                Window::Hour => config.invite_create_hourly,
-                Window::Day => config.invite_create_daily,
-                Window::Minute => {
-                    return Err(RateLimitError::InvalidKey(
-                        "unsupported window for InviteCreate".into(),
-                    ))
-                }
-            };
-            let win_tag = match window {
-                Window::Hour => "hour",
-                Window::Day => "day",
-                _ => "min",
-            };
-            (format!("invite_create:{user_id}:{win_tag}"), window, limit)
-        }
-        RateLimitKey::InviteRedeem { ip } => (
-            format!("invite_redeem:{ip}:min"),
-            Window::Minute,
-            config.invite_redeem_per_min,
-        ),
-        RateLimitKey::KpClaim { user_id, window } => {
-            let limit = match window {
-                Window::Minute => config.kp_claim_per_min,
-                Window::Hour => config.kp_claim_hourly,
-                Window::Day => {
-                    return Err(RateLimitError::InvalidKey(
-                        "unsupported window for KpClaim".into(),
-                    ))
-                }
-            };
-            let win_tag = match window {
-                Window::Minute => "min",
-                Window::Hour => "hour",
-                _ => "day",
-            };
-            (format!("kp_claim:{user_id}:{win_tag}"), window, limit)
-        }
-        RateLimitKey::Login { ip } => (
-            format!("login:{ip}:min"),
-            Window::Minute,
-            config.login_per_min,
-        ),
-    };
-
-    let (window_start, reset_at) = match window {
+fn compute_window(now: DateTime<Utc>, window: Window) -> (DateTime<Utc>, DateTime<Utc>) {
+    match window {
         Window::Minute => {
             let start = now
                 .with_second(0)
@@ -113,6 +61,91 @@ pub async fn check(
                 .unwrap_or(now);
             let reset = start + Duration::days(1);
             (start, reset)
+        }
+    }
+}
+
+pub async fn check(
+    pool: &SqlitePool,
+    config: &RateLimitConfig,
+    key: RateLimitKey,
+) -> Result<RateLimitDecision, RateLimitError> {
+    let now = Utc::now();
+
+    let (key_str, window_start, reset_at, limit) = match key {
+        RateLimitKey::InviteCreate { user_id, window } => {
+            let limit = match window {
+                Window::Hour => config.invite_create_hourly,
+                Window::Day => config.invite_create_daily,
+                Window::Minute => {
+                    return Err(RateLimitError::InvalidKey(
+                        "unsupported window for InviteCreate".into(),
+                    ))
+                }
+            };
+            let win_tag = match window {
+                Window::Hour => "hour",
+                Window::Day => "day",
+                _ => "min",
+            };
+            let (start, reset) = compute_window(now, window);
+            (
+                format!("invite_create:{user_id}:{win_tag}"),
+                start,
+                reset,
+                limit,
+            )
+        }
+        RateLimitKey::InviteRedeem { ip } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            (
+                format!("invite_redeem:{ip}:min"),
+                start,
+                reset,
+                config.invite_redeem_per_min,
+            )
+        }
+        RateLimitKey::KpClaim { user_id, window } => {
+            let limit = match window {
+                Window::Minute => config.kp_claim_per_min,
+                Window::Hour => config.kp_claim_hourly,
+                Window::Day => {
+                    return Err(RateLimitError::InvalidKey(
+                        "unsupported window for KpClaim".into(),
+                    ))
+                }
+            };
+            let win_tag = match window {
+                Window::Minute => "min",
+                Window::Hour => "hour",
+                _ => "day",
+            };
+            let (start, reset) = compute_window(now, window);
+            (format!("kp_claim:{user_id}:{win_tag}"), start, reset, limit)
+        }
+        RateLimitKey::Login { ip } => {
+            let (start, reset) = compute_window(now, Window::Minute);
+            (
+                format!("login:{ip}:min"),
+                start,
+                reset,
+                config.login_per_min,
+            )
+        }
+        RateLimitKey::DataExport { user_id } => {
+            let start = now
+                .with_minute(0)
+                .and_then(|t| t.with_second(0))
+                .and_then(|t| t.with_nanosecond(0))
+                .unwrap_or(now);
+            let reset = start + Duration::hours(config.export_rate_limit_hours as i64);
+            let window_boundary = start.format("%Y-%m-%d-%H").to_string();
+            (
+                format!("data_export:{user_id}:{window_boundary}"),
+                start,
+                reset,
+                1,
+            )
         }
     };
 

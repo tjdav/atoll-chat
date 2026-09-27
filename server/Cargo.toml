@@ -29,3 +29,4 @@ altcha = "0.2.0"
 async-trait = "0.1"
 chrono = { version = "0.4", features = ["serde"] }
 ulid = "1.1"
+zip = { version = "2", default-features = false, features = ["deflate"] }

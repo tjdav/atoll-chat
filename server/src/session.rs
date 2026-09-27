@@ -18,6 +18,7 @@ pub struct SessionContext {
     pub user_id: String,
     pub device_id: Option<String>,
     pub expires_at: String,
+    pub created_at: String,
 }
 
 #[derive(Debug, Clone)]
@@ -88,9 +89,9 @@ pub async fn validate_session(
     hasher.update(raw_token.as_bytes());
     let token_hash = hex::encode(hasher.finalize());
 
-    let row: Option<(String, String, Option<String>, String)> = sqlx::query_as(
+    let row: Option<(String, String, Option<String>, String, String)> = sqlx::query_as(
         r#"
-        SELECT id, user_id, device_id, expires_at
+        SELECT id, user_id, device_id, expires_at, created_at
         FROM sessions
         WHERE token_hash = ?
           AND revoked_at IS NULL
@@ -101,7 +102,7 @@ pub async fn validate_session(
     .fetch_optional(pool)
     .await?;
 
-    let (session_id, user_id, device_id, expires_at) = match row {
+    let (session_id, user_id, device_id, expires_at, created_at) = match row {
         Some(r) => r,
         None => return Ok(None),
     };
@@ -163,6 +164,7 @@ pub async fn validate_session(
         user_id,
         device_id,
         expires_at,
+        created_at,
     }))
 }
 
